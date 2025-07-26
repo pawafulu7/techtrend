@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Article {
+  id          String   @id @default(cuid())
+  title       String
+  url         String   @unique
+  summary     String?
+  thumbnail   String?
+  content     String?
+  publishedAt DateTime
+  source      Source   @relation(fields: [sourceId], references: [id])
+  sourceId    String
+  tags        Tag[]
+  bookmarks   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Source {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  type      SourceType
+  url       String
+  enabled   Boolean   @default(true)
+  articles  Article[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Tag {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  articles Article[]
+}
+
+enum SourceType {
+  RSS
+  API
+}
