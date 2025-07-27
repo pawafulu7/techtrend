@@ -26,9 +26,7 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'Think IT': ThinkITFetcher,
   'Speaker Deck': SpeakerDeckFetcher,
   'Rails Releases': RailsReleasesFetcher,
-  'AWS Security Bulletins': AWSFetcher,
-  'AWS What\'s New': AWSFetcher,
-  'AWS News Blog': AWSFetcher,
+  'AWS': AWSFetcher,
 };
 
 interface CollectResult {

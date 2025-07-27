@@ -31,9 +31,7 @@ export function createFetcher(source: Source): BaseFetcher {
       return new SpeakerDeckFetcher(source);
     case 'Rails Releases':
       return new RailsReleasesFetcher(source);
-    case 'AWS Security Bulletins':
-    case 'AWS What\'s New':
-    case 'AWS News Blog':
+    case 'AWS':
       return new AWSFetcher(source);
     default:
       throw new Error(`Unsupported source: ${source.name}`);
