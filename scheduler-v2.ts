@@ -17,7 +17,10 @@ const RSS_SOURCES = [
   'Publickey',
   'Stack Overflow Blog',
   'Think IT',
-  'Rails Releases'
+  'Rails Releases',
+  'AWS Security Bulletins',
+  'AWS What\'s New',
+  'AWS News Blog'
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）

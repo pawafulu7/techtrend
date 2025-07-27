@@ -1,8 +1,23 @@
-import { HatenaFetcher } from './hatena';
-import { FetchResult } from './base';
+import Parser from 'rss-parser';
+import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
+import { parseRSSDate } from '@/lib/utils/date';
 
-export class HatenaExtendedFetcher extends HatenaFetcher {
+interface HatenaItem {
+  title?: string;
+  link?: string;
+  pubDate?: string;
+  'dc:date'?: string;
+  description?: string;
+  content?: string;
+  contentSnippet?: string;
+  'hatena:bookmarkcount'?: string;
+  categories?: string[];
+}
+
+export class HatenaExtendedFetcher extends BaseFetcher {
+  private parser: Parser<any, HatenaItem>;
+  
   // 技術系のRSSフィードのみを使用
   private rssUrls = [
     'https://b.hatena.ne.jp/hotentry/it.rss',           // ITカテゴリー人気
@@ -41,6 +56,18 @@ export class HatenaExtendedFetcher extends HatenaFetcher {
     'オープンソース', 'oss', 'npm', 'yarn', 'pip', 'gem', 'cargo'
   ];
 
+  constructor(source: any) {
+    super(source);
+    this.parser = new Parser({
+      customFields: {
+        item: [
+          ['dc:date', 'dcDate'],
+          ['hatena:bookmarkcount', 'bookmarkcount'],
+        ],
+      },
+    });
+  }
+
   async fetch(): Promise<FetchResult> {
     const allArticles: CreateArticleInput[] = [];
     const allErrors: Error[] = [];
@@ -49,24 +76,36 @@ export class HatenaExtendedFetcher extends HatenaFetcher {
     // 各RSSフィードから記事を取得
     for (const rssUrl of this.rssUrls) {
       try {
-        // 一時的にURLを変更
-        const originalUrl = this.source.url;
-        this.source.url = rssUrl;
+        const feed = await this.retry(() => this.parser.parseURL(rssUrl));
         
-        const result = await super.fetch();
-        
-        // URLを元に戻す
-        this.source.url = originalUrl;
+        for (const item of feed.items || []) {
+          try {
+            if (!item.title || !item.link) continue;
+            
+            // 重複チェック
+            if (seenUrls.has(item.link)) continue;
+            
+            const article: CreateArticleInput = {
+              title: this.sanitizeText(item.title),
+              url: this.normalizeUrl(item.link),
+              summary: undefined, // 要約は後で日本語で生成
+              content: item.content || item.description || item.contentSnippet || '',
+              publishedAt: item.pubDate ? parseRSSDate(item.pubDate) : 
+                          item['dc:date'] ? new Date(item['dc:date']) : new Date(),
+              sourceId: this.source.id,
+              tagNames: item.categories || [],
+              bookmarks: item['hatena:bookmarkcount'] ? parseInt(item['hatena:bookmarkcount'], 10) : 0,
+            };
 
-        // 重複を除いて技術記事のみを追加
-        for (const article of result.articles) {
-          if (!seenUrls.has(article.url) && this.isTechArticle(article)) {
-            seenUrls.add(article.url);
-            allArticles.push(article);
+            // 技術記事かチェック
+            if (this.isTechArticle(article)) {
+              seenUrls.add(item.link);
+              allArticles.push(article);
+            }
+          } catch (error) {
+            allErrors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
           }
         }
-
-        allErrors.push(...result.errors);
 
         // レート制限を考慮して少し待機
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -74,6 +113,9 @@ export class HatenaExtendedFetcher extends HatenaFetcher {
         allErrors.push(new Error(`Failed to fetch from ${rssUrl}: ${error instanceof Error ? error.message : String(error)}`));
       }
     }
+
+    // ブックマーク数でソートして上位40件を返す
+    allArticles.sort((a, b) => (b.bookmarks || 0) - (a.bookmarks || 0));
 
     return { 
       articles: allArticles.slice(0, 40), // 日別トレンド上位40件

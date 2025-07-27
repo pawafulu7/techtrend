@@ -5,30 +5,30 @@ const prisma = new PrismaClient();
 
 // フェッチャーをインポート
 import { HatenaExtendedFetcher } from '../lib/fetchers/hatena-extended';
-import { QiitaFetcher } from '../lib/fetchers/qiita';
 import { QiitaPopularFetcher } from '../lib/fetchers/qiita-popular';
 import { ZennExtendedFetcher } from '../lib/fetchers/zenn-extended';
 import { DevToFetcher } from '../lib/fetchers/devto';
 import { PublickeyFetcher } from '../lib/fetchers/publickey';
 import { StackOverflowBlogFetcher } from '../lib/fetchers/stackoverflow-blog';
-import { InfoQJapanFetcher } from '../lib/fetchers/infoq-japan';
 import { ThinkITFetcher } from '../lib/fetchers/thinkit';
 import { SpeakerDeckFetcher } from '../lib/fetchers/speakerdeck';
 import { RailsReleasesFetcher } from '../lib/fetchers/rails-releases';
+import { AWSFetcher } from '../lib/fetchers/aws';
 import { BaseFetcher } from '../lib/fetchers/base';
 
 const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'はてなブックマーク': HatenaExtendedFetcher,
-  'Qiita': QiitaFetcher,
   'Qiita Popular': QiitaPopularFetcher,
   'Zenn': ZennExtendedFetcher,
   'Dev.to': DevToFetcher,
   'Publickey': PublickeyFetcher,
   'Stack Overflow Blog': StackOverflowBlogFetcher,
-  'InfoQ Japan': InfoQJapanFetcher,
   'Think IT': ThinkITFetcher,
   'Speaker Deck': SpeakerDeckFetcher,
   'Rails Releases': RailsReleasesFetcher,
+  'AWS Security Bulletins': AWSFetcher,
+  'AWS What\'s New': AWSFetcher,
+  'AWS News Blog': AWSFetcher,
 };
 
 interface CollectResult {

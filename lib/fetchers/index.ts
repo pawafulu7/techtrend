@@ -9,6 +9,7 @@ import { StackOverflowBlogFetcher } from './stackoverflow-blog';
 import { ThinkITFetcher } from './thinkit';
 import { SpeakerDeckFetcher } from './speakerdeck';
 import { RailsReleasesFetcher } from './rails-releases';
+import { AWSFetcher } from './aws';
 
 export function createFetcher(source: Source): BaseFetcher {
   switch (source.name) {
@@ -30,6 +31,10 @@ export function createFetcher(source: Source): BaseFetcher {
       return new SpeakerDeckFetcher(source);
     case 'Rails Releases':
       return new RailsReleasesFetcher(source);
+    case 'AWS Security Bulletins':
+    case 'AWS What\'s New':
+    case 'AWS News Blog':
+      return new AWSFetcher(source);
     default:
       throw new Error(`Unsupported source: ${source.name}`);
   }
@@ -45,6 +50,7 @@ export {
   StackOverflowBlogFetcher,
   ThinkITFetcher,
   SpeakerDeckFetcher,
-  RailsReleasesFetcher
+  RailsReleasesFetcher,
+  AWSFetcher
 };
 export type { FetchResult } from './base';
