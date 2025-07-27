@@ -17,7 +17,8 @@ const RSS_SOURCES = [
   'Dev.to',
   'Publickey',
   'Stack Overflow Blog',
-  'Think IT'
+  'Think IT',
+  'Rails Releases'
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）

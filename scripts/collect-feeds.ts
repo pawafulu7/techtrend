@@ -13,6 +13,7 @@ import { StackOverflowBlogFetcher } from '../lib/fetchers/stackoverflow-blog';
 import { InfoQJapanFetcher } from '../lib/fetchers/infoq-japan';
 import { ThinkITFetcher } from '../lib/fetchers/thinkit';
 import { SpeakerDeckFetcher } from '../lib/fetchers/speakerdeck';
+import { RailsReleasesFetcher } from '../lib/fetchers/rails-releases';
 import { BaseFetcher } from '../lib/fetchers/base';
 
 const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
@@ -25,6 +26,7 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'InfoQ Japan': InfoQJapanFetcher,
   'Think IT': ThinkITFetcher,
   'Speaker Deck': SpeakerDeckFetcher,
+  'Rails Releases': RailsReleasesFetcher,
 };
 
 interface CollectResult {
@@ -78,14 +80,9 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
 
         for (const article of articles) {
           try {
-            // URLまたはexternalIdで重複チェック
+            // URLで重複チェック
             const existing = await prisma.article.findFirst({
-              where: {
-                OR: [
-                  { url: article.url },
-                  ...(article.externalId ? [{ externalId: article.externalId }] : [])
-                ]
-              }
+              where: { url: article.url }
             });
 
             if (existing) {
@@ -111,7 +108,6 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
               data: {
                 title: article.title,
                 url: article.url,
-                externalId: article.externalId,
                 summary: article.summary || null,
                 content: article.content || null,
                 publishedAt: article.publishedAt,
