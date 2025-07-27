@@ -42,7 +42,7 @@ export class PublickeyFetcher extends BaseFetcher {
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
             url: this.normalizeUrl(item.link),
-            summary: item.description ? this.sanitizeText(item.description).substring(0, 200) : undefined,
+            summary: undefined, // 要約は後で日本語で生成
             content: item['content:encoded'] || item.description || undefined,
             publishedAt: item.pubDate ? parseRSSDate(item.pubDate) : 
                         item['dc:date'] ? new Date(item['dc:date']) : new Date(),
