@@ -67,8 +67,20 @@ export class AWSFetcher extends BaseFetcher {
             if (seenUrls.has(item.link)) continue;
             seenUrls.add(item.link);
 
-            // 既存のカテゴリにAWSタグを追加
+            // 既存のカテゴリにAWSタグと取得元を追加
             const tags = this.extractTags(item, feedInfo.name);
+            
+            // 取得元をタグとして追加
+            const sourceMap: Record<string, string> = {
+              'Security': 'Security Bulletins',
+              'WhatsNew': "What's New",
+              'Blog': 'News Blog'
+            };
+            const sourceTag = sourceMap[feedInfo.name];
+            if (sourceTag && !tags.includes(sourceTag)) {
+              tags.unshift(sourceTag);
+            }
+            
             tags.unshift('AWS'); // 必ずAWSタグを先頭に追加
 
             const article: CreateArticleInput = {

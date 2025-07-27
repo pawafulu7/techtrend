@@ -70,8 +70,15 @@ export class SREFetcher extends BaseFetcher {
             if (seenUrls.has(item.link)) continue;
             seenUrls.add(item.link);
 
-            // タグを抽出（必ずSREタグを含める）
+            // タグを抽出（必ずSREタグと取得元を含める）
             const tags = this.extractTags(item, feedInfo.name);
+            
+            // 取得元をタグとして追加（スペースを除去）
+            const sourceName = feedInfo.name.replace(' SRE', '').replace(' Labs', '');
+            if (!tags.includes(sourceName)) {
+              tags.unshift(sourceName);
+            }
+            
             tags.unshift('SRE'); // 必ずSREタグを先頭に追加
 
             const article: CreateArticleInput = {
