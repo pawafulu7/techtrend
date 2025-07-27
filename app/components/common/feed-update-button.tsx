@@ -3,14 +3,13 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 export function FeedUpdateButton() {
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState('');
 
   const handleUpdate = async () => {
     setIsLoading(true);
-    setMessage('');
 
     try {
       const response = await fetch('/api/feeds/collect', {
@@ -24,17 +23,28 @@ export function FeedUpdateButton() {
 
       if (data.success) {
         const { totalFetched, totalCreated } = data.data.summary;
-        setMessage(`更新完了: ${totalFetched}件取得、${totalCreated}件新規作成`);
+        toast({
+          title: 'フィード更新完了',
+          description: `${totalFetched}件取得、${totalCreated}件の新しい記事を作成しました`,
+        });
         
         // 3秒後にリロード
         setTimeout(() => {
           window.location.reload();
         }, 3000);
       } else {
-        setMessage('更新に失敗しました');
+        toast({
+          title: 'エラー',
+          description: 'フィードの更新に失敗しました',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
-      setMessage('エラーが発生しました');
+      toast({
+        title: 'エラー',
+        description: 'フィード更新中にエラーが発生しました',
+        variant: 'destructive',
+      });
       console.error('Feed update error:', error);
     } finally {
       setIsLoading(false);
@@ -42,30 +52,26 @@ export function FeedUpdateButton() {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Button 
-        onClick={handleUpdate} 
-        disabled={isLoading}
-        variant="outline"
-        size="sm"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            更新中...
-          </>
-        ) : (
-          <>
-            <TrendingUp className="h-4 w-4 mr-2" />
-            フィード更新
-          </>
-        )}
-      </Button>
-      {message && (
-        <span className="text-sm text-muted-foreground">
-          {message}
-        </span>
+    <Button 
+      onClick={handleUpdate} 
+      disabled={isLoading}
+      variant="outline"
+      size="sm"
+      className="h-6 sm:h-7 px-2 text-xs"
+    >
+      {isLoading ? (
+        <>
+          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+          <span className="hidden sm:inline">更新中...</span>
+          <span className="sm:hidden">更新</span>
+        </>
+      ) : (
+        <>
+          <TrendingUp className="h-3 w-3 mr-1" />
+          <span className="hidden sm:inline">フィード更新</span>
+          <span className="sm:hidden">更新</span>
+        </>
       )}
-    </div>
+    </Button>
   );
 }

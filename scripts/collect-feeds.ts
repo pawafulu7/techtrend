@@ -1,28 +1,36 @@
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient, Source } from '@prisma/client';
+import { CreateArticleInput } from '@/lib/types/article';
+
 const prisma = new PrismaClient();
 
 // フェッチャーをインポート
-const hatenaFetcher = require('../lib/fetchers/hatena');
-const qiitaFetcher = require('../lib/fetchers/qiita');
-const zennFetcher = require('../lib/fetchers/zenn');
-const devtoFetcher = require('../lib/fetchers/devto');
-const publickeyFetcher = require('../lib/fetchers/publickey');
-const stackoverflowFetcher = require('../lib/fetchers/stackoverflow');
-const infoqFetcher = require('../lib/fetchers/infoq');
-const thinkitFetcher = require('../lib/fetchers/thinkit');
+import { HatenaExtendedFetcher } from '../lib/fetchers/hatena-extended';
+import { QiitaFetcher } from '../lib/fetchers/qiita';
+import { ZennFetcher } from '../lib/fetchers/zenn';
+import { DevToFetcher } from '../lib/fetchers/devto';
+import { PublickeyFetcher } from '../lib/fetchers/publickey';
+import { StackOverflowBlogFetcher } from '../lib/fetchers/stackoverflow-blog';
+import { InfoQJapanFetcher } from '../lib/fetchers/infoq-japan';
+import { ThinkITFetcher } from '../lib/fetchers/thinkit';
+import { BaseFetcher } from '../lib/fetchers/base';
 
-const fetchers = {
-  'はてなブックマーク': hatenaFetcher,
-  'Qiita': qiitaFetcher,
-  'Zenn': zennFetcher,
-  'Dev.to': devtoFetcher,
-  'Publickey': publickeyFetcher,
-  'Stack Overflow Blog': stackoverflowFetcher,
-  'InfoQ Japan': infoqFetcher,
-  'Think IT': thinkitFetcher,
+const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
+  'はてなブックマーク': HatenaExtendedFetcher,
+  'Qiita': QiitaFetcher,
+  'Zenn': ZennFetcher,
+  'Dev.to': DevToFetcher,
+  'Publickey': PublickeyFetcher,
+  'Stack Overflow Blog': StackOverflowBlogFetcher,
+  'InfoQ Japan': InfoQJapanFetcher,
+  'Think IT': ThinkITFetcher,
 };
 
-async function collectFeeds() {
+interface CollectResult {
+  newArticles: number;
+  duplicates: number;
+}
+
+async function collectFeeds(): Promise<CollectResult> {
   console.log('📡 フィード収集を開始します...');
   const startTime = Date.now();
   
@@ -36,29 +44,23 @@ async function collectFeeds() {
     let totalDuplicates = 0;
 
     for (const source of sources) {
-      const fetcher = fetchers[source.name];
-      if (!fetcher) {
+      const FetcherClass = fetchers[source.name];
+      if (!FetcherClass) {
         console.log(`⚠️  ${source.name}: フェッチャーが見つかりません`);
         continue;
       }
 
       try {
-        console.log(`\n📥 ${source.name} から記事を取得中...`);
+        const fetcher = new FetcherClass(source);
+        const { articles, errors } = await fetcher.fetch();
         
-        // エラーが予想されるソースは事前チェック
-        if (!source.enabled) {
-          console.log(`   ⚠️  無効化されています`);
-          continue;
+        if (errors.length > 0) {
+          errors.forEach(err => console.error(`   エラー: ${err.message}`));
         }
-        
-        const articles = await fetcher.fetch(source);
         
         if (!articles || articles.length === 0) {
-          console.log(`   記事が見つかりませんでした`);
           continue;
         }
-
-        console.log(`   ${articles.length}件の記事を取得しました`);
 
         // 各記事を保存（重複チェック付き）
         let newCount = 0;
@@ -71,7 +73,7 @@ async function collectFeeds() {
               where: {
                 OR: [
                   { url: article.url },
-                  { externalId: article.externalId }
+                  ...(article.externalId ? [{ externalId: article.externalId }] : [])
                 ]
               }
             });
@@ -98,16 +100,19 @@ async function collectFeeds() {
 
             newCount++;
           } catch (error) {
-            console.error(`   記事保存エラー: ${article.title}`, error.message);
+            console.error(`   記事保存エラー: ${article.title}`, error instanceof Error ? error.message : String(error));
           }
         }
 
-        console.log(`   ✅ 新規: ${newCount}件, 重複: ${duplicateCount}件`);
+        if (newCount > 0 || duplicateCount > 0) {
+          console.log(`   ✅ 新規: ${newCount}件, 重複: ${duplicateCount}件`);
+        }
+        
         totalNewArticles += newCount;
         totalDuplicates += duplicateCount;
 
       } catch (error) {
-        console.error(`❌ ${source.name} のフェッチエラー:`, error.message);
+        console.error(`❌ ${source.name} のフェッチエラー:`, error instanceof Error ? error.message : String(error));
       }
     }
 
@@ -134,4 +139,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { collectFeeds };
+export { collectFeeds };

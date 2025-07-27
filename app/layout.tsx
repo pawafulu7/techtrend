@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/app/components/layout/header";
 import { Footer } from "@/app/components/layout/footer";
 import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
+import { ToastProvider } from "@/providers/toast-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -47,6 +48,7 @@ export default function RootLayout({
         <Header />
         <main className="flex-1 overflow-hidden">{children}</main>
         <Footer />
+        <ToastProvider />
       </body>
     </html>
   );

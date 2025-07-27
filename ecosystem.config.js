@@ -2,7 +2,8 @@ module.exports = {
   apps: [
     {
       name: 'techtrend-scheduler',
-      script: 'scheduler.js',
+      script: 'tsx',
+      args: 'scheduler.ts',
       instances: 1,
       autorestart: true,
       watch: false,

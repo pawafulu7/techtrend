@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { Filters } from '@/app/components/common/filters';
+import { MobileFilters } from '@/app/components/common/mobile-filters';
 import { ArticleList } from '@/app/components/article/list';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { FeedUpdateButton } from '@/app/components/common/feed-update-button';
@@ -123,19 +124,19 @@ export default async function Home({ searchParams }: PageProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       
-      <div className="container mx-auto px-2 py-2 flex flex-col h-full overflow-hidden">
+      <div className="container mx-auto px-2 sm:px-4 py-2 flex flex-col h-full overflow-hidden">
         {/* Header Section */}
         <div className="mb-1 flex-shrink-0">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-            <h1 className="text-xl font-bold">最新テックトレンド</h1>
+            <h1 className="text-lg sm:text-xl font-bold">最新テックトレンド</h1>
             <FeedUpdateButton />
           </div>
 
         </div>
 
 
-        <div className="flex gap-4 flex-1 overflow-hidden">
-          {/* Sidebar Filters */}
+        <div className="flex gap-2 sm:gap-4 flex-1 overflow-hidden">
+          {/* Sidebar Filters - Desktop */}
           <aside className="hidden lg:block w-48 flex-shrink-0">
             <Suspense fallback={<div>Loading filters...</div>}>
               <Filters sources={sources} tags={tags} />
@@ -145,17 +146,20 @@ export default async function Home({ searchParams }: PageProps) {
           {/* Main Content */}
           <div className="flex-1 overflow-y-auto">
             <div className="space-y-2">
-              {/* Sort Options */}
+              {/* Sort Options and Mobile Filters */}
               <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              {data.total}件
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-muted-foreground">
+                {data.total}件
+              </p>
+              <MobileFilters sources={sources} tags={tags} />
+            </div>
             <div className="flex gap-1">
               <Button
                 variant={params.sortBy !== 'bookmarks' ? 'default' : 'outline'}
                 size="sm"
                 asChild
-                className="h-7 px-2 text-xs"
+                className="h-6 sm:h-7 px-2 text-xs"
               >
                 <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
                   新着
@@ -165,7 +169,7 @@ export default async function Home({ searchParams }: PageProps) {
                 variant={params.sortBy === 'bookmarks' ? 'default' : 'outline'}
                 size="sm"
                 asChild
-                className="h-7 px-2 text-xs"
+                className="h-6 sm:h-7 px-2 text-xs"
               >
                 <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'bookmarks' }).toString()}`}>
                   人気

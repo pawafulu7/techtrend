@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { Rss, TrendingUp, Menu, X } from 'lucide-react';
+import { Rss, TrendingUp, Menu, X, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { SITE_NAME } from '@/lib/constants';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -45,26 +46,34 @@ export function Header() {
             >
               Zenn
             </Link>
+            <Link 
+              href="/stats" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              統計
+            </Link>
           </nav>
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-4">
-            {/* フィード更新ボタンはメインページに移動 */}
+            <ThemeToggle />
           </div>
 
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="md:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </Button>
+          {/* Mobile Actions */}
+          <div className="flex items-center gap-2 md:hidden">
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Mobile Navigation */}
@@ -99,12 +108,14 @@ export function Header() {
               >
                 Zenn
               </Link>
-              <Button variant="outline" size="sm" asChild className="w-full">
-                <Link href="/feeds/collect">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  フィード更新
-                </Link>
-              </Button>
+              <Link 
+                href="/stats" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <BarChart3 className="h-4 w-4 mr-2 inline" />
+                統計
+              </Link>
             </div>
           </nav>
         )}

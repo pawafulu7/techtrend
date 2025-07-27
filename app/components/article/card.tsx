@@ -39,13 +39,14 @@ export function ArticleCard({ article }: ArticleCardProps) {
         sourceColor.gradient
       )} />
       
-      <CardHeader className="pb-1">
+      <CardHeader className="pb-1 px-3 sm:px-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
             {isNew && (
               <Badge className="mb-1 text-xs" variant="destructive">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                New
+                <TrendingUp className="h-3 w-3 mr-0.5 sm:mr-1" />
+                <span className="hidden sm:inline">New</span>
+                <span className="sm:hidden">新</span>
               </Badge>
             )}
             <h3 className="text-sm font-semibold leading-tight line-clamp-2 hover:text-primary transition-colors">
@@ -70,7 +71,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 py-1">
+      <CardContent className="flex-1 py-1 px-3 sm:px-4">
         {article.summary && (
           <p className="text-xs text-muted-foreground leading-normal">
             {article.summary}

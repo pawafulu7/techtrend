@@ -1,9 +1,14 @@
-const { PrismaClient } = require('@prisma/client');
-const fetch = require('node-fetch');
+import { PrismaClient, Article, Source } from '@prisma/client';
+import fetch from 'node-fetch';
 
 const prisma = new PrismaClient();
 
-async function generateSummary(title, content) {
+interface GenerateResult {
+  generated: number;
+  errors: number;
+}
+
+async function generateSummary(title: string, content: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not set');
@@ -35,17 +40,19 @@ async function generateSummary(title, content) {
     throw new Error(`API request failed: ${response.status} - ${error}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
   const summary = data.candidates[0].content.parts[0].text.trim();
   
   return summary;
 }
 
-async function sleep(ms) {
+async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function generateSummaries() {
+type ArticleWithSource = Article & { source: Source };
+
+async function generateSummaries(): Promise<GenerateResult> {
   console.log('📝 要約生成を開始します...');
   const startTime = Date.now();
 
@@ -56,7 +63,7 @@ async function generateSummaries() {
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
       take: 100
-    });
+    }) as ArticleWithSource[];
 
     // 2. 英語の要約を持つ記事を取得（Dev.to, Stack Overflow Blog）
     const englishSources = await prisma.source.findMany({
@@ -68,7 +75,7 @@ async function generateSummaries() {
       }
     });
 
-    const articlesWithEnglishSummary = [];
+    const articlesWithEnglishSummary: ArticleWithSource[] = [];
     for (const source of englishSources) {
       const articles = await prisma.article.findMany({
         where: {
@@ -77,7 +84,7 @@ async function generateSummaries() {
         },
         include: { source: true },
         take: 50
-      });
+      }) as ArticleWithSource[];
 
       // 日本語を含まない要約を検出
       const englishArticles = articles.filter(article => {
@@ -96,7 +103,7 @@ async function generateSummaries() {
       },
       include: { source: true },
       take: 200
-    });
+    }) as ArticleWithSource[];
 
     const truncatedArticles = allArticlesWithSummary.filter(article => {
       const summary = article.summary || '';
@@ -118,7 +125,7 @@ async function generateSummaries() {
 
     if (uniqueArticles.length === 0) {
       console.log('✅ すべての記事が適切な要約を持っています');
-      return { generated: 0 };
+      return { generated: 0, errors: 0 };
     }
 
     console.log(`📄 処理対象の記事数:`);
@@ -151,14 +158,14 @@ async function generateSummaries() {
             generatedCount++;
           } catch (error) {
             console.error(`✗ [${article.source.name}] ${article.title.substring(0, 40)}...`);
-            console.error(`  エラー: ${error.message}`);
+            console.error(`  エラー: ${error instanceof Error ? error.message : String(error)}`);
             errorCount++;
           }
         })
       );
 
       // API レート制限対策
-      if (i + batchSize < articlesWithoutSummary.length) {
+      if (i + batchSize < uniqueArticles.length) {
         await sleep(2000);
       }
     }
@@ -186,4 +193,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { generateSummaries };
+export { generateSummaries };
