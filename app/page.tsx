@@ -44,22 +44,27 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
     ];
   }
 
-  // Get total count
-  const total = await prisma.article.count({ where });
-
-  // Get articles
-  const articles = await prisma.article.findMany({
-    where,
-    include: {
-      source: true,
-      tags: true,
-    },
-    orderBy: {
-      [sortBy]: sortOrder,
-    },
-    skip: (page - 1) * limit,
-    take: limit,
-  });
+  // Get total count and articles in parallel for better performance
+  const [total, articles] = await Promise.all([
+    prisma.article.count({ where }),
+    prisma.article.findMany({
+      where,
+      include: {
+        source: true,
+        tags: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    })
+  ]);
 
   return {
     articles,

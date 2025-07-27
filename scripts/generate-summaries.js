@@ -129,7 +129,7 @@ async function generateSummaries() {
 
     let generatedCount = 0;
     let errorCount = 0;
-    const batchSize = 5;
+    const batchSize = 3; // API制限を考慮して並列数を調整
 
     // バッチ処理で要約を生成
     for (let i = 0; i < uniqueArticles.length; i += batchSize) {

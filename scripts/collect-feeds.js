@@ -44,6 +44,13 @@ async function collectFeeds() {
 
       try {
         console.log(`\n📥 ${source.name} から記事を取得中...`);
+        
+        // エラーが予想されるソースは事前チェック
+        if (!source.enabled) {
+          console.log(`   ⚠️  無効化されています`);
+          continue;
+        }
+        
         const articles = await fetcher.fetch(source);
         
         if (!articles || articles.length === 0) {
