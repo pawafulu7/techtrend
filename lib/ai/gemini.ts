@@ -38,22 +38,19 @@ export class GeminiClient {
     // Limit content length to avoid token limits
     const truncatedContent = content.substring(0, 2000);
     
-    return `以下の技術記事の内容を日本語で100文字程度に要約してください。要約は記事の主要なポイントと技術的な価値を含めてください。
+    return `以下の技術記事を60-80文字の日本語で要約してください。著者の自己紹介は除外し、記事の技術的な内容のみを簡潔にまとめてください。文章は必ず「。」で終わるようにしてください。
 
 タイトル: ${title}
-
-内容:
-${truncatedContent}
-
-要約:`;
+内容: ${truncatedContent}`;
   }
 
   private cleanSummary(summary: string): string {
     return summary
       .trim()
-      .replace(/^要約[:：]\s*/i, '') // Remove "要約:" prefix if present
+      .replace(/^(要約|日本語要約)[:：]\s*/i, '') // Remove "要約:" or "日本語要約:" prefix if present
+      .replace(/^(本記事は|本稿では|記事では|この記事は)/g, '') // Remove article prefixes
       .replace(/\n+/g, ' ') // Replace newlines with spaces
-      .substring(0, 200); // Ensure max length
+      .trim(); // Remove any trailing spaces
   }
 
   async batchGenerateSummaries(

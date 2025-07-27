@@ -26,25 +26,30 @@ interface QiitaItem {
 
 export class QiitaFetcher extends BaseFetcher {
   private apiUrl = 'https://qiita.com/api/v2/items';
-  private perPage = 100;
+  private perPage = 50; // トレンド記事のみなので少なめに
+  private maxPages = 2; // 50 * 2 = 100件
 
   async fetch(): Promise<FetchResult> {
     const articles: CreateArticleInput[] = [];
     const errors: Error[] = [];
 
     try {
-      const response = await this.retry(() => 
-        axios.get<QiitaItem[]>(this.apiUrl, {
-          params: {
-            page: 1,
-            per_page: this.perPage,
-            query: 'created:>1week',
-          },
-          headers: {
-            'Accept': 'application/json',
-          },
-        })
-      );
+      // 複数ページを取得 - ストック数が多い記事のみ
+      for (let page = 1; page <= this.maxPages; page++) {
+        try {
+          const response = await this.retry(() => 
+            axios.get<QiitaItem[]>(this.apiUrl, {
+              params: {
+                page: page,
+                per_page: this.perPage,
+                query: 'stocks:>5', // ストック数5以上の人気記事のみ
+              },
+              headers: {
+                'Accept': 'application/json',
+              },
+              timeout: 10000,
+            })
+          );
 
       for (const item of response.data) {
         try {
@@ -69,12 +74,24 @@ export class QiitaFetcher extends BaseFetcher {
           errors.push(new Error(`Failed to parse Qiita item ${item.id}: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        errors.push(new Error(`Qiita API error: ${error.response?.status} ${error.response?.statusText}`));
-      } else {
-        errors.push(new Error(`Failed to fetch from Qiita: ${error instanceof Error ? error.message : String(error)}`));
+
+          // APIレート制限を考慮して少し待機
+          if (page < this.maxPages) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        } catch (error) {
+          if (axios.isAxiosError(error)) {
+            errors.push(new Error(`Qiita API error (page ${page}): ${error.response?.status} ${error.response?.statusText}`));
+            // ページ取得でエラーが発生したら終了
+            break;
+          } else {
+            errors.push(new Error(`Failed to fetch from Qiita (page ${page}): ${error instanceof Error ? error.message : String(error)}`));
+            break;
+          }
+        }
       }
+    } catch (error) {
+      errors.push(new Error(`Failed to initialize Qiita fetcher: ${error instanceof Error ? error.message : String(error)}`));
     }
 
     return { articles, errors };

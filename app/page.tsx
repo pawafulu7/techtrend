@@ -1,103 +1,193 @@
-import Image from "next/image";
+import { Suspense } from 'react';
+import { Filters } from '@/app/components/common/filters';
+import { ArticleList } from '@/app/components/article/list';
+import { ServerPagination } from '@/app/components/common/server-pagination';
+import { FeedUpdateButton } from '@/app/components/common/feed-update-button';
+import { Button } from '@/components/ui/button';
+import { prisma } from '@/lib/database';
+import { ARTICLES_PER_PAGE } from '@/lib/constants';
+import Link from 'next/link';
 
-export default function Home() {
+interface PageProps {
+  searchParams: Promise<{
+    page?: string;
+    sourceId?: string;
+    tag?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }>;
+}
+
+async function getArticles(params: Awaited<PageProps['searchParams']>) {
+  const page = Math.max(1, parseInt(params.page || '1'));
+  const limit = ARTICLES_PER_PAGE;
+  const sortBy = params.sortBy || 'publishedAt';
+  const sortOrder = (params.sortOrder || 'desc') as 'asc' | 'desc';
+
+  // Build where clause
+  const where: any = {};
+  if (params.sourceId) {
+    where.sourceId = params.sourceId;
+  }
+  if (params.tag) {
+    where.tags = {
+      some: {
+        name: params.tag
+      }
+    };
+  }
+  if (params.search) {
+    where.OR = [
+      { title: { contains: params.search, mode: 'insensitive' } },
+      { summary: { contains: params.search, mode: 'insensitive' } }
+    ];
+  }
+
+  // Get total count
+  const total = await prisma.article.count({ where });
+
+  // Get articles
+  const articles = await prisma.article.findMany({
+    where,
+    include: {
+      source: true,
+      tags: true,
+    },
+    orderBy: {
+      [sortBy]: sortOrder,
+    },
+    skip: (page - 1) * limit,
+    take: limit,
+  });
+
+  return {
+    articles,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
+async function getSources() {
+  const sources = await prisma.source.findMany({
+    where: { enabled: true },
+    include: {
+      _count: {
+        select: { articles: true }
+      }
+    },
+    orderBy: { name: 'asc' },
+  });
+
+  // 記事が1件以上あるソースのみを返す
+  return sources.filter(source => source._count.articles > 0);
+}
+
+async function getPopularTags() {
+  const tags = await prisma.tag.findMany({
+    include: {
+      _count: {
+        select: { articles: true },
+      },
+    },
+    orderBy: {
+      articles: {
+        _count: 'desc',
+      },
+    },
+    take: 20,
+  });
+
+  return tags.map(tag => ({
+    id: tag.id,
+    name: tag.name,
+    count: tag._count.articles,
+  }));
+}
+
+export default async function Home({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const [data, sources, tags] = await Promise.all([
+    getArticles(params),
+    getSources(),
+    getPopularTags(),
+  ]);
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="h-full flex flex-col overflow-hidden">
+      
+      <div className="container mx-auto px-2 py-2 flex flex-col h-full overflow-hidden">
+        {/* Header Section */}
+        <div className="mb-1 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <h1 className="text-xl font-bold">最新テックトレンド</h1>
+            <FeedUpdateButton />
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+
+        <div className="flex gap-4 flex-1 overflow-hidden">
+          {/* Sidebar Filters */}
+          <aside className="hidden lg:block w-48 flex-shrink-0">
+            <Suspense fallback={<div>Loading filters...</div>}>
+              <Filters sources={sources} tags={tags} />
+            </Suspense>
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="space-y-2">
+              {/* Sort Options */}
+              <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {data.total}件
+            </p>
+            <div className="flex gap-1">
+              <Button
+                variant={params.sortBy !== 'bookmarks' ? 'default' : 'outline'}
+                size="sm"
+                asChild
+                className="h-7 px-2 text-xs"
+              >
+                <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
+                  新着
+                </Link>
+              </Button>
+              <Button
+                variant={params.sortBy === 'bookmarks' ? 'default' : 'outline'}
+                size="sm"
+                asChild
+                className="h-7 px-2 text-xs"
+              >
+                <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'bookmarks' }).toString()}`}>
+                  人気
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+              {/* Articles */}
+              <Suspense fallback={<div>Loading articles...</div>}>
+                <ArticleList articles={data.articles} />
+              </Suspense>
+
+              {/* Pagination */}
+              {data.totalPages > 1 && (
+                <div className="mt-4">
+                  <ServerPagination
+                    currentPage={data.page}
+                    totalPages={data.totalPages}
+                    searchParams={params}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

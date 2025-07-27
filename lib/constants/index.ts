@@ -5,8 +5,8 @@ export const ARTICLES_PER_PAGE = 20;
 export const MAX_SUMMARY_LENGTH = 200;
 
 export const GEMINI_API = {
-  MODEL: 'gemini-2.5-flash',
-  MAX_TOKENS: 100,
+  MODEL: 'gemini-1.5-flash',
+  MAX_TOKENS: 200,
   TEMPERATURE: 0.7,
 } as const;
 

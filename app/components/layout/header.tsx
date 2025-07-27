@@ -1,0 +1,114 @@
+'use client';
+
+import Link from 'next/link';
+import { Rss, TrendingUp, Menu, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { SITE_NAME } from '@/lib/constants';
+
+export function Header() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  return (
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto px-4">
+        <div className="flex h-10 items-center justify-between">
+          {/* Logo and Site Name */}
+          <Link href="/" className="flex items-center space-x-2">
+            <Rss className="h-5 w-5 text-primary" />
+            <span className="text-lg font-bold">{SITE_NAME}</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-6">
+            <Link 
+              href="/" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              ホーム
+            </Link>
+            <Link 
+              href="/?source=hatena" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              はてなブックマーク
+            </Link>
+            <Link 
+              href="/?source=qiita" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Qiita
+            </Link>
+            <Link 
+              href="/?source=zenn" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Zenn
+            </Link>
+          </nav>
+
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center space-x-4">
+            {/* フィード更新ボタンはメインページに移動 */}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+
+        {/* Mobile Navigation */}
+        {mobileMenuOpen && (
+          <nav className="md:hidden py-4 border-t">
+            <div className="flex flex-col space-y-3">
+              <Link 
+                href="/" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                ホーム
+              </Link>
+              <Link 
+                href="/?source=hatena" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                はてなブックマーク
+              </Link>
+              <Link 
+                href="/?source=qiita" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Qiita
+              </Link>
+              <Link 
+                href="/?source=zenn" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Zenn
+              </Link>
+              <Button variant="outline" size="sm" asChild className="w-full">
+                <Link href="/feeds/collect">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  フィード更新
+                </Link>
+              </Button>
+            </div>
+          </nav>
+        )}
+      </div>
+    </header>
+  );
+}
