@@ -40,7 +40,7 @@ export class ZennFetcher extends BaseFetcher {
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
             url: this.normalizeUrl(item.link),
-            summary: item.contentSnippet ? this.sanitizeText(item.contentSnippet).substring(0, 200) : undefined,
+            summary: undefined, // 要約は後で日本語で生成するため、ここではセットしない
             content: item.content || item.contentSnippet || undefined,
             publishedAt: item.isoDate ? new Date(item.isoDate) : (item.pubDate ? parseRSSDate(item.pubDate) : new Date()),
             sourceId: this.source.id,

@@ -89,18 +89,113 @@ export const sourceColors = {
     hover: 'hover:shadow-purple-200',
     tag: 'bg-purple-100 text-purple-800 hover:bg-purple-200',
   },
+  'Speaker Deck': {
+    primary: '#009287',
+    secondary: '#E6F5F4',
+    accent: '#007268',
+    gradient: 'from-teal-400 to-teal-600',
+    border: 'border-l-4 border-l-teal-500',
+    hover: 'hover:shadow-teal-200',
+    tag: 'bg-teal-100 text-teal-800 hover:bg-teal-200',
+  },
 } as const;
 
 export type SourceName = keyof typeof sourceColors;
 
 export function getSourceColor(sourceName: string) {
-  return sourceColors[sourceName as SourceName] || {
-    primary: '#6B7280',
-    secondary: '#F3F4F6',
-    accent: '#4B5563',
+  // 新しいカラーテーマ形式
+  const newColorTheme = {
     gradient: 'from-gray-400 to-gray-600',
-    border: 'border-l-4 border-l-gray-500',
-    hover: 'hover:shadow-gray-200',
-    tag: 'bg-gray-100 text-gray-800 hover:bg-gray-200',
+    border: 'border-gray-200',
+    hover: 'hover:border-gray-400',
+    tag: 'bg-gray-50 text-gray-700',
+    dot: 'bg-gray-500',
+    bar: 'bg-gray-500',
   };
+
+  const sourceTheme = sourceColors[sourceName as SourceName];
+  if (!sourceTheme) return newColorTheme;
+
+  // 既存のカラー形式を新形式に変換
+  if ('gradient' in sourceTheme) {
+    return sourceTheme;
+  }
+
+  // 旧形式のカラーを新形式に変換
+  const colorMap: Record<string, any> = {
+    'はてなブックマーク': {
+      gradient: 'from-blue-400 to-blue-600',
+      border: 'border-blue-200',
+      hover: 'hover:border-blue-400',
+      tag: 'bg-blue-50 text-blue-700',
+      dot: 'bg-blue-500',
+      bar: 'bg-blue-500',
+    },
+    'Qiita': {
+      gradient: 'from-green-400 to-green-600',
+      border: 'border-green-200',
+      hover: 'hover:border-green-400',
+      tag: 'bg-green-50 text-green-700',
+      dot: 'bg-green-500',
+      bar: 'bg-green-500',
+    },
+    'Zenn': {
+      gradient: 'from-sky-400 to-sky-600',
+      border: 'border-sky-200',
+      hover: 'hover:border-sky-400',
+      tag: 'bg-sky-50 text-sky-700',
+      dot: 'bg-sky-500',
+      bar: 'bg-sky-500',
+    },
+    'Dev.to': {
+      gradient: 'from-indigo-400 to-indigo-600',
+      border: 'border-indigo-200',
+      hover: 'hover:border-indigo-400',
+      tag: 'bg-indigo-50 text-indigo-700',
+      dot: 'bg-indigo-500',
+      bar: 'bg-indigo-500',
+    },
+    'Publickey': {
+      gradient: 'from-orange-400 to-orange-600',
+      border: 'border-orange-200',
+      hover: 'hover:border-orange-400',
+      tag: 'bg-orange-50 text-orange-700',
+      dot: 'bg-orange-500',
+      bar: 'bg-orange-500',
+    },
+    'Stack Overflow Blog': {
+      gradient: 'from-amber-400 to-amber-600',
+      border: 'border-amber-200',
+      hover: 'hover:border-amber-400',
+      tag: 'bg-amber-50 text-amber-700',
+      dot: 'bg-amber-500',
+      bar: 'bg-amber-500',
+    },
+    'InfoQ Japan': {
+      gradient: 'from-blue-400 to-cyan-500',
+      border: 'border-cyan-200',
+      hover: 'hover:border-cyan-400',
+      tag: 'bg-cyan-50 text-cyan-700',
+      dot: 'bg-cyan-500',
+      bar: 'bg-cyan-500',
+    },
+    'Think IT': {
+      gradient: 'from-purple-400 to-purple-600',
+      border: 'border-purple-200',
+      hover: 'hover:border-purple-400',
+      tag: 'bg-purple-50 text-purple-700',
+      dot: 'bg-purple-500',
+      bar: 'bg-purple-500',
+    },
+    'Speaker Deck': {
+      gradient: 'from-teal-400 to-teal-600',
+      border: 'border-teal-200',
+      hover: 'hover:border-teal-400',
+      tag: 'bg-teal-50 text-teal-700',
+      dot: 'bg-teal-500',
+      bar: 'bg-teal-500',
+    },
+  };
+
+  return colorMap[sourceName] || newColorTheme;
 }

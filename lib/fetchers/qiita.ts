@@ -26,8 +26,8 @@ interface QiitaItem {
 
 export class QiitaFetcher extends BaseFetcher {
   private apiUrl = 'https://qiita.com/api/v2/items';
-  private perPage = 50; // トレンド記事のみなので少なめに
-  private maxPages = 2; // 50 * 2 = 100件
+  private perPage = 30; // 日別トレンド上位30件
+  private maxPages = 1; // 30件のみ
 
   async fetch(): Promise<FetchResult> {
     const articles: CreateArticleInput[] = [];
@@ -42,7 +42,7 @@ export class QiitaFetcher extends BaseFetcher {
               params: {
                 page: page,
                 per_page: this.perPage,
-                query: 'stocks:>5', // ストック数5以上の人気記事のみ
+                query: 'stocks:>10 created:>=' + new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 直近24時間以内の人気記事
               },
               headers: {
                 'Accept': 'application/json',
@@ -56,7 +56,7 @@ export class QiitaFetcher extends BaseFetcher {
           const article: CreateArticleInput = {
             title: item.title,
             url: item.url,
-            summary: this.extractSummary(item.body),
+            summary: undefined, // 要約は後で日本語で生成するため、ここではセットしない
             content: item.rendered_body,
             publishedAt: new Date(item.created_at),
             sourceId: this.source.id,

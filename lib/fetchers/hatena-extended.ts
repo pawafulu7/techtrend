@@ -76,7 +76,7 @@ export class HatenaExtendedFetcher extends HatenaFetcher {
     }
 
     return { 
-      articles: allArticles.slice(0, 200), // 最大200件に制限
+      articles: allArticles.slice(0, 40), // 日別トレンド上位40件
       errors: allErrors 
     };
   }

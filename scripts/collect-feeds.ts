@@ -6,23 +6,25 @@ const prisma = new PrismaClient();
 // フェッチャーをインポート
 import { HatenaExtendedFetcher } from '../lib/fetchers/hatena-extended';
 import { QiitaFetcher } from '../lib/fetchers/qiita';
-import { ZennFetcher } from '../lib/fetchers/zenn';
+import { ZennExtendedFetcher } from '../lib/fetchers/zenn-extended';
 import { DevToFetcher } from '../lib/fetchers/devto';
 import { PublickeyFetcher } from '../lib/fetchers/publickey';
 import { StackOverflowBlogFetcher } from '../lib/fetchers/stackoverflow-blog';
 import { InfoQJapanFetcher } from '../lib/fetchers/infoq-japan';
 import { ThinkITFetcher } from '../lib/fetchers/thinkit';
+import { SpeakerDeckFetcher } from '../lib/fetchers/speakerdeck';
 import { BaseFetcher } from '../lib/fetchers/base';
 
 const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'はてなブックマーク': HatenaExtendedFetcher,
   'Qiita': QiitaFetcher,
-  'Zenn': ZennFetcher,
+  'Zenn': ZennExtendedFetcher,
   'Dev.to': DevToFetcher,
   'Publickey': PublickeyFetcher,
   'Stack Overflow Blog': StackOverflowBlogFetcher,
   'InfoQ Japan': InfoQJapanFetcher,
   'Think IT': ThinkITFetcher,
+  'Speaker Deck': SpeakerDeckFetcher,
 };
 
 interface CollectResult {
@@ -30,14 +32,22 @@ interface CollectResult {
   duplicates: number;
 }
 
-async function collectFeeds(): Promise<CollectResult> {
+async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
   console.log('📡 フィード収集を開始します...');
+  if (sourceTypes && sourceTypes.length > 0) {
+    console.log(`   対象ソース: ${sourceTypes.join(', ')}`);
+  }
   const startTime = Date.now();
   
   try {
-    // 有効なソースを取得
+    // 有効なソースを取得（sourceTypesが指定されている場合はフィルタリング）
     const sources = await prisma.source.findMany({
-      where: { enabled: true }
+      where: {
+        enabled: true,
+        ...(sourceTypes && sourceTypes.length > 0 && {
+          name: { in: sourceTypes }
+        })
+      }
     });
 
     let totalNewArticles = 0;
@@ -83,6 +93,19 @@ async function collectFeeds(): Promise<CollectResult> {
               continue;
             }
 
+            // タグの処理
+            const tagConnections = [];
+            if (article.tags && article.tags.length > 0) {
+              for (const tagName of article.tags) {
+                const tag = await prisma.tag.upsert({
+                  where: { name: tagName },
+                  update: {},
+                  create: { name: tagName }
+                });
+                tagConnections.push({ id: tag.id });
+              }
+            }
+
             // 新規記事を保存
             await prisma.article.create({
               data: {
@@ -94,7 +117,11 @@ async function collectFeeds(): Promise<CollectResult> {
                 publishedAt: article.publishedAt,
                 bookmarks: article.bookmarks || 0,
                 sourceId: source.id,
-                // tags は一旦省略（別途処理が必要）
+                ...(tagConnections.length > 0 && {
+                  tags: {
+                    connect: tagConnections
+                  }
+                })
               }
             });
 
@@ -131,7 +158,11 @@ async function collectFeeds(): Promise<CollectResult> {
 
 // 直接実行された場合
 if (require.main === module) {
-  collectFeeds()
+  // コマンドライン引数からソースタイプを取得
+  const args = process.argv.slice(2);
+  const sourceTypes = args.length > 0 ? args : undefined;
+  
+  collectFeeds(sourceTypes)
     .then(() => process.exit(0))
     .catch((error) => {
       console.error(error);

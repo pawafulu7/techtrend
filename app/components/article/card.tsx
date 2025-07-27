@@ -71,13 +71,33 @@ export function ArticleCard({ article }: ArticleCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 py-1 px-3 sm:px-4">
+      <CardContent className="flex-1 py-1 px-3 sm:px-4 space-y-2">
         {article.summary && (
           <p className="text-xs text-muted-foreground leading-normal">
             {article.summary}
           </p>
         )}
         
+        {article.tags && article.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {article.tags.slice(0, 3).map((tag) => (
+              <Badge
+                key={tag.id}
+                variant="outline"
+                className="text-xs px-2 py-0 h-5 cursor-pointer hover:bg-secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.location.href = `/?tag=${encodeURIComponent(tag.name)}`;
+                }}
+              >
+                {tag.name}
+              </Badge>
+            ))}
+            {article.tags.length > 3 && (
+              <span className="text-xs text-muted-foreground">+{article.tags.length - 3}</span>
+            )}
+          </div>
+        )}
       </CardContent>
 
     </Card>

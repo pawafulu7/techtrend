@@ -27,15 +27,33 @@ export class DevToFetcher extends BaseFetcher {
     const errors: Error[] = [];
 
     try {
-      // 技術系タグで絞り込み、最新記事を取得
-      const tags = ['javascript', 'typescript', 'react', 'python', 'node', 'webdev', 'programming'];
-      const allArticles: DevToArticle[] = [];
+      // トップ記事を取得（週間トレンド）
+      const topArticlesResponse = await this.retry(async () => {
+        const res = await fetch(`${this.baseUrl}?top=7`, {
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
 
-      // 各タグごとに記事を取得
+        if (!res.ok) {
+          throw new Error(`Dev.to API error: ${res.status} ${res.statusText}`);
+        }
+
+        return res.json();
+      });
+
+      let allArticles: DevToArticle[] = [];
+      if (Array.isArray(topArticlesResponse)) {
+        allArticles = topArticlesResponse;
+      }
+
+      // 技術系タグで絞り込み、人気記事を取得
+      const tags = ['javascript', 'typescript', 'react', 'python', 'node', 'webdev', 'programming'];
+      
       for (const tag of tags) {
         try {
           const response = await this.retry(async () => {
-            const res = await fetch(`${this.baseUrl}?tag=${tag}&per_page=30`, {
+            const res = await fetch(`${this.baseUrl}?tag=${tag}&per_page=10&top=1`, { // 日別トレンド
               headers: {
                 'Accept': 'application/json',
               },
@@ -49,7 +67,12 @@ export class DevToFetcher extends BaseFetcher {
           });
 
           if (Array.isArray(response)) {
-            allArticles.push(...response);
+            // 品質フィルタリング：反応数10以上、読了時間2分以上
+            const qualityArticles = response.filter(article => 
+              article.positive_reactions_count >= 10 && 
+              article.reading_time_minutes >= 2
+            );
+            allArticles.push(...qualityArticles);
           }
 
           // レート制限対策
@@ -64,20 +87,26 @@ export class DevToFetcher extends BaseFetcher {
         new Map(allArticles.map(article => [article.id, article])).values()
       );
 
-      // 日付でソートして最新記事を取得
-      uniqueArticles.sort((a, b) => 
-        new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
-      );
+      // 品質でソート（反応数優先、次に日付）
+      uniqueArticles.sort((a, b) => {
+        // まず反応数でソート
+        const reactionDiff = b.positive_reactions_count - a.positive_reactions_count;
+        if (reactionDiff !== 0) return reactionDiff;
+        // 同じ反応数なら日付でソート
+        return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
+      });
 
-      // 最大200件に制限
-      const limitedArticles = uniqueArticles.slice(0, 200);
+      // 最大30件に制限（日別トレンド）
+      const limitedArticles = uniqueArticles.slice(0, 30);
 
       for (const item of limitedArticles) {
         try {
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
             url: item.url,
-            summary: item.description ? this.sanitizeText(item.description).substring(0, 200) : undefined,
+            summary: undefined, // 要約は後で日本語で生成するため、ここではセットしない
+            content: item.description || '', // descriptionをcontentとして保存
+            description: item.description || '',
             thumbnail: item.cover_image || undefined,
             publishedAt: new Date(item.published_at),
             sourceId: this.source.id,

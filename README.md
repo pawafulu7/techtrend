@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TechTrend - 技術記事アグリゲーター
 
-## Getting Started
+技術系ブログやニュースサイトから記事を自動収集し、日本語要約を生成して表示するWebアプリケーションです。
 
-First, run the development server:
+## 機能
+
+- 複数の技術系サイトから記事を自動収集
+- Gemini APIを使用した日本語要約の自動生成
+- ソース別・タグ別のフィルタリング
+- キーワード検索
+- レスポンシブデザイン
+- 自動更新スケジューラー
+
+## 対応サイト
+
+### RSS系（1時間ごとに更新）
+- はてなブックマーク（テクノロジーカテゴリ）
+- Qiita（トレンド記事）
+- Zenn（トレンド記事）
+- Dev.to（人気技術記事）
+- Publickey
+- Stack Overflow Blog
+- Think IT
+
+### スクレイピング系（12時間ごとに更新：0時・12時）
+- Speaker Deck（日本語プログラミングトレンド）
+
+## セットアップ
+
+### 環境変数
+
+`.env.local`ファイルを作成し、以下の環境変数を設定してください：
+
+```
+GEMINI_API_KEY=your-api-key-here
+```
+
+### インストール
+
+```bash
+npm install
+```
+
+### データベースのセットアップ
+
+```bash
+npm run prisma:migrate
+npm run prisma:seed
+```
+
+### 開発サーバーの起動
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 自動更新スケジューラー
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 開発環境での実行
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run scheduler:dev
+```
 
-## Learn More
+### PM2を使用した本番環境での実行
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# スケジューラーの開始
+npm run scheduler:start
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# スケジューラーの停止
+npm run scheduler:stop
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# スケジューラーの再起動
+npm run scheduler:restart
 
-## Deploy on Vercel
+# ログの確認
+npm run scheduler:logs
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 手動実行
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# 全ソースから記事を収集
+npm run scripts:collect
+
+# 特定のソースのみ収集
+npx tsx scripts/collect-feeds.ts "Speaker Deck"
+
+# 要約を生成
+npm run scripts:summarize
+```
+
+## 技術スタック
+
+- Next.js 15
+- TypeScript
+- Prisma（SQLite）
+- Tailwind CSS
+- shadcn/ui
+- Gemini API
+- node-cron（スケジューラー）
+
+## プロジェクト構造
+
+```
+├── app/                  # Next.js App Router
+├── components/           # Reactコンポーネント
+├── lib/
+│   ├── fetchers/        # 各サイト用フェッチャー
+│   ├── config/          # 設定ファイル
+│   └── types/           # TypeScript型定義
+├── scripts/             # バッチ処理スクリプト
+├── prisma/              # データベーススキーマ
+└── scheduler-v2.ts      # 自動更新スケジューラー
+```

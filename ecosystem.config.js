@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'techtrend-scheduler',
       script: 'tsx',
-      args: 'scheduler.ts',
+      args: 'scheduler-v2.ts',
       instances: 1,
       autorestart: true,
       watch: false,

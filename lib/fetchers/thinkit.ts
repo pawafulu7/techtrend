@@ -38,7 +38,8 @@ export class ThinkITFetcher extends BaseFetcher {
       
       const articles: CreateArticleInput[] = [];
       
-      for (const item of feed.items) {
+      // 最新20件のみ取得
+      for (const item of feed.items.slice(0, 20)) {
         if (!item.title || !item.link) continue;
         
         const article = this.parseItem(item);

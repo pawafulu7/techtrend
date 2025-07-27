@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
+import { SearchBox } from '@/app/components/common/search-box';
 import { ArticleList } from '@/app/components/article/list';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { FeedUpdateButton } from '@/app/components/common/feed-update-button';
@@ -40,8 +41,8 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
   }
   if (params.search) {
     where.OR = [
-      { title: { contains: params.search, mode: 'insensitive' } },
-      { summary: { contains: params.search, mode: 'insensitive' } }
+      { title: { contains: params.search } },
+      { summary: { contains: params.search } }
     ];
   }
 
@@ -126,12 +127,14 @@ export default async function Home({ searchParams }: PageProps) {
       
       <div className="container mx-auto px-2 sm:px-4 py-2 flex flex-col h-full overflow-hidden">
         {/* Header Section */}
-        <div className="mb-1 flex-shrink-0">
+        <div className="mb-2 flex-shrink-0 space-y-2">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
             <h1 className="text-lg sm:text-xl font-bold">最新テックトレンド</h1>
             <FeedUpdateButton />
           </div>
-
+          <div className="flex items-center gap-2">
+            <SearchBox />
+          </div>
         </div>
 
 
