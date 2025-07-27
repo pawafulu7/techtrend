@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 // フェッチャーをインポート
 import { HatenaExtendedFetcher } from '../lib/fetchers/hatena-extended';
 import { QiitaFetcher } from '../lib/fetchers/qiita';
+import { QiitaPopularFetcher } from '../lib/fetchers/qiita-popular';
 import { ZennExtendedFetcher } from '../lib/fetchers/zenn-extended';
 import { DevToFetcher } from '../lib/fetchers/devto';
 import { PublickeyFetcher } from '../lib/fetchers/publickey';
@@ -19,6 +20,7 @@ import { BaseFetcher } from '../lib/fetchers/base';
 const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'はてなブックマーク': HatenaExtendedFetcher,
   'Qiita': QiitaFetcher,
+  'Qiita Popular': QiitaPopularFetcher,
   'Zenn': ZennExtendedFetcher,
   'Dev.to': DevToFetcher,
   'Publickey': PublickeyFetcher,
