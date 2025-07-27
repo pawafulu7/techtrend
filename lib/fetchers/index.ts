@@ -10,6 +10,7 @@ import { ThinkITFetcher } from './thinkit';
 import { SpeakerDeckFetcher } from './speakerdeck';
 import { RailsReleasesFetcher } from './rails-releases';
 import { AWSFetcher } from './aws';
+import { SREFetcher } from './sre';
 
 export function createFetcher(source: Source): BaseFetcher {
   switch (source.name) {
@@ -33,6 +34,8 @@ export function createFetcher(source: Source): BaseFetcher {
       return new RailsReleasesFetcher(source);
     case 'AWS':
       return new AWSFetcher(source);
+    case 'SRE':
+      return new SREFetcher(source);
     default:
       throw new Error(`Unsupported source: ${source.name}`);
   }
@@ -49,6 +52,7 @@ export {
   ThinkITFetcher,
   SpeakerDeckFetcher,
   RailsReleasesFetcher,
-  AWSFetcher
+  AWSFetcher,
+  SREFetcher
 };
 export type { FetchResult } from './base';

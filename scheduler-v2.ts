@@ -18,7 +18,8 @@ const RSS_SOURCES = [
   'Stack Overflow Blog',
   'Think IT',
   'Rails Releases',
-  'AWS'
+  'AWS',
+  'SRE'
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）
