@@ -1,39 +1,35 @@
 import { Source, SourceType } from '@prisma/client';
 import { BaseFetcher } from './base';
-import { HatenaFetcher } from './hatena';
 import { HatenaExtendedFetcher } from './hatena-extended';
-import { QiitaFetcher } from './qiita';
-import { ZennFetcher } from './zenn';
+import { QiitaPopularFetcher } from './qiita-popular';
+import { ZennExtendedFetcher } from './zenn-extended';
 import { DevToFetcher } from './devto';
 import { PublickeyFetcher } from './publickey';
-import { TechCrunchFetcher } from './techcrunch';
-import { ConnpassFetcher } from './connpass';
 import { StackOverflowBlogFetcher } from './stackoverflow-blog';
-import { InfoQJapanFetcher } from './infoq-japan';
 import { ThinkITFetcher } from './thinkit';
+import { SpeakerDeckFetcher } from './speakerdeck';
+import { RailsReleasesFetcher } from './rails-releases';
 
 export function createFetcher(source: Source): BaseFetcher {
   switch (source.name) {
     case 'はてなブックマーク':
       return new HatenaExtendedFetcher(source);
-    case 'Qiita':
-      return new QiitaFetcher(source);
+    case 'Qiita Popular':
+      return new QiitaPopularFetcher(source);
     case 'Zenn':
-      return new ZennFetcher(source);
+      return new ZennExtendedFetcher(source);
     case 'Dev.to':
       return new DevToFetcher(source);
     case 'Publickey':
       return new PublickeyFetcher(source);
-    case 'TechCrunch Japan':
-      return new TechCrunchFetcher(source);
-    case 'connpass':
-      return new ConnpassFetcher(source);
     case 'Stack Overflow Blog':
       return new StackOverflowBlogFetcher(source);
-    case 'InfoQ Japan':
-      return new InfoQJapanFetcher(source);
     case 'Think IT':
       return new ThinkITFetcher(source);
+    case 'Speaker Deck':
+      return new SpeakerDeckFetcher(source);
+    case 'Rails Releases':
+      return new RailsReleasesFetcher(source);
     default:
       throw new Error(`Unsupported source: ${source.name}`);
   }
@@ -41,16 +37,14 @@ export function createFetcher(source: Source): BaseFetcher {
 
 export { 
   BaseFetcher, 
-  HatenaFetcher, 
   HatenaExtendedFetcher, 
-  QiitaFetcher, 
-  ZennFetcher, 
+  QiitaPopularFetcher, 
+  ZennExtendedFetcher, 
   DevToFetcher,
   PublickeyFetcher,
-  TechCrunchFetcher,
-  ConnpassFetcher,
   StackOverflowBlogFetcher,
-  InfoQJapanFetcher,
-  ThinkITFetcher
+  ThinkITFetcher,
+  SpeakerDeckFetcher,
+  RailsReleasesFetcher
 };
 export type { FetchResult } from './base';
