@@ -139,6 +139,14 @@ export function getSourceColor(sourceName: string) {
       dot: 'bg-green-500',
       bar: 'bg-green-500',
     },
+    'Qiita Popular': {
+      gradient: 'from-green-400 to-green-600',
+      border: 'border-green-200',
+      hover: 'hover:border-green-400',
+      tag: 'bg-green-50 text-green-700',
+      dot: 'bg-green-500',
+      bar: 'bg-green-500',
+    },
     'Zenn': {
       gradient: 'from-sky-400 to-sky-600',
       border: 'border-sky-200',
@@ -194,6 +202,30 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-teal-50 text-teal-700',
       dot: 'bg-teal-500',
       bar: 'bg-teal-500',
+    },
+    'AWS': {
+      gradient: 'from-yellow-400 to-orange-500',
+      border: 'border-yellow-200',
+      hover: 'hover:border-yellow-400',
+      tag: 'bg-yellow-50 text-yellow-700',
+      dot: 'bg-yellow-500',
+      bar: 'bg-yellow-500',
+    },
+    'SRE': {
+      gradient: 'from-red-400 to-pink-500',
+      border: 'border-red-200',
+      hover: 'hover:border-red-400',
+      tag: 'bg-red-50 text-red-700',
+      dot: 'bg-red-500',
+      bar: 'bg-red-500',
+    },
+    'Rails Releases': {
+      gradient: 'from-rose-400 to-rose-600',
+      border: 'border-rose-200',
+      hover: 'hover:border-rose-400',
+      tag: 'bg-rose-50 text-rose-700',
+      dot: 'bg-rose-500',
+      bar: 'bg-rose-500',
     },
   };
 
