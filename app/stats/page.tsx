@@ -45,13 +45,15 @@ async function getStats() {
     }),
     prisma.$queryRaw`
       SELECT 
-        DATE(datetime(publishedAt/1000, 'unixepoch')) as date,
+        DATE(datetime(a.publishedAt/1000, 'unixepoch')) as date,
+        s.name as sourceName,
         COUNT(*) as count
-      FROM Article
-      WHERE datetime(publishedAt/1000, 'unixepoch') >= datetime('now', '-30 days')
-      GROUP BY DATE(datetime(publishedAt/1000, 'unixepoch'))
-      ORDER BY date ASC
-    ` as Promise<{ date: string; count: bigint }[]>,
+      FROM Article a
+      JOIN Source s ON a.sourceId = s.id
+      WHERE datetime(a.publishedAt/1000, 'unixepoch') >= datetime('now', '-30 days')
+      GROUP BY DATE(datetime(a.publishedAt/1000, 'unixepoch')), s.name
+      ORDER BY date ASC, count DESC
+    ` as Promise<{ date: string; sourceName: string; count: bigint }[]>,
     prisma.tag.findMany({
       include: {
         _count: {
@@ -82,10 +84,21 @@ async function getStats() {
         ? Math.round((source._count.articles / totalArticles) * 100) 
         : 0,
     })),
-    daily: dailyStats.map(d => ({
-      date: d.date,
-      count: Number(d.count),
-    })),
+    daily: (() => {
+      // 日付ごとにグループ化
+      const grouped = dailyStats.reduce((acc, curr) => {
+        const date = curr.date;
+        if (!acc[date]) {
+          acc[date] = { date, total: 0, sources: {} };
+        }
+        acc[date].sources[curr.sourceName] = Number(curr.count);
+        acc[date].total += Number(curr.count);
+        return acc;
+      }, {} as Record<string, { date: string; total: number; sources: Record<string, number> }>);
+      
+      // 配列に変換してソート
+      return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+    })(),
     tags: popularTags.map(tag => ({
       id: tag.id,
       name: tag.name,
