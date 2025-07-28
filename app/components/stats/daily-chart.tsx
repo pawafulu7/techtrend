@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CalendarDays } from 'lucide-react';
 import { getSourceColor } from '@/lib/utils/source-colors';
+import { useState } from 'react';
 
 interface DailyChartProps {
   data: { 
@@ -13,6 +14,14 @@ interface DailyChartProps {
 }
 
 export function DailyChart({ data }: DailyChartProps) {
+  const [hoveredBar, setHoveredBar] = useState<{
+    date: string;
+    source: string;
+    count: number;
+    x: number;
+    y: number;
+  } | null>(null);
+
   if (data.length === 0) {
     return (
       <Card>
@@ -52,6 +61,23 @@ export function DailyChart({ data }: DailyChartProps) {
       </CardHeader>
       <CardContent>
         <div className="relative" style={{ height: chartHeight }}>
+          {/* ツールチップ */}
+          {hoveredBar && (
+            <div
+              className="absolute z-10 bg-popover text-popover-foreground border rounded-md shadow-lg p-2 text-sm pointer-events-none"
+              style={{
+                left: `${hoveredBar.x}px`,
+                top: `${hoveredBar.y}px`,
+                transform: 'translate(-50%, -100%) translateY(-8px)',
+              }}
+            >
+              <div className="font-medium">{hoveredBar.date}</div>
+              <div className="text-muted-foreground">
+                {hoveredBar.source}: {hoveredBar.count}件
+              </div>
+            </div>
+          )}
+          
           <div className="absolute inset-0 flex items-end justify-between gap-1">
             {data.map((item, index) => {
               const totalHeight = maxCount > 0 ? (item.total / maxCount) * 100 : 0;
@@ -62,7 +88,7 @@ export function DailyChart({ data }: DailyChartProps) {
               const sourceHeights = allSources.map(source => {
                 const count = item.sources[source] || 0;
                 const height = maxCount > 0 ? (count / maxCount) * 100 : 0;
-                const result = { source, height, offset: cumulativeHeight };
+                const result = { source, height, offset: cumulativeHeight, count };
                 cumulativeHeight += height;
                 return result;
               }).filter(s => s.height > 0);
@@ -73,10 +99,10 @@ export function DailyChart({ data }: DailyChartProps) {
                   className="flex-1 flex flex-col items-center gap-1"
                 >
                   <div className="w-full flex items-end relative" style={{ height: chartHeight - 40 }}>
-                    {sourceHeights.map(({ source, height, offset }) => (
+                    {sourceHeights.map(({ source, height, offset, count }) => (
                       <div
                         key={source}
-                        className={`absolute bottom-0 w-full transition-all duration-300 hover:opacity-80 ${
+                        className={`absolute bottom-0 w-full transition-all duration-300 hover:opacity-80 cursor-pointer ${
                           index === 0 ? 'rounded-tl' : ''
                         } ${
                           index === data.length - 1 ? 'rounded-tr' : ''
@@ -87,7 +113,17 @@ export function DailyChart({ data }: DailyChartProps) {
                           height: `${height}%`,
                           bottom: `${offset}%`
                         }}
-                        title={`${item.date} - ${source}: ${item.sources[source]}件`}
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setHoveredBar({
+                            date: item.date,
+                            source,
+                            count,
+                            x: rect.left + rect.width / 2 - e.currentTarget.parentElement!.parentElement!.parentElement!.getBoundingClientRect().left,
+                            y: rect.top - e.currentTarget.parentElement!.parentElement!.parentElement!.getBoundingClientRect().top,
+                          });
+                        }}
+                        onMouseLeave={() => setHoveredBar(null)}
                       />
                     ))}
                   </div>
