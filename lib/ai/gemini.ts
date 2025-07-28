@@ -67,12 +67,22 @@ export class GeminiClient {
   }
 
   private cleanSummary(summary: string): string {
-    return summary
+    let cleaned = summary
       .trim()
       .replace(/^(要約|日本語要約)[:：]\s*/i, '') // Remove "要約:" or "日本語要約:" prefix if present
-      .replace(/^(本記事は|本稿では|記事では|この記事は)/g, '') // Remove article prefixes
+      .replace(/^(本記事は|本稿では|記事では|この記事は|本文では|この文書は)/g, '') // Remove article prefixes
       .replace(/\n+/g, ' ') // Replace newlines with spaces
       .trim(); // Remove any trailing spaces
+    
+    // 句読点が文頭にある場合は削除
+    cleaned = cleaned.replace(/^[、。,\.]\s*/, '');
+    
+    // 文末に句点がない場合は追加
+    if (cleaned && !cleaned.match(/[。.!?]$/)) {
+      cleaned += '。';
+    }
+    
+    return cleaned;
   }
 
   private createSummaryAndTagsPrompt(title: string, content: string): string {
@@ -100,7 +110,10 @@ export class GeminiClient {
 - どのような問題を解決するか、または何を実現するか
 - 重要な技術やツールがあれば言及
 - 著者の自己紹介や前置きは除外
+- 「本記事は」「本稿では」などの枕詞は使わない
+- 文頭に句読点を置かない
 - 必ず「。」で終わる
+- 例: ReactとTypeScriptを用いたカスタムフックの実装方法を解説し、状態管理の複雑さを軽減する実践的なアプローチを提供する。
 
 タグ: [記事の内容を正確に表す技術タグを3-5個、カンマ区切りで記載]
 - 使用されている主要な技術・言語・フレームワーク

@@ -16,6 +16,7 @@ import { SpeakerDeckFetcher } from '../lib/fetchers/speakerdeck';
 import { RailsReleasesFetcher } from '../lib/fetchers/rails-releases';
 import { AWSFetcher } from '../lib/fetchers/aws';
 import { SREFetcher } from '../lib/fetchers/sre';
+import { GoogleDevBlogFetcher } from '../lib/fetchers/google-dev-blog';
 import { BaseFetcher } from '../lib/fetchers/base';
 
 const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
@@ -30,6 +31,7 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'Rails Releases': RailsReleasesFetcher,
   'AWS': AWSFetcher,
   'SRE': SREFetcher,
+  'Google Developers Blog': GoogleDevBlogFetcher,
 };
 
 interface CollectResult {
