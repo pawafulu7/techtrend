@@ -16,6 +16,7 @@
     "scheduler:restart": "pm2 restart techtrend-scheduler",
     "scheduler:logs": "pm2 logs techtrend-scheduler",
     "scheduler:dev": "tsx scheduler.ts",
+    "scheduler:v2": "tsx scheduler-v2.ts",
     "scripts:collect": "tsx scripts/collect-feeds.ts",
     "scripts:summarize": "tsx scripts/generate-summaries.ts"
   },
