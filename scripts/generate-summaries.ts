@@ -205,11 +205,24 @@ async function generateSummaries(): Promise<GenerateResult> {
       return !summary.endsWith('。') || summary.length === 200 || summary.length === 203;
     });
 
+    // 4. タグがない記事を取得
+    const articlesWithoutTags = await prisma.article.findMany({
+      where: {
+        tags: {
+          none: {}
+        }
+      },
+      include: { source: true },
+      orderBy: { publishedAt: 'desc' },
+      take: 100
+    }) as ArticleWithSource[];
+
     // すべての対象記事を結合
     const allArticlesToProcess = [
       ...articlesWithoutSummary,
       ...articlesWithEnglishSummary,
-      ...truncatedArticles
+      ...truncatedArticles,
+      ...articlesWithoutTags
     ];
 
     // 重複を除去
@@ -218,7 +231,7 @@ async function generateSummaries(): Promise<GenerateResult> {
     );
 
     if (uniqueArticles.length === 0) {
-      console.log('✅ すべての記事が適切な要約を持っています');
+      console.log('✅ すべての記事が適切な要約とタグを持っています');
       return { generated: 0, errors: 0 };
     }
 
@@ -226,6 +239,7 @@ async function generateSummaries(): Promise<GenerateResult> {
     console.log(`   - 要約なし: ${articlesWithoutSummary.length}件`);
     console.log(`   - 英語要約: ${articlesWithEnglishSummary.length}件`);
     console.log(`   - 途切れた要約: ${truncatedArticles.length}件`);
+    console.log(`   - タグなし: ${articlesWithoutTags.length}件`);
     console.log(`   - 合計（重複除去後）: ${uniqueArticles.length}件`);
 
     let generatedCount = 0;
@@ -243,11 +257,13 @@ async function generateSummaries(): Promise<GenerateResult> {
             const content = article.content || article.description || '';
             const { summary, tags } = await generateSummaryAndTags(article.title, content);
             
-            // 要約を更新
-            await prisma.article.update({
-              where: { id: article.id },
-              data: { summary }
-            });
+            // 要約がない場合のみ更新
+            if (!article.summary) {
+              await prisma.article.update({
+                where: { id: article.id },
+                data: { summary }
+              });
+            }
 
             // タグを処理
             if (tags.length > 0) {
