@@ -113,15 +113,7 @@ export function getSourceColor(sourceName: string) {
     bar: 'bg-gray-500',
   };
 
-  const sourceTheme = sourceColors[sourceName as SourceName];
-  if (!sourceTheme) return newColorTheme;
-
-  // 既存のカラー形式を新形式に変換
-  if ('gradient' in sourceTheme) {
-    return sourceTheme;
-  }
-
-  // 旧形式のカラーを新形式に変換
+  // 直接colorMapから取得
   const colorMap: Record<string, any> = {
     'はてなブックマーク': {
       gradient: 'from-blue-400 to-blue-600',
