@@ -67,14 +67,15 @@ export function ServerPagination({ currentPage, totalPages, searchParams }: Serv
         size="sm"
         disabled={currentPage === 1}
         asChild={currentPage !== 1}
+        className="flex items-center gap-1 whitespace-nowrap"
       >
         {currentPage === 1 ? (
-          <span>
+          <span className="flex items-center gap-1">
             <ChevronLeft className="h-4 w-4" />
             前へ
           </span>
         ) : (
-          <Link href={buildPageUrl(currentPage - 1)}>
+          <Link href={buildPageUrl(currentPage - 1)} className="flex items-center gap-1">
             <ChevronLeft className="h-4 w-4" />
             前へ
           </Link>
@@ -109,14 +110,15 @@ export function ServerPagination({ currentPage, totalPages, searchParams }: Serv
         size="sm"
         disabled={currentPage === totalPages}
         asChild={currentPage !== totalPages}
+        className="flex items-center gap-1 whitespace-nowrap"
       >
         {currentPage === totalPages ? (
-          <span>
+          <span className="flex items-center gap-1">
             次へ
             <ChevronRight className="h-4 w-4" />
           </span>
         ) : (
-          <Link href={buildPageUrl(currentPage + 1)}>
+          <Link href={buildPageUrl(currentPage + 1)} className="flex items-center gap-1">
             次へ
             <ChevronRight className="h-4 w-4" />
           </Link>
