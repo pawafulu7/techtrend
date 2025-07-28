@@ -97,8 +97,8 @@ export class HatenaExtendedFetcher extends BaseFetcher {
               bookmarks: item['hatena:bookmarkcount'] ? parseInt(item['hatena:bookmarkcount'], 10) : 0,
             };
 
-            // 技術記事かチェック
-            if (this.isTechArticle(article)) {
+            // 技術記事かチェック + 品質フィルタリング
+            if (this.isTechArticle(article) && (article.bookmarks || 0) >= 50) {
               seenUrls.add(item.link);
               allArticles.push(article);
             }
@@ -114,11 +114,20 @@ export class HatenaExtendedFetcher extends BaseFetcher {
       }
     }
 
-    // ブックマーク数でソートして上位40件を返す
+    // ブックマーク数でソートして上位30件を返す（品質重視）
     allArticles.sort((a, b) => (b.bookmarks || 0) - (a.bookmarks || 0));
 
+    // 100users以上の記事を優先
+    const highQualityArticles = allArticles.filter(a => (a.bookmarks || 0) >= 100);
+    const mediumQualityArticles = allArticles.filter(a => (a.bookmarks || 0) >= 50 && (a.bookmarks || 0) < 100);
+    
+    const finalArticles = [
+      ...highQualityArticles,
+      ...mediumQualityArticles.slice(0, Math.max(0, 30 - highQualityArticles.length))
+    ];
+
     return { 
-      articles: allArticles.slice(0, 40), // 日別トレンド上位40件
+      articles: finalArticles.slice(0, 30), // 品質の高い記事30件
       errors: allErrors 
     };
   }

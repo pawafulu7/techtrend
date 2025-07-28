@@ -1,5 +1,6 @@
 import { PrismaClient, Source } from '@prisma/client';
 import { CreateArticleInput } from '@/lib/types/article';
+import { isDuplicate } from '@/lib/utils/duplicate-detection';
 
 const prisma = new PrismaClient();
 
@@ -88,6 +89,26 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
             });
 
             if (existing) {
+              duplicateCount++;
+              continue;
+            }
+
+            // タイトルの類似性チェック（過去7日間の記事と比較）
+            const recentArticles = await prisma.article.findMany({
+              where: {
+                publishedAt: {
+                  gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                }
+              },
+              select: { title: true }
+            });
+
+            const hasSimilarTitle = recentArticles.some(existingArticle => 
+              isDuplicate(existingArticle.title, article.title, 0.85)
+            );
+
+            if (hasSimilarTitle) {
+              console.log(`   重複記事を検出: ${article.title.substring(0, 50)}...`);
               duplicateCount++;
               continue;
             }

@@ -29,28 +29,16 @@ export function Header() {
               ホーム
             </Link>
             <Link 
-              href="/?source=hatena" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              はてなブックマーク
-            </Link>
-            <Link 
-              href="/?source=qiita" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              Qiita
-            </Link>
-            <Link 
-              href="/?source=zenn" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              Zenn
-            </Link>
-            <Link 
               href="/stats" 
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               統計
+            </Link>
+            <Link 
+              href="/trends" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              トレンド
             </Link>
           </nav>
 
@@ -88,33 +76,20 @@ export function Header() {
                 ホーム
               </Link>
               <Link 
-                href="/?source=hatena" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                はてなブックマーク
-              </Link>
-              <Link 
-                href="/?source=qiita" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Qiita
-              </Link>
-              <Link 
-                href="/?source=zenn" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Zenn
-              </Link>
-              <Link 
                 href="/stats" 
                 className="text-sm font-medium hover:text-primary transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <BarChart3 className="h-4 w-4 mr-2 inline" />
                 統計
+              </Link>
+              <Link 
+                href="/trends" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <TrendingUp className="h-4 w-4 mr-2 inline" />
+                トレンド
               </Link>
             </div>
           </nav>

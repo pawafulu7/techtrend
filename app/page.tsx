@@ -8,6 +8,7 @@ import { FeedUpdateButton } from '@/app/components/common/feed-update-button';
 import { Button } from '@/components/ui/button';
 import { prisma } from '@/lib/database';
 import { ARTICLES_PER_PAGE } from '@/lib/constants';
+import { removeDuplicates } from '@/lib/utils/duplicate-detection';
 import Link from 'next/link';
 
 interface PageProps {
@@ -15,6 +16,8 @@ interface PageProps {
     page?: string;
     sourceId?: string;
     tag?: string;
+    tags?: string;
+    tagMode?: string;
     search?: string;
     sortBy?: string;
     sortOrder?: string;
@@ -32,6 +35,9 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
   if (params.sourceId) {
     where.sourceId = params.sourceId;
   }
+  
+  // 品質フィルタ（スコア30以上の記事のみ表示）
+  where.qualityScore = { gte: 30 };
   
   // タグフィルター（複数対応）
   if (params.tags || params.tag) {
@@ -179,13 +185,23 @@ export default async function Home({ searchParams }: PageProps) {
             </div>
             <div className="flex gap-1">
               <Button
-                variant={params.sortBy !== 'bookmarks' ? 'default' : 'outline'}
+                variant={params.sortBy !== 'bookmarks' && params.sortBy !== 'qualityScore' ? 'default' : 'outline'}
                 size="sm"
                 asChild
                 className="h-6 sm:h-7 px-2 text-xs"
               >
                 <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
                   新着
+                </Link>
+              </Button>
+              <Button
+                variant={params.sortBy === 'qualityScore' ? 'default' : 'outline'}
+                size="sm"
+                asChild
+                className="h-6 sm:h-7 px-2 text-xs"
+              >
+                <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'qualityScore' }).toString()}`}>
+                  品質
                 </Link>
               </Button>
               <Button

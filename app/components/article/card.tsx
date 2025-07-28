@@ -1,6 +1,10 @@
-import { Clock, TrendingUp } from 'lucide-react';
+'use client';
+
+import { useState } from 'react';
+import { Clock, TrendingUp, ThumbsUp, GraduationCap } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils/date';
 import { getDomain } from '@/lib/utils/url';
 import { getSourceColor } from '@/lib/utils/source-colors';
@@ -12,6 +16,8 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ article }: ArticleCardProps) {
+  const [votes, setVotes] = useState(article.userVotes || 0);
+  const [hasVoted, setHasVoted] = useState(false);
   const domain = getDomain(article.url);
   const sourceColor = getSourceColor(article.source.name);
   const publishedDate = new Date(article.publishedAt);
@@ -19,7 +25,30 @@ export function ArticleCard({ article }: ArticleCardProps) {
   const isNew = hoursAgo < 24;
 
   const handleCardClick = (e: React.MouseEvent) => {
+    // ボタンクリックの場合は無視
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
     window.open(article.url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleVote = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (hasVoted) return;
+
+    try {
+      const response = await fetch(`/api/articles/${article.id}/vote`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVotes(data.votes);
+        setHasVoted(true);
+      }
+    } catch (error) {
+      console.error('Failed to vote:', error);
+    }
   };
 
   return (
@@ -68,6 +97,22 @@ export function ArticleCard({ article }: ArticleCardProps) {
              hoursAgo < 24 ? `${hoursAgo}時間前` : 
              formatDate(article.publishedAt)}
           </span>
+          {article.difficulty && (
+            <Badge 
+              variant="outline" 
+              className={cn(
+                "text-xs font-medium",
+                article.difficulty === 'beginner' && "bg-green-50 text-green-700 border-green-200",
+                article.difficulty === 'intermediate' && "bg-blue-50 text-blue-700 border-blue-200",
+                article.difficulty === 'advanced' && "bg-purple-50 text-purple-700 border-purple-200"
+              )}
+            >
+              <GraduationCap className="h-3 w-3 mr-1" />
+              {article.difficulty === 'beginner' && '初級'}
+              {article.difficulty === 'intermediate' && '中級'}
+              {article.difficulty === 'advanced' && '上級'}
+            </Badge>
+          )}
         </div>
       </CardHeader>
 
@@ -98,6 +143,23 @@ export function ArticleCard({ article }: ArticleCardProps) {
             )}
           </div>
         )}
+        
+        {/* 役立ったボタン */}
+        <div className="flex items-center justify-end pt-1">
+          <Button
+            variant={hasVoted ? "default" : "outline"}
+            size="sm"
+            onClick={handleVote}
+            disabled={hasVoted}
+            className={cn(
+              "h-6 px-2 text-xs",
+              hasVoted && "bg-green-600 hover:bg-green-600"
+            )}
+          >
+            <ThumbsUp className={cn("h-3 w-3", votes > 0 && "mr-1")} />
+            {votes > 0 && votes}
+          </Button>
+        </div>
       </CardContent>
 
     </Card>

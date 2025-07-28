@@ -11,6 +11,7 @@ import { SpeakerDeckFetcher } from './speakerdeck';
 import { RailsReleasesFetcher } from './rails-releases';
 import { AWSFetcher } from './aws';
 import { SREFetcher } from './sre';
+import { GoogleDevBlogFetcher } from './google-dev-blog';
 
 export function createFetcher(source: Source): BaseFetcher {
   switch (source.name) {
@@ -36,6 +37,8 @@ export function createFetcher(source: Source): BaseFetcher {
       return new AWSFetcher(source);
     case 'SRE':
       return new SREFetcher(source);
+    case 'Google Developers Blog':
+      return new GoogleDevBlogFetcher(source);
     default:
       throw new Error(`Unsupported source: ${source.name}`);
   }
@@ -53,6 +56,7 @@ export {
   SpeakerDeckFetcher,
   RailsReleasesFetcher,
   AWSFetcher,
-  SREFetcher
+  SREFetcher,
+  GoogleDevBlogFetcher
 };
 export type { FetchResult } from './base';
