@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Filter } from 'lucide-react';
+import { TagFilter } from './tag-filter';
 
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;
@@ -68,20 +69,8 @@ export function Filters({ sources, tags }: FiltersProps) {
 
       {/* Tag Filter */}
       {tags.length > 0 && (
-        <div>
-          <h3 className="text-xs font-semibold mb-2">タグ</h3>
-          <div className="flex flex-wrap gap-1">
-            {tags.slice(0, 8).map((tag) => (
-              <Badge
-                key={tag.id}
-                variant={currentTag === tag.name ? 'default' : 'secondary'}
-                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-xs px-2 py-0"
-                onClick={() => handleTagFilter(currentTag === tag.name ? null : tag.name)}
-              >
-                {tag.name}
-              </Badge>
-            ))}
-          </div>
+        <div className="border rounded-lg p-3">
+          <TagFilter tags={tags} />
         </div>
       )}
     </div>

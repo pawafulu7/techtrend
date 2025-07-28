@@ -32,13 +32,33 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
   if (params.sourceId) {
     where.sourceId = params.sourceId;
   }
-  if (params.tag) {
-    where.tags = {
-      some: {
-        name: params.tag
-      }
-    };
+  
+  // タグフィルター（複数対応）
+  if (params.tags || params.tag) {
+    const tagNames = params.tags ? params.tags.split(',') : [params.tag!];
+    const tagMode = params.tagMode || 'OR';
+    
+    if (tagMode === 'AND') {
+      // すべてのタグを含む
+      where.AND = tagNames.map(name => ({
+        tags: {
+          some: {
+            name
+          }
+        }
+      }));
+    } else {
+      // いずれかのタグを含む
+      where.tags = {
+        some: {
+          name: {
+            in: tagNames
+          }
+        }
+      };
+    }
   }
+  
   if (params.search) {
     where.OR = [
       { title: { contains: params.search } },
