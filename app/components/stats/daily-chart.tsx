@@ -64,7 +64,7 @@ export function DailyChart({ data }: DailyChartProps) {
           {/* ツールチップ */}
           {hoveredBar && (
             <div
-              className="absolute z-10 bg-popover text-popover-foreground border rounded-md shadow-lg p-2 text-sm pointer-events-none"
+              className="absolute z-10 bg-popover text-popover-foreground border rounded-md shadow-lg p-2 text-sm pointer-events-none whitespace-nowrap"
               style={{
                 left: `${hoveredBar.x}px`,
                 top: `${hoveredBar.y}px`,
