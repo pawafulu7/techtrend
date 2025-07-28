@@ -45,11 +45,11 @@ async function getStats() {
     }),
     prisma.$queryRaw`
       SELECT 
-        DATE(publishedAt) as date,
+        DATE(datetime(publishedAt/1000, 'unixepoch')) as date,
         COUNT(*) as count
       FROM Article
-      WHERE publishedAt >= datetime('now', '-30 days')
-      GROUP BY DATE(publishedAt)
+      WHERE datetime(publishedAt/1000, 'unixepoch') >= datetime('now', '-30 days')
+      GROUP BY DATE(datetime(publishedAt/1000, 'unixepoch'))
       ORDER BY date ASC
     ` as Promise<{ date: string; count: bigint }[]>,
     prisma.tag.findMany({
