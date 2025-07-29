@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Rss, TrendingUp, Menu, X, BarChart3, Bookmark, LineChart } from 'lucide-react';
+import { Rss, TrendingUp, Menu, X, BarChart3, Bookmark, LineChart, Hash, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { SITE_NAME } from '@/lib/constants';
@@ -36,10 +36,22 @@ export function Header() {
               読書リスト
             </Link>
             <Link 
+              href="/popular" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              人気
+            </Link>
+            <Link 
               href="/stats" 
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               統計
+            </Link>
+            <Link 
+              href="/tags" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              タグ
             </Link>
             <Link 
               href="/analytics" 
@@ -101,12 +113,28 @@ export function Header() {
                 読書リスト
               </Link>
               <Link 
+                href="/popular" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Award className="h-4 w-4 mr-2 inline" />
+                人気
+              </Link>
+              <Link 
                 href="/stats" 
                 className="text-sm font-medium hover:text-primary transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <BarChart3 className="h-4 w-4 mr-2 inline" />
                 統計
+              </Link>
+              <Link 
+                href="/tags" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Hash className="h-4 w-4 mr-2 inline" />
+                タグ
               </Link>
               <Link 
                 href="/analytics" 
