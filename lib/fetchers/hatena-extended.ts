@@ -45,7 +45,8 @@ export class HatenaExtendedFetcher extends BaseFetcher {
     
     // AI・機械学習
     'ai', '機械学習', 'ディープラーニング', 'chatgpt', 'gpt', 'llm', 'tensorflow',
-    'pytorch', 'scikit-learn', 'pandas', 'numpy', 'jupyter',
+    'pytorch', 'scikit-learn', 'pandas', 'numpy', 'jupyter', 'claude', 'gemini',
+    'openai', 'anthropic', 'google', 'microsoft', 'meta',
     
     // その他技術用語
     'api', 'rest', 'graphql', 'websocket', 'oauth', 'jwt', 'ci/cd', 'devops',
@@ -94,11 +95,11 @@ export class HatenaExtendedFetcher extends BaseFetcher {
                           item['dc:date'] ? new Date(item['dc:date']) : new Date(),
               sourceId: this.source.id,
               tagNames: item.categories || [],
-              bookmarks: item['hatena:bookmarkcount'] ? parseInt(item['hatena:bookmarkcount'], 10) : 0,
+              bookmarks: item['bookmarkcount'] ? parseInt(item['bookmarkcount'], 10) : 0,
             };
 
             // 技術記事かチェック + 品質フィルタリング
-            if (this.isTechArticle(article) && (article.bookmarks || 0) >= 50) {
+            if (this.isTechArticle(article) && (article.bookmarks || 0) >= 10) {
               seenUrls.add(item.link);
               allArticles.push(article);
             }
@@ -117,17 +118,17 @@ export class HatenaExtendedFetcher extends BaseFetcher {
     // ブックマーク数でソートして上位30件を返す（品質重視）
     allArticles.sort((a, b) => (b.bookmarks || 0) - (a.bookmarks || 0));
 
-    // 100users以上の記事を優先
-    const highQualityArticles = allArticles.filter(a => (a.bookmarks || 0) >= 100);
-    const mediumQualityArticles = allArticles.filter(a => (a.bookmarks || 0) >= 50 && (a.bookmarks || 0) < 100);
+    // 50users以上の記事を優先
+    const highQualityArticles = allArticles.filter(a => (a.bookmarks || 0) >= 50);
+    const mediumQualityArticles = allArticles.filter(a => (a.bookmarks || 0) >= 10 && (a.bookmarks || 0) < 50);
     
     const finalArticles = [
       ...highQualityArticles,
-      ...mediumQualityArticles.slice(0, Math.max(0, 30 - highQualityArticles.length))
+      ...mediumQualityArticles.slice(0, Math.max(0, 40 - highQualityArticles.length))
     ];
 
     return { 
-      articles: finalArticles.slice(0, 30), // 品質の高い記事30件
+      articles: finalArticles.slice(0, 40), // 品質の高い記事40件
       errors: allErrors 
     };
   }
