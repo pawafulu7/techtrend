@@ -17,6 +17,8 @@ export async function GET() {
       JOIN _ArticleToTag at ON t.id = at.B
       JOIN Article a ON at.A = a.id
       WHERE a.publishedAt >= ${oneDayAgo.getTime()}
+        AND t.name != ''
+        AND t.name IS NOT NULL
       GROUP BY t.id, t.name
     ` as { id: string; name: string; recent_count: bigint }[];
 
@@ -31,6 +33,8 @@ export async function GET() {
       JOIN Article a ON at.A = a.id
       WHERE a.publishedAt >= ${oneWeekAgo.getTime()}
         AND a.publishedAt < ${oneDayAgo.getTime()}
+        AND t.name != ''
+        AND t.name IS NOT NULL
       GROUP BY t.id, t.name
     ` as { id: string; name: string; weekly_count: bigint }[];
 
@@ -72,6 +76,8 @@ export async function GET() {
       JOIN _ArticleToTag at ON t.id = at.B
       JOIN Article a ON at.A = a.id
       WHERE a.publishedAt >= ${oneDayAgo.getTime()}
+        AND t.name != ''
+        AND t.name IS NOT NULL
         AND NOT EXISTS (
           SELECT 1 
           FROM _ArticleToTag at2

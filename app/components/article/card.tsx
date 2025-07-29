@@ -29,7 +29,8 @@ export function ArticleCard({ article }: ArticleCardProps) {
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
-    window.open(article.url, '_blank', 'noopener,noreferrer');
+    // 記事詳細ページに遷移
+    window.location.href = `/articles/${article.id}`;
   };
 
   const handleVote = async (e: React.MouseEvent) => {
