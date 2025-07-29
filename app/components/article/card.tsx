@@ -11,6 +11,7 @@ import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleWithRelations } from '@/lib/types/article';
 import { cn } from '@/lib/utils';
 import { ReadingListButton } from '@/app/components/reading-list/ReadingListButton';
+import { ArticlePreview } from '@/app/components/article/ArticlePreview';
 
 interface ArticleCardProps {
   article: ArticleWithRelations;
@@ -54,15 +55,16 @@ export function ArticleCard({ article }: ArticleCardProps) {
   };
 
   return (
-    <Card 
-      onClick={handleCardClick}
-      className={cn(
-        "group relative overflow-hidden transition-all duration-300 cursor-pointer",
-        "hover:shadow-lg hover:-translate-y-1",
-        sourceColor.border,
-        sourceColor.hover
-      )}
-    >
+    <ArticlePreview article={article}>
+      <Card 
+        onClick={handleCardClick}
+        className={cn(
+          "group relative overflow-hidden transition-all duration-300 cursor-pointer",
+          "hover:shadow-lg hover:-translate-y-1",
+          sourceColor.border,
+          sourceColor.hover
+        )}
+      >
       {/* グラデーション背景 */}
       <div className={cn(
         "absolute inset-0 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none",
@@ -169,6 +171,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         </div>
       </CardContent>
 
-    </Card>
+      </Card>
+    </ArticlePreview>
   );
 }
