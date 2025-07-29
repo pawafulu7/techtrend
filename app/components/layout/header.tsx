@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Rss, TrendingUp, Menu, X, BarChart3, Bookmark } from 'lucide-react';
+import { Rss, TrendingUp, Menu, X, BarChart3, Bookmark, LineChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { SITE_NAME } from '@/lib/constants';
@@ -40,6 +40,12 @@ export function Header() {
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               統計
+            </Link>
+            <Link 
+              href="/analytics" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              分析
             </Link>
             <Link 
               href="/trends" 
@@ -101,6 +107,14 @@ export function Header() {
               >
                 <BarChart3 className="h-4 w-4 mr-2 inline" />
                 統計
+              </Link>
+              <Link 
+                href="/analytics" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <LineChart className="h-4 w-4 mr-2 inline" />
+                分析
               </Link>
               <Link 
                 href="/trends" 
