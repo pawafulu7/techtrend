@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Clock, TrendingUp, ThumbsUp, GraduationCap } from 'lucide-react';
+import { Clock, TrendingUp, ThumbsUp, GraduationCap, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,6 @@ import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleWithRelations } from '@/lib/types/article';
 import { cn } from '@/lib/utils';
 import { ReadingListButton } from '@/app/components/reading-list/ReadingListButton';
-import { ArticlePreview } from '@/app/components/article/ArticlePreview';
 
 interface ArticleCardProps {
   article: ArticleWithRelations;
@@ -55,16 +54,15 @@ export function ArticleCard({ article }: ArticleCardProps) {
   };
 
   return (
-    <ArticlePreview article={article}>
-      <Card 
-        onClick={handleCardClick}
-        className={cn(
-          "group relative overflow-hidden transition-all duration-300 cursor-pointer",
-          "hover:shadow-lg hover:-translate-y-1",
-          sourceColor.border,
-          sourceColor.hover
-        )}
-      >
+    <Card 
+      onClick={handleCardClick}
+      className={cn(
+        "group relative overflow-hidden transition-all duration-300 cursor-pointer",
+        "hover:shadow-lg hover:-translate-y-1",
+        sourceColor.border,
+        sourceColor.hover
+      )}
+    >
       {/* グラデーション背景 */}
       <div className={cn(
         "absolute inset-0 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none",
@@ -155,23 +153,35 @@ export function ArticleCard({ article }: ArticleCardProps) {
             size="sm"
             variant="ghost"
           />
-          <Button
-            variant={hasVoted ? "default" : "outline"}
-            size="sm"
-            onClick={handleVote}
-            disabled={hasVoted}
-            className={cn(
-              "h-6 px-2 text-xs",
-              hasVoted && "bg-green-600 hover:bg-green-600"
-            )}
-          >
-            <ThumbsUp className={cn("h-3 w-3", votes > 0 && "mr-1")} />
-            {votes > 0 && votes}
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(article.url, '_blank', 'noopener,noreferrer');
+              }}
+              className="h-6 px-2 text-xs hover:bg-secondary"
+              title="元記事を開く"
+            >
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+            <Button
+              variant={hasVoted ? "default" : "outline"}
+              size="sm"
+              onClick={handleVote}
+              disabled={hasVoted}
+              className={cn(
+                "h-6 px-2 text-xs",
+                hasVoted && "bg-green-600 hover:bg-green-600"
+              )}
+            >
+              <ThumbsUp className={cn("h-3 w-3", votes > 0 && "mr-1")} />
+              {votes > 0 && votes}
+            </Button>
+          </div>
         </div>
       </CardContent>
-
-      </Card>
-    </ArticlePreview>
+    </Card>
   );
 }
