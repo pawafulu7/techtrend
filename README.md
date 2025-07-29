@@ -1,116 +1,163 @@
-# TechTrend - 技術記事アグリゲーター
+# TechTrend
 
-技術系ブログやニュースサイトから記事を自動収集し、日本語要約を生成して表示するWebアプリケーションです。
+複数の技術情報源から最新記事を収集し、AIによる要約・分析を提供する技術情報アグリゲーター
 
-## 機能
+## 🚀 特徴
 
-- 複数の技術系サイトから記事を自動収集
-- Gemini APIを使用した日本語要約の自動生成
-- ソース別・タグ別のフィルタリング
-- キーワード検索
-- レスポンシブデザイン
-- 自動更新スケジューラー
+- **15種類の情報源**から自動的に技術記事を収集
+- **AI要約**による60-80文字の日本語要約生成
+- **品質スコアリング**（0-100点）による記事の自動評価
+- **マルチタグフィルタリング**（AND/OR検索対応）
+- **トレンド分析**による急上昇キーワードの可視化
+- **難易度判定**（初級・中級・上級）
 
-## 対応サイト
+## 📋 必要要件
 
-### RSS系（1時間ごとに更新）
-- はてなブックマーク（テクノロジーカテゴリ）
-- Qiita（トレンド記事）
-- Zenn（トレンド記事）
-- Dev.to（人気技術記事）
-- Publickey
-- Stack Overflow Blog
-- Think IT
+- Node.js 18.0以上
+- npm または yarn
+- SQLite3
+- Gemini API Key（[Google AI Studio](https://aistudio.google.com/app/apikey)で取得）
 
-### スクレイピング系（12時間ごとに更新：0時・12時）
-- Speaker Deck（日本語プログラミングトレンド）
+## 🛠️ セットアップ
 
-## セットアップ
+### 1. リポジトリのクローン
 
-### 環境変数
-
-`.env.local`ファイルを作成し、以下の環境変数を設定してください：
-
-```
-GEMINI_API_KEY=your-api-key-here
+```bash
+git clone https://github.com/yourusername/techtrend.git
+cd techtrend
 ```
 
-### インストール
+### 2. 依存関係のインストール
 
 ```bash
 npm install
 ```
 
-### データベースのセットアップ
+### 3. 環境変数の設定
+
+`.env.local`ファイルを作成し、以下の内容を記述：
+
+```env
+DATABASE_URL="file:./prisma/dev.db"
+GEMINI_API_KEY="your-gemini-api-key-here"
+```
+
+### 4. データベースのセットアップ
 
 ```bash
+# データベースのマイグレーション
 npm run prisma:migrate
+
+# 初期データの投入
 npm run prisma:seed
 ```
 
-### 開発サーバーの起動
+### 5. 開発サーバーの起動
 
 ```bash
+# Webアプリケーション
 npm run dev
+
+# スケジューラー（別ターミナルで）
+npm run scheduler:v2
 ```
 
-## 自動更新スケジューラー
+http://localhost:3000 でアプリケーションにアクセスできます。
 
-### 開発環境での実行
+## 📁 プロジェクト構成
+
+```
+techtrend/
+├── app/                    # Next.js App Router
+│   ├── api/               # API Routes
+│   ├── components/        # UIコンポーネント
+│   ├── stats/            # 統計ページ
+│   └── trends/           # トレンド分析ページ
+├── lib/                   # ライブラリ・ユーティリティ
+│   ├── ai/              # AI関連（Gemini API）
+│   ├── fetchers/        # 各情報源のフェッチャー
+│   └── utils/           # ユーティリティ関数
+├── prisma/               # データベース設定
+├── scripts/              # メンテナンススクリプト
+├── docs/                 # ドキュメント
+└── scheduler-v2.ts       # スケジューラー
+```
+
+## 📚 ドキュメント
+
+- [システム仕様書](docs/SPECIFICATION.md) - 詳細な技術仕様
+- [機能詳細](docs/FEATURES.md) - 実装済み機能の詳細
+- [APIリファレンス](docs/API_REFERENCE.md) - API仕様
+
+## 🔧 主な機能
+
+### 記事収集
+- 15種類の技術ブログ・フィードから自動収集
+- 重複記事の自動検出・除外
+- 非技術記事のフィルタリング
+
+### AI処理
+- Gemini APIによる日本語要約生成
+- 記事内容に基づく技術タグの自動生成
+- タグの正規化（例: javascript → JavaScript）
+
+### 品質管理
+- 多角的な品質スコアリング（タグ、要約、ソース、新鮮さ、エンゲージメント）
+- 低品質記事（30点未満）の自動フィルタリング
+- ユーザー投票による品質向上
+
+### ユーザー体験
+- キーワード検索
+- ソース別・タグ別・難易度別フィルタリング
+- レスポンシブデザイン
+- ページネーション（20件/ページ）
+
+## 🏃 運用コマンド
 
 ```bash
-npm run scheduler:dev
+# 本番環境でのビルド・起動
+npm run build
+npm run start
+
+# PM2でスケジューラーを管理
+npm run scheduler:start    # 起動
+npm run scheduler:stop     # 停止
+npm run scheduler:restart  # 再起動
+npm run scheduler:logs     # ログ確認
+
+# メンテナンスコマンド
+npm run scripts:collect    # 手動で記事収集
+npm run scripts:summarize  # 手動で要約生成
 ```
 
-### PM2を使用した本番環境での実行
+## 🤝 コントリビューション
 
-```bash
-# スケジューラーの開始
-npm run scheduler:start
+Issue や Pull Request は大歓迎です！
 
-# スケジューラーの停止
-npm run scheduler:stop
+### 開発の流れ
 
-# スケジューラーの再起動
-npm run scheduler:restart
+1. Issueを作成して機能提案や不具合報告
+2. フォークしてfeatureブランチを作成
+3. 変更をコミット
+4. Pull Requestを作成
 
-# ログの確認
-npm run scheduler:logs
-```
+### コーディング規約
 
-### 手動実行
+- TypeScriptの型定義を活用
+- ESLintの警告を解消
+- コンポーネントは関数コンポーネントで記述
+- Tailwind CSSでスタイリング
 
-```bash
-# 全ソースから記事を収集
-npm run scripts:collect
+## 📄 ライセンス
 
-# 特定のソースのみ収集
-npx tsx scripts/collect-feeds.ts "Speaker Deck"
+MITライセンス
 
-# 要約を生成
-npm run scripts:summarize
-```
+## 🙏 謝辞
 
-## 技術スタック
+このプロジェクトは以下の素晴らしいプロジェクト・サービスを利用しています：
 
-- Next.js 15
-- TypeScript
-- Prisma（SQLite）
-- Tailwind CSS
-- shadcn/ui
-- Gemini API
-- node-cron（スケジューラー）
-
-## プロジェクト構造
-
-```
-├── app/                  # Next.js App Router
-├── components/           # Reactコンポーネント
-├── lib/
-│   ├── fetchers/        # 各サイト用フェッチャー
-│   ├── config/          # 設定ファイル
-│   └── types/           # TypeScript型定義
-├── scripts/             # バッチ処理スクリプト
-├── prisma/              # データベーススキーマ
-└── scheduler-v2.ts      # 自動更新スケジューラー
-```
+- [Next.js](https://nextjs.org/)
+- [Prisma](https://www.prisma.io/)
+- [Google Gemini API](https://ai.google.dev/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- 各技術情報源の皆様
