@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Rss, TrendingUp, Menu, X, BarChart3, Bookmark, LineChart, Hash, Award } from 'lucide-react';
+import { Rss, TrendingUp, Menu, X, BarChart3, Bookmark, LineChart, Hash, Award, Database, Star, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { SITE_NAME } from '@/lib/constants';
@@ -42,16 +42,28 @@ export function Header() {
               人気
             </Link>
             <Link 
-              href="/stats" 
+              href="/sources" 
               className="text-sm font-medium hover:text-primary transition-colors"
             >
-              統計
+              ソース
+            </Link>
+            <Link 
+              href="/favorites" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              お気に入り
             </Link>
             <Link 
               href="/tags" 
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               タグ
+            </Link>
+            <Link 
+              href="/stats" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              統計
             </Link>
             <Link 
               href="/analytics" 
@@ -70,6 +82,12 @@ export function Header() {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-4">
             <SearchBar />
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/search/advanced" className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                詳細検索
+              </Link>
+            </Button>
             <ThemeToggle />
           </div>
 
@@ -98,6 +116,14 @@ export function Header() {
                 <SearchBar />
               </div>
               <Link 
+                href="/search/advanced" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Filter className="h-4 w-4 mr-2 inline" />
+                詳細検索
+              </Link>
+              <Link 
                 href="/" 
                 className="text-sm font-medium hover:text-primary transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
@@ -121,12 +147,20 @@ export function Header() {
                 人気
               </Link>
               <Link 
-                href="/stats" 
+                href="/sources" 
                 className="text-sm font-medium hover:text-primary transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <BarChart3 className="h-4 w-4 mr-2 inline" />
-                統計
+                <Database className="h-4 w-4 mr-2 inline" />
+                ソース
+              </Link>
+              <Link 
+                href="/favorites" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Star className="h-4 w-4 mr-2 inline" />
+                お気に入り
               </Link>
               <Link 
                 href="/tags" 
@@ -135,6 +169,14 @@ export function Header() {
               >
                 <Hash className="h-4 w-4 mr-2 inline" />
                 タグ
+              </Link>
+              <Link 
+                href="/stats" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <BarChart3 className="h-4 w-4 mr-2 inline" />
+                統計
               </Link>
               <Link 
                 href="/analytics" 
