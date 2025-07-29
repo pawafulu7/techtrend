@@ -10,6 +10,7 @@ import { getDomain } from '@/lib/utils/url';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleWithRelations } from '@/lib/types/article';
 import { cn } from '@/lib/utils';
+import { ReadingListButton } from '@/app/components/reading-list/ReadingListButton';
 
 interface ArticleCardProps {
   article: ArticleWithRelations;
@@ -145,8 +146,13 @@ export function ArticleCard({ article }: ArticleCardProps) {
           </div>
         )}
         
-        {/* 役立ったボタン */}
-        <div className="flex items-center justify-end pt-1">
+        {/* アクションボタン */}
+        <div className="flex items-center justify-between pt-1">
+          <ReadingListButton 
+            article={article} 
+            size="sm"
+            variant="ghost"
+          />
           <Button
             variant={hasVoted ? "default" : "outline"}
             size="sm"

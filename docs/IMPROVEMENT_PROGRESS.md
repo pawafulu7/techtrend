@@ -42,16 +42,26 @@
 
 ### 2. 読書リスト管理機能
 
-**ステータス**: ⏳ 未着手
+**ステータス**: 🚧 実装中
 
 **進捗詳細**:
-- [ ] 機能要件定義
-- [ ] 設計ドキュメント作成
-- [ ] データストレージ設計（LocalStorage/IndexedDB）
-- [ ] APIエンドポイント実装
-- [ ] フロントエンドコンポーネント実装
+- [x] 機能要件定義
+- [x] 設計ドキュメント作成
+- [x] データストレージ設計（LocalStorage/IndexedDB）
+- [x] APIエンドポイント実装
+- [x] フロントエンドコンポーネント実装
 - [ ] テスト実装
 - [ ] ドキュメント更新
+
+**作業ログ**:
+- 2025-01-29: 詳細設計ドキュメント作成完了（FEATURE_READING_LIST.md）
+- 2025-01-29: IndexedDBラッパー実装完了（lib/reading-list/db.ts）
+- 2025-01-29: React Hooks実装完了（lib/reading-list/hooks.ts）
+- 2025-01-29: フロントエンドコンポーネント実装完了
+  - ReadingListButton: 記事カードに「後で読む」ボタンを追加
+  - ReadingListPage: 読書リスト管理ページ
+  - ReadingListItem: リストアイテムコンポーネント
+  - ReadingListStats: 統計表示コンポーネント
 
 ### 3. 記事プレビュー機能
 
