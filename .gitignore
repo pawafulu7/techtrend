@@ -41,3 +41,29 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+
+# database files
+*.db
+*.db-journal
+*.db.backup*
+development.db
+techtrend.db
+
+# log files
+logs/
+*.log
+
+# backup files
+backups/
+*.backup
+
+# test and temporary files
+scripts/test-*.ts
+scripts/*-test.ts
+scripts/debug-*.ts
+
+# batch scripts
+*.bat
+
+# markdown documentation for setup
+scripts/setup-*.md
