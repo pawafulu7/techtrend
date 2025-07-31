@@ -36,8 +36,8 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
     where.sourceId = params.sourceId;
   }
   
-  // 品質フィルタ（スコア30以上の記事のみ表示）
-  where.qualityScore = { gte: 30 };
+  // 品質フィルタ（一時的に無効化）
+  // where.qualityScore = { gte: 30 };
   
   // タグフィルター（複数対応）
   if (params.tags || params.tag) {

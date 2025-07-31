@@ -25,5 +25,29 @@ export function formatDate(date: Date | string): string {
 }
 
 export function parseRSSDate(dateString: string): Date {
-  return new Date(dateString);
+  // 様々な日付形式を試す
+  const date = new Date(dateString);
+  
+  // 無効な日付の場合
+  if (isNaN(date.getTime())) {
+    console.warn(`Invalid date format: ${dateString}`);
+    // 現在時刻を返す
+    return new Date();
+  }
+  
+  // 未来の日付チェック（1年以上先）
+  const oneYearFromNow = new Date();
+  oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+  if (date > oneYearFromNow) {
+    console.warn(`Future date detected: ${dateString} -> ${date.toISOString()}`);
+    return new Date();
+  }
+  
+  // 異常に大きな値のチェック（例：1753888851754）
+  if (date.getTime() > 9999999999999) {
+    console.warn(`Abnormal timestamp detected: ${dateString}`);
+    return new Date();
+  }
+  
+  return date;
 }

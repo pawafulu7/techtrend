@@ -118,21 +118,19 @@ export default async function ArticlePage({ params }: PageProps) {
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {article.summary && (
+              {article.detailedSummary ? (
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm font-medium mb-2">記事の要約</p>
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {article.detailedSummary}
+                  </div>
+                </div>
+              ) : article.summary ? (
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm font-medium mb-1">要約</p>
                   <p className="text-sm text-muted-foreground">{article.summary}</p>
                 </div>
-              )}
-
-              {article.content && (
-                <div className="prose prose-sm max-w-none">
-                  <p className="text-sm font-medium mb-2">記事内容</p>
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {article.content}
-                  </div>
-                </div>
-              )}
+              ) : null}
 
               <div className="flex items-center justify-between pt-4 border-t">
                 <div className="flex items-center gap-2">

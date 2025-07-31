@@ -117,8 +117,8 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
 
             // タグの処理
             const tagConnections = [];
-            if (article.tags && article.tags.length > 0) {
-              for (const tagName of article.tags) {
+            if (article.tagNames && article.tagNames.length > 0) {
+              for (const tagName of article.tagNames) {
                 const tag = await prisma.tag.upsert({
                   where: { name: tagName },
                   update: {},

@@ -65,14 +65,8 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
     // コンテンツの取得（HTMLタグを含む場合がある）
     const content = item.content || item.contentSnippet || '';
     
-    // 要約の生成（contentSnippetがある場合はそれを使用）
-    let summary = '';
-    if (item.contentSnippet) {
-      summary = item.contentSnippet
-        .replace(/\s+/g, ' ')
-        .trim()
-        .substring(0, 200);
-    }
+    // 要約は generate-summaries.ts で日本語生成するため undefined を設定
+    const summary = undefined;
     
     // タグの処理
     const tags = item.categories || [];
