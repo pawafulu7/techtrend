@@ -10,8 +10,18 @@ interface GenerateResult {
 
 interface SummaryAndTags {
   summary: string;
+  detailedSummary: string;
   tags: string[];
 }
+
+// API統計情報を追跡
+const apiStats = {
+  attempts: 0,
+  successes: 0,
+  failures: 0,
+  overloadErrors: 0,
+  startTime: Date.now()
+};
 
 async function generateSummaryAndTags(title: string, content: string): Promise<SummaryAndTags> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -24,7 +34,7 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
   const prompt = `以下の技術記事を詳細に分析してください。
 
 タイトル: ${title}
-内容: ${content.substring(0, 3000)}
+内容: ${content.substring(0, 4000)}
 
 以下の観点で分析し、指定された形式で回答してください：
 
@@ -37,14 +47,13 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
 
 【回答形式】
 
-要約: [60-80文字の日本語で、以下の要素を含めて簡潔にまとめる]
-- 何について説明しているか（主題）
-- どのような問題を解決するか、または何を実現するか
-- 重要な技術やツールがあれば言及
-- 著者の自己紹介や前置きは除外
-- 必ず「。」で終わる
+要約:
+60-80文字の日本語で、記事が解決する問題や提供する価値を明確に示し、技術的な要素を含めて「。」で終わる文章を1つ書いてください。
 
-タグ: [記事の内容を正確に表す技術タグを3-5個、カンマ区切りで記載]
+詳細要約:
+300-500文字程度で、記事の主題と背景、具体的な問題、解決策、実装方法、効果やメリット、注意点を構造的にまとめてください。
+
+タグ:
 - 使用されている主要な技術・言語・フレームワーク
 - 記事のカテゴリ（例: フロントエンド, バックエンド, インフラ, セキュリティ, AI/ML）
 - 具体的な技術概念（例: 非同期処理, 状態管理, CI/CD, マイクロサービス）
@@ -57,6 +66,7 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
 - インフラ/クラウド: AWS, Docker, Kubernetes, Terraform, CI/CD
 - 概念: API設計, パフォーマンス最適化, セキュリティ, テスト, アーキテクチャ`;
 
+  apiStats.attempts++;
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -66,7 +76,7 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 300,
+        maxOutputTokens: 800,
       }
     })
   });
@@ -82,34 +92,133 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
   return parseSummaryAndTags(responseText);
 }
 
+// テキストクリーンアップ関数
+function cleanupText(text: string): string {
+  return text
+    .replace(/\*\*/g, '') // マークダウン除去
+    .replace(/^(本記事は、|本記事は|本稿では、|本稿では|記事では、|記事では|この記事は、|この記事は)/g, '')
+    .trim();
+}
+
+// 最終クリーンアップ関数
+function finalCleanup(text: string): string {
+  if (!text) return text;
+  
+  // 冒頭の重複ラベル除去
+  const cleanupPatterns = [
+    /^(\*\*)?要約[:：]\s*(\*\*)?/,
+    /^【要約】[:：]?\s*/,
+    /^(\*\*)?短い要約[:：]\s*(\*\*)?/,
+    /^【短い要約】[:：]?\s*/,
+    /^(\*\*)?詳細要約[:：]\s*(\*\*)?/,
+    /^【詳細要約】[:：]?\s*/
+  ];
+  
+  cleanupPatterns.forEach(pattern => {
+    text = text.replace(pattern, '');
+  });
+  
+  // 改行の正規化
+  text = text.replace(/\n+/g, '\n').trim();
+  
+  return text;
+}
+
 function parseSummaryAndTags(text: string): SummaryAndTags {
   const lines = text.split('\n');
   let summary = '';
+  let detailedSummary = '';
   let tags: string[] = [];
+  let isDetailedSummary = false;
+  
+  // パターン定義
+  const summaryPatterns = [
+    /^(\*\*)?要約[:：]\s*(\*\*)?/,
+    /^【要約】[:：]?\s*/,
+    /^(\*\*)?短い要約[:：]\s*(\*\*)?/,
+    /^【短い要約】[:：]?\s*/
+  ];
+  
+  const detailedSummaryPatterns = [
+    /^(\*\*)?詳細要約[:：]\s*(\*\*)?/,
+    /^【詳細要約】[:：]?\s*/
+  ];
+  
+  const promptPatterns = [
+    /^\d+-\d+文字の日本語で/,
+    /^簡潔にまとめ/,
+    /^以下の観点で/
+  ];
+
+  let summaryStarted = false;
+  let detailedSummaryStarted = false;
 
   for (const line of lines) {
-    if (line.startsWith('要約:') || line.startsWith('要約：')) {
-      summary = line.replace(/^要約[:：]\s*/, '').trim();
-      // 要約のクリーンアップ
-      summary = summary
-        .replace(/^(本記事は|本稿では|記事では|この記事は)/g, '')
-        .replace(/\n+/g, ' ')
-        .trim();
-    } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
+    // プロンプト指示行をスキップ
+    if (promptPatterns.some(pattern => pattern.test(line))) {
+      continue;
+    }
+    
+    // summary処理
+    if (!summaryStarted && summaryPatterns.some(pattern => pattern.test(line))) {
+      summary = line;
+      summaryPatterns.forEach(pattern => {
+        summary = summary.replace(pattern, '');
+      });
+      summary = cleanupText(summary);
+      summaryStarted = true;
+      isDetailedSummary = false;
+    }
+    // summaryの続きの行（空行が来るまで）
+    else if (summaryStarted && !detailedSummaryStarted && line.trim() && 
+             !detailedSummaryPatterns.some(pattern => pattern.test(line)) && 
+             !line.match(/^タグ[:：]/)) {
+      summary += '\n' + cleanupText(line);
+    }
+    // detailedSummary処理
+    else if (detailedSummaryPatterns.some(pattern => pattern.test(line))) {
+      detailedSummary = line;
+      detailedSummaryPatterns.forEach(pattern => {
+        detailedSummary = detailedSummary.replace(pattern, '');
+      });
+      detailedSummary = cleanupText(detailedSummary);
+      detailedSummaryStarted = true;
+      isDetailedSummary = true;
+    }
+    // detailedSummaryの続きの行
+    else if (isDetailedSummary && line.trim() && !line.match(/^タグ[:：]/)) {
+      detailedSummary += '\n' + cleanupText(line);
+    }
+    // タグ処理
+    else if (line.match(/^タグ[:：]/)) {
+      isDetailedSummary = false;
       const tagLine = line.replace(/^タグ[:：]\s*/, '');
       tags = tagLine.split(/[,、，]/)
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0 && tag.length <= 30)
         .map(tag => normalizeTag(tag));
     }
+    // 空行でセクション終了
+    else if (!line.trim()) {
+      if (summaryStarted && !detailedSummaryStarted) {
+        summaryStarted = false;
+      }
+    }
   }
-
+  
+  // 最終クリーンアップ
+  summary = finalCleanup(summary);
+  detailedSummary = finalCleanup(detailedSummary);
+  
   // フォールバック
   if (!summary) {
     summary = text.substring(0, 100);
   }
+  if (!detailedSummary) {
+    detailedSummary = text.substring(0, 300);
+  }
 
-  return { summary, tags };
+  return { summary, detailedSummary, tags };
 }
 
 function normalizeTag(tag: string): string {
@@ -244,25 +353,60 @@ async function generateSummaries(): Promise<GenerateResult> {
 
     let generatedCount = 0;
     let errorCount = 0;
-    const batchSize = 3; // API制限を考慮して並列数を調整
+    const batchSize = 1; // API制限を考慮して並列処理を無効化
 
     // バッチ処理で要約を生成
     for (let i = 0; i < uniqueArticles.length; i += batchSize) {
       const batch = uniqueArticles.slice(i, i + batchSize);
       console.log(`\n処理中: ${i + 1}-${Math.min(i + batchSize, uniqueArticles.length)}件目`);
 
+      // リトライ機能を追加
+      const MAX_RETRIES = 3;
+      
       await Promise.all(
         batch.map(async (article) => {
-          try {
+          let retryCount = 0;
+          
+          while (retryCount < MAX_RETRIES) {
+            try {
             const content = article.content || article.description || '';
-            const { summary, tags } = await generateSummaryAndTags(article.title, content);
             
-            // 要約がない場合のみ更新
-            if (!article.summary) {
+            // 既に日本語の要約がある場合はスキップ（Gemini APIを呼ばない）
+            const existingSummary = article.summary || '';
+            const hasJapaneseSummary = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(existingSummary);
+            
+            let summary = existingSummary;
+            let tags: string[] = [];
+            
+            // 日本語要約がない場合のみGemini APIを呼び出す
+            if (!hasJapaneseSummary || !article.summary || !article.detailedSummary) {
+              const result = await generateSummaryAndTags(article.title, content);
+              summary = result.summary;
+              tags = result.tags;
+              
+              // 要約を更新
               await prisma.article.update({
                 where: { id: article.id },
-                data: { summary }
+                data: { 
+                  summary,
+                  detailedSummary: result.detailedSummary
+                }
               });
+            } else {
+              // 既に日本語要約がある場合でもタグがなければタグのみ生成
+              const existingTags = await prisma.article.findUnique({
+                where: { id: article.id },
+                include: { tags: true }
+              });
+              
+              if (!existingTags?.tags || existingTags.tags.length === 0) {
+                const result = await generateSummaryAndTags(article.title, content);
+                tags = result.tags;
+              } else {
+                console.log(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (日本語要約あり、スキップ)`);
+                generatedCount++;
+                return;
+              }
             }
 
             // タグを処理
@@ -297,22 +441,58 @@ async function generateSummaries(): Promise<GenerateResult> {
             
             console.log(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
             generatedCount++;
-          } catch (error) {
-            console.error(`✗ [${article.source.name}] ${article.title.substring(0, 40)}...`);
-            console.error(`  エラー: ${error instanceof Error ? error.message : String(error)}`);
-            errorCount++;
+            apiStats.successes++;
+              break; // 成功したらループを抜ける
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              
+              if ((errorMessage.includes('503') || errorMessage.includes('overloaded')) && retryCount < MAX_RETRIES - 1) {
+                retryCount++;
+                apiStats.overloadErrors++;
+                
+                // エクスポネンシャルバックオフ: 10秒 → 20秒 → 40秒
+                const waitTime = 10000 * Math.pow(2, retryCount - 1);
+                console.log(`  リトライ ${retryCount}/${MAX_RETRIES} - ${waitTime/1000}秒待機中...`);
+                await sleep(waitTime);
+                continue;
+              }
+              
+              console.error(`✗ [${article.source.name}] ${article.title.substring(0, 40)}...`);
+              console.error(`  エラー: ${errorMessage}`);
+              errorCount++;
+              apiStats.failures++;
+              break;
+            }
           }
         })
       );
 
-      // API レート制限対策
+      // API レート制限対策（503エラー対策で待機時間を増やす）
       if (i + batchSize < uniqueArticles.length) {
-        await sleep(2000);
+        await sleep(5000); // レート制限対策として5秒に延長
       }
     }
 
     const duration = Math.round((Date.now() - startTime) / 1000);
-    console.log(`\n📊 要約とタグ生成完了: 成功${generatedCount}件, エラー${errorCount}件 (${duration}秒)`);
+    const totalDuration = Math.round((Date.now() - apiStats.startTime) / 1000);
+    const successRate = apiStats.attempts > 0 ? Math.round((apiStats.successes / apiStats.attempts) * 100) : 0;
+    
+    console.log(`\n📊 要約とタグ生成完了:`);
+    console.log(`   成功: ${generatedCount}件`);
+    console.log(`   エラー: ${errorCount}件`);
+    console.log(`   処理時間: ${duration}秒`);
+    console.log(`\n📈 API統計:`);
+    console.log(`   総試行回数: ${apiStats.attempts}`);
+    console.log(`   成功: ${apiStats.successes}`);
+    console.log(`   失敗: ${apiStats.failures}`);
+    console.log(`   503エラー: ${apiStats.overloadErrors}`);
+    console.log(`   成功率: ${successRate}%`);
+    console.log(`   実行時間: ${totalDuration}秒`);
+    
+    // 成功率が低い場合は警告
+    if (successRate < 50 && apiStats.attempts > 10) {
+      console.log(`\n⚠️  警告: API成功率が${successRate}%と低いです。深夜の実行を推奨します。`);
+    }
 
     return { generated: generatedCount, errors: errorCount };
 
