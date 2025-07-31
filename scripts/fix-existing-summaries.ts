@@ -23,15 +23,25 @@ function finalCleanup(text: string): string {
     /^(\*\*)?短い要約[:：]\s*(\*\*)?/,
     /^【短い要約】[:：]?\s*/,
     /^(\*\*)?詳細要約[:：]\s*(\*\*)?/,
-    /^【詳細要約】[:：]?\s*/
+    /^【詳細要約】[:：]?\s*/,
+    /^【?\d+-\d+文字.*?】?\s*/,  // プロンプト指示の除去
+    /^【?簡潔にまとめ.*?】?\s*/
   ];
   
   cleanupPatterns.forEach(pattern => {
     text = text.replace(pattern, '');
   });
   
+  // 先頭の句読点を除去
+  text = text.replace(/^[、。]\s*/, '');
+  
   // 改行の正規化
   text = text.replace(/\n+/g, '\n').trim();
+  
+  // 文末に句点がない場合は追加（箇条書きの場合は除く）
+  if (text && !text.includes('・') && !text.match(/[。！？]$/)) {
+    text += '。';
+  }
   
   return text;
 }
@@ -46,8 +56,15 @@ function hasProblematicPattern(text: string | null): boolean {
     /\d+-\d+文字/, // プロンプト指示
     /^要約[:：]/, // 要約ラベル
     /^詳細要約[:：]/, // 詳細要約ラベル
-    /^短い要約[:：]/ // 短い要約ラベル
+    /^短い要約[:：]/, // 短い要約ラベル
+    /^[、。]/, // 先頭の句読点
+    /簡潔にまとめ/ // プロンプト指示
   ];
+  
+  // 文末に句点がない場合も問題とする（箇条書きを除く）
+  if (text && !text.includes('・') && !text.match(/[。！？]$/)) {
+    return true;
+  }
   
   return problematicPatterns.some(pattern => pattern.test(text));
 }

@@ -46,25 +46,25 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
 5. 対象読者のレベル（初級/中級/上級）
 
 【回答形式】
+※重要: 各セクションのラベル（要約:、詳細要約:、タグ:）のみ記載し、それ以外の説明や指示文は一切含めないでください。
 
 要約:
-60-80文字の日本語で、記事が解決する問題や提供する価値を明確に示し、技術的な要素を含めて「。」で終わる文章を1つ書いてください。
+記事が解決する問題や提供する価値を明確に示す完結した1文。技術的な要素を含め、必ず句点「。」で終わること。冒頭に句読点を置かないこと。
 
 詳細要約:
-300-500文字程度で、記事の主題と背景、具体的な問題、解決策、実装方法、効果やメリット、注意点を構造的にまとめてください。
+以下の要素を箇条書きで記載（各項目は「・」で開始）：
+・記事の主題と背景
+・解決しようとしている具体的な問題
+・提示されている解決策やアプローチ
+・実装方法や技術的な詳細
+・期待される効果やメリット
+・注意点や考慮事項
 
 タグ:
-- 使用されている主要な技術・言語・フレームワーク
-- 記事のカテゴリ（例: フロントエンド, バックエンド, インフラ, セキュリティ, AI/ML）
-- 具体的な技術概念（例: 非同期処理, 状態管理, CI/CD, マイクロサービス）
-- 一般的な技術用語を使用（JavaScript→JavaScript, typescript→TypeScript）
-- 取得元情報はタグに含めない
+技術名,フレームワーク名,カテゴリ名,概念名
 
 【タグの例】
-- プログラミング言語: JavaScript, TypeScript, Python, Go, Rust, Ruby, Java
-- フレームワーク: React, Vue.js, Next.js, Django, Express, Spring Boot
-- インフラ/クラウド: AWS, Docker, Kubernetes, Terraform, CI/CD
-- 概念: API設計, パフォーマンス最適化, セキュリティ, テスト, アーキテクチャ`;
+JavaScript, React, フロントエンド, 状態管理`;
 
   apiStats.attempts++;
   const response = await fetch(apiUrl, {
@@ -111,15 +111,25 @@ function finalCleanup(text: string): string {
     /^(\*\*)?短い要約[:：]\s*(\*\*)?/,
     /^【短い要約】[:：]?\s*/,
     /^(\*\*)?詳細要約[:：]\s*(\*\*)?/,
-    /^【詳細要約】[:：]?\s*/
+    /^【詳細要約】[:：]?\s*/,
+    /^【?\d+-\d+文字.*?】?\s*/,  // プロンプト指示の除去
+    /^【?簡潔にまとめ.*?】?\s*/
   ];
   
   cleanupPatterns.forEach(pattern => {
     text = text.replace(pattern, '');
   });
   
+  // 先頭の句読点を除去
+  text = text.replace(/^[、。]\s*/, '');
+  
   // 改行の正規化
   text = text.replace(/\n+/g, '\n').trim();
+  
+  // 文末に句点がない場合は追加（箇条書きの場合は除く）
+  if (text && !text.includes('・') && !text.match(/[。！？]$/)) {
+    text += '。';
+  }
   
   return text;
 }
@@ -147,7 +157,9 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
   const promptPatterns = [
     /^\d+-\d+文字の日本語で/,
     /^簡潔にまとめ/,
-    /^以下の観点で/
+    /^以下の観点で/,
+    /^記事が解決する問題/,
+    /^以下の要素を箇条書き/
   ];
 
   let summaryStarted = false;
@@ -187,7 +199,12 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
     }
     // detailedSummaryの続きの行
     else if (isDetailedSummary && line.trim() && !line.match(/^タグ[:：]/)) {
-      detailedSummary += '\n' + cleanupText(line);
+      // 箇条書きの場合はそのまま追加（cleanupTextを適用しない）
+      if (line.trim().startsWith('・')) {
+        detailedSummary += '\n' + line.trim();
+      } else {
+        detailedSummary += '\n' + cleanupText(line);
+      }
     }
     // タグ処理
     else if (line.match(/^タグ[:：]/)) {
