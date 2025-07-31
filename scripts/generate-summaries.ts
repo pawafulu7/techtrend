@@ -49,7 +49,7 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
 ※重要: 各セクションのラベル（要約:、詳細要約:、タグ:）のみ記載し、それ以外の説明や指示文は一切含めないでください。
 
 要約:
-記事が解決する問題や提供する価値を明確に示す完結した1文。技術的な要素を含め、必ず句点「。」で終わること。冒頭に句読点を置かないこと。
+記事の核心を120-150文字ちょうどで要約。技術・問題・解決策を含む1-2文にまとめ、必ず句点で終了。文字数制限厳守。
 
 詳細要約:
 以下の要素を箇条書きで記載（各項目は「・」で開始）：
@@ -229,7 +229,7 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
   
   // フォールバック
   if (!summary) {
-    summary = text.substring(0, 100);
+    summary = text.substring(0, 150);
   }
   if (!detailedSummary) {
     detailedSummary = text.substring(0, 300);
