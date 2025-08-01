@@ -67,3 +67,6 @@ scripts/debug-*.ts
 
 # markdown documentation for setup
 scripts/setup-*.md
+
+# claude work files
+.claude/
