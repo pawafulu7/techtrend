@@ -1,4 +1,5 @@
 import Parser from 'rss-parser';
+import { Source } from '@prisma/client';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
 import { parseRSSDate } from '@/lib/utils/date';
@@ -21,7 +22,7 @@ interface AWSRSSItem {
 }
 
 export class AWSFetcher extends BaseFetcher {
-  private parser: Parser<any, AWSRSSItem>;
+  private parser: Parser<unknown, AWSRSSItem>;
   
   // 3つのAWSフィードを統合
   private rssUrls = [
@@ -30,7 +31,7 @@ export class AWSFetcher extends BaseFetcher {
     { url: 'https://aws.amazon.com/jp/blogs/aws/feed/', name: 'Blog' },
   ];
 
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
     this.parser = new Parser({
       customFields: {

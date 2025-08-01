@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types/article';
 import Parser from 'rss-parser';
@@ -20,7 +21,7 @@ export class ThinkITFetcher extends BaseFetcher {
   name = 'thinkit';
   displayName = 'Think IT';
   
-  private parser = new Parser<any, ThinkITItem>();
+  private parser = new Parser<unknown, ThinkITItem>();
   private rssUrl = 'https://thinkit.co.jp/rss.xml';
 
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {

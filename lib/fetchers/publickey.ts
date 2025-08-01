@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
@@ -14,9 +15,9 @@ interface PublickeyRSSItem {
 }
 
 export class PublickeyFetcher extends BaseFetcher {
-  private parser: Parser<any, PublickeyRSSItem>;
+  private parser: Parser<unknown, PublickeyRSSItem>;
 
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
     this.parser = new Parser({
       customFields: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import type { PaginationParams, PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWhereInput } from '@/types/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
 
     // Build where clause
-    const where: any = {};
+    const where: ArticleWhereInput = {};
     if (sourceId) {
       where.sourceId = sourceId;
     }

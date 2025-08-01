@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
@@ -21,7 +22,7 @@ interface SRERSSItem {
 }
 
 export class SREFetcher extends BaseFetcher {
-  private parser: Parser<any, SRERSSItem>;
+  private parser: Parser<unknown, SRERSSItem>;
   
   // SRE関連の複数のRSSフィードを統合
   private rssUrls = [
@@ -33,7 +34,7 @@ export class SREFetcher extends BaseFetcher {
     { url: 'https://grafana.com/blog/index.xml', name: 'Grafana Labs' },
   ];
 
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
     this.parser = new Parser({
       customFields: {

@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
@@ -19,9 +20,9 @@ interface ZennRSSItem {
 }
 
 export class ZennExtendedFetcher extends BaseFetcher {
-  private parser: Parser<any, ZennRSSItem>;
+  private parser: Parser<unknown, ZennRSSItem>;
 
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
     this.parser = new Parser();
   }

@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import RSSParser from 'rss-parser';
 import type { CreateArticleInput } from '@/lib/types/article';
@@ -7,7 +8,7 @@ import * as cheerio from 'cheerio';
 export class SpeakerDeckFetcher extends BaseFetcher {
   private parser: RSSParser;
   
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
     this.parser = new RSSParser({
       customFields: {

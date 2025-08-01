@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
 

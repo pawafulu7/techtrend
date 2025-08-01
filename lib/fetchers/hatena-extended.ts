@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
@@ -16,7 +17,7 @@ interface HatenaItem {
 }
 
 export class HatenaExtendedFetcher extends BaseFetcher {
-  private parser: Parser<any, HatenaItem>;
+  private parser: Parser<unknown, HatenaItem>;
   
   // 技術系のRSSフィードのみを使用
   private rssUrls = [
@@ -57,7 +58,7 @@ export class HatenaExtendedFetcher extends BaseFetcher {
     'オープンソース', 'oss', 'npm', 'yarn', 'pip', 'gem', 'cargo'
   ];
 
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
     this.parser = new Parser({
       customFields: {

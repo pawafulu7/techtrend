@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types/article';
 import Parser from 'rss-parser';
@@ -18,7 +19,7 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
   name = 'stackoverflow-blog';
   displayName = 'Stack Overflow Blog';
   
-  private parser = new Parser<any, StackOverflowBlogItem>();
+  private parser = new Parser<unknown, StackOverflowBlogItem>();
   private rssUrl = 'https://stackoverflow.blog/feed/';
 
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {

@@ -1,4 +1,5 @@
 import Parser from 'rss-parser';
+import { Source } from '@prisma/client';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
 import { parseRSSDate } from '@/lib/utils/date';
@@ -20,7 +21,7 @@ interface MicrosoftDevBlogItem {
 }
 
 export class MicrosoftDevBlogFetcher extends BaseFetcher {
-  private parser: Parser<any, MicrosoftDevBlogItem>;
+  private parser: Parser<unknown, MicrosoftDevBlogItem>;
   
   // 主要なMicrosoft開発者ブログのRSSフィード
   private rssUrls = [
@@ -29,7 +30,7 @@ export class MicrosoftDevBlogFetcher extends BaseFetcher {
     { url: 'https://devblogs.microsoft.com/visualstudio/feed/', name: 'Visual Studio' },
   ];
   
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
     this.parser = new Parser();
   }

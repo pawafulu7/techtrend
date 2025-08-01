@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
@@ -23,9 +24,9 @@ interface RailsReleaseItem {
 }
 
 export class RailsReleasesFetcher extends BaseFetcher {
-  private parser: Parser<any, RailsReleaseItem>;
+  private parser: Parser<unknown, RailsReleaseItem>;
 
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
     this.parser = new Parser({
       customFields: {

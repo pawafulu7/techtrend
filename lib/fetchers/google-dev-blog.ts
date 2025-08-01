@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
@@ -15,9 +16,9 @@ interface GoogleDevBlogItem {
 }
 
 export class GoogleDevBlogFetcher extends BaseFetcher {
-  private parser: Parser<any, GoogleDevBlogItem>;
+  private parser: Parser<unknown, GoogleDevBlogItem>;
 
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
     this.parser = new Parser({
       customFields: {

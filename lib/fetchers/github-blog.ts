@@ -1,4 +1,5 @@
 import Parser from 'rss-parser';
+import { Source } from '@prisma/client';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
 import { parseRSSDate } from '@/lib/utils/date';
@@ -20,9 +21,9 @@ interface GitHubBlogItem {
 }
 
 export class GitHubBlogFetcher extends BaseFetcher {
-  private parser: Parser<any, GitHubBlogItem>;
+  private parser: Parser<unknown, GitHubBlogItem>;
   
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
     this.parser = new Parser();
   }

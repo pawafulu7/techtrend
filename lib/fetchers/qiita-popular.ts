@@ -1,3 +1,4 @@
+import { Source } from '@prisma/client';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/lib/types/article';
 
@@ -24,7 +25,7 @@ interface QiitaArticle {
 }
 
 export class QiitaPopularFetcher extends BaseFetcher {
-  constructor(source: any) {
+  constructor(source: Source) {
     super(source);
   }
 
