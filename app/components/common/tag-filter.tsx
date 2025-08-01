@@ -85,6 +85,15 @@ export function TagFilter({ tags }: TagFilterProps) {
     return groups;
   }, [filteredTags]);
 
+  // カテゴリーの開閉状態を管理
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() => {
+    const initialState: Record<string, boolean> = {};
+    Object.keys(groupedTags).forEach(key => {
+      initialState[key] = true; // デフォルトで全て展開
+    });
+    return initialState;
+  });
+
   // タグ選択を更新
   const updateTags = (newTags: string[], mode: 'OR' | 'AND' = filterMode) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -193,10 +202,18 @@ export function TagFilter({ tags }: TagFilterProps) {
             : getCategoryInfo(categoryKey as keyof typeof TAG_CATEGORIES);
           
           return (
-            <Collapsible key={categoryKey} defaultOpen={true}>
+            <Collapsible 
+              key={categoryKey} 
+              open={openCategories[categoryKey] ?? true}
+              onOpenChange={(open) => setOpenCategories(prev => ({ ...prev, [categoryKey]: open }))}
+            >
               <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
                 <div className="flex items-center gap-2">
-                  <ChevronRight className="h-4 w-4 transition-transform data-[state=open]:rotate-90" />
+                  <ChevronRight 
+                    className={`h-4 w-4 transition-transform ${
+                      openCategories[categoryKey] ? 'rotate-90' : ''
+                    }`} 
+                  />
                   <span className="text-sm font-medium">{categoryInfo.name}</span>
                   <Badge variant="secondary" className="text-xs">
                     {categoryTags.length}

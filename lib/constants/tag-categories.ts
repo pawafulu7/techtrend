@@ -43,7 +43,6 @@ export const TAG_CATEGORIES = {
       'Azure', 'Azure Functions', 'Azure DevOps',
       'Docker', 'Kubernetes', 'k8s', 'Helm', 'Istio',
       'Terraform', 'Ansible', 'Chef', 'Puppet',
-      'CI/CD', 'Jenkins', 'GitHub Actions', 'GitLab CI', 'CircleCI',
       'Nginx', 'Apache', 'HAProxy', 'Traefik',
       'Prometheus', 'Grafana', 'ELK', 'Datadog', 'New Relic',
       'Linux', 'Ubuntu', 'CentOS', 'Debian', 'RHEL',
@@ -57,7 +56,7 @@ export const TAG_CATEGORIES = {
     tags: [
       'MySQL', 'PostgreSQL', 'MariaDB', 'Oracle', 'SQL Server',
       'MongoDB', 'DynamoDB', 'Cassandra', 'CouchDB', 'Neo4j',
-      'Redis', 'Memcached', 'ElasticSearch', 'Elasticsearch', 'Solr',
+      'Redis', 'Memcached', 'Elasticsearch', 'Solr',
       'SQLite', 'H2', 'Derby',
       'Prisma', 'TypeORM', 'Sequelize', 'Mongoose', 'Knex',
       'SQL', 'NoSQL', 'GraphDB', 'Time Series', 'Vector DB',
@@ -87,6 +86,7 @@ export const TAG_CATEGORIES = {
     color: 'text-indigo-600 bg-indigo-50 border-indigo-200',
     tags: [
       'DevOps', 'SRE', 'GitOps', 'Platform Engineering',
+      'CI/CD', 'Jenkins', 'GitHub Actions', 'GitLab CI', 'CircleCI',
       'Monitoring', 'Logging', 'Observability', 'APM',
       'IaC', 'Infrastructure as Code', 'Configuration Management',
       'Continuous Integration', 'Continuous Deployment', 'Continuous Delivery',
