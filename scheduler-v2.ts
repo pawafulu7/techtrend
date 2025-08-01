@@ -31,6 +31,69 @@ const SCRAPING_SOURCES = [
 // Qiita人気記事ソース（5:05と17:05に更新）
 const QIITA_POPULAR_SOURCE = ['Qiita Popular'];
 
+// 共通の更新処理を関数として抽出
+async function executeUpdatePipeline(
+  sources: string[], 
+  label: string,
+  options?: {
+    skipSummaries?: boolean;
+    skipDetailedSummaries?: boolean;
+  }
+): Promise<void> {
+  const startTime = new Date();
+  console.log(`\n🔄 ${label}更新開始: ${startTime.toLocaleString('ja-JP')}`);
+  
+  try {
+    // 1. フィード収集
+    console.log('📡 フィード収集中...');
+    const sourceArgs = sources.map(s => `"${s}"`).join(' ');
+    const { stdout: collectOutput }: ExecutionResult = await execAsync(
+      `npx tsx scripts/collect-feeds.ts ${sourceArgs}`
+    );
+    console.log(collectOutput);
+    
+    // 2. 要約生成（オプション）
+    if (!options?.skipSummaries) {
+      console.log('📝 要約・タグ生成中...');
+      const { stdout: summaryOutput }: ExecutionResult = await execAsync(
+        'npx tsx scripts/generate-summaries.ts'
+      );
+      console.log(summaryOutput);
+    }
+    
+    // 3. 品質スコア計算
+    console.log('📊 品質スコア計算中...');
+    const { stdout: qualityOutput }: ExecutionResult = await execAsync(
+      'npx tsx scripts/calculate-quality-scores.ts'
+    );
+    console.log(qualityOutput);
+    
+    // 4. 難易度レベル判定
+    console.log('📈 難易度レベル判定中...');
+    const { stdout: difficultyOutput }: ExecutionResult = await execAsync(
+      'npx tsx scripts/calculate-difficulty-levels.ts'
+    );
+    console.log(difficultyOutput);
+    
+    // 5. 詳細要約生成（オプション）
+    if (!options?.skipDetailedSummaries) {
+      console.log('📄 詳細要約生成中...');
+      const { stdout: detailedOutput }: ExecutionResult = await execAsync(
+        'npx tsx scripts/generate-detailed-summaries.ts'
+      );
+      console.log(detailedOutput);
+    }
+    
+    const endTime = new Date();
+    const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+    console.log(`✅ ${label}更新完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
+    
+  } catch (error) {
+    console.error(`❌ ${label}更新でエラーが発生しました:`, error instanceof Error ? error.message : String(error));
+    throw error; // 上位でハンドリング可能にする
+  }
+}
+
 console.log('📅 TechTrend Scheduler V2 Started');
 console.log(`⏰ 現在時刻: ${new Date().toLocaleString('ja-JP')}`);
 console.log('📊 更新スケジュール:');
@@ -42,124 +105,28 @@ console.log('   - クリーンアップ: 毎日3時');
 
 // RSS系ソースの更新（毎時0分）
 cron.schedule('0 * * * *', async () => {
-  const startTime = new Date();
-  console.log(`\n🔄 RSS系記事更新開始: ${startTime.toLocaleString('ja-JP')}`);
-  
   try {
-    // RSS系ソースのみフィード収集
-    console.log('📡 RSS系フィード収集中...');
-    const sourceArgs = RSS_SOURCES.map(s => `"${s}"`).join(' ');
-    const { stdout: collectOutput }: ExecutionResult = await execAsync(`npx tsx scripts/collect-feeds.ts ${sourceArgs}`);
-    console.log(collectOutput);
-    
-    // 要約生成（新規記事のみ）
-    console.log('📝 要約・タグ生成中...');
-    const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/generate-summaries.ts');
-    console.log(summaryOutput);
-    
-    // 品質スコア計算
-    console.log('📊 品質スコア計算中...');
-    const { stdout: qualityOutput }: ExecutionResult = await execAsync('npx tsx scripts/calculate-quality-scores.ts');
-    console.log(qualityOutput);
-    
-    // 難易度レベル判定
-    console.log('📈 難易度レベル判定中...');
-    const { stdout: difficultyOutput }: ExecutionResult = await execAsync('npx tsx scripts/calculate-difficulty-levels.ts');
-    console.log(difficultyOutput);
-    
-    // 詳細要約生成（要約がある記事のみ）
-    console.log('📄 詳細要約生成中...');
-    const { stdout: detailedSummaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/generate-detailed-summaries.ts');
-    console.log(detailedSummaryOutput);
-    
-    const endTime = new Date();
-    const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.log(`✅ RSS系更新完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
-    
+    await executeUpdatePipeline(RSS_SOURCES, 'RSS系記事');
   } catch (error) {
-    console.error('❌ RSS系更新でエラーが発生しました:', error instanceof Error ? error.message : String(error));
+    // エラーは関数内でログ出力済み
   }
 });
 
 // スクレイピング系ソースの更新（0時と12時）
 cron.schedule('0 0,12 * * *', async () => {
-  const startTime = new Date();
-  console.log(`\n🔄 スクレイピング系記事更新開始: ${startTime.toLocaleString('ja-JP')}`);
-  
   try {
-    // スクレイピング系ソースのみフィード収集
-    console.log('📡 スクレイピング系フィード収集中...');
-    const sourceArgs = SCRAPING_SOURCES.map(s => `"${s}"`).join(' ');
-    const { stdout: collectOutput }: ExecutionResult = await execAsync(`npx tsx scripts/collect-feeds.ts ${sourceArgs}`);
-    console.log(collectOutput);
-    
-    // 要約生成（新規記事のみ）
-    console.log('📝 要約・タグ生成中...');
-    const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/generate-summaries.ts');
-    console.log(summaryOutput);
-    
-    // 品質スコア計算
-    console.log('📊 品質スコア計算中...');
-    const { stdout: qualityOutput }: ExecutionResult = await execAsync('npx tsx scripts/calculate-quality-scores.ts');
-    console.log(qualityOutput);
-    
-    // 難易度レベル判定
-    console.log('📈 難易度レベル判定中...');
-    const { stdout: difficultyOutput }: ExecutionResult = await execAsync('npx tsx scripts/calculate-difficulty-levels.ts');
-    console.log(difficultyOutput);
-    
-    // 詳細要約生成（要約がある記事のみ）
-    console.log('📄 詳細要約生成中...');
-    const { stdout: detailedSummaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/generate-detailed-summaries.ts');
-    console.log(detailedSummaryOutput);
-    
-    const endTime = new Date();
-    const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.log(`✅ スクレイピング系更新完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
-    
+    await executeUpdatePipeline(SCRAPING_SOURCES, 'スクレイピング系記事');
   } catch (error) {
-    console.error('❌ スクレイピング系更新でエラーが発生しました:', error instanceof Error ? error.message : String(error));
+    // エラーは関数内でログ出力済み
   }
 });
 
 // Qiita人気記事の更新（5:05と17:05）
 cron.schedule('5 5,17 * * *', async () => {
-  const startTime = new Date();
-  console.log(`\n🔄 Qiita人気記事更新開始: ${startTime.toLocaleString('ja-JP')}`);
-  
   try {
-    // Qiita Popularのみフィード収集
-    console.log('📡 Qiita人気記事フィード収集中...');
-    const sourceArgs = QIITA_POPULAR_SOURCE.map(s => `"${s}"`).join(' ');
-    const { stdout: collectOutput }: ExecutionResult = await execAsync(`npx tsx scripts/collect-feeds.ts ${sourceArgs}`);
-    console.log(collectOutput);
-    
-    // 要約生成（新規記事のみ）
-    console.log('📝 要約・タグ生成中...');
-    const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/generate-summaries.ts');
-    console.log(summaryOutput);
-    
-    // 品質スコア計算
-    console.log('📊 品質スコア計算中...');
-    const { stdout: qualityOutput }: ExecutionResult = await execAsync('npx tsx scripts/calculate-quality-scores.ts');
-    console.log(qualityOutput);
-    
-    // 難易度レベル判定
-    console.log('📈 難易度レベル判定中...');
-    const { stdout: difficultyOutput }: ExecutionResult = await execAsync('npx tsx scripts/calculate-difficulty-levels.ts');
-    console.log(difficultyOutput);
-    
-    // 詳細要約生成（要約がある記事のみ）
-    console.log('📄 詳細要約生成中...');
-    const { stdout: detailedSummaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/generate-detailed-summaries.ts');
-    console.log(detailedSummaryOutput);
-    
-    const endTime = new Date();
-    const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.log(`✅ Qiita人気記事更新完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
-    
+    await executeUpdatePipeline(QIITA_POPULAR_SOURCE, 'Qiita人気記事');
   } catch (error) {
-    console.error('❌ Qiita人気記事更新でエラーが発生しました:', error instanceof Error ? error.message : String(error));
+    // エラーは関数内でログ出力済み
   }
 });
 
@@ -218,8 +185,9 @@ cron.schedule('0 2 * * *', async () => {
     console.log(summaryOutput);
     
     // 成功率が低い場合は30分後に再試行
-    if (summaryOutput.includes('成功率:') && summaryOutput.match(/成功率: (\d+)%/)) {
-      const successRate = parseInt(RegExp.$1);
+    const successRateMatch = summaryOutput.match(/成功率: (\d+)%/);
+    if (summaryOutput.includes('成功率:') && successRateMatch) {
+      const successRate = parseInt(successRateMatch[1]);
       if (successRate < 50) {
         console.log('⏰ 30分後に再試行します...');
         setTimeout(async () => {
@@ -243,19 +211,16 @@ cron.schedule('0 2 * * *', async () => {
 (async () => {
   console.log('\n🚀 初回実行を開始します（全ソース）...');
   try {
-    const { stdout: collectOutput }: ExecutionResult = await execAsync('npx tsx scripts/collect-feeds.ts');
-    console.log(collectOutput);
+    // 全ソースを結合
+    const allSources = [...RSS_SOURCES, ...SCRAPING_SOURCES];
     
-    // 要約生成はAPI負荷が高いためスキップ
+    // 要約生成と詳細要約生成をスキップして実行
+    await executeUpdatePipeline(allSources, '初回実行', {
+      skipSummaries: true,
+      skipDetailedSummaries: true
+    });
+    
     console.log('💡 要約生成は深夜2時に実行されます');
-    
-    const { stdout: qualityOutput }: ExecutionResult = await execAsync('npx tsx scripts/calculate-quality-scores.ts');
-    console.log(qualityOutput);
-    
-    const { stdout: difficultyOutput }: ExecutionResult = await execAsync('npx tsx scripts/calculate-difficulty-levels.ts');
-    console.log(difficultyOutput);
-    
-    // 詳細要約も同様にスキップ
     console.log('💡 詳細要約生成も深夜に実行されます');
     
     console.log('✅ 初回実行が完了しました\n');
