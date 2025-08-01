@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LinkIcon, TrendingUp } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils';
+import { useRelatedArticles } from '@/hooks/use-related-articles';
 
 interface RelatedArticle {
   id: string;
@@ -30,33 +30,11 @@ interface RelatedArticlesProps {
 }
 
 export function RelatedArticles({ articleId, maxItems = 10 }: RelatedArticlesProps) {
-  const [articles, setArticles] = useState<RelatedArticle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: articles = [], isLoading, error } = useRelatedArticles(articleId);
 
-  useEffect(() => {
-    const fetchRelatedArticles = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/articles/${articleId}/related`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch related articles');
-        }
+  const displayArticles = articles.slice(0, maxItems);
 
-        const data = await response.json();
-        setArticles(data.articles.slice(0, maxItems));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRelatedArticles();
-  }, [articleId, maxItems]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>
@@ -77,7 +55,7 @@ export function RelatedArticles({ articleId, maxItems = 10 }: RelatedArticlesPro
     );
   }
 
-  if (error || articles.length === 0) {
+  if (error || displayArticles.length === 0) {
     return null;
   }
 
@@ -90,7 +68,7 @@ export function RelatedArticles({ articleId, maxItems = 10 }: RelatedArticlesPro
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {articles.map((article) => {
+        {displayArticles.map((article) => {
           const hoursAgo = Math.floor(
             (Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60)
           );
