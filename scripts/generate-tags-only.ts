@@ -1,5 +1,6 @@
 import { PrismaClient, Article, Source } from '@prisma/client';
 import fetch from 'node-fetch';
+import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
 
 const prisma = new PrismaClient();
 
@@ -25,35 +26,6 @@ const apiStats = {
   startTime: Date.now()
 };
 
-// タグ正規化マップ
-const tagNormalizationMap: Record<string, string> = {
-  'javascript': 'JavaScript',
-  'js': 'JavaScript',
-  'typescript': 'TypeScript',
-  'ts': 'TypeScript',
-  'react': 'React',
-  'vue': 'Vue.js',
-  'angular': 'Angular',
-  'node': 'Node.js',
-  'nodejs': 'Node.js',
-  'python': 'Python',
-  'docker': 'Docker',
-  'kubernetes': 'Kubernetes',
-  'k8s': 'Kubernetes',
-  'aws': 'AWS',
-  'gcp': 'GCP',
-  'azure': 'Azure',
-  'ai': 'AI',
-  'ml': '機械学習',
-  'github': 'GitHub',
-  'git': 'Git',
-};
-
-// タグを正規化
-function normalizeTag(tag: string): string {
-  const lowerTag = tag.toLowerCase();
-  return tagNormalizationMap[lowerTag] || tag;
-}
 
 // Gemini APIを使用してタグを生成
 async function generateTags(title: string, content: string): Promise<string[]> {
@@ -105,11 +77,10 @@ async function generateTags(title: string, content: string): Promise<string[]> {
   // タグをパース
   const tags = responseText.split(/[,、，]/)
     .map(tag => tag.trim())
-    .filter(tag => tag.length > 0 && tag.length <= 30)
-    .map(tag => normalizeTag(tag))
-    .slice(0, 7); // 最大7個に制限
+    .filter(tag => tag.length > 0 && tag.length <= 30);
   
-  return tags;
+  // タグの正規化と重複除去
+  return normalizeTags(tags).slice(0, 7); // 最大7個に制限
 }
 
 // スリープ関数

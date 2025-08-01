@@ -1,5 +1,6 @@
 import { PrismaClient, Article, Source } from '@prisma/client';
 import fetch from 'node-fetch';
+import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
 
 const prisma = new PrismaClient();
 
@@ -236,34 +237,6 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
   }
 
   return { summary, detailedSummary, tags };
-}
-
-function normalizeTag(tag: string): string {
-  const tagNormalizationMap: Record<string, string> = {
-    'javascript': 'JavaScript',
-    'js': 'JavaScript',
-    'typescript': 'TypeScript',
-    'ts': 'TypeScript',
-    'react': 'React',
-    'vue': 'Vue.js',
-    'angular': 'Angular',
-    'node': 'Node.js',
-    'nodejs': 'Node.js',
-    'python': 'Python',
-    'docker': 'Docker',
-    'kubernetes': 'Kubernetes',
-    'k8s': 'Kubernetes',
-    'aws': 'AWS',
-    'gcp': 'GCP',
-    'azure': 'Azure',
-    'ai': 'AI',
-    'ml': '機械学習',
-    'github': 'GitHub',
-    'git': 'Git',
-  };
-
-  const lowerTag = tag.toLowerCase();
-  return tagNormalizationMap[lowerTag] || tag;
 }
 
 async function sleep(ms: number): Promise<void> {

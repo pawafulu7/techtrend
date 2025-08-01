@@ -1,5 +1,6 @@
-import { PrismaClient, Article } from '@prisma/client';
+import { PrismaClient, Article, Tag } from '@prisma/client';
 import fetch from 'node-fetch';
+import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
 
 const prisma = new PrismaClient();
 
@@ -10,9 +11,10 @@ interface RegenerateOptions {
   onlySampleCheck?: boolean;
 }
 
-interface SummaryResult {
+interface SummaryAndTagsResult {
   summary: string;
   detailedSummary: string;
+  tags: string[];
   originalSummaryLength?: number;
   originalDetailedSummaryLength?: number;
 }
@@ -27,7 +29,7 @@ interface ProgressStats {
 }
 
 // プロンプト生成関数
-async function generateNewSummaries(title: string, content: string): Promise<SummaryResult> {
+async function generateNewSummariesAndTags(title: string, content: string): Promise<SummaryAndTagsResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not set');
@@ -43,7 +45,7 @@ async function generateNewSummaries(title: string, content: string): Promise<Sum
 以下の観点で分析し、指定された形式で回答してください：
 
 【回答形式】
-※重要: 各セクションのラベル（要約:、詳細要約:）のみ記載し、それ以外の説明や指示文は一切含めないでください。
+※重要: 各セクションのラベル（要約:、詳細要約:、タグ:）のみ記載し、それ以外の説明や指示文は一切含めないでください。
 
 要約:
 記事が解決する問題を100-120文字で要約。「〜の問題を〜により解決」の形式で、技術名と効果を含め句点で終了。文字数厳守。
@@ -55,7 +57,10 @@ async function generateNewSummaries(title: string, content: string): Promise<Sum
 ・提示されている解決策の技術的アプローチ（アルゴリズム、設計パターン等）
 ・実装方法の詳細（具体的なコード例、設定方法、手順）
 ・期待される効果と性能改善の指標（数値があれば含める）
-・実装時の注意点、制約事項、必要な環境`;
+・実装時の注意点、制約事項、必要な環境
+
+タグ:
+記事の内容を正確に表す3-7個のタグをカンマ区切りで記載。具体的な技術名、フレームワーク名、概念名を使用。`;
 
   const response = await fetch(apiUrl, {
     method: 'POST',
@@ -66,7 +71,7 @@ async function generateNewSummaries(title: string, content: string): Promise<Sum
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 800,
+        maxOutputTokens: 1000,
       }
     })
   });
@@ -79,30 +84,50 @@ async function generateNewSummaries(title: string, content: string): Promise<Sum
   const data = await response.json() as any;
   const responseText = data.candidates[0].content.parts[0].text.trim();
   
-  return parseSummary(responseText);
+  return parseSummaryAndTags(responseText);
 }
 
 // レスポンスのパース
-function parseSummary(text: string): SummaryResult {
+function parseSummaryAndTags(text: string): SummaryAndTagsResult {
   const lines = text.split('\n');
   let summary = '';
   let detailedSummary = '';
+  let tags: string[] = [];
   let isSummary = false;
   let isDetailedSummary = false;
+  let isTags = false;
   
   for (const line of lines) {
     if (line.match(/^要約[:：]/)) {
       isSummary = true;
       isDetailedSummary = false;
+      isTags = false;
       summary = line.replace(/^要約[:：]\s*/, '').trim();
     } else if (line.match(/^詳細要約[:：]/)) {
       isSummary = false;
       isDetailedSummary = true;
+      isTags = false;
       detailedSummary = line.replace(/^詳細要約[:：]\s*/, '').trim();
+    } else if (line.match(/^タグ[:：]/)) {
+      isSummary = false;
+      isDetailedSummary = false;
+      isTags = true;
+      const tagLine = line.replace(/^タグ[:：]\s*/, '').trim();
+      if (tagLine) {
+        tags = tagLine.split(/[,、，]/)
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0);
+      }
     } else if (isSummary && line.trim()) {
       summary += '\n' + line.trim();
     } else if (isDetailedSummary && line.trim()) {
       detailedSummary += '\n' + line.trim();
+    } else if (isTags && line.trim()) {
+      // タグが複数行にわたる場合
+      const moreTags = line.trim().split(/[,、，]/)
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
+      tags.push(...moreTags);
     }
   }
   
@@ -115,7 +140,10 @@ function parseSummary(text: string): SummaryResult {
     summary += '。';
   }
   
-  return { summary, detailedSummary };
+  // タグの正規化
+  tags = normalizeTags(tags);
+  
+  return { summary, detailedSummary, tags };
 }
 
 // プログレス表示
@@ -224,7 +252,7 @@ async function regenerateSummaries(options: RegenerateOptions = {}) {
           }
           
           if (!dryRun) {
-            const result = await generateNewSummaries(article.title, content);
+            const result = await generateNewSummariesAndTags(article.title, content);
             
             // 元の長さを保存
             result.originalSummaryLength = article.summary?.length;
@@ -239,8 +267,39 @@ async function regenerateSummaries(options: RegenerateOptions = {}) {
               }
             });
             
+            // タグの処理
+            if (result.tags.length > 0) {
+              // 既存のタグを取得または作成
+              const tagRecords = await Promise.all(
+                result.tags.map(async (tagName) => {
+                  const existingTag = await prisma.tag.findUnique({
+                    where: { name: tagName }
+                  });
+
+                  if (existingTag) {
+                    return existingTag;
+                  }
+
+                  return await prisma.tag.create({
+                    data: { name: tagName }
+                  });
+                })
+              );
+
+              // 記事にタグを関連付ける
+              await prisma.article.update({
+                where: { id: article.id },
+                data: {
+                  tags: {
+                    set: tagRecords.map(tag => ({ id: tag.id }))
+                  }
+                }
+              });
+            }
+            
             console.log(`✅ 更新: ${article.title.substring(0, 50)}...`);
             console.log(`   要約: ${result.originalSummaryLength}文字 → ${result.summary.length}文字`);
+            console.log(`   タグ: ${result.tags.join(', ')}`)
             
             stats.success++;
           } else {
