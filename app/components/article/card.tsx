@@ -11,6 +11,7 @@ import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleWithRelations } from '@/lib/types/article';
 import { cn } from '@/lib/utils';
 import { ReadingListButton } from '@/app/components/reading-list/ReadingListButton';
+import { ShareButton } from '@/app/components/article/share-button';
 
 interface ArticleCardProps {
   article: ArticleWithRelations;
@@ -154,6 +155,12 @@ export function ArticleCard({ article }: ArticleCardProps) {
             variant="ghost"
           />
           <div className="flex items-center gap-1">
+            <ShareButton
+              title={article.title}
+              url={article.url}
+              size="sm"
+              variant="ghost"
+            />
             <Button
               variant="ghost"
               size="sm"
