@@ -56,7 +56,7 @@ async function executeUpdatePipeline(
     if (!options?.skipSummaries) {
       console.log('📝 要約・タグ生成中...');
       const { stdout: summaryOutput }: ExecutionResult = await execAsync(
-        'npx tsx scripts/generate-summaries.ts'
+        'npx tsx scripts/core/manage-summaries.ts generate'
       );
       console.log(summaryOutput);
     }
@@ -181,7 +181,7 @@ cron.schedule('0 2 * * *', async () => {
   console.log(`\n🌙 深夜の要約生成を開始: ${startTime.toLocaleString('ja-JP')}`);
   
   try {
-    const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/generate-summaries.ts');
+    const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/core/manage-summaries.ts generate');
     console.log(summaryOutput);
     
     // 成功率が低い場合は30分後に再試行
@@ -192,7 +192,7 @@ cron.schedule('0 2 * * *', async () => {
         console.log('⏰ 30分後に再試行します...');
         setTimeout(async () => {
           console.log('\n🔁 要約生成を再試行中...');
-          const { stdout: retryOutput }: ExecutionResult = await execAsync('npx tsx scripts/generate-summaries.ts');
+          const { stdout: retryOutput }: ExecutionResult = await execAsync('npx tsx scripts/core/manage-summaries.ts generate');
           console.log(retryOutput);
         }, 30 * 60 * 1000);
       }
