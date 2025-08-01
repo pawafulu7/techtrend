@@ -77,7 +77,7 @@ JavaScript, React, フロントエンド, 状態管理`;
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 800,
+        maxOutputTokens: 1200,  // 詳細要約が途切れないよう増加
       }
     })
   });
@@ -300,8 +300,14 @@ async function generateSummaries(): Promise<GenerateResult> {
 
     const truncatedArticles = allArticlesWithSummary.filter(article => {
       const summary = article.summary || '';
+      const detailedSummary = article.detailedSummary || '';
       // 「。」で終わらない、または200文字で切れている要約
-      return !summary.endsWith('。') || summary.length === 200 || summary.length === 203;
+      const summaryTruncated = !summary.endsWith('。') || summary.length === 200 || summary.length === 203;
+      // 詳細要約が途切れている（句点で終わらない、かつ箇条書きでない）
+      const detailedTruncated = detailedSummary.length > 0 && 
+        !detailedSummary.match(/[。！？]$/) && 
+        !detailedSummary.includes('・');
+      return summaryTruncated || detailedTruncated;
     });
 
     // 4. タグがない記事を取得
