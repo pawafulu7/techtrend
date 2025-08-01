@@ -1,15 +1,32 @@
 'use client';
 
 import Link from 'next/link';
-import { Rss, TrendingUp, Menu, X, BarChart3, Bookmark, LineChart, Hash, Award, Database, Star, Filter } from 'lucide-react';
+import { Rss, TrendingUp, Menu, X, BarChart3, Bookmark, LineChart, Hash, Award, Database, Star, Filter, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { SITE_NAME } from '@/lib/constants';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { SearchBar } from '@/app/components/search/SearchBar';
+import { NavDropdown } from '@/app/components/layout/nav-dropdown';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // ナビゲーション項目の定義
+  const primaryNav = [
+    { href: '/', label: 'ホーム', icon: Home },
+    { href: '/popular', label: '人気', icon: TrendingUp },
+    { href: '/sources', label: 'ソース', icon: Database },
+  ];
+
+  const secondaryNav = [
+    { href: '/reading-list', label: '読書リスト', icon: Bookmark },
+    { href: '/favorites', label: 'お気に入り', icon: Star },
+    { href: '/tags', label: 'タグ', icon: Hash },
+    { href: '/stats', label: '統計', icon: BarChart3 },
+    { href: '/analytics', label: '分析', icon: LineChart },
+    { href: '/trends', label: 'トレンド', icon: TrendingUp },
+  ];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -23,60 +40,19 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            <Link 
-              href="/" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              ホーム
-            </Link>
-            <Link 
-              href="/reading-list" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              読書リスト
-            </Link>
-            <Link 
-              href="/popular" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              人気
-            </Link>
-            <Link 
-              href="/sources" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              ソース
-            </Link>
-            <Link 
-              href="/favorites" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              お気に入り
-            </Link>
-            <Link 
-              href="/tags" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              タグ
-            </Link>
-            <Link 
-              href="/stats" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              統計
-            </Link>
-            <Link 
-              href="/analytics" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              分析
-            </Link>
-            <Link 
-              href="/trends" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-            >
-              トレンド
-            </Link>
+            {/* 主要ナビゲーション */}
+            {primaryNav.map((item) => (
+              <Link 
+                key={item.href}
+                href={item.href} 
+                className="text-sm font-medium hover:text-primary transition-colors nav-item"
+              >
+                {item.label}
+              </Link>
+            ))}
+            
+            {/* ドロップダウンメニュー */}
+            <NavDropdown items={secondaryNav} />
           </nav>
 
           {/* Desktop Actions */}
@@ -123,77 +99,42 @@ export function Header() {
                 <Filter className="h-4 w-4 mr-2 inline" />
                 詳細検索
               </Link>
-              <Link 
-                href="/" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                ホーム
-              </Link>
-              <Link 
-                href="/reading-list" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Bookmark className="h-4 w-4 mr-2 inline" />
-                読書リスト
-              </Link>
-              <Link 
-                href="/popular" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Award className="h-4 w-4 mr-2 inline" />
-                人気
-              </Link>
-              <Link 
-                href="/sources" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Database className="h-4 w-4 mr-2 inline" />
-                ソース
-              </Link>
-              <Link 
-                href="/favorites" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Star className="h-4 w-4 mr-2 inline" />
-                お気に入り
-              </Link>
-              <Link 
-                href="/tags" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Hash className="h-4 w-4 mr-2 inline" />
-                タグ
-              </Link>
-              <Link 
-                href="/stats" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <BarChart3 className="h-4 w-4 mr-2 inline" />
-                統計
-              </Link>
-              <Link 
-                href="/analytics" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <LineChart className="h-4 w-4 mr-2 inline" />
-                分析
-              </Link>
-              <Link 
-                href="/trends" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <TrendingUp className="h-4 w-4 mr-2 inline" />
-                トレンド
-              </Link>
+              {/* 主要ナビゲーション */}
+              {primaryNav.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link 
+                    key={item.href}
+                    href={item.href} 
+                    className="text-sm font-medium hover:text-primary transition-colors nav-item"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Icon className="h-4 w-4 mr-2 inline" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+              
+              <div className="h-px bg-border my-2" />
+              
+              {/* その他のナビゲーション */}
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2 pb-1">
+                その他
+              </div>
+              {secondaryNav.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link 
+                    key={item.href}
+                    href={item.href} 
+                    className="text-sm font-medium hover:text-primary transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Icon className="h-4 w-4 mr-2 inline" />
+                    {item.label}
+                  </Link>
+                );
+              })}
             </div>
           </nav>
         )}
