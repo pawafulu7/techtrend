@@ -64,7 +64,7 @@ async function executeUpdatePipeline(
     // 3. 品質スコア計算
     console.log('📊 品質スコア計算中...');
     const { stdout: qualityOutput }: ExecutionResult = await execAsync(
-      'npx tsx scripts/calculate-quality-scores.ts'
+      'npx tsx scripts/core/manage-quality-scores.ts calculate'
     );
     console.log(qualityOutput);
     
