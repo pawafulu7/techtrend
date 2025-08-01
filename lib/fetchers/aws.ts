@@ -73,7 +73,7 @@ export class AWSFetcher extends BaseFetcher {
             // 取得元をタグとして追加
             const sourceMap: Record<string, string> = {
               'Security': 'Security Bulletins',
-              'WhatsNew': "What's New",
+              // 'WhatsNew': "What's New", // 削除：冗長なタグ
               'Blog': 'News Blog'
             };
             const sourceTag = sourceMap[feedInfo.name];
@@ -128,16 +128,19 @@ export class AWSFetcher extends BaseFetcher {
   private extractTags(item: AWSRSSItem, feedName: string): string[] {
     const tags: string[] = [];
 
-    // カテゴリから抽出
+    // カテゴリから抽出（空文字列を除外）
     if (item.categories && item.categories.length > 0) {
-      tags.push(...item.categories);
+      const validCategories = item.categories
+        .filter(cat => cat && cat.trim().length > 0)
+        .map(cat => cat.trim());
+      tags.push(...validCategories);
     }
 
     // フィード別の追加タグ
     if (feedName === 'Security') {
       tags.push('セキュリティ', 'Security');
     } else if (feedName === 'WhatsNew') {
-      tags.push('新機能', 'Updates');
+      // tags.push('新機能', 'Updates'); // 削除：冗長なタグ
     } else if (feedName === 'Blog') {
       tags.push('ブログ', 'Blog');
     }

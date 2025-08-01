@@ -10,6 +10,7 @@ import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
 import { RelatedArticles } from '@/app/components/article/related-articles';
 import { ArticleTracker } from '@/app/components/analytics/ArticleTracker';
+import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summary-display';
 
 interface PageProps {
   params: Promise<{
@@ -119,12 +120,10 @@ export default async function ArticlePage({ params }: PageProps) {
 
             <CardContent className="space-y-4">
               {article.detailedSummary ? (
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm font-medium mb-2">記事の要約</p>
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {article.detailedSummary}
-                  </div>
-                </div>
+                <DetailedSummaryDisplay 
+                  articleId={article.id} 
+                  detailedSummary={article.detailedSummary} 
+                />
               ) : article.summary ? (
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm font-medium mb-1">要約</p>

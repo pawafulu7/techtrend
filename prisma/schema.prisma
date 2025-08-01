@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,43 +8,38 @@ datasource db {
 }
 
 model Article {
-  id               String   @id @default(cuid())
-  title            String
-  url              String   @unique
-  summary          String?  // 短い要約（一覧表示用：60-80文字）
-  detailedSummary  String?  // 詳細要約（詳細画面用：200-300文字）
-  thumbnail        String?
-  content          String?  // 将来的に削除予定
-  publishedAt      DateTime
-  source           Source   @relation(fields: [sourceId], references: [id])
-  sourceId         String
-  tags             Tag[]
-  bookmarks        Int      @default(0)
-  qualityScore     Float    @default(0)
-  userVotes        Int      @default(0)
-  difficulty       String?  // beginner, intermediate, advanced
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  title           String
+  url             String   @unique
+  summary         String?
+  thumbnail       String?
+  content         String?
+  publishedAt     DateTime
+  sourceId        String
+  bookmarks       Int      @default(0)
+  qualityScore    Float    @default(0)
+  userVotes       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  difficulty      String?
+  detailedSummary String?
+  source          Source   @relation(fields: [sourceId], references: [id])
+  tags            Tag[]    @relation("ArticleToTag")
 }
 
 model Source {
   id        String    @id @default(cuid())
   name      String    @unique
-  type      SourceType
+  type      String
   url       String
   enabled   Boolean   @default(true)
-  articles  Article[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  articles  Article[]
 }
 
 model Tag {
   id       String    @id @default(cuid())
   name     String    @unique
-  articles Article[]
-}
-
-enum SourceType {
-  RSS
-  API
+  articles Article[] @relation("ArticleToTag")
 }
