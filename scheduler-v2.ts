@@ -20,7 +20,9 @@ const RSS_SOURCES = [
   'Rails Releases',
   'AWS',
   'SRE',
-  'Google Developers Blog'
+  'Google Developers Blog',
+  'GitHub Blog',
+  'Microsoft Developer Blog'
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）
