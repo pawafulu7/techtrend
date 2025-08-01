@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { SITE_NAME } from '@/lib/constants';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { SearchBar } from '@/app/components/search/SearchBar';
-import { NavDropdown } from '@/app/components/layout/nav-dropdown';
+// import { NavDropdown } from '@/app/components/layout/nav-dropdown';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -52,7 +52,7 @@ export function Header() {
             ))}
             
             {/* ドロップダウンメニュー */}
-            <NavDropdown items={secondaryNav} />
+            {/* <NavDropdown items={secondaryNav} /> */}
           </nav>
 
           {/* Desktop Actions */}

@@ -12,8 +12,8 @@ import { RailsReleasesFetcher } from './rails-releases';
 import { AWSFetcher } from './aws';
 import { SREFetcher } from './sre';
 import { GoogleDevBlogFetcher } from './google-dev-blog';
-import { GitHubBlogFetcher } from './github-blog';
-import { MicrosoftDevBlogFetcher } from './microsoft-dev-blog';
+// import { GitHubBlogFetcher } from './github-blog';
+// import { MicrosoftDevBlogFetcher } from './microsoft-dev-blog';
 
 export function createFetcher(source: Source): BaseFetcher {
   switch (source.name) {
@@ -41,10 +41,10 @@ export function createFetcher(source: Source): BaseFetcher {
       return new SREFetcher(source);
     case 'Google Developers Blog':
       return new GoogleDevBlogFetcher(source);
-    case 'GitHub Blog':
-      return new GitHubBlogFetcher(source);
-    case 'Microsoft Developer Blog':
-      return new MicrosoftDevBlogFetcher(source);
+    // case 'GitHub Blog':
+    //   return new GitHubBlogFetcher(source);
+    // case 'Microsoft Developer Blog':
+    //   return new MicrosoftDevBlogFetcher(source);
     default:
       throw new Error(`Unsupported source: ${source.name}`);
   }
@@ -63,8 +63,8 @@ export {
   RailsReleasesFetcher,
   AWSFetcher,
   SREFetcher,
-  GoogleDevBlogFetcher,
-  GitHubBlogFetcher,
-  MicrosoftDevBlogFetcher
+  GoogleDevBlogFetcher
+  // GitHubBlogFetcher,
+  // MicrosoftDevBlogFetcher
 };
 export type { FetchResult } from './base';

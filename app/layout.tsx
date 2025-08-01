@@ -5,7 +5,7 @@ import { Footer } from "@/app/components/layout/footer";
 import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
 import { ToastProvider } from "@/providers/toast-provider";
 import { QueryProvider } from "@/app/providers/query-provider";
-import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
+// import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -48,12 +48,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <QueryProvider>
-          <OnboardingProvider>
+          {/* <OnboardingProvider> */}
             <Header />
             <main className="flex-1 overflow-auto">{children}</main>
             <Footer />
             <ToastProvider />
-          </OnboardingProvider>
+          {/* </OnboardingProvider> */}
         </QueryProvider>
       </body>
     </html>
