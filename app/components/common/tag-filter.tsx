@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tag as TagIcon, Search, X } from 'lucide-react';
+import { Tag as TagIcon, Search, X, ChevronRight } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,12 +15,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { TAG_CATEGORIES, getCategoryInfo } from '@/lib/constants/tag-categories';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface TagFilterProps {
   tags: Array<{
     id: string;
     name: string;
     count: number;
+    category?: string | null;
   }>;
 }
 
@@ -51,6 +54,36 @@ export function TagFilter({ tags }: TagFilterProps) {
   const filteredTags = tags.filter(tag =>
     tag.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // カテゴリー別にタグをグループ化
+  const groupedTags = useMemo(() => {
+    const groups: Record<string, typeof tags> = {
+      uncategorized: []
+    };
+    
+    // カテゴリーごとの空配列を初期化
+    Object.keys(TAG_CATEGORIES).forEach(category => {
+      groups[category] = [];
+    });
+    
+    // タグをカテゴリー別に振り分け
+    filteredTags.forEach(tag => {
+      const category = tag.category || 'uncategorized';
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(tag);
+    });
+    
+    // 空のカテゴリーを削除
+    Object.keys(groups).forEach(key => {
+      if (groups[key].length === 0) {
+        delete groups[key];
+      }
+    });
+    
+    return groups;
+  }, [filteredTags]);
 
   // タグ選択を更新
   const updateTags = (newTags: string[], mode: 'OR' | 'AND' = filterMode) => {
@@ -152,31 +185,52 @@ export function TagFilter({ tags }: TagFilterProps) {
         </div>
       )}
 
-      {/* タグ一覧 */}
-      <div className="space-y-1 max-h-96 overflow-y-auto">
-        {filteredTags.map((tag) => {
-          const isSelected = selectedTags.includes(tag.name);
+      {/* カテゴリー別タグ一覧 */}
+      <div className="space-y-2 max-h-96 overflow-y-auto">
+        {Object.entries(groupedTags).map(([categoryKey, categoryTags]) => {
+          const categoryInfo = categoryKey === 'uncategorized' 
+            ? { name: '未分類', color: 'text-gray-600 bg-gray-50 border-gray-200' }
+            : getCategoryInfo(categoryKey as keyof typeof TAG_CATEGORIES);
+          
           return (
-            <div
-              key={tag.id}
-              className={cn(
-                "flex items-center justify-between p-2 rounded cursor-pointer transition-colors",
-                isSelected 
-                  ? "bg-primary/10 hover:bg-primary/20" 
-                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
-              )}
-              onClick={() => toggleTag(tag.name)}
-            >
-              <span className={cn(
-                "text-sm",
-                isSelected && "font-medium"
-              )}>
-                {tag.name}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {tag.count}
-              </span>
-            </div>
+            <Collapsible key={categoryKey} defaultOpen={true}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
+                <div className="flex items-center gap-2">
+                  <ChevronRight className="h-4 w-4 transition-transform data-[state=open]:rotate-90" />
+                  <span className="text-sm font-medium">{categoryInfo.name}</span>
+                  <Badge variant="secondary" className="text-xs">
+                    {categoryTags.length}
+                  </Badge>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-6 space-y-1">
+                {categoryTags.map((tag) => {
+                  const isSelected = selectedTags.includes(tag.name);
+                  return (
+                    <div
+                      key={tag.id}
+                      className={cn(
+                        "flex items-center justify-between p-2 rounded cursor-pointer transition-colors",
+                        isSelected 
+                          ? "bg-primary/10 hover:bg-primary/20" 
+                          : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                      )}
+                      onClick={() => toggleTag(tag.name)}
+                    >
+                      <span className={cn(
+                        "text-sm",
+                        isSelected && "font-medium"
+                      )}>
+                        {tag.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {tag.count}
+                      </span>
+                    </div>
+                  );
+                })}
+              </CollapsibleContent>
+            </Collapsible>
           );
         })}
       </div>

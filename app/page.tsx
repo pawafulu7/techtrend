@@ -153,6 +153,7 @@ async function getPopularTags() {
     id: tag.id,
     name: tag.name,
     count: tag._count.articles,
+    category: tag.category,
   }));
 }
 
