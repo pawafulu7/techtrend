@@ -43,9 +43,37 @@ export async function GET(request: NextRequest) {
     // Get articles
     const articles = await prisma.article.findMany({
       where,
-      include: {
-        source: true,
-        tags: true,
+      select: {
+        id: true,
+        title: true,
+        url: true,
+        summary: true,
+        publishedAt: true,
+        qualityScore: true,
+        bookmarks: true,
+        userVotes: true,
+        difficulty: true,
+        createdAt: true,
+        updatedAt: true,
+        sourceId: true,
+        // Exclude: content, thumbnail, detailedSummary
+        source: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            url: true,
+            enabled: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: {
         [sortBy]: sortOrder,

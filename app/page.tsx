@@ -77,8 +77,23 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
     prisma.article.count({ where }),
     prisma.article.findMany({
       where,
-      include: {
-        source: true,
+      select: {
+        id: true,
+        title: true,
+        url: true,
+        summary: true,
+        publishedAt: true,
+        qualityScore: true,
+        bookmarks: true,
+        userVotes: true,
+        difficulty: true,
+        // Exclude: content, thumbnail, detailedSummary
+        source: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         tags: {
           select: {
             id: true,

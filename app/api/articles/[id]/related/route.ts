@@ -68,7 +68,7 @@ export async function GET(
       GROUP BY a.id
       HAVING commonTags > 0
       ORDER BY commonTags DESC, a.publishedAt DESC
-      LIMIT 20
+      LIMIT 10
       `,
       ...tagIds,
       articleId
@@ -124,8 +124,7 @@ export async function GET(
         };
       })
       .filter(Boolean)
-      .sort((a, b) => b!.similarity - a!.similarity)
-      .slice(0, 10);
+      .sort((a, b) => b!.similarity - a!.similarity);
 
     return NextResponse.json({
       articles: relatedArticles,
