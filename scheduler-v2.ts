@@ -39,7 +39,6 @@ async function executeUpdatePipeline(
   label: string,
   options?: {
     skipSummaries?: boolean;
-    skipDetailedSummaries?: boolean;
   }
 ): Promise<void> {
   const startTime = new Date();
@@ -77,14 +76,6 @@ async function executeUpdatePipeline(
     );
     console.log(difficultyOutput);
     
-    // 5. 詳細要約生成（オプション）
-    if (!options?.skipDetailedSummaries) {
-      console.log('📄 詳細要約生成中...');
-      const { stdout: detailedOutput }: ExecutionResult = await execAsync(
-        'npx tsx scripts/generate-detailed-summaries.ts'
-      );
-      console.log(detailedOutput);
-    }
     
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
@@ -216,14 +207,12 @@ cron.schedule('0 2 * * *', async () => {
     // 全ソースを結合
     const allSources = [...RSS_SOURCES, ...SCRAPING_SOURCES];
     
-    // 要約生成と詳細要約生成をスキップして実行
+    // 要約生成をスキップして実行
     await executeUpdatePipeline(allSources, '初回実行', {
-      skipSummaries: true,
-      skipDetailedSummaries: true
+      skipSummaries: true
     });
     
     console.log('💡 要約生成は深夜2時に実行されます');
-    console.log('💡 詳細要約生成も深夜に実行されます');
     
     console.log('✅ 初回実行が完了しました\n');
     console.log('⏳ 次回の更新:');
