@@ -33,10 +33,10 @@ const customJestConfig = {
   ],
   coverageThreshold: {
     global: {
-      branches: 5,
-      functions: 5,
-      lines: 5,
-      statements: 5,
+      branches: 20,
+      functions: 20,
+      lines: 20,
+      statements: 20,
     },
   },
   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
