@@ -17,8 +17,8 @@ import { RailsReleasesFetcher } from '../lib/fetchers/rails-releases';
 import { AWSFetcher } from '../lib/fetchers/aws';
 import { SREFetcher } from '../lib/fetchers/sre';
 import { GoogleDevBlogFetcher } from '../lib/fetchers/google-dev-blog';
-import { GitHubBlogFetcher } from '../lib/fetchers/github-blog';
-import { MicrosoftDevBlogFetcher } from '../lib/fetchers/microsoft-dev-blog';
+// import { GitHubBlogFetcher } from '../lib/fetchers/github-blog';
+// import { MicrosoftDevBlogFetcher } from '../lib/fetchers/microsoft-dev-blog';
 import { BaseFetcher } from '../lib/fetchers/base';
 
 const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
@@ -34,8 +34,8 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'AWS': AWSFetcher,
   'SRE': SREFetcher,
   'Google Developers Blog': GoogleDevBlogFetcher,
-  'GitHub Blog': GitHubBlogFetcher,
-  'Microsoft Developer Blog': MicrosoftDevBlogFetcher,
+  // 'GitHub Blog': GitHubBlogFetcher,
+  // 'Microsoft Developer Blog': MicrosoftDevBlogFetcher,
 };
 
 interface CollectResult {

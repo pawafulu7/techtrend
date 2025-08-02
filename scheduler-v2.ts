@@ -21,8 +21,8 @@ const RSS_SOURCES = [
   'AWS',
   'SRE',
   'Google Developers Blog',
-  'GitHub Blog',
-  'Microsoft Developer Blog'
+  // 'GitHub Blog',
+  // 'Microsoft Developer Blog'
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）
