@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { createFetcher } from '@/lib/fetchers';
 import { ArticleSummarizer } from '@/lib/ai';
-import type { ApiResponse } from '@/lib/types/api';
-
-interface CollectResult {
-  source: string;
-  fetched: number;
-  created: number;
-  errors: string[];
-}
+import type { ApiResponse, CollectResult } from '@/types/api';
 
 export async function POST(request: NextRequest) {
   try {
@@ -109,7 +102,7 @@ export async function POST(request: NextRequest) {
           totalErrors: results.reduce((sum, r) => sum + r.errors.length, 0),
         },
       },
-    } as ApiResponse<{ results: CollectResult[]; summary: any }>);
+    } as ApiResponse<{ results: CollectResult[]; summary: { totalFetched: number; totalCreated: number; totalErrors: number; } }>);
   } catch (error) {
     console.error('Error collecting feeds:', error);
     return NextResponse.json({

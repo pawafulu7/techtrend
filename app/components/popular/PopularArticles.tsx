@@ -14,7 +14,7 @@ import {
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWithRelations } from '@/types/models';
 
 interface RankedArticle extends ArticleWithRelations {
   rank: number;

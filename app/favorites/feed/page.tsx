@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useFavoriteSources } from '@/lib/favorites/hooks';
 import Link from 'next/link';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWithRelations } from '@/types/models';
 import {
   Select,
   SelectContent,
@@ -181,7 +181,7 @@ export default function FavoritesFeedPage() {
 
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-muted-foreground" />
-                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                <Select value={sortBy} onValueChange={(v: 'recent' | 'popular' | 'quality') => setSortBy(v)}>
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />
                   </SelectTrigger>

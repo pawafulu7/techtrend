@@ -10,7 +10,7 @@ import { prisma } from '@/lib/database';
 import { ARTICLES_PER_PAGE } from '@/lib/constants';
 import { removeDuplicates } from '@/lib/utils/duplicate-detection';
 import Link from 'next/link';
-import type { ArticleWhereInput, ArticleOrderByInput } from '@/types/prisma';
+import type { Prisma } from '@prisma/client';
 
 interface PageProps {
   searchParams: Promise<{
@@ -32,7 +32,7 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
   const sortOrder = (params.sortOrder || 'desc') as 'asc' | 'desc';
 
   // Build where clause
-  const where: ArticleWhereInput = {};
+  const where: Prisma.ArticleWhereInput = {};
   if (params.sourceId) {
     where.sourceId = params.sourceId;
   }
@@ -104,7 +104,7 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
       },
       orderBy: {
         [sortBy]: sortOrder,
-      } as ArticleOrderByInput,
+      } as Prisma.ArticleOrderByWithRelationInput,
       skip: (page - 1) * limit,
       take: limit,
     })

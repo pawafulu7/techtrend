@@ -1,11 +1,7 @@
 'use client';
 
 import { ArticleCard } from './card';
-import type { ArticleWithRelations } from '@/lib/types/article';
-
-interface ArticleListProps {
-  articles: ArticleWithRelations[];
-}
+import type { ArticleListProps } from '@/types/components';
 
 export function ArticleList({ articles }: ArticleListProps) {
   if (articles.length === 0) {

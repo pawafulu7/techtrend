@@ -1,23 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
+import type { Article, Tag } from '@prisma/client';
 
-interface Article {
-  id: string;
-  title: string;
-  url: string;
-  summary: string;
-  publishedAt: string;
-  qualityScore: number;
-  difficulty?: string | null;
+interface RelatedArticle extends Omit<Article, 'source'> {
   source: string;
-  tags: {
-    id: string;
-    name: string;
-  }[];
+  tags: Tag[];
   similarity: number;
 }
 
 export function useRelatedArticles(articleId: string) {
-  return useQuery<Article[]>({
+  return useQuery<RelatedArticle[]>({
     queryKey: ['related-articles', articleId],
     queryFn: async () => {
       const response = await fetch(`/api/articles/${articleId}/related`);

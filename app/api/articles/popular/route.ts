@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import type { ArticleWithRelations } from '@/types/models';
+import type { ApiResponse } from '@/types/api';
 
 const prisma = new PrismaClient();
 
@@ -7,7 +9,7 @@ type Period = 'today' | 'week' | 'month' | 'all';
 type Metric = 'bookmarks' | 'votes' | 'quality' | 'combined';
 
 // キャッシュ管理
-const cache = new Map<string, { data: any; timestamp: number }>();
+const cache = new Map<string, { data: ApiResponse<ArticleWithRelations[]>; timestamp: number }>();
 const CACHE_DURATION = {
   today: 10 * 60 * 1000,      // 10分
   week: 60 * 60 * 1000,       // 1時間

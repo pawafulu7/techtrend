@@ -41,9 +41,9 @@ export function TagStats() {
       
       // 成長率の高いタグ
       const growthTags = activeData.tags
-        .filter((tag: any) => tag.trend === 'rising')
+        .filter((tag: { name: string; count: number; trend?: string }) => tag.trend === 'rising')
         .slice(0, 5)
-        .map((tag: any) => ({
+        .map((tag: { name: string; count: number; trend?: string }) => ({
           name: tag.name,
           growthRate: Math.round(Math.random() * 50 + 50) // 仮の成長率
         }));

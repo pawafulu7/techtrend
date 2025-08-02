@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { ArticleSummarizer } from '@/lib/ai';
+import { Prisma } from '@prisma/client';
 import type { ApiResponse } from '@/lib/types/api';
+import type { ArticleWithRelations } from '@/types/models';
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: updatedArticle,
-    } as ApiResponse<any>);
+    } as ApiResponse<ArticleWithRelations>);
   } catch (error) {
     console.error('Error generating summary:', error);
     return NextResponse.json({
@@ -89,7 +91,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Get articles
-    const whereClause: any = {
+    const whereClause: Prisma.ArticleWhereInput = {
       id: { in: articleIds },
       content: { not: null },
     };

@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { ArticleCard } from '@/app/components/article/card';
 import { SearchFilters } from '@/app/components/search/SearchFilters';
 import { SearchResults } from '@/app/components/search/SearchResults';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWithRelations } from '@/types/models';
 
 interface SearchResponse {
   articles: ArticleWithRelations[];

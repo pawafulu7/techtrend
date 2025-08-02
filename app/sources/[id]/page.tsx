@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWithRelations } from '@/types/models';
 import type { Source } from '@prisma/client';
 
 interface SourceDetail {

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWithRelations } from '@/types/models';
 import {
   Collapsible,
   CollapsibleContent,
@@ -62,7 +62,12 @@ export default function AdvancedSearchPage() {
   });
 
   const [results, setResults] = useState<ArticleWithRelations[]>([]);
-  const [facets, setFacets] = useState<any>({});
+  interface SearchFacets {
+    tags?: Array<{ name: string; count: number }>;
+    sources?: Array<{ name: string; count: number }>;
+    difficulty?: Array<{ level: string; count: number }>;
+  }
+  const [facets, setFacets] = useState<SearchFacets>({});
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -372,7 +377,7 @@ export default function AdvancedSearchPage() {
                       <Label>並び順</Label>
                       <Select
                         value={filters.sortBy}
-                        onValueChange={(value: any) => setFilters({ ...filters, sortBy: value })}
+                        onValueChange={(value: 'relevance' | 'date' | 'popularity' | 'quality') => setFilters({ ...filters, sortBy: value })}
                       >
                         <SelectTrigger>
                           <SelectValue />

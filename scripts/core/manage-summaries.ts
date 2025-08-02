@@ -1,4 +1,4 @@
-import { PrismaClient, Article, Source } from '@prisma/client';
+import { PrismaClient, Article, Source, Prisma } from '@prisma/client';
 import fetch from 'node-fetch';
 import { normalizeTag, normalizeTags } from '../../lib/utils/tag-normalizer';
 
@@ -356,7 +356,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
 
   try {
     // 1. 要約がない記事を取得
-    const articlesWithoutSummaryQuery: any = {
+    const articlesWithoutSummaryQuery: Prisma.ArticleFindManyArgs = {
       where: { summary: null },
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
@@ -403,7 +403,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     }
 
     // 3. 途切れた要約を持つ記事を取得
-    const allArticlesWithSummaryQuery: any = {
+    const allArticlesWithSummaryQuery: Prisma.ArticleFindManyArgs = {
       where: {
         summary: { not: null }
       },
@@ -424,7 +424,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     });
 
     // 4. タグがない記事を取得
-    const articlesWithoutTagsQuery: any = {
+    const articlesWithoutTagsQuery: Prisma.ArticleFindManyArgs = {
       where: {
         tags: {
           none: {}
@@ -623,7 +623,7 @@ async function regenerateSummaries(options: Options): Promise<GenerateResult> {
   const startTime = Date.now();
 
   try {
-    const query: any = {
+    const query: Prisma.ArticleFindManyArgs = {
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
       take: options.batch || 10
@@ -736,7 +736,7 @@ async function generateMissingSummaries(options: Options): Promise<GenerateResul
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - (options.days || 7));
 
-    const query: any = {
+    const query: Prisma.ArticleFindManyArgs = {
       where: {
         OR: [
           { summary: null },

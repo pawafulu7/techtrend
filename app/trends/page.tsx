@@ -24,7 +24,10 @@ interface NewTag {
 
 interface TrendAnalysis {
   topTags: { name: string; totalCount: number }[];
-  timeline: any[];
+  timeline: Array<{
+    date: string;
+    tags: Record<string, number>;
+  }>;
 }
 
 export default function TrendsPage() {

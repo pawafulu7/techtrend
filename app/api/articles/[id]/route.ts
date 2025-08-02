@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { Prisma } from '@prisma/client';
 import type { ApiResponse } from '@/lib/types/api';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWithRelations } from '@/types/models';
 
 export async function GET(
   request: NextRequest,

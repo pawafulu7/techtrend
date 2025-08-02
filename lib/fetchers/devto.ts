@@ -1,6 +1,6 @@
 import { Source } from '@prisma/client';
 import { BaseFetcher, FetchResult } from './base';
-import { CreateArticleInput } from '@/lib/types/article';
+import { CreateArticleInput } from '@/types/models';
 
 interface DevToArticle {
   id: number;

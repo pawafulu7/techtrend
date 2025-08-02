@@ -38,21 +38,21 @@
 - ✅ `app/api/articles/search/route.ts`: whereConditions
 - ✅ `app/api/articles/search/advanced/route.ts`: whereConditions
 - ✅ `app/api/articles/[id]/route.ts`: updateData
+- ✅ `app/api/ai/summarize/route.ts`: whereClause
+- ✅ `lib/ai/gemini.ts`: model
+- ✅ `scripts/core/manage-summaries.ts`: query objects
+- ✅ `scripts/core/manage-quality-scores.ts`: query objects
+- ✅ `app/components/tags/TagStats.tsx`: tag
+- ✅ `app/trends/page.tsx`: timeline
+- ✅ `app/favorites/page.tsx`: value (onValueChange)
+- ✅ `app/favorites/feed/page.tsx`: v (setSortBy)
+- ✅ `app/search/advanced/page.tsx`: value (onValueChange)
 
 ### 修正予定
-- ⏳ `app/api/ai/summarize/route.ts`: whereClause
 - ⏳ `app/api/feeds/collect/route.ts`: summary
 - ⏳ `app/api/trends/analysis/route.ts`: dayData
 - ⏳ `app/api/articles/popular/route.ts`: cache data
-- ⏳ `app/components/tags/TagStats.tsx`: tag
-- ⏳ `app/trends/page.tsx`: timeline
-- ⏳ `app/favorites/page.tsx`: value (onValueChange)
-- ⏳ `app/favorites/feed/page.tsx`: v (setSortBy)
-- ⏳ `app/search/advanced/page.tsx`: value (onValueChange)
-- ⏳ `lib/ai/gemini.ts`: model
 - ⏳ `lib/favorites/hooks.ts`: f (map callbacks)
-- ⏳ `scripts/core/manage-quality-scores.ts`: query objects
-- ⏳ `scripts/core/manage-summaries.ts`: query objects
 
 ## 型定義の使用方法
 

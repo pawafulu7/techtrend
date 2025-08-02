@@ -1,7 +1,7 @@
 import Parser from 'rss-parser';
 import { Source } from '@prisma/client';
 import { BaseFetcher, FetchResult } from './base';
-import { CreateArticleInput } from '@/lib/types/article';
+import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
 
 interface AWSRSSItem {

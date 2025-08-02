@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { calculateQualityScore, checkCategoryQuality } from '../../lib/utils/quality-score';
 
 const prisma = new PrismaClient();
@@ -98,7 +98,7 @@ async function calculateAllQualityScores(options: Options) {
 
   try {
     // 記事を取得
-    const query: any = {
+    const query: Prisma.ArticleFindManyArgs = {
       include: {
         source: true,
         tags: true,
@@ -183,7 +183,7 @@ async function calculateAllQualityScores(options: Options) {
     });
 
     // 上位10記事を表示
-    const topArticlesQuery: any = {
+    const topArticlesQuery: Prisma.ArticleFindManyArgs = {
       take: 10,
       orderBy: { qualityScore: 'desc' },
       include: { source: true },
@@ -214,7 +214,7 @@ async function fixZeroScores(options: Options) {
 
   try {
     // 品質スコアが0の記事を取得
-    const query: any = {
+    const query: Prisma.ArticleFindManyArgs = {
       where: {
         qualityScore: 0
       },

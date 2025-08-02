@@ -1,5 +1,5 @@
 import { PrismaClient, Source } from '@prisma/client';
-import { CreateArticleInput } from '@/lib/types/article';
+import { CreateArticleInput } from '@/types/models';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 
 const prisma = new PrismaClient();

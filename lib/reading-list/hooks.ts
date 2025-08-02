@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { readingListDB, ReadingListItem, ReadingListFolder, ReadingStats } from './db';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWithRelations } from '@/types/models';
 
 // 記事が読書リストにあるかチェック
 export function useIsInReadingList(articleId: string) {

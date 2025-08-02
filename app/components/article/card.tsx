@@ -8,14 +8,10 @@ import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils/date';
 import { getDomain } from '@/lib/utils/url';
 import { getSourceColor } from '@/lib/utils/source-colors';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { ReadingListButton } from '@/app/components/reading-list/ReadingListButton';
 import { ShareButton } from '@/app/components/article/share-button';
-
-interface ArticleCardProps {
-  article: ArticleWithRelations;
-}
 
 export function ArticleCard({ article }: ArticleCardProps) {
   const [votes, setVotes] = useState(article.userVotes || 0);

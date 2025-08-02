@@ -1,9 +1,4 @@
-import { Article, Source, Tag } from '@prisma/client';
-
-interface ArticleWithDetails extends Article {
-  source: Source;
-  tags: Tag[];
-}
+import type { ArticleWithDetails } from '@/types/models';
 
 export function calculateQualityScore(article: ArticleWithDetails): number {
   let score = 0;

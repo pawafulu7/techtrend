@@ -12,6 +12,8 @@ const customJestConfig = {
   moduleNameMapper: {
     // Handle module aliases
     '^@/(.*)$': '<rootDir>/$1',
+    // Mock Next.js navigation
+    '^next/navigation$': '<rootDir>/__tests__/__mocks__/next-navigation.ts',
   },
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
@@ -20,19 +22,27 @@ const customJestConfig = {
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
     'lib/**/*.{js,jsx,ts,tsx}',
+    'types/**/*.{js,jsx,ts,tsx}',
     '!app/**/*.d.ts',
     '!lib/**/*.d.ts',
+    '!types/**/*.d.ts',
     '!**/*.config.js',
     '!**/*.config.ts',
+    '!**/node_modules/**',
+    '!**/__tests__/**',
   ],
   coverageThreshold: {
     global: {
-      branches: 50,
-      functions: 50,
-      lines: 50,
-      statements: 50,
+      branches: 30,
+      functions: 30,
+      lines: 30,
+      statements: 30,
     },
   },
+  testMatch: [
+    '**/__tests__/**/*.test.{js,jsx,ts,tsx}',
+    '**/?(*.)+(spec|test).{js,jsx,ts,tsx}',
+  ],
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

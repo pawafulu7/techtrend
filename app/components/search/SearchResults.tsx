@@ -3,7 +3,7 @@
 import { ArticleCard } from '@/app/components/article/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWithRelations } from '@/types/models';
 
 interface SearchResultsProps {
   articles: ArticleWithRelations[];

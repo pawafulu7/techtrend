@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Bookmark, BookmarkCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsInReadingList, useReadingListActions } from '@/lib/reading-list/hooks';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWithRelations } from '@/types/models';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,

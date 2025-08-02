@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { analyticsTracker } from '@/lib/analytics/tracking';
-import type { ArticleWithRelations } from '@/lib/types/article';
+import type { ArticleWithRelations } from '@/types/models';
 
 interface ArticleTrackerProps {
   article: ArticleWithRelations;

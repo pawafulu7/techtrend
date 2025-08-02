@@ -50,7 +50,14 @@ export default function FavoritesPage() {
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderColor, setNewFolderColor] = useState('#3B82F6');
   const [showFolderDialog, setShowFolderDialog] = useState(false);
-  const [sources, setSources] = useState<any[]>([]);
+  interface SourceData {
+    id: string;
+    name: string;
+    url: string;
+    category: string;
+    description?: string;
+  }
+  const [sources, setSources] = useState<SourceData[]>([]);
   const [loadingSources, setLoadingSources] = useState(true);
 
   // ソース情報を取得
@@ -122,7 +129,7 @@ export default function FavoritesPage() {
   const sourcesMap = sources.reduce((acc, source) => {
     acc[source.id] = source;
     return acc;
-  }, {} as Record<string, any>);
+  }, {} as Record<string, SourceData>);
 
   if (isLoading || loadingSources) {
     return (
@@ -354,7 +361,7 @@ export default function FavoritesPage() {
                               {favorite.notifications.enabled && (
                                 <Select
                                   value={favorite.notifications.frequency}
-                                  onValueChange={(value: any) =>
+                                  onValueChange={(value: 'all' | 'daily' | 'weekly') =>
                                     updateNotifications(favorite.sourceId, {
                                       ...favorite.notifications,
                                       frequency: value

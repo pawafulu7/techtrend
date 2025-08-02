@@ -39,7 +39,7 @@ export function useFavoriteSources() {
         
         if (storedFavorites) {
           const parsed = JSON.parse(storedFavorites);
-          setFavorites(parsed.map((f: any) => ({
+          setFavorites(parsed.map((f: FavoriteSource) => ({
             ...f,
             addedAt: new Date(f.addedAt)
           })));
@@ -47,7 +47,7 @@ export function useFavoriteSources() {
         
         if (storedFolders) {
           const parsed = JSON.parse(storedFolders);
-          setFolders(parsed.map((f: any) => ({
+          setFolders(parsed.map((f: FavoriteFolder) => ({
             ...f,
             createdAt: new Date(f.createdAt)
           })));
@@ -214,7 +214,7 @@ export function useFavoriteSources() {
       const data = JSON.parse(jsonData);
       
       if (data.favorites) {
-        const importedFavorites = data.favorites.map((f: any) => ({
+        const importedFavorites = data.favorites.map((f: FavoriteSource) => ({
           ...f,
           addedAt: new Date(f.addedAt)
         }));
@@ -222,7 +222,7 @@ export function useFavoriteSources() {
       }
       
       if (data.folders) {
-        const importedFolders = data.folders.map((f: any) => ({
+        const importedFolders = data.folders.map((f: FavoriteFolder) => ({
           ...f,
           createdAt: new Date(f.createdAt)
         }));
