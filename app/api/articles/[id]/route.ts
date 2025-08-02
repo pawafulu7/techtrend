@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
+import { Prisma } from '@prisma/client';
 import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/lib/types/article';
 
@@ -45,7 +46,7 @@ export async function PATCH(
     const body = await request.json();
     const { title, summary, thumbnail, content, tagNames } = body;
 
-    const updateData: any = {};
+    const updateData: Prisma.ArticleUpdateInput = {};
     if (title !== undefined) updateData.title = title;
     if (summary !== undefined) updateData.summary = summary;
     if (thumbnail !== undefined) updateData.thumbnail = thumbnail;

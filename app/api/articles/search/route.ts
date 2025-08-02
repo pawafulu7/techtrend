@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // 基本的なWHERE条件
-    const whereConditions: any = {};
+    const whereConditions: Prisma.ArticleWhereInput = {};
 
     // タグフィルター
     if (tags.length > 0) {

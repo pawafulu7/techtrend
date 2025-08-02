@@ -1,10 +1,5 @@
-import { Article, Source } from '@prisma/client';
-import { CreateArticleInput } from '@/lib/types/article';
-
-export interface FetchResult {
-  articles: CreateArticleInput[];
-  errors: Error[];
-}
+import { Source } from '@prisma/client';
+import { CreateArticleInput, FetchResult } from '@/types/fetchers';
 
 export abstract class BaseFetcher {
   protected source: Source;
