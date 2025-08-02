@@ -1,0 +1,2 @@
+#!/usr/bin/env npx tsx
+require('./lib/cli/index.ts');
