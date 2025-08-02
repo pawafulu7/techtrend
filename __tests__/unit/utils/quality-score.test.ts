@@ -86,23 +86,22 @@ describe('calculateQualityScore', () => {
 describe('checkCategoryQuality', () => {
   it('高品質カテゴリの記事を識別する', () => {
     const article = {
-      ...createMockArticle(),
+      ...createMockArticle({
+        content: 'import React from "react";\n\nコードサンプルを含む記事です。',
+      }),
       source: createMockSource(),
       tags: [
-        createMockTag({ name: 'React' }),
-        createMockTag({ name: 'TypeScript' }),
+        createMockTag({ name: 'AI' }),
+        createMockTag({ name: '機械学習' }),
       ],
     };
 
     const result = checkCategoryQuality(article);
-    expect(result.isHighQuality).toBeDefined();
-    expect(result.qualityBonus).toBeGreaterThanOrEqual(0);
-    if (result.categories) {
-      expect(result.categories.length).toBeGreaterThanOrEqual(0);
-    }
+    expect(result.category).toBe('AI/ML');
+    expect(result.qualityBonus).toBe(10);
   });
 
-  it('AWS関連の記事を識別する', () => {
+  it('カテゴリに該当しない記事を処理する', () => {
     const article = {
       ...createMockArticle(),
       source: createMockSource({ name: 'AWS' }),
@@ -113,7 +112,7 @@ describe('checkCategoryQuality', () => {
     };
 
     const result = checkCategoryQuality(article);
-    expect(result.isHighQuality).toBeDefined();
-    expect(result.qualityBonus).toBeGreaterThanOrEqual(0);
+    expect(result.category).toBeNull();
+    expect(result.qualityBonus).toBe(0);
   });
 });
