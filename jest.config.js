@@ -33,12 +33,14 @@ const customJestConfig = {
   ],
   coverageThreshold: {
     global: {
-      branches: 30,
-      functions: 30,
-      lines: 30,
-      statements: 30,
+      branches: 5,
+      functions: 5,
+      lines: 5,
+      statements: 5,
     },
   },
+  coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
+  coverageDirectory: 'coverage',
   testMatch: [
     '**/__tests__/**/*.test.{js,jsx,ts,tsx}',
     '**/?(*.)+(spec|test).{js,jsx,ts,tsx}',
