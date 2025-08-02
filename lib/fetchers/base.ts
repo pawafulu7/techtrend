@@ -1,5 +1,6 @@
 import { Source } from '@prisma/client';
 import { CreateArticleInput, FetchResult } from '@/types/fetchers';
+import { ExternalAPIError } from '@/lib/errors';
 
 export abstract class BaseFetcher {
   protected source: Source;
@@ -38,7 +39,9 @@ export abstract class BaseFetcher {
       
       return result;
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
+      const err = error instanceof Error 
+        ? new ExternalAPIError(this.source.name, error.message, error)
+        : new ExternalAPIError(this.source.name, String(error));
       console.error(`❌ ${this.source.name} エラー:`, err.message);
       errors.push(err);
       return { articles, errors };

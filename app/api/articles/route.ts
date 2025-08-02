@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import type { PaginationParams, PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
+import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -96,11 +97,12 @@ export async function GET(request: NextRequest) {
     } as ApiResponse<PaginatedResponse<ArticleWithRelations>>);
   } catch (error) {
     console.error('Error fetching articles:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to fetch articles',
-      details: error instanceof Error ? error.message : undefined,
-    } as ApiResponse<never>, { status: 500 });
+    const dbError = error instanceof Error 
+      ? new DatabaseError(`Failed to fetch articles: ${error.message}`, 'select')
+      : new DatabaseError('Failed to fetch articles', 'select');
+    
+    const errorResponse = formatErrorResponse(dbError);
+    return NextResponse.json(errorResponse, { status: dbError.statusCode });
   }
 }
 
@@ -111,10 +113,12 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!title || !url || !sourceId) {
-      return NextResponse.json({
-        success: false,
-        error: 'Missing required fields: title, url, sourceId',
-      } as ApiResponse<never>, { status: 400 });
+      const validationError = new ValidationError(
+        'Missing required fields: title, url, and sourceId are required',
+        'requiredFields'
+      );
+      const errorResponse = formatErrorResponse(validationError);
+      return NextResponse.json(errorResponse, { status: validationError.statusCode });
     }
 
     // Check if article already exists
@@ -123,10 +127,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
-      return NextResponse.json({
-        success: false,
-        error: 'Article with this URL already exists',
-      } as ApiResponse<never>, { status: 409 });
+      const duplicateError = new DuplicateError('Article', 'url', url);
+      const errorResponse = formatErrorResponse(duplicateError);
+      return NextResponse.json(errorResponse, { status: duplicateError.statusCode });
     }
 
     // Create article with tags

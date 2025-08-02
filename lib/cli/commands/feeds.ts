@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { getPrismaClient } from '../utils/database';
 import path from 'path';
 import { fork } from 'child_process';
+import { ValidationError, DatabaseError } from '@/lib/errors';
 
 export const feedsCommand = new Command('feeds')
   .description('フィードの管理');
@@ -15,8 +16,7 @@ feedsCommand
   .action(async (sources, options) => {
     try {
       if (!sources.length && !options.all) {
-        logger.error('ソース名を指定するか、--all オプションを使用してください');
-        process.exit(1);
+        throw new ValidationError('ソース名を指定するか、--all オプションを使用してください', 'sources');
       }
       
       logger.info('フィード収集を開始します');
@@ -44,7 +44,11 @@ feedsCommand
       });
       
     } catch (error) {
-      logger.error('フィード収集でエラーが発生しました', error);
+      if (error instanceof ValidationError) {
+        logger.error(error.message);
+      } else {
+        logger.error('フィード収集でエラーが発生しました', error);
+      }
       process.exit(1);
     }
   });
@@ -89,7 +93,11 @@ feedsCommand
       
       logger.success('ソース一覧の取得が完了しました');
     } catch (error) {
-      logger.error('ソース一覧取得中にエラーが発生しました', error);
+      if (error instanceof DatabaseError) {
+        logger.error(`データベースエラー: ${error.message}`);
+      } else {
+        logger.error('ソース一覧取得中にエラーが発生しました', error);
+      }
       process.exit(1);
     }
   });

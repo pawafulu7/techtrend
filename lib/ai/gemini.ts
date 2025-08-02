@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GEMINI_API } from '@/lib/constants';
+import { ExternalAPIError } from '@/lib/errors';
 
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
@@ -30,7 +31,11 @@ export class GeminiClient {
       return this.cleanSummary(summary);
     } catch (error) {
       console.error('Gemini API error:', error);
-      throw new Error(`Failed to generate summary: ${error instanceof Error ? error.message : String(error)}`);
+      throw new ExternalAPIError(
+        'Gemini',
+        `Failed to generate summary: ${error instanceof Error ? error.message : String(error)}`,
+        error
+      );
     }
   }
 
@@ -52,7 +57,11 @@ export class GeminiClient {
       return this.parseSummaryAndTags(text);
     } catch (error) {
       console.error('Gemini API error:', error);
-      throw new Error(`Failed to generate summary and tags: ${error instanceof Error ? error.message : String(error)}`);
+      throw new ExternalAPIError(
+        'Gemini',
+        `Failed to generate summary and tags: ${error instanceof Error ? error.message : String(error)}`,
+        error
+      );
     }
   }
 
