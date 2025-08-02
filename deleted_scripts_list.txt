@@ -1,0 +1,80 @@
+# 削除対象スクリプトリスト
+# 作成日: 2025年8月2日
+# 理由: 一時的な修正作業用スクリプト（scheduler-v2.tsから呼ばれていない）
+
+## 保持するスクリプト（scheduler-v2.tsまたはpackage.jsonから参照）
+- scripts/collect-feeds.ts              # スケジューラーから呼び出し
+- scripts/core/manage-summaries.ts      # スケジューラーから呼び出し
+- scripts/core/manage-quality-scores.ts # スケジューラーから呼び出し
+- scripts/calculate-difficulty-levels.ts # スケジューラーから呼び出し
+- scripts/delete-low-quality-articles.ts # スケジューラーから呼び出し
+- scripts/clean-tags.ts                 # スケジューラーから呼び出し
+- scripts/generate-summaries.ts         # package.json scripts:summarize
+- scripts/backup.sh                     # バックアップ用（新規作成）
+
+## 削除対象スクリプト（一時的な修正・追加用）
+
+### ソース追加系（一度だけ実行）
+scripts/add-aws-sources.ts
+scripts/add-google-dev-blog.ts
+scripts/add-new-sources.ts
+scripts/add-source-tags-to-aws.ts
+scripts/add-source-tags-to-sre.ts
+scripts/add-sre-source.ts
+scripts/add-unified-aws-source.ts
+
+### チェック・分析系（調査用）
+scripts/analyze-tags.ts
+scripts/check-all-sources-status.ts
+scripts/check-article-quality.ts
+scripts/check-aws-specific-tags.ts
+scripts/check-empty-tag-articles.ts
+scripts/check-missing-source-tags.ts
+scripts/check-missing-summaries.ts
+scripts/check-source-articles.ts
+scripts/check-sources.ts
+scripts/check-specific-article.ts
+scripts/check-stats-data.ts
+scripts/check-summaries-quality.ts
+scripts/check-summary-problems.ts
+scripts/check-tag-issues.ts
+scripts/check-tags.ts
+scripts/check-whats-new-tag.ts
+scripts/checkSummaryQuality.ts
+scripts/health-check.ts
+
+### 修正・クリーンアップ系（一度だけ実行）
+scripts/fix-empty-tags.ts
+scripts/fix-existing-summaries.ts
+scripts/fix-google-blog-dates.ts
+scripts/fix-missing-source-tags.ts
+scripts/fix-quality-scores.ts
+scripts/fix-truncated-summaries.ts
+scripts/clean-non-tech-articles.ts
+scripts/cleanup-low-quality-articles.ts
+scripts/remove-aws-redundant-tags.ts
+scripts/remove-unused-sources.ts
+
+### 要約・タグ生成系（一時的）
+scripts/generate-detailed-summaries.ts
+scripts/generate-missing-summaries.ts
+scripts/generate-tags-for-existing.ts
+scripts/generate-tags-for-qiita.ts
+scripts/generate-tags-only.ts
+scripts/regenerate-summaries-batch.ts
+scripts/regenerateSummaries.ts
+
+### テスト・検証系
+scripts/test-parse-summary-v2.ts
+scripts/test-parse-summary.ts
+scripts/test-summary-length.ts
+scripts/test-summary-real.ts
+scripts/verify-tag-removal.ts
+
+### その他（一時的）
+scripts/categorize-existing-tags.ts
+scripts/restore-sources.ts
+scripts/calculate-quality-scores.ts # core/manage-quality-scores.tsと重複
+
+## 削除対象スクリプト数: 45ファイル
+## 保持スクリプト数: 8ファイル
