@@ -4,24 +4,18 @@
 process.env.DATABASE_URL = 'file:./prisma/test.db';
 process.env.GEMINI_API_KEY = 'test-api-key';
 process.env.NODE_ENV = 'test';
-process.env.UPSTASH_REDIS_REST_URL = 'http://localhost:8079';
-process.env.UPSTASH_REDIS_REST_TOKEN = 'test-token';
+process.env.REDIS_HOST = 'localhost';
+process.env.REDIS_PORT = '6379';
 
-// Mock @upstash/redis
-jest.mock('@upstash/redis', () => ({
-  Redis: jest.fn().mockImplementation(() => ({
+// Mock ioredis
+jest.mock('ioredis', () => {
+  const RedisMock = jest.fn().mockImplementation(() => ({
     get: jest.fn(),
     set: jest.fn(),
     del: jest.fn(),
-    expire: jest.fn(),
-    ttl: jest.fn(),
-  })),
-  Ratelimit: jest.fn().mockImplementation(() => ({
-    limit: jest.fn().mockResolvedValue({
-      success: true,
-      limit: 100,
-      reset: Date.now() + 60000,
-      remaining: 99,
-    }),
-  })),
-}));
+    keys: jest.fn().mockResolvedValue([]),
+    on: jest.fn(),
+    quit: jest.fn(),
+  }));
+  return RedisMock;
+});

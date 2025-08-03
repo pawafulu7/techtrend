@@ -1,18 +1,17 @@
-import { Redis } from '@upstash/redis';
-import { CacheOptions, CacheKeyOptions } from './types';
+import { getRedisClient } from '@/lib/redis/client';
+import { CacheOptions, CacheStats, CacheKeyOptions } from './types';
 
 export class RedisCache {
-  private redis: Redis;
+  private redis = getRedisClient();
   private defaultTTL: number;
   private namespace: string;
-  private stats = {
+  private stats: CacheStats = {
     hits: 0,
     misses: 0,
     errors: 0,
   };
 
-  constructor(redis: Redis, options?: CacheOptions) {
-    this.redis = redis;
+  constructor(options?: CacheOptions) {
     this.defaultTTL = options?.ttl || 3600; // 1 hour default
     this.namespace = options?.namespace || '@techtrend/cache';
   }
@@ -61,7 +60,7 @@ export class RedisCache {
       }
       
       this.stats.hits++;
-      return value as T;
+      return JSON.parse(value) as T;
     } catch (error) {
       this.stats.errors++;
       console.error(`Cache get error for key ${key}:`, error);
@@ -77,9 +76,12 @@ export class RedisCache {
       const fullKey = this.generateKey(key);
       const finalTTL = ttl || this.defaultTTL;
       
-      await this.redis.set(fullKey, JSON.stringify(value), {
-        ex: finalTTL,
-      });
+      await this.redis.set(
+        fullKey,
+        JSON.stringify(value),
+        'EX',
+        finalTTL
+      );
     } catch (error) {
       this.stats.errors++;
       console.error(`Cache set error for key ${key}:`, error);
@@ -105,9 +107,11 @@ export class RedisCache {
   async invalidatePattern(pattern: string): Promise<void> {
     try {
       const fullPattern = this.generateKey(pattern);
-      // Note: Upstash Redis doesn't support SCAN command in the same way
-      // For now, we'll need to track keys manually or use specific invalidation
-      console.warn(`Pattern invalidation not fully supported with Upstash. Pattern: ${fullPattern}`);
+      const keys = await this.redis.keys(fullPattern);
+      
+      if (keys.length > 0) {
+        await this.redis.del(...keys);
+      }
     } catch (error) {
       this.stats.errors++;
       console.error(`Cache invalidation error for pattern ${pattern}:`, error);
@@ -117,14 +121,14 @@ export class RedisCache {
   /**
    * Get cache statistics
    */
-  getStats() {
+  getStats(): CacheStats {
     return { ...this.stats };
   }
 
   /**
    * Reset cache statistics
    */
-  resetStats() {
+  resetStats(): void {
     this.stats = {
       hits: 0,
       misses: 0,

@@ -3,7 +3,6 @@ import { prisma } from '@/lib/database';
 import type { PaginationParams, PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
-import { redis } from '@/lib/rate-limiter';
 import { RedisCache } from '@/lib/cache';
 import type { Prisma } from '@prisma/client';
 import { log } from '@/lib/logger';
@@ -11,8 +10,8 @@ import { log } from '@/lib/logger';
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
 // Initialize Redis cache with 5 minutes TTL for articles
-const cache = new RedisCache(redis, {
-  defaultTTL: 300, // 5 minutes
+const cache = new RedisCache({
+  ttl: 300, // 5 minutes
   namespace: '@techtrend/cache:api'
 });
 

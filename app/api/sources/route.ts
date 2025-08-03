@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { redis } from '@/lib/rate-limiter';
 import { RedisCache } from '@/lib/cache';
 
 const prisma = new PrismaClient();
 
 // Initialize Redis cache with 1 hour TTL for sources
-const cache = new RedisCache(redis, {
+const cache = new RedisCache({
   ttl: 3600, // 1 hour
   namespace: '@techtrend/cache:api'
 });
