@@ -157,13 +157,13 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
 記事が解決する問題を100-120文字で要約。「〜の問題を〜により解決」の形式で、技術名と効果を含め句点で終了。文字数厳守。
 
 詳細要約:
-以下の要素を技術的に詳しく箇条書きで記載（各項目は「・」で開始、2-3文で説明）：
-・記事の主題と技術的背景（使用技術、前提知識）
-・解決しようとしている具体的な問題と現状の課題
-・提示されている解決策の技術的アプローチ（アルゴリズム、設計パターン等）
-・実装方法の詳細（具体的なコード例、設定方法、手順）
-・期待される効果と性能改善の指標（数値があれば含める）
-・実装時の注意点、制約事項、必要な環境
+以下の項目を必ず箇条書きで記載してください。各項目は指定されたラベルで開始し、その後に内容を記述してください：
+・記事の主題は、[技術的背景と使用技術、前提知識を2-3文で説明]
+・具体的な問題は、[解決しようとしている問題と現状の課題を2-3文で説明]
+・提示されている解決策は、[技術的アプローチ、アルゴリズム、設計パターン等を2-3文で説明]
+・実装方法の詳細については、[具体的なコード例、設定方法、手順を2-3文で説明]
+・期待される効果は、[性能改善の指標（数値があれば含める）を2-3文で説明]
+・実装時の注意点は、[制約事項、必要な環境を2-3文で説明]
 
 タグ:
 技術名,フレームワーク名,カテゴリ名,概念名
@@ -180,7 +180,7 @@ JavaScript, React, フロントエンド, 状態管理`;
         parts: [{ text: prompt }]
       }],
       generationConfig: {
-        temperature: 0.3,
+        temperature: 0.2,
         maxOutputTokens: 800,
       }
     })
@@ -237,6 +237,54 @@ function finalCleanup(text: string): string {
   }
   
   return text;
+}
+
+// 詳細要約の正規化関数
+function normalizeDetailedSummary(text: string): string {
+  const lines = text.split('\n');
+  const normalizedLines: string[] = [];
+  
+  // ラベルのマッピング
+  const labelPatterns = [
+    { pattern: /記事の主題|技術的背景/, expectedLabel: '記事の主題は、', index: 0 },
+    { pattern: /具体的な問題|解決しようとしている問題/, expectedLabel: '具体的な問題は、', index: 1 },
+    { pattern: /解決策|技術的アプローチ/, expectedLabel: '提示されている解決策は、', index: 2 },
+    { pattern: /実装方法|コード例/, expectedLabel: '実装方法の詳細については、', index: 3 },
+    { pattern: /期待される効果|性能改善/, expectedLabel: '期待される効果は、', index: 4 },
+    { pattern: /注意点|制約事項/, expectedLabel: '実装時の注意点は、', index: 5 }
+  ];
+  
+  let currentIndex = 0;
+  
+  for (const line of lines) {
+    if (line.trim().startsWith('・')) {
+      let normalizedLine = line.trim();
+      const content = normalizedLine.substring(1).trim();
+      
+      // ラベルがない場合、インデックスに基づいて追加
+      let hasLabel = false;
+      for (const labelPattern of labelPatterns) {
+        if (content.match(labelPattern.pattern)) {
+          hasLabel = true;
+          break;
+        }
+      }
+      
+      if (!hasLabel && currentIndex < labelPatterns.length) {
+        const expectedLabel = labelPatterns[currentIndex].expectedLabel;
+        if (expectedLabel) {
+          normalizedLine = `・${expectedLabel}${content}`;
+        }
+      }
+      
+      normalizedLines.push(normalizedLine);
+      currentIndex++;
+    } else if (line.trim()) {
+      normalizedLines.push(line);
+    }
+  }
+  
+  return normalizedLines.join('\n');
 }
 
 function parseSummaryAndTags(text: string): SummaryAndTags {
@@ -331,6 +379,9 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
   // 最終クリーンアップ
   summary = finalCleanup(summary);
   detailedSummary = finalCleanup(detailedSummary);
+  
+  // 詳細要約の正規化
+  detailedSummary = normalizeDetailedSummary(detailedSummary);
   
   // フォールバック
   if (!summary) {
