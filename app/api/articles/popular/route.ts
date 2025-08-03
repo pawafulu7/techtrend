@@ -9,13 +9,31 @@ type Period = 'today' | 'week' | 'month' | 'all';
 type Metric = 'bookmarks' | 'votes' | 'quality' | 'combined';
 
 // キャッシュ管理
-const cache = new Map<string, { data: ApiResponse<ArticleWithRelations[]>; timestamp: number }>();
+interface CachedData {
+  data: any;
+  timestamp: number;
+}
+
+const cache = new Map<string, CachedData>();
 const CACHE_DURATION = {
   today: 10 * 60 * 1000,      // 10分
   week: 60 * 60 * 1000,       // 1時間
   month: 6 * 60 * 60 * 1000,  // 6時間
   all: 24 * 60 * 60 * 1000    // 24時間
 };
+
+// トレンド計算関数
+function calculateTrend(currentRank: number, articleId: string, previousRankings: any[]): 'up' | 'down' | 'stable' | 'new' {
+  if (!previousRankings || !Array.isArray(previousRankings)) return 'new';
+  
+  const previousItem = previousRankings.find(item => item.id === articleId);
+  if (!previousItem) return 'new';
+  
+  const rankDiff = previousItem.rank - currentRank;
+  if (rankDiff > 0) return 'up';
+  if (rankDiff < 0) return 'down';
+  return 'stable';
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -125,12 +143,21 @@ export async function GET(request: NextRequest) {
     scoredArticles.sort((a, b) => b.score - a.score);
     const topArticles = scoredArticles.slice(0, limit);
 
+    // 前回のランキングを取得
+    const rankCacheKey = `rankings_${period}_${metric}_${category || 'all'}`;
+    const previousRankings = cache.get(rankCacheKey)?.data;
+    
     // ランキング情報を付与
-    const rankedArticles = topArticles.map((article, index) => ({
-      ...article,
-      rank: index + 1,
-      trend: 'stable' as const // TODO: 前回のランキングと比較
-    }));
+    const rankedArticles = topArticles.map((article, index) => {
+      const currentRank = index + 1;
+      const trend = calculateTrend(currentRank, article.id, previousRankings);
+      
+      return {
+        ...article,
+        rank: currentRank,
+        trend
+      };
+    });
 
     const response = {
       articles: rankedArticles,
@@ -145,6 +172,12 @@ export async function GET(request: NextRequest) {
       timestamp: Date.now()
     });
 
+    // 現在のランキングを保存
+    cache.set(rankCacheKey, {
+      data: rankedArticles,
+      timestamp: Date.now()
+    });
+    
     return NextResponse.json(response);
   } catch (error) {
     console.error('Popular articles error:', error);

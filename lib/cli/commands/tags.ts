@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { logger } from '../utils/logger';
 import { getPrismaClient } from '../utils/database';
 import { ProgressBar } from '../utils/progress';
+import { categorizeTag } from '@/lib/utils/tag-categorizer';
 
 export const tagsCommand = new Command('tags')
   .description('タグの管理');
@@ -181,19 +182,97 @@ tagsCommand
   .command('categorize')
   .description('タグのカテゴリを自動分類')
   .option('--overwrite', '既存のカテゴリも上書き')
+  .option('--dry-run', '実行内容を表示するが更新しない')
   .action(async (options) => {
     try {
       logger.info('タグのカテゴリ分類を開始します');
-      logger.warn('この機能は現在開発中です');
       
-      // TODO: タグカテゴリ分類ロジックの実装
-      // - プログラミング言語
-      // - フレームワーク・ライブラリ
-      // - ツール
-      // - 概念・手法
-      // - プラットフォーム
+      const prisma = getPrismaClient();
       
-      logger.info('カテゴリ分類機能は今後実装予定です');
+      // カテゴリがnullまたは上書きオプションが指定されたタグを取得
+      const where = options.overwrite ? {} : { category: null };
+      const tags = await prisma.tag.findMany({
+        where,
+        include: { _count: { select: { articles: true } } }
+      });
+      
+      if (tags.length === 0) {
+        logger.info('分類対象のタグがありません');
+        return;
+      }
+      
+      logger.info(`${tags.length}件のタグを分類します`);
+      
+      const progress = new ProgressBar(tags.length);
+      let categorizedCount = 0;
+      const updates: { id: string; name: string; category: string }[] = [];
+      
+      for (const tag of tags) {
+        const category = categorizeTag(tag.name);
+        
+        if (category && (options.overwrite || !tag.category)) {
+          updates.push({
+            id: tag.id,
+            name: tag.name,
+            category
+          });
+          categorizedCount++;
+          
+          if (options.dryRun) {
+            logger.debug(`${tag.name} → ${category}`);
+          }
+        }
+        
+        progress.increment();
+      }
+      
+      progress.complete(`分類完了: ${categorizedCount}件のタグを分類しました`);
+      
+      if (options.dryRun) {
+        logger.info('ドライラン実行のため、実際の更新は行われませんでした');
+        
+        // カテゴリ別の集計を表示
+        const categorySummary: Record<string, number> = {};
+        updates.forEach(update => {
+          categorySummary[update.category] = (categorySummary[update.category] || 0) + 1;
+        });
+        
+        logger.info('\nカテゴリ別分類結果:');
+        Object.entries(categorySummary).forEach(([category, count]) => {
+          logger.info(`  ${category}: ${count}件`);
+        });
+      } else {
+        // バッチ更新
+        if (updates.length > 0) {
+          logger.info(`データベースを更新中...`);
+          
+          // トランザクションで一括更新
+          await prisma.$transaction(
+            updates.map(update => 
+              prisma.tag.update({
+                where: { id: update.id },
+                data: { category: update.category }
+              })
+            )
+          );
+          
+          logger.success(`${updates.length}件のタグのカテゴリを更新しました`);
+        }
+      }
+      
+      // 更新後の統計を表示
+      const stats = await prisma.tag.groupBy({
+        by: ['category'],
+        _count: true,
+        orderBy: { _count: { category: 'desc' } }
+      });
+      
+      logger.info('\nカテゴリ別タグ数:');
+      stats.forEach(stat => {
+        const categoryName = stat.category || 'uncategorized';
+        logger.info(`  ${categoryName}: ${stat._count}件`);
+      });
+      
     } catch (error) {
       logger.error('カテゴリ分類中にエラーが発生しました', error);
       process.exit(1);

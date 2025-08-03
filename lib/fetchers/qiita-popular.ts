@@ -1,6 +1,7 @@
 import { Source } from '@prisma/client';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/types/models';
+import { logger } from '@/lib/cli/utils/logger';
 
 interface QiitaArticle {
   id: string;
@@ -34,7 +35,7 @@ export class QiitaPopularFetcher extends BaseFetcher {
     const errors: Error[] = [];
 
     try {
-      console.log('[Qiita Popular] 人気記事を取得中...');
+      logger.info('[Qiita Popular] 人気記事を取得中...');
       
       // Qiita APIで人気記事を取得（ストック数が多い順）
       const response = await this.retry(async () => {
@@ -54,11 +55,11 @@ export class QiitaPopularFetcher extends BaseFetcher {
       const items = response as QiitaArticle[];
       
       if (!items || items.length === 0) {
-        console.log('[Qiita Popular] 記事が見つかりませんでした');
+        logger.info('[Qiita Popular] 記事が見つかりませんでした');
         return { articles, errors };
       }
 
-      console.log(`[Qiita Popular] ${items.length}件の人気記事を取得`);
+      logger.info(`[Qiita Popular] ${items.length}件の人気記事を取得`);
 
       for (const item of items) {
         try {
@@ -89,7 +90,7 @@ export class QiitaPopularFetcher extends BaseFetcher {
         }
       }
 
-      console.log(`[Qiita Popular] ${articles.length}件の記事を処理`);
+      logger.success(`[Qiita Popular] ${articles.length}件の記事を処理`);
     } catch (error) {
       errors.push(new Error(`Failed to fetch Qiita popular articles: ${error instanceof Error ? error.message : String(error)}`));
     }

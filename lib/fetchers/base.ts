@@ -1,6 +1,7 @@
 import { Source } from '@prisma/client';
 import { CreateArticleInput, FetchResult } from '@/types/fetchers';
 import { ExternalAPIError } from '@/lib/errors';
+import { logger } from '@/lib/cli/utils/logger';
 
 export abstract class BaseFetcher {
   protected source: Source;
@@ -21,20 +22,20 @@ export abstract class BaseFetcher {
     const articles: CreateArticleInput[] = [];
 
     try {
-      console.log(`📥 ${this.source.name} から記事を取得中...`);
+      logger.info(`${this.source.name} から記事を取得中...`);
       
       // ソースが無効化されている場合は早期リターン
       if (!this.source.enabled) {
-        console.log(`⚠️  ${this.source.name} は無効化されています`);
+        logger.warn(`${this.source.name} は無効化されています`);
         return { articles: [], errors: [] };
       }
 
       const result = await this.fetchInternal();
       
       if (result.articles.length === 0) {
-        console.log(`📭 ${this.source.name}: 記事が見つかりませんでした`);
+        logger.info(`${this.source.name}: 記事が見つかりませんでした`);
       } else {
-        console.log(`✅ ${this.source.name}: ${result.articles.length}件の記事を取得`);
+        logger.success(`${this.source.name}: ${result.articles.length}件の記事を取得`);
       }
       
       return result;
@@ -42,7 +43,7 @@ export abstract class BaseFetcher {
       const err = error instanceof Error 
         ? new ExternalAPIError(this.source.name, error.message, error)
         : new ExternalAPIError(this.source.name, String(error));
-      console.error(`❌ ${this.source.name} エラー:`, err.message);
+      logger.error(`${this.source.name} エラー:`, err);
       errors.push(err);
       return { articles, errors };
     }

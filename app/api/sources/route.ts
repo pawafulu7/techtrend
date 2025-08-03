@@ -87,6 +87,20 @@ export async function GET(request: NextRequest) {
         a => a.publishedAt >= thirtyDaysAgo
       );
       const publishFrequency = recentArticles.length / 30;
+      
+      // 成長率計算: 過去30日と過去60-30日の比較
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      
+      const pastMonthArticles = articles.filter(
+        a => a.publishedAt >= sixtyDaysAgo && a.publishedAt < thirtyDaysAgo
+      );
+      
+      const currentMonthCount = recentArticles.length;
+      const pastMonthCount = pastMonthArticles.length;
+      const growthRate = pastMonthCount > 0 
+        ? Math.round(((currentMonthCount - pastMonthCount) / pastMonthCount) * 100)
+        : currentMonthCount > 0 ? 100 : 0;
 
       // カテゴリー推定（簡易版）
       let category: SourceCategory = 'other';
@@ -118,7 +132,7 @@ export async function GET(request: NextRequest) {
           popularTags,
           publishFrequency: Math.round(publishFrequency * 10) / 10,
           lastPublished,
-          growthRate: 0 // TODO: 実装
+          growthRate
         }
       };
     });
