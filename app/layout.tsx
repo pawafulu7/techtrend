@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/app/components/layout/header";
 import { Footer } from "@/app/components/layout/footer";
+import { NoTransitions } from "@/app/components/layout/no-transitions";
 import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
 import { ToastProvider } from "@/providers/toast-provider";
 import { QueryProvider } from "@/app/providers/query-provider";
@@ -47,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className="h-full">
+    <html lang="ja" className="h-full no-transitions">
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -67,6 +68,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
+        <NoTransitions />
         <QueryProvider>
           {/* <OnboardingProvider> */}
             <Header />
