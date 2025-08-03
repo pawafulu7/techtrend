@@ -7,6 +7,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Track request start time for performance measurement
+  const startTime = Date.now();
+  
   // Skip rate limiting if Redis is not configured
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
     console.warn('Rate limiting is disabled: Upstash Redis environment variables not configured');
@@ -49,7 +52,16 @@ export async function middleware(request: NextRequest) {
     }
 
     // Add rate limit headers to successful responses
-    const response = NextResponse.next();
+    const response = NextResponse.next({
+      request: {
+        headers: new Headers(request.headers),
+      },
+    });
+    
+    // Add performance tracking header
+    response.headers.set('X-Response-Time-Start', startTime.toString());
+    
+    // Add rate limit headers
     response.headers.set('X-RateLimit-Limit', limit.toString());
     response.headers.set('X-RateLimit-Remaining', remaining.toString());
     response.headers.set('X-RateLimit-Reset', new Date(reset).toISOString());

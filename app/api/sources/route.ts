@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { redis } from '@/lib/rate-limiter';
+import { RedisCache } from '@/lib/cache';
 
 const prisma = new PrismaClient();
+
+// Initialize Redis cache with 1 hour TTL for sources
+const cache = new RedisCache(redis, {
+  ttl: 3600, // 1 hour
+  namespace: '@techtrend/cache:api'
+});
 
 type SourceCategory = 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  let cacheStatus = 'MISS';
+  
   try {
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category') as SourceCategory | null;
@@ -13,9 +24,24 @@ export async function GET(request: NextRequest) {
     const order = searchParams.get('order') || 'desc';
     const search = searchParams.get('search');
     const ids = searchParams.get('ids');
+    
+    // Generate cache key based on query parameters
+    const cacheKey = cache.generateCacheKey('sources', {
+      params: {
+        category: category || 'all',
+        sortBy,
+        order,
+        search: search || 'none',
+        ids: ids || 'all'
+      }
+    });
 
-    // 基本的なソース情報を取得
-    const sources = await prisma.source.findMany({
+    // Try to get from cache or fetch fresh data
+    const result = await cache.getOrSet(cacheKey, async () => {
+      cacheStatus = 'MISS';
+      
+      // 基本的なソース情報を取得
+      const sources = await prisma.source.findMany({
       where: {
         enabled: true,
         ...(ids && {
@@ -144,45 +170,62 @@ export async function GET(request: NextRequest) {
     }
 
     // ソート
-    filteredSources.sort((a, b) => {
-      let aValue, bValue;
-      switch (sortBy) {
-        case 'articles':
-          aValue = a.stats.totalArticles;
-          bValue = b.stats.totalArticles;
-          break;
-        case 'quality':
-          aValue = a.stats.avgQualityScore;
-          bValue = b.stats.avgQualityScore;
-          break;
-        case 'frequency':
-          aValue = a.stats.publishFrequency;
-          bValue = b.stats.publishFrequency;
-          break;
-        case 'name':
-          aValue = a.name;
-          bValue = b.name;
-          break;
-        default:
-          aValue = a.stats.totalArticles;
-          bValue = b.stats.totalArticles;
-      }
+      filteredSources.sort((a, b) => {
+        let aValue, bValue;
+        switch (sortBy) {
+          case 'articles':
+            aValue = a.stats.totalArticles;
+            bValue = b.stats.totalArticles;
+            break;
+          case 'quality':
+            aValue = a.stats.avgQualityScore;
+            bValue = b.stats.avgQualityScore;
+            break;
+          case 'frequency':
+            aValue = a.stats.publishFrequency;
+            bValue = b.stats.publishFrequency;
+            break;
+          case 'name':
+            aValue = a.name;
+            bValue = b.name;
+            break;
+          default:
+            aValue = a.stats.totalArticles;
+            bValue = b.stats.totalArticles;
+        }
 
-      if (sortBy === 'name') {
-        return order === 'asc' 
-          ? (aValue as string).localeCompare(bValue as string)
-          : (bValue as string).localeCompare(aValue as string);
-      } else {
-        return order === 'asc' 
-          ? (aValue as number) - (bValue as number)
-          : (bValue as number) - (aValue as number);
-      }
-    });
+        if (sortBy === 'name') {
+          return order === 'asc' 
+            ? (aValue as string).localeCompare(bValue as string)
+            : (bValue as string).localeCompare(aValue as string);
+        } else {
+          return order === 'asc' 
+            ? (aValue as number) - (bValue as number)
+            : (bValue as number) - (aValue as number);
+        }
+      });
 
-    return NextResponse.json({
-      sources: filteredSources,
-      totalCount: filteredSources.length
+      // Return the data to be cached
+      return {
+        sources: filteredSources,
+        totalCount: filteredSources.length
+      };
     });
+    
+    // If we got data from cache, update status
+    if (result && cacheStatus !== 'MISS') {
+      cacheStatus = 'HIT';
+    }
+    
+    // Calculate response time
+    const responseTime = Date.now() - startTime;
+    
+    // Create response with performance headers
+    const response = NextResponse.json(result);
+    response.headers.set('X-Cache-Status', cacheStatus);
+    response.headers.set('X-Response-Time', `${responseTime}ms`);
+    
+    return response;
   } catch (error) {
     console.error('Sources error:', error);
     return NextResponse.json(
