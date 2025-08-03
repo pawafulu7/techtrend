@@ -46,11 +46,19 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Try to get from cache or fetch fresh data
-    const result = await cache.getOrSet(cacheKey, async () => {
+    // Check cache first
+    const cachedResult = await cache.get(cacheKey);
+    
+    let result;
+    if (cachedResult) {
+      cacheStatus = 'HIT';
+      result = cachedResult;
+    } else {
       cacheStatus = 'MISS';
       
-      // Build where clause
+      // Fetch fresh data
+      result = await (async () => {
+        // Build where clause
       const where: ArticleWhereInput = {};
       if (sourceId) {
         where.sourceId = sourceId;
@@ -122,11 +130,10 @@ export async function GET(request: NextRequest) {
         limit,
         totalPages: Math.ceil(total / limit),
       };
-    });
-    
-    // If we got data from cache, update status
-    if (result && cacheStatus !== 'MISS') {
-      cacheStatus = 'HIT';
+      })();
+      
+      // Save to cache
+      await cache.set(cacheKey, result);
     }
     
     // Calculate response time

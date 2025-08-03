@@ -35,11 +35,19 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Try to get from cache or fetch fresh data
-    const result = await cache.getOrSet(cacheKey, async () => {
+    // Check cache first
+    const cachedResult = await cache.get(cacheKey);
+    
+    let result;
+    if (cachedResult) {
+      cacheStatus = 'HIT';
+      result = cachedResult;
+    } else {
       cacheStatus = 'MISS';
       
-      // 基本的なソース情報を取得
+      // Fetch fresh data
+      result = await (async () => {
+        // 基本的なソース情報を取得
       const sources = await prisma.source.findMany({
       where: {
         enabled: true,
@@ -209,11 +217,10 @@ export async function GET(request: NextRequest) {
         sources: filteredSources,
         totalCount: filteredSources.length
       };
-    });
-    
-    // If we got data from cache, update status
-    if (result && cacheStatus !== 'MISS') {
-      cacheStatus = 'HIT';
+      })();
+      
+      // Save to cache
+      await cache.set(cacheKey, result);
     }
     
     // Calculate response time
