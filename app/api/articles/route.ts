@@ -3,8 +3,23 @@ import { prisma } from '@/lib/database';
 import type { PaginationParams, PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
+import { redis } from '@/lib/rate-limiter';
+import { RedisCache } from '@/lib/cache';
+import type { Prisma } from '@prisma/client';
+import { log } from '@/lib/logger';
+
+type ArticleWhereInput = Prisma.ArticleWhereInput;
+
+// Initialize Redis cache with 5 minutes TTL for articles
+const cache = new RedisCache(redis, {
+  defaultTTL: 300, // 5 minutes
+  namespace: '@techtrend/cache:api'
+});
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  let cacheStatus = 'MISS';
+  
   try {
     const { searchParams } = new URL(request.url);
     
@@ -19,84 +34,117 @@ export async function GET(request: NextRequest) {
     const tag = searchParams.get('tag');
     const search = searchParams.get('search');
 
-    // Build where clause
-    const where: ArticleWhereInput = {};
-    if (sourceId) {
-      where.sourceId = sourceId;
-    }
-    if (tag) {
-      where.tags = {
-        some: {
-          name: tag
-        }
-      };
-    }
-    if (search) {
-      where.OR = [
-        { title: { contains: search } },
-        { summary: { contains: search } }
-      ];
-    }
-
-    // Get total count
-    const total = await prisma.article.count({ where });
-
-    // Get articles
-    const articles = await prisma.article.findMany({
-      where,
-      select: {
-        id: true,
-        title: true,
-        url: true,
-        summary: true,
-        publishedAt: true,
-        qualityScore: true,
-        bookmarks: true,
-        userVotes: true,
-        difficulty: true,
-        createdAt: true,
-        updatedAt: true,
-        sourceId: true,
-        // Exclude: content, thumbnail, detailedSummary
-        source: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            url: true,
-            enabled: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        },
-        tags: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        [sortBy]: sortOrder,
-      },
-      skip: (page - 1) * limit,
-      take: limit,
+    // Generate cache key based on query parameters
+    const cacheKey = cache.generateCacheKey('articles', {
+      params: {
+        page: page.toString(),
+        limit: limit.toString(),
+        sortBy,
+        sortOrder,
+        sourceId: sourceId || 'all',
+        tag: tag || 'all',
+        search: search || 'none'
+      }
     });
 
-    const response: PaginatedResponse<ArticleWithRelations> = {
-      items: articles,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    // Try to get from cache or fetch fresh data
+    const result = await cache.getOrSet(cacheKey, async () => {
+      cacheStatus = 'MISS';
+      
+      // Build where clause
+      const where: ArticleWhereInput = {};
+      if (sourceId) {
+        where.sourceId = sourceId;
+      }
+      if (tag) {
+        where.tags = {
+          some: {
+            name: tag
+          }
+        };
+      }
+      if (search) {
+        where.OR = [
+          { title: { contains: search } },
+          { summary: { contains: search } }
+        ];
+      }
 
-    return NextResponse.json({
+      // Get total count
+      const total = await prisma.article.count({ where });
+
+      // Get articles
+      const articles = await prisma.article.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          url: true,
+          summary: true,
+          publishedAt: true,
+          qualityScore: true,
+          bookmarks: true,
+          userVotes: true,
+          difficulty: true,
+          createdAt: true,
+          updatedAt: true,
+          sourceId: true,
+          // Exclude: content, thumbnail, detailedSummary
+          source: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              url: true,
+              enabled: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+          tags: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+
+      // Return the data to be cached
+      return {
+        items: articles,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    });
+    
+    // If we got data from cache, update status
+    if (result && cacheStatus !== 'MISS') {
+      cacheStatus = 'HIT';
+    }
+    
+    // Calculate response time
+    const responseTime = Date.now() - startTime;
+    
+    // Create response with performance headers
+    const response = NextResponse.json({
       success: true,
-      data: response,
+      data: result,
     } as ApiResponse<PaginatedResponse<ArticleWithRelations>>);
+    
+    response.headers.set('X-Cache-Status', cacheStatus);
+    response.headers.set('X-Response-Time', `${responseTime}ms`);
+    
+    return response;
   } catch (error) {
-    console.error('Error fetching articles:', error);
+    log.error('Error fetching articles:', error);
     const dbError = error instanceof Error 
       ? new DatabaseError(`Failed to fetch articles: ${error.message}`, 'select')
       : new DatabaseError('Failed to fetch articles', 'select');
@@ -155,12 +203,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Invalidate articles cache when new article is created
+    await cache.invalidatePattern('articles:*');
+
     return NextResponse.json({
       success: true,
       data: article,
     } as ApiResponse<ArticleWithRelations>, { status: 201 });
   } catch (error) {
-    console.error('Error creating article:', error);
+    log.error('Error creating article:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to create article',
