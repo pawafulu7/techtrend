@@ -42,21 +42,17 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Mock @upstash/redis to avoid ESM issues
-jest.mock('@upstash/redis', () => ({
-  Redis: jest.fn().mockImplementation(() => ({
+// Mock ioredis
+jest.mock('ioredis', () => {
+  const RedisMock = jest.fn().mockImplementation(() => ({
     get: jest.fn(),
     set: jest.fn(),
     del: jest.fn(),
-    expire: jest.fn(),
-    ttl: jest.fn(),
-  })),
-  Ratelimit: jest.fn().mockImplementation(() => ({
-    limit: jest.fn().mockResolvedValue({
-      success: true,
-      limit: 100,
-      reset: Date.now() + 60000,
-      remaining: 99,
-    }),
-  })),
-}));
+    keys: jest.fn().mockResolvedValue([]),
+    ttl: jest.fn().mockResolvedValue(60),
+    ping: jest.fn().mockResolvedValue('PONG'),
+    on: jest.fn(),
+    quit: jest.fn(),
+  }));
+  return RedisMock;
+});
