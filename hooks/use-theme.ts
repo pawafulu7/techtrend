@@ -34,9 +34,13 @@ export function useTheme() {
   useEffect(() => {
     const root = window.document.documentElement
     const activeTheme = theme === "system" ? systemTheme : theme
+    const currentTheme = root.classList.contains("dark") ? "dark" : "light"
 
-    root.classList.remove("light", "dark")
-    root.classList.add(activeTheme)
+    // Only update if the theme actually changes
+    if (currentTheme !== activeTheme) {
+      root.classList.remove("light", "dark")
+      root.classList.add(activeTheme)
+    }
     
     localStorage.setItem("theme", theme)
   }, [theme, systemTheme])

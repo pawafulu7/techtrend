@@ -44,6 +44,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" className="h-full">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const theme = localStorage.getItem('theme') || 'system';
+                  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  const activeTheme = theme === 'system' ? systemTheme : theme;
+                  document.documentElement.classList.add(activeTheme);
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
