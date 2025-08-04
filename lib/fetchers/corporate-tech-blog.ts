@@ -91,13 +91,17 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             // タグを抽出（企業名と技術タグ）
             const tags = this.extractTags(item, feedInfo.name);
             
-            // 企業名をタグとして必ず追加
-            if (!tags.includes(feedInfo.name)) {
-              tags.unshift(feedInfo.name);
+            // Corporate Tech Blogタグを追加（最後に追加）
+            if (!tags.includes('企業テックブログ')) {
+              tags.push('企業テックブログ');
             }
             
-            // Corporate Tech Blogタグを追加
-            tags.unshift('企業テックブログ');
+            // 企業名をタグとして必ず最初に追加（最も目立つ位置）
+            // 企業名を正規化して統一
+            const companyTagName = this.normalizeCompanyName(feedInfo.name);
+            // 既存の企業名タグを削除して最初に追加
+            const tagsWithoutCompany = tags.filter(tag => tag !== feedInfo.name && tag !== companyTagName);
+            const finalTags = [companyTagName, ...tagsWithoutCompany];
 
             // コンテンツの取得（優先順位: content > contentSnippet > description）
             const content = item.content || item.contentSnippet || item.description || '';
@@ -110,7 +114,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
               publishedAt: item.isoDate ? new Date(item.isoDate) :
                           item.pubDate ? parseRSSDate(item.pubDate) : new Date(),
               sourceId: this.source.id,
-              tagNames: tags,
+              tagNames: finalTags,
               author: item.creator || item['dc:creator'] || feedInfo.name,
             };
 
@@ -154,6 +158,22 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
   }
 
   /**
+   * 企業名を正規化（統一された表記にする）
+   */
+  private normalizeCompanyName(name: string): string {
+    // 企業名の正規化マッピング
+    const nameMap: Record<string, string> = {
+      'DeNA': 'DeNA',
+      'Yahoo! JAPAN': 'Yahoo!',
+      'メルカリ': 'メルカリ',
+      'サイバーエージェント': 'CyberAgent',
+      'LINEヤフー': 'LINEヤフー'
+    };
+    
+    return nameMap[name] || name;
+  }
+
+  /**
    * タグ抽出
    */
   private extractTags(item: CorporateRSSItem, companyName: string): string[] {
@@ -164,7 +184,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
       tags.push(...item.categories);
     }
 
-    // 企業別の追加タグ
+    // 企業別の追加タグ（企業名自体はここでは追加しない）
     switch (companyName) {
       case 'DeNA':
         tags.push('ゲーム開発', 'モバイル');
