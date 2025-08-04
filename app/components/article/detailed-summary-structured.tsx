@@ -1,13 +1,20 @@
 'use client';
 
 import { parseSummary } from '@/lib/utils/summary-parser';
+import { ArticleType } from '@/lib/utils/article-type-detector';
 
 interface DetailedSummaryStructuredProps {
   detailedSummary: string;
+  articleType?: ArticleType;
+  summaryVersion?: number;
 }
 
-export function DetailedSummaryStructured({ detailedSummary }: DetailedSummaryStructuredProps) {
-  const sections = parseSummary(detailedSummary);
+export function DetailedSummaryStructured({ 
+  detailedSummary, 
+  articleType, 
+  summaryVersion 
+}: DetailedSummaryStructuredProps) {
+  const sections = parseSummary(detailedSummary, { articleType, summaryVersion });
   
   // パース失敗時のフォールバック
   if (sections.length === 0) {
@@ -51,9 +58,9 @@ function highlightContent(content: string): React.ReactNode {
     { regex: /注意点は(.+?)である/g, style: 'font-semibold text-orange-600 dark:text-orange-400' }
   ];
   
-  let parts: React.ReactNode[] = [];
+  const parts: React.ReactNode[] = [];
   let lastIndex = 0;
-  let matches: { start: number; end: number; text: string; style: string }[] = [];
+  const matches: { start: number; end: number; text: string; style: string }[] = [];
   
   // すべてのマッチを収集
   patterns.forEach(({ regex, style }) => {

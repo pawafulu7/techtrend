@@ -122,7 +122,9 @@ export default async function ArticlePage({ params }: PageProps) {
               {article.detailedSummary ? (
                 <DetailedSummaryDisplay 
                   articleId={article.id} 
-                  detailedSummary={article.detailedSummary} 
+                  detailedSummary={article.detailedSummary}
+                  articleType={article.articleType as any}
+                  summaryVersion={article.summaryVersion}
                 />
               ) : article.summary ? (
                 <div className="p-4 bg-muted rounded-lg">

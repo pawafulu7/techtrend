@@ -2,13 +2,20 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { parseSummary } from '@/lib/utils/summary-parser';
+import { ArticleType } from '@/lib/utils/article-type-detector';
 
 interface DetailedSummaryCardsProps {
   detailedSummary: string;
+  articleType?: ArticleType;
+  summaryVersion?: number;
 }
 
-export function DetailedSummaryCards({ detailedSummary }: DetailedSummaryCardsProps) {
-  const sections = parseSummary(detailedSummary);
+export function DetailedSummaryCards({ 
+  detailedSummary, 
+  articleType, 
+  summaryVersion 
+}: DetailedSummaryCardsProps) {
+  const sections = parseSummary(detailedSummary, { articleType, summaryVersion });
   
   // パース失敗時のフォールバック
   if (sections.length === 0) {
