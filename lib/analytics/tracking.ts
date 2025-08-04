@@ -63,6 +63,12 @@ class AnalyticsTracker {
   }
 
   private async checkEnabled() {
+    // Check if running in browser environment
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      this.isEnabled = false;
+      return;
+    }
+    
     const enabled = localStorage.getItem('analytics-enabled');
     this.isEnabled = enabled === 'true';
     if (this.isEnabled) {
