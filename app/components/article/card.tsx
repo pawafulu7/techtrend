@@ -63,24 +63,21 @@ export function ArticleCard({ article }: ArticleCardProps) {
         sourceColor.hover
       )}
       style={{
-        boxShadow: 'var(--shadow-sm)',
-        background: `linear-gradient(135deg, 
-          rgba(255,255,255,0.95) 0%, 
-          rgba(255,255,255,0.90) 100%)`,
+        boxShadow: '0 2px 8px rgba(100, 100, 200, 0.15)',
+        background: 'rgba(255, 255, 255, 0.98)',
+        border: '1px solid rgba(200, 200, 255, 0.2)',
       }}
       onMouseEnter={(e) => {
         const el = e.currentTarget as HTMLElement;
-        el.style.boxShadow = 'var(--shadow-lg)';
-        el.style.background = `linear-gradient(135deg, 
-          rgba(255,255,255,0.98) 0%, 
-          rgba(255,255,255,0.95) 100%)`;
+        el.style.boxShadow = '0 8px 24px rgba(100, 100, 200, 0.25)';
+        el.style.background = 'rgba(255, 255, 255, 1)';
+        el.style.border = '1px solid rgba(200, 200, 255, 0.4)';
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget as HTMLElement;
-        el.style.boxShadow = 'var(--shadow-sm)';
-        el.style.background = `linear-gradient(135deg, 
-          rgba(255,255,255,0.95) 0%, 
-          rgba(255,255,255,0.90) 100%)`;
+        el.style.boxShadow = '0 2px 8px rgba(100, 100, 200, 0.15)';
+        el.style.background = 'rgba(255, 255, 255, 0.98)';
+        el.style.border = '1px solid rgba(200, 200, 255, 0.2)';
       }}
     >
       {/* グラデーション背景 */}

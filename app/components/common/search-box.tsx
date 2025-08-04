@@ -45,7 +45,7 @@ export function SearchBox() {
         placeholder="キーワードで記事を検索..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="pl-9 pr-9 h-8 text-sm bg-background/95 backdrop-blur-sm border-border/50 focus:bg-background focus:border-border"
+        className="pl-9 pr-9 h-8 text-sm bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-white/30 focus:bg-white dark:focus:bg-gray-900 focus:border-white/50"
       />
       {query && (
         <Button

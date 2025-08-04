@@ -174,7 +174,7 @@ export default async function Home({ searchParams }: PageProps) {
       
       <div className="container mx-auto px-2 sm:px-4 py-2 flex flex-col h-full overflow-hidden">
         {/* Header Section */}
-        <div className="mb-2 flex-shrink-0 space-y-2 bg-background/60 backdrop-blur-sm rounded-lg p-3 border border-border/30">
+        <div className="mb-2 flex-shrink-0 space-y-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 border border-white/20 shadow-sm">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
             <h1 className="text-lg sm:text-xl font-bold">最新テックトレンド</h1>
             <FeedUpdateButton />
