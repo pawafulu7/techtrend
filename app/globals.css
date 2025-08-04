@@ -184,9 +184,9 @@ html.no-transitions *::after {
     bottom: 0;
     background: linear-gradient(
       135deg,
-      oklch(0.99 0.01 200 / 0.5) 0%,
-      oklch(0.97 0.02 230 / 0.6) 50%,
-      oklch(0.95 0.03 260 / 0.7) 100%
+      oklch(0.98 0.02 200) 0%,
+      oklch(0.97 0.025 230) 50%,
+      oklch(0.96 0.03 260) 100%
     );
     pointer-events: none;
     z-index: -1;

@@ -66,7 +66,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-gradient-to-br from-[oklch(0.99_0.01_200)] via-[oklch(0.98_0.02_230)] to-[oklch(0.96_0.03_260)]`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <NoTransitions />
         <QueryProvider>
