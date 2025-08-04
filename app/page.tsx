@@ -28,7 +28,11 @@ interface PageProps {
 async function getArticles(params: Awaited<PageProps['searchParams']>) {
   const page = Math.max(1, parseInt(params.page || '1'));
   const limit = ARTICLES_PER_PAGE;
+  // Support both publishedAt and createdAt for sorting
   const sortBy = params.sortBy || 'publishedAt';
+  // Validate sortBy parameter
+  const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
+  const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
   const sortOrder = (params.sortOrder || 'desc') as 'asc' | 'desc';
 
   // Build where clause
@@ -103,7 +107,7 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
         },
       },
       orderBy: {
-        [sortBy]: sortOrder,
+        [finalSortBy]: sortOrder,
       } as Prisma.ArticleOrderByWithRelationInput,
       skip: (page - 1) * limit,
       take: limit,
@@ -202,13 +206,23 @@ export default async function Home({ searchParams }: PageProps) {
             </div>
             <div className="flex gap-1">
               <Button
-                variant={params.sortBy !== 'bookmarks' && params.sortBy !== 'qualityScore' ? 'default' : 'outline'}
+                variant={params.sortBy !== 'bookmarks' && params.sortBy !== 'qualityScore' && params.sortBy !== 'createdAt' ? 'default' : 'outline'}
                 size="sm"
                 asChild
                 className="h-6 sm:h-7 px-2 text-xs"
               >
                 <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
-                  新着
+                  公開順
+                </Link>
+              </Button>
+              <Button
+                variant={params.sortBy === 'createdAt' ? 'default' : 'outline'}
+                size="sm"
+                asChild
+                className="h-6 sm:h-7 px-2 text-xs"
+              >
+                <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'createdAt' }).toString()}`}>
+                  取込順
                 </Link>
               </Button>
               <Button

@@ -25,7 +25,11 @@ export async function GET(request: NextRequest) {
     // Parse pagination params
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
+    // Support both publishedAt and createdAt for sorting
     const sortBy = searchParams.get('sortBy') || 'publishedAt';
+    // Validate sortBy parameter
+    const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
+    const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
     const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
     
     // Parse filters
@@ -38,7 +42,7 @@ export async function GET(request: NextRequest) {
       params: {
         page: page.toString(),
         limit: limit.toString(),
-        sortBy,
+        sortBy: finalSortBy,
         sortOrder,
         sourceId: sourceId || 'all',
         tag: tag || 'all',
@@ -116,7 +120,7 @@ export async function GET(request: NextRequest) {
           },
         },
         orderBy: {
-          [sortBy]: sortOrder,
+          [finalSortBy]: sortOrder,
         },
         skip: (page - 1) * limit,
         take: limit,
