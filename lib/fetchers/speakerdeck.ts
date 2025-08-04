@@ -3,7 +3,21 @@ import { BaseFetcher } from './base';
 import RSSParser from 'rss-parser';
 import type { CreateArticleInput } from '@/types/models';
 import { fetcherConfig } from '@/lib/config/fetchers';
+import { speakerDeckConfig } from '@/lib/config/speakerdeck';
 import * as cheerio from 'cheerio';
+
+interface PresentationCandidate {
+  url: string;
+  title: string;
+  author: string;
+  views: number;
+}
+
+interface PresentationDetails {
+  publishedAt: Date;
+  description?: string;
+  thumbnail?: string;
+}
 
 export class SpeakerDeckFetcher extends BaseFetcher {
   private parser: RSSParser;
@@ -25,7 +39,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     const errors: Error[] = [];
     const articles: CreateArticleInput[] = [];
 
-    // まずトレンドページから記事を取得
+    // トレンドページから記事を取得（改善版）
     try {
       const trendingArticles = await this.fetchTrendingPresentations();
       articles.push(...trendingArticles);
@@ -35,68 +49,47 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       errors.push(err);
     }
 
-    // 日本語技術系プレゼンテーションを見つけやすいユーザーのRSSフィード
-    const techSpeakers = [
-      'twada', // TDD/テスト駆動開発
-      'willnet', // Ruby/Rails関連
-      'yosuke_furukawa', // Node.js/JavaScript
-      'mizchi', // フロントエンド技術
-      'makoga', // インフラ/クラウド
-      'kenjiskywalker', // DevOps/SRE
-      'matsumoto_r', // Web技術/パフォーマンス
-      'kazuho', // HTTP/Web標準
-      'sorah', // Ruby/インフラ
-      'tagomoris', // データ処理/分散システム
-      'kentaro', // Perl/Web開発
-      'hsbt', // Ruby/RubyGems
-      'kokukuma', // SRE/監視
-      'tcnksm', // Go/Docker
-      'kurotaky', // Rails/Web開発
-      'onk', // Ruby/Rails
-      'voluntas', // WebRTC/リアルタイム通信
-      'moznion', // Perl/Go
-      'tokuhirom', // Perl/Web開発
-      'gfx', // JavaScript/TypeScript
-      'cho45', // JavaScript/電子工作
-      'hakobe', // Web開発/スタートアップ
-      'yuki24', // Rails/API設計
-      'joker1007', // Ruby/データ処理
-      'k0kubun', // Ruby/JITコンパイラ
-      'azu', // JavaScript/Web標準
-    ];
+    // RSSフィードは設定で有効な場合のみ使用
+    if (speakerDeckConfig.enableRSSFeeds) {
+      const techSpeakers = [
+        'twada', 'willnet', 'yosuke_furukawa', 'mizchi', 'makoga',
+        'kenjiskywalker', 'matsumoto_r', 'kazuho', 'sorah', 'tagomoris',
+        'kentaro', 'hsbt', 'kokukuma', 'tcnksm', 'kurotaky',
+        'onk', 'voluntas', 'moznion', 'tokuhirom', 'gfx',
+        'cho45', 'hakobe', 'yuki24', 'joker1007', 'k0kubun', 'azu',
+      ];
 
-    // 各スピーカーのRSSフィードを取得
-    for (const speaker of techSpeakers) {
-      try {
-        const feedUrl = `https://speakerdeck.com/${speaker}.rss`;
-        console.log(`📥 Speaker Deck: ${speaker} のフィードを取得中...`);
-        
-        const feed = await this.parser.parseURL(feedUrl);
-        
-        for (const item of feed.items.slice(0, 3)) { // 各スピーカーから最新3件
-          if (!item.link || !item.title) continue;
+      for (const speaker of techSpeakers) {
+        try {
+          const feedUrl = `https://speakerdeck.com/${speaker}.rss`;
+          console.log(`📥 Speaker Deck: ${speaker} のフィードを取得中...`);
+          
+          const feed = await this.parser.parseURL(feedUrl);
+          
+          for (const item of feed.items.slice(0, 3)) {
+            if (!item.link || !item.title) continue;
 
-          // 日本語のプレゼンテーションかどうかチェック
-          const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(item.title);
-          if (!hasJapanese) continue;
+            const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(item.title);
+            if (!hasJapanese) continue;
 
-          const article: CreateArticleInput = {
-            title: item.title,
-            url: item.link,
-            sourceId: this.source.id,
-            content: item.contentSnippet || item.content || '',
-            description: item.contentSnippet || '',
-            publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
-            author: speaker,
-            tags: this.extractTags(item.title + ' ' + (item.contentSnippet || '')),
-          };
+            const article: CreateArticleInput = {
+              title: item.title,
+              url: item.link,
+              sourceId: this.source.id,
+              content: item.contentSnippet || item.content || '',
+              description: item.contentSnippet || '',
+              publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
+              author: speaker,
+              tags: this.extractTags(item.title + ' ' + (item.contentSnippet || '')),
+            };
 
-          articles.push(article);
+            articles.push(article);
+          }
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error));
+          console.error(`❌ Speaker Deck ${speaker} エラー:`, err.message);
+          errors.push(err);
         }
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        console.error(`❌ Speaker Deck ${speaker} エラー:`, err.message);
-        errors.push(err);
       }
     }
 
@@ -104,6 +97,281 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     return { articles, errors };
   }
 
+  /**
+   * トレンドページから高品質なプレゼンテーションを取得
+   * - Views数フィルタリング（1000以上）
+   * - 日付フィルタリング（1年以内）
+   * - 最大100件取得
+   */
+  private async fetchTrendingPresentations(): Promise<CreateArticleInput[]> {
+    const articles: CreateArticleInput[] = [];
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    
+    console.log('📥 Speaker Deck: トレンドページを取得中...');
+    console.log(`  - 最小views数: ${speakerDeckConfig.minViews}`);
+    console.log(`  - 対象期間: ${oneYearAgo.toISOString().split('T')[0]} 以降`);
+    console.log(`  - 最大取得件数: ${speakerDeckConfig.maxArticles}`);
+
+    // Step 1: 一覧ページから候補を収集
+    const candidates = await this.collectCandidates();
+    console.log(`  📋 候補数: ${candidates.length}件（views数フィルタリング後）`);
+
+    if (!speakerDeckConfig.enableDetailFetch) {
+      // 詳細取得を無効化している場合は、現在日付で記事を作成
+      for (const candidate of candidates.slice(0, speakerDeckConfig.maxArticles)) {
+        articles.push({
+          title: candidate.title,
+          url: candidate.url,
+          sourceId: this.source.id,
+          content: candidate.title,
+          description: '',
+          publishedAt: new Date(),
+          author: candidate.author,
+          tags: this.extractTags(candidate.title),
+        });
+      }
+      return articles;
+    }
+
+    // Step 2: 個別ページから詳細情報を取得（並列処理）
+    console.log('  📖 個別ページから詳細情報を取得中...');
+    const chunks = this.chunkArray(candidates, speakerDeckConfig.parallelLimit);
+    
+    for (const chunk of chunks) {
+      const promises = chunk.map(async (candidate) => {
+        try {
+          const details = await this.fetchPresentationDetails(candidate.url);
+          
+          // 日付フィルタリング
+          if (details.publishedAt >= oneYearAgo) {
+            return {
+              title: candidate.title,
+              url: candidate.url,
+              sourceId: this.source.id,
+              content: details.description || candidate.title,
+              description: details.description || '',
+              publishedAt: details.publishedAt,
+              author: candidate.author,
+              tags: this.extractTags(candidate.title + ' ' + (details.description || '')),
+              thumbnail: details.thumbnail,
+            } as CreateArticleInput;
+          }
+          
+          if (speakerDeckConfig.debug) {
+            console.log(`  ⏭️ スキップ: ${candidate.title} (${details.publishedAt.toISOString().split('T')[0]})`);
+          }
+        } catch (error) {
+          console.error(`  ❌ 詳細取得失敗: ${candidate.url}`, error);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      const validArticles = results.filter((a): a is CreateArticleInput => a !== null);
+      articles.push(...validArticles);
+      
+      console.log(`  ✅ 処理済み: ${articles.length}/${speakerDeckConfig.maxArticles}`);
+      
+      if (articles.length >= speakerDeckConfig.maxArticles) {
+        break;
+      }
+      
+      // レート制限対策
+      await this.delay(speakerDeckConfig.requestDelay);
+    }
+
+    const finalArticles = articles.slice(0, speakerDeckConfig.maxArticles);
+    console.log(`✅ Speaker Deck: ${finalArticles.length}件の高品質プレゼンテーションを取得`);
+    
+    return finalArticles;
+  }
+
+  /**
+   * 一覧ページから候補を収集
+   */
+  private async collectCandidates(): Promise<PresentationCandidate[]> {
+    const candidates: PresentationCandidate[] = [];
+    let page = 1;
+
+    while (candidates.length < speakerDeckConfig.maxArticles * 2 && // 余裕を持って収集
+           page <= speakerDeckConfig.maxPages) {
+      
+      const listUrl = `https://speakerdeck.com/c/programming?lang=ja&page=${page}`;
+      
+      if (speakerDeckConfig.debug) {
+        console.log(`  📄 ページ${page}を取得中...`);
+      }
+
+      try {
+        const html = await this.fetchWithRetry(listUrl);
+        const $ = cheerio.load(html);
+        
+        let foundOnPage = 0;
+        $('.deck-preview').each((index, element) => {
+          const $item = $(element);
+          const $link = $item.find('a.deck-preview-link');
+          const href = $link.attr('href');
+          const title = $link.attr('title') || $link.find('.deck-title').text().trim();
+          
+          if (!href || !title) return;
+
+          // 日本語チェック
+          const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(title);
+          if (!hasJapanese) return;
+
+          // Views数を取得
+          const viewsElement = $item.find('span[title*="views"]');
+          const viewsTitle = viewsElement.attr('title');
+          
+          if (viewsTitle) {
+            const viewsMatch = viewsTitle.match(/([0-9,]+)\s*views/);
+            if (viewsMatch) {
+              const viewsNumber = parseInt(viewsMatch[1].replace(/,/g, ''));
+              
+              // Views数フィルタリング
+              if (viewsNumber >= speakerDeckConfig.minViews) {
+                const author = $item.find('.deck-preview-meta .text-truncate a').text().trim() || 'Unknown';
+                
+                candidates.push({
+                  url: `https://speakerdeck.com${href}`,
+                  title: title,
+                  author: author,
+                  views: viewsNumber
+                });
+                foundOnPage++;
+              }
+            }
+          }
+        });
+
+        if (speakerDeckConfig.debug) {
+          console.log(`    → ${foundOnPage}件の候補を発見`);
+        }
+
+        // 候補が見つからなくなったら終了
+        if (foundOnPage === 0) {
+          break;
+        }
+
+      } catch (error) {
+        console.error(`  ❌ ページ${page}の取得に失敗:`, error);
+        break;
+      }
+
+      page++;
+      await this.delay(speakerDeckConfig.requestDelay);
+    }
+
+    // Views数で降順ソート
+    candidates.sort((a, b) => b.views - a.views);
+    
+    return candidates;
+  }
+
+  /**
+   * プレゼンテーションの詳細情報を取得
+   */
+  private async fetchPresentationDetails(url: string): Promise<PresentationDetails> {
+    const html = await this.fetchWithRetry(url);
+    const $ = cheerio.load(html);
+    
+    // JSON-LDから情報を取得（推奨）
+    const jsonLdScript = $('script[type="application/ld+json"]').html();
+    if (jsonLdScript) {
+      try {
+        const data = JSON.parse(jsonLdScript);
+        return {
+          publishedAt: new Date(data.datePublished || Date.now()),
+          description: data.description,
+          thumbnail: data.thumbnailUrl
+        };
+      } catch (error) {
+        if (speakerDeckConfig.debug) {
+          console.error('  ⚠️ JSON-LD解析エラー:', error);
+        }
+      }
+    }
+    
+    // フォールバック: HTMLから直接取得
+    const dateText = $('.deck-date').text();
+    const dateMatch = dateText.match(/(\d{4})\.(\d{2})\.(\d{2})/);
+    
+    let publishedAt = new Date();
+    if (dateMatch) {
+      publishedAt = new Date(`${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`);
+    }
+    
+    const description = $('.deck-description').text().trim() || 
+                       $('meta[name="description"]').attr('content') || '';
+    
+    const thumbnail = $('meta[property="og:image"]').attr('content') || '';
+    
+    return {
+      publishedAt,
+      description,
+      thumbnail
+    };
+  }
+
+  /**
+   * リトライ機能付きフェッチ
+   */
+  private async fetchWithRetry(url: string, retries = 0): Promise<string> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), speakerDeckConfig.timeout);
+      
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.text();
+    } catch (error) {
+      if (retries < speakerDeckConfig.retryLimit) {
+        const waitTime = speakerDeckConfig.requestDelay * (retries + 1);
+        if (speakerDeckConfig.debug) {
+          console.log(`  🔄 リトライ ${retries + 1}/${speakerDeckConfig.retryLimit} (${waitTime}ms待機)`);
+        }
+        await this.delay(waitTime);
+        return this.fetchWithRetry(url, retries + 1);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * 遅延処理
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * 配列をチャンクに分割
+   */
+  private chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
+  }
+
+  /**
+   * タグ抽出（既存のメソッドを維持）
+   */
   private extractTags(text: string): string[] {
     const tags: string[] = [];
     
@@ -137,72 +405,5 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     }
 
     return [...new Set(tags)].slice(0, 5); // 重複を除いて最大5個
-  }
-
-  private async fetchTrendingPresentations(): Promise<CreateArticleInput[]> {
-    const articles: CreateArticleInput[] = [];
-    const url = 'https://speakerdeck.com/c/programming?lang=ja';
-    
-    console.log('📥 Speaker Deck: トレンドページを取得中...');
-    
-    try {
-      // フェッチ処理
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-          'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const html = await response.text();
-      const $ = cheerio.load(html);
-
-      // プレゼンテーションアイテムを取得
-      $('a.deck-preview-link').each((index, element) => {
-        if (index >= 30) return; // 日別トレンド上位30件
-        
-        const $link = $(element);
-        const href = $link.attr('href');
-        const title = $link.attr('title') || $link.find('.deck-title').text().trim();
-        
-        if (!href || !title) return;
-
-        // 日本語のプレゼンテーションかチェック
-        const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(title);
-        if (!hasJapanese) return;
-
-        // 著者情報を取得（メタデータから）
-        const $meta = $link.next('.deck-preview-meta');
-        const author = $meta.find('.text-truncate').first().text().trim();
-        
-        // 現在の日付を使用（トレンドページには日付情報がない）
-        const publishedAt = new Date();
-
-        const article: CreateArticleInput = {
-          title: title,
-          url: `https://speakerdeck.com${href}`,
-          sourceId: this.source.id,
-          content: title,
-          description: title,
-          publishedAt: publishedAt,
-          author: author || 'Unknown',
-          tags: this.extractTags(title),
-        };
-
-        articles.push(article);
-      });
-
-      console.log(`✅ Speaker Deck: トレンドから${articles.length}件のプレゼンテーションを取得`);
-    } catch (error) {
-      console.error('❌ Speaker Deck トレンドページ取得エラー:', error);
-      throw error;
-    }
-
-    return articles;
   }
 }
