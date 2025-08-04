@@ -108,7 +108,7 @@ export default async function ArticlePage({ params }: PageProps) {
                         className="cursor-pointer hover:bg-secondary"
                         asChild
                       >
-                        <Link href={`/?tag=${encodeURIComponent(tag.name)}`}>
+                        <Link href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}>
                           {tag.name}
                         </Link>
                       </Badge>
