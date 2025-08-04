@@ -23,6 +23,8 @@ model Article {
   updatedAt       DateTime @updatedAt
   difficulty      String?
   detailedSummary String?
+  articleType     String?  // release, problem-solving, tutorial, tech-intro, implementation
+  summaryVersion  Int      @default(1)
   source          Source   @relation(fields: [sourceId], references: [id])
   tags            Tag[]    @relation("ArticleToTag")
 }
