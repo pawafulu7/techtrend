@@ -175,7 +175,7 @@ cron.schedule('0 2 * * *', async () => {
   console.log(`\n🌙 深夜の要約生成を開始: ${startTime.toLocaleString('ja-JP')}`);
   
   try {
-    const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/core/manage-summaries.ts generate');
+    const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/core/manage-summaries.ts generate --batch 5 --limit 30');
     console.log(summaryOutput);
     
     // 成功率が低い場合は30分後に再試行
@@ -186,7 +186,7 @@ cron.schedule('0 2 * * *', async () => {
         console.log('⏰ 30分後に再試行します...');
         setTimeout(async () => {
           console.log('\n🔁 要約生成を再試行中...');
-          const { stdout: retryOutput }: ExecutionResult = await execAsync('npx tsx scripts/core/manage-summaries.ts generate');
+          const { stdout: retryOutput }: ExecutionResult = await execAsync('npx tsx scripts/core/manage-summaries.ts generate --batch 5 --limit 30');
           console.log(retryOutput);
         }, 30 * 60 * 1000);
       }
