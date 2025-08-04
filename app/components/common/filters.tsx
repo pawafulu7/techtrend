@@ -67,12 +67,8 @@ export function Filters({ sources, tags }: FiltersProps) {
         </div>
       </div>
 
-      {/* Tag Filter */}
-      {tags.length > 0 && (
-        <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-white/20 shadow-sm rounded-lg p-3">
-          <TagFilter tags={tags} />
-        </div>
-      )}
+      {/* Tag Filter - デスクトップでは非表示（ヘッダーに移動） */}
+      {/* モバイルではMobileFilters内で表示 */}
     </div>
   );
 }

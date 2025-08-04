@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
 import { SearchBox } from '@/app/components/common/search-box';
+import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ArticleList } from '@/app/components/article/list';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { FeedUpdateButton } from '@/app/components/common/feed-update-button';
@@ -181,6 +182,9 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
           <div className="flex items-center gap-2">
             <SearchBox />
+            <div className="hidden lg:block">
+              <TagFilterDropdown tags={tags} />
+            </div>
           </div>
         </div>
 

@@ -12,6 +12,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Filters } from './filters';
+import { TagFilter } from './tag-filter';
 import type { Source, Tag } from '@prisma/client';
 
 interface MobileFiltersProps {
@@ -41,8 +42,14 @@ export function MobileFilters({ sources, tags }: MobileFiltersProps) {
             ソースやタグで記事を絞り込む
           </SheetDescription>
         </SheetHeader>
-        <div className="mt-6">
+        <div className="mt-6 space-y-4">
           <Filters sources={sources} tags={tags} />
+          {/* モバイル用TagFilter */}
+          {tags.length > 0 && (
+            <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-white/20 shadow-sm rounded-lg p-3">
+              <TagFilter tags={tags} />
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
