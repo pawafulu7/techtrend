@@ -42,7 +42,7 @@ export function Filters({ sources, tags }: FiltersProps) {
   return (
     <div className="space-y-3">
       {/* Source Filter */}
-      <div>
+      <div className="bg-background/80 backdrop-blur-sm rounded-lg p-3 border border-border/50">
         <h3 className="text-xs font-semibold mb-2">ソース</h3>
         <div className="flex flex-col gap-1">
           <Button
@@ -69,7 +69,7 @@ export function Filters({ sources, tags }: FiltersProps) {
 
       {/* Tag Filter */}
       {tags.length > 0 && (
-        <div className="border rounded-lg p-3">
+        <div className="bg-background/80 backdrop-blur-sm border border-border/50 rounded-lg p-3">
           <TagFilter tags={tags} />
         </div>
       )}

@@ -57,7 +57,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         "group relative overflow-hidden cursor-pointer",
         "transition-[transform,box-shadow,border-color] duration-200 ease-out",
         "hover:shadow-lg hover:-translate-y-0.5",
-        "shadow-sm",
+        "shadow-sm bg-card/95 backdrop-blur-sm",
         sourceColor.border,
         sourceColor.hover
       )}
