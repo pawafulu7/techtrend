@@ -48,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className="h-full no-transitions">
+    <html lang="ja" className="h-full no-transitions light">
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -58,6 +58,7 @@ export default function RootLayout({
                   const theme = localStorage.getItem('theme') || 'system';
                   const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                   const activeTheme = theme === 'system' ? systemTheme : theme;
+                  document.documentElement.classList.remove('light', 'dark');
                   document.documentElement.classList.add(activeTheme);
                 } catch (e) {}
               })();

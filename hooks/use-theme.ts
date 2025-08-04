@@ -34,7 +34,8 @@ export function useTheme() {
   useEffect(() => {
     const root = window.document.documentElement
     const activeTheme = theme === "system" ? systemTheme : theme
-    const currentTheme = root.classList.contains("dark") ? "dark" : "light"
+    const currentTheme = root.classList.contains("dark") ? "dark" : 
+                       root.classList.contains("light") ? "light" : null
 
     // Only update if the theme actually changes
     if (currentTheme !== activeTheme) {
