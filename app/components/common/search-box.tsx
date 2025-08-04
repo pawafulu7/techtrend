@@ -39,13 +39,13 @@ export function SearchBox() {
 
   return (
     <div className="relative flex-1 max-w-md">
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
       <Input
         type="text"
         placeholder="キーワードで記事を検索..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="pl-9 pr-9 h-8 text-sm bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-white/30 focus:bg-white dark:focus:bg-gray-900 focus:border-white/50"
+        className="pl-9 pr-9 h-8 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
       />
       {query && (
         <Button
