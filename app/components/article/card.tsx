@@ -54,15 +54,26 @@ export function ArticleCard({ article }: ArticleCardProps) {
     <Card 
       onClick={handleCardClick}
       className={cn(
-        "group relative overflow-hidden transition-all duration-300 cursor-pointer",
-        "hover:shadow-lg hover:-translate-y-1",
+        "group relative overflow-hidden cursor-pointer",
+        "transition-[transform,box-shadow,border-color] duration-200 ease-out",
+        "hover:shadow-lg hover:-translate-y-0.5",
+        "shadow-sm",
         sourceColor.border,
         sourceColor.hover
       )}
+      style={{
+        boxShadow: 'var(--shadow-sm)',
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-lg)';
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-sm)';
+      }}
     >
       {/* グラデーション背景 */}
       <div className={cn(
-        "absolute inset-0 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none",
+        "absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-300 pointer-events-none",
         "bg-gradient-to-br",
         sourceColor.gradient
       )} />
