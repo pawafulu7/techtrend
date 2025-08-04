@@ -21,7 +21,7 @@ export function PopularTags({ tags, currentTag }: PopularTagsProps) {
     if (currentTag === tagName) {
       router.push('/');
     } else {
-      router.push(`/?tag=${encodeURIComponent(tagName)}`);
+      router.push(`/?tags=${encodeURIComponent(tagName)}&tagMode=OR`);
     }
   };
 
