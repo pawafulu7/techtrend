@@ -21,6 +21,7 @@ const RSS_SOURCES = [
   'AWS',
   'SRE',
   'Google Developers Blog',
+  'Corporate Tech Blog',
   // 'GitHub Blog',
   // 'Microsoft Developer Blog'
 ];

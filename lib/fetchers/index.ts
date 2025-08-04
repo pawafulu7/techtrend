@@ -12,6 +12,7 @@ import { RailsReleasesFetcher } from './rails-releases';
 import { AWSFetcher } from './aws';
 import { SREFetcher } from './sre';
 import { GoogleDevBlogFetcher } from './google-dev-blog';
+import { CorporateTechBlogFetcher } from './corporate-tech-blog';
 // import { GitHubBlogFetcher } from './github-blog';
 // import { MicrosoftDevBlogFetcher } from './microsoft-dev-blog';
 
@@ -41,6 +42,8 @@ export function createFetcher(source: Source): BaseFetcher {
       return new SREFetcher(source);
     case 'Google Developers Blog':
       return new GoogleDevBlogFetcher(source);
+    case 'Corporate Tech Blog':
+      return new CorporateTechBlogFetcher(source);
     // case 'GitHub Blog':
     //   return new GitHubBlogFetcher(source);
     // case 'Microsoft Developer Blog':
@@ -63,7 +66,8 @@ export {
   RailsReleasesFetcher,
   AWSFetcher,
   SREFetcher,
-  GoogleDevBlogFetcher
+  GoogleDevBlogFetcher,
+  CorporateTechBlogFetcher
   // GitHubBlogFetcher,
   // MicrosoftDevBlogFetcher
 };

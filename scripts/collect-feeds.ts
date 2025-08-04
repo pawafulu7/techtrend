@@ -17,6 +17,7 @@ import { RailsReleasesFetcher } from '../lib/fetchers/rails-releases';
 import { AWSFetcher } from '../lib/fetchers/aws';
 import { SREFetcher } from '../lib/fetchers/sre';
 import { GoogleDevBlogFetcher } from '../lib/fetchers/google-dev-blog';
+import { CorporateTechBlogFetcher } from '../lib/fetchers/corporate-tech-blog';
 // import { GitHubBlogFetcher } from '../lib/fetchers/github-blog';
 // import { MicrosoftDevBlogFetcher } from '../lib/fetchers/microsoft-dev-blog';
 import { BaseFetcher } from '../lib/fetchers/base';
@@ -34,6 +35,7 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'AWS': AWSFetcher,
   'SRE': SREFetcher,
   'Google Developers Blog': GoogleDevBlogFetcher,
+  'Corporate Tech Blog': CorporateTechBlogFetcher,
   // 'GitHub Blog': GitHubBlogFetcher,
   // 'Microsoft Developer Blog': MicrosoftDevBlogFetcher,
 };
