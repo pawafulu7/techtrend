@@ -199,7 +199,7 @@ export default async function Home({ searchParams }: PageProps) {
               {/* Sort Options and Mobile Filters */}
               <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {data.total}件
               </p>
               <MobileFilters sources={sources} tags={tags} />

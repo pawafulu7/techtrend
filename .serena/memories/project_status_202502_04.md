@@ -1,125 +1,173 @@
-# TechTrend プロジェクト状態 (2025年2月4日更新)
+# TechTrend プロジェクト詳細情報 (2025年2月4日更新)
 
-## 最近の重要な変更
+## プロジェクト概要
+TechTrendは、複数の技術系メディアから記事を収集・集約・分析するWebアプリケーションです。
 
-### 実装済み機能（2025年2月）
-1. **30日以内記事フィルタリング** 
-   - 全フェッチャーに日付フィルタリング機能を追加
-   - 古い記事を除外し、最新の情報のみ取得
-
-2. **新規情報源の拡充**
-   - Corporate Tech Blog Fetcher（企業技術ブログ）
-   - AI関連・技術ブログの新規情報源
-   - Speaker Deck改善（Views数/日付フィルタリング）
-
-3. **パフォーマンス改善**
-   - 要約生成のタイムアウト問題を修正
-   - キャッシュステータスヘッダーの修正
-   - Redis移行後のテスト追加・更新
-
-## 現在のシステム構成
-
-### フェッチャー実装状況（18個）
-- **RSS系ソース**: Dev.to, Qiita, Zenn, はてなブックマーク, Publickey, Stack Overflow Blog, Think IT, InfoQ Japan
-- **API系ソース**: HuggingFace, Google AI, Google Dev Blog, AWS, Rails Releases, SRE
-- **スクレイピング系**: Speaker Deck
-- **拡張系**: Zenn Extended, Hatena Extended, Qiita Popular
-- **企業系**: Corporate Tech Blog
-
-### キャッシュシステム
-- **実装**: RedisCacheクラス（Upstash Redis使用）
-- **ローカル開発**: Redisモックサーバー（ポート8079）
-- **キャッシュ対象**: /api/sources（1時間TTL）、/api/articles（実装済み）
-
-### スケジューラー設定
-- **RSS系**: 1時間ごと更新
-- **スクレイピング系**: 12時間ごと（0時・12時）
-- **PM2管理**: ecosystem.config.js
-
-## 技術スタック
-- **フレームワーク**: Next.js 14 (App Router)
-- **データベース**: PostgreSQL (Prisma ORM)
-- **キャッシュ**: Redis (Upstash)
-- **AI**: OpenAI GPT-4o-mini（要約生成）
-- **言語**: TypeScript
-- **テスト**: Jest
+### 技術スタック
+- **フロントエンド**: Next.js 14+ (App Router)、React、TypeScript
+- **バックエンド**: Next.js API Routes、Prisma ORM
+- **データベース**: PostgreSQL/SQLite (Prisma経由)
+- **キャッシュ**: Redis（ローカル環境移行済み）
+- **AI**: OpenAI API（要約生成）
 - **プロセス管理**: PM2
+- **開発環境**: WSL2 Ubuntu
 
-## 重要な運用ルール
+## アーキテクチャ
 
-### 記事要約の生成
-- フェッチャーでは `summary: undefined` を設定
-- `generate-summaries.ts` で日本語要約を一括生成
-- フェッチャー内での要約生成は禁止
+### 1. データ収集システム
 
-### 品質フィルタリング
+#### フェッチャー一覧（17種類）
+```
+RSS系（1時間ごと更新）:
+- DevToFetcher: Dev.to記事（反応数10以上、読了時間2分以上）
+- QiitaPopularFetcher: Qiita人気記事（ストック数10以上）
+- ZennExtendedFetcher: Zennトレンド記事
+- HatenaExtendedFetcher: はてなブックマーク技術記事
+- PublickeyFetcher: Publickey記事
+- StackOverflowBlogFetcher: Stack Overflow Blog
+- ThinkITFetcher: Think IT記事
+- InfoQJapanFetcher: InfoQ Japan
+- GoogleAIFetcher: Google AI Blog
+- GoogleDevBlogFetcher: Google Developers Blog
+- HuggingFaceFetcher: Hugging Face Blog
+- AWSFetcher: AWS公式ブログ
+- SREFetcher: SRE Weekly
+- RailsReleasesFetcher: Rails Releases
+- CorporateTechBlogFetcher: 企業技術ブログ
+
+スクレイピング系（12時間ごと更新）:
+- SpeakerDeckFetcher: Speaker Deck日本語プレゼン
+```
+
+#### スケジューラー設定
+- **ファイル**: `scheduler-v2.ts`
+- **cronジョブ**:
+  - `0 * * * *`: RSS系ソース更新（毎時0分）
+  - `0 0,12 * * *`: スクレイピング系更新（0時・12時）
+  - `0 2 * * *`: 要約生成（毎日2時）
+  - `0 2 * * 0`: 品質スコア再計算（日曜2時）
+  - `0 3 * * *`: 低品質記事削除（毎日3時）
+  - `5 5,17 * * *`: Redis状態チェック（5時5分・17時5分）
+
+### 2. データ処理パイプライン
+
+#### 処理フロー
+1. **記事収集**: 各フェッチャーが外部ソースから記事取得
+2. **品質フィルタリング**: ソース別の基準で低品質記事を除外
+3. **データ保存**: Prisma経由でDBに保存（重複チェック含む）
+4. **要約生成**: `generate-summaries.ts`で日本語要約を生成（OpenAI API使用）
+5. **品質スコア計算**: 記事の質を数値化（0-100）
+6. **タグ分類**: 記事のタグを自動カテゴライズ
+
+### 3. CLI管理ツール
+
+#### メインコマンド: `npm run techtrend`
+```
+サブコマンド:
+- feeds: フィード管理（collect, sources, stats）
+- summaries: 要約管理（generate, regenerate, check）
+- quality-scores: 品質スコア管理（calculate, fix, stats）
+- cleanup: クリーンアップ（articles, tags, stats）
+- tags: タグ管理（list, stats, clean, categorize）
+```
+
+### 4. データモデル（Prisma Schema概要）
+
+#### 主要エンティティ
+- **Article**: 記事（ID、URL、タイトル、要約、コンテンツ、品質スコア等）
+- **Source**: ソース（名前、タイプ、有効/無効状態）
+- **Tag**: タグ（名前、カテゴリ）
+- **User**: ユーザー
+- **Favorite**: お気に入り
+- **ReadingList**: 読みリスト
+
+### 5. Web UI
+
+#### ページ構成（App Router）
+```
+app/
+├── (dashboard)/        # ダッシュボード
+├── analytics/          # 分析ページ
+├── articles/           # 記事詳細
+├── favorites/          # お気に入り
+├── popular/            # 人気記事
+├── reading-list/       # 読みリスト
+├── search/            # 検索
+├── sources/           # ソース一覧
+├── stats/             # 統計
+├── tags/              # タグ一覧
+└── trends/            # トレンド
+```
+
+### 6. 品質管理システム
+
+#### 品質フィルタリング基準
 - **Dev.to**: 反応数10以上、読了時間2分以上
 - **Qiita**: ストック数10以上、24時間以内
-- **Speaker Deck**: 日本語プレゼンテーション
-- **共通**: 30日以内の記事のみ取得
+- **Zenn**: デイリートレンドフィード使用
+- **Speaker Deck**: 日本語、Views数基準
 
-## 現在の課題と改善計画
+#### 品質スコア計算要素
+- ソースの信頼性
+- 記事の反応数/ストック数
+- 公開からの経過時間
+- コンテンツ長
+- タグの質
 
-### 🔴 即時対応事項
-1. **テスト修正**
-   - Prismaモック改善（13個中2個失敗）
-   - sources APIテストのモックデータ修正
+### 7. 最近の更新状況
 
-2. **キャッシュ戦略**
-   - 無効化戦略の実装
-   - タグ・ソース一覧のキャッシュ強化
+#### 2025年2月の主な変更
+1. **Redis移行完了**: ローカルRedis環境への完全移行
+2. **Speaker Deck機能改善**: Views数/日付フィルタリング実装
+3. **キャッシュ機能強化**: ステータスヘッダー修正
+4. **テスト追加**: Redis移行後のintegrationテスト
 
-### 🟡 高優先度（1ヶ月以内）
-1. **ローカルRedis環境構築**
-   - Docker Compose設定
-   - ioredisライブラリ導入
-   - 環境別設定の実装
+#### 技術的負債と改善計画
+- serenaメモリに詳細な改善計画あり
+- Phase 0リファクタリング進行中
+- テストインフラの改善が必要
 
-2. **構造化ログ導入**
-   - 126箇所のconsole.log/error/warn置換
-   - winston/pino導入
+### 8. 運用上の重要事項
 
-### 🟢 中期改善（3ヶ月以内）
-1. **型安全性向上**
-   - TypeScript strict mode有効化
-   - any型の排除
+#### 絶対守るべきルール
+1. **要約生成**: フェッチャーで `summary: undefined` 設定必須
+2. **要約は必ず日本語**: `generate-summaries.ts`でのみ生成
+3. **作業後のコミット**: 機能追加・修正後は都度コミット
 
-2. **監視基盤**
-   - OpenTelemetry導入
-   - パフォーマンスメトリクス収集
+#### デバッグ用スクリプト
+```bash
+# 特定ソースのみ収集
+npx tsx scripts/collect-feeds.ts "Dev.to"
 
-## 解決済み項目
-- ✅ 30日以内記事フィルタリング実装
-- ✅ タグカテゴリ機能実装
-- ✅ articles APIキャッシュ実装
-- ✅ CLIツール基盤構築
-- ✅ Speaker Deck機能追加・改善
-- ✅ 企業技術ブログフェッチャー追加
+# 要約生成
+npm run scripts:summarize
 
-## 未解決の技術的負債
-- ❌ N+1クエリ問題（Prismaのinclude使用箇所）
-- ❌ テストカバレッジ不足（目標: 20% → 40%）
-- ❌ エラーログの構造化
-- ❌ E2Eテスト未実装
+# 品質チェック
+npx tsx scripts/check-article-quality.ts
 
-## ディレクトリ構成
-```
-techtrend/
-├── app/          # Next.js App Router
-├── components/   # UIコンポーネント
-├── lib/
-│   ├── cache/    # キャッシュ実装
-│   ├── fetchers/ # 情報源フェッチャー（18個）
-│   ├── ai/       # AI要約生成
-│   └── db/       # データベース接続
-├── scripts/      # 管理スクリプト
-├── docs/         # ドキュメント
-├── __tests__/    # テストファイル
-└── scheduler-v2.ts # スケジューラー
+# 低品質記事削除
+npx tsx scripts/delete-low-quality-articles.ts
 ```
 
-## 次のアクションアイテム
-1. テスト修正を最優先で実施
-2. Docker Compose設定作成
-3. ローカルRedis環境への移行準備
-4. 構造化ログの段階的導入開始
+## プロジェクト構成の特徴
+
+### 強み
+- 多様なソースからの自動収集
+- 品質フィルタリングによる質の担保
+- 日本語要約による価値向上
+- CLIによる柔軟な管理
+- スケジューラーによる自動化
+
+### 課題
+- テストカバレッジ不足
+- エラーハンドリングの改善余地
+- パフォーマンス最適化の余地
+- ドキュメント整備の必要性
+
+## 開発環境情報
+- Node.js: nvm管理
+- パッケージマネージャー: npm
+- TypeScript設定: tsconfig.json
+- ESLint設定: eslint.config.mjs
+- Jest設定: jest.config.js（単体）、jest.config.integration.js（統合）
+- PM2設定: ecosystem.config.js
