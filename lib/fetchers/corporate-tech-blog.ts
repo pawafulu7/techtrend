@@ -55,6 +55,10 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     const allErrors: Error[] = [];
     const seenUrls = new Set<string>();
 
+    // 30日前の日付を計算
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     // 各企業のRSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
       try {
@@ -106,13 +110,20 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             // コンテンツの取得（優先順位: content > contentSnippet > description）
             const content = item.content || item.contentSnippet || item.description || '';
 
+            const publishedAt = item.isoDate ? new Date(item.isoDate) :
+                          item.pubDate ? parseRSSDate(item.pubDate) : new Date();
+            
+            // 30日以内の記事のみ処理
+            if (publishedAt < thirtyDaysAgo) {
+              continue;
+            }
+
             const article: CreateArticleInput = {
               title: this.sanitizeText(item.title),
               url: this.normalizeUrl(item.link),
               summary: undefined, // 要約は後で日本語で生成
               content: this.sanitizeText(content),
-              publishedAt: item.isoDate ? new Date(item.isoDate) :
-                          item.pubDate ? parseRSSDate(item.pubDate) : new Date(),
+              publishedAt,
               sourceId: this.source.id,
               tagNames: finalTags,
               author: item.creator || item['dc:creator'] || feedInfo.name,

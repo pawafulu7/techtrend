@@ -32,6 +32,10 @@ export class GoogleAIFetcher extends BaseFetcher {
     const articles: CreateArticleInput[] = [];
     const errors: Error[] = [];
 
+    // 30日前の日付を計算
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     try {
       const feed = await this.retry(() => this.parser.parseURL(this.source.url));
       
@@ -39,12 +43,19 @@ export class GoogleAIFetcher extends BaseFetcher {
         try {
           if (!item.title || !item.link) continue;
 
+          const publishedAt = item.pubDate ? parseRSSDate(item.pubDate) : new Date();
+          
+          // 30日以内の記事のみ処理
+          if (publishedAt < thirtyDaysAgo) {
+            continue;
+          }
+
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
             url: this.normalizeUrl(item.link),
             summary: undefined, // 要約は後で日本語で生成
             content: item['content:encoded'] || item.description || undefined,
-            publishedAt: item.pubDate ? parseRSSDate(item.pubDate) : new Date(),
+            publishedAt,
             sourceId: this.source.id,
             tagNames: this.generateGoogleAITags(item.categories),
           };

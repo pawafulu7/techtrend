@@ -47,6 +47,10 @@ export class AWSFetcher extends BaseFetcher {
     const allErrors: Error[] = [];
     const seenUrls = new Set<string>();
 
+    // 30日前の日付を計算
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     // 各RSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
       try {
@@ -84,13 +88,20 @@ export class AWSFetcher extends BaseFetcher {
             
             tags.unshift('AWS'); // 必ずAWSタグを先頭に追加
 
+            const publishedAt = item.isoDate ? new Date(item.isoDate) :
+                          item.pubDate ? parseRSSDate(item.pubDate) : new Date();
+            
+            // 30日以内の記事のみ処理
+            if (publishedAt < thirtyDaysAgo) {
+              continue;
+            }
+
             const article: CreateArticleInput = {
               title: this.sanitizeText(item.title),
               url: this.normalizeUrl(item.link),
               summary: undefined, // 要約は後で日本語で生成
               content: item.content || item.contentSnippet || '',
-              publishedAt: item.isoDate ? new Date(item.isoDate) :
-                          item.pubDate ? parseRSSDate(item.pubDate) : new Date(),
+              publishedAt,
               sourceId: this.source.id,
               tagNames: tags,
             };
