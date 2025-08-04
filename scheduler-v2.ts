@@ -22,6 +22,9 @@ const RSS_SOURCES = [
   'SRE',
   'Google Developers Blog',
   'Corporate Tech Blog',
+  'Hugging Face Blog',
+  'Google AI Blog',
+  'InfoQ Japan',
   // 'GitHub Blog',
   // 'Microsoft Developer Blog'
 ];

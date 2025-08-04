@@ -1,0 +1,79 @@
+import { Source } from '@prisma/client';
+import Parser from 'rss-parser';
+import { BaseFetcher, FetchResult } from './base';
+import { CreateArticleInput } from '@/types/models';
+import { parseRSSDate } from '@/lib/utils/date';
+
+interface GoogleAIRSSItem {
+  title?: string;
+  link?: string;
+  pubDate?: string;
+  description?: string;
+  'content:encoded'?: string;
+  categories?: string[];
+  author?: string;
+}
+
+export class GoogleAIFetcher extends BaseFetcher {
+  private parser: Parser<unknown, GoogleAIRSSItem>;
+
+  constructor(source: Source) {
+    super(source);
+    this.parser = new Parser({
+      customFields: {
+        item: [
+          ['content:encoded', 'contentEncoded'],
+        ],
+      },
+    });
+  }
+
+  async fetch(): Promise<FetchResult> {
+    const articles: CreateArticleInput[] = [];
+    const errors: Error[] = [];
+
+    try {
+      const feed = await this.retry(() => this.parser.parseURL(this.source.url));
+      
+      for (const item of feed.items || []) {
+        try {
+          if (!item.title || !item.link) continue;
+
+          const article: CreateArticleInput = {
+            title: this.sanitizeText(item.title),
+            url: this.normalizeUrl(item.link),
+            summary: undefined, // 要約は後で日本語で生成
+            content: item['content:encoded'] || item.description || undefined,
+            publishedAt: item.pubDate ? parseRSSDate(item.pubDate) : new Date(),
+            sourceId: this.source.id,
+            tagNames: this.generateGoogleAITags(item.categories),
+          };
+
+          // コンテンツからサムネイルを抽出
+          if (article.content) {
+            const thumbnail = this.extractThumbnail(article.content);
+            if (thumbnail) {
+              article.thumbnail = thumbnail;
+            }
+          }
+
+          articles.push(article);
+        } catch (error) {
+          errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
+        }
+      }
+    } catch (error) {
+      errors.push(new Error(`Failed to fetch RSS feed: ${error instanceof Error ? error.message : String(error)}`));
+    }
+
+    return { articles, errors };
+  }
+
+  private generateGoogleAITags(categories?: string[]): string[] {
+    const baseTags = ['AI', 'Google', 'Machine Learning', 'Google AI'];
+    if (categories && categories.length > 0) {
+      return [...baseTags, ...categories];
+    }
+    return baseTags;
+  }
+}

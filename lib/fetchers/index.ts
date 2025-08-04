@@ -13,6 +13,9 @@ import { AWSFetcher } from './aws';
 import { SREFetcher } from './sre';
 import { GoogleDevBlogFetcher } from './google-dev-blog';
 import { CorporateTechBlogFetcher } from './corporate-tech-blog';
+import { HuggingFaceFetcher } from './huggingface';
+import { GoogleAIFetcher } from './google-ai';
+import { InfoQJapanFetcher } from './infoq-japan';
 // import { GitHubBlogFetcher } from './github-blog';
 // import { MicrosoftDevBlogFetcher } from './microsoft-dev-blog';
 
@@ -44,6 +47,12 @@ export function createFetcher(source: Source): BaseFetcher {
       return new GoogleDevBlogFetcher(source);
     case 'Corporate Tech Blog':
       return new CorporateTechBlogFetcher(source);
+    case 'Hugging Face Blog':
+      return new HuggingFaceFetcher(source);
+    case 'Google AI Blog':
+      return new GoogleAIFetcher(source);
+    case 'InfoQ Japan':
+      return new InfoQJapanFetcher(source);
     // case 'GitHub Blog':
     //   return new GitHubBlogFetcher(source);
     // case 'Microsoft Developer Blog':
@@ -67,7 +76,10 @@ export {
   AWSFetcher,
   SREFetcher,
   GoogleDevBlogFetcher,
-  CorporateTechBlogFetcher
+  CorporateTechBlogFetcher,
+  HuggingFaceFetcher,
+  GoogleAIFetcher,
+  InfoQJapanFetcher
   // GitHubBlogFetcher,
   // MicrosoftDevBlogFetcher
 };

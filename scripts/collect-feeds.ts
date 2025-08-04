@@ -18,6 +18,9 @@ import { AWSFetcher } from '../lib/fetchers/aws';
 import { SREFetcher } from '../lib/fetchers/sre';
 import { GoogleDevBlogFetcher } from '../lib/fetchers/google-dev-blog';
 import { CorporateTechBlogFetcher } from '../lib/fetchers/corporate-tech-blog';
+import { HuggingFaceFetcher } from '../lib/fetchers/huggingface';
+import { GoogleAIFetcher } from '../lib/fetchers/google-ai';
+import { InfoQJapanFetcher } from '../lib/fetchers/infoq-japan';
 // import { GitHubBlogFetcher } from '../lib/fetchers/github-blog';
 // import { MicrosoftDevBlogFetcher } from '../lib/fetchers/microsoft-dev-blog';
 import { BaseFetcher } from '../lib/fetchers/base';
@@ -36,6 +39,9 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'SRE': SREFetcher,
   'Google Developers Blog': GoogleDevBlogFetcher,
   'Corporate Tech Blog': CorporateTechBlogFetcher,
+  'Hugging Face Blog': HuggingFaceFetcher,
+  'Google AI Blog': GoogleAIFetcher,
+  'InfoQ Japan': InfoQJapanFetcher,
   // 'GitHub Blog': GitHubBlogFetcher,
   // 'Microsoft Developer Blog': MicrosoftDevBlogFetcher,
 };
