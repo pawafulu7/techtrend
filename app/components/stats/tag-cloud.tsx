@@ -56,7 +56,7 @@ export function TagCloud({ tags }: TagCloudProps) {
           {tags.map((tag) => (
             <Link
               key={tag.id}
-              href={`/?tag=${encodeURIComponent(tag.name)}`}
+              href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}
               className="group"
             >
               <Badge
