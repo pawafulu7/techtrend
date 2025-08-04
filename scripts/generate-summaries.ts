@@ -1,6 +1,8 @@
 import { PrismaClient, Article, Source } from '@prisma/client';
 import fetch from 'node-fetch';
 import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
+import { detectArticleType } from '@/lib/utils/article-type-detector';
+import { generatePromptForArticleType } from '@/lib/utils/article-type-prompts';
 
 const prisma = new PrismaClient();
 
@@ -13,6 +15,7 @@ interface SummaryAndTags {
   summary: string;
   detailedSummary: string;
   tags: string[];
+  articleType: string;
 }
 
 // API統計情報を追跡
@@ -32,40 +35,11 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
 
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   
-  const prompt = `以下の技術記事を詳細に分析してください。
-
-タイトル: ${title}
-内容: ${content.substring(0, 4000)}
-
-以下の観点で分析し、指定された形式で回答してください：
-
-【分析観点】
-1. 記事の主要なトピックと技術的な焦点
-2. 解決しようとしている問題や課題
-3. 提示されている解決策やアプローチ
-4. 実装の具体例やコードの有無
-5. 対象読者のレベル（初級/中級/上級）
-
-【回答形式】
-※重要: 各セクションのラベル（要約:、詳細要約:、タグ:）のみ記載し、それ以外の説明や指示文は一切含めないでください。
-
-要約:
-記事が解決する問題を100-120文字で要約。「〜の問題を〜により解決」の形式で、技術名と効果を含め句点で終了。文字数厳守。
-
-詳細要約:
-以下の要素を技術的に詳しく箇条書きで記載（各項目は「・」で開始、2-3文で説明）：
-・記事の主題と技術的背景（使用技術、前提知識）
-・解決しようとしている具体的な問題と現状の課題
-・提示されている解決策の技術的アプローチ（アルゴリズム、設計パターン等）
-・実装方法の詳細（具体的なコード例、設定方法、手順）
-・期待される効果と性能改善の指標（数値があれば含める）
-・実装時の注意点、制約事項、必要な環境
-
-タグ:
-技術名,フレームワーク名,カテゴリ名,概念名
-
-【タグの例】
-JavaScript, React, フロントエンド, 状態管理`;
+  // 記事タイプを判定
+  const articleType = detectArticleType(title, content);
+  
+  // 記事タイプに応じたプロンプトを生成
+  const prompt = generatePromptForArticleType(articleType, title, content);
 
   apiStats.attempts++;
   const response = await fetch(apiUrl, {
@@ -90,7 +64,8 @@ JavaScript, React, フロントエンド, 状態管理`;
   const data = await response.json() as any;
   const responseText = data.candidates[0].content.parts[0].text.trim();
   
-  return parseSummaryAndTags(responseText);
+  const result = parseSummaryAndTags(responseText);
+  return { ...result, articleType };
 }
 
 // テキストクリーンアップ関数
@@ -380,12 +355,14 @@ async function generateSummaries(): Promise<GenerateResult> {
               summary = result.summary;
               tags = result.tags;
               
-              // 要約を更新
+              // 要約を更新（新形式として保存）
               await prisma.article.update({
                 where: { id: article.id },
                 data: { 
                   summary,
-                  detailedSummary: result.detailedSummary
+                  detailedSummary: result.detailedSummary,
+                  articleType: result.articleType,
+                  summaryVersion: 2
                 }
               });
             } else {
