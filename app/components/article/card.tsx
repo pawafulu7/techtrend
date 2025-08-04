@@ -73,7 +73,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
     >
       {/* グラデーション背景 */}
       <div className={cn(
-        "absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-300 pointer-events-none",
+        "absolute inset-0 opacity-[0.08] group-hover:opacity-[0.15] transition-opacity duration-300 pointer-events-none",
         "bg-gradient-to-br",
         sourceColor.gradient
       )} />
