@@ -98,7 +98,7 @@ console.log('   - RSS系: 毎時0分');
 console.log('   - スクレイピング系: 0時・12時');
 console.log('   - Qiita Popular: 5:05・17:05');
 console.log('   - 要約生成: 毎日2時（深夜）');
-console.log('   - タグ生成: 8時・20時');
+console.log('   - タグ生成: 8:30・20:30');
 console.log('   - クリーンアップ: 毎日3時');
 
 // RSS系ソースの更新（毎時0分）
@@ -205,9 +205,9 @@ cron.schedule('0 2 * * *', async () => {
   }
 });
 
-// タグ生成バッチ（8時と20時）
-// Gemini APIの負荷を分散させるため、要約生成とは異なる時間帯に実行
-cron.schedule('0 8,20 * * *', async () => {
+// タグ生成バッチ（8:30と20:30）
+// RSS取得バッチとの競合を避けるため、30分ずらして実行
+cron.schedule('30 8,20 * * *', async () => {
   const startTime = new Date();
   console.log(`\n🏷️ タグ生成バッチを開始: ${startTime.toLocaleString('ja-JP')}`);
   
@@ -247,7 +247,7 @@ cron.schedule('0 8,20 * * *', async () => {
     console.log('   - スクレイピング系: 0時・12時');
     console.log('   - Qiita Popular: 5:05・17:05');
     console.log('   - 要約生成: 毎日2時（深夜）');
-    console.log('   - タグ生成: 8時・20時');
+    console.log('   - タグ生成: 8:30・20:30');
     console.log('   - クリーンアップ: 毎日3時');
     console.log('   - 週次クリーンアップ: 毎週日曜日2時');
   } catch (error) {
