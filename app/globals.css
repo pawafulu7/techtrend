@@ -84,6 +84,30 @@ html.no-transitions *::after {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* UI改善: アクセントカラー */
+  --accent-primary: oklch(0.72 0.12 250);
+  --accent-primary-hover: oklch(0.68 0.14 250);
+  --accent-secondary: oklch(0.85 0.06 200);
+  
+  /* UI改善: グラデーション */
+  --gradient-subtle: linear-gradient(135deg, 
+    oklch(0.98 0.02 200 / 0.8) 0%,
+    oklch(0.95 0.03 250 / 0.5) 100%);
+  --gradient-accent: linear-gradient(135deg,
+    oklch(0.93 0.04 250 / 0.3) 0%,
+    oklch(0.90 0.05 200 / 0.2) 100%);
+  
+  /* UI改善: 改善されたシャドウ */
+  --shadow-sm: 0 2px 4px oklch(0.7 0.02 250 / 0.08),
+               0 1px 2px oklch(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px oklch(0.7 0.02 250 / 0.10),
+               0 2px 4px oklch(0 0 0 / 0.06);
+  --shadow-lg: 0 10px 25px oklch(0.7 0.03 250 / 0.15),
+               0 5px 10px oklch(0 0 0 / 0.08);
+  
+  /* UI改善: 背景テクスチャ */
+  --texture-opacity: 0.02;
 }
 
 .dark {
@@ -118,6 +142,30 @@ html.no-transitions *::after {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  
+  /* UI改善: ダークモード用アクセントカラー */
+  --accent-primary: oklch(0.65 0.15 250);
+  --accent-primary-hover: oklch(0.70 0.18 250);
+  --accent-secondary: oklch(0.35 0.08 200);
+  
+  /* UI改善: ダークモード用グラデーション */
+  --gradient-subtle: linear-gradient(135deg,
+    oklch(0.18 0.005 200 / 0.3) 0%,
+    oklch(0.20 0.01 250 / 0.2) 100%);
+  --gradient-accent: linear-gradient(135deg,
+    oklch(0.25 0.02 250 / 0.15) 0%,
+    oklch(0.27 0.03 200 / 0.1) 100%);
+  
+  /* UI改善: ダークモード用シャドウ */
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.10),
+               0 1px 3px oklch(0 0 0 / 0.15);
+  --shadow-md: 0 2px 4px oklch(0 0 0 / 0.12),
+               0 4px 12px oklch(0 0 0 / 0.20);
+  --shadow-lg: 0 4px 8px oklch(0 0 0 / 0.15),
+               0 8px 24px oklch(0 0 0 / 0.25);
+  
+  /* UI改善: 背景テクスチャ */
+  --texture-opacity: 0.01;
 }
 
 @layer base {
@@ -125,7 +173,31 @@ html.no-transitions *::after {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      135deg,
+      oklch(0.94 0.06 220) 0%,
+      oklch(0.93 0.07 250) 50%,
+      oklch(0.92 0.08 280) 100%
+    );
+    pointer-events: none;
+    z-index: -1;
+  }
+  .dark body::before {
+    background: linear-gradient(
+      135deg,
+      oklch(0.15 0.01 200 / 0.3) 0%,
+      oklch(0.17 0.02 230 / 0.4) 50%,
+      oklch(0.19 0.03 260 / 0.5) 100%
+    );
   }
 }
 

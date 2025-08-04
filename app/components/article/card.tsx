@@ -54,15 +54,35 @@ export function ArticleCard({ article }: ArticleCardProps) {
     <Card 
       onClick={handleCardClick}
       className={cn(
-        "group relative overflow-hidden transition-all duration-300 cursor-pointer",
-        "hover:shadow-lg hover:-translate-y-1",
+        "group relative overflow-hidden cursor-pointer",
+        "transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out",
+        "hover:shadow-lg hover:-translate-y-0.5",
+        "shadow-sm backdrop-blur-sm",
+        "border border-border/20 hover:border-border/40",
         sourceColor.border,
         sourceColor.hover
       )}
+      style={{
+        boxShadow: '0 2px 8px rgba(100, 100, 200, 0.15)',
+        background: 'rgba(255, 255, 255, 0.98)',
+        border: '1px solid rgba(200, 200, 255, 0.2)',
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.boxShadow = '0 8px 24px rgba(100, 100, 200, 0.25)';
+        el.style.background = 'rgba(255, 255, 255, 1)';
+        el.style.border = '1px solid rgba(200, 200, 255, 0.4)';
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.boxShadow = '0 2px 8px rgba(100, 100, 200, 0.15)';
+        el.style.background = 'rgba(255, 255, 255, 0.98)';
+        el.style.border = '1px solid rgba(200, 200, 255, 0.2)';
+      }}
     >
       {/* グラデーション背景 */}
       <div className={cn(
-        "absolute inset-0 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none",
+        "absolute inset-0 opacity-[0.08] group-hover:opacity-[0.15] transition-opacity duration-300 pointer-events-none",
         "bg-gradient-to-br",
         sourceColor.gradient
       )} />
@@ -77,7 +97,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 <span className="sm:hidden">新</span>
               </Badge>
             )}
-            <h3 className="text-sm font-semibold leading-tight line-clamp-2 hover:text-primary transition-colors">
+            <h3 className="text-base font-bold leading-tight line-clamp-2 text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               {article.title}
             </h3>
           </div>
@@ -115,11 +135,14 @@ export function ArticleCard({ article }: ArticleCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 py-1 px-3 sm:px-4 space-y-2">
+      <CardContent className="flex-1 py-2 px-3 sm:px-4 space-y-2">
         {article.summary && (
-          <p className="text-xs text-muted-foreground leading-normal">
-            {article.summary}
-          </p>
+          <div className="relative group/summary">
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-purple-400 rounded-full"></div>
+            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-3 font-medium group-hover/summary:text-slate-900 dark:group-hover/summary:text-slate-100 transition-colors">
+              {article.summary}
+            </p>
+          </div>
         )}
         
         {article.tags && article.tags.length > 0 && (
