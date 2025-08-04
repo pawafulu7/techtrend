@@ -122,7 +122,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
         )}
         
         {/* TagFilterコンポーネントをドロップダウン内に配置 */}
-        <div className="max-h-[400px] overflow-y-auto p-3">
+        <div className="p-3">
           <TagFilter tags={tags} />
         </div>
       </DropdownMenuContent>
