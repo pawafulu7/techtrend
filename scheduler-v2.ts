@@ -98,6 +98,7 @@ console.log('   - RSS系: 毎時0分');
 console.log('   - スクレイピング系: 0時・12時');
 console.log('   - Qiita Popular: 5:05・17:05');
 console.log('   - 要約生成: 毎日2時（深夜）');
+console.log('   - タグ生成: 8時・20時');
 console.log('   - クリーンアップ: 毎日3時');
 
 // RSS系ソースの更新（毎時0分）
@@ -204,6 +205,28 @@ cron.schedule('0 2 * * *', async () => {
   }
 });
 
+// タグ生成バッチ（8時と20時）
+// Gemini APIの負荷を分散させるため、要約生成とは異なる時間帯に実行
+cron.schedule('0 8,20 * * *', async () => {
+  const startTime = new Date();
+  console.log(`\n🏷️ タグ生成バッチを開始: ${startTime.toLocaleString('ja-JP')}`);
+  
+  try {
+    const { stdout: tagOutput }: ExecutionResult = await execAsync(
+      'npx tsx scripts/generate-tags.ts'
+    );
+    console.log(tagOutput);
+    
+    const endTime = new Date();
+    const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+    console.log(`✅ タグ生成バッチ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
+    
+  } catch (error) {
+    console.error('❌ タグ生成バッチでエラーが発生しました:', 
+      error instanceof Error ? error.message : String(error));
+  }
+});
+
 // 初回実行（起動時） - 全ソース（要約生成はスキップ）
 (async () => {
   console.log('\n🚀 初回実行を開始します（全ソース）...');
@@ -224,6 +247,7 @@ cron.schedule('0 2 * * *', async () => {
     console.log('   - スクレイピング系: 0時・12時');
     console.log('   - Qiita Popular: 5:05・17:05');
     console.log('   - 要約生成: 毎日2時（深夜）');
+    console.log('   - タグ生成: 8時・20時');
     console.log('   - クリーンアップ: 毎日3時');
     console.log('   - 週次クリーンアップ: 毎週日曜日2時');
   } catch (error) {
