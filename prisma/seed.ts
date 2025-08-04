@@ -1,4 +1,4 @@
-import { PrismaClient, SourceType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -13,7 +13,7 @@ async function main() {
     prisma.source.create({
       data: {
         name: 'はてなブックマーク',
-        type: SourceType.RSS,
+        type: 'RSS',
         url: 'https://b.hatena.ne.jp/hotentry/it.rss',
         enabled: true,
       },
@@ -21,7 +21,7 @@ async function main() {
     prisma.source.create({
       data: {
         name: 'Qiita',
-        type: SourceType.API,
+        type: 'API',
         url: 'https://qiita.com/api/v2/items',
         enabled: true,
       },
@@ -29,7 +29,7 @@ async function main() {
     prisma.source.create({
       data: {
         name: 'Zenn',
-        type: SourceType.RSS,
+        type: 'RSS',
         url: 'https://zenn.dev/feed',
         enabled: true,
       },
@@ -37,7 +37,7 @@ async function main() {
     prisma.source.create({
       data: {
         name: 'Dev.to',
-        type: SourceType.API,
+        type: 'API',
         url: 'https://dev.to/api/articles',
         enabled: true,
       },
@@ -45,7 +45,7 @@ async function main() {
     prisma.source.create({
       data: {
         name: 'Publickey',
-        type: SourceType.RSS,
+        type: 'RSS',
         url: 'https://www.publickey1.jp/atom.xml',
         enabled: true,
       },
@@ -53,7 +53,7 @@ async function main() {
     prisma.source.create({
       data: {
         name: 'connpass',
-        type: SourceType.API,
+        type: 'API',
         url: 'https://connpass.com/api/v1/event/',
         enabled: true,
       },
@@ -61,7 +61,7 @@ async function main() {
     prisma.source.create({
       data: {
         name: 'Stack Overflow Blog',
-        type: SourceType.RSS,
+        type: 'RSS',
         url: 'https://stackoverflow.blog/feed/',
         enabled: true,
       },
@@ -69,7 +69,7 @@ async function main() {
     prisma.source.create({
       data: {
         name: 'InfoQ Japan',
-        type: SourceType.RSS,
+        type: 'RSS',
         url: 'https://www.infoq.com/jp/feed/',
         enabled: true,
       },
@@ -77,8 +77,16 @@ async function main() {
     prisma.source.create({
       data: {
         name: 'Think IT',
-        type: SourceType.RSS,
+        type: 'RSS',
         url: 'https://thinkit.co.jp/rss.xml',
+        enabled: true,
+      },
+    }),
+    prisma.source.create({
+      data: {
+        name: 'Speaker Deck',
+        type: 'SCRAPING',
+        url: 'https://speakerdeck.com',
         enabled: true,
       },
     }),
