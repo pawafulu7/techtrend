@@ -172,7 +172,7 @@ export default async function Home({ searchParams }: PageProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       
-      <div className="container mx-auto px-2 sm:px-4 py-2 flex flex-col h-full overflow-hidden">
+      <div className="container mx-auto px-2 sm:px-4 py-2 flex flex-col h-full overflow-hidden bg-background/95 backdrop-blur-sm rounded-lg">
         {/* Header Section */}
         <div className="mb-2 flex-shrink-0 space-y-2">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
