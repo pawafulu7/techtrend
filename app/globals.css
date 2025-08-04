@@ -99,11 +99,11 @@ html.no-transitions *::after {
     oklch(0.90 0.05 200 / 0.2) 100%);
   
   /* UI改善: 改善されたシャドウ */
-  --shadow-sm: 0 2px 4px oklch(0 0 0 / 0.06),
-               0 1px 2px oklch(0 0 0 / 0.08);
-  --shadow-md: 0 4px 6px oklch(0 0 0 / 0.07),
+  --shadow-sm: 0 2px 4px oklch(0.7 0.02 250 / 0.08),
+               0 1px 2px oklch(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px oklch(0.7 0.02 250 / 0.10),
                0 2px 4px oklch(0 0 0 / 0.06);
-  --shadow-lg: 0 10px 25px oklch(0 0 0 / 0.12),
+  --shadow-lg: 0 10px 25px oklch(0.7 0.03 250 / 0.15),
                0 5px 10px oklch(0 0 0 / 0.08);
   
   /* UI改善: 背景テクスチャ */

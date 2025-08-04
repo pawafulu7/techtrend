@@ -55,20 +55,32 @@ export function ArticleCard({ article }: ArticleCardProps) {
       onClick={handleCardClick}
       className={cn(
         "group relative overflow-hidden cursor-pointer",
-        "transition-[transform,box-shadow,border-color] duration-200 ease-out",
+        "transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out",
         "hover:shadow-lg hover:-translate-y-0.5",
-        "shadow-sm bg-card/95 backdrop-blur-sm",
+        "shadow-sm backdrop-blur-sm",
+        "border border-border/20 hover:border-border/40",
         sourceColor.border,
         sourceColor.hover
       )}
       style={{
         boxShadow: 'var(--shadow-sm)',
+        background: `linear-gradient(135deg, 
+          rgba(255,255,255,0.95) 0%, 
+          rgba(255,255,255,0.90) 100%)`,
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-lg)';
+        const el = e.currentTarget as HTMLElement;
+        el.style.boxShadow = 'var(--shadow-lg)';
+        el.style.background = `linear-gradient(135deg, 
+          rgba(255,255,255,0.98) 0%, 
+          rgba(255,255,255,0.95) 100%)`;
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-sm)';
+        const el = e.currentTarget as HTMLElement;
+        el.style.boxShadow = 'var(--shadow-sm)';
+        el.style.background = `linear-gradient(135deg, 
+          rgba(255,255,255,0.95) 0%, 
+          rgba(255,255,255,0.90) 100%)`;
       }}
     >
       {/* グラデーション背景 */}
