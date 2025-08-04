@@ -200,7 +200,7 @@ export default async function Home({ searchParams }: PageProps) {
               <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {data.total}件
+                {data.total.toLocaleString()}件
               </p>
               <MobileFilters sources={sources} tags={tags} />
             </div>
