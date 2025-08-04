@@ -97,7 +97,7 @@ console.log('📊 更新スケジュール:');
 console.log('   - RSS系: 毎時0分');
 console.log('   - スクレイピング系: 0時・12時');
 console.log('   - Qiita Popular: 5:05・17:05');
-console.log('   - 要約生成: 毎日2時（深夜）');
+console.log('   - 要約生成: 毎日10:30（午前）');
 console.log('   - タグ生成: 8:30・20:30');
 console.log('   - クリーンアップ: 毎日3時');
 
@@ -172,11 +172,11 @@ cron.schedule('0 2 * * 0', async () => {
   }
 });
 
-// 要約生成を深夜に実行（毎日午前2時）
-// Gemini APIの負荷が低い時間帯を狙う
-cron.schedule('0 2 * * *', async () => {
+// 要約生成を午前に実行（毎日午前10時30分）
+// タグ生成バッチ（8:30）の後に実行
+cron.schedule('30 10 * * *', async () => {
   const startTime = new Date();
-  console.log(`\n🌙 深夜の要約生成を開始: ${startTime.toLocaleString('ja-JP')}`);
+  console.log(`\n📝 要約生成を開始: ${startTime.toLocaleString('ja-JP')}`);
   
   try {
     const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/core/manage-summaries.ts generate --batch 5 --limit 30');
@@ -198,10 +198,10 @@ cron.schedule('0 2 * * *', async () => {
     
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.log(`✅ 深夜の要約生成完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
+    console.log(`✅ 要約生成完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
     
   } catch (error) {
-    console.error('❌ 深夜の要約生成でエラーが発生しました:', error instanceof Error ? error.message : String(error));
+    console.error('❌ 要約生成でエラーが発生しました:', error instanceof Error ? error.message : String(error));
   }
 });
 
@@ -239,14 +239,14 @@ cron.schedule('30 8,20 * * *', async () => {
       skipSummaries: true
     });
     
-    console.log('💡 要約生成は深夜2時に実行されます');
+    console.log('💡 要約生成は午前10:30に実行されます');
     
     console.log('✅ 初回実行が完了しました\n');
     console.log('⏳ 次回の更新:');
     console.log('   - RSS系: 毎時0分');
     console.log('   - スクレイピング系: 0時・12時');
     console.log('   - Qiita Popular: 5:05・17:05');
-    console.log('   - 要約生成: 毎日2時（深夜）');
+    console.log('   - 要約生成: 毎日10:30（午前）');
     console.log('   - タグ生成: 8:30・20:30');
     console.log('   - クリーンアップ: 毎日3時');
     console.log('   - 週次クリーンアップ: 毎週日曜日2時');
