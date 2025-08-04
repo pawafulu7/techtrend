@@ -154,7 +154,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 className="text-xs px-2 py-0 h-5 cursor-pointer hover:bg-secondary"
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.location.href = `/?tag=${encodeURIComponent(tag.name)}`;
+                  window.location.href = `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`;
                 }}
               >
                 {tag.name}
