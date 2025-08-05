@@ -100,6 +100,7 @@ techtrend/
 - Gemini APIによる日本語要約生成
 - 記事内容に基づく技術タグの自動生成
 - タグの正規化（例: javascript → JavaScript）
+- Claude Code連携による高品質要約生成（インタラクティブモード）
 
 ### 品質管理
 - 多角的な品質スコアリング（タグ、要約、ソース、新鮮さ、エンゲージメント）
@@ -128,6 +129,10 @@ npm run scheduler:logs     # ログ確認
 # メンテナンスコマンド
 npm run scripts:collect    # 手動で記事収集
 npm run scripts:summarize  # 手動で要約生成
+
+# Claude Code統合機能
+npm run claude:summarize   # Claude Codeで対話的に要約生成
+npm run claude:compare     # GeminiとClaudeの品質比較
 ```
 
 ## 🤝 コントリビューション

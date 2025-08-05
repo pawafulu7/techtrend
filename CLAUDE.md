@@ -103,14 +103,61 @@ PM2設定: `ecosystem.config.js`
 5. **重要：機能の追加・修正・削除を行った場合は、作業内容の保持のため都度コミットする**
 
 
+## Claude Code統合機能
+
+### 概要
+Claude Codeを使用した要約生成・品質比較機能が利用可能です。Gemini APIのRate Limit問題を回避したい場合や、高品質な要約が必要な場合に使用してください。
+
+### 使用方法
+
+**1. Claude Code要約生成（対話的）**
+```bash
+npm run claude:summarize
+```
+- 記事一覧から選択して要約を生成
+- Claude Codeが対話的に要約とタグを生成
+- 生成結果をデータベースに保存
+
+**2. 品質比較ツール**
+```bash
+npm run claude:compare
+```
+- GeminiとClaudeの要約品質を比較
+- スコアリングシステム（100点満点）で評価
+- 複数記事での平均品質を算出
+
+### 運用ガイドライン
+
+**推奨使用シーン：**
+- Gemini APIがRate Limitエラーを返す場合
+- 特定の重要記事に高品質な要約が必要な場合
+- 要約品質の検証・改善を行いたい場合
+- 少量の記事を即座に処理したい場合
+
+**注意事項：**
+- Claude Codeセッション中のみ動作
+- 大量バッチ処理には不向き（対話的処理のため）
+- 基本的な大量処理はGemini APIを使用
+
+### ハイブリッドアプローチ
+
+1. **通常運用**: Gemini API（自動バッチ処理）
+2. **補完運用**: Claude Code（少量・高品質処理）
+
 ## テストコマンド
 
 ```bash
 # 特定ソースのみ収集
 npx tsx scripts/collect-feeds.ts "Dev.to"
 
-# 要約生成
+# 要約生成（Gemini API）
 npm run scripts:summarize
+
+# 要約生成（Claude Code）
+npm run claude:summarize
+
+# 品質比較
+npm run claude:compare
 
 # 記事品質チェック
 npx tsx scripts/check-article-quality.ts
