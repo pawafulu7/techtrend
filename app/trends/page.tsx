@@ -81,11 +81,31 @@ export default function TrendsPage() {
       const response = await fetch('/api/stats');
       const result = await response.json();
       if (result.success && result.data && result.data.sources) {
-        const sourceStats = result.data.sources.map((source: {name: string; count: number; percentage: number}) => ({
+        const allSources = result.data.sources;
+        
+        // 上位6つのソースを取得
+        const topSources = allSources.slice(0, 6);
+        const otherSources = allSources.slice(6);
+        
+        // 「その他」の合計を計算
+        const othersCount = otherSources.reduce((sum: number, source: any) => sum + source.count, 0);
+        const othersPercentage = otherSources.reduce((sum: number, source: any) => sum + source.percentage, 0);
+        
+        const sourceStats = topSources.map((source: {name: string; count: number; percentage: number}) => ({
           name: source.name,
           value: source.count,
           percentage: source.percentage
         }));
+        
+        // 「その他」があれば追加
+        if (othersCount > 0) {
+          sourceStats.push({
+            name: 'その他',
+            value: othersCount,
+            percentage: othersPercentage
+          });
+        }
+        
         setSourceData(sourceStats);
       }
     } catch (error) {

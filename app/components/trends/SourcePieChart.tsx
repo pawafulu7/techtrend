@@ -133,10 +133,10 @@ export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
             <Pie
               data={data}
               cx="50%"
-              cy="50%"
+              cy="40%"
               labelLine={false}
               label={renderCustomizedLabel}
-              outerRadius={80}
+              outerRadius={70}
               fill="#8884d8"
               dataKey="value"
             >
@@ -147,7 +147,12 @@ export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
             <Tooltip content={<CustomTooltip />} />
             <Legend
               verticalAlign="bottom"
-              height={36}
+              height={100}
+              wrapperStyle={{
+                paddingTop: '10px',
+                maxHeight: '100px',
+                overflow: 'auto'
+              }}
               formatter={(value, entry) => (
                 <span style={{ fontSize: 12 }}>
                   {value} ({entry.payload.percentage}%)
