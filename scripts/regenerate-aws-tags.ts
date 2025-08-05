@@ -161,10 +161,10 @@ async function regenerateAwsTags(): Promise<RegenerateResult> {
       orderBy: { publishedAt: 'desc' }
     }) as ArticleWithTags[];
     
-    // タグが少ない記事をフィルタリング（3個以下）
+    // タグが少ない記事をフィルタリング（2個以下、またはタグなし）
     const targetArticles = awsArticles.filter(article => 
-      article.tags.length <= 3 || 
-      (article.tags.length === 1 && article.tags[0].name === 'AWS')
+      article.tags.length <= 2 || 
+      article.tags.length === 0
     );
     
     logger.info(`処理対象: ${targetArticles.length}件のAWS記事`);
