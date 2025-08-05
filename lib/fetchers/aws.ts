@@ -157,17 +157,106 @@ export class AWSFetcher extends BaseFetcher {
       tags.push('ブログ', 'Blog');
     }
 
-    // タイトルからサービス名を抽出
+    // タイトルとコンテンツからサービス名を抽出
     const title = item.title || '';
+    const content = `${title} ${item.content || ''} ${item.contentSnippet || ''}`;
+    
     const awsServices = [
-      'EC2', 'S3', 'Lambda', 'DynamoDB', 'RDS', 'CloudFormation',
-      'CloudWatch', 'IAM', 'VPC', 'Route 53', 'CloudFront', 'ECS',
-      'EKS', 'Fargate', 'API Gateway', 'SQS', 'SNS', 'Kinesis',
-      'Redshift', 'Athena', 'EMR', 'Glue', 'SageMaker', 'Bedrock'
+      // コンピューティング
+      'EC2', 'Lambda', 'Batch', 'Elastic Beanstalk', 'Serverless Application Repository',
+      'AWS Outposts', 'AWS Snow Family', 'AWS Wavelength', 'VMware Cloud on AWS',
+      'Lightsail', 'AWS Local Zones', 'AWS Compute Optimizer', 'EC2 Image Builder',
+      
+      // コンテナ
+      'ECS', 'EKS', 'Fargate', 'ECR', 'AWS App Runner', 'AWS Copilot',
+      
+      // ストレージ
+      'S3', 'EFS', 'FSx', 'Storage Gateway', 'AWS Backup', 'AWS Elastic Disaster Recovery',
+      'AWS DataSync', 'AWS Transfer Family', 'AWS Snow Family',
+      
+      // データベース
+      'RDS', 'DynamoDB', 'ElastiCache', 'Neptune', 'Amazon Keyspaces',
+      'Amazon DocumentDB', 'Amazon MemoryDB', 'Amazon Timestream', 'Amazon QLDB',
+      'RDS Proxy', 'Aurora', 'RDS on VMware', 'DynamoDB Accelerator',
+      
+      // 分析
+      'Athena', 'EMR', 'CloudSearch', 'Elasticsearch Service', 'Kinesis',
+      'QuickSight', 'Data Pipeline', 'AWS Glue', 'Lake Formation', 'MSK',
+      'OpenSearch Service', 'AWS Data Exchange', 'AWS Clean Rooms',
+      'Kinesis Data Firehose', 'Kinesis Data Analytics', 'Kinesis Video Streams',
+      
+      // 機械学習
+      'SageMaker', 'Bedrock', 'Comprehend', 'Forecast', 'Fraud Detector',
+      'Kendra', 'Lex', 'Personalize', 'Polly', 'Rekognition', 'Textract',
+      'Transcribe', 'Translate', 'Augmented AI', 'DeepLens', 'DeepRacer',
+      'CodeGuru', 'DevOps Guru', 'Lookout for Equipment', 'Lookout for Metrics',
+      'Lookout for Vision', 'Monitron', 'HealthLake', 'Omics',
+      
+      // 開発者ツール
+      'CodeCommit', 'CodeBuild', 'CodeDeploy', 'CodePipeline', 'CodeStar',
+      'Cloud9', 'CloudShell', 'X-Ray', 'CodeArtifact', 'AWS CDK',
+      'CloudFormation', 'AWS SAM', 'AWS Amplify', 'AWS App Runner',
+      
+      // 管理とガバナンス
+      'CloudWatch', 'Systems Manager', 'CloudTrail', 'Config', 'OpsWorks',
+      'Service Catalog', 'AWS Organizations', 'Control Tower', 'AWS Well-Architected Tool',
+      'Personal Health Dashboard', 'License Manager', 'Compute Optimizer',
+      'Launch Wizard', 'Resource Groups', 'Tag Editor', 'Chatbot',
+      
+      // ネットワーキングとコンテンツ配信
+      'VPC', 'CloudFront', 'Route 53', 'API Gateway', 'Direct Connect',
+      'AWS VPN', 'Transit Gateway', 'Elastic Load Balancing', 'Global Accelerator',
+      'AWS PrivateLink', 'AWS App Mesh', 'AWS Cloud Map', 'Network Firewall',
+      
+      // セキュリティ、アイデンティティ、コンプライアンス
+      'IAM', 'Secrets Manager', 'Certificate Manager', 'WAF', 'Shield',
+      'GuardDuty', 'Inspector', 'Macie', 'Security Hub', 'Detective',
+      'AWS Single Sign-On', 'Directory Service', 'Resource Access Manager',
+      'CloudHSM', 'Key Management Service', 'Network Firewall', 'Firewall Manager',
+      'Audit Manager', 'AWS Signer', 'AWS Private Certificate Authority',
+      
+      // アプリケーション統合
+      'Step Functions', 'EventBridge', 'SNS', 'SQS', 'AppSync', 'MQ',
+      'Simple Workflow Service', 'Managed Workflows for Apache Airflow',
+      
+      // カスタマーエンゲージメント
+      'SES', 'Pinpoint', 'Amazon Connect', 'Simple Email Service',
+      
+      // ビジネスアプリケーション
+      'Alexa for Business', 'WorkSpaces', 'AppStream 2.0', 'WorkDocs',
+      'WorkMail', 'Chime', 'Honeycode', 'WorkSpaces Web',
+      
+      // IoT
+      'IoT Core', 'IoT Device Management', 'IoT Analytics', 'IoT Events',
+      'IoT SiteWise', 'IoT Things Graph', 'IoT Greengrass', 'IoT 1-Click',
+      'IoT Device Defender', 'IoT FleetWise', 'IoT TwinMaker',
+      
+      // ゲーム開発
+      'GameLift', 'Lumberyard',
+      
+      // メディアサービス
+      'Elastic Transcoder', 'Elemental MediaConnect', 'Elemental MediaConvert',
+      'Elemental MediaLive', 'Elemental MediaPackage', 'Elemental MediaStore',
+      'Elemental MediaTailor', 'Interactive Video Service', 'Nimble Studio',
+      
+      // 移行と転送
+      'Migration Hub', 'Application Discovery Service', 'Database Migration Service',
+      'Server Migration Service', 'DataSync', 'Transfer Family',
+      
+      // その他のサービス
+      'Ground Station', 'RoboMaker', 'Quantum Ledger Database', 'Blockchain Templates',
+      'Managed Blockchain', 'Braket', 'Sumerian', 'Location Service'
     ];
 
+    // サービス名の変形パターンに対応した抽出
     for (const service of awsServices) {
-      if (title.includes(service)) {
+      const patterns = [
+        new RegExp(`\\b${service}\\b`, 'i'),
+        new RegExp(`\\bAmazon ${service}\\b`, 'i'),
+        new RegExp(`\\bAWS ${service}\\b`, 'i')
+      ];
+      
+      if (patterns.some(pattern => pattern.test(content))) {
         tags.push(service);
       }
     }
