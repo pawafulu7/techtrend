@@ -17,6 +17,7 @@ export function Header() {
     { href: '/', label: 'ホーム', icon: Home },
     { href: '/popular', label: '人気', icon: TrendingUp },
     { href: '/sources', label: 'ソース', icon: Database },
+    { href: '/trends', label: 'トレンド', icon: TrendingUp },
   ];
 
   const secondaryNav = [
@@ -25,7 +26,6 @@ export function Header() {
     { href: '/tags', label: 'タグ', icon: Hash },
     { href: '/stats', label: '統計', icon: BarChart3 },
     { href: '/analytics', label: '分析', icon: LineChart },
-    { href: '/trends', label: 'トレンド', icon: TrendingUp },
   ];
 
   return (
