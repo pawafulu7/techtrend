@@ -18,13 +18,13 @@ export function Header() {
     { href: '/popular', label: '人気', icon: TrendingUp },
     { href: '/sources', label: 'ソース', icon: Database },
     { href: '/trends', label: 'トレンド', icon: TrendingUp },
+    { href: '/stats', label: '統計', icon: BarChart3 },
   ];
 
   const secondaryNav = [
     { href: '/reading-list', label: '読書リスト', icon: Bookmark },
     { href: '/favorites', label: 'お気に入り', icon: Star },
     { href: '/tags', label: 'タグ', icon: Hash },
-    { href: '/stats', label: '統計', icon: BarChart3 },
     { href: '/analytics', label: '分析', icon: LineChart },
   ];
 
