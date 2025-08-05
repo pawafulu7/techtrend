@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { RedisCache } from '@/lib/cache';
-
-const prisma = new PrismaClient();
-
-// Initialize Redis cache with 1 hour TTL for sources
-const cache = new RedisCache({
-  ttl: 3600, // 1 hour
-  namespace: '@techtrend/cache:api'
-});
+import { prisma } from '@/lib/database';
+import { sourceCache } from '@/lib/cache/source-cache';
 
 type SourceCategory = 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  let cacheStatus = 'MISS';
   
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -23,30 +14,106 @@ export async function GET(request: NextRequest) {
     const order = searchParams.get('order') || 'desc';
     const search = searchParams.get('search');
     const ids = searchParams.get('ids');
-    
-    // Generate cache key based on query parameters
-    const cacheKey = cache.generateCacheKey('sources', {
-      params: {
-        category: category || 'all',
-        sortBy,
-        order,
-        search: search || 'none',
-        ids: ids || 'all'
-      }
-    });
 
-    // Check cache first
-    const cachedResult = await cache.get(cacheKey);
-    
-    let result;
-    if (cachedResult) {
-      cacheStatus = 'HIT';
-      result = cachedResult;
-    } else {
-      cacheStatus = 'MISS';
+    // idsパラメータがある場合はキャッシュを使わない（特定のソース取得）
+    if (!ids) {
+      // キャッシュから全ソースを取得
+      const cachedSources = await sourceCache.getAllSources();
       
-      // Fetch fresh data
-      result = await (async () => {
+      // 検索とカテゴリフィルタリングを適用
+      let filteredSources = cachedSources;
+      
+      if (search) {
+        filteredSources = filteredSources.filter(source =>
+          source.name.toLowerCase().includes(search.toLowerCase())
+        );
+      }
+
+      // 統計情報を計算（キャッシュされたデータから）
+      const sourcesWithStats = filteredSources.map(source => {
+        const totalArticles = source._count.articles;
+
+        // カテゴリー推定
+        let sourceCategory: SourceCategory = 'other';
+        const nameLower = source.name.toLowerCase();
+        if (nameLower.includes('blog')) {
+          if (nameLower.includes('company') || nameLower.includes('tech')) {
+            sourceCategory = 'company_blog';
+          } else {
+            sourceCategory = 'personal_blog';
+          }
+        } else if (nameLower.includes('news')) {
+          sourceCategory = 'news_site';
+        } else if (['qiita', 'zenn', 'dev.to', 'reddit'].some(c => nameLower.includes(c))) {
+          sourceCategory = 'community';
+        } else if (['techcrunch', 'hacker news'].some(c => nameLower.includes(c))) {
+          sourceCategory = 'news_site';
+        }
+
+        return {
+          id: source.id,
+          name: source.name,
+          type: source.type,
+          url: source.url,
+          enabled: source.enabled,
+          category: sourceCategory,
+          stats: {
+            totalArticles,
+            avgQualityScore: 0, // 詳細な統計はオンデマンドで計算
+            popularTags: [],
+            publishFrequency: 0,
+            lastPublished: null,
+            growthRate: 0
+          }
+        };
+      });
+
+      // カテゴリーフィルタリング
+      let result = sourcesWithStats;
+      if (category) {
+        result = result.filter(s => s.category === category);
+      }
+
+      // ソート
+      result.sort((a, b) => {
+        let aValue, bValue;
+        switch (sortBy) {
+          case 'articles':
+            aValue = a.stats.totalArticles;
+            bValue = b.stats.totalArticles;
+            break;
+          case 'name':
+            aValue = a.name;
+            bValue = b.name;
+            break;
+          default:
+            aValue = a.stats.totalArticles;
+            bValue = b.stats.totalArticles;
+        }
+
+        if (sortBy === 'name') {
+          return order === 'asc' 
+            ? (aValue as string).localeCompare(bValue as string)
+            : (bValue as string).localeCompare(aValue as string);
+        } else {
+          return order === 'asc' 
+            ? (aValue as number) - (bValue as number)
+            : (bValue as number) - (aValue as number);
+        }
+      });
+
+      const responseTime = Date.now() - startTime;
+      const response = NextResponse.json({
+        sources: result,
+        totalCount: result.length
+      });
+      response.headers.set('X-Cache-Status', 'HIT');
+      response.headers.set('X-Response-Time', `${responseTime}ms`);
+      
+      return response;
+    }
+
+    // 特定のIDsの場合は従来の処理（キャッシュなし）
         // 基本的なソース情報を取得
       const sources = await prisma.source.findMany({
       where: {
@@ -212,26 +279,15 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Return the data to be cached
-      return {
+      const responseTime = Date.now() - startTime;
+      const response = NextResponse.json({
         sources: filteredSources,
         totalCount: filteredSources.length
-      };
-      })();
+      });
+      response.headers.set('X-Cache-Status', 'MISS');
+      response.headers.set('X-Response-Time', `${responseTime}ms`);
       
-      // Save to cache
-      await cache.set(cacheKey, result);
-    }
-    
-    // Calculate response time
-    const responseTime = Date.now() - startTime;
-    
-    // Create response with performance headers
-    const response = NextResponse.json(result);
-    response.headers.set('X-Cache-Status', cacheStatus);
-    response.headers.set('X-Response-Time', `${responseTime}ms`);
-    
-    return response;
+      return response;
   } catch (error) {
     console.error('Sources error:', error);
     return NextResponse.json(

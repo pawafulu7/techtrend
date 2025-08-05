@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
+import { RedisCache } from '@/lib/cache';
+import { Prisma } from '@prisma/client';
+
+// Initialize Redis cache for related articles
+const cache = new RedisCache({
+  ttl: 600, // 10 minutes
+  namespace: '@techtrend/cache:related'
+});
 
 export async function GET(
   request: NextRequest,
@@ -7,6 +15,16 @@ export async function GET(
 ) {
   try {
     const { id: articleId } = await params;
+    
+    // Check cache first
+    const cacheKey = cache.generateCacheKey('related', {
+      params: { articleId }
+    });
+    
+    const cachedResult = await cache.get(cacheKey);
+    if (cachedResult) {
+      return NextResponse.json(cachedResult);
+    }
     
     // 対象記事を取得
     const targetArticle = await prisma.article.findUnique({
@@ -36,7 +54,7 @@ export async function GET(
     // タグIDのリストを取得
     const tagIds = targetArticle.tags.map(tag => tag.id);
 
-    // 同じタグを持つ記事を取得し、共通タグ数でグループ化
+    // 同じタグを持つ記事を取得し、すべての情報を1クエリで取得
     const placeholders = tagIds.map(() => '?').join(',');
     const relatedArticlesRaw = await prisma.$queryRawUnsafe<Array<{
       id: string;
@@ -45,66 +63,70 @@ export async function GET(
       url: string;
       publishedAt: Date;
       sourceId: string;
+      sourceName: string;
       qualityScore: number;
       difficulty: string | null;
       commonTags: number;
+      tags: string | null;
     }>>(
       `
-      SELECT DISTINCT
-        a.id,
-        a.title,
-        a.summary,
-        a.url,
-        a.publishedAt,
-        a.sourceId,
-        a.qualityScore,
-        a.difficulty,
-        COUNT(DISTINCT at.B) as commonTags
-      FROM Article a
-      JOIN _ArticleToTag at ON a.id = at.A
-      WHERE at.B IN (${placeholders})
-        AND a.id != ?
-        AND a.qualityScore >= 30
-      GROUP BY a.id
-      HAVING commonTags > 0
-      ORDER BY commonTags DESC, a.publishedAt DESC
-      LIMIT 10
+      WITH RelatedArticles AS (
+        SELECT DISTINCT
+          a.id,
+          a.title,
+          a.summary,
+          a.url,
+          a.publishedAt,
+          a.sourceId,
+          s.name as sourceName,
+          a.qualityScore,
+          a.difficulty,
+          COUNT(DISTINCT at.B) as commonTags
+        FROM Article a
+        JOIN _ArticleToTag at ON a.id = at.A
+        JOIN Source s ON a.sourceId = s.id
+        WHERE at.B IN (${placeholders})
+          AND a.id != ?
+          AND a.qualityScore >= 30
+        GROUP BY a.id, a.title, a.summary, a.url, a.publishedAt, a.sourceId, s.name, a.qualityScore, a.difficulty
+        HAVING commonTags > 0
+        ORDER BY commonTags DESC, a.publishedAt DESC
+        LIMIT 10
+      )
+      SELECT 
+        ra.*,
+        GROUP_CONCAT(t.id || '::' || t.name, '||') as tags
+      FROM RelatedArticles ra
+      LEFT JOIN _ArticleToTag at2 ON ra.id = at2.A
+      LEFT JOIN Tag t ON at2.B = t.id
+      GROUP BY ra.id, ra.title, ra.summary, ra.url, ra.publishedAt, ra.sourceId, ra.sourceName, ra.qualityScore, ra.difficulty, ra.commonTags
+      ORDER BY ra.commonTags DESC, ra.publishedAt DESC
       `,
       ...tagIds,
       articleId
     );
 
-    // ソース情報とタグ情報を取得
-    const articleIds = relatedArticlesRaw.map(a => a.id);
-    
-    const articlesWithDetails = await prisma.article.findMany({
-      where: {
-        id: {
-          in: articleIds
-        }
-      },
-      include: {
-        source: true,
-        tags: true
-      }
-    });
-
-    // 詳細情報をマップに変換
-    const articleDetailsMap = new Map(
-      articlesWithDetails.map(a => [a.id, a])
-    );
+    // タグ情報のパース関数
+    const parseTags = (tagsString: string | null): Array<{ id: string; name: string }> => {
+      if (!tagsString) return [];
+      
+      return tagsString.split('||')
+        .filter(tag => tag && tag.includes('::'))
+        .map(tag => {
+          const [id, name] = tag.split('::', 2);
+          return { id, name };
+        });
+    };
 
     // Jaccard係数で類似度を計算
     const targetTagSet = new Set(tagIds);
     
     const relatedArticles = relatedArticlesRaw
       .map(article => {
-        const details = articleDetailsMap.get(article.id);
-        if (!details) return null;
-
-        const articleTagSet = new Set(details.tags.map(t => t.id));
-        const intersection = new Set([...targetTagSet].filter(x => articleTagSet.has(x)));
-        const union = new Set([...targetTagSet, ...articleTagSet]);
+        const articleTags = parseTags(article.tags);
+        const articleTagIds = new Set(articleTags.map(t => t.id));
+        const intersection = new Set([...targetTagSet].filter(x => articleTagIds.has(x)));
+        const union = new Set([...targetTagSet, ...articleTagIds]);
         const similarity = union.size > 0 ? intersection.size / union.size : 0;
 
         return {
@@ -112,27 +134,35 @@ export async function GET(
           title: article.title,
           summary: article.summary || '',
           url: article.url,
-          source: details.source.name,
+          source: article.sourceName,
           publishedAt: article.publishedAt.toISOString(),
           qualityScore: article.qualityScore,
           difficulty: article.difficulty,
-          tags: details.tags.map(tag => ({
-            id: tag.id,
-            name: tag.name
-          })),
-          similarity: Math.round(similarity * 100) / 100
+          tags: articleTags,
+          similarity: Math.round(similarity * 100) / 100,
+          commonTags: Number(article.commonTags)
         };
       })
-      .filter(Boolean)
-      .sort((a, b) => b!.similarity - a!.similarity);
+      .sort((a, b) => {
+        // First sort by common tags, then by similarity
+        if (b.commonTags !== a.commonTags) {
+          return b.commonTags - a.commonTags;
+        }
+        return b.similarity - a.similarity;
+      });
 
-    return NextResponse.json({
+    const response = {
       articles: relatedArticles,
       metadata: {
-        algorithm: 'tag-based',
+        algorithm: 'tag-based-optimized',
         timestamp: new Date().toISOString()
       }
-    });
+    };
+    
+    // Cache the result
+    await cache.set(cacheKey, response);
+    
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Failed to fetch related articles:', error);

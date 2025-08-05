@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/database';
+import { tagCache } from '@/lib/cache/tag-cache';
+import { RedisCache } from '@/lib/cache';
 
-const prisma = new PrismaClient();
+// タグクラウド用のキャッシュ
+const tagCloudCache = new RedisCache({
+  ttl: 1800, // 30分
+  namespace: '@techtrend/cache:tagcloud'
+});
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const period = searchParams.get('period') || '30d';
     const limit = parseInt(searchParams.get('limit') || '50');
+
+    // キャッシュキーを生成
+    const cacheKey = tagCloudCache.generateCacheKey('tagcloud', {
+      params: { period, limit }
+    });
+
+    // キャッシュから取得を試みる
+    const cachedResult = await tagCloudCache.get(cacheKey);
+    if (cachedResult) {
+      return NextResponse.json(cachedResult);
+    }
 
     // 期間に基づいてフィルタリング
     let dateFilter = {};
@@ -119,10 +136,15 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
+    const response = {
       tags: tagCloudData,
       period
-    });
+    };
+
+    // キャッシュに保存
+    await tagCloudCache.set(cacheKey, response);
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Tag cloud error:', error);
     return NextResponse.json(
