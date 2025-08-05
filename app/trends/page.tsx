@@ -43,8 +43,12 @@ export default function TrendsPage() {
   const [newTags, setNewTags] = useState<NewTag[]>([]);
   const [trendAnalysis, setTrendAnalysis] = useState<TrendAnalysis | null>(null);
   const [selectedDays, setSelectedDays] = useState(7);
-  const [loading, setLoading] = useState(true);
   const [sourceData, setSourceData] = useState<{name: string; value: number; percentage: number}[]>([]);
+  
+  // 個別のローディング状態
+  const [loadingKeywords, setLoadingKeywords] = useState(true);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(true);
+  const [loadingSource, setLoadingSource] = useState(true);
 
   useEffect(() => {
     fetchTrendingKeywords();
@@ -54,30 +58,34 @@ export default function TrendsPage() {
 
   const fetchTrendingKeywords = async () => {
     try {
+      setLoadingKeywords(true);
       const response = await fetch('/api/trends/keywords');
       const data = await response.json();
       setTrendingKeywords(data.trending);
       setNewTags(data.newTags);
     } catch (error) {
       console.error('Failed to fetch trending keywords:', error);
+    } finally {
+      setLoadingKeywords(false);
     }
   };
 
   const fetchTrendAnalysis = async (days: number) => {
     try {
-      setLoading(true);
+      setLoadingAnalysis(true);
       const response = await fetch(`/api/trends/analysis?days=${days}`);
       const data = await response.json();
       setTrendAnalysis(data);
     } catch (error) {
       console.error('Failed to fetch trend analysis:', error);
     } finally {
-      setLoading(false);
+      setLoadingAnalysis(false);
     }
   };
 
   const fetchSourceStats = async () => {
     try {
+      setLoadingSource(true);
       const response = await fetch('/api/stats');
       const result = await response.json();
       if (result.success && result.data && result.data.sources) {
@@ -110,6 +118,8 @@ export default function TrendsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch source stats:', error);
+    } finally {
+      setLoadingSource(false);
     }
   };
 
@@ -146,8 +156,17 @@ export default function TrendsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {trendingKeywords.slice(0, 10).map((keyword) => (
+            {loadingKeywords ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-12 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {trendingKeywords.slice(0, 10).map((keyword) => (
                 <Link
                   key={keyword.id}
                   href={`/?tags=${encodeURIComponent(keyword.name)}`}
@@ -168,8 +187,9 @@ export default function TrendsPage() {
                     </div>
                   </div>
                 </Link>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -182,8 +202,17 @@ export default function TrendsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {newTags.map((tag) => (
+            {loadingKeywords ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-10 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {newTags.map((tag) => (
                 <Link
                   key={tag.id}
                   href={`/?tags=${encodeURIComponent(tag.name)}`}
@@ -198,8 +227,9 @@ export default function TrendsPage() {
                     </span>
                   </div>
                 </Link>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -212,8 +242,17 @@ export default function TrendsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {trendAnalysis?.topTags?.map((tag, index) => (
+            {loadingAnalysis ? (
+              <div className="space-y-2">
+                {[...Array(10)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {trendAnalysis?.topTags?.map((tag, index) => (
                 <Link
                   key={tag.name}
                   href={`/?tags=${encodeURIComponent(tag.name)}`}
@@ -231,8 +270,9 @@ export default function TrendsPage() {
                     </span>
                   </div>
                 </Link>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -266,7 +306,7 @@ export default function TrendsPage() {
               <TrendLineChart
                 data={trendAnalysis?.timeline || []}
                 tags={trendAnalysis?.topTags?.slice(0, 10).map(t => t.name) || []}
-                loading={loading}
+                loading={loadingAnalysis}
               />
             </div>
             
@@ -276,13 +316,13 @@ export default function TrendsPage() {
                 name: tag.name,
                 count: tag.totalCount
               })) || []}
-              loading={loading}
+              loading={loadingAnalysis}
             />
             
             {/* ソース別円グラフ */}
             <SourcePieChart
               data={sourceData}
-              loading={loading}
+              loading={loadingSource}
             />
           </div>
         </div>
