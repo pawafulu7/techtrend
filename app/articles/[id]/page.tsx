@@ -16,6 +16,9 @@ interface PageProps {
   params: Promise<{
     id: string;
   }>;
+  searchParams: Promise<{
+    from?: string;
+}>;
 }
 
 async function getArticle(id: string) {
@@ -30,8 +33,27 @@ async function getArticle(id: string) {
   return article;
 }
 
-export default async function ArticlePage({ params }: PageProps) {
+export default async function ArticlePage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const { from } = await searchParams;
+  
+  // セキュリティ: fromパラメータの検証
+  const getReturnUrl = (from: string | undefined): string => {
+    if (!from) return '/';
+    
+    try {
+      const decodedUrl = decodeURIComponent(from);
+      // 相対パスまたは同一オリジンのみ許可
+      if (decodedUrl.startsWith('/') && !decodedUrl.startsWith('//')) {
+        return decodedUrl;
+      }
+      return '/';
+    } catch {
+      return '/';
+    }
+  };
+  
+  const returnUrl = getReturnUrl(from);
   const article = await getArticle(id);
 
   if (!article) {
@@ -48,7 +70,7 @@ export default async function ArticlePage({ params }: PageProps) {
       <ArticleTracker article={article} />
       <div className="mb-4">
         <Button variant="ghost" asChild>
-          <Link href="/" className="flex items-center gap-2">
+          <Link href={returnUrl} className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
             記事一覧に戻る
           </Link>

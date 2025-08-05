@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Clock, TrendingUp, ThumbsUp, GraduationCap, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +17,7 @@ import { ShareButton } from '@/app/components/article/share-button';
 export function ArticleCard({ article }: ArticleCardProps) {
   const [votes, setVotes] = useState(article.userVotes || 0);
   const [hasVoted, setHasVoted] = useState(false);
+  const searchParams = useSearchParams();
   const domain = getDomain(article.url);
   const sourceColor = getSourceColor(article.source.name);
   const publishedDate = new Date(article.publishedAt);
@@ -27,8 +29,10 @@ export function ArticleCard({ article }: ArticleCardProps) {
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
-    // 記事詳細ページに遷移
-    window.location.href = `/articles/${article.id}`;
+    // URLパラメータを保持して記事詳細ページに遷移
+    const returnUrl = searchParams.toString() ? `/?${searchParams.toString()}` : '/';
+    const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
+    window.location.href = articleUrl;
   };
 
   const handleVote = async (e: React.MouseEvent) => {
