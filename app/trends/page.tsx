@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Sparkles, Calendar, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { TrendLineChart } from '@/app/components/trends/TrendLineChart';
+import { SourcePieChart } from '@/app/components/trends/SourcePieChart';
+import { TagRankingChart } from '@/app/components/trends/TagRankingChart';
 
 interface TrendingKeyword {
   id: string;
@@ -26,8 +29,13 @@ interface TrendAnalysis {
   topTags: { name: string; totalCount: number }[];
   timeline: Array<{
     date: string;
-    tags: Record<string, number>;
+    [key: string]: any;
   }>;
+  period: {
+    from: string;
+    to: string;
+    days: number;
+  };
 }
 
 export default function TrendsPage() {
@@ -36,10 +44,12 @@ export default function TrendsPage() {
   const [trendAnalysis, setTrendAnalysis] = useState<TrendAnalysis | null>(null);
   const [selectedDays, setSelectedDays] = useState(7);
   const [loading, setLoading] = useState(true);
+  const [sourceData, setSourceData] = useState<{name: string; value: number; percentage: number}[]>([]);
 
   useEffect(() => {
     fetchTrendingKeywords();
     fetchTrendAnalysis(selectedDays);
+    fetchSourceStats();
   }, [selectedDays]);
 
   const fetchTrendingKeywords = async () => {
@@ -63,6 +73,23 @@ export default function TrendsPage() {
       console.error('Failed to fetch trend analysis:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSourceStats = async () => {
+    try {
+      const response = await fetch('/api/stats');
+      const data = await response.json();
+      if (data.sources) {
+        const sourceStats = data.sources.map((source: {name: string; count: number; percentage: number}) => ({
+          name: source.name,
+          value: source.count,
+          percentage: source.percentage
+        }));
+        setSourceData(sourceStats);
+      }
+    } catch (error) {
+      console.error('Failed to fetch source stats:', error);
     }
   };
 
@@ -190,14 +217,15 @@ export default function TrendsPage() {
         </Card>
       </div>
 
-      {/* タグトレンドグラフ */}
-      <Card className="mt-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              タグトレンドの推移
-            </CardTitle>
+      {/* グラフセクション */}
+      <div className="mt-6 space-y-6">
+        {/* タグトレンドグラフ */}
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-2xl font-semibold flex items-center gap-2">
+              <Calendar className="h-6 w-6" />
+              詳細分析
+            </h2>
             <div className="flex gap-2">
               {[7, 14, 30].map((days) => (
                 <Button
@@ -211,46 +239,34 @@ export default function TrendsPage() {
               ))}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              読み込み中...
+          
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* タグトレンドの時系列グラフ */}
+            <div className="lg:col-span-2">
+              <TrendLineChart
+                data={trendAnalysis?.timeline || []}
+                tags={trendAnalysis?.topTags?.slice(0, 10).map(t => t.name) || []}
+                loading={loading}
+              />
             </div>
-          ) : trendAnalysis?.timeline && trendAnalysis.timeline.length > 0 ? (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2 mb-4">
-                {trendAnalysis.topTags.map((tag, index) => (
-                  <Badge
-                    key={tag.name}
-                    variant="outline"
-                    className="flex items-center gap-1"
-                  >
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{
-                        backgroundColor: `hsl(${index * 36}, 70%, 50%)`
-                      }}
-                    />
-                    {tag.name}
-                  </Badge>
-                ))}
-              </div>
-              <div className="h-64 relative">
-                {/* 簡易的なグラフ表示 */}
-                <div className="text-sm text-muted-foreground">
-                  ※ グラフ表示は実装を簡略化しています。
-                  実際の実装では、RechartsやChart.jsなどのライブラリを使用してください。
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              データがありません
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            
+            {/* タグランキングバーグラフ */}
+            <TagRankingChart
+              data={trendAnalysis?.topTags?.slice(0, 10).map(tag => ({
+                name: tag.name,
+                count: tag.totalCount
+              })) || []}
+              loading={loading}
+            />
+            
+            {/* ソース別円グラフ */}
+            <SourcePieChart
+              data={sourceData}
+              loading={loading}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

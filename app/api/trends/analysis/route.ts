@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         LIMIT 10
       ` as { name: string; count: bigint }[];
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         tag: tagName,
         timeline: tagData.map(d => ({
           date: d.date,
@@ -55,6 +55,11 @@ export async function GET(request: NextRequest) {
           count: Number(t.count)
         }))
       });
+
+      // キャッシュヘッダーを設定（5分間）
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      
+      return response;
     } else {
       // 全体のトレンド分析
       const topTags = await prisma.$queryRaw`
@@ -105,14 +110,14 @@ export async function GET(request: NextRequest) {
       const tagNames = topTags.map(t => t.name);
       
       const completeTimeline = dates.map(date => {
-        const dayData: any = { date };
+        const dayData: Record<string, string | number> = { date };
         tagNames.forEach(tag => {
           dayData[tag] = timelineByDate[date]?.[tag] || 0;
         });
         return dayData;
       });
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         topTags: topTags.map(t => ({
           name: t.name,
           totalCount: Number(t.total_count)
@@ -124,6 +129,11 @@ export async function GET(request: NextRequest) {
           days
         }
       });
+
+      // キャッシュヘッダーを設定（5分間）
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      
+      return response;
     }
   } catch (error) {
     console.error('Failed to fetch trend analysis:', error);
