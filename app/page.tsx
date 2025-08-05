@@ -6,6 +6,8 @@ import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ArticleList } from '@/app/components/article/list';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { FeedUpdateButton } from '@/app/components/common/feed-update-button';
+import { SummaryGenerateButton } from '@/app/components/common/summary-generate-button';
+import { TagGenerateButton } from '@/app/components/common/tag-generate-button';
 import { Button } from '@/components/ui/button';
 import { prisma } from '@/lib/database';
 import { ARTICLES_PER_PAGE } from '@/lib/constants';
@@ -178,7 +180,11 @@ export default async function Home({ searchParams }: PageProps) {
         <div className="mb-2 flex-shrink-0 space-y-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 border border-white/20 shadow-sm">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
             <h1 className="text-lg sm:text-xl font-bold">最新テックトレンド</h1>
-            <FeedUpdateButton />
+            <div className="flex gap-2">
+              <FeedUpdateButton />
+              <SummaryGenerateButton />
+              <TagGenerateButton />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <SearchBox />
