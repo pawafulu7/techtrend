@@ -79,9 +79,9 @@ export default function TrendsPage() {
   const fetchSourceStats = async () => {
     try {
       const response = await fetch('/api/stats');
-      const data = await response.json();
-      if (data.sources) {
-        const sourceStats = data.sources.map((source: {name: string; count: number; percentage: number}) => ({
+      const result = await response.json();
+      if (result.success && result.data && result.data.sources) {
+        const sourceStats = result.data.sources.map((source: {name: string; count: number; percentage: number}) => ({
           name: source.name,
           value: source.count,
           percentage: source.percentage
