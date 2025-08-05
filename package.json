@@ -27,6 +27,8 @@
     "scheduler:v2": "tsx scheduler-v2.ts",
     "scripts:collect": "tsx scripts/collect-feeds.ts",
     "scripts:summarize": "tsx scripts/generate-summaries.ts",
+    "claude:summarize": "tsx scripts/generate-summaries-claude.ts",
+    "claude:compare": "tsx scripts/compare-summaries.ts",
     "techtrend": "tsx lib/cli/index.ts"
   },
   "prisma": {
