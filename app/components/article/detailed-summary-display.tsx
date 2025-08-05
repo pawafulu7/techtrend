@@ -2,6 +2,9 @@
 
 import { DetailedSummaryStructured } from './detailed-summary-structured';
 import { DetailedSummaryCards } from './detailed-summary-cards';
+import { DetailedSummaryModern } from './detailed-summary-modern';
+import { DetailedSummaryTimeline } from './detailed-summary-timeline';
+import { DetailedSummaryCompact } from './detailed-summary-compact';
 import { ArticleType } from '@/lib/utils/article-type-detector';
 
 interface DetailedSummaryDisplayProps {
@@ -21,20 +24,39 @@ export function DetailedSummaryDisplay({
   const lastChar = articleId.charAt(articleId.length - 1);
   const lastDigit = parseInt(lastChar, 36); // 36進数として解釈（0-9, a-z）
   
-  // 偶数の場合は構造化リスト、奇数の場合はカード形式
-  const isEven = lastDigit % 2 === 0;
+  // 5種類の表示形式をローテーション
+  const displayType = lastDigit % 5;
   
-  if (isEven) {
-    return <DetailedSummaryStructured 
-      detailedSummary={detailedSummary} 
-      articleType={articleType}
-      summaryVersion={summaryVersion}
-    />;
-  } else {
-    return <DetailedSummaryCards 
-      detailedSummary={detailedSummary}
-      articleType={articleType}
-      summaryVersion={summaryVersion}
-    />;
+  switch (displayType) {
+    case 0:
+      return <DetailedSummaryModern 
+        detailedSummary={detailedSummary} 
+        articleType={articleType}
+        summaryVersion={summaryVersion}
+      />;
+    case 1:
+      return <DetailedSummaryTimeline 
+        detailedSummary={detailedSummary}
+        articleType={articleType}
+        summaryVersion={summaryVersion}
+      />;
+    case 2:
+      return <DetailedSummaryCompact 
+        detailedSummary={detailedSummary}
+        articleType={articleType}
+        summaryVersion={summaryVersion}
+      />;
+    case 3:
+      return <DetailedSummaryCards 
+        detailedSummary={detailedSummary}
+        articleType={articleType}
+        summaryVersion={summaryVersion}
+      />;
+    default:
+      return <DetailedSummaryStructured 
+        detailedSummary={detailedSummary} 
+        articleType={articleType}
+        summaryVersion={summaryVersion}
+      />;
   }
 }
