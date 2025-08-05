@@ -32,8 +32,8 @@ describe('AWSFetcher', () => {
       };
       const tags = extractTags(item, 'WhatsNew');
       
-      expect(tags).toContain('AWS');
       expect(tags).toContain('EC2');
+      expect(tags).not.toContain('AWS'); // AWSタグはfetchメソッドで追加される
     });
 
     it('複数のAWSサービスを同時に抽出できる', () => {
@@ -43,7 +43,7 @@ describe('AWSFetcher', () => {
       };
       const tags = extractTags(item, 'WhatsNew');
       
-      expect(tags).toContain('AWS');
+      expect(tags).not.toContain('AWS'); // AWSタグはfetchメソッドで追加される
       expect(tags).toContain('Lambda');
       expect(tags).toContain('S3');
       expect(tags).toContain('DynamoDB');
@@ -56,7 +56,7 @@ describe('AWSFetcher', () => {
       };
       const tags = extractTags(item, 'WhatsNew');
       
-      expect(tags).toContain('AWS');
+      expect(tags).not.toContain('AWS'); // AWSタグはfetchメソッドで追加される
       expect(tags).toContain('CloudWatch');
       expect(tags).toContain('CloudFormation');
     });
@@ -69,7 +69,7 @@ describe('AWSFetcher', () => {
       };
       const tags = extractTags(item, 'WhatsNew');
       
-      expect(tags).toContain('AWS');
+      expect(tags).not.toContain('AWS'); // AWSタグはfetchメソッドで追加される
       expect(tags).toContain('RDS');
       expect(tags).toContain('AWS Glue');
     });
@@ -81,7 +81,7 @@ describe('AWSFetcher', () => {
       };
       const tags = extractTags(item, 'WhatsNew');
       
-      expect(tags).toContain('AWS');
+      expect(tags).not.toContain('AWS'); // AWSタグはfetchメソッドで追加される
       expect(tags).toContain('EC2');
       expect(tags).toContain('Lambda');
     });
@@ -104,7 +104,7 @@ describe('AWSFetcher', () => {
       };
       const tags = extractTags(item, 'WhatsNew');
       
-      expect(tags).toContain('AWS');
+      expect(tags).not.toContain('AWS'); // AWSタグはfetchメソッドで追加される
       expect(tags).toContain('Bedrock');
     });
 
@@ -115,7 +115,7 @@ describe('AWSFetcher', () => {
       };
       const tags = extractTags(item, 'WhatsNew');
       
-      expect(tags).toContain('AWS');
+      expect(tags).not.toContain('AWS'); // AWSタグはfetchメソッドで追加される
       expect(tags).toContain('IoT Core');
       expect(tags).toContain('IoT Device Management');
     });
@@ -127,7 +127,7 @@ describe('AWSFetcher', () => {
       };
       const tags = extractTags(item, 'WhatsNew');
       
-      expect(tags).toContain('AWS');
+      expect(tags).not.toContain('AWS'); // AWSタグはfetchメソッドで追加される
       expect(tags).toContain('Security Hub');
       expect(tags).toContain('GuardDuty');
       expect(tags).toContain('WAF');
@@ -140,7 +140,7 @@ describe('AWSFetcher', () => {
       };
       const securityTags = extractTags(securityItem, 'Security');
       
-      expect(securityTags).toContain('AWS');
+      expect(securityTags).not.toContain('AWS'); // AWSタグはfetchメソッドで追加される
       expect(securityTags).toContain('セキュリティ');
       expect(securityTags).toContain('Security');
       
@@ -150,7 +150,7 @@ describe('AWSFetcher', () => {
       };
       const blogTags = extractTags(blogItem, 'Blog');
       
-      expect(blogTags).toContain('AWS');
+      expect(blogTags).not.toContain('AWS'); // AWSタグはfetchメソッドで追加される
       expect(blogTags).toContain('ブログ');
       expect(blogTags).toContain('Blog');
     });
