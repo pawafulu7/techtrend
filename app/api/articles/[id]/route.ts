@@ -3,6 +3,7 @@ import { prisma } from '@/lib/database';
 import { Prisma } from '@prisma/client';
 import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 export async function GET(
   request: NextRequest,
@@ -71,6 +72,9 @@ export async function PATCH(
       },
     });
 
+    // キャッシュを無効化
+    await cacheInvalidator.onArticleUpdated(params.id);
+
     return NextResponse.json({
       success: true,
       data: article,
@@ -93,6 +97,9 @@ export async function DELETE(
     await prisma.article.delete({
       where: { id: params.id },
     });
+
+    // キャッシュを無効化
+    await cacheInvalidator.onArticleDeleted(params.id);
 
     return NextResponse.json({
       success: true,

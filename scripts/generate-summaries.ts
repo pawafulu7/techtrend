@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
 import { detectArticleType } from '@/lib/utils/article-type-detector';
 import { generatePromptForArticleType } from '@/lib/utils/article-type-prompts';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 const prisma = new PrismaClient();
 
@@ -470,6 +471,12 @@ async function generateSummaries(): Promise<GenerateResult> {
     console.log(`   成功: ${generatedCount}件`);
     console.log(`   エラー: ${errorCount}件`);
     console.log(`   処理時間: ${duration}秒`);
+
+    // 要約が生成された場合はキャッシュを無効化
+    if (generatedCount > 0) {
+      console.log('\n🔄 キャッシュを無効化中...');
+      await cacheInvalidator.onBulkImport();
+    }
     console.log(`\n📈 API統計:`);
     console.log(`   総試行回数: ${apiStats.attempts}`);
     console.log(`   成功: ${apiStats.successes}`);

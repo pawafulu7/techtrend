@@ -1,6 +1,7 @@
 import { PrismaClient, Source } from '@prisma/client';
 import { CreateArticleInput } from '@/types/models';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 const prisma = new PrismaClient();
 
@@ -178,6 +179,12 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
 
     const duration = Math.round((Date.now() - startTime) / 1000);
     console.log(`\n📊 収集完了: 新規${totalNewArticles}件, 重複${totalDuplicates}件 (${duration}秒)`);
+
+    // 新規記事が追加された場合はキャッシュを無効化
+    if (totalNewArticles > 0) {
+      console.log('🔄 キャッシュを無効化中...');
+      await cacheInvalidator.onBulkImport();
+    }
 
     return { newArticles: totalNewArticles, duplicates: totalDuplicates };
 

@@ -4,6 +4,7 @@ import { ArticleSummarizer } from '@/lib/ai';
 import { Prisma } from '@prisma/client';
 import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,6 +63,9 @@ export async function POST(request: NextRequest) {
         tags: true,
       },
     });
+
+    // キャッシュを無効化
+    await cacheInvalidator.onArticleUpdated(articleId);
 
     return NextResponse.json({
       success: true,
@@ -141,6 +145,11 @@ export async function PUT(request: NextRequest) {
         data: { summary },
       });
       processed++;
+    }
+
+    // バッチ処理後にキャッシュを無効化
+    if (processed > 0) {
+      await cacheInvalidator.onBulkImport();
     }
 
     return NextResponse.json({
