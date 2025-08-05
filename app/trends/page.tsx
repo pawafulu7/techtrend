@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Sparkles, Calendar, BarChart3 } from 'lucide-react';
@@ -50,16 +50,28 @@ export default function TrendsPage() {
   const [loadingAnalysis, setLoadingAnalysis] = useState(true);
   const [loadingSource, setLoadingSource] = useState(true);
 
+  // 初回のみ実行されるAPI
   useEffect(() => {
     fetchTrendingKeywords();
-    fetchTrendAnalysis(selectedDays);
     fetchSourceStats();
+  }, []);
+
+  // selectedDaysの変更時のみ実行されるAPI（デバウンス付き）
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchTrendAnalysis(selectedDays);
+    }, 300); // 300ms のデバウンス
+
+    return () => clearTimeout(timeoutId);
   }, [selectedDays]);
 
   const fetchTrendingKeywords = async () => {
     try {
       setLoadingKeywords(true);
-      const response = await fetch('/api/trends/keywords');
+      const response = await fetch('/api/trends/keywords', {
+        cache: 'force-cache',
+        next: { revalidate: 300 } // 5分間キャッシュ
+      });
       const data = await response.json();
       setTrendingKeywords(data.trending);
       setNewTags(data.newTags);
@@ -86,7 +98,10 @@ export default function TrendsPage() {
   const fetchSourceStats = async () => {
     try {
       setLoadingSource(true);
-      const response = await fetch('/api/stats');
+      const response = await fetch('/api/stats', {
+        cache: 'force-cache',
+        next: { revalidate: 300 } // 5分間キャッシュ
+      });
       const result = await response.json();
       if (result.success && result.data && result.data.sources) {
         const allSources = result.data.sources;
@@ -136,6 +151,16 @@ export default function TrendsPage() {
     if (rate >= 20) return 'text-yellow-600 dark:text-yellow-400';
     return 'text-gray-600 dark:text-gray-400';
   };
+
+  // グラフデータをメモ化
+  const chartData = useMemo(() => ({
+    timeline: trendAnalysis?.timeline || [],
+    topTags: trendAnalysis?.topTags?.slice(0, 10).map(t => t.name) || [],
+    tagRanking: trendAnalysis?.topTags?.slice(0, 10).map(tag => ({
+      name: tag.name,
+      count: tag.totalCount
+    })) || []
+  }), [trendAnalysis]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -304,18 +329,15 @@ export default function TrendsPage() {
             {/* タグトレンドの時系列グラフ */}
             <div className="lg:col-span-2">
               <TrendLineChart
-                data={trendAnalysis?.timeline || []}
-                tags={trendAnalysis?.topTags?.slice(0, 10).map(t => t.name) || []}
+                data={chartData.timeline}
+                tags={chartData.topTags}
                 loading={loadingAnalysis}
               />
             </div>
             
             {/* タグランキングバーグラフ */}
             <TagRankingChart
-              data={trendAnalysis?.topTags?.slice(0, 10).map(tag => ({
-                name: tag.name,
-                count: tag.totalCount
-              })) || []}
+              data={chartData.tagRanking}
               loading={loadingAnalysis}
             />
             
