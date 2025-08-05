@@ -116,6 +116,7 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
   let detailedSummary = '';
   let tags: string[] = [];
   let isDetailedSummary = false;
+  let tagSectionStarted = false; // タグセクション開始フラグを追加
   
   // パターン定義
   const summaryPatterns = [
@@ -182,20 +183,35 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
         detailedSummary += '\n' + cleanupText(line);
       }
     }
-    // タグ処理
+    // タグ処理（修正版）
     else if (line.match(/^タグ[:：]/)) {
       isDetailedSummary = false;
+      tagSectionStarted = true; // フラグを立てる
+      
+      // 同一行にタグがある場合（後方互換性）
       const tagLine = line.replace(/^タグ[:：]\s*/, '');
-      tags = tagLine.split(/[,、，]/)
+      if (tagLine.trim()) {
+        tags = tagLine.split(/[,、，]/)
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0 && tag.length <= 30)
+          .map(tag => normalizeTag(tag));
+        tagSectionStarted = false;
+      }
+    }
+    // タグが次行にある場合の処理（追加）
+    else if (tagSectionStarted && line.trim() && !line.match(/^(要約|詳細要約)[:：]/)) {
+      tags = line.split(/[,、，]/)
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0 && tag.length <= 30)
         .map(tag => normalizeTag(tag));
+      tagSectionStarted = false;
     }
     // 空行でセクション終了
     else if (!line.trim()) {
       if (summaryStarted && !detailedSummaryStarted) {
         summaryStarted = false;
       }
+      tagSectionStarted = false; // タグセクションも終了
     }
   }
   
