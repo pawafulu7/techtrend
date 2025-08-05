@@ -2,8 +2,17 @@ import { Suspense } from 'react';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
 import { SearchBox } from '@/app/components/common/search-box';
+import { FeedUpdateButton } from '@/app/components/common/feed-update-button';
+import { SummaryGenerateButton } from '@/app/components/common/summary-generate-button';
+import { TagGenerateButton } from '@/app/components/common/tag-generate-button';
+import { ServerPagination } from '@/app/components/common/server-pagination';
+import { PopularTags } from '@/app/components/common/popular-tags';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { ArticleList } from '@/app/components/article/list';
+import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
+import { FilterSkeleton } from '@/app/components/common/filter-skeleton';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { FeedUpdateButton } from '@/app/components/common/feed-update-button';
 import { SummaryGenerateButton } from '@/app/components/common/summary-generate-button';
@@ -198,7 +207,7 @@ export default async function Home({ searchParams }: PageProps) {
         <div className="flex gap-2 sm:gap-4 flex-1 overflow-hidden">
           {/* Sidebar Filters - Desktop */}
           <aside className="hidden lg:block w-48 flex-shrink-0">
-            <Suspense fallback={<div>Loading filters...</div>}>
+            <Suspense fallback={<FilterSkeleton />}>
               <Filters sources={sources} tags={tags} />
             </Suspense>
           </aside>
@@ -259,7 +268,7 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
 
               {/* Articles */}
-              <Suspense fallback={<div>Loading articles...</div>}>
+              <Suspense fallback={<ArticleSkeleton />}>
                 <ArticleList articles={data.articles} />
               </Suspense>
 
