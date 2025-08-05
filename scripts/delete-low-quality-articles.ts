@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 const prisma = new PrismaClient();
 
@@ -28,6 +29,14 @@ async function deleteLowQualityArticles() {
     }
   });
   console.log(`削除完了: ${oldDeleted.count}件`);
+
+  // 削除件数が0より大きい場合はキャッシュを無効化
+  const totalDeleted = devtoDeleted.count + oldDeleted.count;
+  if (totalDeleted > 0) {
+    console.log('\n🔄 キャッシュを無効化中...');
+    await cacheInvalidator.onBulkImport();
+    console.log('キャッシュ無効化完了');
+  }
 
   // 削除後の統計
   console.log('\n=== 削除後の統計 ===');

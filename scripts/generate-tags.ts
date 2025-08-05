@@ -1,5 +1,6 @@
 import { PrismaClient, Article, Source, Tag } from '@prisma/client';
 import fetch from 'node-fetch';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 const prisma = new PrismaClient();
 
@@ -184,6 +185,12 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
     console.log(`   成功: ${generatedCount}件`);
     console.log(`   エラー: ${errorCount}件`);
     console.log(`   処理時間: ${duration}秒`);
+
+    // タグが生成された場合はキャッシュを無効化
+    if (generatedCount > 0) {
+      console.log('\n🔄 キャッシュを無効化中...');
+      await cacheInvalidator.onBulkImport();
+    }
 
     return { generated: generatedCount, errors: errorCount };
 
