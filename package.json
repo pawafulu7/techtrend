@@ -29,6 +29,7 @@
     "scripts:summarize": "tsx scripts/generate-summaries.ts",
     "claude:summarize": "tsx scripts/generate-summaries-claude.ts",
     "claude:compare": "tsx scripts/compare-summaries.ts",
+    "claude:tags:batch": "tsx scripts/generate-tags-claude-batch.ts",
     "techtrend": "tsx lib/cli/index.ts"
   },
   "prisma": {
