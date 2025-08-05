@@ -1,6 +1,6 @@
-import { PrismaClient, Article, Source } from '@prisma/client';
+import { PrismaClient, Article, Source, Tag } from '@prisma/client';
 import { ClaudeHandler } from '../lib/ai/claude-handler';
-import readline from 'readline';
+import * as readline from 'readline';
 
 const prisma = new PrismaClient();
 const claudeHandler = new ClaudeHandler();
@@ -21,7 +21,7 @@ function askQuestion(question: string): Promise<string> {
 }
 
 // 記事の一覧表示
-async function displayArticles(articles: Array<Article & { source: Source }>, page: number, pageSize: number) {
+async function displayArticles(articles: Array<Article & { source: Source; tags: Tag[] }>, page: number, pageSize: number) {
   console.log('\n=== 記事一覧 ===');
   console.log(`ページ: ${page} (${pageSize}件ずつ表示)`);
   console.log('---');
@@ -29,7 +29,7 @@ async function displayArticles(articles: Array<Article & { source: Source }>, pa
   articles.forEach((article, index) => {
     const num = (page - 1) * pageSize + index + 1;
     const summary = article.summary ? '✓' : '✗';
-    const tags = article.tags ? '✓' : '✗';
+    const tags = article.tags && article.tags.length > 0 ? '✓' : '✗';
     console.log(`${num}. [${summary}] [${tags}] [${article.source.name}] ${article.title.substring(0, 60)}...`);
   });
   
@@ -38,15 +38,15 @@ async function displayArticles(articles: Array<Article & { source: Source }>, pa
 }
 
 // Claude Codeによる要約生成（対話的）
-async function generateSummaryInteractive(article: Article & { source: Source }) {
+async function generateSummaryInteractive(article: Article & { source: Source; tags: Tag[] }) {
   console.log('\n=== 記事詳細 ===');
   console.log(`タイトル: ${article.title}`);
   console.log(`ソース: ${article.source.name}`);
-  console.log(`URL: ${article.link}`);
+  console.log(`URL: ${article.url}`);
   console.log(`公開日: ${article.publishedAt}`);
   console.log('---');
   
-  const content = article.content || article.description || '';
+  const content = article.content || '';
   
   // プロンプトを表示
   const generatedPrompt = claudeHandler.getPromptForArticle(article.title, content);
@@ -103,7 +103,7 @@ async function generateSummaryInteractive(article: Article & { source: Source })
 }
 
 // データベース保存
-async function saveToDatabase(articleId: number, result: any) {
+async function saveToDatabase(articleId: string, result: any) {
   try {
     // 記事の更新
     await prisma.article.update({
