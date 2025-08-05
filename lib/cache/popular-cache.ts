@@ -11,12 +11,17 @@ export const CACHE_DURATION = {
 export type PopularPeriod = keyof typeof CACHE_DURATION;
 
 export class PopularCache {
-  private cache: RedisCache;
+  private caches: Map<PopularPeriod, RedisCache>;
 
   constructor() {
-    this.cache = new RedisCache({
-      ttl: 600, // デフォルト10分
-      namespace: '@techtrend/cache:popular'
+    // 期間ごとに異なるTTLを持つRedisCacheインスタンスを作成
+    this.caches = new Map();
+    
+    Object.entries(CACHE_DURATION).forEach(([period, ttl]) => {
+      this.caches.set(period as PopularPeriod, new RedisCache({
+        ttl,
+        namespace: '@techtrend/cache:popular'
+      }));
     });
   }
 
@@ -58,32 +63,34 @@ export class PopularCache {
     }
   ): Promise<T> {
     const key = this.generateKey(period, options);
-    const ttl = CACHE_DURATION[period];
+    const cache = this.caches.get(period);
     
-    // 一時的にTTLを変更してgetOrSetを実行
-    const originalTtl = this.cache['options'].ttl;
-    this.cache['options'].ttl = ttl;
-    
-    try {
-      return await this.cache.getOrSet(key, fetcher);
-    } finally {
-      // TTLを元に戻す
-      this.cache['options'].ttl = originalTtl;
+    if (!cache) {
+      throw new Error(`Cache not found for period: ${period}`);
     }
+    
+    // 期間に対応するキャッシュインスタンスを使用
+    return await cache.getOrSet(key, fetcher);
   }
 
   /**
    * 特定期間のキャッシュを無効化
    */
   async invalidatePeriod(period: PopularPeriod): Promise<void> {
-    await this.cache.invalidatePattern(`articles:${period}:*`);
+    const cache = this.caches.get(period);
+    if (cache) {
+      await cache.invalidatePattern(`articles:${period}:*`);
+    }
   }
 
   /**
    * すべての人気記事キャッシュを無効化
    */
   async invalidateAll(): Promise<void> {
-    await this.cache.invalidatePattern('articles:*');
+    const promises = Array.from(this.caches.values()).map(cache =>
+      cache.invalidatePattern('articles:*')
+    );
+    await Promise.all(promises);
   }
 }
 
