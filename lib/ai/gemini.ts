@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
-import { GEMINI_API } from '@/lib/constants';
-import { ExternalAPIError } from '@/lib/errors';
+import { GEMINI_API } from '../constants';
+import { ExternalAPIError } from '../errors';
 
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
