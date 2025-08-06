@@ -115,9 +115,8 @@ export class ZennExtendedFetcher extends BaseFetcher {
     const tags: string[] = [];
     
     // Zenn URLs often contain article type information
-    if (url.includes('/articles/')) {
-      tags.push('article');
-    } else if (url.includes('/books/')) {
+    // Note: 'article' tag is not added as it's redundant (all items are articles)
+    if (url.includes('/books/')) {
       tags.push('book');
     } else if (url.includes('/scraps/')) {
       tags.push('scrap');
