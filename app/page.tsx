@@ -216,13 +216,25 @@ export default async function Home({ searchParams }: PageProps) {
           <div className="flex-1 overflow-y-auto">
             <div className="space-y-2">
               {/* Sort Options and Mobile Filters */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between relative">
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {data.total.toLocaleString()}件
               </p>
               <MobileFilters sources={sources} tags={tags} />
             </div>
+
+            {/* Top Pagination - Desktop only, centered */}
+            {data.totalPages > 1 && (
+              <div className="hidden lg:block absolute left-1/2 transform -translate-x-1/2">
+                <ServerPagination
+                  currentPage={data.page}
+                  totalPages={data.totalPages}
+                  searchParams={params}
+                />
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
               {/* 表示切り替えボタン */}
               <ViewModeToggle currentMode={viewMode} />
@@ -271,17 +283,6 @@ export default async function Home({ searchParams }: PageProps) {
               </div>
             </div>
           </div>
-
-              {/* Top Pagination - Desktop only */}
-              {data.totalPages > 1 && (
-                <div className="mb-4 hidden lg:block">
-                  <ServerPagination
-                    currentPage={data.page}
-                    totalPages={data.totalPages}
-                    searchParams={params}
-                  />
-                </div>
-              )}
 
               {/* Articles */}
               <Suspense fallback={<ArticleSkeleton />}>
