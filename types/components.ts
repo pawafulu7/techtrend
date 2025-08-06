@@ -31,7 +31,6 @@ export interface ArticleListItemProps {
 // 表示モード切り替えボタン
 export interface ViewModeToggleProps {
   currentMode: ViewMode;
-  onModeChange: (mode: ViewMode) => void;
 }
 
 // ソースセレクター

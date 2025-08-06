@@ -10,7 +10,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-export function ViewModeToggle({ currentMode, onModeChange }: ViewModeToggleProps) {
+export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
   const handleModeChange = async (mode: 'card' | 'list') => {
     // サーバーに送信してCookieを更新
     try {
@@ -23,8 +23,6 @@ export function ViewModeToggle({ currentMode, onModeChange }: ViewModeToggleProp
       window.location.reload();
     } catch (error) {
       console.error('Failed to save view mode:', error);
-      // エラー時でもUIは更新
-      onModeChange(mode);
     }
   };
 

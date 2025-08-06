@@ -225,10 +225,7 @@ export default async function Home({ searchParams }: PageProps) {
             </div>
             <div className="flex items-center gap-2">
               {/* 表示切り替えボタン */}
-              <ViewModeToggle 
-                currentMode={viewMode} 
-                onModeChange={() => {/* Client-side only */}}
-              />
+              <ViewModeToggle currentMode={viewMode} />
               <div className="w-px h-5 bg-border" />
               <div className="flex gap-1">
               <Button
