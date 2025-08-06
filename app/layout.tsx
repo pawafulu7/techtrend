@@ -15,15 +15,17 @@ import "./globals.css";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-  display: "swap",
+  display: "optional", // swapからoptionalに変更: FOUTを防ぐ
   preload: true,
+  adjustFontFallback: true, // フォールバックフォントの調整
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-  display: "swap",
+  display: "optional", // swapからoptionalに変更: FOUTを防ぐ
   preload: true,
+  adjustFontFallback: true, // フォールバックフォントの調整
 });
 
 export const metadata: Metadata = {
@@ -61,6 +63,37 @@ export default async function RootLayout({
   return (
     <html lang="ja" className={`h-full no-transitions ${initialTheme}`}>
       <head>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              /* Critical CSS inline */
+              :root {
+                --radius: 0.625rem;
+                --background: oklch(1 0 0);
+                --foreground: oklch(0.145 0 0);
+                --primary: oklch(0.205 0 0);
+                --border: oklch(0.922 0 0);
+              }
+              .dark {
+                --background: oklch(0.145 0 0);
+                --foreground: oklch(0.985 0 0);
+                --primary: oklch(0.922 0 0);
+                --border: oklch(1 0 0 / 10%);
+              }
+              html.no-transitions *,
+              html.no-transitions *::before,
+              html.no-transitions *::after {
+                transition: none !important;
+                animation: none !important;
+              }
+              body {
+                margin: 0;
+                background-color: var(--background);
+                color: var(--foreground);
+              }
+            `,
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
