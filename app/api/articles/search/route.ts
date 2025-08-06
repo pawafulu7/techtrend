@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { searchCache } from '@/lib/cache/search-cache';
 
 const prisma = new PrismaClient();
 
@@ -60,8 +61,29 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    let articles;
-    let totalCount;
+    // キャッシュキー生成用のクエリオブジェクト
+    const cacheQuery = {
+      q: query,
+      tags: tags.join(','),
+      sources: sources.join(','),
+      difficulty: difficulty.join(','),
+      dateFrom,
+      dateTo,
+      sortBy,
+      page,
+      limit
+    };
+    
+    const cacheKey = searchCache.generateKey(cacheQuery);
+    
+    // キャッシュから取得またはDBから取得してキャッシュに保存
+    const searchResult = await searchCache.getOrSet(
+      cacheKey,
+      async () => {
+        console.log(`[Search API] Cache miss for key: ${cacheKey}`);
+        
+        let articles;
+        let totalCount;
 
     // 全文検索クエリがある場合
     if (query) {
@@ -199,22 +221,37 @@ export async function GET(request: NextRequest) {
       `
     ]);
 
+        console.log('[Search API] Data fetched and cached successfully');
+        return {
+          articles,
+          totalCount,
+          facets: {
+            tags: tagFacets.map(t => ({
+              name: t.name,
+              count: t._count.articles
+            })),
+            sources: sourceFacets.map(s => ({
+              name: s.name,
+              count: s._count.articles
+            })),
+            difficulty: difficultyFacets.filter(d => d.difficulty).map(d => ({
+              level: d.difficulty,
+              count: Number(d.count)
+            }))
+          }
+        };
+      }
+    );
+
+    // キャッシュ統計をログ出力
+    const cacheStats = searchCache.getSearchStats();
+    console.log('[Search API] Cache stats:', cacheStats);
+
     return NextResponse.json({
-      articles,
-      totalCount,
-      facets: {
-        tags: tagFacets.map(t => ({
-          name: t.name,
-          count: t._count.articles
-        })),
-        sources: sourceFacets.map(s => ({
-          name: s.name,
-          count: s._count.articles
-        })),
-        difficulty: difficultyFacets.filter(d => d.difficulty).map(d => ({
-          level: d.difficulty,
-          count: Number(d.count)
-        }))
+      ...searchResult,
+      cache: {
+        hit: cacheStats.hits > 0,
+        stats: cacheStats
       }
     });
   } catch (error) {

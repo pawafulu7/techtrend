@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
+import { trendsCache } from '@/lib/cache/trends-cache';
 
 export async function GET() {
   try {
+    // キャッシュキーを生成（キーワード分析用の固定キー）
+    const cacheKey = 'keywords:trending';
+    
+    // キャッシュから取得またはDBから取得してキャッシュに保存
+    const keywordsData = await trendsCache.getOrSet(
+      cacheKey,
+      async () => {
+        console.log(`[Keywords API] Cache miss for key: ${cacheKey}`);
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -90,16 +99,31 @@ export async function GET() {
       LIMIT 10
     ` as { id: string; name: string; count: bigint }[];
 
+        console.log('[Keywords API] Data fetched and cached successfully');
+        return {
+          trending: trendingKeywords,
+          newTags: newTags.map(tag => ({
+            id: tag.id,
+            name: tag.name,
+            count: Number(tag.count)
+          })),
+          period: {
+            from: oneDayAgo.toISOString(),
+            to: now.toISOString()
+          }
+        };
+      }
+    );
+
+    // キャッシュ統計をログ出力
+    const cacheStats = trendsCache.getStats();
+    console.log('[Keywords API] Cache stats:', cacheStats);
+
     return NextResponse.json({
-      trending: trendingKeywords,
-      newTags: newTags.map(tag => ({
-        id: tag.id,
-        name: tag.name,
-        count: Number(tag.count)
-      })),
-      period: {
-        from: oneDayAgo.toISOString(),
-        to: now.toISOString()
+      ...keywordsData,
+      cache: {
+        hit: cacheStats.hits > 0,
+        stats: cacheStats
       }
     });
   } catch (error) {
