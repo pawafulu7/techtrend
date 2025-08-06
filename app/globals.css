@@ -175,8 +175,32 @@ html.no-transitions *::after {
   body {
     @apply text-foreground bg-background;
   }
-  /* 複雑な背景グラデーションを削除 - パフォーマンス改善 */
-  /* シンプルな背景色（bg-background）を使用 */
+  /* よりシンプルで軽量な背景グラデーション */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      135deg,
+      oklch(0.94 0.06 220) 0%,
+      oklch(0.93 0.07 250) 50%,
+      oklch(0.92 0.08 280) 100%
+    );
+    pointer-events: none;
+    z-index: -1;
+    will-change: auto; /* パフォーマンス最適化 */
+  }
+  .dark body::before {
+    background: linear-gradient(
+      135deg,
+      oklch(0.15 0.01 200 / 0.3) 0%,
+      oklch(0.17 0.02 230 / 0.4) 50%,
+      oklch(0.19 0.03 260 / 0.5) 100%
+    );
+  }
 }
 
 @layer utilities {
