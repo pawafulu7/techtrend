@@ -25,11 +25,11 @@
     "scheduler:logs": "pm2 logs techtrend-scheduler",
     "scheduler:dev": "tsx scheduler.ts",
     "scheduler:v2": "tsx scheduler-v2.ts",
-    "scripts:collect": "tsx scripts/collect-feeds.ts",
-    "scripts:summarize": "tsx scripts/generate-summaries.ts",
-    "claude:summarize": "tsx scripts/generate-summaries-claude.ts",
-    "claude:compare": "tsx scripts/compare-summaries.ts",
-    "claude:tags:batch": "tsx scripts/generate-tags-claude-batch.ts",
+    "scripts:collect": "tsx scripts/scheduled/collect-feeds.ts",
+    "scripts:summarize": "tsx scripts/maintenance/generate-summaries.ts",
+    "claude:summarize": "tsx scripts/manual/generate-summaries-claude.ts",
+    "claude:compare": "tsx scripts/manual/compare-summaries.ts",
+    "claude:tags:batch": "tsx scripts/manual/generate-tags-claude-batch.ts",
     "techtrend": "tsx lib/cli/index.ts"
   },
   "prisma": {

@@ -18,7 +18,7 @@ cleanupCommand
       const dryRun = options.dryRun || false;
       logger.info(`低品質記事の${dryRun ? '確認' : '削除'}を開始します`);
       
-      const scriptPath = path.join(process.cwd(), 'scripts/delete-low-quality-articles.ts');
+      const scriptPath = path.join(process.cwd(), 'scripts/scheduled/delete-low-quality-articles.ts');
       const args = [];
       
       // 既存スクリプトはオプションを受け付けないため、直接実行
@@ -56,7 +56,7 @@ cleanupCommand
       const dryRun = options.dryRun || false;
       logger.info(`タグの${dryRun ? '確認' : 'クリーンアップ'}を開始します`);
       
-      const scriptPath = path.join(process.cwd(), 'scripts/clean-tags.ts');
+      const scriptPath = path.join(process.cwd(), 'scripts/scheduled/clean-tags.ts');
       const args = [];
       
       const child = fork(scriptPath, args, {

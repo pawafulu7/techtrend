@@ -21,7 +21,7 @@ feedsCommand
       
       logger.info('フィード収集を開始します');
       
-      const scriptPath = path.join(process.cwd(), 'scripts/collect-feeds.ts');
+      const scriptPath = path.join(process.cwd(), 'scripts/scheduled/collect-feeds.ts');
       const args = options.all ? [] : sources;
       
       const child = fork(scriptPath, args, {

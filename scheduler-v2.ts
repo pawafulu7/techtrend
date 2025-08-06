@@ -53,7 +53,7 @@ async function executeUpdatePipeline(
     console.log('📡 フィード収集中...');
     const sourceArgs = sources.map(s => `"${s}"`).join(' ');
     const { stdout: collectOutput }: ExecutionResult = await execAsync(
-      `npx tsx scripts/collect-feeds.ts ${sourceArgs}`
+      `npx tsx scripts/scheduled/collect-feeds.ts ${sourceArgs}`
     );
     console.log(collectOutput);
     
@@ -61,7 +61,7 @@ async function executeUpdatePipeline(
     if (!options?.skipSummaries) {
       console.log('📝 要約・タグ生成中...');
       const { stdout: summaryOutput }: ExecutionResult = await execAsync(
-        'npx tsx scripts/core/manage-summaries.ts generate'
+        'npx tsx scripts/scheduled/manage-summaries.ts generate'
       );
       console.log(summaryOutput);
     }
@@ -69,14 +69,14 @@ async function executeUpdatePipeline(
     // 3. 品質スコア計算
     console.log('📊 品質スコア計算中...');
     const { stdout: qualityOutput }: ExecutionResult = await execAsync(
-      'npx tsx scripts/core/manage-quality-scores.ts calculate'
+      'npx tsx scripts/scheduled/manage-quality-scores.ts calculate'
     );
     console.log(qualityOutput);
     
     // 4. 難易度レベル判定
     console.log('📈 難易度レベル判定中...');
     const { stdout: difficultyOutput }: ExecutionResult = await execAsync(
-      'npx tsx scripts/calculate-difficulty-levels.ts'
+      'npx tsx scripts/scheduled/calculate-difficulty-levels.ts'
     );
     console.log(difficultyOutput);
     
@@ -136,12 +136,12 @@ cron.schedule('0 3 * * *', async () => {
   try {
     // 低品質記事のクリーンアップ
     console.log('🗑️ 低品質記事のクリーンアップ中...');
-    const { stdout: cleanupOutput }: ExecutionResult = await execAsync('npx tsx scripts/delete-low-quality-articles.ts');
+    const { stdout: cleanupOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/delete-low-quality-articles.ts');
     console.log(cleanupOutput);
     
     // 空のタグや重複タグのクリーンアップ
     console.log('🏷️ タグのクリーンアップ中...');
-    const { stdout: tagCleanupOutput }: ExecutionResult = await execAsync('npx tsx scripts/clean-tags.ts');
+    const { stdout: tagCleanupOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/clean-tags.ts');
     console.log(tagCleanupOutput);
     
     const endTime = new Date();
@@ -161,7 +161,7 @@ cron.schedule('0 2 * * 0', async () => {
   try {
     // 低品質記事の削除
     console.log('🗑️ 低品質記事を削除中...');
-    const { stdout: deleteOutput }: ExecutionResult = await execAsync('npx tsx scripts/delete-low-quality-articles.ts');
+    const { stdout: deleteOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/delete-low-quality-articles.ts');
     console.log(deleteOutput);
     
     const endTime = new Date();
@@ -179,7 +179,7 @@ cron.schedule('30 10 * * *', async () => {
   console.log(`\n📝 要約生成を開始: ${startTime.toLocaleString('ja-JP')}`);
   
   try {
-    const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/core/manage-summaries.ts generate --batch 5 --limit 30');
+    const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/manage-summaries.ts generate --batch 5 --limit 30');
     console.log(summaryOutput);
     
     // 成功率が低い場合は30分後に再試行
@@ -190,7 +190,7 @@ cron.schedule('30 10 * * *', async () => {
         console.log('⏰ 30分後に再試行します...');
         setTimeout(async () => {
           console.log('\n🔁 要約生成を再試行中...');
-          const { stdout: retryOutput }: ExecutionResult = await execAsync('npx tsx scripts/core/manage-summaries.ts generate --batch 5 --limit 30');
+          const { stdout: retryOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/manage-summaries.ts generate --batch 5 --limit 30');
           console.log(retryOutput);
         }, 30 * 60 * 1000);
       }
@@ -213,7 +213,7 @@ cron.schedule('30 8,20 * * *', async () => {
   
   try {
     const { stdout: tagOutput }: ExecutionResult = await execAsync(
-      'npx tsx scripts/generate-tags.ts'
+      'npx tsx scripts/scheduled/generate-tags.ts'
     );
     console.log(tagOutput);
     
