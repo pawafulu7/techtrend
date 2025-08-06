@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { Prisma } from '@prisma/client';
+import { trendsCache } from '@/lib/cache/trends-cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,10 +9,19 @@ export async function GET(request: NextRequest) {
     const days = parseInt(searchParams.get('days') || '30');
     const tagName = searchParams.get('tag');
 
-    const now = new Date();
-    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    // キャッシュキーを生成
+    const cacheKey = trendsCache.generateKey({ days, tag: tagName || undefined });
+    
+    // キャッシュから取得またはDBから取得してキャッシュに保存
+    const analysisData = await trendsCache.getOrSet(
+      cacheKey,
+      async () => {
+        console.log(`[Trends API] Cache miss for key: ${cacheKey}`);
+        
+        const now = new Date();
+        const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-    if (tagName) {
+        if (tagName) {
       // 特定タグの時系列データ
       const tagData = await prisma.$queryRaw`
         SELECT 
@@ -44,22 +54,17 @@ export async function GET(request: NextRequest) {
         LIMIT 10
       ` as { name: string; count: bigint }[];
 
-      const response = NextResponse.json({
-        tag: tagName,
-        timeline: tagData.map(d => ({
-          date: d.date,
-          count: Number(d.count)
-        })),
-        relatedTags: relatedTags.map(t => ({
-          name: t.name,
-          count: Number(t.count)
-        }))
-      });
-
-      // キャッシュヘッダーを設定（5分間）
-      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
-      
-      return response;
+          return {
+            tag: tagName,
+            timeline: tagData.map(d => ({
+              date: d.date,
+              count: Number(d.count)
+            })),
+            relatedTags: relatedTags.map(t => ({
+              name: t.name,
+              count: Number(t.count)
+            }))
+          };
     } else {
       // 全体のトレンド分析
       const topTags = await prisma.$queryRaw`
@@ -117,24 +122,40 @@ export async function GET(request: NextRequest) {
         return dayData;
       });
 
-      const response = NextResponse.json({
-        topTags: topTags.map(t => ({
-          name: t.name,
-          totalCount: Number(t.total_count)
-        })),
-        timeline: completeTimeline,
-        period: {
-          from: startDate.toISOString(),
-          to: now.toISOString(),
-          days
+          return {
+            topTags: topTags.map(t => ({
+              name: t.name,
+              totalCount: Number(t.total_count)
+            })),
+            timeline: completeTimeline,
+            period: {
+              from: startDate.toISOString(),
+              to: now.toISOString(),
+              days
+            }
+          };
         }
-      });
+        
+        console.log('[Trends API] Data fetched and cached successfully');
+      }
+    );
 
-      // キャッシュヘッダーを設定（5分間）
-      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
-      
-      return response;
-    }
+    // キャッシュ統計をログ出力
+    const cacheStats = trendsCache.getStats();
+    console.log('[Trends API] Cache stats:', cacheStats);
+
+    const response = NextResponse.json({
+      ...analysisData,
+      cache: {
+        hit: cacheStats.hits > 0,
+        stats: cacheStats
+      }
+    });
+
+    // キャッシュヘッダーも維持（ブラウザキャッシュ用）
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    
+    return response;
   } catch (error) {
     console.error('Failed to fetch trend analysis:', error);
     return NextResponse.json(
