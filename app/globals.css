@@ -173,9 +173,10 @@ html.no-transitions *::after {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply text-foreground;
+    @apply text-foreground bg-background;
   }
-  /* 背景グラデーションを削除 - パフォーマンス改善 */
+  /* 複雑な背景グラデーションを削除 - パフォーマンス改善 */
+  /* シンプルな背景色（bg-background）を使用 */
 }
 
 @layer utilities {
