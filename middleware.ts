@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getThemeFromCookie } from '@/lib/theme-cookie';
 
 export async function middleware(request: NextRequest) {
-  // レートリミットを削除し、単純にリクエストを通す
-  return NextResponse.next();
+  const response = NextResponse.next();
+  
+  // テーマCookieの処理
+  const theme = getThemeFromCookie(request);
+  
+  // レスポンスヘッダーにテーマ情報を追加（デバッグ用）
+  response.headers.set('x-theme', theme);
+  
+  return response;
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
