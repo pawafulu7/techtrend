@@ -13,15 +13,9 @@ import Link from 'next/link';
 import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { FilterSkeleton } from '@/app/components/common/filter-skeleton';
-import { ServerPagination } from '@/app/components/common/server-pagination';
-import { FeedUpdateButton } from '@/app/components/common/feed-update-button';
-import { SummaryGenerateButton } from '@/app/components/common/summary-generate-button';
-import { TagGenerateButton } from '@/app/components/common/tag-generate-button';
-import { Button } from '@/components/ui/button';
 import { prisma } from '@/lib/database';
 import { ARTICLES_PER_PAGE } from '@/lib/constants';
 import { removeDuplicates } from '@/lib/utils/duplicate-detection';
-import Link from 'next/link';
 import type { Prisma } from '@prisma/client';
 
 interface PageProps {
