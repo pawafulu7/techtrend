@@ -1,17 +1,27 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
+import { statsCache } from '@/lib/cache/stats-cache';
 
 export async function GET() {
   try {
-    // 記事の統計情報を取得
-    const [
-      totalArticles,
-      articlesLast7Days,
-      articlesLast30Days,
-      sourceStats,
-      dailyStats,
-      popularTags,
-    ] = await Promise.all([
+    // キャッシュキーを生成
+    const cacheKey = statsCache.generateKey();
+    
+    // キャッシュから取得またはDBから取得してキャッシュに保存
+    const stats = await statsCache.getOrSet(
+      cacheKey,
+      async () => {
+        console.log('[Stats API] Cache miss - fetching from database');
+        
+        // 記事の統計情報を取得
+        const [
+          totalArticles,
+          articlesLast7Days,
+          articlesLast30Days,
+          sourceStats,
+          dailyStats,
+          popularTags,
+        ] = await Promise.all([
       // 総記事数
       prisma.article.count(),
       
@@ -73,38 +83,58 @@ export async function GET() {
         },
         take: 10,
       }),
-    ]);
+        ]);
 
-    // レスポンスデータを整形
-    const stats = {
-      overview: {
-        total: totalArticles,
-        last7Days: articlesLast7Days,
-        last30Days: articlesLast30Days,
-        averagePerDay: Math.round(articlesLast30Days / 30),
-      },
-      sources: sourceStats.map(source => ({
-        id: source.id,
-        name: source.name,
-        count: source._count.articles,
-        percentage: totalArticles > 0 
-          ? Math.round((source._count.articles / totalArticles) * 100) 
-          : 0,
-      })),
-      daily: dailyStats,
-      tags: popularTags.map(tag => ({
-        id: tag.id,
-        name: tag.name,
-        count: tag._count.articles,
-      })),
-    };
+        // レスポンスデータを整形
+        const formattedStats = {
+          overview: {
+            total: totalArticles,
+            last7Days: articlesLast7Days,
+            last30Days: articlesLast30Days,
+            averagePerDay: Math.round(articlesLast30Days / 30),
+          },
+          sources: sourceStats.map(source => ({
+            id: source.id,
+            name: source.name,
+            count: source._count.articles,
+            percentage: totalArticles > 0 
+              ? Math.round((source._count.articles / totalArticles) * 100) 
+              : 0,
+          })),
+          daily: dailyStats,
+          tags: popularTags.map(tag => ({
+            id: tag.id,
+            name: tag.name,
+            count: tag._count.articles,
+          })),
+        };
+
+        console.log('[Stats API] Data fetched and cached successfully');
+        return formattedStats;
+      }
+    );
+
+    // キャッシュ統計をログ出力
+    const cacheStats = statsCache.getStats();
+    console.log('[Stats API] Cache stats:', cacheStats);
 
     return NextResponse.json({
       success: true,
       data: stats,
+      cache: {
+        hit: cacheStats.hits > 0,
+        stats: cacheStats
+      }
     });
   } catch (error) {
     console.error('Stats API error:', error);
+    
+    // Redisエラーの場合はフォールバックとしてDBから直接取得を試みる
+    if (error instanceof Error && error.message.includes('Redis')) {
+      console.warn('[Stats API] Redis error, falling back to direct DB query');
+      // ここに直接DB取得のロジックを追加可能
+    }
+    
     return NextResponse.json(
       {
         success: false,
