@@ -16,7 +16,7 @@ export function ArticleList({ articles, viewMode = 'card' }: ArticleListProps) {
   // リスト形式の場合
   if (viewMode === 'list') {
     return (
-      <div className="space-y-1">
+      <div className="space-y-2">
         {articles.map((article) => (
           <ArticleListItem key={article.id} article={article} />
         ))}
