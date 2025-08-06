@@ -272,6 +272,17 @@ export default async function Home({ searchParams }: PageProps) {
             </div>
           </div>
 
+              {/* Top Pagination - Desktop only */}
+              {data.totalPages > 1 && (
+                <div className="mb-4 hidden lg:block">
+                  <ServerPagination
+                    currentPage={data.page}
+                    totalPages={data.totalPages}
+                    searchParams={params}
+                  />
+                </div>
+              )}
+
               {/* Articles */}
               <Suspense fallback={<ArticleSkeleton />}>
                 <ArticleList articles={data.articles} viewMode={viewMode} />

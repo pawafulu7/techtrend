@@ -426,6 +426,17 @@ export default function AdvancedSearchPage() {
                 </p>
               </div>
 
+              {/* Top Pagination - Desktop only */}
+              {totalPages > 1 && (
+                <div className="mb-6 hidden lg:block">
+                  <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                  />
+                </div>
+              )}
+
               <div className="space-y-4">
                 {results.map((article) => (
                   <ArticleCard key={article.id} article={article} />
