@@ -1,5 +1,5 @@
 import { RedisCache } from './redis-cache';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 /**
  * 記事検索専用のキャッシュクラス
