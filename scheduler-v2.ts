@@ -99,7 +99,7 @@ console.log('   - スクレイピング系: 0時・12時');
 console.log('   - Qiita Popular: 5:05・17:05');
 console.log('   - 要約生成: 毎日10:30（午前）');
 console.log('   - タグ生成: 8:30・20:30');
-console.log('   - クリーンアップ: 毎日3時');
+console.log('   - クリーンアップ: 毎日22時');
 
 // RSS系ソースの更新（毎時0分）
 cron.schedule('0 * * * *', async () => {
@@ -128,8 +128,8 @@ cron.schedule('5 5,17 * * *', async () => {
   }
 });
 
-// 定期的なクリーンアップ（毎日3時）
-cron.schedule('0 3 * * *', async () => {
+// 定期的なクリーンアップ（毎日22時）
+cron.schedule('0 22 * * *', async () => {
   const startTime = new Date();
   console.log(`\n🧹 定期クリーンアップ開始: ${startTime.toLocaleString('ja-JP')}`);
   
@@ -248,7 +248,7 @@ cron.schedule('30 8,20 * * *', async () => {
     console.log('   - Qiita Popular: 5:05・17:05');
     console.log('   - 要約生成: 毎日10:30（午前）');
     console.log('   - タグ生成: 8:30・20:30');
-    console.log('   - クリーンアップ: 毎日3時');
+    console.log('   - クリーンアップ: 毎日22時');
     console.log('   - 週次クリーンアップ: 毎週日曜日2時');
   } catch (error) {
     console.error('❌ 初回実行でエラーが発生しました:', error instanceof Error ? error.message : String(error));
