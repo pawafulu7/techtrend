@@ -79,6 +79,27 @@ export class LocalLLMClient {
     }
   }
 
+  async generateDetailedSummary(
+    title: string,
+    content: string
+  ): Promise<{ summary: string; detailedSummary: string; tags: string[] }> {
+    try {
+      const prompt = this.createDetailedSummaryPrompt(title, content);
+      const response = await this.callAPI([
+        { role: 'user', content: prompt }
+      ]);
+      
+      return this.parseDetailedSummary(response);
+    } catch (error) {
+      console.error('Local LLM API error:', error);
+      throw new ExternalAPIError(
+        'LocalLLM',
+        `Failed to generate detailed summary: ${error instanceof Error ? error.message : String(error)}`,
+        error
+      );
+    }
+  }
+
   private async callAPI(messages: ChatMessage[]): Promise<string> {
     // 日本語応答を促すシステムメッセージを追加
     const systemMessage: ChatMessage = {
@@ -157,6 +178,37 @@ export class LocalLLMClient {
 - 指定された形式のみ出力する`;
   }
 
+  private createDetailedSummaryPrompt(title: string, content: string): string {
+    // 詳細要約用にはより多くの内容を使用
+    const maxLength = Math.min((this.config.maxContentLength || 8000) + 4000, 12000);
+    const truncatedContent = content.substring(0, maxLength);
+    
+    return `以下の技術記事を詳細に分析して、日本語で要約、詳細要約、タグを生成してください。
+
+タイトル: ${title}
+記事内容: ${truncatedContent}
+
+必ず以下の形式で出力してください：
+
+要約: [60-80文字の日本語で、記事の主要なポイントを簡潔にまとめてください]
+
+詳細要約:
+・記事の主題は、[技術的背景と使用技術、前提知識を50-150文字で説明]
+・具体的な問題は、[解決しようとしている問題と現状の課題を50-150文字で説明]
+・提示されている解決策は、[技術的アプローチ、アルゴリズム、設計パターン等を50-150文字で説明]
+・実装方法の詳細については、[具体的なコード例、設定方法、手順を50-150文字で説明]
+・期待される効果は、[性能改善の指標（数値があれば含める）を50-150文字で説明]
+・実装時の注意点は、[制約事項、必要な環境を50-150文字で説明]
+
+タグ: [関連する技術タグを3-5個、カンマ区切りで出力]
+
+重要な注意事項：
+- 必ず6項目すべてを出力してください
+- 各項目は「・」で始めてください
+- 思考過程や説明は出力しないでください
+- 日本語で回答してください`;
+  }
+
   private cleanSummary(summary: string): string {
     let cleaned = summary
       .trim()
@@ -226,6 +278,49 @@ export class LocalLLMClient {
     }
 
     return { summary, tags };
+  }
+
+  private parseDetailedSummary(text: string): { summary: string; detailedSummary: string; tags: string[] } {
+    const lines = text.split('\n');
+    let summary = '';
+    let detailedSummary = '';
+    let tags: string[] = [];
+    let isDetailedSummary = false;
+    let detailedSummaryLines: string[] = [];
+
+    for (const line of lines) {
+      if (line.startsWith('要約:') || line.startsWith('要約：')) {
+        summary = this.cleanSummary(line.replace(/^要約[:：]\s*/, ''));
+        isDetailedSummary = false;
+      } else if (line.startsWith('詳細要約:') || line.startsWith('詳細要約：')) {
+        isDetailedSummary = true;
+      } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
+        isDetailedSummary = false;
+        const tagLine = line.replace(/^タグ[:：]\s*/, '');
+        tags = tagLine.split(/[,、，]/)
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0 && tag.length <= 30)
+          .map(tag => this.normalizeTag(tag));
+      } else if (isDetailedSummary && line.trim().startsWith('・')) {
+        detailedSummaryLines.push(line.trim());
+      }
+    }
+
+    // 詳細要約の組み立て
+    if (detailedSummaryLines.length > 0) {
+      detailedSummary = detailedSummaryLines.join('\n');
+    }
+
+    // フォールバック
+    if (!summary) {
+      summary = this.cleanSummary(text.substring(0, 100));
+    }
+    if (!detailedSummary) {
+      // フォールバック: 簡単な形式を生成
+      detailedSummary = `・${summary}\n・記事内のコード例や手順を参照してください。\n・タグ: ${tags.join(', ')}`;
+    }
+
+    return { summary, detailedSummary, tags };
   }
 
   private normalizeTag(tag: string): string {
