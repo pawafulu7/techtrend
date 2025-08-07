@@ -252,7 +252,8 @@ export class GeminiClient {
           .replace(/^・性能改善の指標.*?[:：]\s*/, '・')
           .replace(/^・実装時の注意点は、/, '・')
           .replace(/^・制約事項.*?[:：]\s*/, '・')
-          .replace(/^・技術的背景と使用技術.*?[:：]\s*/, '・');
+          .replace(/^・技術的背景と使用技術.*?[:：]\s*/, '・')
+          .replace(/^・\[[^\]]+\][:：]\s*/, '・'); // 角括弧のラベルも削除
         detailedSummaryLines.push(cleanedLine);
       }
     }
