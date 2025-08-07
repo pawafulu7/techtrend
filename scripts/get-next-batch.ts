@@ -54,7 +54,34 @@ async function getNextBatch() {
     'cmdy3i8e00017te0yd6x7zmvn',
     'cmdy3i8d50015te0y1gi08gh9',
     'cmdy3i8ce0013te0yzd303xp3',
-    'cmdy3i8b70011te0y446v9z6t'
+    'cmdy3i8b70011te0y446v9z6t',
+    // 第3バッチ
+    'cme1ad8qc000jtehb9xk0ihuc',
+    'cmdy3i8ad000zte0yag9j6giu',
+    'cmdy3i89j000xte0y8rdtg2wp',
+    'cmdy3i88p000vte0yiqoh3s45',
+    'cmdy3i882000tte0yrrknarw0',
+    'cmdy3i873000rte0ylrzs4mk5',
+    'cmdy3i86f000pte0yo5qhr1aw',
+    'cmdy3i85n000nte0y814cef70',
+    'cmdy3i846000lte0ye7yosgg0',
+    'cmdy3i82j000jte0yq6d2dcib',
+    'cmdy3i81h000hte0y5vu8kwiw',
+    'cmdy3i7zb000fte0ydo3bt03j',
+    'cmdy3i7ym000dte0yk8dlo8ix',
+    'cmdy3i7xu000bte0yzf6290kz',
+    'cmdy3i7wv0009te0ygo9xkf0y',
+    'cmdy3i7we0007te0yctsadkjw',
+    'cmdy3i7vt0005te0y8gk1pls5',
+    'cmdy3i7v30003te0yji2lg1j0',
+    'cmdy3i7uc0001te0y9ix9qr4p',
+    'cmdy2mj4z000lter9q03yjs63',
+    'cmdy2mj48000jter9ju85ugpr',
+    'cmdy2mj3a000hter9jk0fn414',
+    'cmdy2mhnr000fter9eemrewtd',
+    'cmdy2mhn0000cter9wfsks1v7',
+    'cmdy2mgl00009ter99iv8aw06',
+    'cmdy0hcwl0005teuer9udt16h'
   ];
   
   const toFix = needsFix.filter(id => !alreadyFixed.includes(id));
