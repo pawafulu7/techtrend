@@ -205,12 +205,12 @@ export class GeminiClient {
 要約: [60-80文字の日本語で、記事の主要なポイントを簡潔にまとめてください]
 
 詳細要約:
-・記事の主題は、[技術的背景と使用技術、前提知識を50-150文字で説明]
-・具体的な問題は、[解決しようとしている問題と現状の課題を50-150文字で説明]
-・提示されている解決策は、[技術的アプローチ、アルゴリズム、設計パターン等を50-150文字で説明]
-・実装方法の詳細については、[具体的なコード例、設定方法、手順を50-150文字で説明]
-・期待される効果は、[性能改善の指標（数値があれば含める）を50-150文字で説明]
-・実装時の注意点は、[制約事項、必要な環境を50-150文字で説明]
+・[技術的背景と使用技術、前提知識を50-150文字で説明]
+・[解決しようとしている問題と現状の課題を50-150文字で説明]
+・[技術的アプローチ、アルゴリズム、設計パターン等を50-150文字で説明]
+・[具体的なコード例、設定方法、手順を50-150文字で説明]
+・[性能改善の指標（数値があれば含める）を50-150文字で説明]
+・[制約事項、必要な環境を50-150文字で説明]
 
 タグ: [関連する技術タグを3-5個、カンマ区切りで出力]`;
   }
@@ -237,7 +237,23 @@ export class GeminiClient {
           .filter(tag => tag.length > 0 && tag.length <= 30)
           .map(tag => this.normalizeTag(tag));
       } else if (isDetailedSummary && line.trim().startsWith('・')) {
-        detailedSummaryLines.push(line.trim());
+        // ラベルを削除して内容のみを抽出
+        let cleanedLine = line.trim();
+        // 「記事の主題は、」などのラベルがある場合は削除
+        cleanedLine = cleanedLine
+          .replace(/^・記事の主題は、/, '・')
+          .replace(/^・具体的な問題は、/, '・')
+          .replace(/^・解決しようとしている問題と現状の課題.*?[:：]\s*/, '・')
+          .replace(/^・提示されている解決策は、/, '・')
+          .replace(/^・技術的アプローチ.*?[:：]\s*/, '・')
+          .replace(/^・実装方法の詳細については、/, '・')
+          .replace(/^・具体的なコード例.*?[:：]\s*/, '・')
+          .replace(/^・期待される効果は、/, '・')
+          .replace(/^・性能改善の指標.*?[:：]\s*/, '・')
+          .replace(/^・実装時の注意点は、/, '・')
+          .replace(/^・制約事項.*?[:：]\s*/, '・')
+          .replace(/^・技術的背景と使用技術.*?[:：]\s*/, '・');
+        detailedSummaryLines.push(cleanedLine);
       }
     }
 
@@ -251,8 +267,8 @@ export class GeminiClient {
       summary = this.cleanSummary(text.substring(0, 100));
     }
     if (!detailedSummary) {
-      // フォールバック: 簡単な形式を生成
-      detailedSummary = `・記事の主題は、${summary}\n・実装方法の詳細については、記事内のコード例や手順を参照してください。\n・タグ: ${tags.join(', ')}`;
+      // フォールバック: 簡単な形式を生成（ラベルなし）
+      detailedSummary = `・${summary}\n・記事内のコード例や手順を参照してください。\n・タグ: ${tags.join(', ')}`;
     }
 
     return { summary, detailedSummary, tags };
