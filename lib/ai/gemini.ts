@@ -241,19 +241,9 @@ export class GeminiClient {
       }
     }
 
-    // 詳細要約の組み立て（プレフィクスを削除）
+    // 詳細要約の組み立て
     if (detailedSummaryLines.length > 0) {
-      const cleanedLines = detailedSummaryLines.map(line => {
-        // 各行からプレフィクスを削除
-        return line
-          .replace(/^・記事の主題は、/, '・')
-          .replace(/^・具体的な問題は、/, '・')
-          .replace(/^・提示されている解決策は、/, '・')
-          .replace(/^・実装方法の詳細については、/, '・')
-          .replace(/^・期待される効果は、/, '・')
-          .replace(/^・実装時の注意点は、/, '・');
-      });
-      detailedSummary = cleanedLines.join('\n');
+      detailedSummary = detailedSummaryLines.join('\n');
     }
 
     // フォールバック
