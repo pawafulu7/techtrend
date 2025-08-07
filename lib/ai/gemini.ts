@@ -205,12 +205,12 @@ export class GeminiClient {
 要約: [60-80文字の日本語で、記事の主要なポイントを簡潔にまとめてください]
 
 詳細要約:
-・[技術的背景と使用技術、前提知識を50-150文字で説明]
-・[解決しようとしている問題と現状の課題を50-150文字で説明]
-・[技術的アプローチ、アルゴリズム、設計パターン等を50-150文字で説明]
-・[具体的なコード例、設定方法、手順を50-150文字で説明]
-・[性能改善の指標（数値があれば含める）を50-150文字で説明]
-・[制約事項、必要な環境を50-150文字で説明]
+・記事の主題は、[技術的背景と使用技術、前提知識を50-150文字で説明]
+・具体的な問題は、[解決しようとしている問題と現状の課題を50-150文字で説明]
+・提示されている解決策は、[技術的アプローチ、アルゴリズム、設計パターン等を50-150文字で説明]
+・実装方法の詳細については、[具体的なコード例、設定方法、手順を50-150文字で説明]
+・期待される効果は、[性能改善の指標（数値があれば含める）を50-150文字で説明]
+・実装時の注意点は、[制約事項、必要な環境を50-150文字で説明]
 
 タグ: [関連する技術タグを3-5個、カンマ区切りで出力]`;
   }
@@ -237,30 +237,23 @@ export class GeminiClient {
           .filter(tag => tag.length > 0 && tag.length <= 30)
           .map(tag => this.normalizeTag(tag));
       } else if (isDetailedSummary && line.trim().startsWith('・')) {
-        // ラベルを削除して内容のみを抽出
-        let cleanedLine = line.trim();
-        // 「記事の主題は、」などのラベルがある場合は削除
-        cleanedLine = cleanedLine
-          .replace(/^・記事の主題は、/, '・')
-          .replace(/^・具体的な問題は、/, '・')
-          .replace(/^・解決しようとしている問題と現状の課題.*?[:：]\s*/, '・')
-          .replace(/^・提示されている解決策は、/, '・')
-          .replace(/^・技術的アプローチ.*?[:：]\s*/, '・')
-          .replace(/^・実装方法の詳細については、/, '・')
-          .replace(/^・具体的なコード例.*?[:：]\s*/, '・')
-          .replace(/^・期待される効果は、/, '・')
-          .replace(/^・性能改善の指標.*?[:：]\s*/, '・')
-          .replace(/^・実装時の注意点は、/, '・')
-          .replace(/^・制約事項.*?[:：]\s*/, '・')
-          .replace(/^・技術的背景と使用技術.*?[:：]\s*/, '・')
-          .replace(/^・\[[^\]]+\][:：]\s*/, '・'); // 角括弧のラベルも削除
-        detailedSummaryLines.push(cleanedLine);
+        detailedSummaryLines.push(line.trim());
       }
     }
 
-    // 詳細要約の組み立て
+    // 詳細要約の組み立て（プレフィクスを削除）
     if (detailedSummaryLines.length > 0) {
-      detailedSummary = detailedSummaryLines.join('\n');
+      const cleanedLines = detailedSummaryLines.map(line => {
+        // 各行からプレフィクスを削除
+        return line
+          .replace(/^・記事の主題は、/, '・')
+          .replace(/^・具体的な問題は、/, '・')
+          .replace(/^・提示されている解決策は、/, '・')
+          .replace(/^・実装方法の詳細については、/, '・')
+          .replace(/^・期待される効果は、/, '・')
+          .replace(/^・実装時の注意点は、/, '・');
+      });
+      detailedSummary = cleanedLines.join('\n');
     }
 
     // フォールバック
