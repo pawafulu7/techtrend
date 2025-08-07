@@ -2,6 +2,7 @@ import { PrismaClient, Article, Source, Prisma } from '@prisma/client';
 import fetch from 'node-fetch';
 import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { AIService } from '@/lib/ai/ai-service';
 
 const prisma = new PrismaClient();
 
@@ -128,74 +129,40 @@ missingオプション:
 `);
 }
 
+// AIサービスのインスタンスを作成
+const aiService = AIService.fromEnv();
+
 // generate-summaries.tsから移植した関数群
 async function generateSummaryAndTags(title: string, content: string): Promise<SummaryAndTags> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not set');
-  }
-
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  
-  const prompt = `以下の技術記事を詳細に分析してください。
-
-タイトル: ${title}
-内容: ${content.substring(0, 4000)}
-
-以下の観点で分析し、指定された形式で回答してください：
-
-【分析観点】
-1. 記事の主要なトピックと技術的な焦点
-2. 解決しようとしている問題や課題
-3. 提示されている解決策やアプローチ
-4. 実装の具体例やコードの有無
-5. 対象読者のレベル（初級/中級/上級）
-
-【回答形式】
-※重要: 各セクションのラベル（要約:、詳細要約:、タグ:）のみ記載し、それ以外の説明や指示文は一切含めないでください。
-
-要約:
-記事が解決する問題を100-120文字で要約。「〜の問題を〜により解決」の形式で、技術名と効果を含め句点で終了。文字数厳守。
-
-詳細要約:
-以下の項目を必ず箇条書きで記載してください。各項目は指定されたラベルで開始し、その後に内容を記述してください：
-・記事の主題は、[技術的背景と使用技術、前提知識を2-3文で説明]
-・具体的な問題は、[解決しようとしている問題と現状の課題を2-3文で説明]
-・提示されている解決策は、[技術的アプローチ、アルゴリズム、設計パターン等を2-3文で説明]
-・実装方法の詳細については、[具体的なコード例、設定方法、手順を2-3文で説明]
-・期待される効果は、[性能改善の指標（数値があれば含める）を2-3文で説明]
-・実装時の注意点は、[制約事項、必要な環境を2-3文で説明]
-
-タグ:
-技術名,フレームワーク名,カテゴリ名,概念名
-
-【タグの例】
-JavaScript, React, フロントエンド, 状態管理`;
-
   apiStats.attempts++;
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 800,
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API request failed: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json() as any;
-  const responseText = data.candidates[0].content.parts[0].text.trim();
   
-  return parseSummaryAndTags(responseText);
+  try {
+    // AIサービスを使用して要約とタグを生成
+    const result = await aiService.generateSummaryWithTags(title, content);
+    apiStats.successes++;
+    
+    // 詳細要約のフォーマット作成（互換性のため）
+    const detailedSummary = `
+・記事の主題は、${result.summary}
+・実装方法の詳細については、記事内のコード例や手順を参照してください。
+・タグ: ${result.tags.join(', ')}
+`.trim();
+    
+    return {
+      summary: result.summary,
+      detailedSummary: detailedSummary,
+      tags: result.tags
+    };
+  } catch (error) {
+    apiStats.failures++;
+    
+    // 503エラーのカウント
+    if (error instanceof Error && error.message.includes('503')) {
+      apiStats.overloadErrors++;
+    }
+    
+    throw error;
+  }
 }
 
 // テキストクリーンアップ関数
