@@ -92,6 +92,45 @@ export class AIService {
     );
   }
 
+  async generateDetailedSummary(
+    title: string,
+    content: string
+  ): Promise<{ summary: string; detailedSummary: string; tags: string[] }> {
+    return this.executeWithFallback(
+      async () => {
+        if (this.config.preferLocalLLM && this.localLLMClient) {
+          console.log('📟 Using Local LLM for detailed summary generation');
+          // Local LLMには詳細要約メソッドがまだないため、通常の要約を使用してフォーマット
+          const result = await this.localLLMClient.generateSummaryWithTags(title, content);
+          const detailedSummary = `
+・記事の主題は、${result.summary}
+・実装方法の詳細については、記事内のコード例や手順を参照してください。
+・タグ: ${result.tags.join(', ')}
+`.trim();
+          return { summary: result.summary, detailedSummary, tags: result.tags };
+        } else if (this.geminiClient) {
+          console.log('🌟 Using Gemini API for detailed summary generation');
+          return await this.geminiClient.generateDetailedSummary(title, content);
+        } else {
+          throw new Error('No AI service configured');
+        }
+      },
+      async () => {
+        if (this.config.useLocalLLMFallback && this.localLLMClient) {
+          console.log('🔄 Falling back to Local LLM');
+          const result = await this.localLLMClient.generateSummaryWithTags(title, content);
+          const detailedSummary = `
+・記事の主題は、${result.summary}
+・実装方法の詳細については、記事内のコード例や手順を参照してください。
+・タグ: ${result.tags.join(', ')}
+`.trim();
+          return { summary: result.summary, detailedSummary, tags: result.tags };
+        }
+        throw new Error('No fallback available');
+      }
+    );
+  }
+
   private async executeWithFallback<T>(
     primaryFn: () => Promise<T>,
     fallbackFn: () => Promise<T>

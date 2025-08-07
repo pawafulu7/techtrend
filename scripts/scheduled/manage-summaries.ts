@@ -137,20 +137,13 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
   apiStats.attempts++;
   
   try {
-    // AIサービスを使用して要約とタグを生成
-    const result = await aiService.generateSummaryWithTags(title, content);
+    // AIサービスを使用して詳細要約とタグを生成
+    const result = await aiService.generateDetailedSummary(title, content);
     apiStats.successes++;
-    
-    // 詳細要約のフォーマット作成（互換性のため）
-    const detailedSummary = `
-・記事の主題は、${result.summary}
-・実装方法の詳細については、記事内のコード例や手順を参照してください。
-・タグ: ${result.tags.join(', ')}
-`.trim();
     
     return {
       summary: result.summary,
-      detailedSummary: detailedSummary,
+      detailedSummary: result.detailedSummary,
       tags: result.tags
     };
   } catch (error) {

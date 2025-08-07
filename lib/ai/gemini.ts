@@ -51,7 +51,7 @@ export class GeminiClient {
         },
       });
 
-      const response = await result.response;
+      const response = result.response;
       const text = response.text();
       
       return this.parseSummaryAndTags(text);
@@ -60,6 +60,35 @@ export class GeminiClient {
       throw new ExternalAPIError(
         'Gemini',
         `Failed to generate summary and tags: ${error instanceof Error ? error.message : String(error)}`,
+        error
+      );
+    }
+  }
+
+  async generateDetailedSummary(
+    title: string,
+    content: string
+  ): Promise<{ summary: string; detailedSummary: string; tags: string[] }> {
+    try {
+      const prompt = this.createDetailedSummaryPrompt(title, content);
+      
+      const result = await this.model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 1500, // 詳細要約は長いため増やす
+          temperature: GEMINI_API.TEMPERATURE,
+        },
+      });
+
+      const response = result.response;
+      const text = response.text();
+      
+      return this.parseDetailedSummary(text);
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      throw new ExternalAPIError(
+        'Gemini',
+        `Failed to generate detailed summary: ${error instanceof Error ? error.message : String(error)}`,
         error
       );
     }
@@ -161,6 +190,72 @@ export class GeminiClient {
     }
 
     return { summary, tags };
+  }
+
+  private createDetailedSummaryPrompt(title: string, content: string): string {
+    // コンテンツを適切な長さに制限
+    const truncatedContent = content.substring(0, 4000);
+    
+    return `以下の技術記事を詳細に分析して、要約、詳細要約、タグを生成してください。
+
+タイトル: ${title}
+記事内容: ${truncatedContent}
+
+出力形式:
+要約: [60-80文字の日本語で、記事の主要なポイントを簡潔にまとめてください]
+
+詳細要約:
+・記事の主題は、[技術的背景と使用技術、前提知識を50-150文字で説明]
+・具体的な問題は、[解決しようとしている問題と現状の課題を50-150文字で説明]
+・提示されている解決策は、[技術的アプローチ、アルゴリズム、設計パターン等を50-150文字で説明]
+・実装方法の詳細については、[具体的なコード例、設定方法、手順を50-150文字で説明]
+・期待される効果は、[性能改善の指標（数値があれば含める）を50-150文字で説明]
+・実装時の注意点は、[制約事項、必要な環境を50-150文字で説明]
+
+タグ: [関連する技術タグを3-5個、カンマ区切りで出力]`;
+  }
+
+  private parseDetailedSummary(text: string): { summary: string; detailedSummary: string; tags: string[] } {
+    const lines = text.split('\n');
+    let summary = '';
+    let detailedSummary = '';
+    let tags: string[] = [];
+    let isDetailedSummary = false;
+    let detailedSummaryLines: string[] = [];
+
+    for (const line of lines) {
+      if (line.startsWith('要約:') || line.startsWith('要約：')) {
+        summary = this.cleanSummary(line.replace(/^要約[:：]\s*/, ''));
+        isDetailedSummary = false;
+      } else if (line.startsWith('詳細要約:') || line.startsWith('詳細要約：')) {
+        isDetailedSummary = true;
+      } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
+        isDetailedSummary = false;
+        const tagLine = line.replace(/^タグ[:：]\s*/, '');
+        tags = tagLine.split(/[,、，]/)
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0 && tag.length <= 30)
+          .map(tag => this.normalizeTag(tag));
+      } else if (isDetailedSummary && line.trim().startsWith('・')) {
+        detailedSummaryLines.push(line.trim());
+      }
+    }
+
+    // 詳細要約の組み立て
+    if (detailedSummaryLines.length > 0) {
+      detailedSummary = detailedSummaryLines.join('\n');
+    }
+
+    // フォールバック
+    if (!summary) {
+      summary = this.cleanSummary(text.substring(0, 100));
+    }
+    if (!detailedSummary) {
+      // フォールバック: 簡単な形式を生成
+      detailedSummary = `・記事の主題は、${summary}\n・実装方法の詳細については、記事内のコード例や手順を参照してください。\n・タグ: ${tags.join(', ')}`;
+    }
+
+    return { summary, detailedSummary, tags };
   }
 
   private normalizeTag(tag: string): string {
