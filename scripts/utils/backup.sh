@@ -2,10 +2,12 @@
 # TechTrend バックアップスクリプト
 # 作成日: 2025/08/01
 # 更新日: 2025/08/02 - prisma/backupsディレクトリ使用に変更
+# 更新日: 2025/08/07 - 自動/手動バックアップの区別、保持期間を7日に短縮
 # 目的: データベースと重要な設定ファイルの安全なバックアップ
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="prisma/backups"
+BACKUP_DIR="prisma/backups/auto"
+RETENTION_DAYS=7
 
 # 色付きメッセージ出力用
 GREEN='\033[0;32m'
@@ -25,9 +27,9 @@ if [ -f "prisma/dev.db" ]; then
   cp prisma/dev.db $BACKUP_DIR/dev_${TIMESTAMP}.db
   echo -e "${GREEN}✓ データベースをバックアップ: $BACKUP_DIR/dev_${TIMESTAMP}.db${NC}"
   
-  # 30日以上前のバックアップを削除
-  find $BACKUP_DIR -name "dev_*.db" -mtime +30 -delete
-  echo -e "${GREEN}✓ 30日以上前のバックアップを削除${NC}"
+  # 7日以上前のバックアップを削除
+  find $BACKUP_DIR -name "dev_*.db" -mtime +${RETENTION_DAYS} -delete
+  echo -e "${GREEN}✓ ${RETENTION_DAYS}日以上前のバックアップを削除${NC}"
 else
   echo -e "${YELLOW}⚠ データベースファイルが見つかりません${NC}"
 fi

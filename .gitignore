@@ -46,8 +46,14 @@ next-env.d.ts
 *.db
 *.db-journal
 *.db.backup*
+*.db-wal
+*.db-shm
 development.db
 techtrend.db
+
+# backup directories
+prisma/backups/auto/
+# Note: prisma/backups/manual/ is NOT ignored (important milestones)
 
 # log files
 logs/
