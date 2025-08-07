@@ -5,16 +5,16 @@ import { LocalLLMClient } from '../lib/ai/local-llm';
 const prisma = new PrismaClient();
 
 async function fixSingleArticleLocal() {
-  const articleId = 'cme161hh3000wte0t7lyr8lk9';
+  const articleId = 'cme162szh000yte0tqhy5q91m';
   
   console.log('🤖 ローカルLLMで記事を修正\n');
   
   try {
-    // ローカルLLMクライアントを初期化
+    // ローカルLLMクライアントを初期化（maxTokensを増やす）
     const localLLM = new LocalLLMClient({
       url: 'http://192.168.11.7:1234',
       model: 'openai/gpt-oss-20b',
-      maxTokens: 1500,
+      maxTokens: 2500,  // 増やして要約が途切れないようにする
       temperature: 0.3,
       maxContentLength: 12000
     });
@@ -56,7 +56,7 @@ URL: ${article.url}
 Article Content:
 ${article.content}
 
-Context: This article discusses Meta's code review methodology called "2-2-2 Method" which has improved their development speed by 40%. The method involves: 2 reviewers, 2 hours review time, and 2 days for fixes. This approach optimizes the code review process and reduces bottlenecks in software development workflows.
+Context: This article discusses Google's new asynchronous coding agent "Jules" which is now publicly available. Jules integrates with GitHub and uses Gemini 2.5 Pro for planning and problem-solving. The tool is designed to help developers with coding tasks asynchronously, providing features like bug fixes, code review support, refactoring suggestions, test generation, and documentation creation.
       `.trim();
     }
     

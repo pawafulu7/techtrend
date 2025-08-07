@@ -290,7 +290,9 @@ export class LocalLLMClient {
 
     for (const line of lines) {
       if (line.startsWith('要約:') || line.startsWith('要約：')) {
-        summary = this.cleanSummary(line.replace(/^要約[:：]\s*/, ''));
+        // 要約行の内容を取得（複数行にまたがる可能性があるため、次の区切りまで読む）
+        const summaryContent = line.replace(/^要約[:：]\s*/, '');
+        summary = this.cleanSummary(summaryContent);
         isDetailedSummary = false;
       } else if (line.startsWith('詳細要約:') || line.startsWith('詳細要約：')) {
         isDetailedSummary = true;
@@ -303,6 +305,9 @@ export class LocalLLMClient {
           .map(tag => this.normalizeTag(tag));
       } else if (isDetailedSummary && line.trim().startsWith('・')) {
         detailedSummaryLines.push(line.trim());
+      } else if (summary === '' && !isDetailedSummary && !line.startsWith('詳細要約') && !line.startsWith('タグ') && line.trim() !== '') {
+        // 要約が複数行にまたがっている場合の続き
+        summary = summary + ' ' + this.cleanSummary(line);
       }
     }
 
@@ -312,8 +317,23 @@ export class LocalLLMClient {
     }
 
     // フォールバック
-    if (!summary) {
-      summary = this.cleanSummary(text.substring(0, 100));
+    if (!summary || summary.length < 30) {
+      // テキスト全体から要約らしき部分を探す
+      const summaryMatch = text.match(/要約[:：]?\s*([^\n]+(?:\n[^・詳細要約タグ][^\n]*)*)/i);
+      if (summaryMatch) {
+        summary = this.cleanSummary(summaryMatch[1]);
+      } else {
+        // それでも見つからない場合は最初の文を使用
+        summary = this.cleanSummary(text.split('\n')[0].substring(0, 100));
+      }
+    }
+    
+    // 要約が途切れている場合の処理
+    if (summary && (summary.endsWith('。') === false || summary.length < 50)) {
+      // 最後が句点でない、または短すぎる場合は補完を試みる
+      if (!summary.endsWith('。')) {
+        summary = summary + '。';
+      }
     }
     if (!detailedSummary) {
       // フォールバック: 簡単な形式を生成
