@@ -5,7 +5,7 @@ import { LocalLLMClient } from '../lib/ai/local-llm';
 const prisma = new PrismaClient();
 
 async function fixSingleArticleLocal() {
-  const articleId = 'cme162szh000yte0tqhy5q91m';
+  const articleId = 'cmdx9g01a0012tebmigtqb255';
   
   console.log('🤖 ローカルLLMで記事を修正\n');
   
@@ -56,7 +56,7 @@ URL: ${article.url}
 Article Content:
 ${article.content}
 
-Context: This article discusses Google's new asynchronous coding agent "Jules" which is now publicly available. Jules integrates with GitHub and uses Gemini 2.5 Pro for planning and problem-solving. The tool is designed to help developers with coding tasks asynchronously, providing features like bug fixes, code review support, refactoring suggestions, test generation, and documentation creation.
+Context: This article discusses how Google is making data centers more flexible to benefit power grids. The approach involves real-time power consumption adjustment, grid services optimization, and renewable energy integration. This is about infrastructure management, smart grid technology, and sustainable computing practices.
       `.trim();
     }
     
