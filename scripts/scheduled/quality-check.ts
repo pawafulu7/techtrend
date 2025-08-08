@@ -126,11 +126,7 @@ async function checkQuality(options: QualityCheckOptions) {
     orderBy: { publishedAt: 'desc' },
     include: {
       source: true,
-      tags: {
-        include: {
-          tag: true,
-        },
-      },
+      tags: true,
     },
   });
 
@@ -149,7 +145,7 @@ async function checkQuality(options: QualityCheckOptions) {
   for (const article of articles) {
     if (!article.summary) continue;
 
-    const tags = article.tags.map(t => t.tag.name);
+    const tags = article.tags.map((t: any) => t.name);
     const score = calculateSummaryScore(article.summary, {
       targetLength: 120,
       isDetailed: false,
@@ -193,7 +189,7 @@ async function checkQuality(options: QualityCheckOptions) {
     .filter(a => a.summary)
     .map(a => ({
       summary: a.summary!,
-      tags: a.tags.map(t => t.tag.name),
+      tags: a.tags.map((t: any) => t.name),
       isDetailed: false,
     }));
 

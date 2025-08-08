@@ -77,11 +77,7 @@ async function detectLowQualityArticles(): Promise<Array<{
       ],
     },
     include: {
-      tags: {
-        include: {
-          tag: true,
-        },
-      },
+      tags: true,
     },
     take: 50, // 一度に処理する最大数
     orderBy: { publishedAt: 'desc' },
@@ -92,7 +88,7 @@ async function detectLowQualityArticles(): Promise<Array<{
   for (const article of articles) {
     if (!article.summary) continue;
 
-    const tags = article.tags.map(t => t.tag.name);
+    const tags = article.tags.map((t: any) => t.name);
     const score = calculateSummaryScore(article.summary, { tags });
 
     // 再生成が必要な記事を選別
@@ -173,11 +169,16 @@ async function regenerateArticles(articles: Array<{
       // 改善された場合のみ更新
       if (newScore.totalScore > article.score) {
         // 既存のタグを取得
-        const existingTags = await prisma.articleTag.findMany({
-          where: { articleId: article.id },
-          include: { tag: true },
+        const existingTags = await prisma.tag.findMany({
+          where: {
+            articles: {
+              some: {
+                articleId: article.id,
+              },
+            },
+          },
         });
-        const existingTagNames = existingTags.map(t => t.tag.name);
+        const existingTagNames = existingTags.map(t => t.name);
 
         // 新しいタグと既存のタグをマージ（重複を除く）
         const mergedTags = [...new Set([...existingTagNames, ...tags])];
