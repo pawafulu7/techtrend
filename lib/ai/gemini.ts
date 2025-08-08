@@ -173,7 +173,17 @@ export class GeminiClient {
 
     // フォールバック
     if (!summary) {
-      summary = this.cleanSummary(text.substring(0, 100));
+      // 文字数制限を200文字に拡張し、完全な文で終わるようにする
+      const maxLength = 200;
+      let truncatedText = text.substring(0, maxLength);
+      
+      // 最後の句点で切る
+      const lastPeriod = truncatedText.lastIndexOf('。');
+      if (lastPeriod > 0) {
+        truncatedText = truncatedText.substring(0, lastPeriod + 1);
+      }
+      
+      summary = this.cleanSummary(truncatedText);
     }
 
     return { summary, tags };
@@ -235,11 +245,27 @@ export class GeminiClient {
 
     // フォールバック
     if (!summary) {
-      summary = this.cleanSummary(text.substring(0, 100));
+      // 文字数制限を200文字に拡張し、完全な文で終わるようにする
+      const maxLength = 200;
+      let truncatedText = text.substring(0, maxLength);
+      
+      // 最後の句点で切る
+      const lastPeriod = truncatedText.lastIndexOf('。');
+      if (lastPeriod > 0) {
+        truncatedText = truncatedText.substring(0, lastPeriod + 1);
+      }
+      
+      summary = this.cleanSummary(truncatedText);
     }
     if (!detailedSummary) {
-      // フォールバック: 簡単な形式を生成（ラベルなし）
-      detailedSummary = `・${summary}\n・記事内のコード例や手順を参照してください。\n・タグ: ${tags.join(', ')}`;
+      // フォールバック: より意味のある内容を生成
+      const bulletPoints = [];
+      bulletPoints.push(`・記事の主題: ${summary}`);
+      if (tags.length > 0) {
+        bulletPoints.push(`・関連技術: ${tags.slice(0, 3).join('、')}`);
+      }
+      bulletPoints.push(`・詳細は記事本文をご確認ください`);
+      detailedSummary = bulletPoints.join('\n');
     }
 
     return { summary, detailedSummary, tags };

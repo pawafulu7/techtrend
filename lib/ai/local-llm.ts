@@ -264,7 +264,17 @@ export class LocalLLMClient {
       if (japaneseLines.length > 0) {
         summary = this.cleanSummary(japaneseLines[0]);
       } else {
-        summary = this.cleanSummary(text.substring(0, 100));
+        // 文字数制限を200文字に拡張
+        const maxLength = 200;
+        let truncatedText = text.substring(0, maxLength);
+        
+        // 最後の句点で切る
+        const lastPeriod = truncatedText.lastIndexOf('。');
+        if (lastPeriod > 0) {
+          truncatedText = truncatedText.substring(0, lastPeriod + 1);
+        }
+        
+        summary = this.cleanSummary(truncatedText);
       }
     }
 
@@ -314,8 +324,17 @@ export class LocalLLMClient {
       if (summaryMatch) {
         summary = this.cleanSummary(summaryMatch[1]);
       } else {
-        // それでも見つからない場合は最初の文を使用
-        summary = this.cleanSummary(text.split('\n')[0].substring(0, 100));
+        // それでも見つからない場合は最初の文を使用（200文字まで）
+        const maxLength = 200;
+        let truncatedText = text.split('\n')[0].substring(0, maxLength);
+        
+        // 最後の句点で切る
+        const lastPeriod = truncatedText.lastIndexOf('。');
+        if (lastPeriod > 0) {
+          truncatedText = truncatedText.substring(0, lastPeriod + 1);
+        }
+        
+        summary = this.cleanSummary(truncatedText);
       }
     }
     
@@ -327,8 +346,14 @@ export class LocalLLMClient {
       }
     }
     if (!detailedSummary) {
-      // フォールバック: 簡単な形式を生成
-      detailedSummary = `・${summary}\n・記事内のコード例や手順を参照してください。\n・タグ: ${tags.join(', ')}`;
+      // フォールバック: より意味のある内容を生成
+      const bulletPoints = [];
+      bulletPoints.push(`・記事の主題: ${summary}`);
+      if (tags.length > 0) {
+        bulletPoints.push(`・関連技術: ${tags.slice(0, 3).join('、')}`);
+      }
+      bulletPoints.push(`・詳細は記事本文をご確認ください`);
+      detailedSummary = bulletPoints.join('\n');
     }
 
     return { summary, detailedSummary, tags };
