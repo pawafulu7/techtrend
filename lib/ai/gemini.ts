@@ -4,8 +4,12 @@ import { ExternalAPIError } from '../errors';
 import { cleanSummary as cleanSummaryUtil, cleanDetailedSummary as cleanDetailedSummaryUtil } from '../utils/summary-cleaner';
 import { validateSummary, cleanupSummary, validateAndNormalizeTags } from '../utils/summary-validator';
 import { calculateSummaryScore, needsRegeneration } from '../utils/quality-scorer';
-import { detectArticleType, ArticleType } from '../utils/article-type-detector';
-import { generatePromptForArticleType } from '../utils/article-type-prompts';
+import { 
+  createSummaryPrompt as createSummaryPromptNew,
+  createDetailedSummaryPrompt as createDetailedSummaryPromptNew,
+  postProcessSummary,
+  validateSummaryQuality
+} from './summary-generator';
 
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
@@ -20,7 +24,8 @@ export class GeminiClient {
 
   async generateSummary(title: string, content: string): Promise<string> {
     try {
-      const prompt = this.createSummaryPrompt(title, content);
+      // 共通処理を使用してプロンプトを生成
+      const prompt = createSummaryPromptNew(title, content);
       
       const result = await this.model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -31,9 +36,21 @@ export class GeminiClient {
       });
 
       const response = await result.response;
-      const summary = response.text();
+      let summary = response.text();
       
-      return this.cleanSummary(summary);
+      // クリーンアップ
+      summary = this.cleanSummary(summary);
+      
+      // 後処理（文字数調整、前置き文言除去）
+      summary = postProcessSummary(summary, 130);
+      
+      // 品質検証
+      const validation = validateSummaryQuality(summary, 'normal');
+      if (!validation.isValid) {
+        console.warn('要約の品質に問題があります:', validation.errors);
+      }
+      
+      return summary;
     } catch (error) {
       console.error('Gemini API error:', error);
       throw new ExternalAPIError(
@@ -84,7 +101,8 @@ export class GeminiClient {
     content: string
   ): Promise<{ summary: string; detailedSummary: string; tags: string[] }> {
     try {
-      const prompt = this.createDetailedSummaryPrompt(title, content);
+      // 共通処理を使用してプロンプトを生成
+      const prompt = createDetailedSummaryPromptNew(title, content);
       
       const result = await this.model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -97,7 +115,24 @@ export class GeminiClient {
       const response = result.response;
       const text = response.text();
       
-      return this.parseDetailedSummary(text);
+      const parsedResult = this.parseDetailedSummary(text);
+      
+      // 通常要約の後処理
+      parsedResult.summary = postProcessSummary(parsedResult.summary, 130);
+      
+      // 品質検証
+      const summaryValidation = validateSummaryQuality(parsedResult.summary, 'normal');
+      const detailedValidation = validateSummaryQuality(parsedResult.detailedSummary, 'detailed');
+      
+      if (!summaryValidation.isValid) {
+        console.warn('要約の品質に問題があります:', summaryValidation.errors);
+      }
+      
+      if (!detailedValidation.isValid) {
+        console.warn('詳細要約の品質に問題があります:', detailedValidation.errors);
+      }
+      
+      return parsedResult;
     } catch (error) {
       console.error('Gemini API error:', error);
       throw new ExternalAPIError(
