@@ -4,6 +4,8 @@ import { ExternalAPIError } from '../errors';
 import { cleanSummary as cleanSummaryUtil, cleanDetailedSummary as cleanDetailedSummaryUtil } from '../utils/summary-cleaner';
 import { validateSummary, cleanupSummary, validateAndNormalizeTags } from '../utils/summary-validator';
 import { calculateSummaryScore, needsRegeneration } from '../utils/quality-scorer';
+import { detectArticleType, ArticleType } from '../utils/article-type-detector';
+import { generatePromptForArticleType } from '../utils/article-type-prompts';
 
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
@@ -110,18 +112,43 @@ export class GeminiClient {
     // Limit content length to avoid token limits
     const truncatedContent = content.substring(0, 2000);
     
-    return `以下の技術記事を日本語で要約してください。
+    // 記事タイプを判定
+    const articleType = detectArticleType(title, truncatedContent);
+    
+    // 記事タイプに応じた説明を生成
+    const typeDescriptions: Record<ArticleType, string> = {
+      'implementation': '個人開発・実装レポート',
+      'tutorial': 'チュートリアル・学習ガイド',
+      'problem-solving': '問題解決・技術改善',
+      'tech-intro': '技術紹介・解説',
+      'release': '新機能・リリース情報'
+    };
+    
+    return `以下の${typeDescriptions[articleType]}記事を日本語で要約してください。
 
 タイトル: ${title}
 内容: ${truncatedContent}
 
 重要な指示:
-1. 80-120文字の範囲で要約
+1. 100-120文字で要約（厳守：最大130文字まで）
 2. 著者の自己紹介や前置きは除外
-3. 技術的な内容のみを簡潔にまとめる
-4. 必ず完全な文で終わる（「。」で終了）
-5. 「要約:」「要約：」などのラベルを付けない
-6. 要約内容のみを出力
+3. 記事が提供する価値や解決する問題を明確に含める
+4. 具体的な技術名、数値、手法を含める
+5. 必ず完全な文で終わる（「。」で終了）
+6. 簡潔に、一文または二文で表現
+
+絶対に守るべきルール:
+- 「本記事は」「この記事では」「〜について解説」などの前置き文言を使わない
+- 要約は記事の内容そのものから直接始める
+- 「要約:」「要約：」などのラベルを付けない
+- 要約内容のみを出力
+
+記事タイプ別の重点:
+${articleType === 'implementation' ? '- 作ったものと使用技術を明確に\n- 実装した機能や特徴を具体的に' : ''}
+${articleType === 'tutorial' ? '- 学習内容と手順を具体的に\n- 対象技術とゴールを明確に' : ''}
+${articleType === 'problem-solving' ? '- 解決した問題と解決策を明確に\n- 効果や改善点を具体的に' : ''}
+${articleType === 'tech-intro' ? '- 技術の特徴と用途を説明\n- メリットや活用シーンを含める' : ''}
+${articleType === 'release' ? '- 新機能と対象ユーザーを明確に\n- 主要な改善点や特徴を含める' : ''}
 
 要約:`;
   }
@@ -230,26 +257,11 @@ export class GeminiClient {
     // コンテンツを適切な長さに制限
     const truncatedContent = content.substring(0, 4000);
     
-    return `以下の技術記事を詳細に分析して、要約、詳細要約、タグを生成してください。
-
-タイトル: ${title}
-記事内容: ${truncatedContent}
-
-必ず以下の形式で出力してください：
-
-要約: [80-120文字の日本語で、記事の主要なポイントを簡潔にまとめる。必ず完全な文で終わること。]
-
-詳細要約:
-・記事の主題は、[技術的背景と使用技術、前提知識を50-150文字で説明]
-・具体的な問題は、[解決しようとしている問題と現状の課題を50-150文字で説明]
-・提示されている解決策は、[技術的アプローチ、アルゴリズム、設計パターン等を50-150文字で説明]
-・実装方法の詳細については、[具体的なコード例、設定方法、手順を50-150文字で説明]
-・期待される効果は、[性能改善の指標（数値があれば含める）を50-150文字で説明]
-・実装時の注意点は、[制約事項、必要な環境を50-150文字で説明]
-
-タグ: [関連する技術タグを3-5個、カンマ区切りで出力]
-
-重要: 「要約:」「詳細要約:」「タグ:」のラベルを必ず含めて出力してください。`;
+    // 記事タイプを判定
+    const articleType = detectArticleType(title, truncatedContent);
+    
+    // 記事タイプに応じた詳細プロンプトを生成
+    return generatePromptForArticleType(articleType, title, truncatedContent);
   }
 
   private parseDetailedSummary(text: string): { summary: string; detailedSummary: string; tags: string[] } {
