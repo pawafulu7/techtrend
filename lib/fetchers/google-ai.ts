@@ -3,6 +3,7 @@ import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
+import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
 
 interface GoogleAIRSSItem {
   title?: string;
@@ -50,11 +51,20 @@ export class GoogleAIFetcher extends BaseFetcher {
             continue;
           }
 
+          // コンテンツを抽出
+          const content = extractContent(item);
+          
+          // コンテンツ品質チェック
+          const contentCheck = checkContentQuality(content, item.title);
+          if (contentCheck.warning) {
+            console.warn(`[Google AI Blog] ${contentCheck.warning}`);
+          }
+          
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
             url: this.normalizeUrl(item.link),
             summary: undefined, // 要約は後で日本語で生成
-            content: item['content:encoded'] || item.description || undefined,
+            content: content || undefined,
             publishedAt,
             sourceId: this.source.id,
             tagNames: this.generateGoogleAITags(item.categories),

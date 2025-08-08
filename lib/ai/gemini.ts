@@ -3,6 +3,7 @@ import { GEMINI_API } from '../constants';
 import { ExternalAPIError } from '../errors';
 import { cleanSummary as cleanSummaryUtil, cleanDetailedSummary as cleanDetailedSummaryUtil } from '../utils/summary-cleaner';
 import { validateSummary, cleanupSummary, validateAndNormalizeTags } from '../utils/summary-validator';
+import { calculateSummaryScore, needsRegeneration } from '../utils/quality-scorer';
 
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
@@ -41,7 +42,7 @@ export class GeminiClient {
     }
   }
 
-  async generateSummaryWithTags(title: string, content: string): Promise<{ summary: string; tags: string[] }> {
+  async generateSummaryWithTags(title: string, content: string, maxRetries: number = 1): Promise<{ summary: string; tags: string[] }> {
     try {
       const prompt = this.createSummaryAndTagsPrompt(title, content);
       
@@ -56,7 +57,16 @@ export class GeminiClient {
       const response = result.response;
       const text = response.text();
       
-      return this.parseSummaryAndTags(text);
+      const parsedResult = this.parseSummaryAndTags(text);
+      
+      // 品質チェックと再生成
+      const score = calculateSummaryScore(parsedResult.summary, { tags: parsedResult.tags });
+      if (needsRegeneration(score) && maxRetries > 0) {
+        console.log(`要約品質が低い（${score.totalScore}点）、再生成を試みます...`);
+        return this.generateSummaryWithTags(title, content, maxRetries - 1);
+      }
+      
+      return parsedResult;
     } catch (error) {
       console.error('Gemini API error:', error);
       throw new ExternalAPIError(
@@ -205,6 +215,12 @@ export class GeminiClient {
       console.warn('要約の検証エラー:', validation.errors);
       // クリーンアップを試みる
       summary = cleanupSummary(summary);
+    }
+
+    // 品質スコアのチェック（再生成が必要な場合は警告）
+    const score = calculateSummaryScore(summary, { tags });
+    if (needsRegeneration(score)) {
+      console.warn(`要約の品質が低い（${score.totalScore}点）: ${score.issues.join(', ')}`);
     }
 
     return { summary, tags };

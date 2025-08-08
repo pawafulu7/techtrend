@@ -3,6 +3,7 @@ import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
+import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
 
 interface SRERSSItem {
   title?: string;
@@ -81,12 +82,21 @@ export class SREFetcher extends BaseFetcher {
             }
             
             tags.unshift('SRE'); // 必ずSREタグを先頭に追加
+            
+            // コンテンツを抽出
+            const content = extractContent(item);
+            
+            // コンテンツ品質チェック
+            const contentCheck = checkContentQuality(content, item.title || '');
+            if (contentCheck.warning) {
+              console.warn(`[SRE - ${feedInfo.name}] ${contentCheck.warning}`);
+            }
 
             const article: CreateArticleInput = {
               title: this.sanitizeText(item.title),
               url: this.normalizeUrl(item.link),
               summary: undefined, // 要約は後で日本語で生成
-              content: item.content || item.contentSnippet || '',
+              content: content || '',
               publishedAt: item.isoDate ? new Date(item.isoDate) :
                           item.pubDate ? parseRSSDate(item.pubDate) : new Date(),
               sourceId: this.source.id,
