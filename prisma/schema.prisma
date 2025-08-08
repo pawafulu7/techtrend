@@ -23,7 +23,7 @@ model Article {
   updatedAt       DateTime @updatedAt
   difficulty      String?
   detailedSummary String?
-  articleType     String?  // release, problem-solving, tutorial, tech-intro, implementation
+  articleType     String?
   summaryVersion  Int      @default(1)
   source          Source   @relation(fields: [sourceId], references: [id])
   tags            Tag[]    @relation("ArticleToTag")
@@ -45,4 +45,50 @@ model Tag {
   name     String    @unique
   category String?
   articles Article[] @relation("ArticleToTag")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model articles_fts {
+  id      Unsupported("")?
+  title   Unsupported("")?
+  content Unsupported("")?
+  summary Unsupported("")?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model articles_fts_config {
+  k Unsupported("")  @id
+  v Unsupported("")?
+
+  @@ignore
+}
+
+model articles_fts_content {
+  id Int              @id @default(autoincrement())
+  c0 Unsupported("")?
+  c1 Unsupported("")?
+  c2 Unsupported("")?
+  c3 Unsupported("")?
+}
+
+model articles_fts_data {
+  id    Int    @id @default(autoincrement())
+  block Bytes?
+}
+
+model articles_fts_docsize {
+  id Int    @id @default(autoincrement())
+  sz Bytes?
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model articles_fts_idx {
+  segid Unsupported("")
+  term  Unsupported("")
+  pgno  Unsupported("")?
+
+  @@id([segid, term])
+  @@ignore
 }

@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GEMINI_API } from '../constants';
 import { ExternalAPIError } from '../errors';
+import { cleanSummary as cleanSummaryUtil, cleanDetailedSummary as cleanDetailedSummaryUtil } from '../utils/summary-cleaner';
 
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
@@ -105,22 +106,8 @@ export class GeminiClient {
   }
 
   private cleanSummary(summary: string): string {
-    let cleaned = summary
-      .trim()
-      .replace(/^(要約|日本語要約)[:：]\s*/i, '') // Remove "要約:" or "日本語要約:" prefix if present
-      .replace(/^(本記事は|本稿では|記事では|この記事は|本文では|この文書は)/g, '') // Remove article prefixes
-      .replace(/\n+/g, ' ') // Replace newlines with spaces
-      .trim(); // Remove any trailing spaces
-    
-    // 句読点が文頭にある場合は削除
-    cleaned = cleaned.replace(/^[、。,\.]\s*/, '');
-    
-    // 文末に句点がない場合は追加
-    if (cleaned && !cleaned.match(/[。.!?]$/)) {
-      cleaned += '。';
-    }
-    
-    return cleaned;
+    // 共通のクリーンアップユーティリティを使用
+    return cleanSummaryUtil(summary);
   }
 
   private createSummaryAndTagsPrompt(title: string, content: string): string {

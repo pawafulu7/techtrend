@@ -1,6 +1,7 @@
 import { GeminiClient } from './gemini';
 import { LocalLLMClient } from './local-llm';
 import { ExternalAPIError } from '../errors';
+import { cleanSummary, cleanDetailedSummary } from '../utils/summary-cleaner';
 
 interface AIServiceConfig {
   geminiApiKey?: string;
@@ -96,18 +97,13 @@ export class AIService {
     title: string,
     content: string
   ): Promise<{ summary: string; detailedSummary: string; tags: string[] }> {
-    return this.executeWithFallback(
+    const result = await this.executeWithFallback(
       async () => {
         if (this.config.preferLocalLLM && this.localLLMClient) {
           console.log('📟 Using Local LLM for detailed summary generation');
-          // Local LLMには詳細要約メソッドがまだないため、通常の要約を使用してフォーマット
-          const result = await this.localLLMClient.generateSummaryWithTags(title, content);
-          const detailedSummary = `
-・記事の主題は、${result.summary}
-・実装方法の詳細については、記事内のコード例や手順を参照してください。
-・タグ: ${result.tags.join(', ')}
-`.trim();
-          return { summary: result.summary, detailedSummary, tags: result.tags };
+          // LocalLLMClientのgenerateDetailedSummaryメソッドを使用
+          const llmResult = await this.localLLMClient.generateDetailedSummary(title, content);
+          return llmResult;
         } else if (this.geminiClient) {
           console.log('🌟 Using Gemini API for detailed summary generation');
           return await this.geminiClient.generateDetailedSummary(title, content);
@@ -118,17 +114,36 @@ export class AIService {
       async () => {
         if (this.config.useLocalLLMFallback && this.localLLMClient) {
           console.log('🔄 Falling back to Local LLM');
-          const result = await this.localLLMClient.generateSummaryWithTags(title, content);
-          const detailedSummary = `
-・記事の主題は、${result.summary}
-・実装方法の詳細については、記事内のコード例や手順を参照してください。
-・タグ: ${result.tags.join(', ')}
-`.trim();
-          return { summary: result.summary, detailedSummary, tags: result.tags };
+          const llmResult = await this.localLLMClient.generateDetailedSummary(title, content);
+          return llmResult;
         }
         throw new Error('No fallback available');
       }
     );
+    
+    // 品質改善処理を適用
+    const cleanedSummary = cleanSummary(result.summary);
+    const cleanedDetailedSummary = cleanDetailedSummary(result.detailedSummary);
+    
+    // 技術的背景が不足している場合は補完
+    if (!cleanedDetailedSummary.includes('記事の主題は')) {
+      const lines = cleanedDetailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
+      if (lines.length > 0) {
+        lines[0] = `・記事の主題は、${cleanedSummary}に関する技術的な実装と活用方法`;
+        const updatedDetailedSummary = lines.join('\n');
+        return {
+          summary: cleanedSummary,
+          detailedSummary: updatedDetailedSummary,
+          tags: result.tags
+        };
+      }
+    }
+    
+    return {
+      summary: cleanedSummary,
+      detailedSummary: cleanedDetailedSummary,
+      tags: result.tags
+    };
   }
 
   private async executeWithFallback<T>(

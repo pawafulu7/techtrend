@@ -1,5 +1,6 @@
 import { ExternalAPIError } from '../errors';
 import fetch from 'node-fetch';
+import { cleanSummary as cleanSummaryUtil, cleanDetailedSummary as cleanDetailedSummaryUtil } from '../utils/summary-cleaner';
 
 interface LocalLLMConfig {
   url: string;
@@ -210,14 +211,10 @@ export class LocalLLMClient {
   }
 
   private cleanSummary(summary: string): string {
-    let cleaned = summary
-      .trim()
-      .replace(/^(要約|日本語要約)[:：]\s*/i, '')
-      .replace(/^(本記事は|本稿では|記事では|この記事は|本文では|この文書は)/g, '')
-      .replace(/\n+/g, ' ')
-      .trim();
+    // 共通のクリーンアップユーティリティを使用
+    let cleaned = cleanSummaryUtil(summary);
     
-    // 英語の思考過程を除去
+    // LocalLLM特有の英語思考過程を除去
     const englishThinkingPatterns = [
       /^.*?(?:need|let's|count|chars?|craft).*?(?=[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF])/gi,
       /^[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]*[a-zA-Z][^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]*(?=[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF])/g
@@ -227,13 +224,7 @@ export class LocalLLMClient {
       cleaned = cleaned.replace(pattern, '');
     }
     
-    cleaned = cleaned.replace(/^[、。,\.]\s*/, '');
-    
-    if (cleaned && !cleaned.match(/[。.!?]$/)) {
-      cleaned += '。';
-    }
-    
-    return cleaned;
+    return cleaned.trim();
   }
 
   private parseSummaryAndTags(text: string): { summary: string; tags: string[] } {
