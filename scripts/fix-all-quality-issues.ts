@@ -326,11 +326,7 @@ ${additionalContext}
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
       
-      // バッチ完了後、最初のバッチのみ処理する（テスト的に）
-      if (batch === 0) {
-        console.log('\n最初のバッチ（30件）の処理が完了しました。');
-        break;
-      }
+      // 次のバッチへ継続
     }
     
     const totalTime = Math.floor((Date.now() - startTime) / 1000);
