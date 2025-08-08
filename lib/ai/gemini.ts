@@ -2,6 +2,7 @@ import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GEMINI_API } from '../constants';
 import { ExternalAPIError } from '../errors';
 import { cleanSummary as cleanSummaryUtil, cleanDetailedSummary as cleanDetailedSummaryUtil } from '../utils/summary-cleaner';
+import { validateSummary, cleanupSummary, validateAndNormalizeTags } from '../utils/summary-validator';
 
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
@@ -99,10 +100,20 @@ export class GeminiClient {
     // Limit content length to avoid token limits
     const truncatedContent = content.substring(0, 2000);
     
-    return `以下の技術記事を60-80文字の日本語で要約してください。著者の自己紹介は除外し、記事の技術的な内容のみを簡潔にまとめてください。文章は必ず「。」で終わるようにしてください。
+    return `以下の技術記事を日本語で要約してください。
 
 タイトル: ${title}
-内容: ${truncatedContent}`;
+内容: ${truncatedContent}
+
+重要な指示:
+1. 80-120文字の範囲で要約
+2. 著者の自己紹介や前置きは除外
+3. 技術的な内容のみを簡潔にまとめる
+4. 必ず完全な文で終わる（「。」で終了）
+5. 「要約:」「要約：」などのラベルを付けない
+6. 要約内容のみを出力
+
+要約:`;
   }
 
   private cleanSummary(summary: string): string {
@@ -129,15 +140,16 @@ export class GeminiClient {
 5. 対象読者のレベル（初級/中級/上級）
 
 【回答形式】
+以下の形式で回答してください。「要約:」や「タグ:」などのラベルを含めて出力してください。
 
-要約: [60-80文字の日本語で、以下の要素を含めて簡潔にまとめる]
+要約: [80-120文字の日本語で、以下の要素を含めて簡潔にまとめる]
 - 何について説明しているか（主題）
 - どのような問題を解決するか、または何を実現するか
 - 重要な技術やツールがあれば言及
 - 著者の自己紹介や前置きは除外
 - 「本記事は」「本稿では」などの枕詞は使わない
 - 文頭に句読点を置かない
-- 必ず「。」で終わる
+- 必ず完全な文で終わる（「。」で終了）
 - 例: ReactとTypeScriptを用いたカスタムフックの実装方法を解説し、状態管理の複雑さを軽減する実践的なアプローチを提供する。
 
 タグ: [記事の内容を正確に表す技術タグを3-5個、カンマ区切りで記載]
@@ -161,13 +173,14 @@ export class GeminiClient {
 
     for (const line of lines) {
       if (line.startsWith('要約:') || line.startsWith('要約：')) {
-        summary = this.cleanSummary(line.replace(/^要約[:：]\s*/, ''));
+        const rawSummary = line.replace(/^要約[:：]\s*/, '');
+        summary = cleanupSummary(rawSummary);
       } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
         const tagLine = line.replace(/^タグ[:：]\s*/, '');
-        tags = tagLine.split(/[,、，]/)
+        const rawTags = tagLine.split(/[,、，]/)
           .map(tag => tag.trim())
-          .filter(tag => tag.length > 0 && tag.length <= 30) // 空タグと長すぎるタグを除外
           .map(tag => this.normalizeTag(tag));
+        tags = validateAndNormalizeTags(rawTags);
       }
     }
 
@@ -183,7 +196,15 @@ export class GeminiClient {
         truncatedText = truncatedText.substring(0, lastPeriod + 1);
       }
       
-      summary = this.cleanSummary(truncatedText);
+      summary = cleanupSummary(truncatedText);
+    }
+    
+    // 要約の検証
+    const validation = validateSummary(summary);
+    if (!validation.isValid) {
+      console.warn('要約の検証エラー:', validation.errors);
+      // クリーンアップを試みる
+      summary = cleanupSummary(summary);
     }
 
     return { summary, tags };
@@ -198,8 +219,9 @@ export class GeminiClient {
 タイトル: ${title}
 記事内容: ${truncatedContent}
 
-出力形式:
-要約: [60-80文字の日本語で、記事の主要なポイントを簡潔にまとめてください]
+必ず以下の形式で出力してください：
+
+要約: [80-120文字の日本語で、記事の主要なポイントを簡潔にまとめる。必ず完全な文で終わること。]
 
 詳細要約:
 ・記事の主題は、[技術的背景と使用技術、前提知識を50-150文字で説明]
@@ -209,7 +231,9 @@ export class GeminiClient {
 ・期待される効果は、[性能改善の指標（数値があれば含める）を50-150文字で説明]
 ・実装時の注意点は、[制約事項、必要な環境を50-150文字で説明]
 
-タグ: [関連する技術タグを3-5個、カンマ区切りで出力]`;
+タグ: [関連する技術タグを3-5個、カンマ区切りで出力]
+
+重要: 「要約:」「詳細要約:」「タグ:」のラベルを必ず含めて出力してください。`;
   }
 
   private parseDetailedSummary(text: string): { summary: string; detailedSummary: string; tags: string[] } {
@@ -222,17 +246,18 @@ export class GeminiClient {
 
     for (const line of lines) {
       if (line.startsWith('要約:') || line.startsWith('要約：')) {
-        summary = this.cleanSummary(line.replace(/^要約[:：]\s*/, ''));
+        const rawSummary = line.replace(/^要約[:：]\s*/, '');
+        summary = cleanupSummary(rawSummary);
         isDetailedSummary = false;
       } else if (line.startsWith('詳細要約:') || line.startsWith('詳細要約：')) {
         isDetailedSummary = true;
       } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
         isDetailedSummary = false;
         const tagLine = line.replace(/^タグ[:：]\s*/, '');
-        tags = tagLine.split(/[,、，]/)
+        const rawTags = tagLine.split(/[,、，]/)
           .map(tag => tag.trim())
-          .filter(tag => tag.length > 0 && tag.length <= 30)
           .map(tag => this.normalizeTag(tag));
+        tags = validateAndNormalizeTags(rawTags);
       } else if (isDetailedSummary && line.trim().startsWith('・')) {
         detailedSummaryLines.push(line.trim());
       }
@@ -255,8 +280,16 @@ export class GeminiClient {
         truncatedText = truncatedText.substring(0, lastPeriod + 1);
       }
       
-      summary = this.cleanSummary(truncatedText);
+      summary = cleanupSummary(truncatedText);
     }
+    
+    // 要約の検証
+    const summaryValidation = validateSummary(summary);
+    if (!summaryValidation.isValid) {
+      console.warn('要約の検証エラー:', summaryValidation.errors);
+      summary = cleanupSummary(summary);
+    }
+    
     if (!detailedSummary) {
       // フォールバック: より意味のある内容を生成
       const bulletPoints = [];
