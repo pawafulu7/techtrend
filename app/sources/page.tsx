@@ -36,6 +36,7 @@ interface SourceWithStats {
 }
 
 export default function SourcesPage() {
+  const [allSources, setAllSources] = useState<SourceWithStats[]>([]);
   const [sources, setSources] = useState<SourceWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -43,22 +44,22 @@ export default function SourcesPage() {
   const [sortBy, setSortBy] = useState<SortBy>('articles');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 
+  // 初回ロード時のみ全データを取得
   useEffect(() => {
-    loadSources();
-  }, [category, sortBy, order]);
+    loadAllSources();
+  }, []);
 
-  const loadSources = async () => {
+  // フィルタリングとソートを適用
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [allSources, category, sortBy, order, search]);
+
+  const loadAllSources = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (category !== 'all') params.set('category', category);
-      params.set('sortBy', sortBy);
-      params.set('order', order);
-      if (search) params.set('search', search);
-
-      const response = await fetch(`/api/sources?${params.toString()}`);
+      const response = await fetch('/api/sources');
       const data = await response.json();
-      setSources(data.sources);
+      setAllSources(data.sources);
     } catch (error) {
       console.error('Failed to load sources:', error);
     } finally {
@@ -66,18 +67,70 @@ export default function SourcesPage() {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadSources();
+  const applyFiltersAndSort = () => {
+    if (allSources.length === 0) return;
+
+    let filtered = [...allSources];
+
+    // カテゴリフィルタリング
+    if (category !== 'all') {
+      filtered = filtered.filter(s => s.category === category);
+    }
+
+    // 検索フィルタリング
+    if (search) {
+      filtered = filtered.filter(source =>
+        source.name.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    // ソート
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      switch (sortBy) {
+        case 'articles':
+          aValue = a.stats.totalArticles;
+          bValue = b.stats.totalArticles;
+          break;
+        case 'quality':
+          aValue = a.stats.avgQualityScore;
+          bValue = b.stats.avgQualityScore;
+          break;
+        case 'frequency':
+          aValue = a.stats.publishFrequency;
+          bValue = b.stats.publishFrequency;
+          break;
+        case 'name':
+          aValue = a.name;
+          bValue = b.name;
+          break;
+        default:
+          aValue = a.stats.totalArticles;
+          bValue = b.stats.totalArticles;
+      }
+
+      if (sortBy === 'name') {
+        return order === 'asc'
+          ? (aValue as string).localeCompare(bValue as string)
+          : (bValue as string).localeCompare(aValue as string);
+      } else {
+        return order === 'asc'
+          ? (aValue as number) - (bValue as number)
+          : (bValue as number) - (aValue as number);
+      }
+    });
+
+    setSources(filtered);
   };
 
-  const filteredSources = sources.filter(source =>
-    source.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // 検索は自動的にuseEffectで処理される
+  };
 
   const getCategoryCount = (cat: SourceCategory) => {
-    if (cat === 'all') return sources.length;
-    return sources.filter(s => s.category === cat).length;
+    if (cat === 'all') return allSources.length;
+    return allSources.filter(s => s.category === cat).length;
   };
 
   return (
@@ -160,7 +213,7 @@ export default function SourcesPage() {
                 <Skeleton key={i} className="h-64" />
               ))}
             </div>
-          ) : filteredSources.length === 0 ? (
+          ) : sources.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-lg text-muted-foreground mb-2">
                 ソースが見つかりませんでした
@@ -171,7 +224,7 @@ export default function SourcesPage() {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredSources.map((source) => (
+              {sources.map((source) => (
                 <SourceCard key={source.id} source={source} />
               ))}
             </div>
