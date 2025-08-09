@@ -276,8 +276,8 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
     try {
       const content = article.content || article.description || '';
       
-      if (content.length < 100) {
-        console.log('   ⚠️  コンテンツが短すぎるためスキップ');
+      if (content.length < 300) {
+        console.log('   ⚠️  コンテンツが短すぎるためスキップ（最低300文字必要）');
         result.status = 'skipped';
         result.error = 'コンテンツ不足';
         results.push(result);
