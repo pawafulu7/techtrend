@@ -93,3 +93,9 @@ temp/
 backup_*.json
 problem-articles.json
 deleted_scripts_list.txt
+
+# Additional backup and test files
+*.tar.gz
+*.sql
+test-*.ts
+test-*.md
