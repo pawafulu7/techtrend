@@ -308,17 +308,22 @@ export function checkContentQuality(
 export function fixSummary(summary: string, issues: QualityIssue[]): string {
   let fixed = summary;
   
-  // 句点の追加
-  if (issues.some(i => i.type === 'format' && i.description.includes('句点'))) {
+  // 途切れの修正（句点の追加前に処理）
+  if (issues.some(i => i.type === 'truncation')) {
+    // 助詞や接続詞で終わっている場合は削除
+    fixed = fixed.replace(/(?:が|して|により|では|の|を|に|へ|で|と|から|について|、|,)\s*$/, '');
+    // 句点がなければ追加
     if (!fixed.endsWith('。')) {
-      fixed = fixed.replace(/[、,。．.]*$/, '') + '。';
+      fixed = fixed + '。';
     }
   }
   
-  // 途切れの修正
-  if (issues.some(i => i.type === 'truncation')) {
-    // 助詞や接続詞で終わっている場合は削除して句点を追加
-    fixed = fixed.replace(/(?:が|して|により|では|の|を|に|へ|で|と|から|について|、|,)\s*$/, '') + '。';
+  // 句点の追加（途切れ修正とは独立して処理）
+  if (issues.some(i => i.type === 'format' && i.description.includes('句点'))) {
+    if (!fixed.endsWith('。')) {
+      // 末尾の不要な記号を削除してから句点を追加
+      fixed = fixed.replace(/[、,．.]*$/, '') + '。';
+    }
   }
   
   // 文字数調整
@@ -334,7 +339,10 @@ export function fixSummary(summary: string, issues: QualityIssue[]): string {
         fixed = fixed.substring(0, lastPeriod + 1);
       } else {
         // 適切な区切りがない場合は強制的に区切る
-        fixed = fixed.substring(0, cutPoint) + '。';
+        fixed = fixed.substring(0, cutPoint);
+        if (!fixed.endsWith('。')) {
+          fixed = fixed + '。';
+        }
       }
     } else if (fixed.length < 80 && issues.some(i => i.type === 'thin_content')) {
       // 内容が薄い場合でも、技術用語を含んでいる場合は内容改善をスキップ
@@ -362,6 +370,9 @@ export function fixSummary(summary: string, issues: QualityIssue[]): string {
       fixed = fixed.replace(new RegExp(eng, 'g'), jpn);
     }
   }
+  
+  // 最終チェック：二重句点の防止
+  fixed = fixed.replace(/。+$/, '。');
   
   return fixed;
 }
