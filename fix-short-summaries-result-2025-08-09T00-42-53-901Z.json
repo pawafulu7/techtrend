@@ -1,0 +1,260 @@
+{
+  "timestamp": "2025-08-09T00:42:53.901Z",
+  "totalProcessed": 30,
+  "successCount": 24,
+  "errorCount": 6,
+  "results": [
+    {
+      "id": "cme30itig0006tea4sexgulpy",
+      "title": "【ExpoとSupabaseで作る認証フロー (2)】invalidateQueriesでアプリの状態を自動同期する",
+      "oldSummary": "ExpoとSupabaseを用いた認証フローにおいて、サインアウト後に画面が更新されない問題を解決する方法。",
+      "newSummary": "ExpoとSupabaseを用いた認証フローにおいて、サインアウト後も画面が更新されない問題を、TanStack QueryのinvalidateQueriesを用いて解決した。",
+      "oldLength": 54,
+      "newLength": 89,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y8g70009te5668zsc0dj",
+      "title": "技術資格に「合格する」ための勉強法 ——IPA&amp;AWS試験で成果を出した“実践ノウハウ”を公開 | gihyo.jp",
+      "oldSummary": "IT業界の変化に対応するため、IPAとAWS試験を通じた実践的な学習法が紹介される勉強会内容をまとめました。",
+      "newSummary": "IPA情報処理技術者試験とAWS試験合格のための実践的勉強法が公開された。ハイヤールー社主催の勉強会「Study Hack」で紹介されたノウハウは、変化の激しいIT業界で生き抜くための学習法に焦点を当て、資格取得によるキャリアアップを目指すエンジニアに役立つ。",
+      "oldLength": 54,
+      "newLength": 130,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y8gm000dte56idyts8j2",
+      "title": "Rakuten AI",
+      "oldSummary": "楽天はAIを活用し、パーソナライズチャットボット・賢い検索・おすすめ提案で買い物体験を向上させます。",
+      "newSummary": "楽天はAIを活用し、膨大な購買データ（何兆件）から個々の顧客の好みを分析、パーソナライズされたチャットボット、賢い検索、商品レコメンドを提供することで、楽天サービスの利用体験を向上させている。これにより、より快適で楽しいショッピング体験を実現している。",
+      "oldLength": 50,
+      "newLength": 126,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y8gz000hte563lm5qluj",
+      "title": "AIコーディングの常識が変わる！Claudeを\"覚醒\"させる知性、「Serena」徹底解説｜Kyutaro",
+      "oldSummary": "Claudeの新機能「Serena」でコード生成が高速化・バグ削減。",
+      "newSummary": "AIコーディングツールClaudeの機能を拡張する「Serena」は、大規模ファイル処理時のトークン消費を削減し、バグの連鎖発生を防ぎ、コード全体像の理解を向上させる。これにより、効率的なコーディングと高品質なコード生成を実現する。",
+      "oldLength": 34,
+      "newLength": 116,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y8hq000pte56qtlxx92f",
+      "title": "第873回 sosコマンドでUbuntuシステムの情報をあらいざらい収集しよう | gihyo.jp",
+      "oldSummary": "Ubuntu障害時にsosコマンドでシステム情報を一括収集し、迅速なトラブルシューティングを実現する方法を解説。",
+      "newSummary": "Ubuntuシステム障害発生時に、sosreportコマンドでシステム情報を網羅的に収集できる。  このコマンドは、ハードウェア、ソフトウェア、ネットワーク設定など多岐にわたる情報を収集し、問題解決や専門家への相談を効率化する。",
+      "oldLength": 56,
+      "newLength": 114,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y8i4000tte56qziq4i48",
+      "title": "AIを使わずに見積もり5人月のサービスを0.5人月でリリースした話。〜プロセスの見直しで開発の劇的短縮〜 - Tabelog Tech Blog",
+      "oldSummary": "AIを使わずに5人月の見積もりだったサービスを、プロセス再設計で0.5人月でリリースした事例とその手法。",
+      "newSummary": "食べログのメディアマネジメントチームは、システム連携サービスの開発期間を見直すことで、当初見積もり5人月を0.5人月に短縮した。プロセス改善により開発効率を劇的に向上させ、人的リソースの節約と迅速なリリースを実現した。",
+      "oldLength": 52,
+      "newLength": 109,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y8ip000zte56lma59q2t",
+      "title": "自分が使っているサービスに不正ログインされたかも？と思った時に最初にやるべきこととは",
+      "oldSummary": "不正ログイン疑惑時に即座に行うべき確認手順と対策。",
+      "newSummary": "不正ログインを疑ったら、まず該当サービスのパスワードを即座に変更し、二段階認証を有効化する。さらに、デバイスのウイルススキャンを実行し、他のサービスへの不正アクセスがないか確認する。これにより、個人情報流出やアカウント乗っ取り被害を最小限に抑えることができる。",
+      "oldLength": 25,
+      "newLength": 130,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y8j30013te56j393i5fx",
+      "title": "Reproで実感したスケーラブルな世界の入口 - Repro Tech Blog",
+      "status": "error",
+      "error": "要約の長さが不適切: 202文字"
+    },
+    {
+      "id": "cmdq3y8jh0017te56ahqt6oj3",
+      "title": "MacBook Pro M4は動画編集でどれほど実力を発揮するか？ ─ MacBook Air M4／Mac Studio M2 Max／MacBook Pro 2019（松モデル）との比較検証 - とあるビデオグラファーの備忘録的ブログ",
+      "oldSummary": "MacBook Pro M4は動画編集で高い実力を発揮し、Air M4や旧MBPと比べても優れたパフォーマンスを示す。",
+      "newSummary": "MacBook Pro 14インチM2 Pro（10コアCPU/10コアGPU）の動画編集性能を、MacBook Air M2、Mac Studio M2 Max、2019年モデルMacBook Proと比較検証した結果、M2 Pro搭載MacBook Pr。",
+      "oldLength": 59,
+      "newLength": 130,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y8ya001hte56208xndok",
+      "title": "ASTの解析とCLIの実装によるTypeScript製Lintツール開発",
+      "oldSummary": "TypeScriptのAST解析を活用したLint CLI開発手法と実装例を紹介。",
+      "newSummary": "TypeScriptのAST解析を用いたLintツールをCLIとして開発した。TypeScriptの抽象構文木を解析する手法で、npmパッケージ公開済みのCLIを拡張し、コードの静的解析による品質向上を実現した。",
+      "oldLength": 41,
+      "newLength": 106,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y8zc001rte56vgt5ugca",
+      "title": "【EUのAI法に習う】欧州における生成AIと法制度の協調モデル",
+      "status": "error",
+      "error": "要約の長さが不適切: 204文字"
+    },
+    {
+      "id": "cmdq3y904001xte56e44tgkd0",
+      "title": "Flutterアプリケーション構築における「関心の分離」と「アーキテクチャ」",
+      "oldSummary": "Flutterアプリの拡張性を高めるために「関心の分離」と適切なアーキテクチャ設計が重要であること。",
+      "newSummary": "Flutterアプリ開発で、規模拡大による保守性・拡張性の課題を解決するため、「関心の分離」原則に基づいた適切なアーキテクチャ設計が重要となる。  これにより、コードの単一責任化を実現し、理解性と保守性を向上、開発効率とアプリの品質を改善する。",
+      "oldLength": 50,
+      "newLength": 122,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y90k0021te56cl6jp2wk",
+      "title": "「プラットフォームエンジニアリング」の基礎と「Kubernetes」開発基盤の要点を整理する",
+      "oldSummary": "プラットフォームエンジニアリングが開発者体験を向上させ、Kubernetesでスモールスタートを実現する方法を解説。",
+      "newSummary": "複雑化したソフトウェア開発における開発者体験と生産性向上のため、プラットフォームエンジニアリングが注目されている。Kubernetesを用いた開発基盤構築により、プロダクトチームはインフラ構築・運用から解放され、プロダクト開発に集中できるようになる。",
+      "oldLength": 58,
+      "newLength": 125,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y90r0023te56rr590ypv",
+      "title": "エッジコンピューティングのFastlyの共同創業者にインタビュー。生成AIを高速化する仕組みを解説",
+      "oldSummary": "Fastly共同創業者Tyler McMullenが、生成AIをエッジで高速化する仕組みと実装戦略。",
+      "newSummary": "Fastlyの共同創業者Tyler McMullen氏は、エッジコンピューティングが生成AIの高速化に貢献すると語る。CDNから進化したFastlyのソリューションは、エッジサーバーでの処理により、生成AIのレイテンシを低減し、ユーザー体験を向上させる。",
+      "oldLength": 50,
+      "newLength": 127,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y90y0025te56fpc6jva8",
+      "title": "「WebGPU」でシェーダーを使って三角形を1つだけ描画してみよう",
+      "oldSummary": "WebGPUを使い、シェーダーで単一の三角形を描画する手順とポイントを解説します。",
+      "newSummary": "WebGPUを用いてシェーダーを駆使し、単一の三角形を描画する手法を紹介する。この方法は、3Dモデルを構成する基本要素である三角形の描画を理解することで、複雑な3Dモデルの描画へと繋がるため、WebGPUによる3Dグラフィックス開発の基礎となる。",
+      "oldLength": 41,
+      "newLength": 123,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y91e0029te56y6l76iib",
+      "title": "「Docker」を使ってアプリケーションをパッケージングしよう",
+      "oldSummary": "コンテナ技術を活用し、Dockerでアプリケーションをパッケージ化する方法とベストプラクティスを解説。",
+      "newSummary": "Dockerを用いたアプリケーションのパッケージングにより、開発環境と本番環境の不整合による問題を解決する。Dockerはアプリケーションと必要なライブラリ、設定をコンテナにまとめて、環境依存性を排除し、どこでも同じ動作を実現する。",
+      "oldLength": 51,
+      "newLength": 116,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y921002fte56wdzbltbs",
+      "title": "プロジェクトを成功に導く「スケジュールの立て方」と「チェックポイント」",
+      "oldSummary": "・.要約: プロジェクト成功の鍵はスケジュール作成を早期に行い、業界理解やヒアリングで遅延を防ぐことです。",
+      "newSummary": "プロジェクト成功には、ゴールから逆算したスケジュール策定が不可欠です。初期段階からのスケジュール作成は、プロジェクト遅延を防ぎ、クライアントからの信頼獲得に繋がります。",
+      "oldLength": 53,
+      "newLength": 84,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y9wq002nte56pb21q8hh",
+      "title": "モジュールを外から見た振る舞いだけAIレビューさせる smoke-review",
+      "status": "error",
+      "error": "要約の長さが不適切: 235文字"
+    },
+    {
+      "id": "cmdq3y9wx002pte56mph3ak4e",
+      "title": "Mastraを参考にドキュメントMCPサーバーを作ってみた",
+      "status": "error",
+      "error": "要約の長さが不適切: 240文字"
+    },
+    {
+      "id": "cmdq3y9xf002tte56jge2nz4m",
+      "title": "Zennのダークモードを実装しました",
+      "oldSummary": "Zennのダークモード実装に向けて、デザインシステム整備とコンポーネント統一を行い、ユーザー体験を向上させた。",
+      "newSummary": "Zennのダークモード実装は、ユーザーからの強い要望に応え実現した。当初はデザインシステム未整備で困難だったが、デザイナーの貢献により実現。数百コンポーネントへの適用を可能にし、ユーザー体験を向上させた。",
+      "oldLength": 55,
+      "newLength": 102,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3y9xl002vte56qwepknw4",
+      "title": "生成AI連携型セキュリティアラート管理システム: Warren",
+      "status": "error",
+      "error": "要約の長さが不適切: 234文字"
+    },
+    {
+      "id": "cmdq3y9y1002zte567qdrzv65",
+      "title": "開発組織のAI活用を推進した3ヶ月間を振り返る",
+      "oldSummary": "開発組織におけるAI活用推進の実践と成果を3ヶ月で振り返った事例報告。",
+      "newSummary": "開発組織におけるAI活用推進の3ヶ月間の取り組みを振り返る。計測可能な目標設定から開始し、AIコーディングの開発業務への導入を目指した。具体的な技術名は記述されていないものの、一定の手応えを得ており、開発効率向上に繋がる成果が得られた。",
+      "oldLength": 35,
+      "newLength": 118,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3ya07003hte56cf48vjio",
+      "title": "Obsidianで使っているプラグイン紹介",
+      "oldSummary": "Obsidianの原理主義者がこっそり使う3つのプラグインを紹介し、各プラグインの使用方法と注意点を解説する記事です。",
+      "newSummary": "Obsidianで利用する3つのプラグインを紹介。Claude Code(Gemini CLIも可)と連携したターミナル機能により、ObsidianをMCPホストとして活用できる。ただし、プラグイン使用には注意点があるため、注意が必要である。",
+      "oldLength": 59,
+      "newLength": 121,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3ya0x003nte56q2rdhqqa",
+      "title": "Kiroの登場と最近のAIコーディングツールについて思うこと",
+      "oldSummary": "Kiro Preview版がリリースされ、エンジニアから多様な反応が寄せられたことの特徴と使用方法。",
+      "newSummary": "AIエディタKiroのプレビュー版がリリースされた。エンジニアからは様々な反応があり、AmazonによるAIエディタ開発やVSCodeフォークとの比較など、期待と疑問が混在している。",
+      "oldLength": 50,
+      "newLength": 91,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3ya16003pte56cgv05qzs",
+      "title": "【HTML, CSS, JavaScript】フォームの良い書き方",
+      "oldSummary": "フォーム作成時のHTML構造とJavaScript活用法を整理し、入力項目のレイアウトや送信処理のベストプラクティス。",
+      "newSummary": "HTMLフォーム作成におけるベストプラクティスを紹介。<form>タグで全体を囲み、入力項目は<ul><li>、その他は<div>で構成することで、見やすく効率的なフォームを作成できる。",
+      "oldLength": 59,
+      "newLength": 93,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3ya1n003tte56d9my9ijm",
+      "title": "homeの作成",
+      "oldSummary": "Render上にゲーム風ホーム画面を構築し、リンク遷移機能を実装した。",
+      "newSummary": "Renderを用いて、他サイトへのリンク機能を持つホーム画面を作成した。無料サービスであるRenderでの実装に苦戦したが、今後のゲーム開発を見据え、完成させた。",
+      "oldLength": 35,
+      "newLength": 81,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3ya1u003vte56oiqlz3lp",
+      "title": "Chart.js完全ガイド：実務で使える構造とTips",
+      "status": "error",
+      "error": "要約の長さが不適切: 260文字"
+    },
+    {
+      "id": "cmdq3ya29003zte56zc73d7na",
+      "title": "ちょっとVS Codeフレンドリーなコマンドラッパー",
+      "oldSummary": "外部コマンドをTypeScriptから簡単に実行できるmisocmdを紹介。補完機能が特徴。",
+      "newSummary": "TypeScriptで外部コマンドをラップするコマンドラッパーmisocmdを作成。spawnSyncを用いてコマンドを実行し、登録コマンドの補完機能を提供することで、VS Code上での使い勝手を向上させた。npm、deno、bunに対応する。",
+      "oldLength": 46,
+      "newLength": 123,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3ya2g0041te56et2cjzc7",
+      "title": "Zod 4、いつの間に完成していたの!?",
+      "oldSummary": "がリリースされ、国際化対応や新機能・変更点を紹介する記事です。",
+      "newSummary": "Zod v4がリリースされ、日本語を含む多言語対応のエラーメッセージを提供するようになった。z.config(z.locales.ja());で設定し、より分かりやすいエラーメッセージで開発効率を向上させる。",
+      "oldLength": 31,
+      "newLength": 104,
+      "status": "success"
+    },
+    {
+      "id": "cmdq3ya2p0043te56xu7flen7",
+      "title": "React useImperativeHandleの実装方法と実践的な使い所",
+      "oldSummary": "親から子へメソッドを公開するReactフック「useImperativeHandle」の実装手順と活用例を解説します。",
+      "newSummary": "ReactフックuseImperativeHandleは、親コンポーネントから子コンポーネントのメソッドや値へ直接アクセスを可能にし、従来の単方向データフローの制約を解消する。",
+      "oldLength": 59,
+      "newLength": 88,
+      "status": "success"
+    }
+  ]
+}
