@@ -196,6 +196,30 @@ npm run regenerate:all-unified -- --continue --limit=50
 - Rate Limitエラー時: 60秒待機して再試行
 - 継続オプション: `--continue`で中断箇所から再開
 
+## Claude Codeカスタムコマンド
+
+### 概要
+`.claude/commands/` ディレクトリに自然言語で記述したカスタムコマンドを配置。プロジェクトメンテナンスを効率化。
+
+### 主要コマンド
+
+**日常メンテナンス:**
+```bash
+/run quick-check        # 軽量チェック（1分）
+/run daily-maintenance  # 日次メンテナンス（2-3分）
+/run weekly-cleanup     # 週次クリーンアップ（5分）
+```
+
+**個別実行:**
+```bash
+/run update-serena-memory  # Serenaメモリ更新
+/run analyze-code-quality  # コード品質分析
+/run sync-project-docs     # ドキュメント同期
+/run check-todo-items      # TODO管理
+```
+
+詳細: `.claude/docs/custom-commands-guide.md`
+
 ## テストコマンド
 
 ```bash
