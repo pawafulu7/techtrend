@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'techtrend-scheduler',
-      script: 'scripts/scheduled/scheduler-v2.ts',
+      script: 'scripts/scheduled/scheduler.ts',
       interpreter: './node_modules/.bin/tsx',
       instances: 1,
       exec_mode: 'fork',
