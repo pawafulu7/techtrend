@@ -4,6 +4,9 @@ import { ExternalAPIError } from '../errors';
 import { cleanSummary as cleanSummaryUtil, cleanDetailedSummary as cleanDetailedSummaryUtil } from '../utils/summary-cleaner';
 import { validateSummary, cleanupSummary, validateAndNormalizeTags } from '../utils/summary-validator';
 import { calculateSummaryScore, needsRegeneration } from '../utils/quality-scorer';
+// import { detectArticleType } from '../utils/article-type-detector';  // 統一プロンプト移行により無効化
+// import { generatePromptForArticleType } from '../utils/article-type-prompts';  // 統一プロンプト移行により無効化
+import { generateUnifiedPrompt } from '../utils/article-type-prompts';
 import { 
   createSummaryPrompt as createSummaryPromptNew,
   createDetailedSummaryPrompt as createDetailedSummaryPromptNew,
@@ -101,8 +104,8 @@ export class GeminiClient {
     content: string
   ): Promise<{ summary: string; detailedSummary: string; tags: string[] }> {
     try {
-      // 共通処理を使用してプロンプトを生成
-      const prompt = createDetailedSummaryPromptNew(title, content);
+      // 統一フォーマットを使用してプロンプトを生成
+      const prompt = this.createDetailedSummaryPrompt(title, content);
       
       const result = await this.model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -147,19 +150,8 @@ export class GeminiClient {
     // Limit content length to avoid token limits
     const truncatedContent = content.substring(0, 2000);
     
-    // 記事タイプを判定
-    const articleType = detectArticleType(title, truncatedContent);
-    
-    // 記事タイプに応じた説明を生成
-    const typeDescriptions: Record<ArticleType, string> = {
-      'implementation': '個人開発・実装レポート',
-      'tutorial': 'チュートリアル・学習ガイド',
-      'problem-solving': '問題解決・技術改善',
-      'tech-intro': '技術紹介・解説',
-      'release': '新機能・リリース情報'
-    };
-    
-    return `以下の${typeDescriptions[articleType]}記事を日本語で要約してください。
+    // 統一プロンプトの簡易版（通常要約のみ）
+    return `以下の技術記事を日本語で要約してください。
 
 タイトル: ${title}
 内容: ${truncatedContent}
@@ -177,13 +169,6 @@ export class GeminiClient {
 - 要約は記事の内容そのものから直接始める
 - 「要約:」「要約：」などのラベルを付けない
 - 要約内容のみを出力
-
-記事タイプ別の重点:
-${articleType === 'implementation' ? '- 作ったものと使用技術を明確に\n- 実装した機能や特徴を具体的に' : ''}
-${articleType === 'tutorial' ? '- 学習内容と手順を具体的に\n- 対象技術とゴールを明確に' : ''}
-${articleType === 'problem-solving' ? '- 解決した問題と解決策を明確に\n- 効果や改善点を具体的に' : ''}
-${articleType === 'tech-intro' ? '- 技術の特徴と用途を説明\n- メリットや活用シーンを含める' : ''}
-${articleType === 'release' ? '- 新機能と対象ユーザーを明確に\n- 主要な改善点や特徴を含める' : ''}
 
 要約:`;
   }
@@ -292,11 +277,8 @@ ${articleType === 'release' ? '- 新機能と対象ユーザーを明確に\n- �
     // コンテンツを適切な長さに制限
     const truncatedContent = content.substring(0, 4000);
     
-    // 記事タイプを判定
-    const articleType = detectArticleType(title, truncatedContent);
-    
-    // 記事タイプに応じた詳細プロンプトを生成
-    return generatePromptForArticleType(articleType, title, truncatedContent);
+    // 統一プロンプトを使用
+    return generateUnifiedPrompt(title, truncatedContent);
   }
 
   private parseDetailedSummary(text: string): { summary: string; detailedSummary: string; tags: string[] } {
@@ -305,24 +287,62 @@ ${articleType === 'release' ? '- 新機能と対象ユーザーを明確に\n- �
     let detailedSummary = '';
     let tags: string[] = [];
     let isDetailedSummary = false;
+    let isSummarySection = false;
+    let isTagSection = false;
     let detailedSummaryLines: string[] = [];
 
-    for (const line of lines) {
-      if (line.startsWith('要約:') || line.startsWith('要約：')) {
-        const rawSummary = line.replace(/^要約[:：]\s*/, '');
-        summary = cleanupSummary(rawSummary);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // 要約セクションの検出（改行対応）
+      if (/^(要約|Summary|短い要約|一覧要約)[:：]/.test(line) && !isDetailedSummary) {
+        isSummarySection = true;
         isDetailedSummary = false;
-      } else if (line.startsWith('詳細要約:') || line.startsWith('詳細要約：')) {
+        isTagSection = false;
+        
+        const content = line.replace(/^(?:要約|Summary|短い要約|一覧要約)[:：]\s*/, '').trim();
+        if (content) {
+          summary = cleanupSummary(content);
+          isSummarySection = false;
+        }
+      }
+      // 詳細要約セクションの検出
+      else if (/^(詳細要約|詳細な要約|Detailed Summary)[:：]/.test(line)) {
         isDetailedSummary = true;
-      } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
+        isSummarySection = false;
+        isTagSection = false;
+      }
+      // タグセクションの検出
+      else if (/^(タグ|Tags)[:：]/.test(line)) {
+        isTagSection = true;
         isDetailedSummary = false;
-        const tagLine = line.replace(/^タグ[:：]\s*/, '');
-        const rawTags = tagLine.split(/[,、，]/)
+        isSummarySection = false;
+        
+        const tagContent = line.replace(/^(?:タグ|Tags)[:：]\s*/, '').trim();
+        if (tagContent) {
+          const rawTags = tagContent.split(/[,、，]/)
+            .map(tag => tag.trim())
+            .map(tag => this.normalizeTag(tag));
+          tags = validateAndNormalizeTags(rawTags);
+          isTagSection = false;
+        }
+      }
+      // 要約セクションで次の行に内容がある場合
+      else if (isSummarySection && line && !line.startsWith('【')) {
+        summary = cleanupSummary(line);
+        isSummarySection = false;
+      }
+      // 詳細要約の項目
+      else if (isDetailedSummary && line.startsWith('・')) {
+        detailedSummaryLines.push(line);
+      }
+      // タグセクションで次の行に内容がある場合
+      else if (isTagSection && line) {
+        const rawTags = line.split(/[,、，]/)
           .map(tag => tag.trim())
           .map(tag => this.normalizeTag(tag));
         tags = validateAndNormalizeTags(rawTags);
-      } else if (isDetailedSummary && line.trim().startsWith('・')) {
-        detailedSummaryLines.push(line.trim());
+        isTagSection = false;
       }
     }
 

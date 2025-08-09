@@ -1,0 +1,79 @@
+import { PrismaClient } from '@prisma/client';
+import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
+import fetch from 'node-fetch';
+
+const prisma = new PrismaClient();
+
+async function debug() {
+  const article = await prisma.article.findUnique({
+    where: { id: 'cme47e32v0001tehsc9bavuu5' }
+  });
+  
+  if (!article) {
+    console.log('Article not found');
+    return;
+  }
+  
+  console.log('=== Article Info ===');
+  console.log('Title:', article.title);
+  console.log('Content length:', article.content?.length || 0);
+  console.log('Summary:', article.summary);
+  console.log('Content preview:', article.content?.substring(0, 200));
+  
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.log('No API key');
+    return;
+  }
+  
+  const content = article.content || article.summary || article.title;
+  const prompt = generateUnifiedPrompt(article.title, content);
+  
+  console.log('\n=== Prompt ===');
+  console.log(prompt.substring(0, 500) + '...');
+  
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { 
+          temperature: 0.3, 
+          maxOutputTokens: 2000,
+          topP: 0.8,
+          topK: 40
+        }
+      })
+    }
+  );
+
+  const data = await response.json() as any;
+  const responseText = data.candidates[0].content.parts[0].text.trim();
+  
+  console.log('\n=== Gemini Response ===');
+  console.log(responseText);
+  
+  // Parse response
+  const lines = responseText.split('\n');
+  let summary = '';
+  let detailedSummary = '';
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('一覧要約:') || trimmed.startsWith('要約:')) {
+      summary = trimmed.replace(/^(一覧)?要約:/, '').trim();
+      console.log('\n=== Parsed Summary ===');
+      console.log('Found:', summary);
+    }
+  }
+  
+  if (!summary) {
+    console.log('\n=== No summary found! ===');
+  }
+  
+  await prisma.$disconnect();
+}
+
+debug().catch(console.error);
