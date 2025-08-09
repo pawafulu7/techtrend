@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-08-09T00:26:53.696Z",
+  "totalProcessed": 3,
+  "successCount": 2,
+  "errorCount": 1,
+  "results": [
+    {
+      "id": "cme0lemaa003otevwz7i068o4",
+      "title": "Minimize AI hallucinations and deliver up to 99% verification accuracy with Automated Reasoning checks: Now available",
+      "oldSummary": "記事の主題は、AI生成コンテンツの。",
+      "newSummary": "AIの幻覚現象とデータの曖昧さを最小限に抑え、最大99%の検証精度を実現する自動推論チェック機能が利用可能になりました。数理論理と形式検証技術を用いた、責任あるAIアプリケーション開発のための唯一のソリューションで、AIの信頼性を向上させます。",
+      "problemType": "短すぎる要約",
+      "status": "success"
+    },
+    {
+      "id": "cme2w8mam0005tern6nv8qyvg",
+      "title": "gpt-5 leaked system prompt",
+      "oldSummary": "GPT-5のシステムプロンプトらしき情報がリークされた。内容は、GPT-5モデルに基づき、2024年6月までの知識、画像入力機能有効、著作権遵守などを指示するものである。詳細な内容は不明だが、モデルの内部動作を知る上で重要な情報が含まれている可能性がある。",
+      "newSummary": "GPT-5のシステムプロンプトが流出し、その内容の一部が公開された。プロンプトはGPT-5モデルに基づき、2024年6月までの知識と画像入力機能を備え、著作権侵害を避けるよう指示している。",
+      "problemType": "不明瞭な内容",
+      "status": "success"
+    },
+    {
+      "id": "cme0le0qz0011tevw1o63jyhv",
+      "title": "JavaScriptの sort((a, b) => a - b) を理解する",
+      "problemType": "不明瞭な内容",
+      "status": "failed",
+      "reason": "不明瞭な表現が含まれています: \"不明\""
+    }
+  ]
+}

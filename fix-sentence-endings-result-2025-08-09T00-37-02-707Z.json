@@ -1,0 +1,71 @@
+{
+  "timestamp": "2025-08-09T00:37:02.707Z",
+  "totalProcessed": 9,
+  "successCount": 9,
+  "skipCount": 0,
+  "results": [
+    {
+      "id": "cme3ho5hu0014teyen8g1ct7e",
+      "title": "AIで変わるPdMの役割──思考する力が武器になる",
+      "oldSummary": "QuickBooks Onlineにおける一般的な給与計算の問題解決方法",
+      "newSummary": "QuickBooks Onlineにおける一般的な給与計算の問題解決方法。",
+      "status": "success"
+    },
+    {
+      "id": "cme3ho5gc0010teyeveva4pt4",
+      "title": "Scale out your Claude Code ~⁨⁩自社専用Agentで10xする開発プロセス~",
+      "oldSummary": "DatadogのアーカイブログをSnowflakeを用いて高速検索する手法",
+      "newSummary": "DatadogのアーカイブログをSnowflakeを用いて高速検索する手法。",
+      "status": "success"
+    },
+    {
+      "id": "cme3ho343000uteye6ro0ohz0",
+      "title": "How to use SQL to learn more about your Grafana usage",
+      "oldSummary": "Grafanaのデータベース(PostgreSQL v10.1想定)へのSQLクエリを用いた分析手法",
+      "newSummary": "Grafanaのデータベース(PostgreSQL v10.1想定)へのSQLクエリを用いた分析手法。",
+      "status": "success"
+    },
+    {
+      "id": "cme30itig0006tea4sexgulpy",
+      "title": "【ExpoとSupabaseで作る認証フロー (2)】invalidateQueriesでアプリの状態を自動同期する",
+      "oldSummary": "ExpoとSupabaseを用いた認証フローにおいて、サインアウト後に画面が更新されない問題を解決する方法",
+      "newSummary": "ExpoとSupabaseを用いた認証フローにおいて、サインアウト後に画面が更新されない問題を解決する方法。",
+      "status": "success"
+    },
+    {
+      "id": "cme2ye2su0001teo0qa9hkmg7",
+      "title": "CIを整備してメンテナンスを生成AIに任せる",
+      "oldSummary": "GitHubリポジトリ「issue-creator」と「giro」を用いて、CI(継続的インテグレーション)を整備し、生成AIによる自動的なメンテナンスを実現した事例",
+      "newSummary": "GitHubリポジトリ「issue-creator」と「giro」を用いて、CI(継続的インテグレーション)を整備し、生成AIによる自動的なメンテナンスを実現した事例。",
+      "status": "success"
+    },
+    {
+      "id": "cme2w8m9l0003ternrh7t22ib",
+      "title": "三菱・スバルなど多くの自動車メーカーが採用しているローリングコードセキュリティはFlipper Zeroで一発解錠可能、大規模な車両リコール以外に簡単な対応策はなしか",
+      "oldSummary": ":\n\n三菱やスバルなど多くの自動車メーカーが採用するローリングコードセキュリティが、Flipper Zeroというデバイスで簡単に解錠可能であることがセキュリティ専門家によって指摘されました",
+      "newSummary": ":\n\n三菱やスバルなど多くの自動車メーカーが採用するローリングコードセキュリティが、Flipper Zeroというデバイスで簡単に解錠可能であることがセキュリティ専門家によって指摘されました。",
+      "status": "success"
+    },
+    {
+      "id": "cme0le1e00013tevwq5wm84az",
+      "title": "JavaScriptのnormalizeで文字列の「正規化」をして、検索機能の半角・全角の差をシンプルに吸収する",
+      "oldSummary": "Unicodeのnormalizeを使い、半角・全角文字の差異を正規化して検索機能の精度と一貫性を向上させる方法",
+      "newSummary": "Unicodeのnormalizeを使い、半角・全角文字の差異を正規化して検索機能の精度と一貫性を向上させる方法。",
+      "status": "success"
+    },
+    {
+      "id": "cmdudqase0002tebaml3jlfi5",
+      "title": "JavaScriptでABC417 (A-C)",
+      "oldSummary": "文字列の部分文字列を取得するために、String.prototype.slice を使い、B が0の場合は分岐で対処する方法",
+      "newSummary": "文字列の部分文字列を取得するために、String.prototype.slice を使い、B が0の場合は分岐で対処する方法。",
+      "status": "success"
+    },
+    {
+      "id": "cmdq44j610001te3t4ylwg05u",
+      "title": "MCP Servers That I Use as a Technical Founder",
+      "oldSummary": "MCPサーバーを用いたWhatsAppメッセージ送信や予約機能の実装例",
+      "newSummary": "MCPサーバーを用いたWhatsAppメッセージ送信や予約機能の実装例。",
+      "status": "success"
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "timestamp": "2025-08-09T00:30:36.247Z",
+  "totalProcessed": 16,
+  "successCount": 0,
+  "errorCount": 16,
+  "results": [
+    {
+      "id": "cme30iuvw000atea4olay1aym",
+      "title": "OpenAIの「GPT-5」、アプリ作成手軽に ヒト並み知能なお遠く - 日本経済新聞",
+      "status": "failed",
+      "reason": "まだ長すぎます（223文字）"
+    },
+    {
+      "id": "cme2ydmib000itenunno1f5j8",
+      "title": "From Terraform Modules to Platform Services: Simplify Infrastructure Management with the Kratix CLI",
+      "status": "failed",
+      "reason": "まだ長すぎます（186文字）"
+    },
+    {
+      "id": "cme2w8m850001ternsr2npd6u",
+      "title": "Dockerを悪用するEDRバイパス手法「Bring Your Own Container」 - Sterra Security Tech Blog",
+      "status": "failed",
+      "reason": "まだ長すぎます（280文字）"
+    },
+    {
+      "id": "cme2u2yss0007te7fdrz9ynvk",
+      "title": "We’re testing a new, AI-powered Google Finance.",
+      "status": "failed",
+      "reason": "まだ長すぎます（240文字）"
+    },
+    {
+      "id": "cme2lipco0005ted8efko30ba",
+      "title": "ジョブ理論をもとにノーススターメトリックを考える重要性 ～相乗効果の実現～ - RAKUS Developers Blog | ラクス エンジニアブログ",
+      "status": "failed",
+      "reason": "まだ長すぎます（233文字）"
+    },
+    {
+      "id": "cmds2555q0063teo6b5xvs9f4",
+      "title": "みんな最近Yahoo!天気がすごいって話してるけど、俺はYahoo!マップも相当ヤバ..",
+      "status": "failed",
+      "reason": "まだ長すぎます（202文字）"
+    },
+    {
+      "id": "cmds24iqe003oteo68k8427e3",
+      "title": "Amazon Location Service Migration SDK now supports Enhanced Places, Routes, and Maps capabilities",
+      "status": "failed",
+      "reason": "まだ長すぎます（238文字）"
+    },
+    {
+      "id": "cmdqm0q98000htel70pt2ukze",
+      "title": "CNCFが「Kubernetes」誕生10周年を迎えた2024年に公開した「CNCF アニュアルレポート 2024」の日本語版を読み解く",
+      "status": "failed",
+      "reason": "まだ長すぎます（207文字）"
+    },
+    {
+      "id": "cmdq4ou6u001jterllu47t0f5",
+      "title": "StreamlitとStrands Agentsでチャットを作りながらBedrock AgentCoreに入門（Runtime、Observability、Memory）",
+      "status": "failed",
+      "reason": "まだ長すぎます（251文字）"
+    },
+    {
+      "id": "cmdq4ou3h0015terlm23bkqi7",
+      "title": "Ryzen AI Max+ 395のLLMの動作速度を他の環境と比較してみました",
+      "status": "failed",
+      "reason": "まだ長すぎます（253文字）"
+    },
+    {
+      "id": "cmdq44y750047te3t6cexvpi0",
+      "title": "Grafana Cloud updates: deeper insights in Kubernetes Monitoring, Adaptive Metrics updates, and more",
+      "status": "failed",
+      "reason": "まだ長すぎます（286文字）"
+    },
+    {
+      "id": "cmdq44l1d001tte3tmybdm2yh",
+      "title": "Security Update for Amazon Q Developer Extension for Visual Studio Code (Version #1.84)",
+      "status": "failed",
+      "reason": "まだ長すぎます（246文字）"
+    },
+    {
+      "id": "cmdq44jeg003dte3tnix9dd9p",
+      "title": "Amazon RDS for PostgreSQL, MySQL, and MariaDB now supports M6i database instances in additional AWS regions",
+      "status": "failed",
+      "reason": "まだ長すぎます（195文字）"
+    },
+    {
+      "id": "cmdq3yf66007rte56htqne5w4",
+      "title": "10 Open Source AI Tools Every Developer Should Know",
+      "status": "failed",
+      "reason": "まだ長すぎます（229文字）"
+    },
+    {
+      "id": "cmdq3yag7005xte5601e6770f",
+      "title": "Attention isn’t all we need; we need ownership too",
+      "status": "failed",
+      "reason": "まだ長すぎます（266文字）"
+    },
+    {
+      "id": "cmdq3yaej005jte56rwjp7m2t",
+      "title": "Building stronger engineering teams with aligned autonomy",
+      "status": "failed",
+      "reason": "まだ長すぎます（290文字）"
+    }
+  ]
+}
