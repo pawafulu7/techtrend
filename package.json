@@ -42,7 +42,14 @@
     "regenerate:force-all": "tsx scripts/manual/force-regenerate-all.ts",
     "regenerate:under-40": "tsx scripts/manual/regenerate-under-40.ts",
     "regenerate:all-unified": "tsx scripts/manual/regenerate-all-unified.ts",
-    "techtrend": "tsx lib/cli/index.ts"
+    "techtrend": "tsx lib/cli/index.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:chromium": "playwright test --project=chromium",
+    "playwright:install": "playwright install",
+    "playwright:report": "playwright show-report"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -93,6 +100,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.54.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.4",
@@ -103,6 +111,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
+    "dotenv": "^17.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.4.4",
     "eslint-config-prettier": "^10.1.8",
