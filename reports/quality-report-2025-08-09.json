@@ -1,0 +1,125 @@
+{
+  "generatedAt": "2025-08-09T08:26:34.835Z",
+  "metrics": {
+    "totalArticles": 1342,
+    "averageScore": 82,
+    "scoreDistribution": {
+      "excellent": 349,
+      "good": 790,
+      "fair": 123,
+      "poor": 80
+    },
+    "issueTypes": {
+      "length": 943,
+      "truncation": 9,
+      "thinContent": 119,
+      "languageMix": 2,
+      "format": 91
+    },
+    "regenerationStats": {
+      "needed": 80,
+      "successful": 0,
+      "failed": 0
+    },
+    "techTermsUsage": {
+      "totalTermsUsed": 4,
+      "uniqueTermsUsed": 4,
+      "topTerms": [
+        {
+          "term": "Python",
+          "count": 1
+        },
+        {
+          "term": "API",
+          "count": 1
+        },
+        {
+          "term": "GraphQL",
+          "count": 1
+        },
+        {
+          "term": "CORS",
+          "count": 1
+        }
+      ]
+    },
+    "sourceBreakdown": {}
+  },
+  "sourceBreakdown": {
+    "Zenn": {
+      "total": 235,
+      "averageScore": 84.68085106382976,
+      "issues": 160
+    },
+    "はてなブックマーク": {
+      "total": 366,
+      "averageScore": 81.77595628415301,
+      "issues": 272
+    },
+    "AWS": {
+      "total": 153,
+      "averageScore": 84.9673202614379,
+      "issues": 88
+    },
+    "Dev.to": {
+      "total": 93,
+      "averageScore": 79.24731182795703,
+      "issues": 77
+    },
+    "SRE": {
+      "total": 73,
+      "averageScore": 83.83561643835617,
+      "issues": 48
+    },
+    "Google AI Blog": {
+      "total": 29,
+      "averageScore": 79.3103448275862,
+      "issues": 27
+    },
+    "InfoQ Japan": {
+      "total": 9,
+      "averageScore": 86.66666666666667,
+      "issues": 5
+    },
+    "Corporate Tech Blog": {
+      "total": 44,
+      "averageScore": 82.5,
+      "issues": 37
+    },
+    "Stack Overflow Blog": {
+      "total": 47,
+      "averageScore": 76.17021276595744,
+      "issues": 42
+    },
+    "Qiita Popular": {
+      "total": 75,
+      "averageScore": 79.60000000000001,
+      "issues": 60
+    },
+    "Hugging Face Blog": {
+      "total": 49,
+      "averageScore": 83.46938775510205,
+      "issues": 40
+    },
+    "Think IT": {
+      "total": 29,
+      "averageScore": 82.06896551724138,
+      "issues": 22
+    },
+    "Publickey": {
+      "total": 28,
+      "averageScore": 85.35714285714286,
+      "issues": 17
+    },
+    "Speaker Deck": {
+      "total": 90,
+      "averageScore": 80.77777777777776,
+      "issues": 85
+    },
+    "Google Developers Blog": {
+      "total": 22,
+      "averageScore": 83.63636363636364,
+      "issues": 15
+    }
+  }
+}

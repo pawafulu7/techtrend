@@ -400,106 +400,132 @@ async function generateSummaries(): Promise<GenerateResult> {
           
           while (retryCount < MAX_RETRIES) {
             try {
-            const content = article.content || article.description || '';
-            
-            // 既に日本語の要約がある場合はスキップ（Gemini APIを呼ばない）
-            const existingSummary = article.summary || '';
-            const hasJapaneseSummary = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(existingSummary);
-            
-            let summary = existingSummary;
-            let tags: string[] = [];
-            
-            // 日本語要約がない場合のみGemini APIを呼び出す
-            if (!hasJapaneseSummary || !article.summary || !article.detailedSummary) {
-              let result: SummaryAndTags;
-              let regenerationCount = 0;
-              const MAX_REGENERATIONS = 2;
+              const content = article.content || article.description || '';
               
-              // 品質問題がある場合は再生成を試みる
-              while (regenerationCount <= MAX_REGENERATIONS) {
-                try {
-                  result = await generateSummaryAndTags(
-                    article.title, 
-                    content,
-                    regenerationCount > 0  // 2回目以降は再生成フラグを立てる
-                  );
-                  break; // 品質問題がなければループを抜ける
-                } catch (error) {
-                  const errorMessage = error instanceof Error ? error.message : String(error);
-                  if (errorMessage.startsWith('QUALITY_ISSUE:') && regenerationCount < MAX_REGENERATIONS) {
-                    regenerationCount++;
-                    console.log(`  品質問題検出: ${errorMessage.replace('QUALITY_ISSUE: ', '')}`);
-                    console.log(`  再生成中 (${regenerationCount}/${MAX_REGENERATIONS})...`);
-                    await sleep(1000); // API負荷軽減
-                    continue;
+              // 既に日本語の要約がある場合はスキップ（Gemini APIを呼ばない）
+              const existingSummary = article.summary || '';
+              const hasJapaneseSummary = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(existingSummary);
+              
+              let summary = existingSummary;
+              let tags: string[] = [];
+              
+              // 日本語要約がない場合のみGemini APIを呼び出す
+              if (!hasJapaneseSummary || !article.summary || !article.detailedSummary) {
+                let result: SummaryAndTags;
+                let regenerationCount = 0;
+                const MAX_REGENERATIONS = parseInt(process.env.MAX_REGENERATION_ATTEMPTS || '3');
+                
+                // 品質問題がある場合は再生成を試みる
+                while (regenerationCount <= MAX_REGENERATIONS) {
+                  try {
+                    result = await generateSummaryAndTags(
+                      article.title, 
+                      content,
+                      regenerationCount > 0  // 2回目以降は再生成フラグを立てる
+                    );
+                    
+                    // 品質チェック（環境変数で有効化チェック）
+                    if (process.env.QUALITY_CHECK_ENABLED === 'true') {
+                      const qualityCheck = checkContentQuality(
+                        result.summary, 
+                        result.detailedSummary,
+                        article.title
+                      );
+                      
+                      // 品質基準を満たさない場合は再生成
+                      const minScore = parseInt(process.env.QUALITY_MIN_SCORE || '70');
+                      if (qualityCheck.score < minScore && regenerationCount < MAX_REGENERATIONS) {
+                        regenerationCount++;
+                        apiStats.regenerations++;
+                        console.log(`  ⚠️ 品質スコア: ${qualityCheck.score}/100`);
+                        console.log(`  再生成中 (${regenerationCount}/${MAX_REGENERATIONS})...`);
+                        await sleep(1000); // API負荷軽減
+                        continue;
+                      }
+                      
+                      // 軽微な問題は自動修正（環境変数で有効化チェック）
+                      if (process.env.QUALITY_AUTO_FIX === 'true' && qualityCheck.issues.length > 0) {
+                        result.summary = fixSummary(result.summary, qualityCheck.issues);
+                      }
+                    }
+                    
+                    break; // 品質問題がなければループを抜ける
+                  } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    if (errorMessage.startsWith('QUALITY_ISSUE:') && regenerationCount < MAX_REGENERATIONS) {
+                      regenerationCount++;
+                      console.log(`  品質問題検出: ${errorMessage.replace('QUALITY_ISSUE: ', '')}`);
+                      console.log(`  再生成中 (${regenerationCount}/${MAX_REGENERATIONS})...`);
+                      await sleep(1000); // API負荷軽減
+                      continue;
+                    }
+                    throw error; // その他のエラーはそのままスロー
                   }
-                  throw error; // その他のエラーはそのままスロー
                 }
-              }
-              
-              summary = result!.summary;
-              tags = result!.tags;
-              
-              // 要約を更新（新形式として保存）
-              await prisma.article.update({
-                where: { id: article.id },
-                data: { 
-                  summary,
-                  detailedSummary: result!.detailedSummary,
-                  articleType: result!.articleType,
-                  summaryVersion: 3  // 品質チェック版をv3とする
-                }
-              });
-            } else {
-              // 既に日本語要約がある場合でもタグがなければタグのみ生成
-              const existingTags = await prisma.article.findUnique({
-                where: { id: article.id },
-                include: { tags: true }
-              });
-              
-              if (!existingTags?.tags || existingTags.tags.length === 0) {
-                const result = await generateSummaryAndTags(article.title, content);
-                tags = result.tags;
+                
+                summary = result!.summary;
+                tags = result!.tags;
+                
+                // 要約を更新（新形式として保存）
+                await prisma.article.update({
+                  where: { id: article.id },
+                  data: { 
+                    summary,
+                    detailedSummary: result!.detailedSummary,
+                    articleType: result!.articleType,
+                    summaryVersion: 3  // 品質チェック版をv3とする
+                  }
+                });
               } else {
-                console.log(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (日本語要約あり、スキップ)`);
-                generatedCount++;
-                return;
-              }
-            }
-
-            // タグを処理
-            if (tags.length > 0) {
-              // 既存のタグを取得または作成
-              const tagRecords = await Promise.all(
-                tags.map(async (tagName) => {
-                  const existingTag = await prisma.tag.findUnique({
-                    where: { name: tagName }
-                  });
-
-                  if (existingTag) {
-                    return existingTag;
-                  }
-
-                  return await prisma.tag.create({
-                    data: { name: tagName }
-                  });
-                })
-              );
-
-              // 記事にタグを関連付ける
-              await prisma.article.update({
-                where: { id: article.id },
-                data: {
-                  tags: {
-                    connect: tagRecords.map(tag => ({ id: tag.id }))
-                  }
+                // 既に日本語要約がある場合でもタグがなければタグのみ生成
+                const existingTags = await prisma.article.findUnique({
+                  where: { id: article.id },
+                  include: { tags: true }
+                });
+                
+                if (!existingTags?.tags || existingTags.tags.length === 0) {
+                  const result = await generateSummaryAndTags(article.title, content);
+                  tags = result.tags;
+                } else {
+                  console.log(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (日本語要約あり、スキップ)`);
+                  generatedCount++;
+                  return;
                 }
-              });
-            }
-            
-            console.log(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
-            generatedCount++;
-            apiStats.successes++;
+              }
+
+              // タグを処理
+              if (tags.length > 0) {
+                // 既存のタグを取得または作成
+                const tagRecords = await Promise.all(
+                  tags.map(async (tagName) => {
+                    const existingTag = await prisma.tag.findUnique({
+                      where: { name: tagName }
+                    });
+
+                    if (existingTag) {
+                      return existingTag;
+                    }
+
+                    return await prisma.tag.create({
+                      data: { name: tagName }
+                    });
+                  })
+                );
+
+                // 記事にタグを関連付ける
+                await prisma.article.update({
+                  where: { id: article.id },
+                  data: {
+                    tags: {
+                      connect: tagRecords.map(tag => ({ id: tag.id }))
+                    }
+                  }
+                });
+              }
+              
+              console.log(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
+              generatedCount++;
+              apiStats.successes++;
               break; // 成功したらループを抜ける
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : String(error);

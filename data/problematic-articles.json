@@ -1,0 +1,1952 @@
+{
+  "generatedAt": "2025-08-09T08:26:29.716Z",
+  "totalProblematic": 80,
+  "needsRegeneration": 80,
+  "articleIds": [
+    "cme3q8sny0001te9rl7g9t7dn",
+    "cme3wob5z0003te85n11vu9rf",
+    "cme2u2yss0007te7fdrz9ynvk",
+    "cme3uj0pq0003tenztdyl8ov7",
+    "cme2w8m850001ternsr2npd6u",
+    "cme2u3h3w000qte7fapniypod",
+    "cme3ho5jt0018teyemuk3joqq",
+    "cme28nsme0003te4tcyhkzkv3",
+    "cme26hz3b0011te8r62rxov4k",
+    "cme26ir5i005pte8risn4btfb",
+    "cme161hg2000qte0to6h5iwzb",
+    "cme0tagw900aetevwxw13pbn5",
+    "cme0ldsrn000ftevw4lsul2kq",
+    "cme3yz42p000pte099upxsnc5",
+    "cme26iqwg0057te8rlkdjq83b",
+    "cmdzfx8ze000cte3nx6k9fgb1",
+    "cmdz56rlt0014tevrvmti7zjn",
+    "cme2jjaj2000pte9i47yy7fxy",
+    "cmdyo229m0016tel0n411ecsj",
+    "cmdyfhh4w0005tefpxhatpal6",
+    "cme0xi5cj000ctesykkgd8wk5",
+    "cmdy2mj3a000hter9jk0fn414",
+    "cmdz5702h0021tevrpfwnzope",
+    "cmdy97qvy0005te0442wjm9hu",
+    "cmdx4by9v000zte4eewd1qecx",
+    "cmdx26svl0005tek1yok9xwm5",
+    "cmdx4by7o000qte4e17eqahu9",
+    "cmdy6wuir0003temnyia03kid",
+    "cmdxprmjz0030tezpogjatbcz",
+    "cmdwgr2320012tehuugw97q6o",
+    "cmdwgr1x2000qtehuueezlcdx",
+    "cmdwgr24d0014tehurwuqcckj",
+    "cmdwgr1ys000utehuy2hrm458",
+    "cmdubl76z000ate1wy9g9ro3y",
+    "cme0lfbb4006ptevwjhk5jyy1",
+    "cmdu7ygcs0001te0hl0h0fwi3",
+    "cmdv7qr3h000ateqxp322kr1v",
+    "cmdu8emtp000nte8d6bmjhirr",
+    "cmdtm6ldz002nte4da329mk52",
+    "cmdtm6nyi0032te4dfxdnkvuw",
+    "cmdu7yh300003te0h1yqele1r",
+    "cmdwmsuil000itev9qjk3wi9z",
+    "cmdwc68610003tejhlz6qivmf",
+    "cmds24in7002pteo6as1bk75o",
+    "cmds24ins002wteo6qitvrdnt",
+    "cmdwtlkz7000rte2zrfvw7hhr",
+    "cmdq44zff006pte3twumqf597",
+    "cmdqva12m000mtesw0zyblxr4",
+    "cmdqt4rxx0001teemy3lhkwin",
+    "cmdqzkaiu0003teqsbtujb2sr",
+    "cmdr1parr000btezsztwoj4js",
+    "cmdwmrzv60008te68k9zq63c2",
+    "cmds25512005lteo6c24m2886",
+    "cmdvec1eu000dted49gjl7x2y",
+    "cmdtm7bex005ite4dfam8p20z",
+    "cmdx011sh0005tezh7xorztou",
+    "cmdq3y8ip000zte56lma59q2t",
+    "cmdq44kom0003te3t795xft0u",
+    "cmdq3yacu0055te56fieuhqd6",
+    "cmdq3y8g70009te5668zsc0dj",
+    "cmdq44ku9000tte3tt7i06vgg",
+    "cmdq4otsr0001terl8wpe4a44",
+    "cmdq3yf6w007xte56f7c73mwp",
+    "cmdq3y9zi003bte56mxp5olys",
+    "cmdq3yf5g007lte56fv7lfby7",
+    "cmdq3yf46007bte565wosepql",
+    "cmdq44y31003tte3t4fek8yhz",
+    "cmdq3yfau008pte56sqoq8rfq",
+    "cmdq44l10001rte3t5ey2xx36",
+    "cmdq4otzi000rterlh54su84l",
+    "cmdq44j8i002nte3tltkufinm",
+    "cmdq4ou460019terlicbzk5ud",
+    "cmdq44jc00033te3tyeeudvac",
+    "cmdq3ya8a004lte56j1s4caw2",
+    "cmdq44y9r004hte3tupznjdww",
+    "cmdq3yaf1005nte5608om6ze8",
+    "cmdriumy20005tez3lyyfrgxb",
+    "cmdwgzovq0055tealoxks9q2o",
+    "cmdq44yhk0059te3tmaol7hlw",
+    "cmdq44yk3005lte3tliq5c0b0"
+  ],
+  "details": [
+    {
+      "id": "cme3q8sny0001te9rl7g9t7dn",
+      "title": "駿河屋の第三者不正アクセス、なんでセキュリティコードが抜かれるんだよ…→ページ改ざんによるWebスキミング攻撃なので、同店で最近クレカ使用した人は要注意",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 65文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 65文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme3wob5z0003te85n11vu9rf",
+      "title": "Serena有効化でClaude Code起動時にWebに飛ばされるのをやめる",
+      "source": "はてなブックマーク",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 63文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 63文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme2u2yss0007te7fdrz9ynvk",
+      "title": "We’re testing a new, AI-powered Google Finance.",
+      "source": "Google AI Blog",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 166文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 166文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme3uj0pq0003tenztdyl8ov7",
+      "title": "はてなブログに生成AIから読めるかどうかの設定ができていた - 誰がログ",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 122文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 122文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme2w8m850001ternsr2npd6u",
+      "title": "Dockerを悪用するEDRバイパス手法「Bring Your Own Container」 - Sterra Security Tech Blog",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 156文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 156文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme2u3h3w000qte7fapniypod",
+      "title": "生成AI検索、ニュースサイトに打撃 読売新聞が米新興提訴 - 日本経済新聞",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 128文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 128文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme3ho5jt0018teyemuk3joqq",
+      "title": "「Claude」の米Anthropic、日本法人社長に東條英俊氏--経歴は",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 128文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 128文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme28nsme0003te4tcyhkzkv3",
+      "title": "AIでテキストファイルを書き換える技術",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 134文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 134文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme26hz3b0011te8r62rxov4k",
+      "title": "AWS Budgets now supports Billing View for cross-account cost monitoring",
+      "source": "AWS",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 133文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 133文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme26ir5i005pte8risn4btfb",
+      "title": "「Googleカレンダーの件名」で他人の家の照明を操れる--Geminiの悪用例が報告",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 127文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 127文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme161hg2000qte0to6h5iwzb",
+      "title": "Getting Started with EVS CLI: Manage Amazon Elastic VMware Service from the Command Line",
+      "source": "Dev.to",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 375文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 375文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme0tagw900aetevwxw13pbn5",
+      "title": "無料でここまで!? 汚い写真をAIで高画質化する方法 無料ソフト「Upscayl」の使い方 | イチオシ | ichioshi",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 244文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 244文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme0ldsrn000ftevw4lsul2kq",
+      "title": "採用担当がAI活用には“メモリファイル”が大事だと気づいた話｜mai ishikawa",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 267文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 267文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme3yz42p000pte099upxsnc5",
+      "title": "【JavaScript】ボタンの２重クリックを防止する方法",
+      "source": "Qiita Popular",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 55文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 55文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme26iqwg0057te8rlkdjq83b",
+      "title": "MCP-UI",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 141文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 141文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdzfx8ze000cte3nx6k9fgb1",
+      "title": "東大の松尾・岩澤研、「大規模言語モデル講座」の資料を無料公開 LLMの理論から実践まで体系的に解説",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 128文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 128文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdz56rlt0014tevrvmti7zjn",
+      "title": "Introducing Amazon Elastic VMware Service for running VMware Cloud Foundation on AWS",
+      "source": "AWS",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 144文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 144文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme2jjaj2000pte9i47yy7fxy",
+      "title": "AWS完全初心者がAWS初心者になった話",
+      "source": "Qiita Popular",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 56文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 56文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdyo229m0016tel0n411ecsj",
+      "title": "AIが就職面接をしている企業を求職者は避けるようになってきている",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 127文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 127文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdyfhh4w0005tefpxhatpal6",
+      "title": "Slack上でみんなで育てるAI bot 「resident-ai」 - Hatena Developer Blog",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 122文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 122文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme0xi5cj000ctesykkgd8wk5",
+      "title": "2分で決まる：Serena vs Cipher 思想とアーキテクチャ——CLIオンデマンドか常駐メモリか",
+      "source": "Zenn",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 124文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 124文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdy2mj3a000hter9jk0fn414",
+      "title": "Claude Code 使おうぜって話",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 303文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 303文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdz5702h0021tevrpfwnzope",
+      "title": "How I’m Using AI (as an AI Skeptic)",
+      "source": "Dev.to",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 138文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 138文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdy97qvy0005te0442wjm9hu",
+      "title": "危険なURLを安全に共有する提案",
+      "source": "Qiita Popular",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 137文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 137文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdx4by9v000zte4eewd1qecx",
+      "title": "React Hooks: useState入門",
+      "source": "Zenn",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 53文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 53文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdx26svl0005tek1yok9xwm5",
+      "title": "分散型SNSプロトコル「Nostr」に対する世界初の包括的な安全性評価を実施｜2025年｜NICT-情報通信研究機構",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 62文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 62文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdx4by7o000qte4e17eqahu9",
+      "title": "『JavaScript関数型プログラミング 複雑性を抑える発想と実践法を学ぶ』を読んだ 03",
+      "source": "Zenn",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 60文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 60文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdy6wuir0003temnyia03kid",
+      "title": "読札AWS、取札Azureの「クラウド百人一首」作ってみた 対応するサービス名を当てろ",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 56文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 56文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdxprmjz0030tezpogjatbcz",
+      "title": "AIの「ペルソナ」発現パターンを検出して問題がある性格を抑え込む研究結果をAnthropicが公開",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 58文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 58文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdwgr2320012tehuugw97q6o",
+      "title": "AWS Lambdaをローカルで実行する - コンテナイメージ作成不要のシンプルな方法 - Techtouch Developers Blog",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 52文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 52文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdwgr1x2000qtehuueezlcdx",
+      "title": "意外とイラストレーターも見えてないところでイラスト生成AI活用してるらしい",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 275文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 275文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdwgr24d0014tehurwuqcckj",
+      "title": "動物系の生成AIはマジで怖いんだよ...例えば「美味しそうにブドウを食べて飛び跳ねて喜ぶ犬」の生成AI動画がバズった時、こんな悲劇が起きかねない",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 250文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 250文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdwgr1ys000utehuy2hrm458",
+      "title": "図書館の司書とAI司書に同じ相談したら…回答から見えた両者の違い：朝日新聞",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 293文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 293文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdubl76z000ate1wy9g9ro3y",
+      "title": "JALの高級クレカのWebサイトに使われている画像がAI生成ではないかと指摘が殺到→「ページ自体も怪しい」「写真はせめて自社のカードを使おうよ...」",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 350文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 350文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cme0lfbb4006ptevwjhk5jyy1",
+      "title": "【2025年8月】KiroのPricingがようやく公開されたので覗いてみよう",
+      "source": "Qiita Popular",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 72文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 72文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdu7ygcs0001te0hl0h0fwi3",
+      "title": "Serena MCPはClaude Codeを救うのか？",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 187文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 187文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdv7qr3h000ateqxp322kr1v",
+      "title": "「理論がないAI/LLM」に情報幾何学から新たな解釈の可能性 ──“曲がった”ニューラルネットワークが引き起こす爆発的記憶、京大らが高次相互作用の数理に突破口 | Ledge.ai",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 312文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 312文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdu8emtp000nte8d6bmjhirr",
+      "title": "何を作ろうか、、",
+      "source": "Zenn",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 180文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 180文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdtm6ldz002nte4da329mk52",
+      "title": "AWS Directory Service launches Hybrid Edition for Managed Microsoft AD",
+      "source": "AWS",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 76文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 76文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdtm6nyi0032te4dfxdnkvuw",
+      "title": "Amazon Kinesis Video Streams expands coverage to three new AWS Regions",
+      "source": "AWS",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 68文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 68文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdu7yh300003te0h1yqele1r",
+      "title": "Cursorで業務フローをつくる｜すぅ | AI駆動PM",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 211文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 211文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdwmsuil000itev9qjk3wi9z",
+      "title": "Have I Been Pwned 2.0 データ漏洩監視のための新ツールを追加",
+      "source": "InfoQ Japan",
+      "score": 60,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 382文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "language_mix",
+          "severity": "major",
+          "description": "不適切な英語表現が混入: I Been (英語の命令文・提案文)",
+          "suggestion": "日本語に翻訳・修正",
+          "details": {
+            "hasProblematicEnglish": true,
+            "problematicPhrases": [
+              "I Been (英語の命令文・提案文)"
+            ],
+            "allowedTerms": [
+              "Python",
+              "API",
+              "GraphQL",
+              "CORS"
+            ],
+            "severity": "major"
+          }
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 382文字, 不適切な英語表現が混入: I Been (英語の命令文・提案文)"
+    },
+    {
+      "id": "cmdwc68610003tejhlz6qivmf",
+      "title": "第127回NearMe技術勉強会 -Apple Containerについて調べて触ってみた-",
+      "source": "Speaker Deck",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 69文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 69文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmds24in7002pteo6as1bk75o",
+      "title": "AWS DMS Schema Conversion introduces Virtual Mode",
+      "source": "AWS",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 67文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 67文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmds24ins002wteo6qitvrdnt",
+      "title": "Amazon Connect Cases now displays detailed email content within the case activity feed",
+      "source": "AWS",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 221文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 221文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdwtlkz7000rte2zrfvw7hhr",
+      "title": "The Bug That Drove Me So Crazy, I Got Hired Just to Fix It",
+      "source": "Dev.to",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 66文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 66文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq44zff006pte3twumqf597",
+      "title": "Unlock deeper insights with the new Python client library for Data Commons",
+      "source": "Google Developers Blog",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 63文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 63文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdqva12m000mtesw0zyblxr4",
+      "title": "Ollama's new app · Ollama Blog",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 67文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 67文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdqt4rxx0001teemy3lhkwin",
+      "title": "Vibe code is legacy code",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 317文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 317文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdqzkaiu0003teqsbtujb2sr",
+      "title": "GitHub - google/langextract: A Python library for extracting structured information from unstructured text using LLMs with precise source grounding and interactive visualization.",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 51文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 51文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdr1parr000btezsztwoj4js",
+      "title": "React + SWRで手動ポーリングを簡潔にリファクタリングした話",
+      "source": "Zenn",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 65文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 65文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdwmrzv60008te68k9zq63c2",
+      "title": "Google Earth AI: Our state-of-the-art geospatial AI models",
+      "source": "Google AI Blog",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 78文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 78文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmds25512005lteo6c24m2886",
+      "title": "第3回｜最低限でOK！Obsidianおすすめプラグイン3選+α｜こじか🦌@教育×AI",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 239文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 239文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdvec1eu000dted49gjl7x2y",
+      "title": "【JavaScript】const ええやんってなる記事",
+      "source": "Qiita Popular",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 74文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 74文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdtm7bex005ite4dfam8p20z",
+      "title": "AWS完全初心者がネットワークの基礎を学んだ話",
+      "source": "Qiita Popular",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 75文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 75文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdx011sh0005tezh7xorztou",
+      "title": "AI-Generated Workflows: Automate Complex Processes from Plain Text",
+      "source": "Dev.to",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 319文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 319文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq3y8ip000zte56lma59q2t",
+      "title": "自分が使っているサービスに不正ログインされたかも？と思った時に最初にやるべきこととは",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 130文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 130文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq44kom0003te3t795xft0u",
+      "title": "AWS Network Firewall is now available in the AWS Asia Pacific (Taipei) Region",
+      "source": "AWS",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 67文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 67文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq3yacu0055te56fieuhqd6",
+      "title": "That custom gift for your mom takes more work than you think",
+      "source": "Stack Overflow Blog",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 179文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 179文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq3y8g70009te5668zsc0dj",
+      "title": "技術資格に「合格する」ための勉強法 ——IPA&amp;AWS試験で成果を出した“実践ノウハウ”を公開 | gihyo.jp",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 130文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 130文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq44ku9000tte3tt7i06vgg",
+      "title": "Amazon Connect agent workspace enhances third-party applications to support new actions and workflows",
+      "source": "AWS",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq4otsr0001terl8wpe4a44",
+      "title": "【PHP8.5】OPcacheが常に使用可能になる",
+      "source": "Qiita Popular",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "truncation",
+          "severity": "critical",
+          "description": "文章が不自然な位置で途切れている",
+          "suggestion": "完全な文章に修正"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 文章が不自然な位置で途切れている"
+    },
+    {
+      "id": "cmdq3yf6w007xte56f7c73mwp",
+      "title": "🔥I Built Custom MCP Client For Algolia🌀",
+      "source": "Dev.to",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "truncation",
+          "severity": "critical",
+          "description": "文章が不自然な位置で途切れている",
+          "suggestion": "完全な文章に修正"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 文章が不自然な位置で途切れている"
+    },
+    {
+      "id": "cmdq3y9zi003bte56mxp5olys",
+      "title": "せっかくClaude Codeがサジェストしてるし、最も簡単で・最も素朴で・一瞬で済む、git-worktreeへの移行方法を教える",
+      "source": "Zenn",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 198文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 198文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq3yf5g007lte56fv7lfby7",
+      "title": "Revenue Sharing Model: A Powerful Marketing Strategy for Token Presales",
+      "source": "Dev.to",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 173文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 173文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq3yf46007bte565wosepql",
+      "title": "10 Open Source Tools To Become The Ultimate Developer 🔥",
+      "source": "Dev.to",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "truncation",
+          "severity": "critical",
+          "description": "文章が不自然な位置で途切れている",
+          "suggestion": "完全な文章に修正"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 文章が不自然な位置で途切れている"
+    },
+    {
+      "id": "cmdq44y31003tte3t4fek8yhz",
+      "title": "Cloud Native Glossary — Sign Language Comes to the Cloud Native Glossary!",
+      "source": "SRE",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 185文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 185文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq3yfau008pte56sqoq8rfq",
+      "title": "The Challenges of Self-Learning Programming (and How to Overcome Them)",
+      "source": "Dev.to",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq44l10001rte3t5ey2xx36",
+      "title": "Amazon CloudWatch adds IPv6 support",
+      "source": "AWS",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "truncation",
+          "severity": "critical",
+          "description": "文章が不自然な位置で途切れている",
+          "suggestion": "完全な文章に修正"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 文章が不自然な位置で途切れている"
+    },
+    {
+      "id": "cmdq4otzi000rterlh54su84l",
+      "title": "Django公式チュートリアルをやってみて感じた、これからこのチュートリアルをやる初心者の人に伝えたいこと",
+      "source": "Qiita Popular",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 66文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 66文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq44j8i002nte3tltkufinm",
+      "title": "AWS Deadline Cloud now supports resource endpoints for connecting shared storage to service-managed fleets",
+      "source": "AWS",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 71文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 71文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq4ou460019terlicbzk5ud",
+      "title": "【初心者向け】勉強会参加を後押しするためのメモ",
+      "source": "Qiita Popular",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 187文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 187文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq44jc00033te3tyeeudvac",
+      "title": "Amazon Connect announces per-day pricing for external voice connectors",
+      "source": "AWS",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "truncation",
+          "severity": "critical",
+          "description": "文章が不自然な位置で途切れている",
+          "suggestion": "完全な文章に修正"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 文章が不自然な位置で途切れている"
+    },
+    {
+      "id": "cmdq3ya8a004lte56j1s4caw2",
+      "title": "オラクル純正の「MCP Server for Oracle Database」が登場、自然言語でOracle DBに問い合わせ可能",
+      "source": "Publickey",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "truncation",
+          "severity": "critical",
+          "description": "文章が不自然な位置で途切れている",
+          "suggestion": "完全な文章に修正"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 文章が不自然な位置で途切れている"
+    },
+    {
+      "id": "cmdq44y9r004hte3tupznjdww",
+      "title": "Reaching for the stars: How a Golden Grot Awards winner monitors the International Space Station with Grafana",
+      "source": "SRE",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "truncation",
+          "severity": "critical",
+          "description": "文章が不自然な位置で途切れている",
+          "suggestion": "完全な文章に修正"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 文章が不自然な位置で途切れている"
+    },
+    {
+      "id": "cmdq3yaf1005nte5608om6ze8",
+      "title": "How your favorite movie is changing language learning technology",
+      "source": "Stack Overflow Blog",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "truncation",
+          "severity": "critical",
+          "description": "文章が不自然な位置で途切れている",
+          "suggestion": "完全な文章に修正"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 文章が不自然な位置で途切れている"
+    },
+    {
+      "id": "cmdriumy20005tez3lyyfrgxb",
+      "title": "IPA&AWSダブル全冠が明かす、人生を変えた勉強法のすべて",
+      "source": "はてなブックマーク",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 59文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 59文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdwgzovq0055tealoxks9q2o",
+      "title": "LINEヤフー新卒研修「わかりやすい文章の書き方講座」を一部抜粋して公開します",
+      "source": "Corporate Tech Blog",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 70文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 70文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq44yhk0059te3tmaol7hlw",
+      "title": "Helvetia’s journey building an enterprise serverless product with Terraform",
+      "source": "SRE",
+      "score": 50,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が少なすぎる: 69文字",
+          "suggestion": "詳細要約から補完"
+        },
+        {
+          "type": "thin_content",
+          "severity": "major",
+          "description": "内容が薄い・具体性に欠ける",
+          "suggestion": "技術的詳細や具体的な情報を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が少なすぎる: 69文字, 内容が薄い・具体性に欠ける"
+    },
+    {
+      "id": "cmdq44yk3005lte3tliq5c0b0",
+      "title": "Automating workload identity for Vault and Nomad with Terraform",
+      "source": "SRE",
+      "score": 40,
+      "issues": [
+        {
+          "type": "length",
+          "severity": "major",
+          "description": "文字数が多すぎる: 200文字",
+          "suggestion": "重要部分を抽出して短縮"
+        },
+        {
+          "type": "truncation",
+          "severity": "critical",
+          "description": "文章が不自然な位置で途切れている",
+          "suggestion": "完全な文章に修正"
+        },
+        {
+          "type": "format",
+          "severity": "minor",
+          "description": "句点で終わっていない",
+          "suggestion": "句点を追加"
+        }
+      ],
+      "requiresRegeneration": true,
+      "regenerationReason": "文字数が多すぎる: 200文字, 文章が不自然な位置で途切れている"
+    }
+  ]
+}
