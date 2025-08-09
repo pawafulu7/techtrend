@@ -76,3 +76,13 @@ scripts/setup-*.md
 
 # claude work files
 .claude/
+
+# Temporary scripts
+scripts/temp/
+scripts/fix-*.ts
+scripts/check-*.ts
+scripts/find-*.ts
+scripts/regenerate-*.ts
+scripts/test-*.ts
+scripts/*-test.ts
+scripts/debug-*.ts
