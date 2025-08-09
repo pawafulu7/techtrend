@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
-import { detectArticleType } from '../utils/article-type-detector';
-import { generatePromptForArticleType } from '../utils/article-type-prompts';
+// import { detectArticleType } from '../utils/article-type-detector';  // 統一プロンプト移行により無効化
+// import { generatePromptForArticleType } from '../utils/article-type-prompts';  // 統一プロンプト移行により無効化
+import { generateUnifiedPrompt } from '../utils/article-type-prompts';
 
 interface SummaryAndTags {
   summary: string;
@@ -20,11 +21,9 @@ export async function generateSummaryAndTags(
 
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   
-  // 記事タイプを判定
-  const articleType = detectArticleType(title, content);
-  
-  // 記事タイプに応じたプロンプトを生成
-  const prompt = generatePromptForArticleType(articleType, title, content);
+  // 統一プロンプトを使用（記事タイプ判定を廃止）
+  const prompt = generateUnifiedPrompt(title, content);
+  const articleType = 'unified';  // 統一タイプを設定
 
   const response = await fetch(apiUrl, {
     method: 'POST',
@@ -35,7 +34,7 @@ export async function generateSummaryAndTags(
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 1200,  // 詳細要約が途切れないよう増加
+        maxOutputTokens: 2000,  // ユーザー提案に基づき余裕を持った設定（最大使用量1,925トークンを100%カバー）
       }
     })
   });

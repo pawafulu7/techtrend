@@ -181,7 +181,7 @@ export interface ContentQualityCheckResult {
 }
 
 export interface QualityIssue {
-  type: 'length' | 'truncation' | 'thin_content' | 'language_mix' | 'format';
+  type: 'length' | 'truncation' | 'thin_content' | 'language_mix' | 'format' | 'detailed_format';
   severity: 'critical' | 'major' | 'minor';
   description: string;
   suggestion?: string;
@@ -196,21 +196,60 @@ export function checkContentQuality(
   const issues: QualityIssue[] = [];
   let score = 100;
   
-  // 1. 文字数チェック（80-120文字）
-  if (summary.length < 80) {
+  // 詳細要約の形式チェック
+  if (detailedSummary) {
+    const lines = detailedSummary.split('\n').filter(line => line.trim());
+    const isProperBulletFormat = lines.length > 1 && lines.every(line => line.startsWith('・'));
+    
+    if (!isProperBulletFormat) {
+      // 1行にまとまっている場合
+      if (lines.length === 1 && detailedSummary.includes('・')) {
+        issues.push({
+          type: 'detailed_format',
+          severity: 'critical',
+          description: '詳細要約が改行されていない',
+          suggestion: '各箇条書き項目を改行で区切る'
+        });
+        score -= 30;
+      } else if (!lines.every(line => line.startsWith('・'))) {
+        // 箇条書き形式ではない場合
+        issues.push({
+          type: 'detailed_format',
+          severity: 'major',
+          description: '詳細要約が箇条書き形式ではない',
+          suggestion: '各項目を「・」で始め、改行で区切る'
+        });
+        score -= 20;
+      }
+    }
+    
+    // 詳細要約の文字数チェック（300-400文字）
+    if (detailedSummary.length < 300 || detailedSummary.length > 400) {
+      issues.push({
+        type: 'length',
+        severity: 'minor',
+        description: `詳細要約の文字数が適切でない（${detailedSummary.length}文字）`,
+        suggestion: '300-400文字に調整'
+      });
+      score -= 10;
+    }
+  }
+  
+  // 1. 一覧要約の文字数チェック（150-180文字）
+  if (summary.length < 150) {
     issues.push({
       type: 'length',
       severity: 'major',
       description: `文字数が少なすぎる: ${summary.length}文字`,
-      suggestion: '詳細要約から補完'
+      suggestion: '150-180文字に調整'
     });
     score -= 20;
-  } else if (summary.length > 120) {
+  } else if (summary.length > 180) {
     issues.push({
       type: 'length',
       severity: 'major',
       description: `文字数が多すぎる: ${summary.length}文字`,
-      suggestion: '重要部分を抽出して短縮'
+      suggestion: '150-180文字に調整'
     });
     score -= 20;
   }
@@ -329,9 +368,9 @@ export function fixSummary(summary: string, issues: QualityIssue[]): string {
   // 文字数調整
   const lengthIssue = issues.find(i => i.type === 'length');
   if (lengthIssue) {
-    if (fixed.length > 120) {
-      // 長すぎる場合は重要な部分を抽出（最初の120文字で区切る）
-      const cutPoint = 117; // "。"を含めて120文字
+    if (fixed.length > 180) {
+      // 長すぎる場合は重要な部分を抽出（最初の180文字で区切る）
+      const cutPoint = 177; // "。"を含めて180文字
       fixed = fixed.substring(0, cutPoint);
       // 最後の文を完結させる
       const lastPeriod = fixed.lastIndexOf('。');
@@ -344,7 +383,7 @@ export function fixSummary(summary: string, issues: QualityIssue[]): string {
           fixed = fixed + '。';
         }
       }
-    } else if (fixed.length < 80 && issues.some(i => i.type === 'thin_content')) {
+    } else if (fixed.length < 150 && issues.some(i => i.type === 'thin_content')) {
       // 内容が薄い場合でも、技術用語を含んでいる場合は内容改善をスキップ
       // （テストケースで問題になるため）
     }
@@ -402,7 +441,7 @@ export function createEnhancedPrompt(
   return `以下の技術記事を要約してください。
 
 重要な指示：
-1. 必ず80-120文字の日本語で要約
+1. 必ず150-180文字の日本語で要約
 2. 文章は必ず「。」で終える
 3. 技術用語（API、Docker、JavaScript等）以外はすべて日本語で記述
 4. 英語の文法構造を混入させない（例：This システム、API is available）

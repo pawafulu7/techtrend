@@ -1,15 +1,17 @@
 import { PrismaClient, Article, Source } from '@prisma/client';
 import fetch from 'node-fetch';
 import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
-import { detectArticleType } from '@/lib/utils/article-type-detector';
-import { generatePromptForArticleType } from '@/lib/utils/article-type-prompts';
+// import { detectArticleType } from '@/lib/utils/article-type-detector';  // 統一プロンプト移行により無効化
+// import { generatePromptForArticleType } from '@/lib/utils/article-type-prompts';  // 統一プロンプト移行により無効化
+import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { 
-  checkContentQuality,
-  fixSummary,
-  createEnhancedPrompt,
-  ContentQualityCheckResult
-} from '@/lib/utils/content-quality-checker';
+  checkSummaryQuality,
+  isQualityCheckEnabled,
+  getMaxRegenerationAttempts,
+  generateQualityReport
+} from '@/lib/utils/summary-quality-checker';
+import { generateSummaryWithRetry } from '@/lib/ai/summary-generator';
 
 const prisma = new PrismaClient();
 
@@ -50,16 +52,9 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
 
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   
-  // 記事タイプを判定
-  const articleType = detectArticleType(title, content);
-  
-  // 記事タイプに応じたプロンプトを生成
-  let prompt = generatePromptForArticleType(articleType, title, content);
-  
-  // 再生成の場合は品質強化プロンプトを使用
-  if (isRegeneration) {
-    prompt = createEnhancedPrompt(title, content, []);
-  }
+  // 統一プロンプトを使用（記事タイプ判定を廃止）
+  const prompt = generateUnifiedPrompt(title, content);
+  const articleType = 'unified';  // 統一タイプを設定
 
   apiStats.attempts++;
   const response = await fetch(apiUrl, {
@@ -71,7 +66,7 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 1200,  // 詳細要約が途切れないよう増加
+        maxOutputTokens: 2000,  // ユーザー提案に基づき余裕を持った設定
       }
     })
   });
@@ -86,27 +81,26 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
   
   const result = parseSummaryAndTags(responseText);
   
-  // 品質チェックと自動修正
-  const qualityCheck = checkContentQuality(result.summary, result.detailedSummary, title);
+  // 新しい品質チェックシステムを使用
+  const qualityCheck = checkSummaryQuality(result.summary, result.detailedSummary);
   
   // 品質問題をトラッキング
   qualityCheck.issues.forEach(issue => {
     if (issue.type === 'length') apiStats.qualityIssues.length++;
-    if (issue.type === 'truncation') apiStats.qualityIssues.truncation++;
-    if (issue.type === 'thin_content') apiStats.qualityIssues.thinContent++;
-    if (issue.type === 'language_mix') apiStats.qualityIssues.languageMix++;
     if (issue.type === 'format') apiStats.qualityIssues.format++;
+    if (issue.type === 'punctuation') apiStats.qualityIssues.truncation++;  // 句点問題として記録
   });
   
-  // 軽微な問題は自動修正
-  if (!qualityCheck.requiresRegeneration && qualityCheck.issues.length > 0) {
-    result.summary = fixSummary(result.summary, qualityCheck.issues);
+  // 品質レポートを出力（デバッグ用）
+  if (qualityCheck.issues.length > 0 && process.env.DEBUG === 'true') {
+    console.log(generateQualityReport(qualityCheck));
   }
   
   // 再生成が必要な場合は例外をスロー
   if (qualityCheck.requiresRegeneration && !isRegeneration) {
     apiStats.regenerations++;
-    throw new Error(`QUALITY_ISSUE: ${qualityCheck.regenerationReason}`);
+    const issueMessages = qualityCheck.issues.map(i => i.message).join(', ');
+    throw new Error(`QUALITY_ISSUE: ${issueMessages}`);
   }
   
   return { ...result, articleType };
@@ -424,28 +418,22 @@ async function generateSummaries(): Promise<GenerateResult> {
                       regenerationCount > 0  // 2回目以降は再生成フラグを立てる
                     );
                     
-                    // 品質チェック（環境変数で有効化チェック）
-                    if (process.env.QUALITY_CHECK_ENABLED === 'true') {
-                      const qualityCheck = checkContentQuality(
+                    // 品質チェック（新システムを使用）
+                    if (isQualityCheckEnabled()) {
+                      const qualityCheck = checkSummaryQuality(
                         result.summary, 
-                        result.detailedSummary,
-                        article.title
+                        result.detailedSummary
                       );
                       
                       // 品質基準を満たさない場合は再生成
-                      const minScore = parseInt(process.env.QUALITY_MIN_SCORE || '70');
-                      if (qualityCheck.score < minScore && regenerationCount < MAX_REGENERATIONS) {
+                      if (qualityCheck.requiresRegeneration && regenerationCount < MAX_REGENERATIONS) {
                         regenerationCount++;
                         apiStats.regenerations++;
                         console.log(`  ⚠️ 品質スコア: ${qualityCheck.score}/100`);
                         console.log(`  再生成中 (${regenerationCount}/${MAX_REGENERATIONS})...`);
+                        console.log(generateQualityReport(qualityCheck));
                         await sleep(1000); // API負荷軽減
                         continue;
-                      }
-                      
-                      // 軽微な問題は自動修正（環境変数で有効化チェック）
-                      if (process.env.QUALITY_AUTO_FIX === 'true' && qualityCheck.issues.length > 0) {
-                        result.summary = fixSummary(result.summary, qualityCheck.issues);
                       }
                     }
                     
@@ -466,14 +454,14 @@ async function generateSummaries(): Promise<GenerateResult> {
                 summary = result!.summary;
                 tags = result!.tags;
                 
-                // 要約を更新（新形式として保存）
+                // 要約を更新（統一プロンプト版として保存）
                 await prisma.article.update({
                   where: { id: article.id },
                   data: { 
                     summary,
                     detailedSummary: result!.detailedSummary,
-                    articleType: result!.articleType,
-                    summaryVersion: 3  // 品質チェック版をv3とする
+                    articleType: 'unified',  // 統一タイプを設定
+                    summaryVersion: 4  // 統一プロンプト版をv4とする
                   }
                 });
               } else {
