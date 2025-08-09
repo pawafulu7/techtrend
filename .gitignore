@@ -99,3 +99,7 @@ deleted_scripts_list.txt
 *.sql
 test-*.ts
 test-*.md
+
+# Serena MCP cache and memories
+.serena/cache/
+.serena/memories/
