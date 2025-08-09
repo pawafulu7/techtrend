@@ -63,6 +63,15 @@ excluded_tools: []
 
 # initial prompt for the project. It will always be given to the LLM upon activating the project
 # (contrary to the memories, which are loaded on demand).
-initial_prompt: ""
+initial_prompt: |
+  TechTrendプロジェクトで作業中。以下の重要事項を厳守：
+  
+  1. データベース接続は必ず prisma/dev.db を使用
+  2. 要約生成はフェッチャーで行わず generate-summaries.ts で実行
+  3. 品質スコア40点未満は低品質として扱う
+  4. 統一フォーマット（summaryVersion: 5）を維持
+  5. 修正後は都度コミット
+  
+  詳細はCLAUDE.mdを参照。
 
 project_name: "techtrend"
