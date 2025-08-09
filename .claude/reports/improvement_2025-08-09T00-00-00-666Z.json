@@ -1,0 +1,238 @@
+[
+  {
+    "articleId": "cme30ithp0004tea4hm6p8hj7",
+    "title": "【ExpoとSupabaseで作る認証フロー (3)】認証ガードで画面を保護する最終実装",
+    "sourceName": "Zenn",
+    "originalSummary": "本記事は、ExpoとSupabaseを用いた認証システムの構築チュートリアルシリーズの最終回です。前々回までに作成した認証フックを用いて、Expo Routerのルートレイアウトファイルに認証ガードを実装し、ログイン状態に応じて画面へのアクセスを制御する方法",
+    "originalLength": 129,
+    "improvedSummary": "ExpoとSupabaseを用いた認証システムの構築チュートリアルシリーズの最終回です。前々回までに作成した認証フックを用いて、Expo Routerのルートレイアウトファイルに認証ガードを実装し、ログイン状態に応じて画面へのアクセスを制御する方法。",
+    "improvedLength": 125,
+    "method": "auto-fix",
+    "errors": []
+  },
+  {
+    "articleId": "cme30itig0006tea4sexgulpy",
+    "title": "【ExpoとSupabaseで作る認証フロー (2)】invalidateQueriesでアプリの状態を自動同期する",
+    "sourceName": "Zenn",
+    "originalSummary": "ExpoとSupabaseを用いた認証フローにおいて、サインアウト後に画面が更新されない問題を解決する方法",
+    "originalLength": 53,
+    "improvedSummary": null,
+    "improvedLength": 0,
+    "method": "failed",
+    "errors": [
+      "要約が短すぎます（79文字）。最低90文字必要です"
+    ]
+  },
+  {
+    "articleId": "cme30itj70008tea4wokt2zfj",
+    "title": "【ExpoとSupabaseで作る認証フロー(1)】TanStack QueryのuseMutationを正しく使おう",
+    "sourceName": "Zenn",
+    "originalSummary": "本記事は、Expo、Supabase、TanStack Queryを用いたReact Nativeアプリ開発における認証フロー構築。",
+    "originalLength": 66,
+    "improvedSummary": "Expo Router、Supabase、TanStack Queryを用いたReact Nativeアプリ開発で、useMutationの適切な使用方法に悩む開発者を対象に、認証フローにおけるuseMutationの使い方を解説する。",
+    "improvedLength": 118,
+    "method": "regenerate",
+    "errors": []
+  },
+  {
+    "articleId": "cme30itgt0002tea4adumelmm",
+    "title": "サードパーティ Web API（の超基本）",
+    "sourceName": "Zenn",
+    "originalSummary": "本記事は、OJK担当の授業テキストとして作成された、サードパーティWeb APIの利用手順書です。fetch関数を使用してAPIへのアクセス方法",
+    "originalLength": 72,
+    "improvedSummary": "fetch関数を使ってサードパーティWeb APIへのアクセス方法を解説した手順書。セキュリティ対策は考慮されていないものの、API呼び出しの基本的な手順を具体的に示し、開発者は容易に外部APIを利用したアプリケーション開発が可能となる。",
+    "improvedLength": 119,
+    "method": "regenerate",
+    "errors": []
+  },
+  {
+    "articleId": "cme2u3h8h000fte7frpnsf347",
+    "title": "ClaudeCodeと作る消費税減税シミュレーター",
+    "sourceName": "Zenn",
+    "originalSummary": "Claude Codeを活用して消費税減税シミュレーターをWordPress子テーマで開発。年収別計算、軽減税率対応、リアルタイム計算機能を実装し、政策議論の可視化を実現。",
+    "originalLength": 86,
+    "improvedSummary": null,
+    "improvedLength": 0,
+    "method": "failed",
+    "errors": [
+      "要約が短すぎます（65文字）。最低90文字必要です"
+    ]
+  },
+  {
+    "articleId": "cme2u3h95000hte7f9tf1s7f5",
+    "title": "【個人開発】AIを利用した文章変換アプリ",
+    "sourceName": "Zenn",
+    "originalSummary": "生成AI API (gemini-1.5-flash) を活用した文章変換アプリをNext.jsで個人開発。入力文章をテーマに沿って変換し、Xへの投稿や共有も可能。",
+    "originalLength": 82,
+    "improvedSummary": "Next.js、Gemini 1.5-flash API、Web Share APIを用いたAI文章変換アプリを開発。入力文章を4種類のテーマで変換し、Xへの投稿や共有を可能にした。生成AIの応答速度を重視し、ユーザーは手軽に文章変換と共有を実現できる。",
+    "improvedLength": 127,
+    "method": "regenerate",
+    "errors": []
+  },
+  {
+    "articleId": "cme2cy2u2000jtejevnxt7syf",
+    "title": "Claude Opus4.1 と OpenAI GPT-5 の比較",
+    "sourceName": "Zenn",
+    "originalSummary": "Claude Opus4.1は高精度コード生成と低遅延を実現し、GPT‑5はハルシネーション削減と推論機能で信頼性向上。両者の性能差が明確に示される。",
+    "originalLength": 75,
+    "improvedSummary": "OpenAI GPT-5は、GPT-4と比べハルシネーション（誤情報生成）が大幅に削減された（約45%減）。特に推論機能使用時は80%減、健康関連質問では1.6%にまで低減し、精度と信頼性が向上した。",
+    "improvedLength": 100,
+    "method": "regenerate",
+    "errors": []
+  },
+  {
+    "articleId": "cme1ad7950001tehbomalag69",
+    "title": "【マサカリ求む】任意の円柱にかかる空気抵抗を完全に理解した。ただし理屈は不明。",
+    "sourceName": "Zenn",
+    "originalSummary": "円柱の空気抵抗計算におけるアスペクト比誤差と、抗力係数が変わらないことを発見した研究。",
+    "originalLength": 43,
+    "improvedSummary": "円柱の直径と高さの比（アスペクト比）が1:1でない場合の空気抵抗計算における誤差増加問題に対し、抗力係数を逆算することで、アスペクト比の変化によらず抗力係数は一定であることを発見した。これにより、アスペクト比に関わらず正確な空気抵抗計算が可能になった。",
+    "improvedLength": 126,
+    "method": "regenerate",
+    "errors": []
+  },
+  {
+    "articleId": "cme1ad7bg0007tehbd0956xtp",
+    "title": "【マサカリ求む】高さが1mの円柱にかかる空気抵抗を完全に理解したかった",
+    "sourceName": "Zenn",
+    "originalSummary": "高さ1mの円柱に対する空気抵抗を音響特性から立式し、直径・高さ比が変わるときの挙動を解析した研究。",
+    "originalLength": 49,
+    "improvedSummary": "直径と高さが等しい円柱の空気抵抗を、音の性質を考慮した独自式 v_a[m/s] = vp sin²θ/(ρc²) を用いて算出した。  直径と高さを変えた場合の空気抵抗を解明するため、更なる検証が必要である。",
+    "improvedLength": 104,
+    "method": "regenerate",
+    "errors": []
+  },
+  {
+    "articleId": "cme1cif1i0001teqc9du186kk",
+    "title": "『AI駆動経営』Claude Codeを用いたバイブコーディング開発フロー",
+    "sourceName": "Zenn",
+    "originalSummary": "株式会社エムニの「AI駆動経営」プロジェクトにおいて、社内ドキュメントを活用したRAG構築のための基盤として、Claude Codeを用いたLLMチャットクライアント開発フローが紹介されている。バイブコーディングを用いた実践的な開発手順とTipsが具体的に解説されている。",
+    "originalLength": 136,
+    "improvedSummary": "株式会社エムニの「AI駆動経営」プロジェクトにおいて、社内ドキュメントを活用したRAG構築のための基盤として、Claude Codeを用いたLLMチャットクライアント開発フローが紹介されている。",
+    "improvedLength": 97,
+    "method": "auto-fix",
+    "errors": []
+  },
+  {
+    "articleId": "cme0le4mw001ftevw71mkwphm",
+    "title": "【保存版】ITエンジニアが知らない巨大IT企業の「闇戦略」—あなたのキャリアとスキルが操作されています",
+    "sourceName": "Zenn",
+    "originalSummary": "巨大IT企業がオープンソースやクラウド技術を利用し、エンジニアのキャリアとスキルを操作する闇戦略を暴露。",
+    "originalLength": 52,
+    "improvedSummary": null,
+    "improvedLength": 0,
+    "method": "failed",
+    "errors": [
+      "要約が短すぎます（75文字）。最低90文字必要です"
+    ]
+  },
+  {
+    "articleId": "cme0le08d000ztevwqmf1dlqf",
+    "title": "HTML/CSS/JavaScript で、スムーズにテキスト要素がスライドインしてくる仕掛けを作る (Blazor, React)",
+    "sourceName": "Zenn",
+    "originalSummary": "翻訳字幕システムでテキストがスムーズにスライドインするアニメーションを実装し、ユーザー体験を向上させる方法を解説。",
+    "originalLength": 57,
+    "improvedSummary": null,
+    "improvedLength": 0,
+    "method": "failed",
+    "errors": [
+      "要約が短すぎます（76文字）。最低90文字必要です"
+    ]
+  },
+  {
+    "articleId": "cme0le0qz0011tevw1o63jyhv",
+    "title": "JavaScriptの sort((a, b) => a - b) を理解する",
+    "sourceName": "Zenn",
+    "originalSummary": "JavaScriptの sort((a, b) => a - b) を理解するに関する技術的解説と実装方法。",
+    "originalLength": 54,
+    "improvedSummary": "JavaScriptのsort((a, b) => a - b)は配列を昇順にソートする簡潔な記述だが、その仕組みは不明瞭なため、本記事では比較関数の動作原理とa - bの有効性、そして誤った使用方法の例を解説し、JavaScript配列の効率的なソート方法。",
+    "improvedLength": 130,
+    "method": "regenerate",
+    "errors": []
+  },
+  {
+    "articleId": "cme2u3h7f000dte7fosdwm32x",
+    "title": "セル結合まみれのExcelをLLMに活かすには？Doclingを試してみた",
+    "sourceName": "Zenn",
+    "originalSummary": "社内Excelファイルの複雑な構造（セル結合など）がAI活用を阻む課題に対し、Doclingを用いてAIが利用可能なナレッジベース構築を試みた経験。",
+    "originalLength": 74,
+    "improvedSummary": null,
+    "improvedLength": 0,
+    "method": "failed",
+    "errors": [
+      "要約が短すぎます（60文字）。最低90文字必要です"
+    ]
+  },
+  {
+    "articleId": "cme0le1e00013tevwq5wm84az",
+    "title": "JavaScriptのnormalizeで文字列の「正規化」をして、検索機能の半角・全角の差をシンプルに吸収する",
+    "sourceName": "Zenn",
+    "originalSummary": "Unicodeのnormalizeを使い、半角・全角文字の差異を正規化して検索機能の精度と一貫性を向上させる方法",
+    "originalLength": 56,
+    "improvedSummary": null,
+    "improvedLength": 0,
+    "method": "failed",
+    "errors": [
+      "要約が短すぎます（60文字）。最低90文字必要です"
+    ]
+  },
+  {
+    "articleId": "cme0le1yw0015tevwui9iu4te",
+    "title": "MiniReactでReactの骨格を再現してみた",
+    "sourceName": "Zenn",
+    "originalSummary": "MiniReactで関数コンポーネント、useState、hによるJSX風記法を実装し、仮想DOM描画を100行以下で再現する手順とそのメリット。",
+    "originalLength": 73,
+    "improvedSummary": null,
+    "improvedLength": 0,
+    "method": "failed",
+    "errors": [
+      "要約が短すぎます（85文字）。最低90文字必要です"
+    ]
+  },
+  {
+    "articleId": "cme0xi5a30006tesydufaqcu9",
+    "title": "Model Context Protocolの仕組み",
+    "sourceName": "Zenn",
+    "originalSummary": "Model Context Protocolは、AIに多様な機能を追加するためのプロトコルです。本記事では、TypeScript SDKのサンプルコードを用いて、その仕組みを分かりやすく解説しています。AI開発における柔軟性と拡張性を高めるための重要な技術です。",
+    "originalLength": 131,
+    "improvedSummary": "Model Context ProtocolはAI機能拡張のためのプロトコルで、TypeScript SDKを用いたサンプルコードを通してその仕組みを解説している。  このプロトコルにより、AIへの機能追加が容易になり、開発効率の向上に貢献する。",
+    "improvedLength": 123,
+    "method": "regenerate",
+    "errors": []
+  },
+  {
+    "articleId": "cme0xi5av0008tesy8ehzpld0",
+    "title": "gpt-ossがすごい！！ローカルで動かしてみた（Mac、メモリ128GB）",
+    "sourceName": "Zenn",
+    "originalSummary": "ローカル環境(Mac、128GBメモリ)でGPT-OSS(20B/120Bパラメータ)を試した結果、ChatGPTブラウザ版と同等の高精度な出力を高速に生成できることを確認。メモリ消費量は20Bで約13GB、120Bで約63GB。20Bでは固有名詞の幻覚に注意が必要。",
+    "originalLength": 134,
+    "improvedSummary": "ローカル環境(Mac、128GBメモリ)でGPT-OSS(20B/120Bパラメータ)を試した結果、ChatGPTブラウザ版と同等の高精度な出力を高速に生成できることを確認。メモリ消費量は20Bで約13GB、120Bで約63GB。",
+    "improvedLength": 115,
+    "method": "auto-fix",
+    "errors": []
+  },
+  {
+    "articleId": "cme0le3ly001btevwf07ugrt2",
+    "title": "JavaScriptの円記号文字コード問題：ローカル環境とCI環境でテストが失敗する罠",
+    "sourceName": "Zenn",
+    "originalSummary": "JavaScript/TypeScriptにおけるtoLocaleStringを用いた日本円表示のテストで、ローカル環境とCI環境で結果が異なる問題を、円記号の文字コードの差異を特定し、文字コードを統一することで解決する。これにより、クロスプラットフォームでのテストの安定性と信頼性を向上させる。",
+    "originalLength": 148,
+    "improvedSummary": "JavaScript/TypeScriptにおけるtoLocaleStringを用いた日本円表示のテストで、ローカル環境とCI環境で結果が異なる問題を、円記号の文字コードの差異を特定し、文字コードを統一することで解決する。",
+    "improvedLength": 111,
+    "method": "auto-fix",
+    "errors": []
+  },
+  {
+    "articleId": "cmdz7cm8a000utekbjbew2lsq",
+    "title": "行単位依存関係に基づくコードメトリクスの定義（案）",
+    "sourceName": "Zenn",
+    "originalSummary": "ソースコードの行単位の依存関係を分析し、その複雑さを定量的に評価するコードメトリクスの定義案を示す。有向グラフによるモデル化と、その構造に基づく評価により、コードの複雑さを客観的に測定し、改善に繋げる問題を、行単位依存関係に基づくコードメトリクスにより解決する。",
+    "originalLength": 131,
+    "improvedSummary": null,
+    "improvedLength": 0,
+    "method": "failed",
+    "errors": [
+      "要約が短すぎます（76文字）。最低90文字必要です"
+    ]
+  }
+]

@@ -5,6 +5,63 @@
 **重要: 修正作業を行う前に、必ず `CODE-MAINTENANCE-GUIDE.md` を確認してください。**
 このガイドには、影響範囲の把握方法、関連箇所の確認手順、検証方法が詳しく記載されています。
 
+## Serena MCP優先利用（TechTrendプロジェクト専用）
+
+### 必須: プロジェクト作業時のSerena MCP使用
+
+**すべての作業でSerena MCPを優先的に使用すること**
+
+#### 1. 作業開始時（必須）
+```
+1. mcp__serena__check_onboarding_performed を実行
+2. mcp__serena__list_memories でメモリ確認
+3. 関連メモリを mcp__serena__read_memory で読み込み
+```
+
+#### 2. 主要メモリファイル
+- `techtrend_project_overview_*`: プロジェクト全体概要
+- `techtrend_recent_improvements_*`: 最近の改善内容
+- `source_stats_cache_implementation_*`: 統計情報キャッシュ実装
+- `techtrend_database_schema_*`: データベース構造
+- `techtrend_api_endpoints_*`: APIエンドポイント一覧
+- `techtrend_fetchers_implementation_*`: フェッチャー実装詳細
+
+#### 3. コード調査時
+```
+# ファイル構造の把握
+mcp__serena__get_symbols_overview relative_path="lib/fetchers"
+
+# 特定シンボルの検索
+mcp__serena__find_symbol name_path="BaseFetcher"
+
+# 依存関係の確認
+mcp__serena__find_referencing_symbols name_path="calculateSourceStats"
+
+# パターン検索
+mcp__serena__search_for_pattern substring_pattern="summary.*undefined"
+```
+
+#### 4. コード修正時
+```
+# シンボル単位の修正
+mcp__serena__replace_symbol_body name_path="getAllSources"
+
+# 正規表現による修正
+mcp__serena__replace_regex regex="avgQualityScore: 0"
+
+# 新規コードの挿入
+mcp__serena__insert_after_symbol name_path="constructor"
+```
+
+#### 5. 作業完了時
+```
+# 変更内容をメモリに保存
+mcp__serena__write_memory memory_name="{feature}_implementation_{YYYYMM}"
+
+# 完了確認
+mcp__serena__think_about_whether_you_are_done
+```
+
 ## データベース接続
 
 **重要: 必ず以下のデータベースパスを使用すること**
