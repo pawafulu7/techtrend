@@ -30,6 +30,9 @@
     "claude:summarize": "tsx scripts/manual/generate-summaries-claude.ts",
     "claude:compare": "tsx scripts/manual/compare-summaries.ts",
     "claude:tags:batch": "tsx scripts/manual/generate-tags-claude-batch.ts",
+    "test:quality": "jest __tests__/utils/content-quality-checker.test.ts",
+    "quality:check": "tsx scripts/manual/check-summary-quality.ts",
+    "quality:report": "tsx scripts/manual/generate-quality-report.ts",
     "techtrend": "tsx lib/cli/index.ts"
   },
   "prisma": {

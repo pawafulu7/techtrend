@@ -4,6 +4,12 @@ import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
 import { detectArticleType } from '@/lib/utils/article-type-detector';
 import { generatePromptForArticleType } from '@/lib/utils/article-type-prompts';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { 
+  checkContentQuality,
+  fixSummary,
+  createEnhancedPrompt,
+  ContentQualityCheckResult
+} from '@/lib/utils/content-quality-checker';
 
 const prisma = new PrismaClient();
 
@@ -25,10 +31,18 @@ const apiStats = {
   successes: 0,
   failures: 0,
   overloadErrors: 0,
+  regenerations: 0,
+  qualityIssues: {
+    length: 0,
+    truncation: 0,
+    thinContent: 0,
+    languageMix: 0,
+    format: 0
+  },
   startTime: Date.now()
 };
 
-async function generateSummaryAndTags(title: string, content: string): Promise<SummaryAndTags> {
+async function generateSummaryAndTags(title: string, content: string, isRegeneration: boolean = false): Promise<SummaryAndTags> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not set');
@@ -40,7 +54,12 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
   const articleType = detectArticleType(title, content);
   
   // 記事タイプに応じたプロンプトを生成
-  const prompt = generatePromptForArticleType(articleType, title, content);
+  let prompt = generatePromptForArticleType(articleType, title, content);
+  
+  // 再生成の場合は品質強化プロンプトを使用
+  if (isRegeneration) {
+    prompt = createEnhancedPrompt(title, content, []);
+  }
 
   apiStats.attempts++;
   const response = await fetch(apiUrl, {
@@ -66,6 +85,30 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
   const responseText = data.candidates[0].content.parts[0].text.trim();
   
   const result = parseSummaryAndTags(responseText);
+  
+  // 品質チェックと自動修正
+  const qualityCheck = checkContentQuality(result.summary, result.detailedSummary, title);
+  
+  // 品質問題をトラッキング
+  qualityCheck.issues.forEach(issue => {
+    if (issue.type === 'length') apiStats.qualityIssues.length++;
+    if (issue.type === 'truncation') apiStats.qualityIssues.truncation++;
+    if (issue.type === 'thin_content') apiStats.qualityIssues.thinContent++;
+    if (issue.type === 'language_mix') apiStats.qualityIssues.languageMix++;
+    if (issue.type === 'format') apiStats.qualityIssues.format++;
+  });
+  
+  // 軽微な問題は自動修正
+  if (!qualityCheck.requiresRegeneration && qualityCheck.issues.length > 0) {
+    result.summary = fixSummary(result.summary, qualityCheck.issues);
+  }
+  
+  // 再生成が必要な場合は例外をスロー
+  if (qualityCheck.requiresRegeneration && !isRegeneration) {
+    apiStats.regenerations++;
+    throw new Error(`QUALITY_ISSUE: ${qualityCheck.regenerationReason}`);
+  }
+  
   return { ...result, articleType };
 }
 
@@ -368,18 +411,43 @@ async function generateSummaries(): Promise<GenerateResult> {
             
             // 日本語要約がない場合のみGemini APIを呼び出す
             if (!hasJapaneseSummary || !article.summary || !article.detailedSummary) {
-              const result = await generateSummaryAndTags(article.title, content);
-              summary = result.summary;
-              tags = result.tags;
+              let result: SummaryAndTags;
+              let regenerationCount = 0;
+              const MAX_REGENERATIONS = 2;
+              
+              // 品質問題がある場合は再生成を試みる
+              while (regenerationCount <= MAX_REGENERATIONS) {
+                try {
+                  result = await generateSummaryAndTags(
+                    article.title, 
+                    content,
+                    regenerationCount > 0  // 2回目以降は再生成フラグを立てる
+                  );
+                  break; // 品質問題がなければループを抜ける
+                } catch (error) {
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  if (errorMessage.startsWith('QUALITY_ISSUE:') && regenerationCount < MAX_REGENERATIONS) {
+                    regenerationCount++;
+                    console.log(`  品質問題検出: ${errorMessage.replace('QUALITY_ISSUE: ', '')}`);
+                    console.log(`  再生成中 (${regenerationCount}/${MAX_REGENERATIONS})...`);
+                    await sleep(1000); // API負荷軽減
+                    continue;
+                  }
+                  throw error; // その他のエラーはそのままスロー
+                }
+              }
+              
+              summary = result!.summary;
+              tags = result!.tags;
               
               // 要約を更新（新形式として保存）
               await prisma.article.update({
                 where: { id: article.id },
                 data: { 
                   summary,
-                  detailedSummary: result.detailedSummary,
-                  articleType: result.articleType,
-                  summaryVersion: 2
+                  detailedSummary: result!.detailedSummary,
+                  articleType: result!.articleType,
+                  summaryVersion: 3  // 品質チェック版をv3とする
                 }
               });
             } else {
@@ -483,7 +551,15 @@ async function generateSummaries(): Promise<GenerateResult> {
     console.log(`   失敗: ${apiStats.failures}`);
     console.log(`   503エラー: ${apiStats.overloadErrors}`);
     console.log(`   成功率: ${successRate}%`);
+    console.log(`   再生成回数: ${apiStats.regenerations}`);
     console.log(`   実行時間: ${totalDuration}秒`);
+    
+    console.log(`\n📊 品質問題の内訳:`);
+    console.log(`   文字数問題: ${apiStats.qualityIssues.length}件`);
+    console.log(`   途切れ: ${apiStats.qualityIssues.truncation}件`);
+    console.log(`   内容薄い: ${apiStats.qualityIssues.thinContent}件`);
+    console.log(`   英語混入: ${apiStats.qualityIssues.languageMix}件`);
+    console.log(`   形式問題: ${apiStats.qualityIssues.format}件`);
     
     // 成功率が低い場合は警告
     if (successRate < 50 && apiStats.attempts > 10) {
