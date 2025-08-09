@@ -529,11 +529,12 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                 
                 // 要約を更新
                 await prisma.article.update({
-                  where: { id: article.id },
-                  data: { 
-                    summary,
-                    detailedSummary: result.detailedSummary
-                  }
+          where: { id: article.id },
+          data: { 
+            summary,
+            detailedSummary: result.detailedSummary,
+            articleType: 'unified',
+            summaryVersion: 5
                 });
               } else {
                 // 既に日本語要約がある場合でもタグがなければタグのみ生成
