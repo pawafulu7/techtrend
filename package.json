@@ -37,6 +37,7 @@
     "regenerate:english-mixed": "tsx scripts/manual/regenerate-english-mixed.ts",
     "update:tech-terms": "tsx scripts/manual/update-tech-terms.ts",
     "report:quality-metrics": "tsx scripts/manual/generate-quality-report.ts",
+    "regenerate:low-quality": "tsx scripts/manual/regenerate-low-quality-summaries.ts",
     "techtrend": "tsx lib/cli/index.ts"
   },
   "prisma": {
