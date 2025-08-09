@@ -74,8 +74,10 @@ scripts/debug-*.ts
 # markdown documentation for setup
 scripts/setup-*.md
 
-# claude work files
-.claude/
+# claude work files (docs and investigateは除外、commandsは含める)
+.claude/docs/
+.claude/investigate/
+# .claude/commands/ は含める（カスタムコマンド用）
 
 # Temporary scripts
 scripts/temp/
