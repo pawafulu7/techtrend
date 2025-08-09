@@ -33,6 +33,10 @@
     "test:quality": "jest __tests__/utils/content-quality-checker.test.ts",
     "quality:check": "tsx scripts/manual/check-summary-quality.ts",
     "quality:report": "tsx scripts/manual/generate-quality-report.ts",
+    "detect:problematic-summaries": "tsx scripts/manual/detect-problematic-summaries.ts",
+    "regenerate:english-mixed": "tsx scripts/manual/regenerate-english-mixed.ts",
+    "update:tech-terms": "tsx scripts/manual/update-tech-terms.ts",
+    "report:quality-metrics": "tsx scripts/manual/generate-quality-report.ts",
     "techtrend": "tsx lib/cli/index.ts"
   },
   "prisma": {
