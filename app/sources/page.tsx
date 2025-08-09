@@ -99,7 +99,7 @@ export default function SourcesPage() {
               placeholder="ソースを検索..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-card border-input"
             />
           </div>
           <Button type="submit">検索</Button>
@@ -147,7 +147,9 @@ export default function SourcesPage() {
             ニュース ({getCategoryCount('news_site')})
           </TabsTrigger>
           <TabsTrigger value="community">
-            コミュニティ ({getCategoryCount('community')})
+            コミュニティ ({getCategoryCount('community')})          </TabsTrigger>
+          <TabsTrigger value="other">
+            その他 ({getCategoryCount('other')})
           </TabsTrigger>
         </TabsList>
 
