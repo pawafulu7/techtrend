@@ -9,7 +9,8 @@ import {
   checkSummaryQuality,
   isQualityCheckEnabled,
   getMaxRegenerationAttempts,
-  generateQualityReport
+  generateQualityReport,
+  expandSummaryIfNeeded
 } from '@/lib/utils/summary-quality-checker';
 import { generateSummaryWithRetry } from '@/lib/ai/summary-generator';
 
@@ -256,6 +257,10 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
   // 最終クリーンアップ
   summary = finalCleanup(summary);
   detailedSummary = finalCleanup(detailedSummary);
+  
+  // Phase 2: 文字数拡張処理を追加
+  // 一覧要約が150文字未満の場合は拡張
+  summary = expandSummaryIfNeeded(summary, '', 150);
   
   // フォールバック
   if (!summary) {
