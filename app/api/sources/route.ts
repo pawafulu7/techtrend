@@ -17,11 +17,11 @@ export async function GET(request: NextRequest) {
 
     // idsパラメータがある場合はキャッシュを使わない（特定のソース取得）
     if (!ids) {
-      // キャッシュから全ソースを取得
-      const cachedSources = await sourceCache.getAllSources();
+      // キャッシュから統計情報付きの全ソースを取得
+      const cachedSourcesWithStats = await sourceCache.getAllSourcesWithStats();
       
-      // 検索とカテゴリフィルタリングを適用
-      let filteredSources = cachedSources;
+      // 検索フィルタリングを適用
+      let filteredSources = cachedSourcesWithStats;
       
       if (search) {
         filteredSources = filteredSources.filter(source =>
@@ -29,44 +29,8 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // 統計情報を計算（キャッシュされたデータから）
-      const sourcesWithStats = filteredSources.map(source => {
-        const totalArticles = source._count.articles;
-
-        // カテゴリー推定
-        let sourceCategory: SourceCategory = 'other';
-        const nameLower = source.name.toLowerCase();
-        if (nameLower.includes('blog')) {
-          if (nameLower.includes('company') || nameLower.includes('tech')) {
-            sourceCategory = 'company_blog';
-          } else {
-            sourceCategory = 'personal_blog';
-          }
-        } else if (nameLower.includes('news')) {
-          sourceCategory = 'news_site';
-        } else if (['qiita', 'zenn', 'dev.to', 'reddit'].some(c => nameLower.includes(c))) {
-          sourceCategory = 'community';
-        } else if (['techcrunch', 'hacker news'].some(c => nameLower.includes(c))) {
-          sourceCategory = 'news_site';
-        }
-
-        return {
-          id: source.id,
-          name: source.name,
-          type: source.type,
-          url: source.url,
-          enabled: source.enabled,
-          category: sourceCategory,
-          stats: {
-            totalArticles,
-            avgQualityScore: 0, // 詳細な統計はオンデマンドで計算
-            popularTags: [],
-            publishFrequency: 0,
-            lastPublished: null,
-            growthRate: 0
-          }
-        };
-      });
+      // すでに統計情報とカテゴリが含まれているのでそのまま使用
+      const sourcesWithStats = filteredSources;
 
       // カテゴリーフィルタリング
       let result = sourcesWithStats;

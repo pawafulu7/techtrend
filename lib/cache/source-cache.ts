@@ -1,11 +1,22 @@
 import { prisma } from '@/lib/database';
 import { RedisCache } from './index';
 import { Source } from '@prisma/client';
+import { 
+  SourceStats, 
+  calculateSourceStats, 
+  estimateSourceCategory,
+  SourceCategory 
+} from '@/lib/utils/source-stats';
 
 interface SourceWithCount extends Source {
   _count: {
     articles: number;
   };
+}
+
+export interface SourceWithStats extends Source {
+  category: SourceCategory;
+  stats: SourceStats;
 }
 
 export class SourceCache {
@@ -87,6 +98,56 @@ export class SourceCache {
       
       // 記事数が多い順にソート
       return sources.sort((a, b) => b._count.articles - a._count.articles);
+    });
+  }
+
+  /**
+   * 統計情報付きのすべてのソースを取得
+   */
+  async getAllSourcesWithStats(): Promise<SourceWithStats[]> {
+    return this.cache.getOrSet('all-sources-with-stats', async () => {
+      const sources = await prisma.source.findMany({
+        where: { enabled: true },
+        include: {
+          _count: {
+            select: { articles: true }
+          },
+          articles: {
+            select: {
+              qualityScore: true,
+              publishedAt: true,
+              tags: {
+                select: {
+                  name: true
+                }
+              }
+            },
+            orderBy: {
+              publishedAt: 'desc'
+            }
+          }
+        },
+        orderBy: { name: 'asc' }
+      });
+
+      // 統計情報を計算してソースに追加
+      return sources.map(source => {
+        const stats = calculateSourceStats(
+          source.articles,
+          source._count.articles
+        );
+        
+        const category = estimateSourceCategory(source.name);
+        
+        // articlesフィールドは含めない（大きすぎるため）
+        const { articles, _count, ...sourceData } = source;
+        
+        return {
+          ...sourceData,
+          category,
+          stats
+        };
+      });
     });
   }
 
