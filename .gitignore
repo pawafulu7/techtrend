@@ -86,3 +86,10 @@ scripts/regenerate-*.ts
 scripts/test-*.ts
 scripts/*-test.ts
 scripts/debug-*.ts
+
+# Temporary files and directories
+temp/
+*-result-*.json
+backup_*.json
+problem-articles.json
+deleted_scripts_list.txt
