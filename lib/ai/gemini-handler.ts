@@ -2,6 +2,7 @@ import fetch from 'node-fetch';
 // import { detectArticleType } from '../utils/article-type-detector';  // 統一プロンプト移行により無効化
 // import { generatePromptForArticleType } from '../utils/article-type-prompts';  // 統一プロンプト移行により無効化
 import { generateUnifiedPrompt } from '../utils/article-type-prompts';
+import { postProcessSummaries } from '../utils/summary-post-processor';
 
 interface SummaryAndTags {
   summary: string;
@@ -33,8 +34,10 @@ export async function generateSummaryAndTags(
         parts: [{ text: prompt }]
       }],
       generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 2000,  // ユーザー提案に基づき余裕を持った設定（最大使用量1,925トークンを100%カバー）
+        temperature: 0.1,  // より確定的な生成のため0.3から変更
+        maxOutputTokens: 2000,  // ユーザー提案に基づき余裕を持った設定
+        topP: 0.8,  // 上位80%の確率分布から選択
+        topK: 40    // 上位40個の候補から選択
       }
     })
   });
@@ -48,7 +51,16 @@ export async function generateSummaryAndTags(
   const responseText = data.candidates[0].content.parts[0].text.trim();
   
   const result = parseSummaryAndTags(responseText);
-  return { ...result, articleType };
+  
+  // 後処理を適用して文字数制約と句点を調整
+  const processed = postProcessSummaries(result.summary, result.detailedSummary);
+  
+  return { 
+    ...result, 
+    summary: processed.summary,
+    detailedSummary: processed.detailedSummary,
+    articleType 
+  };
 }
 
 // テキストクリーンアップ関数

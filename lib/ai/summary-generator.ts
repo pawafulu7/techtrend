@@ -15,6 +15,7 @@ import {
   QualityCheckResult
 } from '../utils/summary-quality-checker';
 import { generateSummaryAndTags as geminiGenerateSummary } from './gemini-handler';
+import { postProcessSummaries } from '../utils/summary-post-processor';
 
 /**
  * 通常要約用のプロンプトを生成（統一プロンプトを使用）
