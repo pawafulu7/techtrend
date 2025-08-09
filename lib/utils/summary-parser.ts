@@ -1,4 +1,4 @@
-import { ArticleType, getArticleTypeSections } from './article-type-prompts';
+import { ArticleType, getArticleTypeSections, getUnifiedSections } from './article-type-prompts';
 
 export interface SummarySection {
   title: string;
@@ -21,7 +21,47 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
   // セクションの定義を取得（記事タイプがある場合は動的に、ない場合は旧形式）
   let sectionDefinitions;
   
-  if (options?.articleType && options?.summaryVersion === 2) {
+  if (options?.articleType === 'unified' || options?.summaryVersion === 5) {
+    // 統一フォーマット - 単純な箇条書き形式を処理
+    // 各箇条書き項目をそのままセクションとして扱う
+    const unifiedSections = getUnifiedSections();
+    let sectionIndex = 0;
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+      
+      if (trimmedLine.startsWith('・')) {
+        let content = trimmedLine.substring(1).trim();
+        
+        if (sectionIndex < unifiedSections.length) {
+          // プレフィックスを削除
+          const prefixToRemove = unifiedSections[sectionIndex].title;
+          // 「、」または「は、」で終わるプレフィックスを削除
+          if (content.startsWith(prefixToRemove)) {
+            // プレフィックスとその後の「、」を削除
+            content = content.substring(prefixToRemove.length).replace(/^[、は]*/, '').trim();
+          }
+          
+          sections.push({
+            title: unifiedSections[sectionIndex].title,
+            content: content,
+            icon: unifiedSections[sectionIndex].icon
+          });
+          sectionIndex++;
+        } else {
+          // 5つ以上の項目がある場合は追加情報として扱う
+          sections.push({
+            title: '補足情報',
+            content: content,
+            icon: '📝'
+          });
+        }
+      }
+    }
+    
+    return sections; // 統一フォーマットは早期リターン
+  } else if (options?.articleType && options?.summaryVersion === 2) {
     // 新形式：記事タイプ別のセクション定義を使用
     const typeSections = getArticleTypeSections(options.articleType);
     sectionDefinitions = typeSections.map(section => ({

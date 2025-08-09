@@ -111,6 +111,7 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
   let detailedSummary = '';
   let tags: string[] = [];
   let isDetailedSummary = false;
+  let isSummarySection = false; // 要約セクションフラグを追加
   let tagSectionStarted = false; // タグセクション開始フラグを追加
   
   // 各行を解析（新形式: タグが次の行に来る場合に対応）
@@ -121,12 +122,14 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
     if (/^(タグ|Tags)[:：]?\s*$/.test(line) || /^(タグ|Tags)[:：]\s*[^\s]/.test(line)) {
       tagSectionStarted = true;
       isDetailedSummary = false;
+      isSummarySection = false;
       
       // 同じ行にタグがある場合
       const tagMatch = line.match(/^(?:タグ|Tags)[:：]\s*(.+)$/);
       if (tagMatch && tagMatch[1]) {
         const tagLine = tagMatch[1];
         tags = tagLine.split(/[,、，]/).map(tag => tag.trim()).filter(tag => tag.length > 0);
+        tagSectionStarted = false; // 取得完了
       }
       continue;
     }
@@ -141,6 +144,7 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
     // 詳細要約セクションの検出
     if (/^(詳細要約|詳細な要約|Detailed Summary)[:：]/.test(line)) {
       isDetailedSummary = true;
+      isSummarySection = false;
       tagSectionStarted = false; // タグセクション終了
       const content = line.replace(/^(?:詳細要約|詳細な要約|Detailed Summary)[:：]\s*/, '');
       if (content) {
@@ -150,20 +154,29 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
     }
     
     // 通常要約セクションの検出
-    if (/^(要約|Summary|短い要約)[:：]/.test(line) && !isDetailedSummary) {
-      const content = line.replace(/^(?:要約|Summary|短い要約)[:：]\s*/, '');
+    if (/^(要約|Summary|短い要約|一覧要約)[:：]/.test(line) && !isDetailedSummary) {
+      isSummarySection = true;
+      isDetailedSummary = false;
+      tagSectionStarted = false;
+      
+      const content = line.replace(/^(?:要約|Summary|短い要約|一覧要約)[:：]\s*/, '');
       if (content) {
         summary = content;
+        isSummarySection = false; // 取得完了
       }
+      continue;
+    }
+    
+    // 要約セクションで、次の行に内容がある場合
+    if (isSummarySection && line && !line.startsWith('【')) {
+      summary = line;
+      isSummarySection = false; // 取得完了
       continue;
     }
     
     // セクションに応じて内容を追加
     if (isDetailedSummary && line) {
       detailedSummary += line + '\n';
-    } else if (!summary && !isDetailedSummary && !tagSectionStarted && line) {
-      // 要約がまだ設定されていない場合
-      summary = line;
     }
   }
   

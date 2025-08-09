@@ -5,6 +5,24 @@
 **重要: 修正作業を行う前に、必ず `CODE-MAINTENANCE-GUIDE.md` を確認してください。**
 このガイドには、影響範囲の把握方法、関連箇所の確認手順、検証方法が詳しく記載されています。
 
+## データベース接続
+
+**重要: 必ず以下のデータベースパスを使用すること**
+- 正しいDBパス: `prisma/dev.db`
+- SQLiteコマンド例: `sqlite3 prisma/dev.db`
+- 間違い: `techtrend.db`、`.prisma/dev.db`（これらは存在しない）
+
+```bash
+# 正しい使用例
+echo "SELECT COUNT(*) FROM Article;" | sqlite3 prisma/dev.db
+
+# テーブル一覧確認
+echo ".tables" | sqlite3 prisma/dev.db
+
+# スキーマ確認
+echo ".schema Article" | sqlite3 prisma/dev.db
+```
+
 ## 重要な運用ルール
 
 ### 1. 記事要約の生成
@@ -143,6 +161,40 @@ npm run claude:compare
 
 1. **通常運用**: Gemini API（自動バッチ処理）
 2. **補完運用**: Claude Code（少量・高品質処理）
+
+## 統一フォーマット要約の再生成
+
+### コマンド
+
+```bash
+# 未処理記事のみ再生成（推奨）
+npm run regenerate:all-unified
+
+# 中断後の再開（処理済みをスキップ）
+npm run regenerate:all-unified -- --continue
+
+# 全記事を強制再生成（処理済みも含む）
+npm run regenerate:all-unified -- --force
+
+# ドライラン（実際の更新なし）
+npm run regenerate:all-unified -- --dry-run
+
+# 件数制限
+npm run regenerate:all-unified -- --limit=100
+
+# 組み合わせ
+npm run regenerate:all-unified -- --continue --limit=50
+```
+
+### 処理済みフラグ
+- `summaryVersion: 5` = 統一フォーマット処理済み
+- `articleType: 'unified'` = 統一タイプ
+
+### Rate Limit対策
+- 通常: 5秒間隔で実行
+- 100件ごと: 30秒の長期待機
+- Rate Limitエラー時: 60秒待機して再試行
+- 継続オプション: `--continue`で中断箇所から再開
 
 ## テストコマンド
 

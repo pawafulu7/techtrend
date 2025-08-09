@@ -41,6 +41,7 @@
     "regenerate:quality-fallback": "tsx scripts/manual/regenerate-low-quality-with-fallback.ts",
     "regenerate:force-all": "tsx scripts/manual/force-regenerate-all.ts",
     "regenerate:under-40": "tsx scripts/manual/regenerate-under-40.ts",
+    "regenerate:all-unified": "tsx scripts/manual/regenerate-all-unified.ts",
     "techtrend": "tsx lib/cli/index.ts"
   },
   "prisma": {
