@@ -7,6 +7,12 @@ import {
   createTestSources,
   createTestSourceStats 
 } from '../../helpers/factories';
+import { server } from '../../msw/server';
+
+// Setup MSW for this test file
+beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 describe('Sources API', () => {
   describe('GET /api/sources', () => {

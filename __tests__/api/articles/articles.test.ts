@@ -9,6 +9,12 @@ import {
   createTestArticles, 
   createPaginatedResponse 
 } from '../../helpers/factories';
+import { server } from '../../msw/server';
+
+// Setup MSW for this test file
+beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 describe('Articles API', () => {
   describe('GET /api/articles', () => {
