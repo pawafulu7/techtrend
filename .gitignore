@@ -105,3 +105,9 @@ test-*.md
 # Serena MCP cache and memories
 .serena/cache/
 .serena/memories/
+
+# Playwright Test
+/test-results/
+/playwright-report/
+/playwright/.cache/
+# 保持: .env.test はテスト設定として共有
