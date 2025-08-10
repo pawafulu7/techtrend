@@ -79,13 +79,14 @@ export function SearchBar() {
     // 検索パラメータを構築
     const params = new URLSearchParams(searchParams);
     if (finalQuery) {
-      params.set('q', finalQuery);
+      params.set('search', finalQuery);
+      params.set('page', '1'); // 検索時は1ページ目に戻る
     } else {
-      params.delete('q');
+      params.delete('search');
     }
     
-    // 検索ページへ遷移
-    router.push(`/search?${params.toString()}`);
+    // ホームページへ遷移（検索パラメータ付き）
+    router.push(`/?${params.toString()}`);
     setShowSuggestions(false);
     
     setTimeout(() => setIsSearching(false), 500);
