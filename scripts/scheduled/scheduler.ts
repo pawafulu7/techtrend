@@ -234,10 +234,8 @@ cron.schedule('30 8,20 * * *', async () => {
     // 全ソースを結合
     const allSources = [...RSS_SOURCES, ...SCRAPING_SOURCES];
     
-    // 要約生成をスキップして実行
-    await executeUpdatePipeline(allSources, '初回実行', {
-      skipSummaries: true
-    });
+    // 要約生成も含めて実行
+    await executeUpdatePipeline(allSources, '初回実行');
     
     console.log('💡 要約生成は午前10:30に実行されます');
     
