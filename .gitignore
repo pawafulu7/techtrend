@@ -111,3 +111,4 @@ test-*.md
 /playwright-report/
 /playwright/.cache/
 # 保持: .env.test はテスト設定として共有
+*.txt
