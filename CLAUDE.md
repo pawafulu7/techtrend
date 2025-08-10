@@ -279,7 +279,25 @@ npm run regenerate:all-unified -- --continue --limit=50
 
 ## テストコマンド
 
+### E2Eテスト実行時の注意事項
+**重要**: 開発サーバーは常時起動しています（http://localhost:3000）
+- テスト実行前にサーバー起動は不要です
+- `npm run dev`を実行する必要はありません
+- テストは常にlocalhost:3000に対して実行されます
+
 ```bash
+# E2Eテスト実行
+npm run test:e2e              # 全ブラウザでテスト
+npm run test:e2e:chromium      # Chromiumのみ
+npm run test:e2e:debug         # デバッグモード
+npm run test:e2e:ui            # UIモード（インタラクティブ）
+npm run test:e2e:headed       # ブラウザ表示あり
+
+# 単体テスト・統合テスト
+npm run test                  # Jestテスト実行
+npm run test:watch           # ウォッチモード
+npm run test:coverage        # カバレッジ測定
+
 # 特定ソースのみ収集
 npx tsx scripts/collect-feeds.ts "Dev.to"
 
