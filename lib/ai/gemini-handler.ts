@@ -1,8 +1,7 @@
 import fetch from 'node-fetch';
-// import { detectArticleType } from '../utils/article-type-detector';  // 統一プロンプト移行により無効化
-// import { generatePromptForArticleType } from '../utils/article-type-prompts';  // 統一プロンプト移行により無効化
 import { generateUnifiedPrompt } from '../utils/article-type-prompts';
 import { postProcessSummaries } from '../utils/summary-post-processor';
+import { getUnifiedSummaryService } from './unified-summary-service';
 
 interface SummaryAndTags {
   summary: string;
@@ -15,52 +14,28 @@ export async function generateSummaryAndTags(
   title: string,
   content: string
 ): Promise<SummaryAndTags> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not set');
+  // 統一サービスを使用
+  const service = getUnifiedSummaryService();
+  
+  try {
+    const result = await service.generate(title, content, {
+      maxRetries: 3,
+      minQualityScore: 40
+    });
+    
+    // 後処理を適用して文字数制約と句点を調整
+    const processed = postProcessSummaries(result.summary, result.detailedSummary);
+    
+    return {
+      summary: processed.summary,
+      detailedSummary: processed.detailedSummary,
+      tags: result.tags,
+      articleType: result.articleType
+    };
+  } catch (error) {
+    console.error('Failed to generate summary:', error);
+    throw error;
   }
-
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  
-  // 統一プロンプトを使用（記事タイプ判定を廃止）
-  const prompt = generateUnifiedPrompt(title, content);
-  const articleType = 'unified';  // 統一タイプを設定
-
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        temperature: 0.1,  // より確定的な生成のため0.3から変更
-        maxOutputTokens: 2000,  // ユーザー提案に基づき余裕を持った設定
-        topP: 0.8,  // 上位80%の確率分布から選択
-        topK: 40    // 上位40個の候補から選択
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API request failed: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json() as any;
-  const responseText = data.candidates[0].content.parts[0].text.trim();
-  
-  const result = parseSummaryAndTags(responseText);
-  
-  // 後処理を適用して文字数制約と句点を調整
-  const processed = postProcessSummaries(result.summary, result.detailedSummary);
-  
-  return { 
-    ...result, 
-    summary: processed.summary,
-    detailedSummary: processed.detailedSummary,
-    articleType 
-  };
 }
 
 // テキストクリーンアップ関数
