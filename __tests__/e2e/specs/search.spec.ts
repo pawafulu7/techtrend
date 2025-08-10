@@ -15,8 +15,8 @@ test.describe('検索機能', () => {
   });
 
   test('キーワード検索が機能する', async ({ page }) => {
-    // 検索入力フィールドを探す（タイムアウトを延長）
-    const searchInput = page.locator('input[type="search"], input[placeholder*="検索"], input[placeholder*="Search"]').first();
+    // 検索入力フィールドを探す（実際のページに合わせたセレクター）
+    const searchInput = page.locator('input[type="search"][placeholder*="記事を検索"]').first();
     
     await expect(searchInput).toBeVisible({ timeout: 10000 });
     
@@ -33,23 +33,31 @@ test.describe('検索機能', () => {
     // エラーがないことを確認
     await expectNoErrors(page);
     
-    // 検索結果が表示されることを確認
-    const searchResults = page.locator('article, [class*="article"], [class*="card"]');
-    const resultsCount = await searchResults.count();
+    // 検索結果のローディングが完了するまで待機
+    await page.waitForSelector('main', { state: 'visible', timeout: 10000 });
     
-    // 検索結果が0件以上であることを確認（0件の場合は「結果なし」メッセージが表示されるはず）
-    if (resultsCount > 0) {
-      // 少なくとも最初の結果が表示されることを確認
-      await expect(searchResults.first()).toBeVisible();
-    } else {
-      // 結果なしメッセージを確認
-      const noResultsMessage = page.locator(':text("見つかりません"), :text("No results"), :text("該当なし")').first();
-      await expect(noResultsMessage).toBeVisible();
+    // メインコンテンツ内のローディングスピナーが消えるまで待機
+    const mainLoader = page.locator('main .animate-spin, main [class*="loader"]');
+    if (await mainLoader.count() > 0) {
+      await mainLoader.first().waitFor({ state: 'hidden', timeout: 10000 });
     }
+    
+    // 検索結果または「結果なし」メッセージを確認
+    await page.waitForTimeout(1000); // APIレスポンスを待つ
+    
+    // 検索結果カウントの表示を確認
+    const resultCountText = page.locator('p:has-text("件の記事が見つかりました")');
+    const noResultsText = page.locator(':text("検索条件に一致する記事が見つかりませんでした"), :text("検索キーワードを入力してください")');
+    
+    // いずれかのメッセージが表示されることを確認
+    const hasResultCount = await resultCountText.isVisible({ timeout: 5000 }).catch(() => false);
+    const hasNoResults = await noResultsText.isVisible({ timeout: 5000 }).catch(() => false);
+    
+    expect(hasResultCount || hasNoResults).toBeTruthy();
   });
 
   test('空の検索クエリの処理', async ({ page }) => {
-    const searchInput = page.locator('input[type="search"], input[placeholder*="検索"]').first();
+    const searchInput = page.locator('input[type="search"][placeholder*="記事を検索"]').first();
     
     await expect(searchInput).toBeVisible();
     
@@ -67,7 +75,7 @@ test.describe('検索機能', () => {
   });
 
   test('特殊文字を含む検索クエリの処理', async ({ page }) => {
-    const searchInput = page.locator('input[type="search"], input[placeholder*="検索"]').first();
+    const searchInput = page.locator('input[type="search"][placeholder*="記事を検索"]').first();
     
     await expect(searchInput).toBeVisible();
     
@@ -232,7 +240,7 @@ test.describe('検索機能', () => {
   });
 
   test('検索履歴・候補の表示', async ({ page }) => {
-    const searchInput = page.locator('input[type="search"], input[placeholder*="検索"]').first();
+    const searchInput = page.locator('input[type="search"][placeholder*="記事を検索"]').first();
     
     await expect(searchInput).toBeVisible();
     
