@@ -3,10 +3,18 @@
  * MSW依存を排除し、純粋なJestモックを使用
  */
 
+// モックを先に設定
+jest.mock('@/lib/database');
+jest.mock('@/lib/redis/client');
+
 import { testApiHandler, assertSuccessResponse, assertErrorResponse } from '../../helpers/test-utils';
 import { GET } from '@/app/api/articles/route';
-import prismaMock from '../../../__mocks__/lib/prisma';
-import redisMock from '../../../__mocks__/lib/redis/client';
+import { prisma } from '@/lib/database';
+import { getRedisClient } from '@/lib/redis/client';
+
+// モックインスタンスを取得
+const prismaMock = prisma as any;
+const redisMock = getRedisClient() as any;
 
 describe('Articles API', () => {
   beforeEach(() => {
@@ -54,7 +62,6 @@ describe('Articles API', () => {
       const response = await testApiHandler(GET, {
         url: 'http://localhost:3000/api/articles'
       });
-
       assertSuccessResponse(response);
       expect(response.data.data).toBeDefined();
       expect(response.data.data.items).toHaveLength(1);
