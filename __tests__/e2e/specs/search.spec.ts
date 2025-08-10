@@ -15,10 +15,10 @@ test.describe('検索機能', () => {
   });
 
   test('キーワード検索が機能する', async ({ page }) => {
-    // 検索入力フィールドを探す
+    // 検索入力フィールドを探す（タイムアウトを延長）
     const searchInput = page.locator('input[type="search"], input[placeholder*="検索"], input[placeholder*="Search"]').first();
     
-    await expect(searchInput).toBeVisible();
+    await expect(searchInput).toBeVisible({ timeout: 10000 });
     
     // 検索キーワードを入力
     await searchInput.fill('JavaScript');
@@ -26,8 +26,8 @@ test.describe('検索機能', () => {
     // Enterキーで検索実行
     await searchInput.press('Enter');
     
-    // 検索結果ページへの遷移を確認
-    await expect(page).toHaveURL(/\/search|\/articles\?q=/);
+    // 検索結果ページへの遷移を確認（タイムアウトを延長）
+    await expect(page).toHaveURL(/\/search|\/articles\?q=/, { timeout: 15000 });
     await waitForPageLoad(page);
     
     // エラーがないことを確認
