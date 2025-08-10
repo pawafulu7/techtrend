@@ -74,6 +74,22 @@ describe('summary-quality-checker', () => {
         );
       });
 
+      it('should warn for short but acceptable summary', () => {
+        const summary = 'x'.repeat(75) + '。'; // 76文字
+        const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
+        
+        const result = checkSummaryQuality(summary, detailedSummary);
+        
+        expect(result.isValid).toBe(true); // 50文字以上なので有効
+        expect(result.issues).toContainEqual(
+          expect.objectContaining({
+            type: 'length',
+            severity: 'minor',
+            message: expect.stringContaining('一覧要約が短め')
+          })
+        );
+      });
+
       it('should warn about slightly long summary', () => {
         const summary = 'x'.repeat(181) + '。'; // 182文字
         const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
@@ -349,57 +365,62 @@ describe('summary-quality-checker', () => {
   describe('expandSummaryIfNeeded', () => {
     it('should not expand valid summary', () => {
       const summary = 'x'.repeat(160) + '。';
-      const expanded = expandSummaryIfNeeded(summary);
+      const expanded = expandSummaryIfNeeded(summary, '', 150, '');
       
       expect(expanded).toBe(summary);
     });
 
-    it('should expand short summary', () => {
-      const summary = '短い要約です。';
+    it('should not expand summary over 50 chars', () => {
+      const summary = 'x'.repeat(60) + '。'; // 61文字
+      const expanded = expandSummaryIfNeeded(summary, '', 150, '');
       
-      const expanded = expandSummaryIfNeeded(summary);
+      expect(expanded).toBe(summary); // 50文字以上なのでそのまま返される
+    });
+
+    it('should expand very short summary', () => {
+      const summary = '短い要約です。'; // 7文字
+      const title = 'テスト記事のタイトル';
+      const content = 'これは記事の本文です。詳細な内容が含まれています。';
       
-      expect(expanded.length).toBeGreaterThanOrEqual(150);
-      expect(expanded).toContain(summary.replace(/。$/, ''));
+      const expanded = expandSummaryIfNeeded(summary, title, 150, content);
+      
+      expect(expanded.length).toBeGreaterThanOrEqual(30); // 最低30文字は確保
       expect(expanded).toMatch(/。$/); // 句点で終わる
     });
 
-    it('should add appropriate expansion based on shortage', () => {
+    it('should expand with title when very short', () => {
       const veryShort = '短い。'; // 3文字
-      const expanded = expandSummaryIfNeeded(veryShort);
+      const title = '技術記事のタイトル';
+      const expanded = expandSummaryIfNeeded(veryShort, title, 150, '');
       
-      expect(expanded.length).toBeGreaterThanOrEqual(150);
-      expect(expanded).toContain('という技術的課題に対する実践的なアプローチ'); // 100文字以上不足時の拡張
+      // 「技術記事のタイトルに関する記事。」のような形式になる
+      expect(expanded).toContain(title); // タイトルが含まれる
+      expect(expanded).toContain('に関する記事');
+      expect(expanded).toMatch(/。$/); // 句点で終わる
     });
 
-    it('should handle moderate shortage', () => {
-      const summary = 'x'.repeat(100) + '。'; // 101文字（49文字不足）
-      const expanded = expandSummaryIfNeeded(summary);
+    it('should use content for expansion', () => {
+      const summary = 'とても短い要約。'; // 8文字
+      const content = 'これは記事の内容です。詳しい説明が含まれています。技術的な詳細も記載されています。';
+      const expanded = expandSummaryIfNeeded(summary, '', 150, content);
       
-      expect(expanded.length).toBeGreaterThanOrEqual(150);
-      expect(expanded).toContain('について詳しく解説している'); // 40-70文字不足時の拡張
-    });
-
-    it('should handle small shortage', () => {
-      const summary = 'x'.repeat(140) + '。'; // 141文字（9文字不足）
-      const expanded = expandSummaryIfNeeded(summary);
-      
-      expect(expanded.length).toBeGreaterThanOrEqual(150);
-      expect(expanded).toContain('の基本から応用まで'); // 20文字以下不足時の拡張
+      expect(expanded.length).toBeGreaterThanOrEqual(30);
+      expect(expanded).toMatch(/。$/); // 句点で終わる
     });
 
     it('should ensure result ends with period', () => {
       const summary = '短い';
-      const expanded = expandSummaryIfNeeded(summary);
+      const expanded = expandSummaryIfNeeded(summary, '', 150, '');
       
       expect(expanded).toMatch(/。$/);
     });
 
-    it('should respect custom minLength', () => {
-      const summary = '短い要約。';
-      const expanded = expandSummaryIfNeeded(summary, '', 200);
+    it('should return as-is if over 50 chars even with higher minLength', () => {
+      const summary = 'x'.repeat(60) + '。'; // 61文字
+      const expanded = expandSummaryIfNeeded(summary, '', 200, '');
       
-      expect(expanded.length).toBeGreaterThanOrEqual(200);
+      // 50文字以上あるのでそのまま返される（200文字に達していなくても）
+      expect(expanded).toBe(summary);
     });
   });
 

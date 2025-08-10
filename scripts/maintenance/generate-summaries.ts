@@ -261,8 +261,8 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
   detailedSummary = finalCleanup(detailedSummary);
   
   // Phase 2: 文字数拡張処理を追加
-  // 一覧要約が150文字未満の場合は拡張
-  summary = expandSummaryIfNeeded(summary, '', 150);
+  // 一覧要約が150文字未満の場合は拡張（タイトルとコンテンツを渡す）
+  summary = expandSummaryIfNeeded(summary, '', 150, text);
   
   // フォールバック
   if (!summary) {

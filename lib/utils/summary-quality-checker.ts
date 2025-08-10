@@ -31,13 +31,22 @@ export function checkSummaryQuality(
 
   // 1. 一覧要約の文字数チェック
   const summaryLength = summary.length;
-  if (summaryLength < 150) {
+  if (summaryLength < 50) {
+    // 50文字未満は短すぎる
     issues.push({
       type: 'length',
       severity: 'major',
-      message: `一覧要約が短すぎる: ${summaryLength}文字（最小150文字）`
+      message: `一覧要約が短すぎる: ${summaryLength}文字（最小50文字）`
     });
     score -= 20;
+  } else if (summaryLength < 100) {
+    // 50-100文字は短めだが許容
+    issues.push({
+      type: 'length',
+      severity: 'minor',
+      message: `一覧要約が短め: ${summaryLength}文字（理想は100-180文字）`
+    });
+    score -= 5;
   } else if (summaryLength > 200) {
     issues.push({
       type: 'length',
@@ -50,7 +59,7 @@ export function checkSummaryQuality(
     issues.push({
       type: 'length',
       severity: 'minor',
-      message: `一覧要約がやや長い: ${summaryLength}文字（理想は150-180文字）`
+      message: `一覧要約がやや長い: ${summaryLength}文字（理想は100-180文字）`
     });
     score -= 5;
   }
@@ -281,73 +290,77 @@ export function calculateQualityStats(results: QualityCheckResult[]): {
 
 /**
  * 一覧要約の文字数が不足している場合に拡張する
- * Phase 2実装: 文字数不足問題の解決
+ * エラーメッセージは返さず、可能な範囲で自然な拡張を試みる
  * @param summary 元の要約
- * @param title 記事タイトル（未使用だが将来の拡張用）
- * @param minLength 最小文字数（デフォルト150文字）
+ * @param title 記事タイトル
+ * @param minLength 目標文字数（デフォルト150文字だが、強制はしない）
+ * @param content 記事本文（拡張用）
  * @returns 拡張された要約
  */
 export function expandSummaryIfNeeded(
   summary: string,
   title: string = '',
-  minLength: number = 150
+  minLength: number = 150,
+  content: string = ''  // 新規パラメータ追加
 ): string {
   // すでに十分な長さがある場合はそのまま返す
   if (summary.length >= minLength) {
     return summary;
   }
 
+  // 50文字以上あれば基本的に許容するため、そのまま返す
+  if (summary.length >= 50) {
+    return summary;
+  }
+
   // 句点を一時的に削除
-  const summaryWithoutPeriod = summary.replace(/。$/, '');
+  let expandedSummary = summary.replace(/。$/, '');
   
-  // 拡張文のパターン
-  const expansions = [
-    'という技術的課題に対する実践的なアプローチを詳しく解説している。本記事では、実装の詳細やベストプラクティス、注意点なども含めて包括的に説明されている。',
-    'という実装方法について具体例を交えて説明している。コードサンプルや設定例を用いながら、実践的な導入手順を解説。',
-    'について詳しく解説している。初心者にも分かりやすく、段階的な学習が可能な構成となっている。',
-    'に関する重要な概念と実装テクニックを紹介。実際のプロジェクトで活用できる実践的な内容。',
-    'の基本から応用まで幅広くカバーし、開発者が直面する課題への解決策を提示している。'
-  ];
-  
-  // 不足文字数を計算
-  let result = summaryWithoutPeriod;
-  let shortage = minLength - result.length;
-  
-  // 不足文字数に応じて適切な拡張文を選択・調整
-  if (shortage > 100) {
-    // 大幅に不足（100文字以上）
-    result += expansions[0];
-  } else if (shortage > 70) {
-    // かなり不足（70-100文字）
-    result += expansions[1];
-  } else if (shortage > 40) {
-    // 中程度の不足（40-70文字）
-    result += expansions[2];
-  } else if (shortage > 20) {
-    // やや不足（20-40文字）
-    result += expansions[3];
-  } else {
-    // 軽微な不足（20文字以下）
-    result += expansions[4];
+  // タイトルを活用した自然な拡張（タイトルが含まれていない場合）
+  if (title && expandedSummary.length < 30 && !expandedSummary.includes(title.substring(0, 10))) {
+    expandedSummary = `${title}について、${expandedSummary}`;
   }
   
-  // それでも150文字に満たない場合は、さらに補足を追加
-  if (result.length < minLength) {
-    const additionalShortage = minLength - result.length;
-    const padding = '開発効率の向上と品質改善に貢献する重要な技術情報を提供している';
-    result += padding.substring(0, Math.min(additionalShortage + 10, padding.length));
-  }
-  
-  // 最終的に150文字を超えていることを確認
-  // 万が一まだ不足している場合は、エラーメッセージを返す
-  if (result.length < minLength) {
-    return 'この記事の要約生成に失敗しました。記事内容が不十分な可能性があります。';
+  // コンテンツから自然な補完を試みる（50文字を目指す）
+  if (expandedSummary.length < 50 && content) {
+    const cleanContent = content.replace(/[\n\r]+/g, ' ').trim();
+    const shortage = 50 - expandedSummary.length;
+    
+    // コンテンツから適切な長さの文章を抽出
+    if (cleanContent.length > shortage) {
+      const additionalText = cleanContent.substring(0, shortage + 20);
+      // 文の途中で切れないように調整
+      const lastPeriodIndex = additionalText.lastIndexOf('。');
+      if (lastPeriodIndex > 0) {
+        expandedSummary += '。' + additionalText.substring(0, lastPeriodIndex + 1);
+      } else {
+        // 句点がない場合は適切な位置で切る
+        const cutPoint = additionalText.lastIndexOf('、');
+        if (cutPoint > 0 && cutPoint > shortage / 2) {
+          expandedSummary += '。' + additionalText.substring(0, cutPoint);
+        } else {
+          expandedSummary += '。' + additionalText.substring(0, shortage);
+        }
+      }
+    } else if (cleanContent.length > 0) {
+      expandedSummary += '。' + cleanContent;
+    }
   }
   
   // 最後に句点で終わるように調整
-  if (!result.endsWith('。')) {
-    result += '。';
+  if (!expandedSummary.endsWith('。')) {
+    expandedSummary += '。';
   }
   
-  return result;
+  // 最終チェック：30文字未満は本当に短すぎるので、タイトルとコンテンツから最小限の要約を生成
+  if (expandedSummary.length < 30) {
+    if (title) {
+      const fallbackSummary = `${title}に関する記事${content ? '。' + content.substring(0, 50).replace(/[\n\r]+/g, ' ') : ''}。`;
+      return fallbackSummary;
+    }
+    // タイトルもない場合は、元の要約をそのまま返す
+    return expandedSummary;
+  }
+  
+  return expandedSummary;
 }

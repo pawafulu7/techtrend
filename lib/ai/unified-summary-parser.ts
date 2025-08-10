@@ -103,9 +103,19 @@ function parseTags(tagString: string): string[] {
 /**
  * フォールバック要約を生成
  */
-function createFallbackSummary(text: string): string {
-  // APIエラー時は適切なエラーメッセージを返す
-  return 'この記事の要約生成に失敗しました。APIエラーまたはコンテンツ不足の可能性があります。再度お試しください。';
+function createFallbackSummary(text: string, title?: string): string {
+  // エラーメッセージではなく、利用可能な情報から要約を生成
+  if (title) {
+    const contentPreview = text.substring(0, 100).replace(/[\n\r]+/g, ' ').trim();
+    return `${title}についての記事。${contentPreview}`;
+  }
+  
+  // タイトルがない場合は、テキストの最初の部分を使用
+  const cleanedText = text.replace(/[\n\r]+/g, ' ').trim();
+  if (cleanedText.length > 150) {
+    return cleanedText.substring(0, 150) + '...';
+  }
+  return cleanedText;
 }
 
 /**
