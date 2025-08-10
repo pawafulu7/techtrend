@@ -24,23 +24,23 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
   for (const line of lines) {
     const trimmed = line.trim();
     
-    // セクション検出
-    if (trimmed.startsWith('一覧要約:') || trimmed.startsWith('要約:')) {
+    // セクション検出（マークダウンの太字記号も考慮）
+    if (trimmed.match(/^\*{0,2}(一覧)?要約:\*{0,2}/)) {
       currentSection = 'summary';
-      const content = trimmed.replace(/^(一覧)?要約:/, '').trim();
+      const content = trimmed.replace(/^\*{0,2}(一覧)?要約:\*{0,2}/, '').trim();
       if (content) {
         summary = content;
         currentSection = null; // 同一行で完結
       }
-    } else if (trimmed.startsWith('詳細要約:')) {
+    } else if (trimmed.match(/^\*{0,2}詳細要約:\*{0,2}/)) {
       currentSection = 'detailed';
-      const content = trimmed.replace(/^詳細要約:/, '').trim();
+      const content = trimmed.replace(/^\*{0,2}詳細要約:\*{0,2}/, '').trim();
       if (content) {
         detailedSummary = content;
       }
-    } else if (trimmed.startsWith('タグ:')) {
+    } else if (trimmed.match(/^\*{0,2}タグ:\*{0,2}/)) {
       currentSection = 'tags';
-      const content = trimmed.replace(/^タグ:/, '').trim();
+      const content = trimmed.replace(/^\*{0,2}タグ:\*{0,2}/, '').trim();
       if (content) {
         tags = parseTags(content);
         currentSection = null; // 同一行で完結
