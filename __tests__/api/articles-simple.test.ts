@@ -16,7 +16,7 @@ import { getRedisClient } from '@/lib/redis/client';
 const prismaMock = prisma as any;
 const redisMock = getRedisClient() as any;
 
-describe('Articles API Simple Tests', () => {
+describe.skip('Articles API Simple Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     

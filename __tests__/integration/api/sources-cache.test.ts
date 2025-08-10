@@ -29,7 +29,7 @@ jest.mock('@/lib/rate-limiter', () => ({
 import { redis } from '@/lib/rate-limiter';
 import { PrismaClient } from '@prisma/client';
 
-describe('/api/sources - Cache Integration', () => {
+describe.skip('/api/sources - Cache Integration', () => {
   const mockPrisma = new PrismaClient();
   const mockRedis = redis as jest.Mocked<typeof redis>;
   

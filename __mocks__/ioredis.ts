@@ -1,11 +1,20 @@
 class RedisMock {
   private store: Map<string, any> = new Map();
   
+  constructor(options?: any) {
+    // Constructor accepts options but ignores them for mock
+  }
+  
   async get(key: string): Promise<string | null> {
     return this.store.get(key) || null;
   }
   
   async set(key: string, value: any, ...args: any[]): Promise<'OK'> {
+    this.store.set(key, value);
+    return 'OK';
+  }
+  
+  async setex(key: string, seconds: number, value: any): Promise<'OK'> {
     this.store.set(key, value);
     return 'OK';
   }
@@ -22,6 +31,11 @@ class RedisMock {
   }
   
   async flushall(): Promise<'OK'> {
+    this.store.clear();
+    return 'OK';
+  }
+  
+  async flushdb(): Promise<'OK'> {
     this.store.clear();
     return 'OK';
   }
@@ -66,7 +80,6 @@ class RedisMock {
   }
 }
 
-// Export as default and named export for compatibility
-const redis = new RedisMock();
-export default redis;
-export { redis, RedisMock };
+// Export as default constructor for compatibility with "new Redis()"
+export default RedisMock;
+export { RedisMock };
