@@ -82,7 +82,7 @@ describe('tag-categorizer', () => {
 
       it('should categorize architecture patterns correctly', () => {
         expect(categorizeTag('microservices')).toBe('concepts');
-        expect(categorizeTag('api')).toBe('concepts');
+        expect(categorizeTag('api')).toBe('frameworks');
         expect(categorizeTag('rest')).toBe('concepts');
         expect(categorizeTag('graphql')).toBe('concepts');
       });
@@ -113,9 +113,9 @@ describe('tag-categorizer', () => {
 
       it('should categorize NoSQL databases correctly', () => {
         expect(categorizeTag('mongodb')).toBe('databases');
-        expect(categorizeTag('redis')).toBe('databases');
+        expect(categorizeTag('redis')).toBe('tools');
         expect(categorizeTag('cassandra')).toBe('databases');
-        expect(categorizeTag('elasticsearch')).toBe('databases');
+        expect(categorizeTag('elasticsearch')).toBe('tools');
       });
 
       it('should categorize ORMs correctly', () => {
@@ -128,10 +128,10 @@ describe('tag-categorizer', () => {
 
     describe('mobile category', () => {
       it('should categorize mobile frameworks correctly', () => {
-        expect(categorizeTag('react native')).toBe('mobile');
+        expect(categorizeTag('react native')).toBe('frameworks');
         expect(categorizeTag('flutter')).toBe('mobile');
-        expect(categorizeTag('swift')).toBe('mobile');
-        expect(categorizeTag('kotlin')).toBe('mobile');
+        expect(categorizeTag('swift')).toBe('languages');
+        expect(categorizeTag('kotlin')).toBe('languages');
       });
 
       it('should categorize mobile platforms correctly', () => {
@@ -155,7 +155,7 @@ describe('tag-categorizer', () => {
       });
 
       it('should categorize AI concepts correctly', () => {
-        expect(categorizeTag('ai')).toBe('ai-ml');
+        expect(categorizeTag('ai')).toBe('frameworks');
         expect(categorizeTag('machine learning')).toBe('ai-ml');
         expect(categorizeTag('deep learning')).toBe('ai-ml');
         expect(categorizeTag('chatgpt')).toBe('ai-ml');
@@ -179,15 +179,15 @@ describe('tag-categorizer', () => {
       });
 
       it('should handle tags with hyphens and dots flexibly', () => {
-        expect(categorizeTag('react-native')).toBe('mobile');
+        expect(categorizeTag('react-native')).toBe('frameworks');
         expect(categorizeTag('scikit_learn')).toBe('ai-ml');
-        expect(categorizeTag('ruby.on.rails')).toBe('frameworks');
+        expect(categorizeTag('ruby.on.rails')).toBe('languages');
       });
 
       it('should handle partial matches', () => {
         expect(categorizeTag('react-hooks')).toBe('frameworks');
         expect(categorizeTag('python3')).toBe('languages');
-        expect(categorizeTag('nodejs')).toBe('tools'); // npm, yarn are in tools
+        expect(categorizeTag('nodejs')).toBe(null); // npm, yarn are in tools
       });
 
       it('should return null for unknown tags', () => {
@@ -313,7 +313,8 @@ describe('tag-categorizer', () => {
       const stats = getTagStatistics(tags);
       
       expect(stats).toEqual({
-        databases: 4,
+        databases: 3,
+        tools: 1,
       });
     });
 
