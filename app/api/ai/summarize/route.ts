@@ -46,18 +46,23 @@ export async function POST(request: NextRequest) {
       } as ApiResponse<never>, { status: 500 });
     }
 
-    // Generate summary
+    // Generate summary with unified format
     const summarizer = new ArticleSummarizer(apiKey);
-    const summary = await summarizer.summarize(
+    const result = await summarizer.summarizeUnified(
       article.id,
       article.title,
       article.content
     );
 
-    // Update article
+    // Update article with unified format data
     const updatedArticle = await prisma.article.update({
       where: { id: articleId },
-      data: { summary },
+      data: { 
+        summary: result.summary,
+        detailedSummary: result.detailedSummary,
+        articleType: result.articleType,
+        summaryVersion: result.summaryVersion,
+      },
       include: {
         source: true,
         tags: true,
@@ -115,7 +120,7 @@ export async function PUT(request: NextRequest) {
           processed: 0,
           message: 'No articles to summarize',
         },
-      } as ApiResponse<any>);
+      } as ApiResponse<{ processed: number; message: string }>);
     }
 
     // Check API key
@@ -127,9 +132,9 @@ export async function PUT(request: NextRequest) {
       } as ApiResponse<never>, { status: 500 });
     }
 
-    // Generate summaries
+    // Generate summaries with unified format
     const summarizer = new ArticleSummarizer(apiKey);
-    const summaries = await summarizer.summarizeBatch(
+    const summaries = await summarizer.summarizeBatchUnified(
       articles.map(a => ({
         id: a.id,
         title: a.title,
@@ -137,12 +142,17 @@ export async function PUT(request: NextRequest) {
       }))
     );
 
-    // Update articles
+    // Update articles with unified format data
     let processed = 0;
-    for (const [articleId, summary] of summaries) {
+    for (const [articleId, result] of summaries) {
       await prisma.article.update({
         where: { id: articleId },
-        data: { summary },
+        data: { 
+          summary: result.summary,
+          detailedSummary: result.detailedSummary,
+          articleType: result.articleType,
+          summaryVersion: result.summaryVersion,
+        },
       });
       processed++;
     }
@@ -159,7 +169,7 @@ export async function PUT(request: NextRequest) {
         total: articles.length,
         message: `Summarized ${processed} out of ${articles.length} articles`,
       },
-    } as ApiResponse<any>);
+    } as ApiResponse<{ processed: number; total: number; message: string }>);
   } catch (error) {
     console.error('Error in batch summarization:', error);
     return NextResponse.json({

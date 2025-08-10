@@ -63,10 +63,10 @@ export async function POST(request: NextRequest) {
 
               result.created++;
 
-              // Generate AI summary if not present and summarizer available
+              // Generate AI summary with unified format if not present and summarizer available
               if (!article.summary && article.content && summarizer) {
                 try {
-                  const summary = await summarizer.summarize(
+                  const result = await summarizer.summarizeUnified(
                     article.id,
                     article.title,
                     article.content
@@ -74,7 +74,12 @@ export async function POST(request: NextRequest) {
                   
                   await prisma.article.update({
                     where: { id: article.id },
-                    data: { summary },
+                    data: { 
+                      summary: result.summary,
+                      detailedSummary: result.detailedSummary,
+                      articleType: result.articleType,
+                      summaryVersion: result.summaryVersion,
+                    },
                   });
                 } catch (error) {
                   console.error(`Failed to generate summary for article ${article.id}:`, error);
