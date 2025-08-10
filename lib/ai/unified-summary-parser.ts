@@ -138,8 +138,8 @@ function cleanupText(text: string): string {
  * パース結果の検証
  */
 export function validateParsedResult(result: ParsedSummaryResult): boolean {
-  // 要約の検証
-  if (!result.summary || result.summary.length < 10 || result.summary.length > 200) {
+  // 要約の検証（長さ制限を緩和: 300文字まで許可）
+  if (!result.summary || result.summary.length < 10 || result.summary.length > 300) {
     return false;
   }
 
@@ -148,8 +148,8 @@ export function validateParsedResult(result: ParsedSummaryResult): boolean {
     return false;
   }
 
-  // タグの検証
-  if (!Array.isArray(result.tags) || result.tags.length === 0) {
+  // タグの検証（空でも許可する）
+  if (!Array.isArray(result.tags)) {
     return false;
   }
 
