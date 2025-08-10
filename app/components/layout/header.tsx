@@ -58,12 +58,7 @@ export function Header() {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-4">
             <SearchBar />
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/search/advanced" className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                詳細検索
-              </Link>
-            </Button>
+
             <ThemeToggle />
           </div>
 
@@ -91,14 +86,7 @@ export function Header() {
               <div className="pb-2">
                 <SearchBar />
               </div>
-              <Link 
-                href="/search/advanced" 
-                className="text-sm font-medium hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Filter className="h-4 w-4 mr-2 inline" />
-                詳細検索
-              </Link>
+
               {/* 主要ナビゲーション */}
               {primaryNav.map((item) => {
                 const Icon = item.icon;

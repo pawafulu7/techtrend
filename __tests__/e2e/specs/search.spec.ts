@@ -26,8 +26,8 @@ test.describe('検索機能', () => {
     // Enterキーで検索実行
     await searchInput.press('Enter');
     
-    // 検索結果ページへの遷移を確認（タイムアウトを延長）
-    await expect(page).toHaveURL(/\/search|\/articles\?q=/, { timeout: 15000 });
+    // ホームページで検索パラメータが追加されることを確認
+    await expect(page).toHaveURL(/\?.*search=/, { timeout: 15000 });
     await waitForPageLoad(page);
     
     // エラーがないことを確認
@@ -95,8 +95,8 @@ test.describe('検索機能', () => {
   });
 
   test('検索フィルターが機能する', async ({ page }) => {
-    // 検索ページへ直接アクセス
-    await page.goto('/search?q=test');
+    // ホームページで検索を実行
+    await page.goto('/?search=test');
     await waitForPageLoad(page);
     
     // ソースフィルターを探す
@@ -135,7 +135,7 @@ test.describe('検索機能', () => {
 
   test('検索結果のソート機能', async ({ page }) => {
     // 検索を実行
-    await page.goto('/search?q=JavaScript');
+    await page.goto('/?search=JavaScript');
     await waitForPageLoad(page);
     
     // ソートオプションを探す
@@ -165,7 +165,7 @@ test.describe('検索機能', () => {
 
   test('検索結果のページネーション', async ({ page }) => {
     // 一般的なキーワードで検索（結果が多いことを期待）
-    await page.goto('/search?q=a');
+    await page.goto('/?search=a');
     await waitForPageLoad(page);
     
     // ページネーションコンポーネントを探す
@@ -198,45 +198,8 @@ test.describe('検索機能', () => {
     }
   });
 
-  test('高度な検索オプション', async ({ page }) => {
-    // 検索ページへアクセス
-    await page.goto('/search');
-    await waitForPageLoad(page);
-    
-    // 高度な検索オプションを探す
-    const advancedSearchToggle = page.locator(
-      'button:has-text("詳細検索"), button:has-text("Advanced"), [data-testid="advanced-search"]'
-    ).first();
-    
-    if (await advancedSearchToggle.isVisible()) {
-      // 高度な検索オプションを開く
-      await advancedSearchToggle.click();
-      
-      // 追加の検索フィールドが表示されることを確認
-      const advancedFields = page.locator('[class*="advanced"], [data-testid*="advanced"]');
-      const fieldsCount = await advancedFields.count();
-      expect(fieldsCount).toBeGreaterThan(0);
-      
-      // タグ検索フィールドを探す
-      const tagInput = page.locator(
-        'input[name*="tag"], input[placeholder*="タグ"], [data-testid="tag-input"]'
-      ).first();
-      
-      if (await tagInput.isVisible()) {
-        await tagInput.fill('React');
-        
-        // 検索実行
-        const searchButton = page.locator('button[type="submit"], button:has-text("検索")').first();
-        if (await searchButton.isVisible()) {
-          await searchButton.click();
-          await waitForPageLoad(page);
-          
-          // URLにタグパラメータが含まれることを確認
-          const currentUrl = page.url();
-          expect(currentUrl).toContain('tag');
-        }
-      }
-    }
+  test.skip('高度な検索オプション（機能削除済み）', async ({ page }) => {
+    // この機能は削除されました
   });
 
   test('検索履歴・候補の表示', async ({ page }) => {
@@ -268,7 +231,7 @@ test.describe('検索機能', () => {
         await waitForPageLoad(page);
         
         // 検索が実行されることを確認
-        await expect(page).toHaveURL(/\/search|q=/);
+        await expect(page).toHaveURL(/search=/);
       }
     }
   });
