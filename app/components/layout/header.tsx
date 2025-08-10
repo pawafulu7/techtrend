@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { SITE_NAME } from '@/lib/constants';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { SearchBar } from '@/app/components/search/SearchBar';
 // import { NavDropdown } from '@/app/components/layout/nav-dropdown';
 
 export function Header() {
@@ -57,8 +56,6 @@ export function Header() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-4">
-            <SearchBar />
-
             <ThemeToggle />
           </div>
 
@@ -83,10 +80,6 @@ export function Header() {
         {mobileMenuOpen && (
           <nav className="md:hidden py-4 border-t">
             <div className="flex flex-col space-y-3">
-              <div className="pb-2">
-                <SearchBar />
-              </div>
-
               {/* 主要ナビゲーション */}
               {primaryNav.map((item) => {
                 const Icon = item.icon;
