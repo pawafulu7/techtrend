@@ -6,10 +6,17 @@
 // Redisクライアントのモック実装
 class MockRedisClient {
   // 基本的なRedisコマンドのモック（デフォルト値付き）
-  get = jest.fn().mockResolvedValue(null);
-  set = jest.fn().mockResolvedValue('OK');
+  // getメソッドはnullを返すようにし、"undefined"文字列を返さない
+  get = jest.fn().mockImplementation(() => Promise.resolve(null));
+  set = jest.fn().mockImplementation((key, value, ...args) => {
+    // EXオプション付きのsetを処理
+    if (args[0] === 'EX') {
+      return Promise.resolve('OK');
+    }
+    return Promise.resolve('OK');
+  });
   setex = jest.fn().mockResolvedValue('OK');
-  del = jest.fn().mockResolvedValue(1);
+  del = jest.fn().mockImplementation((...keys) => Promise.resolve(keys.length));
   exists = jest.fn().mockResolvedValue(0);
   expire = jest.fn().mockResolvedValue(1);
   ttl = jest.fn().mockResolvedValue(-2);

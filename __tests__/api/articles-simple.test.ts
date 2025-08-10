@@ -100,13 +100,34 @@ describe('Articles API Simple Tests', () => {
     });
 
     it('キャッシュが機能する', async () => {
-      // キャッシュデータの設定
+      // キャッシュデータの設定（実際のAPI応答構造に合わせる）
       const cachedData = JSON.stringify({
-        articles: [{ id: '1', title: 'Cached Article' }],
+        items: [{ 
+          id: '1', 
+          title: 'Cached Article',
+          url: 'https://cached.com',
+          summary: 'Cached summary',
+          thumbnail: null,
+          content: null,
+          publishedAt: new Date('2025-01-01'),
+          sourceId: 'cached-source',
+          bookmarks: 0,
+          userVotes: 0,
+          qualityScore: 85,
+          difficulty: null,
+          detailedSummary: null,
+          summaryVersion: 1,
+          articleType: null,
+          createdAt: new Date('2025-01-01'),
+          updatedAt: new Date('2025-01-01')
+        }],
         total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1
       });
       
-      redisMock.get.mockResolvedValue(cachedData);
+      redisMock.get.mockResolvedValueOnce(cachedData);
       
       // APIハンドラーのインポート
       const { GET } = await import('@/app/api/articles/route');
@@ -139,10 +160,47 @@ describe('Articles API Simple Tests', () => {
         url: 'https://example.com/new',
         content: 'New content',
         sourceId: 'test-source',
+        publishedAt: new Date().toISOString(),
+        tagNames: []
       };
       
-      // 重複チェック用のモック
-      prismaMock.article.findFirst.mockResolvedValue(null);
+      // 重複チェック用のモック（findUniqueを使用）
+      prismaMock.article.findUnique.mockResolvedValueOnce(null);
+      
+      // 作成時のモックを正しい構造で設定
+      prismaMock.article.create.mockResolvedValueOnce({
+        id: 'test-id',
+        title: 'New Article',
+        url: 'https://example.com/new',
+        content: 'New content',
+        summary: null,
+        thumbnail: null,
+        publishedAt: new Date(),
+        sourceId: 'test-source',
+        bookmarks: 0,
+        userVotes: 0,
+        qualityScore: 0,
+        difficulty: null,
+        detailedSummary: null,
+        summaryVersion: 1,
+        articleType: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        source: {
+          id: 'test-source',
+          name: 'Test Source',
+          type: 'test',
+          url: 'https://test.com',
+          enabled: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        tags: []
+      });
+      
+      // keysとdelのモックを設定
+      redisMock.keys.mockResolvedValueOnce(['cache:key1', 'cache:key2']);
+      redisMock.del.mockResolvedValueOnce(2);
       
       // APIハンドラーのインポート
       const { POST } = await import('@/app/api/articles/route');
@@ -163,10 +221,11 @@ describe('Articles API Simple Tests', () => {
       expect(body.success).toBe(true);
       expect(body.data).toBeDefined();
       expect(body.data.id).toBe('test-id');
-      expect(body.data.title).toBe('Test Article');
+      expect(body.data.title).toBe('New Article');
       
       // モックの呼び出し確認
       expect(prismaMock.article.create).toHaveBeenCalled();
+      expect(redisMock.keys).toHaveBeenCalled(); // キャッシュパターン検索
       expect(redisMock.del).toHaveBeenCalled(); // キャッシュクリア
     });
 
