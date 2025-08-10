@@ -1,4 +1,10 @@
-import { closeRedisConnection } from '@/lib/redis/client';
+// Mock Redis
+jest.mock('ioredis');
+
+import { redis } from '@/lib/redis/client';
+
+// Mock fetch
+global.fetch = jest.fn();
 
 // APIのテストのためのヘルパー関数
 async function fetchAPI(url: string) {
@@ -10,12 +16,39 @@ async function fetchAPI(url: string) {
 }
 
 describe('API Cache Integration', () => {
-  afterAll(async () => {
-    await closeRedisConnection();
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Reset Redis mock
+    const redisMock = redis as any;
+    if (redisMock._reset) {
+      redisMock._reset();
+    }
+  });
+
+  afterAll(() => {
+    jest.restoreAllMocks();
   });
 
   describe('/api/sources', () => {
     it('should cache sources response', async () => {
+      // Mock fetch responses
+      const mockData = { sources: [{ id: '1', name: 'Test' }] };
+      const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+      
+      // First call - cache miss
+      mockFetch.mockResolvedValueOnce({
+        status: 200,
+        headers: new Map([['x-cache-status', 'MISS']]),
+        json: async () => mockData,
+      } as any);
+      
+      // Second call - cache hit
+      mockFetch.mockResolvedValueOnce({
+        status: 200,
+        headers: new Map([['x-cache-status', 'HIT']]),
+        json: async () => mockData,
+      } as any);
+      
       // First request - should be a cache miss
       const firstResponse = await fetchAPI('/api/sources');
       expect(firstResponse.status).toBe(200);

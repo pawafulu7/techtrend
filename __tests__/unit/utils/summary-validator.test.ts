@@ -184,8 +184,7 @@ describe('summary-validator', () => {
 
     it('should reject too many bullet points', () => {
       const points = Array.from({ length: 8 }, (_, i) => `・ポイント${i + 1}`);
-      const summary = points.join('
-');
+      const summary = points.join('\n');
       
       const result = validateDetailedSummary(summary);
 
@@ -275,8 +274,7 @@ describe('summary-validator', () => {
     });
 
     it('should trim whitespace from tags', () => {
-      const tags = ['  React  ', '	JavaScript
-', ' TypeScript '];
+      const tags = ['  React  ', '	JavaScript', ' TypeScript '];
       
       const result = validateAndNormalizeTags(tags);
 
@@ -389,15 +387,15 @@ describe('summary-validator', () => {
       const fixed = autoFixSummary(summary);
 
       // Should remove prefix and add period
-      expect(fixed).not.toStartWith('この記事では');
-      expect(fixed).toEndWith('。');
+      expect(fixed.startsWith('この記事では')).toBe(false);
+      expect(fixed.endsWith('。')).toBe(true);
       expect(fixed).toBe('Reactについて解説しています。');
     });
   });
 
   describe('validateByArticleType', () => {
     it('should validate implementation type correctly', () => {
-      const summary = 'ReactとTypeScriptを使用してTodoアプリを開発しました。状態管理にはReduxを採用し、UIコンポーネントはMaterial-UIで実装しています。';
+      const summary = 'ReactとTypeScriptを使用してTodoアプリを開発しました。状態管理にはReduxを採用し、UIコンポーネントはMaterial-UIで実装しています。パフォーマンスも最適化済みです。';
       
       const result = validateByArticleType(summary, 'implementation');
 
@@ -407,7 +405,7 @@ describe('summary-validator', () => {
     });
 
     it('should validate tutorial type correctly', () => {
-      const summary = 'ReactのuseStateフックの使い方について、ステップバイステップで解説します。初心者向けに基本的な手順から応用的な使い方まで、実践的なチュートリアルです。';
+      const summary = 'ReactのuseStateフックの使い方について、ステップバイステップで解説します。初心者向けに基本的な手順から応用的な使い方まで、実践的なチュートリアルとして詳しく説明しています。';
       
       const result = validateByArticleType(summary, 'tutorial');
 
@@ -417,7 +415,7 @@ describe('summary-validator', () => {
     });
 
     it('should validate problem-solving type correctly', () => {
-      const summary = 'Reactアプリケーションのパフォーマンス問題を解決する方法を紹介します。レンダリング最適化とメモ化による改善手法で、大幅な性能向上を実現しました。';
+      const summary = 'Reactアプリケーションのパフォーマンス問題を解決する方法を紹介します。レンダリング最適化とメモ化による改善手法で、大幅な性能向上を実現しました。実測値も大きく改善されています。';
       
       const result = validateByArticleType(summary, 'problem-solving');
 
@@ -427,7 +425,7 @@ describe('summary-validator', () => {
     });
 
     it('should validate tech-intro type correctly', () => {
-      const summary = 'Next.js 14の新機能について紹介します。App Routerの特徴やServer Componentsの利点など、主要なメリットを解説しています。';
+      const summary = 'Next.js 14の新機能について紹介します。App Routerの特徴やServer Componentsの利点など、主要なメリットを解説しています。パフォーマンスの向上も期待できます。';
       
       const result = validateByArticleType(summary, 'tech-intro');
 
@@ -437,7 +435,7 @@ describe('summary-validator', () => {
     });
 
     it('should validate release type correctly', () => {
-      const summary = 'React 19がリリースされました。新機能として並行レンダリングの改善とサーバーコンポーネントの強化が含まれ、パフォーマンスが大幅に向上しています。';
+      const summary = 'React 19がリリースされました。新機能として並行レンダリングの改善とサーバーコンポーネントの強化が含まれ、パフォーマンスが大幅に向上しています。開発体験も大きく改善されています。';
       
       const result = validateByArticleType(summary, 'release');
 

@@ -207,6 +207,9 @@ export function validateAndNormalizeTags(tags: string[]): string[] {
   const seen = new Set<string>();
   
   for (const tag of tags) {
+    // nullやundefinedのチェック
+    if (!tag) continue;
+    
     const trimmed = tag.trim();
     
     // 空のタグはスキップ
@@ -370,12 +373,7 @@ export function autoFixSummary(summary: string, maxLength: number = 130): string
     fixed = result;
   }
   
-  // 6. 句点で終わっていない場合は追加
-  if (!fixed.endsWith('。') && fixed.length > 0) {
-    fixed += '。';
-  }
-  
-  // 7. 不完全な終了パターンの修正
+  // 6. 不完全な終了パターンの修正（句点追加前に実行）
   const incompletePatterns = [
     /。詳$/,
     /詳。$/,
@@ -391,6 +389,11 @@ export function autoFixSummary(summary: string, maxLength: number = 130): string
       // 不完全な部分を除去
       fixed = fixed.replace(pattern, '。');
     }
+  }
+  
+  // 7. 句点で終わっていない場合は追加（不完全パターン修正後）
+  if (!fixed.endsWith('。') && fixed.length > 0) {
+    fixed += '。';
   }
   
   return fixed;
