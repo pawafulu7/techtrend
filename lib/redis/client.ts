@@ -38,3 +38,6 @@ export async function closeRedisConnection(): Promise<void> {
     redisClient = null;
   }
 }
+
+// Export redis instance for backward compatibility with tests
+export const redis = getRedisClient();
