@@ -339,9 +339,9 @@ export function expandSummaryIfNeeded(
   }
   
   // 最終的に150文字を超えていることを確認
-  // 万が一まだ不足している場合は、強制的に150文字まで拡張
-  while (result.length < minLength) {
-    result += '。';
+  // 万が一まだ不足している場合は、エラーメッセージを返す
+  if (result.length < minLength) {
+    return 'この記事の要約生成に失敗しました。記事内容が不十分な可能性があります。';
   }
   
   // 最後に句点で終わるように調整

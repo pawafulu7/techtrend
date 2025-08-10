@@ -104,22 +104,19 @@ function parseTags(tagString: string): string[] {
  * フォールバック要約を生成
  */
 function createFallbackSummary(text: string): string {
-  const firstLine = text.split('\n').find(line => line.trim().length > 0);
-  if (firstLine) {
-    return firstLine.substring(0, 150);
-  }
-  return 'この記事の要約を生成できませんでした。';
+  // APIエラー時は適切なエラーメッセージを返す
+  return 'この記事の要約生成に失敗しました。APIエラーまたはコンテンツ不足の可能性があります。再度お試しください。';
 }
 
 /**
  * フォールバック詳細要約を生成
  */
 function createFallbackDetailedSummary(_text: string): string {
-  return `・この記事の主要なトピックについて、詳細な情報が必要です
-・技術的な背景と実装の詳細を確認してください
-・具体的な手法やアプローチについて、原文を参照してください
-・実践する際のポイントと注意事項を確認することを推奨します
-・今後の展望や応用可能性について、追加の調査が必要です`;
+  return `・詳細要約の生成に失敗しました
+・APIエラーまたはコンテンツ不足の可能性があります
+・記事の内容を確認してください
+・再度要約生成を試みることを推奨します
+・技術サポートにお問い合わせください`;
 }
 
 /**
