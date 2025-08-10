@@ -60,18 +60,16 @@ describe('BaseFetcher', () => {
     tagNames: ['test'],
   };
 
-  let consoleLogSpy: jest.SpyInstance;
-  let consoleErrorSpy: jest.SpyInstance;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    // logger のモック - 各メソッドが異なるconsoleメソッドを呼び出す
+    jest.spyOn(console, 'log').mockImplementation();
+    jest.spyOn(console, 'warn').mockImplementation();
+    jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterEach(() => {
-    consoleLogSpy.mockRestore();
-    consoleErrorSpy.mockRestore();
+    jest.restoreAllMocks();
   });
 
   describe('safeFetch', () => {
@@ -85,8 +83,9 @@ describe('BaseFetcher', () => {
       const result = await fetcher.fetch();
 
       expect(result).toEqual(mockResult);
-      expect(consoleLogSpy).toHaveBeenCalledWith('📥 Test Source から記事を取得中...');
-      expect(consoleLogSpy).toHaveBeenCalledWith('✅ Test Source: 1件の記事を取得');
+      // logger の出力形式に合わせて期待値を調整
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Test Source から記事を取得中...'));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Test Source: 1件の記事を取得'));
     });
 
     it('無効化されたソースの場合は空の結果を返す', async () => {
@@ -96,7 +95,9 @@ describe('BaseFetcher', () => {
       const result = await fetcher.fetch();
 
       expect(result).toEqual({ articles: [], errors: [] });
-      expect(consoleLogSpy).toHaveBeenCalledWith('⚠️  Test Source は無効化されています');
+      // logger.info と logger.warn の両方が呼ばれる
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Test Source から記事を取得中...'));
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Test Source は無効化されています'));
     });
 
     it('記事が見つからない場合の処理', async () => {
@@ -109,7 +110,8 @@ describe('BaseFetcher', () => {
       const result = await fetcher.fetch();
 
       expect(result).toEqual(emptyResult);
-      expect(consoleLogSpy).toHaveBeenCalledWith('📭 Test Source: 記事が見つかりませんでした');
+      // logger.info の出力形式に合わせて期待値を調整
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Test Source: 記事が見つかりませんでした'));
     });
 
     it('エラーが発生した場合の処理', async () => {
@@ -124,8 +126,12 @@ describe('BaseFetcher', () => {
 
       expect(result.articles).toEqual([]);
       expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].message).toBe('Fetch error');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('❌ Test Source エラー:', 'Fetch error');
+      // ExternalAPIError の形式に合わせて期待値を調整
+      expect(result.errors[0].message).toContain('Fetch error');
+      // logger.error は複数回呼ばれるので、最初の呼び出しを確認
+      expect(console.error).toHaveBeenCalled();
+      const errorCalls = (console.error as jest.Mock).mock.calls;
+      expect(errorCalls[0][0]).toContain('Test Source エラー:');
     });
   });
 

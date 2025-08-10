@@ -1,5 +1,5 @@
 // 技術用語辞書（継続的に更新）
-const TECHNICAL_TERMS = new Set([
+export const TECHNICAL_TERMS = new Set([
   // プログラミング言語
   'JavaScript', 'TypeScript', 'Python', 'Java', 'Go', 'Rust', 'Ruby', 'PHP',
   'C++', 'C#', 'Swift', 'Kotlin', 'Scala', 'Haskell', 'Elixir', 'C',

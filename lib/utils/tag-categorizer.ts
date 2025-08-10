@@ -99,16 +99,28 @@ export const TAG_CATEGORIES: TagCategory[] = [
 export function categorizeTag(tagName: string): string | null {
   const normalizedTag = tagName.toLowerCase().trim();
   
+  // 空文字列のチェック
+  if (!normalizedTag) {
+    return null;
+  }
+  
   for (const category of TAG_CATEGORIES) {
     // 完全一致または部分一致でチェック
     if (category.keywords.some(keyword => {
       const normalizedKeyword = keyword.toLowerCase();
+      
       // 完全一致
       if (normalizedTag === normalizedKeyword) return true;
+      
       // ハイフンやドットを含むタグの柔軟な判定
       if (normalizedTag.replace(/[-._]/g, '') === normalizedKeyword.replace(/[-._]/g, '')) return true;
-      // 部分一致（例: "react-hooks" -> "react"）
-      if (normalizedTag.includes(normalizedKeyword) || normalizedKeyword.includes(normalizedTag)) return true;
+      
+      // 部分一致（3文字以下のキーワードは除外）
+      if (normalizedKeyword.length > 3) {
+        // タグがキーワードを含む、またはキーワードがタグを含む
+        if (normalizedTag.includes(normalizedKeyword) || normalizedKeyword.includes(normalizedTag)) return true;
+      }
+      
       return false;
     })) {
       return category.name;

@@ -31,8 +31,11 @@ const TYPE_PATTERNS: TypePattern[] = [
       /作った/,
       /作りました/,
       /開発した/,
+      /開発しました/,
       /実装した/,
-      /構築した/
+      /実装しました/,
+      /構築した/,
+      /構築しました/
     ],
     contentPatterns: [
       /i built/i,
