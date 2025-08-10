@@ -17,6 +17,9 @@ const customJestConfig = {
     '^next/navigation$': '<rootDir>/__tests__/__mocks__/next-navigation.ts',
     // Mock ioredis
     '^ioredis$': '<rootDir>/__tests__/__mocks__/ioredis.ts',
+    // Manual mocks for Prisma and Redis
+    '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
+    '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
   },
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
