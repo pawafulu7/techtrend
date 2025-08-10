@@ -10,6 +10,7 @@ import { PrismaClient } from '@prisma/client';
 import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
 import { checkSummaryQuality } from '../../lib/utils/summary-quality-checker';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
+import { getUnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import fetch from 'node-fetch';
 
 const prisma = new PrismaClient();
@@ -39,9 +40,9 @@ interface ProcessStats {
 }
 
 async function generateUnifiedSummary(title: string, content: string): Promise<SummaryResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
-
+  // 統一サービスを使用
+  const service = getUnifiedSummaryService();
+  
   // コンテンツを適切な長さに調整
   let processedContent = content;
   if (content.length < 300) {
@@ -52,102 +53,19 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
     processedContent = content.substring(0, 5000);
   }
 
-  // 統一プロンプトを使用
-  const prompt = generateUnifiedPrompt(title, processedContent);
-
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 2000,
-        topP: 0.8,
-        topK: 40
-      }
-    })
+  const result = await service.generate(title, processedContent, {
+    maxRetries: 3,
+    minQualityScore: 40
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API request failed: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json() as any;
-  const responseText = data.candidates[0].content.parts[0].text.trim();
   
-  return parseResponse(responseText);
+  return {
+    summary: result.summary,
+    detailedSummary: result.detailedSummary,
+    tags: result.tags
+  };
 }
 
-function parseResponse(text: string): SummaryResult {
-  const lines = text.split('\n');
-  let summary = '';
-  let detailedSummary = '';
-  let tags: string[] = [];
-  let isDetailedSection = false;
-  let isSummarySection = false;
-  let isTagSection = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    
-    if (trimmed.startsWith('一覧要約:') || trimmed.startsWith('要約:')) {
-      // 要約セクションの開始
-      isSummarySection = true;
-      isDetailedSection = false;
-      isTagSection = false;
-      
-      // 同じ行に内容がある場合
-      const content = trimmed.replace(/^(一覧)?要約:/, '').trim();
-      if (content) {
-        summary = content;
-        isSummarySection = false; // 取得完了
-      }
-    } else if (trimmed.startsWith('詳細要約:')) {
-      isDetailedSection = true;
-      isSummarySection = false;
-      isTagSection = false;
-    } else if (trimmed.startsWith('タグ:')) {
-      isTagSection = true;
-      isDetailedSection = false;
-      isSummarySection = false;
-      const tagLine = trimmed.replace('タグ:', '').trim();
-      if (tagLine) {
-        tags = tagLine.split(',').map(t => t.trim()).filter(t => t.length > 0);
-        isTagSection = false; // 取得完了
-      }
-    } else if (isSummarySection && trimmed && !trimmed.startsWith('【')) {
-      // 要約セクションで、次の行に内容がある場合
-      summary = trimmed;
-      isSummarySection = false; // 取得完了
-    } else if (isDetailedSection && trimmed.startsWith('・')) {
-      detailedSummary += (detailedSummary ? '\n' : '') + trimmed;
-    } else if (isTagSection && trimmed) {
-      // タグセクションで、次の行に内容がある場合
-      tags = trimmed.split(',').map(t => t.trim()).filter(t => t.length > 0);
-      isTagSection = false; // 取得完了
-    }
-  }
-
-  // 最低限のフォールバック
-  if (!summary) {
-    summary = 'この記事の要約を生成できませんでした。コンテンツを確認してください。';
-  }
-  if (!detailedSummary) {
-    detailedSummary = `・この記事の主要なトピックは、内容の確認が必要です
-・技術的な背景として、詳細情報が不足しています
-・具体的な実装や手法について、原文を参照してください
-・実践する際のポイントは、手動での確認を推奨します
-・今後の展望や応用として、追加の調査が必要です`;
-  }
-
-  return { summary, detailedSummary, tags };
-}
+// parseResponseは統一サービス内で処理されるため削除
 
 async function main() {
   console.log('🔄 全記事を統一フォーマットで再生成します');

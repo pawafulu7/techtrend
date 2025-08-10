@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
-import { generateSummaryAndTags } from '@/lib/ai/gemini-handler';
-import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
+import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 
 export async function POST() {
   try {
@@ -25,6 +24,9 @@ export async function POST() {
     let generated = 0;
     let errors = 0;
 
+    // 統一サービスを使用
+    const service = getUnifiedSummaryService();
+
     for (const article of articlesWithoutTags) {
       try {
         // コンテンツが空の場合はスキップ
@@ -33,14 +35,14 @@ export async function POST() {
           continue;
         }
 
-        // 要約とタグを生成（タグのみ使用）
-        const result = await generateSummaryAndTags(
+        // 統一フォーマットで要約とタグを生成（タグのみ使用）
+        const result = await service.generate(
           article.title,
           article.content
         );
 
-        // タグを正規化
-        const normalizedTags = normalizeTags(result.tags);
+        // タグは既に正規化済み
+        const normalizedTags = result.tags;
 
         // タグを作成または取得
         const tagConnections = [];

@@ -5,6 +5,7 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { AIService } from '@/lib/ai/ai-service';
 import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
 import { checkSummaryQuality } from '@/lib/utils/summary-quality-checker';
+import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 
 const prisma = new PrismaClient();
 
@@ -136,57 +137,19 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
   apiStats.attempts++;
   
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
-
-    // コンテンツ調整
-    let processedContent = content;
-    if (content.length < 300) {
-      processedContent = `タイトル: ${title}
-
-内容:
-${content}
-
-注意: この記事は短いため、タイトルと利用可能な情報から推測して要約を作成してください。`;
-    } else if (content.length > 5000) {
-      processedContent = content.substring(0, 5000);
-    }
-
-    // 統一プロンプトを使用
-    const prompt = generateUnifiedPrompt(title, processedContent);
-
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 2000,
-          topP: 0.8,
-          topK: 40
-        }
-      })
+    // 統一サービスを使用
+    const service = getUnifiedSummaryService();
+    const result = await service.generate(title, content, {
+      maxRetries: 3,
+      minQualityScore: 40
     });
-
-    if (!response.ok) {
-      const error = await response.text();
-      apiStats.failures++;
-      if (error.includes('503')) {
-        apiStats.overloadErrors++;
-      }
-      throw new Error(`API request failed: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json() as any;
-    const responseText = data.candidates[0].content.parts[0].text.trim();
     
     apiStats.successes++;
-    return parseUnifiedResponse(responseText);
+    return {
+      summary: result.summary,
+      detailedSummary: result.detailedSummary,
+      tags: result.tags
+    };
   } catch (error) {
     apiStats.failures++;
     
@@ -289,63 +252,7 @@ function normalizeDetailedSummary(text: string): string {
   return normalizedLines.join('\n');
 }
 
-function parseUnifiedResponse(text: string): SummaryAndTags {
-  const lines = text.split('\n');
-  let summary = '';
-  let detailedSummary = '';
-  let tags: string[] = [];
-  let isSummarySection = false;
-  let isDetailedSection = false;
-  let isTagSection = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    
-    if (trimmed.startsWith('一覧要約:') || trimmed.startsWith('要約:')) {
-      isSummarySection = true;
-      isDetailedSection = false;
-      isTagSection = false;
-      summary = trimmed.replace(/^(一覧要約:|要約:)/, '').trim();
-    } else if (trimmed.startsWith('詳細要約:')) {
-      isSummarySection = false;
-      isDetailedSection = true;
-      isTagSection = false;
-      detailedSummary = trimmed.replace(/^詳細要約:/, '').trim();
-    } else if (trimmed.startsWith('タグ:')) {
-      isSummarySection = false;
-      isDetailedSection = false;
-      isTagSection = true;
-      const tagLine = trimmed.replace(/^タグ:/, '').trim();
-      if (tagLine) {
-        tags = tagLine.split(/[,、，]/)
-          .map(tag => tag.trim())
-          .filter(tag => tag.length > 0 && tag.length <= 30)
-          .map(tag => normalizeTag(tag));
-      }
-    } else if (trimmed) {
-      if (isSummarySection && !summary.includes('\n')) {
-        summary += (summary ? ' ' : '') + trimmed;
-      } else if (isDetailedSection) {
-        detailedSummary += (detailedSummary ? '\n' : '') + trimmed;
-      } else if (isTagSection && tags.length === 0) {
-        tags = trimmed.split(/[,、，]/)
-          .map(tag => tag.trim())
-          .filter(tag => tag.length > 0 && tag.length <= 30)
-          .map(tag => normalizeTag(tag));
-      }
-    }
-  }
-
-  // フォールバック
-  if (!summary) {
-    summary = text.substring(0, 150);
-  }
-  if (!detailedSummary) {
-    detailedSummary = text.substring(0, 300);
-  }
-
-  return { summary, detailedSummary, tags };
-}
+// parseUnifiedResponseは統一サービス内で処理されるため削除
 
 function parseSummaryAndTags(text: string): SummaryAndTags {
   const lines = text.split('\n');
