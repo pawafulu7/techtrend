@@ -111,7 +111,6 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
 function cleanupText(text: string): string {
   return text
     .replace(/\*\*/g, '') // マークダウン除去
-    .replace(/^(本記事は、|本記事は|本稿では、|本稿では|記事では、|記事では|この記事は、|この記事は)/g, '')
     .trim();
 }
 
@@ -141,9 +140,12 @@ function finalCleanup(text: string): string {
   // 改行の正規化
   text = text.replace(/\n+/g, '\n').trim();
   
-  // 文末に句点がない場合は追加（箇条書きの場合は除く）
+  // 文末に句点がない場合は追加（箇条書きの場合と、既に句点がある場合は除く）
   if (text && !text.includes('・') && !text.match(/[。！？]$/)) {
-    text += '。';
+    // 末尾が「。」の連続になっていないことを確認
+    if (!text.endsWith('。')) {
+      text += '。';
+    }
   }
   
   return text;
@@ -466,7 +468,7 @@ async function generateSummaries(): Promise<GenerateResult> {
                     summary,
                     detailedSummary: result!.detailedSummary,
                     articleType: 'unified',  // 統一タイプを設定
-                    summaryVersion: 4  // 統一プロンプト版をv4とする
+                    summaryVersion: 5  // 統一プロンプト版をv5とする
                   }
                 });
               } else {
