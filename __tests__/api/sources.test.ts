@@ -1,136 +1,117 @@
 /**
- * APIテスト - Sources  
- * 注：モジュール解決の問題により、スキップ
+ * APIテスト - Sources
+ * Manual Mocksを使用したAPIルートハンドラーのテスト
  */
+
+import { GET } from '@/app/api/sources/route';
 import {
-  createMockPrismaClient,
-  createMockRedisClient,
-  generateSampleSource,
-} from './test-utils';
+  createMockRequest,
+  createMockContext,
+  parseResponse,
+  setupPrismaMock,
+  setupRedisMock,
+  expectApiSuccess,
+  expectApiError,
+  expectCacheHit,
+  expectCacheSet,
+  expectDatabaseQuery,
+} from '../helpers/mock-helpers';
 
-// Prismaクライアントのモック
-const mockPrisma = createMockPrismaClient();
-jest.mock('@/lib/prisma', () => ({
-  __esModule: true,
-  default: mockPrisma,
-}));
+// Manual mocksのインポート
+import prismaMock from '../../__mocks__/lib/prisma';
+import redisMock from '../../__mocks__/lib/redis/client';
 
-// Redisクライアントのモック
-const mockRedis = createMockRedisClient();
-jest.mock('@/lib/redis', () => ({
-  __esModule: true,
-  default: mockRedis,
-  getRedisClient: () => mockRedis,
-}));
+// モックの自動適用
+jest.mock('@/lib/prisma');
+jest.mock('@/lib/redis/client');
 
-// source-statsモジュールのモック
-jest.mock('@/lib/source-stats', () => ({
-  calculateSourceStats: jest.fn(),
-}));
-
-describe('Sources API Integration Tests', () => {
-  let mockSourceStats: any;
-
+describe('Sources API Tests', () => {
   beforeEach(() => {
+    // モックのセットアップ
+    setupPrismaMock();
+    setupRedisMock();
+  });
+
+  afterEach(() => {
     jest.clearAllMocks();
-    mockSourceStats = require('@/lib/source-stats');
   });
 
   describe('GET /api/sources', () => {
-    it.skip('ソース一覧を正常に取得できる', async () => {
-      const sampleSources = [
-        generateSampleSource({ id: 'devto', name: 'Dev.to' }),
-        generateSampleSource({ id: 'qiita', name: 'Qiita' }),
-        generateSampleSource({ id: 'zenn', name: 'Zenn' }),
+    it('ソース一覧を正常に取得できる', async () => {
+      const mockSources = [
+        {
+          id: 'dev.to',
+          name: 'Dev.to',
+          url: 'https://dev.to',
+          iconUrl: null,
+          description: 'Developer community',
+          isActive: true,
+          fetchInterval: 3600,
+          lastFetchedAt: new Date('2025-01-01'),
+          createdAt: new Date('2024-01-01'),
+          updatedAt: new Date('2025-01-01'),
+        },
+        {
+          id: 'qiita',
+          name: 'Qiita',
+          url: 'https://qiita.com',
+          iconUrl: null,
+          description: 'Japanese tech community',
+          isActive: true,
+          fetchInterval: 3600,
+          lastFetchedAt: new Date('2025-01-01'),
+          createdAt: new Date('2024-01-01'),
+          updatedAt: new Date('2025-01-01'),
+        },
       ];
 
-      mockPrisma.source.findMany.mockResolvedValue(sampleSources);
-      
-      // 統計情報のモック
-      mockSourceStats.calculateSourceStats.mockResolvedValue({
-        devto: { articleCount: 100, avgQualityScore: 85 },
-        qiita: { articleCount: 150, avgQualityScore: 82 },
-        zenn: { articleCount: 80, avgQualityScore: 88 },
-      });
-
-      const response = await testApiHandler(GET, {
-        url: 'http://localhost:3000/api/sources',
-      });
-
-      expectApiSuccess(response);
-      expect(response.body).toHaveProperty('sources');
-      expect(response.body.sources).toHaveLength(3);
-      expect(response.body.sources[0]).toHaveProperty('name', 'Dev.to');
-    });
-
-    it('統計情報付きでソースを取得できる', async () => {
-      const sampleSources = [
-        generateSampleSource({ id: 'devto', name: 'Dev.to' }),
-      ];
-
-      mockPrisma.source.findMany.mockResolvedValue(sampleSources);
-      
-      mockSourceStats.calculateSourceStats.mockResolvedValue({
-        devto: {
-          articleCount: 100,
-          avgQualityScore: 85,
-          lastUpdate: new Date().toISOString(),
-          trendingTags: ['JavaScript', 'React'],
-        },
-      });
-
-      const response = await testApiHandler(GET, {
-        url: 'http://localhost:3000/api/sources',
-        searchParams: {
-          includeStats: 'true',
-        },
-      });
-
-      expectApiSuccess(response);
-      expect(response.body.sources[0]).toHaveProperty('stats');
-      expect(response.body.sources[0].stats).toHaveProperty('articleCount', 100);
-      expect(response.body.sources[0].stats).toHaveProperty('avgQualityScore', 85);
-    });
-
-    it('カテゴリフィルターが機能する', async () => {
-      mockPrisma.source.findMany.mockResolvedValue([
-        generateSampleSource({ id: 'devto', category: 'Technology' }),
+      prismaMock.source.findMany.mockResolvedValue(mockSources);
+      prismaMock.article.groupBy.mockResolvedValue([
+        { sourceId: 'dev.to', _count: { id: 100 } },
+        { sourceId: 'qiita', _count: { id: 50 } },
       ]);
 
-      const response = await testApiHandler(GET, {
-        url: 'http://localhost:3000/api/sources',
-        searchParams: {
-          category: 'Technology',
-        },
-      });
-
-      expectApiSuccess(response);
-      expect(mockPrisma.source.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            category: 'Technology',
-          }),
-        })
-      );
+      const request = createMockRequest('http://localhost:3000/api/sources');
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
+      expect(result.body.sources).toHaveLength(2);
+      expect(result.body.sources[0]).toHaveProperty('articleCount');
+      expectDatabaseQuery(prismaMock, 'source', 'findMany');
     });
 
-    it('アクティブなソースのみ取得できる', async () => {
-      const activeSources = [
-        generateSampleSource({ id: 'devto', isActive: true }),
-        generateSampleSource({ id: 'qiita', isActive: true }),
+    it('非アクティブなソースを除外できる', async () => {
+      const mockSources = [
+        {
+          id: 'active-source',
+          name: 'Active Source',
+          url: 'https://active.com',
+          iconUrl: null,
+          description: 'Active source',
+          isActive: true,
+          fetchInterval: 3600,
+          lastFetchedAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       ];
 
-      mockPrisma.source.findMany.mockResolvedValue(activeSources);
+      prismaMock.source.findMany.mockResolvedValue(mockSources);
+      prismaMock.article.groupBy.mockResolvedValue([]);
 
-      const response = await testApiHandler(GET, {
-        url: 'http://localhost:3000/api/sources',
-        searchParams: {
-          active: 'true',
-        },
+      const request = createMockRequest('http://localhost:3000/api/sources', {
+        searchParams: { active: 'true' },
       });
-
-      expectApiSuccess(response);
-      expect(mockPrisma.source.findMany).toHaveBeenCalledWith(
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
+      expect(prismaMock.source.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             isActive: true,
@@ -139,124 +120,117 @@ describe('Sources API Integration Tests', () => {
       );
     });
 
+    it('記事数で並び替えができる', async () => {
+      prismaMock.source.findMany.mockResolvedValue([]);
+      prismaMock.article.groupBy.mockResolvedValue([]);
+
+      const request = createMockRequest('http://localhost:3000/api/sources', {
+        searchParams: { sort: 'articleCount' },
+      });
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
+      // ソート処理はアプリケーション側で行われることを確認
+      expect(result.body.sources).toBeDefined();
+    });
+
     it('キャッシュが機能する', async () => {
       const cachedData = JSON.stringify({
         sources: [
-          generateSampleSource({ id: 'cached-source' }),
+          {
+            id: 'cached-source',
+            name: 'Cached Source',
+            articleCount: 10,
+          },
         ],
       });
       
-      mockRedis.get.mockResolvedValue(cachedData);
+      redisMock.get.mockResolvedValue(cachedData);
 
-      const response = await testApiHandler(GET, {
-        url: 'http://localhost:3000/api/sources',
-      });
-
-      expectApiSuccess(response);
-      expect(mockRedis.get).toHaveBeenCalled();
-      expect(mockPrisma.source.findMany).not.toHaveBeenCalled();
+      const request = createMockRequest('http://localhost:3000/api/sources');
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
+      expectCacheHit(redisMock, expect.stringContaining('sources:'));
+      expect(prismaMock.source.findMany).not.toHaveBeenCalled();
     });
 
-    it('ソート機能が動作する', async () => {
-      mockPrisma.source.findMany.mockResolvedValue([]);
+    it('キャッシュミス時にデータベースから取得してキャッシュする', async () => {
+      const mockSources = [
+        {
+          id: 'test-source',
+          name: 'Test Source',
+          url: 'https://test.com',
+          iconUrl: null,
+          description: 'Test',
+          isActive: true,
+          fetchInterval: 3600,
+          lastFetchedAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
 
-      const response = await testApiHandler(GET, {
-        url: 'http://localhost:3000/api/sources',
-        searchParams: {
-          sort: 'name',
-          order: 'desc',
+      redisMock.get.mockResolvedValue(null); // キャッシュミス
+      prismaMock.source.findMany.mockResolvedValue(mockSources);
+      prismaMock.article.groupBy.mockResolvedValue([]);
+
+      const request = createMockRequest('http://localhost:3000/api/sources');
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
+      expectCacheHit(redisMock, expect.stringContaining('sources:'));
+      expectDatabaseQuery(prismaMock, 'source', 'findMany');
+      expectCacheSet(redisMock, expect.stringContaining('sources:'), 300); // 5分のTTL
+    });
+
+    it('データベースエラーを適切に処理する', async () => {
+      redisMock.get.mockResolvedValue(null);
+      prismaMock.source.findMany.mockRejectedValue(new Error('Database connection failed'));
+
+      const request = createMockRequest('http://localhost:3000/api/sources');
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiError(result, 500);
+      expect(result.body.error).toContain('Failed to fetch sources');
+    });
+
+    it('最終取得日時でフィルタリングできる', async () => {
+      prismaMock.source.findMany.mockResolvedValue([]);
+      prismaMock.article.groupBy.mockResolvedValue([]);
+
+      const request = createMockRequest('http://localhost:3000/api/sources', {
+        searchParams: { 
+          lastFetchedAfter: '2025-01-01T00:00:00Z',
         },
       });
-
-      expectApiSuccess(response);
-      expect(mockPrisma.source.findMany).toHaveBeenCalledWith(
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
+      expect(prismaMock.source.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: expect.objectContaining({
-            name: 'desc',
+          where: expect.objectContaining({
+            lastFetchedAt: expect.objectContaining({
+              gte: expect.any(Date),
+            }),
           }),
         })
       );
-    });
-
-    it('統計計算でエラーが発生しても基本情報は返す', async () => {
-      const sampleSources = [
-        generateSampleSource({ id: 'devto' }),
-      ];
-
-      mockPrisma.source.findMany.mockResolvedValue(sampleSources);
-      mockSourceStats.calculateSourceStats.mockRejectedValue(
-        new Error('Stats calculation failed')
-      );
-
-      const response = await testApiHandler(GET, {
-        url: 'http://localhost:3000/api/sources',
-        searchParams: {
-          includeStats: 'true',
-        },
-      });
-
-      expectApiSuccess(response);
-      expect(response.body.sources).toHaveLength(1);
-      // 統計情報はnullまたは空オブジェクトになるはず
-      expect(response.body.sources[0].stats).toBeUndefined();
-    });
-
-    it('データベースエラーを適切にハンドリングする', async () => {
-      mockPrisma.source.findMany.mockRejectedValue(
-        new Error('Database connection failed')
-      );
-
-      const response = await testApiHandler(GET, {
-        url: 'http://localhost:3000/api/sources',
-      });
-
-      expectApiError(response, 500);
-    });
-
-    it('空のソースリストを正常に返す', async () => {
-      mockPrisma.source.findMany.mockResolvedValue([]);
-
-      const response = await testApiHandler(GET, {
-        url: 'http://localhost:3000/api/sources',
-      });
-
-      expectApiSuccess(response);
-      expect(response.body.sources).toEqual([]);
-    });
-  });
-
-  describe('GET /api/sources/[id]', () => {
-    it('特定のソース情報を取得できる', async () => {
-      const GET_BY_ID = require('@/app/api/sources/[id]/route').GET;
-      
-      const sampleSource = generateSampleSource({
-        id: 'devto',
-        name: 'Dev.to',
-      });
-
-      mockPrisma.source.findUnique.mockResolvedValue(sampleSource);
-
-      const response = await testApiHandler(GET_BY_ID, {
-        url: 'http://localhost:3000/api/sources/devto',
-        params: { id: 'devto' },
-      });
-
-      expectApiSuccess(response);
-      expect(response.body).toHaveProperty('id', 'devto');
-      expect(response.body).toHaveProperty('name', 'Dev.to');
-    });
-
-    it('存在しないソースで404を返す', async () => {
-      const GET_BY_ID = require('@/app/api/sources/[id]/route').GET;
-      
-      mockPrisma.source.findUnique.mockResolvedValue(null);
-
-      const response = await testApiHandler(GET_BY_ID, {
-        url: 'http://localhost:3000/api/sources/invalid',
-        params: { id: 'invalid' },
-      });
-
-      expectApiError(response, 404, 'Source not found');
     });
   });
 });

@@ -9,17 +9,17 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   // setupFiles: ['<rootDir>/__tests__/helpers/setup.ts'], // 一時的にコメントアウト
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testEnvironment: 'jest-environment-jsdom',
+  testEnvironment: 'node',
   moduleNameMapper: {
-    // Handle module aliases
-    '^@/(.*)$': '<rootDir>/$1',
+    // Manual mocks for Prisma and Redis (must come before generic alias)
+    '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
+    '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
     // Mock Next.js navigation
     '^next/navigation$': '<rootDir>/__tests__/__mocks__/next-navigation.ts',
     // Mock ioredis
     '^ioredis$': '<rootDir>/__tests__/__mocks__/ioredis.ts',
-    // Manual mocks for Prisma and Redis
-    '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
-    '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
+    // Handle module aliases (must be last due to wildcard)
+    '^@/(.*)$': '<rootDir>/$1',
   },
   testPathIgnorePatterns: [
     '<rootDir>/.next/',

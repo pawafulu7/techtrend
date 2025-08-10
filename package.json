@@ -129,6 +129,7 @@
     "tw-animate-css": "^1.3.6",
     "typescript": "^5",
     "undici": "^7.13.0",
+    "web-streams-polyfill": "^4.1.0",
     "whatwg-fetch": "^3.6.20"
   }
 }

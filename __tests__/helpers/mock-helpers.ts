@@ -4,8 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import prismaMock from '@/lib/prisma';
-import redisMock from '@/lib/redis/client';
+// Manual mocksを直接インポート
+import prismaMock from '../../__mocks__/lib/prisma';
+import redisMock from '../../__mocks__/lib/redis/client';
 
 /**
  * APIルートハンドラーテスト用のモックリクエスト作成

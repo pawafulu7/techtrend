@@ -1,12 +1,34 @@
-// Learn more: https://github.com/testing-library/jest-dom
-import '@testing-library/jest-dom';
+// Node環境用のセットアップ
+
+// Polyfill for Node.js environment
+const { TextEncoder, TextDecoder } = require('util');
+const { MessageChannel, MessagePort } = require('worker_threads');
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+global.MessageChannel = MessageChannel;
+global.MessagePort = MessagePort;
+
+// Polyfill for streams
+const { ReadableStream, WritableStream, TransformStream } = require('web-streams-polyfill');
+global.ReadableStream = ReadableStream;
+global.WritableStream = WritableStream;
+global.TransformStream = TransformStream;
+
+// Setup undici for Next.js App Router API tests
+const { Request, Response, Headers, fetch, FormData } = require('undici');
+global.Request = Request;
+global.Response = Response;
+global.Headers = Headers;
+global.fetch = fetch;
+global.FormData = FormData;
 
 // Mock environment variables
 process.env.DATABASE_URL = 'file:./prisma/test.db';
 process.env.GEMINI_API_KEY = 'test-api-key';
 process.env.NODE_ENV = 'test';
 
-// Mock Next.js router
+// Mock Next.js router (if needed in some tests)
 jest.mock('next/navigation', () => ({
   useRouter() {
     return {
@@ -25,23 +47,6 @@ jest.mock('next/navigation', () => ({
   },
 }));
 
-// Mock window.matchMedia (only in jsdom environment)
-if (typeof window !== 'undefined') {
-  Object.defineProperty(window, 'matchMedia', {
-    writable: true,
-    value: jest.fn().mockImplementation(query => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: jest.fn(), // deprecated
-      removeListener: jest.fn(), // deprecated
-      addEventListener: jest.fn(),
-      removeEventListener: jest.fn(),
-      dispatchEvent: jest.fn(),
-    })),
-  });
-}
-
 // Mock ioredis
 jest.mock('ioredis', () => {
   const RedisMock = jest.fn().mockImplementation(() => ({
@@ -56,6 +61,3 @@ jest.mock('ioredis', () => {
   }));
   return RedisMock;
 });
-
-// Setup MSW (only for API tests)
-// MSW setup is moved to individual test files that need it
