@@ -1,224 +1,230 @@
-import { 
-  apiRequest, 
-  assertApiResponse,
-  simulateError 
-} from '../../helpers/api-test-utils';
-import { 
-  createTestSources,
-  createTestSourceStats 
-} from '../../helpers/factories';
-import { server } from '../../msw/server';
+/**
+ * Sources APIテスト
+ * MSW依存を排除し、純粋なJestモックを使用
+ */
 
-// Setup MSW for this test file
-beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+import { testApiHandler, assertSuccessResponse } from '../../helpers/test-utils';
+import { GET as getSourcesHandler } from '@/app/api/sources/route';
+import { GET as getStatsHandler } from '@/app/api/sources/stats/route';
+import prismaMock from '../../../__mocks__/lib/prisma';
+import redisMock from '../../../__mocks__/lib/redis/client';
 
 describe('Sources API', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    // デフォルトのモック設定
+    prismaMock.source.findMany.mockResolvedValue([]);
+    prismaMock.article.groupBy.mockResolvedValue([]);
+    redisMock.get.mockResolvedValue(null);
+    redisMock.set.mockResolvedValue('OK');
+  });
+
   describe('GET /api/sources', () => {
     it('should return sources list', async () => {
-      const response = await apiRequest('/api/sources');
-      
-      expect(response.status).toBe(200);
-      assertApiResponse(response.data);
-      
-      const { sources, total } = response.data;
-      expect(Array.isArray(sources)).toBe(true);
-      expect(typeof total).toBe('number');
-      expect(sources.length).toBe(total);
+      const mockSources = [
+        {
+          id: 'qiita',
+          name: 'Qiita',
+          type: 'api',
+          url: 'https://qiita.com',
+          enabled: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 'zenn',
+          name: 'Zenn',
+          type: 'rss',
+          url: 'https://zenn.dev',
+          enabled: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ];
+
+      prismaMock.source.findMany.mockResolvedValue(mockSources);
+
+      const response = await testApiHandler(getSourcesHandler, {
+        url: 'http://localhost:3000/api/sources'
+      });
+
+      assertSuccessResponse(response);
+      expect(response.data.data).toHaveLength(2);
+      expect(response.data.data[0].id).toBe('qiita');
+      expect(response.data.data[1].id).toBe('zenn');
     });
-    
-    it('should validate source structure', async () => {
-      const response = await apiRequest('/api/sources');
-      
-      const { sources } = response.data;
-      const source = sources[0];
-      
-      // Check required fields
-      expect(source).toHaveProperty('id');
-      expect(source).toHaveProperty('name');
-      expect(source).toHaveProperty('type');
-      expect(source).toHaveProperty('url');
-      expect(source).toHaveProperty('enabled');
-      expect(source).toHaveProperty('createdAt');
-      expect(source).toHaveProperty('updatedAt');
-      
-      // Check data types
-      expect(typeof source.id).toBe('string');
-      expect(typeof source.name).toBe('string');
-      expect(['rss', 'api', 'scraper']).toContain(source.type);
-      expect(typeof source.url).toBe('string');
-      expect(typeof source.enabled).toBe('boolean');
-    });
-    
+
     it('should only return enabled sources', async () => {
-      const response = await apiRequest('/api/sources');
-      
-      const { sources } = response.data;
-      sources.forEach((source: any) => {
-        expect(source.enabled).toBe(true);
+      prismaMock.source.findMany.mockResolvedValue([]);
+
+      await testApiHandler(getSourcesHandler, {
+        url: 'http://localhost:3000/api/sources'
+      });
+
+      // enabledがtrueの条件で呼ばれていることを確認
+      expect(prismaMock.source.findMany).toHaveBeenCalledWith({
+        where: { enabled: true },
+        orderBy: { name: 'asc' }
       });
     });
-    
-    it('should handle server errors gracefully', async () => {
-      simulateError('/api/sources', 500, 'Database connection failed');
-      
-      const response = await apiRequest('/api/sources');
-      
+
+    it('should use cache when available', async () => {
+      const cachedData = JSON.stringify([
+        { id: 'cached', name: 'Cached Source' }
+      ]);
+
+      redisMock.get.mockResolvedValueOnce(cachedData);
+
+      const response = await testApiHandler(getSourcesHandler, {
+        url: 'http://localhost:3000/api/sources'
+      });
+
+      assertSuccessResponse(response);
+      expect(response.data.data[0].id).toBe('cached');
+      expect(prismaMock.source.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should handle database errors', async () => {
+      prismaMock.source.findMany.mockRejectedValue(new Error('Database error'));
+
+      const response = await testApiHandler(getSourcesHandler, {
+        url: 'http://localhost:3000/api/sources'
+      });
+
       expect(response.status).toBe(500);
       expect(response.data.success).toBe(false);
-      expect(response.data.error).toBe('Database connection failed');
+      expect(response.data.error).toBeDefined();
     });
   });
-  
+
   describe('GET /api/sources/stats', () => {
     it('should return source statistics', async () => {
-      const response = await apiRequest('/api/sources/stats');
-      
-      expect(response.status).toBe(200);
-      assertApiResponse(response.data);
-      
-      const { stats, total, averageQualityScore, totalArticles } = response.data;
-      expect(Array.isArray(stats)).toBe(true);
-      expect(typeof total).toBe('number');
-      expect(typeof averageQualityScore).toBe('number');
-      expect(typeof totalArticles).toBe('number');
-    });
-    
-    it('should validate stats structure', async () => {
-      const response = await apiRequest('/api/sources/stats');
-      
-      const { stats } = response.data;
-      const stat = stats[0];
-      
-      // Check required fields
-      expect(stat).toHaveProperty('sourceId');
-      expect(stat).toHaveProperty('sourceName');
-      expect(stat).toHaveProperty('totalArticles');
-      expect(stat).toHaveProperty('avgQualityScore');
-      expect(stat).toHaveProperty('popularTags');
-      expect(stat).toHaveProperty('publishFrequency');
-      expect(stat).toHaveProperty('lastPublished');
-      expect(stat).toHaveProperty('growthRate');
-      expect(stat).toHaveProperty('category');
-      
-      // Check data types
-      expect(typeof stat.sourceId).toBe('string');
-      expect(typeof stat.sourceName).toBe('string');
-      expect(typeof stat.totalArticles).toBe('number');
-      expect(typeof stat.avgQualityScore).toBe('number');
-      expect(Array.isArray(stat.popularTags)).toBe(true);
-      expect(typeof stat.publishFrequency).toBe('number');
-      expect(typeof stat.growthRate).toBe('number');
-      expect(['community', 'company_blog', 'news_site', 'personal_blog', 'other']).toContain(stat.category);
-    });
-    
-    it('should calculate aggregate metrics correctly', async () => {
-      const response = await apiRequest('/api/sources/stats');
-      
-      const { stats, totalArticles, averageQualityScore } = response.data;
-      
-      // Verify total articles sum
-      const calculatedTotal = stats.reduce((sum: number, stat: any) => 
-        sum + stat.totalArticles, 0
-      );
-      expect(totalArticles).toBe(calculatedTotal);
-      
-      // Verify average quality score
-      const calculatedAverage = Math.round(
-        stats.reduce((sum: number, stat: any) => 
-          sum + stat.avgQualityScore, 0
-        ) / stats.length
-      );
-      expect(averageQualityScore).toBe(calculatedAverage);
-    });
-    
-    it('should return stats for all enabled sources', async () => {
-      const sourcesResponse = await apiRequest('/api/sources');
-      const statsResponse = await apiRequest('/api/sources/stats');
-      
-      const { sources } = sourcesResponse.data;
-      const { stats } = statsResponse.data;
-      
-      // Each enabled source should have stats
-      expect(stats.length).toBe(sources.length);
-      
-      // Verify all source IDs match
-      const sourceIds = sources.map((s: any) => s.id).sort();
-      const statsIds = stats.map((s: any) => s.sourceId).sort();
-      expect(statsIds).toEqual(sourceIds);
-    });
-    
-    it('should validate quality score ranges', async () => {
-      const response = await apiRequest('/api/sources/stats');
-      
-      const { stats } = response.data;
-      stats.forEach((stat: any) => {
-        // Quality scores should be between 0-100
-        expect(stat.avgQualityScore).toBeGreaterThanOrEqual(0);
-        expect(stat.avgQualityScore).toBeLessThanOrEqual(100);
+      const mockStats = [
+        {
+          sourceId: 'qiita',
+          _count: { id: 10 },
+          _avg: { qualityScore: 85.5 },
+          _max: { publishedAt: new Date('2025-01-01') },
+          _min: { publishedAt: new Date('2024-12-01') }
+        },
+        {
+          sourceId: 'zenn',
+          _count: { id: 5 },
+          _avg: { qualityScore: 82.0 },
+          _max: { publishedAt: new Date('2025-01-02') },
+          _min: { publishedAt: new Date('2024-11-01') }
+        }
+      ];
+
+      prismaMock.article.groupBy.mockResolvedValue(mockStats);
+
+      const response = await testApiHandler(getStatsHandler, {
+        url: 'http://localhost:3000/api/sources/stats'
       });
+
+      assertSuccessResponse(response);
+      expect(response.data.data).toBeDefined();
+      expect(response.data.data.sources).toHaveLength(2);
+      expect(response.data.data.sources[0].sourceId).toBe('qiita');
+      expect(response.data.data.sources[0].articleCount).toBe(10);
+      expect(response.data.data.sources[0].avgQualityScore).toBe(85.5);
     });
-    
-    it('should validate publish frequency ranges', async () => {
-      const response = await apiRequest('/api/sources/stats');
-      
-      const { stats } = response.data;
-      stats.forEach((stat: any) => {
-        // Publish frequency should be positive
-        expect(stat.publishFrequency).toBeGreaterThanOrEqual(0);
-        // Reasonable upper limit (e.g., 10 articles per day)
-        expect(stat.publishFrequency).toBeLessThanOrEqual(10);
+
+    it('should calculate aggregate metrics', async () => {
+      const mockStats = [
+        {
+          sourceId: 'source1',
+          _count: { id: 10 },
+          _avg: { qualityScore: 80 },
+          _max: { publishedAt: new Date() },
+          _min: { publishedAt: new Date() }
+        },
+        {
+          sourceId: 'source2',
+          _count: { id: 20 },
+          _avg: { qualityScore: 90 },
+          _max: { publishedAt: new Date() },
+          _min: { publishedAt: new Date() }
+        }
+      ];
+
+      prismaMock.article.groupBy.mockResolvedValue(mockStats);
+
+      const response = await testApiHandler(getStatsHandler, {
+        url: 'http://localhost:3000/api/sources/stats'
       });
+
+      assertSuccessResponse(response);
+      expect(response.data.data.aggregate.totalArticles).toBe(30);
+      expect(response.data.data.aggregate.avgQualityScore).toBeCloseTo(86.67, 1);
     });
-    
-    it('should validate growth rate ranges', async () => {
-      const response = await apiRequest('/api/sources/stats');
-      
-      const { stats } = response.data;
-      stats.forEach((stat: any) => {
-        // Growth rate can be negative (decline) or positive
-        expect(stat.growthRate).toBeGreaterThanOrEqual(-100);
-        expect(stat.growthRate).toBeLessThanOrEqual(1000);
+
+    it('should use cache when available', async () => {
+      const cachedData = JSON.stringify({
+        sources: [{ sourceId: 'cached', articleCount: 100 }],
+        aggregate: { totalArticles: 100 }
       });
+
+      redisMock.get.mockResolvedValueOnce(cachedData);
+
+      const response = await testApiHandler(getStatsHandler, {
+        url: 'http://localhost:3000/api/sources/stats'
+      });
+
+      assertSuccessResponse(response);
+      expect(response.data.data.sources[0].sourceId).toBe('cached');
+      expect(prismaMock.article.groupBy).not.toHaveBeenCalled();
     });
-    
-    it('should handle server errors gracefully', async () => {
-      simulateError('/api/sources/stats', 500, 'Statistics calculation failed');
-      
-      const response = await apiRequest('/api/sources/stats');
-      
+
+    it('should handle empty statistics', async () => {
+      prismaMock.article.groupBy.mockResolvedValue([]);
+
+      const response = await testApiHandler(getStatsHandler, {
+        url: 'http://localhost:3000/api/sources/stats'
+      });
+
+      assertSuccessResponse(response);
+      expect(response.data.data.sources).toHaveLength(0);
+      expect(response.data.data.aggregate.totalArticles).toBe(0);
+      expect(response.data.data.aggregate.avgQualityScore).toBe(0);
+    });
+
+    it('should handle database errors', async () => {
+      prismaMock.article.groupBy.mockRejectedValue(new Error('Database error'));
+
+      const response = await testApiHandler(getStatsHandler, {
+        url: 'http://localhost:3000/api/sources/stats'
+      });
+
       expect(response.status).toBe(500);
       expect(response.data.success).toBe(false);
-      expect(response.data.error).toBe('Statistics calculation failed');
+      expect(response.data.error).toBeDefined();
     });
-  });
-  
-  describe('Caching behavior', () => {
-    it('should cache stats responses', async () => {
-      // First request
-      const response1 = await apiRequest('/api/sources/stats');
-      expect(response1.status).toBe(200);
-      
-      // Second request - should return same data
-      const response2 = await apiRequest('/api/sources/stats');
-      expect(response2.status).toBe(200);
-      
-      // Data should be consistent
-      expect(response1.data).toEqual(response2.data);
-    });
-    
-    it('should cache sources list separately from stats', async () => {
-      const sourcesResponse = await apiRequest('/api/sources');
-      const statsResponse = await apiRequest('/api/sources/stats');
-      
-      // Both should succeed independently
-      expect(sourcesResponse.status).toBe(200);
-      expect(statsResponse.status).toBe(200);
-      
-      // Different data structures
-      expect(sourcesResponse.data).toHaveProperty('sources');
-      expect(statsResponse.data).toHaveProperty('stats');
+
+    it('should set correct cache TTL', async () => {
+      const mockStats = [{
+        sourceId: 'test',
+        _count: { id: 1 },
+        _avg: { qualityScore: 80 },
+        _max: { publishedAt: new Date() },
+        _min: { publishedAt: new Date() }
+      }];
+
+      prismaMock.article.groupBy.mockResolvedValue(mockStats);
+      redisMock.get.mockResolvedValue(null);
+
+      await testApiHandler(getStatsHandler, {
+        url: 'http://localhost:3000/api/sources/stats'
+      });
+
+      // キャッシュが設定されたことを確認（TTL 3600秒）
+      expect(redisMock.set).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'EX',
+        3600
+      );
     });
   });
 });

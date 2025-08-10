@@ -19,14 +19,29 @@ global.Response = class Response {
     this.status = init?.status || 200;
     this.statusText = init?.statusText || 'OK';
     this.headers = new Map(Object.entries(init?.headers || {}));
+    this.ok = this.status >= 200 && this.status < 300;
   }
   
   json() {
-    return Promise.resolve(JSON.parse(this.body));
+    if (typeof this.body === 'string') {
+      return Promise.resolve(JSON.parse(this.body));
+    }
+    return Promise.resolve(this.body);
   }
   
   text() {
-    return Promise.resolve(this.body);
+    if (typeof this.body === 'string') {
+      return Promise.resolve(this.body);
+    }
+    return Promise.resolve(JSON.stringify(this.body));
+  }
+  
+  clone() {
+    return new Response(this.body, {
+      status: this.status,
+      statusText: this.statusText,
+      headers: Object.fromEntries(this.headers)
+    });
   }
 };
 

@@ -1,213 +1,264 @@
-import { 
-  apiRequest, 
-  assertApiResponse, 
-  assertPagination,
-  overrideHandler,
-  simulateError 
-} from '../../helpers/api-test-utils';
-import { 
-  createTestArticles, 
-  createPaginatedResponse 
-} from '../../helpers/factories';
-import { server } from '../../msw/server';
+/**
+ * Articles APIテスト
+ * MSW依存を排除し、純粋なJestモックを使用
+ */
 
-// Setup MSW for this test file
-beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+import { testApiHandler, assertSuccessResponse, assertErrorResponse } from '../../helpers/test-utils';
+import { GET } from '@/app/api/articles/route';
+import prismaMock from '../../../__mocks__/lib/prisma';
+import redisMock from '../../../__mocks__/lib/redis/client';
 
 describe('Articles API', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    // デフォルトのモック設定
+    prismaMock.article.findMany.mockResolvedValue([]);
+    prismaMock.article.count.mockResolvedValue(0);
+    redisMock.get.mockResolvedValue(null);
+    redisMock.set.mockResolvedValue('OK');
+  });
+
   describe('GET /api/articles', () => {
     it('should return articles list with default pagination', async () => {
-      const response = await apiRequest('/api/articles');
-      
-      expect(response.status).toBe(200);
-      assertApiResponse(response.data);
-      assertPagination(response.data.data);
-      
-      const { data } = response.data;
-      expect(data.page).toBe(1);
-      expect(data.limit).toBe(20);
-      expect(Array.isArray(data.items)).toBe(true);
+      const mockArticles = [
+        {
+          id: '1',
+          title: 'Test Article 1',
+          url: 'https://example.com/1',
+          summary: 'Summary 1',
+          publishedAt: new Date('2025-01-01'),
+          qualityScore: 85,
+          bookmarks: 10,
+          userVotes: 5,
+          difficulty: null,
+          createdAt: new Date('2025-01-01'),
+          updatedAt: new Date('2025-01-01'),
+          sourceId: 'test-source',
+          source: {
+            id: 'test-source',
+            name: 'Test Source',
+            type: 'rss',
+            url: 'https://test.com',
+            enabled: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          },
+          tags: []
+        }
+      ];
+
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(1);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles'
+      });
+
+      assertSuccessResponse(response);
+      expect(response.data.data).toBeDefined();
+      expect(response.data.data.items).toHaveLength(1);
+      expect(response.data.data.total).toBe(1);
+      expect(response.data.data.page).toBe(1);
+      expect(response.data.data.limit).toBe(20);
     });
-    
+
     it('should handle pagination parameters', async () => {
-      const response = await apiRequest('/api/articles?page=2&limit=10');
-      
-      expect(response.status).toBe(200);
-      const { data } = response.data;
-      expect(data.page).toBe(2);
-      expect(data.limit).toBe(10);
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(50);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles?page=2&limit=10'
+      });
+
+      assertSuccessResponse(response);
+      expect(response.data.data.page).toBe(2);
+      expect(response.data.data.limit).toBe(10);
+      expect(response.data.data.totalPages).toBe(5);
     });
-    
+
     it('should filter articles by source', async () => {
-      const response = await apiRequest('/api/articles?source=qiita');
-      
-      expect(response.status).toBe(200);
-      const { data } = response.data;
-      
-      // All articles should be from qiita source
-      data.items.forEach((article: any) => {
-        expect(article.sourceId).toBe('qiita');
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles?sourceId=qiita'
       });
+
+      assertSuccessResponse(response);
+      
+      // モックが正しい条件で呼ばれたことを確認
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            sourceId: 'qiita'
+          })
+        })
+      );
     });
-    
+
     it('should filter articles by tag', async () => {
-      const response = await apiRequest('/api/articles?tag=React');
-      
-      expect(response.status).toBe(200);
-      const { data } = response.data;
-      
-      // All articles should have React tag
-      data.items.forEach((article: any) => {
-        const hasReactTag = article.tags.some((tag: any) => 
-          tag.name.toLowerCase() === 'react'
-        );
-        expect(hasReactTag).toBe(true);
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles?tag=React'
       });
+
+      assertSuccessResponse(response);
+      
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tags: {
+              some: {
+                name: 'React'
+              }
+            }
+          })
+        })
+      );
     });
-    
-    it('should combine multiple filters', async () => {
-      const response = await apiRequest('/api/articles?source=qiita&tag=React');
-      
-      expect(response.status).toBe(200);
-      const { data } = response.data;
-      
-      data.items.forEach((article: any) => {
-        expect(article.sourceId).toBe('qiita');
-        const hasReactTag = article.tags.some((tag: any) => 
-          tag.name.toLowerCase() === 'react'
-        );
-        expect(hasReactTag).toBe(true);
+
+    it('should use cache when available', async () => {
+      const cachedData = JSON.stringify({
+        items: [{ id: '1', title: 'Cached Article' }],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1
       });
+
+      redisMock.get.mockResolvedValueOnce(cachedData);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles'
+      });
+
+      assertSuccessResponse(response);
+      expect(response.data.data.items[0].title).toBe('Cached Article');
+      
+      // DBが呼ばれないことを確認
+      expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+      expect(prismaMock.article.count).not.toHaveBeenCalled();
     });
-    
-    it('should return empty array when no articles match filters', async () => {
-      const response = await apiRequest('/api/articles?source=nonexistent');
+
+    it('should set cache after fetching from database', async () => {
+      const mockArticles = [{
+        id: '1',
+        title: 'Test Article',
+        url: 'https://example.com',
+        summary: 'Test summary',
+        publishedAt: new Date(),
+        qualityScore: 80,
+        bookmarks: 0,
+        userVotes: 0,
+        difficulty: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sourceId: 'test',
+        source: {
+          id: 'test',
+          name: 'Test',
+          type: 'rss',
+          url: 'https://test.com',
+          enabled: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        tags: []
+      }];
+
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(1);
+      redisMock.get.mockResolvedValue(null); // キャッシュなし
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles'
+      });
+
+      assertSuccessResponse(response);
       
-      expect(response.status).toBe(200);
-      const { data } = response.data;
-      expect(data.items).toEqual([]);
-      expect(data.total).toBe(0);
+      // キャッシュが設定されたことを確認
+      expect(redisMock.set).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'EX',
+        expect.any(Number)
+      );
     });
-    
-    it('should handle server errors gracefully', async () => {
-      simulateError('/api/articles', 500, 'Database connection failed');
+
+    it('should handle search parameter', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles?search=TypeScript'
+      });
+
+      assertSuccessResponse(response);
       
-      const response = await apiRequest('/api/articles');
-      
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { title: { contains: 'TypeScript' } },
+              { summary: { contains: 'TypeScript' } }
+            ]
+          })
+        })
+      );
+    });
+
+    it('should handle database errors', async () => {
+      prismaMock.article.findMany.mockRejectedValue(new Error('Database error'));
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles'
+      });
+
       expect(response.status).toBe(500);
       expect(response.data.success).toBe(false);
-      expect(response.data.error).toBe('Database connection failed');
+      expect(response.data.error).toBeDefined();
     });
-    
-    it('should validate article structure', async () => {
-      const response = await apiRequest('/api/articles');
-      
-      const { data } = response.data;
-      const article = data.items[0];
-      
-      // Check required fields
-      expect(article).toHaveProperty('id');
-      expect(article).toHaveProperty('title');
-      expect(article).toHaveProperty('url');
-      expect(article).toHaveProperty('summary');
-      expect(article).toHaveProperty('publishedAt');
-      expect(article).toHaveProperty('sourceId');
-      expect(article).toHaveProperty('qualityScore');
-      expect(article).toHaveProperty('source');
-      expect(article).toHaveProperty('tags');
-      
-      // Check data types
-      expect(typeof article.id).toBe('string');
-      expect(typeof article.title).toBe('string');
-      expect(typeof article.url).toBe('string');
-      expect(typeof article.summary).toBe('string');
-      expect(typeof article.qualityScore).toBe('number');
-      expect(Array.isArray(article.tags)).toBe(true);
-    });
-    
-    it('should validate summary length requirements', async () => {
-      const response = await apiRequest('/api/articles');
-      
-      const { data } = response.data;
-      data.items.forEach((article: any) => {
-        // Summary should be between 90-130 characters based on validation rules
-        expect(article.summary.length).toBeGreaterThanOrEqual(90);
-        expect(article.summary.length).toBeLessThanOrEqual(130);
+
+    it('should validate sortBy parameter', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles?sortBy=invalidField'
       });
+
+      assertSuccessResponse(response);
+      
+      // 無効なsortByは無視され、デフォルト（publishedAt）が使用される
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: {
+            publishedAt: 'desc'
+          }
+        })
+      );
     });
-    
-    it('should return articles sorted by publishedAt desc by default', async () => {
-      const response = await apiRequest('/api/articles');
+
+    it('should handle sortOrder parameter', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles?sortBy=qualityScore&sortOrder=asc'
+      });
+
+      assertSuccessResponse(response);
       
-      const { data } = response.data;
-      if (data.items.length > 1) {
-        for (let i = 0; i < data.items.length - 1; i++) {
-          const current = new Date(data.items[i].publishedAt);
-          const next = new Date(data.items[i + 1].publishedAt);
-          expect(current.getTime()).toBeGreaterThanOrEqual(next.getTime());
-        }
-      }
-    });
-  });
-  
-  describe('Caching behavior', () => {
-    it('should cache responses with appropriate headers', async () => {
-      // First request - should miss cache
-      const response1 = await apiRequest('/api/articles');
-      
-      // Note: Cache headers would be set by the actual API implementation
-      // This test verifies the MSW mock response structure
-      expect(response1.status).toBe(200);
-      expect(response1.data.success).toBe(true);
-      
-      // Second request - would hit cache in real implementation
-      const response2 = await apiRequest('/api/articles');
-      expect(response2.status).toBe(200);
-      
-      // Data should be consistent
-      expect(response1.data).toEqual(response2.data);
-    });
-    
-    it('should use different cache keys for different parameters', async () => {
-      const response1 = await apiRequest('/api/articles?page=1');
-      const response2 = await apiRequest('/api/articles?page=2');
-      
-      // Different pages should return different data
-      expect(response1.data.data.page).toBe(1);
-      expect(response2.data.data.page).toBe(2);
-    });
-  });
-  
-  describe('Error handling', () => {
-    it('should handle 400 bad request errors', async () => {
-      simulateError('/api/articles', 400, 'Invalid query parameters');
-      
-      const response = await apiRequest('/api/articles?page=invalid');
-      
-      expect(response.status).toBe(400);
-      expect(response.data.success).toBe(false);
-      expect(response.data.error).toContain('Invalid');
-    });
-    
-    it('should handle 404 not found errors', async () => {
-      simulateError('/api/articles', 404, 'Endpoint not found');
-      
-      const response = await apiRequest('/api/articles');
-      
-      expect(response.status).toBe(404);
-      expect(response.data.success).toBe(false);
-    });
-    
-    it('should handle 503 service unavailable errors', async () => {
-      simulateError('/api/articles', 503, 'Service temporarily unavailable');
-      
-      const response = await apiRequest('/api/articles');
-      
-      expect(response.status).toBe(503);
-      expect(response.data.success).toBe(false);
-      expect(response.data.error).toContain('unavailable');
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: {
+            qualityScore: 'asc'
+          }
+        })
+      );
     });
   });
 });
