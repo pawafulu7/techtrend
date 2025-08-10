@@ -35,12 +35,22 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
         let content = trimmedLine.substring(1).trim();
         
         if (sectionIndex < unifiedSections.length) {
-          // プレフィックスを削除
-          const prefixToRemove = unifiedSections[sectionIndex].title;
-          // 「、」または「は、」で終わるプレフィックスを削除
-          if (content.startsWith(prefixToRemove)) {
-            // プレフィックスとその後の「、」を削除
-            content = content.substring(prefixToRemove.length).replace(/^[、は]*/, '').trim();
+          // 古い形式のプレフィックスを削除（「記事の主題は、」「具体的な問題は、」など）
+          const oldPrefixes = [
+            '記事の主題は、',
+            '具体的な問題は、',
+            '提示されている解決策は、',
+            '実装方法の詳細については、',
+            '期待される効果は、',
+            'この記事の主要なトピックは、',
+            '技術的な背景として、'
+          ];
+          
+          for (const prefix of oldPrefixes) {
+            if (content.startsWith(prefix)) {
+              content = content.substring(prefix.length).trim();
+              break;
+            }
           }
           
           sections.push({

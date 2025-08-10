@@ -270,10 +270,10 @@ export function getArticleTypeSections(type: ArticleType) {
  */
 export function getUnifiedSections() {
   return [
-    { key: 'topic', title: '記事の主題は', icon: '📋' },
-    { key: 'problem', title: '具体的な問題は', icon: '❓' },
-    { key: 'solution', title: '提示されている解決策は', icon: '💡' },
-    { key: 'implementation', title: '実装方法の詳細については', icon: '🔧' },
-    { key: 'effects', title: '期待される効果は', icon: '📈' }
+    { key: 'topic', title: '主要トピック', icon: '📋' },
+    { key: 'problem', title: '課題・問題点', icon: '❓' },
+    { key: 'solution', title: '解決策・アプローチ', icon: '💡' },
+    { key: 'implementation', title: '実装詳細', icon: '🔧' },
+    { key: 'effects', title: '期待効果・メリット', icon: '📈' }
   ];
 }
