@@ -59,7 +59,11 @@ describe('article-type-detector', () => {
       ];
       
       implementationTitles.forEach(title => {
-        expect(detectArticleType(title)).toBe('implementation');
+        const result = detectArticleType(title);
+        if (result !== 'implementation') {
+          console.log(`Failed for title: "${title}", got: "${result}"`);
+        }
+        expect(result).toBe('implementation');
       });
     });
     

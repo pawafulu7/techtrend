@@ -7,6 +7,7 @@ const createJestConfig = nextJest({
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {
+  // setupFiles: ['<rootDir>/__tests__/helpers/setup.ts'], // 一時的にコメントアウト
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
   moduleNameMapper: {
@@ -14,6 +15,8 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
     // Mock Next.js navigation
     '^next/navigation$': '<rootDir>/__tests__/__mocks__/next-navigation.ts',
+    // Mock ioredis
+    '^ioredis$': '<rootDir>/__tests__/__mocks__/ioredis.ts',
   },
   testPathIgnorePatterns: [
     '<rootDir>/.next/',

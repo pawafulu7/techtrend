@@ -1,3 +1,35 @@
+// ioredisのモック
+jest.mock('ioredis', () => {
+  const mockStore = new Map();
+  
+  return jest.fn().mockImplementation(() => ({
+    connect: jest.fn().mockResolvedValue(undefined),
+    ping: jest.fn().mockResolvedValue('PONG'),
+    set: jest.fn((key, value, ...args) => {
+      // EX パラメータ処理
+      mockStore.set(key, value);
+      return Promise.resolve('OK');
+    }),
+    get: jest.fn((key) => {
+      return Promise.resolve(mockStore.get(key) || null);
+    }),
+    del: jest.fn((key) => {
+      const existed = mockStore.has(key);
+      mockStore.delete(key);
+      return Promise.resolve(existed ? 1 : 0);
+    }),
+    keys: jest.fn((pattern) => {
+      const allKeys = Array.from(mockStore.keys());
+      if (pattern === '*') return Promise.resolve(allKeys);
+      const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+      return Promise.resolve(allKeys.filter(key => regex.test(key)));
+    }),
+    ttl: jest.fn(() => Promise.resolve(59)),
+    quit: jest.fn().mockResolvedValue(undefined),
+    on: jest.fn(),
+  }));
+});
+
 import { RedisCache } from '@/lib/cache/redis-cache';
 import { closeRedisConnection } from '@/lib/redis/client';
 
