@@ -318,7 +318,12 @@ export function expandSummaryIfNeeded(
   
   // タイトルを活用した自然な拡張（タイトルが含まれていない場合）
   if (title && expandedSummary.length < 30 && !expandedSummary.includes(title.substring(0, 10))) {
-    expandedSummary = `${title}について、${expandedSummary}`;
+    // expandedSummaryが空または非常に短い場合の処理を改善
+    if (expandedSummary.length === 0 || expandedSummary.trim() === '') {
+      expandedSummary = `${title}に関する内容`;
+    } else {
+      expandedSummary = `${title}について、${expandedSummary}`;
+    }
   }
   
   // コンテンツから自然な補完を試みる（50文字を目指す）
@@ -332,18 +337,35 @@ export function expandSummaryIfNeeded(
       // 文の途中で切れないように調整
       const lastPeriodIndex = additionalText.lastIndexOf('。');
       if (lastPeriodIndex > 0) {
-        expandedSummary += '。' + additionalText.substring(0, lastPeriodIndex + 1);
+        // 既存の文章に句点がある場合のみ追加の句点を入れる
+        if (expandedSummary.length > 0 && !expandedSummary.endsWith('。')) {
+          expandedSummary += '。' + additionalText.substring(0, lastPeriodIndex + 1);
+        } else {
+          expandedSummary += additionalText.substring(0, lastPeriodIndex + 1);
+        }
       } else {
         // 句点がない場合は適切な位置で切る
         const cutPoint = additionalText.lastIndexOf('、');
         if (cutPoint > 0 && cutPoint > shortage / 2) {
-          expandedSummary += '。' + additionalText.substring(0, cutPoint);
+          if (expandedSummary.length > 0 && !expandedSummary.endsWith('。')) {
+            expandedSummary += '。' + additionalText.substring(0, cutPoint);
+          } else {
+            expandedSummary += additionalText.substring(0, cutPoint);
+          }
         } else {
-          expandedSummary += '。' + additionalText.substring(0, shortage);
+          if (expandedSummary.length > 0 && !expandedSummary.endsWith('。')) {
+            expandedSummary += '。' + additionalText.substring(0, shortage);
+          } else {
+            expandedSummary += additionalText.substring(0, shortage);
+          }
         }
       }
     } else if (cleanContent.length > 0) {
-      expandedSummary += '。' + cleanContent;
+      if (expandedSummary.length > 0 && !expandedSummary.endsWith('。')) {
+        expandedSummary += '。' + cleanContent;
+      } else {
+        expandedSummary += cleanContent;
+      }
     }
   }
   
