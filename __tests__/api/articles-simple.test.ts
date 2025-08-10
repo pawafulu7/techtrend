@@ -28,14 +28,15 @@ describe('Articles API Simple Tests', () => {
       url: 'https://test.com',
       content: 'Test content',
       summary: null,
+      thumbnail: null,
       publishedAt: new Date(),
       sourceId: 'test-source',
-      imageUrl: null,
-      author: null,
-      viewCount: 0,
-      favoriteCount: 0,
-      qualityScore: null,
-      summaryVersion: null,
+      bookmarks: 0,
+      userVotes: 0,
+      qualityScore: 0,
+      difficulty: null,
+      detailedSummary: null,
+      summaryVersion: 1,
       articleType: null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -57,13 +58,14 @@ describe('Articles API Simple Tests', () => {
           url: 'https://example.com/1',
           content: 'Content 1',
           summary: 'Summary 1',
+          thumbnail: null,
           publishedAt: new Date('2025-01-01'),
           sourceId: 'dev.to',
-          imageUrl: null,
-          author: 'Author 1',
-          viewCount: 100,
-          favoriteCount: 10,
+          bookmarks: 0,
+          userVotes: 0,
           qualityScore: 85,
+          difficulty: null,
+          detailedSummary: null,
           summaryVersion: 5,
           articleType: 'unified',
           createdAt: new Date('2025-01-01'),
@@ -87,9 +89,10 @@ describe('Articles API Simple Tests', () => {
       expect(response.status).toBe(200);
       
       const body = await response.json();
-      expect(body.articles).toBeDefined();
-      expect(body.articles).toHaveLength(1);
-      expect(body.total).toBe(1);
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.items).toHaveLength(1);
+      expect(body.data.total).toBe(1);
       
       // モックの呼び出し確認
       expect(prismaMock.article.findMany).toHaveBeenCalled();
@@ -118,8 +121,9 @@ describe('Articles API Simple Tests', () => {
       expect(response.status).toBe(200);
       
       const body = await response.json();
-      expect(body.articles).toHaveLength(1);
-      expect(body.articles[0].title).toBe('Cached Article');
+      expect(body.success).toBe(true);
+      expect(body.data.items).toHaveLength(1);
+      expect(body.data.items[0].title).toBe('Cached Article');
       
       // Redisキャッシュが使用されたことを確認
       expect(redisMock.get).toHaveBeenCalled();
@@ -156,8 +160,10 @@ describe('Articles API Simple Tests', () => {
       expect(response.status).toBe(201);
       
       const body = await response.json();
-      expect(body.id).toBe('test-id');
-      expect(body.title).toBe('Test Article');
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.id).toBe('test-id');
+      expect(body.data.title).toBe('Test Article');
       
       // モックの呼び出し確認
       expect(prismaMock.article.create).toHaveBeenCalled();
@@ -173,9 +179,24 @@ describe('Articles API Simple Tests', () => {
       };
       
       // 重複する記事が存在する
-      prismaMock.article.findFirst.mockResolvedValue({
+      prismaMock.article.findUnique.mockResolvedValue({
         id: 'existing',
+        title: 'Existing Article',
         url: duplicateArticle.url,
+        content: null,
+        summary: null,
+        thumbnail: null,
+        publishedAt: new Date(),
+        sourceId: 'test-source',
+        bookmarks: 0,
+        userVotes: 0,
+        qualityScore: 0,
+        difficulty: null,
+        detailedSummary: null,
+        summaryVersion: 1,
+        articleType: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
       
       // APIハンドラーのインポート

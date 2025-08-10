@@ -26,7 +26,11 @@ export function createTestArticle(overrides: Partial<any> = {}) {
     publishedAt: faker.date.recent(),
     sourceId: faker.helpers.arrayElement(['qiita', 'zenn', 'devto', 'hatena']),
     thumbnail: faker.helpers.maybe(() => faker.image.url(), { probability: 0.5 }),
+    bookmarks: faker.number.int({ min: 0, max: 100 }),
+    userVotes: faker.number.int({ min: 0, max: 50 }),
     qualityScore: faker.number.int({ min: 60, max: 100 }),
+    difficulty: faker.helpers.maybe(() => faker.helpers.arrayElement(['beginner', 'intermediate', 'advanced']), { probability: 0.3 }),
+    detailedSummary: faker.helpers.maybe(() => faker.lorem.paragraph(), { probability: 0.3 }),
     summaryVersion: 5,
     articleType: 'unified',
     createdAt: faker.date.recent(),
@@ -44,7 +48,6 @@ export function createTestSource(overrides: Partial<any> = {}) {
     name: faker.company.name(),
     type: faker.helpers.arrayElement(['rss', 'api', 'scraper']),
     url: faker.internet.url(),
-    feedUrl: faker.helpers.maybe(() => faker.internet.url(), { probability: 0.7 }),
     enabled: true,
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
@@ -63,8 +66,7 @@ export function createTestTag(overrides: Partial<any> = {}) {
       'Node.js', 'Python', 'Go', 'Rust', 'Docker',
       'Kubernetes', 'AWS', 'DevOps', 'CI/CD', 'Testing'
     ]),
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.recent(),
+    category: faker.helpers.maybe(() => faker.helpers.arrayElement(['tech', 'framework', 'language', 'tool']), { probability: 0.5 }),
     ...overrides,
   };
 }

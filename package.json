@@ -12,6 +12,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:unit": "jest --testPathPattern=unit",
+    "test:react": "jest -c jest.config.react.js",
     "test:integration": "jest -c jest.config.integration.js",
     "test:integration:docker": "REDIS_HOST=localhost REDIS_PORT=6379 jest -c jest.config.integration.js",
     "test:changed": "jest -o",
