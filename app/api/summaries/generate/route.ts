@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
-import { generateSummaryAndTags } from '@/lib/ai/gemini-handler';
-import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
-import { detectArticleType } from '@/lib/utils/article-type-detector';
+import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 
 export async function POST() {
   try {
@@ -29,6 +27,9 @@ export async function POST() {
     let generated = 0;
     let errors = 0;
 
+    // 統一サービスを使用
+    const service = getUnifiedSummaryService();
+
     for (const article of articlesWithoutSummary) {
       try {
         // コンテンツが空の場合はスキップ
@@ -37,23 +38,17 @@ export async function POST() {
           continue;
         }
 
-        // 要約とタグを生成
-        const result = await generateSummaryAndTags(
+        // 統一フォーマットで要約を生成
+        const result = await service.generate(
           article.title,
           article.content
         );
 
-        // 記事タイプを検出
-        const articleType = detectArticleType(article.title, article.content);
-
         // 既存のタグ名を取得
         const existingTagNames = article.tags.map(tag => tag.name);
         
-        // 新しいタグを正規化
-        const normalizedNewTags = normalizeTags(result.tags);
-        
         // 新規タグのみをフィルタ
-        const newTagNames = normalizedNewTags.filter(
+        const newTagNames = result.tags.filter(
           tagName => !existingTagNames.includes(tagName)
         );
 
@@ -68,14 +63,14 @@ export async function POST() {
           tagConnections.push({ id: tag.id });
         }
 
-        // 記事を更新
+        // 記事を更新（summaryVersion: 5）
         await prisma.article.update({
           where: { id: article.id },
           data: {
             summary: result.summary,
             detailedSummary: result.detailedSummary,
-            articleType: articleType,
-            summaryVersion: 2,
+            articleType: result.articleType,
+            summaryVersion: result.summaryVersion,
             tags: {
               connect: tagConnections
             }
