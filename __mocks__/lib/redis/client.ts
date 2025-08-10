@@ -7,7 +7,10 @@
 class MockRedisClient {
   // 基本的なRedisコマンドのモック（デフォルト値付き）
   // getメソッドはnullを返すようにし、"undefined"文字列を返さない
-  get = jest.fn().mockImplementation(() => Promise.resolve(null));
+  get = jest.fn().mockImplementation((key) => {
+    // 明示的にnullを返す（undefinedや"undefined"文字列ではない）
+    return Promise.resolve(null);
+  });
   set = jest.fn().mockImplementation((key, value, ...args) => {
     // EXオプション付きのsetを処理
     if (args[0] === 'EX') {
