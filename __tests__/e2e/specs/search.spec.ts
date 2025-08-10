@@ -15,8 +15,8 @@ test.describe('検索機能', () => {
   });
 
   test('キーワード検索が機能する', async ({ page }) => {
-    // 検索入力フィールドを探す（実際のページに合わせたセレクター）
-    const searchInput = page.locator('input[type="search"][placeholder*="記事を検索"]').first();
+    // 検索入力フィールドを探す（ホームページのSearchBoxコンポーネント）
+    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
     
     await expect(searchInput).toBeVisible({ timeout: 10000 });
     
@@ -45,19 +45,19 @@ test.describe('検索機能', () => {
     // 検索結果または「結果なし」メッセージを確認
     await page.waitForTimeout(1000); // APIレスポンスを待つ
     
-    // 検索結果カウントの表示を確認
-    const resultCountText = page.locator('p:has-text("件の記事が見つかりました")');
-    const noResultsText = page.locator(':text("検索条件に一致する記事が見つかりませんでした"), :text("検索キーワードを入力してください")');
+    // 検索結果カウントの表示を確認（「○○件」の形式）
+    const resultCountText = page.locator('p:has-text("件")');
     
-    // いずれかのメッセージが表示されることを確認
-    const hasResultCount = await resultCountText.isVisible({ timeout: 5000 }).catch(() => false);
-    const hasNoResults = await noResultsText.isVisible({ timeout: 5000 }).catch(() => false);
+    // 件数表示が存在することを確認
+    await expect(resultCountText).toBeVisible({ timeout: 5000 });
     
-    expect(hasResultCount || hasNoResults).toBeTruthy();
+    // 件数が数値を含むことを確認
+    const countText = await resultCountText.textContent();
+    expect(countText).toMatch(/\d+件/);
   });
 
   test('空の検索クエリの処理', async ({ page }) => {
-    const searchInput = page.locator('input[type="search"][placeholder*="記事を検索"]').first();
+    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
     
     await expect(searchInput).toBeVisible();
     
@@ -75,7 +75,7 @@ test.describe('検索機能', () => {
   });
 
   test('特殊文字を含む検索クエリの処理', async ({ page }) => {
-    const searchInput = page.locator('input[type="search"][placeholder*="記事を検索"]').first();
+    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
     
     await expect(searchInput).toBeVisible();
     
@@ -202,37 +202,7 @@ test.describe('検索機能', () => {
     // この機能は削除されました
   });
 
-  test('検索履歴・候補の表示', async ({ page }) => {
-    const searchInput = page.locator('input[type="search"][placeholder*="記事を検索"]').first();
-    
-    await expect(searchInput).toBeVisible();
-    
-    // 検索フィールドにフォーカス
-    await searchInput.focus();
-    
-    // 文字を入力し始める
-    await searchInput.type('Java', { delay: 100 });
-    
-    // サジェスト/オートコンプリートが表示されるか確認
-    const suggestions = page.locator(
-      '[role="listbox"], [class*="suggest"], [class*="autocomplete"], [data-testid="suggestions"]'
-    ).first();
-    
-    // サジェストが表示される場合
-    if (await suggestions.isVisible({ timeout: 2000 })) {
-      // サジェスト項目が存在することを確認
-      const suggestionItems = suggestions.locator('[role="option"], li');
-      const itemCount = await suggestionItems.count();
-      expect(itemCount).toBeGreaterThan(0);
-      
-      // 最初のサジェストをクリック
-      if (itemCount > 0) {
-        await suggestionItems.first().click();
-        await waitForPageLoad(page);
-        
-        // 検索が実行されることを確認
-        await expect(page).toHaveURL(/search=/);
-      }
-    }
+  test.skip('検索履歴・候補の表示（SearchBar削除により無効）', async ({ page }) => {
+    // SearchBarコンポーネントが削除されたため、この機能は現在利用不可
   });
 });

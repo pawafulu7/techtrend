@@ -42,8 +42,8 @@ test.describe('ホームページ', () => {
   });
 
   test('検索ボックスが機能する', async ({ page }) => {
-    // 検索入力フィールドを探す
-    const searchInput = page.locator('input[type="search"], input[placeholder*="検索"], input[placeholder*="Search"]').first();
+    // 検索入力フィールドを探す（SearchBoxコンポーネント）
+    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
     
     if (await searchInput.isVisible()) {
       // 検索クエリを入力
@@ -52,8 +52,8 @@ test.describe('ホームページ', () => {
       // Enterキーで検索実行
       await searchInput.press('Enter');
       
-      // URLが検索ページに遷移することを確認
-      await expect(page).toHaveURL(/\/search|\/articles\?q=/);
+      // URLに検索パラメータが追加されることを確認
+      await expect(page).toHaveURL(/\?.*search=/);
     }
   });
 
