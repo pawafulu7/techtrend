@@ -62,8 +62,8 @@ export function calculateQualityScore(article: ArticleWithDetails): number {
     /^[0-9]+[\s]*[のつ個]/,  // "10個の〜"
     /知らないと[損|ヤバい|マズい]/,
     /絶対に/,
-    /〜すぎる/,
-    /〜な理由/,
+    /すぎる/,    // 「〜すぎる」パターン
+    /理由$/,     // 「〜理由」で終わるパターン
     /衝撃/,
     /必見/,
   ];
