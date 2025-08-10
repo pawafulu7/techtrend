@@ -12,8 +12,7 @@ const customJestConfig = {
   testEnvironment: 'node',
   moduleNameMapper: {
     // Manual mocks for Prisma and Redis (must come before generic alias)
-    '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
-    '^@/lib/database/index$': '<rootDir>/__mocks__/lib/database.ts',
+    '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
     '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
     // Mock Next.js navigation
     '^next/navigation$': '<rootDir>/__tests__/__mocks__/next-navigation.ts',

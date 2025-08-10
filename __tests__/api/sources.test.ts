@@ -22,7 +22,7 @@ import prismaMock from '../../__mocks__/lib/prisma';
 import redisMock from '../../__mocks__/lib/redis/client';
 
 // モックの自動適用
-jest.mock('@/lib/prisma');
+jest.mock('@/lib/database');
 jest.mock('@/lib/redis/client');
 
 describe('Sources API Tests', () => {
