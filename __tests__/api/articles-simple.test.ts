@@ -3,15 +3,18 @@
  * Manual Mocksを使用した簡略化されたテスト
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-
-// Manual mocksを直接インポート
-import prismaMock from '../../__mocks__/lib/prisma';
-import redisMock from '../../__mocks__/lib/redis/client';
-
-// モジュールのモック設定（moduleNameMapperで解決）
+// モジュールのモック設定
 jest.mock('@/lib/database');
 jest.mock('@/lib/redis/client');
+
+import { NextRequest, NextResponse } from 'next/server';
+import { GET, POST } from '@/app/api/articles/route';
+import { prisma } from '@/lib/database';
+import { getRedisClient } from '@/lib/redis/client';
+
+// モックインスタンスを取得
+const prismaMock = prisma as any;
+const redisMock = getRedisClient() as any;
 
 describe('Articles API Simple Tests', () => {
   beforeEach(() => {
@@ -76,8 +79,7 @@ describe('Articles API Simple Tests', () => {
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(1);
       
-      // APIハンドラーのインポート（動的）
-      const { GET } = await import('@/app/api/articles/route');
+      // GETハンドラーは既にインポート済み
       
       // リクエストの作成
       const request = new NextRequest('http://localhost:3000/api/articles');
@@ -129,8 +131,7 @@ describe('Articles API Simple Tests', () => {
       
       redisMock.get.mockResolvedValueOnce(cachedData);
       
-      // APIハンドラーのインポート
-      const { GET } = await import('@/app/api/articles/route');
+      // ハンドラーは既にインポート済み
       
       // リクエストの作成
       const request = new NextRequest('http://localhost:3000/api/articles');
@@ -202,8 +203,7 @@ describe('Articles API Simple Tests', () => {
       redisMock.keys.mockResolvedValueOnce(['cache:key1', 'cache:key2']);
       redisMock.del.mockResolvedValueOnce(2);
       
-      // APIハンドラーのインポート
-      const { POST } = await import('@/app/api/articles/route');
+      // ハンドラーは既にインポート済み
       
       // リクエストの作成
       const request = new NextRequest('http://localhost:3000/api/articles', {
@@ -258,8 +258,7 @@ describe('Articles API Simple Tests', () => {
         updatedAt: new Date(),
       });
       
-      // APIハンドラーのインポート
-      const { POST } = await import('@/app/api/articles/route');
+      // ハンドラーは既にインポート済み
       
       // リクエストの作成
       const request = new NextRequest('http://localhost:3000/api/articles', {
