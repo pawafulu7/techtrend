@@ -184,6 +184,17 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     if (totalNewArticles > 0) {
       console.log('🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
+      
+      // 新規記事があれば要約生成を自動実行
+      console.log('\n📝 要約生成を自動実行します...');
+      try {
+        const { generateSummaries } = await import('../maintenance/generate-summaries');
+        const result = await generateSummaries();
+        console.log(`✅ 要約生成完了: ${result.generated}件の要約を生成`);
+      } catch (error) {
+        console.error('⚠️ 要約生成でエラーが発生しましたが、記事収集は成功しています:', 
+          error instanceof Error ? error.message : String(error));
+      }
     }
 
     return { newArticles: totalNewArticles, duplicates: totalDuplicates };
