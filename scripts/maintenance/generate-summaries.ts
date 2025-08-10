@@ -80,7 +80,7 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
   const data = await response.json() as any;
   const responseText = data.candidates[0].content.parts[0].text.trim();
   
-  const result = parseSummaryAndTags(responseText);
+  const result = parseSummaryAndTags(responseText, title, content);
   
   // 新しい品質チェックシステムを使用
   const qualityCheck = checkSummaryQuality(result.summary, result.detailedSummary);
@@ -151,7 +151,7 @@ function finalCleanup(text: string): string {
   return text;
 }
 
-function parseSummaryAndTags(text: string): SummaryAndTags {
+function parseSummaryAndTags(text: string, title: string = '', content: string = ''): SummaryAndTags {
   const lines = text.split('\n');
   let summary = '';
   let detailedSummary = '';
@@ -262,7 +262,7 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
   
   // Phase 2: 文字数拡張処理を追加
   // 一覧要約が150文字未満の場合は拡張（タイトルとコンテンツを渡す）
-  summary = expandSummaryIfNeeded(summary, '', 150, text);
+  summary = expandSummaryIfNeeded(summary, title, 150, content || text);
   
   // フォールバック
   if (!summary) {
