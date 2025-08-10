@@ -84,7 +84,7 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
 
   return {
     summary: cleanupText(summary),
-    detailedSummary: cleanupText(detailedSummary),
+    detailedSummary: cleanupDetailedSummary(detailedSummary),
     tags: tags.slice(0, 5) // 最大5個のタグ
   };
 }
@@ -132,6 +132,19 @@ function cleanupText(text: string): string {
     .replace(/。{2,}/g, '。')
     .replace(/、{2,}/g, '、')
     .trim();
+}
+
+/**
+ * 詳細要約のクリーンアップ（改行を保持）
+ */
+function cleanupDetailedSummary(text: string): string {
+  return text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .join('\n')
+    .replace(/。{2,}/g, '。')
+    .replace(/、{2,}/g, '、');
 }
 
 /**
