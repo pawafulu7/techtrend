@@ -55,7 +55,8 @@
     "playwright:report": "playwright show-report",
     "migrate:version6": "tsx scripts/manual/migrate-to-version6.ts",
     "migrate:version6:critical": "tsx scripts/manual/migrate-to-version6.ts --priority=critical",
-    "migrate:version6:substandard": "tsx scripts/manual/migrate-to-version6.ts --priority=substandard"
+    "migrate:version6:substandard": "tsx scripts/manual/migrate-to-version6.ts --priority=substandard",
+    "fix:short-content": "tsx scripts/manual/fix-short-content-summaries.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

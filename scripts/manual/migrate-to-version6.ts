@@ -7,7 +7,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { getUnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { getContentAwareSummaryService } from '../../lib/ai/content-aware-summary-service';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { checkSummaryQuality } from '../../lib/utils/summary-quality-checker';
 
@@ -154,8 +154,8 @@ async function main() {
     
     console.log(`📝 ${articles.length}件の記事を処理します`);
     
-    // 統一サービスを取得
-    const service = getUnifiedSummaryService();
+    // コンテンツ長対応サービスを取得
+    const service = getContentAwareSummaryService();
     
     for (const [index, article] of articles.entries()) {
       const progress = `[${index + 1}/${articles.length}]`;
