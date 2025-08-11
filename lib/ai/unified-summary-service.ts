@@ -51,12 +51,18 @@ export class UnifiedSummaryService {
   async generate(
     title: string, 
     content: string, 
-    options?: GenerateOptions
+    options?: GenerateOptions,
+    sourceInfo?: { sourceName?: string, url?: string }
   ): Promise<UnifiedSummaryResult> {
     const opts = { ...UnifiedSummaryService.DEFAULT_OPTIONS, ...options };
     
     // コンテンツの前処理
-    const processedContent = this.preprocessContent(title, content, opts.contentMaxLength!);
+    const processedContent = this.preprocessContent(title, content, opts.contentMaxLength!, sourceInfo);
+    
+    // スキップマーカーのチェック
+    if (processedContent === '__SKIP_SUMMARY_GENERATION__') {
+      throw new Error('SKIP_GENERATION: はてなブックマーク経由の外部サイト記事でコンテンツ不足のため、要約生成をスキップします');
+    }
     
     let lastError: Error | null = null;
     
@@ -147,10 +153,19 @@ export class UnifiedSummaryService {
   /**
    * コンテンツの前処理
    */
-  private preprocessContent(title: string, content: string, maxLength: number): string {
+  private preprocessContent(title: string, content: string, maxLength: number, sourceInfo?: { sourceName?: string, url?: string }): string {
+    // はてなブックマーク経由の外部サイト記事でコンテンツ不足の場合
+    if (sourceInfo?.sourceName === 'はてなブックマーク' && 
+        content.length < 300 &&
+        (sourceInfo.url?.includes('speakerdeck.com') || 
+         sourceInfo.url?.includes('slideshare.net'))) {
+      // 要約生成不可のマーカーを返す
+      return '__SKIP_SUMMARY_GENERATION__';
+    }
+    
     if (!content || content.length < 100) {
-      // コンテンツが短い場合はタイトルを含めて文脈を補強
-      return `タイトル: ${title}\n\n内容:\n${content || title}\n\n注意: この記事は短いため、タイトルと利用可能な情報から推測して要約を作成してください。`;
+      // 推測指示を削除し、基本情報のみ返す
+      return `タイトル: ${title}\n\n内容:\n${content || 'コンテンツ不足'}\n\n注意: 内容が不十分なため、実際の記事内容に基づいた要約のみを生成してください。推測や憶測は避けてください。`;
     }
     
     if (content.length > maxLength) {

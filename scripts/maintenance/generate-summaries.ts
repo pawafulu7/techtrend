@@ -468,6 +468,15 @@ async function generateSummaries(): Promise<GenerateResult> {
             try {
               const content = article.content || article.description || '';
               
+              // はてなブックマーク経由の外部サイト記事でコンテンツ不足の場合はスキップ
+              if (article.source.name === 'はてなブックマーク' && 
+                  content.length < 300 &&
+                  (article.url.includes('speakerdeck.com') || 
+                   article.url.includes('slideshare.net'))) {
+                console.log(`  ⏭️ スキップ: ${article.title} (はてなブックマーク経由の外部サイト記事でコンテンツ不足)`);
+                break; // このarticleの処理をスキップ
+              }
+              
               // 既に日本語の要約がある場合はスキップ（Gemini APIを呼ばない）
               const existingSummary = article.summary || '';
               const hasJapaneseSummary = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(existingSummary);
