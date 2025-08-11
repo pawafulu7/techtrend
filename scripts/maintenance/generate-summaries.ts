@@ -134,6 +134,9 @@ function finalCleanup(text: string): string {
     text = text.replace(pattern, '');
   });
   
+  // 枕詞の削除（本記事は、本稿では、など）
+  text = text.replace(/^(本記事は、|本記事は|本稿では、|本稿では|記事では、|記事では|この記事は、|この記事は)/g, '');
+  
   // 先頭の句読点を除去
   text = text.replace(/^[、。]\s*/, '');
   
@@ -182,6 +185,8 @@ function parseSummaryAndTags(text: string, title: string = '', content: string =
 
   let summaryStarted = false;
   let detailedSummaryStarted = false;
+  let expectingSummaryContent = false;  // 要約ラベル後の内容待ちフラグ
+  let expectingDetailedContent = false;  // 詳細要約ラベル後の内容待ちフラグ
 
   for (const line of lines) {
     // プロンプト指示行をスキップ
@@ -191,37 +196,90 @@ function parseSummaryAndTags(text: string, title: string = '', content: string =
     
     // summary処理
     if (!summaryStarted && summaryPatterns.some(pattern => pattern.test(line))) {
-      summary = line;
+      // ラベルを除去した後の行を取得
+      let cleanedLine = line;
       summaryPatterns.forEach(pattern => {
-        summary = summary.replace(pattern, '');
+        cleanedLine = cleanedLine.replace(pattern, '');
       });
-      summary = cleanupText(summary);
+      cleanedLine = cleanupText(cleanedLine);
+      
+      // 同じ行に要約がある場合はそれを使う
+      if (cleanedLine.trim()) {
+        summary = cleanedLine;
+        expectingSummaryContent = false;
+      } else {
+        // ラベルのみの行の場合、次の非空行を待つ
+        expectingSummaryContent = true;
+      }
       summaryStarted = true;
       isDetailedSummary = false;
+    }
+    // 要約ラベル後の内容待ち
+    else if (expectingSummaryContent && line.trim() && 
+             !detailedSummaryPatterns.some(pattern => pattern.test(line)) && 
+             !line.match(/^タグ[:：]/)) {
+      summary = cleanupText(line);
+      expectingSummaryContent = false;
     }
     // summaryの続きの行（空行が来るまで）
     else if (summaryStarted && !detailedSummaryStarted && line.trim() && 
              !detailedSummaryPatterns.some(pattern => pattern.test(line)) && 
              !line.match(/^タグ[:：]/)) {
-      summary += '\n' + cleanupText(line);
+      // 最初の行の場合は改行を追加しない
+      if (summary) {
+        summary += '\n' + cleanupText(line);
+      } else {
+        summary = cleanupText(line);
+      }
     }
     // detailedSummary処理
     else if (detailedSummaryPatterns.some(pattern => pattern.test(line))) {
-      detailedSummary = line;
+      // ラベルを除去した後の行を取得
+      let cleanedLine = line;
       detailedSummaryPatterns.forEach(pattern => {
-        detailedSummary = detailedSummary.replace(pattern, '');
+        cleanedLine = cleanedLine.replace(pattern, '');
       });
-      detailedSummary = cleanupText(detailedSummary);
+      cleanedLine = cleanupText(cleanedLine);
+      
+      // 同じ行に詳細要約がある場合はそれを使う
+      if (cleanedLine.trim()) {
+        detailedSummary = cleanedLine;
+        expectingDetailedContent = false;
+      } else {
+        // ラベルのみの行の場合、次の非空行を待つ
+        expectingDetailedContent = true;
+      }
       detailedSummaryStarted = true;
+      isDetailedSummary = true;
+    }
+    // 詳細要約ラベル後の内容待ち
+    else if (expectingDetailedContent && line.trim() && !line.match(/^タグ[:：]/)) {
+      // 箇条書きの場合はそのまま追加
+      if (line.trim().startsWith('・')) {
+        detailedSummary = line.trim();
+      } else {
+        detailedSummary = cleanupText(line);
+      }
+      expectingDetailedContent = false;
       isDetailedSummary = true;
     }
     // detailedSummaryの続きの行
     else if (isDetailedSummary && line.trim() && !line.match(/^タグ[:：]/)) {
       // 箇条書きの場合はそのまま追加（cleanupTextを適用しない）
       if (line.trim().startsWith('・')) {
-        detailedSummary += '\n' + line.trim();
+        // 最初の行の場合は改行を追加しない
+        if (detailedSummary) {
+          detailedSummary += '\n' + line.trim();
+        } else {
+          detailedSummary = line.trim();
+        }
       } else {
-        detailedSummary += '\n' + cleanupText(line);
+        // 最初の行の場合は改行を追加しない
+        if (detailedSummary) {
+          detailedSummary += '\n' + cleanupText(line);
+        } else {
+          detailedSummary = cleanupText(line);
+        }
       }
     }
     // タグ処理（修正版）
@@ -260,26 +318,33 @@ function parseSummaryAndTags(text: string, title: string = '', content: string =
   summary = finalCleanup(summary);
   detailedSummary = finalCleanup(detailedSummary);
   
-  // Phase 2: 文字数拡張処理を追加
-  // 一覧要約が150文字未満の場合は拡張（タイトルとコンテンツを渡す）
-  summary = expandSummaryIfNeeded(summary, title, 150, content || text);
+  // 冒頭に「要約:」が残っている場合は削除（改行を含む場合も対応）
+  summary = summary.replace(/^要約[:：]\s*\n?/, '').trim();
+  detailedSummary = detailedSummary.replace(/^詳細要約[:：]\s*\n?/, '').trim();
+  
+  // Phase 2: 文字数拡張処理を無効化（タイトルをそのまま使う問題があるため）
+  // summary = expandSummaryIfNeeded(summary, title, 150, content || text);
+  // expandSummaryIfNeededは要約が空の場合「タイトルに関する内容」を返すため無効化
   
   // フォールバック
   if (!summary) {
-    summary = text.substring(0, 150);
+    // 最初の「要約:」以外の行を探して使用
+    const cleanLines = text.split('\n').filter(line => !line.match(/^(要約|詳細要約)[:：]/));
+    summary = cleanLines.join(' ').substring(0, 150);
   }
   if (!detailedSummary) {
-    detailedSummary = text.substring(0, 300);
+    const cleanLines = text.split('\n').filter(line => !line.match(/^(要約|詳細要約)[:：]/));
+    detailedSummary = cleanLines.join(' ').substring(0, 300);
   }
 
-  return { summary, detailedSummary, tags };
+  return { summary, detailedSummary, tags, articleType: 'unified' };
 }
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-type ArticleWithSource = Article & { source: Source };
+type ArticleWithSource = Article & { source: Source; description?: string | null };
 
 async function generateSummaries(): Promise<GenerateResult> {
   console.log('📝 要約とタグの生成を開始します...');

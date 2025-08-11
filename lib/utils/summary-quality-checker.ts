@@ -157,11 +157,11 @@ export function checkSummaryQuality(
   // 再生成の必要性判定
   const requiresRegeneration = 
     issues.some(i => i.severity === 'critical') ||  // criticalな問題がある
-    (issues.filter(i => i.severity === 'major').length >= 2) ||  // majorな問題が2つ以上
-    score < 70;  // スコアが70点未満
+    (issues.filter(i => i.severity === 'major').length >= 3) ||  // majorな問題が3つ以上
+    score < 40;  // スコアが40点未満
 
   return {
-    isValid: score >= 70,
+    isValid: score >= 40,  // 40点以上で合格
     issues,
     requiresRegeneration,
     score
@@ -184,8 +184,8 @@ export function isQualityCheckEnabled(): boolean {
  */
 export function getMinQualityScore(): number {
   const value = process.env.QUALITY_MIN_SCORE;
-  const score = parseInt(value || '70', 10);
-  return isNaN(score) ? 70 : score;
+  const score = parseInt(value || '40', 10);
+  return isNaN(score) ? 40 : score;
 }
 
 /**

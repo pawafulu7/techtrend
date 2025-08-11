@@ -146,7 +146,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
               data: {
                 title: article.title,
                 url: article.url,
-                summary: article.summary || null,
+                summary: null,  // 必ずnullを設定（要約はgenerate-summaries.tsで生成）
                 content: article.content || null,
                 publishedAt: article.publishedAt,
                 bookmarks: article.bookmarks || 0,

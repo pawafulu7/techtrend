@@ -135,9 +135,10 @@ function createFallbackDetailedSummary(_text: string): string {
 function cleanupText(text: string): string {
   return text
     .replace(/\s+/g, ' ')
-    .replace(/^[\s\u3000]+|[\s\u3000]+$/g, '')
+    .replace(/^[\s　]+|[\s　]+$/g, '')
     .replace(/。{2,}/g, '。')
     .replace(/、{2,}/g, '、')
+    .replace(/^(本記事は、|本記事は|本稿では、|本稿では|記事では、|記事では|この記事は、|この記事は)/g, '')
     .trim();
 }
 
