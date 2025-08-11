@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
+import { SearchBox } from '@/app/components/common/search-box';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { PopularTags } from '@/app/components/common/popular-tags';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
@@ -193,7 +194,7 @@ export default async function Home({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col"
+    <div className="h-full flex flex-col"
 
 >
       {/* メインエリア */}
@@ -220,6 +221,10 @@ export default async function Home({ searchParams }: PageProps) {
               </div>
               
               <div className="flex items-center gap-2">
+                <div className="hidden lg:block">
+                  <SearchBox />
+                </div>
+                <div className="w-px h-5 bg-border" />
                 <ViewModeToggle currentMode={viewMode} />
                 <div className="w-px h-5 bg-border" />
                 <div className="flex gap-1">

@@ -1,19 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { Rss, TrendingUp, Menu, X, BarChart3, Bookmark, LineChart, Hash, Award, Database, Star, Filter, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { SITE_NAME } from '@/lib/constants';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { SearchBox } from '@/app/components/common/search-box';
 // import { NavDropdown } from '@/app/components/layout/nav-dropdown';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
-  const isHomePage = pathname === '/';
 
   // ナビゲーション項目の定義
   const primaryNav = [
@@ -60,12 +56,6 @@ export function Header() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-4">
-            {/* トップページのみ検索ボックスを表示 */}
-            {isHomePage && (
-              <div className="w-96">
-                <SearchBox />
-              </div>
-            )}
             <ThemeToggle />
           </div>
 
