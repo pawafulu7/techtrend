@@ -217,6 +217,110 @@ describe.skip('Articles API', () => {
       );
     });
 
+    it('should handle multiple keywords with AND search', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles?search=TypeScript React'
+      });
+
+      assertSuccessResponse(response);
+      
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            AND: [
+              {
+                OR: [
+                  { title: { contains: 'TypeScript' } },
+                  { summary: { contains: 'TypeScript' } }
+                ]
+              },
+              {
+                OR: [
+                  { title: { contains: 'React' } },
+                  { summary: { contains: 'React' } }
+                ]
+              }
+            ]
+          })
+        })
+      );
+    });
+
+    it('should handle search with full-width spaces', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles?search=TypeScript　React　Vue'
+      });
+
+      assertSuccessResponse(response);
+      
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            AND: [
+              {
+                OR: [
+                  { title: { contains: 'TypeScript' } },
+                  { summary: { contains: 'TypeScript' } }
+                ]
+              },
+              {
+                OR: [
+                  { title: { contains: 'React' } },
+                  { summary: { contains: 'React' } }
+                ]
+              },
+              {
+                OR: [
+                  { title: { contains: 'Vue' } },
+                  { summary: { contains: 'Vue' } }
+                ]
+              }
+            ]
+          })
+        })
+      );
+    });
+
+    it('should handle empty search string', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles?search='
+      });
+
+      assertSuccessResponse(response);
+      
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {}
+        })
+      );
+    });
+
+    it('should handle search with only spaces', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const response = await testApiHandler(GET, {
+        url: 'http://localhost:3000/api/articles?search=   '
+      });
+
+      assertSuccessResponse(response);
+      
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {}
+        })
+      );
+    });
+
     it('should handle database errors', async () => {
       prismaMock.article.findMany.mockRejectedValue(new Error('Database error'));
 

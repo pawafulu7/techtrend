@@ -39,6 +39,13 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
 
     // Generate cache key based on query parameters
+    // Normalize search keywords for consistent cache key
+    const normalizedSearch = search ? 
+      search.trim().split(/[\s　]+/)
+        .filter(k => k.length > 0)
+        .sort()
+        .join(',') : 'none';
+    
     const cacheKey = cache.generateCacheKey('articles', {
       params: {
         page: page.toString(),
@@ -47,7 +54,7 @@ export async function GET(request: NextRequest) {
         sortOrder,
         sourceId: sourceId || 'all',
         tag: tag || 'all',
-        search: search || 'none'
+        search: normalizedSearch
       }
     });
 
@@ -76,10 +83,26 @@ export async function GET(request: NextRequest) {
         };
       }
       if (search) {
-        where.OR = [
-          { title: { contains: search } },
-          { summary: { contains: search } }
-        ];
+        // Split search string by spaces (both half-width and full-width)
+        const keywords = search.trim()
+          .split(/[\s　]+/)
+          .filter(k => k.length > 0);
+        
+        if (keywords.length === 1) {
+          // Single keyword - maintain existing behavior
+          where.OR = [
+            { title: { contains: keywords[0] } },
+            { summary: { contains: keywords[0] } }
+          ];
+        } else if (keywords.length > 1) {
+          // Multiple keywords - AND search
+          where.AND = keywords.map(keyword => ({
+            OR: [
+              { title: { contains: keyword } },
+              { summary: { contains: keyword } }
+            ]
+          }));
+        }
       }
 
       // Get total count
