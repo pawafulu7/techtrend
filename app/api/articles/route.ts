@@ -6,6 +6,7 @@ import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } f
 import { RedisCache } from '@/lib/cache';
 import type { Prisma } from '@prisma/client';
 import { log } from '@/lib/logger';
+import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -190,6 +191,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: duplicateError.statusCode });
     }
 
+    // タグを正規化してバリデーション
+    const normalizedTags = normalizeTagInput(tagNames);
+    
+    // 不正なタグが含まれていた場合は警告（開発環境のみ）
+    if (process.env.NODE_ENV !== 'production' && tagNames) {
+      if (typeof tagNames === 'string') {
+        console.info(`[Articles API] Tag string converted to array: "${tagNames}" -> ${JSON.stringify(normalizedTags)}`);
+      }
+    }
+
     // Create article with tags
     const article = await prisma.article.create({
       data: {
@@ -201,7 +212,7 @@ export async function POST(request: NextRequest) {
         publishedAt: new Date(publishedAt),
         sourceId,
         tags: {
-          connectOrCreate: tagNames.map((name: string) => ({
+          connectOrCreate: normalizedTags.map((name: string) => ({
             where: { name },
             create: { name },
           })),

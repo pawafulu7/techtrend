@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { createFetcher } from '@/lib/fetchers';
 import { ArticleSummarizer } from '@/lib/ai';
+import { normalizeTagInput, isValidTagArray } from '@/lib/utils/tag-normalizer';
 import type { ApiResponse, CollectResult } from '@/types/api';
 
 export async function POST(request: NextRequest) {
@@ -42,6 +43,16 @@ export async function POST(request: NextRequest) {
             });
 
             if (!existing) {
+              // タグを正規化してバリデーション
+              const normalizedTags = normalizeTagInput(articleData.tagNames);
+              
+              // デバッグ: 不正なタグが検出された場合は警告
+              if (process.env.NODE_ENV !== 'production' && articleData.tagNames) {
+                if (!isValidTagArray(articleData.tagNames) && Array.isArray(articleData.tagNames)) {
+                  console.warn(`[Feeds API] Non-string tags detected from ${source.name}:`, articleData.tagNames);
+                }
+              }
+
               // Create article
               const article = await prisma.article.create({
                 data: {
@@ -53,7 +64,7 @@ export async function POST(request: NextRequest) {
                   publishedAt: articleData.publishedAt,
                   sourceId: articleData.sourceId,
                   tags: {
-                    connectOrCreate: (articleData.tagNames || []).map(name => ({
+                    connectOrCreate: normalizedTags.map(name => ({
                       where: { name },
                       create: { name },
                     })),

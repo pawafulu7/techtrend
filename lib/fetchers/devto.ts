@@ -1,6 +1,7 @@
 import { Source } from '@prisma/client';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/types/models';
+import { normalizeTagInput } from '../utils/tag-normalizer';
 
 interface DevToArticle {
   id: number;
@@ -143,6 +144,9 @@ export class DevToFetcher extends BaseFetcher {
           // 詳細が取得できた場合はそちらを使用、できなかった場合は元のデータを使用
           const articleData = detailedArticle || item;
           
+          // tag_listの処理：新しい正規化関数を使用
+          const tagNames = normalizeTagInput(articleData.tag_list);
+          
           const article: CreateArticleInput = {
             title: this.sanitizeText(articleData.title),
             url: articleData.url,
@@ -153,7 +157,7 @@ export class DevToFetcher extends BaseFetcher {
             thumbnail: articleData.cover_image || undefined,
             publishedAt: new Date(articleData.published_at),
             sourceId: this.source.id,
-            tagNames: articleData.tag_list || [],
+            tagNames: tagNames,
             bookmarks: articleData.positive_reactions_count || 0,
           };
 
