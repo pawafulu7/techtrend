@@ -17,11 +17,42 @@ interface DevToArticle {
   positive_reactions_count: number;
   comments_count: number;
   reading_time_minutes: number;
+  // 詳細API用フィールド
+  body_html?: string;
+  body_markdown?: string;
 }
 
 export class DevToFetcher extends BaseFetcher {
   private baseUrl = 'https://dev.to/api/articles';
   private perPage = 100; // APIの最大値
+
+  // 個別記事の詳細を取得
+  private async fetchArticleDetail(articleId: number): Promise<DevToArticle | null> {
+    try {
+      const response = await this.retry(async () => {
+        const res = await fetch(`${this.baseUrl}/${articleId}`, {
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+
+        if (res.status === 404) {
+          return null; // 記事が見つからない場合
+        }
+
+        if (!res.ok) {
+          throw new Error(`Dev.to API error: ${res.status} ${res.statusText}`);
+        }
+
+        return res.json();
+      });
+
+      return response;
+    } catch (error) {
+      console.error(`Failed to fetch article detail for ID ${articleId}:`, error);
+      return null;
+    }
+  }
 
   async fetch(): Promise<FetchResult> {
     const articles: CreateArticleInput[] = [];
@@ -100,19 +131,30 @@ export class DevToFetcher extends BaseFetcher {
       // 最大30件に制限（日別トレンド）
       const limitedArticles = uniqueArticles.slice(0, 30);
 
+      // 各記事の詳細を取得
       for (const item of limitedArticles) {
         try {
+          // 個別記事の詳細を取得（本文含む）
+          const detailedArticle = await this.fetchArticleDetail(item.id);
+          
+          // Rate Limit対策（1.5秒間隔）
+          await new Promise(resolve => setTimeout(resolve, 1500));
+
+          // 詳細が取得できた場合はそちらを使用、できなかった場合は元のデータを使用
+          const articleData = detailedArticle || item;
+          
           const article: CreateArticleInput = {
-            title: this.sanitizeText(item.title),
-            url: item.url,
+            title: this.sanitizeText(articleData.title),
+            url: articleData.url,
             summary: undefined, // 要約は後で日本語で生成するため、ここではセットしない
-            content: item.description || '', // descriptionをcontentとして保存
-            description: item.description || '',
-            thumbnail: item.cover_image || undefined,
-            publishedAt: new Date(item.published_at),
+            // body_htmlがあればそれを、なければbody_markdownを、それもなければdescriptionを使用
+            content: articleData.body_html || articleData.body_markdown || articleData.description || '',
+            description: articleData.description || '',
+            thumbnail: articleData.cover_image || undefined,
+            publishedAt: new Date(articleData.published_at),
             sourceId: this.source.id,
-            tagNames: item.tag_list || [],
-            bookmarks: item.positive_reactions_count || 0,
+            tagNames: articleData.tag_list || [],
+            bookmarks: articleData.positive_reactions_count || 0,
           };
 
           articles.push(article);
