@@ -122,14 +122,14 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen flex flex-col overflow-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <NoTransitions />
         <ThemeProvider initialTheme={theme}>
           <QueryProvider>
             {/* <OnboardingProvider> */}
               {/* <Header /> */}
-              <main className="flex-1 overflow-hidden">{children}</main>
+              <main className="flex-1">{children}</main>
               <ToastProvider />
             {/* </OnboardingProvider> */}
           </QueryProvider>

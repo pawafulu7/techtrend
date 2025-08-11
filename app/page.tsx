@@ -195,7 +195,7 @@ export default async function Home({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="min-h-screen lg:h-screen lg:flex lg:flex-col">
+    <div className="h-screen overflow-hidden flex flex-col">
       {/* ヘッダー - 固定 */}
       <header className="flex-shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
         <div className="px-4 lg:px-6 py-2">
