@@ -8,12 +8,75 @@ export interface QualityCheckResult {
   issues: QualityIssue[];
   requiresRegeneration: boolean;
   score: number;
+  speculativeExpressions?: SpeculativeExpressionResult;
 }
 
 export interface QualityIssue {
-  type: 'length' | 'format' | 'punctuation';
+  type: 'length' | 'format' | 'punctuation' | 'speculative';
   severity: 'critical' | 'major' | 'minor';
   message: string;
+}
+
+export interface SpeculativeExpressionResult {
+  count: number;
+  ratio: number;
+  expressions: string[];
+}
+
+// 推測表現のパターン
+const SPECULATIVE_PATTERNS = [
+  'と考えられます',
+  'と考えられる',
+  'と推測されます',
+  'と推測される',
+  'かもしれません',
+  'かもしれない',
+  'と思われます',
+  'と思われる',
+  'ようです',
+  'でしょう',
+  'だろう',
+  '可能性が高い',
+  '可能性があります',
+  '予想されます',
+  '予想される'
+];
+
+/**
+ * 推測表現を検出
+ * @param text 検証するテキスト
+ * @returns 推測表現の検出結果
+ */
+export function detectSpeculativeExpressions(text: string): SpeculativeExpressionResult {
+  if (!text) {
+    return { count: 0, ratio: 0, expressions: [] };
+  }
+
+  const expressions: string[] = [];
+  let totalCount = 0;
+
+  for (const pattern of SPECULATIVE_PATTERNS) {
+    const regex = new RegExp(pattern, 'g');
+    const matches = text.match(regex);
+    if (matches) {
+      totalCount += matches.length;
+      matches.forEach(match => {
+        if (!expressions.includes(match)) {
+          expressions.push(match);
+        }
+      });
+    }
+  }
+
+  // 文の数を推定（。で区切られた数）
+  const sentenceCount = (text.match(/。/g) || []).length || 1;
+  const ratio = sentenceCount > 0 ? totalCount / sentenceCount : 0;
+
+  return {
+    count: totalCount,
+    ratio: Math.round(ratio * 100) / 100,
+    expressions
+  };
 }
 
 /**
@@ -48,260 +111,193 @@ export function checkSummaryQuality(
     });
     score -= 5;
   } else if (summaryLength > 200) {
-    issues.push({
-      type: 'length',
-      severity: 'major',
-      message: `一覧要約が長すぎる: ${summaryLength}文字（最大200文字）`
-    });
-    score -= 20;
-  } else if (summaryLength > 180) {
-    // 180文字超えは軽微な問題
+    // 200文字を超える場合は長すぎる
     issues.push({
       type: 'length',
       severity: 'minor',
-      message: `一覧要約がやや長い: ${summaryLength}文字（理想は100-180文字）`
+      message: `一覧要約が長すぎる: ${summaryLength}文字（最大200文字）`
     });
-    score -= 5;
+    score -= 10;
   }
 
   // 2. 詳細要約の文字数チェック
   const detailedLength = detailedSummary.length;
-  if (detailedLength < 500) {
+  if (detailedLength < 200) {
     issues.push({
       type: 'length',
       severity: 'major',
-      message: `詳細要約が短すぎる: ${detailedLength}文字（最小500文字）`
+      message: `詳細要約が短すぎる: ${detailedLength}文字（最小200文字）`
     });
     score -= 20;
-  } else if (detailedLength > 700) {
-    // 700文字超えは軽微な問題（ユーザー要望: 一ページに収まれば良い）
+  } else if (detailedLength < 400) {
     issues.push({
       type: 'length',
       severity: 'minor',
-      message: `詳細要約がやや長い: ${detailedLength}文字（推奨500-700文字）`
-    });
-    score -= 10;
-  } else if (detailedLength > 600) {
-    // 600文字超えは注意レベル
-    issues.push({
-      type: 'length',
-      severity: 'minor',
-      message: `詳細要約が理想より長い: ${detailedLength}文字（理想は500-600文字）`
+      message: `詳細要約が短め: ${detailedLength}文字（理想は400-600文字）`
     });
     score -= 5;
-  }
-
-  // 3. フォーマットチェック
-  const lines = detailedSummary.split('\n').filter(l => l.trim());
-  const bulletPoints = lines.filter(l => l.startsWith('・'));
-  
-  // 箇条書きが5つあるかチェック
-  if (bulletPoints.length !== 5) {
+  } else if (detailedLength > 800) {
     issues.push({
-      type: 'format',
-      severity: 'critical',
-      message: `詳細要約の箇条書きが${bulletPoints.length}個（必須5個）`
+      type: 'length',
+      severity: 'minor',
+      message: `詳細要約が長すぎる: ${detailedLength}文字（最大800文字）`
     });
-    score -= 30;
-  }
-  
-  // すべての行が箇条書きかチェック（説明文が混入していないか）
-  const nonBulletLines = lines.filter(l => !l.startsWith('・'));
-  if (nonBulletLines.length > 0 && bulletPoints.length === 5) {
-    issues.push({
-      type: 'format',
-      severity: 'major',
-      message: '詳細要約に箇条書き以外の行が含まれている'
-    });
-    score -= 15;
+    score -= 10;
   }
 
-  // 各箇条書きの文字数チェック
-  bulletPoints.forEach((line, index) => {
-    const lineLength = line.replace('・', '').trim().length;
-    if (lineLength < 80 || lineLength > 120) {
-      issues.push({
-        type: 'format',
-        severity: 'minor',
-        message: `箇条書き${index + 1}の文字数が不適切: ${lineLength}文字（推奨100-120文字）`
-      });
-      score -= 3;
-    }
-  });
-
-  // 4. 句点チェック
+  // 3. 句点チェック
   if (!summary.endsWith('。')) {
     issues.push({
       type: 'punctuation',
       severity: 'minor',
       message: '一覧要約が句点で終わっていない'
     });
+    score -= 5;
+  }
+
+  // 4. 詳細要約の形式チェック
+  const bulletPoints = (detailedSummary.match(/・/g) || []).length;
+  if (bulletPoints === 0) {
+    issues.push({
+      type: 'format',
+      severity: 'major',
+      message: '詳細要約に箇条書き（・）が含まれていない'
+    });
+    score -= 15;
+  } else if (bulletPoints < 3) {
+    issues.push({
+      type: 'format',
+      severity: 'minor',
+      message: `詳細要約の項目数が少ない: ${bulletPoints}項目（理想は3-5項目）`
+    });
+    score -= 5;
+  }
+
+  // 5. 推測表現のチェック
+  const speculativeResult = detectSpeculativeExpressions(detailedSummary);
+  if (speculativeResult.count >= 3) {
+    issues.push({
+      type: 'speculative',
+      severity: 'major',
+      message: `推測表現が多すぎる: ${speculativeResult.count}個（${speculativeResult.expressions.join('、')}）`
+    });
+    score -= 20;
+  } else if (speculativeResult.count >= 2) {
+    issues.push({
+      type: 'speculative',
+      severity: 'minor',
+      message: `推測表現が含まれている: ${speculativeResult.count}個`
+    });
     score -= 10;
   }
 
-  // 5. 箇条書きの句点チェック（各項目は句点で終わるべきではない）
-  bulletPoints.forEach((line, index) => {
-    if (line.endsWith('。')) {
-      issues.push({
-        type: 'punctuation',
-        severity: 'minor',
-        message: `箇条書き${index + 1}が句点で終わっている（箇条書きは句点不要）`
-      });
-      score -= 2;
-    }
-  });
+  // 6. 空の項目チェック
+  const lines = detailedSummary.split('\n');
+  const emptyBullets = lines.filter(line => line.trim() === '・').length;
+  if (emptyBullets > 0) {
+    issues.push({
+      type: 'format',
+      severity: 'critical',
+      message: `空の箇条書き項目がある: ${emptyBullets}個`
+    });
+    score -= 30;
+  }
 
-  // スコアの下限を0に設定
+  // スコアの調整
   score = Math.max(0, score);
 
-  // 再生成の必要性判定
+  // 再生成が必要かどうかの判定
   const requiresRegeneration = 
-    issues.some(i => i.severity === 'critical') ||  // criticalな問題がある
-    (issues.filter(i => i.severity === 'major').length >= 3) ||  // majorな問題が3つ以上
-    score < 40;  // スコアが40点未満
+    score < (parseInt(process.env.QUALITY_MIN_SCORE || '70')) ||
+    issues.some(issue => issue.severity === 'critical');
 
   return {
-    isValid: score >= 40,  // 40点以上で合格
+    isValid: score >= 60,
     issues,
     requiresRegeneration,
-    score
+    score,
+    speculativeExpressions: speculativeResult
   };
 }
 
 /**
- * 品質チェックが有効かどうかを確認
- * @returns 品質チェックが有効な場合true
+ * 品質チェック機能が有効かどうか
  */
 export function isQualityCheckEnabled(): boolean {
-  const value = process.env.QUALITY_CHECK_ENABLED;
-  // デフォルトで有効（明示的にfalseまたは0でない限り）
-  return value !== 'false' && value !== '0';
+  return process.env.QUALITY_CHECK_ENABLED === 'true';
 }
 
 /**
- * 品質チェックの最小スコアを取得
- * @returns 最小スコア（デフォルト70）
- */
-export function getMinQualityScore(): number {
-  const value = process.env.QUALITY_MIN_SCORE;
-  const score = parseInt(value || '40', 10);
-  return isNaN(score) ? 40 : score;
-}
-
-/**
- * 最大再生成試行回数を取得
- * @returns 最大試行回数（デフォルト3）
+ * 最大再生成回数を取得
  */
 export function getMaxRegenerationAttempts(): number {
-  const value = process.env.MAX_REGENERATION_ATTEMPTS;
-  const attempts = parseInt(value || '3', 10);
-  return isNaN(attempts) ? 3 : Math.min(attempts, 5); // 最大5回まで
+  return parseInt(process.env.MAX_REGENERATION_ATTEMPTS || '3');
 }
 
 /**
  * 品質レポートを生成
- * @param result 品質チェック結果
- * @returns フォーマットされたレポート文字列
  */
 export function generateQualityReport(result: QualityCheckResult): string {
-  const lines: string[] = [
-    `品質スコア: ${result.score}/100`,
-    `判定: ${result.isValid ? '✅ 合格' : '❌ 不合格'}`,
-    `再生成必要: ${result.requiresRegeneration ? 'はい' : 'いいえ'}`,
+  const lines = [
+    `📊 品質スコア: ${result.score}/100`,
+    `✅ 有効: ${result.isValid ? 'はい' : 'いいえ'}`,
+    `🔄 再生成必要: ${result.requiresRegeneration ? 'はい' : 'いいえ'}`,
   ];
 
+  if (result.speculativeExpressions && result.speculativeExpressions.count > 0) {
+    lines.push(`🤔 推測表現: ${result.speculativeExpressions.count}個`);
+  }
+
   if (result.issues.length > 0) {
-    lines.push('', '問題点:');
-    const severityEmoji = {
-      critical: '🔴',
-      major: '🟡',
-      minor: '🔵'
-    };
-    
-    result.issues.forEach(issue => {
-      lines.push(`  ${severityEmoji[issue.severity]} [${issue.severity}] ${issue.message}`);
-    });
+    lines.push('📋 問題点:');
+    for (const issue of result.issues) {
+      const icon = issue.severity === 'critical' ? '🔴' : 
+                   issue.severity === 'major' ? '🟠' : '🟡';
+      lines.push(`  ${icon} ${issue.message}`);
+    }
   }
 
   return lines.join('\n');
 }
 
+// 既存の関数の継続...
+
 /**
- * 品質統計を計算
- * @param results 複数の品質チェック結果
- * @returns 統計情報
+ * テキストのクリーンアップ
+ * 要約テキストから不要な記号や重複を除去
  */
-export function calculateQualityStats(results: QualityCheckResult[]): {
-  averageScore: number;
-  validCount: number;
-  invalidCount: number;
-  criticalIssuesCount: number;
-  majorIssuesCount: number;
-  minorIssuesCount: number;
-  regenerationRate: number;
-} {
-  if (results.length === 0) {
-    return {
-      averageScore: 0,
-      validCount: 0,
-      invalidCount: 0,
-      criticalIssuesCount: 0,
-      majorIssuesCount: 0,
-      minorIssuesCount: 0,
-      regenerationRate: 0
-    };
-  }
-
-  const totalScore = results.reduce((sum, r) => sum + r.score, 0);
-  const validCount = results.filter(r => r.isValid).length;
-  const invalidCount = results.length - validCount;
-  const regenerationCount = results.filter(r => r.requiresRegeneration).length;
-
-  let criticalCount = 0;
-  let majorCount = 0;
-  let minorCount = 0;
-
-  results.forEach(result => {
-    result.issues.forEach(issue => {
-      switch (issue.severity) {
-        case 'critical':
-          criticalCount++;
-          break;
-        case 'major':
-          majorCount++;
-          break;
-        case 'minor':
-          minorCount++;
-          break;
-      }
-    });
-  });
-
-  return {
-    averageScore: Math.round(totalScore / results.length),
-    validCount,
-    invalidCount,
-    criticalIssuesCount: criticalCount,
-    majorIssuesCount: majorCount,
-    minorIssuesCount: minorCount,
-    regenerationRate: Math.round((regenerationCount / results.length) * 100)
-  };
+function cleanupText(text: string): string {
+  return text
+    .replace(/\s+/g, ' ')  // 連続する空白を1つに
+    .replace(/。{2,}/g, '。')  // 連続する句点を1つに
+    .replace(/、{2,}/g, '、')  // 連続する読点を1つに
+    .replace(/\n{3,}/g, '\n\n')  // 3つ以上の改行を2つに
+    .trim();
 }
 
 /**
- * 一覧要約の文字数が不足している場合に拡張する
- * エラーメッセージは返さず、可能な範囲で自然な拡張を試みる
- * @param summary 元の要約
- * @param title 記事タイトル
- * @param minLength 目標文字数（デフォルト150文字だが、強制はしない）
- * @param content 記事本文（拡張用）
- * @returns 拡張された要約
+ * 詳細要約専用のクリーンアップ
+ * 改行を保持しつつクリーンアップ
+ */
+function cleanupDetailedSummary(text: string): string {
+  return text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0 && line !== '・')  // 空の箇条書きを除去
+    .join('\n')
+    .replace(/。{2,}/g, '。')
+    .replace(/、{2,}/g, '、');
+}
+
+/**
+ * 一覧要約拡張関数（既存機能）
+ * 50文字未満の要約を適切な長さに拡張
  */
 export function expandSummaryIfNeeded(
   summary: string,
   title: string = '',
   minLength: number = 150,
-  content: string = ''  // 新規パラメータ追加
+  content: string = ''
 ): string {
   // すでに十分な長さがある場合はそのまま返す
   if (summary.length >= minLength) {
@@ -385,4 +381,25 @@ export function expandSummaryIfNeeded(
   }
   
   return expandedSummary;
+}
+
+/**
+ * 品質スコアを計算（新機能）
+ * 推測表現を考慮した品質スコアの計算
+ */
+export function calculateQualityScore(
+  summary: string,
+  detailedSummary: string,
+  speculativeWeight: number = 2.0
+): number {
+  const baseCheck = checkSummaryQuality(summary, detailedSummary);
+  let score = baseCheck.score;
+  
+  // 推測表現による追加ペナルティ
+  if (baseCheck.speculativeExpressions) {
+    const speculativePenalty = baseCheck.speculativeExpressions.count * speculativeWeight;
+    score = Math.max(0, score - speculativePenalty);
+  }
+  
+  return score;
 }
