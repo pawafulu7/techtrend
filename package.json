@@ -52,7 +52,10 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:chromium": "playwright test --project=chromium",
     "playwright:install": "playwright install",
-    "playwright:report": "playwright show-report"
+    "playwright:report": "playwright show-report",
+    "migrate:version6": "tsx scripts/manual/migrate-to-version6.ts",
+    "migrate:version6:critical": "tsx scripts/manual/migrate-to-version6.ts --priority=critical",
+    "migrate:version6:substandard": "tsx scripts/manual/migrate-to-version6.ts --priority=substandard"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
