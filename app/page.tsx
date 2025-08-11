@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
 import { SearchBox } from '@/app/components/common/search-box';
+import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { PopularTags } from '@/app/components/common/popular-tags';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
@@ -221,6 +222,9 @@ export default async function Home({ searchParams }: PageProps) {
               <div className="flex items-center gap-2">
                 <div className="hidden lg:block">
                   <SearchBox />
+                </div>
+                <div className="hidden lg:block">
+                  <TagFilterDropdown tags={tags} />
                 </div>
                 <div className="w-px h-5 bg-border" />
                 <ViewModeToggle currentMode={viewMode} />
