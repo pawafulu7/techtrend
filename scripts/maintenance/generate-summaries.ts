@@ -5,6 +5,7 @@ import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
 // import { generatePromptForArticleType } from '@/lib/utils/article-type-prompts';  // 統一プロンプト移行により無効化
 import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { isDeletedContent } from '@/lib/utils/content-validator';
 import { 
   checkSummaryQuality,
   isQualityCheckEnabled,
@@ -467,6 +468,12 @@ async function generateSummaries(): Promise<GenerateResult> {
           while (retryCount < MAX_RETRIES) {
             try {
               const content = article.content || article.description || '';
+              
+              // 削除メッセージを含む記事はスキップ
+              if (isDeletedContent(content)) {
+                console.log(`  ⏭️ スキップ: ${article.title} (削除メッセージを検出)`);
+                break; // このarticleの処理をスキップ
+              }
               
               // はてなブックマーク経由の外部サイト記事でコンテンツ不足の場合はスキップ
               if (article.source.name === 'はてなブックマーク' && 

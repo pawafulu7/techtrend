@@ -70,6 +70,59 @@ export class HatenaExtendedFetcher extends BaseFetcher {
     });
   }
 
+  // Qiita記事かどうかを判定
+  private isQiitaArticle(url: string): boolean {
+    return url.includes('qiita.com');
+  }
+
+  // コンテンツが削除メッセージかどうかを検証
+  private validateContent(content: string): boolean {
+    if (!content) return true;
+    
+    // 削除メッセージのパターン
+    const deletedPatterns = [
+      'Deleted articles cannot be recovered',
+      'This article has been deleted',
+      '記事は削除されました',
+      'Are you sure you want to delete this article'
+    ];
+    
+    // いずれかのパターンが含まれていたら無効なコンテンツ
+    return !deletedPatterns.some(pattern => 
+      content.toLowerCase().includes(pattern.toLowerCase())
+    );
+  }
+
+  // Qiita記事のコンテンツをフェッチ（簡易版）
+  private async fetchQiitaContent(url: string): Promise<string | null> {
+    try {
+      // URLからQiita記事IDを抽出
+      const match = url.match(/qiita\.com\/[^\/]+\/items\/([a-z0-9]+)/);
+      if (!match) return null;
+
+      // 記事が実際に存在するかの簡易チェック
+      // 実際のコンテンツ取得は要約生成時に行われるため、
+      // ここでは最小限の情報（記事の存在確認）のみ
+      const response = await fetch(url, {
+        method: 'HEAD',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        }
+      });
+      
+      if (response.ok) {
+        // 記事が存在する場合、簡易的な説明を返す
+        // 実際のコンテンツは要約生成時に取得される
+        return `Qiita記事: ${url}`;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error(`Failed to fetch Qiita content for ${url}:`, error);
+      return null;
+    }
+  }
+
   async fetch(): Promise<FetchResult> {
     const allArticles: CreateArticleInput[] = [];
     const allErrors: Error[] = [];
@@ -87,11 +140,31 @@ export class HatenaExtendedFetcher extends BaseFetcher {
             // 重複チェック
             if (seenUrls.has(item.link)) continue;
             
+            // コンテンツの取得と検証
+            let content = item.content || item.description || item.contentSnippet || '';
+            
+            // Qiita記事の場合の特別処理
+            if (this.isQiitaArticle(item.link)) {
+              // コンテンツが削除メッセージの場合
+              if (!this.validateContent(content)) {
+                console.log(`[はてなブックマーク] Qiita記事の削除メッセージを検出、スキップ: ${item.link}`);
+                // 実際のコンテンツを取得
+                const qiitaContent = await this.fetchQiitaContent(item.link);
+                if (qiitaContent) {
+                  content = qiitaContent;
+                } else {
+                  // コンテンツが取得できない場合はスキップ
+                  console.log(`[はてなブックマーク] Qiita記事のコンテンツ取得失敗、スキップ: ${item.link}`);
+                  continue;
+                }
+              }
+            }
+            
             const article: CreateArticleInput = {
               title: this.sanitizeText(item.title),
               url: this.normalizeUrl(item.link),
               summary: undefined, // 要約は後で日本語で生成
-              content: item.content || item.description || item.contentSnippet || '',
+              content: content,
               publishedAt: item.pubDate ? parseRSSDate(item.pubDate) : 
                           item['dc:date'] ? new Date(item['dc:date']) : new Date(),
               sourceId: this.source.id,
