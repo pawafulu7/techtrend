@@ -58,9 +58,38 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
     minQualityScore: 40
   });
   
+  // 重複チェック
+  let finalSummary = result.summary;
+  let finalDetailedSummary = result.detailedSummary;
+  
+  if (finalSummary && finalDetailedSummary && finalSummary === finalDetailedSummary) {
+    console.warn('⚠️ 警告: 一覧要約と詳細要約が同一です。詳細要約を空にしてフォールバック処理に委ねます。');
+    finalDetailedSummary = '';
+  }
+  
+  // 詳細要約が空の場合の警告
+  if (!finalDetailedSummary || finalDetailedSummary.length === 0) {
+    console.error('❌ エラー: 詳細要約が空です。APIレスポンスに問題がある可能性があります。');
+    // フォールバック: summaryから詳細要約を生成
+    if (finalSummary && finalSummary.length > 100) {
+      finalDetailedSummary = `・${finalSummary}\n・技術的な詳細については元記事を参照してください`;
+      console.log('📝 フォールバック: 一覧要約から詳細要約を生成しました');
+    }
+  }
+  
+  // デバッグログ
+  if (process.env.DEBUG_REGENERATE) {
+    console.log('=== DEBUG: API Response ===');
+    console.log('Summary length:', finalSummary.length);
+    console.log('Summary preview:', finalSummary.substring(0, 100));
+    console.log('DetailedSummary length:', finalDetailedSummary.length);
+    console.log('DetailedSummary preview:', finalDetailedSummary.substring(0, 100));
+    console.log('===========================');
+  }
+  
   return {
-    summary: result.summary,
-    detailedSummary: result.detailedSummary,
+    summary: finalSummary,
+    detailedSummary: finalDetailedSummary,
     tags: result.tags
   };
 }
@@ -93,13 +122,13 @@ async function main() {
     // 処理対象の記事を取得
     console.log('📊 記事を取得中...');
     
-    // 未処理記事の条件（summaryVersion !== 5 または forceRegenerate）
+    // 未処理記事の条件（summaryVersion < 6 または forceRegenerate）
     // Prismaのバグ回避のため、簡略化したクエリを使用
     const whereCondition: any = forceRegenerate ? 
       { summary: { not: null } } : 
       { 
         summary: { not: null },
-        summaryVersion: { not: 5 }  // summaryVersionが5以外（nullも含む）
+        summaryVersion: { lt: 6 }  // summaryVersionが6未満（nullと5を含む）
       };
     
     const query = {
@@ -174,8 +203,8 @@ async function main() {
         const newScore = checkSummaryQuality(result.summary, result.detailedSummary).score;
         
         // 統一フォーマットへの移行を優先（スコアが下がっても適用）
-        // forceオプションがない場合でも、summaryVersion != 5 の記事は必ず更新
-        const shouldUpdate = forceRegenerate || article.summaryVersion !== 5 || newScore > currentScore;
+        // forceオプションがない場合でも、summaryVersion != 6 の記事は必ず更新
+        const shouldUpdate = forceRegenerate || article.summaryVersion !== 6 || newScore > currentScore;
         
         if (shouldUpdate) {
           if (!isDryRun) {
@@ -186,7 +215,7 @@ async function main() {
                 summary: result.summary,
                 detailedSummary: result.detailedSummary,
                 articleType: 'unified',
-                summaryVersion: 5
+                summaryVersion: getUnifiedSummaryService().getSummaryVersion()
               }
             });
 
@@ -270,7 +299,7 @@ async function main() {
                     summary: retryResult.summary,
                     detailedSummary: retryResult.detailedSummary,
                     articleType: 'unified',
-                    summaryVersion: 5
+                    summaryVersion: getUnifiedSummaryService().getSummaryVersion()
                   }
                 });
                 console.log(`  ✅ 再試行成功: ${currentScore} → ${retryScore}点`);

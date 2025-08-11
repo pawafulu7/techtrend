@@ -110,7 +110,7 @@ export class GeminiClient {
       const result = await this.model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
-          maxOutputTokens: 1500, // 詳細要約は長いため増やす
+          maxOutputTokens: GEMINI_API.DETAILED_MAX_TOKENS, // 詳細要約は長いため増やす
           temperature: GEMINI_API.TEMPERATURE,
         },
       });
