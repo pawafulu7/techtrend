@@ -147,8 +147,16 @@ export function postProcessSummaries(
   // 2. 各項目の文字数を調整
   processedDetailedSummary = adjustDetailedSummaryItems(processedDetailedSummary);
   
-  // 3. 全体の文字数を調整
-  processedDetailedSummary = enforceLength(processedDetailedSummary, 500, 600);
+  // 3. 詳細要約の文字数チェック（1000文字以上の場合のみ警告＆制限）
+  if (processedDetailedSummary.length > 1000) {
+    console.warn(`詳細要約が極端に長い: ${processedDetailedSummary.length}文字（推奨600-800文字）`);
+    // 1000文字を超える場合は600文字にカット
+    processedDetailedSummary = enforceLength(processedDetailedSummary, 500, 600);
+  } else if (processedDetailedSummary.length < 500) {
+    // 500文字未満の場合は警告のみ
+    console.warn(`詳細要約が短い: ${processedDetailedSummary.length}文字（推奨600-800文字）`);
+  }
+  // 500-1000文字の範囲はそのまま許容（800文字程度が理想的）
   
   return {
     summary: processedSummary,
