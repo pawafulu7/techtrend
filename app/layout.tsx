@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/app/components/layout/header";
-import { Footer } from "@/app/components/layout/footer";
 import { NoTransitions } from "@/app/components/layout/no-transitions";
 import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
 import { ToastProvider } from "@/providers/toast-provider";
@@ -123,15 +122,14 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen flex flex-col overflow-hidden`}
       >
         <NoTransitions />
         <ThemeProvider initialTheme={theme}>
           <QueryProvider>
             {/* <OnboardingProvider> */}
-              <Header />
-              <main className="flex-1 overflow-auto">{children}</main>
-              <Footer />
+              {/* <Header /> */}
+              <main className="flex-1 overflow-hidden">{children}</main>
               <ToastProvider />
             {/* </OnboardingProvider> */}
           </QueryProvider>

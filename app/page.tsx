@@ -3,9 +3,6 @@ import { cookies } from 'next/headers';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
 import { SearchBox } from '@/app/components/common/search-box';
-import { FeedUpdateButton } from '@/app/components/common/feed-update-button';
-import { SummaryGenerateButton } from '@/app/components/common/summary-generate-button';
-import { TagGenerateButton } from '@/app/components/common/tag-generate-button';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { PopularTags } from '@/app/components/common/popular-tags';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
@@ -198,126 +195,156 @@ export default async function Home({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      
-      <div className="container mx-auto px-2 sm:px-4 py-2 flex flex-col h-full overflow-hidden">
-        {/* Header Section */}
-        <div className="mb-2 flex-shrink-0 space-y-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 border border-white/20 shadow-sm">
+    <div className="min-h-screen lg:h-screen lg:flex lg:flex-col">
+      {/* ヘッダー - 固定 */}
+      <header className="flex-shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 lg:px-6 py-2">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-            <h1 className="text-lg sm:text-xl font-bold">最新テックトレンド</h1>
-            <div className="flex gap-2">
-              <FeedUpdateButton />
-              <SummaryGenerateButton />
-              <TagGenerateButton />
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-bold">最新テックトレンド</h1>
+              <nav className="hidden sm:flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="h-7 px-3"
+                >
+                  <Link href="/popular">人気</Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="h-7 px-3"
+                >
+                  <Link href="/sources">ソース</Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="h-7 px-3"
+                >
+                  <Link href="/trends">トレンド</Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="h-7 px-3"
+                >
+                  <Link href="/stats">統計</Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="h-7 px-3"
+                >
+                  <Link href="/tags">タグ</Link>
+                </Button>
+              </nav>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <SearchBox />
-            <div className="hidden lg:block">
-              <TagFilterDropdown tags={tags} />
+            <div className="flex items-center gap-2">
+              <SearchBox />
+              <div className="hidden lg:block">
+                <TagFilterDropdown tags={tags} />
+              </div>
             </div>
           </div>
         </div>
+      </header>
 
-
-        <div className="flex gap-2 sm:gap-4 flex-1 overflow-hidden">
-          {/* Sidebar Filters - Desktop */}
-          <aside className="hidden lg:block w-48 flex-shrink-0">
+      {/* メインエリア */}
+      <div className="flex-1 lg:flex lg:overflow-hidden">
+        {/* サイドバー - デスクトップのみ */}
+        <aside className="hidden lg:block lg:w-64 lg:flex-shrink-0 lg:bg-gray-50 dark:lg:bg-gray-900/50 lg:border-r lg:border-gray-200 dark:lg:border-gray-700 lg:overflow-y-auto">
+          <div className="p-4">
             <Suspense fallback={<FilterSkeleton />}>
               <Filters sources={sources} tags={tags} />
             </Suspense>
-          </aside>
-
-          {/* Main Content */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="space-y-2">
-              {/* Sort Options and Mobile Filters */}
-              <div className="flex items-center justify-between relative">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {data.total.toLocaleString()}件
-              </p>
-              <MobileFilters sources={sources} tags={tags} />
-            </div>
-
-            {/* Top Pagination - Desktop only, centered */}
-            {data.totalPages > 1 && (
-              <div className="hidden lg:block absolute left-1/2 transform -translate-x-1/2">
-                <ServerPagination
-                  currentPage={data.page}
-                  totalPages={data.totalPages}
-                  searchParams={params}
-                />
-              </div>
-            )}
-
-            <div className="flex items-center gap-2">
-              {/* 表示切り替えボタン */}
-              <ViewModeToggle currentMode={viewMode} />
-              <div className="w-px h-5 bg-border" />
-              <div className="flex gap-1">
-              <Button
-                variant={params.sortBy !== 'bookmarks' && params.sortBy !== 'qualityScore' && params.sortBy !== 'createdAt' ? 'default' : 'outline'}
-                size="sm"
-                asChild
-                className="h-6 sm:h-7 px-2 text-xs"
-              >
-                <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
-                  公開順
-                </Link>
-              </Button>
-              <Button
-                variant={params.sortBy === 'createdAt' ? 'default' : 'outline'}
-                size="sm"
-                asChild
-                className="h-6 sm:h-7 px-2 text-xs"
-              >
-                <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'createdAt' }).toString()}`}>
-                  取込順
-                </Link>
-              </Button>
-              <Button
-                variant={params.sortBy === 'qualityScore' ? 'default' : 'outline'}
-                size="sm"
-                asChild
-                className="h-6 sm:h-7 px-2 text-xs"
-              >
-                <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'qualityScore' }).toString()}`}>
-                  品質
-                </Link>
-              </Button>
-              <Button
-                variant={params.sortBy === 'bookmarks' ? 'default' : 'outline'}
-                size="sm"
-                asChild
-                className="h-6 sm:h-7 px-2 text-xs"
-              >
-                <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'bookmarks' }).toString()}`}>
-                  人気
-                </Link>
-              </Button>
-              </div>
-            </div>
           </div>
+        </aside>
 
-              {/* Articles */}
-              <Suspense fallback={<ArticleSkeleton />}>
-                <ArticleList articles={data.articles} viewMode={viewMode} />
-              </Suspense>
-
-              {/* Pagination */}
-              {data.totalPages > 1 && (
-                <div className="mt-4">
-                  <ServerPagination
-                    currentPage={data.page}
-                    totalPages={data.totalPages}
-                    searchParams={params}
-                  />
+        {/* コンテンツエリア */}
+        <main className="flex-1 lg:flex lg:flex-col">
+          {/* ツールバー - 固定 */}
+          <div className="flex-shrink-0 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {data.total.toLocaleString()}件
+                </p>
+                <MobileFilters sources={sources} tags={tags} />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <ViewModeToggle currentMode={viewMode} />
+                <div className="w-px h-5 bg-border" />
+                <div className="flex gap-1">
+                  <Button
+                    variant={params.sortBy !== 'bookmarks' && params.sortBy !== 'qualityScore' && params.sortBy !== 'createdAt' ? 'default' : 'outline'}
+                    size="sm"
+                    asChild
+                    className="h-6 sm:h-7 px-2 text-xs"
+                  >
+                    <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
+                      公開順
+                    </Link>
+                  </Button>
+                  <Button
+                    variant={params.sortBy === 'createdAt' ? 'default' : 'outline'}
+                    size="sm"
+                    asChild
+                    className="h-6 sm:h-7 px-2 text-xs"
+                  >
+                    <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'createdAt' }).toString()}`}>
+                      取込順
+                    </Link>
+                  </Button>
+                  <Button
+                    variant={params.sortBy === 'qualityScore' ? 'default' : 'outline'}
+                    size="sm"
+                    asChild
+                    className="h-6 sm:h-7 px-2 text-xs"
+                  >
+                    <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'qualityScore' }).toString()}`}>
+                      品質
+                    </Link>
+                  </Button>
+                  <Button
+                    variant={params.sortBy === 'bookmarks' ? 'default' : 'outline'}
+                    size="sm"
+                    asChild
+                    className="h-6 sm:h-7 px-2 text-xs"
+                  >
+                    <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'bookmarks' }).toString()}`}>
+                      人気
+                    </Link>
+                  </Button>
                 </div>
-              )}
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* 記事リスト - スクロール可能 */}
+          <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
+            <Suspense fallback={<ArticleSkeleton />}>
+              <ArticleList articles={data.articles} viewMode={viewMode} />
+            </Suspense>
+          </div>
+
+          {/* ページネーション - 固定 */}
+          {data.totalPages > 1 && (
+            <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 lg:px-6 py-3">
+              <ServerPagination
+                currentPage={data.page}
+                totalPages={data.totalPages}
+                searchParams={params}
+              />
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
