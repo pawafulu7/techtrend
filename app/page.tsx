@@ -80,10 +80,26 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
   }
   
   if (params.search) {
-    where.OR = [
-      { title: { contains: params.search } },
-      { summary: { contains: params.search } }
-    ];
+    // Split search string by spaces (both half-width and full-width)
+    const keywords = params.search.trim()
+      .split(/[\s　]+/)
+      .filter(k => k.length > 0);
+    
+    if (keywords.length === 1) {
+      // Single keyword - maintain existing behavior
+      where.OR = [
+        { title: { contains: keywords[0] } },
+        { summary: { contains: keywords[0] } }
+      ];
+    } else if (keywords.length > 1) {
+      // Multiple keywords - AND search
+      where.AND = keywords.map(keyword => ({
+        OR: [
+          { title: { contains: keyword } },
+          { summary: { contains: keyword } }
+        ]
+      }));
+    }
   }
 
   // Get total count and articles in parallel for better performance
