@@ -128,7 +128,7 @@ export default async function RootLayout({
         <ThemeProvider initialTheme={theme}>
           <QueryProvider>
             {/* <OnboardingProvider> */}
-              {/* <Header /> */}
+              <Header />
               <main className="flex-1">{children}</main>
               <ToastProvider />
             {/* </OnboardingProvider> */}

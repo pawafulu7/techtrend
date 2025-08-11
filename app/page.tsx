@@ -2,10 +2,8 @@ import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
-import { SearchBox } from '@/app/components/common/search-box';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { PopularTags } from '@/app/components/common/popular-tags';
-import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -195,66 +193,9 @@ export default async function Home({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col">
-      {/* ヘッダー - 固定 */}
-      <header className="flex-shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-        <div className="px-4 lg:px-6 py-2">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-bold">最新テックトレンド</h1>
-              <nav className="hidden sm:flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="h-7 px-3"
-                >
-                  <Link href="/popular">人気</Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="h-7 px-3"
-                >
-                  <Link href="/sources">ソース</Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="h-7 px-3"
-                >
-                  <Link href="/trends">トレンド</Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="h-7 px-3"
-                >
-                  <Link href="/stats">統計</Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="h-7 px-3"
-                >
-                  <Link href="/tags">タグ</Link>
-                </Button>
-              </nav>
-            </div>
-            <div className="flex items-center gap-2">
-              <SearchBox />
-              <div className="hidden lg:block">
-                <TagFilterDropdown tags={tags} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="h-screen overflow-hidden flex flex-col"
 
+>
       {/* メインエリア */}
       <div className="flex-1 lg:flex lg:overflow-hidden">
         {/* サイドバー - デスクトップのみ */}
