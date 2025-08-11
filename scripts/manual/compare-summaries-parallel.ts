@@ -252,7 +252,7 @@ async function generateWithGemini(title: string, content: string): Promise<{
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 1200,
+        maxOutputTokens: 2500,
       }
     })
   });

@@ -91,7 +91,7 @@ ChatGPTの最新モデルGPT-5に特定の単語（「植物百科通」など�
         }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 1200
+          maxOutputTokens: 2500
         }
       })
     });

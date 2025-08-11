@@ -69,7 +69,7 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 2000,  // ユーザー提案に基づき余裕を持った設定
+        maxOutputTokens: 2500,  // 詳細要約に対応した統一設定
       }
     })
   });

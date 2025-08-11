@@ -32,7 +32,7 @@ async function callGeminiAPI(prompt: string): Promise<string> {
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 2000,
+        maxOutputTokens: 2500,
       }
     })
   });

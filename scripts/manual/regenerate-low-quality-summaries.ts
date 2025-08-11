@@ -100,7 +100,7 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 2000,
+        maxOutputTokens: 2500,
       }
     })
   });

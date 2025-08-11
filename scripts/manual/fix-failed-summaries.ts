@@ -39,7 +39,7 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 2000,
+        maxOutputTokens: 2500,  // 詳細要約に対応した統一設定
         topP: 0.8,
         topK: 40
       }

@@ -104,7 +104,7 @@ ${generateUnifiedPrompt(title, content)}
       }],
       generationConfig: {
         temperature: attemptNumber === 1 ? 0.3 : 0.4, // 再試行時は少し温度を上げる
-        maxOutputTokens: 2000,
+        maxOutputTokens: 2500,
       }
     })
   });

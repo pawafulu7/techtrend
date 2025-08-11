@@ -41,7 +41,7 @@ async function debug() {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { 
           temperature: 0.3, 
-          maxOutputTokens: 2000,
+          maxOutputTokens: 2500,
           topP: 0.8,
           topK: 40
         }

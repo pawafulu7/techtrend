@@ -86,7 +86,7 @@ async function generateImprovedSummary(title: string, content: string): Promise<
       }],
       generationConfig: {
         temperature: 0.4,
-        maxOutputTokens: 2000,
+        maxOutputTokens: 2500,
       }
     })
   });
