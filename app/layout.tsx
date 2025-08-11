@@ -122,7 +122,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col overflow-hidden`}
       >
         <NoTransitions />
         <ThemeProvider initialTheme={theme}>
