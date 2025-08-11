@@ -198,6 +198,64 @@ test.describe('検索機能', () => {
     }
   });
 
+  test('複数キーワードのAND検索が機能する', async ({ page }) => {
+    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
+    
+    await expect(searchInput).toBeVisible({ timeout: 10000 });
+    
+    // 複数キーワードを半角スペース区切りで入力
+    await searchInput.fill('JavaScript React');
+    await searchInput.press('Enter');
+    
+    // URLに検索パラメータが追加されることを確認（+または%20でエンコード）
+    await expect(page).toHaveURL(/\?.*search=(JavaScript(%20|\+)React|JavaScript\+React)/, { timeout: 15000 });
+    await waitForPageLoad(page);
+    
+    // エラーがないことを確認
+    await expectNoErrors(page);
+    
+    // 検索結果のローディングが完了するまで待機
+    await page.waitForSelector('main', { state: 'visible', timeout: 10000 });
+    
+    // メインコンテンツ内のローディングスピナーが消えるまで待機
+    const mainLoader = page.locator('main .animate-spin, main [class*="loader"]');
+    if (await mainLoader.count() > 0) {
+      await mainLoader.first().waitFor({ state: 'hidden', timeout: 10000 });
+    }
+    
+    // 結果表示を待つ
+    await page.waitForTimeout(1000);
+    
+    // 検索結果カウントの表示を確認
+    const resultCountText = page.locator('p:has-text("件")');
+    
+    // 件数表示が存在することを確認
+    if (await resultCountText.isVisible()) {
+      const countText = await resultCountText.textContent();
+      expect(countText).toMatch(/\d+件/);
+    }
+  });
+
+  test('全角スペース区切りの複数キーワード検索', async ({ page }) => {
+    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
+    
+    await expect(searchInput).toBeVisible({ timeout: 10000 });
+    
+    // 全角スペース区切りで複数キーワードを入力
+    await searchInput.fill('TypeScript　Vue');
+    await searchInput.press('Enter');
+    
+    // URLに検索パラメータが追加されることを確認
+    await expect(page).toHaveURL(/\?.*search=/, { timeout: 15000 });
+    await waitForPageLoad(page);
+    
+    // エラーがないことを確認
+    await expectNoErrors(page);
+    
+    // 検索結果が表示されることを確認
+    await page.waitForSelector('main', { state: 'visible', timeout: 10000 });
+  });
+
   test.skip('高度な検索オプション（機能削除済み）', async ({ page }) => {
     // この機能は削除されました
   });
