@@ -146,9 +146,35 @@ function cleanupText(text: string): string {
  * 詳細要約のクリーンアップ（改行を保持）
  */
 function cleanupDetailedSummary(text: string): string {
+  // 詳細要約特有の枕詞パターン
+  const detailPrefixes = [
+    /^・?(提示された解決策は、|提示された解決策は)/,
+    /^・?(実装の詳細としては、|実装の詳細としては)/,
+    /^・?(期待される効果としては、|期待される効果としては)/,
+    /^・?(問題となったコードは、|問題となったコードは)/,
+    /^・?(既存の解決策としては、|既存の解決策としては|既存の解決策として、|既存の解決策として)/,
+    /^・?(本記事では、|本記事では)/,
+    /^・?(この記事では、|この記事では)/,
+    /^・?(記事では、|記事では)/,
+    /^・?(具体的な問題点は、|具体的な問題点は|具体的な問題としては、|具体的な問題としては)/,
+    /^・?(実装方法としては、|実装方法としては|実装の詳細については、|実装の詳細については)/
+  ];
+
   return text
     .split('\n')
-    .map(line => line.trim())
+    .map(line => {
+      let cleanedLine = line.trim();
+      
+      // 各枕詞パターンを削除
+      detailPrefixes.forEach(pattern => {
+        cleanedLine = cleanedLine.replace(pattern, (match) => {
+          // 箇条書き記号「・」は保持
+          return match.startsWith('・') ? '・' : '';
+        });
+      });
+      
+      return cleanedLine;
+    })
     .filter(line => line.length > 0)
     .join('\n')
     .replace(/。{2,}/g, '。')
