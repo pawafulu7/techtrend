@@ -60,7 +60,7 @@ export default async function RootLayout({
   const initialTheme = theme === 'system' ? 'light' : theme;
 
   return (
-    <html lang="ja" className={`h-full no-transitions ${initialTheme}`}>
+    <html lang="ja" className={`no-transitions ${initialTheme}`}>
       <head>
         <style
           dangerouslySetInnerHTML={{
@@ -122,7 +122,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <NoTransitions />
         <ThemeProvider initialTheme={theme}>
