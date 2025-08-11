@@ -12,7 +12,7 @@ export interface QualityCheckResult {
 }
 
 export interface QualityIssue {
-  type: 'length' | 'format' | 'punctuation' | 'speculative';
+  type: 'length' | 'format' | 'punctuation' | 'speculative' | 'duplicate';
   severity: 'critical' | 'major' | 'minor';
   message: string;
 }
@@ -201,6 +201,37 @@ export function checkSummaryQuality(
       message: `空の箇条書き項目がある: ${emptyBullets}個`
     });
     score -= 30;
+  }
+
+  // 7. Phase 3: 重複検出（一覧要約と詳細要約が同じ）
+  if (summary && detailedSummary) {
+    // 完全一致チェック
+    if (summary === detailedSummary) {
+      issues.push({
+        type: 'duplicate',
+        severity: 'critical',
+        message: '一覧要約と詳細要約が完全に同一'
+      });
+      score = 0; // 重複の場合はスコア0
+    }
+    // 最初の100文字が同じかチェック
+    else if (summary.substring(0, 100) === detailedSummary.substring(0, 100) && summary.length >= 100) {
+      issues.push({
+        type: 'duplicate',
+        severity: 'major',
+        message: '一覧要約と詳細要約の最初の100文字が同一'
+      });
+      score -= 30;
+    }
+    // 詳細要約に箇条書きがないかチェック
+    if (!detailedSummary.includes('・')) {
+      issues.push({
+        type: 'format',
+        severity: 'major',
+        message: '詳細要約に箇条書き形式がない'
+      });
+      score -= 20;
+    }
   }
 
   // スコアの調整

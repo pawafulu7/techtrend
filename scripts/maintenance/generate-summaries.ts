@@ -81,7 +81,29 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
   const data = await response.json() as any;
   const responseText = data.candidates[0].content.parts[0].text.trim();
   
+  // デバッグログ追加（Phase 1）
+  const DEBUG_SUMMARIES = process.env.DEBUG_SUMMARIES === 'true';
+  if (DEBUG_SUMMARIES) {
+    console.log('\n========== API Response Debug ==========');
+    console.log('Title:', title);
+    console.log('Response Text Length:', responseText.length);
+    console.log('First 500 chars:', responseText.substring(0, 500));
+    console.log('========================================\n');
+  }
+  
   const result = parseSummaryAndTags(responseText, title, content);
+  
+  // デバッグログ追加（パース後）
+  if (DEBUG_SUMMARIES) {
+    console.log('\n========== Parse Result Debug ==========');
+    console.log('Summary Length:', result.summary.length);
+    console.log('Summary First 100:', result.summary.substring(0, 100));
+    console.log('Detailed Summary Length:', result.detailedSummary.length);
+    console.log('Detailed Summary First 100:', result.detailedSummary.substring(0, 100));
+    console.log('Are they same?:', result.summary === result.detailedSummary);
+    console.log('Are first 100 chars same?:', result.summary.substring(0, 100) === result.detailedSummary.substring(0, 100));
+    console.log('========================================\n');
+  }
   
   // 新しい品質チェックシステムを使用
   const qualityCheck = checkSummaryQuality(result.summary, result.detailedSummary);
@@ -119,7 +141,7 @@ function cleanupText(text: string): string {
 function finalCleanup(text: string): string {
   if (!text) return text;
   
-  // 冒頭の重複ラベル除去
+  // 冒頭の重複ラベル除去（Phase 2: マークダウンラベル追加）
   const cleanupPatterns = [
     /^(\*\*)?要約[:：]\s*(\*\*)?/,
     /^【要約】[:：]?\s*/,
@@ -128,7 +150,9 @@ function finalCleanup(text: string): string {
     /^(\*\*)?詳細要約[:：]\s*(\*\*)?/,
     /^【詳細要約】[:：]?\s*/,
     /^【?\d+-\d+文字.*?】?\s*/,  // プロンプト指示の除去
-    /^【?簡潔にまとめ.*?】?\s*/
+    /^【?簡潔にまとめ.*?】?\s*/,
+    /^#{1,3}\s*要約[:：]\s*/,     // マークダウン形式の要約ラベル
+    /^#{1,3}\s*詳細要約[:：]\s*/   // マークダウン形式の詳細要約ラベル
   ];
   
   cleanupPatterns.forEach(pattern => {
@@ -163,17 +187,19 @@ function parseSummaryAndTags(text: string, title: string = '', content: string =
   let isDetailedSummary = false;
   let tagSectionStarted = false; // タグセクション開始フラグを追加
   
-  // パターン定義
+  // パターン定義（Phase 2: マークダウン形式追加）
   const summaryPatterns = [
     /^(\*\*)?要約[:：]\s*(\*\*)?/,
     /^【要約】[:：]?\s*/,
     /^(\*\*)?短い要約[:：]\s*(\*\*)?/,
-    /^【短い要約】[:：]?\s*/
+    /^【短い要約】[:：]?\s*/,
+    /^#{1,3}\s*要約[:：]\s*/      // マークダウン形式の要約ラベル
   ];
   
   const detailedSummaryPatterns = [
     /^(\*\*)?詳細要約[:：]\s*(\*\*)?/,
-    /^【詳細要約】[:：]?\s*/
+    /^【詳細要約】[:：]?\s*/,
+    /^#{1,3}\s*詳細要約[:：]\s*/   // マークダウン形式の詳細要約ラベル
   ];
   
   const promptPatterns = [
@@ -322,6 +348,13 @@ function parseSummaryAndTags(text: string, title: string = '', content: string =
   // 冒頭に「要約:」が残っている場合は削除（改行を含む場合も対応）
   summary = summary.replace(/^要約[:：]\s*\n?/, '').trim();
   detailedSummary = detailedSummary.replace(/^詳細要約[:：]\s*\n?/, '').trim();
+  
+  // Phase 2: 一覧要約と詳細要約が同じ場合の対処
+  if (summary && detailedSummary && summary === detailedSummary) {
+    console.warn('⚠️ 警告: 一覧要約と詳細要約が同一です。詳細要約を再生成が必要です。');
+    // 詳細要約をリセットしてフォールバック処理に任せる
+    detailedSummary = '';
+  }
   
   // Phase 2: 文字数拡張処理を無効化（タイトルをそのまま使う問題があるため）
   // summary = expandSummaryIfNeeded(summary, title, 150, content || text);
