@@ -191,7 +191,7 @@ async function regenerateArticles(articles: Array<{
           where: { id: article.id },
           data: {
             summary,
-            summaryVersion: 5, // 統一フォーマットバージョン
+            summaryVersion: service.getSummaryVersion(), // 統一フォーマットバージョン
             detailedSummary: result.detailedSummary,
             articleType: result.articleType,
             updatedAt: new Date(),

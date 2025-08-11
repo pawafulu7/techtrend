@@ -15,6 +15,7 @@ import {
 } from '@/lib/utils/summary-quality-checker';
 import { generateSummaryWithRetry } from '@/lib/ai/summary-generator';
 
+import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 const prisma = new PrismaClient();
 
 interface GenerateResult {
@@ -582,7 +583,7 @@ async function generateSummaries(): Promise<GenerateResult> {
                     summary,
                     detailedSummary: result!.detailedSummary,
                     articleType: 'unified',  // 統一タイプを設定
-                    summaryVersion: 5  // 統一プロンプト版をv5とする
+                    summaryVersion: getUnifiedSummaryService().getSummaryVersion()  // 統一プロンプト版のバージョン
                   }
                 });
               } else {

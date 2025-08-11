@@ -540,7 +540,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                     summary,
                     detailedSummary: result.detailedSummary,
                     articleType: 'unified',
-                    summaryVersion: 5
+                    summaryVersion: getUnifiedSummaryService().getSummaryVersion()
                   }
                 });
               } else {
