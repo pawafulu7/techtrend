@@ -194,7 +194,7 @@ export default async function Home({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="h-full overflow-hidden flex flex-col">
+    <div className="h-[calc(100vh-2.5rem)] overflow-hidden flex flex-col">
       {/* メインエリア */}
       <div className="flex-1 lg:flex lg:overflow-hidden">
         {/* サイドバー - デスクトップのみ */}
