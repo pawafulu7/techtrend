@@ -207,8 +207,8 @@ test.describe('検索機能', () => {
     await searchInput.fill('JavaScript React');
     await searchInput.press('Enter');
     
-    // URLに検索パラメータが追加されることを確認
-    await expect(page).toHaveURL(/\?.*search=JavaScript%20React/, { timeout: 15000 });
+    // URLに検索パラメータが追加されることを確認（+または%20でエンコード）
+    await expect(page).toHaveURL(/\?.*search=(JavaScript(%20|\+)React|JavaScript\+React)/, { timeout: 15000 });
     await waitForPageLoad(page);
     
     // エラーがないことを確認
