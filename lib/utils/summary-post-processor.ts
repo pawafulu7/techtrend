@@ -126,8 +126,8 @@ export function postProcessSummaries(
   summary: string,
   detailedSummary: string
 ): { summary: string; detailedSummary: string } {
-  // 一覧要約の処理
-  const processedSummary = enforceLength(summary, 150, 180);
+  // 一覧要約の処理（文字数範囲を180-220に変更）
+  const processedSummary = enforceLength(summary, 180, 220);
   
   // 詳細要約の処理
   let processedDetailedSummary = detailedSummary;

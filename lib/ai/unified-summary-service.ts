@@ -82,10 +82,14 @@ export class UnifiedSummaryService {
           throw new Error('Invalid parsed result');
         }
         
-        // 品質チェック
+        // postProcessSummariesをインポートして適用
+        const { postProcessSummaries } = await import('../utils/summary-post-processor');
+        const processed = postProcessSummaries(parsed.summary, parsed.detailedSummary);
+        
+        // 品質チェック（処理後のテキストで実施）
         const qualityScore = checkSummaryQuality(
-          parsed.summary, 
-          parsed.detailedSummary
+          processed.summary, 
+          processed.detailedSummary
         ).score;
         
         // 品質スコアが閾値以下の場合、再試行
@@ -95,9 +99,11 @@ export class UnifiedSummaryService {
           continue;
         }
         
-        // 結果を返す
+        // 結果を返す（postProcessSummariesで処理済みのテキストを使用）
         return {
-          ...parsed,
+          summary: processed.summary,
+          detailedSummary: processed.detailedSummary,
+          tags: parsed.tags,
           articleType: UnifiedSummaryService.ARTICLE_TYPE,
           summaryVersion: UnifiedSummaryService.SUMMARY_VERSION,
           qualityScore

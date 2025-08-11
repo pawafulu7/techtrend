@@ -185,8 +185,8 @@ function cleanupDetailedSummary(text: string): string {
  * パース結果の検証
  */
 export function validateParsedResult(result: ParsedSummaryResult): boolean {
-  // 要約の検証（長さ制限を緩和: 300文字まで許可）
-  if (!result.summary || result.summary.length < 10 || result.summary.length > 300) {
+  // 要約の検証（長さ制限を400文字まで許可 - postProcessSummariesで調整されるため）
+  if (!result.summary || result.summary.length < 10 || result.summary.length > 400) {
     return false;
   }
 
