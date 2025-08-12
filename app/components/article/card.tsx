@@ -101,7 +101,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 <span className="sm:hidden">新</span>
               </Badge>
             )}
-            <h3 className="text-base font-bold leading-tight line-clamp-2 text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            <h3 className="text-sm font-bold leading-tight line-clamp-2 text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               {article.title}
             </h3>
           </div>
@@ -120,22 +120,6 @@ export function ArticleCard({ article }: ArticleCardProps) {
              hoursAgo < 24 ? `${hoursAgo}時間前` : 
              formatDate(article.publishedAt)}
           </span>
-          {article.difficulty && (
-            <Badge 
-              variant="outline" 
-              className={cn(
-                "text-xs font-medium",
-                article.difficulty === 'beginner' && "bg-green-50 text-green-700 border-green-200",
-                article.difficulty === 'intermediate' && "bg-blue-50 text-blue-700 border-blue-200",
-                article.difficulty === 'advanced' && "bg-purple-50 text-purple-700 border-purple-200"
-              )}
-            >
-              <GraduationCap className="h-3 w-3 mr-1" />
-              {article.difficulty === 'beginner' && '初級'}
-              {article.difficulty === 'intermediate' && '中級'}
-              {article.difficulty === 'advanced' && '上級'}
-            </Badge>
-          )}
         </div>
       </CardHeader>
 
@@ -151,7 +135,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         
         {article.tags && article.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {article.tags.slice(0, 3).map((tag) => (
+            {article.tags.slice(0, 2).map((tag) => (
               <Badge
                 key={tag.id}
                 variant="outline"
@@ -164,8 +148,8 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 {tag.name}
               </Badge>
             ))}
-            {article.tags.length > 3 && (
-              <span className="text-xs text-muted-foreground">+{article.tags.length - 3}</span>
+            {article.tags.length > 2 && (
+              <span className="text-xs text-muted-foreground">+{article.tags.length - 2}</span>
             )}
           </div>
         )}
@@ -191,7 +175,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 e.stopPropagation();
                 window.open(article.url, '_blank', 'noopener,noreferrer');
               }}
-              className="h-6 px-2 text-xs hover:bg-secondary"
+              className="h-5 px-1.5 text-xs hover:bg-secondary"
               title="元記事を開く"
             >
               <ExternalLink className="h-3 w-3" />
@@ -202,7 +186,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
               onClick={handleVote}
               disabled={hasVoted}
               className={cn(
-                "h-6 px-2 text-xs",
+                "h-5 px-1.5 text-xs",
                 hasVoted && "bg-green-600 hover:bg-green-600"
               )}
             >
