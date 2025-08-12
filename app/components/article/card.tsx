@@ -91,7 +91,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         sourceColor.gradient
       )} />
       
-      <CardHeader className="pb-1 px-3 sm:px-4">
+      <CardHeader className="pb-0.5 px-2 sm:px-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
             {isNew && (
@@ -139,7 +139,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 py-2 px-3 sm:px-4 space-y-2">
+      <CardContent className="flex-1 py-1.5 px-2 sm:px-3 space-y-1.5">
         {article.summary && (
           <div className="relative group/summary">
             <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-purple-400 rounded-full"></div>
