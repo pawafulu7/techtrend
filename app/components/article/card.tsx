@@ -126,8 +126,8 @@ export function ArticleCard({ article }: ArticleCardProps) {
       <CardContent className="flex-1 py-2 px-2.5 sm:px-3 space-y-2">
         {article.summary && (
           <div className="relative group/summary">
-            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-purple-400 rounded-full"></div>
-            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-3 font-medium group-hover/summary:text-slate-900 dark:group-hover/summary:text-slate-100 transition-colors">
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-300 to-purple-300 rounded-full opacity-50"></div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed pl-3 group-hover/summary:text-gray-700 dark:group-hover/summary:text-gray-300 transition-colors">
               {article.summary}
             </p>
           </div>
