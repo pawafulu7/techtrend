@@ -60,6 +60,10 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     const allErrors: Error[] = [];
     const seenUrls = new Set<string>();
 
+    // ContentEnricherFactory をインポート（ファイル先頭でのインポートが必要）
+    const { ContentEnricherFactory } = await import('../enrichers');
+    const enricherFactory = new ContentEnricherFactory();
+
     // 30日前の日付を計算
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -113,7 +117,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             const finalTags = [companyTagName, ...tagsWithoutCompany];
 
             // コンテンツの取得（優先順位: content > contentSnippet > description）
-            const content = item.content || item.contentSnippet || item.description || '';
+            let content = item.content || item.contentSnippet || item.description || '';
 
             const publishedAt = item.isoDate ? new Date(item.isoDate) :
                           item.pubDate ? parseRSSDate(item.pubDate) : new Date();
@@ -121,6 +125,24 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             // 30日以内の記事のみ処理
             if (publishedAt < thirtyDaysAgo) {
               continue;
+            }
+
+            // コンテンツが不足している場合、エンリッチャーで補完
+            if (content && content.length < 500) {
+              const enricher = enricherFactory.getEnricher(item.link);
+              if (enricher) {
+                try {
+                  console.log(`[Corporate Tech Blog - ${feedInfo.name}] Enriching content for: ${item.title}`);
+                  const enrichedContent = await enricher.enrich(item.link);
+                  if (enrichedContent && enrichedContent.length > content.length) {
+                    console.log(`[Corporate Tech Blog - ${feedInfo.name}] Content enriched: ${content.length} -> ${enrichedContent.length} chars`);
+                    content = enrichedContent;
+                  }
+                } catch (error) {
+                  console.error(`[Corporate Tech Blog - ${feedInfo.name}] Enrichment failed:`, error);
+                  // エンリッチメント失敗時は元のコンテンツを使用
+                }
+              }
             }
 
             const article: CreateArticleInput = {
@@ -157,7 +179,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
       }
     }
 
-    // 日付順にソートして最新50件を返す
+    // 日付順にソートして最大50件を返す
     allArticles.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
     const limitedArticles = allArticles.slice(0, 50);
 
