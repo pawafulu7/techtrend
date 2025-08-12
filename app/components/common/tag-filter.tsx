@@ -130,7 +130,11 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
     
     // タグをカテゴリー別に振り分け
     filteredTags.forEach(tag => {
-      const category = tag.category || 'uncategorized';
+      // TAG_CATEGORIESに存在するカテゴリーかチェック
+      const category = tag.category && Object.keys(TAG_CATEGORIES).includes(tag.category) 
+        ? tag.category 
+        : 'uncategorized';
+      
       if (!groups[category]) {
         groups[category] = [];
       }
@@ -264,7 +268,8 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         {Object.entries(groupedTags).map(([categoryKey, categoryTags]) => {
           const categoryInfo = categoryKey === 'uncategorized' 
             ? { name: '未分類', color: 'text-gray-600 bg-gray-50 border-gray-200' }
-            : getCategoryInfo(categoryKey as keyof typeof TAG_CATEGORIES);
+            : getCategoryInfo(categoryKey as keyof typeof TAG_CATEGORIES) || 
+              { name: '未分類', color: 'text-gray-600 bg-gray-50 border-gray-200' };
           
           return (
             <Collapsible 
