@@ -124,7 +124,18 @@ test.describe('記事詳細ページ', () => {
         await favoriteButton.click();
         
         // 状態が変化することを確認（クラスまたはaria-pressedの変化）
-        await page.waitForTimeout(500); // 状態変化を待つ
+        await page.waitForFunction(
+          async () => {
+            const button = document.querySelector('[data-testid*="favorite"], button[aria-label*="お気に入り"], button[aria-label*="favorite"]');
+            if (!button) return false;
+            
+            // クラスまたはaria-pressed属性の変化を待つ
+            const currentClass = button.getAttribute('class');
+            const currentAriaPressed = button.getAttribute('aria-pressed');
+            return currentClass !== '${initialClass}' || currentAriaPressed !== '${initialAriaPressed}';
+          },
+          { timeout: 5000 }
+        );
         
         const newClass = await favoriteButton.getAttribute('class');
         const newAriaPressed = await favoriteButton.getAttribute('aria-pressed');
