@@ -24,6 +24,7 @@ export class FreeeContentEnricher extends BaseContentEnricher {
       
       // freeeのブログ構造に合わせたセレクタ
       const selectors = [
+        '.entry-body',              // freeeの実際のセレクタ（最優先）
         '.article-content',         // 記事コンテンツ
         '.post-content',            // 投稿コンテンツ
         'article .content',         // articleタグ内
