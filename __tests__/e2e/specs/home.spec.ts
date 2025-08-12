@@ -7,6 +7,7 @@ import {
   expectPageTitle,
   expectNoErrors,
 } from '../utils/test-helpers';
+import { SELECTORS } from '../constants/selectors';
 
 test.describe('ホームページ', () => {
   test.beforeEach(async ({ page }) => {
@@ -28,13 +29,13 @@ test.describe('ホームページ', () => {
 
   test('記事一覧が表示される', async ({ page }) => {
     // 記事要素を探す（data-testidがない場合は別の方法で）
-    const articles = page.locator('article, [class*="article"], [class*="card"]').first();
+    const articles = page.locator(SELECTORS.ARTICLE_CARD).first();
     
     // 少なくとも1つの記事要素が存在することを確認
     await expect(articles).toBeVisible({ timeout: 15000 });
 
     // タイトル要素を探す
-    const title = articles.locator('h2, h3, [class*="title"]').first();
+    const title = articles.locator(SELECTORS.ARTICLE_TITLE).first();
     if (await title.isVisible()) {
       const titleText = await title.textContent();
       expect(titleText).toBeTruthy();
@@ -43,7 +44,7 @@ test.describe('ホームページ', () => {
 
   test('検索ボックスが機能する', async ({ page }) => {
     // 検索入力フィールドを探す（SearchBoxコンポーネント）
-    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
+    const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
     
     if (await searchInput.isVisible()) {
       // 検索クエリを入力
@@ -59,9 +60,7 @@ test.describe('ホームページ', () => {
 
   test('ソースフィルタが存在する', async ({ page }) => {
     // ソースフィルタの存在を確認（セレクトボックスまたはドロップダウン）
-    const sourceFilter = page.locator(
-      'select[data-testid="source-filter"], [data-testid="source-dropdown"], select[name*="source"]'
-    ).first();
+    const sourceFilter = page.locator(SELECTORS.SOURCE_FILTER).first();
     
     if (await sourceFilter.isVisible()) {
       // フィルタが操作可能であることを確認
@@ -71,15 +70,11 @@ test.describe('ホームページ', () => {
 
   test('ページネーションが機能する', async ({ page }) => {
     // ページネーションコンポーネントを探す
-    const pagination = page.locator(
-      '[data-testid="pagination"], nav[aria-label*="pagination"], .pagination'
-    ).first();
+    const pagination = page.locator(SELECTORS.PAGINATION).first();
 
     if (await pagination.isVisible()) {
       // 次ページボタンを探す
-      const nextButton = pagination.locator(
-        'button:has-text("次"), button:has-text("Next"), [aria-label*="次"], [aria-label*="next"]'
-      ).first();
+      const nextButton = pagination.locator(SELECTORS.NEXT_PAGE_BUTTON).first();
 
       if (await nextButton.isVisible() && await nextButton.isEnabled()) {
         // 次ページに移動
