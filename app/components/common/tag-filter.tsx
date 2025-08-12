@@ -62,13 +62,47 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         return;
       }
       
+      console.log('[TagFilter] Searching for:', debouncedSearchQuery);
+      
       setIsSearching(true);
       try {
         const response = await fetch(`/api/tags/search?q=${encodeURIComponent(debouncedSearchQuery)}`);
-        const data = await response.json();
-        setSearchResults(data);
+        
+        // レスポンスステータスをチェック
+        if (!response.ok) {
+          console.error('Tag search failed with status:', response.status);
+          setSearchResults([]);
+          return;
+        }
+        
+        // レスポンスボディが空でないことを確認
+        const text = await response.text();
+        if (!text) {
+          console.error('Empty response from tag search API');
+          setSearchResults([]);
+          return;
+        }
+        
+        // JSONとしてパース
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (parseError) {
+          console.error('Failed to parse JSON response:', text);
+          setSearchResults([]);
+          return;
+        }
+        
+        // データが配列かチェック
+        if (Array.isArray(data)) {
+          setSearchResults(data);
+        } else {
+          console.error('Invalid response format:', data);
+          setSearchResults([]);
+        }
       } catch (error) {
         console.error('Tag search failed:', error);
+        setSearchResults([]);
       } finally {
         setIsSearching(false);
       }
@@ -85,7 +119,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
 
   // カテゴリー別にタグをグループ化
   const groupedTags = useMemo(() => {
-    const groups: Record<string, typeof tags> = {
+    const groups: Record<string, typeof initialTags> = {
       uncategorized: []
     };
     
