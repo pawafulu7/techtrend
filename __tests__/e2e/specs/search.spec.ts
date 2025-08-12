@@ -5,6 +5,9 @@ import {
   expectPageTitle,
   expectNoErrors,
   expectArticleCards,
+  waitForLoadingToDisappear,
+  waitForSearchResults,
+  waitForApiResponse,
 } from '../utils/test-helpers';
 import { SELECTORS } from '../constants/selectors';
 
@@ -37,22 +40,11 @@ test.describe('検索機能', () => {
     // 検索結果のローディングが完了するまで待機
     await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 10000 });
     
-    // メインコンテンツ内のローディングスピナーが消えるまで待機
-    const mainLoader = page.locator(SELECTORS.LOADING_INDICATOR);
-    if (await mainLoader.count() > 0) {
-      await mainLoader.first().waitFor({ state: 'hidden', timeout: 10000 });
-    }
+    // ローディングスピナーが消えるまで待機
+    await waitForLoadingToDisappear(page);
     
-    // 検索結果または「結果なし」メッセージを確認
-    // APIレスポンスを待つ - より明確な条件で待機
-    await page.waitForFunction(
-      () => {
-        const loader = document.querySelector('main .animate-spin, main [class*="loader"]');
-        const resultCount = document.querySelector('p');
-        return !loader && resultCount && (resultCount.textContent?.includes('件') || resultCount.textContent?.includes('結果'));
-      },
-      { timeout: 5000 }
-    );
+    // 検索結果の表示を待つ
+    await waitForSearchResults(page);
     
     // 検索結果カウントの表示を確認（「○○件」の形式）
     const resultCountText = page.locator(SELECTORS.SEARCH_RESULT_COUNT);
@@ -164,16 +156,10 @@ test.describe('検索機能', () => {
       if (sortOptions.some(opt => opt.includes('新着') || opt.includes('Date'))) {
         const dateOption = sortOptions.find(opt => opt.includes('新着') || opt.includes('Date'));
         await sortSelect.selectOption({ label: dateOption });
-        // ソート適用を待つ - URL変更とデータ再読み込みを待機
+        // ソート適用を待つ - URL変更とローディング完了を待機
         await Promise.all([
           page.waitForURL('**/sort=**', { timeout: 5000 }),
-          page.waitForFunction(
-            () => {
-              const loader = document.querySelector('main .animate-spin, main [class*="loader"]');
-              return !loader;
-            },
-            { timeout: 5000 }
-          )
+          waitForLoadingToDisappear(page)
         ]);
         
         // URLパラメータにソート情報が追加されることを確認
@@ -237,21 +223,11 @@ test.describe('検索機能', () => {
     // 検索結果のローディングが完了するまで待機
     await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 10000 });
     
-    // メインコンテンツ内のローディングスピナーが消えるまで待機
-    const mainLoader = page.locator(SELECTORS.LOADING_INDICATOR);
-    if (await mainLoader.count() > 0) {
-      await mainLoader.first().waitFor({ state: 'hidden', timeout: 10000 });
-    }
+    // ローディングスピナーが消えるまで待機
+    await waitForLoadingToDisappear(page);
     
-    // 結果表示を待つ - ローダー消失と結果表示を確認
-    await page.waitForFunction(
-      () => {
-        const loader = document.querySelector('main .animate-spin, main [class*="loader"]');
-        const resultElement = document.querySelector('p');
-        return !loader && resultElement && (resultElement.textContent?.includes('件') || resultElement.textContent?.includes('結果'));
-      },
-      { timeout: 5000 }
-    );
+    // 検索結果の表示を待つ
+    await waitForSearchResults(page);
     
     // 検索結果カウントの表示を確認
     const resultCountText = page.locator('p:has-text("件")');

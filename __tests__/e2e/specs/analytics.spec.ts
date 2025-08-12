@@ -5,7 +5,10 @@ import {
   expectPageTitle,
   expectNoErrors,
   expectNavigationMenu,
+  waitForLoadingToDisappear,
+  waitForDataLoad,
 } from '../utils/test-helpers';
+import { SELECTORS } from '../constants/selectors';
 
 test.describe('分析ページ', () => {
   test.beforeEach(async ({ page }) => {
@@ -125,14 +128,8 @@ test.describe('分析ページ', () => {
             { timeout: 5000 }
           );
           
-          // データが更新されることを確認（ローディング表示や数値の変化）
-          const loadingIndicator = page.locator('[class*="loading"], [class*="spinner"]').first();
-          const hasLoading = await loadingIndicator.isVisible({ timeout: 500 });
-          
-          if (hasLoading) {
-            // ローディングが完了するまで待つ
-            await loadingIndicator.waitFor({ state: 'hidden', timeout: 5000 });
-          }
+          // データが更新されることを確認
+          await waitForLoadingToDisappear(page);
         }
       }
     }
