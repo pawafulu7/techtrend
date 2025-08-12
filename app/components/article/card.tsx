@@ -63,26 +63,18 @@ export function ArticleCard({ article }: ArticleCardProps) {
         "hover:shadow-lg hover:-translate-y-0.5",
         "shadow-sm backdrop-blur-sm",
         "border border-border/20 hover:border-border/40",
+        // ダークモード対応の背景色
+        "bg-white/98 dark:bg-gray-800/98",
+        "hover:bg-white dark:hover:bg-gray-750",
+        // ダークモード対応のシャドウ
+        "shadow-[0_2px_8px_rgba(100,100,200,0.15)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]",
+        "hover:shadow-[0_8px_24px_rgba(100,100,200,0.25)] dark:hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]",
+        // ダークモード対応のボーダー
+        "border-blue-200/20 dark:border-gray-700/40",
+        "hover:border-blue-200/40 dark:hover:border-gray-600/60",
         sourceColor.border,
         sourceColor.hover
       )}
-      style={{
-        boxShadow: '0 2px 8px rgba(100, 100, 200, 0.15)',
-        background: 'rgba(255, 255, 255, 0.98)',
-        border: '1px solid rgba(200, 200, 255, 0.2)',
-      }}
-      onMouseEnter={(e) => {
-        const el = e.currentTarget as HTMLElement;
-        el.style.boxShadow = '0 8px 24px rgba(100, 100, 200, 0.25)';
-        el.style.background = 'rgba(255, 255, 255, 1)';
-        el.style.border = '1px solid rgba(200, 200, 255, 0.4)';
-      }}
-      onMouseLeave={(e) => {
-        const el = e.currentTarget as HTMLElement;
-        el.style.boxShadow = '0 2px 8px rgba(100, 100, 200, 0.15)';
-        el.style.background = 'rgba(255, 255, 255, 0.98)';
-        el.style.border = '1px solid rgba(200, 200, 255, 0.2)';
-      }}
     >
       {/* グラデーション背景 */}
       <div className={cn(
@@ -127,7 +119,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         {article.summary && (
           <div className="relative group/summary">
             <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-300 to-purple-300 rounded-full opacity-50"></div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed pl-3 group-hover/summary:text-gray-700 dark:group-hover/summary:text-gray-300 transition-colors">
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed pl-3 group-hover/summary:text-gray-700 dark:group-hover/summary:text-gray-200 transition-colors">
               {article.summary}
             </p>
           </div>
