@@ -121,8 +121,9 @@ export default async function RootLayout({
           }}
         />
       </head>
+      {/* 重要: overflow-hiddenは追加しないこと。トップページ以外でスクロール不可になる */}
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col overflow-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col`}
       >
         <NoTransitions />
         <ThemeProvider initialTheme={theme}>
