@@ -30,6 +30,8 @@
     "scheduler:prod": "tsx scripts/scheduled/scheduler.ts",
     "scripts:collect": "tsx scripts/scheduled/collect-feeds.ts",
     "scripts:summarize": "tsx scripts/maintenance/generate-summaries.ts",
+    "enrich:corporate": "tsx scripts/enrich-corporate-blog-content.ts",
+    "enrich:corporate:dry": "tsx scripts/enrich-corporate-blog-content.ts --dry-run",
     "claude:summarize": "tsx scripts/manual/generate-summaries-claude.ts",
     "claude:compare": "tsx scripts/manual/compare-summaries.ts",
     "claude:tags:batch": "tsx scripts/manual/generate-tags-claude-batch.ts",
