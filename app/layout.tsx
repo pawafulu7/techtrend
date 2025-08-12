@@ -123,14 +123,14 @@ export default async function RootLayout({
       </head>
       {/* 重要: overflow-hiddenは追加しないこと。トップページ以外でスクロール不可になる */}
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col overflow-hidden`}
       >
         <NoTransitions />
         <ThemeProvider initialTheme={theme}>
           <QueryProvider>
             {/* <OnboardingProvider> */}
               <Header />
-              <main className="flex-1">{children}</main>
+              <main className="flex-1 overflow-y-auto">{children}</main>
               <ToastProvider />
             {/* </OnboardingProvider> */}
           </QueryProvider>
