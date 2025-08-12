@@ -202,10 +202,14 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     // 企業名の正規化マッピング
     const nameMap: Record<string, string> = {
       'DeNA': 'DeNA',
-      'Yahoo! JAPAN': 'Yahoo!',
+      'Yahoo! JAPAN': 'LINEヤフー',  // 統合を反映
       'メルカリ': 'メルカリ',
       'サイバーエージェント': 'CyberAgent',
-      'LINEヤフー': 'LINEヤフー'
+      'LINEヤフー': 'LINEヤフー',
+      'GMO': 'GMO',
+      'SmartHR': 'SmartHR',
+      'freee': 'freee',
+      'クックパッド': 'クックパッド'
     };
     
     return nameMap[name] || name;

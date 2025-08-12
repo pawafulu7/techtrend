@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tag as TagIcon, Search, X, ChevronRight } from 'lucide-react';
+import { Tag as TagIcon, Search, X, ChevronRight, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { TAG_CATEGORIES, getCategoryInfo } from '@/lib/constants/tag-categories';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 
 interface TagFilterProps {
   tags: Array<{
@@ -27,12 +28,15 @@ interface TagFilterProps {
   }>;
 }
 
-export function TagFilter({ tags }: TagFilterProps) {
+export function TagFilter({ tags: initialTags }: TagFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<typeof initialTags>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [filterMode, setFilterMode] = useState<'OR' | 'AND'>('OR');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // URLからタグを読み込み
   useEffect(() => {
@@ -50,10 +54,34 @@ export function TagFilter({ tags }: TagFilterProps) {
     }
   }, [searchParams]);
 
-  // フィルタリングされたタグ
-  const filteredTags = tags.filter(tag =>
-    tag.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // 検索API呼び出し
+  useEffect(() => {
+    const searchTags = async () => {
+      if (!debouncedSearchQuery) {
+        setSearchResults([]);
+        return;
+      }
+      
+      setIsSearching(true);
+      try {
+        const response = await fetch(`/api/tags/search?q=${encodeURIComponent(debouncedSearchQuery)}`);
+        const data = await response.json();
+        setSearchResults(data);
+      } catch (error) {
+        console.error('Tag search failed:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+    
+    searchTags();
+  }, [debouncedSearchQuery]);
+
+  // 表示するタグ: 検索中は検索結果、それ以外は初期タグ
+  const displayTags = searchQuery ? searchResults : initialTags;
+  
+  // フィルタリングされたタグ（APIで検索済みなので、そのまま使用）
+  const filteredTags = displayTags;
 
   // カテゴリー別にタグをグループ化
   const groupedTags = useMemo(() => {
@@ -160,8 +188,11 @@ export function TagFilter({ tags }: TagFilterProps) {
           placeholder="タグを検索..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-8 h-9"
+          className="pl-8 pr-8 h-9"
         />
+        {isSearching && (
+          <Loader2 className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />
+        )}
       </div>
 
       {/* 選択中のタグ */}
