@@ -5,7 +5,11 @@ import {
   expectPageTitle,
   expectNoErrors,
   expectArticleCards,
+  waitForLoadingToDisappear,
+  waitForSearchResults,
+  waitForApiResponse,
 } from '../utils/test-helpers';
+import { SELECTORS } from '../constants/selectors';
 
 test.describe('検索機能', () => {
   test.beforeEach(async ({ page }) => {
@@ -16,7 +20,7 @@ test.describe('検索機能', () => {
 
   test('キーワード検索が機能する', async ({ page }) => {
     // 検索入力フィールドを探す（ホームページのSearchBoxコンポーネント）
-    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
+    const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
     
     await expect(searchInput).toBeVisible({ timeout: 10000 });
     
@@ -34,19 +38,16 @@ test.describe('検索機能', () => {
     await expectNoErrors(page);
     
     // 検索結果のローディングが完了するまで待機
-    await page.waitForSelector('main', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 10000 });
     
-    // メインコンテンツ内のローディングスピナーが消えるまで待機
-    const mainLoader = page.locator('main .animate-spin, main [class*="loader"]');
-    if (await mainLoader.count() > 0) {
-      await mainLoader.first().waitFor({ state: 'hidden', timeout: 10000 });
-    }
+    // ローディングスピナーが消えるまで待機
+    await waitForLoadingToDisappear(page);
     
-    // 検索結果または「結果なし」メッセージを確認
-    await page.waitForTimeout(1000); // APIレスポンスを待つ
+    // 検索結果の表示を待つ
+    await waitForSearchResults(page);
     
     // 検索結果カウントの表示を確認（「○○件」の形式）
-    const resultCountText = page.locator('p:has-text("件")');
+    const resultCountText = page.locator(SELECTORS.SEARCH_RESULT_COUNT);
     
     // 件数表示が存在することを確認
     await expect(resultCountText).toBeVisible({ timeout: 5000 });
@@ -57,7 +58,7 @@ test.describe('検索機能', () => {
   });
 
   test('空の検索クエリの処理', async ({ page }) => {
-    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
+    const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
     
     await expect(searchInput).toBeVisible();
     
@@ -114,7 +115,8 @@ test.describe('検索機能', () => {
       // 特定のソースを選択（存在する場合）
       if (options.includes('Dev.to')) {
         await sourceFilter.selectOption({ label: 'Dev.to' });
-        await page.waitForTimeout(1000); // フィルター適用を待つ
+        // フィルター適用を待つ - URL変更を待機
+        await page.waitForURL('**/source=**', { timeout: 5000 });
         
         // URLパラメータが更新されることを確認
         const currentUrl = page.url();
@@ -154,7 +156,11 @@ test.describe('検索機能', () => {
       if (sortOptions.some(opt => opt.includes('新着') || opt.includes('Date'))) {
         const dateOption = sortOptions.find(opt => opt.includes('新着') || opt.includes('Date'));
         await sortSelect.selectOption({ label: dateOption });
-        await page.waitForTimeout(1000);
+        // ソート適用を待つ - URL変更とローディング完了を待機
+        await Promise.all([
+          page.waitForURL('**/sort=**', { timeout: 5000 }),
+          waitForLoadingToDisappear(page)
+        ]);
         
         // URLパラメータにソート情報が追加されることを確認
         const currentUrl = page.url();
@@ -215,16 +221,13 @@ test.describe('検索機能', () => {
     await expectNoErrors(page);
     
     // 検索結果のローディングが完了するまで待機
-    await page.waitForSelector('main', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 10000 });
     
-    // メインコンテンツ内のローディングスピナーが消えるまで待機
-    const mainLoader = page.locator('main .animate-spin, main [class*="loader"]');
-    if (await mainLoader.count() > 0) {
-      await mainLoader.first().waitFor({ state: 'hidden', timeout: 10000 });
-    }
+    // ローディングスピナーが消えるまで待機
+    await waitForLoadingToDisappear(page);
     
-    // 結果表示を待つ
-    await page.waitForTimeout(1000);
+    // 検索結果の表示を待つ
+    await waitForSearchResults(page);
     
     // 検索結果カウントの表示を確認
     const resultCountText = page.locator('p:has-text("件")');

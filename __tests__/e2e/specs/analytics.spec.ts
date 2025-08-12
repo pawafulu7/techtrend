@@ -5,7 +5,10 @@ import {
   expectPageTitle,
   expectNoErrors,
   expectNavigationMenu,
+  waitForLoadingToDisappear,
+  waitForDataLoad,
 } from '../utils/test-helpers';
+import { SELECTORS } from '../constants/selectors';
 
 test.describe('分析ページ', () => {
   test.beforeEach(async ({ page }) => {
@@ -115,16 +118,18 @@ test.describe('分析ページ', () => {
         if (options.includes('1週間') || options.includes('Week')) {
           const weekOption = options.find(opt => opt.includes('1週間') || opt.includes('Week'));
           await periodFilter.selectOption({ label: weekOption });
-          await page.waitForTimeout(1000);
           
-          // データが更新されることを確認（ローディング表示や数値の変化）
-          const loadingIndicator = page.locator('[class*="loading"], [class*="spinner"]').first();
-          const hasLoading = await loadingIndicator.isVisible({ timeout: 500 });
+          // データ更新を待つ - URLパラメータ変更とローディング完了を待機
+          await page.waitForFunction(
+            () => {
+              const url = window.location.href;
+              return url.includes('period=') || url.includes('range=');
+            },
+            { timeout: 5000 }
+          );
           
-          if (hasLoading) {
-            // ローディングが完了するまで待つ
-            await loadingIndicator.waitFor({ state: 'hidden', timeout: 5000 });
-          }
+          // データが更新されることを確認
+          await waitForLoadingToDisappear(page);
         }
       }
     }
@@ -195,7 +200,15 @@ test.describe('分析ページ', () => {
         if (isClickable) {
           // タグをクリック
           await firstTag.click();
-          await page.waitForTimeout(500);
+          
+          // ページ遷移またはフィルタリング適用を待つ
+          await page.waitForFunction(
+            () => {
+              const url = window.location.href;
+              return url.includes('tag') || url.includes('filter') || url.includes('search');
+            },
+            { timeout: 5000 }
+          );
           
           // 検索ページへの遷移またはフィルタリングが行われることを確認
           const currentUrl = page.url();
