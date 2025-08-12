@@ -31,7 +31,12 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     { url: 'https://techblog.yahoo.co.jp/index.xml', name: 'Yahoo! JAPAN' },
     { url: 'https://engineering.mercari.com/blog/feed.xml', name: 'メルカリ' },
     { url: 'https://developers.cyberagent.co.jp/blog/feed/', name: 'サイバーエージェント' },
-    { url: 'https://techblog.lycorp.co.jp/ja/feed/index.xml', name: 'LINEヤフー' }
+    { url: 'https://techblog.lycorp.co.jp/ja/feed/index.xml', name: 'LINEヤフー' },
+    // 新規追加（2025年8月）
+    { url: 'https://developers.gmo.jp/feed/', name: 'GMO' },
+    { url: 'https://tech.smarthr.jp/feed', name: 'SmartHR' },
+    { url: 'https://developers.freee.co.jp/feed', name: 'freee' },
+    { url: 'https://techlife.cookpad.com/feed', name: 'クックパッド' }
   ];
 
   constructor(source: Source) {
