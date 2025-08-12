@@ -91,7 +91,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         sourceColor.gradient
       )} />
       
-      <CardHeader className="pb-0.5 px-2 sm:px-3">
+      <CardHeader className="pb-1 px-2.5 sm:px-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
             {isNew && (
@@ -101,7 +101,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 <span className="sm:hidden">新</span>
               </Badge>
             )}
-            <h3 className="text-sm font-bold leading-tight line-clamp-2 text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            <h3 className="text-base font-bold leading-tight line-clamp-2 text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               {article.title}
             </h3>
           </div>
@@ -123,7 +123,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 py-1.5 px-2 sm:px-3 space-y-1.5">
+      <CardContent className="flex-1 py-2 px-2.5 sm:px-3 space-y-2">
         {article.summary && (
           <div className="relative group/summary">
             <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-purple-400 rounded-full"></div>
