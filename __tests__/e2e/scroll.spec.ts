@@ -29,8 +29,9 @@ test.describe('スクロール機能のテスト', () => {
     // まずトップページに移動
     await page.goto('/');
     
-    // 最初の記事リンクをクリック
-    const firstArticle = page.locator('article a').first();
+    // 最初の記事リンクをクリック（divタグのクリック可能要素）
+    const firstArticle = page.locator('div.cursor-pointer').first();
+    await firstArticle.waitFor({ state: 'visible', timeout: 10000 });
     await firstArticle.click();
     
     // 詳細ページが読み込まれるまで待機
