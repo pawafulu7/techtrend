@@ -6,15 +6,23 @@
 import * as cheerio from 'cheerio';
 
 /**
+ * エンリッチされたコンテンツのデータ構造
+ */
+export interface EnrichedContent {
+  content: string | null;
+  thumbnail?: string | null;
+}
+
+/**
  * コンテンツエンリッチャーのインターフェース
  */
 export interface IContentEnricher {
   /**
-   * URLから記事の本文を取得
+   * URLから記事の本文とサムネイルを取得
    * @param url 記事のURL
-   * @returns 本文テキスト。取得失敗時はnull
+   * @returns エンリッチされたコンテンツ。取得失敗時はnull
    */
-  enrich(url: string): Promise<string | null>;
+  enrich(url: string): Promise<EnrichedContent | null>;
 
   /**
    * このエンリッチャーが処理可能なURLかを判定
@@ -32,7 +40,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
   protected maxRetries = 3;
   protected retryDelay = 1000; // 1秒
 
-  abstract enrich(url: string): Promise<string | null>;
+  abstract enrich(url: string): Promise<EnrichedContent | null>;
   abstract canHandle(url: string): boolean;
 
   /**
@@ -136,5 +144,46 @@ export abstract class BaseContentEnricher implements IContentEnricher {
    */
   protected isContentSufficient(content: string, minLength: number = 100): boolean {
     return content && content.length >= minLength;
+  }
+
+  /**
+   * OGイメージやサムネイルURLを取得
+   */
+  protected extractThumbnail(html: string): string | null {
+    const $ = cheerio.load(html);
+    
+    // OGイメージを優先
+    const ogImage = $('meta[property="og:image"]').attr('content');
+    if (ogImage) {
+      return ogImage;
+    }
+    
+    // Twitter用画像
+    const twitterImage = $('meta[name="twitter:image"]').attr('content');
+    if (twitterImage) {
+      return twitterImage;
+    }
+    
+    // JSON-LDからサムネイルを取得
+    const jsonLdScript = $('script[type="application/ld+json"]').html();
+    if (jsonLdScript) {
+      try {
+        const data = JSON.parse(jsonLdScript);
+        if (data.thumbnailUrl) {
+          return data.thumbnailUrl;
+        }
+        if (data.image) {
+          if (typeof data.image === 'string') {
+            return data.image;
+          } else if (data.image.url) {
+            return data.image.url;
+          }
+        }
+      } catch (error) {
+        // JSON解析エラーは無視
+      }
+    }
+    
+    return null;
   }
 }

@@ -3,7 +3,7 @@
  * freee開発者ブログ（https://developers.freee.co.jp/）のフルコンテンツ取得
  */
 
-import { BaseContentEnricher } from './base';
+import { BaseContentEnricher, EnrichedContent } from './base';
 
 export class FreeeContentEnricher extends BaseContentEnricher {
   /**
@@ -14,13 +14,16 @@ export class FreeeContentEnricher extends BaseContentEnricher {
   }
 
   /**
-   * freeeの記事ページから本文を取得
+   * freeeの記事ページから本文とサムネイルを取得
    */
-  async enrich(url: string): Promise<string | null> {
+  async enrich(url: string): Promise<EnrichedContent | null> {
     try {
       console.log(`[FreeeEnricher] Fetching content from: ${url}`);
       
       const html = await this.fetchWithRetry(url);
+      
+      // サムネイルを取得
+      const thumbnail = this.extractThumbnail(html);
       
       // freeeのブログ構造に合わせたセレクタ
       const selectors = [
@@ -46,14 +49,14 @@ export class FreeeContentEnricher extends BaseContentEnricher {
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
           console.log(`[FreeeEnricher] Using fallback content (${fallbackContent.length} chars)`);
-          return fallbackContent;
+          return { content: fallbackContent, thumbnail };
         }
         
         return null;
       }
       
       console.log(`[FreeeEnricher] Successfully enriched: ${content.length} characters`);
-      return content;
+      return { content, thumbnail };
       
     } catch (error) {
       console.error(`[FreeeEnricher] Failed to enrich ${url}:`, error);

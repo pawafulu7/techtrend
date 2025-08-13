@@ -18,19 +18,27 @@ export function ArticleCard({ article }: ArticleCardProps) {
   const [votes, setVotes] = useState(article.userVotes || 0);
   const [hasVoted, setHasVoted] = useState(false);
   
-  // Speaker Deck判定
-  const isSpeakerDeck = article.source.name === 'Speaker Deck';
+  // サムネイル表示判定ロジック
+  const shouldShowThumbnail = (): boolean => {
+    // Speaker Deckは常にサムネイル表示（既存の動作）
+    if (article.source.name === 'Speaker Deck') {
+      return !!article.thumbnail;
+    }
+    
+    // 薄いコンテンツ（300文字未満）でサムネイルがある場合
+    if (article.content && article.content.length < 300 && article.thumbnail) {
+      return true;
+    }
+    
+    // 品質スコアが低い（30未満）でサムネイルがある場合
+    if (article.qualityScore && article.qualityScore < 30 && article.thumbnail) {
+      return true;
+    }
+    
+    return false;
+  };
   
-  // デバッグ用
-  if (isSpeakerDeck) {
-    console.log('Speaker Deck記事:', {
-      title: article.title,
-      sourceName: article.source.name,
-      thumbnail: article.thumbnail,
-      isSpeakerDeck,
-      condition: isSpeakerDeck && article.thumbnail
-    });
-  }
+  const showThumbnail = shouldShowThumbnail();
   
   const searchParams = useSearchParams();
   const domain = getDomain(article.url);
@@ -131,8 +139,8 @@ export function ArticleCard({ article }: ArticleCardProps) {
       </CardHeader>
 
       <CardContent className="flex-1 py-2 px-2.5 sm:px-3 space-y-2">
-        {/* Speaker Deckの場合はサムネイル表示、それ以外は要約表示 */}
-        {isSpeakerDeck && article.thumbnail ? (
+        {/* サムネイル表示条件に基づいて表示を切り替え */}
+        {showThumbnail ? (
           <div className="relative aspect-video overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
             <img 
               src={article.thumbnail} 
@@ -146,7 +154,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 // 代替テキストを表示
                 const fallback = document.createElement('div');
                 fallback.className = 'flex items-center justify-center h-full text-gray-400 text-sm';
-                fallback.textContent = 'プレゼンテーション画像';
+                fallback.textContent = '画像を読み込めません';
                 target.parentElement?.appendChild(fallback);
               }}
             />
