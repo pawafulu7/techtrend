@@ -12,9 +12,9 @@
 export function enforceLength(text: string, min: number, max: number): string {
   if (!text) return text;
   
-  // 200文字を超える場合は最適化処理を適用
+  // 最大文字数を超える場合のみ最適化処理を適用
   if (text.length > max) {
-    console.warn(`要約が長すぎる: ${text.length}文字（最大${max}文字）`);
+    console.log(`要約を最適化中: ${text.length}文字 → 最大${max}文字`);
     
     // 方法1: 句点で分割して、重要度の高い文を優先的に残す
     const sentences = text.split('。').filter(s => s.trim());
@@ -94,7 +94,7 @@ export function enforceLength(text: string, min: number, max: number): string {
       // それでも長い場合は末尾を調整
       if (result.length > max) {
         const lastPeriod = result.lastIndexOf('。', max - 1);
-        if (lastPeriod > min) {
+        if (lastPeriod > 0) {
           result = result.substring(0, lastPeriod + 1);
         }
       }
@@ -103,11 +103,8 @@ export function enforceLength(text: string, min: number, max: number): string {
     return result;
   }
   
-  // 最小文字数のチェック
-  if (text.length < min) {
-    console.warn(`文字数が最小値未満: ${text.length}文字（最小${min}文字）`);
-  }
-  
+  // 最小文字数チェックは削除（内容のでっち上げを防ぐため）
+  // そのまま返す
   return text;
 }
 
@@ -195,9 +192,8 @@ export function postProcessSummaries(
   detailedSummary: string
 ): { summary: string; detailedSummary: string } {
   // 一覧要約の処理
-  // プロンプトで180-200文字を指示し、200文字を超える場合は最適化
-  // 重要な情報を優先的に残しながら200文字以内に調整
-  const processedSummary = enforceLength(summary, 180, 200);
+  // 最大200文字。内容に応じて適切な長さで（最小制限なし）
+  const processedSummary = enforceLength(summary, 0, 200);
   
   // 詳細要約の処理
   let processedDetailedSummary = detailedSummary;
@@ -208,16 +204,11 @@ export function postProcessSummaries(
   // 2. 各項目の文字数を調整
   processedDetailedSummary = adjustDetailedSummaryItems(processedDetailedSummary);
   
-  // 3. 詳細要約の文字数チェック（1000文字以上の場合のみ警告＆制限）
+  // 3. 詳細要約の最大文字数チェック（1000文字まで許容）
   if (processedDetailedSummary.length > 1000) {
-    console.warn(`詳細要約が極端に長い: ${processedDetailedSummary.length}文字（推奨600-800文字）`);
-    // 1000文字を超える場合は600文字にカット
-    processedDetailedSummary = enforceLength(processedDetailedSummary, 500, 600);
-  } else if (processedDetailedSummary.length < 500) {
-    // 500文字未満の場合は警告のみ
-    console.warn(`詳細要約が短い: ${processedDetailedSummary.length}文字（推奨600-800文字）`);
+    console.log(`詳細要約を最適化中: ${processedDetailedSummary.length}文字 → 最大1000文字`);
+    processedDetailedSummary = enforceLength(processedDetailedSummary, 0, 1000);
   }
-  // 500-1000文字の範囲はそのまま許容（800文字程度が理想的）
   
   return {
     summary: processedSummary,
