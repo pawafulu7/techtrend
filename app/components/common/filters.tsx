@@ -44,10 +44,10 @@ export function Filters({ sources, tags }: FiltersProps) {
   
   const handleSelectAll = () => {
     if (selectedSources.length === sources.length) {
-      // Deselect all
+      // Only deselect all when everything is selected
       applySourceFilter([]);
     } else {
-      // Select all
+      // Always select all when partially selected or nothing selected
       applySourceFilter(sources.map(s => s.id));
     }
   };
