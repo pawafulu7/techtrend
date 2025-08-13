@@ -101,6 +101,13 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
               continue;
             }
 
+            // イベント記事の除外（環境変数で制御）
+            const excludeEvents = process.env.EXCLUDE_EVENT_ARTICLES !== 'false';
+            if (excludeEvents && this.isEventArticle(item.title, item.link)) {
+              console.log(`[Corporate Tech Blog - ${feedInfo.name}] イベント記事を除外: ${item.title}`);
+              continue;
+            }
+
             // タグを抽出（企業名と技術タグ）
             const tags = this.extractTags(item, feedInfo.name);
             
@@ -196,6 +203,46 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
   private containsJapanese(text: string): boolean {
     // ひらがな、カタカナ、漢字のいずれかを含むかチェック
     return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text);
+  }
+
+  /**
+   * イベント記事かどうかを判定
+   */
+  private isEventArticle(title: string, url: string): boolean {
+    // 除外対象のイベント系キーワード
+    const eventKeywords = [
+      '登壇', 'イベント', 'セミナー', '勉強会',
+      'カンファレンス', 'meetup', '参加募集', '開催しました',
+      '開催します', '参加者募集'
+    ];
+    
+    // 除外しないキーワード（技術的価値がある可能性）
+    const excludeExceptions = ['振り返り', 'レポート', '技術解説', 'まとめ'];
+    
+    const titleLower = title.toLowerCase();
+    
+    // 例外チェック
+    const hasException = excludeExceptions.some(exception => 
+      title.includes(exception)
+    );
+    
+    if (hasException) {
+      return false; // 技術レポートは除外しない
+    }
+    
+    // イベントキーワードチェック
+    const hasEventKeyword = eventKeywords.some(keyword => 
+      title.includes(keyword) || titleLower.includes(keyword.toLowerCase())
+    );
+    
+    // URLパターンチェック
+    const hasEventUrl = /\/(event|seminar|meetup|conference)/i.test(url);
+    
+    // 未来の日付パターンチェック（例：2025/8/20）
+    const futureDatePattern = /20\d{2}\/\d{1,2}\/\d{1,2}/;
+    const hasFutureDate = futureDatePattern.test(title);
+    
+    return hasEventKeyword || hasEventUrl || hasFutureDate;
   }
 
   /**
