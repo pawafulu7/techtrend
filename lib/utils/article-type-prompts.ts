@@ -54,10 +54,19 @@ export const UNIFIED_PROMPT = IMPROVED_UNIFIED_PROMPT;
  * @returns 生成されたプロンプト
  */
 export function generateUnifiedPrompt(title: string, content: string): string {
+  // Gemini 1.5 Flashは100万トークンまで対応可能
+  // 100,000トークンを上限とする（全体の10%、十分な余裕）
+  // 日本語: 1文字 ≈ 0.3-0.5トークン → 200,000文字相当
+  // 英語/コード混在でも安全なように150,000文字を上限とする
+  const maxContentLength = 150000;
+  const truncatedContent = content.length > maxContentLength 
+    ? content.substring(0, maxContentLength) + '\n\n...[文字数制限により以下省略]'
+    : content;
+  
   return `${UNIFIED_PROMPT}
 
 タイトル: ${title}
-内容: ${content.substring(0, 4000)}
+内容: ${truncatedContent}
 `;
 }
 
