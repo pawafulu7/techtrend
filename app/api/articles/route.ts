@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
           title: true,
           url: true,
           summary: true,
+          thumbnail: true,  // thumbnailを追加
           publishedAt: true,
           qualityScore: true,
           bookmarks: true,
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
           createdAt: true,
           updatedAt: true,
           sourceId: true,
-          // Exclude: content, thumbnail, detailedSummary
+          // Exclude: content, detailedSummary
           source: {
             select: {
               id: true,
