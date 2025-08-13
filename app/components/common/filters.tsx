@@ -30,9 +30,10 @@ export function Filters({ sources, tags }: FiltersProps) {
       // Backward compatibility
       setSelectedSources([sourceIdParam]);
     } else {
-      setSelectedSources([]);
+      // No params means all sources are selected (default state)
+      setSelectedSources(sources.map(s => s.id));
     }
-  }, [searchParams]);
+  }, [searchParams, sources]);
 
   const handleSourceToggle = (sourceId: string) => {
     const newSelection = selectedSources.includes(sourceId)
