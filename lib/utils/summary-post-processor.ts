@@ -12,41 +12,102 @@
 export function enforceLength(text: string, min: number, max: number): string {
   if (!text) return text;
   
-  // 極端に長い場合のみ安全装置として処理（300文字以上）
-  // プロンプトで200文字前後を指示しているため、通常は不要
-  const safetyThreshold = 300;
-  
-  if (text.length > safetyThreshold) {
-    console.warn(`要約が極端に長い: ${text.length}文字（安全閾値${safetyThreshold}文字）`);
+  // 200文字を超える場合は最適化処理を適用
+  if (text.length > max) {
+    console.warn(`要約が長すぎる: ${text.length}文字（最大${max}文字）`);
     
-    // 句点で分割して文単位で削除
+    // 方法1: 句点で分割して、重要度の高い文を優先的に残す
     const sentences = text.split('。').filter(s => s.trim());
-    let result = '';
     
-    for (const sentence of sentences) {
-      const newResult = result ? `${result}。${sentence}` : sentence;
-      // maxではなくsafetyThresholdを使用
+    // 技術キーワードを含む文の重要度を評価
+    const scoreSentence = (sentence: string): number => {
+      let score = 0;
+      
+      // 技術的なキーワードを含む場合は高スコア
+      const techKeywords = ['実装', '機能', '改善', '解決', '最適化', '性能', 
+                           'API', 'フレームワーク', 'ライブラリ', '手法', 'アルゴリズム'];
+      techKeywords.forEach(keyword => {
+        if (sentence.includes(keyword)) score += 2;
+      });
+      
+      // 数値を含む場合（具体性が高い）
+      if (/\d/.test(sentence)) score += 1;
+      
+      // 文の位置（冒頭と末尾は重要）
+      const position = sentences.indexOf(sentence);
+      if (position === 0) score += 3; // 冒頭は最重要
+      if (position === sentences.length - 1) score += 2; // 結論部分も重要
+      
+      return score;
+    };
+    
+    // 文をスコア順にソート（位置も考慮）
+    const scoredSentences = sentences.map((sentence, index) => ({
+      sentence,
+      score: scoreSentence(sentence),
+      originalIndex: index
+    }));
+    
+    // 重要な文を選択して再構築
+    let result = '';
+    const selectedSentences: typeof scoredSentences = [];
+    
+    // まず冒頭の文は必ず含める
+    if (scoredSentences.length > 0) {
+      selectedSentences.push(scoredSentences[0]);
+      result = scoredSentences[0].sentence;
+    }
+    
+    // 残りの文を重要度順に追加
+    const remainingSentences = scoredSentences.slice(1).sort((a, b) => b.score - a.score);
+    
+    for (const item of remainingSentences) {
+      const newResult = result + '。' + item.sentence;
       if (newResult.length + 1 <= max) {
+        selectedSentences.push(item);
         result = newResult;
-      } else {
-        break;
       }
     }
+    
+    // 元の順序に並び替えて自然な文章に
+    selectedSentences.sort((a, b) => a.originalIndex - b.originalIndex);
+    result = selectedSentences.map(item => item.sentence).join('。');
     
     // 句点を追加
     if (result && !result.endsWith('。')) {
       result += '。';
     }
     
+    // まだ長い場合は冗長な表現を削除
+    if (result.length > max) {
+      result = result
+        .replace(/について解説します/g, '')
+        .replace(/を紹介します/g, '')
+        .replace(/することができます/g, 'できる')
+        .replace(/することが可能/g, '可能')
+        .replace(/また、/g, '')
+        .replace(/さらに、/g, '')
+        .replace(/そして、/g, '')
+        .replace(/つまり、/g, '')
+        .replace(/なお、/g, '');
+        
+      // それでも長い場合は末尾を調整
+      if (result.length > max) {
+        const lastPeriod = result.lastIndexOf('。', max - 1);
+        if (lastPeriod > min) {
+          result = result.substring(0, lastPeriod + 1);
+        }
+      }
+    }
+    
     return result;
   }
   
-  // 最小文字数のチェックは警告のみ（内容の追加はしない）
+  // 最小文字数のチェック
   if (text.length < min) {
     console.warn(`文字数が最小値未満: ${text.length}文字（最小${min}文字）`);
   }
   
-  // 通常はそのまま返す（プロンプトの指示を信頼）
   return text;
 }
 
@@ -134,9 +195,9 @@ export function postProcessSummaries(
   detailedSummary: string
 ): { summary: string; detailedSummary: string } {
   // 一覧要約の処理
-  // プロンプトで200文字前後を指示しているため、基本的には生成結果を信頼
-  // 300文字以上の極端に長い場合のみ安全装置として制限（220文字まで）
-  const processedSummary = enforceLength(summary, 180, 220);
+  // プロンプトで180-200文字を指示し、200文字を超える場合は最適化
+  // 重要な情報を優先的に残しながら200文字以内に調整
+  const processedSummary = enforceLength(summary, 180, 200);
   
   // 詳細要約の処理
   let processedDetailedSummary = detailedSummary;
