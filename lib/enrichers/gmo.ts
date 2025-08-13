@@ -3,7 +3,7 @@
  * GMO開発者ブログ（https://developers.gmo.jp/）のフルコンテンツ取得
  */
 
-import { BaseContentEnricher } from './base';
+import { BaseContentEnricher, EnrichedContent } from './base';
 
 export class GMOContentEnricher extends BaseContentEnricher {
   /**
@@ -14,13 +14,16 @@ export class GMOContentEnricher extends BaseContentEnricher {
   }
 
   /**
-   * GMOの記事ページから本文を取得
+   * GMOの記事ページから本文とサムネイルを取得
    */
-  async enrich(url: string): Promise<string | null> {
+  async enrich(url: string): Promise<EnrichedContent | null> {
     try {
       console.log(`[GMOEnricher] Fetching content from: ${url}`);
       
       const html = await this.fetchWithRetry(url);
+      
+      // サムネイルを取得
+      const thumbnail = this.extractThumbnail(html);
       
       // GMOはWordPressベースなので、一般的なWordPressセレクタを使用
       const selectors = [
@@ -43,14 +46,14 @@ export class GMOContentEnricher extends BaseContentEnricher {
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
           console.log(`[GMOEnricher] Using fallback content (${fallbackContent.length} chars)`);
-          return fallbackContent;
+          return { content: fallbackContent, thumbnail };
         }
         
         return null;
       }
       
       console.log(`[GMOEnricher] Successfully enriched: ${content.length} characters`);
-      return content;
+      return { content, thumbnail };
       
     } catch (error) {
       console.error(`[GMOEnricher] Failed to enrich ${url}:`, error);

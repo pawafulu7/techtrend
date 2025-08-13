@@ -128,15 +128,17 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             }
 
             // コンテンツが不足している場合、エンリッチャーで補完
+            let thumbnail: string | undefined;
             if (content && content.length < 500) {
               const enricher = enricherFactory.getEnricher(item.link);
               if (enricher) {
                 try {
                   console.log(`[Corporate Tech Blog - ${feedInfo.name}] Enriching content for: ${item.title}`);
-                  const enrichedContent = await enricher.enrich(item.link);
-                  if (enrichedContent && enrichedContent.length > content.length) {
-                    console.log(`[Corporate Tech Blog - ${feedInfo.name}] Content enriched: ${content.length} -> ${enrichedContent.length} chars`);
-                    content = enrichedContent;
+                  const enrichedData = await enricher.enrich(item.link);
+                  if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
+                    console.log(`[Corporate Tech Blog - ${feedInfo.name}] Content enriched: ${content.length} -> ${enrichedData.content.length} chars`);
+                    content = enrichedData.content;
+                    thumbnail = enrichedData.thumbnail || undefined;
                   }
                 } catch (error) {
                   console.error(`[Corporate Tech Blog - ${feedInfo.name}] Enrichment failed:`, error);
@@ -150,6 +152,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
               url: this.normalizeUrl(item.link),
               summary: undefined, // 要約は後で日本語で生成
               content: this.sanitizeText(content),
+              thumbnail,
               publishedAt,
               sourceId: this.source.id,
               tagNames: finalTags,
