@@ -43,7 +43,14 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
 
   // Build where clause
   const where: Prisma.ArticleWhereInput = {};
-  if (params.sourceId) {
+  // Support multiple sources selection
+  if (params.sources) {
+    const sourceIds = params.sources.split(',').filter(id => id.trim());
+    if (sourceIds.length > 0) {
+      where.sourceId = { in: sourceIds };
+    }
+  } else if (params.sourceId) {
+    // Backward compatibility with single sourceId
     where.sourceId = params.sourceId;
   }
   

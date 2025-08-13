@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
     const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
     
     // Parse filters
-    const sourceId = searchParams.get('sourceId');
+    const sources = searchParams.get('sources'); // Multiple sources support
+    const sourceId = searchParams.get('sourceId'); // Backward compatibility
     const tag = searchParams.get('tag');
     const search = searchParams.get('search');
 
@@ -46,13 +47,18 @@ export async function GET(request: NextRequest) {
         .sort()
         .join(',') : 'none';
     
+    // Normalize sources for cache key (sort to ensure consistent key regardless of order)
+    const normalizedSources = sources ? 
+      sources.split(',').filter(id => id.trim()).sort().join(',') : 
+      sourceId || 'all';
+    
     const cacheKey = cache.generateCacheKey('articles', {
       params: {
         page: page.toString(),
         limit: limit.toString(),
         sortBy: finalSortBy,
         sortOrder,
-        sourceId: sourceId || 'all',
+        sources: normalizedSources, // Use normalized sources
         tag: tag || 'all',
         search: normalizedSearch
       }
@@ -72,7 +78,14 @@ export async function GET(request: NextRequest) {
       result = await (async () => {
         // Build where clause
       const where: ArticleWhereInput = {};
-      if (sourceId) {
+      // Support multiple sources selection
+      if (sources) {
+        const sourceIds = sources.split(',').filter(id => id.trim());
+        if (sourceIds.length > 0) {
+          where.sourceId = { in: sourceIds };
+        }
+      } else if (sourceId) {
+        // Backward compatibility with single sourceId
         where.sourceId = sourceId;
       }
       if (tag) {
