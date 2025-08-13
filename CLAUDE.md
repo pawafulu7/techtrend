@@ -221,6 +221,16 @@ PM2設定: `ecosystem.config.js`
 
 削除スクリプト: `scripts/delete-low-quality-articles.ts`
 
+### 6. イベント記事除外機能
+
+**Corporate Tech Blogのイベント記事フィルタリング:**
+- 環境変数: `EXCLUDE_EVENT_ARTICLES` (デフォルト: false)
+- 除外対象: 登壇、イベント、セミナー、勉強会、カンファレンス、meetup、参加募集などを含む記事
+- 例外: 「振り返り」「レポート」「技術解説」「まとめ」を含む記事は除外しない
+- 設定方法: `.env`ファイルに `EXCLUDE_EVENT_ARTICLES=true` を追加
+
+動作確認: `EXCLUDE_EVENT_ARTICLES=true npx tsx scripts/test-event-filter.ts`
+
 ## よくある問題と対処法
 
 ### 問題1: 要約が英語になる / 本文がそのまま表示される
