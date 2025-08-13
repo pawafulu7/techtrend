@@ -20,6 +20,18 @@ export function ArticleCard({ article }: ArticleCardProps) {
   
   // Speaker Deck判定
   const isSpeakerDeck = article.source.name === 'Speaker Deck';
+  
+  // デバッグ用
+  if (isSpeakerDeck) {
+    console.log('Speaker Deck記事:', {
+      title: article.title,
+      sourceName: article.source.name,
+      thumbnail: article.thumbnail,
+      isSpeakerDeck,
+      condition: isSpeakerDeck && article.thumbnail
+    });
+  }
+  
   const searchParams = useSearchParams();
   const domain = getDomain(article.url);
   const sourceColor = getSourceColor(article.source.name);

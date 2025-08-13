@@ -109,12 +109,13 @@ async function getArticles(params: Awaited<PageProps['searchParams']>) {
         title: true,
         url: true,
         summary: true,
+        thumbnail: true,
         publishedAt: true,
         qualityScore: true,
         bookmarks: true,
         userVotes: true,
         difficulty: true,
-        // Exclude: content, thumbnail, detailedSummary
+        // Exclude: content, detailedSummary
         source: {
           select: {
             id: true,
