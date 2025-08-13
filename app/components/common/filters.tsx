@@ -43,13 +43,13 @@ export function Filters({ sources, tags }: FiltersProps) {
   };
   
   const handleSelectAll = () => {
-    if (selectedSources.length === sources.length) {
-      // Only deselect all when everything is selected
-      applySourceFilter([]);
-    } else {
-      // Always select all when partially selected or nothing selected
-      applySourceFilter(sources.map(s => s.id));
-    }
+    // Always select all sources
+    applySourceFilter(sources.map(s => s.id));
+  };
+  
+  const handleDeselectAll = () => {
+    // Clear all selections
+    applySourceFilter([]);
   };
   
   const applySourceFilter = (sourceIds: string[]) => {
@@ -91,29 +91,26 @@ export function Filters({ sources, tags }: FiltersProps) {
           </span>
         </div>
         <div className="flex flex-col gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSelectAll}
-            className="h-7 text-xs justify-start mb-1"
-          >
-            {selectedSources.length === sources.length ? (
-              <>
-                <Square className="w-3 h-3 mr-1" />
-                すべて解除
-              </>
-            ) : selectedSources.length === 0 ? (
-              <>
-                <CheckSquare className="w-3 h-3 mr-1" />
-                すべて選択
-              </>
-            ) : (
-              <>
-                <CheckSquare className="w-3 h-3 mr-1" />
-                すべて選択
-              </>
-            )}
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSelectAll}
+              className="h-7 text-xs justify-start flex-1"
+            >
+              <CheckSquare className="w-3 h-3 mr-1" />
+              すべて選択
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeselectAll}
+              className="h-7 text-xs justify-start flex-1"
+            >
+              <Square className="w-3 h-3 mr-1" />
+              すべて解除
+            </Button>
+          </div>
           <div className="border-t pt-1">
             {sources.map((source) => (
               <div
