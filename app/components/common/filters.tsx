@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,6 +17,7 @@ export function Filters({ sources, tags }: FiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const isMounted = useRef(false);
   const currentTag = searchParams.get('tag');
   
   // Initialize selected sources from URL params
@@ -29,10 +30,13 @@ export function Filters({ sources, tags }: FiltersProps) {
     } else if (sourceIdParam) {
       // Backward compatibility
       setSelectedSources([sourceIdParam]);
-    } else {
-      // No params means all sources are selected (default state)
+    } else if (!isMounted.current) {
+      // Only set default (all selected) on initial mount
       setSelectedSources(sources.map(s => s.id));
     }
+    // Otherwise keep the current state (important for "deselect all" to work)
+    
+    isMounted.current = true;
   }, [searchParams, sources]);
 
   const handleSourceToggle = (sourceId: string) => {
