@@ -17,6 +17,9 @@ import { ShareButton } from '@/app/components/article/share-button';
 export function ArticleCard({ article }: ArticleCardProps) {
   const [votes, setVotes] = useState(article.userVotes || 0);
   const [hasVoted, setHasVoted] = useState(false);
+  
+  // Speaker Deck判定
+  const isSpeakerDeck = article.source.name === 'Speaker Deck';
   const searchParams = useSearchParams();
   const domain = getDomain(article.url);
   const sourceColor = getSourceColor(article.source.name);
@@ -116,14 +119,34 @@ export function ArticleCard({ article }: ArticleCardProps) {
       </CardHeader>
 
       <CardContent className="flex-1 py-2 px-2.5 sm:px-3 space-y-2">
-        {article.summary && (
+        {/* Speaker Deckの場合はサムネイル表示、それ以外は要約表示 */}
+        {isSpeakerDeck && article.thumbnail ? (
+          <div className="relative aspect-video overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
+            <img 
+              src={article.thumbnail} 
+              alt={article.title}
+              loading="lazy"
+              className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                // フォールバック処理
+                const target = e.currentTarget;
+                target.style.display = 'none';
+                // 代替テキストを表示
+                const fallback = document.createElement('div');
+                fallback.className = 'flex items-center justify-center h-full text-gray-400 text-sm';
+                fallback.textContent = 'プレゼンテーション画像';
+                target.parentElement?.appendChild(fallback);
+              }}
+            />
+          </div>
+        ) : article.summary ? (
           <div className="relative group/summary">
             <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-300 to-purple-300 rounded-full opacity-50"></div>
             <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed pl-3 group-hover/summary:text-gray-700 dark:group-hover/summary:text-gray-200 transition-colors">
               {article.summary}
             </p>
           </div>
-        )}
+        ) : null}
         
         {article.tags && article.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">

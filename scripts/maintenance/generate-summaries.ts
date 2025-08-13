@@ -518,6 +518,12 @@ async function generateSummaries(): Promise<GenerateResult> {
                 break; // このarticleの処理をスキップ
               }
               
+              // Speaker Deck記事はスキップ（サムネイル表示のみ）
+              if (article.source.name === 'Speaker Deck') {
+                console.log(`  ⏭️ スキップ: ${article.title} (Speaker Deck記事はサムネイル表示のみ)`);
+                break; // このarticleの処理をスキップ
+              }
+              
               // 既に日本語の要約がある場合はスキップ（Gemini APIを呼ばない）
               const existingSummary = article.summary || '';
               const hasJapaneseSummary = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(existingSummary);

@@ -64,6 +64,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   const publishedDate = new Date(article.publishedAt);
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
+  
+  // Speaker Deck判定
+  const isSpeakerDeck = article.source.name === 'Speaker Deck';
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -141,7 +144,21 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {article.detailedSummary ? (
+              {/* Speaker Deckの場合はサムネイル表示、それ以外は詳細要約表示 */}
+              {isSpeakerDeck && article.thumbnail ? (
+                <div className="relative aspect-video overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+                  <img 
+                    src={article.thumbnail} 
+                    alt={article.title}
+                    className="object-contain w-full h-full"
+                  />
+                  <div className="mt-4 p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      このプレゼンテーションの詳細は元記事でご確認ください。
+                    </p>
+                  </div>
+                </div>
+              ) : article.detailedSummary ? (
                 <DetailedSummaryDisplay 
                   articleId={article.id} 
                   detailedSummary={article.detailedSummary}
