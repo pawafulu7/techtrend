@@ -50,6 +50,9 @@ export class AWSFetcher extends BaseFetcher {
     // 30日前の日付を計算
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    // 現在日時を取得（未来日付フィルタ用）
+    const now = new Date();
 
     // 各RSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
@@ -91,8 +94,11 @@ export class AWSFetcher extends BaseFetcher {
             const publishedAt = item.isoDate ? new Date(item.isoDate) :
                           item.pubDate ? parseRSSDate(item.pubDate) : new Date();
             
-            // 30日以内の記事のみ処理
-            if (publishedAt < thirtyDaysAgo) {
+            // 30日以内かつ未来でない記事のみ処理
+            if (publishedAt < thirtyDaysAgo || publishedAt > now) {
+              if (publishedAt > now) {
+                console.log(`[AWS - ${feedInfo.name}] 未来日付の記事をスキップ: ${item.title} (日付: ${publishedAt.toISOString()})`);
+              }
               continue;
             }
 
