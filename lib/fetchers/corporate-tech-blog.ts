@@ -152,24 +152,30 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             // コンテンツの取得（優先順位: content > contentSnippet > description）
             let content = item.content || item.contentSnippet || item.description || '';
 
-            // コンテンツが不足している場合、エンリッチャーで補完
+            // コンテンツエンリッチメント（2000文字未満の場合は常に試みる）
             let thumbnail: string | undefined;
-            if (content && content.length < 500) {
+            if (content && content.length < 2000) {
               const enricher = enricherFactory.getEnricher(item.link);
               if (enricher) {
                 try {
-                  console.log(`[Corporate Tech Blog - ${feedInfo.name}] Enriching content for: ${item.title}`);
+                  console.log(`[Corporate Tech Blog - ${feedInfo.name}] Enriching content for: ${item.title} (current: ${content.length} chars)`);
                   const enrichedData = await enricher.enrich(item.link);
                   if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-                    console.log(`[Corporate Tech Blog - ${feedInfo.name}] Content enriched: ${content.length} -> ${enrichedData.content.length} chars`);
+                    console.log(`[Corporate Tech Blog - ${feedInfo.name}] Content successfully enriched: ${content.length} -> ${enrichedData.content.length} chars`);
                     content = enrichedData.content;
                     thumbnail = enrichedData.thumbnail || undefined;
+                  } else {
+                    console.log(`[Corporate Tech Blog - ${feedInfo.name}] Enrichment did not improve content length`);
                   }
                 } catch (error) {
                   console.error(`[Corporate Tech Blog - ${feedInfo.name}] Enrichment failed:`, error);
                   // エンリッチメント失敗時は元のコンテンツを使用
                 }
+              } else {
+                console.log(`[Corporate Tech Blog - ${feedInfo.name}] No enricher available for this URL pattern`);
               }
+            } else if (content && content.length >= 2000) {
+              console.log(`[Corporate Tech Blog - ${feedInfo.name}] Content already sufficient (${content.length} chars), skipping enrichment`);
             }
 
             const article: CreateArticleInput = {
