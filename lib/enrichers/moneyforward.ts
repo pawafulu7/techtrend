@@ -16,27 +16,29 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.log(`[MoneyForward Enricher] Fetching content from: ${url}`);
+      console.log(`[MoneyForward Enricher] Starting enrichment for: ${url}`);
       
       const html = await this.fetchWithRetry(url);
       
       // サムネイルを取得
       const thumbnail = this.extractThumbnail(html);
       
-      // マネーフォワードのブログ記事構造に対応したセレクタ
+      // マネーフォワードのブログ記事構造に対応したセレクタ（優先順位順）
       const selectors = [
-        // はてなブログ系のセレクタ
+        // はてなブログPro専用のセレクタ（最優先）
         '.entry-content',
+        'div.entry-content',
         '.entry-body',
         'div.p-entry__body',
         '.hatenablog-entry',
         
-        // 一般的な記事セレクタ
+        // 記事本文のセレクタ
         'article .content',
         '.article-body',
         '.article-content',
         '.post-content',
         '.post-body',
+        'article.entry',
         'main article',
         'article',
         '.post',
@@ -45,21 +47,27 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
       
       const content = this.sanitizeContent(html, selectors);
       
-      // コンテンツが取得できたか確認（500文字以上）
-      if (!this.isContentSufficient(content, 500)) {
-        console.warn(`[MoneyForward Enricher] Content too short (${content.length} chars) for ${url}`);
+      // コンテンツ取得結果のログ
+      if (content && content.length > 0) {
+        console.log(`[MoneyForward Enricher] Content extracted: ${content.length} characters`);
         
-        // コンテンツが不十分でもサムネイルがあれば返す
+        // 最小限のコンテンツチェック（200文字以上あれば有効とする）
+        if (content.length < 200) {
+          console.warn(`[MoneyForward Enricher] Content seems too short (${content.length} chars), but returning anyway`);
+        }
+        
+        return { content, thumbnail };
+      } else {
+        console.error(`[MoneyForward Enricher] No content could be extracted from ${url}`);
+        
+        // コンテンツが取得できなくてもサムネイルがあれば返す
         if (thumbnail) {
-          console.log(`[MoneyForward Enricher] Content insufficient but thumbnail found`);
-          return { content: content || null, thumbnail };
+          console.log(`[MoneyForward Enricher] No content but thumbnail found`);
+          return { content: null, thumbnail };
         }
         
         return null;
       }
-      
-      console.log(`[MoneyForward Enricher] Successfully enriched: ${content.length} characters`);
-      return { content, thumbnail };
       
     } catch (error) {
       console.error(`[MoneyForward Enricher] Failed to enrich ${url}:`, error);
