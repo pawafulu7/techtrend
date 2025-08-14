@@ -64,15 +64,40 @@ export class UnifiedSummaryService {
       throw new Error('SKIP_GENERATION: はてなブックマーク経由の外部サイト記事でコンテンツ不足のため、要約生成をスキップします');
     }
     
+    // 500文字以下の記事は詳細要約をスキップし、要約のみ生成
+    const skipDetailedSummary = content.length <= 500;
+    
     let lastError: Error | null = null;
     
     for (let attempt = 1; attempt <= opts.maxRetries!; attempt++) {
       try {
-        // プロンプト生成
-        const prompt = generateUnifiedPrompt(title, processedContent);
+        // プロンプト生成（500文字以下の場合は要約のみ）
+        const prompt = skipDetailedSummary
+          ? this.generateSummaryOnlyPrompt(title, processedContent)
+          : generateUnifiedPrompt(title, processedContent);
         
         // API呼び出し
         const responseText = await this.callGeminiAPI(prompt);
+        
+        // 500文字以下の記事の場合は特別処理
+        if (skipDetailedSummary) {
+          // 要約のみのレスポンスをパース
+          const summaryMatch = responseText.match(/要約[:：]\s*([\s\S]+?)(?:\n\n|タグ[:：]|$)/);
+          const tagsMatch = responseText.match(/タグ[:：]\s*([\s\S]+?)(?:\n|$)/);
+          
+          const summary = summaryMatch ? summaryMatch[1].trim() : responseText.split('\n')[0].trim();
+          const tagsString = tagsMatch ? tagsMatch[1].trim() : '';
+          const tags = tagsString ? tagsString.split(/[,、]/).map(t => t.trim()).filter(Boolean) : [];
+          
+          return {
+            summary,
+            detailedSummary: '__SKIP_DETAILED_SUMMARY__',
+            tags,
+            articleType: UnifiedSummaryService.ARTICLE_TYPE,
+            summaryVersion: UnifiedSummaryService.SUMMARY_VERSION,
+            qualityScore: 100
+          };
+        }
         
         // レスポンスのパース
         const parsed = parseUnifiedResponse(responseText);
@@ -227,6 +252,29 @@ export class UnifiedSummaryService {
    */
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * 要約のみ生成するプロンプト（500文字以下の記事用）
+   */
+  private generateSummaryOnlyPrompt(title: string, content: string): string {
+    return `以下の短い技術記事を簡潔に要約してください。
+
+【ルール】
+1. 要約は100-150文字程度（最大200文字以内）
+2. 記事の内容を端的に表現
+3. 技術用語は略称を活用（JavaScript→JS、TypeScript→TS等）
+4. 必ず句点で終了
+5. 前置き文言を使わず、内容から始める
+
+要約:
+記事の主要内容を100-150文字で簡潔に説明。
+
+タグ:
+技術名を5個まで（カンマ区切り、一般的な略称を使用）
+
+タイトル: ${title}
+内容: ${content}`;
   }
 }
 

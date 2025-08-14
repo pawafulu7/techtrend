@@ -67,6 +67,10 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   
   // Speaker Deck判定
   const isSpeakerDeck = article.source.name === 'Speaker Deck';
+  
+  // 短い記事（500文字以下）の判定
+  const isShortArticle = article.detailedSummary === '__SKIP_DETAILED_SUMMARY__' || 
+                         (article.content && article.content.length <= 500);
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -144,8 +148,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {/* Speaker Deckの場合はサムネイル表示、それ以外は詳細要約表示 */}
-              {isSpeakerDeck && article.thumbnail ? (
+              {/* Speaker Deckまたは短い記事の場合はサムネイル表示、それ以外は詳細要約表示 */}
+              {(isSpeakerDeck || isShortArticle) && article.thumbnail ? (
                 <div className="relative aspect-video overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
                   <img 
                     src={article.thumbnail} 
@@ -154,11 +158,25 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   />
                   <div className="mt-4 p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">
-                      このプレゼンテーションの詳細は元記事でご確認ください。
+                      {isShortArticle && !isSpeakerDeck 
+                        ? 'この記事は内容が簡潔なため、要約のみを表示しています。'
+                        : 'このプレゼンテーションの詳細は元記事でご確認ください。'}
                     </p>
                   </div>
                 </div>
-              ) : article.detailedSummary ? (
+              ) : isShortArticle ? (
+                <div className="p-4 bg-muted rounded-lg space-y-2">
+                  <p className="text-sm font-medium">要約</p>
+                  <p className="text-sm text-muted-foreground">{article.summary || '詳細は元記事でご確認ください。'}</p>
+                  {article.content && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        ※ この記事は{article.content.length}文字の短い記事です
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : article.detailedSummary && article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__' ? (
                 <DetailedSummaryDisplay 
                   articleId={article.id} 
                   detailedSummary={article.detailedSummary}
