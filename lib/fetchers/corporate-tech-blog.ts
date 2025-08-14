@@ -42,7 +42,8 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     { url: 'https://techblog.recruit.co.jp/rss.xml', name: 'リクルート' },
     { url: 'https://developer.hatenastaff.com/feed', name: 'はてなDeveloper' },
     { url: 'https://tech.pepabo.com/feed.rss', name: 'GMOペパボ' },
-    { url: 'https://buildersbox.corp-sansan.com/feed', name: 'Sansan' }
+    { url: 'https://buildersbox.corp-sansan.com/feed', name: 'Sansan' },
+    { url: 'https://moneyforward-dev.jp/feed', name: 'マネーフォワード' }
   ];
 
   constructor(source: Source) {
@@ -265,7 +266,14 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
       'GMO': 'GMO',
       'SmartHR': 'SmartHR',
       'freee': 'freee',
-      'クックパッド': 'クックパッド'
+      'クックパッド': 'クックパッド',
+      // 新規追加（2025年8月14日）
+      'ZOZO': 'ZOZO',
+      'リクルート': 'リクルート',
+      'はてなDeveloper': 'はてなDeveloper',
+      'GMOペパボ': 'GMOペパボ',
+      'Sansan': 'Sansan',
+      'マネーフォワード': 'マネーフォワード'
     };
     
     return nameMap[name] || name;

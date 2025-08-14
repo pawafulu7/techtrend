@@ -20,6 +20,7 @@ import { RecruitContentEnricher } from './recruit';
 import { HatenaDeveloperContentEnricher } from './hatena-developer';
 import { PepaboContentEnricher } from './pepabo';
 import { SansanContentEnricher } from './sansan';
+import { MoneyForwardContentEnricher } from './moneyforward';
 
 export { IContentEnricher, BaseContentEnricher, EnrichedContent } from './base';
 export { GMOContentEnricher } from './gmo';
@@ -38,6 +39,7 @@ export { RecruitContentEnricher } from './recruit';
 export { HatenaDeveloperContentEnricher } from './hatena-developer';
 export { PepaboContentEnricher } from './pepabo';
 export { SansanContentEnricher } from './sansan';
+export { MoneyForwardContentEnricher } from './moneyforward';
 
 /**
  * エンリッチャーファクトリークラス
@@ -66,6 +68,7 @@ export class ContentEnricherFactory {
       new HatenaDeveloperContentEnricher(),
       new PepaboContentEnricher(),
       new SansanContentEnricher(),
+      new MoneyForwardContentEnricher(),
       new HatenaContentEnricher(),  // 最後（すべてのURLに対応するため）
       // 将来的に他の企業のエンリッチャーを追加
       // new CookpadContentEnricher(),
