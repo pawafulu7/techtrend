@@ -15,6 +15,12 @@ import { HuggingFaceEnricher } from './huggingface';
 import { InfoQEnricher } from './infoq';
 import { PublickeyEnricher } from './publickey';
 import { StackOverflowEnricher } from './stackoverflow';
+import { ZOZOContentEnricher } from './zozo';
+import { RecruitContentEnricher } from './recruit';
+import { HatenaDeveloperContentEnricher } from './hatena-developer';
+import { PepaboContentEnricher } from './pepabo';
+import { SansanContentEnricher } from './sansan';
+import { MoneyForwardContentEnricher } from './moneyforward';
 
 export { IContentEnricher, BaseContentEnricher, EnrichedContent } from './base';
 export { GMOContentEnricher } from './gmo';
@@ -28,6 +34,12 @@ export { HuggingFaceEnricher } from './huggingface';
 export { InfoQEnricher } from './infoq';
 export { PublickeyEnricher } from './publickey';
 export { StackOverflowEnricher } from './stackoverflow';
+export { ZOZOContentEnricher } from './zozo';
+export { RecruitContentEnricher } from './recruit';
+export { HatenaDeveloperContentEnricher } from './hatena-developer';
+export { PepaboContentEnricher } from './pepabo';
+export { SansanContentEnricher } from './sansan';
+export { MoneyForwardContentEnricher } from './moneyforward';
 
 /**
  * エンリッチャーファクトリークラス
@@ -50,6 +62,13 @@ export class ContentEnricherFactory {
       new InfoQEnricher(),
       new PublickeyEnricher(),
       new StackOverflowEnricher(),
+      // 新規追加（2025年8月14日）
+      new ZOZOContentEnricher(),
+      new RecruitContentEnricher(),
+      new HatenaDeveloperContentEnricher(),
+      new PepaboContentEnricher(),
+      new SansanContentEnricher(),
+      new MoneyForwardContentEnricher(),
       new HatenaContentEnricher(),  // 最後（すべてのURLに対応するため）
       // 将来的に他の企業のエンリッチャーを追加
       // new CookpadContentEnricher(),
