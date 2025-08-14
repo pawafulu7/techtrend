@@ -67,7 +67,12 @@ const FLEXIBLE_UNIFIED_PROMPT = `
 
 詳細要約:
 【条件】記事の内容量に応じた自然な長さで（目安：300-800文字、ただし記事が薄い場合はより短くても可）
-【形式】記事の内容に最も適した項目を3-5個程度の箇条書きで
+【形式】記事の内容に最も適した項目を箇条書きで作成
+【項目数の必須ルール】
+- 1000文字未満の記事：3個の項目
+- 1000-3000文字の記事：3-4個の項目  
+- 3000-5000文字の記事：4個の項目
+- 5000文字以上の記事：5個の項目
 【書き方】
 ・記事タイプに応じて最適な項目名を自由に設定
 ・各項目は「・項目名：具体的な内容」の形式
@@ -112,7 +117,20 @@ export function generateUnifiedPrompt(title: string, content: string): string {
     ? content.substring(0, maxContentLength) + '\n\n...[文字数制限により以下省略]'
     : content;
   
-  return `${UNIFIED_PROMPT}
+  // 文字数に応じた項目数の指示を追加
+  const contentLength = content.length;
+  let itemCountInstruction = '';
+  if (contentLength >= 5000) {
+    itemCountInstruction = '\n\n【重要】この記事は' + contentLength + '文字の長文記事です。詳細要約では必ず5個の項目を作成し、記事の主要トピックをすべてカバーしてください。';
+  } else if (contentLength >= 3000) {
+    itemCountInstruction = '\n\n【重要】この記事は' + contentLength + '文字です。詳細要約では必ず4個の項目を作成してください。';
+  } else if (contentLength >= 1000) {
+    itemCountInstruction = '\n\n【重要】この記事は' + contentLength + '文字です。詳細要約では3-4個の項目を作成してください。';
+  } else {
+    itemCountInstruction = '\n\n【重要】この記事は' + contentLength + '文字の短い記事です。詳細要約では3個の項目を作成してください。';
+  }
+  
+  return `${UNIFIED_PROMPT}${itemCountInstruction}
 
 タイトル: ${title}
 内容: ${truncatedContent}
