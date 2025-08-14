@@ -8,7 +8,7 @@ export class RecruitContentEnricher extends BaseContentEnricher {
    * このエンリッチャーが処理可能なURLかどうかを判定
    */
   canHandle(url: string): boolean {
-    return url.includes('blog.recruit.co.jp/rtc/');
+    return url.includes('techblog.recruit.co.jp');
   }
 
   /**
