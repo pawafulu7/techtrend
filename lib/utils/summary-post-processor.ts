@@ -191,27 +191,12 @@ export function postProcessSummaries(
   summary: string,
   detailedSummary: string
 ): { summary: string; detailedSummary: string } {
-  // 一覧要約の処理
-  // 最大200文字。内容に応じて適切な長さで（最小制限なし）
-  const processedSummary = enforceLength(summary, 0, 200);
-  
-  // 詳細要約の処理
-  let processedDetailedSummary = detailedSummary;
-  
-  // 1. 句点を除去
-  processedDetailedSummary = removeBulletPointPeriods(processedDetailedSummary);
-  
-  // 2. 各項目の文字数を調整
-  processedDetailedSummary = adjustDetailedSummaryItems(processedDetailedSummary);
-  
-  // 3. 詳細要約の最大文字数チェック（1000文字まで許容）
-  if (processedDetailedSummary.length > 1000) {
-    console.log(`詳細要約を最適化中: ${processedDetailedSummary.length}文字 → 最大1000文字`);
-    processedDetailedSummary = enforceLength(processedDetailedSummary, 0, 1000);
-  }
+  // Geminiが生成した要約をそのまま使用（不要な文字数制限をかけない）
+  // 句点の除去のみ行う
+  const processedDetailedSummary = removeBulletPointPeriods(detailedSummary);
   
   return {
-    summary: processedSummary,
+    summary: summary, // そのまま返す
     detailedSummary: processedDetailedSummary
   };
 }

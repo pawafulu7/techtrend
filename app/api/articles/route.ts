@@ -138,6 +138,8 @@ export async function GET(request: NextRequest) {
           createdAt: true,
           updatedAt: true,
           sourceId: true,
+          summaryVersion: true,  // summaryVersionを追加
+          articleType: true,     // articleTypeを追加
           // Exclude: content, detailedSummary
           source: {
             select: {

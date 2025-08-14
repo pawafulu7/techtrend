@@ -47,6 +47,8 @@
     "regenerate:force-all": "tsx scripts/manual/force-regenerate-all.ts",
     "regenerate:under-40": "tsx scripts/manual/regenerate-under-40.ts",
     "regenerate:all-unified": "tsx scripts/manual/regenerate-all-unified.ts",
+    "migrate:v7:staged": "tsx scripts/migration/migrate-v7-staged.ts",
+    "migrate:v7:auto": "tsx scripts/migration/migrate-v7-auto.ts",
     "techtrend": "tsx lib/cli/index.ts",
     "test:e2e": "playwright test",
     "test:e2e:debug": "playwright test --debug",
