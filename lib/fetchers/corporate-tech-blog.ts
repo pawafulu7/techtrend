@@ -88,10 +88,12 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
 
         console.log(`[Corporate Tech Blog - ${feedInfo.name}] ${feed.items.length}件の記事を取得`);
 
-        // 企業ごとに最大10件まで処理
-        const itemsToProcess = feed.items.slice(0, 10);
+        // 記事数制限を環境変数で設定可能に（デフォルト: 30件）
+        const maxArticlesPerCompany = parseInt(process.env.MAX_ARTICLES_PER_COMPANY || '30');
+        let processedCount = 0;
 
-        for (const item of itemsToProcess) {
+        // 全記事を処理（日付フィルタリング後に件数制限）
+        for (const item of feed.items) {
           try {
             if (!item.title || !item.link) continue;
             
@@ -99,9 +101,20 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             if (seenUrls.has(item.link)) continue;
             seenUrls.add(item.link);
 
+            // 日付チェックを先に実施（30日以内の記事のみ処理）
+            const publishedAt = item.isoDate ? new Date(item.isoDate) :
+                          item.pubDate ? parseRSSDate(item.pubDate) : new Date();
+            
+            if (publishedAt < thirtyDaysAgo) {
+              continue;
+            }
+
             // 日本語記事かチェック（タイトルまたは説明に日本語が含まれるか）
+            // RSSフィードによってdescription/content/summaryと異なるフィールドに格納されるため全てチェック
+            const textToCheck = item.description || item.content || 
+                             item.summary || item.contentSnippet || '';
             const hasJapanese = this.containsJapanese(item.title) || 
-                              (item.description && this.containsJapanese(item.description));
+                              this.containsJapanese(textToCheck);
             
             if (!hasJapanese) {
               console.log(`[Corporate Tech Blog - ${feedInfo.name}] 非日本語記事をスキップ: ${item.title}`);
@@ -113,6 +126,12 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             if (excludeEvents && this.isEventArticle(item.title, item.link)) {
               console.log(`[Corporate Tech Blog - ${feedInfo.name}] イベント記事を除外: ${item.title}`);
               continue;
+            }
+
+            // 企業ごとの記事数制限チェック
+            if (processedCount >= maxArticlesPerCompany) {
+              console.log(`[Corporate Tech Blog - ${feedInfo.name}] 記事数制限に達しました（${maxArticlesPerCompany}件）`);
+              break;
             }
 
             // タグを抽出（企業名と技術タグ）
@@ -132,14 +151,6 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
 
             // コンテンツの取得（優先順位: content > contentSnippet > description）
             let content = item.content || item.contentSnippet || item.description || '';
-
-            const publishedAt = item.isoDate ? new Date(item.isoDate) :
-                          item.pubDate ? parseRSSDate(item.pubDate) : new Date();
-            
-            // 30日以内の記事のみ処理
-            if (publishedAt < thirtyDaysAgo) {
-              continue;
-            }
 
             // コンテンツが不足している場合、エンリッチャーで補完
             let thumbnail: string | undefined;
@@ -184,6 +195,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             }
 
             allArticles.push(article);
+            processedCount++; // 処理済み記事数をインクリメント
           } catch (error) {
             allErrors.push(new Error(`Failed to parse item from ${feedInfo.name}: ${error instanceof Error ? error.message : String(error)}`));
           }

@@ -363,6 +363,142 @@ git checkout -b fix/retry-carefully
 # 5. 各ステップでテスト実行
 ```
 
+## 🔵 手動スクリプト作成時の必須ルール（2025年8月追加）
+
+### 絶対に守るべきルール
+
+**手動でスクリプトを作成する際は、必ず既存の類似スクリプトを参考にすること。**
+**独自の実装を避け、既存のパターンに従うこと。**
+
+### 参考にすべき既存スクリプト
+
+#### 1. 記事収集・保存を行う場合
+```bash
+# 必ず参照すること
+scripts/scheduled/collect-feeds.ts  # 正しい記事保存パターン
+scripts/manual/fetch-specific-source.ts  # 特定ソースの取得例
+
+# 確認ポイント
+- Prismaのフィールド名（authorフィールドは存在しない）
+- summary: null で保存（要約は別プロセス）
+- タグの処理方法（upsert と connect）
+```
+
+#### 2. 要約生成を行う場合
+```bash
+# 必ず参照すること
+scripts/maintenance/generate-summaries.ts  # 標準の要約生成
+scripts/manual/regenerate-single.ts  # 単一記事の要約再生成
+
+# 確認ポイント
+- UnifiedSummaryServiceの正しいパス: lib/ai/unified-summary-service
+- メソッド名: generate（generateUnifiedSummaryではない）
+- Gemini APIの使用パターン
+```
+
+#### 3. データベース操作を行う場合
+```bash
+# 必ず参照すること
+prisma/schema.prisma  # データベーススキーマ
+
+# 確認ポイント
+- 存在するフィールドを確認（echo ".schema Article" | sqlite3 prisma/dev.db）
+- 必須フィールドとオプショナルフィールド
+- リレーションの扱い方
+```
+
+### よくある間違いパターン（避けるべき）
+
+#### ❌ 間違い例1: 存在しないフィールドの使用
+```typescript
+// 間違い
+await prisma.article.create({
+  data: {
+    author: 'マネーフォワード',  // authorフィールドは存在しない
+    ...
+  }
+});
+
+// 正しい
+await prisma.article.create({
+  data: {
+    // authorフィールドは使用しない
+    ...
+  }
+});
+```
+
+#### ❌ 間違い例2: 間違ったサービスパス
+```typescript
+// 間違い
+import { UnifiedSummaryService } from '../lib/services/unified-summary-service';
+
+// 正しい
+import { UnifiedSummaryService } from '../lib/ai/unified-summary-service';
+```
+
+#### ❌ 間違い例3: 間違ったメソッド名
+```typescript
+// 間違い
+const result = await summaryService.generateUnifiedSummary(title, content);
+
+// 正しい
+const result = await summaryService.generate(title, content);
+```
+
+### 手動スクリプト作成のチェックリスト
+
+スクリプト作成前に必ず確認：
+
+- [ ] 類似の既存スクリプトを探したか？
+- [ ] データベーススキーマを確認したか？
+- [ ] import パスを既存コードで確認したか？
+- [ ] メソッド名を既存コードで確認したか？
+- [ ] エラーハンドリングを適切に実装したか？
+- [ ] テスト実行してエラーがないか確認したか？
+
+### 推奨される作成手順
+
+1. **既存スクリプトをコピー**
+   ```bash
+   # 類似スクリプトをベースにする
+   cp scripts/scheduled/collect-feeds.ts scripts/manual/my-new-script.ts
+   ```
+
+2. **必要最小限の変更のみ実施**
+   - 処理ロジックの核心部分のみ変更
+   - インポートやデータベース操作は既存のまま
+
+3. **段階的にテスト**
+   ```bash
+   # まず構文エラーがないか確認
+   npx tsc --noEmit scripts/manual/my-new-script.ts
+   
+   # 小規模でテスト実行
+   npx tsx scripts/manual/my-new-script.ts
+   ```
+
+### 緊急時の対処法
+
+エラーが発生した場合：
+
+1. **エラーメッセージを詳細に読む**
+   - `Unknown argument` → スキーマ確認
+   - `Cannot find module` → パス確認
+   - `is not a function` → メソッド名確認
+
+2. **既存の動作するコードと比較**
+   ```bash
+   # 正常に動作するスクリプトと比較
+   diff scripts/scheduled/collect-feeds.ts scripts/manual/my-script.ts
+   ```
+
+3. **必要に応じて既存スクリプトを直接利用**
+   ```bash
+   # 特定ソースのみ実行する場合
+   npx tsx scripts/scheduled/collect-feeds.ts "Corporate Tech Blog"
+   ```
+
 
 ## Claude Code統合機能
 
