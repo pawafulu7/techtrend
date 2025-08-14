@@ -36,7 +36,13 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     { url: 'https://developers.gmo.jp/feed/', name: 'GMO' },
     { url: 'https://tech.smarthr.jp/feed', name: 'SmartHR' },
     { url: 'https://developers.freee.co.jp/feed', name: 'freee' },
-    { url: 'https://techlife.cookpad.com/feed', name: 'クックパッド' }
+    { url: 'https://techlife.cookpad.com/feed', name: 'クックパッド' },
+    // 新規追加（2025年8月14日）
+    { url: 'https://techblog.zozo.com/rss', name: 'ZOZO' },
+    { url: 'https://blog.recruit.co.jp/rtc/feed/', name: 'リクルート' },
+    { url: 'https://developer.hatenastaff.com/feed', name: 'はてなDeveloper' },
+    { url: 'https://tech.pepabo.com/feed/', name: 'GMOペパボ' },
+    { url: 'https://buildersbox.corp-sansan.com/feed', name: 'Sansan' }
   ];
 
   constructor(source: Source) {
