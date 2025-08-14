@@ -9,6 +9,12 @@ import { FreeeContentEnricher } from './freee';
 import { HatenaContentEnricher } from './hatena';
 import { ZennContentEnricher } from './zenn';
 import { ThinkITContentEnricher } from './thinkit';
+import { GoogleAIEnricher } from './google-ai';
+import { GoogleDevEnricher } from './google-dev';
+import { HuggingFaceEnricher } from './huggingface';
+import { InfoQEnricher } from './infoq';
+import { PublickeyEnricher } from './publickey';
+import { StackOverflowEnricher } from './stackoverflow';
 
 export { IContentEnricher, BaseContentEnricher, EnrichedContent } from './base';
 export { GMOContentEnricher } from './gmo';
@@ -16,6 +22,12 @@ export { FreeeContentEnricher } from './freee';
 export { HatenaContentEnricher } from './hatena';
 export { ZennContentEnricher } from './zenn';
 export { ThinkITContentEnricher } from './thinkit';
+export { GoogleAIEnricher } from './google-ai';
+export { GoogleDevEnricher } from './google-dev';
+export { HuggingFaceEnricher } from './huggingface';
+export { InfoQEnricher } from './infoq';
+export { PublickeyEnricher } from './publickey';
+export { StackOverflowEnricher } from './stackoverflow';
 
 /**
  * エンリッチャーファクトリークラス
@@ -32,6 +44,12 @@ export class ContentEnricherFactory {
       new FreeeContentEnricher(),
       new ZennContentEnricher(),
       new ThinkITContentEnricher(),
+      new GoogleAIEnricher(),
+      new GoogleDevEnricher(),
+      new HuggingFaceEnricher(),
+      new InfoQEnricher(),
+      new PublickeyEnricher(),
+      new StackOverflowEnricher(),
       new HatenaContentEnricher(),  // 最後（すべてのURLに対応するため）
       // 将来的に他の企業のエンリッチャーを追加
       // new CookpadContentEnricher(),
