@@ -64,23 +64,31 @@ export class UnifiedSummaryService {
       throw new Error('SKIP_GENERATION: はてなブックマーク経由の外部サイト記事でコンテンツ不足のため、要約生成をスキップします');
     }
     
-    // 500文字以下の記事は詳細要約をスキップし、要約のみ生成
-    // 注意: 前処理後のコンテンツ長で判定する（前処理で短縮される可能性があるため）
-    const skipDetailedSummary = processedContent.length <= 500;
+    // 100文字以下の極端に短い記事のみ詳細要約をスキップ
+    // タイトルと合わせて最低限の情報があれば要約を生成する
+    const skipDetailedSummary = processedContent.length <= 100 && 
+                                processedContent.trim().split(/\s+/).length < 20; // 単語数も考慮
     
     let lastError: Error | null = null;
     
     for (let attempt = 1; attempt <= opts.maxRetries!; attempt++) {
       try {
-        // プロンプト生成（500文字以下の場合は要約のみ）
-        const prompt = skipDetailedSummary
-          ? this.generateSummaryOnlyPrompt(title, processedContent)
-          : generateUnifiedPrompt(title, processedContent);
+        // プロンプト生成（100文字以下かつ単語数が少ない場合のみ要約のみ）
+        let prompt: string;
+        if (skipDetailedSummary) {
+          prompt = this.generateSummaryOnlyPrompt(title, processedContent);
+        } else if (processedContent.length <= 500) {
+          // 100-500文字の短いコンテンツ用の特別なプロンプト
+          prompt = this.generateShortContentPrompt(title, processedContent);
+        } else {
+          // 通常のプロンプト
+          prompt = generateUnifiedPrompt(title, processedContent);
+        }
         
         // API呼び出し
         const responseText = await this.callGeminiAPI(prompt);
         
-        // 500文字以下の記事の場合は特別処理
+        // 極端に短い記事の場合は特別処理
         if (skipDetailedSummary) {
           // 要約のみのレスポンスをパース
           const summaryMatch = responseText.match(/要約[:：]\s*([\s\S]+?)(?:\n\n|タグ[:：]|$)/);
@@ -288,6 +296,62 @@ export class UnifiedSummaryService {
 
 タイトル: ${title}
 内容: ${content}`;
+  }
+
+  /**
+   * 短いコンテンツ用のプロンプト生成（100-500文字）
+   * 一覧要約と詳細要約のバランスを考慮
+   */
+  private generateShortContentPrompt(title: string, content: string): string {
+    const contentLength = content.length;
+    
+    // コンテンツ長に応じた詳細要約の目標文字数を設定
+    let targetDetailLength = '';
+    let itemCount = '';
+    
+    if (contentLength <= 200) {
+      // 非常に短いコンテンツ：詳細要約も短めに
+      targetDetailLength = '200-300文字';
+      itemCount = '2-3個';
+    } else if (contentLength <= 350) {
+      // 短いコンテンツ：適度な詳細要約
+      targetDetailLength = '250-400文字';
+      itemCount = '3個';
+    } else {
+      // 500文字に近いコンテンツ：通常に近い詳細要約
+      targetDetailLength = '300-500文字';
+      itemCount = '3-4個';
+    }
+    
+    return `
+以下の技術記事を分析し、日本語で要約を作成してください。
+
+【重要な注意事項】
+- この記事はコンテンツが短い（${contentLength}文字）ため、バランスを考慮して要約を作成してください
+- 一覧要約は記事カードに収まる適度な長さ（100-150文字程度）にしてください
+- 詳細要約は${targetDetailLength}程度で、無理に長くせず自然な内容にしてください
+- 情報が限定的な場合は、タイトルから推測できる内容も含めて要約してください
+
+【出力形式】
+要約: （記事の要点を簡潔にまとめた一覧表示用の要約）
+
+詳細要約:
+・項目名1：（具体的な内容、少なくとも50文字以上）
+・項目名2：（具体的な内容、少なくとも50文字以上）
+${itemCount === '2-3個' ? '（項目は2-3個で十分です）' : `（項目は${itemCount}程度）`}
+
+タグ: （カンマ区切りで3-5個）
+
+【記事情報】
+タイトル: ${title}
+内容: ${content}
+
+【生成ガイドライン】
+1. コンテンツが短くても、タイトルと内容から読み取れる情報を最大限活用
+2. 推測や一般的な知識で補完する場合は、記事の文脈に沿った内容にする
+3. 詳細要約の各項目は、具体的で意味のある内容にする
+4. 一覧要約と詳細要約で情報の重複を避け、相補的な内容にする
+`;
   }
 }
 
