@@ -122,15 +122,13 @@ export function ArticleCard({ article }: ArticleCardProps) {
           </div>
         </div>
         
-        <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-1">
-          <div className="flex items-center gap-2">
-            <Badge 
-              variant="secondary" 
-              className={cn("text-xs font-medium", sourceColor.tag)}
-            >
-              {article.source.name}
-            </Badge>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
+          <Badge 
+            variant="secondary" 
+            className={cn("text-xs font-medium", sourceColor.tag)}
+          >
+            {article.source.name}
+          </Badge>
           <div className="flex items-center gap-1.5 text-[11px]">
             <span>📅 {formatDateWithTime(article.publishedAt)}</span>
             <span>📥 {formatDateWithTime(article.createdAt)}</span>
