@@ -130,22 +130,10 @@ export function ArticleCard({ article }: ArticleCardProps) {
             >
               {article.source.name}
             </Badge>
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {hoursAgo < 1 ? 'たった今' : 
-               hoursAgo < 24 ? `${hoursAgo}時間前` : 
-               formatDate(article.publishedAt)}
-            </span>
           </div>
-          <div className="flex flex-col gap-0.5 ml-1">
-            <span className="flex items-center gap-1">
-              <span>📅 配信:</span>
-              <span>{formatDateWithTime(article.publishedAt)}</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <span>📥 取込:</span>
-              <span>{formatDateWithTime(article.createdAt)}</span>
-            </span>
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <span>📅 {formatDateWithTime(article.publishedAt)}</span>
+            <span>📥 {formatDateWithTime(article.createdAt)}</span>
           </div>
         </div>
       </CardHeader>
