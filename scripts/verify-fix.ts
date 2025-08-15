@@ -19,6 +19,9 @@ sections.forEach((section, index) => {
   console.log(`${index + 1}. ${section.title}`);
   if (section.content.includes('\n')) {
     console.log('   (サブ項目を含む)');
+    // 実際のコンテンツを表示して確認
+    console.log('   コンテンツ:');
+    console.log('   "' + section.content + '"');
   }
 });
 

@@ -102,9 +102,13 @@ export function DetailedSummaryCompact({
           <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">
             {sections[selectedSection]?.title}
           </h4>
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-            {selectedContent}
-          </p>
+          <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+            {selectedContent.split('\n').map((line, lineIndex) => (
+              <p key={lineIndex} className={lineIndex > 0 ? 'mt-2' : ''}>
+                {line}
+              </p>
+            ))}
+          </div>
         </div>
 
         {/* ナビゲーションドット */}

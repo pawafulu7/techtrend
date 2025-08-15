@@ -42,9 +42,13 @@ export function DetailedSummaryCards({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {section.content}
-              </p>
+              <div className="text-sm text-muted-foreground leading-relaxed">
+                {section.content.split('\n').map((line, lineIndex) => (
+                  <p key={lineIndex} className={lineIndex > 0 ? 'mt-2' : ''}>
+                    {line}
+                  </p>
+                ))}
+              </div>
             </CardContent>
           </Card>
         ))}

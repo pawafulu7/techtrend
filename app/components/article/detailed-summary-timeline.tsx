@@ -103,9 +103,13 @@ export function DetailedSummaryTimeline({
                     <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
                       {section.title}
                     </h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                      {content}
-                    </p>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                      {content.split('\n').map((line, lineIndex) => (
+                        <p key={lineIndex} className={lineIndex > 0 ? 'mt-2' : ''}>
+                          {line}
+                        </p>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
