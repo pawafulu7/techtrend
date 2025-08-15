@@ -3,7 +3,7 @@
  */
 export const speakerDeckConfig = {
   // フィルタリング設定
-  minViews: 500,            // 最小views数（500以上のみ取得）
+  minViews: 300,            // 最小views数（300以上のみ取得）
   maxAge: 365,               // 最大日数（1年以内の記事のみ）
   
   // 取得設定
