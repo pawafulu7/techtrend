@@ -64,3 +64,38 @@ export function parseRSSDate(dateString: string): Date {
   
   return date;
 }
+
+/**
+ * 記事の公開日時を調整する関数
+ * タイムゾーンの問題により未来の日付になっている場合、現在時刻に調整する
+ * これにより、createdAt < publishedAtという論理的矛盾を防ぐ
+ * 
+ * @param publishedAt - 記事の公開日時
+ * @param sourceName - ソース名（将来的な拡張用、現在は未使用）
+ * @returns 調整後の公開日時
+ */
+export function adjustTimezoneForArticle(
+  publishedAt: Date,
+  sourceName?: string
+): Date {
+  const now = new Date();
+  
+  // 未来日付の調整
+  if (publishedAt > now) {
+    console.log(`[Timezone Adjustment] Future date detected for ${sourceName || 'unknown source'}: ${publishedAt.toISOString()} -> ${now.toISOString()}`);
+    return now;
+  }
+  
+  // 将来的にソース別の調整を追加する場合のプレースホルダー
+  // 例：
+  // if (sourceName === 'Google Developers Blog') {
+  //   // PST/PDT（太平洋時間）の調整
+  //   // 必要に応じて実装
+  // }
+  // if (sourceName === 'Stack Overflow Blog') {
+  //   // EST/EDT（東部時間）の調整
+  //   // 必要に応じて実装
+  // }
+  
+  return publishedAt;
+}

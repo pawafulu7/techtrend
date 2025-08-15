@@ -2,6 +2,7 @@ import { PrismaClient, Source } from '@prisma/client';
 import { CreateArticleInput } from '@/types/models';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { adjustTimezoneForArticle } from '@/lib/utils/date';
 
 const prisma = new PrismaClient();
 
@@ -141,7 +142,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
               }
             }
 
-            // 新規記事を保存
+            // 新規記事を保存（タイムゾーン調整を適用）
             await prisma.article.create({
               data: {
                 title: article.title,
@@ -149,7 +150,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                 summary: null,  // 必ずnullを設定（要約はgenerate-summaries.tsで生成）
                 thumbnail: article.thumbnail || null,  // サムネイル保存を追加
                 content: article.content || null,
-                publishedAt: article.publishedAt,
+                publishedAt: adjustTimezoneForArticle(article.publishedAt, source.name),
                 bookmarks: article.bookmarks || 0,
                 sourceId: source.id,
                 ...(tagConnections.length > 0 && {
