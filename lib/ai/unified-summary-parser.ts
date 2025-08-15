@@ -20,45 +20,57 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
   let detailedSummary = '';
   let tags: string[] = [];
   let currentSection: 'summary' | 'detailed' | 'tags' | null = null;
+  let detailedSummaryLines: string[] = [];
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const trimmed = line.trim();
     
-    // セクション検出（マークダウンの太字記号も考慮）
-    if (trimmed.match(/^\*{0,2}(一覧)?要約:\*{0,2}/)) {
+    // セクション検出（改善版: マークダウン形式も対応）
+    if (trimmed.match(/^#+\s*[\*]*(一覧)?要約[:：]/) || trimmed.match(/^[\*]*(一覧)?要約[:：]/)) {
       currentSection = 'summary';
-      const content = trimmed.replace(/^\*{0,2}(一覧)?要約:\*{0,2}/, '').trim();
+      const content = trimmed.replace(/^#+\s*/, '').replace(/^[\*]*(一覧)?要約[:：]/, '').trim();
       if (content) {
         summary = content;
-        currentSection = null; // 同一行で完結
+        // 次の行が要約の続きの可能性をチェック
+        if (i + 1 < lines.length && !lines[i + 1].trim().match(/^[\*]*詳細要約[:：]/)) {
+          const nextLine = lines[i + 1].trim();
+          if (nextLine && !nextLine.startsWith('・') && !nextLine.startsWith('詳細')) {
+            summary += ' ' + nextLine;
+            i++; // 次の行をスキップ
+          }
+        }
       }
-    } else if (trimmed.match(/^\*{0,2}詳細要約:\*{0,2}/)) {
+    } else if (trimmed.match(/^#+\s*[\*]*詳細要約[:：]/) || trimmed.match(/^[\*]*詳細要約[:：]/)) {
       currentSection = 'detailed';
-      const content = trimmed.replace(/^\*{0,2}詳細要約:\*{0,2}/, '').trim();
-      if (content) {
-        detailedSummary = content;
+      const content = trimmed.replace(/^#+\s*/, '').replace(/^[\*]*詳細要約[:：]/, '').trim();
+      if (content && content.startsWith('・')) {
+        detailedSummaryLines.push(content);
       }
-    } else if (trimmed.match(/^\*{0,2}タグ:\*{0,2}/)) {
+    } else if (trimmed.match(/^#+\s*[\*]*タグ[:：]/) || trimmed.match(/^[\*]*タグ[:：]/)) {
       currentSection = 'tags';
-      const content = trimmed.replace(/^\*{0,2}タグ:\*{0,2}/, '').trim();
+      const content = trimmed.replace(/^#+\s*/, '').replace(/^[\*]*タグ[:：]/, '').trim();
       if (content) {
         tags = parseTags(content);
-        currentSection = null; // 同一行で完結
+        currentSection = null; // タグ取得完了
       }
     } else if (trimmed) {
       // セクション内容の追加
       switch (currentSection) {
         case 'summary':
-          if (!summary.includes('\n')) {
+          // 要約の続き（改善: 重複チェック追加）
+          if (!summary.includes(trimmed) && !trimmed.startsWith('・')) {
             summary += (summary ? ' ' : '') + trimmed;
           }
-          currentSection = null; // 要約は1行で完結
           break;
         case 'detailed':
-          if (trimmed.startsWith('・') || trimmed.startsWith('-')) {
-            detailedSummary += (detailedSummary ? '\n' : '') + trimmed;
-          } else if (!trimmed.startsWith('【')) {
-            detailedSummary += (detailedSummary ? '\n' : '') + trimmed;
+          // 詳細要約の内容を収集（改善版）
+          if (trimmed.startsWith('・') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+            detailedSummaryLines.push(trimmed);
+          } else if (detailedSummaryLines.length > 0 && !trimmed.match(/^[\*]*タグ[:：]/) && !trimmed.startsWith('【')) {
+            // 前の箇条書きの続きの可能性
+            const lastIndex = detailedSummaryLines.length - 1;
+            detailedSummaryLines[lastIndex] += trimmed;
           }
           break;
         case 'tags':
@@ -69,6 +81,15 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
           break;
       }
     }
+  }
+
+  // 詳細要約を組み立て
+  detailedSummary = detailedSummaryLines.join('\n');
+  
+  // デバッグログ
+  if (detailedSummaryLines.length === 0) {
+    console.log('[パーサー] 詳細要約が空 - 箇条書きが見つかりませんでした');
+    console.log('[パーサー] 入力テキスト(最初の500文字):', text.substring(0, 500));
   }
 
   // フォールバック処理

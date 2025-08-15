@@ -31,7 +31,7 @@ export class UnifiedSummaryService {
     maxRetries: 3,
     retryDelay: 5000,
     minQualityScore: 40,
-    contentMaxLength: 5000
+    contentMaxLength: 150000  // Gemini 1.5 Flashの能力を活用、150,000文字まで対応
   };
 
   private apiKey: string;
@@ -65,7 +65,8 @@ export class UnifiedSummaryService {
     }
     
     // 500文字以下の記事は詳細要約をスキップし、要約のみ生成
-    const skipDetailedSummary = content.length <= 500;
+    // 注意: 前処理後のコンテンツ長で判定する（前処理で短縮される可能性があるため）
+    const skipDetailedSummary = processedContent.length <= 500;
     
     let lastError: Error | null = null;
     
@@ -100,10 +101,13 @@ export class UnifiedSummaryService {
         }
         
         // レスポンスのパース
+        console.log('[UnifiedSummaryService] レスポンス受信:', responseText.length, '文字');
         const parsed = parseUnifiedResponse(responseText);
+        console.log('[UnifiedSummaryService] パース結果 - 詳細要約:', parsed.detailedSummary.substring(0, 100));
         
         // 検証
         if (!validateParsedResult(parsed)) {
+          console.log('[UnifiedSummaryService] 検証失敗 - 詳細要約長:', parsed.detailedSummary.length);
           throw new Error('Invalid parsed result');
         }
         
@@ -185,6 +189,15 @@ export class UnifiedSummaryService {
    * コンテンツの前処理
    */
   private preprocessContent(title: string, content: string, maxLength: number, sourceInfo?: { sourceName?: string, url?: string }): string {
+    // PDFファイルの場合（URLが.pdfで終わる、またはPDFバイナリを含む）
+    if (sourceInfo?.url?.toLowerCase().endsWith('.pdf') || 
+        content.includes('%PDF-') || 
+        content.includes('%%EOF')) {
+      console.log(`[UnifiedSummaryService] PDFファイルを検出、要約生成をスキップ: ${sourceInfo?.url}`);
+      // PDFは要約生成不可
+      return '__SKIP_SUMMARY_GENERATION__';
+    }
+    
     // はてなブックマーク経由の外部サイト記事でコンテンツ不足の場合
     if (sourceInfo?.sourceName === 'はてなブックマーク' && 
         content.length < 300 &&
