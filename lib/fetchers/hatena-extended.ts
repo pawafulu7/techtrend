@@ -3,6 +3,7 @@ import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
+import { ContentEnricherFactory } from '../enrichers';
 
 interface HatenaItem {
   title?: string;
@@ -128,6 +129,9 @@ export class HatenaExtendedFetcher extends BaseFetcher {
     const allErrors: Error[] = [];
     const seenUrls = new Set<string>();
 
+    // ContentEnricherFactory のインスタンス作成
+    const enricherFactory = new ContentEnricherFactory();
+
     // 各RSSフィードから記事を取得
     for (const rssUrl of this.rssUrls) {
       try {
@@ -142,6 +146,7 @@ export class HatenaExtendedFetcher extends BaseFetcher {
             
             // コンテンツの取得と検証
             let content = item.content || item.description || item.contentSnippet || '';
+            let thumbnail: string | undefined;
             
             // Qiita記事の場合の特別処理
             if (this.isQiitaArticle(item.link)) {
@@ -160,11 +165,35 @@ export class HatenaExtendedFetcher extends BaseFetcher {
               }
             }
             
+            // エンリッチメント処理を追加
+            if (item.link) {
+              const enricher = enricherFactory.getEnricher(item.link);
+              if (enricher) {
+                try {
+                  console.log(`[はてなブックマーク] Enriching content for: ${item.title} (current: ${content.length} chars)`);
+                  const enrichedData = await enricher.enrich(item.link);
+                  
+                  if (enrichedData && enrichedData.content) {
+                    // エンリッチメントが成功し、より長いコンテンツが取得できた場合
+                    if (enrichedData.content.length > content.length) {
+                      console.log(`[はてなブックマーク] Content enriched: ${content.length} -> ${enrichedData.content.length} chars`);
+                      content = enrichedData.content;
+                      thumbnail = enrichedData.thumbnail || undefined;
+                    }
+                  }
+                } catch (error) {
+                  console.error(`[はてなブックマーク] Enrichment failed for ${item.link}:`, error);
+                  // エンリッチメント失敗時は元のコンテンツを使用
+                }
+              }
+            }
+            
             const article: CreateArticleInput = {
               title: this.sanitizeText(item.title),
               url: this.normalizeUrl(item.link),
               summary: undefined, // 要約は後で日本語で生成
               content: content,
+              thumbnail: thumbnail, // サムネイルを追加
               publishedAt: item.pubDate ? parseRSSDate(item.pubDate) : 
                           item['dc:date'] ? new Date(item['dc:date']) : new Date(),
               sourceId: this.source.id,
