@@ -38,9 +38,13 @@ export function DetailedSummaryStructured({
               <span className="text-base">{section.icon}</span>
               {section.title}
             </h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {highlightContent(section.content)}
-            </p>
+            <div className="text-sm text-muted-foreground leading-relaxed">
+              {section.content.split('\n').map((line, lineIndex) => (
+                <p key={lineIndex} className={lineIndex > 0 ? 'mt-2' : ''}>
+                  {highlightContent(line)}
+                </p>
+              ))}
+            </div>
           </div>
         ))}
       </div>

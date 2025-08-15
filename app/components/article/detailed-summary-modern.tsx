@@ -131,9 +131,13 @@ export function DetailedSummaryModern({
                 )}
               >
                 <div className="px-5 pb-4">
-                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                    {content}
-                  </p>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {content.split('\n').map((line, lineIndex) => (
+                      <p key={lineIndex} className={lineIndex > 0 ? 'mt-2' : ''}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
