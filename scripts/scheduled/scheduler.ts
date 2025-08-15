@@ -57,7 +57,21 @@ async function executeUpdatePipeline(
     );
     console.log(collectOutput);
     
-    // 2. 要約生成（オプション）
+    // 2. Google Developers Blogのコンテンツエンリッチメント
+    if (sources.includes('Google Developers Blog')) {
+      console.log('🔧 Google Developers Blogのコンテンツをエンリッチ中...');
+      try {
+        const { stdout: enrichOutput }: ExecutionResult = await execAsync(
+          'npx tsx scripts/maintenance/enrich-google-dev-content.ts'
+        );
+        console.log(enrichOutput);
+      } catch (error) {
+        console.error('⚠️ Google Dev Blogエンリッチメントでエラー（続行）:', error instanceof Error ? error.message : String(error));
+        // エラーが発生しても他の処理は続行
+      }
+    }
+    
+    // 3. 要約生成（オプション）
     if (!options?.skipSummaries) {
       console.log('📝 要約・タグ生成中...');
       const { stdout: summaryOutput }: ExecutionResult = await execAsync(
@@ -66,14 +80,14 @@ async function executeUpdatePipeline(
       console.log(summaryOutput);
     }
     
-    // 3. 品質スコア計算
+    // 4. 品質スコア計算
     console.log('📊 品質スコア計算中...');
     const { stdout: qualityOutput }: ExecutionResult = await execAsync(
       'npx tsx scripts/scheduled/manage-quality-scores.ts calculate'
     );
     console.log(qualityOutput);
     
-    // 4. 難易度レベル判定
+    // 5. 難易度レベル判定
     console.log('📈 難易度レベル判定中...');
     const { stdout: difficultyOutput }: ExecutionResult = await execAsync(
       'npx tsx scripts/scheduled/calculate-difficulty-levels.ts'

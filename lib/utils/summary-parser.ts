@@ -102,8 +102,8 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
   const sections: SummarySection[] = [];
   const lines = detailedSummary.split('\n');
   
-  // summaryVersion 7の処理（AIが自由に項目を設定）
-  if (options?.summaryVersion === 7) {
+  // summaryVersion 7または8の処理（AIが自由に項目を設定）
+  if (options?.summaryVersion === 7 || options?.summaryVersion === 8) {
     for (const line of lines) {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
@@ -140,20 +140,29 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
   let sectionDefinitions;
   
   if (options?.articleType === 'unified' || options?.summaryVersion === 5) {
-    // 統一フォーマット - 単純な箇条書き形式を処理
-    // 各箇条書き項目をそのままセクションとして扱う
-    const unifiedSections = getUnifiedSections();
-    let sectionIndex = 0;
-    
+    // summaryVersion 5も動的項目名として処理する
     for (const line of lines) {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
       
-      if (trimmedLine.startsWith('・')) {
-        let content = trimmedLine.substring(1).trim();
-        
-        if (sectionIndex < unifiedSections.length) {
-          // 古い形式のプレフィックスを削除（「記事の主題は、」「具体的な問題は、」など）
+      // 「・項目名：内容」形式をパース
+      if (trimmedLine.startsWith('・') || trimmedLine.startsWith('-')) {
+        // 正規表現で項目名と内容を分離
+        const match = trimmedLine.match(/^[・-]\s*(.+?)[:：]\s*(.+)$/);
+        if (match) {
+          const title = match[1].trim();
+          const content = match[2].trim();
+          
+          sections.push({
+            title: title,
+            content: content,
+            icon: getIconForFlexibleTitle(title)
+          });
+        } else {
+          // コロンがない場合は全体を内容として扱う
+          let content = trimmedLine.replace(/^[・-]\s*/, '').trim();
+          
+          // 古い形式のプレフィックスを削除
           const oldPrefixes = [
             '記事の主題は、',
             '具体的な問題は、',
@@ -171,24 +180,28 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
             }
           }
           
+          // タイトルを内容から推測
+          let title = '詳細';
+          if (content.includes('問題') || content.includes('課題')) {
+            title = '課題・問題点';
+          } else if (content.includes('解決') || content.includes('方法')) {
+            title = '解決策';
+          } else if (content.includes('効果') || content.includes('メリット')) {
+            title = '期待効果';
+          } else if (content.includes('実装') || content.includes('技術')) {
+            title = '技術詳細';
+          }
+          
           sections.push({
-            title: unifiedSections[sectionIndex].title,
+            title: title,
             content: content,
-            icon: unifiedSections[sectionIndex].icon
-          });
-          sectionIndex++;
-        } else {
-          // 5つ以上の項目がある場合は追加情報として扱う
-          sections.push({
-            title: '補足情報',
-            content: content,
-            icon: '📝'
+            icon: getIconForFlexibleTitle(title)
           });
         }
       }
     }
     
-    return sections; // 統一フォーマットは早期リターン
+    return sections; // 早期リターン
   } else if (options?.articleType && options?.summaryVersion === 2) {
     // 新形式：記事タイプ別のセクション定義を使用
     const typeSections = getArticleTypeSections(options.articleType);

@@ -10,7 +10,7 @@ import { checkSummaryQuality } from '../utils/summary-quality-checker';
 
 export interface UnifiedSummaryResult extends ParsedSummaryResult {
   articleType: 'unified';
-  summaryVersion: 6;
+  summaryVersion: 8;
   qualityScore?: number;
 }
 
@@ -25,7 +25,7 @@ export interface GenerateOptions {
  * 統一要約生成サービスクラス
  */
 export class UnifiedSummaryService {
-  private static readonly SUMMARY_VERSION = 7;
+  private static readonly SUMMARY_VERSION = 8;
   private static readonly ARTICLE_TYPE = 'unified' as const;
   private static readonly DEFAULT_OPTIONS: GenerateOptions = {
     maxRetries: 3,
