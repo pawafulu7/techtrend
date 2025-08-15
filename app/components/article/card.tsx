@@ -6,7 +6,7 @@ import { Clock, TrendingUp, ThumbsUp, GraduationCap, ExternalLink } from 'lucide
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatDate } from '@/lib/utils/date';
+import { formatDate, formatDateWithTime } from '@/lib/utils/date';
 import { getDomain } from '@/lib/utils/url';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
@@ -122,19 +122,31 @@ export function ArticleCard({ article }: ArticleCardProps) {
           </div>
         </div>
         
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-          <Badge 
-            variant="secondary" 
-            className={cn("text-xs font-medium", sourceColor.tag)}
-          >
-            {article.source.name}
-          </Badge>
-          <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {hoursAgo < 1 ? 'たった今' : 
-             hoursAgo < 24 ? `${hoursAgo}時間前` : 
-             formatDate(article.publishedAt)}
-          </span>
+        <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-1">
+          <div className="flex items-center gap-2">
+            <Badge 
+              variant="secondary" 
+              className={cn("text-xs font-medium", sourceColor.tag)}
+            >
+              {article.source.name}
+            </Badge>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {hoursAgo < 1 ? 'たった今' : 
+               hoursAgo < 24 ? `${hoursAgo}時間前` : 
+               formatDate(article.publishedAt)}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5 ml-1">
+            <span className="flex items-center gap-1">
+              <span>📅 配信:</span>
+              <span>{formatDateWithTime(article.publishedAt)}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span>📥 取込:</span>
+              <span>{formatDateWithTime(article.createdAt)}</span>
+            </span>
+          </div>
         </div>
       </CardHeader>
 

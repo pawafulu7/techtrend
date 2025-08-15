@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Clock, TrendingUp, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatDate } from '@/lib/utils/date';
+import { formatDate, formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleListItemProps } from '@/types/components';
 import { cn } from '@/lib/utils';
@@ -94,18 +94,25 @@ export function ArticleListItem({ article, onTagClick }: ArticleListItemProps) {
           {article.source.name}
         </Badge>
 
-        {/* 時間 */}
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Clock className="h-3 w-3" />
-          <span className="hidden sm:inline">
-            {hoursAgo < 1 ? 'たった今' : 
-             hoursAgo < 24 ? `${hoursAgo}時間前` : 
-             formatDate(article.publishedAt)}
-          </span>
-          <span className="sm:hidden">
+        {/* 時間表示 - デスクトップでは配信・取込両方、モバイルでは配信のみ */}
+        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+          {/* デスクトップ: 配信と取込を表示 */}
+          <div className="hidden sm:flex flex-col gap-0.5">
+            <span className="flex items-center gap-1">
+              <span>📅</span>
+              <span>{formatDateWithTime(article.publishedAt)}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span>📥</span>
+              <span>{formatDateWithTime(article.createdAt)}</span>
+            </span>
+          </div>
+          {/* モバイル: 配信日時のみ表示 */}
+          <span className="flex sm:hidden items-center gap-1">
+            <Clock className="h-3 w-3" />
             {hoursAgo < 24 ? `${hoursAgo}h` : formatDate(article.publishedAt, true)}
           </span>
-        </span>
+        </div>
 
         {/* アクション（ホバー時表示） */}
         <div className="hidden group-hover:flex items-center gap-1">

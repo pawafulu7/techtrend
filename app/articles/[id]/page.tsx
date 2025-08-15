@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ArrowLeft, ExternalLink, Calendar, TrendingUp, ThumbsUp, GraduationCap } from 'lucide-react';
 import { prisma } from '@/lib/database';
-import { formatDate } from '@/lib/utils/date';
+import { formatDate, formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
 import { RelatedArticles } from '@/app/components/article/related-articles';
@@ -102,12 +102,16 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   >
                     {article.source.name}
                   </Badge>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {hoursAgo < 1 ? 'たった今' : 
-                     hoursAgo < 24 ? `${hoursAgo}時間前` : 
-                     formatDate(article.publishedAt)}
-                  </span>
+                  <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span>📅 配信:</span>
+                      <span>{formatDateWithTime(article.publishedAt)}</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span>📥 取込:</span>
+                      <span>{formatDateWithTime(article.createdAt)}</span>
+                    </span>
+                  </div>
                   {article.difficulty && (
                     <Badge 
                       variant="outline" 
