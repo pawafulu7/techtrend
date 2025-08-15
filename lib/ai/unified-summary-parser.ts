@@ -186,6 +186,9 @@ function cleanupDetailedSummary(text: string): string {
     .map(line => {
       let cleanedLine = line.trim();
       
+      // Markdown太字記法を削除（新規追加）
+      cleanedLine = cleanedLine.replace(/\*\*([^*]+)\*\*/g, '$1');
+      
       // 各枕詞パターンを削除
       detailPrefixes.forEach(pattern => {
         cleanedLine = cleanedLine.replace(pattern, (match) => {
