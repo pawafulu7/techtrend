@@ -6,7 +6,7 @@ import { Source } from '@prisma/client';
 global.fetch = jest.fn();
 
 describe('Tag Processing Integration', () => {
-  jest.setTimeout(30000); // タイムアウトを30秒に延長
+  // jest.setTimeout(30000); // タイムアウト設定を削除
   
   let mockSource: Source;
   let fetcher: DevToFetcher;
