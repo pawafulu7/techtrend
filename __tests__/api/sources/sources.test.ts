@@ -5,9 +5,9 @@
 
 import { testApiHandler, assertSuccessResponse } from '../../helpers/test-utils';
 import { GET as getSourcesHandler } from '@/app/api/sources/route';
-import { GET as getStatsHandler } from '@/app/api/sources/stats/route';
+// import { GET as getStatsHandler } from '@/app/api/sources/stats/route'; // モジュールが存在しない
 import prismaMock from '../../../__mocks__/lib/prisma';
-import redisMock from '../../../__mocks__/lib/redis/client';
+// import redisMock from '../../../__mocks__/lib/redis/client'; // モジュールが存在しない
 
 describe.skip('Sources API', () => {
   beforeEach(() => {
@@ -16,8 +16,8 @@ describe.skip('Sources API', () => {
     // デフォルトのモック設定
     prismaMock.source.findMany.mockResolvedValue([]);
     prismaMock.article.groupBy.mockResolvedValue([]);
-    redisMock.get.mockResolvedValue(null);
-    redisMock.set.mockResolvedValue('OK');
+    // redisMock.get.mockResolvedValue(null);
+    // redisMock.set.mockResolvedValue('OK');
   });
 
   describe('GET /api/sources', () => {

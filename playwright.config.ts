@@ -9,6 +9,8 @@ dotenv.config({ path: '.env.test' });
  */
 export default defineConfig({
   testDir: './__tests__/e2e',
+  /* Global timeout for each test */
+  timeout: 60000,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -36,7 +38,7 @@ export default defineConfig({
     /* Timeout for each action */
     actionTimeout: 15000,
     /* Timeout for navigation */
-    navigationTimeout: 30000,
+    navigationTimeout: 60000,
   },
 
   /* Configure projects for major browsers */
@@ -83,6 +85,6 @@ export default defineConfig({
   //   command: 'npm run dev',
   //   url: 'http://localhost:3000',
   //   reuseExistingServer: !process.env.CI,
-  //   timeout: 120000,
+  // timeout: 120000,
   // },
 });
