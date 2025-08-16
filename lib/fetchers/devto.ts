@@ -9,7 +9,7 @@ interface DevToArticle {
   description: string;
   url: string;
   published_at: string;
-  tag_list: string[];
+  tag_list: string[] | string; // 配列または文字列形式に対応
   user: {
     name: string;
     username: string;
