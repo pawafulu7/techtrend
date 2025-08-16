@@ -154,11 +154,11 @@ export class BusinessLogicError extends AppError {
 /**
  * エラーハンドリングユーティリティ
  */
-export function isAppError(error: any): error is AppError {
+export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError;
 }
 
-export function isOperationalError(error: any): boolean {
+export function isOperationalError(error: unknown): boolean {
   if (isAppError(error)) {
     return error.isOperational;
   }

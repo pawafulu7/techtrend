@@ -71,7 +71,7 @@ export class RedisCache {
   /**
    * Set a value in cache
    */
-  async set(key: string, value: any, ttl?: number): Promise<void> {
+  async set(key: string, value: unknown, ttl?: number): Promise<void> {
     try {
       const fullKey = this.generateKey(key);
       const finalTTL = ttl || this.defaultTTL;

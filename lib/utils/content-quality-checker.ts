@@ -185,7 +185,7 @@ export interface QualityIssue {
   severity: 'critical' | 'major' | 'minor';
   description: string;
   suggestion?: string;
-  details?: any; // 詳細情報
+  details?: unknown; // 詳細情報
 }
 
 export function checkContentQuality(

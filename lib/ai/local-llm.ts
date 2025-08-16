@@ -287,7 +287,7 @@ export class LocalLLMClient {
     let detailedSummary = '';
     let tags: string[] = [];
     let isDetailedSummary = false;
-    let detailedSummaryLines: string[] = [];
+    const detailedSummaryLines: string[] = [];
 
     for (const line of lines) {
       if (line.startsWith('要約:') || line.startsWith('要約：')) {

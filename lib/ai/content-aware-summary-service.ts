@@ -144,7 +144,7 @@ export class ContentAwareSummaryService extends UnifiedSummaryService {
       
       try {
         // 親クラスのcallGeminiAPIメソッドを使用
-        const responseText = await (this as any).callGeminiAPI(prompt);
+        const responseText = await (this as unknown).callGeminiAPI(prompt);
         const parsed = await this.parseAndValidateResponse(responseText, config.targetItems);
         
         return {

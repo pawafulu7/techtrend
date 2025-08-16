@@ -91,7 +91,7 @@ export class TechTermsManager {
       this.addCustomTerms(terms);
     } catch (error) {
       // ファイルが存在しない場合は無視
-      if ((error as any).code !== 'ENOENT') {
+      if ((error as unknown).code !== 'ENOENT') {
         console.error('カスタム用語の読み込みに失敗:', error);
       }
     }

@@ -21,7 +21,7 @@ describe('CorporateTechBlogFetcher', () => {
   describe('isEventArticle', () => {
     // privateメソッドのテストのため、any型を使用
     const testIsEventArticle = (title: string, url: string) => {
-      return (fetcher as any).isEventArticle(title, url);
+      return (fetcher as unknown).isEventArticle(title, url);
     };
 
     describe('イベントキーワードの判定', () => {

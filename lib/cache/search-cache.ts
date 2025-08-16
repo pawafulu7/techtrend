@@ -27,7 +27,7 @@ export class SearchCache extends RedisCache {
     order?: string;
     page?: number;
     limit?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   }): string {
     // クエリパラメータをソートして一貫性のあるキーを生成
     const sortedQuery = Object.keys(query)

@@ -4,6 +4,7 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import * as cheerio from 'cheerio';
 
 export class ThinkITContentEnricher extends BaseContentEnricher {
   /**
@@ -83,7 +84,6 @@ export class ThinkITContentEnricher extends BaseContentEnricher {
    * フォールバック: より広範囲からコンテンツを抽出
    */
   private extractWithFallback(html: string): string {
-    const cheerio = require('cheerio');
     const $ = cheerio.load(html);
     
     // 不要な要素を削除

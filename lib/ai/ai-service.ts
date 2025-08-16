@@ -194,7 +194,7 @@ export class AIService {
     throw lastError;
   }
 
-  private shouldFallback(error: any): boolean {
+  private shouldFallback(error: unknown): boolean {
     if (!this.config.useLocalLLMFallback || !this.localLLMClient) {
       return false;
     }
@@ -214,7 +214,7 @@ export class AIService {
     return false;
   }
 
-  private isRetryableError(error: any): boolean {
+  private isRetryableError(error: unknown): boolean {
     if (error instanceof ExternalAPIError) {
       const message = error.message.toLowerCase();
       // 503や429はリトライ可能

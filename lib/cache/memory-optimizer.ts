@@ -180,7 +180,7 @@ export class MemoryOptimizer {
     console.log(`[MemoryOptimizer] Adjusting TTLs by factor ${adjustmentFactor}`);
     
     // 各キャッシュのTTLを調整
-    const currentStatsTTL = (statsCache as any).defaultTTL;
+    const currentStatsTTL = (statsCache as unknown).defaultTTL;
     const newStatsTTL = Math.max(
       this.optimizationConfig.ttlAdjustment.minTTL,
       Math.min(
@@ -188,9 +188,9 @@ export class MemoryOptimizer {
         Math.floor(currentStatsTTL * adjustmentFactor)
       )
     );
-    (statsCache as any).defaultTTL = newStatsTTL;
+    (statsCache as unknown).defaultTTL = newStatsTTL;
     
-    const currentTrendsTTL = (trendsCache as any).defaultTTL;
+    const currentTrendsTTL = (trendsCache as unknown).defaultTTL;
     const newTrendsTTL = Math.max(
       this.optimizationConfig.ttlAdjustment.minTTL,
       Math.min(
@@ -198,7 +198,7 @@ export class MemoryOptimizer {
         Math.floor(currentTrendsTTL * adjustmentFactor)
       )
     );
-    (trendsCache as any).defaultTTL = newTrendsTTL;
+    (trendsCache as unknown).defaultTTL = newTrendsTTL;
     
     console.log(`[MemoryOptimizer] TTLs adjusted - Stats: ${newStatsTTL}s, Trends: ${newTrendsTTL}s`);
   }

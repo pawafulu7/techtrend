@@ -88,35 +88,35 @@ describe('logger', () => {
   });
   
   describe('環境変数による制御', () => {
-    it('LOG_LEVEL 環境変数でログレベルを設定できる', () => {
+    it('LOG_LEVEL 環境変数でログレベルを設定できる', async () => {
       // 環境変数の変更をシミュレート
       process.env.LOG_LEVEL = 'WARN';
       
       // logger モジュールを再読み込み
       jest.resetModules();
-      const { logger: reloadedLogger } = require('../logger');
+      const { logger: reloadedLogger } = await import('../logger');
       
       const config = reloadedLogger.getConfig();
       expect(config.level).toBe(LogLevel.WARN);
     });
     
-    it('本番環境では INFO レベルがデフォルト', () => {
+    it('本番環境では INFO レベルがデフォルト', async () => {
       process.env.NODE_ENV = 'production';
       
       // logger モジュールを再読み込み
       jest.resetModules();
-      const { logger: reloadedLogger } = require('../logger');
+      const { logger: reloadedLogger } = await import('../logger');
       
       const config = reloadedLogger.getConfig();
       expect(config.level).toBe(LogLevel.INFO);
     });
     
-    it('開発環境では DEBUG レベルがデフォルト', () => {
+    it('開発環境では DEBUG レベルがデフォルト', async () => {
       process.env.NODE_ENV = 'development';
       
       // logger モジュールを再読み込み
       jest.resetModules();
-      const { logger: reloadedLogger } = require('../logger');
+      const { logger: reloadedLogger } = await import('../logger');
       
       const config = reloadedLogger.getConfig();
       expect(config.level).toBe(LogLevel.DEBUG);

@@ -153,7 +153,7 @@ export async function generateSummaryWithRetry(
   }
 
   const maxTries = maxAttempts || getMaxRegenerationAttempts();
-  let lastResult: any = null;
+  let lastResult: unknown = null;
   let lastQuality: QualityCheckResult | null = null;
   
   for (let attempt = 1; attempt <= maxTries; attempt++) {

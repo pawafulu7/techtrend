@@ -5,7 +5,7 @@ import { redisCircuitBreaker } from './circuit-breaker';
  * サーキットブレーカーとフォールバック機能を持つRedisCache拡張
  */
 export class RedisCacheWithFallback extends RedisCache {
-  private memoryCache = new Map<string, { data: any; expires: number }>();
+  private memoryCache = new Map<string, { data: unknown; expires: number }>();
   
   /**
    * getOrSetのフォールバック対応版

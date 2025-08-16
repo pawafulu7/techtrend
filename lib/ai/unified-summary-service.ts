@@ -253,14 +253,14 @@ export class UnifiedSummaryService {
       throw new Error(`API request failed: ${response.status} - ${error}`);
     }
 
-    const data = await response.json() as any;
+    const data = await response.json() as unknown;
     return data.candidates[0].content.parts[0].text.trim();
   }
 
   /**
    * Rate limitエラーかチェック
    */
-  private isRateLimitError(error: any): boolean {
+  private isRateLimitError(error: unknown): boolean {
     const message = error?.message || String(error);
     return message.includes('429') || 
            message.includes('rate') || 

@@ -9,13 +9,13 @@ type Metric = 'bookmarks' | 'votes' | 'quality' | 'combined';
 
 // 前回ランキング用のキャッシュ（トレンド計算用）
 interface CachedData {
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 const trendCache = new Map<string, CachedData>();
 
 // トレンド計算関数
-function calculateTrend(currentRank: number, articleId: string, previousRankings: any[]): 'up' | 'down' | 'stable' | 'new' {
+function calculateTrend(currentRank: number, articleId: string, previousRankings: unknown): 'up' | 'down' | 'stable' | 'new' {
   if (!previousRankings || !Array.isArray(previousRankings)) return 'new';
   
   const previousItem = previousRankings.find(item => item.id === articleId);

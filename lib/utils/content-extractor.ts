@@ -6,7 +6,7 @@
  * RSSアイテムから本文コンテンツを抽出
  * 複数のフィールドをチェックして最適なコンテンツを取得
  */
-export function extractContent(item: any): string {
+export function extractContent(item: unknown): string {
   // 優先順位順にチェック
   const contentFields = [
     'content:encoded',
@@ -147,13 +147,13 @@ export function optimizeContentForSummary(
  * RSSアイテムからメタデータを抽出
  * 作者、カテゴリ、公開日などの追加情報を取得
  */
-export function extractMetadata(item: any): {
+export function extractMetadata(item: unknown): {
   author?: string;
   categories?: string[];
   pubDate?: string;
   guid?: string;
 } {
-  const metadata: any = {};
+  const metadata: unknown = {};
   
   // 作者情報
   if (item.author) {

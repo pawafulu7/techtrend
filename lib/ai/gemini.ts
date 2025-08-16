@@ -289,7 +289,7 @@ export class GeminiClient {
     let isDetailedSummary = false;
     let isSummarySection = false;
     let isTagSection = false;
-    let detailedSummaryLines: string[] = [];
+    const detailedSummaryLines: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();

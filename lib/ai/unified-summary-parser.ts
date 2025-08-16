@@ -20,7 +20,7 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
   let detailedSummary = '';
   let tags: string[] = [];
   let currentSection: 'summary' | 'detailed' | 'tags' | null = null;
-  let detailedSummaryLines: string[] = [];
+  const detailedSummaryLines: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];

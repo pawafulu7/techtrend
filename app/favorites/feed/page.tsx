@@ -64,7 +64,7 @@ export default function FavoritesFeedPage() {
       const data = await response.json();
 
       // ソート処理
-      let sortedArticles = [...data.articles];
+      const sortedArticles = [...data.articles];
       switch (sortBy) {
         case 'popular':
           sortedArticles.sort((a, b) => b.bookmarkCount - a.bookmarkCount);

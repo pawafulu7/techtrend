@@ -117,7 +117,7 @@ export class RedisCacheWithLock extends RedisCacheWithFallback {
    * @param enabled 有効化フラグ
    */
   setStampedePrevention(enabled: boolean) {
-    (this as any).stampedePrevention = enabled;
+    (this as unknown).stampedePrevention = enabled;
     console.log(`[RedisCacheWithLock] Stampede prevention ${enabled ? 'enabled' : 'disabled'}`);
   }
 

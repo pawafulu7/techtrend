@@ -221,10 +221,10 @@ export class CacheWarmer {
     
     // 最後の実行時刻を記録（簡易実装）
     const lastRunKey = `lastWarm:${type}`;
-    const lastRun = (global as any)[lastRunKey] || 0;
+    const lastRun = (global as unknown)[lastRunKey] || 0;
     
     if (now - lastRun >= config.interval) {
-      (global as any)[lastRunKey] = now;
+      (global as unknown)[lastRunKey] = now;
       return true;
     }
     
@@ -263,7 +263,7 @@ export class CacheWarmer {
     const now = new Date();
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     
-    const whereClause: any = {
+    const whereClause: unknown = {
       publishedAt: { gte: startDate }
     };
     
@@ -317,7 +317,7 @@ export class CacheWarmer {
   /**
    * 検索結果取得
    */
-  private async fetchSearchResults(query: any) {
+  private async fetchSearchResults(query: unknown) {
     const { q, limit = 20 } = query;
     
     // FTSを使用した検索（簡易実装）
