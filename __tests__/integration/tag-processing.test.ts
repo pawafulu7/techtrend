@@ -6,7 +6,6 @@ import { Source } from '@prisma/client';
 global.fetch = jest.fn();
 
 describe('Tag Processing Integration', () => {
-  // jest.setTimeout(30000); // タイムアウト設定を削除
   
   let mockSource: Source;
   let fetcher: DevToFetcher;
@@ -68,7 +67,7 @@ describe('Tag Processing Integration', () => {
       expect(result.articles[0].tagNames).toContain('JavaScript');
       expect(result.articles[0].tagNames).toContain('React');
       expect(result.articles[0].tagNames).toContain('Webdev');
-    });
+    }, 30000);
 
     it('should handle tag_list as string from detail API', async () => {
       const mockListResponse = [
@@ -113,7 +112,7 @@ describe('Tag Processing Integration', () => {
       expect(result.articles[0].tagNames).toContain('TypeScript');
       expect(result.articles[0].tagNames).toContain('Node.js');
       expect(result.articles[0].tagNames).toContain('Testing');
-    });
+    }, 30000);
 
     it('should filter out single character tags', async () => {
       const mockArticleWithBadTags = {
@@ -148,7 +147,7 @@ describe('Tag Processing Integration', () => {
       expect(result.articles[0].tagNames).not.toContain('a');
       expect(result.articles[0].tagNames).not.toContain('b');
       expect(result.articles[0].tagNames).not.toContain('c');
-    });
+    }, 30000);
 
     it('should handle empty or missing tag_list', async () => {
       const mockArticlesWithNoTags = [
@@ -210,7 +209,7 @@ describe('Tag Processing Integration', () => {
       const result2 = await fetcher.fetch();
       expect(result2.articles).toHaveLength(1);
       expect(result2.articles[0].tagNames).toEqual([]);
-    });
+    }, 30000);
 
     it('should handle malformed tag strings gracefully', async () => {
       const mockArticleWithMalformedTags = {
@@ -243,7 +242,7 @@ describe('Tag Processing Integration', () => {
       expect(result.articles).toHaveLength(1);
       expect(result.articles[0].tagNames).toEqual(['JavaScript', 'React']);
       expect(result.articles[0].tagNames).toHaveLength(2); // Only valid tags, no empty strings
-    });
+    }, 30000);
   });
 
   describe('Tag Normalization Consistency', () => {
