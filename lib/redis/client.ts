@@ -4,28 +4,36 @@ let redisClient: Redis | null = null;
 
 export function getRedisClient(): Redis {
   if (!redisClient) {
-    // Test environment: Return mock object
+    // Test environment: Use mocked ioredis if available
     if (process.env.NODE_ENV === 'test') {
-      redisClient = {
-        get: jest?.fn() || (() => Promise.resolve(null)),
-        set: jest?.fn() || (() => Promise.resolve('OK')),
-        del: jest?.fn() || (() => Promise.resolve(1)),
-        exists: jest?.fn() || (() => Promise.resolve(0)),
-        expire: jest?.fn() || (() => Promise.resolve(1)),
-        ttl: jest?.fn() || (() => Promise.resolve(-2)),
-        keys: jest?.fn() || (() => Promise.resolve([])),
-        setex: jest?.fn() || (() => Promise.resolve('OK')),
-        on: jest?.fn() || (() => {}),
-        once: jest?.fn() || (() => {}),
-        off: jest?.fn() || (() => {}),
-        emit: jest?.fn() || (() => {}),
-        connect: jest?.fn() || (() => Promise.resolve()),
-        disconnect: jest?.fn() || (() => Promise.resolve()),
-        quit: jest?.fn() || (() => Promise.resolve()),
-        ping: jest?.fn() || (() => Promise.resolve('PONG')),
-      } as any as Redis;
+      try {
+        // jest.mockされたioredisを使用
+        const Redis = require('ioredis');
+        redisClient = new Redis();
+      } catch (error) {
+        // フォールバック: モックオブジェクトを直接作成
+        redisClient = {
+          ping: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue('PONG') : (() => Promise.resolve('PONG')),
+          set: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue('OK') : (() => Promise.resolve('OK')),
+          get: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(null) : (() => Promise.resolve(null)),
+          del: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(1) : (() => Promise.resolve(1)),
+          exists: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(0) : (() => Promise.resolve(0)),
+          expire: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(1) : (() => Promise.resolve(1)),
+          ttl: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(59) : (() => Promise.resolve(59)),
+          keys: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue([]) : (() => Promise.resolve([])),
+          setex: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue('OK') : (() => Promise.resolve('OK')),
+          on: (typeof jest !== 'undefined' && jest.fn) ? jest.fn() : (() => {}),
+          once: (typeof jest !== 'undefined' && jest.fn) ? jest.fn() : (() => {}),
+          off: (typeof jest !== 'undefined' && jest.fn) ? jest.fn() : (() => {}),
+          emit: (typeof jest !== 'undefined' && jest.fn) ? jest.fn() : (() => false),
+          connect: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(undefined) : (() => Promise.resolve()),
+          disconnect: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(undefined) : (() => Promise.resolve()),
+          quit: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(undefined) : (() => Promise.resolve()),
+        } as any as Redis;
+      }
     } else {
       // Production environment: Create real Redis client
+      const Redis = require('ioredis');
       redisClient = new Redis({
         host: process.env.REDIS_HOST || 'localhost',
         port: parseInt(process.env.REDIS_PORT || '6379'),

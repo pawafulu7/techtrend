@@ -6,11 +6,12 @@ jest.mock('ioredis', () => {
     connect: jest.fn().mockResolvedValue(undefined),
     ping: jest.fn().mockResolvedValue('PONG'),
     set: jest.fn((key, value, ...args) => {
-      // EX パラメータ処理
+      // RedisCacheクラスは既にJSON.stringifyしているので、そのまま保存
       mockStore.set(key, value);
       return Promise.resolve('OK');
     }),
     get: jest.fn((key) => {
+      // 常に文字列またはnullを返す（RedisCache側でJSON.parse）
       return Promise.resolve(mockStore.get(key) || null);
     }),
     del: jest.fn((key) => {

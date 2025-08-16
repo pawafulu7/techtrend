@@ -3,6 +3,8 @@
  * 統一プロンプトによる要約生成の品質を検証し、再生成の必要性を判定
  */
 
+import { ContentAnalysis } from './content-analyzer';
+
 export interface QualityCheckResult {
   isValid: boolean;
   issues: QualityIssue[];
@@ -39,8 +41,12 @@ const SPECULATIVE_PATTERNS = [
   '可能性が高い',
   '可能性があります',
   '予想されます',
-  '予想される'
-];
+  '予想される',
+  'おそらく',  // 追加
+  '恐らく',    // 追加（漢字版）
+  'たぶん',    // 追加
+  '多分'       // 追加（漢字版）
+];;
 
 /**
  * 推測表現を検出
@@ -87,62 +93,80 @@ export function detectSpeculativeExpressions(text: string): SpeculativeExpressio
  */
 export function checkSummaryQuality(
   summary: string,
-  detailedSummary: string
+  detailedSummary: string,
+  contentAnalysis?: ContentAnalysis  // オプショナル引数として追加
 ): QualityCheckResult {
   const issues: QualityIssue[] = [];
   let score = 100;
 
+  // 動的な基準設定（contentAnalysisがある場合はそれを使用）
+  const minSummaryLength = contentAnalysis?.isThinContent 
+    ? (contentAnalysis.recommendedMinLength || 60)
+    : 50;
+  const maxSummaryLength = contentAnalysis?.isThinContent
+    ? (contentAnalysis.recommendedMaxLength || 100)
+    : 200;
+  const idealMinSummaryLength = contentAnalysis?.isThinContent ? 60 : 100;
+  const idealMaxSummaryLength = contentAnalysis?.isThinContent ? 100 : 180;
+
   // 1. 一覧要約の文字数チェック
   const summaryLength = summary.length;
-  if (summaryLength < 50) {
-    // 50文字未満は短すぎる
+  if (summaryLength < minSummaryLength) {
+    // 最小文字数未満は短すぎる
     issues.push({
       type: 'length',
       severity: 'major',
-      message: `一覧要約が短すぎる: ${summaryLength}文字（最小50文字）`
+      message: `一覧要約が短すぎる: ${summaryLength}文字（最小${minSummaryLength}文字）`
     });
     score -= 20;
-  } else if (summaryLength < 100) {
-    // 50-100文字は短めだが許容
+  } else if (summaryLength < idealMinSummaryLength) {
+    // 理想の最小値未満は短め
     issues.push({
       type: 'length',
       severity: 'minor',
-      message: `一覧要約が短め: ${summaryLength}文字（理想は100-180文字）`
+      message: `一覧要約が短め: ${summaryLength}文字（理想は${idealMinSummaryLength}-${idealMaxSummaryLength}文字）`
     });
     score -= 5;
-  } else if (summaryLength > 200) {
-    // 200文字を超える場合は長すぎる
+  } else if (summaryLength > maxSummaryLength) {
+    // 最大文字数を超える場合は長すぎる
     issues.push({
       type: 'length',
-      severity: 'minor',
-      message: `一覧要約が長すぎる: ${summaryLength}文字（最大200文字）`
+      severity: contentAnalysis?.isThinContent ? 'major' : 'minor',
+      message: `一覧要約が長すぎる: ${summaryLength}文字（最大${maxSummaryLength}文字）`
     });
-    score -= 10;
+    score -= contentAnalysis?.isThinContent ? 15 : 10;
   }
 
-  // 2. 詳細要約の文字数チェック
+  // 2. 詳細要約の文字数チェック（薄いコンテンツの場合は基準を緩和）
   const detailedLength = detailedSummary.length;
-  if (detailedLength < 200) {
-    issues.push({
-      type: 'length',
-      severity: 'major',
-      message: `詳細要約が短すぎる: ${detailedLength}文字（最小200文字）`
-    });
-    score -= 20;
-  } else if (detailedLength < 400) {
-    issues.push({
-      type: 'length',
-      severity: 'minor',
-      message: `詳細要約が短め: ${detailedLength}文字（理想は400-600文字）`
-    });
-    score -= 5;
-  } else if (detailedLength > 800) {
-    issues.push({
-      type: 'length',
-      severity: 'minor',
-      message: `詳細要約が長すぎる: ${detailedLength}文字（最大800文字）`
-    });
-    score -= 10;
+  const minDetailedLength = contentAnalysis?.isThinContent ? 50 : 200;
+  const idealMinDetailedLength = contentAnalysis?.isThinContent ? 80 : 400;
+  const maxDetailedLength = contentAnalysis?.isThinContent ? 200 : 800;
+  
+  if (!contentAnalysis?.isThinContent) {
+    // 通常コンテンツの詳細要約チェック
+    if (detailedLength < minDetailedLength) {
+      issues.push({
+        type: 'length',
+        severity: 'major',
+        message: `詳細要約が短すぎる: ${detailedLength}文字（最小${minDetailedLength}文字）`
+      });
+      score -= 20;
+    } else if (detailedLength < idealMinDetailedLength) {
+      issues.push({
+        type: 'length',
+        severity: 'minor',
+        message: `詳細要約が短め: ${detailedLength}文字（理想は${idealMinDetailedLength}-600文字）`
+      });
+      score -= 5;
+    } else if (detailedLength > maxDetailedLength) {
+      issues.push({
+        type: 'length',
+        severity: 'minor',
+        message: `詳細要約が長すぎる: ${detailedLength}文字（最大${maxDetailedLength}文字）`
+      });
+      score -= 10;
+    }
   }
 
   // 3. 句点チェック
@@ -155,27 +179,45 @@ export function checkSummaryQuality(
     score -= 5;
   }
 
-  // 4. 詳細要約の形式チェック
-  const bulletPoints = (detailedSummary.match(/・/g) || []).length;
-  if (bulletPoints === 0) {
-    issues.push({
-      type: 'format',
-      severity: 'major',
-      message: '詳細要約に箇条書き（・）が含まれていない'
-    });
-    score -= 15;
-  } else if (bulletPoints < 3) {
-    issues.push({
-      type: 'format',
-      severity: 'minor',
-      message: `詳細要約の項目数が少ない: ${bulletPoints}項目（理想は3-5項目）`
-    });
-    score -= 5;
+  // 4. 詳細要約の形式チェック（薄いコンテンツの場合は箇条書きを必須としない）
+  if (!contentAnalysis?.isThinContent) {
+    const bulletPoints = (detailedSummary.match(/・/g) || []).length;
+    if (bulletPoints === 0) {
+      issues.push({
+        type: 'format',
+        severity: 'major',
+        message: '詳細要約に箇条書き（・）が含まれていない'
+      });
+      score -= 15;
+    } else if (bulletPoints < 3) {
+      issues.push({
+        type: 'format',
+        severity: 'minor',
+        message: `詳細要約の項目数が少ない: ${bulletPoints}項目（理想は3-5項目）`
+      });
+      score -= 5;
+    }
   }
 
-  // 5. 推測表現のチェック
-  const speculativeResult = detectSpeculativeExpressions(detailedSummary);
-  if (speculativeResult.count >= 3) {
+  // 5. 推測表現のチェック（薄いコンテンツでは厳格にチェック）
+  // 一覧要約と詳細要約の両方をチェック
+  const summarySpeculative = detectSpeculativeExpressions(summary);
+  const detailedSpeculative = detectSpeculativeExpressions(detailedSummary);
+  const speculativeResult = {
+    count: summarySpeculative.count + detailedSpeculative.count,
+    ratio: Math.max(summarySpeculative.ratio, detailedSpeculative.ratio),
+    expressions: [...summarySpeculative.expressions, ...detailedSpeculative.expressions]
+  };
+  
+  if (contentAnalysis?.isThinContent && speculativeResult.count > 0) {
+    // 薄いコンテンツでは推測表現は厳禁
+    issues.push({
+      type: 'speculative',
+      severity: 'critical',
+      message: `推測表現は厳禁: ${speculativeResult.count}個（${speculativeResult.expressions.join('、')}）`
+    });
+    score -= 50;  // 大幅減点
+  } else if (speculativeResult.count >= 3) {
     issues.push({
       type: 'speculative',
       severity: 'major',
@@ -223,8 +265,8 @@ export function checkSummaryQuality(
       });
       score -= 30;
     }
-    // 詳細要約に箇条書きがないかチェック
-    if (!detailedSummary.includes('・')) {
+    // 詳細要約に箇条書きがないかチェック（薄いコンテンツ以外）
+    if (!contentAnalysis?.isThinContent && !detailedSummary.includes('・')) {
       issues.push({
         type: 'format',
         severity: 'major',
@@ -242,8 +284,17 @@ export function checkSummaryQuality(
     score < (parseInt(process.env.QUALITY_MIN_SCORE || '70')) ||
     issues.some(issue => issue.severity === 'critical');
 
+  // isValidの判定: 薄いコンテンツの場合は最小文字数も厳格にチェック
+  let isValid = score >= 60;
+  if (contentAnalysis?.isThinContent) {
+    // 薄いコンテンツの場合、最小文字数未満はinvalid
+    if (summaryLength < minSummaryLength) {
+      isValid = false;
+    }
+  }
+
   return {
-    isValid: score >= 60,
+    isValid,
     issues,
     requiresRegeneration,
     score,
