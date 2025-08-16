@@ -79,6 +79,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
 
   return (
     <Card 
+      data-testid="article-card"
       onClick={handleCardClick}
       className={cn(
         "group relative overflow-hidden cursor-pointer",
