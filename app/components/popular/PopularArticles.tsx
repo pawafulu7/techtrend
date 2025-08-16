@@ -186,7 +186,7 @@ export function PopularArticles({
         <div className="flex items-center justify-between">
           <CardTitle>人気記事ランキング</CardTitle>
           <div className="flex items-center gap-2">
-            <Tabs value={period} onValueChange={(v) => setPeriod(v as any)}>
+            <Tabs value={period} onValueChange={(v) => setPeriod(v as 'today' | 'week' | 'month' | 'all')}>
               <TabsList className="h-8">
                 <TabsTrigger value="today" className="text-xs">今日</TabsTrigger>
                 <TabsTrigger value="week" className="text-xs">週間</TabsTrigger>
@@ -198,7 +198,7 @@ export function PopularArticles({
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs value={metric} onValueChange={(v) => setMetric(v as any)}>
+        <Tabs value={metric} onValueChange={(v) => setMetric(v as 'bookmarks' | 'votes' | 'quality' | 'combined')}>
           <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="combined">
               <TrendingUp className="h-4 w-4 mr-1" />

@@ -43,8 +43,7 @@ export async function GET(request: NextRequest) {
 
     // タグフィルター（除外）
     if (excludeTags.length > 0) {
-      whereConditions.NOT = whereConditions.NOT || [];
-      whereConditions.NOT.push({
+      whereConditions.NOT = {
         tags: {
           some: {
             name: {
@@ -52,7 +51,7 @@ export async function GET(request: NextRequest) {
             }
           }
         }
-      });
+      };
     }
 
     // ソースフィルター（包含）
@@ -66,14 +65,30 @@ export async function GET(request: NextRequest) {
 
     // ソースフィルター（除外）
     if (excludeSources.length > 0) {
-      whereConditions.NOT = whereConditions.NOT || [];
-      whereConditions.NOT.push({
-        source: {
-          name: {
-            in: excludeSources
+      // NOTが既に設定されている場合はAND条件で結合
+      if (whereConditions.NOT) {
+        whereConditions.AND = [
+          { NOT: whereConditions.NOT },
+          {
+            NOT: {
+              source: {
+                name: {
+                  in: excludeSources
+                }
+              }
+            }
           }
-        }
-      });
+        ];
+        delete whereConditions.NOT;
+      } else {
+        whereConditions.NOT = {
+          source: {
+            name: {
+              in: excludeSources
+            }
+          }
+        };
+      }
     }
 
     // 難易度フィルター
@@ -109,15 +124,22 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    let articles;
-    let totalCount;
+    let articles: Array<{
+      id: string;
+      publishedAt: Date;
+      qualityScore: number;
+      source: unknown;
+      tags: unknown[];
+      [key: string]: unknown;
+    }> = [];
+    let totalCount = 0;
 
     // 全文検索クエリがある場合
     if (query) {
       // 除外キーワードの処理
       const queryParts = query.split(' ');
-      const includeTerms = [];
-      const excludeTerms = [];
+      const includeTerms: string[] = [];
+      const excludeTerms: string[] = [];
       
       queryParts.forEach(term => {
         if (term.startsWith('-')) {
@@ -156,12 +178,6 @@ export async function GET(request: NextRequest) {
           include: {
             source: true,
             tags: true,
-            _count: {
-              select: {
-                readingList: true,
-                votes: true
-              }
-            }
           }
         });
 
@@ -175,7 +191,7 @@ export async function GET(request: NextRequest) {
             articles.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
             break;
           case 'popularity':
-            articles.sort((a, b) => b._count.votes - a._count.votes);
+            articles.sort((a, b) => (b as any).bookmarks - (a as any).bookmarks);
             break;
           case 'quality':
             articles.sort((a, b) => b.qualityScore - a.qualityScore);
@@ -207,12 +223,6 @@ export async function GET(request: NextRequest) {
           include: {
             source: true,
             tags: true,
-            _count: {
-              select: {
-                readingList: true,
-                votes: true
-              }
-            }
           },
           orderBy,
           skip: offset,

@@ -32,12 +32,6 @@ export async function GET(request: NextRequest) {
         include: {
           source: true,
           tags: true,
-          _count: {
-            select: {
-              readingList: true,
-              votes: true
-            }
-          }
         },
         orderBy: {
           publishedAt: 'desc'
@@ -57,9 +51,7 @@ export async function GET(request: NextRequest) {
     // ArticleWithRelations形式に変換
     const articlesWithRelations = articles.map(article => ({
       ...article,
-      tags: article.tags.map(tag => tag.name),
-      bookmarkCount: article._count.readingList,
-      voteScore: article._count.votes
+      tags: article.tags.map(tag => tag.name)
     }));
 
     return NextResponse.json({

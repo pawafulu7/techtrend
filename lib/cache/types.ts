@@ -11,5 +11,5 @@ export interface CacheStats {
 
 export interface CacheKeyOptions {
   prefix?: string;
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
 }

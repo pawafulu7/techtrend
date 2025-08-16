@@ -7,11 +7,12 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const article = await prisma.article.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         source: true,
         tags: true,
@@ -41,9 +42,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { title, summary, thumbnail, content, tagNames } = body;
 
@@ -64,7 +66,7 @@ export async function PATCH(
     }
 
     const article = await prisma.article.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         source: true,
@@ -73,7 +75,7 @@ export async function PATCH(
     });
 
     // キャッシュを無効化
-    await cacheInvalidator.onArticleUpdated(params.id);
+    await cacheInvalidator.onArticleUpdated(id);
 
     return NextResponse.json({
       success: true,
@@ -91,15 +93,16 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await prisma.article.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     // キャッシュを無効化
-    await cacheInvalidator.onArticleDeleted(params.id);
+    await cacheInvalidator.onArticleDeleted(id);
 
     return NextResponse.json({
       success: true,

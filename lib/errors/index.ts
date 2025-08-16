@@ -34,9 +34,9 @@ export class AppError extends Error {
  */
 export class ValidationError extends AppError {
   public readonly field?: string;
-  public readonly details?: Record<string, any>;
+  public readonly details?: Record<string, unknown>;
 
-  constructor(message: string, field?: string, details?: Record<string, any>) {
+  constructor(message: string, field?: string, details?: Record<string, unknown>) {
     super(message, 'VALIDATION_ERROR', 400);
     this.field = field;
     this.details = details;
@@ -118,9 +118,9 @@ export class RateLimitError extends AppError {
  */
 export class ExternalAPIError extends AppError {
   public readonly service: string;
-  public readonly originalError?: any;
+  public readonly originalError?: unknown;
 
-  constructor(service: string, message: string, originalError?: any) {
+  constructor(service: string, message: string, originalError?: unknown) {
     super(`${service} API error: ${message}`, 'EXTERNAL_API_ERROR', 502);
     this.service = service;
     this.originalError = originalError;
@@ -174,7 +174,7 @@ export interface ErrorResponse {
     code: string;
     message: string;
     field?: string;
-    details?: any;
+    details?: unknown;
   };
 }
 

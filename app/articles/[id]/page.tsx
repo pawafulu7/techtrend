@@ -184,7 +184,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                 <DetailedSummaryDisplay 
                   articleId={article.id} 
                   detailedSummary={article.detailedSummary}
-                  articleType={article.articleType as any}
+                  articleType={article.articleType as "technical" | "unified" | "news" | "tips" | "tutorial" | "other"}
                   summaryVersion={article.summaryVersion}
                 />
               ) : article.summary ? (

@@ -10,10 +10,10 @@ export function NoTransitions() {
 
     // Use requestIdleCallback for better timing
     if ('requestIdleCallback' in window) {
-      const handle = (window as any).requestIdleCallback(removeTransitions, { timeout: 300 });
+      const handle = (window as unknown as {requestIdleCallback: (callback: () => void, options?: {timeout: number}) => number}).requestIdleCallback(removeTransitions, { timeout: 300 });
       return () => {
         if ('cancelIdleCallback' in window) {
-          (window as any).cancelIdleCallback(handle);
+          (window as unknown as {cancelIdleCallback: (handle: number) => void}).cancelIdleCallback(handle);
         }
       };
     } else {

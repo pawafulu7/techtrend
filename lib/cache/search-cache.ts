@@ -37,7 +37,7 @@ export class SearchCache extends RedisCache {
           acc[key] = query[key];
         }
         return acc;
-      }, {} as Record<string, any>);
+      }, {} as Record<string, unknown>);
     
     // クエリが空の場合
     if (Object.keys(sortedQuery).length === 0) {

@@ -29,13 +29,13 @@ export class TrendsCache extends RedisCache {
    * @param query クエリオブジェクト
    * @returns ハッシュ化されたキー
    */
-  generateHashKey(query: Record<string, any>): string {
+  generateHashKey(query: Record<string, unknown>): string {
     const sortedQuery = Object.keys(query)
       .sort()
       .reduce((acc, key) => {
         acc[key] = query[key];
         return acc;
-      }, {} as Record<string, any>);
+      }, {} as Record<string, unknown>);
     
     const queryString = JSON.stringify(sortedQuery);
     const hash = crypto.createHash('sha256').update(queryString).digest('hex');

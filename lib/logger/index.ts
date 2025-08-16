@@ -40,16 +40,16 @@ export const logger = winston.createLogger({
 
 // Compatibility layer with existing console.* calls
 export const log = {
-  error: (message: string, ...args: any[]) => {
+  error: (message: string, ...args: unknown[]) => {
     if (args.length > 0 && args[0] instanceof Error) {
       logger.error(message, { error: args[0].message, stack: args[0].stack });
     } else {
       logger.error(message, ...args);
     }
   },
-  warn: (message: string, ...args: any[]) => logger.warn(message, ...args),
-  info: (message: string, ...args: any[]) => logger.info(message, ...args),
-  debug: (message: string, ...args: any[]) => logger.debug(message, ...args),
+  warn: (message: string, ...args: unknown[]) => logger.warn(message, ...args),
+  info: (message: string, ...args: unknown[]) => logger.info(message, ...args),
+  debug: (message: string, ...args: unknown[]) => logger.debug(message, ...args),
 };
 
 // Export winston logger for advanced usage

@@ -18,7 +18,7 @@ import { TrendingUp } from 'lucide-react';
 interface TrendLineChartProps {
   data: Array<{
     date: string;
-    [key: string]: any;
+    [key: string]: string | number;
   }>;
   tags: string[];
   loading?: boolean;

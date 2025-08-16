@@ -29,7 +29,7 @@ interface TrendAnalysis {
   topTags: { name: string; totalCount: number }[];
   timeline: Array<{
     date: string;
-    [key: string]: any;
+    [key: string]: string | number;
   }>;
   period: {
     from: string;
@@ -111,8 +111,8 @@ export default function TrendsPage() {
         const otherSources = allSources.slice(6);
         
         // 「その他」の合計を計算
-        const othersCount = otherSources.reduce((sum: number, source: any) => sum + source.count, 0);
-        const othersPercentage = otherSources.reduce((sum: number, source: any) => sum + source.percentage, 0);
+        const othersCount = otherSources.reduce((sum: number, source: {count: number}) => sum + source.count, 0);
+        const othersPercentage = otherSources.reduce((sum: number, source: {percentage: number}) => sum + source.percentage, 0);
         
         const sourceStats = topSources.map((source: {name: string; count: number; percentage: number}) => ({
           name: source.name,
