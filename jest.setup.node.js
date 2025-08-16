@@ -1,6 +1,9 @@
 // Node.js環境用のセットアップ
 import '@testing-library/jest-dom';
 
+// Redisクライアントのモックは__mocks__ディレクトリから自動的に読み込まれる
+jest.mock('@/lib/redis/client');
+
 // グローバルfetchのモック（Node環境用）
 global.fetch = jest.fn(() =>
   Promise.resolve({

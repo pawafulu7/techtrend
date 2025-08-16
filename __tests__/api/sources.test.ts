@@ -23,7 +23,7 @@ import redisMock from '../../__mocks__/lib/redis/client';
 
 // モックの自動適用
 jest.mock('@/lib/database');
-jest.mock('@/lib/redis/client');
+// Redisクライアントのモックはjest.setup.node.jsで設定済み
 
 describe.skip('Sources API Tests', () => {
   beforeEach(() => {

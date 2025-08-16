@@ -252,42 +252,149 @@ export function checkSummaryQuality(
 }
 
 /**
+ * 品質チェック結果の統計情報を計算
+ */
+/**
+ * 品質チェック結果の統計情報を計算
+ */
+export function calculateQualityStats(results: QualityCheckResult[]): {
+  totalCount: number;
+  validCount: number;
+  invalidCount: number;
+  requiresRegenerationCount: number;
+  averageScore: number;
+  issuesSummary: Record<string, number>;
+  regenerationRate: number;
+  minorIssuesCount: number;
+  majorIssuesCount: number;
+  criticalIssuesCount: number;
+} {
+  // 統計情報を計算
+  const totalCount = results.length;
+  
+  if (totalCount === 0) {
+    return {
+      totalCount: 0,
+      validCount: 0,
+      invalidCount: 0,
+      requiresRegenerationCount: 0,
+      averageScore: 0,
+      issuesSummary: {},
+      regenerationRate: 0,
+      minorIssuesCount: 0,
+      majorIssuesCount: 0,
+      criticalIssuesCount: 0
+    };
+  }
+  
+  const validCount = results.filter(r => r.isValid).length;
+  const invalidCount = totalCount - validCount;
+  const requiresRegenerationCount = results.filter(r => r.requiresRegeneration).length;
+  const averageScore = results.reduce((sum, r) => sum + r.score, 0) / totalCount;
+  const regenerationRate = Math.round((requiresRegenerationCount / totalCount) * 100);
+  
+  // issueタイプごとの集計
+  const issuesSummary: Record<string, number> = {};
+  let minorIssuesCount = 0;
+  let majorIssuesCount = 0;
+  let criticalIssuesCount = 0;
+  
+  results.forEach(result => {
+    result.issues.forEach(issue => {
+      issuesSummary[issue.type] = (issuesSummary[issue.type] || 0) + 1;
+      
+      switch (issue.severity) {
+        case 'minor':
+          minorIssuesCount++;
+          break;
+        case 'major':
+          majorIssuesCount++;
+          break;
+        case 'critical':
+          criticalIssuesCount++;
+          break;
+      }
+    });
+  });
+  
+  return {
+    totalCount,
+    validCount,
+    invalidCount,
+    requiresRegenerationCount,
+    averageScore,
+    issuesSummary,
+    regenerationRate,
+    minorIssuesCount,
+    majorIssuesCount,
+    criticalIssuesCount
+  };
+}
+
+/**
  * 品質チェック機能が有効かどうか
  */
+/**
+ * 品質チェックが有効かどうかを判定
+ */
 export function isQualityCheckEnabled(): boolean {
+  // 環境変数が設定されていない場合はデフォルトでtrue
+  if (process.env.QUALITY_CHECK_ENABLED === undefined) {
+    return true;
+  }
   return process.env.QUALITY_CHECK_ENABLED === 'true';
 }
 
 /**
  * 最大再生成回数を取得
  */
+/**
+ * 最大再生成試行回数を取得
+ */
 export function getMaxRegenerationAttempts(): number {
-  return parseInt(process.env.MAX_REGENERATION_ATTEMPTS || '3');
+  const value = parseInt(process.env.MAX_REGENERATION_ATTEMPTS || '3');
+  return isNaN(value) ? 3 : value;
+}
+
+/**
+ * 品質スコアの最小値を取得
+ */
+/**
+ * 品質スコアの最小値を取得
+ */
+export function getMinQualityScore(): number {
+  const value = parseInt(process.env.QUALITY_MIN_SCORE || '70');
+  return isNaN(value) ? 70 : value;
 }
 
 /**
  * 品質レポートを生成
  */
+/**
+ * 品質チェック結果のレポートを生成
+ */
 export function generateQualityReport(result: QualityCheckResult): string {
-  const lines = [
-    `📊 品質スコア: ${result.score}/100`,
-    `✅ 有効: ${result.isValid ? 'はい' : 'いいえ'}`,
-    `🔄 再生成必要: ${result.requiresRegeneration ? 'はい' : 'いいえ'}`,
-  ];
-
-  if (result.speculativeExpressions && result.speculativeExpressions.count > 0) {
-    lines.push(`🤔 推測表現: ${result.speculativeExpressions.count}個`);
-  }
-
+  const lines: string[] = [];
+  
+  lines.push('## 要約品質チェック結果');
+  lines.push('');
+  lines.push(`品質スコア: ${result.score}/100`);
+  lines.push(`判定: ${result.isValid ? '✅ 合格' : '❌ 不合格'}`);
+  lines.push(`再生成必要: ${result.requiresRegeneration ? 'はい' : 'いいえ'}`);
+  
   if (result.issues.length > 0) {
-    lines.push('📋 問題点:');
-    for (const issue of result.issues) {
+    lines.push('');
+    lines.push('### 問題点:');
+    result.issues.forEach(issue => {
       const icon = issue.severity === 'critical' ? '🔴' : 
-                   issue.severity === 'major' ? '🟠' : '🟡';
-      lines.push(`  ${icon} ${issue.message}`);
-    }
+                   issue.severity === 'major' ? '🟡' : '🔵';
+      lines.push(`- ${icon} [${issue.severity}] ${issue.message}`);
+    });
+  } else {
+    lines.push('');
+    lines.push('問題点なし');
   }
-
+  
   return lines.join('\n');
 }
 

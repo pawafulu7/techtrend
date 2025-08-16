@@ -6,13 +6,8 @@ import {
   createMockRedisClient,
 } from './test-utils';
 
-// Redisクライアントのモック
+// Redisクライアントのモック - jest.setup.node.jsで設定済み
 const mockRedis = createMockRedisClient();
-jest.mock('@/lib/redis', () => ({
-  __esModule: true,
-  default: mockRedis,
-  getRedisClient: () => mockRedis,
-}));
 
 describe.skip('Cache API Integration Tests', () => {
   beforeEach(() => {

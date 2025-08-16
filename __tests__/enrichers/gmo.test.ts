@@ -26,7 +26,7 @@ describe('GMOContentEnricher', () => {
 
   describe('enrich', () => {
     it('モックHTMLから正しくコンテンツを抽出できること', () => {
-      // モックHTMLサンプル
+      // モックHTMLサンプル（500文字以上のコンテンツを確保）
       const mockHtml = `
         <html>
           <head><title>Test Article</title></head>
@@ -35,14 +35,14 @@ describe('GMOContentEnricher', () => {
             <main>
               <article>
                 <div class="entry-content">
-                  <p>これはテスト記事の本文です。</p>
-                  <p>GMO開発者ブログのコンテンツエンリッチャーのテストを行っています。</p>
-                  <p>十分な長さのコンテンツが取得できることを確認します。</p>
-                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-                  <p>この文章は500文字以上になるように作成されています。</p>
-                  <p>さらに追加のコンテンツを記載することで、エンリッチャーが適切に動作することを確認できます。</p>
-                  <p>技術的な内容も含めることで、実際のブログ記事に近い形でテストを行います。</p>
-                  <p>これにより、エンリッチャーの品質を保証することができます。</p>
+                  <p>これはテスト記事の本文です。GMO開発者ブログのコンテンツエンリッチャーのテストを行っています。</p>
+                  <p>GMOインターネットグループでは、インターネットインフラ事業を中心に、様々な技術的チャレンジに取り組んでいます。</p>
+                  <p>クラウドサービスの開発から、ドメイン管理システム、決済プラットフォームまで、幅広い分野で技術革新を推進しています。</p>
+                  <p>マイクロサービスアーキテクチャの採用により、各サービスを独立して開発・デプロイすることが可能になりました。これにより、開発効率が大幅に向上しています。</p>
+                  <p>また、コンテナ技術やKubernetesを活用することで、スケーラブルで信頼性の高いシステムを構築しています。インフラの自動化により、運用コストも削減できています。</p>
+                  <p>セキュリティ面では、最新の暗号化技術や認証プロトコルを採用し、お客様のデータを安全に保護しています。定期的なセキュリティ監査も実施しています。</p>
+                  <p>DevOpsの文化を推進し、継続的インテグレーション・継続的デリバリーを実践しています。開発チームと運用チームの連携も強化されています。</p>
+                  <p>技術的な内容も含めることで、実際のブログ記事に近い形でテストを行います。これにより、エンリッチャーの品質を保証することができます。</p>
                 </div>
               </article>
             </main>
@@ -56,13 +56,13 @@ describe('GMOContentEnricher', () => {
       (enricher as any).fetchWithRetry = jest.fn().mockResolvedValue(mockHtml);
 
       // テスト実行
-      return enricher.enrich('https://developers.gmo.jp/test-article').then(content => {
-        expect(content).not.toBeNull();
-        expect(content!.length).toBeGreaterThan(500);
-        expect(content).toContain('テスト記事の本文');
-        expect(content).toContain('GMO開発者ブログ');
-        expect(content).not.toContain('Header content');
-        expect(content).not.toContain('Footer content');
+      return enricher.enrich('https://developers.gmo.jp/test-article').then(result => {
+        expect(result).not.toBeNull();
+        expect(result!.content.length).toBeGreaterThan(500);
+        expect(result!.content).toContain('テスト記事の本文');
+        expect(result!.content).toContain('GMO開発者ブログ');
+        expect(result!.content).not.toContain('Header content');
+        expect(result!.content).not.toContain('Footer content');
       });
     });
 
@@ -79,16 +79,16 @@ describe('GMOContentEnricher', () => {
 
       (enricher as any).fetchWithRetry = jest.fn().mockResolvedValue(shortHtml);
 
-      return enricher.enrich('https://developers.gmo.jp/short-article').then(content => {
-        expect(content).toBeNull();
+      return enricher.enrich('https://developers.gmo.jp/short-article').then(result => {
+        expect(result).toBeNull();
       });
     });
 
     it('フェッチエラー時はnullを返すこと', () => {
       (enricher as any).fetchWithRetry = jest.fn().mockRejectedValue(new Error('Network error'));
 
-      return enricher.enrich('https://developers.gmo.jp/error-article').then(content => {
-        expect(content).toBeNull();
+      return enricher.enrich('https://developers.gmo.jp/error-article').then(result => {
+        expect(result).toBeNull();
       });
     });
   });

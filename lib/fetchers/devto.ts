@@ -9,7 +9,7 @@ interface DevToArticle {
   description: string;
   url: string;
   published_at: string;
-  tag_list: string[];
+  tag_list: string[] | string; // 配列または文字列形式に対応
   user: {
     name: string;
     username: string;
@@ -138,8 +138,10 @@ export class DevToFetcher extends BaseFetcher {
           // 個別記事の詳細を取得（本文含む）
           const detailedArticle = await this.fetchArticleDetail(item.id);
           
-          // Rate Limit対策（1.5秒間隔）
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          // Rate Limit対策（1.5秒間隔）- テスト環境では無効
+          if (process.env.NODE_ENV !== 'test') {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+          }
 
           // 詳細が取得できた場合はそちらを使用、できなかった場合は元のデータを使用
           const articleData = detailedArticle || item;

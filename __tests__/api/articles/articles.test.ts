@@ -5,7 +5,7 @@
 
 // モックを先に設定
 jest.mock('@/lib/database');
-jest.mock('@/lib/redis/client');
+// Redisクライアントのモックはjest.setup.node.jsで設定済み
 
 import { testApiHandler, assertSuccessResponse, assertErrorResponse } from '../../helpers/test-utils';
 import { GET } from '@/app/api/articles/route';
