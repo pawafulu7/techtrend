@@ -5,7 +5,8 @@ jest.mock('ioredis', () => {
   return jest.fn().mockImplementation(() => ({
     connect: jest.fn().mockResolvedValue(undefined),
     ping: jest.fn().mockResolvedValue('PONG'),
-    set: jest.fn((key, value) => {
+    set: jest.fn((key, value, ...args) => {
+      // 値をそのまま保存（文字列として扱う）
       mockStore.set(key, value);
       return Promise.resolve('OK');
     }),

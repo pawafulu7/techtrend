@@ -16,8 +16,8 @@ describe('Quality Check for Thin Content', () => {
         recommendedMaxLength: 100
       };
 
-      // 適切な長さの要約（75文字）
-      const goodSummary = 'プレゼンテーション資料。WebAssemblyの実装方法について解説。詳細は元記事を参照してください。';
+      // 適切な長さの要約（60文字以上）
+      const goodSummary = 'WebAssemblyの実装方法について詳しく解説したプレゼンテーション資料。技術的な詳細と具体的な実装例を豊富に含む。';
       const detailedSummary = '利用可能な情報が限定的なため、詳細な要約は作成できません。元記事を参照してください。';
       
       const result = checkSummaryQuality(goodSummary, detailedSummary, analysis);
@@ -70,7 +70,7 @@ describe('Quality Check for Thin Content', () => {
       expect(result.issues).toContainEqual(
         expect.objectContaining({
           type: 'length',
-          severity: 'minor',
+          severity: 'major',  // 薄いコンテンツで100文字超はmajor
           message: expect.stringContaining('長すぎる')
         })
       );
@@ -153,7 +153,7 @@ describe('Quality Check for Thin Content', () => {
       const content = 'https://example.com/slides';
       const analysis = analyzeContent(content, 'Speaker Deck');
       
-      const summary = 'プレゼンテーション資料。技術的な内容を解説。詳細は元記事を参照。';
+      const summary = 'WebAssemblyに関する技術的な内容を詳しく解説したプレゼンテーション資料です。実装例も非常に豊富に紹介されている。';
       const detailed = '利用可能な情報が限定的なため、詳細な要約は作成できません。元記事を参照してください。';
       
       const result = checkSummaryQuality(summary, detailed, analysis);
