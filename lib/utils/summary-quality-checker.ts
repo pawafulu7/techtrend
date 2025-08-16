@@ -334,22 +334,37 @@ export function calculateQualityStats(results: QualityCheckResult[]): {
 /**
  * 品質チェック機能が有効かどうか
  */
+/**
+ * 品質チェックが有効かどうかを判定
+ */
 export function isQualityCheckEnabled(): boolean {
+  // 環境変数が設定されていない場合はデフォルトでtrue
+  if (process.env.QUALITY_CHECK_ENABLED === undefined) {
+    return true;
+  }
   return process.env.QUALITY_CHECK_ENABLED === 'true';
 }
 
 /**
  * 最大再生成回数を取得
  */
+/**
+ * 最大再生成試行回数を取得
+ */
 export function getMaxRegenerationAttempts(): number {
-  return parseInt(process.env.MAX_REGENERATION_ATTEMPTS || '3');
+  const value = parseInt(process.env.MAX_REGENERATION_ATTEMPTS || '3');
+  return isNaN(value) ? 3 : value;
 }
 
 /**
  * 品質スコアの最小値を取得
  */
+/**
+ * 品質スコアの最小値を取得
+ */
 export function getMinQualityScore(): number {
-  return parseInt(process.env.QUALITY_MIN_SCORE || '70');
+  const value = parseInt(process.env.QUALITY_MIN_SCORE || '70');
+  return isNaN(value) ? 70 : value;
 }
 
 /**
