@@ -40,4 +40,15 @@ export async function closeRedisConnection(): Promise<void> {
 }
 
 // Export redis instance for backward compatibility with tests
-export const redis = getRedisClient();
+// Use lazy initialization to avoid immediate execution
+export const redis = (() => {
+  let _instance: Redis | null = null;
+  return new Proxy({} as Redis, {
+    get(target, prop) {
+      if (!_instance) {
+        _instance = getRedisClient();
+      }
+      return (_instance as any)[prop];
+    }
+  });
+})();

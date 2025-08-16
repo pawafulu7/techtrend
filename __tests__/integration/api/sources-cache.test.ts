@@ -17,7 +17,14 @@ jest.mock('@prisma/client', () => ({
   })),
 }));
 
-jest.mock('@/lib/rate-limiter', () => ({
+// Rate limiterは実際には存在しないため、Redisクライアントを直接モック
+jest.mock('@/lib/redis/client', () => ({
+  getRedisClient: jest.fn(() => ({
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+    on: jest.fn(),
+  })),
   redis: {
     get: jest.fn(),
     set: jest.fn(),
@@ -26,7 +33,7 @@ jest.mock('@/lib/rate-limiter', () => ({
 }));
 
 // Import mocked dependencies
-import { redis } from '@/lib/rate-limiter';
+import { redis } from '@/lib/redis/client';
 import { PrismaClient } from '@prisma/client';
 
 describe.skip('/api/sources - Cache Integration', () => {
