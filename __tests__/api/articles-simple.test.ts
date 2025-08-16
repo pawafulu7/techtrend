@@ -5,7 +5,7 @@
 
 // モジュールのモック設定
 jest.mock('@/lib/database');
-jest.mock('@/lib/redis/client');
+// Redisクライアントのモックはjest.setup.node.jsで設定済み
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GET, POST } from '@/app/api/articles/route';

@@ -102,6 +102,12 @@ export const redisMock = new MockRedisClient();
 // getRedisClient関数のモック
 export const getRedisClient = jest.fn(() => redisMock);
 
+// closeRedisConnection関数のモック
+export const closeRedisConnection = jest.fn(() => Promise.resolve());
+
+// 後方互換性のためのエクスポート
+export const redis = redisMock;
+
 // beforeEachフックでモックをリセット
 beforeEach(() => {
   // 全てのモック関数をクリア

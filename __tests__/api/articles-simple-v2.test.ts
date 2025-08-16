@@ -32,21 +32,17 @@ jest.mock('@/lib/database', () => ({
   }
 }));
 
-// Redisモック
-const mockGet = jest.fn();
-const mockSet = jest.fn();
-const mockDel = jest.fn();
-const mockKeys = jest.fn();
+// Redisモック - jest.setup.node.jsで設定済み
+const mockRedisClient = {
+  get: jest.fn(),
+  set: jest.fn(),
+  del: jest.fn(),
+  keys: jest.fn(),
+  setex: jest.fn(),
+};
 
-jest.mock('@/lib/redis/client', () => ({
-  getRedisClient: () => ({
-    get: mockGet,
-    set: mockSet,
-    del: mockDel,
-    keys: mockKeys,
-    setex: jest.fn(),
-  })
-}));
+// Redisクライアントのモックはjest.setup.node.jsで設定済み
+// 必要に応じてテスト内でモックの振る舞いを変更
 
 describe.skip('Articles API Tests V2', () => {
   beforeEach(() => {
