@@ -57,9 +57,11 @@
 - [ ] ブラウザで実際の表示を確認したか？
 - [ ] 大量データへの影響を考慮したか？
 
-## 検索機能の仕様
+## 主要機能仕様
 
-### 複数キーワード検索（2025年1月11日実装）
+### 検索機能（複数キーワード検索）
+
+**実装日**: 2025年1月11日
 
 TechTrendの検索機能は、半角スペースまたは全角スペースで区切られた複数キーワードのAND検索をサポートしています。
 
@@ -73,6 +75,28 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 - `app/api/articles/route.ts`: 検索ロジックの実装
 - キャッシュキー: キーワードをソートして正規化
 - Prismaクエリ: `AND`演算子で複数条件を構築
+
+### 要約生成システム
+
+**バージョン**: summaryVersion 7（最新）
+
+**特徴:**
+- Gemini API（メイン）とClaude（補助）のハイブリッド構成
+- 統一フォーマット（articleType: 'unified'）
+- 一覧要約: 
+  - プロンプト指定: 100-150文字程度（最大200文字以内）
+  - バリデーション: 最大400文字まで許可
+  - 実際のデータ: 平均207文字、最大389文字
+  - 改行なし、句点で終了
+- 詳細要約: 箇条書き形式、改行必須
+- 品質チェックシステム（100点満点）
+
+### キャッシュシステム
+
+**Redis実装:**
+- 記事データキャッシュ（5分）
+- 統計情報キャッシュ（1時間）
+- ソース別統計キャッシュ
 
 ## Serena MCP優先利用（TechTrendプロジェクト専用）
 
@@ -194,17 +218,27 @@ echo ".schema Article" | sqlite3 prisma/dev.db
 
 **RSS系ソース（1時間ごと更新）:**
 - はてなブックマーク
-- Qiita
 - Zenn
 - Dev.to
 - Publickey
 - Stack Overflow Blog
 - Think IT
+- Rails Releases
+- AWS
+- SRE
+- Google Developers Blog
+- Corporate Tech Blog
+- Hugging Face Blog
+- Google AI Blog
+- InfoQ Japan
+
+**Qiita Popular（5:05と17:05に更新）:**
+- Qiita人気記事
 
 **スクレイピング系ソース（12時間ごと更新 - 0時・12時）:**
 - Speaker Deck
 
-設定ファイル: `scheduler-v2.ts`
+設定ファイル: `scripts/scheduled/scheduler.ts`
 PM2設定: `ecosystem.config.js`
 
 ### 4. 記事コンテンツの保存
@@ -220,6 +254,10 @@ PM2設定: `ecosystem.config.js`
 - 全ソース: 3ヶ月以上前の記事
 
 削除スクリプト: `scripts/delete-low-quality-articles.ts`
+
+**データベースアクセス:**
+- 正しいDBパス: `prisma/dev.db`
+- 接続確認: `sqlite3 prisma/dev.db`
 
 ### 6. イベント記事除外機能
 
@@ -616,12 +654,12 @@ npm run test:e2e:ui            # UIモード（インタラクティブ）
 npm run test:e2e:headed       # ブラウザ表示あり
 
 # 単体テスト・統合テスト
-npm run test                  # Jestテスト実行
+npm run test                  # Jestテスト実行（成功率100%）
 npm run test:watch           # ウォッチモード
 npm run test:coverage        # カバレッジ測定
 
 # 特定ソースのみ収集
-npx tsx scripts/collect-feeds.ts "Dev.to"
+npx tsx scripts/scheduled/collect-feeds.ts "Dev.to"
 
 # 要約生成（Gemini API）
 npm run scripts:summarize
