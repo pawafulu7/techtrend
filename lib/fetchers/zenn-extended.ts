@@ -32,6 +32,10 @@ export class ZennExtendedFetcher extends BaseFetcher {
     const errors: Error[] = [];
     const seenUrls = new Set<string>();
 
+    // ContentEnricherFactoryのインスタンス作成
+    const { ContentEnricherFactory } = await import('../enrichers');
+    const enricherFactory = new ContentEnricherFactory();
+
     // 複数のトピックから取得
     const topics = [
       'javascript',
@@ -52,7 +56,8 @@ export class ZennExtendedFetcher extends BaseFetcher {
       for (const item of mainFeed.items || []) {
         if (item.title && item.link && !seenUrls.has(item.link)) {
           seenUrls.add(item.link);
-          articles.push(this.createArticle(item));
+          const article = await this.createArticleWithEnrichment(item, enricherFactory);
+          articles.push(article);
         }
       }
     } catch (error) {
@@ -70,7 +75,8 @@ export class ZennExtendedFetcher extends BaseFetcher {
         for (const item of (feed.items || []).slice(0, 5)) { // 各トピックから最大5件
           if (item.title && item.link && !seenUrls.has(item.link)) {
             seenUrls.add(item.link);
-            articles.push(this.createArticle(item));
+            const article = await this.createArticleWithEnrichment(item, enricherFactory);
+            articles.push(article);
             
             if (articles.length >= 30) break;
           }
@@ -86,6 +92,44 @@ export class ZennExtendedFetcher extends BaseFetcher {
 
     console.log(`✅ Zenn: ${articles.length}件の記事を取得`);
     return { articles: articles.slice(0, 30), errors };
+  }
+
+  private async createArticleWithEnrichment(
+    item: ZennRSSItem, 
+    enricherFactory: any
+  ): Promise<CreateArticleInput> {
+    // 基本的な記事データを作成
+    const article = this.createArticle(item);
+    
+    // エンリッチメント処理
+    if (item.link && enricherFactory) {
+      const enricher = enricherFactory.getEnricher(item.link);
+      if (enricher) {
+        try {
+          const currentContent = article.content || '';
+          console.log(`[Zenn] Enriching content for: ${item.title} (current: ${currentContent.length} chars)`);
+          const enrichedData = await enricher.enrich(item.link);
+          
+          if (enrichedData && enrichedData.content) {
+            // より長いコンテンツが取得できた場合に更新
+            if (enrichedData.content.length > currentContent.length) {
+              console.log(`[Zenn] Content enriched: ${currentContent.length} -> ${enrichedData.content.length} chars`);
+              article.content = enrichedData.content;
+              
+              // サムネイルも取得できていれば更新
+              if (enrichedData.thumbnail) {
+                article.thumbnail = enrichedData.thumbnail;
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`[Zenn] Enrichment failed for ${item.link}:`, error);
+          // エンリッチメント失敗時は元のコンテンツを使用
+        }
+      }
+    }
+    
+    return article;
   }
 
   private createArticle(item: ZennRSSItem): CreateArticleInput {
