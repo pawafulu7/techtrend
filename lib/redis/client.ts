@@ -22,6 +22,7 @@ export function getRedisClient(): Redis {
         connect: jest?.fn() || (() => Promise.resolve()),
         disconnect: jest?.fn() || (() => Promise.resolve()),
         quit: jest?.fn() || (() => Promise.resolve()),
+        ping: jest?.fn() || (() => Promise.resolve('PONG')),
       } as any as Redis;
     } else {
       // Production environment: Create real Redis client

@@ -98,7 +98,7 @@ describe('Thin Content Summary Integration', () => {
       testCases.forEach(({ content, expected }) => {
         const analysis = analyzeContent(content);
         const { getContentLevel } = require('../../lib/utils/content-analyzer');
-        const level = getContentLevel(content.length);
+        const level = getContentLevel(content);
         expect(level).toBe(expected);
       });
     });
