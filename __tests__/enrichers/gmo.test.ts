@@ -56,13 +56,13 @@ describe('GMOContentEnricher', () => {
       (enricher as any).fetchWithRetry = jest.fn().mockResolvedValue(mockHtml);
 
       // テスト実行
-      return enricher.enrich('https://developers.gmo.jp/test-article').then(content => {
-        expect(content).not.toBeNull();
-        expect(content!.length).toBeGreaterThan(500);
-        expect(content).toContain('テスト記事の本文');
-        expect(content).toContain('GMO開発者ブログ');
-        expect(content).not.toContain('Header content');
-        expect(content).not.toContain('Footer content');
+      return enricher.enrich('https://developers.gmo.jp/test-article').then(result => {
+        expect(result).not.toBeNull();
+        expect(result!.content.length).toBeGreaterThan(500);
+        expect(result!.content).toContain('テスト記事の本文');
+        expect(result!.content).toContain('GMO開発者ブログ');
+        expect(result!.content).not.toContain('Header content');
+        expect(result!.content).not.toContain('Footer content');
       });
     });
 
@@ -79,16 +79,16 @@ describe('GMOContentEnricher', () => {
 
       (enricher as any).fetchWithRetry = jest.fn().mockResolvedValue(shortHtml);
 
-      return enricher.enrich('https://developers.gmo.jp/short-article').then(content => {
-        expect(content).toBeNull();
+      return enricher.enrich('https://developers.gmo.jp/short-article').then(result => {
+        expect(result).toBeNull();
       });
     });
 
     it('フェッチエラー時はnullを返すこと', () => {
       (enricher as any).fetchWithRetry = jest.fn().mockRejectedValue(new Error('Network error'));
 
-      return enricher.enrich('https://developers.gmo.jp/error-article').then(content => {
-        expect(content).toBeNull();
+      return enricher.enrich('https://developers.gmo.jp/error-article').then(result => {
+        expect(result).toBeNull();
       });
     });
   });

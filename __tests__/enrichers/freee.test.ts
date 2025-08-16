@@ -57,13 +57,13 @@ describe('FreeeContentEnricher', () => {
       (enricher as any).fetchWithRetry = jest.fn().mockResolvedValue(mockHtml);
 
       // テスト実行
-      return enricher.enrich('https://developers.freee.co.jp/entry/test-article').then(content => {
-        expect(content).not.toBeNull();
-        expect(content!.length).toBeGreaterThan(500);
-        expect(content).toContain('freee開発者ブログテスト記事');
-        expect(content).toContain('会計システム');
-        expect(content).not.toContain('Header navigation');
-        expect(content).not.toContain('Footer links');
+      return enricher.enrich('https://developers.freee.co.jp/entry/test-article').then(result => {
+        expect(result).not.toBeNull();
+        expect(result!.content.length).toBeGreaterThan(500);
+        expect(result!.content).toContain('freee開発者ブログテスト記事');
+        expect(result!.content).toContain('会計システム');
+        expect(result!.content).not.toContain('Header navigation');
+        expect(result!.content).not.toContain('Footer links');
       });
     });
 
@@ -91,11 +91,11 @@ describe('FreeeContentEnricher', () => {
 
       (enricher as any).fetchWithRetry = jest.fn().mockResolvedValue(fallbackHtml);
 
-      return enricher.enrich('https://developers.freee.co.jp/entry/fallback-test').then(content => {
-        expect(content).not.toBeNull();
-        expect(content!.length).toBeGreaterThan(500);
-        expect(content).toContain('フォールバックテスト');
-        expect(content).toContain('プライマリセレクタにマッチしない');
+      return enricher.enrich('https://developers.freee.co.jp/entry/fallback-test').then(result => {
+        expect(result).not.toBeNull();
+        expect(result!.content.length).toBeGreaterThan(500);
+        expect(result!.content).toContain('フォールバックテスト');
+        expect(result!.content).toContain('プライマリセレクタにマッチしない');
       });
     });
 
@@ -112,16 +112,16 @@ describe('FreeeContentEnricher', () => {
 
       (enricher as any).fetchWithRetry = jest.fn().mockResolvedValue(shortHtml);
 
-      return enricher.enrich('https://developers.freee.co.jp/entry/short-article').then(content => {
-        expect(content).toBeNull();
+      return enricher.enrich('https://developers.freee.co.jp/entry/short-article').then(result => {
+        expect(result).toBeNull();
       });
     });
 
     it('フェッチエラー時はnullを返すこと', () => {
       (enricher as any).fetchWithRetry = jest.fn().mockRejectedValue(new Error('Connection timeout'));
 
-      return enricher.enrich('https://developers.freee.co.jp/entry/error-article').then(content => {
-        expect(content).toBeNull();
+      return enricher.enrich('https://developers.freee.co.jp/entry/error-article').then(result => {
+        expect(result).toBeNull();
       });
     });
   });
