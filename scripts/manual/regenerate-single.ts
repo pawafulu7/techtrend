@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 async function generateUnifiedSummary(title: string, content: string) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (\!apiKey) throw new Error('GEMINI_API_KEY is not set');
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
 
   const prompt = generateUnifiedPrompt(title, content.substring(0, 5000));
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
@@ -21,7 +21,7 @@ async function generateUnifiedSummary(title: string, content: string) {
     })
   });
 
-  if (\!response.ok) throw new Error(`API failed: ${response.status}`);
+  if (!response.ok) throw new Error(`API failed: ${response.status}`);
   const data = await response.json() as any;
   const text = data.candidates[0].content.parts[0].text.trim();
   
@@ -46,17 +46,17 @@ async function generateUnifiedSummary(title: string, content: string) {
 async function main() {
   const id = 'cme47e32v0001tehsc9bavuu5';
   const article = await prisma.article.findUnique({ where: { id }, include: { source: true } });
-  if (\!article) throw new Error('Not found');
+  if (!article) throw new Error('Not found');
   
-  console.log('📝', article.title);
-  console.log('📊 現在:', checkSummaryQuality(article.summary\!, article.detailedSummary || '').score, '点');
+  console.log('Article:', article.title);
+  console.log('現在:', checkSummaryQuality(article.summary!, article.detailedSummary || '').score, '点');
   console.log('\n=== 現在の詳細要約 ===\n', article.detailedSummary, '\n');
   
   const result = await generateUnifiedSummary(article.title, article.content || article.summary || article.title);
   const newScore = checkSummaryQuality(result.summary, result.detailedSummary).score;
   
   console.log('\n=== 新しい詳細要約 ===\n', result.detailedSummary, '\n');
-  console.log('📊 新スコア:', newScore, '点');
+  console.log('新スコア:', newScore, '点');
   
   await prisma.article.update({
     where: { id },

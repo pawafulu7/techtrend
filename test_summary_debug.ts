@@ -7,7 +7,7 @@ async function test() {
   try {
     console.log('Testing direct API call...');
     const apiKey = process.env.GEMINI_API_KEY;
-    if (\!apiKey) {
+    if (!apiKey) {
       console.error('GEMINI_API_KEY is not set');
       return;
     }
@@ -52,7 +52,7 @@ Docker, Mac, Apple Silicon, 仮想化`;
       }
     );
     
-    if (\!response.ok) {
+    if (!response.ok) {
       console.error('API Error:', response.status, await response.text());
       return;
     }
@@ -71,10 +71,10 @@ Docker, Mac, Apple Silicon, 仮想化`;
     const isValid = validateParsedResult(parsed);
     console.log('Is valid:', isValid);
     
-    if (\!isValid) {
+    if (!isValid) {
       console.log('Validation failed. Checking what is missing...');
-      console.log('Has summary:', \!\!parsed.summary && parsed.summary.length > 0);
-      console.log('Has detailedSummary:', \!\!parsed.detailedSummary && parsed.detailedSummary.length > 0);
+      console.log('Has summary:', !!parsed.summary && parsed.summary.length > 0);
+      console.log('Has detailedSummary:', !!parsed.detailedSummary && parsed.detailedSummary.length > 0);
       console.log('Has tags:', Array.isArray(parsed.tags) && parsed.tags.length > 0);
     }
     
