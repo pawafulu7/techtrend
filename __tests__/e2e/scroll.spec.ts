@@ -34,9 +34,9 @@ test.describe('スクロール機能のテスト', () => {
     
     // 記事リストが表示されるまで待機（複数のセレクタに対応）
     const articleSelectors = [
-      'div.cursor-pointer',
+      '[data-testid="article-card"]',  // 最優先
+      'div.cursor-pointer',             // フォールバック
       'article',
-      '[data-testid="article-card"]',
       'a[href*="/articles/"]'
     ];
     
