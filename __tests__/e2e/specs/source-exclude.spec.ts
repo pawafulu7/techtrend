@@ -9,7 +9,7 @@ test.describe('ソース除外機能', () => {
   test.skip('除外モードへの切り替えができる', async ({ page }) => {
     // 機能未実装のため一時スキップ
     // フィルターエリアを確認
-    const filterArea = page.locator('.bg-white\\/80').first();
+    const filterArea = page.locator('[data-testid="filter-area"]');
     await expect(filterArea).toBeVisible();
 
     // 初期状態は「表示」モード
@@ -27,7 +27,7 @@ test.describe('ソース除外機能', () => {
   test.skip('ソースの除外と解除ができる', async ({ page }) => {
     // 機能未実装のため一時スキップ
     // フィルターエリアを取得
-    const filterArea = page.locator('.bg-white\\/80').first();
+    const filterArea = page.locator('[data-testid="filter-area"]');
     
     // 除外モードに切り替え
     const toggleButton = filterArea.locator('button').filter({ hasText: '表示' });
@@ -60,7 +60,7 @@ test.describe('ソース除外機能', () => {
     await page.waitForSelector('[data-testid="article-card"]');
     
     // フィルターエリアを取得
-    const filterArea = page.locator('.bg-white\\/80').first();
+    const filterArea = page.locator('[data-testid="filter-area"]');
     
     // 除外モードに切り替え
     const toggleButton = filterArea.locator('button').filter({ hasText: '表示' });

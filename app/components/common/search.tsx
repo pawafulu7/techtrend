@@ -43,13 +43,14 @@ export function Search() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="pl-10"
+          data-testid="search-input"
         />
       </div>
-      <Button type="submit" size="default">
+      <Button type="submit" size="default" data-testid="search-button">
         検索
       </Button>
       {query && (
-        <Button type="button" variant="outline" size="default" onClick={handleClear}>
+        <Button type="button" variant="outline" size="default" onClick={handleClear} data-testid="search-clear">
           クリア
         </Button>
       )}

@@ -17,7 +17,11 @@ export const SELECTORS = {
   
   // ===== ナビゲーション =====
   NAV_MENU: 'nav[role="navigation"]',
-  THEME_TOGGLE: '[data-testid="theme-toggle"]',
+  THEME_TOGGLE: '[data-testid="theme-toggle-button"]',
+  THEME_DROPDOWN: '[data-testid="theme-dropdown"]',
+  THEME_OPTION_LIGHT: '[data-testid="theme-option-light"]',
+  THEME_OPTION_DARK: '[data-testid="theme-option-dark"]',
+  THEME_OPTION_SYSTEM: '[data-testid="theme-option-system"]',
   
   // ===== 記事カード =====
   ARTICLE_CARD: 'article, [class*="article"], [class*="card"]',
@@ -30,7 +34,7 @@ export const SELECTORS = {
   ARTICLE_TAGS: '[class*="tag"], [data-testid="tag"]',
   
   // ===== 検索 =====
-  SEARCH_INPUT: 'input[type="text"][placeholder*="キーワードで記事を検索"]',
+  SEARCH_INPUT: '[data-testid="search-box-input"]',
   SEARCH_RESULTS: '[data-testid="search-results"]',
   SEARCH_RESULT_COUNT: 'p:has-text("件")',
   SOURCE_FILTER: 'select[name*="source"], select[data-testid="source-filter"], [data-testid="source-dropdown"]',
@@ -38,9 +42,12 @@ export const SELECTORS = {
   SORT_SELECT: 'select[name*="sort"], select[data-testid="sort"], [data-testid="sort-dropdown"]',
   
   // ===== ページネーション =====
-  PAGINATION: '[data-testid="pagination"], nav[aria-label*="pagination"], .pagination',
-  NEXT_PAGE_BUTTON: 'button:has-text("次"), button:has-text("Next"), [aria-label*="次"]',
-  PREV_PAGE_BUTTON: 'button:has-text("前"), button:has-text("Previous"), [aria-label*="前"]',
+  PAGINATION: '[data-testid="pagination-container"]',
+  PAGINATION_PREV: '[data-testid="pagination-prev"]',
+  PAGINATION_NEXT: '[data-testid="pagination-next"]',
+  PAGINATION_CURRENT: '[data-testid="pagination-current"]',
+  NEXT_PAGE_BUTTON: '[data-testid="pagination-next"]',
+  PREV_PAGE_BUTTON: '[data-testid="pagination-prev"]',
   
   // ===== お気に入り・リーディングリスト =====
   FAVORITE_BUTTON: '[data-testid*="favorite"], button[aria-label*="お気に入り"], button[aria-label*="favorite"]',

@@ -227,6 +227,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-8 pr-8 h-9"
+          data-testid="tag-search-input"
         />
         {isSearching && (
           <Loader2 className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />
@@ -264,7 +265,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
       )}
 
       {/* カテゴリー別タグ一覧 */}
-      <div className="space-y-2 max-h-96 overflow-y-auto">
+      <div className="space-y-2 max-h-96 overflow-y-auto" data-testid="popular-tags">
         {Object.entries(groupedTags).map(([categoryKey, categoryTags]) => {
           const categoryInfo = categoryKey === 'uncategorized' 
             ? { name: '未分類', color: 'text-gray-600 bg-gray-50 border-gray-200' }
@@ -303,6 +304,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
                           : "hover:bg-gray-100 dark:hover:bg-gray-800"
                       )}
                       onClick={() => toggleTag(tag.name)}
+                      data-testid={`tag-item-${tag.name}`}
                     >
                       <span className={cn(
                         "text-sm",

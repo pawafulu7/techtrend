@@ -51,6 +51,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
             "h-8 px-3 text-sm relative",
             selectedTags.length > 0 && "border-primary"
           )}
+          data-testid="tag-filter-button"
         >
           <TagIcon className="h-4 w-4 mr-2" />
           <span className="hidden sm:inline">タグ</span>
@@ -73,6 +74,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
         align="end" 
         className="w-[320px] p-0"
         sideOffset={5}
+        data-testid="tag-dropdown"
       >
         {/* 選択中タグのプレビュー */}
         {selectedTags.length > 0 && (

@@ -61,13 +61,14 @@ export function ServerPagination({ currentPage, totalPages, searchParams }: Serv
   }
 
   return (
-    <nav className="flex items-center justify-center space-x-2">
+    <nav className="flex items-center justify-center space-x-2" data-testid="pagination-container">
       <Button
         variant="outline"
         size="sm"
         disabled={currentPage === 1}
         asChild={currentPage !== 1}
         className="flex items-center gap-1 whitespace-nowrap"
+        data-testid="pagination-prev"
       >
         {currentPage === 1 ? (
           <span className="flex items-center gap-1">
@@ -93,6 +94,7 @@ export function ServerPagination({ currentPage, totalPages, searchParams }: Serv
                 size="sm"
                 className="min-w-[40px]"
                 asChild={currentPage !== page}
+                data-testid={currentPage === page ? 'pagination-current' : `pagination-button-${page}`}
               >
                 {currentPage === page ? (
                   <span>{page}</span>
@@ -111,6 +113,7 @@ export function ServerPagination({ currentPage, totalPages, searchParams }: Serv
         disabled={currentPage === totalPages}
         asChild={currentPage !== totalPages}
         className="flex items-center gap-1 whitespace-nowrap"
+        data-testid="pagination-next"
       >
         {currentPage === totalPages ? (
           <span className="flex items-center gap-1">

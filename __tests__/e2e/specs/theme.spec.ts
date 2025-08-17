@@ -14,10 +14,8 @@ test.describe('テーマ切り替え機能', () => {
   });
 
   test('ダークモードへの切り替えが機能する', async ({ page }) => {
-    // テーマトグルボタンを探す
-    const themeToggle = page.locator('button').filter({ hasText: /Toggle theme/i }).or(
-      page.locator('button').filter({ has: page.locator('svg.lucide-sun, svg.lucide-moon') })
-    ).first();
+    // テーマトグルボタンを探す（デスクトップ版を優先）
+    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
     
     // ボタンが存在することを確認
     await expect(themeToggle).toBeVisible();
@@ -26,7 +24,7 @@ test.describe('テーマ切り替え機能', () => {
     await themeToggle.click();
     
     // ダークモードオプションをクリック
-    const darkOption = page.locator('[role="menuitem"]').filter({ hasText: 'ダーク' });
+    const darkOption = page.locator('[data-testid="theme-option-dark"]');
     await expect(darkOption).toBeVisible();
     await darkOption.click();
     
@@ -54,11 +52,11 @@ test.describe('テーマ切り替え機能', () => {
     await waitForPageLoad(page);
     
     // テーマトグルボタンをクリック
-    const themeToggle = page.locator('button').filter({ has: page.locator('svg.lucide-sun, svg.lucide-moon') }).first();
+    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
     await themeToggle.click();
     
     // ライトモードオプションをクリック
-    const lightOption = page.locator('[role="menuitem"]').filter({ hasText: 'ライト' });
+    const lightOption = page.locator('[data-testid="theme-option-light"]');
     await expect(lightOption).toBeVisible();
     await lightOption.click();
     
@@ -68,11 +66,11 @@ test.describe('テーマ切り替え機能', () => {
 
   test('テーマがLocalStorageに保存される', async ({ page }) => {
     // テーマトグルボタンをクリック
-    const themeToggle = page.locator('button').filter({ has: page.locator('svg.lucide-sun, svg.lucide-moon') }).first();
+    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
     await themeToggle.click();
     
     // ダークモードを選択
-    const darkOption = page.locator('[role="menuitem"]').filter({ hasText: 'ダーク' });
+    const darkOption = page.locator('[data-testid="theme-option-dark"]');
     await darkOption.click();
     
     // LocalStorageにテーマが保存されていることを確認
@@ -82,9 +80,9 @@ test.describe('テーマ切り替え機能', () => {
 
   test('リロード後もテーマが維持される', async ({ page }) => {
     // ダークモードに設定
-    const themeToggle = page.locator('button').filter({ has: page.locator('svg.lucide-sun, svg.lucide-moon') }).first();
+    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
     await themeToggle.click();
-    const darkOption = page.locator('[role="menuitem"]').filter({ hasText: 'ダーク' });
+    const darkOption = page.locator('[data-testid="theme-option-dark"]');
     await darkOption.click();
     
     // darkクラスが適用されていることを確認
@@ -104,10 +102,10 @@ test.describe('テーマ切り替え機能', () => {
 
   test('システムテーマとの連動が機能する', async ({ page }) => {
     // システムテーマオプションを選択
-    const themeToggle = page.locator('button').filter({ has: page.locator('svg.lucide-sun, svg.lucide-moon') }).first();
+    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
     await themeToggle.click();
     
-    const systemOption = page.locator('[role="menuitem"]').filter({ hasText: 'システム' });
+    const systemOption = page.locator('[data-testid="theme-option-system"]');
     await expect(systemOption).toBeVisible();
     await systemOption.click();
     

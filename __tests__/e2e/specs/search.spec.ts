@@ -76,7 +76,7 @@ test.describe('検索機能', () => {
   });
 
   test('特殊文字を含む検索クエリの処理', async ({ page }) => {
-    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
+    const searchInput = page.locator('[data-testid="search-box-input"]');
     
     await expect(searchInput).toBeVisible();
     
@@ -175,15 +175,11 @@ test.describe('検索機能', () => {
     await waitForPageLoad(page);
     
     // ページネーションコンポーネントを探す
-    const pagination = page.locator(
-      '[data-testid="pagination"], nav[aria-label*="pagination"], .pagination'
-    ).first();
+    const pagination = page.locator(SELECTORS.PAGINATION);
     
     if (await pagination.isVisible()) {
       // 次ページボタンを探す
-      const nextButton = pagination.locator(
-        'button:has-text("次"), button:has-text("Next"), [aria-label*="次"]'
-      ).first();
+      const nextButton = page.locator(SELECTORS.NEXT_PAGE_BUTTON);
       
       if (await nextButton.isVisible() && await nextButton.isEnabled()) {
         // 現在のページ番号を記録
@@ -205,7 +201,7 @@ test.describe('検索機能', () => {
   });
 
   test('複数キーワードのAND検索が機能する', async ({ page }) => {
-    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
+    const searchInput = page.locator('[data-testid="search-box-input"]');
     
     await expect(searchInput).toBeVisible({ timeout: 10000 });
     
@@ -247,7 +243,7 @@ test.describe('検索機能', () => {
   });
 
   test('全角スペース区切りの複数キーワード検索', async ({ page }) => {
-    const searchInput = page.locator('input[type="text"][placeholder*="キーワードで記事を検索"]').first();
+    const searchInput = page.locator('[data-testid="search-box-input"]');
     
     await expect(searchInput).toBeVisible({ timeout: 10000 });
     

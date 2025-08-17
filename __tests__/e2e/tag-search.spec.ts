@@ -34,14 +34,14 @@ test.describe('動的タグ検索機能', () => {
 
   test('タグフィルターで企業タグを検索できる', async ({ page }) => {
     // タグフィルターボタンをクリック
-    const tagButton = page.locator('button:has(svg.lucide-tag)').first();
+    const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();
 
     // ドロップダウンが開くのを待つ
-    await page.waitForSelector('input[placeholder="タグを検索..."]', { state: 'visible' });
+    await page.waitForSelector('[data-testid="tag-search-input"]', { state: 'visible' });
 
     // 検索フォームにGMOと入力
-    const searchInput = page.locator('input[placeholder="タグを検索..."]');
+    const searchInput = page.locator('[data-testid="tag-search-input"]');
     await searchInput.fill('GMO');
 
     // デバウンス待機とAPI応答を待つ
@@ -72,11 +72,11 @@ test.describe('動的タグ検索機能', () => {
 
   test('企業タグを選択してフィルタリングできる', async ({ page }) => {
     // タグフィルターボタンをクリック
-    const tagButton = page.locator('button:has(svg.lucide-tag)').first();
+    const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();
 
     // 検索フォームにDeNAと入力
-    const searchInput = page.locator('input[placeholder="タグを検索..."]');
+    const searchInput = page.locator('[data-testid="tag-search-input"]');
     await searchInput.fill('DeNA');
     await page.waitForTimeout(500);
 
@@ -126,7 +126,7 @@ test.describe('動的タグ検索機能', () => {
 
   test('検索時にローディングインジケーターが表示される', async ({ page }) => {
     // タグフィルターボタンをクリック
-    const tagButton = page.locator('button:has(svg.lucide-tag)').first();
+    const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();
 
     // 検索フォームに入力

@@ -51,12 +51,13 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
   }
 
   return (
-    <nav className="flex items-center justify-center space-x-2">
+    <nav className="flex items-center justify-center space-x-2" data-testid="pagination-container">
       <Button
         variant="outline"
         size="sm"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
+        data-testid="pagination-prev"
       >
         <ChevronLeft className="h-4 w-4" />
         前へ
@@ -73,6 +74,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
                 size="sm"
                 onClick={() => onPageChange(page as number)}
                 className="min-w-[40px]"
+                data-testid={currentPage === page ? 'pagination-current' : `pagination-button-${page}`}
               >
                 {page}
               </Button>
@@ -86,6 +88,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
         size="sm"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
+        data-testid="pagination-next"
       >
         次へ
         <ChevronRight className="h-4 w-4" />

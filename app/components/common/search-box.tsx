@@ -46,6 +46,7 @@ export function SearchBox() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="pl-9 pr-9 h-8 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
+        data-testid="search-box-input"
       />
       {query && (
         <Button

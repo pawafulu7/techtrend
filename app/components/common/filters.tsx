@@ -86,12 +86,12 @@ export function Filters({ sources, tags }: FiltersProps) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid="filter-area">
       {/* Source Filter */}
-      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 border border-white/20 shadow-sm">
+      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 border border-white/20 shadow-sm" data-testid="source-filter">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold">ソース</h3>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-500" data-testid="source-count">
             {selectedSources.length}/{sources.length}
           </span>
         </div>
@@ -102,6 +102,7 @@ export function Filters({ sources, tags }: FiltersProps) {
               size="sm"
               onClick={handleSelectAll}
               className="h-7 text-xs justify-start flex-1"
+              data-testid="select-all-button"
             >
               <CheckSquare className="w-3 h-3 mr-1" />
               すべて選択
@@ -111,6 +112,7 @@ export function Filters({ sources, tags }: FiltersProps) {
               size="sm"
               onClick={handleDeselectAll}
               className="h-7 text-xs justify-start flex-1"
+              data-testid="deselect-all-button"
             >
               <Square className="w-3 h-3 mr-1" />
               すべて解除
@@ -122,6 +124,7 @@ export function Filters({ sources, tags }: FiltersProps) {
                 key={source.id}
                 className="flex items-center gap-2 py-1 px-1 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer"
                 onClick={() => handleSourceToggle(source.id)}
+                data-testid={`source-checkbox-${source.id}`}
               >
                 <Checkbox
                   checked={selectedSources.includes(source.id)}
