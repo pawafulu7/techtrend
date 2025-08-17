@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
-import { trendsCache } from '@/lib/cache/trends-cache';
+import { keywordsCache } from '@/lib/cache/keywords-cache';
 
 export async function GET() {
   try {
@@ -8,7 +8,7 @@ export async function GET() {
     const cacheKey = 'keywords:trending';
     
     // キャッシュから取得またはDBから取得してキャッシュに保存
-    const keywordsData = await trendsCache.getOrSet(
+    const keywordsData = await keywordsCache.getOrSet(
       cacheKey,
       async () => {
         console.log(`[Keywords API] Cache miss for key: ${cacheKey}`);
@@ -116,7 +116,7 @@ export async function GET() {
     );
 
     // キャッシュ統計をログ出力
-    const cacheStats = trendsCache.getStats();
+    const cacheStats = keywordsCache.getStats();
     console.log('[Keywords API] Cache stats:', cacheStats);
 
     return NextResponse.json({
