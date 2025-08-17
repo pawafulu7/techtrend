@@ -1,119 +1,291 @@
-import { prismaMock, createMockArticle, createMockSource, createMockTag } from '../../__mocks__/prisma';
+/**
+ * APIテスト - Articles
+ * Manual Mocksを使用したAPIルートハンドラーのテスト
+ */
 
-// Next.js環境のモック
-jest.mock('next/server', () => ({
-  NextRequest: jest.fn().mockImplementation((url) => ({
-    url,
-    nextUrl: new URL(url),
-  })),
-  NextResponse: {
-    json: jest.fn((data, init) => ({
-      json: async () => data,
-      status: init?.status || 200,
-    })),
-  },
-}));
+import { GET, POST } from '@/app/api/articles/route';
+import {
+  createMockRequest,
+  createMockContext,
+  parseResponse,
+  setupPrismaMock,
+  setupRedisMock,
+  expectApiSuccess,
+  expectApiError,
+  expectCacheHit,
+  expectCacheSet,
+  expectDatabaseQuery,
+} from '../helpers/mock-helpers';
+import { generateSampleArticle } from './test-utils';
 
-// 統合テストは環境設定後に実装
-describe.skip('Articles API', () => {
+// Manual mocksのインポート
+import prismaMock from '../../__mocks__/lib/prisma';
+import redisMock from '../../__mocks__/lib/redis/client';
+
+// モックの自動適用
+jest.mock('@/lib/database');
+// Redisクライアントのモックはjest.setup.node.jsで設定済み
+
+describe.skip('Articles API Tests', () => {
+  beforeEach(() => {
+    // モックのセットアップ
+    setupPrismaMock();
+    setupRedisMock();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe('GET /api/articles', () => {
-    it('記事一覧を正しく返す', async () => {
-      const mockArticles = [
-        {
-          ...createMockArticle({ id: '1', title: 'Article 1' }),
-          source: createMockSource({ name: 'Qiita' }),
-          tags: [createMockTag({ name: 'React' })],
-        },
-        {
-          ...createMockArticle({ id: '2', title: 'Article 2' }),
-          source: createMockSource({ name: 'Zenn' }),
-          tags: [createMockTag({ name: 'TypeScript' })],
-        },
+    it('記事一覧を正常に取得できる', async () => {
+      const sampleArticles = [
+        generateSampleArticle({ id: '1', title: 'Article 1' }),
+        generateSampleArticle({ id: '2', title: 'Article 2' }),
       ];
 
+      prismaMock.article.findMany.mockResolvedValue(sampleArticles);
       prismaMock.article.count.mockResolvedValue(2);
-      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
-      const request = new NextRequest('http://localhost:3000/api/articles');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.articles).toHaveLength(2);
-      expect(data.total).toBe(2);
-      expect(data.page).toBe(1);
+      const request = createMockRequest('http://localhost:3000/api/articles');
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
+      expect(result.body.articles).toHaveLength(2);
+      expect(result.body.total).toBe(2);
+      expectDatabaseQuery(prismaMock, 'article', 'findMany');
     });
 
-    it('ページネーションが正しく動作する', async () => {
-      prismaMock.article.count.mockResolvedValue(50);
-      prismaMock.article.findMany.mockResolvedValue([]);
-
-      const request = new NextRequest('http://localhost:3000/api/articles?page=2&limit=20');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.page).toBe(2);
-      expect(data.limit).toBe(20);
-      expect(data.totalPages).toBe(3); // 50 / 20 = 2.5 → 3
-    });
-
-    it('フィルタリングが正しく動作する', async () => {
-      prismaMock.article.count.mockResolvedValue(5);
-      prismaMock.article.findMany.mockResolvedValue([]);
-
-      const request = new NextRequest('http://localhost:3000/api/articles?sourceId=source-1&tags=React,TypeScript');
-      await GET(request);
-
-      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            sourceId: 'source-1',
-            tags: {
-              some: {
-                name: {
-                  in: ['React', 'TypeScript'],
-                },
-              },
-            },
-          }),
-        })
-      );
-    });
-
-    it('検索クエリが正しく動作する', async () => {
-      prismaMock.article.count.mockResolvedValue(3);
-      prismaMock.article.findMany.mockResolvedValue([]);
-
-      const request = new NextRequest('http://localhost:3000/api/articles?search=Next.js');
-      await GET(request);
-
-      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            OR: [
-              { title: { contains: 'Next.js' } },
-              { summary: { contains: 'Next.js' } },
-            ],
-          }),
-        })
-      );
-    });
-
-    it('ソート順が正しく適用される', async () => {
+    it('ページネーションパラメータが機能する', async () => {
+      const sampleArticle = generateSampleArticle({ id: '3', title: 'Article 3' });
+      
+      prismaMock.article.findMany.mockResolvedValue([sampleArticle]);
       prismaMock.article.count.mockResolvedValue(10);
-      prismaMock.article.findMany.mockResolvedValue([]);
 
-      const request = new NextRequest('http://localhost:3000/api/articles?sortBy=qualityScore&sortOrder=desc');
-      await GET(request);
-
+      const request = createMockRequest('http://localhost:3000/api/articles', {
+        searchParams: { page: '2', limit: '5' },
+      });
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: {
-            qualityScore: 'desc',
-          },
+          skip: 5,
+          take: 5,
         })
       );
+    });
+
+    it('ソースフィルターが機能する', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const request = createMockRequest('http://localhost:3000/api/articles', {
+        searchParams: { source: 'dev.to' },
+      });
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            sourceId: 'dev.to',
+          }),
+        })
+      );
+    });
+
+    it('検索クエリが機能する', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const request = createMockRequest('http://localhost:3000/api/articles', {
+        searchParams: { q: 'JavaScript' },
+      });
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([
+              expect.objectContaining({
+                title: expect.objectContaining({
+                  contains: 'JavaScript',
+                }),
+              }),
+            ]),
+          }),
+        })
+      );
+    });
+
+    it('キャッシュが機能する', async () => {
+      const cachedData = JSON.stringify({
+        articles: [generateSampleArticle()],
+        total: 1,
+      });
+      
+      redisMock.get.mockResolvedValue(cachedData);
+
+      const request = createMockRequest('http://localhost:3000/api/articles');
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result);
+      expectCacheHit(redisMock, expect.stringContaining('articles:'));
+      expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+    });
+
+    it('エラーハンドリングが適切に動作する', async () => {
+      prismaMock.article.findMany.mockRejectedValue(new Error('Database error'));
+
+      const request = createMockRequest('http://localhost:3000/api/articles');
+      const context = createMockContext();
+      
+      const response = await GET(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiError(result, 500);
+    });
+  });
+
+  describe('POST /api/articles', () => {
+    it('新しい記事を作成できる', async () => {
+      const newArticle = {
+        title: 'New Article',
+        url: 'https://example.com/new',
+        content: 'New content',
+        sourceId: 'test-source',
+      };
+
+      const createdArticle = generateSampleArticle(newArticle);
+      prismaMock.article.create.mockResolvedValue(createdArticle);
+
+      const request = createMockRequest('http://localhost:3000/api/articles', {
+        method: 'POST',
+        body: newArticle,
+      });
+      const context = createMockContext();
+      
+      const response = await POST(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result, 201);
+      expect(result.body.id).toBeDefined();
+      expect(result.body.title).toBe(newArticle.title);
+    });
+
+    it('必須フィールドが欠けている場合エラーを返す', async () => {
+      const invalidArticle = {
+        title: 'Missing URL',
+        // url is missing
+        content: 'Content',
+      };
+
+      const request = createMockRequest('http://localhost:3000/api/articles', {
+        method: 'POST',
+        body: invalidArticle,
+      });
+      const context = createMockContext();
+      
+      const response = await POST(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiError(result, 400);
+    });
+
+    it('重複URLの記事作成を防ぐ', async () => {
+      const duplicateArticle = {
+        title: 'Duplicate Article',
+        url: 'https://example.com/duplicate',
+        content: 'Content',
+        sourceId: 'test-source',
+      };
+
+      prismaMock.article.findFirst.mockResolvedValue(
+        generateSampleArticle({ url: duplicateArticle.url })
+      );
+
+      const request = createMockRequest('http://localhost:3000/api/articles', {
+        method: 'POST',
+        body: duplicateArticle,
+      });
+      const context = createMockContext();
+      
+      const response = await POST(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiError(result, 409);
+    });
+
+    it('タグ付きの記事を作成できる', async () => {
+      const articleWithTags = {
+        title: 'Article with Tags',
+        url: 'https://example.com/tags',
+        content: 'Content',
+        sourceId: 'test-source',
+        tags: ['JavaScript', 'React'],
+      };
+
+      prismaMock.$transaction.mockImplementation(async (callback) => {
+        return callback(prismaMock);
+      });
+
+      prismaMock.article.create.mockResolvedValue(
+        generateSampleArticle(articleWithTags)
+      );
+
+      const request = createMockRequest('http://localhost:3000/api/articles', {
+        method: 'POST',
+        body: articleWithTags,
+      });
+      const context = createMockContext();
+      
+      const response = await POST(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result, 201);
+      expect(prismaMock.$transaction).toHaveBeenCalled();
+    });
+
+    it('キャッシュをクリアする', async () => {
+      const newArticle = {
+        title: 'Cache Clear Test',
+        url: 'https://example.com/cache',
+        content: 'Content',
+        sourceId: 'test-source',
+      };
+
+      prismaMock.article.create.mockResolvedValue(
+        generateSampleArticle(newArticle)
+      );
+
+      const request = createMockRequest('http://localhost:3000/api/articles', {
+        method: 'POST',
+        body: newArticle,
+      });
+      const context = createMockContext();
+      
+      const response = await POST(request, context);
+      const result = await parseResponse(response);
+      
+      expectApiSuccess(result, 201);
+      expect(redisMock.del).toHaveBeenCalled();
     });
   });
 });

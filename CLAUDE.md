@@ -24,7 +24,7 @@
 3. **変更前後の比較テスト（必須）**
    ```bash
    # 変更前のデータを保存
-   echo "SELECT id, summary, detailedSummary FROM Article LIMIT 5" | sqlite3 prisma/dev.db > before.txt
+   echo 'SELECT id, summary, "detailedSummary" FROM "Article" LIMIT 5;' | docker exec -i techtrend-postgres psql -U postgres -d techtrend_dev -t > before.txt
    
    # 変更実施
    
@@ -163,20 +163,23 @@ mcp__serena__think_about_whether_you_are_done
 
 ## データベース接続
 
-**重要: 必ず以下のデータベースパスを使用すること**
-- 正しいDBパス: `prisma/dev.db`
-- SQLiteコマンド例: `sqlite3 prisma/dev.db`
-- 間違い: `techtrend.db`、`.prisma/dev.db`（これらは存在しない）
+**重要: PostgreSQLを使用すること（SQLiteから移行済み）**
+- 接続設定: 環境変数 `DATABASE_URL` を使用
+- Docker環境: `docker-compose -f docker-compose.dev.yml up -d`
+- 接続情報: postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev
 
 ```bash
-# 正しい使用例
-echo "SELECT COUNT(*) FROM Article;" | sqlite3 prisma/dev.db
+# PostgreSQL接続（Docker経由）
+docker exec -it techtrend-postgres psql -U postgres -d techtrend_dev
+
+# 記事数確認（テーブル名は二重引用符で囲む）
+echo 'SELECT COUNT(*) FROM "Article";' | docker exec -i techtrend-postgres psql -U postgres -d techtrend_dev -t
 
 # テーブル一覧確認
-echo ".tables" | sqlite3 prisma/dev.db
+echo '\dt' | docker exec -i techtrend-postgres psql -U postgres -d techtrend_dev
 
 # スキーマ確認
-echo ".schema Article" | sqlite3 prisma/dev.db
+echo '\d "Article"' | docker exec -i techtrend-postgres psql -U postgres -d techtrend_dev
 ```
 
 ## 重要な運用ルール
