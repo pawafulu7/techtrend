@@ -45,13 +45,13 @@ async function getStats() {
     }),
     prisma.$queryRaw`
       SELECT 
-        DATE(a."publishedAt") as date,
+        TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
         s.name as "sourceName",
         COUNT(*) as count
       FROM "Article" a
       JOIN "Source" s ON a."sourceId" = s.id
       WHERE a."publishedAt" >= NOW() - INTERVAL '30 days'
-      GROUP BY DATE(a."publishedAt"), s.name
+      GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), s.name
       ORDER BY date ASC, count DESC
     ` as Promise<{ date: string; sourceName: string; count: bigint }[]>,
     prisma.tag.findMany({
@@ -87,7 +87,7 @@ async function getStats() {
     daily: (() => {
       // 日付ごとにグループ化
       const grouped = dailyStats.reduce((acc, curr) => {
-        const date = curr.date;
+        const date = String(curr.date); // 明示的に文字列化
         if (!acc[date]) {
           acc[date] = { date, total: 0, sources: {} };
         }
@@ -97,7 +97,7 @@ async function getStats() {
       }, {} as Record<string, { date: string; total: number; sources: Record<string, number> }>);
       
       // 配列に変換してソート
-      return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+      return Object.values(grouped).sort((a, b) => String(a.date).localeCompare(String(b.date)));
     })(),
     tags: popularTags.map(tag => ({
       id: tag.id,

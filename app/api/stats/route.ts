@@ -61,11 +61,11 @@ export async function GET() {
       // 日別統計（過去30日）
       prisma.$queryRaw`
         SELECT 
-          DATE("publishedAt") as date,
-          COUNT(*) as count
+          TO_CHAR("publishedAt", 'YYYY-MM-DD') as date,
+          COUNT(*)::int as count
         FROM "Article"
         WHERE "publishedAt" >= NOW() - INTERVAL '30 days'
-        GROUP BY DATE("publishedAt")
+        GROUP BY TO_CHAR("publishedAt", 'YYYY-MM-DD')
         ORDER BY date DESC
       ` as Promise<{ date: string; count: number }[]>,
       
