@@ -98,6 +98,12 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 - 統計情報キャッシュ（1時間）
 - ソース別統計キャッシュ
 
+### データベース情報
+
+**現在のデータベース**: PostgreSQL（2025年8月移行完了）
+- SQLiteからPostgreSQLへの移行が完了しています
+- 接続設定は`.env`ファイルの`DATABASE_URL`を参照
+
 ## Serena MCP優先利用（TechTrendプロジェクト専用）
 
 ### 必須: プロジェクト作業時のSerena MCP使用
@@ -257,9 +263,21 @@ PM2設定: `ecosystem.config.js`
 
 **注意:** 古い記事の自動削除は無効化されています。検索性能に影響が出た場合に再検討予定。
 
-**データベースアクセス:**
-- 正しいDBパス: `prisma/dev.db`
-- 接続確認: `sqlite3 prisma/dev.db`
+**データベースアクセス (PostgreSQL):**
+- **データベース**: PostgreSQL（2025年8月移行完了）
+- **接続設定**: `.env`ファイルの`DATABASE_URL`
+- **Prismaコマンド例**:
+  ```bash
+  # データベースの状態確認
+  npx prisma db execute --file query.sql
+  
+  # インタラクティブなクエリ実行
+  npx prisma studio
+  
+  # マイグレーション
+  npx prisma migrate dev
+  ```
+- **旧SQLite情報（参考のみ）**: `prisma/dev.db`は使用しない
 
 ### 6. イベント記事除外機能
 
