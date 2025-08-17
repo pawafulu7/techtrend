@@ -8,7 +8,8 @@ import { SignupForm } from '@/components/auth/SignupForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Github, Mail } from 'lucide-react';
+import { Github } from 'lucide-react';
+import { GoogleIcon } from '@/components/icons/google';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function SignupPage() {
               onClick={() => handleOAuthSignIn('google')}
               disabled={isLoading}
             >
-              <Mail className="mr-2 h-4 w-4" />
+              <GoogleIcon className="mr-2 h-4 w-4" />
               Google
             </Button>
             <Button
