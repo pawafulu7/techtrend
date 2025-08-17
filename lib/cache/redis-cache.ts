@@ -149,7 +149,7 @@ export class RedisCache {
     if (cached !== null) {
       return cached;
     }
-
+    
     // Fetch fresh data
     const fresh = await fetcher();
     

@@ -18,7 +18,7 @@ export class TrendsCache extends RedisCache {
    * @param params クエリパラメータ
    * @returns キャッシュキー
    */
-  generateKey(params: { days?: number; tag?: string }): string {
+  generateTrendsKey(params: { days?: number; tag?: string }): string {
     const { days = 30, tag = '' } = params;
     return `analysis:days_${days}:tag_${tag || 'all'}`;
   }

@@ -57,6 +57,11 @@ export function getRedisClient(): Redis {
       redisClient.on('ready', () => {
         console.log('Redis Client Ready');
       });
+      
+      // Actually connect since lazyConnect is true
+      redisClient.connect().catch(err => {
+        console.error('Redis connection failed:', err);
+      });
     }
   }
 

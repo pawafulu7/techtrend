@@ -10,14 +10,12 @@ export async function GET(request: NextRequest) {
     const tagName = searchParams.get('tag');
 
     // キャッシュキーを生成
-    const cacheKey = trendsCache.generateKey({ days, tag: tagName || undefined });
+    const cacheKey = trendsCache.generateTrendsKey({ days, tag: tagName || undefined });
     
     // キャッシュから取得またはDBから取得してキャッシュに保存
     const analysisData = await trendsCache.getOrSet(
       cacheKey,
       async () => {
-        console.log(`[Trends API] Cache miss for key: ${cacheKey} (days=${days}, tag=${tagName})`);
-        
         const now = new Date();
         const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
@@ -143,9 +141,8 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // キャッシュ統計をログ出力
+    // キャッシュ統計を取得
     const cacheStats = trendsCache.getStats();
-    console.log('[Trends API] Cache stats:', cacheStats);
 
     const response = NextResponse.json({
       ...analysisData,
