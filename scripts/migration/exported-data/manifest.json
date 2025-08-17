@@ -1,0 +1,16 @@
+{
+  "exportedAt": "2025-08-17T09:59:13.164Z",
+  "database": "SQLite",
+  "stats": {
+    "sources": 15,
+    "tags": 9605,
+    "articles": 2017,
+    "relations": 10642
+  },
+  "files": [
+    "sources.json",
+    "tags.json",
+    "articles.json",
+    "article-tag-relations.json"
+  ]
+}
