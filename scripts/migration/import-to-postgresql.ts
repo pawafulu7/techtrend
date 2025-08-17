@@ -8,6 +8,17 @@
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
+import { execSync } from 'child_process';
+
+// PostgreSQL用の新しいPrismaクライアントを生成
+// 先にPostgreSQL用のPrismaクライアントを生成する必要がある
+try {
+  execSync('DATABASE_URL="postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev" npx prisma generate --schema=prisma/schema.postgresql.prisma', {
+    stdio: 'pipe'
+  });
+} catch (error) {
+  console.warn('Warning: Could not regenerate Prisma client');
+}
 
 const prisma = new PrismaClient({
   datasources: {

@@ -34,7 +34,6 @@ model Article {
   @@index([createdAt(sort: Desc)])
   @@index([qualityScore(sort: Desc)])
   @@index([bookmarks(sort: Desc)])
-  @@index([title, summary], type: Gin)
 }
 
 model Source {

@@ -9,13 +9,8 @@ import { PrismaClient } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: 'file:../../prisma/dev.db'
-    }
-  }
-});
+// デフォルトのPrismaクライアントを使用（環境変数DATABASE_URLを使用）
+const prisma = new PrismaClient();
 
 const EXPORT_DIR = path.join(__dirname, 'exported-data');
 
