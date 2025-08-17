@@ -58,16 +58,18 @@ export async function GET() {
         },
       }),
       
-      // 日別統計（過去30日）
+      // 日別統計（過去30日）- ソース別内訳付き
       prisma.$queryRaw`
         SELECT 
-          TO_CHAR("publishedAt", 'YYYY-MM-DD') as date,
+          TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
+          s.name as "sourceName",
           COUNT(*)::int as count
-        FROM "Article"
-        WHERE "publishedAt" >= NOW() - INTERVAL '30 days'
-        GROUP BY TO_CHAR("publishedAt", 'YYYY-MM-DD')
-        ORDER BY date DESC
-      ` as Promise<{ date: string; count: number }[]>,
+        FROM "Article" a
+        JOIN "Source" s ON a."sourceId" = s.id
+        WHERE a."publishedAt" >= NOW() - INTERVAL '30 days'
+        GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), s.name
+        ORDER BY date DESC, count DESC
+      ` as Promise<{ date: string; sourceName: string; count: number }[]>,
       
       // 人気タグTOP10
       prisma.tag.findMany({
@@ -101,7 +103,21 @@ export async function GET() {
               ? Math.round((source._count.articles / totalArticles) * 100) 
               : 0,
           })),
-          daily: dailyStats,
+          daily: (() => {
+            // 日付ごとにグループ化してソース別内訳を集計
+            const grouped = dailyStats.reduce((acc, curr) => {
+              const date = curr.date;
+              if (!acc[date]) {
+                acc[date] = { date, total: 0, sources: {} };
+              }
+              acc[date].sources[curr.sourceName] = curr.count;
+              acc[date].total += curr.count;
+              return acc;
+            }, {} as Record<string, { date: string; total: number; sources: Record<string, number> }>);
+            
+            // 配列に変換してソート
+            return Object.values(grouped).sort((a, b) => b.date.localeCompare(a.date));
+          })(),
           tags: popularTags.map(tag => ({
             id: tag.id,
             name: tag.name,
