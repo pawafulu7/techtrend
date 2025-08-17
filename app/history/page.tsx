@@ -3,217 +3,211 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, Eye } from 'lucide-react';
 import Link from 'next/link';
-import { formatDate } from '@/lib/utils/date';
-import { Badge } from '@/components/ui/badge';
+import { Clock, Calendar, ExternalLink, Loader2, Eye } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { formatDistanceToNow } from 'date-fns';
+import { ja } from 'date-fns/locale';
 
-interface ViewedArticle {
-  id: string;
-  title: string;
-  summary: string;
-  url: string;
-  publishedAt: string;
-  source: {
-    id: string;
-    name: string;
-  };
-  tags: Array<{
-    id: string;
-    name: string;
-  }>;
-  viewId: string;
+interface ArticleView {
+  id: number;
   viewedAt: string;
-  qualityScore: number | null;
+  article: {
+    id: number;
+    title: string;
+    summary: string | null;
+    url: string;
+    publishedAt: string;
+    source: {
+      id: number;
+      name: string;
+    };
+    tags?: Array<{
+      tag: {
+        id: number;
+        name: string;
+      };
+    }>;
+  };
 }
 
 export default function HistoryPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [views, setViews] = useState<ViewedArticle[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [views, setViews] = useState<ArticleView[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login?callbackUrl=/history');
-    } else if (status === 'authenticated') {
+      return;
+    }
+
+    if (status === 'authenticated') {
       fetchHistory();
     }
   }, [status, router]);
 
   const fetchHistory = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/article-views');
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch history');
+        throw new Error('閲覧履歴の取得に失敗しました');
       }
+
       const data = await response.json();
-      setViews(data.views);
+      setViews(data);
     } catch (err) {
-      setError('閲覧履歴の取得に失敗しました');
-      console.error('Failed to fetch history:', err);
+      setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const formatTimeAgo = (date: string) => {
-    const now = new Date();
-    const viewed = new Date(date);
-    const diffMs = now.getTime() - viewed.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+  const clearHistory = async () => {
+    try {
+      const response = await fetch('/api/article-views', {
+        method: 'DELETE',
+      });
 
-    if (diffMins < 1) return 'たった今';
-    if (diffMins < 60) return `${diffMins}分前`;
-    if (diffHours < 24) return `${diffHours}時間前`;
-    if (diffDays < 7) return `${diffDays}日前`;
-    return formatDate(date);
+      if (!response.ok) {
+        throw new Error('履歴のクリアに失敗しました');
+      }
+
+      setViews([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'エラーが発生しました');
+    }
   };
 
-  if (status === 'loading' || isLoading) {
+  if (status === 'loading' || loading) {
     return (
-      <div className="container mx-auto py-8 px-4 max-w-6xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-6 w-6" />
-              閲覧履歴
-            </CardTitle>
-            <CardDescription>
-              最近閲覧した記事の履歴
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto py-8 px-4 max-w-6xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-6 w-6" />
-              閲覧履歴
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-destructive">{error}</p>
-          </CardContent>
-        </Card>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-6xl">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-6 w-6" />
-            閲覧履歴
-          </CardTitle>
-          <CardDescription>
-            {views.length > 0
-              ? `最近${views.length}件の記事を閲覧しました`
-              : '閲覧した記事の履歴が表示されます'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {views.length === 0 ? (
-            <div className="text-center py-12">
-              <Eye className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-              <p className="text-lg font-medium mb-2">
-                まだ閲覧履歴がありません
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">閲覧履歴</h1>
+            <p className="text-muted-foreground">
+              最近読んだ記事の履歴を確認できます
+            </p>
+          </div>
+          {views.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearHistory}
+              className="text-destructive hover:text-destructive"
+            >
+              履歴をクリア
+            </Button>
+          )}
+        </div>
+
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {views.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Eye className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium mb-2">閲覧履歴がありません</p>
+              <p className="text-muted-foreground mb-6">
+                記事を読むと自動的に履歴に記録されます
               </p>
-              <p className="text-sm text-muted-foreground">
-                記事を閲覧すると履歴が記録されます
-              </p>
-              <Link href="/">
-                <Button className="mt-4">
-                  記事を探す
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {views.map((article) => (
-                <div
-                  key={article.viewId}
-                  className="group relative border rounded-lg p-4 hover:shadow-md transition-all"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <Link 
-                        href={article.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block"
-                      >
-                        <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                          {article.title}
-                        </h3>
-                      </Link>
-                      
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                        {article.summary}
-                      </p>
-                      
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {article.source.name}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          公開: {formatDate(article.publishedAt)}
+              <Button asChild>
+                <Link href="/">記事を探す</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {views.map((view) => (
+              <Card key={view.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-xl mb-2">
+                        <Link 
+                          href={`/articles/${view.article.id}`}
+                          className="hover:text-primary transition-colors"
+                        >
+                          {view.article.title}
+                        </Link>
+                      </CardTitle>
+                      <CardDescription className="flex items-center gap-4 text-sm">
+                        <span>{view.article.source.name}</span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDistanceToNow(new Date(view.article.publishedAt), {
+                            addSuffix: true,
+                            locale: ja,
+                          })}
                         </span>
-                        {article.qualityScore && (
-                          <Badge variant="outline" className="text-xs">
-                            品質: {article.qualityScore}
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      {article.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {article.tags.slice(0, 5).map((tag) => (
-                            <Badge key={tag.id} variant="outline" className="text-xs">
-                              {tag.name}
-                            </Badge>
-                          ))}
-                          {article.tags.length > 5 && (
-                            <span className="text-xs text-muted-foreground">
-                              +{article.tags.length - 5}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
-                        <Clock className="h-3 w-3" />
-                        <span>閲覧: {formatTimeAgo(article.viewedAt)}</span>
-                      </div>
+                      </CardDescription>
+                    </div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDistanceToNow(new Date(view.viewedAt), {
+                        addSuffix: true,
+                        locale: ja,
+                      })}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </CardHeader>
+                {(view.article.summary || view.article.tags) && (
+                  <CardContent>
+                    {view.article.summary && (
+                      <p className="text-muted-foreground line-clamp-3 mb-3">
+                        {view.article.summary}
+                      </p>
+                    )}
+                    {view.article.tags && view.article.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {view.article.tags.slice(0, 5).map((t) => (
+                          <Badge key={t.tag.id} variant="outline" className="text-xs">
+                            {t.tag.name}
+                          </Badge>
+                        ))}
+                        {view.article.tags.length > 5 && (
+                          <span className="text-xs text-muted-foreground">
+                            +{view.article.tags.length - 5}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="mt-4">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={view.article.url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          元記事を読む
+                        </Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
