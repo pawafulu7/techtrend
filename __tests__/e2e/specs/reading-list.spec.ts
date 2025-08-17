@@ -242,15 +242,22 @@ test.describe('リーディングリスト機能', () => {
   });
 
   test('リストが空の場合のメッセージ表示', async ({ page }) => {
-    // リーディングリストページへ移動（直接URLアクセスする場合）
-    const possibleUrls = ['/reading-list', '/saved', '/bookmarks'];
-    
-    for (const url of possibleUrls) {
-      const response = await page.goto(url, { waitUntil: 'domcontentloaded' });
-      if (response && response.ok()) {
-        await waitForPageLoad(page);
-        break;
-      }
+    // 単一URLへのアクセスに変更
+    try {
+      await page.goto('/reading-list', { 
+        waitUntil: 'domcontentloaded',
+        timeout: 10000 
+      });
+      await waitForPageLoad(page);
+    } catch (error) {
+      // フォールバック処理
+      console.log('Reading list navigation failed, retrying...');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      await page.click('a[href*="reading"]', { timeout: 5000 }).catch(() => {
+        // リンクが見つからない場合は直接URLへ
+        return page.goto('/reading-list', { waitUntil: 'domcontentloaded' });
+      });
+      await waitForPageLoad(page);
     }
     
     // 空のメッセージを探す

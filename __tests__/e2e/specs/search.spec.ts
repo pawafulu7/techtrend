@@ -146,8 +146,15 @@ test.describe('検索機能', () => {
   });
 
   test('検索結果のソート機能', async ({ page }) => {
-    // 検索を実行
-    await page.goto('/?search=JavaScript');
+    // より安全なナビゲーション
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForPageLoad(page);
+    
+    // 検索パラメータを追加
+    await page.goto('/?search=JavaScript', { 
+      waitUntil: 'domcontentloaded',
+      timeout: 10000 
+    });
     await waitForPageLoad(page);
     
     // ソートオプションを探す
