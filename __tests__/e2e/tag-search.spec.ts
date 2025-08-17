@@ -112,9 +112,14 @@ test.describe('動的タグ検索機能', () => {
     // フィルタリングされた記事が表示されることを確認
     await page.waitForLoadState('networkidle');
     
-    // 記事数が14件以下であることを確認（DeNAの記事数）
-    const articles = page.locator('article');
+    // 記事の表示を待機
+    await page.waitForTimeout(2000);
+    
+    // 記事カードを取得（data-testid属性を使用）
+    const articles = page.locator('[data-testid="article-card"]');
     const count = await articles.count();
+    
+    // 記事数が14件以下であることを確認（DeNAの記事数）
     expect(count).toBeGreaterThan(0);
     expect(count).toBeLessThanOrEqual(14);
   });
