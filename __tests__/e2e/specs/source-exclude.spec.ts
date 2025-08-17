@@ -13,6 +13,11 @@ test.describe('ソースフィルタリング機能', () => {
     const filterArea = page.locator('[data-testid="filter-area"]');
     await expect(filterArea).toBeVisible();
 
+    // すべて選択ボタンをクリックして、初期状態を統一
+    const selectAllButton = page.locator('[data-testid="select-all-button"]');
+    await selectAllButton.click();
+    await page.waitForTimeout(500);
+
     // 最初のソースのチェックボックスを探す
     const firstSourceCheckbox = page.locator('[data-testid^="source-checkbox-"]').first();
     await expect(firstSourceCheckbox).toBeVisible();
@@ -20,25 +25,23 @@ test.describe('ソースフィルタリング機能', () => {
     // ソース名を取得
     const sourceName = await firstSourceCheckbox.locator('label').textContent();
     
-    // チェックボックスの初期状態を取得
+    // チェックボックスが選択されていることを確認
     const checkbox = firstSourceCheckbox.locator('button[role="checkbox"]');
-    const initialState = await checkbox.getAttribute('data-state');
+    await expect(checkbox).toHaveAttribute('data-state', 'checked');
     
-    // チェックボックスをクリックして状態を切り替え
+    // チェックボックスをクリックして選択を解除
     await firstSourceCheckbox.click();
     await page.waitForTimeout(500);
     
-    // 状態が変わったことを確認
-    const newState = await checkbox.getAttribute('data-state');
-    expect(newState).not.toBe(initialState);
+    // チェックが外れたことを確認
+    await expect(checkbox).toHaveAttribute('data-state', 'unchecked');
     
-    // 再度クリックして元の状態に戻す
+    // 再度クリックして選択
     await firstSourceCheckbox.click();
     await page.waitForTimeout(500);
     
-    // 元の状態に戻ったことを確認
-    const finalState = await checkbox.getAttribute('data-state');
-    expect(finalState).toBe(initialState);
+    // チェックが戻ったことを確認
+    await expect(checkbox).toHaveAttribute('data-state', 'checked');
     
     // チェックボックスが正常に動作することを確認できた
   });
