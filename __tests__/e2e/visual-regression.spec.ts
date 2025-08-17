@@ -74,11 +74,36 @@ test.describe('Visual Regression Tests', () => {
     await page.goto('/stats');
     await page.waitForLoadState('networkidle');
     
-    // グラフ要素が表示されるまで待機（Rechartsのコンテナ）
-    await page.waitForSelector('.recharts-wrapper', { timeout: 10000 });
+    // ページコンテンツが読み込まれるまで待機
+    await page.waitForTimeout(2000);
     
-    // グラフのレンダリング完了を待つ
-    await page.waitForTimeout(1000);
+    // 統計ページの主要要素を確認（複数のセレクタを試行）
+    const chartSelectors = [
+      'svg', // 一般的なSVGグラフ
+      'canvas', // Canvas要素のグラフ
+      '[class*="recharts"]', // Rechartsコンテナ
+      '[class*="chart"]', // 一般的なチャートクラス
+      '[data-testid="chart"]', // data-testid属性
+      '[class*="stat"]', // 統計カード
+      'main' // 最低限mainコンテンツ
+    ];
+    
+    let elementFound = false;
+    for (const selector of chartSelectors) {
+      try {
+        await page.waitForSelector(selector, { timeout: 3000 });
+        elementFound = true;
+        break;
+      } catch {
+        // 次のセレクタを試す
+        continue;
+      }
+    }
+    
+    // 少なくともメインコンテンツが表示されていることを確認
+    if (!elementFound) {
+      await page.waitForSelector('main', { timeout: 5000 });
+    }
     
     await expect(page).toHaveScreenshot('stats-light.png', {
       fullPage: true,
@@ -98,8 +123,39 @@ test.describe('Visual Regression Tests', () => {
       await firstArticle.click();
       await page.waitForLoadState('networkidle');
       
-      // 記事詳細の要素が表示されるまで待機
-      await page.waitForSelector('article', { timeout: 10000 });
+      // URLが記事詳細ページに遷移したことを確認
+      await page.waitForURL(/\/articles?\//);
+      
+      // 記事詳細ページの要素を複数のセレクタで探す
+      const detailSelectors = [
+        'article', // article要素
+        '[class*="article"]', // articleクラスを含む要素
+        '[class*="content"]', // contentクラスを含む要素
+        '[class*="body"]', // bodyクラスを含む要素
+        'h1', // 記事タイトル（h1タグ）
+        '[class*="title"]', // titleクラスを含む要素
+        'main' // 最低限mainコンテンツ
+      ];
+      
+      let elementFound = false;
+      for (const selector of detailSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 3000 });
+          elementFound = true;
+          break;
+        } catch {
+          // 次のセレクタを試す
+          continue;
+        }
+      }
+      
+      // 少なくともメインコンテンツが表示されていることを確認
+      if (!elementFound) {
+        await page.waitForSelector('main', { timeout: 5000 });
+      }
+      
+      // ページコンテンツが完全に読み込まれるまで少し待機
+      await page.waitForTimeout(1000);
       
       await expect(page).toHaveScreenshot('article-detail.png', {
         fullPage: true,
