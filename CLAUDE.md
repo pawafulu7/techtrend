@@ -57,6 +57,22 @@
 - [ ] ブラウザで実際の表示を確認したか？
 - [ ] 大量データへの影響を考慮したか？
 
+## 🔴 最新アップデート（2025年8月）
+
+### トレンド分析機能の強化
+- **PostgreSQL対応修正**: トレンド分析APIのPostgreSQL完全対応
+- **キャッシュ最適化**: Redisキャッシュの競合解決
+- **統計チャート改善**: 日別統計チャートのツールチップ改善（全ソース内訳表示）
+- **エラー修正**: URLパラメータ処理とフロントエンドキャッシュの修正
+
+### 最近のコミット（2025年8月18日）
+1. `/api/trends/analysis` エンドポイントのテスト追加
+2. URLパラメータ処理とRedis接続の修正
+3. トレンドAPIのキャッシュ競合解決
+4. PostgreSQL対応の演算子修正（!= → <>）
+5. 急上昇キーワードAPIのPostgreSQL対応
+6. 日別統計の集計処理改善
+
 ## 主要機能仕様
 
 ### 検索機能（複数キーワード検索）
@@ -113,11 +129,11 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 **現在のデータベース**: PostgreSQL（2025年8月移行完了）
 - SQLiteからPostgreSQLへの移行が完了しています
 - 接続設定は`.env`ファイルの`DATABASE_URL`を参照
-- **データ統計（2025年1月17日）**:
-  - 記事数: 2,035件
-  - タグ数: 9,605件
+- **データ統計（2025年8月18日）**:
+  - 記事数: 2,035件以上
+  - タグ数: 9,605件以上
   - ソース数: 15件
-  - ユーザ数: 6名
+  - ユーザ数: 6名以上
 
 ## Serena MCP優先利用（TechTrendプロジェクト専用）
 
@@ -133,13 +149,15 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 ```
 
 #### 2. 主要メモリファイル（最新版を優先）
-- `techtrend_project_overview_202501`: プロジェクト全体概要（最新）
-- `techtrend_recent_improvements_202501`: 最近の改善内容（最新）
-- `user_auth_implementation_202501`: ユーザ認証実装（新規）
-- `source_stats_cache_implementation_*`: 統計情報キャッシュ実装
-- `techtrend_database_schema_*`: データベース構造
-- `techtrend_api_endpoints_*`: APIエンドポイント一覧
-- `techtrend_fetchers_implementation_*`: フェッチャー実装詳細
+- `techtrend_project_overview_202508`: プロジェクト全体概要（最新）
+- `techtrend_recent_improvements_202508`: 最近の改善内容（最新）
+- `user_auth_implementation_202501`: ユーザ認証実装
+- `postgresql_migration_complete_documentation_202508`: PostgreSQL移行完了
+- `source_stats_cache_implementation_202501`: 統計情報キャッシュ実装
+- `techtrend_database_schema_202508`: データベース構造
+- `techtrend_api_endpoints_202508`: APIエンドポイント一覧
+- `techtrend_fetchers_implementation_202508`: フェッチャー実装詳細
+- `trends_api_postgresql_fix_202501`: トレンドAPI修正
 
 #### 3. コード調査時
 ```
