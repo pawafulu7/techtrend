@@ -115,7 +115,7 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 - ソース別統計キャッシュ
 - セッション管理（Auth.jsセッション）
 
-### ユーザ認証システム（2025年1月17日実装）
+### ユーザ認証システム（2025年1月17日実装、8月17日UI統合）
 
 **Auth.js v5による認証基盤:**
 - ユーザ登録・ログイン機能
@@ -123,6 +123,12 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 - お気に入り・閲覧履歴機能
 - JWTセッション管理（Redis）
 - 保護されたAPIエンドポイント
+
+**ヘッダー統合（2025年8月17日）:**
+- UserMenuコンポーネントをヘッダーに統合
+- お気に入り記事ページ実装（`/favorites`）
+- 閲覧履歴ページ実装（`/history`）
+- 未認証時の適切なリダイレクト処理
 
 ### データベース情報
 
@@ -151,7 +157,8 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 #### 2. 主要メモリファイル（最新版を優先）
 - `techtrend_project_overview_202508`: プロジェクト全体概要（最新）
 - `techtrend_recent_improvements_202508`: 最近の改善内容（最新）
-- `user_auth_implementation_202501`: ユーザ認証実装
+- `auth_header_integration_implementation_202508`: 認証ヘッダー統合（新規）
+- `user_auth_implementation_202501`: ユーザ認証実装（初期）
 - `postgresql_migration_complete_documentation_202508`: PostgreSQL移行完了
 - `source_stats_cache_implementation_202501`: 統計情報キャッシュ実装
 - `techtrend_database_schema_202508`: データベース構造
