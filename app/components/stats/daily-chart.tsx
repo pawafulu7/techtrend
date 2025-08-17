@@ -16,8 +16,8 @@ interface DailyChartProps {
 export function DailyChart({ data }: DailyChartProps) {
   const [hoveredBar, setHoveredBar] = useState<{
     date: string;
-    source: string;
-    count: number;
+    total: number;
+    sources: Record<string, number>;
     x: number;
     y: number;
   } | null>(null);
@@ -64,16 +64,25 @@ export function DailyChart({ data }: DailyChartProps) {
           {/* ツールチップ */}
           {hoveredBar && (
             <div
-              className="absolute z-10 bg-popover text-popover-foreground border rounded-md shadow-lg p-2 text-sm pointer-events-none whitespace-nowrap"
+              className="absolute z-10 bg-popover text-popover-foreground border rounded-md shadow-lg p-3 text-sm pointer-events-none whitespace-nowrap"
               style={{
                 left: `${hoveredBar.x}px`,
                 top: `${hoveredBar.y}px`,
                 transform: 'translate(-50%, -100%) translateY(-8px)',
               }}
             >
-              <div className="font-medium">{hoveredBar.date}</div>
-              <div className="text-muted-foreground">
-                {hoveredBar.source}: {hoveredBar.count}件
+              <div className="font-medium mb-1">{hoveredBar.date}</div>
+              <div className="font-medium text-primary mb-2">
+                合計: {hoveredBar.total}件
+              </div>
+              <div className="space-y-1">
+                {Object.entries(hoveredBar.sources)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([source, count]) => (
+                    <div key={source} className="text-muted-foreground">
+                      {source}: {count}件
+                    </div>
+                  ))}
               </div>
             </div>
           )}
@@ -115,12 +124,13 @@ export function DailyChart({ data }: DailyChartProps) {
                         }}
                         onMouseEnter={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
+                          const parentRect = e.currentTarget.parentElement!.parentElement!.parentElement!.getBoundingClientRect();
                           setHoveredBar({
                             date: item.date,
-                            source,
-                            count,
-                            x: rect.left + rect.width / 2 - e.currentTarget.parentElement!.parentElement!.parentElement!.getBoundingClientRect().left,
-                            y: rect.top - e.currentTarget.parentElement!.parentElement!.parentElement!.getBoundingClientRect().top,
+                            total: item.total,
+                            sources: item.sources,
+                            x: rect.left + rect.width / 2 - parentRect.left,
+                            y: rect.top - parentRect.top,
                           });
                         }}
                         onMouseLeave={() => setHoveredBar(null)}
