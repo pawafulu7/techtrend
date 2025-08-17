@@ -55,19 +55,35 @@ export function RelatedArticles({ articleId, maxItems = 10 }: RelatedArticlesPro
     );
   }
 
-  if (error || displayArticles.length === 0) {
+  if (error) {
     return null;
+  }
+  
+  if (displayArticles.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <LinkIcon className="h-5 w-5" />
+            関連記事
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">関連記事が見つかりませんでした。</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
-    <Card>
+    <Card className="gap-3">
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <LinkIcon className="h-5 w-5" />
           関連記事
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2">
         {displayArticles.map((article) => {
           const hoursAgo = Math.floor(
             (Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60)
@@ -77,7 +93,7 @@ export function RelatedArticles({ articleId, maxItems = 10 }: RelatedArticlesPro
           return (
             <div
               key={article.id}
-              className="group cursor-pointer border-b last:border-0 pb-3 last:pb-0"
+              className="group cursor-pointer p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               onClick={() => window.open(article.url, '_blank', 'noopener,noreferrer')}
             >
               <div className="space-y-1">

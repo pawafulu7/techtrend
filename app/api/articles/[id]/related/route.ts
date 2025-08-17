@@ -55,7 +55,7 @@ export async function GET(
     const tagIds = targetArticle.tags.map(tag => tag.id);
 
     // 同じタグを持つ記事を取得し、すべての情報を1クエリで取得
-    const placeholders = tagIds.map(() => '?').join(',');
+    const placeholders = tagIds.map((_, index) => `$${index + 1}`).join(',');
     const relatedArticlesRaw = await prisma.$queryRawUnsafe<Array<{
       id: string;
       title: string;
@@ -76,31 +76,31 @@ export async function GET(
           a.title,
           a.summary,
           a.url,
-          a.publishedAt,
-          a.sourceId,
-          s.name as sourceName,
-          a.qualityScore,
+          a."publishedAt",
+          a."sourceId",
+          s.name as "sourceName",
+          a."qualityScore",
           a.difficulty,
-          COUNT(DISTINCT at.B) as commonTags
-        FROM Article a
-        JOIN _ArticleToTag at ON a.id = at.A
-        JOIN Source s ON a.sourceId = s.id
-        WHERE at.B IN (${placeholders})
-          AND a.id != ?
-          AND a.qualityScore >= 30
-        GROUP BY a.id, a.title, a.summary, a.url, a.publishedAt, a.sourceId, s.name, a.qualityScore, a.difficulty
-        HAVING commonTags > 0
-        ORDER BY commonTags DESC, a.publishedAt DESC
+          COUNT(DISTINCT at."B") as "commonTags"
+        FROM "Article" a
+        JOIN "_ArticleToTag" at ON a.id = at."A"
+        JOIN "Source" s ON a."sourceId" = s.id
+        WHERE at."B" IN (${placeholders})
+          AND a.id != $${tagIds.length + 1}
+          AND a."qualityScore" >= 30
+        GROUP BY a.id, a.title, a.summary, a.url, a."publishedAt", a."sourceId", s.name, a."qualityScore", a.difficulty
+        HAVING COUNT(DISTINCT at."B") > 0
+        ORDER BY COUNT(DISTINCT at."B") DESC, a."publishedAt" DESC
         LIMIT 10
       )
       SELECT 
         ra.*,
-        GROUP_CONCAT(t.id || '::' || t.name, '||') as tags
+        STRING_AGG(t.id || '::' || t.name, '||') as tags
       FROM RelatedArticles ra
-      LEFT JOIN _ArticleToTag at2 ON ra.id = at2.A
-      LEFT JOIN Tag t ON at2.B = t.id
-      GROUP BY ra.id, ra.title, ra.summary, ra.url, ra.publishedAt, ra.sourceId, ra.sourceName, ra.qualityScore, ra.difficulty, ra.commonTags
-      ORDER BY ra.commonTags DESC, ra.publishedAt DESC
+      LEFT JOIN "_ArticleToTag" at2 ON ra.id = at2."A"
+      LEFT JOIN "Tag" t ON at2."B" = t.id
+      GROUP BY ra.id, ra.title, ra.summary, ra.url, ra."publishedAt", ra."sourceId", ra."sourceName", ra."qualityScore", ra.difficulty, ra."commonTags"
+      ORDER BY ra."commonTags" DESC, ra."publishedAt" DESC
       `,
       ...tagIds,
       articleId
