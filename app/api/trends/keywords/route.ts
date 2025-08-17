@@ -25,8 +25,8 @@ export async function GET() {
       FROM "Tag" t
       JOIN "_ArticleToTag" at ON t.id = at."B"
       JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${oneDayAgo}
-        AND t.name != ''
+      WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamp
+        AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
     ` as { id: string; name: string; recent_count: bigint }[];
@@ -40,9 +40,9 @@ export async function GET() {
       FROM "Tag" t
       JOIN "_ArticleToTag" at ON t.id = at."B"
       JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${oneWeekAgo}
-        AND a."publishedAt" < ${oneDayAgo}
-        AND t.name != ''
+      WHERE a."publishedAt" >= ${oneWeekAgo.toISOString()}::timestamp
+        AND a."publishedAt" < ${oneDayAgo.toISOString()}::timestamp
+        AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
     ` as { id: string; name: string; weekly_count: bigint }[];
@@ -84,15 +84,15 @@ export async function GET() {
       FROM "Tag" t
       JOIN "_ArticleToTag" at ON t.id = at."B"
       JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${oneDayAgo}
-        AND t.name != ''
+      WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamp
+        AND t.name <> ''
         AND t.name IS NOT NULL
         AND NOT EXISTS (
           SELECT 1 
           FROM "_ArticleToTag" at2
           JOIN "Article" a2 ON at2."A" = a2.id
           WHERE at2."B" = t.id 
-            AND a2."publishedAt" < ${oneDayAgo}
+            AND a2."publishedAt" < ${oneDayAgo.toISOString()}::timestamp
         )
       GROUP BY t.id, t.name
       ORDER BY count DESC
