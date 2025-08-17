@@ -8,6 +8,7 @@ import { ToastProvider } from "@/providers/toast-provider";
 import { QueryProvider } from "@/app/providers/query-provider";
 import { ThemeProvider } from "@/app/providers/theme-provider";
 import { parseThemeFromCookie } from "@/lib/theme-cookie";
+import { Providers } from "@/app/providers";
 // import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
 import "./globals.css";
 
@@ -126,15 +127,17 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col overflow-hidden`}
       >
         <NoTransitions />
-        <ThemeProvider initialTheme={theme}>
-          <QueryProvider>
-            {/* <OnboardingProvider> */}
-              <Header />
-              <main className="flex-1 overflow-y-auto">{children}</main>
-              <ToastProvider />
-            {/* </OnboardingProvider> */}
-          </QueryProvider>
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider initialTheme={theme}>
+            <QueryProvider>
+              {/* <OnboardingProvider> */}
+                <Header />
+                <main className="flex-1 overflow-y-auto">{children}</main>
+                <ToastProvider />
+              {/* </OnboardingProvider> */}
+            </QueryProvider>
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
