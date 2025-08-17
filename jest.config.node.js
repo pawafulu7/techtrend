@@ -25,6 +25,7 @@ const customJestConfig = {
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/__tests__/e2e/',
+    '<rootDir>/__tests__/integration/', // 統合テストは別コマンドで実行
   ],
   testMatch: [
     '**/__tests__/**/*.test.ts',
