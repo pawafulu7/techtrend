@@ -45,13 +45,13 @@ async function getStats() {
     }),
     prisma.$queryRaw`
       SELECT 
-        DATE(datetime(a.publishedAt/1000, 'unixepoch')) as date,
-        s.name as sourceName,
+        DATE(a."publishedAt") as date,
+        s.name as "sourceName",
         COUNT(*) as count
-      FROM Article a
-      JOIN Source s ON a.sourceId = s.id
-      WHERE datetime(a.publishedAt/1000, 'unixepoch') >= datetime('now', '-30 days')
-      GROUP BY DATE(datetime(a.publishedAt/1000, 'unixepoch')), s.name
+      FROM "Article" a
+      JOIN "Source" s ON a."sourceId" = s.id
+      WHERE a."publishedAt" >= NOW() - INTERVAL '30 days'
+      GROUP BY DATE(a."publishedAt"), s.name
       ORDER BY date ASC, count DESC
     ` as Promise<{ date: string; sourceName: string; count: bigint }[]>,
     prisma.tag.findMany({

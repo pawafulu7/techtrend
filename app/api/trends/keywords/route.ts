@@ -22,10 +22,10 @@ export async function GET() {
         t.id,
         t.name,
         COUNT(DISTINCT a.id) as recent_count
-      FROM Tag t
-      JOIN _ArticleToTag at ON t.id = at.B
-      JOIN Article a ON at.A = a.id
-      WHERE a.publishedAt >= ${oneDayAgo.getTime()}
+      FROM "Tag" t
+      JOIN "_ArticleToTag" at ON t.id = at."B"
+      JOIN "Article" a ON at."A" = a.id
+      WHERE a."publishedAt" >= ${oneDayAgo}
         AND t.name != ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
@@ -37,11 +37,11 @@ export async function GET() {
         t.id,
         t.name,
         COUNT(DISTINCT a.id) as weekly_count
-      FROM Tag t
-      JOIN _ArticleToTag at ON t.id = at.B
-      JOIN Article a ON at.A = a.id
-      WHERE a.publishedAt >= ${oneWeekAgo.getTime()}
-        AND a.publishedAt < ${oneDayAgo.getTime()}
+      FROM "Tag" t
+      JOIN "_ArticleToTag" at ON t.id = at."B"
+      JOIN "Article" a ON at."A" = a.id
+      WHERE a."publishedAt" >= ${oneWeekAgo}
+        AND a."publishedAt" < ${oneDayAgo}
         AND t.name != ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
@@ -81,18 +81,18 @@ export async function GET() {
         t.id,
         t.name,
         COUNT(DISTINCT a.id) as count
-      FROM Tag t
-      JOIN _ArticleToTag at ON t.id = at.B
-      JOIN Article a ON at.A = a.id
-      WHERE a.publishedAt >= ${oneDayAgo.getTime()}
+      FROM "Tag" t
+      JOIN "_ArticleToTag" at ON t.id = at."B"
+      JOIN "Article" a ON at."A" = a.id
+      WHERE a."publishedAt" >= ${oneDayAgo}
         AND t.name != ''
         AND t.name IS NOT NULL
         AND NOT EXISTS (
           SELECT 1 
-          FROM _ArticleToTag at2
-          JOIN Article a2 ON at2.A = a2.id
-          WHERE at2.B = t.id 
-            AND a2.publishedAt < ${oneDayAgo.getTime()}
+          FROM "_ArticleToTag" at2
+          JOIN "Article" a2 ON at2."A" = a2.id
+          WHERE at2."B" = t.id 
+            AND a2."publishedAt" < ${oneDayAgo}
         )
       GROUP BY t.id, t.name
       ORDER BY count DESC
@@ -129,7 +129,15 @@ export async function GET() {
   } catch (error) {
     console.error('Failed to fetch trending keywords:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch trending keywords' },
+      { 
+        error: 'Failed to fetch trending keywords',
+        trending: [],
+        newTags: [],
+        period: {
+          from: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          to: new Date().toISOString()
+        }
+      },
       { status: 500 }
     );
   }

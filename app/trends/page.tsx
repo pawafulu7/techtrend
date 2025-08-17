@@ -73,10 +73,21 @@ export default function TrendsPage() {
         next: { revalidate: 300 } // 5分間キャッシュ
       });
       const data = await response.json();
-      setTrendingKeywords(data.trending);
-      setNewTags(data.newTags);
+      
+      // APIレスポンスの検証とデフォルト値設定
+      if (data.error) {
+        console.error('API returned error:', data.error);
+        setTrendingKeywords([]);
+        setNewTags([]);
+      } else {
+        setTrendingKeywords(data.trending || []);
+        setNewTags(data.newTags || []);
+      }
     } catch (error) {
       console.error('Failed to fetch trending keywords:', error);
+      // エラー時はデフォルト値を設定
+      setTrendingKeywords([]);
+      setNewTags([]);
     } finally {
       setLoadingKeywords(false);
     }
