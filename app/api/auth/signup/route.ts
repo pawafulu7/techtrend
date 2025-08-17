@@ -3,7 +3,17 @@ import { createUser } from '@/lib/auth/utils';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return NextResponse.json(
+        { error: '不正なリクエスト形式です' },
+        { status: 400 }
+      );
+    }
+    
     const { email, password, name } = body;
 
     if (!email || !password) {
