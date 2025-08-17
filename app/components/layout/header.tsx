@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { SITE_NAME } from '@/lib/constants';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { UserMenu } from '@/components/auth/UserMenu';
 // import { NavDropdown } from '@/app/components/layout/nav-dropdown';
 
 export function Header() {
@@ -57,11 +58,13 @@ export function Header() {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-4">
             <ThemeToggle />
+            <UserMenu />
           </div>
 
           {/* Mobile Actions */}
           <div className="flex items-center gap-2 md:hidden">
             <ThemeToggle />
+            <UserMenu />
             <Button
               variant="ghost"
               size="sm"
