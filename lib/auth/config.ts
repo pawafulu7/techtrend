@@ -5,10 +5,11 @@ import GoogleProvider from 'next-auth/providers/google';
 import GitHubProvider from 'next-auth/providers/github';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
-import { redis } from '@/lib/redis';
+import { getRedisClient } from '@/lib/redis/client';
 import { RedisAdapter } from './redis-adapter';
 
 // Hybrid adapter: Redis for sessions, Prisma for user data
+const redis = getRedisClient();
 const adapter = {
   ...PrismaAdapter(prisma),
   // Override session methods to use Redis
