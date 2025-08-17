@@ -110,5 +110,9 @@ test-*.md
 /test-results/
 /playwright-report/
 /playwright/.cache/
+# Visual Regression Testing
+__tests__/e2e/**/*-snapshots/
+__tests__/e2e/**/*-diff/
+__tests__/e2e/**/*-actual/
 # 保持: .env.test はテスト設定として共有
 *.txt

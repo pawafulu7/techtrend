@@ -32,13 +32,27 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
     /* Take screenshot on failure */
-    screenshot: 'only-on-failure',
+    screenshot: {
+      mode: 'only-on-failure',
+      fullPage: true
+    },
     /* Record video on failure */
     video: 'retain-on-failure',
     /* Timeout for each action */
     actionTimeout: 15000,
     /* Timeout for navigation */
     navigationTimeout: 60000,
+    /* VRT用設定追加 */
+    ignoreHTTPSErrors: true,
+  },
+
+  /* Visual Regression Testing設定 */
+  expect: {
+    toHaveScreenshot: {
+      threshold: 0.2,
+      maxDiffPixelRatio: 0.1,
+      animations: 'disabled'
+    }
   },
 
   /* Configure projects for major browsers */
