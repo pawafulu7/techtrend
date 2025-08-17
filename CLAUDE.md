@@ -251,9 +251,11 @@ PM2設定: `ecosystem.config.js`
 
 **低品質記事の削除基準:**
 - Dev.to: 反応数0の記事
-- 全ソース: 3ヶ月以上前の記事
+- ~~全ソース: 3ヶ月以上前の記事~~ （2025年8月無効化: 古い記事も価値があるため保持）
 
-削除スクリプト: `scripts/delete-low-quality-articles.ts`
+削除スクリプト: `scripts/scheduled/delete-low-quality-articles.ts`
+
+**注意:** 古い記事の自動削除は無効化されています。検索性能に影響が出た場合に再検討予定。
 
 **データベースアクセス:**
 - 正しいDBパス: `prisma/dev.db`

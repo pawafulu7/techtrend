@@ -17,6 +17,9 @@ async function deleteLowQualityArticles() {
   console.log(`削除完了: ${devtoDeleted.count}件`);
 
   // 古い記事を削除（3ヶ月以上前）
+  // 2025年8月: 古い記事も価値があるため、自動削除を無効化
+  // 検索性能に影響が出た場合に再検討
+  /*
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
   
@@ -29,6 +32,8 @@ async function deleteLowQualityArticles() {
     }
   });
   console.log(`削除完了: ${oldDeleted.count}件`);
+  */
+  const oldDeleted = { count: 0 }; // 削除処理をスキップ
 
   // 削除件数が0より大きい場合はキャッシュを無効化
   const totalDeleted = devtoDeleted.count + oldDeleted.count;
