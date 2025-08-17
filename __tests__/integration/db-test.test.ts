@@ -3,13 +3,14 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { cleanupDatabase } from '../helpers/db-cleanup';
 
 describe('Database Integration Test Feasibility', () => {
   let prisma: PrismaClient;
 
   beforeAll(async () => {
-    // テスト用DBに接続
-    process.env.DATABASE_URL = 'file:./prisma/test.db';
+    // PostgreSQL用の接続設定
+    // DATABASE_URL_POSTGRESQLはjest.setup.integration.jsで設定済み
     prisma = new PrismaClient();
     await prisma.$connect();
   });
@@ -21,11 +22,7 @@ describe('Database Integration Test Feasibility', () => {
 
   beforeEach(async () => {
     // 各テスト前にデータをクリア
-    await prisma.$transaction([
-      prisma.article.deleteMany(),
-      prisma.source.deleteMany(),
-      prisma.tag.deleteMany(),
-    ]);
+    await cleanupDatabase(prisma);
   });
 
   describe('Basic CRUD Operations', () => {

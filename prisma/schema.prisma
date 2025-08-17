@@ -3,17 +3,17 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL_POSTGRESQL")
 }
 
 model Article {
   id              String   @id @default(cuid())
   title           String
   url             String   @unique
-  summary         String?
+  summary         String?  @db.Text
   thumbnail       String?
-  content         String?
+  content         String?  @db.Text
   publishedAt     DateTime
   sourceId        String
   bookmarks       Int      @default(0)
@@ -22,7 +22,7 @@ model Article {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   difficulty      String?
-  detailedSummary String?
+  detailedSummary String?  @db.Text
   articleType     String?
   summaryVersion  Int      @default(1)
   source          Source   @relation(fields: [sourceId], references: [id])
@@ -52,50 +52,11 @@ model Tag {
   name     String    @unique
   category String?
   articles Article[] @relation("ArticleToTag")
+  
+  @@index([name])
 }
 
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model articles_fts {
-  id      Unsupported("")?
-  title   Unsupported("")?
-  content Unsupported("")?
-  summary Unsupported("")?
-
-  @@ignore
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model articles_fts_config {
-  k Unsupported("")  @id
-  v Unsupported("")?
-
-  @@ignore
-}
-
-model articles_fts_content {
-  id Int              @id @default(autoincrement())
-  c0 Unsupported("")?
-  c1 Unsupported("")?
-  c2 Unsupported("")?
-  c3 Unsupported("")?
-}
-
-model articles_fts_data {
-  id    Int    @id @default(autoincrement())
-  block Bytes?
-}
-
-model articles_fts_docsize {
-  id Int    @id @default(autoincrement())
-  sz Bytes?
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model articles_fts_idx {
-  segid Unsupported("")
-  term  Unsupported("")
-  pgno  Unsupported("")?
-
-  @@id([segid, term])
-  @@ignore
-}
+// PostgreSQL全文検索用の設定（マイグレーション後に手動で実行）
+// CREATE EXTENSION IF NOT EXISTS pg_trgm;
+// CREATE EXTENSION IF NOT EXISTS unaccent;
+// ALTER DATABASE techtrend_dev SET default_text_search_config = 'pg_catalog.japanese';

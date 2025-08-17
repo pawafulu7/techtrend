@@ -6,6 +6,7 @@
 import { PrismaClient } from '@prisma/client';
 import { analyzeContent } from '../../lib/utils/content-analyzer';
 import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
+import { createTestSource, createTestArticle, cleanupDatabase } from '../helpers/db-cleanup';
 
 const prisma = new PrismaClient();
 
