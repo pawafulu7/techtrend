@@ -25,14 +25,14 @@ export async function GET(request: NextRequest) {
       // 特定タグの時系列データ
       const tagData = await prisma.$queryRaw`
         SELECT 
-          DATE(datetime(a.publishedAt/1000, 'unixepoch')) as date,
+          TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
           COUNT(DISTINCT a.id) as count
-        FROM Tag t
-        JOIN _ArticleToTag at ON t.id = at.B
-        JOIN Article a ON at.A = a.id
+        FROM "Tag" t
+        JOIN "_ArticleToTag" at ON t.id = at."B"
+        JOIN "Article" a ON at."A" = a.id
         WHERE t.name = ${tagName}
-          AND a.publishedAt >= ${startDate.getTime()}
-        GROUP BY DATE(datetime(a.publishedAt/1000, 'unixepoch'))
+          AND a."publishedAt" >= ${startDate.toISOString()}::timestamp
+        GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD')
         ORDER BY date ASC
       ` as { date: string; count: bigint }[];
 
@@ -41,14 +41,14 @@ export async function GET(request: NextRequest) {
         SELECT 
           t2.name,
           COUNT(DISTINCT a.id) as count
-        FROM Tag t1
-        JOIN _ArticleToTag at1 ON t1.id = at1.B
-        JOIN Article a ON at1.A = a.id
-        JOIN _ArticleToTag at2 ON a.id = at2.A
-        JOIN Tag t2 ON at2.B = t2.id
+        FROM "Tag" t1
+        JOIN "_ArticleToTag" at1 ON t1.id = at1."B"
+        JOIN "Article" a ON at1."A" = a.id
+        JOIN "_ArticleToTag" at2 ON a.id = at2."A"
+        JOIN "Tag" t2 ON at2."B" = t2.id
         WHERE t1.name = ${tagName}
           AND t2.name != ${tagName}
-          AND a.publishedAt >= ${startDate.getTime()}
+          AND a."publishedAt" >= ${startDate.toISOString()}::timestamp
         GROUP BY t2.name
         ORDER BY count DESC
         LIMIT 10
@@ -71,10 +71,10 @@ export async function GET(request: NextRequest) {
         SELECT 
           t.name,
           COUNT(DISTINCT a.id) as total_count
-        FROM Tag t
-        JOIN _ArticleToTag at ON t.id = at.B
-        JOIN Article a ON at.A = a.id
-        WHERE a.publishedAt >= ${startDate.getTime()}
+        FROM "Tag" t
+        JOIN "_ArticleToTag" at ON t.id = at."B"
+        JOIN "Article" a ON at."A" = a.id
+        WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
         GROUP BY t.name
         ORDER BY total_count DESC
         LIMIT 10
@@ -87,15 +87,15 @@ export async function GET(request: NextRequest) {
         const tagNames = topTags.map(t => t.name);
         timelineData = await prisma.$queryRaw`
           SELECT 
-            DATE(datetime(a.publishedAt/1000, 'unixepoch')) as date,
+            TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
             t.name as tag_name,
             COUNT(DISTINCT a.id) as count
-          FROM Tag t
-          JOIN _ArticleToTag at ON t.id = at.B
-          JOIN Article a ON at.A = a.id
-          WHERE a.publishedAt >= ${startDate.getTime()}
+          FROM "Tag" t
+          JOIN "_ArticleToTag" at ON t.id = at."B"
+          JOIN "Article" a ON at."A" = a.id
+          WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
             AND t.name IN (${Prisma.join(tagNames)})
-          GROUP BY DATE(datetime(a.publishedAt/1000, 'unixepoch')), t.name
+          GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), t.name
           ORDER BY date ASC, count DESC
         ` as { date: string; tag_name: string; count: bigint }[];
       }
