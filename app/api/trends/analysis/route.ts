@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         JOIN "_ArticleToTag" at2 ON a.id = at2."A"
         JOIN "Tag" t2 ON at2."B" = t2.id
         WHERE t1.name = ${tagName}
-          AND t2.name != ${tagName}
+          AND t2.name <> ${tagName}
           AND a."publishedAt" >= ${startDate.toISOString()}::timestamp
         GROUP BY t2.name
         ORDER BY count DESC
