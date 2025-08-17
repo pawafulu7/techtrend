@@ -81,8 +81,30 @@ test.describe('動的タグ検索機能', () => {
     await page.waitForTimeout(500);
 
     // DeNAタグをクリック
-    const denaTag = page.locator('div').filter({ hasText: /^DeNA$/ }).first();
-    await denaTag.click();
+    // 要素の表示を待機してから操作
+    await page.waitForTimeout(1000); // 検索結果の表示待ち
+    
+    // より具体的なセレクタを使用
+    const tagElements = await page.locator('div, button, span').filter({ hasText: 'DeNA' }).all();
+    let clicked = false;
+    
+    for (const element of tagElements) {
+      const text = await element.textContent();
+      if (text && text.trim() === 'DeNA') {
+        try {
+          await element.click();
+          clicked = true;
+          break;
+        } catch (e) {
+          // 要素がクリック可能でない場合は次の要素を試す
+          continue;
+        }
+      }
+    }
+    
+    if (!clicked) {
+      throw new Error('DeNAタグが見つかりませんでした');
+    }
 
     // URLにタグパラメータが追加されることを確認
     await expect(page).toHaveURL(/tags=DeNA/);
@@ -90,9 +112,14 @@ test.describe('動的タグ検索機能', () => {
     // フィルタリングされた記事が表示されることを確認
     await page.waitForLoadState('networkidle');
     
-    // 記事数が14件以下であることを確認（DeNAの記事数）
-    const articles = page.locator('article');
+    // 記事の表示を待機
+    await page.waitForTimeout(2000);
+    
+    // 記事カードを取得（data-testid属性を使用）
+    const articles = page.locator('[data-testid="article-card"]');
     const count = await articles.count();
+    
+    // 記事数が14件以下であることを確認（DeNAの記事数）
     expect(count).toBeGreaterThan(0);
     expect(count).toBeLessThanOrEqual(14);
   });

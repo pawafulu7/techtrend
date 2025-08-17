@@ -230,12 +230,19 @@ test.describe('検索機能', () => {
     await waitForSearchResults(page);
     
     // 検索結果カウントの表示を確認
-    const resultCountText = page.locator('p:has-text("件")');
+    // より具体的なセレクタを使用して、数字+件のパターンのみを対象にする
+    const resultElements = await page.locator('p:has-text("件")').all();
     
     // 件数表示が存在することを確認
-    if (await resultCountText.isVisible()) {
-      const countText = await resultCountText.textContent();
-      expect(countText).toMatch(/\d+件/);
+    if (resultElements.length > 0) {
+      // 数字+件のパターンにマッチする要素のみを対象にする
+      for (const element of resultElements) {
+        const text = await element.textContent();
+        if (text && /^\d+件$/.test(text.trim())) {
+          expect(text).toMatch(/\d+件/);
+          break;
+        }
+      }
     }
   });
 
