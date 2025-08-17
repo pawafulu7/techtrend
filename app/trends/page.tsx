@@ -69,8 +69,7 @@ export default function TrendsPage() {
     try {
       setLoadingKeywords(true);
       const response = await fetch('/api/trends/keywords', {
-        cache: 'force-cache',
-        next: { revalidate: 300 } // 5分間キャッシュ
+        cache: 'no-store'  // キャッシュを無効化（サーバー側でRedisキャッシュが効いている）
       });
       const data = await response.json();
       
@@ -96,7 +95,9 @@ export default function TrendsPage() {
   const fetchTrendAnalysis = async (days: number) => {
     try {
       setLoadingAnalysis(true);
-      const response = await fetch(`/api/trends/analysis?days=${days}`);
+      const response = await fetch(`/api/trends/analysis?days=${days}`, {
+        cache: 'no-store'  // キャッシュを無効化してパラメータを確実に反映
+      });
       const data = await response.json();
       setTrendAnalysis(data);
     } catch (error) {
