@@ -104,15 +104,15 @@ export async function GET(request: NextRequest) {
         if (keywords.length === 1) {
           // Single keyword - maintain existing behavior
           where.OR = [
-            { title: { contains: keywords[0] } },
-            { summary: { contains: keywords[0] } }
+            { title: { contains: keywords[0], mode: 'insensitive' } },
+            { summary: { contains: keywords[0], mode: 'insensitive' } }
           ];
         } else if (keywords.length > 1) {
           // Multiple keywords - AND search
           where.AND = keywords.map(keyword => ({
             OR: [
-              { title: { contains: keyword } },
-              { summary: { contains: keyword } }
+              { title: { contains: keyword, mode: 'insensitive' } },
+              { summary: { contains: keyword, mode: 'insensitive' } }
             ]
           }));
         }
