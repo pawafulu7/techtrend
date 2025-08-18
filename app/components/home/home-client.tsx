@@ -84,15 +84,19 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
       {/* 記事リスト */}
       <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
         <div className="relative min-h-[600px]">
-          {loading && <ArticleSkeleton />}
+          <div className={`absolute inset-0 transition-opacity duration-300 ${!loading ? 'opacity-0 pointer-events-none' : ''}`}>
+            <ArticleSkeleton />
+          </div>
           {articles.length > 0 && (
-            <div className={`${loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500'}`}>
+            <div className={`transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`}>
               <ArticleList articles={articles} viewMode={viewMode} />
             </div>
           )}
           {!loading && articles.length === 0 && (
-            <div className="text-center text-gray-500 py-8">
-              記事が見つかりませんでした
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center text-gray-500">
+                記事が見つかりませんでした
+              </div>
             </div>
           )}
         </div>
@@ -100,8 +104,8 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
 
       {/* ページネーション */}
       {pagination.totalPages > 1 && (
-        <div className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 lg:px-6 py-3 ${
-          loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500 delay-200'
+        <div className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 lg:px-6 py-3 transition-opacity duration-500 delay-200 ${
+          loading ? 'opacity-0' : 'opacity-100'
         }`}>
           <ServerPagination
             currentPage={pagination.page}

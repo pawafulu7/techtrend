@@ -38,6 +38,7 @@ export function StatsClient() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     async function fetchStats() {
@@ -51,11 +52,17 @@ export function StatsClient() {
         }
         const result = await response.json();
         
-        // データをセットしてからloadingをfalseにする
+        // データをセット
         setStats(result.data);
-        // アニメーション開始を少し遅らせる
+        
+        // トランジション開始
+        setIsTransitioning(true);
+        
+        // スムーズなトランジションのために2フレーム待つ
         requestAnimationFrame(() => {
-          setLoading(false);
+          requestAnimationFrame(() => {
+            setLoading(false);
+          });
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -77,10 +84,12 @@ export function StatsClient() {
   return (
     <div className="space-y-6">
       {/* 概要 */}
-      <div className="relative">
-        {loading && <StatsOverviewSkeleton />}
+      <div className="relative min-h-[200px]">
+        <div className={`absolute inset-0 transition-opacity duration-300 ${!loading ? 'opacity-0 pointer-events-none' : ''}`}>
+          <StatsOverviewSkeleton />
+        </div>
         {stats && (
-          <div className={`${loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500'}`}>
+          <div className={`transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`}>
             <StatsOverview stats={stats.overview} />
           </div>
         )}
@@ -89,20 +98,24 @@ export function StatsClient() {
       {/* チャート */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* 日別推移 */}
-        <div className="relative">
-          {loading && <ChartSkeleton />}
+        <div className="relative min-h-[400px]">
+          <div className={`absolute inset-0 transition-opacity duration-300 ${!loading ? 'opacity-0 pointer-events-none' : ''}`}>
+            <ChartSkeleton />
+          </div>
           {stats && (
-            <div className={`${loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500 delay-100'}`}>
+            <div className={`transition-opacity duration-500 delay-100 ${loading ? 'opacity-0' : 'opacity-100'}`}>
               <DailyChart data={stats.daily} />
             </div>
           )}
         </div>
 
         {/* ソース別分布 */}
-        <div className="relative">
-          {loading && <ChartSkeleton />}
+        <div className="relative min-h-[400px]">
+          <div className={`absolute inset-0 transition-opacity duration-300 ${!loading ? 'opacity-0 pointer-events-none' : ''}`}>
+            <ChartSkeleton />
+          </div>
           {stats && (
-            <div className={`${loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500 delay-150'}`}>
+            <div className={`transition-opacity duration-500 delay-150 ${loading ? 'opacity-0' : 'opacity-100'}`}>
               <SourceChart data={stats.sources} />
             </div>
           )}
@@ -110,10 +123,12 @@ export function StatsClient() {
       </div>
 
       {/* タグクラウド */}
-      <div className="relative">
-        {loading && <TagCloudSkeleton />}
+      <div className="relative min-h-[300px]">
+        <div className={`absolute inset-0 transition-opacity duration-300 ${!loading ? 'opacity-0 pointer-events-none' : ''}`}>
+          <TagCloudSkeleton />
+        </div>
         {stats && (
-          <div className={`${loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500 delay-200'}`}>
+          <div className={`transition-opacity duration-500 delay-200 ${loading ? 'opacity-0' : 'opacity-100'}`}>
             <TagCloud tags={stats.tags} />
           </div>
         )}
