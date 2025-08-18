@@ -36,8 +36,9 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
       setError(null);
       
       try {
-        // 少し遅延を入れて、スケルトンを見せる
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // 少し遅延を入れて、スケルトンを見せる（初回のみ短くする）
+        const isFirstLoad = articles.length === 0;
+        await new Promise(resolve => setTimeout(resolve, isFirstLoad ? 100 : 300));
         
         // URLパラメータからクエリ文字列を構築
         const queryString = searchParams.toString();
@@ -97,10 +98,8 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
       </div>
 
       {/* ページネーション */}
-      {pagination.totalPages > 1 && (
-        <div className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 lg:px-6 py-3 transition-opacity duration-500 delay-200 ${
-          loading ? 'opacity-0' : 'opacity-100'
-        }`}>
+      {!loading && pagination.totalPages > 1 && (
+        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 lg:px-6 py-3">
           <ServerPagination
             currentPage={pagination.page}
             totalPages={pagination.totalPages}
