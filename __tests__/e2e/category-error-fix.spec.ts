@@ -46,8 +46,8 @@ test.describe('カテゴリーエラー修正のテスト', () => {
     const searchInput = page.locator('input[placeholder="タグを検索..."]');
     await searchInput.fill('LINE');
 
-    // デバウンス待機
-    await page.waitForTimeout(500);
+    // デバウンス待機（より長い時間待機して確実に検索結果を取得）
+    await page.waitForTimeout(1000);
 
     // LINEヤフータグが存在することを確認
     const lineYahooTag = page.locator('text=LINEヤフー').first();
@@ -73,8 +73,8 @@ test.describe('カテゴリーエラー修正のテスト', () => {
     const searchInput = page.locator('input[placeholder="タグを検索..."]');
     await searchInput.fill('Claude Code');
 
-    // デバウンス待機
-    await page.waitForTimeout(500);
+    // デバウンス待機（より長い時間待機して確実に検索結果を取得）
+    await page.waitForTimeout(1000);
 
     // Claude Codeタグが表示されることを確認
     const claudeCodeTag = page.locator('text=Claude Code').first();

@@ -12,6 +12,11 @@ import { SELECTORS } from '../constants/selectors';
 
 test.describe('分析ページ', () => {
   test.beforeEach(async ({ page }) => {
+    // LocalStorageで分析機能を有効化（ページ読み込み前に設定）
+    await page.addInitScript(() => {
+      localStorage.setItem('analytics-enabled', 'true');
+    });
+    
     // 分析ページへアクセス
     await page.goto('/analytics');
     await waitForPageLoad(page);
