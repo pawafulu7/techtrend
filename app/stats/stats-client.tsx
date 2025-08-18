@@ -42,15 +42,23 @@ export function StatsClient() {
   useEffect(() => {
     async function fetchStats() {
       try {
+        // 少し遅延を入れて、スケルトンを見せる
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         const response = await fetch('/api/stats');
         if (!response.ok) {
           throw new Error('Failed to fetch stats');
         }
         const result = await response.json();
+        
+        // データをセットしてからloadingをfalseにする
         setStats(result.data);
+        // アニメーション開始を少し遅らせる
+        requestAnimationFrame(() => {
+          setLoading(false);
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
         setLoading(false);
       }
     }
@@ -69,43 +77,47 @@ export function StatsClient() {
   return (
     <div className="space-y-6">
       {/* 概要 */}
-      {loading ? (
-        <StatsOverviewSkeleton />
-      ) : stats ? (
-        <div className="animate-in fade-in-0 duration-500">
-          <StatsOverview stats={stats.overview} />
-        </div>
-      ) : null}
+      <div className="relative">
+        {loading && <StatsOverviewSkeleton />}
+        {stats && (
+          <div className={`${loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500'}`}>
+            <StatsOverview stats={stats.overview} />
+          </div>
+        )}
+      </div>
 
       {/* チャート */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* 日別推移 */}
-        {loading ? (
-          <ChartSkeleton />
-        ) : stats ? (
-          <div className="animate-in fade-in-0 duration-500 delay-100">
-            <DailyChart data={stats.daily} />
-          </div>
-        ) : null}
+        <div className="relative">
+          {loading && <ChartSkeleton />}
+          {stats && (
+            <div className={`${loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500 delay-100'}`}>
+              <DailyChart data={stats.daily} />
+            </div>
+          )}
+        </div>
 
         {/* ソース別分布 */}
-        {loading ? (
-          <ChartSkeleton />
-        ) : stats ? (
-          <div className="animate-in fade-in-0 duration-500 delay-150">
-            <SourceChart data={stats.sources} />
-          </div>
-        ) : null}
+        <div className="relative">
+          {loading && <ChartSkeleton />}
+          {stats && (
+            <div className={`${loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500 delay-150'}`}>
+              <SourceChart data={stats.sources} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* タグクラウド */}
-      {loading ? (
-        <TagCloudSkeleton />
-      ) : stats ? (
-        <div className="animate-in fade-in-0 duration-500 delay-200">
-          <TagCloud tags={stats.tags} />
-        </div>
-      ) : null}
+      <div className="relative">
+        {loading && <TagCloudSkeleton />}
+        {stats && (
+          <div className={`${loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500 delay-200'}`}>
+            <TagCloud tags={stats.tags} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

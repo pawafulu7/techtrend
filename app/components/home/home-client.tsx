@@ -36,6 +36,9 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
       setError(null);
       
       try {
+        // 少し遅延を入れて、スケルトンを見せる
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         // URLパラメータからクエリ文字列を構築
         const queryString = searchParams.toString();
         const response = await fetch(`/api/articles${queryString ? `?${queryString}` : ''}`);
@@ -44,17 +47,23 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
           throw new Error('Failed to fetch articles');
         }
         
-        const data = await response.json();
-        setArticles(data.articles || []);
+        const result = await response.json();
+        // APIレスポンスがdata.itemsにラップされている
+        const data = result.data || result;
+        setArticles(data.items || data.articles || []);
         setPagination({
           total: data.total || 0,
           page: data.page || 1,
           totalPages: data.totalPages || 1,
           limit: data.limit || 24
         });
+        
+        // アニメーション開始を少し遅らせる
+        requestAnimationFrame(() => {
+          setLoading(false);
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
         setLoading(false);
       }
     }
@@ -74,18 +83,26 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
     <>
       {/* 記事リスト */}
       <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-        {loading ? (
-          <ArticleSkeleton />
-        ) : (
-          <div className="animate-in fade-in-0 duration-500">
-            <ArticleList articles={articles} viewMode={viewMode} />
-          </div>
-        )}
+        <div className="relative min-h-[600px]">
+          {loading && <ArticleSkeleton />}
+          {articles.length > 0 && (
+            <div className={`${loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500'}`}>
+              <ArticleList articles={articles} viewMode={viewMode} />
+            </div>
+          )}
+          {!loading && articles.length === 0 && (
+            <div className="text-center text-gray-500 py-8">
+              記事が見つかりませんでした
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ページネーション */}
-      {!loading && pagination.totalPages > 1 && (
-        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 lg:px-6 py-3 animate-in fade-in-0 duration-500 delay-200">
+      {pagination.totalPages > 1 && (
+        <div className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 lg:px-6 py-3 ${
+          loading ? 'opacity-0' : 'animate-in fade-in-0 duration-500 delay-200'
+        }`}>
           <ServerPagination
             currentPage={pagination.page}
             totalPages={pagination.totalPages}
