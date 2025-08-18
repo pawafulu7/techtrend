@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import { StatsClient } from './stats-client';
 import { BarChart3 } from 'lucide-react';
+import { StatsOverviewSkeleton } from '@/app/components/stats/stats-overview-skeleton';
 
 export default function StatsPage() {
 
@@ -15,7 +17,9 @@ export default function StatsPage() {
         </p>
       </div>
 
-      <StatsClient />
+      <Suspense fallback={<StatsOverviewSkeleton />}>
+        <StatsClient />
+      </Suspense>
     </div>
   );
 }

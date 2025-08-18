@@ -7,6 +7,7 @@ import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { PopularTags } from '@/app/components/common/popular-tags';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
+import { ArticleCount } from '@/app/components/common/article-count';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { HomeClient } from '@/app/components/home/home-client';
@@ -81,8 +82,8 @@ export default async function Home({ searchParams }: PageProps) {
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
-      {/* メインエリア */}
-      <div className="flex-1 lg:flex lg:overflow-hidden">
+        {/* メインエリア */}
+        <div className="flex-1 lg:flex lg:overflow-hidden">
         {/* サイドバー - デスクトップのみ */}
         <aside className="hidden lg:block lg:w-64 lg:flex-shrink-0 lg:bg-gray-50 dark:lg:bg-gray-900/50 lg:border-r lg:border-gray-200 dark:lg:border-gray-700 lg:overflow-y-auto">
           <div className="p-4">
@@ -99,6 +100,9 @@ export default async function Home({ searchParams }: PageProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MobileFilters sources={sources} tags={tags} />
+                <Suspense fallback={<div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />}>
+                  <ArticleCount />
+                </Suspense>
               </div>
                 
                 <div className="flex items-center gap-2">
@@ -158,7 +162,9 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
 
           {/* クライアントコンポーネント（記事リストとページネーション） */}
-          <HomeClient viewMode={viewMode} sources={sources} tags={tags} />
+          <Suspense fallback={<ArticleSkeleton />}>
+            <HomeClient viewMode={viewMode} sources={sources} tags={tags} />
+          </Suspense>
         </main>
       </div>
     </div>

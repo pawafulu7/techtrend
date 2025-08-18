@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { ServerPagination } from '@/app/components/common/server-pagination';
-import { LoadingOverlay } from '@/app/components/common/loading-overlay';
 import type { Article, Source, Tag } from '@prisma/client';
 
 type ArticleWithRelations = Article & {
@@ -31,7 +30,7 @@ export function HomeClient({ viewMode, sources, tags, showInitialSkeleton = true
     totalPages: 1,
     limit: 24
   });
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchArticles() {
@@ -39,10 +38,8 @@ export function HomeClient({ viewMode, sources, tags, showInitialSkeleton = true
       setError(null);
       
       try {
-        // 初回は遅延なし、2回目以降は少し遅延を入れる
-        if (!isInitialLoad) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
+        // 少し遅延を入れてスムーズな遷移を実現
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         // URLパラメータからクエリ文字列を構築
         const queryString = searchParams.toString();
@@ -62,11 +59,11 @@ export function HomeClient({ viewMode, sources, tags, showInitialSkeleton = true
           totalPages: data.totalPages || 1,
           limit: data.limit || 24
         });
+        setTotalCount(data.total || 0);
         
         // アニメーション開始を少し遅らせる
         requestAnimationFrame(() => {
           setLoading(false);
-          setIsInitialLoad(false);
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -87,12 +84,9 @@ export function HomeClient({ viewMode, sources, tags, showInitialSkeleton = true
 
   return (
     <>
-      {/* 初回ロード時のみオーバーレイを表示 */}
-      <LoadingOverlay show={isInitialLoad && loading} />
-      
       {/* 記事リスト */}
       <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-        {loading && !isInitialLoad ? (
+        {loading ? (
           <ArticleSkeleton />
         ) : articles.length > 0 ? (
           <ArticleList articles={articles} viewMode={viewMode} />
