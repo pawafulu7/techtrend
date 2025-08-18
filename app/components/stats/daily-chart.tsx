@@ -107,7 +107,7 @@ export function DailyChart({ data }: DailyChartProps) {
                   key={index}
                   className="flex-1 flex flex-col items-center gap-1"
                 >
-                  <div className="w-full flex items-end relative" style={{ height: chartHeight - 40 }}>
+                  <div className="w-full flex items-end relative" style={{ height: chartHeight - 20 }}>
                     {sourceHeights.map(({ source, height, offset, count }) => (
                       <div
                         key={source}
