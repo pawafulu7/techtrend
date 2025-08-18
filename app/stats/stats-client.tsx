@@ -7,6 +7,7 @@ import { DailyChart } from '@/app/components/stats/daily-chart';
 import { TagCloud } from '@/app/components/stats/tag-cloud';
 import { StatsOverviewSkeleton } from '@/app/components/stats/stats-overview-skeleton';
 import { ChartSkeleton } from '@/app/components/stats/chart-skeleton';
+import { SourceChartSkeleton } from '@/app/components/stats/source-chart-skeleton';
 import { TagCloudSkeleton } from '@/app/components/stats/tag-cloud-skeleton';
 
 interface StatsData {
@@ -84,55 +85,35 @@ export function StatsClient() {
   return (
     <div className="space-y-6">
       {/* 概要 */}
-      <div className="relative min-h-[200px]">
-        <div className={`absolute inset-0 transition-opacity duration-300 ${!loading ? 'opacity-0 pointer-events-none' : ''}`}>
-          <StatsOverviewSkeleton />
-        </div>
-        {stats && (
-          <div className={`transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`}>
-            <StatsOverview stats={stats.overview} />
-          </div>
-        )}
-      </div>
+      {loading ? (
+        <StatsOverviewSkeleton />
+      ) : (
+        stats && <StatsOverview stats={stats.overview} />
+      )}
 
       {/* チャート */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* 日別推移 */}
-        <div className="relative min-h-[400px]">
-          <div className={`absolute inset-0 transition-opacity duration-300 ${!loading ? 'opacity-0 pointer-events-none' : ''}`}>
-            <ChartSkeleton />
-          </div>
-          {stats && (
-            <div className={`transition-opacity duration-500 delay-100 ${loading ? 'opacity-0' : 'opacity-100'}`}>
-              <DailyChart data={stats.daily} />
-            </div>
-          )}
-        </div>
+        {loading ? (
+          <ChartSkeleton />
+        ) : (
+          stats && <DailyChart data={stats.daily} />
+        )}
 
         {/* ソース別分布 */}
-        <div className="relative min-h-[400px]">
-          <div className={`absolute inset-0 transition-opacity duration-300 ${!loading ? 'opacity-0 pointer-events-none' : ''}`}>
-            <ChartSkeleton />
-          </div>
-          {stats && (
-            <div className={`transition-opacity duration-500 delay-150 ${loading ? 'opacity-0' : 'opacity-100'}`}>
-              <SourceChart data={stats.sources} />
-            </div>
-          )}
-        </div>
+        {loading ? (
+          <SourceChartSkeleton />
+        ) : (
+          stats && <SourceChart data={stats.sources} />
+        )}
       </div>
 
       {/* タグクラウド */}
-      <div className="relative min-h-[300px]">
-        <div className={`absolute inset-0 transition-opacity duration-300 ${!loading ? 'opacity-0 pointer-events-none' : ''}`}>
-          <TagCloudSkeleton />
-        </div>
-        {stats && (
-          <div className={`transition-opacity duration-500 delay-200 ${loading ? 'opacity-0' : 'opacity-100'}`}>
-            <TagCloud tags={stats.tags} />
-          </div>
-        )}
-      </div>
+      {loading ? (
+        <TagCloudSkeleton />
+      ) : (
+        stats && <TagCloud tags={stats.tags} />
+      )}
     </div>
   );
 }
