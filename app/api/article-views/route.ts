@@ -19,9 +19,18 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const skip = (page - 1) * limit;
 
+    // 90日前の日付を計算
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
     const [views, total] = await Promise.all([
       prisma.articleView.findMany({
-        where: { userId: session.user.id },
+        where: { 
+          userId: session.user.id,
+          viewedAt: {
+            gte: ninetyDaysAgo, // 90日以内の履歴のみ取得
+          }
+        },
         include: {
           article: {
             include: {
@@ -35,7 +44,12 @@ export async function GET(request: Request) {
         take: limit,
       }),
       prisma.articleView.count({
-        where: { userId: session.user.id },
+        where: { 
+          userId: session.user.id,
+          viewedAt: {
+            gte: ninetyDaysAgo, // カウントも90日以内のみ
+          }
+        },
       }),
     ]);
 
@@ -133,6 +147,46 @@ export async function POST(request: Request) {
         articleId,
       },
     });
+
+    // クリーンアップ処理: 古い履歴と超過分を削除
+    // 90日以上前の履歴を削除
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    
+    await prisma.articleView.deleteMany({
+      where: {
+        userId: session.user.id,
+        viewedAt: {
+          lt: ninetyDaysAgo,
+        },
+      },
+    });
+
+    // 100件を超える場合は古い履歴を削除
+    const userViewCount = await prisma.articleView.count({
+      where: { userId: session.user.id },
+    });
+
+    if (userViewCount > 100) {
+      // 最新100件以外を削除するため、101件目以降のIDを取得
+      const viewsToKeep = await prisma.articleView.findMany({
+        where: { userId: session.user.id },
+        orderBy: { viewedAt: 'desc' },
+        take: 100,
+        select: { id: true },
+      });
+
+      const idsToKeep = viewsToKeep.map(v => v.id);
+
+      await prisma.articleView.deleteMany({
+        where: {
+          userId: session.user.id,
+          id: {
+            notIn: idsToKeep,
+          },
+        },
+      });
+    }
 
     return NextResponse.json({
       message: 'Article view recorded',
