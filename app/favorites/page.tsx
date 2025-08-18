@@ -13,18 +13,17 @@ import { ja } from 'date-fns/locale';
 
 interface FavoriteArticle {
   id: number;
-  favoritedAt: string;
-  article: {
+  title: string;
+  summary: string | null;
+  url: string;
+  publishedAt: string;
+  source: {
     id: number;
-    title: string;
-    summary: string | null;
-    url: string;
-    publishedAt: string;
-    source: {
-      id: number;
-      name: string;
-    };
+    name: string;
   };
+  tags?: Array<{ id: number; name: string; }>;
+  favoriteId: number;
+  favoritedAt: string;
 }
 
 export default function FavoritesPage() {
@@ -55,7 +54,7 @@ export default function FavoritesPage() {
       }
 
       const data = await response.json();
-      setFavorites(data);
+      setFavorites(data.favorites);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
@@ -74,7 +73,7 @@ export default function FavoritesPage() {
       }
 
       // 楽観的UIアップデート
-      setFavorites(prev => prev.filter(fav => fav.article.id !== articleId));
+      setFavorites(prev => prev.filter(fav => fav.id !== articleId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     }
@@ -128,17 +127,17 @@ export default function FavoritesPage() {
                     <div className="flex-1">
                       <CardTitle className="text-xl mb-2">
                         <Link 
-                          href={`/articles/${favorite.article.id}`}
+                          href={`/articles/${favorite.id}`}
                           className="hover:text-primary transition-colors"
                         >
-                          {favorite.article.title}
+                          {favorite.title}
                         </Link>
                       </CardTitle>
                       <CardDescription className="flex items-center gap-4 text-sm">
-                        <span>{favorite.article.source.name}</span>
+                        <span>{favorite.source.name}</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(favorite.article.publishedAt), {
+                          {formatDistanceToNow(new Date(favorite.publishedAt), {
                             addSuffix: true,
                             locale: ja,
                           })}
@@ -148,21 +147,21 @@ export default function FavoritesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeFavorite(favorite.article.id)}
+                      onClick={() => removeFavorite(favorite.id)}
                       className="text-red-500 hover:text-red-600"
                     >
                       <Heart className="h-5 w-5 fill-current" />
                     </Button>
                   </div>
                 </CardHeader>
-                {favorite.article.summary && (
+                {favorite.summary && (
                   <CardContent>
                     <p className="text-muted-foreground line-clamp-3">
-                      {favorite.article.summary}
+                      {favorite.summary}
                     </p>
                     <div className="mt-4 flex items-center gap-2">
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={favorite.article.url} target="_blank" rel="noopener noreferrer">
+                        <Link href={favorite.url} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-4 w-4 mr-1" />
                           元記事を読む
                         </Link>
