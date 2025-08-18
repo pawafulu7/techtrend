@@ -12,6 +12,8 @@ import Link from 'next/link';
 import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { FilterSkeleton } from '@/app/components/common/filter-skeleton';
+import { ToolbarSkeleton } from '@/app/components/common/toolbar-skeleton';
+import { HomeContentWrapper, ToolbarWrapper, SidebarWrapper, ArticleListWrapper } from '@/app/components/common/home-content-wrapper';
 import { prisma } from '@/lib/database';
 import { ARTICLES_PER_PAGE } from '@/lib/constants';
 import { removeDuplicates } from '@/lib/utils/duplicate-detection';
@@ -208,45 +210,48 @@ export default async function Home({ searchParams }: PageProps) {
       {/* メインエリア */}
       <div className="flex-1 lg:flex lg:overflow-hidden">
         {/* サイドバー - デスクトップのみ */}
-        <aside className="hidden lg:block lg:w-64 lg:flex-shrink-0 lg:bg-gray-50 dark:lg:bg-gray-900/50 lg:border-r lg:border-gray-200 dark:lg:border-gray-700 lg:overflow-y-auto">
+        <SidebarWrapper>
           <div className="p-4">
             <Suspense fallback={<FilterSkeleton />}>
-              <Filters sources={sources} tags={tags} />
+              <HomeContentWrapper delay={50}>
+                <Filters sources={sources} tags={tags} />
+              </HomeContentWrapper>
             </Suspense>
           </div>
-        </aside>
+        </SidebarWrapper>
 
         {/* コンテンツエリア */}
         <main className="flex-1 lg:flex lg:flex-col">
           {/* ツールバー - 固定 */}
-          <div className="flex-shrink-0 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {data.total.toLocaleString()}件
-                </p>
-                <MobileFilters sources={sources} tags={tags} />
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <div className="hidden lg:block">
-                  <SearchBox />
+          <ToolbarWrapper>
+            <div className="flex-shrink-0 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {data.total.toLocaleString()}件
+                  </p>
+                  <MobileFilters sources={sources} tags={tags} />
                 </div>
-                <div className="hidden lg:block">
-                  <TagFilterDropdown tags={tags} />
-                </div>
-                <div className="w-px h-5 bg-border" />
-                <ViewModeToggle currentMode={viewMode} />
-                <div className="w-px h-5 bg-border" />
-                <div className="flex gap-1">
-                  <Button
-                    variant={params.sortBy !== 'bookmarks' && params.sortBy !== 'qualityScore' && params.sortBy !== 'createdAt' ? 'default' : 'outline'}
-                    size="sm"
-                    asChild
-                    className="h-6 sm:h-7 px-2 text-xs"
-                  >
-                    <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
-                      公開順
+                
+                <div className="flex items-center gap-2">
+                  <div className="hidden lg:block">
+                    <SearchBox />
+                  </div>
+                  <div className="hidden lg:block">
+                    <TagFilterDropdown tags={tags} />
+                  </div>
+                  <div className="w-px h-5 bg-border" />
+                  <ViewModeToggle currentMode={viewMode} />
+                  <div className="w-px h-5 bg-border" />
+                  <div className="flex gap-1">
+                    <Button
+                      variant={params.sortBy !== 'bookmarks' && params.sortBy !== 'qualityScore' && params.sortBy !== 'createdAt' ? 'default' : 'outline'}
+                      size="sm"
+                      asChild
+                      className="h-6 sm:h-7 px-2 text-xs"
+                    >
+                      <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
+                        公開順
                     </Link>
                   </Button>
                   <Button
@@ -283,11 +288,14 @@ export default async function Home({ searchParams }: PageProps) {
               </div>
             </div>
           </div>
+          </ToolbarWrapper>
 
           {/* 記事リスト - スクロール可能 */}
           <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
             <Suspense fallback={<ArticleSkeleton />}>
-              <ArticleList articles={data.articles} viewMode={viewMode} />
+              <ArticleListWrapper>
+                <ArticleList articles={data.articles} viewMode={viewMode} />
+              </ArticleListWrapper>
             </Suspense>
           </div>
 
