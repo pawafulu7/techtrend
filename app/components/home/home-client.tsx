@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { ServerPagination } from '@/app/components/common/server-pagination';
+import { LoadingOverlay } from '@/app/components/common/loading-overlay';
 import type { Article, Source, Tag } from '@prisma/client';
 
 type ArticleWithRelations = Article & {
@@ -31,14 +32,6 @@ export function HomeClient({ viewMode, sources, tags, showInitialSkeleton = true
     limit: 24
   });
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-
-  // マウント時にSSRスケルトンを非表示
-  useEffect(() => {
-    const ssrSkeleton = document.querySelector('.ssr-skeleton');
-    if (ssrSkeleton) {
-      (ssrSkeleton as HTMLElement).style.display = 'none';
-    }
-  }, []);
 
   useEffect(() => {
     async function fetchArticles() {
@@ -94,19 +87,22 @@ export function HomeClient({ viewMode, sources, tags, showInitialSkeleton = true
 
   return (
     <>
+      {/* 初回ロード時のみオーバーレイを表示 */}
+      <LoadingOverlay show={isInitialLoad && loading} />
+      
       {/* 記事リスト */}
       <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-        {loading ? (
+        {loading && !isInitialLoad ? (
           <ArticleSkeleton />
         ) : articles.length > 0 ? (
           <ArticleList articles={articles} viewMode={viewMode} />
-        ) : (
+        ) : !loading ? (
           <div className="flex items-center justify-center min-h-[600px]">
             <div className="text-center text-gray-500">
               記事が見つかりませんでした
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* ページネーション */}

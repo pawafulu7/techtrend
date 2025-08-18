@@ -9,6 +9,7 @@ import { StatsOverviewSkeleton } from '@/app/components/stats/stats-overview-ske
 import { ChartSkeleton } from '@/app/components/stats/chart-skeleton';
 import { SourceChartSkeleton } from '@/app/components/stats/source-chart-skeleton';
 import { TagCloudSkeleton } from '@/app/components/stats/tag-cloud-skeleton';
+import { LoadingOverlay } from '@/app/components/common/loading-overlay';
 
 interface StatsData {
   overview: {
@@ -40,13 +41,13 @@ export function StatsClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
       try {
         // 初回は遅延なし、2回目以降は少し遅延を入れる
-        const isFirstLoad = stats === null;
-        if (!isFirstLoad) {
+        if (!isInitialLoad) {
           await new Promise(resolve => setTimeout(resolve, 300));
         }
         
@@ -66,6 +67,7 @@ export function StatsClient() {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             setLoading(false);
+            setIsInitialLoad(false);
           });
         });
       } catch (err) {
@@ -86,25 +88,29 @@ export function StatsClient() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* 概要 */}
-      {loading ? (
-        <StatsOverviewSkeleton />
-      ) : (
-        stats && <StatsOverview stats={stats.overview} />
-      )}
+    <>
+      {/* 初回ロード時のみオーバーレイを表示 */}
+      <LoadingOverlay show={isInitialLoad && loading} />
+      
+      <div className="space-y-6">
+        {/* 概要 */}
+        {loading && !isInitialLoad ? (
+          <StatsOverviewSkeleton />
+        ) : (
+          stats && <StatsOverview stats={stats.overview} />
+        )}
 
       {/* チャート */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* 日別推移 */}
-        {loading ? (
+        {loading && !isInitialLoad ? (
           <ChartSkeleton />
         ) : (
           stats && <DailyChart data={stats.daily} />
         )}
 
         {/* ソース別分布 */}
-        {loading ? (
+        {loading && !isInitialLoad ? (
           <SourceChartSkeleton />
         ) : (
           stats && <SourceChart data={stats.sources} />
@@ -112,11 +118,12 @@ export function StatsClient() {
       </div>
 
       {/* タグクラウド */}
-      {loading ? (
+      {loading && !isInitialLoad ? (
         <TagCloudSkeleton />
       ) : (
         stats && <TagCloud tags={stats.tags} />
       )}
     </div>
+    </>
   );
 }

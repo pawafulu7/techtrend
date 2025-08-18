@@ -157,11 +157,6 @@ export default async function Home({ searchParams }: PageProps) {
             </div>
           </div>
 
-          {/* 初期表示用スケルトン（SSR） */}
-          <div className="ssr-skeleton flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-            <ArticleSkeleton />
-          </div>
-          
           {/* クライアントコンポーネント（記事リストとページネーション） */}
           <HomeClient viewMode={viewMode} sources={sources} tags={tags} />
         </main>
