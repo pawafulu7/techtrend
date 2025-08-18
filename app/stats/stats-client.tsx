@@ -44,9 +44,11 @@ export function StatsClient() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        // 少し遅延を入れて、スケルトンを見せる（初回のみ短くする）
+        // 初回は遅延なし、2回目以降は少し遅延を入れる
         const isFirstLoad = stats === null;
-        await new Promise(resolve => setTimeout(resolve, isFirstLoad ? 100 : 300));
+        if (!isFirstLoad) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
         
         const response = await fetch('/api/stats');
         if (!response.ok) {

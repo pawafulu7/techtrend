@@ -36,9 +36,11 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
       setError(null);
       
       try {
-        // 少し遅延を入れて、スケルトンを見せる（初回のみ短くする）
+        // 初回は遅延なし、2回目以降は少し遅延を入れる
         const isFirstLoad = articles.length === 0;
-        await new Promise(resolve => setTimeout(resolve, isFirstLoad ? 100 : 300));
+        if (!isFirstLoad) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
         
         // URLパラメータからクエリ文字列を構築
         const queryString = searchParams.toString();

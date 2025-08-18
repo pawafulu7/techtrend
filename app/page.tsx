@@ -10,6 +10,7 @@ import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { HomeClient } from '@/app/components/home/home-client';
+import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { FilterSkeleton } from '@/app/components/common/filter-skeleton';
 import { prisma } from '@/lib/database';
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
@@ -157,7 +158,13 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
 
           {/* クライアントコンポーネント（記事リストとページネーション） */}
-          <HomeClient viewMode={viewMode} sources={sources} tags={tags} />
+          <Suspense fallback={
+            <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
+              <ArticleSkeleton />
+            </div>
+          }>
+            <HomeClient viewMode={viewMode} sources={sources} tags={tags} />
+          </Suspense>
         </main>
       </div>
     </div>
