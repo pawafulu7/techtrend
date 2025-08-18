@@ -7,16 +7,14 @@ import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import { PopularTags } from '@/app/components/common/popular-tags';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
+import { ArticleCount } from '@/app/components/common/article-count';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArticleList } from '@/app/components/article/list';
+import { HomeClient } from '@/app/components/home/home-client';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { FilterSkeleton } from '@/app/components/common/filter-skeleton';
 import { prisma } from '@/lib/database';
-import { ARTICLES_PER_PAGE } from '@/lib/constants';
-import { removeDuplicates } from '@/lib/utils/duplicate-detection';
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
-import type { Prisma } from '@prisma/client';
 
 interface PageProps {
   searchParams: Promise<{
@@ -31,128 +29,7 @@ interface PageProps {
   }>;
 }
 
-async function getArticles(params: Awaited<PageProps['searchParams']>) {
-  const page = Math.max(1, parseInt(params.page || '1'));
-  const limit = ARTICLES_PER_PAGE;
-  // Support both publishedAt and createdAt for sorting
-  const sortBy = params.sortBy || 'publishedAt';
-  // Validate sortBy parameter
-  const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
-  const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
-  const sortOrder = (params.sortOrder || 'desc') as 'asc' | 'desc';
-
-  // Build where clause
-  const where: Prisma.ArticleWhereInput = {};
-  // Support multiple sources selection
-  if (params.sources) {
-    const sourceIds = params.sources.split(',').filter(id => id.trim());
-    if (sourceIds.length > 0) {
-      where.sourceId = { in: sourceIds };
-    }
-  } else if (params.sourceId) {
-    // Backward compatibility with single sourceId
-    where.sourceId = params.sourceId;
-  }
-  
-  // 品質フィルタ（一時的に無効化）
-  // where.qualityScore = { gte: 30 };
-  
-  // タグフィルター（複数対応）
-  if (params.tags || params.tag) {
-    const tagNames = params.tags ? params.tags.split(',') : [params.tag!];
-    const tagMode = params.tagMode || 'OR';
-    
-    if (tagMode === 'AND') {
-      // すべてのタグを含む
-      where.AND = tagNames.map(name => ({
-        tags: {
-          some: {
-            name
-          }
-        }
-      }));
-    } else {
-      // いずれかのタグを含む
-      where.tags = {
-        some: {
-          name: {
-            in: tagNames
-          }
-        }
-      };
-    }
-  }
-  
-  if (params.search) {
-    // Split search string by spaces (both half-width and full-width)
-    const keywords = params.search.trim()
-      .split(/[\s　]+/)
-      .filter(k => k.length > 0);
-    
-    if (keywords.length === 1) {
-      // Single keyword - maintain existing behavior
-      where.OR = [
-        { title: { contains: keywords[0], mode: 'insensitive' } },
-        { summary: { contains: keywords[0], mode: 'insensitive' } }
-      ];
-    } else if (keywords.length > 1) {
-      // Multiple keywords - AND search
-      where.AND = keywords.map(keyword => ({
-        OR: [
-          { title: { contains: keyword, mode: 'insensitive' } },
-          { summary: { contains: keyword, mode: 'insensitive' } }
-        ]
-      }));
-    }
-  }
-
-  // Get total count and articles in parallel for better performance
-  const [total, articles] = await Promise.all([
-    prisma.article.count({ where }),
-    prisma.article.findMany({
-      where,
-      select: {
-        id: true,
-        title: true,
-        url: true,
-        summary: true,
-        thumbnail: true,
-        publishedAt: true,
-        qualityScore: true,
-        bookmarks: true,
-        userVotes: true,
-        difficulty: true,
-        createdAt: true,
-        // Exclude: content, detailedSummary
-        source: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        tags: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        [finalSortBy]: sortOrder,
-      } as Prisma.ArticleOrderByWithRelationInput,
-      skip: (page - 1) * limit,
-      take: limit,
-    })
-  ]);
-
-  return {
-    articles,
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
-  };
-}
+// getArticles function removed - now handled by client component
 
 async function getSources() {
   const sources = await prisma.source.findMany({
@@ -197,16 +74,16 @@ export default async function Home({ searchParams }: PageProps) {
   const cookieStore = await cookies();
   const viewMode = parseViewModeFromCookie(cookieStore.get('article-view-mode')?.value);
   
-  const [data, sources, tags] = await Promise.all([
-    getArticles(params),
+  // ソースとタグのみサーバー側で取得（フィルター用）
+  const [sources, tags] = await Promise.all([
     getSources(),
     getPopularTags(),
   ]);
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
-      {/* メインエリア */}
-      <div className="flex-1 lg:flex lg:overflow-hidden">
+        {/* メインエリア */}
+        <div className="flex-1 lg:flex lg:overflow-hidden">
         {/* サイドバー - デスクトップのみ */}
         <aside className="hidden lg:block lg:w-64 lg:flex-shrink-0 lg:bg-gray-50 dark:lg:bg-gray-900/50 lg:border-r lg:border-gray-200 dark:lg:border-gray-700 lg:overflow-y-auto">
           <div className="p-4">
@@ -222,31 +99,31 @@ export default async function Home({ searchParams }: PageProps) {
           <div className="flex-shrink-0 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {data.total.toLocaleString()}件
-                </p>
                 <MobileFilters sources={sources} tags={tags} />
+                <Suspense fallback={<div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />}>
+                  <ArticleCount />
+                </Suspense>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <div className="hidden lg:block">
-                  <SearchBox />
-                </div>
-                <div className="hidden lg:block">
-                  <TagFilterDropdown tags={tags} />
-                </div>
-                <div className="w-px h-5 bg-border" />
-                <ViewModeToggle currentMode={viewMode} />
-                <div className="w-px h-5 bg-border" />
-                <div className="flex gap-1">
-                  <Button
-                    variant={params.sortBy !== 'bookmarks' && params.sortBy !== 'qualityScore' && params.sortBy !== 'createdAt' ? 'default' : 'outline'}
-                    size="sm"
-                    asChild
-                    className="h-6 sm:h-7 px-2 text-xs"
-                  >
-                    <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
-                      公開順
+                
+                <div className="flex items-center gap-2">
+                  <div className="hidden lg:block">
+                    <SearchBox />
+                  </div>
+                  <div className="hidden lg:block">
+                    <TagFilterDropdown tags={tags} />
+                  </div>
+                  <div className="w-px h-5 bg-border" />
+                  <ViewModeToggle currentMode={viewMode} />
+                  <div className="w-px h-5 bg-border" />
+                  <div className="flex gap-1">
+                    <Button
+                      variant={params.sortBy !== 'bookmarks' && params.sortBy !== 'qualityScore' && params.sortBy !== 'createdAt' ? 'default' : 'outline'}
+                      size="sm"
+                      asChild
+                      className="h-6 sm:h-7 px-2 text-xs"
+                    >
+                      <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
+                        公開順
                     </Link>
                   </Button>
                   <Button
@@ -284,23 +161,10 @@ export default async function Home({ searchParams }: PageProps) {
             </div>
           </div>
 
-          {/* 記事リスト - スクロール可能 */}
-          <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-            <Suspense fallback={<ArticleSkeleton />}>
-              <ArticleList articles={data.articles} viewMode={viewMode} />
-            </Suspense>
-          </div>
-
-          {/* ページネーション - 固定 */}
-          {data.totalPages > 1 && (
-            <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 lg:px-6 py-3">
-              <ServerPagination
-                currentPage={data.page}
-                totalPages={data.totalPages}
-                searchParams={params}
-              />
-            </div>
-          )}
+          {/* クライアントコンポーネント（記事リストとページネーション） */}
+          <Suspense fallback={<ArticleSkeleton />}>
+            <HomeClient viewMode={viewMode} sources={sources} tags={tags} />
+          </Suspense>
         </main>
       </div>
     </div>

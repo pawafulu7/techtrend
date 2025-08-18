@@ -212,3 +212,92 @@ html.no-transitions *::after {
     display: none;
   }
 }
+
+/* Fade-in animations for smooth content display */
+.fade-in-content {
+  animation: fadeInContent 300ms ease-out forwards;
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tailwind animate-in utilities */
+@keyframes fade-in-0 {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-duration: 500ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in-0 {
+  animation-name: fade-in-0;
+}
+
+.duration-500 {
+  animation-duration: 500ms;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-150 {
+  animation-delay: 150ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+/* Shimmer effect for skeleton loading */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animation-delay-150 {
+  animation-delay: 150ms;
+}
+
+.animation-delay-300 {
+  animation-delay: 300ms;
+}
+
+.animation-delay-450 {
+  animation-delay: 450ms;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-content,
+  .animate-in,
+  .animate-shimmer {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
