@@ -10,6 +10,7 @@ import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
 import { RelatedArticles } from '@/app/components/article/related-articles';
 import { ArticleTracker } from '@/app/components/analytics/ArticleTracker';
+import { ViewTracker } from '@/components/article/view-tracker';
 import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summary-display';
 
 interface PageProps {
@@ -75,6 +76,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <ArticleTracker article={article} />
+      <ViewTracker articleId={article.id} />
       <div className="mb-4">
         <Button variant="ghost" asChild>
           <Link href={returnUrl} className="flex items-center gap-2">
