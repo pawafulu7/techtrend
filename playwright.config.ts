@@ -19,9 +19,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
-  /* Global setup and teardown */
-  globalSetup: './__tests__/e2e/global-setup.ts',
-  globalTeardown: './__tests__/e2e/global-teardown.ts',
+  /* Global setup and teardown - 一時的に無効化（Prisma認証問題のため） */
+  // globalSetup: './__tests__/e2e/global-setup.ts',
+  // globalTeardown: './__tests__/e2e/global-teardown.ts',
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html'],
