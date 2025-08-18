@@ -229,9 +229,46 @@ html.no-transitions *::after {
   }
 }
 
+/* Tailwind animate-in utilities */
+@keyframes fade-in-0 {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-duration: 500ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in-0 {
+  animation-name: fade-in-0;
+}
+
+.duration-500 {
+  animation-duration: 500ms;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-150 {
+  animation-delay: 150ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .fade-in-content {
+  .fade-in-content,
+  .animate-in {
     animation: none;
     opacity: 1;
     transform: none;
