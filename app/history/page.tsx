@@ -14,24 +14,20 @@ import { ja } from 'date-fns/locale';
 
 interface ArticleView {
   id: number;
-  viewedAt: string;
-  article: {
+  title: string;
+  summary: string | null;
+  url: string;
+  publishedAt: string;
+  source: {
     id: number;
-    title: string;
-    summary: string | null;
-    url: string;
-    publishedAt: string;
-    source: {
-      id: number;
-      name: string;
-    };
-    tags?: Array<{
-      tag: {
-        id: number;
-        name: string;
-      };
-    }>;
+    name: string;
   };
+  tags?: Array<{
+    id: number;
+    name: string;
+  }>;
+  viewId: number;
+  viewedAt: string;
 }
 
 export default function HistoryPage() {
@@ -62,7 +58,7 @@ export default function HistoryPage() {
       }
 
       const data = await response.json();
-      setViews(data);
+      setViews(data.views);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
@@ -146,17 +142,17 @@ export default function HistoryPage() {
                     <div className="flex-1">
                       <CardTitle className="text-xl mb-2">
                         <Link 
-                          href={`/articles/${view.article.id}`}
+                          href={`/articles/${view.id}`}
                           className="hover:text-primary transition-colors"
                         >
-                          {view.article.title}
+                          {view.title}
                         </Link>
                       </CardTitle>
                       <CardDescription className="flex items-center gap-4 text-sm">
-                        <span>{view.article.source.name}</span>
+                        <span>{view.source.name}</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(view.article.publishedAt), {
+                          {formatDistanceToNow(new Date(view.publishedAt), {
                             addSuffix: true,
                             locale: ja,
                           })}
@@ -172,30 +168,30 @@ export default function HistoryPage() {
                     </div>
                   </div>
                 </CardHeader>
-                {(view.article.summary || view.article.tags) && (
+                {(view.summary || view.tags) && (
                   <CardContent>
-                    {view.article.summary && (
+                    {view.summary && (
                       <p className="text-muted-foreground line-clamp-3 mb-3">
-                        {view.article.summary}
+                        {view.summary}
                       </p>
                     )}
-                    {view.article.tags && view.article.tags.length > 0 && (
+                    {view.tags && view.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-3">
-                        {view.article.tags.slice(0, 5).map((t) => (
-                          <Badge key={t.tag.id} variant="outline" className="text-xs">
-                            {t.tag.name}
+                        {view.tags.slice(0, 5).map((t) => (
+                          <Badge key={t.id} variant="outline" className="text-xs">
+                            {t.name}
                           </Badge>
                         ))}
-                        {view.article.tags.length > 5 && (
+                        {view.tags.length > 5 && (
                           <span className="text-xs text-muted-foreground">
-                            +{view.article.tags.length - 5}
+                            +{view.tags.length - 5}
                           </span>
                         )}
                       </div>
                     )}
                     <div className="mt-4">
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={view.article.url} target="_blank" rel="noopener noreferrer">
+                        <Link href={view.url} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-4 w-4 mr-1" />
                           元記事を読む
                         </Link>
