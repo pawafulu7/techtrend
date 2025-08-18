@@ -83,23 +83,17 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
     <>
       {/* 記事リスト */}
       <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-        <div className="relative min-h-[600px]">
-          <div className={`absolute inset-0 transition-opacity duration-300 ${!loading ? 'opacity-0 pointer-events-none' : ''}`}>
-            <ArticleSkeleton />
+        {loading ? (
+          <ArticleSkeleton />
+        ) : articles.length > 0 ? (
+          <ArticleList articles={articles} viewMode={viewMode} />
+        ) : (
+          <div className="flex items-center justify-center min-h-[600px]">
+            <div className="text-center text-gray-500">
+              記事が見つかりませんでした
+            </div>
           </div>
-          {articles.length > 0 && (
-            <div className={`transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`}>
-              <ArticleList articles={articles} viewMode={viewMode} />
-            </div>
-          )}
-          {!loading && articles.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                記事が見つかりませんでした
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* ページネーション */}
