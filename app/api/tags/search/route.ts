@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const tags = await prisma.tag.findMany({
       where: {
         AND: [
-          { name: { contains: query } }, // mode: 'insensitive' を削除（SQLiteでの互換性問題の可能性）
+          { name: { contains: query, mode: 'insensitive' } }, // PostgreSQLでILIKE演算子を使用
           { articles: { some: {} } }, // 記事があるタグのみ
         ],
       },
