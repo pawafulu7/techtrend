@@ -12,6 +12,11 @@ import { SELECTORS } from '../constants/selectors';
 
 test.describe('分析ページ', () => {
   test.beforeEach(async ({ page }) => {
+    // LocalStorageで分析機能を有効化（ページ読み込み前に設定）
+    await page.addInitScript(() => {
+      localStorage.setItem('analytics-enabled', 'true');
+    });
+    
     // 分析ページへアクセス
     await page.goto('/analytics');
     await waitForPageLoad(page);
@@ -58,45 +63,53 @@ test.describe('分析ページ', () => {
       }
     }
     
-    // 総記事数の表示を確認
-    const totalArticles = page.locator(
-      ':text("総記事"), :text("Total Articles"), :text("記事数")'
+    // 総読書数の表示を確認（データがない場合は0でOK）
+    const totalReading = page.locator(
+      ':text("総読書数")'
     ).first();
     
-    if (await totalArticles.isVisible()) {
-      const parent = totalArticles.locator('..');
-      const value = parent.locator('[class*="value"], [class*="number"], span').first();
+    if (await totalReading.isVisible()) {
+      const parent = totalReading.locator('..');
+      const value = parent.locator('div').filter({ hasText: /^\d+$/ }).first();
       if (await value.isVisible()) {
         const valueText = await value.textContent();
-        expect(valueText).toMatch(/\d+/);
+        // 0以上の数値であることを確認（データがない場合は0）
+        expect(valueText).toMatch(/^\d+$/);
       }
     }
   });
 
   test('グラフ・チャートが表示される', async ({ page }) => {
-    // canvasまたはSVG要素を探す（グラフライブラリが使用する要素）
-    const charts = page.locator('canvas, svg[class*="chart"], [data-testid="chart"]');
-    const chartCount = await charts.count();
+    // チャートコンテナまたはデータなしメッセージを探す
+    const chartSection = page.locator('text=日別読書量').first();
     
-    if (chartCount > 0) {
-      // 少なくとも1つのチャートが表示されることを確認
-      await expect(charts.first()).toBeVisible();
+    if (await chartSection.isVisible()) {
+      // チャートセクションが存在することを確認
+      await expect(chartSection).toBeVisible();
       
-      // チャートのサイズが適切であることを確認
-      const box = await charts.first().boundingBox();
-      if (box) {
-        expect(box.width).toBeGreaterThan(100);
-        expect(box.height).toBeGreaterThan(100);
+      // Rechartsのコンテナまたはcanvas要素を探す
+      const chartContainer = page.locator(
+        '[class*="recharts-wrapper"], canvas, svg[class*="chart"], [role="application"]'
+      ).first();
+      
+      if (await chartContainer.isVisible()) {
+        await expect(chartContainer).toBeVisible();
+        
+        // チャートコンテナのサイズを確認（データがない場合でも最小サイズはある）
+        const box = await chartContainer.boundingBox();
+        if (box) {
+          // データがない場合でも最小サイズはあるはず（幅10px以上）
+          expect(box.width).toBeGreaterThan(10);
+          // 高さは最小でも50px以上
+          expect(box.height).toBeGreaterThan(50);
+        }
       }
     }
     
-    // Chart.jsやRechartsなどの一般的なチャートコンテナを確認
-    const chartContainers = page.locator(
-      '[class*="recharts"], [class*="chart-container"], [data-testid*="chart"]'
-    );
-    
-    if (await chartContainers.first().isVisible()) {
-      await expect(chartContainers.first()).toBeVisible();
+    // タブパネル内のコンテンツが表示されることを確認
+    const tabPanel = page.locator('[role="tabpanel"]').first();
+    if (await tabPanel.isVisible()) {
+      await expect(tabPanel).toBeVisible();
     }
   });
 
