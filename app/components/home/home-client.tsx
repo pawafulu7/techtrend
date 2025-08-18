@@ -16,9 +16,10 @@ interface HomeClientProps {
   viewMode: 'grid' | 'list';
   sources: Source[];
   tags: Array<Tag & { count: number }>;
+  showInitialSkeleton?: boolean;
 }
 
-export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
+export function HomeClient({ viewMode, sources, tags, showInitialSkeleton = true }: HomeClientProps) {
   const searchParams = useSearchParams();
   const [articles, setArticles] = useState<ArticleWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +30,15 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
     totalPages: 1,
     limit: 24
   });
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // マウント時にSSRスケルトンを非表示
+  useEffect(() => {
+    const ssrSkeleton = document.querySelector('.ssr-skeleton');
+    if (ssrSkeleton) {
+      (ssrSkeleton as HTMLElement).style.display = 'none';
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchArticles() {
@@ -37,8 +47,7 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
       
       try {
         // 初回は遅延なし、2回目以降は少し遅延を入れる
-        const isFirstLoad = articles.length === 0;
-        if (!isFirstLoad) {
+        if (!isInitialLoad) {
           await new Promise(resolve => setTimeout(resolve, 300));
         }
         
@@ -64,6 +73,7 @@ export function HomeClient({ viewMode, sources, tags }: HomeClientProps) {
         // アニメーション開始を少し遅らせる
         requestAnimationFrame(() => {
           setLoading(false);
+          setIsInitialLoad(false);
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
