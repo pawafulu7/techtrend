@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LinkIcon, TrendingUp } from 'lucide-react';
+import { LinkIcon, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils';
 import { useRelatedArticles } from '@/hooks/use-related-articles';
@@ -27,16 +29,26 @@ interface RelatedArticle {
 interface RelatedArticlesProps {
   articleId: string;
   maxItems?: number;
+  initialExpanded?: boolean;
 }
 
-export function RelatedArticles({ articleId, maxItems = 10 }: RelatedArticlesProps) {
+export function RelatedArticles({ 
+  articleId, 
+  maxItems = 10,
+  initialExpanded = false 
+}: RelatedArticlesProps) {
+  const [expanded, setExpanded] = useState(initialExpanded);
   const { data: articles = [], isLoading, error } = useRelatedArticles(articleId);
 
-  const displayArticles = articles.slice(0, maxItems);
+  // 表示件数の制御
+  const displayLimit = expanded ? maxItems : 5;
+  const displayArticles = articles.slice(0, displayLimit);
+  const hasMore = articles.length > 5;
+  const remainingCount = articles.length - 5;
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <LinkIcon className="h-5 w-5" />
@@ -61,7 +73,7 @@ export function RelatedArticles({ articleId, maxItems = 10 }: RelatedArticlesPro
   
   if (displayArticles.length === 0) {
     return (
-      <Card>
+      <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <LinkIcon className="h-5 w-5" />
@@ -76,14 +88,14 @@ export function RelatedArticles({ articleId, maxItems = 10 }: RelatedArticlesPro
   }
 
   return (
-    <Card className="gap-3">
+    <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <LinkIcon className="h-5 w-5" />
           関連記事
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-2 max-h-[600px] overflow-y-auto scrollbar-thin">
         {displayArticles.map((article) => {
           const hoursAgo = Math.floor(
             (Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60)
@@ -154,6 +166,26 @@ export function RelatedArticles({ articleId, maxItems = 10 }: RelatedArticlesPro
             </div>
           );
         })}
+        
+        {hasMore && (
+          <Button 
+            variant="ghost" 
+            className="w-full mt-2 flex items-center gap-2"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                折りたたむ
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4" />
+                さらに表示 ({remainingCount}件)
+              </>
+            )}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
