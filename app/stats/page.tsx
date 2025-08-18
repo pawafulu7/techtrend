@@ -3,6 +3,10 @@ import { StatsOverview } from '@/app/components/stats/overview';
 import { SourceChart } from '@/app/components/stats/source-chart';
 import { DailyChart } from '@/app/components/stats/daily-chart';
 import { TagCloud } from '@/app/components/stats/tag-cloud';
+import { StatsOverviewSkeleton } from '@/app/components/stats/stats-overview-skeleton';
+import { ChartSkeleton } from '@/app/components/stats/chart-skeleton';
+import { TagCloudSkeleton } from '@/app/components/stats/tag-cloud-skeleton';
+import { StatsWrapper } from '@/app/components/stats/stats-wrapper';
 import { prisma } from '@/lib/database';
 import { BarChart3, TrendingUp } from 'lucide-react';
 
@@ -124,26 +128,34 @@ export default async function StatsPage() {
 
       <div className="space-y-6">
         {/* 概要 */}
-        <Suspense fallback={<div>Loading overview...</div>}>
-          <StatsOverview stats={stats.overview} />
+        <Suspense fallback={<StatsOverviewSkeleton />}>
+          <StatsWrapper delay={0}>
+            <StatsOverview stats={stats.overview} />
+          </StatsWrapper>
         </Suspense>
 
         {/* チャート */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* 日別推移 */}
-          <Suspense fallback={<div>Loading daily chart...</div>}>
-            <DailyChart data={stats.daily} />
+          <Suspense fallback={<ChartSkeleton />}>
+            <StatsWrapper delay={100}>
+              <DailyChart data={stats.daily} />
+            </StatsWrapper>
           </Suspense>
 
           {/* ソース別分布 */}
-          <Suspense fallback={<div>Loading source chart...</div>}>
-            <SourceChart data={stats.sources} />
+          <Suspense fallback={<ChartSkeleton />}>
+            <StatsWrapper delay={150}>
+              <SourceChart data={stats.sources} />
+            </StatsWrapper>
           </Suspense>
         </div>
 
         {/* タグクラウド */}
-        <Suspense fallback={<div>Loading tags...</div>}>
-          <TagCloud tags={stats.tags} />
+        <Suspense fallback={<TagCloudSkeleton />}>
+          <StatsWrapper delay={200}>
+            <TagCloud tags={stats.tags} />
+          </StatsWrapper>
         </Suspense>
       </div>
     </div>

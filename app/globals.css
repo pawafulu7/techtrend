@@ -212,3 +212,28 @@ html.no-transitions *::after {
     display: none;
   }
 }
+
+/* Fade-in animations for smooth content display */
+.fade-in-content {
+  animation: fadeInContent 300ms ease-out forwards;
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-content {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
