@@ -86,7 +86,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.preventDefault();
                   // URLパラメータをクリア
                   const params = new URLSearchParams(searchParams.toString());
@@ -94,6 +94,17 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
                   params.delete('tagMode');
                   params.delete('page');
                   window.location.href = `/?${params.toString()}`;
+                  
+                  // Clear tags from filter preferences cookie
+                  try {
+                    await fetch('/api/filter-preferences', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ tags: undefined, tagMode: undefined }),
+                    });
+                  } catch (error) {
+                    console.error('Failed to update filter preferences:', error);
+                  }
                 }}
                 className="h-6 text-xs px-2"
               >

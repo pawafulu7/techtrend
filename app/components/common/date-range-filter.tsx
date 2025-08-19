@@ -14,7 +14,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   const searchParams = useSearchParams();
   const currentRange = searchParams.get('dateRange') || 'all';
 
-  const handleDateRangeChange = (value: string) => {
+  const handleDateRangeChange = async (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     
     if (value === 'all') {
@@ -27,6 +27,17 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     params.delete('page');
     
     router.push(`/?${params.toString()}`);
+    
+    // Update filter preferences cookie
+    try {
+      await fetch('/api/filter-preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dateRange: value === 'all' ? undefined : value }),
+      });
+    } catch (error) {
+      console.error('Failed to update filter preferences:', error);
+    }
   };
 
   return (

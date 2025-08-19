@@ -82,16 +82,24 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
     params.set('page', '1'); // Reset to first page
     router.push(`/?${params.toString()}`);
     
-    // Update cookie asynchronously (don't block UI)
+    // Update both old source-filter cookie and new filter preferences
     try {
+      // Update old cookie for backward compatibility
       await fetch('/api/source-filter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceIds }),
       });
+      
+      // Update filter preferences cookie
+      await fetch('/api/filter-preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sources: sourceIds.length > 0 ? sourceIds : undefined }),
+      });
     } catch (error) {
       // Silently fail cookie update - URL params are the primary source
-      console.error('Failed to update source filter cookie:', error);
+      console.error('Failed to update filter cookies:', error);
     }
   };
 

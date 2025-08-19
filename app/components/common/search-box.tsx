@@ -6,14 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDebounce } from '@/hooks/use-debounce';
+import { getFilterPreferencesClient } from '@/lib/filter-preferences-cookie';
 
 export function SearchBox() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get('search') || '');
+  const [query, setQuery] = useState(() => {
+    // URLパラメータがない場合はCookieから復元
+    const urlSearch = searchParams.get('search');
+    if (urlSearch) return urlSearch;
+    
+    const prefs = getFilterPreferencesClient();
+    return prefs.search || '';
+  });
   const debouncedQuery = useDebounce(query, 300);
 
-  const handleSearch = useCallback((searchQuery: string) => {
+  const handleSearch = useCallback(async (searchQuery: string) => {
     const params = new URLSearchParams(searchParams.toString());
     
     if (searchQuery) {
@@ -24,6 +32,17 @@ export function SearchBox() {
     }
     
     router.push(`/?${params.toString()}`);
+    
+    // Update filter preferences cookie
+    try {
+      await fetch('/api/filter-preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ search: searchQuery ? searchQuery : undefined }),
+      });
+    } catch (error) {
+      console.error('Failed to update filter preferences:', error);
+    }
   }, [router, searchParams]);
 
   useEffect(() => {
