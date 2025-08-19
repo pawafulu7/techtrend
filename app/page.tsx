@@ -11,6 +11,7 @@ import { ArticleCount } from '@/app/components/common/article-count';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { HomeClient } from '@/app/components/home/home-client';
+import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { FilterSkeleton } from '@/app/components/common/filter-skeleton';
 import { prisma } from '@/lib/database';
@@ -81,6 +82,9 @@ export default async function Home({ searchParams }: PageProps) {
     const sourceFilterCookie = cookieStore.get('source-filter')?.value;
     initialSourceIds = parseSourceFilterFromCookie(sourceFilterCookie);
   }
+  
+  // Infinite Scroll機能のフラグ（環境変数や設定で切り替え可能）
+  const enableInfiniteScroll = true;
   
   // ソースとタグのみサーバー側で取得（フィルター用）
   const [sources, tags] = await Promise.all([
@@ -171,7 +175,16 @@ export default async function Home({ searchParams }: PageProps) {
 
           {/* クライアントコンポーネント（記事リストとページネーション） */}
           <Suspense fallback={<ArticleSkeleton />}>
-            <HomeClient viewMode={viewMode} sources={sources} tags={tags} />
+            {enableInfiniteScroll ? (
+              <HomeClientInfinite 
+                viewMode={viewMode} 
+                sources={sources} 
+                tags={tags}
+                enableInfiniteScroll={enableInfiniteScroll}
+              />
+            ) : (
+              <HomeClient viewMode={viewMode} sources={sources} tags={tags} />
+            )}
           </Suspense>
         </main>
       </div>
