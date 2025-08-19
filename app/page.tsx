@@ -93,6 +93,9 @@ export default async function Home({ searchParams }: PageProps) {
                       parseSourceFilterFromCookie(cookieStore.get('source-filter')?.value);
   }
   
+  // Get initial sort order from cookie if no URL params
+  const initialSortBy = !params.sortBy ? filterPreferences.sortBy : undefined;
+  
   // Infinite Scroll機能のフラグ（環境変数や設定で切り替え可能）
   const enableInfiniteScroll = true;
   
@@ -152,6 +155,7 @@ export default async function Home({ searchParams }: PageProps) {
                 sources={sources} 
                 tags={tags}
                 enableInfiniteScroll={enableInfiniteScroll}
+                initialSortBy={initialSortBy}
               />
             ) : (
               <HomeClient viewMode={viewMode} sources={sources} tags={tags} />

@@ -14,13 +14,15 @@ interface HomeClientInfiniteProps {
   sources: Source[];
   tags: Array<Tag & { count: number }>;
   enableInfiniteScroll?: boolean;
+  initialSortBy?: string;
 }
 
 export function HomeClientInfinite({ 
   viewMode, 
   sources, 
   tags,
-  enableInfiniteScroll = true 
+  enableInfiniteScroll = true,
+  initialSortBy
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
   
@@ -33,8 +35,14 @@ export function HomeClientInfinite({
         params[key] = value;
       }
     });
+    
+    // URLパラメータにsortByがない場合、initialSortByを使用
+    if (!params.sortBy && initialSortBy) {
+      params.sortBy = initialSortBy;
+    }
+    
     return params;
-  }, [searchParams]);
+  }, [searchParams, initialSortBy]);
 
   const {
     data,
