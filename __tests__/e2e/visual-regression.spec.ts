@@ -37,8 +37,8 @@ test.describe('Visual Regression Tests', () => {
     await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
     
     // ダークモードに切り替え
-    // テーマトグルボタンを探す（より具体的なセレクタ）
-    const themeToggle = page.locator('[data-testid="theme-toggle-button"]');
+    // テーマトグルボタンを探す（複数ある場合は最初の1つを使用）
+    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
     
     if (await themeToggle.isVisible()) {
       await themeToggle.click();
