@@ -8,6 +8,11 @@ import { SELECTORS } from '../constants/selectors';
 
 test.describe('テーマ切り替え機能', () => {
   test.beforeEach(async ({ page }) => {
+    // LocalStorageをクリアしてテーマを初期化
+    await page.addInitScript(() => {
+      localStorage.clear();
+    });
+    
     // ホームページにアクセス
     await page.goto('/');
     await waitForPageLoad(page);

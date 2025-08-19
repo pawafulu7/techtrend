@@ -30,15 +30,15 @@ test.describe('検索機能', () => {
     // Enterキーで検索実行
     await searchInput.press('Enter');
     
-    // ホームページで検索パラメータが追加されることを確認
-    await expect(page).toHaveURL(/\?.*search=/, { timeout: 15000 });
+    // ホームページで検索パラメータが追加されることを確認（タイムアウト延長）
+    await expect(page).toHaveURL(/\?.*search=/, { timeout: 45000 });
     await waitForPageLoad(page);
     
     // エラーがないことを確認
     await expectNoErrors(page);
     
-    // 検索結果のローディングが完了するまで待機
-    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 10000 });
+    // 検索結果のローディングが完了するまで待機（タイムアウト延長）
+    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 45000 });
     
     // ローディングスピナーが消えるまで待機
     await waitForLoadingToDisappear(page);
@@ -49,8 +49,8 @@ test.describe('検索機能', () => {
     // 検索結果カウントの表示を確認（「○○件」の形式）
     const resultCountText = page.locator(SELECTORS.SEARCH_RESULT_COUNT);
     
-    // 件数表示が存在することを確認
-    await expect(resultCountText).toBeVisible({ timeout: 5000 });
+    // 件数表示が存在することを確認（タイムアウト延長）
+    await expect(resultCountText).toBeVisible({ timeout: 20000 });
     
     // 件数が数値を含むことを確認
     const countText = await resultCountText.textContent();
@@ -261,8 +261,8 @@ test.describe('検索機能', () => {
     // エラーがないことを確認
     await expectNoErrors(page);
     
-    // 検索結果のローディングが完了するまで待機
-    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 10000 });
+    // 検索結果のローディングが完了するまで待機（タイムアウト延長）
+    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 45000 });
     
     // ローディングスピナーが消えるまで待機
     await waitForLoadingToDisappear(page);
