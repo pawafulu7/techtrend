@@ -83,26 +83,40 @@ test.describe('テーマ切り替え機能', () => {
     expect(theme).toBe('dark');
   });
 
-  test('リロード後もテーマが維持される', async ({ page }) => {
+  test('リロード後もテーマが維持される', async ({ context, page }) => {
+    // このテストだけはLocalStorageをクリアしない新しいページを作成
+    const newPage = await context.newPage();
+    
+    // ホームページにアクセス
+    await newPage.goto('/');
+    await waitForPageLoad(newPage);
+    
     // ダークモードに設定
-    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
+    const themeToggle = newPage.locator('[data-testid="theme-toggle-button"]').first();
     await themeToggle.click();
-    const darkOption = page.locator('[data-testid="theme-option-dark"]');
+    const darkOption = newPage.locator('[data-testid="theme-option-dark"]');
     await darkOption.click();
     
     // darkクラスが適用されていることを確認
-    await expect(page.locator('html')).toHaveClass(/dark/);
+    await expect(newPage.locator('html')).toHaveClass(/dark/);
+    
+    // LocalStorageに値が保存されていることを確認
+    const themeBeforeReload = await newPage.evaluate(() => localStorage.getItem('theme'));
+    expect(themeBeforeReload).toBe('dark');
     
     // ページをリロード
-    await page.reload();
-    await waitForPageLoad(page);
+    await newPage.reload();
+    await waitForPageLoad(newPage);
     
     // リロード後もdarkクラスが維持されていることを確認
-    await expect(page.locator('html')).toHaveClass(/dark/);
+    await expect(newPage.locator('html')).toHaveClass(/dark/);
     
     // LocalStorageの値も確認
-    const theme = await page.evaluate(() => localStorage.getItem('theme'));
-    expect(theme).toBe('dark');
+    const themeAfterReload = await newPage.evaluate(() => localStorage.getItem('theme'));
+    expect(themeAfterReload).toBe('dark');
+    
+    // テスト終了時にページを閉じる
+    await newPage.close();
   });
 
   test('システムテーマとの連動が機能する', async ({ page }) => {

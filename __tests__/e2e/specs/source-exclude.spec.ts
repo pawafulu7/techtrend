@@ -91,11 +91,21 @@ test.describe('ソースフィルタリング機能', () => {
     // フィルターエリアを取得
     const filterArea = page.locator('[data-testid="filter-area"]');
     
+    // Firefox対応: ページの読み込みとデータの表示を確実に待つ
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    
     // 最初に全選択ボタンをクリックして、すべて選択状態にする
     const selectAllButton = page.locator('[data-testid="select-all-button"]');
     await expect(selectAllButton).toBeVisible();
     await selectAllButton.click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
+    
+    // 記事カードが表示されるまで待つ（Firefoxの遅延対策）
+    await page.waitForSelector('[data-testid="article-card"]', { 
+      timeout: 10000,
+      state: 'visible' 
+    });
     
     // 初期の記事数を取得
     const initialArticles = await page.locator('[data-testid="article-card"]').count();
@@ -141,8 +151,18 @@ test.describe('ソースフィルタリング機能', () => {
   });
 
   test('複数ソースの選択状態を管理できる', async ({ page }) => {
+    // Firefox対応: ページの読み込みとデータの表示を確実に待つ
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    
     // フィルターエリアを取得
     const filterArea = page.locator('[data-testid="filter-area"]');
+    
+    // 記事カードが表示されるまで待つ（Firefoxの遅延対策）
+    await page.waitForSelector('[data-testid="article-card"]', { 
+      timeout: 10000,
+      state: 'visible' 
+    });
     
     // 複数のソースチェックボックスを取得
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
