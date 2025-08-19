@@ -2,13 +2,31 @@
 
 import { Button } from '@/components/ui/button';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { getFilterPreferencesClient } from '@/lib/filter-preferences-cookie';
 
 export function SortButtons() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const sortBy = searchParams.get('sortBy');
+  const urlSortBy = searchParams.get('sortBy');
+  
+  // URLパラメータがない場合はCookieから復元
+  const [sortBy, setSortBy] = useState(() => {
+    if (urlSortBy) return urlSortBy;
+    const prefs = getFilterPreferencesClient();
+    return prefs.sortBy || 'publishedAt'; // デフォルトは公開順
+  });
+  
+  // URLパラメータが変更されたら状態を更新
+  useEffect(() => {
+    if (urlSortBy) {
+      setSortBy(urlSortBy);
+    }
+  }, [urlSortBy]);
 
   const handleSortChange = async (newSortBy: string) => {
+    setSortBy(newSortBy); // 状態を即座に更新
+    
     const params = new URLSearchParams(searchParams.toString());
     params.set('sortBy', newSortBy);
     params.delete('page'); // Reset to first page
