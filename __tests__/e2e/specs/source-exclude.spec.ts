@@ -150,10 +150,16 @@ test.describe('ソースフィルタリング機能', () => {
     expect(articlesAfterSelect).toBeGreaterThan(0);
   });
 
-  test('複数ソースの選択状態を管理できる', async ({ page }) => {
+  test('複数ソースの選択状態を管理できる', async ({ page, browserName }) => {
     // Firefox対応: ページの読み込みとデータの表示を確実に待つ
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    
+    // Firefoxは読み込みが遅い場合があるため追加待機
+    if (browserName === 'firefox') {
+      await page.waitForTimeout(2000);
+    } else {
+      await page.waitForTimeout(1000);
+    }
     
     // フィルターエリアを取得
     const filterArea = page.locator('[data-testid="filter-area"]');
@@ -194,7 +200,12 @@ test.describe('ソースフィルタリング機能', () => {
     }
     
     // 記事が更新されたことを確認（記事数が減少）
-    await page.waitForTimeout(1000);
+    // Firefoxは更新が遅い場合があるため追加待機
+    if (browserName === 'firefox') {
+      await page.waitForTimeout(2000);
+    } else {
+      await page.waitForTimeout(1000);
+    }
     const articles = await page.locator('[data-testid="article-card"]').count();
     
     // 選択を元に戻す

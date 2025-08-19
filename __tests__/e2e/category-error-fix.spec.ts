@@ -6,13 +6,18 @@ test.describe('カテゴリーエラー修正のテスト', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('"l"を入力してもエラーが発生しない', async ({ page }) => {
+  test('"l"を入力してもエラーが発生しない', async ({ page, browserName }) => {
     // エラーハンドリングを設定
     let errorOccurred = false;
     page.on('pageerror', (error) => {
       console.error('Page error:', error);
       errorOccurred = true;
     });
+
+    // Firefox用の追加待機
+    if (browserName === 'firefox') {
+      await page.waitForTimeout(500);
+    }
 
     // タグフィルターボタンをクリック
     const tagButton = page.locator('button:has(svg.lucide-tag)').first();
@@ -21,12 +26,17 @@ test.describe('カテゴリーエラー修正のテスト', () => {
     // ドロップダウンが開くのを待つ
     await page.waitForSelector('input[placeholder="タグを検索..."]', { state: 'visible' });
 
+    // Firefox用の追加待機（入力前）
+    if (browserName === 'firefox') {
+      await page.waitForTimeout(300);
+    }
+
     // 検索フォームに"l"を入力
     const searchInput = page.locator('input[placeholder="タグを検索..."]');
     await searchInput.fill('l');
 
-    // デバウンス待機とAPI応答を待つ
-    await page.waitForTimeout(500);
+    // デバウンス待機とAPI応答を待つ（Firefoxは長めに待機）
+    await page.waitForTimeout(browserName === 'firefox' ? 800 : 500);
 
     // エラーが発生していないことを確認
     expect(errorOccurred).toBe(false);
