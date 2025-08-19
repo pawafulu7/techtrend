@@ -15,6 +15,7 @@ import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { FilterSkeleton } from '@/app/components/common/filter-skeleton';
 import { prisma } from '@/lib/database';
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
+import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
 
 interface PageProps {
   searchParams: Promise<{
@@ -74,6 +75,13 @@ export default async function Home({ searchParams }: PageProps) {
   const cookieStore = await cookies();
   const viewMode = parseViewModeFromCookie(cookieStore.get('article-view-mode')?.value);
   
+  // Get source filter from cookie if no URL params
+  let initialSourceIds: string[] = [];
+  if (!params.sources && !params.sourceId) {
+    const sourceFilterCookie = cookieStore.get('source-filter')?.value;
+    initialSourceIds = parseSourceFilterFromCookie(sourceFilterCookie);
+  }
+  
   // ソースとタグのみサーバー側で取得（フィルター用）
   const [sources, tags] = await Promise.all([
     getSources(),
@@ -88,7 +96,7 @@ export default async function Home({ searchParams }: PageProps) {
         <aside className="hidden lg:block lg:w-64 lg:flex-shrink-0 lg:bg-gray-50 dark:lg:bg-gray-900/50 lg:border-r lg:border-gray-200 dark:lg:border-gray-700 lg:overflow-y-auto">
           <div className="p-4">
             <Suspense fallback={<FilterSkeleton />}>
-              <Filters sources={sources} tags={tags} />
+              <Filters sources={sources} tags={tags} initialSourceIds={initialSourceIds} />
             </Suspense>
           </div>
         </aside>
@@ -99,7 +107,7 @@ export default async function Home({ searchParams }: PageProps) {
           <div className="flex-shrink-0 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <MobileFilters sources={sources} tags={tags} />
+                <MobileFilters sources={sources} tags={tags} initialSourceIds={initialSourceIds} />
                 <Suspense fallback={<div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />}>
                   <ArticleCount />
                 </Suspense>

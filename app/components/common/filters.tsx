@@ -11,33 +11,41 @@ import { TagFilter } from './tag-filter';
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;
   tags: Array<{ id: string; name: string; count: number }>;
+  initialSourceIds?: string[];
 }
 
-export function Filters({ sources, tags }: FiltersProps) {
+export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const isMounted = useRef(false);
   const currentTag = searchParams.get('tag');
   
-  // Initialize selected sources from URL params
+  // Initialize selected sources from URL params or cookie
   useEffect(() => {
     const sourcesParam = searchParams.get('sources');
     const sourceIdParam = searchParams.get('sourceId');
     
     if (sourcesParam) {
+      // URL parameter takes priority
       setSelectedSources(sourcesParam.split(',').filter(id => id));
     } else if (sourceIdParam) {
-      // Backward compatibility
+      // Backward compatibility with single sourceId
       setSelectedSources([sourceIdParam]);
     } else if (!isMounted.current) {
-      // Only set default (all selected) on initial mount
-      setSelectedSources(sources.map(s => s.id));
+      // On initial mount, use cookie value or default to all selected
+      if (initialSourceIds && initialSourceIds.length > 0) {
+        // Use cookie value if available
+        setSelectedSources(initialSourceIds);
+      } else {
+        // Default to all selected
+        setSelectedSources(sources.map(s => s.id));
+      }
     }
     // Otherwise keep the current state (important for "deselect all" to work)
     
     isMounted.current = true;
-  }, [searchParams, sources]);
+  }, [searchParams, sources, initialSourceIds]);
 
   const handleSourceToggle = (sourceId: string) => {
     const newSelection = selectedSources.includes(sourceId)
@@ -57,7 +65,7 @@ export function Filters({ sources, tags }: FiltersProps) {
     applySourceFilter([]);
   };
   
-  const applySourceFilter = (sourceIds: string[]) => {
+  const applySourceFilter = async (sourceIds: string[]) => {
     setSelectedSources(sourceIds);
     const params = new URLSearchParams(searchParams.toString());
     
@@ -72,6 +80,18 @@ export function Filters({ sources, tags }: FiltersProps) {
     
     params.set('page', '1'); // Reset to first page
     router.push(`/?${params.toString()}`);
+    
+    // Update cookie asynchronously (don't block UI)
+    try {
+      await fetch('/api/source-filter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceIds }),
+      });
+    } catch (error) {
+      // Silently fail cookie update - URL params are the primary source
+      console.error('Failed to update source filter cookie:', error);
+    }
   };
 
   const handleTagFilter = (tagName: string | null) => {

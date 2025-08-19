@@ -1,0 +1,55 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { setSourceFilterCookie, parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
+
+export async function POST(request: NextRequest) {
+  try {
+    const { sourceIds } = await request.json();
+    
+    // Validate input
+    if (!Array.isArray(sourceIds)) {
+      return NextResponse.json(
+        { success: false, error: 'sourceIds must be an array' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate each source ID is a string
+    const validSourceIds = sourceIds.filter(id => typeof id === 'string' && id.trim().length > 0);
+    
+    // Create response
+    const response = NextResponse.json({ 
+      success: true, 
+      sourceIds: validSourceIds 
+    });
+    
+    // Set cookie
+    setSourceFilterCookie(response, validSourceIds);
+    
+    return response;
+  } catch (error) {
+    console.error('Error in source-filter API:', error);
+    return NextResponse.json(
+      { success: false, error: 'Invalid request' },
+      { status: 400 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    // Get current cookie value
+    const cookieValue = request.cookies.get('source-filter')?.value;
+    const sourceIds = parseSourceFilterFromCookie(cookieValue);
+    
+    return NextResponse.json({ 
+      success: true, 
+      sourceIds 
+    });
+  } catch (error) {
+    console.error('Error reading source-filter cookie:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to read cookie' },
+      { status: 500 }
+    );
+  }
+}
