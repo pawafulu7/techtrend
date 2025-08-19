@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Filter, CheckSquare, Square } from 'lucide-react';
 import { TagFilter } from './tag-filter';
+import { DateRangeFilter } from './date-range-filter';
 
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;
@@ -163,6 +164,11 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
 
       {/* Tag Filter - デスクトップでは非表示（ヘッダーに移動） */}
       {/* モバイルではMobileFilters内で表示 */}
+      
+      {/* Date Range Filter */}
+      <div className="mt-4">
+        <DateRangeFilter />
+      </div>
     </div>
   );
 }

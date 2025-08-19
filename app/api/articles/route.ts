@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     const sourceId = searchParams.get('sourceId'); // Backward compatibility
     const tag = searchParams.get('tag');
     const search = searchParams.get('search');
+    const dateRange = searchParams.get('dateRange'); // Date range filter
 
     // Generate cache key based on query parameters
     // Normalize search keywords for consistent cache key
@@ -60,7 +61,8 @@ export async function GET(request: NextRequest) {
         sortOrder,
         sources: normalizedSources, // Use normalized sources
         tag: tag || 'all',
-        search: normalizedSearch
+        search: normalizedSearch,
+        dateRange: dateRange || 'all'
       }
     });
 
@@ -115,6 +117,17 @@ export async function GET(request: NextRequest) {
               { summary: { contains: keyword, mode: 'insensitive' } }
             ]
           }));
+        }
+      }
+      
+      // Apply date range filter
+      if (dateRange && dateRange !== 'all') {
+        const { getDateRangeFilter } = await import('@/app/lib/date-utils');
+        const startDate = getDateRangeFilter(dateRange);
+        if (startDate) {
+          where.publishedAt = {
+            gte: startDate
+          };
         }
       }
 
