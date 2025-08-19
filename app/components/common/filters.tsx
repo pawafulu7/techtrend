@@ -27,7 +27,10 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
     const sourcesParam = searchParams.get('sources');
     const sourceIdParam = searchParams.get('sourceId');
     
-    if (sourcesParam) {
+    if (sourcesParam === 'none') {
+      // 明示的に「何も選択しない」状態
+      setSelectedSources([]);
+    } else if (sourcesParam) {
       // URL parameter takes priority
       setSelectedSources(sourcesParam.split(',').filter(id => id));
     } else if (sourceIdParam) {
@@ -35,8 +38,8 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
       setSelectedSources([sourceIdParam]);
     } else if (!isMounted.current) {
       // On initial mount, use cookie value or default to all selected
-      if (initialSourceIds && initialSourceIds.length > 0) {
-        // Use cookie value if available
+      if (initialSourceIds !== undefined) {
+        // Use cookie value if available (空配列も有効な値として扱う)
         setSelectedSources(initialSourceIds);
       } else {
         // Default to all selected
@@ -73,14 +76,19 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
     // Remove old params
     params.delete('sourceId');
     params.delete('sources');
+    params.delete('page'); // ページパラメータも削除
     
-    if (sourceIds.length > 0 && sourceIds.length < sources.length) {
-      // Set sources param only if not all selected
+    if (sourceIds.length === 0) {
+      // 明示的に「何も選択しない」状態を示す
+      params.set('sources', 'none');
+    } else if (sourceIds.length < sources.length) {
+      // 一部のソースが選択されている
       params.set('sources', sourceIds.join(','));
     }
+    // sourceIds.length === sources.length の場合はパラメータを設定しない（全選択）
     
-    params.set('page', '1'); // Reset to first page
-    router.push(`/?${params.toString()}`);
+    const newUrl = params.toString() ? `/?${params.toString()}` : '/';
+    router.push(newUrl);
     
     // Update both old source-filter cookie and new filter preferences
     try {
@@ -92,10 +100,11 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
       });
       
       // Update filter preferences cookie
+      // 空配列の場合も明示的に空配列として保存
       await fetch('/api/filter-preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sources: sourceIds.length > 0 ? sourceIds : undefined }),
+        body: JSON.stringify({ sources: sourceIds }),
       });
     } catch (error) {
       // Silently fail cookie update - URL params are the primary source

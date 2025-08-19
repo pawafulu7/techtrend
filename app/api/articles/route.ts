@@ -81,7 +81,10 @@ export async function GET(request: NextRequest) {
         // Build where clause
       const where: ArticleWhereInput = {};
       // Support multiple sources selection
-      if (sources) {
+      if (sources === 'none') {
+        // 明示的に「何も選択しない」状態 - 不可能な条件を設定
+        where.sourceId = { in: [] };
+      } else if (sources) {
         const sourceIds = sources.split(',').filter(id => id.trim());
         if (sourceIds.length > 0) {
           where.sourceId = { in: sourceIds };

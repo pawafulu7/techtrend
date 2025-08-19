@@ -36,10 +36,19 @@ export async function POST(request: NextRequest) {
     // Explicitly handle each field to allow clearing with undefined
     Object.keys(updates).forEach(key => {
       const k = key as keyof FilterPreferences;
-      if (updates[k] === undefined) {
+      const value = updates[k];
+      
+      // undefinedの場合はフィールドを削除
+      if (value === undefined) {
         delete updated[k];
-      } else {
-        updated[k] = updates[k] as any;
+      } 
+      // 空配列も有効な値として扱う（sourcesフィールドの場合）
+      else if (Array.isArray(value) && value.length === 0 && k === 'sources') {
+        updated[k] = value as any;
+      }
+      // その他の値は通常通り設定
+      else {
+        updated[k] = value as any;
       }
     });
     
