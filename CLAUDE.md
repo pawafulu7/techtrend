@@ -602,6 +602,44 @@ const result = await summaryService.generate(title, content);
    ```
 
 
+## 🔴 テスト実行の必須ルール（2025年8月19日追加）
+
+### 新機能追加時の絶対的ルール
+
+**新機能を追加する前に、必ず既存機能のE2Eテストを実行すること**
+
+### 失敗事例（2025年8月19日）
+
+**問題**: キーボードショートカット機能の追加により無限スクロールが壊れた
+- 症状: 20件以上の記事を読み込むとページトップに戻る
+- 原因: 新コンポーネントがレイアウト構造に影響
+- 教訓: テストなしでの機能追加は既存機能を破壊する
+
+### 必須テスト実行手順
+
+```bash
+# 1. 機能追加前に必ず実行
+npm run test:e2e
+
+# 2. 特に以下の回帰テストは必須
+npm run test:e2e -- regression-test.spec.ts
+npm run test:e2e -- infinite-scroll.spec.ts
+
+# 3. 新機能実装後も再実行
+npm run test:e2e
+
+# 問題があった場合は即座に修正
+```
+
+### テストファイル一覧
+
+- `e2e/regression-test.spec.ts` - 全既存機能の回帰テスト
+- `e2e/infinite-scroll.spec.ts` - 無限スクロール専用テスト
+- `e2e/source-filter-cookie.spec.ts` - フィルター永続化
+- `e2e/multiple-source-filter.spec.ts` - 複数ソースフィルター
+
+詳細: `docs/TESTING-GUIDELINES.md`
+
 ## Claude Code統合機能
 
 ### 概要
