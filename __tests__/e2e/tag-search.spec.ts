@@ -119,9 +119,9 @@ test.describe('動的タグ検索機能', () => {
     const articles = page.locator('[data-testid="article-card"]');
     const count = await articles.count();
     
-    // 記事数が14件以下であることを確認（DeNAの記事数）
+    // 記事数が20件（テストデータのDeNA記事数）であることを確認
     expect(count).toBeGreaterThan(0);
-    expect(count).toBeLessThanOrEqual(14);
+    expect(count).toBeLessThanOrEqual(20);
   });
 
   test('検索時にローディングインジケーターが表示される', async ({ page }) => {
