@@ -33,13 +33,9 @@ export function FilterResetButton() {
       // 3. Clear view mode cookie (if exists)
       document.cookie = 'article-view-mode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       
-      // Navigate to clean URL
-      router.push('/');
-      
-      // Force reload to clear all states
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
+      // Navigate to clean URL and reload
+      // window.location.hrefを使用して完全にクリーンなURLに遷移
+      window.location.href = '/';
     } catch (error) {
       console.error('Failed to reset filters:', error);
     } finally {
