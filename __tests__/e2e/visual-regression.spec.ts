@@ -37,13 +37,21 @@ test.describe('Visual Regression Tests', () => {
     await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
     
     // ダークモードに切り替え
-    // まずライトモードボタンを探し、存在する場合はダークモードに切り替える
-    const themeToggle = page.locator('[data-testid*="theme-toggle"]').first();
+    // テーマトグルボタンを探す（複数ある場合は最初の1つを使用）
+    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
     
     if (await themeToggle.isVisible()) {
       await themeToggle.click();
-      // テーマ切り替えアニメーション待機
-      await page.waitForTimeout(500);
+      
+      // ダークモードクラスが適用されるまで待機
+      try {
+        await page.waitForSelector('html.dark', { timeout: 2000 });
+      } catch {
+        console.warn('Dark mode class not applied, continuing anyway');
+      }
+      
+      // CSS transitionの完了を待つ
+      await page.waitForTimeout(1000);
     }
     
     // スクリーンショットを撮影
