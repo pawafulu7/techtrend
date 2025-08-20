@@ -21,7 +21,8 @@ export function useScrollRestoration(
   fetchNextPage: () => void,
   hasNextPage: boolean,
   isFetchingNextPage: boolean,
-  scrollContainerRef?: React.RefObject<HTMLElement>
+  scrollContainerRef?: React.RefObject<HTMLElement>,
+  isReturningFromArticle: boolean = false
 ) {
   const isRestoringRef = useRef(false);
   const targetScrollYRef = useRef<number | null>(null);
@@ -35,21 +36,13 @@ export function useScrollRestoration(
     
     if (scrollContainerRef?.current) {
       currentScrollY = scrollContainerRef.current.scrollTop;
-      console.log('[ScrollRestore] Using container scrollTop:', currentScrollY);
     } else {
       currentScrollY = window.pageYOffset || 
                       document.documentElement.scrollTop || 
                       document.body.scrollTop || 
                       window.scrollY;
-      console.log('[ScrollRestore] Using window scroll:', currentScrollY);
     }
     
-    console.log('[ScrollRestore] Saving position - Debug info:', {
-      'container exists': !!scrollContainerRef?.current,
-      'container scrollTop': scrollContainerRef?.current?.scrollTop,
-      'window.scrollY': window.scrollY,
-      'final value': currentScrollY
-    });
     
     const data: ScrollRestoreData = {
       scrollY: currentScrollY,
@@ -61,13 +54,7 @@ export function useScrollRestoration(
     
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      console.log('[ScrollRestore] Position saved:', {
-        scrollY: data.scrollY,
-        articleCount: data.articleCount,
-        pageCount: data.pageCount
-      });
     } catch (e) {
-      console.warn('[ScrollRestore] Failed to save scroll position:', e);
     }
   }, [articleCount, pageCount, filters]);
 
@@ -77,7 +64,6 @@ export function useScrollRestoration(
 
     const handleUserInteraction = () => {
       if (isRestoringRef.current && !restorationCompleteRef.current) {
-        console.log('[ScrollRestore] User interaction detected, cancelling restoration');
         userInteractedRef.current = true;
         isRestoringRef.current = false;
         sessionStorage.removeItem(STORAGE_KEY);
@@ -111,14 +97,33 @@ export function useScrollRestoration(
     };
   }, [isRestoringRef.current, scrollContainerRef]);
 
+  // URLから'returning'パラメータを削除する関数
+  const cleanupReturningParam = useCallback(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('returning')) {
+      url.searchParams.delete('returning');
+      const newUrl = url.toString();
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
   // 復元チェック
   useEffect(() => {
+    // 記事詳細から戻ってきた場合のみ復元を実行
+    if (!isReturningFromArticle) {
+      // リロードや通常アクセスの場合はsessionStorageをクリア
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+      return;
+    }
+
     // すでに復元処理中または完了している場合はスキップ
     if (isRestoringRef.current || restorationCompleteRef.current || userInteractedRef.current) return;
 
     // filtersが空の場合はまだ準備ができていない
     if (!filters || Object.keys(filters).length === 0) {
-      console.log('[ScrollRestore] Waiting for filters to be ready');
       return;
     }
 
@@ -130,7 +135,6 @@ export function useScrollRestoration(
       
       // 有効期限チェック
       if (Date.now() - data.timestamp > EXPIRY_TIME) {
-        console.log('[ScrollRestore] Data expired, removing');
         sessionStorage.removeItem(STORAGE_KEY);
         return;
       }
@@ -139,17 +143,11 @@ export function useScrollRestoration(
       const currentFiltersStr = JSON.stringify(filters);
       const storedFiltersStr = JSON.stringify(data.filters);
       if (currentFiltersStr !== storedFiltersStr) {
-        console.log('[ScrollRestore] Filters mismatch, skipping restoration');
         sessionStorage.removeItem(STORAGE_KEY);
         return;
       }
 
       // 復元開始
-      console.log('[ScrollRestore] Starting restoration:', {
-        targetScrollY: data.scrollY,
-        targetPageCount: data.pageCount,
-        currentPageCount: pageCount
-      });
       
       isRestoringRef.current = true;
       targetScrollYRef.current = data.scrollY;
@@ -161,17 +159,11 @@ export function useScrollRestoration(
       );
       
       if (targetPageCount > pageCount && hasNextPage && !isFetchingNextPage) {
-        console.log('[ScrollRestore] Need to load more pages:', {
-          current: pageCount,
-          target: targetPageCount
-        });
         fetchNextPage();
       } else if (pageCount >= targetPageCount) {
         // すでに必要なページ数に到達している場合は即座にスクロール
-        console.log('[ScrollRestore] Already have enough pages, scrolling now');
         setTimeout(() => {
           const scrollTarget = targetScrollYRef.current!;
-          console.log('[ScrollRestore] Immediate scroll to:', scrollTarget);
           
           if (scrollContainerRef?.current) {
             scrollContainerRef.current.scrollTo({
@@ -189,14 +181,16 @@ export function useScrollRestoration(
           isRestoringRef.current = false;
           restorationCompleteRef.current = true;
           targetScrollYRef.current = null;
+          
+          // URLから'returning'パラメータを削除
+          cleanupReturningParam();
         }, 200); // 待機時間を短縮
       }
     } catch (e) {
-      console.warn('[ScrollRestore] Failed to restore scroll position:', e);
       sessionStorage.removeItem(STORAGE_KEY);
       isRestoringRef.current = false;
     }
-  }, [filters, pageCount, hasNextPage, isFetchingNextPage, fetchNextPage]); // 依存関係を追加
+  }, [filters, pageCount, hasNextPage, isFetchingNextPage, fetchNextPage, cleanupReturningParam]); // 依存関係を追加
 
   // ページ読み込み完了時のスクロール実行
   useEffect(() => {
@@ -215,22 +209,17 @@ export function useScrollRestoration(
       
       // 必要なページ数に到達したか確認
       if (pageCount >= targetPageCount) {
-        console.log('[ScrollRestore] Target page count reached, scrolling to position');
         
         // スクロール実行
         setTimeout(() => {
           // ユーザーが操作していたらキャンセル
           if (userInteractedRef.current) {
-            console.log('[ScrollRestore] Cancelled due to user interaction');
             return;
           }
           
           const scrollTarget = targetScrollYRef.current!;
-          console.log('[ScrollRestore] Attempting to scroll to:', scrollTarget);
           
           if (scrollContainerRef?.current) {
-            console.log('[ScrollRestore] Current container scroll:', scrollContainerRef.current.scrollTop);
-            console.log('[ScrollRestore] Container height:', scrollContainerRef.current.scrollHeight);
             
             // コンテナをスムーズスクロール
             scrollContainerRef.current.scrollTo({
@@ -240,44 +229,36 @@ export function useScrollRestoration(
             
             // 完了確認（スムーズスクロールは非同期なので少し待つ）
             setTimeout(() => {
-              console.log('[ScrollRestore] Final container scroll:', scrollContainerRef.current?.scrollTop);
             }, 1000);
           } else {
-            console.log('[ScrollRestore] Current window scroll:', window.scrollY);
-            console.log('[ScrollRestore] Document height:', document.documentElement.scrollHeight);
             
             // windowをスクロール
             window.scrollTo(0, scrollTarget);
             
             // 少し待ってからもう一度（念のため）
             setTimeout(() => {
-              console.log('[ScrollRestore] Second attempt to scroll to:', scrollTarget);
               window.scrollTo(0, scrollTarget);
-              console.log('[ScrollRestore] Final window scroll:', window.scrollY);
             }, 100);
           }
           
-          console.log('[ScrollRestore] Scroll restoration complete');
           
           // クリーンアップ
           sessionStorage.removeItem(STORAGE_KEY);
           isRestoringRef.current = false;
           restorationCompleteRef.current = true;
           targetScrollYRef.current = null;
+          
+          // URLから'returning'パラメータを削除
+          cleanupReturningParam();
         }, 200); // 待機時間を短縮 // レンダリング完了を確実に待つ
       } else if (hasNextPage && !isFetchingNextPage) {
         // まだページが不足している場合は追加読み込み
-        console.log('[ScrollRestore] Loading more pages:', {
-          current: pageCount,
-          target: targetPageCount
-        });
         fetchNextPage();
       }
     } catch (e) {
-      console.warn('[ScrollRestore] Failed during scroll restoration:', e);
       isRestoringRef.current = false;
     }
-  }, [pageCount, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [pageCount, hasNextPage, isFetchingNextPage, fetchNextPage, cleanupReturningParam]);
 
   return {
     saveScrollPosition,
