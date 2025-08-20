@@ -26,6 +26,7 @@ export function useScrollRestoration(
   const isRestoringRef = useRef(false);
   const targetScrollYRef = useRef<number | null>(null);
   const restorationCompleteRef = useRef(false);
+  const userInteractedRef = useRef(false);
 
   // スクロール位置の保存
   const saveScrollPosition = useCallback(() => {
@@ -70,10 +71,50 @@ export function useScrollRestoration(
     }
   }, [articleCount, pageCount, filters]);
 
+  // ユーザー操作の検知
+  useEffect(() => {
+    if (!isRestoringRef.current || restorationCompleteRef.current) return;
+
+    const handleUserInteraction = () => {
+      if (isRestoringRef.current && !restorationCompleteRef.current) {
+        console.log('[ScrollRestore] User interaction detected, cancelling restoration');
+        userInteractedRef.current = true;
+        isRestoringRef.current = false;
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+    };
+
+    const container = scrollContainerRef?.current;
+    
+    // イベントリスナーを追加
+    if (container) {
+      container.addEventListener('wheel', handleUserInteraction);
+      container.addEventListener('touchstart', handleUserInteraction);
+      container.addEventListener('mousedown', handleUserInteraction);
+    } else {
+      window.addEventListener('wheel', handleUserInteraction);
+      window.addEventListener('touchstart', handleUserInteraction);
+      window.addEventListener('mousedown', handleUserInteraction);
+    }
+
+    return () => {
+      // クリーンアップ
+      if (container) {
+        container.removeEventListener('wheel', handleUserInteraction);
+        container.removeEventListener('touchstart', handleUserInteraction);
+        container.removeEventListener('mousedown', handleUserInteraction);
+      } else {
+        window.removeEventListener('wheel', handleUserInteraction);
+        window.removeEventListener('touchstart', handleUserInteraction);
+        window.removeEventListener('mousedown', handleUserInteraction);
+      }
+    };
+  }, [isRestoringRef.current, scrollContainerRef]);
+
   // 復元チェック
   useEffect(() => {
     // すでに復元処理中または完了している場合はスキップ
-    if (isRestoringRef.current || restorationCompleteRef.current) return;
+    if (isRestoringRef.current || restorationCompleteRef.current || userInteractedRef.current) return;
 
     // filtersが空の場合はまだ準備ができていない
     if (!filters || Object.keys(filters).length === 0) {
@@ -148,7 +189,7 @@ export function useScrollRestoration(
           isRestoringRef.current = false;
           restorationCompleteRef.current = true;
           targetScrollYRef.current = null;
-        }, 500);
+        }, 200); // 待機時間を短縮
       }
     } catch (e) {
       console.warn('[ScrollRestore] Failed to restore scroll position:', e);
@@ -178,6 +219,12 @@ export function useScrollRestoration(
         
         // スクロール実行
         setTimeout(() => {
+          // ユーザーが操作していたらキャンセル
+          if (userInteractedRef.current) {
+            console.log('[ScrollRestore] Cancelled due to user interaction');
+            return;
+          }
+          
           const scrollTarget = targetScrollYRef.current!;
           console.log('[ScrollRestore] Attempting to scroll to:', scrollTarget);
           
@@ -217,7 +264,7 @@ export function useScrollRestoration(
           isRestoringRef.current = false;
           restorationCompleteRef.current = true;
           targetScrollYRef.current = null;
-        }, 500); // レンダリング完了を確実に待つ
+        }, 200); // 待機時間を短縮 // レンダリング完了を確実に待つ
       } else if (hasNextPage && !isFetchingNextPage) {
         // まだページが不足している場合は追加読み込み
         console.log('[ScrollRestore] Loading more pages:', {
