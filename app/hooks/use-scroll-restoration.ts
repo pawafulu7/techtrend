@@ -107,15 +107,15 @@ export function useScrollRestoration(
         // すでに必要なページ数に到達している場合は即座にスクロール
         console.log('[ScrollRestore] Already have enough pages, scrolling now');
         setTimeout(() => {
-          window.scrollTo({
-            top: targetScrollYRef.current!,
-            behavior: 'smooth'  // スムーズスクロールで自然な動きに
-          });
+          const scrollTarget = targetScrollYRef.current!;
+          console.log('[ScrollRestore] Immediate scroll to:', scrollTarget);
+          window.scrollTo(0, scrollTarget);
+          
           sessionStorage.removeItem(STORAGE_KEY);
           isRestoringRef.current = false;
           restorationCompleteRef.current = true;
           targetScrollYRef.current = null;
-        }, 100);
+        }, 500);
       }
     } catch (e) {
       console.warn('[ScrollRestore] Failed to restore scroll position:', e);
@@ -145,10 +145,20 @@ export function useScrollRestoration(
         
         // スクロール実行
         setTimeout(() => {
-          window.scrollTo({
-            top: targetScrollYRef.current!,
-            behavior: 'smooth'  // スムーズスクロールで自然な動きに
-          });
+          const scrollTarget = targetScrollYRef.current!;
+          console.log('[ScrollRestore] Attempting to scroll to:', scrollTarget);
+          console.log('[ScrollRestore] Current scroll position:', window.scrollY);
+          console.log('[ScrollRestore] Document height:', document.documentElement.scrollHeight);
+          
+          // 実際にスクロール
+          window.scrollTo(0, scrollTarget);
+          
+          // 少し待ってからもう一度（念のため）
+          setTimeout(() => {
+            console.log('[ScrollRestore] Second attempt to scroll to:', scrollTarget);
+            window.scrollTo(0, scrollTarget);
+            console.log('[ScrollRestore] Final scroll position:', window.scrollY);
+          }, 100);
           
           console.log('[ScrollRestore] Scroll restoration complete');
           
@@ -157,7 +167,7 @@ export function useScrollRestoration(
           isRestoringRef.current = false;
           restorationCompleteRef.current = true;
           targetScrollYRef.current = null;
-        }, 200); // 少し待機時間を長くしてレンダリング完了を待つ
+        }, 500); // レンダリング完了を確実に待つ
       } else if (hasNextPage && !isFetchingNextPage) {
         // まだページが不足している場合は追加読み込み
         console.log('[ScrollRestore] Loading more pages:', {
