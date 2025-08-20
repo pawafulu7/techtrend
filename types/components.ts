@@ -10,6 +10,7 @@ export interface ArticleCardProps {
   showSource?: boolean;
   showTags?: boolean;
   onTagClick?: (tagName: string) => void;
+  onArticleClick?: () => void;
 }
 
 // 記事リスト

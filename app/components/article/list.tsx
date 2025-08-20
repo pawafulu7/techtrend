@@ -38,7 +38,11 @@ export function ArticleList({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4" data-testid="article-list">
       {articles.map((article) => (
-        <ArticleCard key={article.id} article={article} />
+        <ArticleCard 
+          key={article.id} 
+          article={article}
+          onArticleClick={onArticleClick}
+        />
       ))}
     </div>
   );

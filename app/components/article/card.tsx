@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { ReadingListButton } from '@/app/components/reading-list/ReadingListButton';
 import { ShareButton } from '@/app/components/article/share-button';
 
-export function ArticleCard({ article }: ArticleCardProps) {
+export function ArticleCard({ article, onArticleClick }: ArticleCardProps) {
   const [votes, setVotes] = useState(article.userVotes || 0);
   const [hasVoted, setHasVoted] = useState(false);
   
@@ -52,6 +52,8 @@ export function ArticleCard({ article }: ArticleCardProps) {
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
+    // 親コンポーネントのコールバックを実行
+    onArticleClick?.();
     // URLパラメータを保持して記事詳細ページに遷移
     const returnUrl = searchParams.toString() ? `/?${searchParams.toString()}` : '/';
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
