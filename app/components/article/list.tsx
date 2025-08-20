@@ -4,7 +4,11 @@ import { ArticleCard } from './card';
 import { ArticleListItem } from './list-item';
 import type { ArticleListProps } from '@/types/components';
 
-export function ArticleList({ articles, viewMode = 'card' }: ArticleListProps) {
+export function ArticleList({ 
+  articles, 
+  viewMode = 'card',
+  onArticleClick 
+}: ArticleListProps) {
   if (articles.length === 0) {
     return (
       <div className="text-center py-12">
@@ -17,8 +21,14 @@ export function ArticleList({ articles, viewMode = 'card' }: ArticleListProps) {
   if (viewMode === 'list') {
     return (
       <div className="space-y-2" data-testid="article-list">
-        {articles.map((article) => (
-          <ArticleListItem key={article.id} article={article} />
+        {articles.map((article, index) => (
+          <ArticleListItem 
+            key={article.id} 
+            article={article}
+            articleIndex={index}
+            totalArticleCount={articles.length}
+            onArticleClick={onArticleClick}
+          />
         ))}
       </div>
     );
