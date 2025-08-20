@@ -10,8 +10,6 @@ import { ThemeProvider } from "@/app/providers/theme-provider";
 import { parseThemeFromCookie } from "@/lib/theme-cookie";
 import { AuthProvider } from "@/app/providers/auth-provider";
 // import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
-import { ChatProvider } from "@/components/chat/ChatProvider";
-import { ChatAgentWrapper } from "@/components/chat/ChatAgentWrapper";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -132,14 +130,11 @@ export default async function RootLayout({
         <AuthProvider>
           <ThemeProvider initialTheme={theme}>
             <QueryProvider>
-              <ChatProvider>
-                {/* <OnboardingProvider> */}
-                  <Header />
-                  <main className="flex-1 overflow-y-auto">{children}</main>
-                  <ToastProvider />
-                  <ChatAgentWrapper />
-                {/* </OnboardingProvider> */}
-              </ChatProvider>
+              {/* <OnboardingProvider> */}
+                <Header />
+                <main className="flex-1 overflow-y-auto">{children}</main>
+                <ToastProvider />
+              {/* </OnboardingProvider> */}
             </QueryProvider>
           </ThemeProvider>
         </AuthProvider>
