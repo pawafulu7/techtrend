@@ -103,7 +103,7 @@ export function useScrollRestoration(
         setTimeout(() => {
           window.scrollTo({
             top: targetScrollYRef.current!,
-            behavior: 'instant'
+            behavior: 'smooth'  // スムーズスクロールで自然な動きに
           });
           sessionStorage.removeItem(STORAGE_KEY);
           isRestoringRef.current = false;
@@ -141,7 +141,7 @@ export function useScrollRestoration(
         setTimeout(() => {
           window.scrollTo({
             top: targetScrollYRef.current!,
-            behavior: 'instant'
+            behavior: 'smooth'  // スムーズスクロールで自然な動きに
           });
           
           console.log('[ScrollRestore] Scroll restoration complete');

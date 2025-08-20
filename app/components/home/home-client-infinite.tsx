@@ -141,7 +141,7 @@ export function HomeClientInfinite({
     <>
       {/* 記事リスト */}
       <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-        {isLoading || isRestoring ? (
+        {isLoading ? (
           <ArticleSkeleton />
         ) : allArticles.length > 0 ? (
           <>
