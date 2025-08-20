@@ -20,7 +20,8 @@ export function useScrollRestoration(
   filters: Record<string, string>,
   fetchNextPage: () => void,
   hasNextPage: boolean,
-  isFetchingNextPage: boolean
+  isFetchingNextPage: boolean,
+  scrollContainerRef?: React.RefObject<HTMLElement>
 ) {
   const isRestoringRef = useRef(false);
   const targetScrollYRef = useRef<number | null>(null);
@@ -28,17 +29,24 @@ export function useScrollRestoration(
 
   // スクロール位置の保存
   const saveScrollPosition = useCallback(() => {
-    // 現在のスクロール位置を取得（複数の方法で試す）
-    const currentScrollY = window.pageYOffset || 
-                          document.documentElement.scrollTop || 
-                          document.body.scrollTop || 
-                          window.scrollY;
+    // スクロール位置を取得（コンテナがあればそこから、なければwindowから）
+    let currentScrollY = 0;
+    
+    if (scrollContainerRef?.current) {
+      currentScrollY = scrollContainerRef.current.scrollTop;
+      console.log('[ScrollRestore] Using container scrollTop:', currentScrollY);
+    } else {
+      currentScrollY = window.pageYOffset || 
+                      document.documentElement.scrollTop || 
+                      document.body.scrollTop || 
+                      window.scrollY;
+      console.log('[ScrollRestore] Using window scroll:', currentScrollY);
+    }
     
     console.log('[ScrollRestore] Saving position - Debug info:', {
+      'container exists': !!scrollContainerRef?.current,
+      'container scrollTop': scrollContainerRef?.current?.scrollTop,
       'window.scrollY': window.scrollY,
-      'window.pageYOffset': window.pageYOffset,
-      'documentElement.scrollTop': document.documentElement.scrollTop,
-      'body.scrollTop': document.body.scrollTop,
       'final value': currentScrollY
     });
     
@@ -123,7 +131,12 @@ export function useScrollRestoration(
         setTimeout(() => {
           const scrollTarget = targetScrollYRef.current!;
           console.log('[ScrollRestore] Immediate scroll to:', scrollTarget);
-          window.scrollTo(0, scrollTarget);
+          
+          if (scrollContainerRef?.current) {
+            scrollContainerRef.current.scrollTop = scrollTarget;
+          } else {
+            window.scrollTo(0, scrollTarget);
+          }
           
           sessionStorage.removeItem(STORAGE_KEY);
           isRestoringRef.current = false;
@@ -161,18 +174,36 @@ export function useScrollRestoration(
         setTimeout(() => {
           const scrollTarget = targetScrollYRef.current!;
           console.log('[ScrollRestore] Attempting to scroll to:', scrollTarget);
-          console.log('[ScrollRestore] Current scroll position:', window.scrollY);
-          console.log('[ScrollRestore] Document height:', document.documentElement.scrollHeight);
           
-          // 実際にスクロール
-          window.scrollTo(0, scrollTarget);
-          
-          // 少し待ってからもう一度（念のため）
-          setTimeout(() => {
-            console.log('[ScrollRestore] Second attempt to scroll to:', scrollTarget);
+          if (scrollContainerRef?.current) {
+            console.log('[ScrollRestore] Current container scroll:', scrollContainerRef.current.scrollTop);
+            console.log('[ScrollRestore] Container height:', scrollContainerRef.current.scrollHeight);
+            
+            // コンテナをスクロール
+            scrollContainerRef.current.scrollTop = scrollTarget;
+            
+            // 少し待ってからもう一度（念のため）
+            setTimeout(() => {
+              console.log('[ScrollRestore] Second attempt to scroll to:', scrollTarget);
+              if (scrollContainerRef?.current) {
+                scrollContainerRef.current.scrollTop = scrollTarget;
+                console.log('[ScrollRestore] Final container scroll:', scrollContainerRef.current.scrollTop);
+              }
+            }, 100);
+          } else {
+            console.log('[ScrollRestore] Current window scroll:', window.scrollY);
+            console.log('[ScrollRestore] Document height:', document.documentElement.scrollHeight);
+            
+            // windowをスクロール
             window.scrollTo(0, scrollTarget);
-            console.log('[ScrollRestore] Final scroll position:', window.scrollY);
-          }, 100);
+            
+            // 少し待ってからもう一度（念のため）
+            setTimeout(() => {
+              console.log('[ScrollRestore] Second attempt to scroll to:', scrollTarget);
+              window.scrollTo(0, scrollTarget);
+              console.log('[ScrollRestore] Final window scroll:', window.scrollY);
+            }, 100);
+          }
           
           console.log('[ScrollRestore] Scroll restoration complete');
           

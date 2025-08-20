@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
@@ -28,6 +28,7 @@ export function HomeClientInfinite({
   initialSourceIds
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // URLパラメータからフィルターを構築
   const filters = useMemo(() => {
@@ -114,14 +115,15 @@ export function HomeClientInfinite({
   // 合計記事数
   const totalCount = data?.pages[0]?.data.total || 0;
 
-  // スクロール位置復元フックを使用
+  // スクロール位置復元フックを使用（scrollContainerRefを渡す）
   const { saveScrollPosition, isRestoring } = useScrollRestoration(
     allArticles.length,
     data?.pages.length || 0,
     filters,
     fetchNextPage,
     hasNextPage || false,
-    isFetchingNextPage
+    isFetchingNextPage,
+    scrollContainerRef  // スクロールコンテナの参照を追加
   );
 
   // 記事クリック時のコールバック
@@ -140,7 +142,7 @@ export function HomeClientInfinite({
   return (
     <>
       {/* 記事リスト */}
-      <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
         {isLoading ? (
           <ArticleSkeleton />
         ) : allArticles.length > 0 ? (
