@@ -59,8 +59,8 @@ test.describe('フィルター条件の永続化', () => {
 
       // 5. フィルターが保持されていることを確認
       if (selectedSourceId) {
-        const checkbox = page.locator(`[data-testid="${selectedSourceId}"] input[type="checkbox"]`);
-        await expect(checkbox).toBeChecked();
+        const checkbox = page.locator(`[data-testid="${selectedSourceId}"] button[role="checkbox"]`);
+        await expect(checkbox).toHaveAttribute('aria-checked', 'true');
       }
     }
   });
@@ -182,9 +182,9 @@ test.describe('フィルター条件の永続化', () => {
     
     // ソースフィルターが存在する場合、すべてのソースが選択されていることを確認
     if (await sourceFilter.count() > 0) {
-      const sourceCheckboxes = await page.locator('[data-testid^="source-checkbox-"] input[type="checkbox"]').all();
+      const sourceCheckboxes = await page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]').all();
       for (const checkbox of sourceCheckboxes) {
-        await expect(checkbox).toBeChecked();
+        await expect(checkbox).toHaveAttribute('aria-checked', 'true');
       }
     }
   });

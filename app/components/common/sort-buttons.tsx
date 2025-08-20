@@ -3,23 +3,26 @@
 import { Button } from '@/components/ui/button';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { getFilterPreferencesClient } from '@/lib/filter-preferences-cookie';
 
-export function SortButtons() {
+interface SortButtonsProps {
+  initialSortBy?: string;
+}
+
+export function SortButtons({ initialSortBy }: SortButtonsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlSortBy = searchParams.get('sortBy');
   
-  // URLパラメータがない場合はCookieから復元
+  // サーバーサイドから渡された値を優先的に使用
   const [sortBy, setSortBy] = useState(() => {
     if (urlSortBy) return urlSortBy;
-    const prefs = getFilterPreferencesClient();
-    return prefs.sortBy || 'publishedAt'; // デフォルトは公開順
+    if (initialSortBy) return initialSortBy;
+    return 'publishedAt'; // デフォルト値
   });
   
   // URLパラメータが変更されたら状態を更新
   useEffect(() => {
-    if (urlSortBy) {
+    if (urlSortBy !== null) {
       setSortBy(urlSortBy);
     }
   }, [urlSortBy]);

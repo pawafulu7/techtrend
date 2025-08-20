@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
       if (value === undefined) {
         delete updated[k];
       } 
-      // 空配列も有効な値として扱う（sourcesフィールドの場合）
-      else if (Array.isArray(value) && value.length === 0 && k === 'sources') {
+      // 配列の場合（空配列も含む）は有効な値として扱う
+      else if (Array.isArray(value)) {
         updated[k] = value as any;
       }
       // その他の値は通常通り設定

@@ -15,6 +15,7 @@ interface HomeClientInfiniteProps {
   tags: Array<Tag & { count: number }>;
   enableInfiniteScroll?: boolean;
   initialSortBy?: string;
+  initialSourceIds?: string[];
 }
 
 export function HomeClientInfinite({ 
@@ -22,7 +23,8 @@ export function HomeClientInfinite({
   sources, 
   tags,
   enableInfiniteScroll = true,
-  initialSortBy
+  initialSortBy,
+  initialSourceIds
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
   
@@ -41,8 +43,56 @@ export function HomeClientInfinite({
       params.sortBy = initialSortBy;
     }
     
+    // URLパラメータにsourcesがない場合、initialSourceIdsを使用
+    if (!params.sources && !params.sourceId && initialSourceIds !== undefined) {
+      // 有効なソースIDのみをフィルタリング
+      const validSourceIds = sources.map(s => s.id);
+      const filteredSourceIds = initialSourceIds.filter(id => validSourceIds.includes(id));
+      
+      // デバッグログ（より詳細に）
+      // if (process.env.NODE_ENV === 'development') {
+      //   console.log('[HomeClientInfinite] Debug Info:', {
+      //     hasURLSources: !!params.sources,
+      //     hasURLSourceId: !!params.sourceId,
+      //     initialSourceIds: initialSourceIds,
+      //     initialSourceIdsType: typeof initialSourceIds,
+      //     initialSourceIdsIsArray: Array.isArray(initialSourceIds),
+      //     initialSourceIdsLength: initialSourceIds.length,
+      //     validSourceIds: validSourceIds,
+      //     validSourceIdsLength: validSourceIds.length,
+      //     filteredSourceIds: filteredSourceIds,
+      //     filteredSourceIdsLength: filteredSourceIds.length,
+      //     allSourcesSelected: filteredSourceIds.length === validSourceIds.length,
+      //     timestamp: new Date().toISOString()
+      //   });
+      // }
+      
+      if (filteredSourceIds.length === 0 && initialSourceIds.length > 0) {
+        // Cookieに無効なIDのみが含まれている場合
+        // console.log('[HomeClientInfinite] Cookie contains only invalid sources, setting sources=none');
+        params.sources = 'none';
+      } else if (filteredSourceIds.length === 0 && initialSourceIds.length === 0) {
+        // 明示的に空配列の場合（すべて解除）
+        // console.log('[HomeClientInfinite] Explicitly empty array (all deselected), setting sources=none');
+        params.sources = 'none';
+      } else if (filteredSourceIds.length === validSourceIds.length) {
+        // すべての有効なソースが選択されている場合は、パラメータを設定しない
+        // これにより、APIはすべてのソースの記事を返す
+        // console.log('[HomeClientInfinite] All sources selected, not setting params.sources');
+      } else if (filteredSourceIds.length > 0) {
+        // 一部のソースが選択されている場合
+        // console.log('[HomeClientInfinite] Partial sources selected:', filteredSourceIds);
+        params.sources = filteredSourceIds.join(',');
+      }
+    }
+    
+    // 最終的なパラメータをログ出力
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('[HomeClientInfinite] Final params:', params);
+    // }
+    
     return params;
-  }, [searchParams, initialSortBy]);
+  }, [searchParams, initialSortBy, initialSourceIds, sources]);
 
   const {
     data,

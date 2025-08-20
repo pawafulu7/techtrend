@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,38 +18,45 @@ interface FiltersProps {
 export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [selectedSources, setSelectedSources] = useState<string[]>([]);
-  const isMounted = useRef(false);
+  
+  // 初期値の決定
+  const getInitialSources = () => {
+    const sourcesParam = searchParams.get('sources');
+    const sourceIdParam = searchParams.get('sourceId');
+    
+    if (sourcesParam === 'none') {
+      return [];
+    } else if (sourcesParam) {
+      return sourcesParam.split(',').filter(id => id);
+    } else if (sourceIdParam) {
+      return [sourceIdParam];
+    } else if (initialSourceIds !== undefined) {
+      // サーバーから渡されたCookie値を使用
+      // 有効なソースIDのみをフィルタリング
+      const validSourceIds = sources.map(s => s.id);
+      return initialSourceIds.filter(id => validSourceIds.includes(id));
+    } else {
+      return sources.map(s => s.id);
+    }
+  };
+  
+  const [selectedSources, setSelectedSources] = useState<string[]>(getInitialSources);
   const currentTag = searchParams.get('tag');
   
-  // Initialize selected sources from URL params or cookie
+  // URLパラメータが変更されたときに選択状態を更新
   useEffect(() => {
     const sourcesParam = searchParams.get('sources');
     const sourceIdParam = searchParams.get('sourceId');
     
     if (sourcesParam === 'none') {
-      // 明示的に「何も選択しない」状態
       setSelectedSources([]);
     } else if (sourcesParam) {
-      // URL parameter takes priority
       setSelectedSources(sourcesParam.split(',').filter(id => id));
     } else if (sourceIdParam) {
-      // Backward compatibility with single sourceId
       setSelectedSources([sourceIdParam]);
-    } else if (!isMounted.current) {
-      // On initial mount, use cookie value or default to all selected
-      if (initialSourceIds !== undefined) {
-        // Use cookie value if available (空配列も有効な値として扱う)
-        setSelectedSources(initialSourceIds);
-      } else {
-        // Default to all selected
-        setSelectedSources(sources.map(s => s.id));
-      }
     }
-    // Otherwise keep the current state (important for "deselect all" to work)
-    
-    isMounted.current = true;
-  }, [searchParams, sources, initialSourceIds]);
+    // URLパラメータがない場合は現在の状態を維持
+  }, [searchParams]);
 
   const handleSourceToggle = (sourceId: string) => {
     const newSelection = selectedSources.includes(sourceId)
@@ -69,47 +76,59 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
     applySourceFilter([]);
   };
   
+  const applySourceFilterRef = useRef<NodeJS.Timeout>();
+  
   const applySourceFilter = async (sourceIds: string[]) => {
+    // 即座に状態を更新（UIの反応性を保つ）
     setSelectedSources(sourceIds);
-    const params = new URLSearchParams(searchParams.toString());
     
-    // Remove old params
-    params.delete('sourceId');
-    params.delete('sources');
-    params.delete('page'); // ページパラメータも削除
-    
-    if (sourceIds.length === 0) {
-      // 明示的に「何も選択しない」状態を示す
-      params.set('sources', 'none');
-    } else if (sourceIds.length < sources.length) {
-      // 一部のソースが選択されている
-      params.set('sources', sourceIds.join(','));
+    // 前のタイマーをクリア
+    if (applySourceFilterRef.current) {
+      clearTimeout(applySourceFilterRef.current);
     }
-    // sourceIds.length === sources.length の場合はパラメータを設定しない（全選択）
     
-    const newUrl = params.toString() ? `/?${params.toString()}` : '/';
-    router.push(newUrl);
-    
-    // Update both old source-filter cookie and new filter preferences
-    try {
-      // Update old cookie for backward compatibility
-      await fetch('/api/source-filter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceIds }),
-      });
+    // デバウンス処理（高速クリック対策）
+    applySourceFilterRef.current = setTimeout(async () => {
+      const params = new URLSearchParams(searchParams.toString());
       
-      // Update filter preferences cookie
-      // 空配列の場合も明示的に空配列として保存
-      await fetch('/api/filter-preferences', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sources: sourceIds }),
-      });
-    } catch (error) {
-      // Silently fail cookie update - URL params are the primary source
-      console.error('Failed to update filter cookies:', error);
-    }
+      // Remove old params
+      params.delete('sourceId');
+      params.delete('sources');
+      params.delete('page'); // ページパラメータも削除
+      
+      if (sourceIds.length === 0) {
+        // 明示的に「何も選択しない」状態を示す
+        params.set('sources', 'none');
+      } else if (sourceIds.length < sources.length) {
+        // 一部のソースが選択されている
+        params.set('sources', sourceIds.join(','));
+      }
+      // sourceIds.length === sources.length の場合はパラメータを設定しない（全選択）
+      
+      const newUrl = params.toString() ? `/?${params.toString()}` : '/';
+      router.push(newUrl);
+      
+      // Update both old source-filter cookie and new filter preferences
+      try {
+        // Update old cookie for backward compatibility
+        await fetch('/api/source-filter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sourceIds }),
+        });
+        
+        // Update filter preferences cookie
+        // 空配列の場合も明示的に空配列として保存
+        await fetch('/api/filter-preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sources: sourceIds }),
+        });
+      } catch (error) {
+        // Silently fail cookie update - URL params are the primary source
+        console.error('Failed to update filter cookies:', error);
+      }
+    }, 150); // 150ms のデバウンス
   };
 
   const handleTagFilter = (tagName: string | null) => {
@@ -141,6 +160,7 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
               onClick={handleSelectAll}
               className="h-7 text-xs justify-start flex-1"
               data-testid="select-all-button"
+              type="button"
             >
               <CheckSquare className="w-3 h-3 mr-1" />
               すべて選択
@@ -151,6 +171,7 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
               onClick={handleDeselectAll}
               className="h-7 text-xs justify-start flex-1"
               data-testid="deselect-all-button"
+              type="button"
             >
               <Square className="w-3 h-3 mr-1" />
               すべて解除

@@ -11,15 +11,31 @@ import { getFilterPreferencesClient } from '@/lib/filter-preferences-cookie';
 export function SearchBox() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const urlSearch = searchParams.get('search');
+  
   const [query, setQuery] = useState(() => {
     // URLパラメータがない場合はCookieから復元
-    const urlSearch = searchParams.get('search');
     if (urlSearch) return urlSearch;
     
     const prefs = getFilterPreferencesClient();
     return prefs.search || '';
   });
   const debouncedQuery = useDebounce(query, 300);
+  
+  // URLパラメータが変更されたら状態を更新
+  useEffect(() => {
+    const newSearch = searchParams.get('search');
+    if (newSearch !== null) {
+      // URLパラメータがある場合は常にそれを使用
+      if (newSearch !== query) {
+        setQuery(newSearch);
+      }
+    } else if (newSearch === null && urlSearch !== null) {
+      // URLパラメータが削除された場合はCookieから復元
+      const prefs = getFilterPreferencesClient();
+      setQuery(prefs.search || '');
+    }
+  }, [searchParams]);
 
   const handleSearch = useCallback(async (searchQuery: string) => {
     const params = new URLSearchParams(searchParams.toString());
