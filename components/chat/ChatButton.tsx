@@ -27,7 +27,7 @@ export function ChatButton({
       onClick={onClick}
       size="lg"
       className={cn(
-        'fixed bottom-20 right-5 z-50',
+        'fixed bottom-20 right-5 z-[70]',
         'h-14 w-14 rounded-full shadow-lg',
         'transition-all duration-300 hover:scale-110',
         'bg-primary hover:bg-primary/90',

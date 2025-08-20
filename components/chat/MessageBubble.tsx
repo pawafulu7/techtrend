@@ -41,7 +41,7 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
         {/* メッセージバブル */}
         <Card
           className={cn(
-            'px-4 py-2 rounded-2xl',
+            'message-bubble px-4 py-2 rounded-2xl',
             isUser
               ? 'bg-primary text-primary-foreground rounded-br-sm'
               : 'bg-muted rounded-bl-sm',

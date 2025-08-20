@@ -205,6 +205,8 @@ export function useChatKeyboard(
       
       // Escapeでチャットを閉じる
       if (e.key === 'Escape' && isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
         toggleChat();
       }
     };

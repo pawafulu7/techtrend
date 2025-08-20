@@ -179,9 +179,9 @@ export function ChatWindow({
   return (
     <div
       className={cn(
-        'fixed z-50 bg-background border rounded-xl shadow-xl flex flex-col',
+        'fixed bg-background border rounded-xl shadow-xl flex flex-col',
         'transition-all duration-300',
-        isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none',
+        isOpen ? 'scale-100 opacity-100 z-[60]' : 'scale-95 opacity-0 pointer-events-none z-50',
         className
       )}
       style={{

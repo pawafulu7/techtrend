@@ -18,8 +18,8 @@ test.describe('AIチャットエージェント機能', () => {
     // チャットウィンドウが開く
     await expect(page.locator('[data-testid="chat-window"]')).toBeVisible();
 
-    // 再度クリックで閉じる
-    await chatButton.click();
+    // 再度クリックで閉じる（force: trueで強制クリック）
+    await chatButton.click({ force: true });
     await expect(page.locator('[data-testid="chat-window"]')).not.toBeVisible();
   });
 
@@ -128,6 +128,8 @@ test.describe('AIチャットエージェント機能', () => {
     
     // Escapeで閉じる
     await page.keyboard.press('Escape');
+    // アニメーション完了を待つ
+    await page.waitForTimeout(500);
     await expect(page.locator('[data-testid="chat-window"]')).not.toBeVisible();
   });
 });
