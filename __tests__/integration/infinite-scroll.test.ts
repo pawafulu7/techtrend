@@ -18,7 +18,8 @@ describe('/api/articles - Infinite Scroll Pagination', () => {
     
     expect(response.status).toBe(200);
     expect(data.data).toBeDefined();
-    expect(data.data.items).toBeInstanceOf(Array);
+    // Array.isArrayを使用
+    expect(Array.isArray(data.data.items)).toBe(true);
     expect(data.data.items.length).toBeLessThanOrEqual(20);
     expect(data.data.page).toBe(1);
     expect(data.data.limit).toBe(20);
@@ -33,7 +34,7 @@ describe('/api/articles - Infinite Scroll Pagination', () => {
     expect(response.status).toBe(200);
     expect(data.data).toBeDefined();
     expect(data.data.page).toBe(2);
-    expect(data.data.items).toBeInstanceOf(Array);
+    expect(Array.isArray(data.data.items)).toBe(true);
   });
 
   it('should respect different limit values', async () => {
@@ -46,12 +47,12 @@ describe('/api/articles - Infinite Scroll Pagination', () => {
   });
 
   it('should handle filters with pagination', async () => {
-    const response = await fetch(`${baseUrl}?page=1&limit=20&keyword=JavaScript`);
+    const response = await fetch(`${baseUrl}?page=1&limit=20&search=JavaScript`);
     const data = await response.json();
     
     expect(response.status).toBe(200);
     expect(data.data).toBeDefined();
-    expect(data.data.items).toBeInstanceOf(Array);
+    expect(Array.isArray(data.data.items)).toBe(true);
     // 検索結果があれば、タイトルか要約にキーワードが含まれることを確認
     if (data.data.items.length > 0) {
       const hasKeyword = data.data.items.some((item: any) => 
