@@ -12,7 +12,7 @@ interface ScrollRestoreData {
 
 const STORAGE_KEY = 'articleListScroll';
 const EXPIRY_TIME = 5 * 60 * 1000; // 5分
-const MAX_RESTORE_PAGES = 5; // 最大復元ページ数（パフォーマンス対策）
+const MAX_RESTORE_PAGES = 10; // 最大復元ページ数（200記事程度、パフォーマンス対策）
 
 export function useScrollRestoration(
   articleCount: number,
