@@ -48,10 +48,16 @@ export function useScrollRestoration(
     }
   }, [articleCount, pageCount, filters]);
 
-  // 初回マウント時の復元チェック
+  // 復元チェック
   useEffect(() => {
     // すでに復元処理中または完了している場合はスキップ
     if (isRestoringRef.current || restorationCompleteRef.current) return;
+
+    // filtersが空の場合はまだ準備ができていない
+    if (!filters || Object.keys(filters).length === 0) {
+      console.log('[ScrollRestore] Waiting for filters to be ready');
+      return;
+    }
 
     const stored = sessionStorage.getItem(STORAGE_KEY);
     if (!stored) return;
@@ -116,7 +122,7 @@ export function useScrollRestoration(
       sessionStorage.removeItem(STORAGE_KEY);
       isRestoringRef.current = false;
     }
-  }, []); // 初回マウント時のみ実行
+  }, [filters, pageCount, hasNextPage, isFetchingNextPage, fetchNextPage]); // 依存関係を追加
 
   // ページ読み込み完了時のスクロール実行
   useEffect(() => {
