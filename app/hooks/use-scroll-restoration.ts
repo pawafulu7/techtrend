@@ -133,9 +133,15 @@ export function useScrollRestoration(
           console.log('[ScrollRestore] Immediate scroll to:', scrollTarget);
           
           if (scrollContainerRef?.current) {
-            scrollContainerRef.current.scrollTop = scrollTarget;
+            scrollContainerRef.current.scrollTo({
+              top: scrollTarget,
+              behavior: 'smooth'
+            });
           } else {
-            window.scrollTo(0, scrollTarget);
+            window.scrollTo({
+              top: scrollTarget,
+              behavior: 'smooth'
+            });
           }
           
           sessionStorage.removeItem(STORAGE_KEY);
@@ -179,17 +185,16 @@ export function useScrollRestoration(
             console.log('[ScrollRestore] Current container scroll:', scrollContainerRef.current.scrollTop);
             console.log('[ScrollRestore] Container height:', scrollContainerRef.current.scrollHeight);
             
-            // コンテナをスクロール
-            scrollContainerRef.current.scrollTop = scrollTarget;
+            // コンテナをスムーズスクロール
+            scrollContainerRef.current.scrollTo({
+              top: scrollTarget,
+              behavior: 'smooth'
+            });
             
-            // 少し待ってからもう一度（念のため）
+            // 完了確認（スムーズスクロールは非同期なので少し待つ）
             setTimeout(() => {
-              console.log('[ScrollRestore] Second attempt to scroll to:', scrollTarget);
-              if (scrollContainerRef?.current) {
-                scrollContainerRef.current.scrollTop = scrollTarget;
-                console.log('[ScrollRestore] Final container scroll:', scrollContainerRef.current.scrollTop);
-              }
-            }, 100);
+              console.log('[ScrollRestore] Final container scroll:', scrollContainerRef.current?.scrollTop);
+            }, 1000);
           } else {
             console.log('[ScrollRestore] Current window scroll:', window.scrollY);
             console.log('[ScrollRestore] Document height:', document.documentElement.scrollHeight);
