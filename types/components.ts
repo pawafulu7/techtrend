@@ -10,6 +10,7 @@ export interface ArticleCardProps {
   showSource?: boolean;
   showTags?: boolean;
   onTagClick?: (tagName: string) => void;
+  onArticleClick?: () => void;
 }
 
 // 記事リスト
@@ -20,12 +21,18 @@ export interface ArticleListProps {
   error?: string;
   onLoadMore?: () => void;
   hasMore?: boolean;
+  onArticleClick?: () => void;
+  currentFilters?: Record<string, string>;
 }
 
 // 記事リストアイテム（リスト形式用）
 export interface ArticleListItemProps {
   article: ArticleWithRelations;
   onTagClick?: (tagName: string) => void;
+  articleIndex?: number;
+  totalArticleCount?: number;
+  currentFilters?: Record<string, string>;
+  onArticleClick?: () => void;
 }
 
 // 表示モード切り替えボタン

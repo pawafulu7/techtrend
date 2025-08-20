@@ -10,7 +10,11 @@ import type { ArticleListItemProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { ReadingListButton } from '@/app/components/reading-list/ReadingListButton';
 
-export function ArticleListItem({ article, onTagClick }: ArticleListItemProps) {
+export function ArticleListItem({ 
+  article, 
+  onTagClick, 
+  onArticleClick 
+}: ArticleListItemProps) {
   const searchParams = useSearchParams();
   const sourceColor = getSourceColor(article.source.name);
   const publishedDate = new Date(article.publishedAt);
@@ -18,8 +22,21 @@ export function ArticleListItem({ article, onTagClick }: ArticleListItemProps) {
   const isNew = hoursAgo < 24;
 
   const handleClick = () => {
+    // 親コンポーネントのコールバックを実行
+    onArticleClick?.();
+    
     // URLパラメータを保持して記事詳細ページに遷移
-    const returnUrl = searchParams.toString() ? `/?${searchParams.toString()}` : '/';
+    // returningパラメータを追加して、戻ってきたことを示す
+    const params = new URLSearchParams(searchParams.toString());
+    
+    // 既存のreturningパラメータがあれば削除（重複防止）
+    if (params.has('returning')) {
+      params.delete('returning');
+    }
+    // returningパラメータを追加
+    params.set('returning', '1');
+    
+    const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
     window.location.href = articleUrl;
   };

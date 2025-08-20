@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
+import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
 import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 
@@ -27,13 +28,17 @@ export function HomeClientInfinite({
   initialSourceIds
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // 記事詳細から戻ってきたかどうかをチェック
+  const isReturningFromArticle = searchParams.has('returning');
   
   // URLパラメータからフィルターを構築
   const filters = useMemo(() => {
     const params: Record<string, string> = {};
     searchParams.forEach((value, key) => {
-      // ページパラメータは除外
-      if (key !== 'page' && key !== 'limit') {
+      // ページパラメータとreturningパラメータは除外
+      if (key !== 'page' && key !== 'limit' && key !== 'returning') {
         params[key] = value;
       }
     });
@@ -113,6 +118,23 @@ export function HomeClientInfinite({
   // 合計記事数
   const totalCount = data?.pages[0]?.data.total || 0;
 
+  // スクロール位置復元フックを使用（記事詳細から戻った時のみ有効）
+  const { saveScrollPosition, isRestoring } = useScrollRestoration(
+    allArticles.length,
+    data?.pages.length || 0,
+    filters,
+    fetchNextPage,
+    hasNextPage || false,
+    isFetchingNextPage,
+    scrollContainerRef,  // スクロールコンテナの参照を追加
+    isReturningFromArticle  // 記事詳細から戻ってきたかのフラグ
+  );
+
+  // 記事クリック時のコールバック
+  const handleArticleClick = useCallback(() => {
+    saveScrollPosition();
+  }, [saveScrollPosition]);
+
   if (isError) {
     return (
       <div className="text-center text-red-500 py-8">
@@ -124,12 +146,17 @@ export function HomeClientInfinite({
   return (
     <>
       {/* 記事リスト */}
-      <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
         {isLoading ? (
           <ArticleSkeleton />
         ) : allArticles.length > 0 ? (
           <>
-            <ArticleList articles={allArticles} viewMode={viewMode} />
+            <ArticleList 
+              articles={allArticles} 
+              viewMode={viewMode}
+              onArticleClick={handleArticleClick}
+              currentFilters={filters}
+            />
             
             {/* Infinite Scrollトリガー */}
             {enableInfiniteScroll ? (
