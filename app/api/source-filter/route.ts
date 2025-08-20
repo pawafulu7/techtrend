@@ -53,3 +53,23 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const response = NextResponse.json({ 
+      success: true, 
+      message: 'Source filter cookie deleted' 
+    });
+    
+    // Delete the cookie
+    response.cookies.delete('source-filter');
+    
+    return response;
+  } catch (error) {
+    console.error('Error deleting source-filter cookie:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete cookie' },
+      { status: 500 }
+    );
+  }
+}

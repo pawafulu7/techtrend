@@ -20,18 +20,19 @@ interface ArticlesResponse {
 }
 
 export function useInfiniteArticles(filters: ArticleFilters) {
-  const searchParams = new URLSearchParams();
-  
-  // フィルターパラメータを追加
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') {
-      searchParams.append(key, value);
-    }
-  });
-
   return useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filters],
-    queryFn: async ({ pageParam }) => {
+    queryFn: async ({ pageParam = 1 }) => {
+      // 毎回新しいURLSearchParamsを作成
+      const searchParams = new URLSearchParams();
+      
+      // フィルターパラメータを追加
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          searchParams.append(key, value);
+        }
+      });
+      
       // ページパラメータを追加
       searchParams.set('page', String(pageParam));
       searchParams.set('limit', '20');

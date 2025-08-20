@@ -8,15 +8,17 @@ import { ServerPagination } from '@/app/components/common/server-pagination';
 import { PopularTags } from '@/app/components/common/popular-tags';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { ArticleCount } from '@/app/components/common/article-count';
+import { SortButtons } from '@/app/components/common/sort-buttons';
+import { FilterResetButton } from '@/app/components/common/filter-reset-button';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { HomeClient } from '@/app/components/home/home-client';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
-import { FilterSkeleton } from '@/app/components/common/filter-skeleton';
 import { prisma } from '@/lib/database';
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
 import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
+import { getFilterPreferencesFromCookies } from '@/lib/filter-preferences-cookie';
 
 interface PageProps {
   searchParams: Promise<{
@@ -74,14 +76,52 @@ async function getPopularTags() {
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
   const cookieStore = await cookies();
-  const viewMode = parseViewModeFromCookie(cookieStore.get('article-view-mode')?.value);
+  
+  // Get filter preferences from cookie
+  const filterPreferences = getFilterPreferencesFromCookies(cookieStore);
+  
+  // デバッグ: Cookie値を直接確認（開発環境のみ）
+  // if (process.env.NODE_ENV === 'development') {
+  //   const rawCookie = cookieStore.get('filter-preferences');
+  //   if (rawCookie) {
+  //     console.log('[page.tsx] Raw filter-preferences cookie:', rawCookie.value);
+  //     try {
+  //       const parsed = JSON.parse(rawCookie.value);
+  //       console.log('[page.tsx] Parsed cookie sources:', parsed.sources);
+  //     } catch (e) {
+  //       console.log('[page.tsx] Cookie parse error:', e);
+  //     }
+  //   }
+  // }
+  
+  // Get view mode (from dedicated cookie or filter preferences)
+  const viewMode = parseViewModeFromCookie(cookieStore.get('article-view-mode')?.value) || 
+                    filterPreferences.viewMode || 'grid';
   
   // Get source filter from cookie if no URL params
-  let initialSourceIds: string[] = [];
+  let initialSourceIds: string[] | undefined = undefined;
   if (!params.sources && !params.sourceId) {
-    const sourceFilterCookie = cookieStore.get('source-filter')?.value;
-    initialSourceIds = parseSourceFilterFromCookie(sourceFilterCookie);
+    // Try filter preferences first, then fall back to old source-filter cookie
+    if (filterPreferences.sources !== undefined) {
+      initialSourceIds = filterPreferences.sources;
+    } else {
+      const oldCookie = parseSourceFilterFromCookie(cookieStore.get('source-filter')?.value);
+      if (oldCookie.length > 0) {
+        initialSourceIds = oldCookie;
+      }
+    }
+    
+    // デバッグログ（開発環境のみ）
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('[page.tsx] initialSourceIds:', initialSourceIds);
+    //   console.log('[page.tsx] filterPreferences:', filterPreferences);
+    //   console.log('[page.tsx] filterPreferences.sources type:', typeof filterPreferences.sources);
+    //   console.log('[page.tsx] filterPreferences.sources length:', filterPreferences.sources?.length);
+    // }
   }
+  
+  // Get initial sort order from cookie if no URL params
+  const initialSortBy = !params.sortBy ? filterPreferences.sortBy : undefined;
   
   // Infinite Scroll機能のフラグ（環境変数や設定で切り替え可能）
   const enableInfiniteScroll = true;
@@ -99,9 +139,7 @@ export default async function Home({ searchParams }: PageProps) {
         {/* サイドバー - デスクトップのみ */}
         <aside className="hidden lg:block lg:w-64 lg:flex-shrink-0 lg:bg-gray-50 dark:lg:bg-gray-900/50 lg:border-r lg:border-gray-200 dark:lg:border-gray-700 lg:overflow-y-auto">
           <div className="p-4">
-            <Suspense fallback={<FilterSkeleton />}>
-              <Filters sources={sources} tags={tags} initialSourceIds={initialSourceIds} />
-            </Suspense>
+            <Filters sources={sources} tags={tags} initialSourceIds={initialSourceIds} />
           </div>
         </aside>
 
@@ -127,48 +165,9 @@ export default async function Home({ searchParams }: PageProps) {
                   <div className="w-px h-5 bg-border" />
                   <ViewModeToggle currentMode={viewMode} />
                   <div className="w-px h-5 bg-border" />
-                  <div className="flex gap-1">
-                    <Button
-                      variant={params.sortBy !== 'bookmarks' && params.sortBy !== 'qualityScore' && params.sortBy !== 'createdAt' ? 'default' : 'outline'}
-                      size="sm"
-                      asChild
-                      className="h-6 sm:h-7 px-2 text-xs"
-                    >
-                      <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'publishedAt' }).toString()}`}>
-                        公開順
-                    </Link>
-                  </Button>
-                  <Button
-                    variant={params.sortBy === 'createdAt' ? 'default' : 'outline'}
-                    size="sm"
-                    asChild
-                    className="h-6 sm:h-7 px-2 text-xs"
-                  >
-                    <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'createdAt' }).toString()}`}>
-                      取込順
-                    </Link>
-                  </Button>
-                  <Button
-                    variant={params.sortBy === 'qualityScore' ? 'default' : 'outline'}
-                    size="sm"
-                    asChild
-                    className="h-6 sm:h-7 px-2 text-xs"
-                  >
-                    <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'qualityScore' }).toString()}`}>
-                      品質
-                    </Link>
-                  </Button>
-                  <Button
-                    variant={params.sortBy === 'bookmarks' ? 'default' : 'outline'}
-                    size="sm"
-                    asChild
-                    className="h-6 sm:h-7 px-2 text-xs"
-                  >
-                    <Link href={`/?${new URLSearchParams({ ...params, sortBy: 'bookmarks' }).toString()}`}>
-                      人気
-                    </Link>
-                  </Button>
-                </div>
+                  <SortButtons initialSortBy={initialSortBy} />
+                  <div className="w-px h-5 bg-border" />
+                  <FilterResetButton />
               </div>
             </div>
           </div>
@@ -181,6 +180,8 @@ export default async function Home({ searchParams }: PageProps) {
                 sources={sources} 
                 tags={tags}
                 enableInfiniteScroll={enableInfiniteScroll}
+                initialSortBy={initialSortBy}
+                initialSourceIds={initialSourceIds}
               />
             ) : (
               <HomeClient viewMode={viewMode} sources={sources} tags={tags} />

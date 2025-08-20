@@ -36,13 +36,13 @@ export function Header() {
       <div className="w-full px-6">
         <div className="flex h-10 items-center justify-between">
           {/* Logo and Site Name */}
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href="/" className="flex items-center space-x-2" data-testid="header-logo">
             <Rss className="h-5 w-5 text-primary" />
             <span className="text-lg font-bold">{SITE_NAME}</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-3">
+          <nav className="hidden md:flex items-center space-x-3" data-testid="desktop-nav">
             {/* 主要ナビゲーション */}
             {primaryNav.map((item) => {
               const Icon = item.icon;
@@ -53,6 +53,7 @@ export function Header() {
                   key={item.href}
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
+                  data-testid={`nav-link-${item.label.toLowerCase()}`}
                   className={cn(
                     "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200",
                     "focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
@@ -85,6 +86,7 @@ export function Header() {
               variant="ghost"
               size="sm"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              data-testid="mobile-menu-toggle"
             >
               {mobileMenuOpen ? (
                 <X className="h-5 w-5" />
@@ -97,7 +99,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t">
+          <nav className="md:hidden py-4 border-t" data-testid="mobile-nav">
             <div className="flex flex-col space-y-2">
               {/* 主要ナビゲーション */}
               {primaryNav.map((item) => {
@@ -109,6 +111,7 @@ export function Header() {
                     key={item.href}
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
+                    data-testid={`mobile-nav-link-${item.label.toLowerCase()}`}
                     className={cn(
                       "inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200",
                       "focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
@@ -139,6 +142,7 @@ export function Header() {
                     key={item.href}
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
+                    data-testid={`mobile-secondary-nav-link-${item.label.toLowerCase()}`}
                     className={cn(
                       "inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200",
                       "focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
