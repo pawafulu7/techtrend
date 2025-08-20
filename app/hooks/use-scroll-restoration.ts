@@ -28,8 +28,22 @@ export function useScrollRestoration(
 
   // スクロール位置の保存
   const saveScrollPosition = useCallback(() => {
+    // 現在のスクロール位置を取得（複数の方法で試す）
+    const currentScrollY = window.pageYOffset || 
+                          document.documentElement.scrollTop || 
+                          document.body.scrollTop || 
+                          window.scrollY;
+    
+    console.log('[ScrollRestore] Saving position - Debug info:', {
+      'window.scrollY': window.scrollY,
+      'window.pageYOffset': window.pageYOffset,
+      'documentElement.scrollTop': document.documentElement.scrollTop,
+      'body.scrollTop': document.body.scrollTop,
+      'final value': currentScrollY
+    });
+    
     const data: ScrollRestoreData = {
-      scrollY: window.scrollY,
+      scrollY: currentScrollY,
       articleCount,
       pageCount,
       timestamp: Date.now(),
