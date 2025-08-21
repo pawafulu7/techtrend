@@ -104,7 +104,7 @@ export function SearchBar() {
   };
 
   // クリア
-  const const handleClear = () => {
+  const handleClear = () => {
     setQuery('');
     inputRef.current?.focus();
     
@@ -115,7 +115,7 @@ export function SearchBar() {
     
     // ホームページへ遷移（検索パラメータなし）
     router.push(`/?${params.toString()}`);
-  };;
+  };
 
   // 外部クリックでサジェスチョンを閉じる
   useEffect(() => {
