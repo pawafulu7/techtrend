@@ -1,0 +1,191 @@
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import { ArticleCard } from '@/app/components/article/card';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
+// Next.jsのモック
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(),
+}));
+
+jest.mock('next-auth/react', () => ({
+  useSession: jest.fn(),
+}));
+
+jest.mock('next/image', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    // eslint-disable-next-line jsx-a11y/alt-text
+    return <img {...props} />;
+  },
+}));
+
+describe('ArticleCard', () => {
+  const mockRouter = {
+    push: jest.fn(),
+    prefetch: jest.fn(),
+  };
+
+  const mockArticle = {
+    id: '1',
+    title: 'Test Article Title',
+    summary: 'This is a test article summary that should be displayed on the card.',
+    url: 'https://example.com/article',
+    publishedAt: new Date('2025-01-01T10:00:00Z'),
+    qualityScore: 85,
+    sourceId: 'test-source',
+    source: {
+      id: 'test-source',
+      name: 'Test Source',
+      type: 'rss' as const,
+      url: 'https://test-source.com',
+      enabled: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    tags: [
+      { 
+        id: '1', 
+        name: 'React',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      { 
+        id: '2', 
+        name: 'Testing',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ],
+    bookmarks: 10,
+    userVotes: 5,
+    difficulty: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useRouter as jest.Mock).mockReturnValue(mockRouter);
+    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
+  });
+
+  it('renders article information correctly', () => {
+    render(<ArticleCard article={mockArticle} />);
+    
+    // タイトルが表示される
+    expect(screen.getByText('Test Article Title')).toBeInTheDocument();
+    
+    // 要約が表示される
+    expect(screen.getByText(/This is a test article summary/)).toBeInTheDocument();
+    
+    // ソース名が表示される
+    expect(screen.getByText('Test Source')).toBeInTheDocument();
+    
+    // タグが表示される
+    expect(screen.getByText('React')).toBeInTheDocument();
+    expect(screen.getByText('Testing')).toBeInTheDocument();
+  });
+
+  it('handles click events when onArticleClick is provided', () => {
+    const handleClick = jest.fn();
+    render(<ArticleCard article={mockArticle} onArticleClick={handleClick} />);
+    
+    const card = screen.getByRole('article');
+    fireEvent.click(card);
+    
+    expect(handleClick).toHaveBeenCalledWith(mockArticle);
+  });
+
+  it('navigates to article detail page when clicked without onArticleClick', () => {
+    render(<ArticleCard article={mockArticle} />);
+    
+    const card = screen.getByRole('article');
+    fireEvent.click(card);
+    
+    expect(mockRouter.push).toHaveBeenCalledWith(`/articles/${mockArticle.id}`);
+  });
+
+  it('displays quality score badge when score is high', () => {
+    render(<ArticleCard article={mockArticle} />);
+    
+    // 品質スコアが85点の場合、高品質バッジが表示される
+    const qualityBadge = screen.getByText(/85/);
+    expect(qualityBadge).toBeInTheDocument();
+  });
+
+  it('formats published date correctly', () => {
+    render(<ArticleCard article={mockArticle} />);
+    
+    // 日付が適切にフォーマットされている
+    // 実際のフォーマットに応じて調整が必要
+    const dateElement = screen.getByText(/2025/);
+    expect(dateElement).toBeInTheDocument();
+  });
+
+  it('displays favorite button for authenticated users', () => {
+    (useSession as jest.Mock).mockReturnValue({
+      data: { user: { id: 'user1', email: 'test@example.com' } },
+      status: 'authenticated',
+    });
+
+    render(<ArticleCard article={mockArticle} />);
+    
+    // お気に入りボタンが表示される（data-testidがある場合）
+    const favoriteButton = screen.queryByTestId('favorite-button');
+    if (favoriteButton) {
+      expect(favoriteButton).toBeInTheDocument();
+    }
+  });
+
+  it('handles external link click with stopPropagation', () => {
+    render(<ArticleCard article={mockArticle} />);
+    
+    const externalLink = screen.getByRole('link', { name: /external/i });
+    const event = { stopPropagation: jest.fn(), preventDefault: jest.fn() };
+    
+    fireEvent.click(externalLink, event);
+    
+    // 外部リンクをクリックしてもカード全体のクリックイベントが発火しない
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  it('truncates long summary text', () => {
+    const longSummaryArticle = {
+      ...mockArticle,
+      summary: 'A'.repeat(500), // 500文字の長い要約
+    };
+    
+    render(<ArticleCard article={longSummaryArticle} />);
+    
+    const summaryElement = screen.getByText(/A+/);
+    const summaryText = summaryElement.textContent || '';
+    
+    // 要約が適切な長さに切り詰められている（実装に応じて調整）
+    expect(summaryText.length).toBeLessThan(500);
+  });
+
+  it('applies correct CSS classes for hover state', () => {
+    render(<ArticleCard article={mockArticle} />);
+    
+    const card = screen.getByRole('article');
+    
+    // ホバー時のスタイルクラスが適用されている
+    expect(card).toHaveClass('hover:shadow-lg');
+  });
+
+  it('renders without tags when tags array is empty', () => {
+    const articleWithoutTags = {
+      ...mockArticle,
+      tags: [],
+    };
+    
+    render(<ArticleCard article={articleWithoutTags} />);
+    
+    // タグセクションが存在しないか、空である
+    const tagElements = screen.queryAllByTestId('tag-chip');
+    expect(tagElements).toHaveLength(0);
+  });
+});

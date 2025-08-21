@@ -5,7 +5,7 @@
  */
 
 // Import the existing Prisma mock
-import { prismaMock } from '../prisma';
+import prismaMock from './prisma';
 
 // Export as 'prisma' to match the actual module export
 export const prisma = prismaMock;
