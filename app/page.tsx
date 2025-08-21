@@ -80,19 +80,6 @@ export default async function Home({ searchParams }: PageProps) {
   // Get filter preferences from cookie
   const filterPreferences = getFilterPreferencesFromCookies(cookieStore);
   
-  // デバッグ: Cookie値を直接確認（開発環境のみ）
-  // if (process.env.NODE_ENV === 'development') {
-  //   const rawCookie = cookieStore.get('filter-preferences');
-  //   if (rawCookie) {
-  //     console.log('[page.tsx] Raw filter-preferences cookie:', rawCookie.value);
-  //     try {
-  //       const parsed = JSON.parse(rawCookie.value);
-  //       console.log('[page.tsx] Parsed cookie sources:', parsed.sources);
-  //     } catch (e) {
-  //       console.log('[page.tsx] Cookie parse error:', e);
-  //     }
-  //   }
-  // }
   
   // Get view mode (from dedicated cookie or filter preferences)
   const viewMode = parseViewModeFromCookie(cookieStore.get('article-view-mode')?.value) || 
@@ -103,6 +90,8 @@ export default async function Home({ searchParams }: PageProps) {
   if (!params.sources && !params.sourceId) {
     // Try filter preferences first, then fall back to old source-filter cookie
     if (filterPreferences.sources !== undefined) {
+      // 空配列の場合は、全選択として扱う場合を考慮
+      // ただし、明示的な全解除の場合は空配列を維持
       initialSourceIds = filterPreferences.sources;
     } else {
       const oldCookie = parseSourceFilterFromCookie(cookieStore.get('source-filter')?.value);
@@ -111,17 +100,12 @@ export default async function Home({ searchParams }: PageProps) {
       }
     }
     
-    // デバッグログ（開発環境のみ）
-    // if (process.env.NODE_ENV === 'development') {
-    //   console.log('[page.tsx] initialSourceIds:', initialSourceIds);
-    //   console.log('[page.tsx] filterPreferences:', filterPreferences);
-    //   console.log('[page.tsx] filterPreferences.sources type:', typeof filterPreferences.sources);
-    //   console.log('[page.tsx] filterPreferences.sources length:', filterPreferences.sources?.length);
-    // }
   }
   
   // Get initial sort order from cookie if no URL params
   const initialSortBy = !params.sortBy ? filterPreferences.sortBy : undefined;
+  
+  // 検索キーワードはURLパラメータのみで管理（Cookie復元は無効）
   
   // Infinite Scroll機能のフラグ（環境変数や設定で切り替え可能）
   const enableInfiniteScroll = true;

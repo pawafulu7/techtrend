@@ -103,10 +103,12 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
         // 一部のソースが選択されている
         params.set('sources', sourceIds.join(','));
       }
-      // sourceIds.length === sources.length の場合はパラメータを設定しない（全選択）
+      // sourceIds.length === sources.length の場合はsourcesパラメータを設定しない（全選択）
+      // ただし、他のパラメータ（search等）は維持する
       
-      const newUrl = params.toString() ? `/?${params.toString()}` : '/';
-      router.push(newUrl);
+      // URLを構築（パラメータがない場合は "/" のみ）
+      const url = params.toString() ? `/?${params.toString()}` : '/';
+      router.push(url);
       
       // Update both old source-filter cookie and new filter preferences
       try {
@@ -118,7 +120,8 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
         });
         
         // Update filter preferences cookie
-        // 空配列の場合も明示的に空配列として保存
+        // 全選択の場合も実際のソースIDを保存（UIの状態を維持）
+        // 空配列の場合は空配列として保存（明示的な全解除）
         await fetch('/api/filter-preferences', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

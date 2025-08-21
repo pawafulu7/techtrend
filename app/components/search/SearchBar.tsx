@@ -104,10 +104,18 @@ export function SearchBar() {
   };
 
   // クリア
-  const handleClear = () => {
+  const const handleClear = () => {
     setQuery('');
     inputRef.current?.focus();
-  };
+    
+    // URLパラメータから検索クエリを削除
+    const params = new URLSearchParams(searchParams);
+    params.delete('search');
+    params.delete('q'); // 念のため古いパラメータも削除
+    
+    // ホームページへ遷移（検索パラメータなし）
+    router.push(`/?${params.toString()}`);
+  };;
 
   // 外部クリックでサジェスチョンを閉じる
   useEffect(() => {

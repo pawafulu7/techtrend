@@ -1,75 +1,80 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDebounce } from '@/hooks/use-debounce';
-import { getFilterPreferencesClient } from '@/lib/filter-preferences-cookie';
 
 export function SearchBox() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const urlSearch = searchParams.get('search');
   
+  // URLパラメータから初期値を取得
   const [query, setQuery] = useState(() => {
-    // URLパラメータがない場合はCookieから復元
-    if (urlSearch) return urlSearch;
-    
-    const prefs = getFilterPreferencesClient();
-    return prefs.search || '';
+    return searchParams.get('search') || '';
   });
-  const debouncedQuery = useDebounce(query, 300);
   
-  // URLパラメータが変更されたら状態を更新
+  const [isComposing, setIsComposing] = useState(false);
+  const debouncedQuery = useDebounce(query, 300);
+  const isInternalUpdate = useRef(false);
+  
+  // URLパラメータが外部から変更された場合のみ状態を更新
   useEffect(() => {
     const newSearch = searchParams.get('search');
-    if (newSearch !== null) {
-      // URLパラメータがある場合は常にそれを使用
-      if (newSearch !== query) {
-        setQuery(newSearch);
-      }
-    } else if (newSearch === null && urlSearch !== null) {
-      // URLパラメータが削除された場合はCookieから復元
-      const prefs = getFilterPreferencesClient();
-      setQuery(prefs.search || '');
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false;
+      return;
     }
+    setQuery(newSearch || '');
   }, [searchParams]);
 
   const handleSearch = useCallback(async (searchQuery: string) => {
+    isInternalUpdate.current = true;
+    
     const params = new URLSearchParams(searchParams.toString());
     
     if (searchQuery) {
       params.set('search', searchQuery);
-      params.set('page', '1'); // 検索時は1ページ目に戻る
+      params.set('page', '1');
     } else {
       params.delete('search');
+      params.delete('page');
     }
     
     router.push(`/?${params.toString()}`);
     
-    // Update filter preferences cookie
+    // Cookieに保存（将来の拡張用、現在は使用しない）
     try {
       await fetch('/api/filter-preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ search: searchQuery ? searchQuery : undefined }),
+        body: JSON.stringify({ search: searchQuery || undefined }),
       });
     } catch (error) {
-      console.error('Failed to update filter preferences:', error);
+      // Silent fail
     }
   }, [router, searchParams]);
 
+  // デバウンスされた検索実行
   useEffect(() => {
-    if (debouncedQuery !== searchParams.get('search')) {
+    if (isComposing) return;
+    
+    const currentUrlSearch = searchParams.get('search') || '';
+    if (debouncedQuery !== currentUrlSearch) {
       handleSearch(debouncedQuery);
     }
-  }, [debouncedQuery, handleSearch, searchParams]);
+  }, [debouncedQuery, isComposing, handleSearch, searchParams]);
 
   const handleClear = () => {
+    isInternalUpdate.current = true;
     setQuery('');
-    handleSearch('');
+    
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('search');
+    params.delete('page');
+    router.push(`/?${params.toString()}`);
   };
 
   return (
@@ -80,7 +85,9 @@ export function SearchBox() {
         placeholder="キーワードで記事を検索..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="pl-9 pr-9 h-8 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
+        onCompositionStart={() => setIsComposing(true)}
+        onCompositionEnd={() => setIsComposing(false)}
+        className="pl-9 pr-9 h-8 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600"
         data-testid="search-box-input"
       />
       {query && (
@@ -89,6 +96,7 @@ export function SearchBox() {
           size="sm"
           onClick={handleClear}
           className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+          data-testid="search-clear"
         >
           <X className="h-3 w-3" />
         </Button>
