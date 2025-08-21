@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, Upload } from 'lucide-react';
+import { ProfileImage } from '@/app/components/common/optimized-image';
 
 type ProfileFormData = {
   name: string;
@@ -93,13 +94,17 @@ export function ProfileForm() {
       )}
 
       <div className="flex items-center space-x-4">
-        <Avatar className="h-20 w-20">
-          <AvatarImage 
-            src={session?.user?.image || ''} 
-            alt={session?.user?.name || 'User'} 
+        {session?.user?.image ? (
+          <ProfileImage
+            src={session.user.image}
+            alt={session.user.name || 'User'}
+            size={80}
           />
-          <AvatarFallback>{userInitial}</AvatarFallback>
-        </Avatar>
+        ) : (
+          <Avatar className="h-20 w-20">
+            <AvatarFallback>{userInitial}</AvatarFallback>
+          </Avatar>
+        )}
         <div>
           <Button type="button" variant="outline" size="sm" disabled>
             <Upload className="mr-2 h-4 w-4" />

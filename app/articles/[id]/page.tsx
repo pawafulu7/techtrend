@@ -12,6 +12,7 @@ import { RelatedArticles } from '@/app/components/article/related-articles';
 import { ArticleTracker } from '@/app/components/analytics/ArticleTracker';
 import { ViewTracker } from '@/components/article/view-tracker';
 import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summary-display';
+import { OptimizedImage } from '@/app/components/common/optimized-image';
 
 interface PageProps {
   params: Promise<{
@@ -156,12 +157,17 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
             <CardContent className="space-y-4">
               {/* Speaker Deckまたは短い記事の場合はサムネイル表示、それ以外は詳細要約表示 */}
               {(isSpeakerDeck || isShortArticle) && article.thumbnail ? (
-                <div className="relative aspect-video overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
-                  <img 
-                    src={article.thumbnail} 
-                    alt={article.title}
-                    className="object-contain w-full h-full"
-                  />
+                <>
+                  <div className="relative aspect-video overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+                    <OptimizedImage 
+                      src={article.thumbnail} 
+                      alt={article.title}
+                      fill
+                      priority={true}
+                      className="object-contain"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 50vw"
+                    />
+                  </div>
                   <div className="mt-4 p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">
                       {isShortArticle && !isSpeakerDeck 
@@ -169,7 +175,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                         : 'このプレゼンテーションの詳細は元記事でご確認ください。'}
                     </p>
                   </div>
-                </div>
+                </>
               ) : isShortArticle ? (
                 <div className="p-4 bg-muted rounded-lg space-y-2">
                   <p className="text-sm font-medium">要約</p>

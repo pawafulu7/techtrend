@@ -13,6 +13,7 @@ import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { ReadingListButton } from '@/app/components/reading-list/ReadingListButton';
 import { ShareButton } from '@/app/components/article/share-button';
+import { ArticleThumbnail } from '@/app/components/common/optimized-image';
 
 export function ArticleCard({ article, onArticleClick }: ArticleCardProps) {
   const [votes, setVotes] = useState(article.userVotes || 0);
@@ -153,24 +154,12 @@ export function ArticleCard({ article, onArticleClick }: ArticleCardProps) {
       <CardContent className="flex-1 py-2 px-2.5 sm:px-3 space-y-2">
         {/* サムネイル表示条件に基づいて表示を切り替え */}
         {showThumbnail ? (
-          <div className="relative aspect-video overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
-            <img 
-              src={article.thumbnail} 
-              alt={article.title}
-              loading="lazy"
-              className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
-              onError={(e) => {
-                // フォールバック処理
-                const target = e.currentTarget;
-                target.style.display = 'none';
-                // 代替テキストを表示
-                const fallback = document.createElement('div');
-                fallback.className = 'flex items-center justify-center h-full text-gray-400 text-sm';
-                fallback.textContent = '画像を読み込めません';
-                target.parentElement?.appendChild(fallback);
-              }}
-            />
-          </div>
+          <ArticleThumbnail 
+            src={article.thumbnail!} 
+            alt={article.title}
+            priority={false}
+            className="rounded-md hover:scale-105 transition-transform duration-300"
+          />
         ) : article.summary ? (
           <div className="relative group/summary">
             <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-300 to-purple-300 rounded-full opacity-50"></div>
