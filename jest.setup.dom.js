@@ -20,18 +20,6 @@ jest.mock('next/router', () => ({
   }),
 }));
 
-// Next-authセッションモック
-jest.mock('next-auth/react', () => ({
-  useSession: () => ({
-    data: null,
-    status: 'unauthenticated',
-    update: jest.fn(),
-  }),
-  signIn: jest.fn(),
-  signOut: jest.fn(),
-  SessionProvider: ({ children }) => children,
-}));
-
 // window.openのモック
 global.open = jest.fn();
 

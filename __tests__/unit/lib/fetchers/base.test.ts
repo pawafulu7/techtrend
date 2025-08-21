@@ -124,8 +124,9 @@ describe('BaseFetcher', () => {
       const result = await fetcher.fetch();
 
       expect(result).toEqual(emptyResult);
-      // logger.info の出力形式に合わせて期待値を調整（タイムスタンプとアイコンを含む）
-      expect(console.log).toHaveBeenCalledWith(expect.stringMatching(/.*ℹ️.*Test Source: 記事が見つかりませんでした/));
+      // logger のモックを確認
+      const { logger } = require('@/lib/cli/utils/logger');
+      expect(logger.info).toHaveBeenCalledWith('Test Source: 記事が見つかりませんでした');
     });
 
     it('エラーが発生した場合の処理', async () => {
