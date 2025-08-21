@@ -20,8 +20,18 @@ interface ArticlesResponse {
 }
 
 export function useInfiniteArticles(filters: ArticleFilters) {
+  // フィルタを正規化（undefined値を削除、キーをソート）
+  const normalizedFilters = Object.keys(filters)
+    .sort()
+    .reduce((acc, key) => {
+      if (filters[key] !== undefined && filters[key] !== '') {
+        acc[key] = filters[key];
+      }
+      return acc;
+    }, {} as ArticleFilters);
+  
   return useInfiniteQuery<ArticlesResponse, Error>({
-    queryKey: ['infinite-articles', filters],
+    queryKey: ['infinite-articles', normalizedFilters],
     queryFn: async ({ pageParam = 1 }) => {
       // 毎回新しいURLSearchParamsを作成
       const searchParams = new URLSearchParams();

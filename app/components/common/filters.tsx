@@ -99,12 +99,14 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
       if (sourceIds.length === 0) {
         // 明示的に「何も選択しない」状態を示す
         params.set('sources', 'none');
-      } else if (sourceIds.length < sources.length) {
+      } else if (sourceIds.length === sources.length) {
+        // 全選択の場合、明示的に'sources'パラメータを削除して
+        // デフォルト状態（全選択）にする
+        // パラメータは既に削除済みなので、何もしない
+      } else {
         // 一部のソースが選択されている
         params.set('sources', sourceIds.join(','));
       }
-      // sourceIds.length === sources.length の場合はsourcesパラメータを設定しない（全選択）
-      // ただし、他のパラメータ（search等）は維持する
       
       // URLを構築（パラメータがない場合は "/" のみ）
       const url = params.toString() ? `/?${params.toString()}` : '/';

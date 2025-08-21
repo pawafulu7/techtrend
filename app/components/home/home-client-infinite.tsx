@@ -49,33 +49,38 @@ export function HomeClientInfinite({
     }
     
     // URLパラメータにsourcesがない場合の処理
-    if (!params.sources && !params.sourceId) {
-      // initialSourceIdsがある場合はそれを使用
+    // 重要: URLに明示的にsources=noneがある場合と、パラメータがない場合を区別する
+    const hasSourcesParam = searchParams.has('sources');
+    const hasSourceIdParam = searchParams.has('sourceId');
+    
+    if (!hasSourcesParam && !hasSourceIdParam) {
+      // URLにソース関連のパラメータがまったくない場合
+      // initialSourceIdsがある場合はそれを使用（ただし、全選択の場合は何も設定しない）
       if (initialSourceIds !== undefined && Array.isArray(initialSourceIds)) {
         // 有効なソースIDのみをフィルタリング
         const validSourceIds = sources.map(s => s.id);
         const filteredSourceIds = initialSourceIds.filter(id => validSourceIds.includes(id));
         
-        
-        if (filteredSourceIds.length === 0 && initialSourceIds.length > 0) {
-          // Cookieに無効なIDのみが含まれている場合
-          params.sources = 'none';
-        } else if (filteredSourceIds.length === 0 && initialSourceIds.length === 0) {
+        if (filteredSourceIds.length === 0 && initialSourceIds.length === 0) {
           // 明示的に空配列の場合（すべて解除）
+          // ただし、URLが "/" の場合はCookieの値を無視して全選択とする
+          // URLにパラメータがない = デフォルト = 全選択
+          // Cookieの空配列は古い状態の可能性があるため
+          // params.sources = 'none'; // これを設定しない
+        } else if (filteredSourceIds.length === 0 && initialSourceIds.length > 0) {
+          // Cookieに無効なIDのみが含まれている場合
           params.sources = 'none';
         } else if (filteredSourceIds.length === validSourceIds.length) {
           // すべての有効なソースが選択されている場合は、パラメータを設定しない
           // これにより、APIはすべてのソースの記事を返す
-          // UIの一貫性も保たれる
-        } else if (filteredSourceIds.length > 0) {
-          // 一部のソースが選択されている場合
+        } else if (filteredSourceIds.length > 0 && filteredSourceIds.length < validSourceIds.length) {
+          // 一部のソースが選択されている場合のみ設定
           params.sources = filteredSourceIds.join(',');
         }
       }
       // initialSourceIdsがundefinedまたは配列でない場合
       // sourcesパラメータを設定しない（全選択として扱う）
     }
-    
     
     return params;
   }, [searchParams, initialSortBy, initialSourceIds, sources]);

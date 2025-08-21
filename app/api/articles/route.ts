@@ -82,8 +82,10 @@ export async function GET(request: NextRequest) {
       const where: ArticleWhereInput = {};
       // Support multiple sources selection
       if (sources === 'none') {
-        // 明示的に「何も選択しない」状態 - 不可能な条件を設定
-        where.sourceId = { in: [] };
+        // 明示的に「何も選択しない」状態 - 常にfalseになる条件を設定
+        // Prismaでは空配列のIN句は正しく動作しない場合があるため、
+        // 存在しないIDを使用
+        where.sourceId = '__none__';
       } else if (sources) {
         const sourceIds = sources.split(',').filter(id => id.trim());
         if (sourceIds.length > 0) {
