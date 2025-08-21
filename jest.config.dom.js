@@ -18,6 +18,9 @@ const customJestConfig = {
     '^next/navigation$': '<rootDir>/__mocks__/next/navigation.ts',
     '^next/image$': '<rootDir>/__mocks__/next/image.tsx',
     '^next/link$': '<rootDir>/__mocks__/next/link.tsx',
+    // Mock next-auth
+    '^next-auth/react$': '<rootDir>/__mocks__/next-auth/react.ts',
+    '^next-auth$': '<rootDir>/__mocks__/next-auth/index.ts',
     // Handle module aliases
     '^@/(.*)$': '<rootDir>/$1',
     // Mock Prisma client
