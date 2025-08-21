@@ -11,6 +11,7 @@ interface PresentationCandidate {
   title: string;
   author: string;
   views: number;
+  category?: string;  // カテゴリー情報を追加（デバッグ・分析用）
 }
 
 interface PresentationDetails {
@@ -107,10 +108,11 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     
-    console.log('📥 Speaker Deck: トレンドページを取得中...');
+    console.log('📥 Speaker Deck: 複数カテゴリーから取得中...');
     console.log(`  - 最小views数: ${speakerDeckConfig.minViews}`);
     console.log(`  - 対象期間: ${oneYearAgo.toISOString().split('T')[0]} 以降`);
     console.log(`  - 最大取得件数: ${speakerDeckConfig.maxArticles}`);
+    console.log(`  - カテゴリー数: ${speakerDeckConfig.categories.filter(c => c.enabled).length}`);
 
     // Step 1: 一覧ページから候補を収集
     const candidates = await this.collectCandidates();
@@ -185,19 +187,58 @@ export class SpeakerDeckFetcher extends BaseFetcher {
   }
 
   /**
-   * 一覧ページから候補を収集
+   * 一覧ページから候補を収集（複数カテゴリー対応）
    */
   private async collectCandidates(): Promise<PresentationCandidate[]> {
+    const allCandidates = new Map<string, PresentationCandidate>();
+    const enabledCategories = speakerDeckConfig.categories.filter(c => c.enabled);
+    
+    console.log(`Speaker Deck: ${enabledCategories.length}カテゴリーから記事を取得開始`);
+    
+    for (const category of enabledCategories) {
+      console.log(`  カテゴリー: ${category.name}を取得中...`);
+      const categoryCandidates = await this.collectCandidatesFromCategory(category);
+      
+      // URL重複を排除しながらMapに追加
+      for (const candidate of categoryCandidates) {
+        if (!allCandidates.has(candidate.url)) {
+          allCandidates.set(candidate.url, {
+            ...candidate,
+            category: category.name  // カテゴリー情報を追加
+          });
+        } else if (speakerDeckConfig.debug) {
+          console.log(`    重複記事をスキップ: ${candidate.title}`);
+        }
+      }
+      
+      console.log(`    ${category.name}: ${categoryCandidates.length}件の候補を取得`);
+    }
+    
+    // Views数で降順ソート
+    const candidates = Array.from(allCandidates.values());
+    candidates.sort((a, b) => b.views - a.views);
+    
+    console.log(`  合計: ${candidates.length}件の候補（重複除外後）`);
+    
+    return candidates;
+  }
+
+  /**
+   * 特定カテゴリーから候補を収集
+   */
+  private async collectCandidatesFromCategory(
+    category: { name: string; path: string; enabled: boolean; weight: number }
+  ): Promise<PresentationCandidate[]> {
     const candidates: PresentationCandidate[] = [];
     let page = 1;
+    const maxPerCategory = speakerDeckConfig.maxArticlesPerCategory || 35;
 
-    while (candidates.length < speakerDeckConfig.maxArticles * 2 && // 余裕を持って収集
-           page <= speakerDeckConfig.maxPages) {
+    while (candidates.length < maxPerCategory && page <= speakerDeckConfig.maxPages) {
       
-      const listUrl = `https://speakerdeck.com/c/programming?lang=ja&page=${page}`;
+      const listUrl = `https://speakerdeck.com/c/${category.path}?lang=ja&page=${page}`;
       
       if (speakerDeckConfig.debug) {
-        console.log(`  📄 ページ${page}を取得中...`);
+        console.log(`    ページ${page}を取得中...`);
       }
 
       try {
@@ -243,7 +284,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
         });
 
         if (speakerDeckConfig.debug) {
-          console.log(`    → ${foundOnPage}件の候補を発見`);
+          console.log(`      → ${foundOnPage}件の候補を発見`);
         }
 
         // 候補が見つからなくなったら終了
@@ -252,16 +293,13 @@ export class SpeakerDeckFetcher extends BaseFetcher {
         }
 
       } catch (error) {
-        console.error(`  ❌ ページ${page}の取得に失敗:`, error);
+        console.error(`    ページ${page}の取得に失敗:`, error);
         break;
       }
 
       page++;
       await this.delay(speakerDeckConfig.requestDelay);
     }
-
-    // Views数で降順ソート
-    candidates.sort((a, b) => b.views - a.views);
     
     return candidates;
   }
