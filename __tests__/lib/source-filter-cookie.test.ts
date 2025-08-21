@@ -43,41 +43,41 @@ describe('source-filter-cookie', () => {
 
   describe('setSourceFilterCookie', () => {
     // Skip these tests as NextResponse mocking is complex
-    it.skip('should set cookie with source IDs', () => {
+    it('should set cookie with source IDs', () => {
       // Test would require complex NextResponse mocking
     });
 
-    it.skip('should delete cookie when empty array is provided', () => {
+    it('should delete cookie when empty array is provided', () => {
       // Test would require complex NextResponse mocking
     });
 
-    it.skip('should handle single source ID', () => {
+    it('should handle single source ID', () => {
       // Test would require complex NextResponse mocking
     });
   });
 
   describe('getSourceFilterFromCookie', () => {
     // Skip these tests as NextRequest mocking is complex
-    it.skip('should get source IDs from request cookie', () => {
+    it('should get source IDs from request cookie', () => {
       // Test would require complex NextRequest mocking
     });
 
-    it.skip('should return empty array when cookie is not present', () => {
+    it('should return empty array when cookie is not present', () => {
       // Test would require complex NextRequest mocking
     });
   });
 
   describe('parseSourceFilterFromCookieClient', () => {
     // Skip these tests as they require jsdom environment
-    it.skip('should parse cookie from document.cookie', () => {
+    it('should parse cookie from document.cookie', () => {
       // Test would require jsdom environment
     });
 
-    it.skip('should return empty array when cookie is not present', () => {
+    it('should return empty array when cookie is not present', () => {
       // Test would require jsdom environment
     });
 
-    it.skip('should handle empty document.cookie', () => {
+    it('should handle empty document.cookie', () => {
       // Test would require jsdom environment
     });
   });

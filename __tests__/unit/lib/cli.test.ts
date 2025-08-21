@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import path from 'path';
 
 // CLI統合テストは後で実装予定
-describe.skip('CLI統合テスト', () => {
+describe('CLI統合テスト', () => {
   const cliPath = path.join(__dirname, '../../../lib/cli/index.ts');
   
   // TODO: Commander.jsのexitOverrideを使用してテストを改善

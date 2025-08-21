@@ -9,7 +9,7 @@ import { GET as getSourcesHandler } from '@/app/api/sources/route';
 import prismaMock from '../../../__mocks__/lib/prisma';
 // import redisMock from '../../../__mocks__/lib/redis/client'; // モジュールが存在しない
 
-describe.skip('Sources API', () => {
+describe('Sources API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     

@@ -9,7 +9,7 @@ import {
 // Redisクライアントのモック - jest.setup.node.jsで設定済み
 const mockRedis = createMockRedisClient();
 
-describe.skip('Cache API Integration Tests', () => {
+describe('Cache API Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Redisストアをクリア

@@ -25,7 +25,7 @@ import redisMock from '../../__mocks__/lib/redis/client';
 jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
-describe.skip('Sources API Tests', () => {
+describe('Sources API Tests', () => {
   beforeEach(() => {
     // モックのセットアップ
     setupPrismaMock();

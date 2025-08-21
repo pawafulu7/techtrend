@@ -44,7 +44,7 @@ const mockRedisClient = {
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 // 必要に応じてテスト内でモックの振る舞いを変更
 
-describe.skip('Articles API Tests V2', () => {
+describe('Articles API Tests V2', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     

@@ -15,7 +15,7 @@ async function fetchAPI(url: string) {
   return { data, headers, status: response.status };
 }
 
-describe.skip('API Cache Integration', () => {
+describe('API Cache Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset Redis mock

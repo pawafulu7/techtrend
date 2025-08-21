@@ -20,7 +20,7 @@ jest.mock('@/lib/cache', () => ({
   })),
 }));
 
-describe.skip('Articles API - Sort Functionality', () => {
+describe('Articles API - Sort Functionality', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });

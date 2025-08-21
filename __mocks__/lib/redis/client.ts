@@ -3,15 +3,27 @@
  * ioredis互換のインターフェースを提供
  */
 
+import { EventEmitter } from 'events';
+
 // Redisクライアントのモック実装
-class MockRedisClient {
+class MockRedisClient extends EventEmitter {
+  private store = new Map<string, string>();
+  
+  constructor() {
+    super();
+    // EventEmitterのメソッドをバインド
+    this.on = this.on.bind(this);
+    this.once = this.once.bind(this);
+    this.off = this.off.bind(this);
+    this.emit = this.emit.bind(this);
+  }
   // 基本的なRedisコマンドのモック（デフォルト値付き）
-  // getメソッドはnullを返すようにし、"undefined"文字列を返さない
+  // getメソッドはstoreから値を取得またはnullを返す
   get = jest.fn().mockImplementation((key) => {
-    // 明示的にnullを返す（undefinedや"undefined"文字列ではない）
-    return Promise.resolve(null);
+    return Promise.resolve(this.store.get(key) || null);
   });
   set = jest.fn().mockImplementation((key, value, ...args) => {
+    this.store.set(key, value);
     // EXオプション付きのsetを処理
     if (args[0] === 'EX') {
       return Promise.resolve('OK');
@@ -19,13 +31,37 @@ class MockRedisClient {
     return Promise.resolve('OK');
   });
   setex = jest.fn().mockResolvedValue('OK');
-  del = jest.fn().mockImplementation((...keys) => Promise.resolve(keys.length));
-  exists = jest.fn().mockResolvedValue(0);
+  del = jest.fn().mockImplementation((...keys) => {
+    let count = 0;
+    keys.forEach(key => {
+      if (this.store.has(key)) {
+        this.store.delete(key);
+        count++;
+      }
+    });
+    return Promise.resolve(count);
+  });
+  exists = jest.fn().mockImplementation((key) => {
+    return Promise.resolve(this.store.has(key) ? 1 : 0);
+  });
   expire = jest.fn().mockResolvedValue(1);
   ttl = jest.fn().mockResolvedValue(-2);
-  keys = jest.fn().mockResolvedValue([]);
-  mget = jest.fn().mockResolvedValue([]);
-  mset = jest.fn().mockResolvedValue('OK');
+  keys = jest.fn().mockImplementation((pattern) => {
+    const allKeys = Array.from(this.store.keys());
+    if (pattern === '*') return Promise.resolve(allKeys);
+    // 簡易的なパターンマッチング
+    const regex = new RegExp(pattern.replace('*', '.*'));
+    return Promise.resolve(allKeys.filter(key => regex.test(key)));
+  });
+  mget = jest.fn().mockImplementation((...keys) => {
+    return Promise.resolve(keys.map(key => this.store.get(key) || null));
+  });
+  mset = jest.fn().mockImplementation((...args) => {
+    for (let i = 0; i < args.length; i += 2) {
+      this.store.set(args[i], args[i + 1]);
+    }
+    return Promise.resolve('OK');
+  });
   
   // Hash操作
   hget = jest.fn();
@@ -77,9 +113,17 @@ class MockRedisClient {
   ping = jest.fn();
   
   // ユーティリティ
-  flushdb = jest.fn();
-  flushall = jest.fn();
-  dbsize = jest.fn();
+  flushdb = jest.fn().mockImplementation(() => {
+    this.store.clear();
+    return Promise.resolve('OK');
+  });
+  flushall = jest.fn().mockImplementation(() => {
+    this.store.clear();
+    return Promise.resolve('OK');
+  });
+  dbsize = jest.fn().mockImplementation(() => {
+    return Promise.resolve(this.store.size);
+  });
   
   // Pipeline (チェーン可能なメソッド)
   pipeline = jest.fn(() => ({
@@ -89,11 +133,10 @@ class MockRedisClient {
     exec: jest.fn(),
   }));
   
-  // イベントエミッター風のメソッド
-  on = jest.fn();
-  once = jest.fn();
-  off = jest.fn();
-  emit = jest.fn();
+  // ストアをクリアするヘルパーメソッド
+  clearStore() {
+    this.store.clear();
+  }
 }
 
 // グローバルなRedisモックインスタンス
@@ -110,6 +153,9 @@ export const redis = redisMock;
 
 // beforeEachフックでモックをリセット
 beforeEach(() => {
+  // ストアをクリア
+  redisMock.clearStore();
+  
   // 全てのモック関数をクリア
   Object.keys(redisMock).forEach(key => {
     const method = (redisMock as any)[key];

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 // fetchのモック
 global.fetch = jest.fn();
 
-describe.skip('Multiple Sources Filter API', () => {
+describe('Multiple Sources Filter API', () => {
   const baseUrl = 'http://localhost:3000';
   
   beforeAll(async () => {

@@ -16,7 +16,7 @@ jest.mock('@/lib/redis/client', () => {
   };
 });
 
-describe.skip('RedisCache', () => {
+describe('RedisCache', () => {
   let cache: RedisCache;
   let mockRedis: any;
 

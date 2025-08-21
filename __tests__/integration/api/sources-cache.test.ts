@@ -36,7 +36,7 @@ jest.mock('@/lib/redis/client', () => ({
 import { redis } from '@/lib/redis/client';
 import { PrismaClient } from '@prisma/client';
 
-describe.skip('/api/sources - Cache Integration', () => {
+describe('/api/sources - Cache Integration', () => {
   const mockPrisma = new PrismaClient();
   const mockRedis = redis as jest.Mocked<typeof redis>;
   
