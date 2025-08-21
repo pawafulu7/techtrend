@@ -60,6 +60,39 @@ Object.defineProperty(window, 'matchMedia', {
 // scrollToのモック
 window.scrollTo = jest.fn();
 
+// indexedDBのモック
+global.indexedDB = {
+  open: jest.fn(() => ({
+    result: {
+      createObjectStore: jest.fn(),
+      transaction: jest.fn(() => ({
+        objectStore: jest.fn(() => ({
+          get: jest.fn(() => ({
+            onsuccess: jest.fn(),
+            onerror: jest.fn(),
+          })),
+          put: jest.fn(() => ({
+            onsuccess: jest.fn(),
+            onerror: jest.fn(),
+          })),
+          delete: jest.fn(() => ({
+            onsuccess: jest.fn(),
+            onerror: jest.fn(),
+          })),
+          getAll: jest.fn(() => ({
+            onsuccess: jest.fn(),
+            onerror: jest.fn(),
+          })),
+        })),
+      })),
+    },
+    onsuccess: jest.fn(),
+    onerror: jest.fn(),
+    onupgradeneeded: jest.fn(),
+  })),
+  deleteDatabase: jest.fn(),
+};
+
 // モックのクリーンアップ
 afterEach(() => {
   jest.clearAllMocks();
