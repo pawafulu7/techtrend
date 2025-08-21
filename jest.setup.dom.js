@@ -1,6 +1,37 @@
 // DOM/React環境用のセットアップ
 import '@testing-library/jest-dom';
 
+// Next.jsのuseRouterモック
+jest.mock('next/router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    prefetch: jest.fn(),
+    query: {},
+    pathname: '/',
+    route: '/',
+    asPath: '/',
+    events: {
+      on: jest.fn(),
+      off: jest.fn(),
+      emit: jest.fn(),
+    },
+  }),
+}));
+
+// Next-authセッションモック
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({
+    data: null,
+    status: 'unauthenticated',
+    update: jest.fn(),
+  }),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  SessionProvider: ({ children }) => children,
+}));
+
 // window.openのモック
 global.open = jest.fn();
 

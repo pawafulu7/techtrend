@@ -3,14 +3,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/database';
 
 // Mock dependencies
-jest.mock('@/lib/database', () => ({
-  prisma: {
-    article: {
-      count: jest.fn(),
-      findMany: jest.fn(),
-    },
-  },
-}));
+jest.mock('@/lib/database');
 
 jest.mock('@/lib/cache', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
@@ -20,9 +13,23 @@ jest.mock('@/lib/cache', () => ({
   })),
 }));
 
+const prismaMock = prisma as any;
+
 describe('Articles API - Sort Functionality', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Prismaモックの設定
+    prismaMock.article = {
+      count: jest.fn().mockResolvedValue(0),
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      groupBy: jest.fn(),
+    };
   });
 
   describe('GET /api/articles', () => {
@@ -78,14 +85,14 @@ describe('Articles API - Sort Functionality', () => {
     ];
 
     it('should sort by publishedAt by default', async () => {
-      (prisma.article.count as jest.Mock).mockResolvedValue(2);
-      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(2);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const request = new NextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
       const data = await response.json();
 
-      expect(prisma.article.findMany).toHaveBeenCalledWith(
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: {
             publishedAt: 'desc',
@@ -97,14 +104,14 @@ describe('Articles API - Sort Functionality', () => {
     });
 
     it('should sort by createdAt when specified', async () => {
-      (prisma.article.count as jest.Mock).mockResolvedValue(2);
-      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(2);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const request = new NextRequest('http://localhost:3000/api/articles?sortBy=createdAt');
       const response = await GET(request);
       const data = await response.json();
 
-      expect(prisma.article.findMany).toHaveBeenCalledWith(
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: {
             createdAt: 'desc',
@@ -112,17 +119,18 @@ describe('Articles API - Sort Functionality', () => {
         })
       );
       expect(data.success).toBe(true);
+      expect(data.data.items).toEqual(mockArticles);
     });
 
     it('should sort by qualityScore when specified', async () => {
-      (prisma.article.count as jest.Mock).mockResolvedValue(2);
-      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(2);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const request = new NextRequest('http://localhost:3000/api/articles?sortBy=qualityScore');
       const response = await GET(request);
       const data = await response.json();
 
-      expect(prisma.article.findMany).toHaveBeenCalledWith(
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: {
             qualityScore: 'desc',
@@ -130,17 +138,18 @@ describe('Articles API - Sort Functionality', () => {
         })
       );
       expect(data.success).toBe(true);
+      expect(data.data.items).toEqual(mockArticles);
     });
 
     it('should fallback to publishedAt for invalid sortBy parameter', async () => {
-      (prisma.article.count as jest.Mock).mockResolvedValue(2);
-      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(2);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const request = new NextRequest('http://localhost:3000/api/articles?sortBy=invalidField');
       const response = await GET(request);
       const data = await response.json();
 
-      expect(prisma.article.findMany).toHaveBeenCalledWith(
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: {
             publishedAt: 'desc',
@@ -148,17 +157,18 @@ describe('Articles API - Sort Functionality', () => {
         })
       );
       expect(data.success).toBe(true);
+      expect(data.data.items).toEqual(mockArticles);
     });
 
     it('should support ascending sort order', async () => {
-      (prisma.article.count as jest.Mock).mockResolvedValue(2);
-      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(2);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const request = new NextRequest('http://localhost:3000/api/articles?sortBy=createdAt&sortOrder=asc');
       const response = await GET(request);
       const data = await response.json();
 
-      expect(prisma.article.findMany).toHaveBeenCalledWith(
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: {
             createdAt: 'asc',
@@ -166,32 +176,33 @@ describe('Articles API - Sort Functionality', () => {
         })
       );
       expect(data.success).toBe(true);
+      expect(data.data.items).toEqual(mockArticles);
     });
 
     it('should include sortBy in cache key', async () => {
-      (prisma.article.count as jest.Mock).mockResolvedValue(2);
-      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(2);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const request = new NextRequest('http://localhost:3000/api/articles?sortBy=createdAt');
       await GET(request);
 
-      // Cache key should be generated with the sortBy parameter
-      // This is verified by the mock implementation being called
-      expect(prisma.article.findMany).toHaveBeenCalled();
+      // RedisCache のインスタンスが作成されていることを確認
+      const RedisCache = require('@/lib/cache').RedisCache;
+      expect(RedisCache).toHaveBeenCalled();
     });
 
     it('should validate all sortBy options', async () => {
       const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
       
       for (const field of validSortFields) {
-        (prisma.article.count as jest.Mock).mockResolvedValue(2);
-        (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
-
+        prismaMock.article.count.mockResolvedValue(2);
+        prismaMock.article.findMany.mockResolvedValue(mockArticles);
+        
         const request = new NextRequest(`http://localhost:3000/api/articles?sortBy=${field}`);
         const response = await GET(request);
         const data = await response.json();
-
-        expect(prisma.article.findMany).toHaveBeenCalledWith(
+        
+        expect(prismaMock.article.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             orderBy: {
               [field]: 'desc',

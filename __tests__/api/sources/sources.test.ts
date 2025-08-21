@@ -3,21 +3,31 @@
  * MSW依存を排除し、純粋なJestモックを使用
  */
 
+// モックを先に設定
+jest.mock('@/lib/database');
+jest.mock('@/lib/redis/client');
+
 import { testApiHandler, assertSuccessResponse } from '../../helpers/test-utils';
 import { GET as getSourcesHandler } from '@/app/api/sources/route';
-// import { GET as getStatsHandler } from '@/app/api/sources/stats/route'; // モジュールが存在しない
-import prismaMock from '../../../__mocks__/lib/prisma';
-// import redisMock from '../../../__mocks__/lib/redis/client'; // モジュールが存在しない
+import { prisma } from '@/lib/database';
+import { getRedisClient } from '@/lib/redis/client';
+
+const prismaMock = prisma as any;
+const redisMock = getRedisClient() as any;
 
 describe('Sources API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
     // デフォルトのモック設定
-    prismaMock.source.findMany.mockResolvedValue([]);
-    prismaMock.article.groupBy.mockResolvedValue([]);
-    // redisMock.get.mockResolvedValue(null);
-    // redisMock.set.mockResolvedValue('OK');
+    prismaMock.source = {
+      findMany: jest.fn().mockResolvedValue([]),
+    };
+    prismaMock.article = {
+      groupBy: jest.fn().mockResolvedValue([]),
+    };
+    redisMock.get = jest.fn().mockResolvedValue(null);
+    redisMock.set = jest.fn().mockResolvedValue('OK');
   });
 
   describe('GET /api/sources', () => {

@@ -88,11 +88,14 @@ describe('/api/articles', () => {
 
       expect(response.status).toBe(200);
       expect(data).toMatchObject({
-        articles: mockArticles,
-        total: 2,
-        page: 1,
-        limit: 20,
-        hasMore: false,
+        success: true,
+        data: {
+          items: mockArticles,
+          total: 2,
+          page: 1,
+          limit: 20,
+          totalPages: 1,
+        },
       });
 
       // Prismaクエリのパラメータを確認
@@ -119,10 +122,13 @@ describe('/api/articles', () => {
 
       expect(response.status).toBe(200);
       expect(data).toMatchObject({
-        page: 3,
-        limit: 10,
-        total: 100,
-        hasMore: true,
+        success: true,
+        data: {
+          page: 3,
+          limit: 10,
+          total: 100,
+          totalPages: 10,
+        },
       });
 
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -137,13 +143,13 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue([mockArticles[0]]);
       prismaMock.article.count.mockResolvedValue(1);
 
-      const request = new Request('http://localhost:3000/api/articles?source=qiita');
+      const request = new Request('http://localhost:3000/api/articles?sourceId=qiita');
       const response = await GET(request);
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.articles).toHaveLength(1);
-      expect(data.articles[0].source.id).toBe('qiita');
+      expect(data.data.items).toHaveLength(1);
+      expect(data.data.items[0].source.id).toBe('qiita');
 
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -200,7 +206,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue([mockArticles[0]]);
       prismaMock.article.count.mockResolvedValue(1);
 
-      const request = new Request('http://localhost:3000/api/articles?q=React');
+      const request = new Request('http://localhost:3000/api/articles?search=React');
       const response = await GET(request);
       const data = await response.json();
 
@@ -221,7 +227,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue([mockArticles[0]]);
       prismaMock.article.count.mockResolvedValue(1);
 
-      const request = new Request('http://localhost:3000/api/articles?q=React TypeScript');
+      const request = new Request('http://localhost:3000/api/articles?search=React TypeScript');
       const response = await GET(request);
       const data = await response.json();
 
@@ -266,11 +272,11 @@ describe('/api/articles', () => {
 
     it('uses cache when available', async () => {
       const cachedData = JSON.stringify({
-        articles: mockArticles,
+        items: mockArticles,
         total: 2,
         page: 1,
         limit: 20,
-        hasMore: false,
+        totalPages: 1,
       });
       redisMock.get.mockResolvedValue(cachedData);
 
@@ -279,7 +285,7 @@ describe('/api/articles', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.articles).toEqual(mockArticles);
+      expect(data.data.items).toEqual(mockArticles);
       
       // データベースは呼ばれない
       expect(prismaMock.article.findMany).not.toHaveBeenCalled();
@@ -327,14 +333,14 @@ describe('/api/articles', () => {
 
       expect(response.status).toBe(200);
       // limitは最大値に制限される
-      expect(data.limit).toBeLessThanOrEqual(100);
+      expect(data.data.limit).toBeLessThanOrEqual(100);
     });
 
     it('handles empty search query', async () => {
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(2);
 
-      const request = new Request('http://localhost:3000/api/articles?q=');
+      const request = new Request('http://localhost:3000/api/articles?search=');
       const response = await GET(request);
       const data = await response.json();
 

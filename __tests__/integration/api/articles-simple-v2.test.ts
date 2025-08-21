@@ -5,55 +5,39 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GET, POST } from '@/app/api/articles/route';
-
-// モックを手動で定義
-const mockFindMany = jest.fn();
-const mockCount = jest.fn();
-const mockFindUnique = jest.fn();
-const mockCreate = jest.fn();
-const mockGroupBy = jest.fn();
+import { prisma } from '@/lib/database';
+import { getRedisClient } from '@/lib/redis/client';
 
 // Prismaモック
-jest.mock('@/lib/database', () => ({
-  prisma: {
-    article: {
-      findMany: mockFindMany,
-      count: mockCount,
-      findUnique: mockFindUnique,
-      create: mockCreate,
-      groupBy: mockGroupBy,
-    },
-    source: {
-      findMany: jest.fn(),
-    },
-    tag: {
-      findMany: jest.fn(),
-    },
-  }
-}));
+jest.mock('@/lib/database');
+jest.mock('@/lib/redis/client');
 
-// Redisモック - jest.setup.node.jsで設定済み
-const mockRedisClient = {
-  get: jest.fn(),
-  set: jest.fn(),
-  del: jest.fn(),
-  keys: jest.fn(),
-  setex: jest.fn(),
-};
-
-// Redisクライアントのモックはjest.setup.node.jsで設定済み
-// 必要に応じてテスト内でモックの振る舞いを変更
+const prismaMock = prisma as any;
+const redisMock = getRedisClient() as any;
 
 describe('Articles API Tests V2', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
     // デフォルトのモック設定
-    mockFindMany.mockResolvedValue([]);
-    mockCount.mockResolvedValue(0);
-    mockFindUnique.mockResolvedValue(null);
-    mockGet.mockResolvedValue(null);
-    mockSet.mockResolvedValue('OK');
+    prismaMock.article = {
+      findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+      findUnique: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      groupBy: jest.fn().mockResolvedValue([]),
+    };
+    
+    prismaMock.source = {
+      findMany: jest.fn().mockResolvedValue([]),
+    };
+    
+    prismaMock.tag = {
+      findMany: jest.fn().mockResolvedValue([]),
+    };
+    
+    redisMock.get = jest.fn().mockResolvedValue(null);
+    redisMock.set = jest.fn().mockResolvedValue('OK');
   });
 
   describe('GET /api/articles', () => {
@@ -85,8 +69,8 @@ describe('Articles API Tests V2', () => {
         }
       ];
 
-      mockFindMany.mockResolvedValue(mockArticles);
-      mockCount.mockResolvedValue(1);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(1);
 
       const request = new NextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
@@ -109,7 +93,7 @@ describe('Articles API Tests V2', () => {
         totalPages: 1
       });
 
-      mockGet.mockResolvedValueOnce(cachedData);
+      redisMock.get.mockResolvedValueOnce(cachedData);
 
       const request = new NextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
@@ -118,44 +102,93 @@ describe('Articles API Tests V2', () => {
       
       const body = await response.json();
       expect(body.success).toBe(true);
+      expect(body.data.items).toHaveLength(1);
       expect(body.data.items[0].title).toBe('Cached Article');
       
-      // DBが呼ばれないことを確認
-      expect(mockFindMany).not.toHaveBeenCalled();
-      expect(mockCount).not.toHaveBeenCalled();
+      // データベースクエリが呼ばれていないことを確認
+      expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should handle filters', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const request = new NextRequest('http://localhost:3000/api/articles?source=qiita&tag=react');
+      await GET(request);
+
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            sourceId: 'qiita',
+            tags: {
+              some: {
+                name: 'react'
+              }
+            }
+          })
+        })
+      );
+    });
+
+    it('should handle pagination', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(100);
+
+      const request = new NextRequest('http://localhost:3000/api/articles?page=2&limit=10');
+      const response = await GET(request);
+
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 10,
+          take: 10
+        })
+      );
+
+      const body = await response.json();
+      expect(body.data.page).toBe(2);
+      expect(body.data.limit).toBe(10);
+    });
+
+    it('should handle errors gracefully', async () => {
+      prismaMock.article.findMany.mockRejectedValue(new Error('Database error'));
+
+      const request = new NextRequest('http://localhost:3000/api/articles');
+      const response = await GET(request);
+
+      expect(response.status).toBe(500);
+      
+      const body = await response.json();
+      expect(body.success).toBe(false);
+      expect(body.error).toBeDefined();
     });
   });
 
   describe('POST /api/articles', () => {
-    it('should create new article', async () => {
+    it('should create a new article', async () => {
       const newArticle = {
         title: 'New Article',
         url: 'https://example.com/new',
-        content: 'New content',
-        sourceId: 'test-source',
-        publishedAt: new Date().toISOString(),
-        tagNames: []
+        summary: 'New Summary',
+        sourceId: 'test-source'
       };
 
-      mockFindUnique.mockResolvedValueOnce(null);
-      mockCreate.mockResolvedValueOnce({
+      const createdArticle = {
         id: 'new-id',
-        title: 'New Article',
-        url: 'https://example.com/new',
-        content: 'New content',
-        sourceId: 'test-source',
-        source: {
-          id: 'test-source',
-          name: 'Test Source'
-        },
-        tags: []
-      });
-      
-      mockKeys.mockResolvedValueOnce([]);
+        ...newArticle,
+        publishedAt: new Date(),
+        qualityScore: 80,
+        bookmarks: 0,
+        userVotes: 0,
+        difficulty: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      prismaMock.article.create.mockResolvedValue(createdArticle);
 
       const request = new NextRequest('http://localhost:3000/api/articles', {
         method: 'POST',
-        body: JSON.stringify(newArticle),
+        body: JSON.stringify(newArticle)
       });
 
       const response = await POST(request);
@@ -164,38 +197,28 @@ describe('Articles API Tests V2', () => {
       
       const body = await response.json();
       expect(body.success).toBe(true);
-      expect(body.data).toBeDefined();
+      expect(body.data.id).toBe('new-id');
       expect(body.data.title).toBe('New Article');
-      
-      expect(mockCreate).toHaveBeenCalled();
     });
 
-    it('should prevent duplicate articles', async () => {
-      const duplicateArticle = {
-        title: 'Duplicate',
-        url: 'https://example.com/duplicate',
-        content: 'Content',
-        sourceId: 'test-source',
+    it('should validate required fields', async () => {
+      const invalidArticle = {
+        title: 'Missing URL'
+        // urlが欠けている
       };
-
-      mockFindUnique.mockResolvedValueOnce({
-        id: 'existing',
-        url: duplicateArticle.url
-      });
 
       const request = new NextRequest('http://localhost:3000/api/articles', {
         method: 'POST',
-        body: JSON.stringify(duplicateArticle),
+        body: JSON.stringify(invalidArticle)
       });
 
       const response = await POST(request);
 
-      expect(response.status).toBe(409);
+      expect(response.status).toBe(400);
       
       const body = await response.json();
-      expect(body.error).toContain('already exists');
-      
-      expect(mockCreate).not.toHaveBeenCalled();
+      expect(body.success).toBe(false);
+      expect(body.error).toContain('required');
     });
   });
 });

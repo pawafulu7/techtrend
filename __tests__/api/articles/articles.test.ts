@@ -21,10 +21,19 @@ describe('Articles API', () => {
     jest.clearAllMocks();
     
     // デフォルトのモック設定
-    prismaMock.article.findMany.mockResolvedValue([]);
-    prismaMock.article.count.mockResolvedValue(0);
-    redisMock.get.mockResolvedValue(null);
-    redisMock.set.mockResolvedValue('OK');
+    prismaMock.article = {
+      findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      groupBy: jest.fn(),
+    };
+    
+    redisMock.get = jest.fn().mockResolvedValue(null);
+    redisMock.set = jest.fn().mockResolvedValue('OK');
   });
 
   describe('GET /api/articles', () => {

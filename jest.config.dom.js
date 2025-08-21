@@ -14,10 +14,15 @@ const customJestConfig = {
     '^.+\\.(css|sass|scss)$': '<rootDir>/__mocks__/styleMock.js',
     // Image imports
     '^.+\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/fileMock.js',
-    // Mock Next.js navigation
-    '^next/navigation$': '<rootDir>/__tests__/__mocks__/next-navigation.ts',
+    // Mock Next.js modules
+    '^next/navigation$': '<rootDir>/__mocks__/next/navigation.ts',
+    '^next/image$': '<rootDir>/__mocks__/next/image.tsx',
+    '^next/link$': '<rootDir>/__mocks__/next/link.tsx',
     // Handle module aliases
     '^@/(.*)$': '<rootDir>/$1',
+    // Mock Prisma client
+    '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
+    '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
   },
   testPathIgnorePatterns: [
     '<rootDir>/.next/',

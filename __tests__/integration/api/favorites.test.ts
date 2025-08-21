@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from '@jest/globals';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/database';
 
 describe('お気に入りAPIエンドポイントテスト', () => {
   const baseUrl = 'http://localhost:3000';

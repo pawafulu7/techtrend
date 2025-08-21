@@ -41,9 +41,8 @@ describe('BaseFetcher', () => {
   const mockSource: Source = {
     id: 'test-source-id',
     name: 'Test Source',
+    type: 'rss',
     url: 'https://test.example.com',
-    rssUrl: null,
-    category: 'test',
     enabled: true,
     createdAt: new Date(),
     updatedAt: new Date(),
