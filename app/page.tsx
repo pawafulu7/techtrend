@@ -160,6 +160,7 @@ export default async function Home({ searchParams }: PageProps) {
           <Suspense fallback={<ArticleSkeleton />}>
             {enableInfiniteScroll ? (
               <HomeClientInfinite 
+                key={`${params.sources || 'all'}-${params.sourceId || ''}-${params.tag || ''}-${params.search || ''}`}
                 viewMode={viewMode} 
                 sources={sources} 
                 tags={tags}

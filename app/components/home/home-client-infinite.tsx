@@ -36,9 +36,12 @@ export function HomeClientInfinite({
   // URLパラメータからフィルターを構築
   const filters = useMemo(() => {
     const params: Record<string, string> = {};
+    
+    // まず、sources以外のパラメータをコピー
     searchParams.forEach((value, key) => {
-      // ページパラメータとreturningパラメータは除外
-      if (key !== 'page' && key !== 'limit' && key !== 'returning') {
+      // ページパラメータとreturningパラメータ、そしてsources関連は後で処理
+      if (key !== 'page' && key !== 'limit' && key !== 'returning' && 
+          key !== 'sources' && key !== 'sourceId') {
         params[key] = value;
       }
     });
@@ -53,33 +56,17 @@ export function HomeClientInfinite({
     const hasSourcesParam = searchParams.has('sources');
     const hasSourceIdParam = searchParams.has('sourceId');
     
+    // URLにsourcesパラメータがある場合は、それを使用
+    if (hasSourcesParam) {
+      params.sources = searchParams.get('sources')!;
+    } else if (hasSourceIdParam) {
+      params.sourceId = searchParams.get('sourceId')!;
+    }
+    
     if (!hasSourcesParam && !hasSourceIdParam) {
-      // URLにソース関連のパラメータがまったくない場合
-      // initialSourceIdsがある場合はそれを使用（ただし、全選択の場合は何も設定しない）
-      if (initialSourceIds !== undefined && Array.isArray(initialSourceIds)) {
-        // 有効なソースIDのみをフィルタリング
-        const validSourceIds = sources.map(s => s.id);
-        const filteredSourceIds = initialSourceIds.filter(id => validSourceIds.includes(id));
-        
-        if (filteredSourceIds.length === 0 && initialSourceIds.length === 0) {
-          // 明示的に空配列の場合（すべて解除）
-          // ただし、URLが "/" の場合はCookieの値を無視して全選択とする
-          // URLにパラメータがない = デフォルト = 全選択
-          // Cookieの空配列は古い状態の可能性があるため
-          // params.sources = 'none'; // これを設定しない
-        } else if (filteredSourceIds.length === 0 && initialSourceIds.length > 0) {
-          // Cookieに無効なIDのみが含まれている場合
-          params.sources = 'none';
-        } else if (filteredSourceIds.length === validSourceIds.length) {
-          // すべての有効なソースが選択されている場合は、パラメータを設定しない
-          // これにより、APIはすべてのソースの記事を返す
-        } else if (filteredSourceIds.length > 0 && filteredSourceIds.length < validSourceIds.length) {
-          // 一部のソースが選択されている場合のみ設定
-          params.sources = filteredSourceIds.join(',');
-        }
-      }
-      // initialSourceIdsがundefinedまたは配列でない場合
-      // sourcesパラメータを設定しない（全選択として扱う）
+      // URLにソース関連のパラメータがまったくない場合 = 全選択
+      // Cookieの値は無視して、何も設定しない（全選択として扱う）
+      // params.sourcesを設定しない = 全記事を表示
     }
     
     return params;
@@ -93,6 +80,7 @@ export function HomeClientInfinite({
     isLoading,
     isError,
     error,
+    refetch,
   } = useInfiniteArticles(filters);
 
   // ページごとの記事を1つの配列にフラット化

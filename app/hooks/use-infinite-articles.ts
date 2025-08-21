@@ -1,5 +1,6 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { ArticleWithRelations } from '@/types/models';
+import { useEffect, useRef } from 'react';
 
 interface ArticleFilters {
   keyword?: string;
@@ -20,6 +21,9 @@ interface ArticlesResponse {
 }
 
 export function useInfiniteArticles(filters: ArticleFilters) {
+  const queryClient = useQueryClient();
+  const prevFilterKeyRef = useRef<string>('');
+  
   // フィルタを正規化（undefined値を削除、キーをソート）
   const normalizedFilters = Object.keys(filters)
     .sort()
@@ -30,8 +34,22 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       return acc;
     }, {} as ArticleFilters);
   
+  // フィルターをJSON文字列化してキーとする（確実な変更検出のため）
+  const filterKey = JSON.stringify(normalizedFilters);
+  
+  // フィルターが変更されたときに、すべてのinfinite-articlesクエリをリセット
+  useEffect(() => {
+    if (prevFilterKeyRef.current && prevFilterKeyRef.current !== filterKey) {
+      // すべてのinfinite-articlesクエリを削除
+      queryClient.removeQueries({ queryKey: ['infinite-articles'] });
+      // キャッシュを完全にクリア
+      queryClient.invalidateQueries({ queryKey: ['infinite-articles'] });
+    }
+    prevFilterKeyRef.current = filterKey;
+  }, [filterKey, queryClient]);
+  
   return useInfiniteQuery<ArticlesResponse, Error>({
-    queryKey: ['infinite-articles', normalizedFilters],
+    queryKey: ['infinite-articles', filterKey],
     queryFn: async ({ pageParam = 1 }) => {
       // 毎回新しいURLSearchParamsを作成
       const searchParams = new URLSearchParams();
