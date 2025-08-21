@@ -218,8 +218,8 @@ describe('Articles API', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             OR: [
-              { title: { contains: 'TypeScript' } },
-              { summary: { contains: 'TypeScript' } }
+              { title: { contains: 'TypeScript', mode: 'insensitive' } },
+              { summary: { contains: 'TypeScript', mode: 'insensitive' } }
             ]
           })
         })
@@ -242,14 +242,14 @@ describe('Articles API', () => {
             AND: [
               {
                 OR: [
-                  { title: { contains: 'TypeScript' } },
-                  { summary: { contains: 'TypeScript' } }
+                  { title: { contains: 'TypeScript', mode: 'insensitive' } },
+                  { summary: { contains: 'TypeScript', mode: 'insensitive' } }
                 ]
               },
               {
                 OR: [
-                  { title: { contains: 'React' } },
-                  { summary: { contains: 'React' } }
+                  { title: { contains: 'React', mode: 'insensitive' } },
+                  { summary: { contains: 'React', mode: 'insensitive' } }
                 ]
               }
             ]
@@ -274,20 +274,20 @@ describe('Articles API', () => {
             AND: [
               {
                 OR: [
-                  { title: { contains: 'TypeScript' } },
-                  { summary: { contains: 'TypeScript' } }
+                  { title: { contains: 'TypeScript', mode: 'insensitive' } },
+                  { summary: { contains: 'TypeScript', mode: 'insensitive' } }
                 ]
               },
               {
                 OR: [
-                  { title: { contains: 'React' } },
-                  { summary: { contains: 'React' } }
+                  { title: { contains: 'React', mode: 'insensitive' } },
+                  { summary: { contains: 'React', mode: 'insensitive' } }
                 ]
               },
               {
                 OR: [
-                  { title: { contains: 'Vue' } },
-                  { summary: { contains: 'Vue' } }
+                  { title: { contains: 'Vue', mode: 'insensitive' } },
+                  { summary: { contains: 'Vue', mode: 'insensitive' } }
                 ]
               }
             ]

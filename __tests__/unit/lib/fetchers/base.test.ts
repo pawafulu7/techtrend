@@ -2,6 +2,17 @@ import { BaseFetcher } from '@/lib/fetchers/base';
 import { Source } from '@prisma/client';
 import { CreateArticleInput, FetchResult } from '@/types/fetchers';
 
+// loggerをモック
+jest.mock('@/lib/cli/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    success: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 // テスト用の具体的なフェッチャー実装
 class TestFetcher extends BaseFetcher {
   private mockResult: FetchResult;
@@ -65,6 +76,8 @@ describe('BaseFetcher', () => {
     jest.spyOn(console, 'log').mockImplementation();
     jest.spyOn(console, 'warn').mockImplementation();
     jest.spyOn(console, 'error').mockImplementation();
+    // ログレベルを設定してログが出力されるようにする
+    process.env.LOG_LEVEL = 'INFO';
   });
 
   afterEach(() => {
@@ -82,9 +95,10 @@ describe('BaseFetcher', () => {
       const result = await fetcher.fetch();
 
       expect(result).toEqual(mockResult);
-      // logger の出力形式に合わせて期待値を調整
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Test Source から記事を取得中...'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Test Source: 1件の記事を取得'));
+      // logger のモックを確認
+      const { logger } = require('@/lib/cli/utils/logger');
+      expect(logger.info).toHaveBeenCalledWith('Test Source から記事を取得中...');
+      expect(logger.success).toHaveBeenCalledWith('Test Source: 1件の記事を取得');
     });
 
     it('無効化されたソースの場合は空の結果を返す', async () => {
@@ -94,9 +108,10 @@ describe('BaseFetcher', () => {
       const result = await fetcher.fetch();
 
       expect(result).toEqual({ articles: [], errors: [] });
-      // logger.info と logger.warn の両方が呼ばれる
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Test Source から記事を取得中...'));
-      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Test Source は無効化されています'));
+      // logger のモックを確認
+      const { logger } = require('@/lib/cli/utils/logger');
+      expect(logger.info).toHaveBeenCalledWith('Test Source から記事を取得中...');
+      expect(logger.warn).toHaveBeenCalledWith('Test Source は無効化されています');
     });
 
     it('記事が見つからない場合の処理', async () => {
@@ -109,8 +124,8 @@ describe('BaseFetcher', () => {
       const result = await fetcher.fetch();
 
       expect(result).toEqual(emptyResult);
-      // logger.info の出力形式に合わせて期待値を調整
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Test Source: 記事が見つかりませんでした'));
+      // logger.info の出力形式に合わせて期待値を調整（タイムスタンプとアイコンを含む）
+      expect(console.log).toHaveBeenCalledWith(expect.stringMatching(/.*ℹ️.*Test Source: 記事が見つかりませんでした/));
     });
 
     it('エラーが発生した場合の処理', async () => {
@@ -127,10 +142,9 @@ describe('BaseFetcher', () => {
       expect(result.errors).toHaveLength(1);
       // ExternalAPIError の形式に合わせて期待値を調整
       expect(result.errors[0].message).toContain('Fetch error');
-      // logger.error は複数回呼ばれるので、最初の呼び出しを確認
-      expect(console.error).toHaveBeenCalled();
-      const errorCalls = (console.error as jest.Mock).mock.calls;
-      expect(errorCalls[0][0]).toContain('Test Source エラー:');
+      // logger のモックを確認
+      const { logger } = require('@/lib/cli/utils/logger');
+      expect(logger.error).toHaveBeenCalled();
     });
   });
 

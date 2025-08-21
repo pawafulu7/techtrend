@@ -2,7 +2,7 @@ import { getRedisClient } from '@/lib/redis/client';
 import { CacheOptions, CacheStats, CacheKeyOptions } from './types';
 
 export class RedisCache {
-  private redis = getRedisClient();
+  private redis: ReturnType<typeof getRedisClient>;
   private defaultTTL: number;
   private namespace: string;
   private stats: CacheStats = {
@@ -12,6 +12,7 @@ export class RedisCache {
   };
 
   constructor(options?: CacheOptions) {
+    this.redis = getRedisClient();
     this.defaultTTL = options?.ttl || 3600; // 1 hour default
     this.namespace = options?.namespace || '@techtrend/cache';
   }

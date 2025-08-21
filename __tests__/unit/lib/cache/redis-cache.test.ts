@@ -1,20 +1,21 @@
-import { RedisCache } from '@/lib/cache/redis-cache';
-
-// Mock ioredis
+// モックを先に設定する必要がある
 jest.mock('ioredis');
-jest.mock('@/lib/redis/client', () => {
-  const mockRedis = {
-    get: jest.fn(),
-    set: jest.fn(),
-    del: jest.fn(),
-    keys: jest.fn().mockResolvedValue([]),
-    on: jest.fn(),
-    quit: jest.fn(),
-  };
-  return {
-    getRedisClient: jest.fn(() => mockRedis),
-  };
-});
+
+const mockRedisInstance = {
+  get: jest.fn(),
+  set: jest.fn(),
+  del: jest.fn(),
+  keys: jest.fn().mockResolvedValue([]),
+  on: jest.fn(),
+  quit: jest.fn(),
+};
+
+jest.mock('@/lib/redis/client', () => ({
+  getRedisClient: jest.fn(() => mockRedisInstance)
+}));
+
+// Import after mocking
+import { RedisCache } from '@/lib/cache/redis-cache';
 
 describe('RedisCache', () => {
   let cache: RedisCache;
@@ -24,9 +25,15 @@ describe('RedisCache', () => {
     // Reset mocks
     jest.clearAllMocks();
     
-    // Get mock redis instance
-    const { getRedisClient } = require('@/lib/redis/client');
-    mockRedis = getRedisClient();
+    // Reset mock functions
+    mockRedisInstance.get.mockClear();
+    mockRedisInstance.set.mockClear();
+    mockRedisInstance.del.mockClear();
+    mockRedisInstance.keys.mockClear();
+    mockRedisInstance.keys.mockResolvedValue([]);
+    
+    // Get reference to mock
+    mockRedis = mockRedisInstance;
     
     // Create cache instance
     cache = new RedisCache();
