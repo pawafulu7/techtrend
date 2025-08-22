@@ -115,7 +115,7 @@ describe('RedisCache', () => {
         params: { id: '123', type: undefined as any }
       });
       // RedisCache doesn't filter undefined, it converts to string
-      expect(key).toBe('test:{"id":"123"}');
+      expect(key).toBe('test:id=123:type=undefined');
     });
   });
 

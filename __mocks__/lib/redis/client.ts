@@ -7,7 +7,7 @@ import { EventEmitter } from 'events';
 
 // Redisクライアントのモック実装
 class MockRedisClient extends EventEmitter {
-  private store = new Map<string, string>();
+  public store = new Map<string, string>();
   public get: any;
   public set: any;
   
@@ -20,16 +20,15 @@ class MockRedisClient extends EventEmitter {
     this.emit = this.emit.bind(this);
     
     // getメソッドを正しく初期化（mockResolvedValueが使えるように）
-    this.get = jest.fn();
-    this.get.mockImplementation((key) => {
+    this.get = jest.fn((key) => {
       return Promise.resolve(this.store.get(key) || null);
     });
     
     // setメソッドも同様に初期化
-    this.set = jest.fn();
-    this.set.mockImplementation((key, value, ...args) => {
-      this.store.set(key, value);
-      // EXオプション付きのsetを処理
+    this.set = jest.fn((key, value, ...args) => {
+      // 値を文字列として保存（RedisはすべてをStringとして保存）
+      const storedValue = typeof value === 'string' ? value : JSON.stringify(value);
+      this.store.set(key, storedValue);
       if (args[0] === 'EX') {
         return Promise.resolve('OK');
       }
@@ -53,7 +52,13 @@ class MockRedisClient extends EventEmitter {
     return Promise.resolve(this.store.has(key) ? 1 : 0);
   });
   expire = jest.fn().mockResolvedValue(1);
-  ttl = jest.fn().mockResolvedValue(-2);
+  ttl = jest.fn().mockImplementation((key) => {
+    // キーが存在する場合は適当なTTL値を返す
+    if (this.store.has(key)) {
+      return Promise.resolve(3600); // デフォルト1時間
+    }
+    return Promise.resolve(-2); // キーが存在しない場合
+  });
   keys = jest.fn().mockImplementation((pattern) => {
     const allKeys = Array.from(this.store.keys());
     if (pattern === '*') return Promise.resolve(allKeys);
@@ -164,11 +169,28 @@ beforeEach(() => {
   // ストアをクリア
   redisMock.clearStore();
   
-  // 全てのモック関数をクリア
+  // get/setメソッドを再初期化（mockResolvedValueを維持）
+  redisMock.get = jest.fn((key) => {
+    return Promise.resolve(redisMock.store.get(key) || null);
+  });
+  
+  redisMock.set = jest.fn((key, value, ...args) => {
+    // 値を文字列として保存（RedisはすべてをStringとして保存）
+    const storedValue = typeof value === 'string' ? value : JSON.stringify(value);
+    redisMock.store.set(key, storedValue);
+    if (args[0] === 'EX') {
+      return Promise.resolve('OK');
+    }
+    return Promise.resolve('OK');
+  });
+  
+  // その他のモック関数をクリア
   Object.keys(redisMock).forEach(key => {
-    const method = (redisMock as any)[key];
-    if (typeof method === 'function' && method.mockClear) {
-      method.mockClear();
+    if (key !== 'get' && key !== 'set' && key !== 'store' && key !== 'clearStore') {
+      const method = (redisMock as any)[key];
+      if (typeof method === 'function' && method.mockClear) {
+        method.mockClear();
+      }
     }
   });
   

@@ -23,14 +23,8 @@ export const cache = {
     
     if (options?.params) {
       const sortedParams = Object.entries(options.params)
-        .filter(([_, v]) => v !== undefined)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([k, v]) => {
-          if (Array.isArray(v)) {
-            return `${k}=${v.join(',')}`;
-          }
-          return `${k}=${v}`;
-        })
+        .map(([k, v]) => `${k}=${v}`)
         .join(':');
       if (sortedParams) {
         key = `${key}:${sortedParams}`;
