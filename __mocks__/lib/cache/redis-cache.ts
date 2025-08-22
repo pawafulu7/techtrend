@@ -1,57 +1,37 @@
 /**
  * Mock for @/lib/cache/redis-cache
+ * CacheMockFactoryを使用した統一されたモック実装
  */
 
-export const cache = {
-  get: jest.fn().mockResolvedValue(null),
-  set: jest.fn().mockResolvedValue(undefined),
-  getOrSet: jest.fn(async (key: string, fetcher: () => Promise<any>, ttl?: number) => {
-    const cached = await cache.get(key);
-    if (cached) return cached;
-    const value = await fetcher();
-    await cache.set(key, value, ttl);
-    return value;
-  }),
-  invalidate: jest.fn().mockResolvedValue(undefined),
-  clear: jest.fn().mockResolvedValue(undefined),
-  generateCacheKey: jest.fn((base: string, options?: any) => {
-    let key = base;
-    
-    if (options?.prefix) {
-      key = `${options.prefix}:${key}`;
-    }
-    
-    if (options?.params) {
-      const sortedParams = Object.entries(options.params)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([k, v]) => `${k}=${v}`)
-        .join(':');
-      if (sortedParams) {
-        key = `${key}:${sortedParams}`;
-      }
-    }
-    
-    return key;
-  }),
-  getStats: jest.fn().mockReturnValue({
-    hits: 0,
-    misses: 0,
-    errors: 0,
-    sets: 0,
-    invalidations: 0,
-  }),
-  resetStats: jest.fn(),
-};
+import { CacheMockFactory } from '@/test/factories/cache-mock-factory';
+
+// グローバルなキャッシュモックインスタンス
+export const cache = CacheMockFactory.createMock();
 
 export class RedisCache {
-  constructor(options?: any) {}
+  private mockInstance: any;
   
-  get = cache.get;
-  set = cache.set;
-  getOrSet = cache.getOrSet;
-  invalidate = cache.invalidate;
-  clear = cache.clear;
-  generateCacheKey = cache.generateCacheKey;
-  getStats = cache.getStats;
-  resetStats = cache.resetStats;
+  constructor(options?: any) {
+    // 各インスタンスで独自のモックを作成することも可能
+    const namespace = options?.namespace || '@techtrend/cache';
+    this.mockInstance = options?.useShared === false 
+      ? CacheMockFactory.createMock(namespace, `instance-${Date.now()}`)
+      : cache;
+  }
+  
+  get = (key: string) => this.mockInstance.get(key);
+  set = (key: string, value: any, ttl?: number) => this.mockInstance.set(key, value, ttl);
+  getOrSet = (key: string, fetcher: () => Promise<any>, ttl?: number) => 
+    this.mockInstance.getOrSet(key, fetcher, ttl);
+  invalidate = (pattern: string) => this.mockInstance.invalidate(pattern);
+  clear = () => this.mockInstance.clear();
+  generateCacheKey = (base: string, options?: any) => 
+    this.mockInstance.generateCacheKey(base, options);
+  getStats = () => this.mockInstance.getStats();
+  resetStats = () => this.mockInstance.resetStats();
 }
+
+// beforeEachフックでモックをリセット
+beforeEach(() => {
+  CacheMockFactory.reset();
+});

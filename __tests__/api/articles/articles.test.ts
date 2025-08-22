@@ -37,9 +37,8 @@ describe('Articles API', () => {
       groupBy: jest.fn(),
     };
     
-    // Redisモックを新しく作成
-    redisMock.get = jest.fn(() => Promise.resolve(null));
-    redisMock.set = jest.fn(() => Promise.resolve('OK'));
+    // Redisモックはファクトリーでリセットされるので、デフォルト値の設定のみ
+    // 必要に応じて個別のテストケースで値を設定
   });
 
   describe('GET /api/articles', () => {
@@ -151,7 +150,9 @@ describe('Articles API', () => {
         totalPages: 1
       });
 
-      redisMock.get.mockImplementation(() => Promise.resolve(cachedData));
+      // キャッシュされたデータを設定（新しいモックアーキテクチャ）
+      await redisMock.set('cached:key', cachedData);
+      redisMock.get.mockImplementationOnce(() => Promise.resolve(cachedData));
 
       const response = await testApiHandler(GET, {
         url: 'http://localhost:3000/api/articles'
@@ -193,7 +194,7 @@ describe('Articles API', () => {
 
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(1);
-      redisMock.get.mockImplementation(() => Promise.resolve(null)); // キャッシュなし
+      // キャッシュなしの状態を確認（デフォルトでnullを返す）
 
       const response = await testApiHandler(GET, {
         url: 'http://localhost:3000/api/articles'
