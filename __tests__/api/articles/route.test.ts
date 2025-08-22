@@ -5,17 +5,22 @@
 // モックの設定
 jest.mock('@/lib/database');
 
-// Manually create cache mock
-const cacheMock = {
-  get: jest.fn(),
-  set: jest.fn(),
-  generateCacheKey: jest.fn(),
-};
-
 // Mock the RedisCache class from @/lib/cache
-jest.mock('@/lib/cache', () => ({
-  RedisCache: jest.fn().mockImplementation(() => cacheMock),
-}));
+jest.mock('@/lib/cache', () => {
+  const cacheMock = {
+    get: jest.fn(),
+    set: jest.fn(),
+    generateCacheKey: jest.fn(),
+  };
+  
+  return {
+    RedisCache: jest.fn().mockImplementation(() => cacheMock),
+    cacheMock,
+  };
+});
+
+// Get cache mock instance
+const { cacheMock } = require('@/lib/cache');
 
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
