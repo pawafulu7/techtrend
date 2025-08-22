@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('推薦機能', () => {
   test.beforeEach(async ({ page }) => {
     // ホームページへアクセス
-    await page.goto('http://localhost:3002');
+    await page.goto('http://localhost:3001');
   });
 
   test('推薦トグルボタンの表示', async ({ page }) => {
