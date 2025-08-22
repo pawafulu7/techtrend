@@ -2,8 +2,7 @@ import { prisma } from '@/lib/database';
 import { 
   UserInterests, 
   RecommendedArticle, 
-  RecommendationScore,
-  UserAction 
+  RecommendationScore
 } from './types';
 import { 
   defaultConfig, 
@@ -12,7 +11,9 @@ import {
   hashTagSet,
   normalizeScore
 } from './utils';
-import { redisService } from '@/lib/redis/redis-service';
+import RedisService from '@/lib/redis/redis-service';
+
+const redisService = RedisService.getInstance();
 
 export class RecommendationService {
   private config = defaultConfig;

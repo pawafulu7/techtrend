@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/config';
 import { recommendationService } from '@/lib/recommendation/recommendation-service';
-import { redisService } from '@/lib/redis/redis-service';
+import RedisService from '@/lib/redis/redis-service';
+
+const redisService = RedisService.getInstance();
 
 export async function GET(request: NextRequest) {
   try {
