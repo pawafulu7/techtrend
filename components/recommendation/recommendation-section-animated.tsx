@@ -8,15 +8,17 @@ import { RecommendationSkeleton } from './recommendation-skeleton';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, Sparkles, X, Eye } from 'lucide-react';
 import { RecommendedArticle } from '@/lib/recommendation/types';
+import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'hide-recommendations';
 
-export function RecommendationSection() {
+export function RecommendationSectionAnimated() {
   const { data: session, status } = useSession();
   const [recommendations, setRecommendations] = useState<RecommendedArticle[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isHidden, setIsHidden] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     // localStorageから表示設定を読み込む
@@ -50,8 +52,12 @@ export function RecommendationSection() {
   };
 
   const handleHide = () => {
-    setIsHidden(true);
-    localStorage.setItem(STORAGE_KEY, 'true');
+    setIsAnimating(true);
+    setTimeout(() => {
+      setIsHidden(true);
+      localStorage.setItem(STORAGE_KEY, 'true');
+      setIsAnimating(false);
+    }, 300);
   };
 
   const handleShow = () => {
@@ -76,21 +82,28 @@ export function RecommendationSection() {
   if (isHidden) {
     return (
       <section className="mb-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleShow}
-          className="flex items-center gap-2"
-        >
-          <Eye className="h-4 w-4" />
-          おすすめを表示
-        </Button>
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShow}
+            className="flex items-center gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            おすすめを表示
+          </Button>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="mb-8">
+    <section 
+      className={cn(
+        "mb-8 transition-all duration-300",
+        isAnimating && "opacity-0 scale-95 translate-y-2"
+      )}
+    >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
@@ -107,8 +120,9 @@ export function RecommendationSection() {
             variant="ghost"
             size="sm"
             onClick={handleHide}
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground transition-colors"
             aria-label="おすすめを非表示"
+            title="おすすめを非表示にする"
           >
             <X className="h-4 w-4" />
           </Button>
