@@ -14,16 +14,30 @@ export const cache = {
   }),
   invalidate: jest.fn().mockResolvedValue(undefined),
   clear: jest.fn().mockResolvedValue(undefined),
-  generateCacheKey: jest.fn((prefix: string, options?: any) => {
-    const params = options?.params || {};
-    // ソートされたパラメータでキーを生成
-    const sortedParams = Object.keys(params)
-      .sort()
-      .reduce((acc, key) => {
-        acc[key] = params[key];
-        return acc;
-      }, {} as any);
-    return `${prefix}:${JSON.stringify(sortedParams)}`;
+  generateCacheKey: jest.fn((base: string, options?: any) => {
+    let key = base;
+    
+    if (options?.prefix) {
+      key = `${options.prefix}:${key}`;
+    }
+    
+    if (options?.params) {
+      const sortedParams = Object.entries(options.params)
+        .filter(([_, v]) => v !== undefined)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => {
+          if (Array.isArray(v)) {
+            return `${k}=${v.join(',')}`;
+          }
+          return `${k}=${v}`;
+        })
+        .join(':');
+      if (sortedParams) {
+        key = `${key}:${sortedParams}`;
+      }
+    }
+    
+    return key;
   }),
   getStats: jest.fn().mockReturnValue({
     hits: 0,

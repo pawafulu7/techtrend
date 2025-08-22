@@ -8,6 +8,8 @@ import { EventEmitter } from 'events';
 // Redisクライアントのモック実装
 class MockRedisClient extends EventEmitter {
   private store = new Map<string, string>();
+  public get: any;
+  public set: any;
   
   constructor() {
     super();
@@ -16,20 +18,26 @@ class MockRedisClient extends EventEmitter {
     this.once = this.once.bind(this);
     this.off = this.off.bind(this);
     this.emit = this.emit.bind(this);
+    
+    // getメソッドを正しく初期化（mockResolvedValueが使えるように）
+    this.get = jest.fn();
+    this.get.mockImplementation((key) => {
+      return Promise.resolve(this.store.get(key) || null);
+    });
+    
+    // setメソッドも同様に初期化
+    this.set = jest.fn();
+    this.set.mockImplementation((key, value, ...args) => {
+      this.store.set(key, value);
+      // EXオプション付きのsetを処理
+      if (args[0] === 'EX') {
+        return Promise.resolve('OK');
+      }
+      return Promise.resolve('OK');
+    });
   }
   // 基本的なRedisコマンドのモック（デフォルト値付き）
-  // getメソッドはstoreから値を取得またはnullを返す
-  get = jest.fn().mockImplementation((key) => {
-    return Promise.resolve(this.store.get(key) || null);
-  });
-  set = jest.fn().mockImplementation((key, value, ...args) => {
-    this.store.set(key, value);
-    // EXオプション付きのsetを処理
-    if (args[0] === 'EX') {
-      return Promise.resolve('OK');
-    }
-    return Promise.resolve('OK');
-  });
+  // get/setは上記で初期化済み
   setex = jest.fn().mockResolvedValue('OK');
   del = jest.fn().mockImplementation((...keys) => {
     let count = 0;
