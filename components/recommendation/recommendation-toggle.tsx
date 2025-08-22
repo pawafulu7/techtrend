@@ -11,9 +11,13 @@ interface RecommendationToggleProps {
 }
 
 export function RecommendationToggle({ onToggle }: RecommendationToggleProps) {
-  const [isHidden, setIsHidden] = useState(false);
+  const [isHidden, setIsHidden] = useState(false); // デフォルトは表示
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    // クライアントサイドでのみ実行
+    setIsClient(true);
+    
     // localStorageから表示設定を読み込む
     const hidden = localStorage.getItem(STORAGE_KEY) === 'true';
     setIsHidden(hidden);
@@ -29,6 +33,22 @@ export function RecommendationToggle({ onToggle }: RecommendationToggleProps) {
     // カスタムイベントを発火して他のコンポーネントに通知
     window.dispatchEvent(new Event('recommendation-toggle'));
   };
+
+  // クライアントサイドでレンダリングされるまで、デフォルト状態を表示
+  if (!isClient) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled
+        className="flex items-center gap-2 text-muted-foreground"
+        aria-label="おすすめ"
+      >
+        <EyeOff className="h-4 w-4" />
+        <span className="hidden sm:inline">おすすめ</span>
+      </Button>
+    );
+  }
 
   return (
     <Button

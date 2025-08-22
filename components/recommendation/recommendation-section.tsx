@@ -20,9 +20,13 @@ export function RecommendationSection({ forceHidden = false }: RecommendationSec
   const [recommendations, setRecommendations] = useState<RecommendedArticle[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isHidden, setIsHidden] = useState(false);
+  const [isHidden, setIsHidden] = useState(true); // サーバーサイドでは非表示で初期化
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    // クライアントサイドでのみ実行
+    setIsClient(true);
+    
     // localStorageから表示設定を読み込む
     const hidden = localStorage.getItem(STORAGE_KEY) === 'true';
     setIsHidden(hidden || forceHidden);
@@ -52,6 +56,11 @@ export function RecommendationSection({ forceHidden = false }: RecommendationSec
       setLoading(false);
     }
   };
+
+  // クライアントサイドでレンダリングされるまで何も表示しない
+  if (!isClient) {
+    return null;
+  }
 
   // 未ログインまたは認証確認中は表示しない
   if (status !== 'authenticated' || !session?.user) {
