@@ -10,10 +10,13 @@ export class GoogleAIEnricher extends BaseContentEnricher {
    * Google AI BlogのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
+    // Google AI BlogのURLパターン（新旧両方に対応）
     return url.includes('blog.google') && 
            (url.includes('/technology/ai/') || 
             url.includes('/technology/google-deepmind/') ||
-            url.includes('/technology/developers/'));
+            url.includes('/technology/developers/') ||
+            url.includes('/products/') ||  // 新しいパターン: /products/search/, /products/pixel/など
+            url.includes('/intl/'));  // 国際版のパターン
   }
 
   /**
