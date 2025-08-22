@@ -4,7 +4,7 @@
  */
 
 import fetch from 'node-fetch';
-import { generateUnifiedPrompt } from '../utils/article-type-prompts';
+import { generateUnifiedPrompt, generateEnhancedUnifiedPrompt } from '../utils/article-type-prompts';
 import { parseUnifiedResponse, validateParsedResult, ParsedSummaryResult } from './unified-summary-parser';
 import { checkSummaryQuality } from '../utils/summary-quality-checker';
 
@@ -81,8 +81,8 @@ export class UnifiedSummaryService {
           // 100-500文字の短いコンテンツ用の特別なプロンプト
           prompt = this.generateShortContentPrompt(title, processedContent);
         } else {
-          // 通常のプロンプト
-          prompt = generateUnifiedPrompt(title, processedContent);
+          // 改善版プロンプトを使用（カテゴリとタグ正規化対応）
+          prompt = generateEnhancedUnifiedPrompt(title, processedContent);
         }
         
         // API呼び出し
@@ -141,6 +141,7 @@ export class UnifiedSummaryService {
           summary: processed.summary,
           detailedSummary: processed.detailedSummary,
           tags: parsed.tags,
+          category: parsed.category,  // カテゴリを追加
           articleType: UnifiedSummaryService.ARTICLE_TYPE,
           summaryVersion: UnifiedSummaryService.SUMMARY_VERSION,
           qualityScore

@@ -9,17 +9,21 @@ export interface ParsedSummaryResult {
   summary: string;
   detailedSummary: string;
   tags: string[];
+  category?: string;  // カテゴリを追加
 }
 
 /**
  * 統一フォーマットのレスポンスをパース
  */
+import { TagNormalizer } from '../services/tag-normalizer';
+
 export function parseUnifiedResponse(text: string): ParsedSummaryResult {
   const lines = text.split('\n');
   let summary = '';
   let detailedSummary = '';
   let tags: string[] = [];
-  let currentSection: 'summary' | 'detailed' | 'tags' | null = null;
+  let category: string | undefined;
+  let currentSection: 'summary' | 'detailed' | 'category' | 'tags' | null = null;
   const detailedSummaryLines: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
@@ -47,6 +51,13 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
       if (content && content.startsWith('・')) {
         detailedSummaryLines.push(content);
       }
+    } else if (trimmed.match(/^#+\s*[\*]*カテゴリ[:：]/) || trimmed.match(/^[\*]*カテゴリ[:：]/)) {
+      currentSection = 'category';
+      const content = trimmed.replace(/^#+\s*/, '').replace(/^[\*]*カテゴリ[:：]/, '').trim();
+      if (content) {
+        category = normalizeCategory(content);
+        currentSection = null;
+      }
     } else if (trimmed.match(/^#+\s*[\*]*タグ[:：]/) || trimmed.match(/^[\*]*タグ[:：]/)) {
       currentSection = 'tags';
       const content = trimmed.replace(/^#+\s*/, '').replace(/^[\*]*タグ[:：]/, '').trim();
@@ -71,6 +82,12 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
             // 前の箇条書きの続きの可能性
             const lastIndex = detailedSummaryLines.length - 1;
             detailedSummaryLines[lastIndex] += trimmed;
+          }
+          break;
+        case 'category':
+          if (!category) {
+            category = normalizeCategory(trimmed);
+            currentSection = null;
           }
           break;
         case 'tags':
@@ -102,11 +119,20 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
   if (!tags.length) {
     tags = ['技術', '開発', 'プログラミング'];
   }
+  
+  // タグの正規化を適用
+  const normalizedTags = TagNormalizer.normalizeTags(tags);
+  
+  // カテゴリが設定されていない場合、最初のタグから推測
+  if (!category && normalizedTags.length > 0) {
+    category = TagNormalizer.inferCategory(normalizedTags);
+  }
 
   return {
     summary: cleanupText(summary),
     detailedSummary: cleanupDetailedSummary(detailedSummary),
-    tags: tags.slice(0, 5) // 最大5個のタグ
+    tags: normalizedTags.map(t => t.name).slice(0, 5), // 最大5個のタグ
+    category
   };
 }
 
@@ -119,6 +145,40 @@ function parseTags(tagString: string): string[] {
     .map(tag => tag.trim())
     .filter(tag => tag.length > 0 && tag.length <= 30)
     .map(tag => normalizeTag(tag));
+}
+
+/**
+ * カテゴリ名を正規化
+ */
+function normalizeCategory(category: string): string | undefined {
+  const categoryMap: Record<string, string> = {
+    'プログラミング言語': 'language',
+    'フレームワーク・ライブラリ': 'framework',
+    'AI・機械学習': 'ai-ml',
+    'クラウド・インフラ': 'cloud',
+    'Web開発': 'web',
+    'モバイル開発': 'mobile',
+    'データベース': 'database',
+    'セキュリティ': 'security',
+    'ツール・開発環境': 'tools',
+    'その他': 'other'
+  };
+  
+  // 英語の場合も対応
+  const englishCategoryMap: Record<string, string> = {
+    'language': 'language',
+    'framework': 'framework',
+    'ai-ml': 'ai-ml',
+    'cloud': 'cloud',
+    'web': 'web',
+    'mobile': 'mobile',
+    'database': 'database',
+    'security': 'security',
+    'tools': 'tools',
+    'other': 'other'
+  };
+  
+  return categoryMap[category] || englishCategoryMap[category] || undefined;
 }
 
 /**
