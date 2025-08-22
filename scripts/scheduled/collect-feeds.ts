@@ -27,6 +27,15 @@ import { InfoQJapanFetcher } from '@/lib/fetchers/infoq-japan';
 // import { MicrosoftDevBlogFetcher } from '@/lib/fetchers/microsoft-dev-blog';
 import { BaseFetcher } from '@/lib/fetchers/base';
 
+// エンリッチャーをインポート
+import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
+import { BaseContentEnricher } from '../../lib/enrichers/base';
+
+// エンリッチャーのマッピング
+const enrichers: Record<string, BaseContentEnricher> = {
+  'Google AI Blog': new GoogleAIEnricher(),
+};
+
 const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'はてなブックマーク': HatenaExtendedFetcher,
   'Qiita Popular': QiitaPopularFetcher,
@@ -143,7 +152,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
             }
 
             // 新規記事を保存（タイムゾーン調整を適用）
-            await prisma.article.create({
+            const savedArticle = await prisma.article.create({
               data: {
                 title: article.title,
                 url: article.url,
@@ -160,6 +169,35 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                 })
               }
             });
+
+            // エンリッチメント処理（対応するエンリッチャーがある場合）
+            const enricher = enrichers[source.name];
+            if (enricher && enricher.canHandle(article.url)) {
+              try {
+                console.log(`   🔍 エンリッチメント実行: ${article.title.substring(0, 40)}...`);
+                const enrichedData = await enricher.enrich(article.url);
+                
+                if (enrichedData && enrichedData.content) {
+                  // エンリッチメントしたコンテンツで更新
+                  await prisma.article.update({
+                    where: { id: savedArticle.id },
+                    data: {
+                      content: enrichedData.content,
+                      ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
+                    }
+                  });
+                  console.log(`   ✅ エンリッチメント成功: ${enrichedData.content.length}文字`);
+                } else {
+                  console.log(`   ⚠️ エンリッチメント失敗: コンテンツなし`);
+                }
+              } catch (enrichError) {
+                console.error(`   ⚠️ エンリッチメントエラー:`, enrichError instanceof Error ? enrichError.message : String(enrichError));
+                // エンリッチメントが失敗しても記事保存は成功とする
+              }
+              
+              // Rate limit対策：エンリッチメント後は2秒待機
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
 
             newCount++;
           } catch (error) {
