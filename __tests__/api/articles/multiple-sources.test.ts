@@ -31,8 +31,8 @@ describe('Multiple Sources Filter API', () => {
     
     prismaMock.$disconnect = jest.fn();
     
-    redisMock.get = jest.fn().mockResolvedValue(null);
-    redisMock.set = jest.fn().mockResolvedValue('OK');
+    redisMock.get = jest.fn().mockImplementation(() => Promise.resolve(null));
+    redisMock.set = jest.fn().mockImplementation(() => Promise.resolve('OK'));
   });
 
   describe('GET /api/articles with sources parameter', () => {

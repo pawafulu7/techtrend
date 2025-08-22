@@ -31,8 +31,8 @@ describe('/api/articles', () => {
       count: jest.fn().mockResolvedValue(0),
     };
     // キャッシュモック設定
-    cacheMock.get.mockResolvedValue(null);
-    cacheMock.set.mockResolvedValue(undefined);
+    cacheMock.get.mockImplementation(() => Promise.resolve(null));
+    cacheMock.set.mockImplementation(() => Promise.resolve(undefined));
     cacheMock.generateCacheKey.mockImplementation((prefix, options) => {
       const params = options?.params || {};
       return `${prefix}:${JSON.stringify(params)}`;
@@ -297,7 +297,7 @@ describe('/api/articles', () => {
         limit: 20,
         totalPages: 1,
       };
-      cacheMock.get.mockResolvedValue(cachedData);
+      cacheMock.get.mockImplementation(() => Promise.resolve(cachedData));
 
       const request = new Request('http://localhost:3000/api/articles');
       const response = await GET(request);
@@ -317,7 +317,7 @@ describe('/api/articles', () => {
     it('sets cache after fetching from database', async () => {
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(2);
-      cacheMock.get.mockResolvedValue(null);
+      cacheMock.get.mockImplementation(() => Promise.resolve(null));
 
       const request = new Request('http://localhost:3000/api/articles');
       await GET(request);
@@ -397,7 +397,7 @@ describe('/api/articles', () => {
     });
 
     it('handles cache errors gracefully', async () => {
-      cacheMock.get.mockRejectedValue(new Error('Cache connection failed'));
+      cacheMock.get.mockImplementation(() => Promise.reject(new Error('Cache connection failed')));
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(2);
 

@@ -18,7 +18,12 @@ const redisMock = getRedisClient() as any;
 
 describe('Articles API', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Prismaモックをクリア
+    if (prismaMock.article) {
+      Object.values(prismaMock.article).forEach((fn: any) => {
+        if (fn && fn.mockClear) fn.mockClear();
+      });
+    }
     
     // デフォルトのモック設定
     prismaMock.article = {
@@ -32,8 +37,9 @@ describe('Articles API', () => {
       groupBy: jest.fn(),
     };
     
-    redisMock.get = jest.fn().mockResolvedValue(null);
-    redisMock.set = jest.fn().mockResolvedValue('OK');
+    // Redisモックを新しく作成
+    redisMock.get = jest.fn(() => Promise.resolve(null));
+    redisMock.set = jest.fn(() => Promise.resolve('OK'));
   });
 
   describe('GET /api/articles', () => {
@@ -145,7 +151,7 @@ describe('Articles API', () => {
         totalPages: 1
       });
 
-      redisMock.get.mockResolvedValueOnce(cachedData);
+      redisMock.get.mockImplementation(() => Promise.resolve(cachedData));
 
       const response = await testApiHandler(GET, {
         url: 'http://localhost:3000/api/articles'
@@ -187,7 +193,7 @@ describe('Articles API', () => {
 
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(1);
-      redisMock.get.mockResolvedValue(null); // キャッシュなし
+      redisMock.get.mockImplementation(() => Promise.resolve(null)); // キャッシュなし
 
       const response = await testApiHandler(GET, {
         url: 'http://localhost:3000/api/articles'
