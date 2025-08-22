@@ -31,7 +31,4 @@ export class RedisCache {
   resetStats = () => this.mockInstance.resetStats();
 }
 
-// beforeEachフックでモックをリセット
-beforeEach(() => {
-  CacheMockFactory.reset();
-});
+// Note: モックのリセットは各テストファイルのbeforeEachで行う

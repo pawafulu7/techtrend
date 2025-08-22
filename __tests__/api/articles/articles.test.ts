@@ -151,8 +151,9 @@ describe('Articles API', () => {
       });
 
       // キャッシュされたデータを設定（新しいモックアーキテクチャ）
-      await redisMock.set('cached:key', cachedData);
-      redisMock.get.mockImplementationOnce(() => Promise.resolve(cachedData));
+      if (redisMock.get && redisMock.get.mockImplementationOnce) {
+        redisMock.get.mockImplementationOnce(() => Promise.resolve(cachedData));
+      }
 
       const response = await testApiHandler(GET, {
         url: 'http://localhost:3000/api/articles'

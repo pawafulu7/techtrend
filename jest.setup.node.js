@@ -1,8 +1,16 @@
 // Node.js環境用のセットアップ
 import '@testing-library/jest-dom';
+import { RedisMockFactory } from './test/factories/redis-mock-factory';
+import { CacheMockFactory } from './test/factories/cache-mock-factory';
 
 // Redisクライアントのモックは__mocks__ディレクトリから自動的に読み込まれる
 jest.mock('@/lib/redis/client');
+
+// 各テストの前にモックをリセット
+beforeEach(() => {
+  RedisMockFactory.reset();
+  CacheMockFactory.reset();
+});
 
 // グローバルfetchのモック（Node環境用）
 global.fetch = jest.fn(() =>

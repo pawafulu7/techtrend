@@ -8,10 +8,13 @@ jest.mock('@/lib/database');
 // Mock the RedisCache class from @/lib/cache
 // Note: The actual mocking is handled by __mocks__/lib/cache/redis-cache.ts
 // which uses CacheMockFactory internally
+import { CacheMockFactory } from '@/test/factories/cache-mock-factory';
+
+// グローバルキャッシュモックを作成
+const cacheMock = CacheMockFactory.createMock();
 
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
-import { cache as cacheMock } from '@/lib/cache/redis-cache';
 
 const prismaMock = prisma as any;
 

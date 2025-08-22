@@ -14,12 +14,7 @@ export const closeRedisConnection = jest.fn(() => Promise.resolve());
 export const redis = mockClient;
 export const redisMock = mockClient; // 後方互換性
 
-// beforeEachフックでモックをリセット
-beforeEach(() => {
-  RedisMockFactory.reset();
-  getRedisClient.mockClear();
-  closeRedisConnection.mockClear();
-});
+// Note: モックのリセットは各テストファイルのbeforeEachで行う
 
 // デフォルトエクスポート
 export default mockClient;
