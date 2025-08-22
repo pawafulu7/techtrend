@@ -57,10 +57,36 @@ if ! curl -s http://localhost:$PORT > /dev/null 2>&1; then
     fi
 fi
 
-# Basic認証情報の表示
-echo -e "${GREEN}Basic認証情報:${NC}"
-echo "ユーザー名: $USERNAME"
-echo "パスワード: $PASSWORD"
+# Basic認証情報の表示と保存
+echo -e "${GREEN}=====================================${NC}"
+echo -e "${GREEN}Basic認証情報${NC}"
+echo -e "${GREEN}=====================================${NC}"
+echo -e "${YELLOW}ユーザー名:${NC} $USERNAME"
+echo -e "${YELLOW}パスワード:${NC} $PASSWORD"
+echo -e "${GREEN}=====================================${NC}"
+echo ""
+
+# 認証情報をファイルに保存
+AUTH_FILE="/tmp/ngrok-auth-$(date +%Y%m%d-%H%M%S).txt"
+cat > $AUTH_FILE << EOF
+TechTrend Ngrok Basic認証情報
+生成日時: $(date)
+====================================
+ユーザー名: $USERNAME
+パスワード: $PASSWORD
+====================================
+
+この情報は以下のファイルに保存されています:
+$AUTH_FILE
+
+ngrok管理画面: http://localhost:4040
+EOF
+
+echo -e "${YELLOW}認証情報を以下のファイルに保存しました:${NC}"
+echo "$AUTH_FILE"
+echo ""
+echo -e "${YELLOW}認証情報を確認するには:${NC}"
+echo "cat $AUTH_FILE"
 echo ""
 
 # ngrok設定ファイルの作成
@@ -83,5 +109,5 @@ echo ""
 echo "停止するには Ctrl+C を押してください"
 echo ""
 
-# ngrokを起動
-ngrok http $PORT --auth="$USERNAME:$PASSWORD"
+# ngrokを起動（v3用のコマンド形式）
+ngrok http --basic-auth="$USERNAME:$PASSWORD" $PORT
