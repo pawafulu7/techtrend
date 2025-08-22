@@ -1,78 +1,81 @@
 import Redis from 'ioredis';
+import { getRedisService, closeRedisConnection as closeRedisServiceConnection } from './factory';
+import { IoRedisClient } from './ioredis-client';
 
 let redisClient: Redis | null = null;
 
+/**
+ * Get Redis client - backward compatibility wrapper
+ * New code should use getRedisService() from factory.ts
+ */
 export function getRedisClient(): Redis {
   if (!redisClient) {
-    // Test environment: Use mocked ioredis if available
+    // In test environment, create a proxy that delegates to the test client
     if (process.env.NODE_ENV === 'test') {
-      try {
-        // jest.mockされたioredisを使用
-        const Redis = require('ioredis');
-        redisClient = new Redis();
-      } catch (error) {
-        // フォールバック: モックオブジェクトを直接作成
-        redisClient = {
-          ping: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue('PONG') : (() => Promise.resolve('PONG')),
-          set: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue('OK') : (() => Promise.resolve('OK')),
-          get: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(null) : (() => Promise.resolve(null)),
-          del: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(1) : (() => Promise.resolve(1)),
-          exists: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(0) : (() => Promise.resolve(0)),
-          expire: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(1) : (() => Promise.resolve(1)),
-          ttl: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(59) : (() => Promise.resolve(59)),
-          keys: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue([]) : (() => Promise.resolve([])),
-          setex: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue('OK') : (() => Promise.resolve('OK')),
-          on: (typeof jest !== 'undefined' && jest.fn) ? jest.fn() : (() => {}),
-          once: (typeof jest !== 'undefined' && jest.fn) ? jest.fn() : (() => {}),
-          off: (typeof jest !== 'undefined' && jest.fn) ? jest.fn() : (() => {}),
-          emit: (typeof jest !== 'undefined' && jest.fn) ? jest.fn() : (() => false),
-          connect: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(undefined) : (() => Promise.resolve()),
-          disconnect: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(undefined) : (() => Promise.resolve()),
-          quit: (typeof jest !== 'undefined' && jest.fn) ? jest.fn().mockResolvedValue(undefined) : (() => Promise.resolve()),
-        } as any as Redis;
-      }
-    } else {
-      // Production environment: Create real Redis client
-      const Redis = require('ioredis');
-      redisClient = new Redis({
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        retryStrategy: (times) => {
-          const delay = Math.min(times * 50, 2000);
-          return delay;
-        },
-        maxRetriesPerRequest: 3,
-        enableReadyCheck: true,
-        lazyConnect: true,
-      });
-
-      redisClient.on('error', (err) => {
-        console.error('Redis Client Error:', err);
-      });
-
-      redisClient.on('connect', () => {
-        console.log('Redis Client Connected');
-      });
-
-      redisClient.on('ready', () => {
-        console.log('Redis Client Ready');
-      });
+      const service = getRedisService();
       
-      // Actually connect since lazyConnect is true
-      redisClient.connect().catch(err => {
-        console.error('Redis connection failed:', err);
+      // Create a proxy that mimics ioredis interface
+      redisClient = new Proxy({} as Redis, {
+        get(target, prop) {
+          const client = service.client;
+          
+          // Map common methods
+          if (prop === 'ping') return () => client.ping();
+          if (prop === 'get') return (key: string) => client.get(key);
+          if (prop === 'set') {
+            // Support both simple set and set with expiry
+            return (key: string, value: string, exMode?: string, ttl?: number) => {
+              if (exMode === 'EX' && ttl) {
+                return client.setex(key, ttl, value);
+              }
+              return client.set(key, value);
+            };
+          }
+          if (prop === 'setex') return (key: string, seconds: number, value: string) => client.setex(key, seconds, value);
+          if (prop === 'del') return (...keys: string[]) => client.del(keys.length === 1 ? keys[0] : keys);
+          if (prop === 'exists') return (key: string) => client.exists(key);
+          if (prop === 'expire') return (key: string, seconds: number) => client.expire(key, seconds);
+          if (prop === 'ttl') return (key: string) => client.ttl(key);
+          if (prop === 'keys') return (pattern: string) => client.keys(pattern);
+          if (prop === 'quit') return () => client.quit();
+          
+          // Event emitter methods (no-op in test)
+          if (prop === 'on' || prop === 'once' || prop === 'off' || prop === 'emit') {
+            return () => {};
+          }
+          
+          // Connection methods
+          if (prop === 'connect') return () => Promise.resolve();
+          if (prop === 'disconnect') return () => client.quit();
+          
+          // Default
+          return (target as any)[prop];
+        }
       });
+    } else {
+      // Production: Use IoRedisClient directly
+      const ioRedisClient = new IoRedisClient();
+      redisClient = ioRedisClient.getInternalClient();
     }
   }
 
   return redisClient;
 }
 
+/**
+ * Close Redis connection
+ */
 export async function closeRedisConnection(): Promise<void> {
   if (redisClient) {
-    await redisClient.quit();
+    // If it's a real Redis client, quit it
+    if (redisClient.quit && typeof redisClient.quit === 'function') {
+      await redisClient.quit();
+    }
     redisClient = null;
   }
+  
+  // Also close the service connection
+  await closeRedisServiceConnection();
 }
 
 // Export redis instance for backward compatibility with tests
