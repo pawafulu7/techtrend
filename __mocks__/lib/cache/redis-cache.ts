@@ -16,7 +16,14 @@ export const cache = {
   clear: jest.fn().mockResolvedValue(undefined),
   generateCacheKey: jest.fn((prefix: string, options?: any) => {
     const params = options?.params || {};
-    return `${prefix}:${JSON.stringify(params)}`;
+    // ソートされたパラメータでキーを生成
+    const sortedParams = Object.keys(params)
+      .sort()
+      .reduce((acc, key) => {
+        acc[key] = params[key];
+        return acc;
+      }, {} as any);
+    return `${prefix}:${JSON.stringify(sortedParams)}`;
   }),
   getStats: jest.fn().mockReturnValue({
     hits: 0,
