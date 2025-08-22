@@ -20,12 +20,14 @@ class MockRedisClient extends EventEmitter {
     this.emit = this.emit.bind(this);
     
     // getメソッドを正しく初期化（mockResolvedValueが使えるように）
-    this.get = jest.fn((key) => {
+    this.get = jest.fn();
+    this.get.mockImplementation((key) => {
       return Promise.resolve(this.store.get(key) || null);
     });
     
     // setメソッドも同様に初期化
-    this.set = jest.fn((key, value, ...args) => {
+    this.set = jest.fn();
+    this.set.mockImplementation((key, value, ...args) => {
       // 値を文字列として保存（RedisはすべてをStringとして保存）
       const storedValue = typeof value === 'string' ? value : JSON.stringify(value);
       this.store.set(key, storedValue);
@@ -170,11 +172,13 @@ beforeEach(() => {
   redisMock.clearStore();
   
   // get/setメソッドを再初期化（mockResolvedValueを維持）
-  redisMock.get = jest.fn((key) => {
+  redisMock.get = jest.fn();
+  redisMock.get.mockImplementation((key) => {
     return Promise.resolve(redisMock.store.get(key) || null);
   });
   
-  redisMock.set = jest.fn((key, value, ...args) => {
+  redisMock.set = jest.fn();
+  redisMock.set.mockImplementation((key, value, ...args) => {
     // 値を文字列として保存（RedisはすべてをStringとして保存）
     const storedValue = typeof value === 'string' ? value : JSON.stringify(value);
     redisMock.store.set(key, storedValue);
