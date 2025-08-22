@@ -2,16 +2,33 @@
  * /api/articles エンドポイントの包括的なテスト
  */
 
-import { GET } from '@/app/api/articles/route';
-import { prisma } from '@/lib/database';
-import { getRedisClient } from '@/lib/redis/client';
-
 // モックの設定
 jest.mock('@/lib/database');
-jest.mock('@/lib/redis/client');
+jest.mock('@/lib/cache/redis-cache');
+
+import { GET } from '@/app/api/articles/route';
+import { prisma } from '@/lib/database';
+import { cache } from '@/lib/cache/redis-cache';
 
 const prismaMock = prisma as any;
-const redisMock = getRedisClient() as any;
+
+// Manually create cache mock since auto-mocking isn't working
+const cacheMock = {
+  get: jest.fn(),
+  set: jest.fn(),
+  generateCacheKey: jest.fn(),
+};
+
+// Override the module resolution for cache
+jest.doMock('@/lib/cache/redis-cache', () => ({
+  cache: cacheMock,
+  RedisCache: class {
+    constructor() {}
+    get = cacheMock.get;
+    set = cacheMock.set;
+    generateCacheKey = cacheMock.generateCacheKey;
+  },
+}));
 
 describe('/api/articles', () => {
   beforeEach(() => {
@@ -21,8 +38,13 @@ describe('/api/articles', () => {
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
     };
-    redisMock.get = jest.fn().mockResolvedValue(null);
-    redisMock.set = jest.fn().mockResolvedValue('OK');
+    // キャッシュモック設定
+    cacheMock.get.mockResolvedValue(null);
+    cacheMock.set.mockResolvedValue(undefined);
+    cacheMock.generateCacheKey.mockImplementation((prefix, options) => {
+      const params = options?.params || {};
+      return `${prefix}:${JSON.stringify(params)}`;
+    });
   });
 
   describe('GET', () => {
@@ -276,14 +298,14 @@ describe('/api/articles', () => {
     });
 
     it('uses cache when available', async () => {
-      const cachedData = JSON.stringify({
+      const cachedData = {
         items: mockArticles,
         total: 2,
         page: 1,
         limit: 20,
         totalPages: 1,
-      });
-      redisMock.get.mockResolvedValue(cachedData);
+      };
+      cacheMock.get.mockResolvedValue(cachedData);
 
       const request = new Request('http://localhost:3000/api/articles');
       const response = await GET(request);
@@ -295,22 +317,29 @@ describe('/api/articles', () => {
       // データベースは呼ばれない
       expect(prismaMock.article.findMany).not.toHaveBeenCalled();
       expect(prismaMock.article.count).not.toHaveBeenCalled();
+      
+      // キャッシュが使用された
+      expect(cacheMock.get).toHaveBeenCalled();
     });
 
     it('sets cache after fetching from database', async () => {
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(2);
-      redisMock.get.mockResolvedValue(null);
+      cacheMock.get.mockResolvedValue(null);
 
       const request = new Request('http://localhost:3000/api/articles');
       await GET(request);
 
       // キャッシュが設定される
-      expect(redisMock.set).toHaveBeenCalledWith(
+      expect(cacheMock.set).toHaveBeenCalledWith(
         expect.any(String), // キャッシュキー
-        expect.any(String), // JSON文字列
-        'EX',
-        expect.any(Number), // TTL
+        expect.objectContaining({
+          items: expect.any(Array),
+          total: expect.any(Number),
+          page: expect.any(Number),
+          limit: expect.any(Number),
+          totalPages: expect.any(Number),
+        })
       );
     });
 
@@ -372,6 +401,68 @@ describe('/api/articles', () => {
       // dateRange は内部で処理されるため、findMany が呼ばれたことを確認
       expect(prismaMock.article.findMany).toHaveBeenCalled();
       expect(prismaMock.article.count).toHaveBeenCalled();
+    });
+
+    it('handles cache errors gracefully', async () => {
+      cacheMock.get.mockRejectedValue(new Error('Cache connection failed'));
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(2);
+
+      const request = new Request('http://localhost:3000/api/articles');
+      const response = await GET(request);
+      const data = await response.json();
+
+      // キャッシュエラーでもデータベースから正常に取得
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.items).toHaveLength(2);
+    });
+
+    it('supports none source filter', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const request = new Request('http://localhost:3000/api/articles?sources=none');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            sourceId: '__none__',
+          }),
+        })
+      );
+    });
+
+    it('includes performance headers', async () => {
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(2);
+
+      const request = new Request('http://localhost:3000/api/articles');
+      const response = await GET(request);
+
+      expect(response.headers.get('X-Cache-Status')).toBeTruthy();
+      expect(response.headers.get('X-Response-Time')).toMatch(/\d+ms/);
+    });
+
+    it('normalizes search keywords for cache key', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      const request = new Request('http://localhost:3000/api/articles?search=TypeScript　React');
+      await GET(request);
+
+      // キャッシュキー生成時にキーワードがソートされることを確認
+      expect(cacheMock.generateCacheKey).toHaveBeenCalledWith(
+        'articles',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            search: 'React,TypeScript', // ソートされた状態
+          }),
+        })
+      );
     });
   });
 });

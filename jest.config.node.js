@@ -8,16 +8,22 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.node.js'],
   testEnvironment: 'node',
+  transformIgnorePatterns: [
+    'node_modules/(?!(node-fetch)/)',
+  ],
   moduleNameMapper: {
     // Manual mocks for Prisma and Redis (must come before generic alias)
     '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
     '^@/lib/database/index$': '<rootDir>/__mocks__/lib/database.ts',
     '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
+    '^@/lib/cache/redis-cache$': '<rootDir>/__mocks__/lib/cache/redis-cache.ts',
     // Mock Next.js modules
     '^next/server$': '<rootDir>/__mocks__/next/server.ts',
     '^next/navigation$': '<rootDir>/__tests__/__mocks__/next-navigation.ts',
     // Mock ioredis
     '^ioredis$': '<rootDir>/__tests__/__mocks__/ioredis.ts',
+    // Mock node-fetch
+    '^node-fetch$': '<rootDir>/__tests__/__mocks__/node-fetch.ts',
     // Handle module aliases (must be last due to wildcard)
     '^@/(.*)$': '<rootDir>/$1',
   },
