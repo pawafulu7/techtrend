@@ -16,7 +16,8 @@ export class GoogleAIEnricher extends BaseContentEnricher {
             url.includes('/technology/google-deepmind/') ||
             url.includes('/technology/developers/') ||
             url.includes('/products/') ||  // 新しいパターン: /products/search/, /products/pixel/など
-            url.includes('/intl/'));  // 国際版のパターン
+            url.includes('/intl/') ||  // 国際版のパターン
+            url.includes('/inside-google/'));  // 企業アナウンスメント系
   }
 
   /**
