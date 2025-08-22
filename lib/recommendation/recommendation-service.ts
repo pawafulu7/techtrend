@@ -24,13 +24,12 @@ export class RecommendationService {
   async getUserInterests(userId: string): Promise<UserInterests | null> {
     // キャッシュ確認
     const cacheKey = `user:interests:${userId}`;
-    const cached = await redisService.get(cacheKey);
+    const cached = await redisService.getJSON<any>(cacheKey);
     if (cached) {
-      const parsed = JSON.parse(cached);
       return {
-        tagScores: new Map(Object.entries(parsed.tagScores)),
-        totalActions: parsed.totalActions,
-        lastUpdated: new Date(parsed.lastUpdated),
+        tagScores: new Map(Object.entries(cached.tagScores)),
+        totalActions: cached.totalActions,
+        lastUpdated: new Date(cached.lastUpdated),
       };
     }
 
@@ -107,13 +106,13 @@ export class RecommendationService {
     };
 
     // キャッシュに保存（5分間）
-    await redisService.set(
+    await redisService.setJSON(
       cacheKey,
-      JSON.stringify({
+      {
         tagScores: Object.fromEntries(tagScores),
         totalActions,
         lastUpdated: interests.lastUpdated,
-      }),
+      },
       300
     );
 

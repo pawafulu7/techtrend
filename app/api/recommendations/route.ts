@@ -23,17 +23,17 @@ export async function GET(request: NextRequest) {
 
     // キャッシュ確認
     const cacheKey = `recommendations:${userId}:${limit}`;
-    const cached = await redisService.get(cacheKey);
+    const cached = await redisService.getJSON(cacheKey);
     
     if (cached) {
-      return NextResponse.json(JSON.parse(cached));
+      return NextResponse.json(cached);
     }
 
     // 推薦記事を取得
     const recommendations = await recommendationService.getRecommendations(userId, limit);
 
     // キャッシュに保存（5分間）
-    await redisService.set(cacheKey, JSON.stringify(recommendations), 300);
+    await redisService.setJSON(cacheKey, recommendations, 300);
 
     return NextResponse.json(recommendations);
   } catch (error) {
