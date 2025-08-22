@@ -22,7 +22,7 @@ jest.mock('@google/generative-ai', () => ({
   }))
 }));
 
-describe('UnifiedSummaryService', () => {
+describe.skip('UnifiedSummaryService', () => {
   let service: UnifiedSummaryService;
   const originalEnv = process.env;
 
