@@ -1,9 +1,10 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Header } from '@/app/components/layout/header';
 import { useSession } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
+import { renderWithProviders } from '../helpers/test-providers';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
@@ -23,7 +24,7 @@ jest.mock('next/link', () => {
 });
 
 // UserMenuコンポーネントのモック
-jest.mock('@/app/components/user/UserMenu', () => ({
+jest.mock('@/components/auth/UserMenu', () => ({
   UserMenu: () => <div data-testid="user-menu">User Menu</div>,
 }));
 
@@ -42,7 +43,7 @@ describe('Header', () => {
   });
 
   it('renders the header with logo and navigation', () => {
-    render(<Header />);
+    renderWithProviders(<Header />);
     
     // ロゴが表示される
     const logo = screen.getByText(/TechTrend/i);
@@ -58,7 +59,7 @@ describe('Header', () => {
       status: 'authenticated',
     });
 
-    render(<Header />);
+    renderWithProviders(<Header />);
     
     // 認証済みユーザー用のメニューが表示される
     const userMenu = screen.getByTestId('user-menu');
@@ -68,7 +69,7 @@ describe('Header', () => {
   it('highlights active navigation item based on current path', () => {
     (usePathname as jest.Mock).mockReturnValue('/analytics');
     
-    render(<Header />);
+    renderWithProviders(<Header />);
     
     // アナリティクスページのリンクがアクティブ状態になる
     const analyticsLink = screen.getByText(/分析|Analytics/i);
@@ -81,7 +82,7 @@ describe('Header', () => {
   });
 
   it('handles mobile menu toggle', () => {
-    render(<Header />);
+    renderWithProviders(<Header />);
     
     // モバイルメニューボタンを探す
     const mobileMenuButton = screen.queryByRole('button', { name: /menu/i });
@@ -104,7 +105,7 @@ describe('Header', () => {
   });
 
   it('navigates to home when logo is clicked', () => {
-    render(<Header />);
+    renderWithProviders(<Header />);
     
     const logo = screen.getByText(/TechTrend/i);
     const logoLink = logo.closest('a');
@@ -115,7 +116,7 @@ describe('Header', () => {
   });
 
   it('shows search button or search bar', () => {
-    render(<Header />);
+    renderWithProviders(<Header />);
     
     // 検索ボタンまたは検索バーが存在する
     const searchElement = screen.queryByRole('search') || 
@@ -127,7 +128,7 @@ describe('Header', () => {
   });
 
   it('displays theme toggle button', () => {
-    render(<Header />);
+    renderWithProviders(<Header />);
     
     // テーマ切り替えボタンが存在する
     const themeToggle = screen.queryByRole('button', { name: /theme|テーマ|dark|light/i });
@@ -142,7 +143,7 @@ describe('Header', () => {
   });
 
   it('shows correct navigation items', () => {
-    render(<Header />);
+    renderWithProviders(<Header />);
     
     // 主要なナビゲーション項目が表示される
     const expectedLinks = [
@@ -163,7 +164,7 @@ describe('Header', () => {
   });
 
   it('renders sticky header when scrolling', () => {
-    const { container } = render(<Header />);
+    const { container } = renderWithProviders(<Header />);
     
     const header = container.querySelector('header');
     
@@ -181,7 +182,7 @@ describe('Header', () => {
       status: 'authenticated',
     });
 
-    render(<Header />);
+    renderWithProviders(<Header />);
     
     // 通知アイコンが表示される
     const notificationIcon = screen.queryByRole('button', { name: /通知|notification/i });
@@ -195,7 +196,7 @@ describe('Header', () => {
     // ダークモードのクラスを追加
     document.documentElement.classList.add('dark');
     
-    const { container } = render(<Header />);
+    const { container } = renderWithProviders(<Header />);
     
     const header = container.querySelector('header');
     
@@ -210,7 +211,7 @@ describe('Header', () => {
   });
 
   it('handles keyboard navigation', () => {
-    render(<Header />);
+    renderWithProviders(<Header />);
     
     const firstLink = screen.getAllByRole('link')[0];
     
