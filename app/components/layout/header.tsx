@@ -27,6 +27,8 @@ export function Header() {
   const secondaryNav = [
     { href: '/reading-list', label: '読書リスト', icon: Bookmark },
     { href: '/favorites', label: 'お気に入り', icon: Star },
+    { href: '/history', label: '閲覧履歴', icon: LineChart },
+    { href: '/recommendations', label: 'おすすめ', icon: Star },
     { href: '/tags', label: 'タグ', icon: Hash },
     { href: '/analytics', label: '分析', icon: LineChart },
   ];

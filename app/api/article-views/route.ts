@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 
 // GET: ユーザーの閲覧履歴を取得
 export async function GET(request: Request) {
   try {
+    // Next.js 15.4.4対応: headers()を明示的にawait
+    const headersList = await headers();
+    
     const session = await auth();
     
     if (!session?.user?.id) {
@@ -87,6 +91,9 @@ export async function GET(request: Request) {
 // POST: 記事閲覧を記録
 export async function POST(request: Request) {
   try {
+    // Next.js 15.4.4対応: headers()を明示的にawait
+    const headersList = await headers();
+    
     const session = await auth();
     
     if (!session?.user?.id) {
