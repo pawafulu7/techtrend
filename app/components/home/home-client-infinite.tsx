@@ -9,6 +9,7 @@ import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
 import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
+import { RecommendationSectionInline } from '@/components/recommendation/recommendation-section-inline';
 
 interface HomeClientInfiniteProps {
   viewMode: 'grid' | 'list';
@@ -121,6 +122,9 @@ export function HomeClientInfinite({
     <>
       {/* 記事リスト */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
+        {/* 推薦セクション（インライン） */}
+        <RecommendationSectionInline />
+        
         {isLoading ? (
           <ArticleSkeleton />
         ) : allArticles.length > 0 ? (

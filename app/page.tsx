@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { HomeClient } from '@/app/components/home/home-client';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
-import { RecommendationSection } from '@/components/recommendation/recommendation-section';
+import { RecommendationToggle } from '@/components/recommendation/recommendation-toggle';
 import { prisma } from '@/lib/database';
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
 import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
@@ -138,6 +138,8 @@ export default async function Home({ searchParams }: PageProps) {
                 <Suspense fallback={<div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />}>
                   <ArticleCount />
                 </Suspense>
+                <div className="w-px h-5 bg-border" />
+                <RecommendationToggle />
               </div>
                 
                 <div className="flex items-center gap-2">
@@ -155,11 +157,6 @@ export default async function Home({ searchParams }: PageProps) {
                   <FilterResetButton />
               </div>
             </div>
-          </div>
-
-          {/* 推薦セクション */}
-          <div className="px-4 lg:px-6 py-4">
-            <RecommendationSection />
           </div>
 
           {/* クライアントコンポーネント（記事リストとページネーション） */}

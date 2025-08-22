@@ -6,12 +6,16 @@ import { useSession } from 'next-auth/react';
 import { RecommendationCard } from './recommendation-card';
 import { RecommendationSkeleton } from './recommendation-skeleton';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, Sparkles, X, Eye } from 'lucide-react';
+import { ChevronRight, Sparkles } from 'lucide-react';
 import { RecommendedArticle } from '@/lib/recommendation/types';
 
 const STORAGE_KEY = 'hide-recommendations';
 
-export function RecommendationSection() {
+interface RecommendationSectionProps {
+  forceHidden?: boolean;
+}
+
+export function RecommendationSection({ forceHidden = false }: RecommendationSectionProps) {
   const { data: session, status } = useSession();
   const [recommendations, setRecommendations] = useState<RecommendedArticle[]>([]);
   const [loading, setLoading] = useState(false);
@@ -21,12 +25,12 @@ export function RecommendationSection() {
   useEffect(() => {
     // localStorageから表示設定を読み込む
     const hidden = localStorage.getItem(STORAGE_KEY) === 'true';
-    setIsHidden(hidden);
+    setIsHidden(hidden || forceHidden);
     
-    if (status === 'authenticated' && session?.user && !hidden) {
+    if (status === 'authenticated' && session?.user && !hidden && !forceHidden) {
       fetchRecommendations();
     }
-  }, [status, session]);
+  }, [status, session, forceHidden]);
 
   const fetchRecommendations = async () => {
     setLoading(true);
@@ -49,19 +53,6 @@ export function RecommendationSection() {
     }
   };
 
-  const handleHide = () => {
-    setIsHidden(true);
-    localStorage.setItem(STORAGE_KEY, 'true');
-  };
-
-  const handleShow = () => {
-    setIsHidden(false);
-    localStorage.setItem(STORAGE_KEY, 'false');
-    if (recommendations.length === 0 && !loading) {
-      fetchRecommendations();
-    }
-  };
-
   // 未ログインまたは認証確認中は表示しない
   if (status !== 'authenticated' || !session?.user) {
     return null;
@@ -72,21 +63,9 @@ export function RecommendationSection() {
     return null;
   }
 
-  // 非表示設定の場合は、「おすすめを表示」ボタンのみ表示
-  if (isHidden) {
-    return (
-      <section className="mb-4 flex justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleShow}
-          className="flex items-center gap-2"
-        >
-          <Eye className="h-4 w-4" />
-          おすすめを表示
-        </Button>
-      </section>
-    );
+  // 非表示設定の場合は何も表示しない
+  if (isHidden || forceHidden) {
+    return null;
   }
 
   return (
@@ -102,15 +81,6 @@ export function RecommendationSection() {
               もっと見る
               <ChevronRight className="h-4 w-4" />
             </Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleHide}
-            className="text-muted-foreground hover:text-foreground"
-            aria-label="おすすめを非表示"
-          >
-            <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
