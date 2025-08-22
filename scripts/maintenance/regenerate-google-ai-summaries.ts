@@ -13,26 +13,12 @@ async function regenerateSummaries() {
   console.log('=== Google AI Blog要約再生成 ===');
   
   try {
-    // エンリッチメントされたGoogle AI Blog記事を取得
+    // Google AI Blogの全記事を取得（強制再生成）
     const articles = await prisma.article.findMany({
       where: {
         source: {
           name: 'Google AI Blog'
-        },
-        // コンテンツが充実している記事のみ対象
-        content: {
-          not: null
-        },
-        OR: [
-          // 要約がない
-          { summary: null },
-          // 詳細要約がない
-          { detailedSummary: null },
-          // 旧バージョンの要約（summaryVersion < 7）
-          { summaryVersion: { lt: 7 } },
-          // 要約が短すぎる
-          { detailedSummary: { contains: '__SKIP' } }
-        ]
+        }
       },
       include: {
         source: true
@@ -42,12 +28,15 @@ async function regenerateSummaries() {
       }
     });
     
-    console.log(`要約再生成が必要な記事: ${articles.length}件`);
+    console.log(`Google AI Blog全記事を再生成: ${articles.length}件`);
     
     if (articles.length === 0) {
       console.log('再生成対象の記事がありません。');
       return;
     }
+    
+    console.log('\n=== 強制再生成モード ===');
+    console.log('すべての記事の要約を再生成します。');
     
     let successCount = 0;
     let failedCount = 0;
@@ -57,8 +46,8 @@ async function regenerateSummaries() {
         console.log(`\n生成中: ${article.title}`);
         console.log(`コンテンツ長: ${article.content?.length || 0}文字`);
         
-        if (!article.content || article.content.length < 500) {
-          console.log('⚠️ コンテンツが不十分のためスキップ');
+        if (!article.content || article.content.length < 100) {
+          console.log('⚠️ コンテンツが不十分のためスキップ（100文字未満）');
           failedCount++;
           continue;
         }
