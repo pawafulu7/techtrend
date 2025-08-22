@@ -75,7 +75,7 @@ export function RecommendationSection() {
   // 非表示設定の場合は、「おすすめを表示」ボタンのみ表示
   if (isHidden) {
     return (
-      <section className="mb-4">
+      <section className="mb-4 flex justify-end">
         <Button
           variant="outline"
           size="sm"
