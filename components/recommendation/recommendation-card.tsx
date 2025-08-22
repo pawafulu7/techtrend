@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Calendar, Star, Tag } from 'lucide-react';
@@ -15,7 +16,11 @@ interface RecommendationCardProps {
 }
 
 export function RecommendationCard({ article, showReasons = true }: RecommendationCardProps) {
+  const pathname = usePathname();
   const sourceColor = getSourceColor(article.sourceName);
+  
+  // 現在のページに基づいて戻り先を決定
+  const fromUrl = pathname || '/';
   
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200">
@@ -50,7 +55,7 @@ export function RecommendationCard({ article, showReasons = true }: Recommendati
         )}
         
         <Link 
-          href={`/articles/${article.id}?from=${encodeURIComponent('/recommendations')}`}
+          href={`/articles/${article.id}?from=${encodeURIComponent(fromUrl)}`}
           className="group"
         >
           <h3 className="font-semibold text-base line-clamp-2 group-hover:text-primary transition-colors">
