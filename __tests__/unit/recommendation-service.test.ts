@@ -1,6 +1,3 @@
-import { RecommendationService } from '@/lib/recommendation/recommendation-service';
-import { prisma } from '@/lib/prisma';
-
 // モック
 jest.mock('@/lib/prisma', () => ({
   prisma: {
@@ -15,6 +12,9 @@ jest.mock('@/lib/prisma', () => ({
     },
   },
 }));
+
+import { RecommendationService } from '@/lib/recommendation/recommendation-service';
+import { prisma } from '@/lib/prisma';
 
 jest.mock('@/lib/redis/factory', () => ({
   getRedisService: jest.fn(() => ({
