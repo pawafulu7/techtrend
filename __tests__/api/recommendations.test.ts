@@ -4,6 +4,9 @@ import { recommendationService } from '@/lib/recommendation/recommendation-servi
 import { NextRequest } from 'next/server';
 
 // モック
+jest.mock('next/headers', () => ({
+  headers: jest.fn(() => Promise.resolve(new Headers())),
+}));
 
 jest.mock('@/lib/auth/auth', () => ({
   auth: jest.fn(),
