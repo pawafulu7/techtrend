@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     setViewModeCookie(response, validMode);
     
     return response;
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Invalid request' },
       { status: 400 }

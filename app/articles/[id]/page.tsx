@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ArrowLeft, ExternalLink, Calendar, TrendingUp, ThumbsUp, GraduationCap } from 'lucide-react';
+import { ArrowLeft, ExternalLink, TrendingUp, GraduationCap } from 'lucide-react';
 import { prisma } from '@/lib/database';
-import { formatDate, formatDateWithTime } from '@/lib/utils/date';
+import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
 import { RelatedArticles } from '@/app/components/article/related-articles';
@@ -192,7 +192,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                 <DetailedSummaryDisplay 
                   articleId={article.id} 
                   detailedSummary={article.detailedSummary}
-                  articleType={article.articleType as "technical" | "unified" | "news" | "tips" | "tutorial" | "other"}
+                  articleType={article.articleType as "release" | "problem-solving" | "tutorial" | "tech-intro" | "implementation" | undefined}
                   summaryVersion={article.summaryVersion}
                 />
               ) : article.summary ? (

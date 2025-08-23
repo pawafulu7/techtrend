@@ -31,7 +31,7 @@ interface FavoriteArticle {
 }
 
 export default function ArticleFavoritesPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [favorites, setFavorites] = useState<FavoriteArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);

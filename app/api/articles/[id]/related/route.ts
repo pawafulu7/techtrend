@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { RedisCache } from '@/lib/cache';
-import { Prisma } from '@prisma/client';
 
 // Initialize Redis cache for related articles
 const cache = new RedisCache({

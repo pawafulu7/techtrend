@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { usePathname } from 'next/navigation';
 
 export function InitialLoading() {
   const [mounted, setMounted] = useState(false);
   const [show, setShow] = useState(false);
-  const pathname = usePathname();
   
   // 初回マウント時のみ表示
   useEffect(() => {

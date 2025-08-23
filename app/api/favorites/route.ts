@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 
 // GET: ユーザーのお気に入り記事一覧を取得
 export async function GET(request: Request) {
   try {
-    // Next.js 15.4.4対応: headers()を明示的にawait
-    const headersList = await headers();
     
     const session = await auth();
     
@@ -68,8 +65,6 @@ export async function GET(request: Request) {
 // POST: 記事をお気に入りに追加
 export async function POST(request: Request) {
   try {
-    // Next.js 15.4.4対応: headers()を明示的にawait
-    const headersList = await headers();
     
     const session = await auth();
     
@@ -153,8 +148,6 @@ export async function POST(request: Request) {
 // DELETE: お気に入りから削除
 export async function DELETE(request: Request) {
   try {
-    // Next.js 15.4.4対応: headers()を明示的にawait
-    const headersList = await headers();
     
     const session = await auth();
     

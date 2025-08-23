@@ -13,7 +13,7 @@ type ArticleWithRelations = Article & {
 };
 
 interface HomeClientProps {
-  viewMode: 'grid' | 'list';
+  viewMode: 'card' | 'list';
   sources: Source[];
   tags: Array<Tag & { count: number }>;
   showInitialSkeleton?: boolean;

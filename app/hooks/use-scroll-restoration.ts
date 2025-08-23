@@ -21,7 +21,7 @@ export function useScrollRestoration(
   fetchNextPage: () => void,
   hasNextPage: boolean,
   isFetchingNextPage: boolean,
-  scrollContainerRef?: React.RefObject<HTMLElement>,
+  scrollContainerRef?: React.RefObject<HTMLElement | null>,
   isReturningFromArticle: boolean = false
 ) {
   const isRestoringRef = useRef(false);

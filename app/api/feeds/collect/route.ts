@@ -5,7 +5,7 @@ import { ArticleSummarizer } from '@/lib/ai';
 import { normalizeTagInput, isValidTagArray } from '@/lib/utils/tag-normalizer';
 import type { ApiResponse, CollectResult } from '@/types/api';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const results: CollectResult[] = [];
     
@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
 
             if (!existing) {
               // タグを正規化してバリデーション
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const tagNames = (articleData as any).tagNames || [];
               const normalizedTags = normalizeTagInput(tagNames);
               
@@ -121,9 +122,9 @@ export async function POST(request: NextRequest) {
       data: {
         results,
         summary: {
-          totalFetched: results.reduce((sum, r) => sum + r.fetched, 0),
-          totalCreated: results.reduce((sum, r) => sum + r.created, 0),
-          totalErrors: results.reduce((sum, r) => sum + r.errors.length, 0),
+          totalFetched: results.reduce((sum, r) => sum + r.totalArticles, 0),
+          totalCreated: results.reduce((sum, r) => sum + r.newArticles, 0),
+          totalErrors: results.filter(r => !r.success).length,
         },
       },
     } as ApiResponse<{ results: CollectResult[]; summary: { totalFetched: number; totalCreated: number; totalErrors: number; } }>);
@@ -138,6 +139,6 @@ export async function POST(request: NextRequest) {
 }
 
 // Allow manual triggering via GET for testing
-export async function GET(request: NextRequest) {
-  return POST(request);
+export async function GET() {
+  return POST();
 }

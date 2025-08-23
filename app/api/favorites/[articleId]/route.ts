@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 
@@ -9,8 +8,6 @@ export async function GET(
   { params }: { params: Promise<{ articleId: string }> }
 ) {
   try {
-    // Next.js 15.4.4対応: headers()を明示的にawait
-    const headersList = await headers();
     
     const session = await auth();
     const { articleId } = await params;

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
-import { tagCache } from '@/lib/cache/tag-cache';
 import { RedisCache } from '@/lib/cache';
 
 // タグクラウド用のキャッシュ
@@ -27,13 +26,12 @@ export async function GET(request: NextRequest) {
     }
 
     // 期間に基づいてフィルタリング
-    let dateFilter = {};
-    if (period !== 'all') {
-      const days = period === '7d' ? 7 : period === '30d' ? 30 : 365;
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-      
-      dateFilter = {
+    const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '365d' ? 365 : null;
+    const since = days ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : null;
+
+    // タグの使用回数を取得
+    const tags = await prisma.tag.findMany({
+      where: since ? {
         articles: {
           some: {
             publishedAt: {
@@ -41,20 +39,17 @@ export async function GET(request: NextRequest) {
             }
           }
         }
-      };
-    }
-
-    // タグの使用回数を取得
-    const tags = await prisma.tag.findMany({
-      where: dateFilter,
+      } : undefined,
       select: {
         id: true,
         name: true,
         _count: {
           select: {
             articles: {
-              where: period !== 'all' ? {
-                publishedAt: dateFilter.articles?.some?.publishedAt
+              where: since ? {
+                publishedAt: {
+                  gte: since
+                }
               } : undefined
             }
           }

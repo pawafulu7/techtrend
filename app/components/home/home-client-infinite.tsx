@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { RecommendationSectionInline } from '@/components/recommendation/recommendation-section-inline';
 
 interface HomeClientInfiniteProps {
-  viewMode: 'grid' | 'list';
+  viewMode: 'card' | 'list';
   sources: Source[];
   tags: Array<Tag & { count: number }>;
   enableInfiniteScroll?: boolean;

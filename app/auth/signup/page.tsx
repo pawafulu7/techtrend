@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SignupForm } from '@/components/auth/SignupForm';
 import { Button } from '@/components/ui/button';
@@ -12,7 +11,6 @@ import { Github } from 'lucide-react';
 import { GoogleIcon } from '@/components/icons/google';
 
 export default function SignupPage() {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleOAuthSignIn = async (provider: 'google' | 'github') => {

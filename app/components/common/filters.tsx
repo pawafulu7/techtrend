@@ -1,12 +1,10 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Filter, CheckSquare, Square } from 'lucide-react';
-import { TagFilter } from './tag-filter';
+import { CheckSquare, Square } from 'lucide-react';
 import { DateRangeFilter } from './date-range-filter';
 
 interface FiltersProps {
@@ -15,7 +13,7 @@ interface FiltersProps {
   initialSourceIds?: string[];
 }
 
-export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
+export function Filters({ sources, initialSourceIds }: FiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -41,7 +39,6 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
   };
   
   const [selectedSources, setSelectedSources] = useState<string[]>(getInitialSources);
-  const currentTag = searchParams.get('tag');
   
   // URLパラメータが変更されたときに選択状態を更新
   useEffect(() => {
@@ -76,7 +73,7 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
     applySourceFilter([]);
   };
   
-  const applySourceFilterRef = useRef<NodeJS.Timeout>();
+  const applySourceFilterRef = useRef<NodeJS.Timeout | undefined>(undefined);
   
   const applySourceFilter = async (sourceIds: string[]) => {
     // 即座に状態を更新（UIの反応性を保つ）
@@ -136,16 +133,6 @@ export function Filters({ sources, tags, initialSourceIds }: FiltersProps) {
     }, 150); // 150ms のデバウンス
   };
 
-  const handleTagFilter = (tagName: string | null) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (tagName) {
-      params.set('tag', tagName);
-    } else {
-      params.delete('tag');
-    }
-    params.set('page', '1'); // Reset to first page
-    router.push(`/?${params.toString()}`);
-  };
 
   return (
     <div className="space-y-3" data-testid="filter-area">

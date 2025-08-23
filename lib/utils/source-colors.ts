@@ -114,7 +114,7 @@ export function getSourceColor(sourceName: string) {
   };
 
   // 直接colorMapから取得
-  const colorMap: Record<string, {gradient: string; primary: string; light: string}> = {
+  const colorMap: Record<string, typeof newColorTheme> = {
     'はてなブックマーク': {
       gradient: 'from-blue-400 to-blue-600',
       border: 'border-blue-200',

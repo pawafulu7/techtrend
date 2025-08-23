@@ -2,7 +2,6 @@
 
 import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {
   Tooltip,
@@ -12,7 +11,6 @@ import {
 } from '@/components/ui/tooltip';
 
 export function FilterResetButton() {
-  const router = useRouter();
   const [isResetting, setIsResetting] = useState(false);
 
   const handleReset = async () => {

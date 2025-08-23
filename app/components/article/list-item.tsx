@@ -127,7 +127,7 @@ export function ArticleListItem({
           {/* モバイル: 配信日時のみ表示 */}
           <span className="flex sm:hidden items-center gap-1">
             <Clock className="h-3 w-3" />
-            {hoursAgo < 24 ? `${hoursAgo}h` : formatDate(article.publishedAt, true)}
+            {hoursAgo < 24 ? `${hoursAgo}h` : formatDate(article.publishedAt)}
           </span>
         </div>
 

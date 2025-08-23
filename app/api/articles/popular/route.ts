@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { popularCache, type PopularPeriod } from '@/lib/cache/popular-cache';
-import type { ArticleWithRelations } from '@/types/models';
-import type { ApiResponse } from '@/types/api';
 
 type Period = 'today' | 'week' | 'month' | 'all';
 type Metric = 'bookmarks' | 'votes' | 'quality' | 'combined';

@@ -11,9 +11,9 @@ import {
 } from 'recharts';
 import { 
   BookOpen, Clock, TrendingUp, Target, Download, 
-  Settings, AlertCircle, Calendar
+  AlertCircle
 } from 'lucide-react';
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { AnalyticsSettings } from '@/app/components/analytics/AnalyticsSettings';
 
@@ -34,6 +34,7 @@ export default function AnalyticsContent() {
     if (isEnabled) {
       loadStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEnabled, dateRange]);
 
   const checkAnalyticsStatus = () => {

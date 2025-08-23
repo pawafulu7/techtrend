@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Clock, TrendingUp, ThumbsUp, GraduationCap, ExternalLink } from 'lucide-react';
+import { TrendingUp, ThumbsUp, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatDate, formatDateWithTime } from '@/lib/utils/date';
+import { formatDateWithTime } from '@/lib/utils/date';
 import { getDomain } from '@/lib/utils/url';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
@@ -42,7 +42,6 @@ export function ArticleCard({ article, onArticleClick }: ArticleCardProps) {
   const showThumbnail = shouldShowThumbnail();
   
   const searchParams = useSearchParams();
-  const domain = getDomain(article.url);
   const sourceColor = getSourceColor(article.source.name);
   const publishedDate = new Date(article.publishedAt);
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));

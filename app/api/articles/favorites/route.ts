@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
     const sourceIds = searchParams.get('sourceIds');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const folder = searchParams.get('folder');
     
     if (!sourceIds) {
       return NextResponse.json(

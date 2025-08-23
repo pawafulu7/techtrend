@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 interface ViewTrackerProps {
-  articleId: number;
+  articleId: string;
 }
 
 export function ViewTracker({ articleId }: ViewTrackerProps) {
