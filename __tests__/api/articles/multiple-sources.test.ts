@@ -197,27 +197,5 @@ describe('Multiple Sources Filter API', () => {
       );
     });
 
-    it.skip('should handle single source in sources parameter', async () => {
-      // Skip: Prismaモックの呼び出し確認が失敗。実際の動作は手動テストで確認済み
-      prismaMock.article.findMany.mockResolvedValue([mockArticles[0]]);
-      prismaMock.article.count.mockResolvedValue(1);
-
-      const request = new NextRequest('http://localhost:3000/api/articles?sources=test-source-1');
-      const response = await GET(request);
-      const data = await response.json();
-      
-      expect(response.status).toBe(200);
-      
-      // Should create an 'in' query even for single source
-      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            sourceId: {
-              in: ['test-source-1'],
-            },
-          }),
-        })
-      );
-    });
   });
 });

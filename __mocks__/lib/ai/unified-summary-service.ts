@@ -5,9 +5,8 @@
 
 export class UnifiedSummaryService {
   generate = jest.fn().mockImplementation(async (title: string, content: string) => {
-    // デフォルトの成功レスポンスを返す
+    // デフォルトの成功レスポンスを返す（successフィールドなし）
     return {
-      success: true,
       summary: 'テスト要約文。技術的な内容を含む記事の要約です。',
       detailedSummary: '## 主要ポイント\n\n- ポイント1\n- ポイント2\n- ポイント3',
       tags: ['TypeScript', 'React', 'Testing'],
