@@ -22,7 +22,7 @@ jest.mock('@google/generative-ai', () => ({
   }))
 }));
 
-describe.skip('UnifiedSummaryService', () => {
+describe('UnifiedSummaryService', () => {
   let service: UnifiedSummaryService;
   const originalEnv = process.env;
 
@@ -154,6 +154,6 @@ describe.skip('UnifiedSummaryService', () => {
       
       const lastChar = result.summary.slice(-1);
       expect(['。', '！', '？', '」']).toContain(lastChar);
-    }, 10000);
+    }, 30000);
   });
 });

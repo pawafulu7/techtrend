@@ -29,7 +29,7 @@ jest.mock('@/lib/redis/factory', () => ({
   })),
 }));
 
-describe.skip('GET /api/recommendations', () => {
+describe('GET /api/recommendations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -37,7 +37,11 @@ describe.skip('GET /api/recommendations', () => {
   it('should return 401 if user is not authenticated', async () => {
     (auth as jest.Mock).mockResolvedValue(null);
 
-    const request = new NextRequest('http://localhost:3000/api/recommendations');
+    const request = {
+      nextUrl: new URL('http://localhost:3000/api/recommendations'),
+      method: 'GET',
+      headers: new Headers(),
+    } as NextRequest;
     const response = await GET(request);
     const data = await response.json();
 
@@ -66,7 +70,11 @@ describe.skip('GET /api/recommendations', () => {
     const redisService = getRedisService();
     (redisService.get as jest.Mock).mockResolvedValue(JSON.stringify(cachedRecommendations));
 
-    const request = new NextRequest('http://localhost:3000/api/recommendations?limit=10');
+    const request = {
+      nextUrl: new URL('http://localhost:3000/api/recommendations?limit=10'),
+      method: 'GET',
+      headers: new Headers(),
+    } as NextRequest;
     const response = await GET(request);
     const data = await response.json();
 
@@ -104,7 +112,11 @@ describe.skip('GET /api/recommendations', () => {
     (redisService.get as jest.Mock).mockResolvedValue(null);
     (recommendationService.getRecommendations as jest.Mock).mockResolvedValue(freshRecommendations);
 
-    const request = new NextRequest('http://localhost:3000/api/recommendations?limit=10');
+    const request = {
+      nextUrl: new URL('http://localhost:3000/api/recommendations?limit=10'),
+      method: 'GET',
+      headers: new Headers(),
+    } as NextRequest;
     const response = await GET(request);
     const data = await response.json();
 
@@ -132,7 +144,11 @@ describe.skip('GET /api/recommendations', () => {
     (redisService.get as jest.Mock).mockResolvedValue(null);
     (recommendationService.getRecommendations as jest.Mock).mockResolvedValue([]);
 
-    const request = new NextRequest('http://localhost:3000/api/recommendations?limit=20');
+    const request = {
+      nextUrl: new URL('http://localhost:3000/api/recommendations?limit=20'),
+      method: 'GET',
+      headers: new Headers(),
+    } as NextRequest;
     await GET(request);
 
     expect(recommendationService.getRecommendations).toHaveBeenCalledWith('user123', 20);
@@ -146,11 +162,17 @@ describe.skip('GET /api/recommendations', () => {
       },
     };
 
-    (getServerSession as jest.Mock).mockResolvedValue(mockSession);
+    (auth as jest.Mock).mockResolvedValue(mockSession);
+    const { getRedisService } = require('@/lib/redis/factory');
+    const redisService = getRedisService();
     (redisService.get as jest.Mock).mockResolvedValue(null);
     (recommendationService.getRecommendations as jest.Mock).mockResolvedValue([]);
 
-    const request = new NextRequest('http://localhost:3000/api/recommendations?limit=50');
+    const request = {
+      nextUrl: new URL('http://localhost:3000/api/recommendations?limit=50'),
+      method: 'GET',
+      headers: new Headers(),
+    } as NextRequest;
     await GET(request);
 
     expect(recommendationService.getRecommendations).toHaveBeenCalledWith('user123', 30);
@@ -164,13 +186,19 @@ describe.skip('GET /api/recommendations', () => {
       },
     };
 
-    (getServerSession as jest.Mock).mockResolvedValue(mockSession);
+    (auth as jest.Mock).mockResolvedValue(mockSession);
+    const { getRedisService } = require('@/lib/redis/factory');
+    const redisService = getRedisService();
     (redisService.get as jest.Mock).mockResolvedValue(null);
     (recommendationService.getRecommendations as jest.Mock).mockRejectedValue(
       new Error('Database error')
     );
 
-    const request = new NextRequest('http://localhost:3000/api/recommendations');
+    const request = {
+      nextUrl: new URL('http://localhost:3000/api/recommendations'),
+      method: 'GET',
+      headers: new Headers(),
+    } as NextRequest;
     const response = await GET(request);
     const data = await response.json();
 

@@ -40,7 +40,7 @@ describe('RecommendationService', () => {
     jest.clearAllMocks();
   });
 
-  describe.skip('getUserInterests', () => {
+  describe('getUserInterests', () => {
     it('should return cached interests if available', async () => {
       const cachedData = {
         tagScores: { React: 10, TypeScript: 8 },

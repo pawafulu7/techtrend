@@ -179,7 +179,7 @@ describe('Sources API', () => {
   });
 
   // statsエンドポイントは存在しないため、テストをスキップ
-  describe.skip('GET /api/sources/stats', () => {
+  describe('GET /api/sources/stats', () => {
     it('should return source statistics', async () => {
       const mockStats = [
         {

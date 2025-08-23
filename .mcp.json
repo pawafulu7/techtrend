@@ -8,6 +8,26 @@
         "@modelcontextprotocol/server-sequential-thinking"
       ],
       "env": {}
+    },
+    "postgres": {
+      "command": "/home/tomoaki/work/techtrend/toolbox",
+      "args": ["--prebuilt","postgres","--stdio"],
+      "env": {
+        "POSTGRES_HOST": "localhost",
+        "POSTGRES_PORT": "5432",
+        "POSTGRES_DATABASE": "techtrend_dev",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "postgres_dev_password"
+      }
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
+      "env": {}
     }
   }
 }
