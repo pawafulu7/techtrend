@@ -54,6 +54,7 @@
     "migrate:v7:staged": "tsx scripts/migration/migrate-v7-staged.ts",
     "migrate:v7:auto": "tsx scripts/migration/migrate-v7-auto.ts",
     "techtrend": "tsx lib/cli/index.ts",
+    "add-article": "tsx scripts/manual/add-article-manually.ts",
     "test:db:up": "docker compose -f docker-compose.test.yml up -d",
     "test:db:down": "docker compose -f docker-compose.test.yml down",
     "test:db:setup": "DATABASE_URL=postgresql://postgres@localhost:5433/techtrend_test npx prisma migrate deploy && DATABASE_URL=postgresql://postgres@localhost:5433/techtrend_test npx tsx prisma/seed-test.ts",
