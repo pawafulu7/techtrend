@@ -53,7 +53,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
           )}
           data-testid="tag-filter-button"
         >
-          <TagIcon className="h-4 w-4 mr-2" />
+          <TagIcon className="h-4 w-4 mr-2 lucide-tag" />
           <span className="hidden sm:inline">タグ</span>
           
           {/* 選択中タグ数のバッジ */}
