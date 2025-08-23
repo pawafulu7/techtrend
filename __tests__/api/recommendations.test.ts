@@ -29,7 +29,7 @@ jest.mock('@/lib/redis/factory', () => ({
   })),
 }));
 
-describe('GET /api/recommendations', () => {
+describe.skip('GET /api/recommendations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });

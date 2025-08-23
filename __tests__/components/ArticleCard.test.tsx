@@ -103,7 +103,7 @@ describe('ArticleCard', () => {
     const handleClick = jest.fn();
     render(<ArticleCard article={mockArticle} onArticleClick={handleClick} />);
     
-    const card = screen.getByRole('article');
+    const card = screen.getByTestId('article-card');
     fireEvent.click(card);
     
     expect(handleClick).toHaveBeenCalledWith(mockArticle);
@@ -112,7 +112,7 @@ describe('ArticleCard', () => {
   it('navigates to article detail page when clicked without onArticleClick', () => {
     render(<ArticleCard article={mockArticle} />);
     
-    const card = screen.getByRole('article');
+    const card = screen.getByTestId('article-card');
     fireEvent.click(card);
     
     // クリック時のナビゲーションがonArticleClickプロパティに依存

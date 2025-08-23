@@ -23,6 +23,29 @@ jest.mock('next/router', () => ({
 // window.openのモック
 global.open = jest.fn();
 
+// window.location.hrefのモック
+delete window.location;
+window.location = { 
+  href: '',
+  assign: jest.fn(),
+  replace: jest.fn(),
+  reload: jest.fn(),
+  pathname: '/',
+  search: '',
+  hash: ''
+};
+
+// fetchのモック
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({}),
+    text: () => Promise.resolve(''),
+    status: 200,
+    statusText: 'OK',
+  })
+);
+
 // IntersectionObserverのモック
 global.IntersectionObserver = class IntersectionObserver {
   constructor() {}
