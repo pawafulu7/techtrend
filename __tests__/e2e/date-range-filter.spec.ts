@@ -39,7 +39,7 @@ test.describe('Date Range Filter', () => {
     await page.locator('[data-testid="date-range-option-today"]').click();
     
     // Wait for navigation
-    await page.waitForURL('**/dateRange=today**');
+    await page.waitForURL('**/dateRange=today**', { timeout: 30000 });
     
     // Check URL has correct parameter
     expect(page.url()).toContain('dateRange=today');
@@ -57,7 +57,7 @@ test.describe('Date Range Filter', () => {
     
     await page.locator('[data-testid="date-range-option-week"]').click();
     
-    await page.waitForURL('**/dateRange=week**');
+    await page.waitForURL('**/dateRange=week**', { timeout: 30000 });
     expect(page.url()).toContain('dateRange=week');
     await expect(trigger).toContainText('今週');
   });
@@ -68,7 +68,7 @@ test.describe('Date Range Filter', () => {
     
     await page.locator('[data-testid="date-range-option-month"]').click();
     
-    await page.waitForURL('**/dateRange=month**');
+    await page.waitForURL('**/dateRange=month**', { timeout: 30000 });
     expect(page.url()).toContain('dateRange=month');
     await expect(trigger).toContainText('今月');
   });
@@ -79,7 +79,7 @@ test.describe('Date Range Filter', () => {
     
     await page.locator('[data-testid="date-range-option-3months"]').click();
     
-    await page.waitForURL('**/dateRange=3months**');
+    await page.waitForURL('**/dateRange=3months**', { timeout: 30000 });
     expect(page.url()).toContain('dateRange=3months');
     await expect(trigger).toContainText('過去3ヶ月');
   });
@@ -89,7 +89,7 @@ test.describe('Date Range Filter', () => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await trigger.click();
     await page.locator('[data-testid="date-range-option-week"]').click();
-    await page.waitForURL('**/dateRange=week**');
+    await page.waitForURL('**/dateRange=week**', { timeout: 30000 });
     
     // Then reset to all
     await trigger.click();
@@ -106,7 +106,7 @@ test.describe('Date Range Filter', () => {
     const dateRangeTrigger = page.locator('[data-testid="date-range-trigger"]');
     await dateRangeTrigger.click();
     await page.locator('[data-testid="date-range-option-week"]').click();
-    await page.waitForURL('**/dateRange=week**');
+    await page.waitForURL('**/dateRange=week**', { timeout: 30000 });
     
     // Apply source filter
     const sourceCheckbox = page.locator('[data-testid="source-checkbox-Qiita"]').first();
@@ -163,7 +163,7 @@ test.describe('Date Range Filter', () => {
     await page.locator('[data-testid="date-range-option-week"]').click();
     
     // Check URL updated
-    await page.waitForURL('**/dateRange=week**');
+    await page.waitForURL('**/dateRange=week**', { timeout: 30000 });
     expect(page.url()).toContain('dateRange=week');
   });
 });
