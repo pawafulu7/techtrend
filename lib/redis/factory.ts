@@ -1,14 +1,16 @@
 import { IRedisClient, IRedisClientFactory, IRedisConfig, IRedisService } from './interfaces';
 import { IoRedisClient } from './ioredis-client';
-import { TestRedisClient } from './test-redis-client';
 import { RedisService } from './redis-service';
+
+// Lazy-loaded test client class
+let TestRedisClient: (new () => IRedisClient) | null = null;
 
 /**
  * Factory for creating Redis clients based on environment
  */
 export class RedisClientFactory implements IRedisClientFactory {
   private static instance: RedisClientFactory;
-  private testClient: TestRedisClient | null = null;
+  private testClient: IRedisClient | null = null;
 
   private constructor() {}
 
@@ -24,8 +26,13 @@ export class RedisClientFactory implements IRedisClientFactory {
    */
   createClient(config?: IRedisConfig): IRedisClient {
     if (process.env.NODE_ENV === 'test') {
-      // In test environment, return a shared test client
+      // In test environment, use test client (will be loaded by test setup)
       if (!this.testClient) {
+        if (!TestRedisClient) {
+          // This should only happen in test environment
+          // The actual implementation will be loaded by test setup
+          throw new Error('TestRedisClient not loaded. Make sure test setup is properly configured.');
+        }
         this.testClient = new TestRedisClient();
       }
       return this.testClient;
@@ -47,8 +54,9 @@ export class RedisClientFactory implements IRedisClientFactory {
    * Clear test client data (for test cleanup)
    */
   clearTestData(): void {
-    if (this.testClient) {
-      this.testClient.clear();
+    if (this.testClient && 'clear' in this.testClient) {
+      const testClient = this.testClient as { clear: () => void };
+      testClient.clear();
     }
   }
 
@@ -90,4 +98,16 @@ export async function closeRedisConnection(): Promise<void> {
 export function createRedisService(config?: IRedisConfig): IRedisService {
   const factory = RedisClientFactory.getInstance();
   return factory.createService(config);
+}
+
+/**
+ * Load test client for test environment
+ * This should be called in test setup
+ */
+export async function loadTestClient(): Promise<void> {
+  if (process.env.NODE_ENV === 'test' && !TestRedisClient) {
+    // Dynamically import the test client
+    const testModule = await import('./test-redis-client');
+    TestRedisClient = testModule.TestRedisClient;
+  }
 }

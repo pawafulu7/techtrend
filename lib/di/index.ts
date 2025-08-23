@@ -16,7 +16,7 @@ export function initializeDI(): void {
 }
 
 // テスト環境の初期化
-export function initializeTestDI(): void {
-  const { registerTestProviders } = require('./providers/test.provider');
-  registerTestProviders();
+export async function initializeTestDI(): Promise<void> {
+  const testModule = await import('./providers/test.provider');
+  testModule.registerTestProviders();
 }
