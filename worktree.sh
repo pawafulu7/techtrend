@@ -292,14 +292,14 @@ $changed_files
     
     # GitHub CLIでPR作成
     if command -v gh &> /dev/null; then
-        gh pr create \
+        pr_url=$(gh pr create \
             --title "$title" \
             --body "$body" \
             --base "$MAIN_BRANCH" \
-            --head "$current_branch" \
-            --web
+            --head "$current_branch")
         
-        echo -e "${GREEN}✓ PR作成完了！ブラウザでPRが開きます${NC}"
+        echo -e "${GREEN}✓ PR作成完了！${NC}"
+        echo -e "${BLUE}PR URL: $pr_url${NC}"
     else
         echo -e "${YELLOW}GitHub CLIがインストールされていません${NC}"
         echo "手動でPRを作成してください:"
