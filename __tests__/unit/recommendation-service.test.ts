@@ -1,20 +1,6 @@
-// モック
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    articleView: {
-      findMany: jest.fn(),
-    },
-    favorite: {
-      findMany: jest.fn(),
-    },
-    article: {
-      findMany: jest.fn(),
-    },
-  },
-}));
-
-import { RecommendationService } from '@/lib/recommendation/recommendation-service';
-import { prisma } from '@/lib/prisma';
+import { RecommendationServiceDI } from '@/lib/recommendation/recommendation-service-di';
+import { PrismaClient } from '@prisma/client';
+import { DeepMockProxy, mockDeep, mockReset } from 'jest-mock-extended';
 
 jest.mock('@/lib/redis/factory', () => ({
   getRedisService: jest.fn(() => ({
@@ -28,7 +14,8 @@ jest.mock('@/lib/redis/factory', () => ({
 }));
 
 describe('RecommendationService', () => {
-  let service: RecommendationService;
+  let service: RecommendationServiceDI;
+  let prismaMock: DeepMockProxy<PrismaClient>;
   let redisService: any;
 
   beforeEach(() => {
@@ -36,8 +23,14 @@ describe('RecommendationService', () => {
     const { getRedisService } = require('@/lib/redis/factory');
     redisService = getRedisService();
     
-    service = new RecommendationService();
+    // Create Prisma mock
+    prismaMock = mockDeep<PrismaClient>();
+    
+    // Create service with mocked Prisma
+    service = new RecommendationServiceDI(prismaMock as unknown as PrismaClient);
+    
     jest.clearAllMocks();
+    mockReset(prismaMock);
   });
 
   describe('getUserInterests', () => {
@@ -85,8 +78,8 @@ describe('RecommendationService', () => {
         },
       ];
 
-      (prisma.articleView.findMany as jest.Mock).mockResolvedValue(mockViews);
-      (prisma.favorite.findMany as jest.Mock).mockResolvedValue(mockFavorites);
+      prismaMock.articleView.findMany.mockResolvedValue(mockViews);
+      prismaMock.favorite.findMany.mockResolvedValue(mockFavorites);
 
       const result = await service.getUserInterests('user123');
 
@@ -97,8 +90,8 @@ describe('RecommendationService', () => {
 
     it('should return null for users with no activity', async () => {
       (redisService.get as jest.Mock).mockResolvedValue(null);
-      (prisma.articleView.findMany as jest.Mock).mockResolvedValue([]);
-      (prisma.favorite.findMany as jest.Mock).mockResolvedValue([]);
+      prismaMock.articleView.findMany.mockResolvedValue([]);
+      prismaMock.favorite.findMany.mockResolvedValue([]);
 
       const result = await service.getUserInterests('user123');
 
@@ -195,8 +188,8 @@ describe('RecommendationService', () => {
   describe('getRecommendations', () => {
     it('should return default recommendations for new users', async () => {
       (redisService.get as jest.Mock).mockResolvedValue(null);
-      (prisma.articleView.findMany as jest.Mock).mockResolvedValue([]);
-      (prisma.favorite.findMany as jest.Mock).mockResolvedValue([]);
+      prismaMock.articleView.findMany.mockResolvedValue([]);
+      prismaMock.favorite.findMany.mockResolvedValue([]);
 
       const mockArticles = [
         {
@@ -212,7 +205,7 @@ describe('RecommendationService', () => {
         },
       ];
 
-      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const result = await service.getRecommendations('user123', 5);
 
@@ -231,7 +224,7 @@ describe('RecommendationService', () => {
       jest.spyOn(service, 'getUserInterests').mockResolvedValue(interests);
 
       // Mock viewed articles
-      (prisma.articleView.findMany as jest.Mock).mockResolvedValue([
+      prismaMock.articleView.findMany.mockResolvedValue([
         { articleId: 'viewed1' },
       ]);
 
@@ -249,11 +242,11 @@ describe('RecommendationService', () => {
         },
       ];
 
-      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const result = await service.getRecommendations('user123', 10);
 
-      expect(prisma.article.findMany).toHaveBeenCalledWith(
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             id: { notIn: ['viewed1'] },
@@ -290,7 +283,7 @@ describe('RecommendationService', () => {
         },
       ];
 
-      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const result = await service.getDefaultRecommendations(5);
 

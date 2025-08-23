@@ -66,6 +66,8 @@ describe('Sources API', () => {
           enabled: true,
           createdAt: new Date(),
           updatedAt: new Date(),
+          articles: [],  // articlesプロパティを追加
+          _count: { articles: 100 },  // _countプロパティを追加
           stats: {
             totalArticles: 100,
             lastWeek: 10,
@@ -82,6 +84,8 @@ describe('Sources API', () => {
           enabled: true,
           createdAt: new Date(),
           updatedAt: new Date(),
+          articles: [],  // articlesプロパティを追加
+          _count: { articles: 50 },  // _countプロパティを追加
           stats: {
             totalArticles: 50,
             lastWeek: 5,
