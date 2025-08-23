@@ -23,7 +23,7 @@ const defaultMockResponse = {
   }]
 };
 
-describe.skip('UnifiedSummaryService', () => {
+describe('UnifiedSummaryService', () => {
   let service: UnifiedSummaryService;
   let mockFetch: jest.Mock;
   const originalEnv = process.env;
@@ -31,14 +31,14 @@ describe.skip('UnifiedSummaryService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // node-fetchのモックを取得
-    mockFetch = require('node-fetch') as jest.Mock;
+    mockFetch = require('node-fetch').default;
     // 環境変数をモック
     process.env = { ...originalEnv, GEMINI_API_KEY: 'test-api-key' };
     // デフォルトのfetchモック設定
-    mockFetch.mockResolvedValue({
+    mockFetch.mockImplementation(() => Promise.resolve({
       ok: true,
       json: jest.fn().mockResolvedValue(defaultMockResponse)
-    });
+    }));
     service = new UnifiedSummaryService();
   });
 
