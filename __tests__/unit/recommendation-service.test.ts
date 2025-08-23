@@ -1,9 +1,8 @@
 import { RecommendationService } from '@/lib/recommendation/recommendation-service';
-import { prisma } from '@/lib/database';
-import { redisService } from '@/lib/redis/redis-service';
+import { prisma } from '@/lib/prisma';
 
 // モック
-jest.mock('@/lib/database', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     articleView: {
       findMany: jest.fn(),
@@ -17,17 +16,26 @@ jest.mock('@/lib/database', () => ({
   },
 }));
 
-jest.mock('@/lib/redis/redis-service', () => ({
-  redisService: {
+jest.mock('@/lib/redis/factory', () => ({
+  getRedisService: jest.fn(() => ({
     get: jest.fn(),
     set: jest.fn(),
-  },
+    getJSON: jest.fn(),
+    setJSON: jest.fn(),
+    delete: jest.fn(),
+    exists: jest.fn(),
+  })),
 }));
 
 describe('RecommendationService', () => {
   let service: RecommendationService;
+  let redisService: any;
 
   beforeEach(() => {
+    // Get the mocked redis service
+    const { getRedisService } = require('@/lib/redis/factory');
+    redisService = getRedisService();
+    
     service = new RecommendationService();
     jest.clearAllMocks();
   });
