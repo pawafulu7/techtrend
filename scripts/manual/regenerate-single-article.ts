@@ -6,8 +6,7 @@ import fetch from 'node-fetch';
 
 const prisma = new PrismaClient();
 
-async function regenerateSingleArticle() {
-  const articleId = 'cme3sdz74000fte6gig7urb0t';
+async function regenerateSingleArticle(articleId: string) {
   
   console.log('📋 記事の要約再生成を開始します');
   console.log('=====================================\n');
@@ -41,6 +40,17 @@ async function regenerateSingleArticle() {
     console.log(`  問題: 箇条書き形式が不自然、内容が断片的`);
     console.log('');
     
+    // コンテンツを取得（既存のコンテンツを使用）
+    const content = article.content || '';
+    
+    if (!content) {
+      console.error('❌ コンテンツが保存されていません');
+      console.log('手動で記事を追加した際にエンリッチャーでコンテンツを取得済みのはずです');
+      return;
+    }
+    
+    console.log(`📄 保存済みコンテンツ: ${content.length}文字`);
+    
     // 新しい要約を生成
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -49,27 +59,36 @@ async function regenerateSingleArticle() {
     
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
-    // 改善されたプロンプト
-    const prompt = `以下の技術記事の要約を作成してください。
+    // Speaker Deck用の特別なプロンプト
+    let prompt: string;
+    
+    if (article.source.name === 'Speaker Deck') {
+      // Speaker Deck専用プロンプト：内容に基づくタグ生成を重視
+      prompt = `以下の技術プレゼンテーションの要約を作成してください。
 
 タイトル: ${article.title}
 URL: ${article.url}
 
-内容の概要（メタデータより）:
-ChatGPTの最新モデルGPT-5に特定の単語（「植物百科通」など）を入力すると、異常な挙動を示すという現象について解説した記事です。
-これらの単語は「グリッチトークン」と呼ばれ、LLMの学習データや処理の限界を探る手法として紹介されています。
+プレゼン内容:
+${content.substring(0, 8000)}
 
 要求事項：
-1. 簡潔な要約（80-120文字、必ず日本語で）:
-   - 記事の主要なトピックを明確に説明
-   - 「グリッチトークン」という専門用語を含める
-   - LLMの脆弱性や限界についての言及を含める
+1. 簡潔な要約（100-150文字、必ず日本語で）:
+   - プレゼンの主要なトピックを明確に説明
+   - 具体的な技術や手法について言及
+   - 実践的な知見や学びに焦点を当てる
 
 2. 詳細な要約（200-400文字、日本語の自然な文章で）:
-   - グリッチトークンとは何かを説明
-   - 「植物百科通」の例を含める
-   - LLMがなぜ異常な挙動を示すのかの理由
-   - この現象の意義や活用方法
+   - プレゼンで紹介されている主要な概念や理論
+   - 具体的な事例や実践的な手法
+   - 得られる知見や学び
+   - 技術的な要点やベストプラクティス
+
+3. タグ生成の重要な指示:
+   - プレゼンの内容に直接関連する技術用語やトピックをタグとして選択
+   - 発表者の所属組織名（メルカリ、デジタル庁など）は、その組織特有の事例や手法を説明している場合のみタグに含める
+   - 一般的すぎるタグ（例：データ、分析）より、具体的なタグ（例：データ品質、KPI設計、ダッシュボード設計）を優先
+   - プレゼンで実際に議論されているトピックに基づいてタグを選択
 
 重要：箇条書きではなく、流れのある日本語の文章で記述してください。
 
@@ -79,6 +98,37 @@ ChatGPTの最新モデルGPT-5に特定の単語（「植物百科通」など�
   "detailedSummary": "詳細な要約",
   "tags": ["タグ1", "タグ2", "タグ3"]
 }`;
+    } else {
+      // 通常のプロンプト（既存処理）
+      prompt = `以下の技術プレゼンテーションの要約を作成してください。
+
+タイトル: ${article.title}
+URL: ${article.url}
+
+プレゼン内容:
+${content.substring(0, 8000)}
+
+要求事項：
+1. 簡潔な要約（100-150文字、必ず日本語で）:
+   - プレゼンの主要なトピックを明確に説明
+   - メルカリとデジタル庁での経験について言及
+   - データ活用の組織的な成功要因に焦点を当てる
+
+2. 詳細な要約（200-400文字、日本語の自然な文章で）:
+   - メルカリでのデータ分析の経験と学び
+   - デジタル庁での政策ダッシュボードプロジェクト
+   - データ活用における組織構造の重要性
+   - Principal-Agentモデルなどの理論的枠組み
+
+重要：箇条書きではなく、流れのある日本語の文章で記述してください。
+
+回答フォーマット（JSON形式）:
+{
+  "summary": "簡潔な要約",
+  "detailedSummary": "詳細な要約",
+  "tags": ["タグ1", "タグ2", "タグ3"]
+}`;
+    }
 
     console.log('🔄 Gemini APIで要約を再生成中...');
     
@@ -187,7 +237,16 @@ ChatGPTの最新モデルGPT-5に特定の単語（「植物百科通」など�
 
 // 直接実行
 if (require.main === module) {
-  regenerateSingleArticle()
+  const articleId = process.argv[2];
+  
+  if (!articleId) {
+    console.error('❌ エラー: 記事IDを指定してください');
+    console.error('使用方法: npx tsx scripts/manual/regenerate-single-article.ts <記事ID>');
+    console.error('例: npx tsx scripts/manual/regenerate-single-article.ts cmenp97rz0002tebkmpxrfhbh');
+    process.exit(1);
+  }
+  
+  regenerateSingleArticle(articleId)
     .then(() => process.exit(0))
     .catch((error) => {
       console.error(error);

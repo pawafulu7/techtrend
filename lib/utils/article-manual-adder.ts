@@ -7,8 +7,15 @@ import { UnifiedSummaryService } from '../ai/unified-summary-service';
 import { ContentEnricherFactory } from '../enrichers';
 import { detectSourceFromUrl, normalizeSourceName, isValidUrl } from './source-detector';
 import { WebFetcher } from '../utils/web-fetcher';
+import * as cheerio from 'cheerio';
 
-const prisma = new PrismaClient();
+// グローバルなPrismaインスタンス（テストで上書き可能）
+let prisma = new PrismaClient();
+
+// テスト用にPrismaインスタンスを設定できる関数
+export function setPrismaClient(client: PrismaClient) {
+  prisma = client;
+}
 
 export interface AddArticleOptions {
   url: string;
@@ -30,30 +37,73 @@ export interface AddArticleResult {
 }
 
 /**
+ * テキストから技術タグを抽出（最小限のタグのみ）
+ */
+function extractTags(text: string, sourceName: string): string[] {
+  const tags: string[] = [];
+  
+  // ソースに基づく基本タグ（presentationは意味があるので残す）
+  if (sourceName === 'Speaker Deck') {
+    tags.push('presentation');
+  }
+  
+  // タグ抽出は最小限にする（Geminiが後で適切なタグを生成するため）
+  // 明確にタイトルに含まれる主要技術のみを抽出
+  
+  return tags;
+}
+
+/**
  * URLから基本的なメタデータを取得
  */
 async function fetchBasicMetadata(url: string) {
   try {
     const fetcher = new WebFetcher();
     const html = await fetcher.fetch(url);
+    const $ = cheerio.load(html);
     
-    // タイトルの取得
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    const title = titleMatch ? titleMatch[1].trim() : 'Untitled';
+    // タイトルの取得（優先順位: og:title > title > h1）
+    let title = $('meta[property="og:title"]').attr('content') ||
+                $('meta[name="twitter:title"]').attr('content') ||
+                $('title').text().trim() ||
+                $('h1').first().text().trim();
+    
+    // タイトルが取得できなかった場合、URLから生成
+    if (!title || title === '') {
+      const pathParts = new URL(url).pathname.split('/').filter(p => p);
+      const lastPart = pathParts[pathParts.length - 1] || '';
+      // URLのパスを人間が読みやすい形式に変換
+      title = lastPart
+        .replace(/[-_]/g, ' ')
+        .replace(/\.\w+$/, '') // 拡張子を削除
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      
+      if (!title) {
+        title = 'Untitled Article';
+      }
+    }
     
     // OGP画像の取得
-    const ogImageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
-    const thumbnail = ogImageMatch ? ogImageMatch[1] : null;
+    const thumbnail = $('meta[property="og:image"]').attr('content') ||
+                     $('meta[name="twitter:image"]').attr('content') ||
+                     null;
     
     // 説明の取得
-    const descMatch = html.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i) ||
-                      html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i);
-    const description = descMatch ? descMatch[1] : '';
+    const description = $('meta[property="og:description"]').attr('content') ||
+                       $('meta[name="description"]').attr('content') ||
+                       $('meta[name="twitter:description"]').attr('content') ||
+                       '';
     
-    return { title, thumbnail, description, content: description };
+    // キーワードの取得（タグとして使用）
+    const keywordsContent = $('meta[name="keywords"]').attr('content') || '';
+    const keywords = keywordsContent ? keywordsContent.split(',').map(k => k.trim()).filter(k => k) : [];
+    
+    return { title, thumbnail, description, content: description, keywords };
   } catch (error) {
     console.error('基本メタデータ取得エラー:', error);
-    return { title: url, thumbnail: null, description: '', content: '' };
+    return { title: 'Untitled Article', thumbnail: null, description: '', content: '', keywords: [] };
   }
 }
 
@@ -97,16 +147,21 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
       where: { name: sourceName }
     });
     
-    if (!source && !dryRun) {
-      source = await prisma.source.create({
-        data: {
-          name: sourceName,
-          type: 'manual',
-          url: new URL(url).origin,
-          enabled: true
-        }
-      });
-      console.log(`✅ 新規ソース作成: ${sourceName}`);
+    if (!source) {
+      if (dryRun) {
+        // ドライランの場合は仮のソースオブジェクトを作成
+        source = { id: 'dry-run-source', name: sourceName } as any;
+      } else {
+        source = await prisma.source.create({
+          data: {
+            name: sourceName,
+            type: 'manual',
+            url: new URL(url).origin,
+            enabled: true
+          }
+        });
+        console.log(`✅ 新規ソース作成: ${sourceName}`);
+      }
     }
     
     // エンリッチメント処理
@@ -114,6 +169,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     let content = '';
     let thumbnail = null;
     let finalTitle = customTitle || '';
+    let tagNames: string[] = [];
     
     if (!skipEnrichment) {
       const enricherFactory = new ContentEnricherFactory();
@@ -129,6 +185,10 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
             if (!customTitle && enrichedData.title) {
               finalTitle = enrichedData.title;
             }
+            // エンリッチャーからタグを取得
+            if (enrichedData.tags && Array.isArray(enrichedData.tags)) {
+              tagNames = enrichedData.tags;
+            }
             console.log(`✅ エンリッチメント成功: ${content.length}文字`);
           }
         } catch (enrichError) {
@@ -137,28 +197,66 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
       }
     }
     
-    // エンリッチャーが使えない場合は基本メタデータを取得
-    if (!enrichedData && !customTitle) {
+    // エンリッチャーがタイトルを返さなかった場合、またはエンリッチャーが使えない場合は基本メタデータを取得
+    let metadata: any = null;
+    if (!finalTitle && !customTitle) {
       console.log('📥 基本メタデータ取得中...');
-      const metadata = await fetchBasicMetadata(url);
-      finalTitle = customTitle || metadata.title;
-      content = metadata.content;
-      thumbnail = metadata.thumbnail;
+      metadata = await fetchBasicMetadata(url);
+      finalTitle = metadata.title;
+      // コンテンツが取得できていない場合のみ、メタデータのコンテンツを使用
+      if (!content) {
+        content = metadata.content;
+      }
+      // サムネイルが取得できていない場合のみ、メタデータのサムネイルを使用
+      if (!thumbnail) {
+        thumbnail = metadata.thumbnail;
+      }
+      // メタデータからキーワードをタグとして使用（ただし既にタグがある場合はスキップ）
+      if (tagNames.length === 0 && metadata.keywords && metadata.keywords.length > 0) {
+        tagNames = metadata.keywords;
+      }
     }
     
-    // タイトルが空の場合はURLを使用
+    // カスタムタイトルが指定されている場合は優先
+    if (customTitle) {
+      finalTitle = customTitle;
+    }
+    
+    // タイトルが空の場合はURLから生成
     if (!finalTitle) {
-      finalTitle = url;
+      finalTitle = 'Untitled Article';
+    }
+    
+    // タグが未設定の場合、タイトルとコンテンツから自動抽出
+    if (tagNames.length === 0) {
+      const textForTagExtraction = `${finalTitle} ${content}`;
+      tagNames = extractTags(textForTagExtraction, sourceName);
     }
     
     if (dryRun) {
       console.log('🔄 ドライラン: 実際の保存は行いません');
+      console.log(`  タイトル: ${finalTitle}`);
+      console.log(`  タグ: ${tagNames.join(', ') || 'なし'}`);
       return {
         success: true,
         title: finalTitle,
         source: sourceName,
         message: 'ドライラン完了（実際の保存なし）'
       };
+    }
+    
+    // タグの処理（既存のcollect-feeds.tsと同じパターン）
+    const tagConnections = [];
+    if (tagNames && tagNames.length > 0) {
+      for (const tagName of tagNames) {
+        const tag = await prisma.tag.upsert({
+          where: { name: tagName },
+          update: {},
+          create: { name: tagName }
+        });
+        tagConnections.push({ id: tag.id });
+      }
+      console.log(`🏷️ タグ: ${tagNames.join(', ')}`);
     }
     
     // 記事の保存
@@ -175,7 +273,12 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
         bookmarks: 0,
         qualityScore: 0,
         summaryVersion: 0,
-        articleType: 'manual'
+        articleType: 'manual',
+        ...(tagConnections.length > 0 && {
+          tags: {
+            connect: tagConnections
+          }
+        })
       }
     });
     
@@ -184,6 +287,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     // 要約生成
     let summary = null;
     let detailedSummary = null;
+    let generatedTags: string[] = [];
     
     if (!skipSummary && content && content.length > 100) {
       console.log('📝 要約生成中...');
@@ -191,25 +295,46 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
         const summaryService = new UnifiedSummaryService();
         const result = await summaryService.generate(finalTitle, content);
         
-        if (result.success) {
-          summary = result.summary;
-          detailedSummary = result.detailedSummary;
+        // resultが正常に返ってきた場合
+        summary = result.summary;
+        detailedSummary = result.detailedSummary;
+        generatedTags = result.tags || [];
+        
+        // 要約を更新
+        await prisma.article.update({
+          where: { id: article.id },
+          data: {
+            summary,
+            detailedSummary,
+            summaryVersion: result.summaryVersion || 7,
+            articleType: result.articleType || 'unified'
+          }
+        });
+        
+        // Geminiが生成したタグを記事に追加
+        if (generatedTags.length > 0) {
+          const tagConnections = [];
+          for (const tagName of generatedTags) {
+            const tag = await prisma.tag.upsert({
+              where: { name: tagName },
+              update: {},
+              create: { name: tagName }
+            });
+            tagConnections.push({ id: tag.id });
+          }
           
-          // 要約を更新
           await prisma.article.update({
             where: { id: article.id },
             data: {
-              summary,
-              detailedSummary,
-              summaryVersion: 7,
-              articleType: 'unified'
+              tags: {
+                connect: tagConnections
+              }
             }
           });
-          
-          console.log('✅ 要約生成完了');
-        } else {
-          console.warn('⚠️ 要約生成失敗:', result.error);
+          console.log(`🏷️ 要約生成時のタグ: ${generatedTags.join(', ')}`);
         }
+        
+        console.log('✅ 要約生成完了');
       } catch (summaryError) {
         console.error('❌ 要約生成エラー:', summaryError);
       }
