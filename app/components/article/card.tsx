@@ -11,7 +11,7 @@ import { getDomain } from '@/lib/utils/url';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
-import { ReadingListButton } from '@/app/components/reading-list/ReadingListButton';
+import { FavoriteButton } from '@/components/article/favorite-button';
 import { ShareButton } from '@/app/components/article/share-button';
 import { ArticleThumbnail } from '@/app/components/common/optimized-image';
 
@@ -192,10 +192,9 @@ export function ArticleCard({ article, onArticleClick }: ArticleCardProps) {
         
         {/* アクションボタン */}
         <div className="flex items-center justify-between pt-1">
-          <ReadingListButton 
-            article={article} 
-            size="sm"
-            variant="ghost"
+          <FavoriteButton 
+            articleId={article.id} 
+            className="h-8 px-3"
           />
           <div className="flex items-center gap-1">
             <ShareButton

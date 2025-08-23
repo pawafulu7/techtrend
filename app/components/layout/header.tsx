@@ -22,11 +22,10 @@ export function Header() {
     { href: '/sources', label: 'ソース', icon: Database },
     { href: '/trends', label: 'トレンド', icon: TrendingUp },
     { href: '/stats', label: '統計', icon: BarChart3 },
+    { href: '/favorites', label: 'お気に入り', icon: Star },
   ];
 
   const secondaryNav = [
-    { href: '/reading-list', label: '読書リスト', icon: Bookmark },
-    { href: '/favorites', label: 'お気に入り', icon: Star },
     { href: '/history', label: '閲覧履歴', icon: LineChart },
     { href: '/recommendations', label: 'おすすめ', icon: Star },
     { href: '/tags', label: 'タグ', icon: Hash },

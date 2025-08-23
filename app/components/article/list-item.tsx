@@ -8,7 +8,7 @@ import { formatDate, formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleListItemProps } from '@/types/components';
 import { cn } from '@/lib/utils';
-import { ReadingListButton } from '@/app/components/reading-list/ReadingListButton';
+import { FavoriteButton } from '@/components/article/favorite-button';
 
 export function ArticleListItem({ 
   article, 
@@ -133,10 +133,8 @@ export function ArticleListItem({
 
         {/* アクション（ホバー時表示） */}
         <div className="hidden group-hover:flex items-center gap-1">
-          <ReadingListButton 
-            article={article} 
-            size="sm"
-            variant="ghost"
+          <FavoriteButton 
+            articleId={article.id} 
             className="h-7 w-7 p-0"
           />
           <Button
