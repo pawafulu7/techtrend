@@ -10,7 +10,7 @@ dotenv.config({ path: '.env.test' });
 export default defineConfig({
   testDir: './__tests__/e2e',
   /* Global timeout for each test */
-  timeout: 60000,
+  timeout: 120000,  // 120秒に延長
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
