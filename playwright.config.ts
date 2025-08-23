@@ -97,11 +97,11 @@ export default defineConfig({
     // },
   ],
 
-  /* 開発サーバーは常時起動しているため、webServer設定は不要 */
-  // webServer: {
-  //   command: 'npm run dev',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // timeout: 120000,
-  // },
+  /* 開発サーバー設定 - E2Eテスト時に自動起動 */
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: true, // 既存サーバーを再利用
+    timeout: 120000,
+  },
 });

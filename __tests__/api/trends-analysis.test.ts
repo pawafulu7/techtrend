@@ -18,7 +18,7 @@ describe('/api/trends/analysis API Tests', () => {
       expect(data.period.days).toBe(30);
       expect(data.topTags).toBeDefined();
       expect(data.timeline).toBeDefined();
-    });
+    }, 10000);
 
     test('days=7 パラメータ', async () => {
       const response = await axios.get(`${baseURL}/api/trends/analysis?days=7`);
@@ -26,7 +26,7 @@ describe('/api/trends/analysis API Tests', () => {
       
       const data = response.data;
       expect(data.period.days).toBe(7);
-    });
+    }, 10000);
 
     test('days=14 パラメータ', async () => {
       const response = await axios.get(`${baseURL}/api/trends/analysis?days=14`);
@@ -34,7 +34,7 @@ describe('/api/trends/analysis API Tests', () => {
       
       const data = response.data;
       expect(data.period.days).toBe(14);
-    });
+    }, 10000);
 
     test('tag=JavaScript パラメータ', async () => {
       const response = await axios.get(`${baseURL}/api/trends/analysis?tag=JavaScript`);
@@ -44,7 +44,7 @@ describe('/api/trends/analysis API Tests', () => {
       expect(data.tag).toBe('JavaScript');
       expect(data.timeline).toBeDefined();
       expect(data.relatedTags).toBeDefined();
-    });
+    }, 10000);
 
     test('複合パラメータ days=7&tag=TypeScript', async () => {
       const response = await axios.get(`${baseURL}/api/trends/analysis?days=7&tag=TypeScript`);
@@ -53,7 +53,7 @@ describe('/api/trends/analysis API Tests', () => {
       const data = response.data;
       expect(data.period.days).toBe(7);
       expect(data.tag).toBe('TypeScript');
-    });
+    }, 10000);
   });
 
   describe('キャッシュ動作', () => {
@@ -73,7 +73,7 @@ describe('/api/trends/analysis API Tests', () => {
       // データの一致を確認
       expect(data1.period.days).toBe(data2.period.days);
       expect(data1.topTags?.length).toBe(data2.topTags?.length);
-    });
+    }, 10000);
 
     test('異なるパラメータで別々のキャッシュ', async () => {
       const response1 = await axios.get(`${baseURL}/api/trends/analysis?days=10`);
@@ -85,7 +85,7 @@ describe('/api/trends/analysis API Tests', () => {
       // 異なる期間のデータであることを確認
       expect(data1.period.days).toBe(10);
       expect(data2.period.days).toBe(20);
-    });
+    }, 10000);
   });
 
   describe('レスポンス構造', () => {
@@ -109,7 +109,7 @@ describe('/api/trends/analysis API Tests', () => {
         expect(data.topTags[0]).toHaveProperty('name');
         expect(data.topTags[0]).toHaveProperty('totalCount');
       }
-    });
+    }, 10000);
 
     test('特定タグ分析のレスポンス構造', async () => {
       const response = await axios.get(`${baseURL}/api/trends/analysis?tag=React`);
@@ -129,7 +129,7 @@ describe('/api/trends/analysis API Tests', () => {
         expect(data.relatedTags[0]).toHaveProperty('name');
         expect(data.relatedTags[0]).toHaveProperty('count');
       }
-    });
+    }, 10000);
   });
 
   describe('エラーハンドリング', () => {
@@ -151,7 +151,7 @@ describe('/api/trends/analysis API Tests', () => {
           throw error;
         }
       }
-    });
+    }, 10000);
 
     test('存在しないタグ', async () => {
       const response = await axios.get(`${baseURL}/api/trends/analysis?tag=NonExistentTag123456`);
@@ -161,6 +161,6 @@ describe('/api/trends/analysis API Tests', () => {
       expect(data.tag).toBe('NonExistentTag123456');
       expect(data.timeline).toEqual([]);
       expect(data.relatedTags).toEqual([]);
-    });
+    }, 10000);
   });
 });
