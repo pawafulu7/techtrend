@@ -130,13 +130,7 @@ export class CacheMockFactory {
           if (options?.params) {
             const sortedParams = Object.entries(options.params)
               .sort(([a], [b]) => a.localeCompare(b))
-              .map(([k, v]) => {
-                // 配列の場合はカンマ区切りで結合
-                if (Array.isArray(v)) {
-                  return `${k}=${v.join(',')}`;
-                }
-                return `${k}=${v}`;
-              })
+              .map(([k, v]) => `${k}=${v}`)  // 実装に合わせて配列もtoString()される
               .join(':');
             if (sortedParams) {
               key = `${key}:${sortedParams}`;
