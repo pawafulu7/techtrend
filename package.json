@@ -130,6 +130,16 @@
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
   },
+  "overrides": {
+    "react-joyride": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
+    "react-floater": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@faker-js/faker": "^9.9.0",
