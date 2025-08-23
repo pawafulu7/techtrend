@@ -24,7 +24,7 @@ export class RecommendationService {
   async getUserInterests(userId: string): Promise<UserInterests | null> {
     // キャッシュ確認
     const cacheKey = `user:interests:${userId}`;
-    const cached = await redisService.getJSON<any>(cacheKey);
+    const cached = await redisService.getJSON<{favoriteTopics: string[]; recentTopics: string[]}>(cacheKey);
     if (cached) {
       return {
         tagScores: new Map(Object.entries(cached.tagScores)),
@@ -123,7 +123,7 @@ export class RecommendationService {
    * 記事の推薦スコアを計算
    */
   calculateRecommendationScore(
-    article: any,
+    article: {id: string; title: string; tags: Array<{name: string} | string>; source?: {name: string}},
     interests: UserInterests
   ): RecommendationScore {
     let score = 0;

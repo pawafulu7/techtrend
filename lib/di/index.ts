@@ -17,6 +17,8 @@ export function initializeDI(): void {
 
 // テスト環境の初期化
 export function initializeTestDI(): void {
+  // Dynamic import is allowed in test environment
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { registerTestProviders } = require('./providers/test.provider');
   registerTestProviders();
 }

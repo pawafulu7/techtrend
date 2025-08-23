@@ -3,7 +3,7 @@
  * URLに応じて適切なエンリッチャーを選択
  */
 
-import { IContentEnricher, EnrichedContent } from './base';
+import { BaseContentEnricher, IContentEnricher, EnrichedContent } from './base';
 import { GMOContentEnricher } from './gmo';
 import { FreeeContentEnricher } from './freee';
 import { HatenaContentEnricher } from './hatena';

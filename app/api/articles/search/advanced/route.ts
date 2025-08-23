@@ -191,7 +191,11 @@ export async function GET(request: NextRequest) {
             articles.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
             break;
           case 'popularity':
-            articles.sort((a, b) => (b as any).bookmarks - (a as any).bookmarks);
+            articles.sort((a, b) => {
+              const bWithBookmarks = b as typeof b & { bookmarks?: number };
+              const aWithBookmarks = a as typeof a & { bookmarks?: number };
+              return (bWithBookmarks.bookmarks ?? 0) - (aWithBookmarks.bookmarks ?? 0);
+            });
             break;
           case 'quality':
             articles.sort((a, b) => b.qualityScore - a.qualityScore);
@@ -212,10 +216,10 @@ export async function GET(request: NextRequest) {
     } else {
       // 通常の検索（全文検索なし）
       const orderBy = 
-        sortBy === 'date' ? { publishedAt: 'desc' } :
-        sortBy === 'popularity' ? { userVotes: 'desc' } :
-        sortBy === 'quality' ? { qualityScore: 'desc' } :
-        { publishedAt: 'desc' };
+        sortBy === 'date' ? { publishedAt: 'desc' as const } :
+        sortBy === 'popularity' ? { userVotes: 'desc' as const } :
+        sortBy === 'quality' ? { qualityScore: 'desc' as const } :
+        { publishedAt: 'desc' as const };
 
       const [articlesResult, count] = await Promise.all([
         prisma.article.findMany({
@@ -238,11 +242,13 @@ export async function GET(request: NextRequest) {
     }
 
     // ArticleWithRelations形式に変換
-    const articlesWithRelations = articles.map(article => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const articlesWithRelations = articles.map((article: any) => ({
       ...article,
-      tags: article.tags.map(tag => tag.name),
-      bookmarkCount: article._count.readingList,
-      voteScore: article._count.votes
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tags: article.tags.map((tag: any) => tag.name),
+      bookmarkCount: article._count?.readingList || 0,
+      voteScore: article._count?.votes || 0
     }));
 
     // ファセット情報を取得（オプション）

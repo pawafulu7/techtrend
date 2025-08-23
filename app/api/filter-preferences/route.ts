@@ -44,11 +44,11 @@ export async function POST(request: NextRequest) {
       } 
       // 配列の場合（空配列も含む）は有効な値として扱う
       else if (Array.isArray(value)) {
-        updated[k] = value as any;
+        (updated as Record<string, unknown>)[k] = value;
       }
       // その他の値は通常通り設定
       else {
-        updated[k] = value as any;
+        (updated as Record<string, unknown>)[k] = value;
       }
     });
     

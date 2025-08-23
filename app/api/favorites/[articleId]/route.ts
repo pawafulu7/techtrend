@@ -6,13 +6,14 @@ import { prisma } from '@/lib/prisma';
 // GET: 特定の記事がお気に入りに追加されているか確認
 export async function GET(
   request: Request,
-  { params }: { params: { articleId: string } }
+  { params }: { params: Promise<{ articleId: string }> }
 ) {
   try {
     // Next.js 15.4.4対応: headers()を明示的にawait
     const headersList = await headers();
     
     const session = await auth();
+    const { articleId } = await params;
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -25,7 +26,7 @@ export async function GET(
       where: {
         userId_articleId: {
           userId: session.user.id,
-          articleId: params.articleId,
+          articleId: articleId,
         },
       },
     });

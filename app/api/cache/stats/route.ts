@@ -51,14 +51,16 @@ export async function GET() {
           hits: statsCacheStats.hits,
           misses: statsCacheStats.misses,
           hitRate: calculateHitRate(statsCacheStats),
-          lastResetAt: statsCacheStats.lastResetAt || null
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          lastResetAt: (statsCacheStats as any).lastResetAt || null
         },
         trends: {
           namespace: '@techtrend/cache:trends',
           hits: trendsCacheStats.hits,
           misses: trendsCacheStats.misses,
           hitRate: calculateHitRate(trendsCacheStats),
-          lastResetAt: trendsCacheStats.lastResetAt || null
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          lastResetAt: (trendsCacheStats as any).lastResetAt || null
         }
       },
       overall: {

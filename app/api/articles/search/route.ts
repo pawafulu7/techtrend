@@ -82,8 +82,9 @@ export async function GET(request: NextRequest) {
       async () => {
         console.log(`[Search API] Cache miss for key: ${cacheKey}`);
         
-        let articles;
-        let totalCount;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let articles: any[] = [];
+        let totalCount = 0;
 
     // 全文検索クエリがある場合
     if (query) {

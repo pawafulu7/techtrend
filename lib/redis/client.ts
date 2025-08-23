@@ -49,7 +49,7 @@ export function getRedisClient(): Redis {
           if (prop === 'disconnect') return () => client.quit();
           
           // Default
-          return (target as any)[prop];
+          return (target as Record<string, unknown>)[prop];
         }
       });
     } else {
@@ -87,7 +87,7 @@ export const redis = (() => {
       if (!_instance) {
         _instance = getRedisClient();
       }
-      return (_instance as any)[prop];
+      return (_instance as Record<string, unknown>)[prop];
     }
   });
 })();

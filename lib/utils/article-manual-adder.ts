@@ -150,7 +150,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     if (!source) {
       if (dryRun) {
         // ドライランの場合は仮のソースオブジェクトを作成
-        source = { id: 'dry-run-source', name: sourceName } as any;
+        source = { id: 'dry-run-source', name: sourceName } as Source;
       } else {
         source = await prisma.source.create({
           data: {
@@ -198,7 +198,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     }
     
     // エンリッチャーがタイトルを返さなかった場合、またはエンリッチャーが使えない場合は基本メタデータを取得
-    let metadata: any = null;
+    let metadata: {title?: string; description?: string; image?: string} | null = null;
     if (!finalTitle && !customTitle) {
       console.log('📥 基本メタデータ取得中...');
       metadata = await fetchBasicMetadata(url);

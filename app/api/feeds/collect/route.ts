@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
     for (const source of sources) {
       const result: CollectResult = {
         source: source.name,
-        fetched: 0,
-        created: 0,
-        errors: [],
+        success: true,
+        newArticles: 0,
+        totalArticles: 0,
       };
 
       try {
@@ -31,8 +31,11 @@ export async function POST(request: NextRequest) {
         const fetcher = createFetcher(source);
         const { articles, errors } = await fetcher.fetch();
         
-        result.fetched = articles.length;
-        result.errors = errors.map(e => e.message);
+        result.totalArticles = articles.length;
+        if (errors.length > 0) {
+          result.success = false;
+          result.error = errors.map(e => e.message).join(', ');
+        }
 
         // Process articles
         for (const articleData of articles) {
@@ -44,12 +47,13 @@ export async function POST(request: NextRequest) {
 
             if (!existing) {
               // タグを正規化してバリデーション
-              const normalizedTags = normalizeTagInput(articleData.tagNames);
+              const tagNames = (articleData as any).tagNames || [];
+              const normalizedTags = normalizeTagInput(tagNames);
               
               // デバッグ: 不正なタグが検出された場合は警告
-              if (process.env.NODE_ENV !== 'production' && articleData.tagNames) {
-                if (!isValidTagArray(articleData.tagNames) && Array.isArray(articleData.tagNames)) {
-                  console.warn(`[Feeds API] Non-string tags detected from ${source.name}:`, articleData.tagNames);
+              if (process.env.NODE_ENV !== 'production' && tagNames.length > 0) {
+                if (!isValidTagArray(tagNames) && Array.isArray(tagNames)) {
+                  console.warn(`[Feeds API] Non-string tags detected from ${source.name}:`, tagNames);
                 }
               }
 
@@ -72,7 +76,7 @@ export async function POST(request: NextRequest) {
                 },
               });
 
-              result.created++;
+              result.newArticles++;
 
               // Generate AI summary with unified format if not present and summarizer available
               if (!article.summary && article.content && summarizer) {
@@ -98,11 +102,15 @@ export async function POST(request: NextRequest) {
               }
             }
           } catch (error) {
-            result.errors.push(`Article error: ${error instanceof Error ? error.message : String(error)}`);
+            if (!result.error) {
+              result.error = '';
+            }
+            result.error += `Article error: ${error instanceof Error ? error.message : String(error)}; `;
           }
         }
       } catch (error) {
-        result.errors.push(`Source error: ${error instanceof Error ? error.message : String(error)}`);
+        result.success = false;
+        result.error = `Source error: ${error instanceof Error ? error.message : String(error)}`;
       }
 
       results.push(result);

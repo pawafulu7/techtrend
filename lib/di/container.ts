@@ -1,8 +1,8 @@
 import { IDIContainer } from './types';
 
 class DIContainer implements IDIContainer {
-  private providers = new Map<symbol, () => any>();
-  private singletons = new Map<symbol, any>();
+  private providers = new Map<symbol, () => unknown>();
+  private singletons = new Map<symbol, unknown>();
 
   get<T>(token: symbol): T {
     if (this.singletons.has(token)) {

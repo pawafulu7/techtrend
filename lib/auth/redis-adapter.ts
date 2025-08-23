@@ -198,7 +198,7 @@ export function RedisAdapter(client: Redis): Adapter {
     // OAuth methods - using Prisma for these
     async linkAccount(account) {
       // Will be handled by Prisma adapter
-      return account as any;
+      return account as unknown as ReturnType<Adapter['linkAccount']>;
     },
 
     async unlinkAccount({ provider, providerAccountId }) {

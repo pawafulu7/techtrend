@@ -31,7 +31,7 @@ export function getFilterPreferences(request: NextRequest): FilterPreferences {
 /**
  * Get filter preferences from cookies (for server components)
  */
-export function getFilterPreferencesFromCookies(cookieStore: any): FilterPreferences {
+export function getFilterPreferencesFromCookies(cookieStore: {get: (name: string) => {value: string} | undefined}): FilterPreferences {
   const cookie = cookieStore.get(FILTER_PREFERENCES_COOKIE_NAME);
   if (!cookie) return {};
   
