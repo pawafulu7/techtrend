@@ -4,12 +4,12 @@ import { DeepMockProxy, mockDeep, mockReset } from 'jest-mock-extended';
 
 jest.mock('@/lib/redis/factory', () => ({
   getRedisService: jest.fn(() => ({
-    get: jest.fn(),
-    set: jest.fn(),
-    getJSON: jest.fn(),
-    setJSON: jest.fn(),
-    delete: jest.fn(),
-    exists: jest.fn(),
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue('OK'),
+    getJSON: jest.fn().mockResolvedValue(null),
+    setJSON: jest.fn().mockResolvedValue('OK'),
+    delete: jest.fn().mockResolvedValue(1),
+    exists: jest.fn().mockResolvedValue(0),
   })),
 }));
 

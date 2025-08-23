@@ -24,8 +24,10 @@ jest.mock('@/lib/recommendation/recommendation-service', () => ({
 
 jest.mock('@/lib/redis/factory', () => ({
   getRedisService: jest.fn(() => ({
-    get: jest.fn(),
-    set: jest.fn(),
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue('OK'),
+    getJSON: jest.fn().mockResolvedValue(null),
+    setJSON: jest.fn().mockResolvedValue('OK'),
   })),
 }));
 

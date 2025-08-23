@@ -37,18 +37,26 @@ describe('Sources API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
+    // prismaMockが存在しない場合は初期化
+    if (!prismaMock.source) {
+      prismaMock.source = {};
+    }
+    if (!prismaMock.article) {
+      prismaMock.article = {};
+    }
+    
     // デフォルトのモック設定
-    prismaMock.source = {
-      findMany: jest.fn().mockResolvedValue([]),
-    };
-    prismaMock.article = {
-      groupBy: jest.fn().mockResolvedValue([]),
-      count: jest.fn().mockResolvedValue(0),
-      aggregate: jest.fn().mockResolvedValue({ _avg: { qualityScore: 0 } }),
-    };
-    redisMock.get = jest.fn().mockResolvedValue(null);
-    redisMock.set = jest.fn().mockResolvedValue('OK');
-    redisMock.setex = jest.fn().mockResolvedValue('OK');
+    prismaMock.source.findMany = jest.fn().mockResolvedValue([]);
+    prismaMock.article.groupBy = jest.fn().mockResolvedValue([]);
+    prismaMock.article.count = jest.fn().mockResolvedValue(0);
+    prismaMock.article.aggregate = jest.fn().mockResolvedValue({ _avg: { qualityScore: 0 } });
+    
+    // Redisモックの初期化
+    if (redisMock) {
+      redisMock.get = jest.fn().mockResolvedValue(null);
+      redisMock.set = jest.fn().mockResolvedValue('OK');
+      redisMock.setex = jest.fn().mockResolvedValue('OK');
+    }
     
     // sourceCacheのモックを設定（デフォルトは空配列を返すように）
     sourceCache.getAllSourcesWithStats.mockResolvedValue([]);
