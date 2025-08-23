@@ -59,25 +59,36 @@
 
 ## 🔴 最新アップデート（2025年8月）
 
-### Speaker Deck複数カテゴリー対応（2025年8月21日）
-- **複数カテゴリー取得**: Programming/Technology/How-to & DIYの3カテゴリーから記事取得
-- **重複排除機能**: URL重複を自動排除
-- **取得設定**: 各カテゴリー35件、合計100件まで
-- **レート制限対策**: リクエスト間隔を1.5秒に調整
+### タグ生成高度化機能（2025年8月22日実装）
+- **タグ正規化サービス**: 698行の詳細な正規化ルール実装
+- **カテゴリ別タグ管理**: プログラミング言語、フレームワーク、ツール、概念等
+- **バッチ再生成機能**: 全記事のタグを統一ルールで再生成
+- **進捗管理システム**: `.tag-regeneration-progress.json`で中断・再開対応
 
-### トレンド分析機能の強化
-- **PostgreSQL対応修正**: トレンド分析APIのPostgreSQL完全対応
-- **キャッシュ最適化**: Redisキャッシュの競合解決
-- **統計チャート改善**: 日別統計チャートのツールチップ改善（全ソース内訳表示）
-- **エラー修正**: URLパラメータ処理とフロントエンドキャッシュの修正
+### 手動記事追加機能（2025年8月21日実装）
+- **CLIインターフェース**: `npm run manual:add`で対話的に記事追加
+- **自動要約生成**: Gemini APIによる日本語要約
+- **ソース自動検出**: URLから適切なソースを判定
+- **Speaker Deck専用処理**: プレゼンテーション向けタグ生成
 
-### 最近のコミット（2025年8月21日）
-1. Speaker Deckフェッチャーに複数カテゴリー対応を実装
-2. `/api/trends/analysis` エンドポイントのテスト追加
-3. URLパラメータ処理とRedis接続の修正
-4. トレンドAPIのキャッシュ競合解決
-5. PostgreSQL対応の演算子修正（!= → <>）
-6. 急上昇キーワードAPIのPostgreSQL対応
+### パーソナライズ推薦システム（2025年8月20日実装）
+- **協調フィルタリング**: ユーザの閲覧・お気に入り履歴から推薦
+- **TF-IDFスコアリング**: コンテンツベースの類似度計算
+- **ハイブリッド推薦**: 協調＋コンテンツベースの統合
+- **推薦APIエンドポイント**: `/api/recommendations`
+- **UIコンポーネント**: アニメーション付き推薦セクション
+
+### 依存性注入（DI）パターン導入（2025年8月）
+- **DIコンテナ実装**: `lib/di/`配下に統一管理
+- **プロバイダー分離**: Prisma、Redis、テスト用プロバイダー
+- **テスタビリティ向上**: モック注入による単体テスト改善
+- **Redis Service層**: 統一インターフェースでRedis操作
+
+### Next.js 15.4.4対応（2025年8月）
+- **headers()非同期化対応**: 明示的なawait追加
+- **TypeScript 5.6対応**: 型定義の更新
+- **Hydrationエラー解消**: サーバー/クライアント一致性改善
+- **ESLint警告解消**: 段階的な警告修正
 
 ## 主要機能仕様
 
@@ -121,7 +132,7 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 - ソース別統計キャッシュ
 - セッション管理（Auth.jsセッション）
 
-### ユーザ認証システム（2025年1月17日実装、8月17日UI統合）
+### ユーザ認証システム（2025年1月実装、8月UI統合）
 
 **Auth.js v5による認証基盤:**
 - ユーザ登録・ログイン機能
@@ -130,22 +141,24 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 - JWTセッション管理（Redis）
 - 保護されたAPIエンドポイント
 
-**ヘッダー統合（2025年8月17日）:**
+**ヘッダー統合（2025年8月）:**
 - UserMenuコンポーネントをヘッダーに統合
 - お気に入り記事ページ実装（`/favorites`）
 - 閲覧履歴ページ実装（`/history`）
 - 未認証時の適切なリダイレクト処理
+- 読書リスト機能をお気に入りに統一（8月実装）
 
 ### データベース情報
 
 **現在のデータベース**: PostgreSQL（2025年8月移行完了）
 - SQLiteからPostgreSQLへの移行が完了しています
 - 接続設定は`.env`ファイルの`DATABASE_URL`を参照
-- **データ統計（2025年8月18日）**:
+- **データ統計（2025年8月現在）**:
   - 記事数: 2,035件以上
   - タグ数: 9,605件以上
   - ソース数: 15件
   - ユーザ数: 6名以上
+  - テスト成功率: 単体テスト92.4%、E2Eテスト100%
 
 ## Serena MCP優先利用（TechTrendプロジェクト専用）
 
@@ -160,17 +173,17 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 3. 関連メモリを mcp__serena__read_memory で読み込み
 ```
 
-#### 2. 主要メモリファイル（最新版を優先）
-- `techtrend_project_overview_202508`: プロジェクト全体概要（最新）
-- `techtrend_recent_improvements_202508`: 最近の改善内容（最新）
-- `auth_header_integration_implementation_202508`: 認証ヘッダー統合（新規）
-- `user_auth_implementation_202501`: ユーザ認証実装（初期）
-- `postgresql_migration_complete_documentation_202508`: PostgreSQL移行完了
-- `source_stats_cache_implementation_202501`: 統計情報キャッシュ実装
+#### 2. 主要メモリファイル（整理済み - 88件に削減）
+- `techtrend_project_overview_202508`: プロジェクト全体概要（最新・更新済み）
+- `techtrend_recent_improvements_202508`: 最近の改善内容（最新・更新済み）
 - `techtrend_database_schema_202508`: データベース構造
 - `techtrend_api_endpoints_202508`: APIエンドポイント一覧
 - `techtrend_fetchers_implementation_202508`: フェッチャー実装詳細
-- `trends_api_postgresql_fix_202501`: トレンドAPI修正
+- `tag_enhancement_implementation_202508`: タグ生成高度化
+- `personalized_recommendations_implementation_202508`: 推薦システム
+- `redis_di_implementation_202508`: DI実装
+- `auth_header_integration_implementation_202508`: 認証統合
+- `postgresql_migration_complete_documentation_202508`: PostgreSQL移行
 
 #### 3. コード調査時
 ```
@@ -268,9 +281,18 @@ echo '\d "Article"' | docker exec -i techtrend-postgres psql -U postgres -d tech
 
 **Speaker Deck:**
 - 日本語プレゼンテーション
-- トレンドページから最大30件/回
+- Programming/Technology/How-to & DIYの3カテゴリー
+- 各カテゴリー35件、合計100件まで/回
 
 ### 3. スケジューラー設定
+
+**PM2によるスケジューラー管理:**
+```bash
+npm run scheduler:start    # スケジューラー起動
+npm run scheduler:stop     # スケジューラー停止
+npm run scheduler:restart  # スケジューラー再起動
+npm run scheduler:logs     # ログ確認
+```
 
 **RSS系ソース（1時間ごと更新）:**
 - はてなブックマーク
@@ -471,7 +493,7 @@ git checkout -b fix/retry-carefully
 # 5. 各ステップでテスト実行
 ```
 
-## 🔵 手動スクリプト作成時の必須ルール（2025年8月追加）
+## 🔵 手動スクリプト作成時の必須ルール（2025年1月追加）
 
 ### 絶対に守るべきルール
 
@@ -510,7 +532,7 @@ scripts/manual/regenerate-single.ts  # 単一記事の要約再生成
 prisma/schema.prisma  # データベーススキーマ
 
 # 確認ポイント
-- 存在するフィールドを確認（echo ".schema Article" | sqlite3 prisma/dev.db）
+- 存在するフィールドを確認（echo '\d "Article"' | docker exec -i techtrend-postgres psql -U postgres -d techtrend_dev）
 - 必須フィールドとオプショナルフィールド
 - リレーションの扱い方
 ```
@@ -608,13 +630,13 @@ const result = await summaryService.generate(title, content);
    ```
 
 
-## 🔴 テスト実行の必須ルール（2025年8月19日追加）
+## 🔴 テスト実行の必須ルール（2025年8月追加）
 
 ### 新機能追加時の絶対的ルール
 
 **新機能を追加する前に、必ず既存機能のE2Eテストを実行すること**
 
-### 失敗事例（2025年8月19日）
+### 失敗事例（2025年8月）
 
 **問題**: キーボードショートカット機能の追加により無限スクロールが壊れた
 - 症状: 20件以上の記事を読み込むとページトップに戻る
@@ -687,6 +709,17 @@ npm run claude:compare
 1. **通常運用**: Gemini API（自動バッチ処理）
 2. **補完運用**: Claude Code（少量・高品質処理）
 
+## 特記事項
+
+### TypeScriptエラーの状況（2025年8月）
+- モックファイルの型定義不足: 18件
+- any型の暗黙的使用: 一部残存
+- Next.js 15.4.4の型変更によるエラー
+
+### 残存TODO/FIXME（2025年8月）
+1. 推薦APIのキャッシュロジック修正
+2. Commander.jsテスト改善
+
 ## 統一フォーマット要約の再生成
 
 ### コマンド
@@ -712,7 +745,7 @@ npm run regenerate:all-unified -- --continue --limit=50
 ```
 
 ### 処理済みフラグ
-- `summaryVersion: 5` = 統一フォーマット処理済み
+- `summaryVersion: 7` = 最新統一フォーマット
 - `articleType: 'unified'` = 統一タイプ
 
 ### Rate Limit対策
@@ -720,6 +753,22 @@ npm run regenerate:all-unified -- --continue --limit=50
 - 100件ごと: 30秒の長期待機
 - Rate Limitエラー時: 60秒待機して再試行
 - 継続オプション: `--continue`で中断箇所から再開
+
+## 主要なディレクトリ構造
+
+- `app/`: Next.js App Router（ページ、API）
+- `components/`: 共通コンポーネント
+- `lib/`: ビジネスロジック、サービス層
+  - `ai/`: AI要約サービス
+  - `cache/`: Redisキャッシュ
+  - `di/`: 依存性注入コンテナ
+  - `fetchers/`: 記事収集
+  - `recommendation/`: 推薦システム
+  - `services/`: タグ正規化等
+- `scripts/`: メンテナンススクリプト
+- `prisma/`: データベーススキーマ
+- `__tests__/`: テストファイル
+- `.claude/`: Claude Code用設定
 
 ## Claude Codeカスタムコマンド
 
@@ -737,7 +786,7 @@ npm run regenerate:all-unified -- --continue --limit=50
 
 **個別実行:**
 ```bash
-/run update-serena-memory  # Serenaメモリ更新
+/run update-serena-memory  # Serenaメモリ更新（実行済み）
 /run analyze-code-quality  # コード品質分析
 /run sync-project-docs     # ドキュメント同期
 /run check-todo-items      # TODO管理
@@ -761,20 +810,23 @@ npm run test:e2e:debug         # デバッグモード
 npm run test:e2e:ui            # UIモード（インタラクティブ）
 npm run test:e2e:headed       # ブラウザ表示あり
 
-# Visual Regression Testing（新規）
+# Visual Regression Testing
 npm run test:vrt              # VRTテスト実行
 npm run vrt:update            # ベースライン更新
 
 # 単体テスト・統合テスト
-npm run test                  # Jestテスト実行（成功率100%）
+npm run test                  # Jestテスト実行（成功率92.4%）
 npm run test:watch           # ウォッチモード
 npm run test:coverage        # カバレッジ測定
 
-# 認証テスト（新規）
-npm run auth:test             # 認証機能テスト（成功率100%）
+# 認証テスト
+npm run auth:test             # 認証機能テスト
 
 # 特定ソースのみ収集
 npx tsx scripts/scheduled/collect-feeds.ts "Dev.to"
+
+# 手動記事追加（CLI版）
+npm run manual:add
 
 # 要約生成（Gemini API）
 npm run scripts:summarize
@@ -791,6 +843,9 @@ npx tsx scripts/check-article-quality.ts
 # 低品質記事削除
 npx tsx scripts/delete-low-quality-articles.ts
 
-# ユーザ管理（新規）
+# ユーザ管理
 npx prisma studio             # GUI管理ツール
+
+# タグ再生成
+npx tsx scripts/fix/regenerate-all-tags.ts  # 全記事のタグ再生成
 ```
