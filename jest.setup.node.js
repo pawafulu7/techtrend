@@ -2,14 +2,21 @@
 import '@testing-library/jest-dom';
 import { RedisMockFactory } from './test/factories/redis-mock-factory';
 import { CacheMockFactory } from './test/factories/cache-mock-factory';
+import { initializeTestDI, resetTestProviders } from './lib/di';
 
 // Redisクライアントのモックは__mocks__ディレクトリから自動的に読み込まれる
 jest.mock('@/lib/redis/client');
+
+// テスト環境のDI初期化
+beforeAll(() => {
+  initializeTestDI();
+});
 
 // 各テストの前にモックをリセット
 beforeEach(() => {
   RedisMockFactory.reset();
   CacheMockFactory.reset();
+  resetTestProviders();
 });
 
 // グローバルfetchのモック（Node環境用）
