@@ -1,12 +1,12 @@
 import { GET } from '@/app/api/recommendations/route';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/lib/auth/auth';
 import { recommendationService } from '@/lib/recommendation/recommendation-service';
-import { redisService } from '@/lib/redis/redis-service';
 import { NextRequest } from 'next/server';
 
 // モック
-jest.mock('next-auth', () => ({
-  getServerSession: jest.fn(),
+
+jest.mock('@/lib/auth/auth', () => ({
+  auth: jest.fn(),
 }));
 
 jest.mock('@/lib/auth/config', () => ({
@@ -19,11 +19,11 @@ jest.mock('@/lib/recommendation/recommendation-service', () => ({
   },
 }));
 
-jest.mock('@/lib/redis/redis-service', () => ({
-  redisService: {
+jest.mock('@/lib/redis/factory', () => ({
+  getRedisService: jest.fn(() => ({
     get: jest.fn(),
     set: jest.fn(),
-  },
+  })),
 }));
 
 describe('GET /api/recommendations', () => {
@@ -32,7 +32,7 @@ describe('GET /api/recommendations', () => {
   });
 
   it('should return 401 if user is not authenticated', async () => {
-    (getServerSession as jest.Mock).mockResolvedValue(null);
+    (auth as jest.Mock).mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/recommendations');
     const response = await GET(request);
@@ -58,7 +58,9 @@ describe('GET /api/recommendations', () => {
       },
     ];
 
-    (getServerSession as jest.Mock).mockResolvedValue(mockSession);
+    (auth as jest.Mock).mockResolvedValue(mockSession);
+    const { getRedisService } = require('@/lib/redis/factory');
+    const redisService = getRedisService();
     (redisService.get as jest.Mock).mockResolvedValue(JSON.stringify(cachedRecommendations));
 
     const request = new NextRequest('http://localhost:3000/api/recommendations?limit=10');
@@ -93,7 +95,9 @@ describe('GET /api/recommendations', () => {
       },
     ];
 
-    (getServerSession as jest.Mock).mockResolvedValue(mockSession);
+    (auth as jest.Mock).mockResolvedValue(mockSession);
+    const { getRedisService } = require('@/lib/redis/factory');
+    const redisService = getRedisService();
     (redisService.get as jest.Mock).mockResolvedValue(null);
     (recommendationService.getRecommendations as jest.Mock).mockResolvedValue(freshRecommendations);
 
@@ -119,7 +123,9 @@ describe('GET /api/recommendations', () => {
       },
     };
 
-    (getServerSession as jest.Mock).mockResolvedValue(mockSession);
+    (auth as jest.Mock).mockResolvedValue(mockSession);
+    const { getRedisService } = require('@/lib/redis/factory');
+    const redisService = getRedisService();
     (redisService.get as jest.Mock).mockResolvedValue(null);
     (recommendationService.getRecommendations as jest.Mock).mockResolvedValue([]);
 
