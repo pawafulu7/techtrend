@@ -20,11 +20,12 @@ test.describe('カテゴリーエラー修正のテスト', () => {
     }
 
     // タグフィルターボタンをクリック
-    const tagButton = page.locator('button:has(svg.lucide-tag)').first();
+    const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();
 
     // ドロップダウンが開くのを待つ
-    await page.waitForSelector('input[placeholder="タグを検索..."]', { state: 'visible' });
+    await page.waitForSelector('[data-testid="tag-dropdown"]', { state: 'visible' });
+    await page.waitForTimeout(100); // ドロップダウンアニメーション待機
 
     // Firefox用の追加待機（入力前）
     if (browserName === 'firefox') {
@@ -32,7 +33,7 @@ test.describe('カテゴリーエラー修正のテスト', () => {
     }
 
     // 検索フォームに"l"を入力
-    const searchInput = page.locator('input[placeholder="タグを検索..."]');
+    const searchInput = page.locator('[data-testid="tag-search-input"]');
     await searchInput.fill('l');
 
     // デバウンス待機とAPI応答を待つ（Firefoxは長めに待機）
@@ -49,11 +50,15 @@ test.describe('カテゴリーエラー修正のテスト', () => {
 
   test('corporateカテゴリーのタグが「未分類」として表示される', async ({ page }) => {
     // タグフィルターボタンをクリック
-    const tagButton = page.locator('button:has(svg.lucide-tag)').first();
+    const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();
 
+    // ドロップダウンが開くのを待つ
+    await page.waitForSelector('[data-testid="tag-dropdown"]', { state: 'visible' });
+    await page.waitForTimeout(100);
+
     // 検索フォームにLINEと入力（corporateカテゴリーのタグ）
-    const searchInput = page.locator('input[placeholder="タグを検索..."]');
+    const searchInput = page.locator('[data-testid="tag-search-input"]');
     await searchInput.fill('LINE');
 
     // デバウンス待機（より長い時間待機して確実に検索結果を取得）
@@ -76,11 +81,15 @@ test.describe('カテゴリーエラー修正のテスト', () => {
 
   test('nullカテゴリーのタグも正常に表示される', async ({ page }) => {
     // タグフィルターボタンをクリック
-    const tagButton = page.locator('button:has(svg.lucide-tag)').first();
+    const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();
 
+    // ドロップダウンが開くのを待つ
+    await page.waitForSelector('[data-testid="tag-dropdown"]', { state: 'visible' });
+    await page.waitForTimeout(100);
+
     // 検索フォームに"Claude Code"と入力（categoryがnull）
-    const searchInput = page.locator('input[placeholder="タグを検索..."]');
+    const searchInput = page.locator('[data-testid="tag-search-input"]');
     await searchInput.fill('Claude Code');
 
     // デバウンス待機（より長い時間待機して確実に検索結果を取得）
@@ -98,11 +107,15 @@ test.describe('カテゴリーエラー修正のテスト', () => {
 
   test('複数のカテゴリーが混在しても正常に動作する', async ({ page }) => {
     // タグフィルターボタンをクリック
-    const tagButton = page.locator('button:has(svg.lucide-tag)').first();
+    const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();
 
+    // ドロップダウンが開くのを待つ
+    await page.waitForSelector('[data-testid="tag-dropdown"]', { state: 'visible' });
+    await page.waitForTimeout(100);
+
     // 様々なカテゴリーを含む検索を実行
-    const searchInput = page.locator('input[placeholder="タグを検索..."]');
+    const searchInput = page.locator('[data-testid="tag-search-input"]');
     
     // まず"a"で検索（様々なカテゴリーのタグが含まれる）
     await searchInput.fill('a');
