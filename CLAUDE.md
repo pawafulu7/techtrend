@@ -5,6 +5,48 @@
 **重要: 修正作業を行う前に、必ず `CODE-MAINTENANCE-GUIDE.md` を確認してください。**
 このガイドには、影響範囲の把握方法、関連箇所の確認手順、検証方法が詳しく記載されています。
 
+## 🚀 Worktree並行開発システム（2025年8月23日追加）
+
+### 概要
+このプロジェクトでは**Git Worktree**を使用した並行開発システムを採用しています。
+複数のタスクを独立した環境で同時に実行できます。
+
+### カスタムコマンドの使い分け
+
+#### 調査・計画フェーズ（mainブランチで実行）
+- `/investigate` - コードベースの調査
+- `/plan` - 実装計画の作成
+
+#### 実装フェーズ（Worktreeで独立環境作成）
+- `/implement` - 新機能の実装
+- `/fix` - バグ修正
+- `/improve` - パフォーマンス改善
+
+### Worktree開発の流れ
+
+```bash
+# 1. タスク開始（自動）
+./worktree.sh auto "認証機能を実装"
+
+# 2. 独立環境で作業
+cd ../techtrend-feature-auth-xxx
+npm run dev  # ポート自動割当（3100番台）
+
+# 3. PR作成（詳細な説明付き）
+../techtrend/worktree.sh pr "feat: 認証機能"
+
+# 4. クリーンアップ
+cd ../techtrend
+./worktree.sh cleanup feature-auth-xxx
+```
+
+### 並行作業の例
+- セッション1: `/implement 認証機能` → ポート3100
+- セッション2: `/fix ログインバグ` → ポート3101  
+- セッション3: `/improve API最適化` → ポート3102
+
+詳細: `docs/WORKTREE-GUIDE.md`
+
 ## 🚨 最重要: 要約生成プロセスの変更時の注意事項
 
 ### 絶対に守るべきルール
