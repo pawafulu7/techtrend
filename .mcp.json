@@ -28,6 +28,12 @@
         "@upstash/context7-mcp"
       ],
       "env": {}
+    },
+    "container-use": {
+      "type": "stdio",
+      "command": "container-use",
+      "args": ["stdio"],
+      "env": {}
     }
   }
 }
