@@ -518,9 +518,9 @@ async function generateSummaries(): Promise<GenerateResult> {
                 break; // このarticleの処理をスキップ
               }
               
-              // Speaker Deck記事はスキップ（サムネイル表示のみ）
-              if (article.source.name === 'Speaker Deck') {
-                console.log(`  ⏭️ スキップ: ${article.title} (Speaker Deck記事はサムネイル表示のみ)`);
+              // スライドサービス（Speaker DeckとDocswell）の記事はスキップ（サムネイル表示のみ）
+              if (article.source.name === 'Speaker Deck' || article.source.name === 'Docswell') {
+                console.log(`  ⏭️ スキップ: ${article.title} (${article.source.name}記事はサムネイル表示のみ)`);
                 break; // このarticleの処理をスキップ
               }
               

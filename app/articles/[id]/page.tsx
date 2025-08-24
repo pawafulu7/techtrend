@@ -67,8 +67,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
   
-  // Speaker Deck判定
-  const isSpeakerDeck = article.source.name === 'Speaker Deck';
+  // スライドサービス判定（Speaker DeckとDocswell）
+  const isSlideService = article.source.name === 'Speaker Deck' || article.source.name === 'Docswell';
+  const isSpeakerDeck = article.source.name === 'Speaker Deck';  // 後方互換性のため残す
   
   // 短い記事（500文字以下）の判定
   const isShortArticle = article.detailedSummary === '__SKIP_DETAILED_SUMMARY__' || 
@@ -155,8 +156,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {/* Speaker Deckまたは短い記事の場合はサムネイル表示、それ以外は詳細要約表示 */}
-              {(isSpeakerDeck || isShortArticle) && article.thumbnail ? (
+              {/* スライドサービスまたは短い記事の場合はサムネイル表示、それ以外は詳細要約表示 */}
+              {(isSlideService || isShortArticle) && article.thumbnail ? (
                 <>
                   <div className="relative aspect-video overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
                     <OptimizedImage 
@@ -170,7 +171,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   </div>
                   <div className="mt-4 p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">
-                      {isShortArticle && !isSpeakerDeck 
+                      {isShortArticle && !isSlideService 
                         ? 'この記事は内容が簡潔なため、要約のみを表示しています。'
                         : 'このプレゼンテーションの詳細は元記事でご確認ください。'}
                     </p>

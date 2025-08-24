@@ -21,8 +21,8 @@ export function ArticleCard({ article, onArticleClick }: ArticleCardProps) {
   
   // サムネイル表示判定ロジック
   const shouldShowThumbnail = (): boolean => {
-    // Speaker Deckは常にサムネイル表示（既存の動作）
-    if (article.source.name === 'Speaker Deck') {
+    // Speaker DeckとDocswellは常にサムネイル表示（スライドサービス）
+    if (article.source.name === 'Speaker Deck' || article.source.name === 'Docswell') {
       return !!article.thumbnail;
     }
     
