@@ -21,7 +21,7 @@ export async function GET() {
     };
     
     // Redis情報を取得
-    let redisInfo = null;
+    let redisInfo: { memoryUsed?: string; memoryPeak?: string; connected: boolean; error?: string } | null = null;
     try {
       const redis = getRedisClient();
       const info = await redis.info('memory');

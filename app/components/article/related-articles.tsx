@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LinkIcon, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
-import { useRelatedArticles } from '@/hooks/use-related-articles';
+import { useRelatedArticles, type RelatedArticle } from '@/hooks/use-related-articles';
 
 interface RelatedArticlesProps {
   articleId: string;

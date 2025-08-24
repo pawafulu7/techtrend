@@ -5,12 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { ServerPagination } from '@/app/components/common/server-pagination';
-import type { Article, Source, Tag } from '@prisma/client';
-
-type ArticleWithRelations = Article & {
-  source: Source;
-  tags: Tag[];
-};
+import type { Source, Tag } from '@prisma/client';
+import type { ArticleWithRelations } from '@/types/api-responses';
 
 interface HomeClientProps {
   viewMode: 'card' | 'list';

@@ -1,9 +1,10 @@
 import React from 'react';
-import { render, screen, fireEvent, _waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { ArticleList } from '@/app/components/article/list';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { TestFixtures } from '@/types/test-fixtures';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
@@ -39,7 +40,7 @@ describe('ArticleList', () => {
   };
 
   const mockArticles = [
-    {
+    TestFixtures.createArticleWithRelations({
       id: '1',
       title: 'First Article',
       summary: 'First article summary',
@@ -47,28 +48,13 @@ describe('ArticleList', () => {
       publishedAt: new Date('2025-01-01'),
       qualityScore: 90,
       sourceId: 'source1',
-      source: {
+      source: TestFixtures.createSource({
         id: 'source1',
         name: 'Source 1',
-        type: 'rss' as const,
-        url: 'https://source1.com',
-        enabled: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      tags: [],
-      bookmarks: 0,
-      userVotes: 0,
-      difficulty: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      content: null,
-      detailedSummary: null,
-      thumbnail: null,
-      summaryVersion: null,
-      articleType: null,
-    },
-    {
+        type: 'rss',
+      }),
+    }),
+    TestFixtures.createArticleWithRelations({
       id: '2',
       title: 'Second Article',
       summary: 'Second article summary',
@@ -76,27 +62,12 @@ describe('ArticleList', () => {
       publishedAt: new Date('2025-01-02'),
       qualityScore: 85,
       sourceId: 'source2',
-      source: {
+      source: TestFixtures.createSource({
         id: 'source2',
         name: 'Source 2',
-        type: 'api' as const,
-        url: 'https://source2.com',
-        enabled: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      tags: [],
-      bookmarks: 0,
-      userVotes: 0,
-      difficulty: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      content: null,
-      detailedSummary: null,
-      thumbnail: null,
-      summaryVersion: null,
-      articleType: null,
-    },
+        type: 'api',
+      }),
+    }),
   ];
 
   beforeEach(() => {

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { findArticleElement, findScrollableElement, waitForPageReady } from '@/types/playwright-helpers';
 
 test.describe('スクロール機能のテスト', () => {
   test('トップページの3ペインレイアウトでスクロールが正常に動作する', async ({ page }) => {
@@ -40,7 +41,7 @@ test.describe('スクロール機能のテスト', () => {
       'a[href*="/articles/"]'
     ];
     
-    let firstArticle = null;
+    let firstArticle: any = null;
     for (const selector of articleSelectors) {
       const element = page.locator(selector).first();
       if (await element.count() > 0) {
@@ -129,7 +130,7 @@ test.describe('スクロール機能のテスト', () => {
     
     // mainタグまたは代替要素を探す
     const mainSelectors = ['main', '.main-content', '#main', '[role="main"]', 'div.container'];
-    let targetElement = null;
+    let targetElement: any = null;
     
     for (const selector of mainSelectors) {
       try {

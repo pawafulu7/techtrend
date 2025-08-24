@@ -4,7 +4,7 @@ import '@testing-library/jest-dom';
 import { ArticleCard } from '@/app/components/article/card';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { createTestArticle, createTestTag } from '@/test/types/test-data';
+import { TestFixtures } from '@/types/test-fixtures';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
@@ -39,51 +39,20 @@ describe('ArticleCard', () => {
     prefetch: jest.fn(),
   };
 
-  const mockArticle = {
+  const mockArticle = TestFixtures.createArticleWithRelations({
     id: '1',
     title: 'Test Article Title',
     summary: 'This is a test article summary that should be displayed on the card.',
     url: 'https://example.com/article',
     publishedAt: new Date('2025-01-01T10:00:00Z'),
     qualityScore: 85,
-    sourceId: 'test-source',
-    source: {
-      id: 'test-source',
-      name: 'Test Source',
-      type: 'rss' as const,
-      url: 'https://test-source.com',
-      enabled: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    tags: [
-      { 
-        id: '1', 
-        name: 'React',
-        category: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      { 
-        id: '2', 
-        name: 'Testing',
-        category: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ],
     bookmarks: 10,
     userVotes: 5,
-    difficulty: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    // 必須フィールドの追加
-    content: null,
-    detailedSummary: null,
-    thumbnail: null,
-    summaryVersion: null,
-    articleType: null,
-  };
+    tags: [
+      TestFixtures.createTag({ name: 'React' }),
+      TestFixtures.createTag({ name: 'Testing' }),
+    ],
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();

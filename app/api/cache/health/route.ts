@@ -42,7 +42,7 @@ export async function GET() {
     const status = isHealthy ? 'healthy' : 'degraded';
     
     // 推奨事項を生成
-    const recommendations = [];
+    const recommendations: string[] = [];
     
     if (!redisHealth.connected) {
       recommendations.push('Redis connection failed. Check Redis server status.');

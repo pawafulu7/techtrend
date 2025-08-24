@@ -17,6 +17,7 @@ import { Search, Filter, SortAsc } from 'lucide-react';
 import type { SourceCategoryWithAll, SourceWithStats } from '@/types/source';
 
 type SortBy = 'articles' | 'quality' | 'frequency' | 'name';
+type SourceCategory = 'tech' | 'blog' | 'news' | 'community' | 'other';
 
 export default function SourcesContent() {
   const [allSources, setAllSources] = useState<SourceWithStats[]>([]);

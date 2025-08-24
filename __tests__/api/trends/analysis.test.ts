@@ -17,7 +17,7 @@ jest.mock('@/lib/cache/trends-cache', () => ({
   }
 }));
 
-import { _prisma } from '@/lib/database';
+import { prisma } from '@/lib/database';
 import { trendsCache } from '@/lib/cache/trends-cache';
 
 describe('/api/trends/analysis', () => {

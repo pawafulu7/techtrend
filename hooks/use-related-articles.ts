@@ -1,9 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import type { Article, Tag } from '@prisma/client';
 
-interface RelatedArticle extends Omit<Article, 'source'> {
+export interface RelatedArticle {
+  id: string;
+  title: string;
+  summary: string | null;
+  url: string;
+  publishedAt: Date;
   source: string;
-  tags: Tag[];
+  tags: Array<{
+    id: string;
+    name: string;
+    category: string | null;
+  }>;
   similarity: number;
 }
 

@@ -46,6 +46,23 @@ export type SourceUpdateInput = Prisma.SourceUpdateInput;
 export type TagCreateInput = Prisma.TagCreateInput;
 export type TagUpdateInput = Prisma.TagUpdateInput;
 
+// Fetcher用の記事作成入力型
+export type CreateArticleInput = {
+  title: string;
+  url: string;
+  publishedAt: Date;
+  sourceId: string;
+  summary?: string | null;
+  detailedSummary?: string | null;
+  content?: string | null;
+  thumbnail?: string | null;
+  tags?: string[];
+  qualityScore?: number;
+  summaryVersion?: number;
+  articleType?: string | null;
+  difficulty?: string | null;
+};
+
 // Where条件の型
 export type ArticleWhereInput = Prisma.ArticleWhereInput;
 export type SourceWhereInput = Prisma.SourceWhereInput;

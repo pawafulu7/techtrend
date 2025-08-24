@@ -14,48 +14,49 @@ export interface RedisMockClient {
   setex: jest.Mock<Promise<string>>;
   del: jest.Mock<Promise<number>>;
   exists: jest.Mock<Promise<number>>;
-  expire: jest.Mock<Promise<number>, [string, number]>;
-  ttl: jest.Mock<Promise<number>, [string]>;
-  keys: jest.Mock<Promise<string[]>, [string]>;
-  mget: jest.Mock<Promise<(string | null)[]>, string[]>;
-  mset: jest.Mock<Promise<string>, [Record<string, string>]>;
-  hget: jest.Mock<Promise<string | null>, [string, string]>;
-  hset: jest.Mock<Promise<number>, [string, string, string]>;
-  hgetall: jest.Mock<Promise<Record<string, string>>, [string]>;
-  hdel: jest.Mock<Promise<number>, [string, ...string[]]>;
-  hexists: jest.Mock<Promise<number>, [string, string]>;
-  lpush: jest.Mock<Promise<number>, [string, ...string[]]>;
-  rpush: jest.Mock<Promise<number>, [string, ...string[]]>;
-  lpop: jest.Mock<Promise<string | null>, [string]>;
-  rpop: jest.Mock<Promise<string | null>, [string]>;
-  lrange: jest.Mock<Promise<string[]>, [string, number, number]>;
-  llen: jest.Mock<Promise<number>, [string]>;
-  sadd: jest.Mock<Promise<number>, [string, ...string[]]>;
-  srem: jest.Mock<Promise<number>, [string, ...string[]]>;
-  smembers: jest.Mock<Promise<string[]>, [string]>;
-  sismember: jest.Mock<Promise<number>, [string, string]>;
-  scard: jest.Mock<Promise<number>, [string]>;
-  zadd: jest.Mock<Promise<number>, [string, ...any[]]>;
-  zrem: jest.Mock<Promise<number>, [string, ...string[]]>;
-  zrange: jest.Mock<Promise<string[]>, [string, number, number]>;
-  zscore: jest.Mock<Promise<string | null>, [string, string]>;
-  zcard: jest.Mock<Promise<number>, [string]>;
-  scan: jest.Mock<Promise<[string, string[]]>, [string, ...any[]]>;
-  hscan: jest.Mock<Promise<[string, string[]]>, [string, string, ...any[]]>;
-  sscan: jest.Mock<Promise<[string, string[]]>, [string, string, ...any[]]>;
-  zscan: jest.Mock<Promise<[string, string[]]>, [string, string, ...any[]]>;
-  flushdb: jest.Mock<Promise<string>, []>;
-  flushall: jest.Mock<Promise<string>, []>;
-  eval: jest.Mock<Promise<any>, [string, number, ...any[]]>;
-  script: jest.Mock<Promise<any>, [string, ...any[]]>;
+  expire: jest.Mock<Promise<number>>;
+  ttl: jest.Mock<Promise<number>>;
+  keys: jest.Mock<Promise<string[]>>;
+  mget: jest.Mock<Promise<(string | null)[]>>;
+  mset: jest.Mock<Promise<string>>;
+  hget: jest.Mock<Promise<string | null>>;
+  hset: jest.Mock<Promise<number>>;
+  hgetall: jest.Mock<Promise<Record<string, string>>>;
+  hdel: jest.Mock<Promise<number>>;
+  hexists: jest.Mock<Promise<number>>;
+  lpush: jest.Mock<Promise<number>>;
+  rpush: jest.Mock<Promise<number>>;
+  lpop: jest.Mock<Promise<string | null>>;
+  rpop: jest.Mock<Promise<string | null>>;
+  lrange: jest.Mock<Promise<string[]>>;
+  llen: jest.Mock<Promise<number>>;
+  sadd: jest.Mock<Promise<number>>;
+  srem: jest.Mock<Promise<number>>;
+  smembers: jest.Mock<Promise<string[]>>;
+  sismember: jest.Mock<Promise<number>>;
+  scard: jest.Mock<Promise<number>>;
+  zadd: jest.Mock<Promise<number>>;
+  zrem: jest.Mock<Promise<number>>;
+  zrange: jest.Mock<Promise<string[]>>;
+  zscore: jest.Mock<Promise<string | null>>;
+  zcard: jest.Mock<Promise<number>>;
+  scan: jest.Mock<Promise<[string, string[]]>>;
+  hscan: jest.Mock<Promise<[string, string[]]>>;
+  sscan: jest.Mock<Promise<[string, string[]]>>;
+  zscan: jest.Mock<Promise<[string, string[]]>>;
+  flushdb: jest.Mock<Promise<string>>;
+  flushall: jest.Mock<Promise<string>>;
+  clear: jest.Mock<Promise<string>>;
+  eval: jest.Mock<Promise<any>>;
+  script: jest.Mock<Promise<any>>;
   multi: jest.Mock<any>;
-  exec: jest.Mock<Promise<any[]>, []>;
-  discard: jest.Mock<Promise<string>, []>;
-  watch: jest.Mock<Promise<string>, string[]>;
-  unwatch: jest.Mock<Promise<string>, []>;
+  exec: jest.Mock<Promise<any[]>>;
+  discard: jest.Mock<Promise<string>>;
+  watch: jest.Mock<Promise<string>>;
+  unwatch: jest.Mock<Promise<string>>;
   reset: jest.Mock<void>;
   disconnect: jest.Mock<void>;
-  quit: jest.Mock<Promise<string>, []>;
+  quit: jest.Mock<Promise<string>>;
 }
 
 export class RedisMockFactory {
@@ -172,6 +173,10 @@ export class RedisMockFactory {
         // データベース操作
         flushdb: jest.fn().mockImplementation(() => client.flushdb()) as any,
         flushall: jest.fn().mockImplementation(() => client.flushall()) as any,
+        clear: jest.fn().mockImplementation(() => {
+          clientAny.store.clear();
+          return Promise.resolve('OK');
+        }) as any,
         
         // スクリプト操作（サポートなし）
         eval: jest.fn().mockResolvedValue(null) as any,

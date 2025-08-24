@@ -53,7 +53,7 @@ export async function POST() {
         );
 
         // 新規タグを作成または取得
-        const tagConnections = [];
+        const tagConnections: { id: string }[] = [];
         for (const tagName of newTagNames) {
           const tag = await prisma.tag.upsert({
             where: { name: tagName },

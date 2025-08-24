@@ -8,7 +8,7 @@ jest.mock('@/lib/database', () => ({
   }
 }));
 
-jest.mock('@/lib/redis/redis-client', () => ({
+jest.mock('@/lib/redis/client', () => ({
   getRedisClient: jest.fn(() => ({
     ping: jest.fn()
   }))
@@ -21,11 +21,12 @@ describe('Health Check API', () => {
 
   it('should return healthy status when all services are up', async () => {
     const { prisma } = await import('@/lib/database');
-    const { getRedisClient } = await import('@/lib/redis/redis-client');
+    const { getRedisClient } = await import('@/lib/redis/client');
     
     // Mock successful responses
-    (prisma.$queryRaw as jest.Mock).mockResolvedValue([{ result: 1 }]);
-    (getRedisClient().ping as jest.Mock).mockResolvedValue('PONG');
+    (prisma.$queryRaw as any).mockResolvedValue([{ result: 1 }]);
+    const redisClient = getRedisClient() as any;
+    redisClient.ping.mockResolvedValue('PONG');
 
     const response = {
       status: 'healthy',
@@ -43,7 +44,7 @@ describe('Health Check API', () => {
     const { prisma } = await import('@/lib/database');
     
     // Mock database failure
-    (prisma.$queryRaw as jest.Mock).mockRejectedValue(new Error('Database connection failed'));
+    (prisma.$queryRaw as any).mockRejectedValue(new Error('Database connection failed'));
 
     const response = {
       status: 'unhealthy',

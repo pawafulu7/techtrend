@@ -198,7 +198,6 @@ export class HatenaExtendedFetcher extends BaseFetcher {
                           item['dc:date'] ? new Date(item['dc:date']) : new Date(),
               sourceId: this.source.id,
               tagNames: item.categories || [],
-              bookmarks: item['bookmarkcount'] ? parseInt(item['bookmarkcount'], 10) : 0,
             };
 
             // 技術記事かチェック + 品質フィルタリング

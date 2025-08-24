@@ -375,7 +375,7 @@ export class GeminiClient {
     
     if (!detailedSummary) {
       // フォールバック: より意味のある内容を生成
-      const bulletPoints = [];
+      const bulletPoints: any[] = [];
       bulletPoints.push(`・記事の主題: ${summary}`);
       if (tags.length > 0) {
         bulletPoints.push(`・関連技術: ${tags.slice(0, 3).join('、')}`);
