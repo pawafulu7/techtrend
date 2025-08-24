@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { SITE_NAME } from '@/lib/constants';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { cn } from '@/lib/utils';
 // import { NavDropdown } from '@/app/components/layout/nav-dropdown';

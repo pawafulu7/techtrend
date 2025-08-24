@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { RelatedArticles } from '@/app/components/article/related-articles';
 import { ArticleTracker } from '@/app/components/analytics/ArticleTracker';
 import { ViewTracker } from '@/components/article/view-tracker';
+import { ReadTracker } from '@/components/article/read-tracker';
 import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summary-display';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
 
@@ -78,6 +79,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <ArticleTracker article={article} />
       <ViewTracker articleId={article.id} />
+      <ReadTracker articleId={article.id} />
       <div className="mb-4">
         <Button variant="ghost" asChild>
           <Link href={returnUrl} className="flex items-center gap-2">

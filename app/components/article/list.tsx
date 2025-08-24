@@ -3,12 +3,19 @@
 import { ArticleCard } from './card';
 import { ArticleListItem } from './list-item';
 import type { ArticleListProps } from '@/types/components';
+import { useReadStatus } from '@/app/hooks/use-read-status';
+import { useMemo } from 'react';
 
 export function ArticleList({ 
   articles, 
   viewMode = 'card',
   onArticleClick 
 }: ArticleListProps) {
+  // 記事IDリストを作成
+  const articleIds = useMemo(() => articles.map(a => a.id), [articles]);
+  
+  // 既読状態を取得
+  const { isRead } = useReadStatus(articleIds);
   if (articles.length === 0) {
     return (
       <div className="text-center py-12">
@@ -42,6 +49,7 @@ export function ArticleList({
           key={article.id} 
           article={article}
           onArticleClick={onArticleClick}
+          isRead={isRead(article.id)}
         />
       ))}
     </div>

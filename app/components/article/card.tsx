@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
+import { Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/components/article/favorite-button';
 import { ShareButton } from '@/app/components/article/share-button';
 import { ArticleThumbnail } from '@/app/components/common/optimized-image';
 
-export function ArticleCard({ article, onArticleClick }: ArticleCardProps) {
+export function ArticleCard({ article, onArticleClick, isRead = false }: ArticleCardProps & { isRead?: boolean }) {
   const [votes, setVotes] = useState(article.userVotes || 0);
   const [hasVoted, setHasVoted] = useState(false);
   
@@ -121,14 +122,27 @@ export function ArticleCard({ article, onArticleClick }: ArticleCardProps) {
       <CardHeader className="pb-1 px-2.5 sm:px-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
-            {isNew && (
-              <Badge className="mb-1 text-xs" variant="destructive">
-                <TrendingUp className="h-3 w-3 mr-0.5 sm:mr-1" />
-                <span className="hidden sm:inline">New</span>
-                <span className="sm:hidden">新</span>
-              </Badge>
-            )}
-            <h3 className="text-base font-bold leading-tight line-clamp-2 text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            <div className="flex items-center gap-1 mb-1">
+              {isNew && (
+                <Badge className="text-xs" variant="destructive">
+                  <TrendingUp className="h-3 w-3 mr-0.5 sm:mr-1" />
+                  <span className="hidden sm:inline">New</span>
+                  <span className="sm:hidden">新</span>
+                </Badge>
+              )}
+              {!isRead && (
+                <Badge className="text-xs bg-blue-500 hover:bg-blue-600 text-white">
+                  <Eye className="h-3 w-3 mr-0.5" />
+                  <span className="hidden sm:inline">未読</span>
+                  <span className="sm:hidden">未</span>
+                </Badge>
+              )}
+            </div>
+            <h3 className={cn(
+              "text-base font-bold leading-tight line-clamp-2 transition-colors",
+              "text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400",
+              isRead && "opacity-70"
+            )}>
               {article.title}
             </h3>
           </div>

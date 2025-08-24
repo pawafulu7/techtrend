@@ -10,6 +10,7 @@ import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { ArticleCount } from '@/app/components/common/article-count';
 import { SortButtons } from '@/app/components/common/sort-buttons';
 import { FilterResetButton } from '@/app/components/common/filter-reset-button';
+import { UnreadFilter } from '@/app/components/common/unread-filter';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { HomeClient } from '@/app/components/home/home-client';
@@ -151,6 +152,8 @@ export default async function Home({ searchParams }: PageProps) {
                   </div>
                   <div className="w-px h-5 bg-border" />
                   <ViewModeToggle currentMode={viewMode} />
+                  <div className="w-px h-5 bg-border" />
+                  <UnreadFilter />
                   <div className="w-px h-5 bg-border" />
                   <SortButtons initialSortBy={initialSortBy} />
                   <div className="w-px h-5 bg-border" />

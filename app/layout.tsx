@@ -6,8 +6,7 @@ import { NoTransitions } from "@/app/components/layout/no-transitions";
 import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
 import { ToastProvider } from "@/providers/toast-provider";
 import { QueryProvider } from "@/app/providers/query-provider";
-import { ThemeProvider } from "@/app/providers/theme-provider";
-import { parseThemeFromCookie } from "@/lib/theme-cookie";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/app/providers/auth-provider";
 // import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
 import "./globals.css";
@@ -52,16 +51,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const themeCookie = cookieStore.get('theme')?.value;
-  const theme = parseThemeFromCookie(themeCookie);
-  
-  // SSRでは実際のシステムテーマを判定できないため、デフォルトはlight
-  // クライアント側でThemeProviderが正しいテーマを適用する
-  const initialTheme = theme === 'system' ? 'light' : theme;
 
   return (
-    <html lang="ja" className={`h-full no-transitions ${initialTheme}`}>
+    <html lang="ja" className="h-full no-transitions" suppressHydrationWarning>
       <head>
         <style
           dangerouslySetInnerHTML={{
@@ -128,7 +120,12 @@ export default async function RootLayout({
       >
         <NoTransitions />
         <AuthProvider>
-          <ThemeProvider initialTheme={theme}>
+          <ThemeProvider 
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
             <QueryProvider>
               {/* <OnboardingProvider> */}
                 <Header />

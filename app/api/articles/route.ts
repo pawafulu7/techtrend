@@ -7,6 +7,7 @@ import { RedisCache } from '@/lib/cache';
 import type { Prisma } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
+import { auth } from '@/auth';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
     const tag = searchParams.get('tag');
     const search = searchParams.get('search');
     const dateRange = searchParams.get('dateRange'); // Date range filter
+    const readFilter = searchParams.get('readFilter'); // Read status filter
 
     // Generate cache key based on query parameters
     // Normalize search keywords for consistent cache key
@@ -53,6 +55,10 @@ export async function GET(request: NextRequest) {
       sources.split(',').filter(id => id.trim()).sort().join(',') : 
       sourceId || 'all';
     
+    // Get session for read filter
+    const session = await auth();
+    const userId = session?.user?.id;
+    
     const cacheKey = cache.generateCacheKey('articles', {
       params: {
         page: page.toString(),
@@ -62,7 +68,9 @@ export async function GET(request: NextRequest) {
         sources: normalizedSources, // Use normalized sources
         tag: tag || 'all',
         search: normalizedSearch,
-        dateRange: dateRange || 'all'
+        dateRange: dateRange || 'all',
+        readFilter: readFilter || 'all',
+        userId: userId || 'anonymous'
       }
     });
 
@@ -80,6 +88,38 @@ export async function GET(request: NextRequest) {
       result = await (async () => {
         // Build where clause
       const where: ArticleWhereInput = {};
+      
+      // Apply read filter if user is authenticated
+      if (readFilter && userId) {
+        if (readFilter === 'unread') {
+          // 未読記事のみ: ArticleViewが存在しないか、isReadがfalse
+          where.OR = [
+            {
+              articleViews: {
+                none: {
+                  userId: userId
+                }
+              }
+            },
+            {
+              articleViews: {
+                some: {
+                  userId: userId,
+                  isRead: false
+                }
+              }
+            }
+          ];
+        } else if (readFilter === 'read') {
+          // 既読記事のみ
+          where.articleViews = {
+            some: {
+              userId: userId,
+              isRead: true
+            }
+          };
+        }
+      }
       // Support multiple sources selection
       if (sources === 'none') {
         // 明示的に「何も選択しない」状態 - 常にfalseになる条件を設定
