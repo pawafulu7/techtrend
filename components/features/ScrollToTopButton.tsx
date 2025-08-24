@@ -6,33 +6,47 @@ import { ChevronUp } from 'lucide-react';
 export function ScrollToTopButton() {
   const [isVisible, setIsVisible] = useState(false);
 
-  // スクロール位置を監視
+  // スクロール位置を監視（main要素をターゲットに変更）
   useEffect(() => {
     const toggleVisibility = () => {
+      // main要素を取得
+      const mainElement = document.querySelector('main');
+      if (!mainElement) return;
+      
+      const scrollY = mainElement.scrollTop;
+      
       // 300px以上スクロールしたらボタンを表示
-      if (window.scrollY > 300) {
+      if (scrollY > 300) {
         setIsVisible(true);
       } else {
         setIsVisible(false);
       }
     };
 
-    // スクロールイベントリスナーを追加
-    window.addEventListener('scroll', toggleVisibility);
-
-    // 初期状態のチェック
-    toggleVisibility();
-
-    // クリーンアップ
-    return () => window.removeEventListener('scroll', toggleVisibility);
+    // main要素にスクロールイベントリスナーを追加
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.addEventListener('scroll', toggleVisibility);
+      
+      // 初期状態のチェック
+      toggleVisibility();
+      
+      // クリーンアップ
+      return () => {
+        mainElement.removeEventListener('scroll', toggleVisibility);
+      };
+    }
   }, []);
 
-  // トップへスクロール
+  // トップへスクロール（main要素をスクロール）
   const scrollToTop = useCallback(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
   }, []);
 
   // キーボードショートカット（Home、Ctrl+Home）
@@ -52,7 +66,7 @@ export function ScrollToTopButton() {
   if (!isVisible) {
     return null;
   }
-
+  
   return (
     <button
       onClick={scrollToTop}
