@@ -23,6 +23,7 @@ export function useReadStatus(articleIds?: string[]) {
   };
   
   const [readArticleIds, setReadArticleIds] = useState<Set<string>>(getInitialReadStatus);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
 
@@ -43,6 +44,7 @@ export function useReadStatus(articleIds?: string[]) {
         const data = await response.json();
         const newReadArticleIds = new Set(data.readArticleIds);
         setReadArticleIds(newReadArticleIds);
+        setUnreadCount(data.unreadCount || 0);
         // localStorageに保存
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newReadArticleIds)));
@@ -80,6 +82,7 @@ export function useReadStatus(articleIds?: string[]) {
           }
           return newSet;
         });
+        setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (error) {
       console.error('Error marking as read:', error);
@@ -107,11 +110,40 @@ export function useReadStatus(articleIds?: string[]) {
           }
           return newSet;
         });
+        setUnreadCount(prev => prev + 1);
       }
     } catch (error) {
       console.error('Error marking as unread:', error);
     }
   }, [session]);
+
+  // 全未読記事を一括既読にマーク
+  const markAllAsRead = useCallback(async () => {
+    if (!session?.user) return;
+
+    try {
+      const response = await fetch('/api/articles/read-status', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}) // 空のボディ（サーバー側で全未読を取得）
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // 全記事を既読として扱うため、再取得
+        await fetchReadStatus();
+        // 未読数を0に更新
+        setUnreadCount(0);
+        
+        // 記事リストを再取得するためのカスタムイベントを発火
+        window.dispatchEvent(new CustomEvent('articles-read-status-changed'));
+        
+        return data;
+      }
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  }, [session, fetchReadStatus]);
 
   // 記事が既読かどうか
   const isRead = useCallback((articleId: string) => {
@@ -125,9 +157,11 @@ export function useReadStatus(articleIds?: string[]) {
 
   return {
     readArticleIds,
+    unreadCount,
     isRead,
     markAsRead,
     markAsUnread,
+    markAllAsRead,
     isLoading,
     refetch: fetchReadStatus
   };

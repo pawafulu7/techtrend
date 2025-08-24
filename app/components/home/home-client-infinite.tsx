@@ -10,6 +10,7 @@ import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
 import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { RecommendationSectionInline } from '@/components/recommendation/recommendation-section-inline';
+import { MarkAllReadWrapper } from '@/app/components/common/mark-all-read-wrapper';
 
 interface HomeClientInfiniteProps {
   viewMode: 'card' | 'list';

@@ -7,11 +7,34 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ readArticleIds: [] });
+      return NextResponse.json({ readArticleIds: [], unreadCount: 0 });
     }
 
     const { searchParams } = new URL(req.url);
     const articleIds = searchParams.get('articleIds')?.split(',') || [];
+
+    // 未読数を取得
+    const unreadCount = await prisma.article.count({
+      where: {
+        OR: [
+          {
+            articleViews: {
+              none: {
+                userId: session.user.id
+              }
+            }
+          },
+          {
+            articleViews: {
+              some: {
+                userId: session.user.id,
+                isRead: false
+              }
+            }
+          }
+        ]
+      }
+    });
 
     if (articleIds.length === 0) {
       // 全ての既読記事IDを取得
@@ -26,7 +49,8 @@ export async function GET(req: NextRequest) {
       });
 
       return NextResponse.json({
-        readArticleIds: readArticles.map(a => a.articleId)
+        readArticleIds: readArticles.map(a => a.articleId),
+        unreadCount
       });
     }
 
@@ -43,7 +67,8 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({
-      readArticleIds: readArticles.map(a => a.articleId)
+      readArticleIds: readArticles.map(a => a.articleId),
+      unreadCount
     });
   } catch (error) {
     console.error('Error fetching read status:', error);
@@ -99,6 +124,91 @@ export async function POST(req: NextRequest) {
     console.error('Error marking article as read:', error);
     return NextResponse.json(
       { error: 'Failed to mark article as read' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT: 全未読記事を一括既読にマーク
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // まず未読記事のIDを全て取得
+    const unreadArticles = await prisma.article.findMany({
+      where: {
+        OR: [
+          {
+            articleViews: {
+              none: {
+                userId: session.user.id
+              }
+            }
+          },
+          {
+            articleViews: {
+              some: {
+                userId: session.user.id,
+                isRead: false
+              }
+            }
+          }
+        ]
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (unreadArticles.length === 0) {
+      return NextResponse.json({ 
+        success: true,
+        markedCount: 0,
+        remainingUnreadCount: 0
+      });
+    }
+
+    // トランザクションで一括処理
+    const now = new Date();
+    const upsertPromises = unreadArticles.map(article => 
+      prisma.articleView.upsert({
+        where: {
+          userId_articleId: {
+            userId: session.user.id,
+            articleId: article.id
+          }
+        },
+        update: {
+          isRead: true,
+          readAt: now,
+          viewedAt: now
+        },
+        create: {
+          userId: session.user.id,
+          articleId: article.id,
+          isRead: true,
+          readAt: now
+        }
+      })
+    );
+
+    await Promise.all(upsertPromises);
+
+    return NextResponse.json({ 
+      success: true, 
+      markedCount: unreadArticles.length,
+      remainingUnreadCount: 0 // 全て既読にしたので0
+    });
+  } catch (error) {
+    console.error('Error marking all articles as read:', error);
+    return NextResponse.json(
+      { error: 'Failed to mark all articles as read' },
       { status: 500 }
     );
   }

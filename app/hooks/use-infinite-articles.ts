@@ -48,6 +48,20 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     prevFilterKeyRef.current = filterKey;
   }, [filterKey, queryClient]);
   
+  // 既読状態が変更されたときに記事リストを再取得
+  useEffect(() => {
+    const handleReadStatusChanged = () => {
+      // 記事リストを再取得
+      queryClient.invalidateQueries({ queryKey: ['infinite-articles'] });
+    };
+    
+    window.addEventListener('articles-read-status-changed', handleReadStatusChanged);
+    
+    return () => {
+      window.removeEventListener('articles-read-status-changed', handleReadStatusChanged);
+    };
+  }, [queryClient]);
+  
   return useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
     queryFn: async ({ pageParam = 1 }) => {
