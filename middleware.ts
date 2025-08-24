@@ -11,7 +11,7 @@ const protectedPaths = [
 // 認証が必要なAPIパス
 const protectedApiPaths = [
   '/api/favorites',
-  '/api/article-views',
+  // '/api/article-views', // 未認証ユーザーも記録できるようにするため除外
 ];
 
 export async function middleware(request: NextRequest) {
