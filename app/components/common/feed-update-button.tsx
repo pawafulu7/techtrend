@@ -45,7 +45,6 @@ export function FeedUpdateButton() {
         description: 'フィード更新中にエラーが発生しました',
         variant: 'destructive',
       });
-      console.error('Feed update error:', error);
     } finally {
       setIsLoading(false);
     }

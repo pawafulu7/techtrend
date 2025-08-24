@@ -85,7 +85,6 @@ export async function GET(request: NextRequest) {
       tags: trulyNewTags
     });
   } catch (error) {
-    console.error('New tags error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

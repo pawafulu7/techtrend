@@ -18,7 +18,6 @@ export async function GET() {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Failed to get optimization status:', error);
     return NextResponse.json(
       { error: 'Failed to get optimization status' },
       { status: 500 }
@@ -89,7 +88,6 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Failed to execute optimization action:', error);
     return NextResponse.json(
       { error: 'Failed to execute optimization action' },
       { status: 500 }

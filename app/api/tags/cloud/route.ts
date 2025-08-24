@@ -141,7 +141,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Tag cloud error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

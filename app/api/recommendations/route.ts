@@ -38,7 +38,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(recommendations);
   } catch (error) {
-    console.error('Failed to get recommendations:', error);
     return NextResponse.json(
       { error: 'Failed to get recommendations' },
       { status: 500 }

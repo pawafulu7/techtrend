@@ -102,7 +102,6 @@ async function fetchBasicMetadata(url: string) {
     
     return { title, thumbnail, description, content: description, keywords };
   } catch (error) {
-    console.error('基本メタデータ取得エラー:', error);
     return { title: 'Untitled Article', thumbnail: null, description: '', content: '', keywords: [] };
   }
 }
@@ -140,7 +139,6 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     const detectionResult = detectSourceFromUrl(url);
     const sourceName = normalizeSourceName(detectionResult.source);
     
-    console.error(`📍 ソース判定: ${sourceName} (信頼度: ${detectionResult.confidence})`);
     
     // ソースの取得または作成
     let source = await prisma.source.findFirst({
@@ -160,7 +158,6 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
             enabled: true
           }
         });
-        console.error(`✅ 新規ソース作成: ${sourceName}`);
       }
     }
     
@@ -176,7 +173,6 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
       const enricher = enricherFactory.getEnricher(url);
       
       if (enricher) {
-        console.error(`🔍 エンリッチャー使用: ${enricher.constructor.name}`);
         try {
           enrichedData = await enricher.enrich(url);
           if (enrichedData) {
@@ -189,10 +185,8 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
             if (enrichedData.tags && Array.isArray(enrichedData.tags)) {
               tagNames = enrichedData.tags;
             }
-            console.error(`✅ エンリッチメント成功: ${content.length}文字`);
           }
         } catch (enrichError) {
-          console.warn(`⚠️ エンリッチメント失敗:`, enrichError);
         }
       }
     }
@@ -200,7 +194,6 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     // エンリッチャーがタイトルを返さなかった場合、またはエンリッチャーが使えない場合は基本メタデータを取得
     let metadata: {title?: string; description?: string; image?: string; content?: string; thumbnail?: string | null; keywords?: string[]} | null = null;
     if (!finalTitle && !customTitle) {
-      console.error('📥 基本メタデータ取得中...');
       metadata = await fetchBasicMetadata(url);
       finalTitle = metadata.title;
       // コンテンツが取得できていない場合のみ、メタデータのコンテンツを使用
@@ -234,9 +227,6 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     }
     
     if (dryRun) {
-      console.error('🔄 ドライラン: 実際の保存は行いません');
-      console.error(`  タイトル: ${finalTitle}`);
-      console.error(`  タグ: ${tagNames.join(', ') || 'なし'}`);
       return {
         success: true,
         title: finalTitle,
@@ -256,7 +246,6 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
         });
         tagConnections.push({ id: tag.id });
       }
-      console.error(`🏷️ タグ: ${tagNames.join(', ')}`);
     }
     
     // 記事の保存
@@ -282,7 +271,6 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
       }
     });
     
-    console.error(`✅ 記事保存完了: ${article.id}`);
     
     // 要約生成
     let summary = null;
@@ -290,7 +278,6 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     let generatedTags: string[] = [];
     
     if (!skipSummary && content && content.length > 100) {
-      console.error('📝 要約生成中...');
       try {
         const summaryService = new UnifiedSummaryService();
         const result = await summaryService.generate(finalTitle, content);
@@ -331,17 +318,12 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
               }
             }
           });
-          console.error(`🏷️ 要約生成時のタグ: ${generatedTags.join(', ')}`);
         }
         
-        console.error('✅ 要約生成完了');
       } catch (summaryError) {
-        console.error('❌ 要約生成エラー:', summaryError);
       }
     } else if (skipSummary) {
-      console.error('⏭️ 要約生成をスキップ');
     } else {
-      console.error('⚠️ コンテンツが短いため要約生成をスキップ');
     }
     
     return {
@@ -355,7 +337,6 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     };
     
   } catch (error) {
-    console.error('❌ 記事追加エラー:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '不明なエラーが発生しました'
@@ -372,7 +353,6 @@ export async function addArticlesBatch(urls: string[], options: Omit<AddArticleO
   const results: AddArticleResult[] = [];
   
   for (const url of urls) {
-    console.error(`\n🔄 処理中: ${url}`);
     const result = await addArticleManually({ ...options, url });
     results.push(result);
     
@@ -386,7 +366,6 @@ export async function addArticlesBatch(urls: string[], options: Omit<AddArticleO
   const successful = results.filter(r => r.success).length;
   const failed = results.filter(r => !r.success).length;
   
-  console.error(`\n📊 バッチ処理完了: 成功 ${successful}件、失敗 ${failed}件`);
   
   return results;
 }

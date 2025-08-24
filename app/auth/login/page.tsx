@@ -21,7 +21,6 @@ export default function LoginPage() {
     try {
       await signIn(provider, { callbackUrl });
     } catch (error) {
-      console.error('OAuth sign in error:', error);
     } finally {
       setIsLoading(false);
     }

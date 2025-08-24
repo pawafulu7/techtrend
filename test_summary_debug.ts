@@ -5,10 +5,8 @@ async function test() {
   const content = "Apple Silicon MacでQEMU仮想化を廃止しApple VirtualizationフレームワークをデフォルトVMMとした「Docker Desktop for Mac v4.44.0」がリリースされています。";
   
   try {
-    console.error('Testing direct API call...');
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.error('GEMINI_API_KEY is not set');
       return;
     }
     
@@ -53,34 +51,21 @@ Docker, Mac, Apple Silicon, 仮想化`;
     );
     
     if (!response.ok) {
-      console.error('API Error:', response.status, await response.text());
       return;
     }
     
     const data = await response.json() as any;
     const responseText = data.candidates[0].content.parts[0].text;
     
-    console.error('=== Raw API Response ===');
-    console.error(responseText);
     
-    console.error('\n=== Testing Parser ===');
     const parsed = parseUnifiedResponse(responseText);
-    console.error('Parsed:', JSON.stringify(parsed, null, 2));
     
-    console.error('\n=== Testing Validation ===');
     const isValid = validateParsedResult(parsed);
-    console.error('Is valid:', isValid);
     
     if (!isValid) {
-      console.error('Validation failed. Checking what is missing...');
-      console.error('Has summary:', !!parsed.summary && parsed.summary.length > 0);
-      console.error('Has detailedSummary:', !!parsed.detailedSummary && parsed.detailedSummary.length > 0);
-      console.error('Has tags:', Array.isArray(parsed.tags) && parsed.tags.length > 0);
     }
     
   } catch (error) {
-    console.error('Error:', error);
   }
 }
 
-test().catch(console.error);

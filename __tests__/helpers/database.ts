@@ -3,7 +3,13 @@
  * Prismaクライアントのモックとテストデータビルダーを提供
  */
 
-import { Article, Source, Tag, ArticleTag } from '@prisma/client';
+import { Article, Source, Tag } from '@prisma/client';
+
+// ArticleTagは多対多の中間テーブル
+interface ArticleTag {
+  articleId: string;
+  tagId: string;
+}
 
 /**
  * Prismaクライアントのモックファクトリー
@@ -85,9 +91,13 @@ export const createTestArticle = (overrides: Partial<Article> = {}): Article => 
     publishedAt: now,
     sourceId: 'test-source-id',
     thumbnail: 'https://test.example.com/thumbnail.jpg',
+    bookmarks: 0,
     qualityScore: 85,
+    userVotes: 0,
     summaryVersion: 5,
     articleType: 'unified',
+    difficulty: null,
+    detailedSummary: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -103,9 +113,8 @@ export const createTestSource = (overrides: Partial<Source> = {}): Source => {
   return {
     id: 'test-source-id',
     name: 'Test Source',
+    type: 'rss',
     url: 'https://test.example.com',
-    rssUrl: 'https://test.example.com/rss',
-    category: 'tech',
     enabled: true,
     createdAt: now,
     updatedAt: now,
@@ -122,10 +131,7 @@ export const createTestTag = (overrides: Partial<Tag> = {}): Tag => {
   return {
     id: 'test-tag-id',
     name: 'typescript',
-    displayName: 'TypeScript',
     category: 'language',
-    createdAt: now,
-    updatedAt: now,
     ...overrides,
   };
 };
@@ -134,13 +140,9 @@ export const createTestTag = (overrides: Partial<Tag> = {}): Tag => {
  * テスト用記事タグ関連データビルダー
  */
 export const createTestArticleTag = (overrides: Partial<ArticleTag> = {}): ArticleTag => {
-  const now = new Date('2025-01-09T00:00:00.000Z');
-  
   return {
-    id: 'test-article-tag-id',
     articleId: 'test-article-id',
     tagId: 'test-tag-id',
-    createdAt: now,
     ...overrides,
   };
 };
@@ -185,7 +187,6 @@ export const createTestTags = (count: number, baseOverrides: Partial<Tag> = {}):
     return createTestTag({
       id: `test-tag-id-${index + 1}`,
       name: tagName,
-      displayName: tagName.charAt(0).toUpperCase() + tagName.slice(1),
       category: categories[index % categories.length],
       ...baseOverrides,
     });
@@ -223,7 +224,6 @@ export const createTestDataSet = (
     const tagCountForArticle = 2 + (articleIndex % 2); // 2または3個
     for (let i = 0; i < tagCountForArticle; i++) {
       articleTags.push(createTestArticleTag({
-        id: `article-tag-${articleIndex}-${i}`,
         articleId: article.id,
         tagId: tags[(articleIndex + i) % tagCount].id,
       }));

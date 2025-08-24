@@ -36,7 +36,6 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
         body: JSON.stringify({ dateRange: value === 'all' ? undefined : value }),
       });
     } catch (error) {
-      console.error('Failed to update filter preferences:', error);
     }
   };
 

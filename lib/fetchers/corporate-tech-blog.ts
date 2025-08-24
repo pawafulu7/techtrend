@@ -78,15 +78,12 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     // 各企業のRSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
       try {
-        console.error(`[Corporate Tech Blog - ${feedInfo.name}] フィードを取得中...`);
         const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
         
         if (!feed.items || feed.items.length === 0) {
-          console.error(`[Corporate Tech Blog - ${feedInfo.name}] 記事が見つかりませんでした`);
           continue;
         }
 
-        console.error(`[Corporate Tech Blog - ${feedInfo.name}] ${feed.items.length}件の記事を取得`);
 
         // 記事数制限を環境変数で設定可能に（デフォルト: 30件）
         const maxArticlesPerCompany = parseInt(process.env.MAX_ARTICLES_PER_COMPANY || '30');
@@ -117,20 +114,17 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
                               this.containsJapanese(textToCheck);
             
             if (!hasJapanese) {
-              console.error(`[Corporate Tech Blog - ${feedInfo.name}] 非日本語記事をスキップ: ${item.title}`);
               continue;
             }
 
             // イベント記事の除外（環境変数で制御）
             const excludeEvents = process.env.EXCLUDE_EVENT_ARTICLES !== 'false';
             if (excludeEvents && this.isEventArticle(item.title, item.link)) {
-              console.error(`[Corporate Tech Blog - ${feedInfo.name}] イベント記事を除外: ${item.title}`);
               continue;
             }
 
             // 企業ごとの記事数制限チェック
             if (processedCount >= maxArticlesPerCompany) {
-              console.error(`[Corporate Tech Blog - ${feedInfo.name}] 記事数制限に達しました（${maxArticlesPerCompany}件）`);
               break;
             }
 
@@ -158,24 +152,18 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
               const enricher = enricherFactory.getEnricher(item.link);
               if (enricher) {
                 try {
-                  console.error(`[Corporate Tech Blog - ${feedInfo.name}] Enriching content for: ${item.title} (current: ${content.length} chars)`);
                   const enrichedData = await enricher.enrich(item.link);
                   if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-                    console.error(`[Corporate Tech Blog - ${feedInfo.name}] Content successfully enriched: ${content.length} -> ${enrichedData.content.length} chars`);
                     content = enrichedData.content;
                     thumbnail = enrichedData.thumbnail || undefined;
                   } else {
-                    console.error(`[Corporate Tech Blog - ${feedInfo.name}] Enrichment did not improve content length`);
                   }
                 } catch (error) {
-                  console.error(`[Corporate Tech Blog - ${feedInfo.name}] Enrichment failed:`, error);
                   // エンリッチメント失敗時は元のコンテンツを使用
                 }
               } else {
-                console.error(`[Corporate Tech Blog - ${feedInfo.name}] No enricher available for this URL pattern`);
               }
             } else if (content && content.length >= 2000) {
-              console.error(`[Corporate Tech Blog - ${feedInfo.name}] Content already sufficient (${content.length} chars), skipping enrichment`);
             }
 
             const article: CreateArticleInput = {
@@ -218,7 +206,6 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     allArticles.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
     const limitedArticles = allArticles.slice(0, 50);
 
-    console.error(`[Corporate Tech Blog] 合計 ${limitedArticles.length}件の記事を処理`);
     return { articles: limitedArticles, errors: allErrors };
   }
 

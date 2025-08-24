@@ -124,7 +124,6 @@ export class ContentAwareSummaryService extends UnifiedSummaryService {
   ): Promise<UnifiedSummaryResult> {
     const config = this.categorizeContent(content);
     
-    console.error(`Content category: ${config.category} (${content?.length || 0} chars)`);
     
     // 非常に短いコンテンツの場合
     if (!config.generateDetailed) {
@@ -154,7 +153,6 @@ export class ContentAwareSummaryService extends UnifiedSummaryService {
           qualityScore: checkSummaryQuality(parsed.summary, parsed.detailedSummary).score
         };
       } catch (error) {
-        console.error('Failed to generate summary for short content:', error);
         // フォールバック
         return {
           summary: `${title.substring(0, 100)}に関する技術記事です。`,

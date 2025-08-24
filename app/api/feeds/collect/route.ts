@@ -54,7 +54,6 @@ export async function POST() {
               // デバッグ: 不正なタグが検出された場合は警告
               if (process.env.NODE_ENV !== 'production' && tagNames.length > 0) {
                 if (!isValidTagArray(tagNames) && Array.isArray(tagNames)) {
-                  console.warn(`[Feeds API] Non-string tags detected from ${source.name}:`, tagNames);
                 }
               }
 
@@ -98,7 +97,6 @@ export async function POST() {
                     },
                   });
                 } catch (error) {
-                  console.error(`Failed to generate summary for article ${article.id}:`, error);
                 }
               }
             }
@@ -129,7 +127,6 @@ export async function POST() {
       },
     } as ApiResponse<{ results: CollectResult[]; summary: { totalFetched: number; totalCreated: number; totalErrors: number; } }>);
   } catch (error) {
-    console.error('Error collecting feeds:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to collect feeds',

@@ -57,12 +57,10 @@ export class CacheWarmer {
    * 起動時の初期ウォーミング
    */
   async warmOnStartup(): Promise<void> {
-    console.error('[CacheWarmer] Starting initial cache warming...');
     
     // 分散ロックを取得（他のインスタンスと競合しない）
     const lockToken = await distributedLock.acquire('cache:warming:startup', this.warmingLockTTL);
     if (!lockToken) {
-      console.error('[CacheWarmer] Another instance is already warming the cache');
       return;
     }
 
@@ -75,9 +73,7 @@ export class CacheWarmer {
       await this.warmKeywords();
       await this.warmSearchQueries();
       
-      console.error('[CacheWarmer] Initial cache warming completed');
     } catch (error) {
-      console.error('[CacheWarmer] Error during cache warming:', error);
     } finally {
       this.isWarming = false;
       await distributedLock.release('cache:warming:startup', lockToken);
@@ -89,11 +85,9 @@ export class CacheWarmer {
    */
   startPeriodicWarming(): void {
     if (this.warmingInterval) {
-      console.error('[CacheWarmer] Periodic warming already started');
       return;
     }
 
-    console.error('[CacheWarmer] Starting periodic cache warming...');
     
     // 最小間隔で実行（10分）
     const minInterval = 600000;
@@ -109,7 +103,6 @@ export class CacheWarmer {
     if (this.warmingInterval) {
       clearInterval(this.warmingInterval);
       this.warmingInterval = null;
-      console.error('[CacheWarmer] Periodic warming stopped');
     }
   }
 
@@ -139,7 +132,6 @@ export class CacheWarmer {
     }
     
     if (tasks.length > 0) {
-      console.error(`[CacheWarmer] Running ${tasks.length} warming tasks`);
       await Promise.allSettled(tasks);
     }
   }
@@ -148,14 +140,11 @@ export class CacheWarmer {
    * 統計データのウォーミング
    */
   private async warmStats(): Promise<void> {
-    console.error('[CacheWarmer] Warming stats cache...');
     
     try {
       const stats = await this.fetchStats();
       await statsCache.set('overall-stats', stats);
-      console.error('[CacheWarmer] Stats cache warmed successfully');
     } catch (error) {
-      console.error('[CacheWarmer] Failed to warm stats cache:', error);
     }
   }
 
@@ -163,7 +152,6 @@ export class CacheWarmer {
    * トレンドデータのウォーミング
    */
   private async warmTrends(): Promise<void> {
-    console.error('[CacheWarmer] Warming trends cache...');
     
     try {
       for (const config of this.warmingConfig.trends.keys) {
@@ -171,9 +159,7 @@ export class CacheWarmer {
         const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
         await trendsCache.set(key, data);
       }
-      console.error('[CacheWarmer] Trends cache warmed successfully');
     } catch (error) {
-      console.error('[CacheWarmer] Failed to warm trends cache:', error);
     }
   }
 
@@ -181,14 +167,11 @@ export class CacheWarmer {
    * キーワードデータのウォーミング
    */
   private async warmKeywords(): Promise<void> {
-    console.error('[CacheWarmer] Warming keywords cache...');
     
     try {
       const data = await this.fetchKeywords();
       await trendsCache.set('keywords:trending', data);
-      console.error('[CacheWarmer] Keywords cache warmed successfully');
     } catch (error) {
-      console.error('[CacheWarmer] Failed to warm keywords cache:', error);
     }
   }
 
@@ -196,7 +179,6 @@ export class CacheWarmer {
    * 検索クエリのウォーミング
    */
   private async warmSearchQueries(): Promise<void> {
-    console.error('[CacheWarmer] Warming search cache...');
     
     try {
       for (const query of this.warmingConfig.search.queries) {
@@ -204,9 +186,7 @@ export class CacheWarmer {
         const data = await this.fetchSearchResults(query);
         await searchCache.set(key, data);
       }
-      console.error('[CacheWarmer] Search cache warmed successfully');
     } catch (error) {
-      console.error('[CacheWarmer] Failed to warm search cache:', error);
     }
   }
 
@@ -360,7 +340,6 @@ export class CacheWarmer {
   async warmManual(targets?: string[]): Promise<void> {
     const validTargets = targets || ['stats', 'trends', 'keywords', 'search'];
     
-    console.error(`[CacheWarmer] Manual warming for: ${validTargets.join(', ')}`);
     
     const tasks: Promise<void>[] = [];
     
@@ -378,7 +357,6 @@ export class CacheWarmer {
     }
     
     await Promise.allSettled(tasks);
-    console.error('[CacheWarmer] Manual warming completed');
   }
 }
 

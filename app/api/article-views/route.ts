@@ -77,7 +77,6 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Failed to fetch article views:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -195,7 +194,6 @@ export async function POST(request: Request) {
       viewId: view.id,
     });
   } catch (error) {
-    console.error('Failed to record article view:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

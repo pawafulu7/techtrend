@@ -26,20 +26,16 @@ export class IoRedisClient implements IRedisClient {
 
     // Set up event handlers
     this.client.on('error', (err) => {
-      console.error('Redis Client Error:', err);
     });
 
     this.client.on('connect', () => {
-      console.error('Redis Client Connected');
     });
 
     this.client.on('ready', () => {
-      console.error('Redis Client Ready');
     });
 
     // Auto-connect
     this.client.connect().catch(err => {
-      console.error('Redis connection failed:', err);
     });
   }
 

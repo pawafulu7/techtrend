@@ -78,7 +78,6 @@ export default function FavoritesFeedPage() {
       setArticles(sortedArticles);
       setTotalPages(data.pagination.totalPages);
     } catch (error) {
-      console.error('Failed to load favorite articles:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

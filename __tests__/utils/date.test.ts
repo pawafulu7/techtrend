@@ -1,14 +1,7 @@
 import { adjustTimezoneForArticle, parseRSSDate, formatDate, formatDateWithTime } from '@/lib/utils/date';
 
 describe('adjustTimezoneForArticle', () => {
-  beforeEach(() => {
-    // console.errorをモック化
-    jest.spyOn(console, 'error').mockImplementation();
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
+  // console文削除に伴い、モック設定も削除
 
   it('未来の日付を現在時刻に調整する', () => {
     const futureDate = new Date();
@@ -17,9 +10,7 @@ describe('adjustTimezoneForArticle', () => {
     const adjusted = adjustTimezoneForArticle(futureDate);
     
     expect(adjusted.getTime()).toBeLessThanOrEqual(new Date().getTime());
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('[Timezone Adjustment] Future date detected')
-    );
+    // console.error呼び出しのテストは削除（console文をプロダクションコードから削除したため）
   });
 
   it('1日後の未来日付を現在時刻に調整する', () => {
@@ -29,9 +20,7 @@ describe('adjustTimezoneForArticle', () => {
     const adjusted = adjustTimezoneForArticle(futureDate, 'Test Source');
     
     expect(adjusted.getTime()).toBeLessThanOrEqual(new Date().getTime());
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Test Source')
-    );
+    // console.error呼び出しのテストは削除
   });
 
   it('過去の日付は変更しない', () => {
@@ -59,9 +48,7 @@ describe('adjustTimezoneForArticle', () => {
     
     adjustTimezoneForArticle(futureDate, 'Google Developers Blog');
     
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Google Developers Blog')
-    );
+    // console.error呼び出しのテストは削除
   });
 
   it('ソース名が提供されない場合、unknown sourceとして記録', () => {
@@ -69,28 +56,19 @@ describe('adjustTimezoneForArticle', () => {
     futureDate.setHours(futureDate.getHours() + 1);
     
     adjustTimezoneForArticle(futureDate);
-    
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('unknown source')
-    );
+    // console.error呼び出しのテストは削除
   });
 });
 
 describe('parseRSSDate', () => {
-  beforeEach(() => {
-    jest.spyOn(console, 'warn').mockImplementation();
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
+  // console文削除に伴い、モック設定も削除
 
   it('有効な日付文字列を正しくパースする', () => {
     const dateString = '2025-08-15T10:00:00Z';
     const parsed = parseRSSDate(dateString);
     
     expect(parsed.toISOString()).toBe('2025-08-15T10:00:00.000Z');
-    expect(console.warn).not.toHaveBeenCalled();
+    // console.warnテストは削除
   });
 
   it('無効な日付文字列の場合、現在時刻を返す', () => {
@@ -101,9 +79,7 @@ describe('parseRSSDate', () => {
     
     expect(parsed.getTime()).toBeGreaterThanOrEqual(before.getTime());
     expect(parsed.getTime()).toBeLessThanOrEqual(after.getTime());
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Invalid date format')
-    );
+    // console.warnテストは削除
   });
 
   it('1年以上先の未来日付の場合、現在時刻を返す', () => {
@@ -114,9 +90,7 @@ describe('parseRSSDate', () => {
     const now = new Date();
     
     expect(Math.abs(parsed.getTime() - now.getTime())).toBeLessThan(1000);
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Future date detected')
-    );
+    // console.warnテストは削除
   });
 
   it('異常に大きなタイムスタンプの場合、現在時刻を返す', () => {
@@ -126,10 +100,7 @@ describe('parseRSSDate', () => {
     const now = new Date();
     
     expect(Math.abs(parsed.getTime() - now.getTime())).toBeLessThan(1000);
-    // 大きすぎる数値は Invalid date として扱われる
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Invalid date format')
-    );
+    // console.warnテストは削除
   });
 });
 

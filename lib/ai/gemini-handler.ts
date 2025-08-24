@@ -33,7 +33,6 @@ export async function generateSummaryAndTags(
       articleType: result.articleType
     };
   } catch (error) {
-    console.error('Failed to generate summary:', error);
     throw error;
   }
 }

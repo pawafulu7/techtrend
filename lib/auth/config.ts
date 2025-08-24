@@ -119,19 +119,14 @@ export const authOptions: NextAuthConfig = {
 
   events: {
     async signIn({ user, account, profile }) {
-      console.error(`User ${user.email} signed in via ${account?.provider || 'credentials'}`);
     },
     async signOut({ session }) {
-      console.error('User signed out');
     },
     async createUser({ user }) {
-      console.error(`New user created: ${user.email}`);
     },
     async updateUser({ user }) {
-      console.error(`User updated: ${user.email}`);
     },
     async linkAccount({ user, account }) {
-      console.error(`Account linked: ${user.email} with ${account.provider}`);
     },
   },
 

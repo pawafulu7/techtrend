@@ -22,11 +22,9 @@ export class HatenaContentEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.error(`[HatenaEnricher] Fetching content from: ${url}`);
       
       // はてなブックマークのURLの場合はスキップ
       if (url.includes('b.hatena.ne.jp')) {
-        console.error(`[HatenaEnricher] Skipping Hatena Bookmark URL itself`);
         return null;
       }
       
@@ -81,29 +79,24 @@ export class HatenaContentEnricher extends BaseContentEnricher {
       
       // コンテンツが取得できたか確認
       if (!this.isContentSufficient(content, 500)) {
-        console.warn(`[HatenaEnricher] Content too short (${content.length} chars) for ${url}`);
         
         // より広範囲を取得する試み
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
-          console.error(`[HatenaEnricher] Using fallback content (${fallbackContent.length} chars)`);
           return { content: fallbackContent, thumbnail };
         }
         
         // コンテンツが不十分でもサムネイルがあれば返す
         if (thumbnail) {
-          console.error(`[HatenaEnricher] Content insufficient but thumbnail found`);
           return { content: content || null, thumbnail };
         }
         
         return null;
       }
       
-      console.error(`[HatenaEnricher] Successfully enriched: ${content.length} characters`);
       return { content, thumbnail };
       
     } catch (error) {
-      console.error(`[HatenaEnricher] Failed to enrich ${url}:`, error);
       return null;
     }
   }

@@ -11,7 +11,6 @@ export async function GET() {
     const keywordsData = await keywordsCache.getOrSet(
       cacheKey,
       async () => {
-        console.error(`[Keywords API] Cache miss for key: ${cacheKey}`);
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -99,7 +98,6 @@ export async function GET() {
       LIMIT 10
     ` as { id: string; name: string; count: bigint }[];
 
-        console.error('[Keywords API] Data fetched and cached successfully');
         return {
           trending: trendingKeywords,
           newTags: newTags.map(tag => ({
@@ -117,7 +115,6 @@ export async function GET() {
 
     // キャッシュ統計をログ出力
     const cacheStats = keywordsCache.getStats();
-    console.error('[Keywords API] Cache stats:', cacheStats);
 
     return NextResponse.json({
       ...keywordsData,
@@ -127,7 +124,6 @@ export async function GET() {
       }
     });
   } catch (error) {
-    console.error('Failed to fetch trending keywords:', error);
     return NextResponse.json(
       { 
         error: 'Failed to fetch trending keywords',

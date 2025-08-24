@@ -109,13 +109,10 @@ export class UnifiedSummaryService {
         }
         
         // レスポンスのパース
-        console.error('[UnifiedSummaryService] レスポンス受信:', responseText.length, '文字');
         const parsed = parseUnifiedResponse(responseText);
-        console.error('[UnifiedSummaryService] パース結果 - 詳細要約:', parsed.detailedSummary.substring(0, 100));
         
         // 検証
         if (!validateParsedResult(parsed)) {
-          console.error('[UnifiedSummaryService] 検証失敗 - 詳細要約長:', parsed.detailedSummary.length);
           throw new Error('Invalid parsed result');
         }
         
@@ -131,7 +128,6 @@ export class UnifiedSummaryService {
         
         // 品質スコアが閾値以下の場合、再試行
         if (qualityScore < opts.minQualityScore! && attempt < opts.maxRetries!) {
-          console.error(`Quality score ${qualityScore} is below threshold ${opts.minQualityScore}. Retrying...`);
           await this.delay(opts.retryDelay!);
           continue;
         }
@@ -149,7 +145,6 @@ export class UnifiedSummaryService {
         
       } catch (error) {
         lastError = error as Error;
-        console.error(`Attempt ${attempt} failed:`, error);
         
         // Rate limitエラーの場合は長めに待機
         if (this.isRateLimitError(error)) {
@@ -202,7 +197,6 @@ export class UnifiedSummaryService {
     if (sourceInfo?.url?.toLowerCase().endsWith('.pdf') || 
         content.includes('%PDF-') || 
         content.includes('%%EOF')) {
-      console.error(`[UnifiedSummaryService] PDFファイルを検出、要約生成をスキップ: ${sourceInfo?.url}`);
       // PDFは要約生成不可
       return '__SKIP_SUMMARY_GENERATION__';
     }

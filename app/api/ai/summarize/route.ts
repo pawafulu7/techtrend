@@ -77,7 +77,6 @@ export async function POST(request: NextRequest) {
       data: updatedArticle,
     } as ApiResponse<ArticleWithRelations>);
   } catch (error) {
-    console.error('Error generating summary:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to generate summary',
@@ -171,7 +170,6 @@ export async function PUT(request: NextRequest) {
       },
     } as ApiResponse<{ processed: number; total: number; message: string }>);
   } catch (error) {
-    console.error('Error in batch summarization:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to process batch summarization',

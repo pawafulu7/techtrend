@@ -86,11 +86,9 @@ export class ZennExtendedFetcher extends BaseFetcher {
         await new Promise(resolve => setTimeout(resolve, 300));
       } catch (error) {
         // 個別トピックのエラーは警告レベル
-        console.warn(`Zenn ${topic}トピック取得エラー:`, error);
       }
     }
 
-    console.error(`✅ Zenn: ${articles.length}件の記事を取得`);
     return { articles: articles.slice(0, 30), errors };
   }
 
@@ -107,13 +105,11 @@ export class ZennExtendedFetcher extends BaseFetcher {
       if (enricher) {
         try {
           const currentContent = article.content || '';
-          console.error(`[Zenn] Enriching content for: ${item.title} (current: ${currentContent.length} chars)`);
           const enrichedData = await enricher.enrich(item.link);
           
           if (enrichedData && enrichedData.content) {
             // より長いコンテンツが取得できた場合に更新
             if (enrichedData.content.length > currentContent.length) {
-              console.error(`[Zenn] Content enriched: ${currentContent.length} -> ${enrichedData.content.length} chars`);
               article.content = enrichedData.content;
               
               // サムネイルも取得できていれば更新
@@ -123,7 +119,6 @@ export class ZennExtendedFetcher extends BaseFetcher {
             }
           }
         } catch (error) {
-          console.error(`[Zenn] Enrichment failed for ${item.link}:`, error);
           // エンリッチメント失敗時は元のコンテンツを使用
         }
       }

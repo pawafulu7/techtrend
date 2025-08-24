@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     const preferences = getFilterPreferences(request);
     return NextResponse.json({ success: true, preferences });
   } catch (error) {
-    console.error('Error getting filter preferences:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to get preferences' },
       { status: 500 }
@@ -57,7 +56,6 @@ export async function POST(request: NextRequest) {
     
     return response;
   } catch (error) {
-    console.error('Error setting filter preferences:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to set preferences' },
       { status: 500 }
@@ -71,7 +69,6 @@ export async function DELETE(_request: NextRequest) {
     deleteFilterPreferences(response);
     return response;
   } catch (error) {
-    console.error('Error deleting filter preferences:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to delete preferences' },
       { status: 500 }

@@ -130,7 +130,6 @@ export async function GET(request: NextRequest, { params }: Params) {
       tagDistribution: tagDistributionObj
     });
   } catch (error) {
-    console.error('Source detail error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

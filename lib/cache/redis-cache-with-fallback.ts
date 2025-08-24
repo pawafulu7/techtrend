@@ -23,17 +23,14 @@ export class RedisCacheWithFallback extends RedisCache {
       },
       // フォールバック処理
       async () => {
-        console.error(`[RedisCacheWithFallback] Fallback mode for key: ${key}`);
         
         // メモリキャッシュをチェック
         const cached = this.memoryCache.get(key);
         if (cached && cached.expires > Date.now()) {
-          console.error(`[RedisCacheWithFallback] Memory cache hit for key: ${key}`);
           return cached.data;
         }
         
         // データを直接取得
-        console.error(`[RedisCacheWithFallback] Fetching data directly for key: ${key}`);
         const data = await fetcher();
         
         // メモリキャッシュに保存（TTLは短めに設定）
@@ -90,6 +87,5 @@ export class RedisCacheWithFallback extends RedisCache {
    */
   clearMemoryCache() {
     this.memoryCache.clear();
-    console.error('[RedisCacheWithFallback] Memory cache cleared');
   }
 }

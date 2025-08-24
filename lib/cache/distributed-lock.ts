@@ -31,13 +31,11 @@ export class DistributedLock {
       );
       
       if (result === 'OK') {
-        console.error(`[DistributedLock] Lock acquired for key: ${lockKey}`);
         return lockToken;
       }
       
       return null;
     } catch (error) {
-      console.error('[DistributedLock] Failed to acquire lock:', error);
       return null;
     }
   }
@@ -61,7 +59,6 @@ export class DistributedLock {
       await this.sleep(this.retryInterval);
     }
     
-    console.error(`[DistributedLock] Failed to acquire lock after ${this.maxWaitTime}ms for key: lock:${key}`);
     return null;
   }
 
@@ -88,14 +85,11 @@ export class DistributedLock {
       }
       
       if (result === 1) {
-        console.error(`[DistributedLock] Lock released for key: ${lockKey}`);
         return true;
       }
       
-      console.error(`[DistributedLock] Lock release failed - token mismatch for key: ${lockKey}`);
       return false;
     } catch (error) {
-      console.error('[DistributedLock] Failed to release lock:', error);
       return false;
     }
   }
@@ -115,7 +109,6 @@ export class DistributedLock {
     const token = await this.acquireWithWait(key, ttl);
     
     if (!token) {
-      console.error(`[DistributedLock] Could not acquire lock for key: ${key}`);
       return null;
     }
     
@@ -138,7 +131,6 @@ export class DistributedLock {
       const exists = await this.redis.exists(lockKey);
       return exists === 1;
     } catch (error) {
-      console.error('[DistributedLock] Failed to check lock existence:', error);
       return false;
     }
   }
@@ -154,7 +146,6 @@ export class DistributedLock {
       const ttl = await this.redis.ttl(lockKey);
       return ttl;
     } catch (error) {
-      console.error('[DistributedLock] Failed to get lock TTL:', error);
       return -1;
     }
   }

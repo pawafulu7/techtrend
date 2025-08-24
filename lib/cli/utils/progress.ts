@@ -22,7 +22,6 @@ export class ProgressBar {
   
   complete(message?: string) {
     this.update(this.total);
-    console.error(message ? `\n${message}` : '\n');
   }
   
   clear() {

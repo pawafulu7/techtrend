@@ -128,7 +128,6 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
         });
       } catch (error) {
         // Silently fail cookie update - URL params are the primary source
-        console.error('Failed to update filter cookies:', error);
       }
     }, 150); // 150ms のデバウンス
   };

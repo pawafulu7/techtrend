@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
     
     return response;
   } catch (error) {
-    console.error('Error in source-filter API:', error);
     return NextResponse.json(
       { success: false, error: 'Invalid request' },
       { status: 400 }
@@ -46,7 +45,6 @@ export async function GET(request: NextRequest) {
       sourceIds 
     });
   } catch (error) {
-    console.error('Error reading source-filter cookie:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to read cookie' },
       { status: 500 }
@@ -66,7 +64,6 @@ export async function DELETE(_request: NextRequest) {
     
     return response;
   } catch (error) {
-    console.error('Error deleting source-filter cookie:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to delete cookie' },
       { status: 500 }

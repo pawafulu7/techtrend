@@ -18,7 +18,6 @@ export default function SignupPage() {
     try {
       await signIn(provider, { callbackUrl: '/profile' });
     } catch (error) {
-      console.error('OAuth sign in error:', error);
     } finally {
       setIsLoading(false);
     }

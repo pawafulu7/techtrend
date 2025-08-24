@@ -19,7 +19,6 @@ export class HuggingFaceEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.error(`[HuggingFaceEnricher] Fetching content from: ${url}`);
       
       const html = await this.fetchWithRetry(url);
       
@@ -48,29 +47,24 @@ export class HuggingFaceEnricher extends BaseContentEnricher {
       
       // コンテンツが取得できたか確認
       if (!this.isContentSufficient(content, 500)) {
-        console.warn(`[HuggingFaceEnricher] Content too short (${content.length} chars) for ${url}`);
         
         // より広範囲を取得する試み
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
-          console.error(`[HuggingFaceEnricher] Using fallback content (${fallbackContent.length} chars)`);
           return { content: fallbackContent, thumbnail };
         }
         
         // コンテンツが不十分でもサムネイルがあれば返す
         if (thumbnail) {
-          console.error(`[HuggingFaceEnricher] Content insufficient but thumbnail found`);
           return { content: content || null, thumbnail };
         }
         
         return null;
       }
       
-      console.error(`[HuggingFaceEnricher] Successfully enriched: ${content.length} characters`);
       return { content, thumbnail };
       
     } catch (error) {
-      console.error(`[HuggingFaceEnricher] Failed to enrich ${url}:`, error);
       return null;
     }
   }

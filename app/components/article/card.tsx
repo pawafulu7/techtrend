@@ -84,7 +84,6 @@ export function ArticleCard({ article, onArticleClick }: ArticleCardProps) {
         setHasVoted(true);
       }
     } catch (error) {
-      console.error('Failed to vote:', error);
     }
   };
 

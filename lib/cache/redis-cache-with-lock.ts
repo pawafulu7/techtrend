@@ -22,12 +22,10 @@ export class RedisCacheWithLock extends RedisCacheWithFallback {
     const cached = await this.get<T>(key);
     if (cached !== null) {
       this.stats.hits++;
-      console.error(`[RedisCacheWithLock] Cache hit for key: ${key}`);
       return cached;
     }
 
     this.stats.misses++;
-    console.error(`[RedisCacheWithLock] Cache miss for key: ${key}`);
 
     if (!this.stampedePrevention) {
       // スタンピード防止無効時は通常のgetOrSet
@@ -40,7 +38,6 @@ export class RedisCacheWithLock extends RedisCacheWithFallback {
 
     if (!lockToken) {
       // ロック取得失敗 - 他のプロセスが処理中
-      console.error(`[RedisCacheWithLock] Waiting for cache generation for key: ${key}`);
       
       // 少し待ってからキャッシュを再チェック
       await this.sleep(100);
@@ -49,14 +46,12 @@ export class RedisCacheWithLock extends RedisCacheWithFallback {
       for (let i = 0; i < 10; i++) {
         const retryResult = await this.get<T>(key);
         if (retryResult !== null) {
-          console.error(`[RedisCacheWithLock] Cache became available for key: ${key}`);
           return retryResult;
         }
         await this.sleep(200);
       }
       
       // それでも取得できない場合は直接実行
-      console.error(`[RedisCacheWithLock] Timeout waiting for cache, fetching directly for key: ${key}`);
       return await fetcher();
     }
 
@@ -64,12 +59,10 @@ export class RedisCacheWithLock extends RedisCacheWithFallback {
       // ロック取得後、もう一度キャッシュをチェック（ダブルチェック）
       const doubleCheck = await this.get<T>(key);
       if (doubleCheck !== null) {
-        console.error(`[RedisCacheWithLock] Cache hit on double check for key: ${key}`);
         return doubleCheck;
       }
 
       // データを取得してキャッシュに保存
-      console.error(`[RedisCacheWithLock] Fetching data with lock for key: ${key}`);
       const data = await fetcher();
       await this.set(key, data, ttl);
       
@@ -118,7 +111,6 @@ export class RedisCacheWithLock extends RedisCacheWithFallback {
    */
   setStampedePrevention(enabled: boolean) {
     (this as unknown).stampedePrevention = enabled;
-    console.error(`[RedisCacheWithLock] Stampede prevention ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   /**

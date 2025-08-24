@@ -11,7 +11,6 @@ export async function GET() {
       total
     });
   } catch (error) {
-    console.error('Tag stats error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

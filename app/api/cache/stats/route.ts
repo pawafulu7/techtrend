@@ -35,7 +35,6 @@ export async function GET() {
         connected: true
       };
     } catch (error) {
-      console.error('Failed to get Redis info:', error);
       redisInfo = {
         connected: false,
         error: 'Failed to connect to Redis'
@@ -80,7 +79,6 @@ export async function GET() {
     
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Cache stats API error:', error);
     return NextResponse.json(
       {
         success: false,

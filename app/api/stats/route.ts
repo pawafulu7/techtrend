@@ -11,7 +11,6 @@ export async function GET() {
     const stats = await statsCache.getOrSet(
       cacheKey,
       async () => {
-        console.error('[Stats API] Cache miss - fetching from database');
         
         // 記事の統計情報を取得
         const [
@@ -125,14 +124,12 @@ export async function GET() {
           })),
         };
 
-        console.error('[Stats API] Data fetched and cached successfully');
         return formattedStats;
       }
     );
 
     // キャッシュ統計をログ出力
     const cacheStats = statsCache.getStats();
-    console.error('[Stats API] Cache stats:', cacheStats);
 
     return NextResponse.json({
       success: true,
@@ -143,11 +140,9 @@ export async function GET() {
       }
     });
   } catch (error) {
-    console.error('Stats API error:', error);
     
     // Redisエラーの場合はフォールバックとしてDBから直接取得を試みる
     if (error instanceof Error && error.message.includes('Redis')) {
-      console.warn('[Stats API] Redis error, falling back to direct DB query');
       // ここに直接DB取得のロジックを追加可能
     }
     

@@ -26,6 +26,5 @@ program.exitOverride();
 try {
   program.parse();
 } catch (err) {
-  console.error('エラーが発生しました:', err);
   process.exit(1);
 }

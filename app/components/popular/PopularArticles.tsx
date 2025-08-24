@@ -59,7 +59,6 @@ export function PopularArticles({
       const data = await response.json();
       setArticles(data.articles);
     } catch (error) {
-      console.error('Error loading popular articles:', error);
     } finally {
       setLoading(false);
     }
