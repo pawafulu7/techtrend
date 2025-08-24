@@ -31,7 +31,11 @@ export class RecommendationServiceDI {
   async getUserInterests(userId: string): Promise<UserInterests | null> {
     // キャッシュ確認
     const cacheKey = `user:interests:${userId}`;
-    const cached = await redisService.getJSON<{favoriteTopics: string[]; recentTopics: string[]}>(cacheKey);
+    const cached = await redisService.getJSON<{
+      tagScores: Record<string, number>;
+      totalActions: number;
+      lastUpdated: string;
+    }>(cacheKey);
     if (cached) {
       return {
         tagScores: new Map(Object.entries(cached.tagScores)),

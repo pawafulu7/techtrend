@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, _waitFor } from '@testing-library/react';
 import { ShareButton } from '@/app/components/article/share-button';
 
 // Mockウィンドウオープン
@@ -8,7 +8,7 @@ global.open = mockOpen;
 // Radix UIコンポーネントのモック
 jest.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) => 
+  DropdownMenuTrigger: ({ children, _asChild }: { children: React.ReactNode; _asChild?: boolean }) => 
     <div data-testid="dropdown-trigger">{children}</div>,
   DropdownMenuContent: ({ children }: { children: React.ReactNode }) => 
     <div data-testid="dropdown-content">{children}</div>,

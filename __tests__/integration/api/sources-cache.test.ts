@@ -213,7 +213,7 @@ describe('/api/sources - Cache Integration', () => {
       
       const request = new NextRequest('http://localhost:3000/api/sources?category=tech_blog');
       const response = await GET(request);
-      const data = await response.json();
+      const _data = await response.json();
       
       expect(response.status).toBe(200);
       // The mock data would be filtered by category in real implementation
@@ -243,7 +243,7 @@ describe('/api/sources - Cache Integration', () => {
       
       const request = new NextRequest('http://localhost:3000/api/sources?sortBy=name&order=asc');
       const response = await GET(request);
-      const data = await response.json();
+      const _data = await response.json();
       
       expect(response.status).toBe(200);
       // Verify the cache key includes sort parameters
@@ -278,7 +278,7 @@ describe('/api/sources - Cache Integration', () => {
       mockRedis.get.mockResolvedValueOnce(null);
       const request1 = new NextRequest('http://localhost:3000/api/sources');
       const response1 = await GET(request1);
-      const time1 = parseInt(response1.headers.get('X-Response-Time')!.replace('ms', ''));
+      const _time1 = parseInt(response1.headers.get('X-Response-Time')!.replace('ms', ''));
       
       // Second request - cache hit
       mockRedis.get.mockResolvedValueOnce({ sources: [], totalCount: 0 });

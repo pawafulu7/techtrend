@@ -4,7 +4,7 @@
  */
 
 export class UnifiedSummaryService {
-  generate = jest.fn().mockImplementation(async (title: string, content: string) => {
+  generate = jest.fn().mockImplementation(async (_title: string, _content: string) => {
     // デフォルトの成功レスポンスを返す（successフィールドなし）
     return {
       summary: 'テスト要約文。技術的な内容を含む記事の要約です。',

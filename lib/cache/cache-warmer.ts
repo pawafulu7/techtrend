@@ -317,7 +317,7 @@ export class CacheWarmer {
   /**
    * 検索結果取得
    */
-  private async fetchSearchResults(query: unknown) {
+  private async fetchSearchResults(query: any) {
     const { q, limit = 20 } = query;
     
     // FTSを使用した検索（簡易実装）

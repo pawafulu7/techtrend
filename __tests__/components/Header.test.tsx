@@ -143,7 +143,7 @@ describe('Header', () => {
     
     // ヘッダーにstickyまたはfixedクラスが適用されている
     if (header) {
-      const hasSticky = header.classList.contains('sticky') || 
+      const _hasSticky = header.classList.contains('sticky') || 
                        header.classList.contains('fixed');
       expect(header).toBeInTheDocument();
     }

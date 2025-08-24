@@ -23,7 +23,7 @@ test.describe('ソースフィルタリング機能', () => {
     await expect(firstSourceCheckbox).toBeVisible();
     
     // ソース名を取得
-    const sourceName = await firstSourceCheckbox.locator('label').textContent();
+    const _sourceName = await firstSourceCheckbox.locator('label').textContent();
     
     // チェックボックスが選択されていることを確認
     const checkbox = firstSourceCheckbox.locator('button[role="checkbox"]');
@@ -52,7 +52,7 @@ test.describe('ソースフィルタリング機能', () => {
     expect(initialArticles).toBeGreaterThan(0);
     
     // フィルターエリアを取得
-    const filterArea = page.locator('[data-testid="filter-area"]');
+    const _filterArea = page.locator('[data-testid="filter-area"]');
     
     // Dev.toのチェックボックスを探す（通常存在するソース）
     const devtoCheckbox = page.locator('[data-testid="source-checkbox-Dev.to"]');
@@ -89,7 +89,7 @@ test.describe('ソースフィルタリング機能', () => {
 
   test('全選択・全解除ボタンが機能する', async ({ page }) => {
     // フィルターエリアを取得
-    const filterArea = page.locator('[data-testid="filter-area"]');
+    const _filterArea = page.locator('[data-testid="filter-area"]');
     
     // Firefox対応: ページの読み込みとデータの表示を確実に待つ
     await page.waitForLoadState('networkidle');
@@ -162,7 +162,7 @@ test.describe('ソースフィルタリング機能', () => {
     }
     
     // フィルターエリアを取得
-    const filterArea = page.locator('[data-testid="filter-area"]');
+    const _filterArea = page.locator('[data-testid="filter-area"]');
     
     // 記事カードが表示されるまで待つ（Firefoxの遅延対策）
     await page.waitForSelector('[data-testid="article-card"]', { 

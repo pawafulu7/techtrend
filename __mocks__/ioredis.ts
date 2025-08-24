@@ -1,7 +1,7 @@
 class RedisMock {
   private store: Map<string, any> = new Map();
   
-  constructor(options?: any) {
+  constructor(_options?: any) {
     // Constructor accepts options but ignores them for mock
   }
   
@@ -9,12 +9,12 @@ class RedisMock {
     return this.store.get(key) || null;
   }
   
-  async set(key: string, value: any, ...args: any[]): Promise<'OK'> {
+  async set(key: string, value: any, ..._args: any[]): Promise<'OK'> {
     this.store.set(key, value);
     return 'OK';
   }
   
-  async setex(key: string, seconds: number, value: any): Promise<'OK'> {
+  async setex(key: string, _seconds: number, value: any): Promise<'OK'> {
     this.store.set(key, value);
     return 'OK';
   }
@@ -44,7 +44,7 @@ class RedisMock {
     return this.store.has(key) ? 1 : 0;
   }
   
-  async expire(key: string, seconds: number): Promise<number> {
+  async expire(key: string, _seconds: number): Promise<number> {
     // Simple implementation - just return 1 if key exists
     return this.store.has(key) ? 1 : 0;
   }

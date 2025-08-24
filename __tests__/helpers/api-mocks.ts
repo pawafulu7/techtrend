@@ -303,7 +303,7 @@ export const mockRateLimit = (url: string) => {
 export const mockPaginatedResponse = (
   url: string,
   items: any[],
-  page = 1,
+  _page = 1,
   perPage = 10
 ) => {
   server.use(

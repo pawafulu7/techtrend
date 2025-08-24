@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { testData } from '../fixtures/test-data';
+import { _testData } from '../fixtures/test-data';
 import {
   waitForPageLoad,
   expectPageTitle,
   expectNoErrors,
   expectNavigationMenu,
   waitForLoadingToDisappear,
-  waitForDataLoad,
+  _waitForDataLoad,
 } from '../utils/test-helpers';
-import { SELECTORS } from '../constants/selectors';
+import { _SELECTORS } from '../constants/selectors';
 
 test.describe('分析ページ', () => {
   test.beforeEach(async ({ page }) => {
@@ -308,7 +308,7 @@ test.describe('分析ページ', () => {
     
     // グラフが表示されることを確認
     const desktopCharts = page.locator('canvas, svg[class*="chart"]');
-    const desktopChartCount = await desktopCharts.count();
+    const _desktopChartCount = await desktopCharts.count();
     
     // モバイルビューに変更
     await page.setViewportSize({ width: 375, height: 667 });

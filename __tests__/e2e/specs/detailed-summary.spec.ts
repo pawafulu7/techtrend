@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { 
   waitForPageLoad,
-  expectNoErrors,
+  _expectNoErrors,
   waitForLoadingToDisappear,
-  waitForElementTextContent,
+  _waitForElementTextContent,
 } from '../utils/test-helpers';
 import { SELECTORS } from '../constants/selectors';
 
@@ -199,7 +199,7 @@ test.describe('詳細要約表示', () => {
       expect(href).toBeTruthy();
       
       // リンクがクリック可能であることを確認
-      const isClickable = await firstLink.evaluate(el => {
+      const _isClickable = await firstLink.evaluate(el => {
         const styles = window.getComputedStyle(el);
         return styles.pointerEvents !== 'none' && styles.cursor === 'pointer';
       });

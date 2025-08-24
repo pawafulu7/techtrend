@@ -1,4 +1,4 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, _Locator, expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 /**
@@ -11,7 +11,7 @@ export class SearchPage extends BasePage {
   private readonly searchResults = 'article, [class*="article"], [class*="card"]';
   private readonly noResultsMessage = ':text("見つかりません"), :text("No results"), :text("該当なし")';
   private readonly sourceFilter = 'select[name*="source"], select[data-testid="source-filter"]';
-  private readonly dateFilter = 'select[name*="date"], input[type="date"], [data-testid="date-filter"]';
+  private readonly _dateFilter = 'select[name*="date"], input[type="date"], [data-testid="date-filter"]';
   private readonly sortSelect = 'select[name*="sort"], select[data-testid="sort"]';
   private readonly advancedSearchToggle = 'button:has-text("詳細検索"), button:has-text("Advanced")';
   private readonly tagInput = 'input[name*="tag"], input[placeholder*="タグ"]';
@@ -228,7 +228,7 @@ export class SearchPage extends BasePage {
     const sourceOptions = await this.getSourceOptions();
     
     if (sourceOptions.length > 1) {
-      const initialCount = await this.getResultCount();
+      const _initialCount = await this.getResultCount();
       await this.filterBySource(sourceOptions[1]);
       
       // URLにフィルターパラメータが追加されることを確認

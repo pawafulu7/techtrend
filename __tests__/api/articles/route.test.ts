@@ -188,7 +188,7 @@ describe('/api/articles', () => {
 
       const request = createMockNextRequest('http://localhost:3000/api/articles?sources=qiita,zenn');
       const response = await GET(request);
-      const data = await response.json();
+      const _data = await response.json();
 
       expect(response.status).toBe(200);
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -208,7 +208,7 @@ describe('/api/articles', () => {
 
       const request = createMockNextRequest('http://localhost:3000/api/articles?tag=React');
       const response = await GET(request);
-      const data = await response.json();
+      const _data = await response.json();
 
       expect(response.status).toBe(200);
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -230,7 +230,7 @@ describe('/api/articles', () => {
 
       const request = createMockNextRequest('http://localhost:3000/api/articles?search=React');
       const response = await GET(request);
-      const data = await response.json();
+      const _data = await response.json();
 
       expect(response.status).toBe(200);
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -251,7 +251,7 @@ describe('/api/articles', () => {
 
       const request = createMockNextRequest('http://localhost:3000/api/articles?search=React TypeScript');
       const response = await GET(request);
-      const data = await response.json();
+      const _data = await response.json();
 
       expect(response.status).toBe(200);
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -358,7 +358,7 @@ describe('/api/articles', () => {
 
       const request = createMockNextRequest('http://localhost:3000/api/articles?sources=none');
       const response = await GET(request);
-      const data = await response.json();
+      const _data = await response.json();
 
       expect(response.status).toBe(200);
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(

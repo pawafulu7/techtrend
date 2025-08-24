@@ -6,14 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tag as TagIcon, Search, X, ChevronRight, Loader2 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuCheckboxItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+// DropdownMenuコンポーネントは現在使用していないためコメントアウト
+// import {
+//   DropdownMenu,
+//   DropdownMenuContent,
+//   DropdownMenuLabel,
+//   DropdownMenuSeparator,
+//   DropdownMenuCheckboxItem,
+//   DropdownMenuTrigger,
+// } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { TAG_CATEGORIES, getCategoryInfo } from '@/lib/constants/tag-categories';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -87,7 +88,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         let data;
         try {
           data = JSON.parse(text);
-        } catch (parseError) {
+        } catch {
           console.error('Failed to parse JSON response:', text);
           setSearchResults([]);
           return;

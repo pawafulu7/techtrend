@@ -9,6 +9,7 @@ export interface UserInterests {
 export interface RecommendationScore {
   articleId: string;
   score: number;
+  matchedTags: string[];
   reasons: string[];
 }
 

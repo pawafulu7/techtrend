@@ -12,12 +12,12 @@ jest.mock('@/lib/database', () => ({
 jest.mock('@/lib/cache/trends-cache', () => ({
   trendsCache: {
     generateTrendsKey: jest.fn((params) => `test-key-${params.days}-${params.tag || 'all'}`),
-    getOrSet: jest.fn(async (key, fetcher) => fetcher()),
+    getOrSet: jest.fn(async (_key, fetcher) => fetcher()),
     getStats: jest.fn(() => ({ hits: 0, misses: 0, sets: 0 }))
   }
 }));
 
-import { prisma } from '@/lib/database';
+import { _prisma } from '@/lib/database';
 import { trendsCache } from '@/lib/cache/trends-cache';
 
 describe('/api/trends/analysis', () => {
@@ -92,7 +92,7 @@ describe('/api/trends/analysis', () => {
 
   describe('valid requests', () => {
     it('should accept valid days parameter', async () => {
-      const mockData = {
+      const _mockData = {
         topTags: [],
         timeline: [],
         period: {
@@ -102,7 +102,7 @@ describe('/api/trends/analysis', () => {
         }
       };
 
-      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (key, fetcher) => {
+      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (_key, fetcher) => {
         return fetcher();
       });
 
@@ -117,7 +117,7 @@ describe('/api/trends/analysis', () => {
     });
 
     it('should use default value when days parameter is not provided', async () => {
-      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (key, fetcher) => {
+      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (_key, fetcher) => {
         return fetcher();
       });
 
@@ -131,7 +131,7 @@ describe('/api/trends/analysis', () => {
     });
 
     it('should accept days at minimum boundary (1)', async () => {
-      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (key, fetcher) => {
+      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (_key, fetcher) => {
         return fetcher();
       });
 
@@ -145,7 +145,7 @@ describe('/api/trends/analysis', () => {
     });
 
     it('should accept days at maximum boundary (365)', async () => {
-      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (key, fetcher) => {
+      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (_key, fetcher) => {
         return fetcher();
       });
 
@@ -159,7 +159,7 @@ describe('/api/trends/analysis', () => {
     });
 
     it('should work with tag parameter', async () => {
-      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (key, fetcher) => {
+      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (_key, fetcher) => {
         return fetcher();
       });
 
@@ -175,7 +175,7 @@ describe('/api/trends/analysis', () => {
 
   describe('error handling', () => {
     it('should handle database errors gracefully', async () => {
-      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (key, fetcher) => {
+      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (_key, _fetcher) => {
         throw new Error('Database connection failed');
       });
 
@@ -190,7 +190,7 @@ describe('/api/trends/analysis', () => {
 
   describe('caching behavior', () => {
     it('should set appropriate cache headers', async () => {
-      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (key, fetcher) => {
+      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (_key, fetcher) => {
         return fetcher();
       });
 
@@ -203,7 +203,7 @@ describe('/api/trends/analysis', () => {
     it('should include cache stats in response', async () => {
       const mockStats = { hits: 5, misses: 2, sets: 7 };
       (trendsCache.getStats as jest.Mock).mockReturnValue(mockStats);
-      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (key, fetcher) => {
+      (trendsCache.getOrSet as jest.Mock).mockImplementation(async (_key, fetcher) => {
         return fetcher();
       });
 

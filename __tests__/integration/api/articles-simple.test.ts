@@ -7,7 +7,7 @@
 jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, _NextResponse } from 'next/server';
 import { GET, POST } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { getRedisClient } from '@/lib/redis/client';

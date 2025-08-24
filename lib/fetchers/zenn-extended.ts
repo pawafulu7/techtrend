@@ -96,7 +96,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
 
   private async createArticleWithEnrichment(
     item: ZennRSSItem, 
-    enricherFactory: unknown
+    enricherFactory: any
   ): Promise<CreateArticleInput> {
     // 基本的な記事データを作成
     const article = this.createArticle(item);

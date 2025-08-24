@@ -29,7 +29,7 @@ test.describe('推薦機能', () => {
     await expect(newIcon).toBeVisible();
   });
 
-  test('localStorage永続化の確認', async ({ page, context }) => {
+  test('localStorage永続化の確認', async ({ page, _context }) => {
     const toggleButton = page.locator('button:has-text("おすすめ")');
     
     // 初期状態を記録

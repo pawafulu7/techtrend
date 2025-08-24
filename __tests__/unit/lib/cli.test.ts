@@ -1,10 +1,10 @@
-import { execSync } from 'child_process';
+import { _execSync } from 'child_process';
 import { Command } from 'commander';
 import path from 'path';
 
 // CLI統合テストは後で実装予定
 describe('CLI統合テスト', () => {
-  const cliPath = path.join(__dirname, '../../../lib/cli/index.ts');
+  const _cliPath = path.join(__dirname, '../../../lib/cli/index.ts');
   
   // TODO: Commander.jsのexitOverrideを使用してテストを改善
 });

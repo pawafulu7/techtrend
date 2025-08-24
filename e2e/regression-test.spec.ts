@@ -81,7 +81,7 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
         
         // 最初のタグを選択
         const firstTag = page.locator('[data-testid^="tag-option-"]').first();
-        const tagName = await firstTag.textContent();
+        const _tagName = await firstTag.textContent();
         await firstTag.click();
         
         // フィルターが適用されるまで待つ

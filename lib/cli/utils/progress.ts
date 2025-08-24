@@ -16,6 +16,10 @@ export class ProgressBar {
     process.stdout.write(`\r${this.label}: [${bar}] ${percentage}% (${current}/${this.total})${info}`);
   }
   
+  increment(extraInfo?: string) {
+    this.update(this.current + 1, extraInfo);
+  }
+  
   complete(message?: string) {
     this.update(this.total);
     console.error(message ? `\n${message}` : '\n');

@@ -7,7 +7,7 @@ import {
   calculateGrowthRate,
   estimateSourceCategory,
   type ArticleWithTags,
-  type SourceCategory,
+  type _SourceCategory,
 } from '@/lib/utils/source-stats';
 
 describe('source-stats', () => {

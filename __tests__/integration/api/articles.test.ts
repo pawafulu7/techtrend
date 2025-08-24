@@ -13,7 +13,7 @@ import {
   expectApiSuccess,
   expectApiError,
   expectCacheHit,
-  expectCacheSet,
+  _expectCacheSet,
   expectDatabaseQuery,
 } from '../helpers/mock-helpers';
 import { generateSampleArticle } from './test-utils';

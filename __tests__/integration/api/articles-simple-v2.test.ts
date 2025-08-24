@@ -3,7 +3,7 @@
  * モック問題を解決したバージョン
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, _NextResponse } from 'next/server';
 import { GET, POST } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { getRedisClient } from '@/lib/redis/client';

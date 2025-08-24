@@ -49,8 +49,8 @@ export function ArticleSkeleton() {
             
             {/* Title skeleton */}
             <div className="space-y-2">
-              <div className={`h-5 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded animate-pulse ${titlePatterns[i % 6].line1}`} />
-              <div className={`h-5 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded animate-pulse ${titlePatterns[i % 6].line2}`} />
+              <div className={`h-5 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded animate-pulse ${titlePatterns[i % 6]?.line1 || 'w-full'}`} />
+              <div className={`h-5 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded animate-pulse ${titlePatterns[i % 6]?.line2 || 'w-4/5'}`} />
             </div>
             
             {/* Meta info skeleton */}
@@ -80,7 +80,7 @@ export function ArticleSkeleton() {
             {/* Tags skeleton */}
             <div className="flex items-center gap-1">
               <Tag className="h-3 w-3 text-muted-foreground/30" />
-              {tagPatterns[i % 6].map((width, idx) => (
+              {(tagPatterns[i % 6] || ['w-16', 'w-20', 'w-14']).map((width, idx) => (
                 <div key={idx} className={`h-5 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 rounded-full ${width} animate-pulse`} />
               ))}
             </div>

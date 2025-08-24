@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { 
   waitForPageLoad,
-  expectNoErrors,
+  _expectNoErrors,
   waitForLoadingToDisappear,
   expectArticleCards,
 } from '../utils/test-helpers';

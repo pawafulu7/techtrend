@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { testData } from '../fixtures/test-data';
 import {
   waitForPageLoad,
-  expectPageTitle,
+  _expectPageTitle,
   expectNoErrors,
 } from '../utils/test-helpers';
 

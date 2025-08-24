@@ -8,7 +8,7 @@ jest.mock('@/lib/database');
 jest.mock('@/lib/redis/client');
 
 const prismaMock = prisma as any;
-const redisMock = getRedisClient() as any;
+const _redisMock = getRedisClient() as any;
 
 describe('Multiple Sources Filter API', () => {
   beforeEach(() => {

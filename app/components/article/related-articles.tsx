@@ -9,22 +9,6 @@ import { LinkIcon, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
 import { useRelatedArticles } from '@/hooks/use-related-articles';
 
-interface RelatedArticle {
-  id: string;
-  title: string;
-  summary: string;
-  url: string;
-  source: string;
-  publishedAt: string;
-  qualityScore: number;
-  difficulty?: string | null;
-  tags: Array<{
-    id: string;
-    name: string;
-  }>;
-  similarity: number;
-}
-
 interface RelatedArticlesProps {
   articleId: string;
   maxItems?: number;

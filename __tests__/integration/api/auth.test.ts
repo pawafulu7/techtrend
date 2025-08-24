@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, _beforeAll, _afterAll } from '@jest/globals';
 
 describe('認証APIエンドポイントテスト', () => {
   const baseUrl = 'http://localhost:3000';

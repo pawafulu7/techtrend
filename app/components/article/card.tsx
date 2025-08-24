@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatDateWithTime } from '@/lib/utils/date';
-import { getDomain } from '@/lib/utils/url';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';

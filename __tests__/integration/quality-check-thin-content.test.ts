@@ -169,7 +169,7 @@ describe('Quality Check for Thin Content', () => {
       const summary = 'a'.repeat(150) + '。';
       const detailed = '・項目1の説明\n・項目2の説明\n・項目3の説明';
       
-      const result = checkSummaryQuality(summary, detailed, analysis);
+      const _result = checkSummaryQuality(summary, detailed, analysis);
       
       expect(analysis.isThinContent).toBe(false);
       expect(analysis.recommendedMinLength).toBe(180);

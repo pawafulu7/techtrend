@@ -1,7 +1,7 @@
 import { logger, LogLevel } from '../logger';
 
 // console メソッドのモック
-const originalConsole = {
+const _originalConsole = {
   log: console.log,
   error: console.error,
   warn: console.warn

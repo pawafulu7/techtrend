@@ -9,11 +9,11 @@ import { jest } from '@jest/globals';
 // Redisクライアントのモック型定義
 export interface RedisMockClient {
   store: Map<string, any>;
-  get: jest.Mock<Promise<string | null>, [string]>;
-  set: jest.Mock<Promise<string>, [string, string, ...any[]]>;
-  setex: jest.Mock<Promise<string>, [string, number, string]>;
-  del: jest.Mock<Promise<number>, string[]>;
-  exists: jest.Mock<Promise<number>, [string]>;
+  get: jest.Mock<Promise<string | null>>;
+  set: jest.Mock<Promise<string>>;
+  setex: jest.Mock<Promise<string>>;
+  del: jest.Mock<Promise<number>>;
+  exists: jest.Mock<Promise<number>>;
   expire: jest.Mock<Promise<number>, [string, number]>;
   ttl: jest.Mock<Promise<number>, [string]>;
   keys: jest.Mock<Promise<string[]>, [string]>;
@@ -48,13 +48,13 @@ export interface RedisMockClient {
   flushall: jest.Mock<Promise<string>, []>;
   eval: jest.Mock<Promise<any>, [string, number, ...any[]]>;
   script: jest.Mock<Promise<any>, [string, ...any[]]>;
-  multi: jest.Mock<any, []>;
+  multi: jest.Mock<any>;
   exec: jest.Mock<Promise<any[]>, []>;
   discard: jest.Mock<Promise<string>, []>;
   watch: jest.Mock<Promise<string>, string[]>;
   unwatch: jest.Mock<Promise<string>, []>;
-  reset: jest.Mock<void, []>;
-  disconnect: jest.Mock<void, []>;
+  reset: jest.Mock<void>;
+  disconnect: jest.Mock<void>;
   quit: jest.Mock<Promise<string>, []>;
 }
 

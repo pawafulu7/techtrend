@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   parseSourceFilterFromCookie,
-  setSourceFilterCookie,
-  getSourceFilterFromCookie,
-  parseSourceFilterFromCookieClient,
-  SOURCE_FILTER_COOKIE_NAME,
-  SOURCE_FILTER_COOKIE_MAX_AGE,
+  _setSourceFilterCookie,
+  _getSourceFilterFromCookie,
+  _parseSourceFilterFromCookieClient,
+  _SOURCE_FILTER_COOKIE_NAME,
+  _SOURCE_FILTER_COOKIE_MAX_AGE,
 } from '@/lib/source-filter-cookie';
 
 describe('source-filter-cookie', () => {

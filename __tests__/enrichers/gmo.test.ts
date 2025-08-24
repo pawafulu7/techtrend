@@ -52,7 +52,7 @@ describe('GMOContentEnricher', () => {
       `;
 
       // fetchWithRetryをモック化
-      const originalFetchWithRetry = (enricher as any).fetchWithRetry;
+      const _originalFetchWithRetry = (enricher as any).fetchWithRetry;
       (enricher as any).fetchWithRetry = jest.fn().mockResolvedValue(mockHtml);
 
       // テスト実行

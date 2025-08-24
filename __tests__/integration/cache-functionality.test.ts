@@ -5,7 +5,7 @@ jest.mock('ioredis', () => {
   return jest.fn().mockImplementation(() => ({
     connect: jest.fn().mockResolvedValue(undefined),
     ping: jest.fn().mockResolvedValue('PONG'),
-    set: jest.fn((key, value, ...args) => {
+    set: jest.fn((key, value, ..._args) => {
       // RedisCacheクラスは既にJSON.stringifyしているので、そのまま保存
       mockStore.set(key, value);
       return Promise.resolve('OK');

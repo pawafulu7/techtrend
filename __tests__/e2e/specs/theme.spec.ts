@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { 
   waitForPageLoad,
-  expectNoErrors,
-  waitForLoadingToDisappear,
+  _expectNoErrors,
+  _waitForLoadingToDisappear,
 } from '../utils/test-helpers';
 import { SELECTORS } from '../constants/selectors';
 
@@ -83,7 +83,7 @@ test.describe('テーマ切り替え機能', () => {
     expect(theme).toBe('dark');
   });
 
-  test('リロード後もテーマが維持される', async ({ context, page }) => {
+  test('リロード後もテーマが維持される', async ({ context, _page }) => {
     // このテストだけはLocalStorageをクリアしない新しいページを作成
     const newPage = await context.newPage();
     
@@ -137,7 +137,7 @@ test.describe('テーマ切り替え機能', () => {
     await page.waitForTimeout(100); // メディアクエリの変更を待つ
     
     // darkクラスが適用されることを確認
-    const htmlClasses = await page.locator('html').getAttribute('class');
+    const _htmlClasses = await page.locator('html').getAttribute('class');
     // システムテーマ設定時の挙動を確認（実装によって異なる可能性あり）
     
     // システムがライトモードの場合をエミュレート
