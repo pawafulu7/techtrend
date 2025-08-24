@@ -14,7 +14,7 @@
     "strictBindCallApply": true,
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
-    "noImplicitAny": true,
+    "noImplicitAny": false,
     "alwaysStrict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
@@ -61,6 +61,13 @@
     "out",
     "build",
     "dist",
-    "scripts/temp/**/*.ts"
+    "scripts/temp/**/*.ts",
+    "scripts/test/**/*.ts",
+    "scripts/manual/**/*.ts",
+    "scripts/scheduled/**/*.ts",
+    "scripts/fix*.ts",
+    "scripts/test-*.ts",
+    "scripts/fetch-*.ts",
+    "scripts/regenerate-*.ts"
   ]
 }

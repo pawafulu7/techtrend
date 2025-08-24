@@ -115,7 +115,7 @@ async function testJapanesePrompt() {
         isDetailedSection = false;
         const tagLine = trimmed.replace(/^タグ[:：]\s*/, '').trim();
         if (tagLine) {
-          tags = tagLine.split(/[,、，]/).map(t => t.trim()).filter(t => t.length > 0);
+          tags = tagLine.split(/[,、，]/).map((t: string) => t.trim()).filter((t: string) => t.length > 0);
         }
       } else if (isDetailedSection && trimmed.startsWith('・')) {
         detailedSummary += (detailedSummary ? '\n' : '') + trimmed;
