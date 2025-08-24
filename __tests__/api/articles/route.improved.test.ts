@@ -20,12 +20,9 @@ jest.mock('@/lib/prisma', () => ({
 
 jest.mock('@/lib/api/error-handler');
 
-const mockPrisma = {
-  article: {
-    findMany: jest.fn(),
-    count: jest.fn(),
-  },
-} as unknown as PrismaClient;
+import { prisma } from '@/lib/prisma';
+
+const mockPrisma = prisma as jest.Mocked<typeof prisma>;
 
 describe('/api/articles', () => {
   beforeEach(() => {
@@ -55,8 +52,8 @@ describe('/api/articles', () => {
         },
       ];
 
-      mockPrisma.article.findMany.mockResolvedValue(mockArticles);
-      mockPrisma.article.count.mockResolvedValue(100);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(100);
 
       const request = new NextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
@@ -73,8 +70,8 @@ describe('/api/articles', () => {
     });
 
     it('should handle pagination parameters correctly', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(50);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(50);
 
       const request = new NextRequest(
         'http://localhost:3000/api/articles?page=2&limit=10'
@@ -90,8 +87,8 @@ describe('/api/articles', () => {
     });
 
     it('should filter by source IDs', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(0);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(0);
 
       const request = new NextRequest(
         'http://localhost:3000/api/articles?sources=source1,source2'
@@ -108,8 +105,8 @@ describe('/api/articles', () => {
     });
 
     it('should filter by tag names', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(0);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(0);
 
       const request = new NextRequest(
         'http://localhost:3000/api/articles?tags=react,typescript'
@@ -130,8 +127,8 @@ describe('/api/articles', () => {
     });
 
     it('should filter by date range', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(0);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(0);
 
       const request = new NextRequest(
         'http://localhost:3000/api/articles?dateFrom=2024-01-01&dateTo=2024-01-31'
@@ -151,8 +148,8 @@ describe('/api/articles', () => {
     });
 
     it('should handle search query', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(0);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(0);
 
       const request = new NextRequest(
         'http://localhost:3000/api/articles?q=typescript'
@@ -172,8 +169,8 @@ describe('/api/articles', () => {
     });
 
     it('should handle sorting parameters', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(0);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(0);
 
       const request = new NextRequest(
         'http://localhost:3000/api/articles?sortBy=popularity&order=desc'
@@ -188,8 +185,8 @@ describe('/api/articles', () => {
     });
 
     it('should validate limit parameter bounds', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(0);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(0);
 
       // Test limit too high
       const request1 = new NextRequest(
@@ -218,7 +215,7 @@ describe('/api/articles', () => {
 
     it('should handle database errors gracefully', async () => {
       const dbError = new Error('Database connection failed');
-      mockPrisma.article.findMany.mockRejectedValue(dbError);
+      (mockPrisma.article.findMany as jest.Mock).mockRejectedValue(dbError);
 
       const request = new NextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
@@ -248,8 +245,8 @@ describe('/api/articles', () => {
         },
       };
 
-      mockPrisma.article.findMany.mockResolvedValue([mockArticleWithCounts]);
-      mockPrisma.article.count.mockResolvedValue(1);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([mockArticleWithCounts]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(1);
 
       const request = new NextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
@@ -263,8 +260,8 @@ describe('/api/articles', () => {
     });
 
     it('should support multiple filters simultaneously', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(0);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(0);
 
       const request = new NextRequest(
         'http://localhost:3000/api/articles?' +
@@ -292,8 +289,8 @@ describe('/api/articles', () => {
     });
 
     it('should return empty results when no articles match', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(0);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(0);
 
       const request = new NextRequest(
         'http://localhost:3000/api/articles?tags=nonexistent'
@@ -308,8 +305,8 @@ describe('/api/articles', () => {
     });
 
     it('should handle special characters in search query', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(0);
+      (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.article.count as jest.Mock).mockResolvedValue(0);
 
       const request = new NextRequest(
         'http://localhost:3000/api/articles?q=' + encodeURIComponent('C++ & C#')
