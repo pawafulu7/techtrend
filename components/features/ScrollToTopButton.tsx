@@ -1,75 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ChevronUp } from 'lucide-react';
 
 export function ScrollToTopButton() {
   const [isVisible, setIsVisible] = useState(false);
-  const [isRestoringScroll, setIsRestoringScroll] = useState(false);
-  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // スクロール復元状態を監視
-  useEffect(() => {
-    // sessionStorageにスクロール復元データがあるかチェック
-    const checkRestoration = () => {
-      const restorationData = sessionStorage.getItem('articleListScroll');
-      const wasRestoring = isRestoringScroll;
-      const nowRestoring = !!restorationData;
-      
-      setIsRestoringScroll(nowRestoring);
-      
-      // 復元が完了した場合、スクロール位置を再チェック
-      if (wasRestoring && !nowRestoring) {
-        const scrollableElement = document.querySelector('.overflow-y-auto');
-        if (scrollableElement) {
-          const scrollY = scrollableElement.scrollTop;
-          setIsVisible(scrollY > 300);
-        }
-        // チェックを停止
-        if (checkIntervalRef.current) {
-          clearInterval(checkIntervalRef.current);
-          checkIntervalRef.current = null;
-        }
-      }
-    };
-    
-    checkRestoration();
-    
-    // 定期的にチェック（復元処理が終わるまで）
-    checkIntervalRef.current = setInterval(checkRestoration, 500);
-    
-    // 5秒後には必ず有効化（フェイルセーフ）
-    const timeoutId = setTimeout(() => {
-      setIsRestoringScroll(false);
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-        checkIntervalRef.current = null;
-      }
-      // タイムアウト後もスクロール位置をチェック
-      const scrollableElement = document.querySelector('.overflow-y-auto');
-      if (scrollableElement) {
-        const scrollY = scrollableElement.scrollTop;
-        setIsVisible(scrollY > 300);
-      }
-    }, 5000);
-    
-    return () => {
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-      }
-      clearTimeout(timeoutId);
-    };
-  }, [isRestoringScroll]);
 
   // スクロール位置を監視
   useEffect(() => {
     const toggleVisibility = (event: Event) => {
-      // スクロール復元中は表示しない
-      if (isRestoringScroll) {
-        setIsVisible(false);
-        return;
-      }
-      
       const target = event.target as HTMLElement;
       const scrollY = target.scrollTop;
       
@@ -81,23 +20,56 @@ export function ScrollToTopButton() {
       }
     };
 
-    // overflow-y-autoクラスを持つ要素を探してリスナーを追加
-    const scrollableElement = document.querySelector('.overflow-y-auto');
-    if (scrollableElement) {
-      scrollableElement.addEventListener('scroll', toggleVisibility);
-      
-      // 初期状態のチェック（復元中でなければ）
-      if (!isRestoringScroll) {
+    // スクロール可能な要素を定期的にチェック
+    const setupScrollListener = () => {
+      const scrollableElement = document.querySelector('.overflow-y-auto');
+      if (scrollableElement) {
+        // 既存のリスナーを削除
+        scrollableElement.removeEventListener('scroll', toggleVisibility);
+        // 新しいリスナーを追加
+        scrollableElement.addEventListener('scroll', toggleVisibility);
+        
+        // 初期状態のチェック
         const initialScrollY = scrollableElement.scrollTop;
         setIsVisible(initialScrollY > 300);
+        
+        return true;
       }
+      return false;
+    };
+
+    // 初回セットアップ
+    if (!setupScrollListener()) {
+      // 要素が見つからない場合は少し待って再試行
+      const intervalId = setInterval(() => {
+        if (setupScrollListener()) {
+          clearInterval(intervalId);
+        }
+      }, 500);
       
-      // クリーンアップ
+      // 10秒後にはタイムアウト
+      const timeoutId = setTimeout(() => {
+        clearInterval(intervalId);
+      }, 10000);
+      
       return () => {
-        scrollableElement.removeEventListener('scroll', toggleVisibility);
+        clearInterval(intervalId);
+        clearTimeout(timeoutId);
+        const scrollableElement = document.querySelector('.overflow-y-auto');
+        if (scrollableElement) {
+          scrollableElement.removeEventListener('scroll', toggleVisibility);
+        }
       };
     }
-  }, [isRestoringScroll]);
+    
+    // クリーンアップ
+    return () => {
+      const scrollableElement = document.querySelector('.overflow-y-auto');
+      if (scrollableElement) {
+        scrollableElement.removeEventListener('scroll', toggleVisibility);
+      }
+    };
+  }, []);
 
   // トップへスクロール
   const scrollToTop = useCallback(() => {
