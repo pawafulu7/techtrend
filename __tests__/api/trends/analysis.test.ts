@@ -1,5 +1,5 @@
 import { GET } from '@/app/api/trends/analysis/route';
-import { createMockRequest } from '@/test/helpers/api';
+import { createMockRequest } from '@/__tests__/helpers/api';
 
 // Mock dependencies
 const mockQueryRaw = jest.fn();

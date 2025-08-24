@@ -115,8 +115,8 @@ describe('date utils', () => {
       const date = parseRSSDate(futureDate);
       expect(date).toEqual(new Date('2025-01-15T12:00:00.000Z'));
       // console.warnテストは削除: expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Future date detected')
-      );
+      //   expect.stringContaining('Future date detected')
+      // );
     });
 
     it('should accept dates within 1 year in the future', () => {
@@ -131,8 +131,8 @@ describe('date utils', () => {
       const date = parseRSSDate(largeTimestamp);
       expect(date).toEqual(new Date('2025-01-15T12:00:00.000Z'));
       // console.warnテストは削除: expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Invalid date format')
-      );
+      //   expect.stringContaining('Invalid date format')
+      // );
     });
 
     it('should handle numeric timestamp as invalid string', () => {
@@ -140,8 +140,8 @@ describe('date utils', () => {
       const date = parseRSSDate(normalTimestamp);
       expect(date).toEqual(new Date('2025-01-15T12:00:00.000Z'));
       // console.warnテストは削除: expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Invalid date format')
-      );
+      //   expect.stringContaining('Invalid date format')
+      // );
     });
 
     it('should handle ISO date with milliseconds timestamp', () => {

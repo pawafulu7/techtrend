@@ -204,6 +204,32 @@ export interface TestDataSet {
 }
 
 /**
+ * ArticleWithRelations型のテストデータビルダー
+ */
+export interface ArticleWithRelations extends Article {
+  source: Source;
+  tags: Tag[];
+}
+
+/**
+ * テスト用のArticleWithRelationsデータを生成
+ */
+export const createTestArticleWithRelations = (
+  overrides: Partial<ArticleWithRelations> = {}
+): ArticleWithRelations => {
+  const article = createTestArticle(overrides);
+  const source = overrides.source || createTestSource();
+  const tags = overrides.tags || [createTestTag()];
+  
+  return {
+    ...article,
+    source,
+    tags,
+    ...overrides,
+  };
+};
+
+/**
  * 完全なテストデータセットを生成
  */
 export const createTestDataSet = (
