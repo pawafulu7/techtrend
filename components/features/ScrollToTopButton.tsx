@@ -57,7 +57,7 @@ export function ScrollToTopButton() {
     <button
       onClick={scrollToTop}
       className={`
-        fixed bottom-6 right-6 z-50
+        fixed bottom-24 right-6 z-50
         bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600
         text-white rounded-full p-3
         shadow-lg hover:shadow-xl
