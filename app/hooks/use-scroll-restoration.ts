@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface ScrollRestoreData {
   scrollY: number;
@@ -28,6 +28,13 @@ export function useScrollRestoration(
   const targetScrollYRef = useRef<number | null>(null);
   const restorationCompleteRef = useRef(false);
   const userInteractedRef = useRef(false);
+  const currentPageRef = useRef(0);
+  const targetPagesRef = useRef(0);
+  const [restorationState, setRestorationState] = useState({
+    isRestoring: false,
+    currentPage: 0,
+    targetPages: 0
+  });
 
   // スクロール位置の保存
   const saveScrollPosition = useCallback(() => {
@@ -107,6 +114,20 @@ export function useScrollRestoration(
     }
   }, []);
 
+  // 復元をキャンセルする関数
+  const cancelRestoration = useCallback(() => {
+    isRestoringRef.current = false;
+    restorationCompleteRef.current = true;
+    userInteractedRef.current = true;
+    sessionStorage.removeItem(STORAGE_KEY);
+    cleanupReturningParam();
+    setRestorationState({
+      isRestoring: false,
+      currentPage: 0,
+      targetPages: 0
+    });
+  }, [cleanupReturningParam]);
+
   // 復元チェック
   useEffect(() => {
     // 記事詳細から戻ってきた場合のみ復元を実行
@@ -158,6 +179,15 @@ export function useScrollRestoration(
         MAX_RESTORE_PAGES
       );
       
+      // 状態を更新
+      currentPageRef.current = pageCount;
+      targetPagesRef.current = targetPageCount;
+      setRestorationState({
+        isRestoring: true,
+        currentPage: pageCount,
+        targetPages: targetPageCount
+      });
+      
       if (targetPageCount > pageCount && hasNextPage && !isFetchingNextPage) {
         fetchNextPage();
       } else if (pageCount >= targetPageCount) {
@@ -182,6 +212,13 @@ export function useScrollRestoration(
           restorationCompleteRef.current = true;
           targetScrollYRef.current = null;
           
+          // 状態をリセット
+          setRestorationState({
+            isRestoring: false,
+            currentPage: 0,
+            targetPages: 0
+          });
+          
           // URLから'returning'パラメータを削除
           cleanupReturningParam();
         }, 200); // 待機時間を短縮
@@ -196,6 +233,15 @@ export function useScrollRestoration(
   useEffect(() => {
     if (!isRestoringRef.current || targetScrollYRef.current === null) return;
     if (restorationCompleteRef.current) return;
+    
+    // 進捗を更新
+    if (currentPageRef.current !== pageCount) {
+      currentPageRef.current = pageCount;
+      setRestorationState(prev => ({
+        ...prev,
+        currentPage: pageCount
+      }));
+    }
     
     const stored = sessionStorage.getItem(STORAGE_KEY);
     if (!stored) return;
@@ -248,6 +294,13 @@ export function useScrollRestoration(
           restorationCompleteRef.current = true;
           targetScrollYRef.current = null;
           
+          // 状態をリセット
+          setRestorationState({
+            isRestoring: false,
+            currentPage: 0,
+            targetPages: 0
+          });
+          
           // URLから'returning'パラメータを削除
           cleanupReturningParam();
         }, 200); // 待機時間を短縮 // レンダリング完了を確実に待つ
@@ -262,6 +315,9 @@ export function useScrollRestoration(
 
   return {
     saveScrollPosition,
-    isRestoring: isRestoringRef.current
+    isRestoring: restorationState.isRestoring,
+    currentPage: restorationState.currentPage,
+    targetPages: restorationState.targetPages,
+    cancelRestoration
   };
 }
