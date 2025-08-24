@@ -6,19 +6,34 @@ import { ChevronUp } from 'lucide-react';
 export function ScrollToTopButton() {
   const [isVisible, setIsVisible] = useState(false);
 
+  // デバッグ用：コンポーネントマウント確認
+  useEffect(() => {
+    console.log('ScrollToTopButton mounted');
+  }, []);
+
   // スクロール位置を監視
   useEffect(() => {
+    console.log('Setting up scroll listener...');
+    
     const toggleVisibility = () => {
       // main要素を取得
       const mainElement = document.querySelector('main');
-      if (!mainElement) return;
+      console.log('Main element found:', !!mainElement);
+      
+      if (!mainElement) {
+        console.log('Main element not found, returning');
+        return;
+      }
       
       const scrollY = mainElement.scrollTop;
+      console.log('Scroll position:', scrollY);
       
-      // 300px以上スクロールしたらボタンを表示
-      if (scrollY > 300) {
+      // 50px以上スクロールしたらボタンを表示（テスト用に閾値を下げる）
+      if (scrollY > 50) {
+        console.log('Setting button visible');
         setIsVisible(true);
       } else {
+        console.log('Setting button hidden');
         setIsVisible(false);
       }
     };
@@ -26,6 +41,7 @@ export function ScrollToTopButton() {
     // main要素にスクロールイベントリスナーを追加
     const mainElement = document.querySelector('main');
     if (mainElement) {
+      console.log('Adding scroll event listener to main element');
       mainElement.addEventListener('scroll', toggleVisibility);
       
       // 初期状態のチェック
@@ -33,8 +49,11 @@ export function ScrollToTopButton() {
       
       // クリーンアップ
       return () => {
+        console.log('Removing scroll event listener');
         mainElement.removeEventListener('scroll', toggleVisibility);
       };
+    } else {
+      console.log('Main element not found during setup');
     }
   }, []);
 
@@ -62,10 +81,18 @@ export function ScrollToTopButton() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [scrollToTop]);
 
+  // デバッグ：レンダリング状態を確認
+  useEffect(() => {
+    console.log('Button visibility changed:', isVisible);
+  }, [isVisible]);
+
   // ボタンが非表示の時はレンダリングしない
   if (!isVisible) {
+    console.log('Button not rendering (isVisible = false)');
     return null;
   }
+  
+  console.log('Button rendering (isVisible = true)');
   
   return (
     <button
