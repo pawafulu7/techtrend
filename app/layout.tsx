@@ -8,6 +8,7 @@ import { ToastProvider } from "@/providers/toast-provider";
 import { QueryProvider } from "@/app/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/app/providers/auth-provider";
+import { ScrollToTopButton } from "@/components/features/ScrollToTopButton";
 // import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
 import "./globals.css";
 
@@ -130,6 +131,7 @@ export default async function RootLayout({
               {/* <OnboardingProvider> */}
                 <Header />
                 <main className="flex-1 overflow-y-auto">{children}</main>
+                <ScrollToTopButton />
                 <ToastProvider />
               {/* </OnboardingProvider> */}
             </QueryProvider>

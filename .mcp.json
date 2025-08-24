@@ -28,6 +28,10 @@
         "@upstash/context7-mcp"
       ],
       "env": {}
+    },
+    "@21st-dev/magic": {
+      "command": "npx",
+      "args": ["-y", "@21st-dev/magic@latest", "API_KEY=\"e91f4d6f7c9c3e1413249041dad531aca7f6ce44de97dfa96a5ca6db810c3423\""]
     }
   }
 }
