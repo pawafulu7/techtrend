@@ -295,8 +295,10 @@ export function resetAllMocks() {
  * テストAPIハンドラー
  * Next.js App RouterのAPIルートハンドラーをテストするためのユーティリティ
  */
+type ApiHandler = (req: Request | NextRequest, context?: any) => Promise<Response | NextResponse<unknown>>;
+
 export async function testApiHandler(
-  handler: Function,
+  handler: ApiHandler,
   options: {
     url?: string;
     method?: string;
