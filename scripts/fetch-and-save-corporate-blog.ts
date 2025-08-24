@@ -70,7 +70,7 @@ async function fetchAndSaveCorporateBlog() {
         
         // タグを作成または取得
         const tags = await Promise.all(
-          article.tagNames.map(async (tagName) => {
+          article.tagNames.map(async (tagName: string) => {
             return prisma.tag.upsert({
               where: { name: tagName },
               update: {},
@@ -91,7 +91,7 @@ async function fetchAndSaveCorporateBlog() {
             sourceId: article.sourceId,
             author: article.author,
             tags: {
-              connect: tags.map(tag => ({ id: tag.id }))
+              connect: tags.map((tag: any) => ({ id: tag.id }))
             }
           },
           include: {
@@ -110,7 +110,7 @@ async function fetchAndSaveCorporateBlog() {
           }
         }
         
-      } catch (error) {
+      } catch (error: any) {
         errorCount++;
         console.error(`保存エラー (${article.title}):`, error);
       }

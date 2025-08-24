@@ -455,7 +455,7 @@ export function generateQualityReport(result: QualityCheckResult): string {
  * テキストのクリーンアップ
  * 要約テキストから不要な記号や重複を除去
  */
-function cleanupText(text: string): string {
+export function cleanupText(text: string): string {
   return text
     .replace(/\s+/g, ' ')  // 連続する空白を1つに
     .replace(/。{2,}/g, '。')  // 連続する句点を1つに
@@ -468,7 +468,7 @@ function cleanupText(text: string): string {
  * 詳細要約専用のクリーンアップ
  * 改行を保持しつつクリーンアップ
  */
-function cleanupDetailedSummary(text: string): string {
+export function cleanupDetailedSummary(text: string): string {
   return text
     .split('\n')
     .map(line => line.trim())

@@ -190,7 +190,7 @@ async function testPrompt(
           summary = line.split(':')[1]?.trim() || '';
         } else if (line.includes('タグ:')) {
           const tagLine = line.split(':')[1]?.trim() || '';
-          tags = tagLine.split(/[,、，]/).map(t => t.trim()).filter(t => t);
+          tags = tagLine.split(/[,、，]/).map((t: string) => t.trim()).filter((t: string) => t);
         }
       }
     }

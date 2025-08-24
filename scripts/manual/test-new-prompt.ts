@@ -115,8 +115,8 @@ GraphQLとRESTの選択は、プロジェクトの要件、チームのスキル
       
       // 品質チェック
       const lines = output.split('\n');
-      const summaryLine = lines.find(l => l.startsWith('要約:'));
-      const tagsLine = lines.find(l => l.startsWith('タグ:'));
+      const summaryLine = lines.find((l: string) => l.startsWith('要約:'));
+      const tagsLine = lines.find((l: string) => l.startsWith('タグ:'));
       
       if (summaryLine) {
         const summary = summaryLine.replace('要約:', '').trim();

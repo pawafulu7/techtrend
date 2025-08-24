@@ -78,7 +78,7 @@ async function checkFullOutput() {
     console.error('【行ごとの分析】');
     console.error('────────────────────────────────────────────────────────────────────────────');
     
-    lines.forEach((line, index) => {
+    lines.forEach((line: string, index: number) => {
       const trimmed = line.trim();
       if (!trimmed) {
         console.error(`行${index + 1}: [空行]`);
@@ -109,12 +109,12 @@ async function checkFullOutput() {
     console.error('────────────────────────────────────────────────────────────────────────────');
     
     // 最初の非空行を確認
-    const firstNonEmptyLine = lines.find(line => line.trim());
+    const firstNonEmptyLine = lines.find((line: string) => line.trim());
     const isEnglishFirst = firstNonEmptyLine && /^[A-Za-z][A-Za-z\s.,!?]*$/.test(firstNonEmptyLine.trim());
     
     if (isEnglishFirst) {
       // 「一覧要約:」の位置を探す
-      const summaryIndex = lines.findIndex(line => line.trim().match(/^(一覧)?要約[:：]/));
+      const summaryIndex = lines.findIndex((line: string) => line.trim().match(/^(一覧)?要約[:：]/));
       
       if (summaryIndex > 0) {
         console.error('✅ 推奨除去方法:');
@@ -125,7 +125,7 @@ async function checkFullOutput() {
         console.error('  const lines = output.split("\\n");');
         console.error('  ');
         console.error('  // 「一覧要約:」を探す');
-        console.error('  const summaryIndex = lines.findIndex(line => ');
+        console.error('  const summaryIndex = lines.findIndex((line: string) => ');
         console.error('    /^(一覧)?要約[:：]/.test(line.trim())');
         console.error('  );');
         console.error('  ');
@@ -157,7 +157,7 @@ async function checkFullOutput() {
       console.error('\n【クリーンアップ後の出力】');
       console.error('════════════════════════════════════════════════════════════════════════════');
       
-      const summaryIndex = lines.findIndex(line => line.trim().match(/^(一覧)?要約[:：]/));
+      const summaryIndex = lines.findIndex((line: string) => line.trim().match(/^(一覧)?要約[:：]/));
       if (summaryIndex > 0) {
         const cleaned = lines.slice(summaryIndex).join('\n');
         console.error(cleaned);
