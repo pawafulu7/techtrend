@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Clock, TrendingUp, ExternalLink } from 'lucide-react';
+import { Clock, TrendingUp, ExternalLink, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatDate, formatDateWithTime } from '@/lib/utils/date';
@@ -13,8 +13,9 @@ import { FavoriteButton } from '@/components/article/favorite-button';
 export function ArticleListItem({ 
   article, 
   onTagClick, 
-  onArticleClick 
-}: ArticleListItemProps) {
+  onArticleClick,
+  isRead = true 
+}: ArticleListItemProps & { isRead?: boolean }) {
   const searchParams = useSearchParams();
   const sourceColor = getSourceColor(article.source.name);
   const publishedDate = new Date(article.publishedAt);
@@ -63,6 +64,12 @@ export function ArticleListItem({
               <Badge className="text-xs flex-shrink-0" variant="destructive">
                 <TrendingUp className="h-3 w-3 mr-0.5" />
                 New
+              </Badge>
+            )}
+            {!isRead && (
+              <Badge className="text-xs flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white">
+                <Eye className="h-3 w-3 mr-0.5" />
+                未読
               </Badge>
             )}
             <h3 className="text-sm font-medium line-clamp-1 text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">

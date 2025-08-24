@@ -15,7 +15,7 @@ export function ArticleList({
   const articleIds = useMemo(() => articles.map(a => a.id), [articles]);
   
   // 既読状態を取得
-  const { isRead } = useReadStatus(articleIds);
+  const { isRead, isLoading } = useReadStatus(articleIds);
   if (articles.length === 0) {
     return (
       <div className="text-center py-12">
@@ -35,6 +35,7 @@ export function ArticleList({
             articleIndex={index}
             totalArticleCount={articles.length}
             onArticleClick={onArticleClick}
+            isRead={isRead(article.id)}
           />
         ))}
       </div>
@@ -49,7 +50,7 @@ export function ArticleList({
           key={article.id} 
           article={article}
           onArticleClick={onArticleClick}
-          isRead={isRead(article.id)}
+          isRead={isLoading ? true : isRead(article.id)}
         />
       ))}
     </div>

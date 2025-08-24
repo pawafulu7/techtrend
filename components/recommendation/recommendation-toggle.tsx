@@ -38,36 +38,36 @@ export function RecommendationToggle({ onToggle }: RecommendationToggleProps) {
   if (!isClient) {
     return (
       <Button
-        variant="ghost"
+        variant="secondary"
         size="sm"
         disabled
-        className="flex items-center gap-2 text-muted-foreground"
+        className="flex items-center gap-2"
         aria-label="おすすめ"
       >
         <EyeOff className="h-4 w-4" />
-        <span className="hidden sm:inline">おすすめ</span>
+        <span className="hidden sm:inline">おすすめを非表示</span>
       </Button>
     );
   }
 
   return (
     <Button
-      variant="ghost"
+      variant={isHidden ? "outline" : "secondary"}
       size="sm"
       onClick={handleToggle}
-      className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+      className="flex items-center gap-2 transition-all hover:scale-105"
       aria-label={isHidden ? 'おすすめを表示' : 'おすすめを非表示'}
-      title={isHidden ? 'おすすめを表示' : 'おすすめを非表示'}
+      title={isHidden ? 'クリックしておすすめを表示' : 'クリックしておすすめを非表示'}
     >
       {isHidden ? (
         <>
           <Eye className="h-4 w-4" />
-          <span className="hidden sm:inline">おすすめ</span>
+          <span className="hidden sm:inline">おすすめを表示</span>
         </>
       ) : (
         <>
           <EyeOff className="h-4 w-4" />
-          <span className="hidden sm:inline">おすすめ</span>
+          <span className="hidden sm:inline">おすすめを非表示</span>
         </>
       )}
     </Button>
