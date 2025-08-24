@@ -216,29 +216,33 @@ export function useScrollRestoration(
             });
           }
           
-          sessionStorage.removeItem(STORAGE_KEY);
-          isRestoringRef.current = false;
-          restorationCompleteRef.current = true;
-          targetScrollYRef.current = null;
-          
-          // 状態をリセット
-          setRestorationState({
-            isRestoring: false,
-            currentPage: 0,
-            targetPages: 0
-          });
-          
-          // URLから'returning'パラメータを削除
-          cleanupReturningParam();
-          
-          // スクロール復元完了イベントを発火（即座に復元の場合）
-          window.dispatchEvent(new CustomEvent('scrollRestored', {
-            detail: {
-              scrollY: scrollTarget,
-              restored: true,
-              cancelled: false
-            }
-          }));
+          // スムーススクロール完了後にクリーンアップとイベント発火
+          setTimeout(() => {
+            sessionStorage.removeItem(STORAGE_KEY);
+            isRestoringRef.current = false;
+            restorationCompleteRef.current = true;
+            targetScrollYRef.current = null;
+            
+            // 状態をリセット
+            setRestorationState({
+              isRestoring: false,
+              currentPage: 0,
+              targetPages: 0
+            });
+            
+            // URLから'returning'パラメータを削除
+            cleanupReturningParam();
+            
+            // スクロール復元完了イベントを発火（即座に復元の場合）
+            console.log('[ScrollRestoration] 即座復元完了イベント発火 - scrollY:', scrollTarget);
+            window.dispatchEvent(new CustomEvent('scrollRestored', {
+              detail: {
+                scrollY: scrollTarget,
+                restored: true,
+                cancelled: false
+              }
+            }));
+          }, 1000); // スムーススクロール完了待ち
         }, 200); // 待機時間を短縮
       }
     } catch (e) {
@@ -291,9 +295,34 @@ export function useScrollRestoration(
               behavior: 'smooth'
             });
             
-            // 完了確認（スムーズスクロールは非同期なので少し待つ）
+            // スムーズスクロール完了後にイベント発火
             setTimeout(() => {
-            }, 1000);
+              // クリーンアップ
+              sessionStorage.removeItem(STORAGE_KEY);
+              isRestoringRef.current = false;
+              restorationCompleteRef.current = true;
+              targetScrollYRef.current = null;
+              
+              // 状態をリセット
+              setRestorationState({
+                isRestoring: false,
+                currentPage: 0,
+                targetPages: 0
+              });
+              
+              // URLから'returning'パラメータを削除
+              cleanupReturningParam();
+              
+              // スクロール復元完了イベントを発火
+              console.log('[ScrollRestoration] 復元完了イベント発火 - scrollY:', scrollTarget);
+              window.dispatchEvent(new CustomEvent('scrollRestored', {
+                detail: {
+                  scrollY: scrollTarget,
+                  restored: true,
+                  cancelled: false
+                }
+              }));
+            }, 1000); // スムーススクロール完了待ち
           } else {
             
             // windowをスクロール
@@ -302,34 +331,34 @@ export function useScrollRestoration(
             // 少し待ってからもう一度（念のため）
             setTimeout(() => {
               window.scrollTo(0, scrollTarget);
-            }, 100);
+              
+              // クリーンアップ
+              sessionStorage.removeItem(STORAGE_KEY);
+              isRestoringRef.current = false;
+              restorationCompleteRef.current = true;
+              targetScrollYRef.current = null;
+              
+              // 状態をリセット
+              setRestorationState({
+                isRestoring: false,
+                currentPage: 0,
+                targetPages: 0
+              });
+              
+              // URLから'returning'パラメータを削除
+              cleanupReturningParam();
+              
+              // スクロール復元完了イベントを発火
+              console.log('[ScrollRestoration] 復元完了イベント発火 - scrollY:', scrollTarget);
+              window.dispatchEvent(new CustomEvent('scrollRestored', {
+                detail: {
+                  scrollY: scrollTarget,
+                  restored: true,
+                  cancelled: false
+                }
+              }));
+            }, 500); // windowスクロール完了待ち
           }
-          
-          
-          // クリーンアップ
-          sessionStorage.removeItem(STORAGE_KEY);
-          isRestoringRef.current = false;
-          restorationCompleteRef.current = true;
-          targetScrollYRef.current = null;
-          
-          // 状態をリセット
-          setRestorationState({
-            isRestoring: false,
-            currentPage: 0,
-            targetPages: 0
-          });
-          
-          // URLから'returning'パラメータを削除
-          cleanupReturningParam();
-          
-          // スクロール復元完了イベントを発火
-          window.dispatchEvent(new CustomEvent('scrollRestored', {
-            detail: {
-              scrollY: scrollTarget,
-              restored: true,
-              cancelled: false
-            }
-          }));
         }, 200); // 待機時間を短縮 // レンダリング完了を確実に待つ
       } else if (hasNextPage && !isFetchingNextPage) {
         // まだページが不足している場合は追加読み込み

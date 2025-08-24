@@ -105,19 +105,26 @@ export function ScrollToTopButton() {
   useEffect(() => {
     const handleScrollRestored = (event: Event) => {
       const customEvent = event as CustomEvent;
-      const { restored, cancelled } = customEvent.detail;
+      const { scrollY, restored, cancelled } = customEvent.detail;
+      console.log('[ScrollToTopButton] イベント受信 - scrollY:', scrollY, 'restored:', restored, 'cancelled:', cancelled);
       
       if (restored && !cancelled) {
-        // スクロール復元が完了したら、現在のスクロール位置を再チェック
-        const scrollableElement = document.getElementById('main-scroll-container') || 
-                                 document.querySelector('.overflow-y-auto');
-        if (scrollableElement) {
-          const currentScrollY = scrollableElement.scrollTop;
-          setIsVisible(currentScrollY > 300);
-        }
+        // 少し遅延を入れてからチェック（スムーススクロール完了待ち）
+        setTimeout(() => {
+          const scrollableElement = document.getElementById('main-scroll-container') || 
+                                   document.querySelector('.overflow-y-auto');
+          if (scrollableElement) {
+            const currentScrollY = scrollableElement.scrollTop;
+            console.log('[ScrollToTopButton] スクロール位置再チェック - currentScrollY:', currentScrollY);
+            setIsVisible(currentScrollY > 300);
+          } else {
+            console.log('[ScrollToTopButton] スクロール要素が見つかりません');
+          }
+        }, 1000); // 1秒待機
       }
     };
     
+    console.log('[ScrollToTopButton] イベントリスナー登録');
     window.addEventListener('scrollRestored', handleScrollRestored);
     return () => {
       window.removeEventListener('scrollRestored', handleScrollRestored);
