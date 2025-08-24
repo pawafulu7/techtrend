@@ -164,7 +164,6 @@ export async function GET(
     return NextResponse.json(response);
 
   } catch (error) {
-    console.error('Failed to fetch related articles:', error);
     return NextResponse.json(
       { error: 'Failed to fetch related articles' },
       { status: 500 }

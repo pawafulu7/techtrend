@@ -55,7 +55,6 @@ export default function ArticleFavoritesPage() {
       setFavorites(data.favorites);
     } catch (err) {
       setError('お気に入りの取得に失敗しました');
-      console.error('Failed to fetch favorites:', err);
     } finally {
       setIsLoading(false);
     }
@@ -71,7 +70,6 @@ export default function ArticleFavoritesPage() {
         setFavorites(prev => prev.filter(f => f.id !== articleId));
       }
     } catch (error) {
-      console.error('Failed to remove favorite:', error);
     }
   };
 

@@ -260,11 +260,9 @@ export function validateAndNormalizeTags(tags: unknown, source?: string): string
   // デバッグ用: 元のデータと正規化後のデータが大きく異なる場合は警告
   if (process.env.NODE_ENV !== 'production') {
     if (typeof tags === 'string' && normalized.length === 0 && tags.length > 0) {
-      console.warn(`[Tag Normalizer] Invalid tag string detected from ${source || 'unknown'}: "${tags}"`);
     }
     
     if (Array.isArray(tags) && tags.length > 0 && normalized.length === 0) {
-      console.warn(`[Tag Normalizer] All tags were filtered out from ${source || 'unknown'}:`, tags);
     }
   }
 

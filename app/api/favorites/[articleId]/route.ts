@@ -33,7 +33,6 @@ export async function GET(
       favoriteId: favorite?.id || null,
     });
   } catch (error) {
-    console.error('Failed to check favorite status:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -36,15 +36,12 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     try {
-      console.error('[Google Dev Blog] フィードを取得中...');
       const feed = await this.retry(() => this.parser.parseURL(this.source.url));
       
       if (!feed.items || feed.items.length === 0) {
-        console.error('[Google Dev Blog] 記事が見つかりませんでした');
         return { articles, errors };
       }
 
-      console.error(`[Google Dev Blog] ${feed.items.length}件の記事を取得`);
 
       // 最新30件に制限
       const limitedItems = feed.items.slice(0, 30);
@@ -69,7 +66,6 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
           );
 
           if (!isTechArticle) {
-            console.error(`[Google Dev Blog] 技術記事ではないためスキップ: ${item.title}`);
             continue;
           }
 
@@ -96,7 +92,6 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
         }
       }
 
-      console.error(`[Google Dev Blog] ${articles.length}件の技術記事を抽出`);
 
     } catch (error) {
       errors.push(new Error(`Failed to fetch Google Dev Blog: ${error instanceof Error ? error.message : String(error)}`));

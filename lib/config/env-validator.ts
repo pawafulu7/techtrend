@@ -78,19 +78,15 @@ export function getValidatedEnv(): EnvConfig {
         .filter(e => e.message !== 'Required')
         .map(e => `${e.path.join('.')}: ${e.message}`);
       
-      console.error('❌ Environment variable validation failed:');
       
       if (missingVars.length > 0) {
-        console.error('Missing required variables:', missingVars.join(', '));
       }
       
       if (invalidVars.length > 0) {
-        console.error('Invalid variables:', invalidVars.join(', '));
       }
       
       // 開発環境では詳細なエラーを表示
       if (process.env.NODE_ENV === 'development') {
-        console.error('Full validation errors:', JSON.stringify(error.errors, null, 2));
       }
       
       throw new Error(`Environment validation failed. Check your .env file.`);
@@ -189,9 +185,7 @@ export function getEnvSummary(): Record<string, string> {
 if (process.env.NODE_ENV !== 'test') {
   try {
     getValidatedEnv();
-    console.log('✅ Environment variables validated successfully');
   } catch (error) {
-    console.error('❌ Environment validation failed on startup');
     // 本番環境では起動を中止
     if (process.env.NODE_ENV === 'production') {
       process.exit(1);

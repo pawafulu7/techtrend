@@ -14,7 +14,6 @@ export function enforceLength(text: string, min: number, max: number): string {
   
   // 最大文字数を超える場合のみ最適化処理を適用
   if (text.length > max) {
-    console.error(`要約を最適化中: ${text.length}文字 → 最大${max}文字`);
     
     // 方法1: 句点で分割して、重要度の高い文を優先的に残す
     const sentences = text.split('。').filter(s => s.trim());

@@ -55,7 +55,6 @@ export class RedisService implements IRedisService {
       if (!value) return null;
       return JSON.parse(value) as T;
     } catch (error) {
-      console.error(`Error parsing JSON for key ${key}:`, error);
       return null;
     }
   }
@@ -98,7 +97,6 @@ export class RedisService implements IRedisService {
           try {
             result.set(key, JSON.parse(value) as T);
           } catch (error) {
-            console.error(`Error parsing JSON for key ${key}:`, error);
           }
         }
       });

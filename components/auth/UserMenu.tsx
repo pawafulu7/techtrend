@@ -32,7 +32,6 @@ export function UserMenu() {
     try {
       await signOut({ callbackUrl: '/' });
     } catch (error) {
-      console.error('Sign out error:', error);
     } finally {
       setIsSigningOut(false);
     }

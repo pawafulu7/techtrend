@@ -55,7 +55,6 @@ export function TagStats() {
         topGrowthTags: growthTags
       });
     } catch (error) {
-      console.error('Failed to load tag stats:', error);
     } finally {
       setLoading(false);
     }

@@ -57,15 +57,12 @@ export class AWSFetcher extends BaseFetcher {
     // 各RSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
       try {
-        console.error(`[AWS - ${feedInfo.name}] フィードを取得中...`);
         const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
         
         if (!feed.items || feed.items.length === 0) {
-          console.error(`[AWS - ${feedInfo.name}] 記事が見つかりませんでした`);
           continue;
         }
 
-        console.error(`[AWS - ${feedInfo.name}] ${feed.items.length}件の記事を取得`);
 
         for (const item of feed.items) {
           try {
@@ -97,7 +94,6 @@ export class AWSFetcher extends BaseFetcher {
             // 30日以内かつ未来でない記事のみ処理
             if (publishedAt < thirtyDaysAgo || publishedAt > now) {
               if (publishedAt > now) {
-                console.error(`[AWS - ${feedInfo.name}] 未来日付の記事をスキップ: ${item.title} (日付: ${publishedAt.toISOString()})`);
               }
               continue;
             }
@@ -139,7 +135,6 @@ export class AWSFetcher extends BaseFetcher {
     allArticles.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
     const limitedArticles = allArticles.slice(0, 60);
 
-    console.error(`[AWS] 合計 ${limitedArticles.length}件の記事を処理`);
     return { articles: limitedArticles, errors: allErrors };
   }
 

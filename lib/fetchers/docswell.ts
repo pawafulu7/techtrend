@@ -40,12 +40,9 @@ export class DocswellFetcher extends BaseFetcher {
     let articles: CreateArticleInput[] = [];
 
     try {
-      console.error('Docswell: トレンド記事を取得中...');
       articles = await this.fetchTrendingPresentations();
-      console.error(`✅ Docswell: ${articles.length}件の記事を取得`);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      console.error('❌ Docswellエラー:', err.message);
       errors.push(err);
     }
 
@@ -59,7 +56,6 @@ export class DocswellFetcher extends BaseFetcher {
     const articles: CreateArticleInput[] = [];
     const trendingUrl = 'https://www.docswell.com/trending';
     
-    console.error(`Docswell: トレンドページから記事を取得中...`);
     
     // HTMLを取得
     const html = await this.fetchWithRetry(trendingUrl);
@@ -97,7 +93,6 @@ export class DocswellFetcher extends BaseFetcher {
       });
     });
     
-    console.error(`  ✅ ${articles.length}件のトレンド記事を取得`);
     return articles;
   }
 
@@ -108,7 +103,6 @@ export class DocswellFetcher extends BaseFetcher {
     const articles: CreateArticleInput[] = [];
     const feedUrl = 'https://www.docswell.com/feed/latest';
     
-    console.error('📡 Docswell RSS: フィードを取得中...');
     const feed = await this.parser.parseURL(feedUrl);
     
     let processedCount = 0;
@@ -146,7 +140,6 @@ export class DocswellFetcher extends BaseFetcher {
       processedCount++;
       
       if (docswellConfig.debug) {
-        console.error(`  📝 記事取得: ${item.title}`);
       }
     }
     
@@ -181,7 +174,6 @@ export class DocswellFetcher extends BaseFetcher {
       if (retries < docswellConfig.retryLimit) {
         const waitTime = docswellConfig.requestDelay * (retries + 1);
         if (docswellConfig.debug) {
-          console.error(`  🔄 リトライ ${retries + 1}/${docswellConfig.retryLimit} (${waitTime}ms待機)`);
         }
         await this.delay(waitTime);
         return this.fetchWithRetry(url, retries + 1);

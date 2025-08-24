@@ -50,12 +50,10 @@ export class GeminiClient {
       // 品質検証
       const validation = validateSummaryQuality(summary, 'normal');
       if (!validation.isValid) {
-        console.warn('要約の品質に問題があります:', validation.errors);
       }
       
       return summary;
     } catch (error) {
-      console.error('Gemini API error:', error);
       throw new ExternalAPIError(
         'Gemini',
         `Failed to generate summary: ${error instanceof Error ? error.message : String(error)}`,
@@ -84,13 +82,11 @@ export class GeminiClient {
       // 品質チェックと再生成
       const score = calculateSummaryScore(parsedResult.summary, { tags: parsedResult.tags });
       if (needsRegeneration(score) && maxRetries > 0) {
-        console.error(`要約品質が低い（${score.totalScore}点）、再生成を試みます...`);
         return this.generateSummaryWithTags(title, content, maxRetries - 1);
       }
       
       return parsedResult;
     } catch (error) {
-      console.error('Gemini API error:', error);
       throw new ExternalAPIError(
         'Gemini',
         `Failed to generate summary and tags: ${error instanceof Error ? error.message : String(error)}`,
@@ -128,16 +124,13 @@ export class GeminiClient {
       const detailedValidation = validateSummaryQuality(parsedResult.detailedSummary, 'detailed');
       
       if (!summaryValidation.isValid) {
-        console.warn('要約の品質に問題があります:', summaryValidation.errors);
       }
       
       if (!detailedValidation.isValid) {
-        console.warn('詳細要約の品質に問題があります:', detailedValidation.errors);
       }
       
       return parsedResult;
     } catch (error) {
-      console.error('Gemini API error:', error);
       throw new ExternalAPIError(
         'Gemini',
         `Failed to generate detailed summary: ${error instanceof Error ? error.message : String(error)}`,
@@ -259,7 +252,6 @@ export class GeminiClient {
     // 要約の検証
     const validation = validateSummary(summary);
     if (!validation.isValid) {
-      console.warn('要約の検証エラー:', validation.errors);
       // クリーンアップを試みる
       summary = cleanupSummary(summary);
     }
@@ -267,7 +259,6 @@ export class GeminiClient {
     // 品質スコアのチェック（再生成が必要な場合は警告）
     const score = calculateSummaryScore(summary, { tags });
     if (needsRegeneration(score)) {
-      console.warn(`要約の品質が低い（${score.totalScore}点）: ${score.issues.join(', ')}`);
     }
 
     return { summary, tags };
@@ -369,7 +360,6 @@ export class GeminiClient {
     // 要約の検証
     const summaryValidation = validateSummary(summary);
     if (!summaryValidation.isValid) {
-      console.warn('要約の検証エラー:', summaryValidation.errors);
       summary = cleanupSummary(summary);
     }
     
@@ -432,7 +422,6 @@ export class GeminiClient {
             const summary = await this.generateSummary(article.title, article.content || '');
             summaries.set(i + index, summary);
           } catch (error) {
-            console.error(`Failed to generate summary for article ${i + index}:`, error);
             // Continue with other articles even if one fails
           }
         })

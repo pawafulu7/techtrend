@@ -25,7 +25,6 @@ export function ViewTracker({ articleId }: ViewTrackerProps) {
           hasRecordedRef.current = true;
         }
       } catch (error) {
-        console.error('Failed to record article view:', error);
       }
     };
     

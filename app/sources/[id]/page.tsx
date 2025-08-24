@@ -56,7 +56,6 @@ export default function SourceDetailPage() {
       const data = await response.json();
       setData(data);
     } catch (error) {
-      console.error('Error loading source detail:', error);
     } finally {
       setLoading(false);
     }

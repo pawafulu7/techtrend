@@ -40,11 +40,9 @@ export class MemoryOptimizer {
    */
   startMonitoring(): void {
     if (this.monitoringInterval) {
-      console.error('[MemoryOptimizer] Monitoring already started');
       return;
     }
 
-    console.error('[MemoryOptimizer] Starting memory monitoring...');
     
     // 初回チェック
     this.checkMemoryUsage();
@@ -62,7 +60,6 @@ export class MemoryOptimizer {
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
-      console.error('[MemoryOptimizer] Monitoring stopped');
     }
   }
 
@@ -74,21 +71,16 @@ export class MemoryOptimizer {
       const info = await this.getMemoryInfo();
       const usagePercent = (info.used / info.maxMemory) * 100;
       
-      console.error(`[MemoryOptimizer] Memory usage: ${usagePercent.toFixed(2)}% (${this.formatBytes(info.used)}/${this.formatBytes(info.maxMemory)})`);
       
       // アラートレベルチェック
       if (usagePercent >= this.optimizationConfig.monitoring.criticalThreshold) {
-        console.error('[MemoryOptimizer] CRITICAL: Memory usage exceeds critical threshold');
         await this.performEmergencyOptimization();
       } else if (usagePercent >= this.optimizationConfig.monitoring.alertThreshold) {
-        console.warn('[MemoryOptimizer] WARNING: Memory usage exceeds alert threshold');
         await this.performOptimization();
       } else if (usagePercent >= this.maxMemoryUsagePercent) {
-        console.error('[MemoryOptimizer] Memory usage high, performing optimization');
         await this.performOptimization();
       }
     } catch (error) {
-      console.error('[MemoryOptimizer] Failed to check memory usage:', error);
     }
   }
 
@@ -125,7 +117,6 @@ export class MemoryOptimizer {
       
       return { used, peak, maxMemory, fragmentation };
     } catch (error) {
-      console.error('[MemoryOptimizer] Failed to get memory info:', error);
       return { used: 0, peak: 0, maxMemory: 2 * 1024 * 1024 * 1024, fragmentation: 1 };
     }
   }
@@ -134,7 +125,6 @@ export class MemoryOptimizer {
    * 通常の最適化を実行
    */
   private async performOptimization(): Promise<void> {
-    console.error('[MemoryOptimizer] Performing optimization...');
     
     const tasks: Promise<void>[] = [];
     
@@ -150,14 +140,12 @@ export class MemoryOptimizer {
     tasks.push(this.resetCacheStats());
     
     await Promise.allSettled(tasks);
-    console.error('[MemoryOptimizer] Optimization completed');
   }
 
   /**
    * 緊急最適化を実行
    */
   private async performEmergencyOptimization(): Promise<void> {
-    console.error('[MemoryOptimizer] Performing emergency optimization...');
     
     // 最も古いキーから削除
     await this.evictOldestKeys(100);
@@ -168,7 +156,6 @@ export class MemoryOptimizer {
     // 低優先度キャッシュをクリア
     await this.clearLowPriorityCaches();
     
-    console.error('[MemoryOptimizer] Emergency optimization completed');
   }
 
   /**
@@ -177,7 +164,6 @@ export class MemoryOptimizer {
   private async adjustTTLs(factor?: number): Promise<void> {
     const adjustmentFactor = factor || this.optimizationConfig.ttlAdjustment.adjustmentFactor;
     
-    console.error(`[MemoryOptimizer] Adjusting TTLs by factor ${adjustmentFactor}`);
     
     // 各キャッシュのTTLを調整
     const currentStatsTTL = (statsCache as unknown).defaultTTL;
@@ -200,7 +186,6 @@ export class MemoryOptimizer {
     );
     (trendsCache as unknown).defaultTTL = newTrendsTTL;
     
-    console.error(`[MemoryOptimizer] TTLs adjusted - Stats: ${newStatsTTL}s, Trends: ${newTrendsTTL}s`);
   }
 
   /**
@@ -231,9 +216,7 @@ export class MemoryOptimizer {
         }
       } while (cursor !== '0');
       
-      console.error(`[MemoryOptimizer] Expired keys cleanup completed. Set TTL for ${count} keys`);
     } catch (error) {
-      console.error('[MemoryOptimizer] Failed to cleanup expired keys:', error);
     }
   }
 
@@ -268,10 +251,8 @@ export class MemoryOptimizer {
       // バッチで削除
       if (keysToDelete.length > 0) {
         await this.redis.del(...keysToDelete);
-        console.error(`[MemoryOptimizer] Evicted ${keysToDelete.length} oldest keys`);
       }
     } catch (error) {
-      console.error('[MemoryOptimizer] Failed to evict oldest keys:', error);
     }
   }
 
@@ -284,10 +265,8 @@ export class MemoryOptimizer {
       const searchKeys = await this.redis.keys('@techtrend/cache:search:*');
       if (searchKeys.length > 0) {
         await this.redis.del(...searchKeys);
-        console.error(`[MemoryOptimizer] Cleared ${searchKeys.length} search cache entries`);
       }
     } catch (error) {
-      console.error('[MemoryOptimizer] Failed to clear low priority caches:', error);
     }
   }
 
@@ -298,7 +277,6 @@ export class MemoryOptimizer {
     statsCache.resetStats();
     trendsCache.resetStats();
     searchCache.resetStats();
-    console.error('[MemoryOptimizer] Cache stats reset');
   }
 
   /**
@@ -306,7 +284,6 @@ export class MemoryOptimizer {
    */
   updateConfig(config: Partial<typeof this.optimizationConfig>): void {
     Object.assign(this.optimizationConfig, config);
-    console.error('[MemoryOptimizer] Configuration updated');
   }
 
   /**
@@ -349,7 +326,6 @@ export class MemoryOptimizer {
    * 手動最適化実行
    */
   async optimizeManual(aggressive: boolean = false): Promise<void> {
-    console.error(`[MemoryOptimizer] Manual optimization (aggressive: ${aggressive})`);
     
     if (aggressive) {
       await this.performEmergencyOptimization();
@@ -358,7 +334,6 @@ export class MemoryOptimizer {
     }
     
     const status = await this.getStatus();
-    console.error('[MemoryOptimizer] Optimization result:', status.memory);
   }
 }
 

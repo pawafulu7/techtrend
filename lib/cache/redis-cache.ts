@@ -64,7 +64,6 @@ export class RedisCache {
       return JSON.parse(value) as T;
     } catch (error) {
       this.stats.errors++;
-      console.error(`Cache get error for key ${key}:`, error);
       return null;
     }
   }
@@ -85,7 +84,6 @@ export class RedisCache {
       );
     } catch (error) {
       this.stats.errors++;
-      console.error(`Cache set error for key ${key}:`, error);
     }
   }
 
@@ -98,7 +96,6 @@ export class RedisCache {
       await this.redis.del(fullKey);
     } catch (error) {
       this.stats.errors++;
-      console.error(`Cache delete error for key ${key}:`, error);
     }
   }
 
@@ -115,7 +112,6 @@ export class RedisCache {
       }
     } catch (error) {
       this.stats.errors++;
-      console.error(`Cache invalidation error for pattern ${pattern}:`, error);
     }
   }
 

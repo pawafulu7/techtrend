@@ -31,7 +31,6 @@ export async function GET(
       data: article,
     } as ApiResponse<ArticleWithRelations>);
   } catch (error) {
-    console.error('Error fetching article:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch article',
@@ -82,7 +81,6 @@ export async function PATCH(
       data: article,
     } as ApiResponse<ArticleWithRelations>);
   } catch (error) {
-    console.error('Error updating article:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to update article',
@@ -109,7 +107,6 @@ export async function DELETE(
       data: { message: 'Article deleted successfully' },
     } as ApiResponse<{ message: string }>);
   } catch (error) {
-    console.error('Error deleting article:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to delete article',

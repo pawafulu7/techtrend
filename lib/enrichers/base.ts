@@ -66,7 +66,6 @@ export abstract class BaseContentEnricher implements IContentEnricher {
 
         if (response.status === 429) {
           // Rate limit エラー時は長めに待機
-          console.warn(`[Enricher] Rate limit hit for ${url}, waiting 30s...`);
           await this.delay(30000);
           continue;
         }
@@ -83,7 +82,6 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         return html;
       } catch (error) {
         lastError = error as Error;
-        console.error(`[Enricher] Attempt ${attempt + 1} failed for ${url}:`, error);
       }
     }
 

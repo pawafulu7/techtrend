@@ -19,7 +19,6 @@ export class GMOContentEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.error(`[GMOEnricher] Fetching content from: ${url}`);
       
       const html = await this.fetchWithRetry(url);
       
@@ -41,23 +40,19 @@ export class GMOContentEnricher extends BaseContentEnricher {
       
       // コンテンツが取得できたか確認
       if (!this.isContentSufficient(content, 500)) {
-        console.warn(`[GMOEnricher] Content too short (${content.length} chars) for ${url}`);
         
         // より広範囲を取得する試み
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
-          console.error(`[GMOEnricher] Using fallback content (${fallbackContent.length} chars)`);
           return { content: fallbackContent, thumbnail };
         }
         
         return null;
       }
       
-      console.error(`[GMOEnricher] Successfully enriched: ${content.length} characters`);
       return { content, thumbnail };
       
     } catch (error) {
-      console.error(`[GMOEnricher] Failed to enrich ${url}:`, error);
       return null;
     }
   }

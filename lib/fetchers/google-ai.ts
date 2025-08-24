@@ -57,7 +57,6 @@ export class GoogleAIFetcher extends BaseFetcher {
           // コンテンツ品質チェック
           const contentCheck = checkContentQuality(content, item.title);
           if (contentCheck.warning) {
-            console.warn(`[Google AI Blog] ${contentCheck.warning}`);
           }
           
           const article: CreateArticleInput = {

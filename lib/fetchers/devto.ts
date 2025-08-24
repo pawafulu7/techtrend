@@ -50,7 +50,6 @@ export class DevToFetcher extends BaseFetcher {
 
       return response;
     } catch (error) {
-      console.error(`Failed to fetch article detail for ID ${articleId}:`, error);
       return null;
     }
   }

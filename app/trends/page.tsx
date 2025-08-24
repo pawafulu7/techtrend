@@ -75,7 +75,6 @@ export default function TrendsPage() {
       
       // APIレスポンスの検証とデフォルト値設定
       if (data.error) {
-        console.error('API returned error:', data.error);
         setTrendingKeywords([]);
         setNewTags([]);
       } else {
@@ -83,7 +82,6 @@ export default function TrendsPage() {
         setNewTags(data.newTags || []);
       }
     } catch (error) {
-      console.error('Failed to fetch trending keywords:', error);
       // エラー時はデフォルト値を設定
       setTrendingKeywords([]);
       setNewTags([]);
@@ -101,7 +99,6 @@ export default function TrendsPage() {
       const data = await response.json();
       setTrendAnalysis(data);
     } catch (error) {
-      console.error('Failed to fetch trend analysis:', error);
     } finally {
       setLoadingAnalysis(false);
     }
@@ -144,7 +141,6 @@ export default function TrendsPage() {
         setSourceData(sourceStats);
       }
     } catch (error) {
-      console.error('Failed to fetch source stats:', error);
     } finally {
       setLoadingSource(false);
     }

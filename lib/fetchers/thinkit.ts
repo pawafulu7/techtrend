@@ -25,17 +25,14 @@ export class ThinkITFetcher extends BaseFetcher {
   private rssUrl = 'https://thinkit.co.jp/rss.xml';
 
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
-    console.error('[Think IT] 記事を取得します...');
     
     try {
       const feed = await this.parser.parseURL(this.rssUrl);
       
       if (!feed.items || feed.items.length === 0) {
-        console.error('[Think IT] 記事が見つかりませんでした');
         return [];
       }
       
-      console.error(`[Think IT] ${feed.items.length}件の記事を取得しました`);
       
       const articles: CreateArticleInput[] = [];
       
@@ -55,7 +52,6 @@ export class ThinkITFetcher extends BaseFetcher {
       };
       
     } catch (error) {
-      console.error('[Think IT] フィード取得エラー:', error);
       return {
         articles: [],
         errors: [error as Error]

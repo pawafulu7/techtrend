@@ -63,7 +63,6 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         return;
       }
       
-      console.error('[TagFilter] Searching for:', debouncedSearchQuery);
       
       setIsSearching(true);
       try {
@@ -71,7 +70,6 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         
         // レスポンスステータスをチェック
         if (!response.ok) {
-          console.error('Tag search failed with status:', response.status);
           setSearchResults([]);
           return;
         }
@@ -79,7 +77,6 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         // レスポンスボディが空でないことを確認
         const text = await response.text();
         if (!text) {
-          console.error('Empty response from tag search API');
           setSearchResults([]);
           return;
         }
@@ -89,7 +86,6 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         try {
           data = JSON.parse(text);
         } catch {
-          console.error('Failed to parse JSON response:', text);
           setSearchResults([]);
           return;
         }
@@ -98,11 +94,9 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         if (Array.isArray(data)) {
           setSearchResults(data);
         } else {
-          console.error('Invalid response format:', data);
           setSearchResults([]);
         }
       } catch (error) {
-        console.error('Tag search failed:', error);
         setSearchResults([]);
       } finally {
         setIsSearching(false);

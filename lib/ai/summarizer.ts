@@ -136,7 +136,6 @@ export class ArticleSummarizer {
     const promises = articles.map(article => 
       this.summarizeUnified(article.id, article.title, article.content)
         .then(result => summaries.set(article.id, result))
-        .catch(error => console.error(`Failed to summarize article ${article.id}:`, error))
     );
 
     await Promise.all(promises);
@@ -156,7 +155,6 @@ export class ArticleSummarizer {
     const promises = articles.map(article => 
       this.summarize(article.id, article.title, article.content)
         .then(summary => summaries.set(article.id, summary))
-        .catch(error => console.error(`Failed to summarize article ${article.id}:`, error))
     );
 
     await Promise.all(promises);

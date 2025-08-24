@@ -50,7 +50,6 @@ export function RecommendationSection({ forceHidden = false }: RecommendationSec
       const data = await response.json();
       setRecommendations(data);
     } catch (err) {
-      console.error('Error fetching recommendations:', err);
       setError('推薦記事の取得に失敗しました');
     } finally {
       setLoading(false);

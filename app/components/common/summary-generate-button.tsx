@@ -45,7 +45,6 @@ export function SummaryGenerateButton() {
         description: '要約生成中にエラーが発生しました',
         variant: 'destructive',
       });
-      console.error('Summary generation error:', error);
     } finally {
       setIsLoading(false);
     }

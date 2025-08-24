@@ -50,6 +50,5 @@ export const features = {
 // 設定の検証
 export function validateConfig(): void {
   if (!env.GEMINI_API_KEY && features.enableScheduler) {
-    console.warn('⚠️  GEMINI_API_KEY が設定されていません。要約生成が無効になります。');
   }
 }

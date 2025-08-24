@@ -35,7 +35,6 @@ export function FilterResetButton() {
       // window.location.hrefを使用して完全にクリーンなURLに遷移
       window.location.href = '/';
     } catch (error) {
-      console.error('Failed to reset filters:', error);
     } finally {
       setIsResetting(false);
     }

@@ -92,13 +92,10 @@ async function main() {
     }),
   ]);
 
-  console.error('Seed data created successfully');
-  console.error(`Created ${sources.length} sources`);
 }
 
 main()
   .catch((e) => {
-    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

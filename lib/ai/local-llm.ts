@@ -53,7 +53,6 @@ export class LocalLLMClient {
       
       return this.cleanSummary(response);
     } catch (error) {
-      console.error('Local LLM API error:', error);
       throw new ExternalAPIError(
         'LocalLLM',
         `Failed to generate summary: ${error instanceof Error ? error.message : String(error)}`,
@@ -71,7 +70,6 @@ export class LocalLLMClient {
       
       return this.parseSummaryAndTags(response);
     } catch (error) {
-      console.error('Local LLM API error:', error);
       throw new ExternalAPIError(
         'LocalLLM',
         `Failed to generate summary and tags: ${error instanceof Error ? error.message : String(error)}`,
@@ -92,7 +90,6 @@ export class LocalLLMClient {
       
       return this.parseDetailedSummary(response);
     } catch (error) {
-      console.error('Local LLM API error:', error);
       throw new ExternalAPIError(
         'LocalLLM',
         `Failed to generate detailed summary: ${error instanceof Error ? error.message : String(error)}`,
@@ -398,7 +395,6 @@ export class LocalLLMClient {
       
       return response.ok;
     } catch (error) {
-      console.error('Failed to connect to Local LLM:', error);
       return false;
     }
   }

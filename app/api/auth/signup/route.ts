@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (parseError) {
-      console.error('JSON parse error:', parseError);
       return NextResponse.json(
         { error: '不正なリクエスト形式です' },
         { status: 400 }
@@ -48,7 +47,6 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Signup error:', error);
     
     if (error instanceof Error && error.message === 'User already exists') {
       return NextResponse.json(

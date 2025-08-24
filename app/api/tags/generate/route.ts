@@ -31,7 +31,6 @@ export async function POST() {
       try {
         // コンテンツが空の場合はスキップ
         if (!article.content || article.content.trim() === '') {
-          console.error(`Skipping article ${article.id} - no content`);
           continue;
         }
 
@@ -66,11 +65,9 @@ export async function POST() {
             }
           });
           generated++;
-          console.error(`Generated tags for article ${article.id}: ${normalizedTags.join(', ')}`);
         }
       } catch (error) {
         errors++;
-        console.error(`Error generating tags for article ${article.id}:`, error);
       }
     }
 
@@ -83,7 +80,6 @@ export async function POST() {
       }
     });
   } catch (error) {
-    console.error('Tag generation error:', error);
     return NextResponse.json(
       { 
         success: false, 

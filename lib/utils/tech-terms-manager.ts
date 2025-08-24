@@ -79,7 +79,6 @@ export class TechTermsManager {
         JSON.stringify({ terms: customTerms, updated: new Date() }, null, 2)
       );
     } catch (error) {
-      console.error('カスタム用語の保存に失敗:', error);
     }
   }
   
@@ -92,7 +91,6 @@ export class TechTermsManager {
     } catch (error) {
       // ファイルが存在しない場合は無視
       if ((error as unknown).code !== 'ENOENT') {
-        console.error('カスタム用語の読み込みに失敗:', error);
       }
     }
   }
@@ -102,7 +100,6 @@ export class TechTermsManager {
     const updateUrl = url || process.env.TECH_TERMS_UPDATE_URL;
     
     if (!updateUrl) {
-      console.error('技術用語の更新URLが設定されていません');
       return;
     }
     
@@ -117,10 +114,8 @@ export class TechTermsManager {
         this.addCustomTerms(data.terms);
         this.lastUpdated = new Date();
         await this.saveCustomTerms();
-        console.error(`技術用語辞書を更新しました: ${data.terms.length}件の用語を追加`);
       }
     } catch (error) {
-      console.error('リモートからの技術用語更新に失敗:', error);
     }
   }
   

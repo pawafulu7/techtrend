@@ -43,7 +43,6 @@ export function parseRSSDate(dateString: string): Date {
   
   // 無効な日付の場合
   if (isNaN(date.getTime())) {
-    console.warn(`Invalid date format: ${dateString}`);
     // 現在時刻を返す
     return new Date();
   }
@@ -52,13 +51,11 @@ export function parseRSSDate(dateString: string): Date {
   const oneYearFromNow = new Date();
   oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
   if (date > oneYearFromNow) {
-    console.warn(`Future date detected: ${dateString} -> ${date.toISOString()}`);
     return new Date();
   }
   
   // 異常に大きな値のチェック（例：1753888851754）
   if (date.getTime() > 9999999999999) {
-    console.warn(`Abnormal timestamp detected: ${dateString}`);
     return new Date();
   }
   
@@ -82,7 +79,6 @@ export function adjustTimezoneForArticle(
   
   // 未来日付の調整
   if (publishedAt > now) {
-    console.error(`[Timezone Adjustment] Future date detected for ${sourceName || 'unknown source'}: ${publishedAt.toISOString()} -> ${now.toISOString()}`);
     return now;
   }
   

@@ -165,7 +165,6 @@ class AnalyticsTracker {
       await this.updateDailyStats(event);
       this.currentSession.delete(articleId);
     } catch (error) {
-      console.error('Failed to save reading event:', error);
     }
   }
 

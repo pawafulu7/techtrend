@@ -103,7 +103,6 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
                       body: JSON.stringify({ tags: undefined, tagMode: undefined }),
                     });
                   } catch (error) {
-                    console.error('Failed to update filter preferences:', error);
                   }
                 }}
                 className="h-6 text-xs px-2"

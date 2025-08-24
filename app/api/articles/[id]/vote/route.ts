@@ -40,7 +40,6 @@ export async function POST(
       votes: article.userVotes 
     });
   } catch (error) {
-    console.error('Failed to vote:', error);
     return NextResponse.json(
       { error: 'Failed to vote' },
       { status: 500 }

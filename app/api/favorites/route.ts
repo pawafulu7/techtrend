@@ -54,7 +54,6 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Failed to fetch favorites:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -137,7 +136,6 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Failed to add favorite:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -194,7 +192,6 @@ export async function DELETE(request: Request) {
       message: 'Article removed from favorites',
     });
   } catch (error) {
-    console.error('Failed to remove favorite:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

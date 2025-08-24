@@ -254,7 +254,6 @@ export async function POST(request: NextRequest) {
     // 不正なタグが含まれていた場合は警告（開発環境のみ）
     if (process.env.NODE_ENV !== 'production' && tagNames) {
       if (typeof tagNames === 'string') {
-        console.info(`[Articles API] Tag string converted to array: "${tagNames}" -> ${JSON.stringify(normalizedTags)}`);
       }
     }
 

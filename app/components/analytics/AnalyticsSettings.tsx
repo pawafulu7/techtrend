@@ -32,7 +32,6 @@ export function AnalyticsSettings() {
       // データ削除後にページをリロード
       window.location.reload();
     } catch (error) {
-      console.error('Failed to delete data:', error);
     } finally {
       setIsDeleting(false);
     }

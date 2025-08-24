@@ -44,7 +44,6 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
         body: JSON.stringify({ sortBy: newSortBy }),
       });
     } catch (error) {
-      console.error('Failed to update filter preferences:', error);
     }
   };
 

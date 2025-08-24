@@ -45,7 +45,6 @@ export function TagGenerateButton() {
         description: 'タグ生成中にエラーが発生しました',
         variant: 'destructive',
       });
-      console.error('Tag generation error:', error);
     } finally {
       setIsLoading(false);
     }

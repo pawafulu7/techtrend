@@ -53,7 +53,6 @@ export function useFavoriteSources() {
           })));
         }
       } catch (error) {
-        console.error('Failed to load favorites:', error);
       } finally {
         setIsLoading(false);
       }
@@ -68,7 +67,6 @@ export function useFavoriteSources() {
       localStorage.setItem(STORAGE_KEY_SOURCES, JSON.stringify(newFavorites));
       setFavorites(newFavorites);
     } catch (error) {
-      console.error('Failed to save favorites:', error);
     }
   }, []);
 
@@ -77,7 +75,6 @@ export function useFavoriteSources() {
       localStorage.setItem(STORAGE_KEY_FOLDERS, JSON.stringify(newFolders));
       setFolders(newFolders);
     } catch (error) {
-      console.error('Failed to save folders:', error);
     }
   }, []);
 
@@ -231,7 +228,6 @@ export function useFavoriteSources() {
       
       return true;
     } catch (error) {
-      console.error('Failed to import data:', error);
       return false;
     }
   }, [saveFavorites, saveFolders]);

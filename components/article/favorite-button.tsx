@@ -41,7 +41,6 @@ export function FavoriteButton({
         setIsFavorited(data.isFavorited);
       }
     } catch (error) {
-      console.error('Failed to check favorite status:', error);
     }
   };
 
@@ -106,7 +105,6 @@ export function FavoriteButton({
         }
       }
     } catch (error) {
-      console.error('Failed to toggle favorite:', error);
       toast({
         title: 'エラーが発生しました',
         description: 'もう一度お試しください。',

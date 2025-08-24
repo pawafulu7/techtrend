@@ -37,20 +37,14 @@ tagsCommand
         take: limit
       });
       
-      console.error('\n🏷️  タグ一覧:');
-      console.error('━'.repeat(60));
-      console.error('タグ名'.padEnd(30) + 'カテゴリ'.padEnd(20) + '記事数');
-      console.error('─'.repeat(60));
       
       for (const tag of tags) {
-        console.error(
           tag.name.padEnd(30) +
           (tag.category || '-').padEnd(20) +
           tag._count.articles.toLocaleString()
         );
       }
       
-      console.error('━'.repeat(60));
       
       logger.success(`上位${limit}件のタグを表示しました`);
     } catch (error) {
@@ -84,16 +78,10 @@ tagsCommand
         }
       });
       
-      console.error('\n📊 タグ統計:');
-      console.error(`  総タグ数: ${totalTags.toLocaleString()}`);
-      console.error(`  カテゴリ付き: ${tagsWithCategory.toLocaleString()} (${Math.round(tagsWithCategory / totalTags * 100)}%)`);
-      console.error(`  カテゴリなし: ${(totalTags - tagsWithCategory).toLocaleString()} (${Math.round((totalTags - tagsWithCategory) / totalTags * 100)}%)`);
       
-      console.error('\n📑 カテゴリ別分布:');
       for (const cat of categories) {
         const categoryName = cat.category || '未分類';
         const percentage = Math.round(cat._count / totalTags * 100);
-        console.error(`  ${categoryName}: ${cat._count} タグ (${percentage}%)`);
       }
       
       // 人気タグTop10
@@ -112,9 +100,7 @@ tagsCommand
         take: 10
       });
       
-      console.error('\n🔥 人気タグ Top10:');
       popularTags.forEach((tag, index) => {
-        console.error(`  ${(index + 1).toString().padStart(2)}. ${tag.name} (${tag._count.articles.toLocaleString()} 記事)`);
       });
       
       logger.success('統計情報の取得が完了しました');
@@ -153,8 +139,6 @@ tagsCommand
         return;
       }
       
-      console.error(`\n🏷️  空のタグが ${emptyTags.length} 件見つかりました:`);
-      emptyTags.forEach(tag => console.error(`  - ${tag.name}`));
       
       if (!dryRun) {
         const progress = new ProgressBar(emptyTags.length, '削除中');
