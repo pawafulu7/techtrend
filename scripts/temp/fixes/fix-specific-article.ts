@@ -96,7 +96,7 @@ ${article.content || 'コンテンツが利用できません'}
     );
     
     // 要約をクリーンアップ
-    let cleanedSummary = result.summary
+    const cleanedSummary = result.summary
       .replace(/^\s*要約[:：]\s*/gi, '')
       .replace(/^\s*\*\*要約\*\*[:：]?\s*/gi, '')
       .replace(/^\s*##\s*/g, '')
@@ -106,7 +106,7 @@ ${article.content || 'コンテンツが利用できません'}
       .replace(/`/g, '')
       .trim();
     
-    let cleanedDetailedSummary = result.detailedSummary
+    const cleanedDetailedSummary = result.detailedSummary
       .replace(/\*\*/g, '')
       .replace(/##\s*/g, '')
       .replace(/```/g, '')

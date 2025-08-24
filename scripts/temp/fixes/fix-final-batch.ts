@@ -171,7 +171,7 @@ ${additionalContext}
         console.error(`生成時間: ${duration}ms`);
         
         // 要約をクリーンアップ
-        let cleanedSummary = result.summary
+        const cleanedSummary = result.summary
           .replace(/^\s*要約[:：]\s*/gi, '')
           .replace(/^\s*\*\*要約\*\*[:：]?\s*/gi, '')
           .replace(/\*\*/g, '')

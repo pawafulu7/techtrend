@@ -151,7 +151,7 @@ async function main() {
     }
 
     // 対象記事を取得
-    let whereClause: any = {
+    const whereClause: any = {
       sourceId: devtoSource.id
     };
 

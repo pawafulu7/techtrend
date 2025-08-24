@@ -126,7 +126,7 @@ async function generateWithClaude(
   console.error('入力完了後、空行を2回入力してください。\n');
   
   // ユーザー入力を受け取る
-  let inputLines: string[] = [];
+  const inputLines: string[] = [];
   let emptyLineCount = 0;
   
   while (true) {

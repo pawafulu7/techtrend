@@ -77,6 +77,12 @@ describe('ArticleCard', () => {
     difficulty: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    // 必須フィールドの追加
+    content: null,
+    detailedSummary: null,
+    thumbnail: null,
+    summaryVersion: null,
+    articleType: null,
   };
 
   beforeEach(() => {

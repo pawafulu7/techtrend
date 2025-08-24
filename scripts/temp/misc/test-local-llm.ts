@@ -90,7 +90,7 @@ function parseSummaryAndTags(text: string): {
   let tags: string[] = [];
   
   let currentSection = '';
-  let detailedLines: string[] = [];
+  const detailedLines: string[] = [];
   
   for (const line of lines) {
     if (line.startsWith('要約:') || line.startsWith('要約：')) {

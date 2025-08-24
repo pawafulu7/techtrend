@@ -110,7 +110,7 @@ ${content}
         
         // クリーンアップ
         let cleanedSummary = cleanSummary(result.summary);
-        let cleanedDetailedSummary = cleanDetailedSummary(result.detailedSummary);
+        const cleanedDetailedSummary = cleanDetailedSummary(result.detailedSummary);
         
         // HTMLエンティティをデコード
         cleanedSummary = cleanedSummary

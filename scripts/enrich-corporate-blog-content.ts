@@ -87,7 +87,7 @@ async function main() {
     }
 
     // 対象記事を取得（コンテンツが500文字以下）
-    let whereCondition: any = {
+    const whereCondition: any = {
       sourceId: corporateSource.id,
       OR: [
         { content: null },

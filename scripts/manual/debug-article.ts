@@ -58,7 +58,7 @@ async function debug() {
   // Parse response
   const lines = responseText.split('\n');
   let summary = '';
-  let detailedSummary = '';
+  const detailedSummary = '';
   
   for (const line of lines) {
     const trimmed = line.trim();

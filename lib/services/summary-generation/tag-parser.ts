@@ -19,7 +19,7 @@ export interface ParsedTags {
 export function parseSummaryAndTags(response: string): ParsedTags {
   const lines = response.split('\n');
   const tags: string[] = [];
-  let summaryLines: string[] = [];
+  const summaryLines: string[] = [];
   let isTagSection = false;
   
   for (const line of lines) {

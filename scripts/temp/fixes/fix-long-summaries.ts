@@ -71,7 +71,7 @@ ${article.summary}
         
         const model = geminiClient.model;
         const result = await model.generateContent(prompt);
-        let newSummary = result.response.text().trim()
+        const newSummary = result.response.text().trim()
           .replace(/^短縮版[:：]\s*/i, '')
           .replace(/^要約[:：]\s*/i, '')
           .replace(/^\*\*/g, '')

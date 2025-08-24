@@ -137,7 +137,7 @@ async function main() {
   }
 
   // 進捗の読み込み
-  let progress: Progress = options.continue && loadProgress() || {
+  const progress: Progress = options.continue && loadProgress() || {
     lastProcessedId: null,
     processedCount: 0,
     successCount: 0,

@@ -59,7 +59,7 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
   });
   
   // 重複チェック
-  let finalSummary = result.summary;
+  const finalSummary = result.summary;
   let finalDetailedSummary = result.detailedSummary;
   
   if (finalSummary && finalDetailedSummary && finalSummary === finalDetailedSummary) {

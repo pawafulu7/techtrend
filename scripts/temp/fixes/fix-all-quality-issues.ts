@@ -250,7 +250,7 @@ ${additionalContext}
           );
           
           // 要約を徹底的にクリーンアップ
-          let cleanedSummary = result.summary
+          const cleanedSummary = result.summary
             .replace(/^\s*要約[:：]\s*/gi, '')
             .replace(/^\s*\*\*要約\*\*[:：]?\s*/gi, '')
             .replace(/^\s*##\s*/g, '')
@@ -261,7 +261,7 @@ ${additionalContext}
             .trim();
           
           // 詳細要約もクリーンアップ
-          let cleanedDetailedSummary = result.detailedSummary
+          const cleanedDetailedSummary = result.detailedSummary
             .replace(/\*\*/g, '')
             .replace(/##\s*/g, '')
             .replace(/```/g, '')

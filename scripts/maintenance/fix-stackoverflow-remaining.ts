@@ -42,7 +42,7 @@ async function main() {
     
     let enrichSuccess = 0;
     let summarySuccess = 0;
-    let failedIds: string[] = [];
+    const failedIds: string[] = [];
     
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i];

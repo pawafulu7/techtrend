@@ -62,6 +62,11 @@ describe('ArticleList', () => {
       difficulty: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      content: null,
+      detailedSummary: null,
+      thumbnail: null,
+      summaryVersion: null,
+      articleType: null,
     },
     {
       id: '2',
@@ -86,6 +91,11 @@ describe('ArticleList', () => {
       difficulty: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      content: null,
+      detailedSummary: null,
+      thumbnail: null,
+      summaryVersion: null,
+      articleType: null,
     },
   ];
 
@@ -121,8 +131,8 @@ describe('ArticleList', () => {
     expect(handleArticleClick).toHaveBeenCalledWith(mockArticles[0]);
   });
 
-  it('displays loading state when isLoading is true', () => {
-    render(<ArticleList articles={[]} isLoading={true} />);
+  it('displays loading state when loading is true', () => {
+    render(<ArticleList articles={[]} loading={true} />);
     
     // ローディングスケルトンまたはスピナーが表示される
     const loadingElements = screen.queryAllByTestId(/skeleton|loading|spinner/i);

@@ -89,7 +89,7 @@ async function main() {
     }
 
     // 記事を取得
-    let articles = await prisma.article.findMany({
+    const articles = await prisma.article.findMany({
       where: whereCondition,
       include: {
         source: true,

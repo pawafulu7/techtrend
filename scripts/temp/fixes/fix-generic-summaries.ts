@@ -193,7 +193,7 @@ ${article.content?.substring(0, 1000) || 'コンテンツが利用できませ�
           cleanedSummary = cleanedSummary.slice(0, -2) + '。';
         }
         
-        let cleanedDetailedSummary = result.detailedSummary
+        const cleanedDetailedSummary = result.detailedSummary
           .replace(/\*\*/g, '')
           .replace(/##\s*/g, '')
           .replace(/```/g, '')

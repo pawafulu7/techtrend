@@ -79,7 +79,7 @@ async function cleanTags() {
       }
 
       // 正規化されたタグが既に存在するか確認
-      let toTag = await prisma.tag.findUnique({
+      const toTag = await prisma.tag.findUnique({
         where: { name: mapping.to }
       });
 

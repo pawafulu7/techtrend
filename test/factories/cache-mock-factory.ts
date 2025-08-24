@@ -169,7 +169,14 @@ export class CacheMockFactory {
         },
         
         _clearAll: () => {
-          redisClient.clear();
+          // redisClient.storeがMapの場合はclear()メソッドを使用
+          if (redisClient.store && typeof redisClient.store.clear === 'function') {
+            redisClient.store.clear();
+          }
+          // flushdbメソッドがある場合は使用
+          if (typeof redisClient.flushdb === 'function') {
+            redisClient.flushdb();
+          }
           cacheMock.resetStats();
         },
       };

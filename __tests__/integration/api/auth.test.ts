@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 
 describe('認証APIエンドポイントテスト', () => {
   const baseUrl = 'http://localhost:3000';
-  let testUserEmail = `test-${Date.now()}@example.com`;
-  let testUserPassword = 'TestPassword123!';
+  const testUserEmail = `test-${Date.now()}@example.com`;
+  const testUserPassword = 'TestPassword123!';
   let sessionCookie: string | undefined;
 
   describe('POST /api/auth/signup', () => {

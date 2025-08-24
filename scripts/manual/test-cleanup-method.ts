@@ -20,7 +20,7 @@ function cleanLocalLLMOutput(output: string): string {
   
   // ケース2: 「一覧要約:」がない場合（詳細要約から始まるパターン）
   // Need/We needで始まる行を削除
-  let cleaned = output;
+  const cleaned = output;
   const lines = cleaned.split('\n');
   const filteredLines = [];
   

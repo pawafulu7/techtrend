@@ -113,7 +113,7 @@ ${article.content || 'コンテンツなし'}
     
     // 要約をクリーンアップ
     let cleanedSummary = cleanSummary(result.summary);
-    let cleanedDetailedSummary = cleanDetailedSummary(result.detailedSummary);
+    const cleanedDetailedSummary = cleanDetailedSummary(result.detailedSummary);
     
     // 冒頭のコロンを除去（追加の確認）
     if (cleanedSummary.startsWith(':')) {

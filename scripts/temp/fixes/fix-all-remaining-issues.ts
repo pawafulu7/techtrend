@@ -222,7 +222,7 @@ URL: ${article.url}
             );
             
             let cleanedSummary = cleanSummary(result.summary);
-            let cleanedDetailedSummary = cleanDetailedSummary(result.detailedSummary);
+            const cleanedDetailedSummary = cleanDetailedSummary(result.detailedSummary);
             
             // 追加のクリーンアップ
             cleanedSummary = cleanedSummary

@@ -62,7 +62,7 @@ async function generateSummaryInteractive(article: Article & { source: Source; t
   console.error('\n※ 各項目は改行で区切ってください。入力が終わったら空行を2回入力してください。');
   
   // Claude Codeからの入力を受け取る
-  let inputLines: string[] = [];
+  const inputLines: string[] = [];
   let emptyLineCount = 0;
   
   while (true) {

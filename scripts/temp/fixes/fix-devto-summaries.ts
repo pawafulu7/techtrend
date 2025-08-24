@@ -155,7 +155,7 @@ ${article.title?.includes('AI') || article.title?.includes('LLM') || article.tit
           cleanedSummary += '。';
         }
         
-        let cleanedDetailedSummary = result.detailedSummary
+        const cleanedDetailedSummary = result.detailedSummary
           .replace(/\*\*/g, '')
           .replace(/##\s*/g, '')
           .replace(/```/g, '')

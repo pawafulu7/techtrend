@@ -205,7 +205,7 @@ ${title.includes('2025') || title.includes('2024') ? '- 最新トレンドや新
           cleanedSummary += '。';
         }
         
-        let cleanedDetailedSummary = result.detailedSummary
+        const cleanedDetailedSummary = result.detailedSummary
           .replace(/\*\*/g, '')
           .replace(/##\s*/g, '')
           .replace(/```/g, '')
