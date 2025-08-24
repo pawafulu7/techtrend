@@ -70,6 +70,11 @@ const nextConfig: NextConfig = {
         hostname: 'bcdn.docswell.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'video.docswell.com',
+        pathname: '/**',
+      },
     ],
   },
 };
