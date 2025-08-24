@@ -1,4 +1,5 @@
-import { NextAuthOptions, Adapter } from 'next-auth';
+import type { NextAuthConfig } from 'next-auth';
+import type { Adapter } from 'next-auth/adapters';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
@@ -16,7 +17,7 @@ const adapter = {
   ...RedisAdapter(redis),
 };
 
-export const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthConfig = {
   adapter: adapter as Adapter,
   
   providers: [

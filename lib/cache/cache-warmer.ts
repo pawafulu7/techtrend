@@ -167,7 +167,7 @@ export class CacheWarmer {
     
     try {
       for (const config of this.warmingConfig.trends.keys) {
-        const key = trendsCache.generateKey(config);
+        const key = `${config.days}:${config.tag || 'all'}`;
         const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
         await trendsCache.set(key, data);
       }
@@ -221,10 +221,10 @@ export class CacheWarmer {
     
     // 最後の実行時刻を記録（簡易実装）
     const lastRunKey = `lastWarm:${type}`;
-    const lastRun = (global as unknown)[lastRunKey] || 0;
+    const lastRun = (global as any)[lastRunKey] || 0;
     
     if (now - lastRun >= config.interval) {
-      (global as unknown)[lastRunKey] = now;
+      (global as any)[lastRunKey] = now;
       return true;
     }
     

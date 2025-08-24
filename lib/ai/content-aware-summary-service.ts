@@ -133,7 +133,7 @@ export class ContentAwareSummaryService extends UnifiedSummaryService {
         detailedSummary: config.fallbackMessage || '',
         tags: [],
         articleType: 'unified',
-        summaryVersion: this.getSummaryVersion() as 6,
+        summaryVersion: this.getSummaryVersion(),
         qualityScore: 0
       };
     }
@@ -150,7 +150,7 @@ export class ContentAwareSummaryService extends UnifiedSummaryService {
         return {
           ...parsed,
           articleType: 'unified',
-          summaryVersion: this.getSummaryVersion() as 6,
+          summaryVersion: this.getSummaryVersion(),
           qualityScore: checkSummaryQuality(parsed.summary, parsed.detailedSummary).score
         };
       } catch (error) {
@@ -161,7 +161,7 @@ export class ContentAwareSummaryService extends UnifiedSummaryService {
           detailedSummary: `・${content.substring(0, 150)}`,
           tags: [],
           articleType: 'unified',
-          summaryVersion: this.getSummaryVersion() as 6,
+          summaryVersion: this.getSummaryVersion(),
           qualityScore: 0
         };
       }

@@ -2,10 +2,10 @@ import { getRedisClient } from '@/lib/redis/client';
 import { CacheOptions, CacheStats, CacheKeyOptions } from './types';
 
 export class RedisCache {
-  private redis: ReturnType<typeof getRedisClient>;
-  private defaultTTL: number;
-  private namespace: string;
-  private stats: CacheStats = {
+  protected redis: ReturnType<typeof getRedisClient>;
+  protected defaultTTL: number;
+  protected namespace: string;
+  protected stats: CacheStats = {
     hits: 0,
     misses: 0,
     errors: 0,
@@ -20,7 +20,7 @@ export class RedisCache {
   /**
    * Generate a cache key with namespace
    */
-  private generateKey(key: string): string {
+  protected generateKey(key: string): string {
     return `${this.namespace}:${key}`;
   }
 

@@ -34,8 +34,8 @@ export interface Article {
   difficulty: string | null;
   createdAt: Date;
   updatedAt: Date;
-  bookmarks: number;
-  userVotes: number;
+  bookmarks: number | null;
+  userVotes: number | null;
 }
 
 export interface ArticleWithRelations extends Article {

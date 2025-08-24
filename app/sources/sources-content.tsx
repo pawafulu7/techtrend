@@ -14,10 +14,9 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Filter, SortAsc } from 'lucide-react';
-import type { SourceCategoryWithAll, SourceWithStats } from '@/types/source';
+import type { SourceCategory, SourceCategoryWithAll, SourceWithStats } from '@/types/source';
 
 type SortBy = 'articles' | 'quality' | 'frequency' | 'name';
-type SourceCategory = 'tech' | 'blog' | 'news' | 'community' | 'other';
 
 export default function SourcesContent() {
   const [allSources, setAllSources] = useState<SourceWithStats[]>([]);
@@ -112,7 +111,7 @@ export default function SourcesContent() {
     // 検索は自動的にuseEffectで処理される
   };
 
-  const getCategoryCount = (cat: SourceCategory) => {
+  const getCategoryCount = (cat: SourceCategoryWithAll) => {
     if (cat === 'all') return allSources.length;
     return allSources.filter(s => s.category === cat).length;
   };
@@ -166,22 +165,22 @@ export default function SourcesContent() {
       </div>
 
       {/* カテゴリータブ */}
-      <Tabs value={category} onValueChange={(v) => setCategory(v as SourceCategory)}>
+      <Tabs value={category} onValueChange={(v) => setCategory(v as SourceCategoryWithAll)}>
         <TabsList className="mb-6">
           <TabsTrigger value="all">
             すべて ({getCategoryCount('all')})
           </TabsTrigger>
           <TabsTrigger value="tech_blog">
-            技術ブログ ({getCategoryCount('tech_blog')})
+            技術ブログ ({getCategoryCount('tech_blog' as SourceCategory)})
           </TabsTrigger>
           <TabsTrigger value="company_blog">
-            企業ブログ ({getCategoryCount('company_blog')})
+            企業ブログ ({getCategoryCount('company_blog' as SourceCategory)})
           </TabsTrigger>
           <TabsTrigger value="personal_blog">
-            個人ブログ ({getCategoryCount('personal_blog')})
+            個人ブログ ({getCategoryCount('personal_blog' as SourceCategory)})
           </TabsTrigger>
           <TabsTrigger value="news_site">
-            ニュース ({getCategoryCount('news_site')})
+            ニュース ({getCategoryCount('news_site' as SourceCategory)})
           </TabsTrigger>
           <TabsTrigger value="community">
             コミュニティ ({getCategoryCount('community')})

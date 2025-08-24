@@ -278,7 +278,7 @@ class AnalyticsTracker {
   async getStats(dateRange: { from: Date; to: Date }) {
     if (!this.db) return null;
 
-    const stats = [];
+    const stats: ReadingStats[] = [];
     const fromStr = dateRange.from.toISOString().split('T')[0];
     const toStr = dateRange.to.toISOString().split('T')[0];
 
