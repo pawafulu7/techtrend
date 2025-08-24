@@ -207,7 +207,7 @@ export class AIService {
     }
 
     // ネットワークエラーの場合
-    if (error.message && error.message.includes('fetch')) {
+    if (error instanceof Error && error.message && error.message.includes('fetch')) {
       return true;
     }
 
@@ -225,7 +225,7 @@ export class AIService {
     }
     
     // ネットワークエラーもリトライ可能
-    if (error.message && (error.message.includes('fetch') || error.message.includes('network'))) {
+    if (error instanceof Error && error.message && (error.message.includes('fetch') || error.message.includes('network'))) {
       return true;
     }
 

@@ -77,15 +77,16 @@ export class DistributedLock {
     try {
       // Luaスクリプトで原子性を保証
       // トークンが一致する場合のみ削除
-      const script = `
-        if redis.call("get", KEYS[1]) == ARGV[1] then
-          return redis.call("del", KEYS[1])
-        else
-          return 0
-        end
-      `;
+      // スクリプトを定数として定義（安全性向上）
+      const RELEASE_SCRIPT = [
+        'if redis.call("get", KEYS[1]) == ARGV[1] then',
+        '  return redis.call("del", KEYS[1])',
+        'else',
+        '  return 0',
+        'end'
+      ].join('\n');
       
-      const result = await this.redis.eval(script, 1, lockKey, token) as number;
+      const result = await this.redis.eval(RELEASE_SCRIPT, 1, lockKey, token) as number;
       
       if (result === 1) {
         console.log(`[DistributedLock] Lock released for key: ${lockKey}`);

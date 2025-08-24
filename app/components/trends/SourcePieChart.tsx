@@ -155,7 +155,7 @@ export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
               }}
               formatter={(value, entry) => (
                 <span style={{ fontSize: 12 }}>
-                  {value} ({entry.payload.percentage}%)
+                  {value} ({entry?.payload && 'percentage' in entry.payload ? entry.payload.percentage : 0}%)
                 </span>
               )}
             />

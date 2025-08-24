@@ -12,25 +12,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from './FavoriteButton';
-
-type SourceCategory = 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
-
-interface SourceWithStats {
-  id: string;
-  name: string;
-  type: string;
-  url: string;
-  enabled: boolean;
-  category: SourceCategory;
-  stats: {
-    totalArticles: number;
-    avgQualityScore: number;
-    popularTags: string[];
-    publishFrequency: number;
-    lastPublished: Date | null;
-    growthRate: number;
-  };
-}
+import type { SourceCategory, SourceWithStats } from '@/types/source';
 
 interface SourceCardProps {
   source: SourceWithStats;

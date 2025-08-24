@@ -88,7 +88,7 @@ export default async function Home({ searchParams }: PageProps) {
   
   // Get source filter from cookie if no URL params
   let initialSourceIds: string[] | undefined = undefined;
-  if (!params.sources && !params.sourceId) {
+  if (!params.sourceId) {
     // Try filter preferences first, then fall back to old source-filter cookie
     if (filterPreferences.sources !== undefined) {
       // 空配列の場合は、全選択として扱う場合を考慮
@@ -163,7 +163,7 @@ export default async function Home({ searchParams }: PageProps) {
           <Suspense fallback={<ArticleSkeleton />}>
             {enableInfiniteScroll ? (
               <HomeClientInfinite 
-                key={`${params.sources || 'all'}-${params.sourceId || ''}-${params.tag || ''}-${params.search || ''}`}
+                key={`${params.sourceId || 'all'}-${params.tag || ''}-${params.search || ''}`}
                 viewMode={viewMode} 
                 sources={sources} 
                 tags={tags}

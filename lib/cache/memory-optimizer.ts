@@ -208,28 +208,27 @@ export class MemoryOptimizer {
    */
   private async cleanupExpiredKeys(): Promise<void> {
     try {
+      // Luaスクリプトを定数として定義（安全性向上）
+      const cleanupScript = [
+        'local cursor = "0"',
+        'local count = 0',
+        'repeat',
+        '  local result = redis.call("SCAN", cursor, "COUNT", 100)',
+        '  cursor = result[1]',
+        '  local keys = result[2]',
+        '  for i, key in ipairs(keys) do',
+        '    local ttl = redis.call("TTL", key)',
+        '    if ttl == -1 then',
+        '      redis.call("EXPIRE", key, 3600)',
+        '      count = count + 1',
+        '    end',
+        '  end',
+        'until cursor == "0"',
+        'return count'
+      ].join('\n');
+      
       // Redisの内部メカニズムで期限切れキーをクリーンアップ
-      await this.redis.eval(
-        `
-        local cursor = "0"
-        local count = 0
-        repeat
-          local result = redis.call("SCAN", cursor, "COUNT", 100)
-          cursor = result[1]
-          local keys = result[2]
-          for i, key in ipairs(keys) do
-            local ttl = redis.call("TTL", key)
-            if ttl == -1 then
-              -- TTLが設定されていないキーに1時間のTTLを設定
-              redis.call("EXPIRE", key, 3600)
-              count = count + 1
-            end
-          end
-        until cursor == "0"
-        return count
-        `,
-        0
-      );
+      await this.redis.eval(cleanupScript, 0);
       
       console.log('[MemoryOptimizer] Expired keys cleanup completed');
     } catch (error) {
@@ -242,23 +241,34 @@ export class MemoryOptimizer {
    */
   private async evictOldestKeys(count: number): Promise<void> {
     try {
-      const script = `
-        local keys = redis.call("KEYS", "*")
-        local oldestKeys = {}
-        
-        for i = 1, math.min(#keys, ${count}) do
-          table.insert(oldestKeys, keys[i])
-        end
-        
-        for i, key in ipairs(oldestKeys) do
-          redis.call("DEL", key)
-        end
-        
-        return #oldestKeys
-      `;
+      // より安全な実装：スキャンベースの削除
+      let cursor = '0';
+      let deletedCount = 0;
+      const keysToDelete: string[] = [];
       
-      const deleted = await this.redis.eval(script, 0);
-      console.log(`[MemoryOptimizer] Evicted ${deleted} oldest keys`);
+      // SCAN を使用して安全にキーを取得
+      do {
+        const result = await this.redis.scan(
+          cursor,
+          'COUNT',
+          Math.min(100, count - deletedCount)
+        );
+        cursor = result[0];
+        const keys = result[1];
+        
+        // 削除対象のキーを収集
+        for (const key of keys) {
+          if (deletedCount >= count) break;
+          keysToDelete.push(key);
+          deletedCount++;
+        }
+      } while (cursor !== '0' && deletedCount < count);
+      
+      // バッチで削除
+      if (keysToDelete.length > 0) {
+        await this.redis.del(...keysToDelete);
+        console.log(`[MemoryOptimizer] Evicted ${keysToDelete.length} oldest keys`);
+      }
     } catch (error) {
       console.error('[MemoryOptimizer] Failed to evict oldest keys:', error);
     }

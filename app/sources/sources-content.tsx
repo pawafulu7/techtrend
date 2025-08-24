@@ -14,26 +14,9 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Filter, SortAsc } from 'lucide-react';
+import type { SourceCategory, SourceWithStats } from '@/types/source';
 
-type SourceCategory = 'all' | 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
 type SortBy = 'articles' | 'quality' | 'frequency' | 'name';
-
-interface SourceWithStats {
-  id: string;
-  name: string;
-  type: string;
-  url: string;
-  enabled: boolean;
-  category: SourceCategory;
-  stats: {
-    totalArticles: number;
-    avgQualityScore: number;
-    popularTags: string[];
-    publishFrequency: number;
-    lastPublished: Date | null;
-    growthRate: number;
-  };
-}
 
 export default function SourcesContent() {
   const [allSources, setAllSources] = useState<SourceWithStats[]>([]);

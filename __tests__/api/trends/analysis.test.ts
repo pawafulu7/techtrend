@@ -4,7 +4,7 @@ import { GET } from '@/app/api/trends/analysis/route';
 // Mock dependencies
 jest.mock('@/lib/database', () => ({
   prisma: {
-    $queryRaw: jest.fn()
+    $queryRaw: jest.fn().mockResolvedValue([])
   }
 }));
 
