@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/database';
 
 // GET: 記事の既読状態を取得

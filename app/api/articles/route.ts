@@ -7,7 +7,7 @@ import { RedisCache } from '@/lib/cache';
 import type { Prisma } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
-import { auth } from '@/auth';
+import { auth } from '@/lib/auth/auth';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
