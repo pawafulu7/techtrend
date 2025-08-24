@@ -23,6 +23,7 @@ import { CorporateTechBlogFetcher } from '@/lib/fetchers/corporate-tech-blog';
 import { HuggingFaceFetcher } from '@/lib/fetchers/huggingface';
 import { GoogleAIFetcher } from '@/lib/fetchers/google-ai';
 import { InfoQJapanFetcher } from '@/lib/fetchers/infoq-japan';
+import { DocswellFetcher } from '@/lib/fetchers/docswell';
 // import { GitHubBlogFetcher } from '@/lib/fetchers/github-blog';
 // import { MicrosoftDevBlogFetcher } from '@/lib/fetchers/microsoft-dev-blog';
 import { BaseFetcher } from '@/lib/fetchers/base';
@@ -53,6 +54,7 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'Hugging Face Blog': HuggingFaceFetcher,
   'Google AI Blog': GoogleAIFetcher,
   'InfoQ Japan': InfoQJapanFetcher,
+  'Docswell': DocswellFetcher,
   // 'GitHub Blog': GitHubBlogFetcher,
   // 'Microsoft Developer Blog': MicrosoftDevBlogFetcher,
 };

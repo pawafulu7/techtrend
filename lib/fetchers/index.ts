@@ -16,6 +16,7 @@ import { CorporateTechBlogFetcher } from './corporate-tech-blog';
 import { HuggingFaceFetcher } from './huggingface';
 import { GoogleAIFetcher } from './google-ai';
 import { InfoQJapanFetcher } from './infoq-japan';
+import { DocswellFetcher } from './docswell';
 // import { GitHubBlogFetcher } from './github-blog';
 // import { MicrosoftDevBlogFetcher } from './microsoft-dev-blog';
 
@@ -53,6 +54,8 @@ export function createFetcher(source: Source): BaseFetcher {
       return new GoogleAIFetcher(source);
     case 'InfoQ Japan':
       return new InfoQJapanFetcher(source);
+    case 'Docswell':
+      return new DocswellFetcher(source);
     // case 'GitHub Blog':
     //   return new GitHubBlogFetcher(source);
     // case 'Microsoft Developer Blog':
@@ -79,7 +82,8 @@ export {
   CorporateTechBlogFetcher,
   HuggingFaceFetcher,
   GoogleAIFetcher,
-  InfoQJapanFetcher
+  InfoQJapanFetcher,
+  DocswellFetcher
   // GitHubBlogFetcher,
   // MicrosoftDevBlogFetcher
 };

@@ -116,3 +116,5 @@ __tests__/e2e/**/*-diff/
 __tests__/e2e/**/*-actual/
 # 保持: .env.test はテスト設定として共有
 *.txt
+
+toolbox

@@ -228,6 +228,64 @@ mcp__serena__think_about_whether_you_are_done
 - Docker環境: `docker-compose -f docker-compose.dev.yml up -d`
 - 接続情報: postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev
 
+### MCP経由での接続（推奨）
+
+**2025年8月よりMCP（Model Context Protocol）経由でのPostgreSQL接続が利用可能になりました。**
+
+#### 使用可能なMCPツール
+
+1. **mcp__postgres__list_tables**
+   - テーブル一覧の取得
+   - 詳細スキーマ情報の確認
+   ```
+   # 全テーブル一覧（シンプル）
+   mcp__postgres__list_tables(output_format="simple")
+   
+   # 特定テーブルの詳細情報
+   mcp__postgres__list_tables(table_names="Article,Tag", output_format="detailed")
+   ```
+
+2. **mcp__postgres__execute_sql**
+   - SQLクエリの実行
+   ```
+   # 記事数確認
+   mcp__postgres__execute_sql(sql='SELECT COUNT(*) FROM "Article"')
+   
+   # 最新記事取得
+   mcp__postgres__execute_sql(sql='SELECT title, "createdAt" FROM "Article" ORDER BY "createdAt" DESC LIMIT 5')
+   ```
+
+#### 使用例
+
+```
+# テーブル一覧確認
+mcp__postgres__list_tables()
+
+# 記事統計確認
+mcp__postgres__execute_sql(sql='
+  SELECT 
+    COUNT(*) as total_articles,
+    COUNT(DISTINCT "sourceId") as sources,
+    MIN("createdAt") as oldest,
+    MAX("createdAt") as newest
+  FROM "Article"
+')
+
+# タグ統計確認
+mcp__postgres__execute_sql(sql='
+  SELECT name, COUNT(*) as count 
+  FROM "Tag" t
+  JOIN "_ArticleToTag" at ON t.id = at."B"
+  GROUP BY name
+  ORDER BY count DESC
+  LIMIT 10
+')
+```
+
+### CLI経由での接続（レガシー）
+
+MCP接続が利用できない場合のみ使用：
+
 ```bash
 # PostgreSQL接続（Docker経由）
 docker exec -it techtrend-postgres psql -U postgres -d techtrend_dev
