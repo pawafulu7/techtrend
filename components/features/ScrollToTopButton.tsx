@@ -4,9 +4,17 @@ import { useEffect, useState, useCallback } from 'react';
 import { ChevronUp } from 'lucide-react';
 
 export function ScrollToTopButton() {
-  const [isVisible, setIsVisible] = useState(false);
+  // テスト用：常に表示する（trueに変更）
+  const [isVisible, setIsVisible] = useState(true);
 
-  // スクロール位置を監視（main要素をターゲットに変更）
+  // デバッグ：コンポーネントがマウントされたことを確認
+  useEffect(() => {
+    console.log('ScrollToTopButton: Component mounted!');
+    console.log('ScrollToTopButton: isVisible =', isVisible);
+  }, [isVisible]);
+
+  // スクロール位置を監視（一旦コメントアウト）
+  /*
   useEffect(() => {
     const toggleVisibility = () => {
       // main要素を取得
@@ -37,15 +45,20 @@ export function ScrollToTopButton() {
       };
     }
   }, []);
+  */
 
   // トップへスクロール（main要素をスクロール）
   const scrollToTop = useCallback(() => {
+    console.log('ScrollToTopButton: Clicked!');
     const mainElement = document.querySelector('main');
     if (mainElement) {
+      console.log('ScrollToTopButton: Scrolling main element to top');
       mainElement.scrollTo({
         top: 0,
         behavior: 'smooth'
       });
+    } else {
+      console.log('ScrollToTopButton: main element not found');
     }
   }, []);
 
@@ -62,10 +75,13 @@ export function ScrollToTopButton() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [scrollToTop]);
 
-  // ボタンが非表示の時はレンダリングしない
-  if (!isVisible) {
-    return null;
-  }
+  // 常に表示（テスト用）
+  console.log('ScrollToTopButton: Rendering button');
+  
+  // ボタンが非表示の時はレンダリングしない（テスト中はコメントアウト）
+  // if (!isVisible) {
+  //   return null;
+  // }
   
   return (
     <button
