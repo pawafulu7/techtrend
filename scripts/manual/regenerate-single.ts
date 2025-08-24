@@ -35,7 +35,7 @@ async function generateUnifiedSummary(title: string, content: string) {
     else if (trimmed.startsWith('詳細要約:')) isDetailed = true;
     else if (trimmed.startsWith('タグ:')) {
       isDetailed = false;
-      tags = trimmed.replace('タグ:', '').trim().split(',').map(t => t.trim()).filter(t => t);
+      tags = trimmed.replace('タグ:', '').trim().split(',').map((t: string) => t.trim()).filter((t: string) => t);
     }
     else if (isDetailed && trimmed.startsWith('・')) detailedSummary += (detailedSummary ? '\n' : '') + trimmed;
   }

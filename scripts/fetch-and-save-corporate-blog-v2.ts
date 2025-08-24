@@ -77,7 +77,7 @@ async function fetchAndSaveCorporateBlog() {
         
         // タグを作成または取得
         const tags = await Promise.all(
-          article.tagNames.map(async (tagName) => {
+          article.tagNames.map(async (tagName: string) => {
             return prisma.tag.upsert({
               where: { name: tagName },
               update: {},
@@ -98,7 +98,7 @@ async function fetchAndSaveCorporateBlog() {
             sourceId: article.sourceId,
             author: article.author || null,
             tags: {
-              connect: tags.map(tag => ({ id: tag.id }))
+              connect: tags.map((tag: any) => ({ id: tag.id }))
             }
           },
           include: {
