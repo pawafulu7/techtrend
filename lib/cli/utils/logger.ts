@@ -46,20 +46,25 @@ export const logger = {
   info: (msg: string) => {
     if (shouldLog(LogLevel.INFO)) {
       const timestamp = getTimestamp();
+      console.error(`ℹ️  ${timestamp}${msg}`);
     }
   },
   
   success: (msg: string) => {
     if (shouldLog(LogLevel.INFO)) {
       const timestamp = getTimestamp();
+      console.error(`✅ ${timestamp}${msg}`);
     }
   },
   
   error: (msg: string, error?: unknown) => {
     if (shouldLog(LogLevel.ERROR)) {
       const timestamp = getTimestamp();
+      console.error(`❌ ${timestamp}${msg}`);
       if (error instanceof Error) {
+        console.error(`   ${error.message}`);
         if (config.isDevelopment && error.stack) {
+          console.error(error.stack);
         }
       }
     }
@@ -68,12 +73,14 @@ export const logger = {
   warn: (msg: string) => {
     if (shouldLog(LogLevel.WARN)) {
       const timestamp = getTimestamp();
+      console.warn(`⚠️  ${timestamp}${msg}`);
     }
   },
   
   debug: (msg: string) => {
     if (shouldLog(LogLevel.DEBUG)) {
       const timestamp = getTimestamp();
+      console.error(`🔍 ${timestamp}${msg}`);
     }
   },
 

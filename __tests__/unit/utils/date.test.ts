@@ -69,12 +69,11 @@ describe('date utils', () => {
   });
 
   describe('parseRSSDate', () => {
-    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+    // console文削除に伴い、モック設定も削除
 
     beforeEach(() => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2025-01-15T12:00:00.000Z'));
-      consoleSpy.mockClear();
     });
 
     afterEach(() => {
@@ -84,38 +83,38 @@ describe('date utils', () => {
     it('should parse valid ISO date string', () => {
       const date = parseRSSDate('2025-01-15T10:00:00.000Z');
       expect(date).toEqual(new Date('2025-01-15T10:00:00.000Z'));
-      expect(consoleSpy).not.toHaveBeenCalled();
+      // console.warnテストは削除: expect(consoleSpy).not.toHaveBeenCalled();
     });
 
     it('should parse RFC 2822 date format', () => {
       const date = parseRSSDate('Wed, 15 Jan 2025 10:00:00 GMT');
       expect(date).toEqual(new Date('2025-01-15T10:00:00.000Z'));
-      expect(consoleSpy).not.toHaveBeenCalled();
+      // console.warnテストは削除: expect(consoleSpy).not.toHaveBeenCalled();
     });
 
     it('should parse simple date format', () => {
       const date = parseRSSDate('2025-01-15');
       expect(date.toISOString().startsWith('2025-01-15')).toBe(true);
-      expect(consoleSpy).not.toHaveBeenCalled();
+      // console.warnテストは削除: expect(consoleSpy).not.toHaveBeenCalled();
     });
 
     it('should return current date for invalid date string', () => {
       const date = parseRSSDate('invalid date');
       expect(date).toEqual(new Date('2025-01-15T12:00:00.000Z'));
-      expect(consoleSpy).toHaveBeenCalledWith('Invalid date format: invalid date');
+      // console.warnテストは削除: expect(consoleSpy).toHaveBeenCalledWith('Invalid date format: invalid date');
     });
 
     it('should return current date for empty string', () => {
       const date = parseRSSDate('');
       expect(date).toEqual(new Date('2025-01-15T12:00:00.000Z'));
-      expect(consoleSpy).toHaveBeenCalledWith('Invalid date format: ');
+      // console.warnテストは削除: expect(consoleSpy).toHaveBeenCalledWith('Invalid date format: ');
     });
 
     it('should return current date for future date (more than 1 year)', () => {
       const futureDate = '2027-01-15T10:00:00.000Z';
       const date = parseRSSDate(futureDate);
       expect(date).toEqual(new Date('2025-01-15T12:00:00.000Z'));
-      expect(consoleSpy).toHaveBeenCalledWith(
+      // console.warnテストは削除: expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('Future date detected')
       );
     });
@@ -124,14 +123,14 @@ describe('date utils', () => {
       const nearFutureDate = '2025-12-31T10:00:00.000Z';
       const date = parseRSSDate(nearFutureDate);
       expect(date).toEqual(new Date('2025-12-31T10:00:00.000Z'));
-      expect(consoleSpy).not.toHaveBeenCalled();
+      // console.warnテストは削除: expect(consoleSpy).not.toHaveBeenCalled();
     });
 
     it('should return current date for abnormally large timestamp', () => {
       const largeTimestamp = '99999999999999';
       const date = parseRSSDate(largeTimestamp);
       expect(date).toEqual(new Date('2025-01-15T12:00:00.000Z'));
-      expect(consoleSpy).toHaveBeenCalledWith(
+      // console.warnテストは削除: expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('Invalid date format')
       );
     });
@@ -140,7 +139,7 @@ describe('date utils', () => {
       const normalTimestamp = '1736942400000'; // Will be treated as invalid
       const date = parseRSSDate(normalTimestamp);
       expect(date).toEqual(new Date('2025-01-15T12:00:00.000Z'));
-      expect(consoleSpy).toHaveBeenCalledWith(
+      // console.warnテストは削除: expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('Invalid date format')
       );
     });
@@ -149,7 +148,7 @@ describe('date utils', () => {
       const isoDate = '2025-01-15T10:00:00.123Z';
       const date = parseRSSDate(isoDate);
       expect(date).toEqual(new Date('2025-01-15T10:00:00.123Z'));
-      expect(consoleSpy).not.toHaveBeenCalled();
+      // console.warnテストは削除: expect(consoleSpy).not.toHaveBeenCalled();
     });
 
     it('should handle various date formats', () => {
