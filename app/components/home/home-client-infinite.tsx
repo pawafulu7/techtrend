@@ -11,6 +11,7 @@ import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { RecommendationSectionInline } from '@/components/recommendation/recommendation-section-inline';
 import { MarkAllReadWrapper } from '@/app/components/common/mark-all-read-wrapper';
+import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
 
 interface HomeClientInfiniteProps {
   viewMode: 'card' | 'list';
@@ -95,7 +96,13 @@ export function HomeClientInfinite({
   const totalCount = data?.pages[0]?.data.total || 0;
 
   // スクロール位置復元フックを使用（記事詳細から戻った時のみ有効）
-  const { saveScrollPosition, isRestoring } = useScrollRestoration(
+  const { 
+    saveScrollPosition, 
+    isRestoring,
+    currentPage,
+    targetPages,
+    cancelRestoration
+  } = useScrollRestoration(
     allArticles.length,
     data?.pages.length || 0,
     filters,
@@ -122,7 +129,16 @@ export function HomeClientInfinite({
   return (
     <>
       {/* 記事リスト */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 relative">
+        {/* スクロール位置復元中のローディング表示 */}
+        {isRestoring && (
+          <ScrollRestorationLoading
+            currentPage={currentPage}
+            targetPages={targetPages}
+            onCancel={cancelRestoration}
+          />
+        )}
+        
         {/* 推薦セクション（インライン） */}
         <RecommendationSectionInline />
         
