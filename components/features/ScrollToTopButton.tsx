@@ -101,6 +101,29 @@ export function ScrollToTopButton() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [scrollToTop]);
 
+  // スクロール復元イベントをリッスン
+  useEffect(() => {
+    const handleScrollRestored = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { restored, cancelled } = customEvent.detail;
+      
+      if (restored && !cancelled) {
+        // スクロール復元が完了したら、現在のスクロール位置を再チェック
+        const scrollableElement = document.getElementById('main-scroll-container') || 
+                                 document.querySelector('.overflow-y-auto');
+        if (scrollableElement) {
+          const currentScrollY = scrollableElement.scrollTop;
+          setIsVisible(currentScrollY > 300);
+        }
+      }
+    };
+    
+    window.addEventListener('scrollRestored', handleScrollRestored);
+    return () => {
+      window.removeEventListener('scrollRestored', handleScrollRestored);
+    };
+  }, []);
+
   // ボタンが非表示の時はレンダリングしない
   if (!isVisible) {
     return null;

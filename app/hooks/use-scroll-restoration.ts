@@ -126,6 +126,15 @@ export function useScrollRestoration(
       currentPage: 0,
       targetPages: 0
     });
+    
+    // スクロール復元キャンセルイベントを発火
+    window.dispatchEvent(new CustomEvent('scrollRestored', {
+      detail: {
+        scrollY: 0,
+        restored: false,
+        cancelled: true
+      }
+    }));
   }, [cleanupReturningParam]);
 
   // 復元チェック
@@ -221,6 +230,15 @@ export function useScrollRestoration(
           
           // URLから'returning'パラメータを削除
           cleanupReturningParam();
+          
+          // スクロール復元完了イベントを発火（即座に復元の場合）
+          window.dispatchEvent(new CustomEvent('scrollRestored', {
+            detail: {
+              scrollY: scrollTarget,
+              restored: true,
+              cancelled: false
+            }
+          }));
         }, 200); // 待機時間を短縮
       }
     } catch (e) {
@@ -303,6 +321,15 @@ export function useScrollRestoration(
           
           // URLから'returning'パラメータを削除
           cleanupReturningParam();
+          
+          // スクロール復元完了イベントを発火
+          window.dispatchEvent(new CustomEvent('scrollRestored', {
+            detail: {
+              scrollY: scrollTarget,
+              restored: true,
+              cancelled: false
+            }
+          }));
         }, 200); // 待機時間を短縮 // レンダリング完了を確実に待つ
       } else if (hasNextPage && !isFetchingNextPage) {
         // まだページが不足している場合は追加読み込み
