@@ -101,7 +101,7 @@ export const createTestArticle = (overrides: Partial<Article> = {}): Article => 
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  };
+  } as Article;
 };
 
 /**

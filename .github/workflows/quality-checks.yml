@@ -1,0 +1,293 @@
+name: Quality Checks
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+  POSTGRES_VERSION: '15'
+
+jobs:
+  # TypeScript type checking
+  type-check:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run TypeScript compiler
+        run: npx tsc --noEmit
+      
+      - name: Count TypeScript errors
+        id: ts-errors
+        run: |
+          ERROR_COUNT=$(npx tsc --noEmit 2>&1 | grep "error TS" | wc -l || true)
+          echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
+          if [ $ERROR_COUNT -gt 566 ]; then
+            echo "❌ TypeScript errors increased! Current: $ERROR_COUNT, Threshold: 566"
+            exit 1
+          else
+            echo "✅ TypeScript errors: $ERROR_COUNT (threshold: 566)"
+          fi
+
+  # ESLint checking
+  lint:
+    name: ESLint Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint -- --max-warnings 495
+      
+      - name: Check for console statements
+        run: |
+          CONSOLE_COUNT=$(grep -r "console\." --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=__tests__ --exclude-dir=scripts | wc -l)
+          if [ $CONSOLE_COUNT -gt 10 ]; then
+            echo "❌ Too many console statements found: $CONSOLE_COUNT"
+            exit 1
+          else
+            echo "✅ Console statements: $CONSOLE_COUNT (threshold: 10)"
+          fi
+
+  # Test suite
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:${{ env.POSTGRES_VERSION }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: techtrend_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Setup test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed
+      
+      - name: Run tests with coverage
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
+          NODE_ENV: test
+        run: npm run test:coverage
+      
+      - name: Check test coverage
+        id: coverage
+        run: |
+          COVERAGE=$(grep -A 1 "All files" coverage/coverage-summary.json | grep -oP '"pct":\K[0-9.]+' | head -1)
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          if (( $(echo "$COVERAGE < 20.4" | bc -l) )); then
+            echo "❌ Test coverage decreased! Current: $COVERAGE%, Minimum: 20.4%"
+            exit 1
+          else
+            echo "✅ Test coverage: $COVERAGE% (minimum: 20.4%)"
+          fi
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+
+  # Security audit
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+      
+      - name: Check for sensitive data
+        run: |
+          # Check for API keys or secrets in code
+          if grep -r "GEMINI_API_KEY\|OPENAI_API_KEY\|NEXTAUTH_SECRET" \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            --exclude-dir=node_modules --exclude-dir=.next \
+            --exclude="*.test.*" --exclude="*.spec.*" --exclude=".env*"; then
+            echo "❌ Potential secrets found in code!"
+            exit 1
+          else
+            echo "✅ No secrets found in code"
+          fi
+
+  # Build check
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          NEXTAUTH_SECRET: build-secret-key-for-testing-purposes-only-32chars
+        run: npm run build
+      
+      - name: Check build size
+        run: |
+          BUILD_SIZE=$(du -sb .next | cut -f1)
+          MAX_SIZE=$((100 * 1024 * 1024)) # 100MB
+          if [ $BUILD_SIZE -gt $MAX_SIZE ]; then
+            echo "❌ Build size too large: $(($BUILD_SIZE / 1024 / 1024))MB (max: 100MB)"
+            exit 1
+          else
+            echo "✅ Build size: $(($BUILD_SIZE / 1024 / 1024))MB"
+          fi
+
+  # E2E tests (optional, runs only on main branch)
+  e2e:
+    name: E2E Tests
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+      
+      - name: Run E2E tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
+        run: npm run test:e2e:chromium
+
+  # Quality gate summary
+  quality-gate:
+    name: Quality Gate
+    needs: [type-check, lint, test, security, build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check quality gate status
+        run: |
+          echo "## Quality Gate Summary"
+          echo ""
+          if [ "${{ needs.type-check.result }}" == "success" ]; then
+            echo "✅ TypeScript: Passed"
+          else
+            echo "❌ TypeScript: Failed"
+          fi
+          
+          if [ "${{ needs.lint.result }}" == "success" ]; then
+            echo "✅ ESLint: Passed"
+          else
+            echo "❌ ESLint: Failed"
+          fi
+          
+          if [ "${{ needs.test.result }}" == "success" ]; then
+            echo "✅ Tests: Passed"
+          else
+            echo "❌ Tests: Failed"
+          fi
+          
+          if [ "${{ needs.security.result }}" == "success" ]; then
+            echo "✅ Security: Passed"
+          else
+            echo "❌ Security: Failed"
+          fi
+          
+          if [ "${{ needs.build.result }}" == "success" ]; then
+            echo "✅ Build: Passed"
+          else
+            echo "❌ Build: Failed"
+          fi
+          
+          # Fail if any check failed
+          if [ "${{ needs.type-check.result }}" != "success" ] || \
+             [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.security.result }}" != "success" ] || \
+             [ "${{ needs.build.result }}" != "success" ]; then
+            echo ""
+            echo "❌ Quality gate failed!"
+            exit 1
+          else
+            echo ""
+            echo "✅ Quality gate passed!"
+          fi
