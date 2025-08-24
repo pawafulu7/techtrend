@@ -1,5 +1,6 @@
 // next-auth/react モック
 import { jest } from '@jest/globals';
+import React from 'react';
 
 export interface Session {
   user?: {
@@ -25,29 +26,46 @@ export const useSession = jest.fn<() => SessionContextValue>(() => ({
 }));
 
 // signIn モック
-export const signIn = jest.fn().mockResolvedValue({ 
+export const signIn = jest.fn<Promise<{ ok: boolean; error: undefined; status: number; url: null }>, []>().mockResolvedValue({ 
   ok: true,
   error: undefined,
   status: 200,
   url: null 
-}) as jest.Mock;
+});
 
 // signOut モック
-export const signOut = jest.fn().mockResolvedValue({ 
+export const signOut = jest.fn<Promise<{ url: string }>, []>().mockResolvedValue({ 
   url: '/' 
-}) as jest.Mock;
+});
 
 // SessionProvider モック
-export const SessionProvider = ({ children }: { children: React.ReactNode }) => children;
+export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => children;
 
 // getServerSession モック（サーバーサイド用）
-export const getServerSession = jest.fn().mockResolvedValue(null);
+export const getServerSession = jest.fn<Promise<null>, []>().mockResolvedValue(null);
 
 // getCsrfToken モック
-export const getCsrfToken = jest.fn().mockResolvedValue('mock-csrf-token');
+export const getCsrfToken = jest.fn<Promise<string>, []>().mockResolvedValue('mock-csrf-token');
 
 // getProviders モック
-export const getProviders = jest.fn().mockResolvedValue({
+type ProvidersType = {
+  google: {
+    id: string;
+    name: string;
+    type: string;
+    signinUrl: string;
+    callbackUrl: string;
+  };
+  github: {
+    id: string;
+    name: string;
+    type: string;
+    signinUrl: string;
+    callbackUrl: string;
+  };
+};
+
+export const getProviders = jest.fn<Promise<ProvidersType>, []>().mockResolvedValue({
   google: {
     id: 'google',
     name: 'Google',
@@ -62,7 +80,7 @@ export const getProviders = jest.fn().mockResolvedValue({
     signinUrl: '/api/auth/signin/github',
     callbackUrl: '/api/auth/callback/github',
   },
-}) as jest.Mock;
+});
 
 // getSession モック
-export const getSession = jest.fn().mockResolvedValue(null) as jest.Mock;
+export const getSession = jest.fn<Promise<null>, []>().mockResolvedValue(null);

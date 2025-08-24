@@ -3,23 +3,23 @@ import { jest } from '@jest/globals';
 
 // Mock types
 type MockAuth = () => {
-  auth: jest.Mock;
-  signIn: jest.Mock;
-  signOut: jest.Mock;
+  auth: jest.Mock<Promise<null>, []>;
+  signIn: jest.Mock<Promise<{ success: boolean }>, []>;
+  signOut: jest.Mock<Promise<{ success: boolean }>, []>;
   handlers: {
-    GET: jest.Mock;
-    POST: jest.Mock;
+    GET: jest.Mock<void, []>;
+    POST: jest.Mock<void, []>;
   };
 };
 
 // NextAuth メインエクスポート
 const mockNextAuth: MockAuth = jest.fn(() => ({
-  auth: jest.fn().mockResolvedValue(null) as jest.Mock,
-  signIn: jest.fn().mockResolvedValue({ success: true }) as jest.Mock,
-  signOut: jest.fn().mockResolvedValue({ success: true }) as jest.Mock,
+  auth: jest.fn<Promise<null>, []>().mockResolvedValue(null),
+  signIn: jest.fn<Promise<{ success: boolean }>, []>().mockResolvedValue({ success: true }),
+  signOut: jest.fn<Promise<{ success: boolean }>, []>().mockResolvedValue({ success: true }),
   handlers: {
-    GET: jest.fn() as jest.Mock,
-    POST: jest.fn() as jest.Mock,
+    GET: jest.fn<void, []>(),
+    POST: jest.fn<void, []>(),
   },
 })) as unknown as MockAuth;
 
@@ -49,14 +49,14 @@ export const AuthOptions: NextAuthOptions = {
 };
 
 // getServerSession モック
-export const getServerSession = jest.fn().mockResolvedValue(null) as jest.Mock;
+export const getServerSession = jest.fn<Promise<null>, []>().mockResolvedValue(null);
 
 // JWT関連
-export const encode = jest.fn().mockResolvedValue('mock-jwt-token') as jest.Mock;
-export const decode = jest.fn().mockResolvedValue({ 
+export const encode = jest.fn<Promise<string>, []>().mockResolvedValue('mock-jwt-token');
+export const decode = jest.fn<Promise<{ sub: string; email: string }>, []>().mockResolvedValue({ 
   sub: 'user-id',
   email: 'test@example.com' 
-}) as jest.Mock;
+});
 
 // アダプター関連のモック
 export const PrismaAdapter = jest.fn(() => ({
