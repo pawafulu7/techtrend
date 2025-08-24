@@ -1,16 +1,29 @@
 // next-auth コアモック
 import { jest } from '@jest/globals';
 
-// NextAuth メインエクスポート
-export default jest.fn(() => ({
-  auth: jest.fn().mockResolvedValue(null),
-  signIn: jest.fn().mockResolvedValue({ success: true }),
-  signOut: jest.fn().mockResolvedValue({ success: true }),
+// Mock types
+type MockAuth = () => {
+  auth: jest.Mock<Promise<null>, []>;
+  signIn: jest.Mock<Promise<{ success: boolean }>, []>;
+  signOut: jest.Mock<Promise<{ success: boolean }>, []>;
   handlers: {
-    GET: jest.fn(),
-    POST: jest.fn(),
+    GET: jest.Mock<void, []>;
+    POST: jest.Mock<void, []>;
+  };
+};
+
+// NextAuth メインエクスポート
+const mockNextAuth: MockAuth = jest.fn(() => ({
+  auth: jest.fn<Promise<null>, []>().mockResolvedValue(null),
+  signIn: jest.fn<Promise<{ success: boolean }>, []>().mockResolvedValue({ success: true }),
+  signOut: jest.fn<Promise<{ success: boolean }>, []>().mockResolvedValue({ success: true }),
+  handlers: {
+    GET: jest.fn<void, []>(),
+    POST: jest.fn<void, []>(),
   },
-}));
+})) as unknown as MockAuth;
+
+export default mockNextAuth;
 
 // NextAuthOptions タイプ
 export interface NextAuthOptions {
@@ -36,11 +49,11 @@ export const AuthOptions: NextAuthOptions = {
 };
 
 // getServerSession モック
-export const getServerSession = jest.fn().mockResolvedValue(null);
+export const getServerSession = jest.fn<Promise<null>, []>().mockResolvedValue(null);
 
 // JWT関連
-export const encode = jest.fn().mockResolvedValue('mock-jwt-token');
-export const decode = jest.fn().mockResolvedValue({ 
+export const encode = jest.fn<Promise<string>, []>().mockResolvedValue('mock-jwt-token');
+export const decode = jest.fn<Promise<{ sub: string; email: string }>, []>().mockResolvedValue({ 
   sub: 'user-id',
   email: 'test@example.com' 
 });

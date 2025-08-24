@@ -8,6 +8,7 @@
 import { PrismaClient } from '@prisma/client';
 import { calculateSummaryScore, calculateAverageScore, needsRegeneration } from '@/lib/utils/quality-scorer';
 import { parseArgs } from 'util';
+import type { ArticleWhereClause } from '../../types/database';
 
 const prisma = new PrismaClient();
 
@@ -111,7 +112,7 @@ async function checkQuality(options: QualityCheckOptions) {
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  const whereClause: any = {
+  const whereClause: ArticleWhereClause = {
     publishedAt: { gte: since },
     summary: { not: null },
   };
