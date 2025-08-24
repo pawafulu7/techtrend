@@ -1,36 +1,65 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { ChevronUp } from 'lucide-react';
 
 export function ScrollToTopButton() {
   const [isVisible, setIsVisible] = useState(false);
   const [isRestoringScroll, setIsRestoringScroll] = useState(false);
+  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // スクロール復元状態を監視
   useEffect(() => {
     // sessionStorageにスクロール復元データがあるかチェック
     const checkRestoration = () => {
       const restorationData = sessionStorage.getItem('articleListScroll');
-      setIsRestoringScroll(!!restorationData);
+      const wasRestoring = isRestoringScroll;
+      const nowRestoring = !!restorationData;
+      
+      setIsRestoringScroll(nowRestoring);
+      
+      // 復元が完了した場合、スクロール位置を再チェック
+      if (wasRestoring && !nowRestoring) {
+        const scrollableElement = document.querySelector('.overflow-y-auto');
+        if (scrollableElement) {
+          const scrollY = scrollableElement.scrollTop;
+          setIsVisible(scrollY > 300);
+        }
+        // チェックを停止
+        if (checkIntervalRef.current) {
+          clearInterval(checkIntervalRef.current);
+          checkIntervalRef.current = null;
+        }
+      }
     };
     
     checkRestoration();
     
     // 定期的にチェック（復元処理が終わるまで）
-    const intervalId = setInterval(checkRestoration, 500);
+    checkIntervalRef.current = setInterval(checkRestoration, 500);
     
     // 5秒後には必ず有効化（フェイルセーフ）
     const timeoutId = setTimeout(() => {
       setIsRestoringScroll(false);
-      clearInterval(intervalId);
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+        checkIntervalRef.current = null;
+      }
+      // タイムアウト後もスクロール位置をチェック
+      const scrollableElement = document.querySelector('.overflow-y-auto');
+      if (scrollableElement) {
+        const scrollY = scrollableElement.scrollTop;
+        setIsVisible(scrollY > 300);
+      }
     }, 5000);
     
     return () => {
-      clearInterval(intervalId);
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+      }
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [isRestoringScroll]);
 
   // スクロール位置を監視
   useEffect(() => {
