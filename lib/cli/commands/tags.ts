@@ -39,6 +39,7 @@ tagsCommand
       
       
       for (const tag of tags) {
+        logger.info(
           tag.name.padEnd(30) +
           (tag.category || '-').padEnd(20) +
           tag._count.articles.toLocaleString()

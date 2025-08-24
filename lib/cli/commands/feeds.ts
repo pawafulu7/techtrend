@@ -76,6 +76,7 @@ feedsCommand
       
       for (const source of sources) {
         const status = source.enabled ? '✅ 有効' : '❌ 無効';
+        logger.info(
           source.name.padEnd(25) +
           source.type.padEnd(15) +
           source._count.articles.toLocaleString().padEnd(10) +
