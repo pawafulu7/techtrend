@@ -39,21 +39,21 @@ function saveProgress(progress: ProgressData) {
 }
 
 async function fixShortSummariesFlexible() {
-  console.log('📝 短い要約を適切な長さに修正します（柔軟版）\n');
-  console.log('=' .repeat(60));
-  console.log('📋 方針: 80-200文字の範囲で情報量を重視した要約生成');
-  console.log('✅ 情報の充実度を優先し、無理な短縮は行いません\n');
+  console.error('📝 短い要約を適切な長さに修正します（柔軟版）\n');
+  console.error('=' .repeat(60));
+  console.error('📋 方針: 80-200文字の範囲で情報量を重視した要約生成');
+  console.error('✅ 情報の充実度を優先し、無理な短縮は行いません\n');
   
   // 進捗の読み込み
   const progress = loadProgress();
   
   if (progress.processedIds.length > 0) {
-    console.log(`📊 前回の進捗を検出:`);
-    console.log(`  処理済み: ${progress.processedIds.length}件`);
-    console.log(`  成功: ${progress.successCount}件`);
-    console.log(`  エラー: ${progress.errorCount}件`);
-    console.log(`  スキップ: ${progress.skipCount}件`);
-    console.log(`  最終処理: ${progress.lastProcessedAt}\n`);
+    console.error(`📊 前回の進捗を検出:`);
+    console.error(`  処理済み: ${progress.processedIds.length}件`);
+    console.error(`  成功: ${progress.successCount}件`);
+    console.error(`  エラー: ${progress.errorCount}件`);
+    console.error(`  スキップ: ${progress.skipCount}件`);
+    console.error(`  最終処理: ${progress.lastProcessedAt}\n`);
     
     const readline = require('readline');
     const rl = readline.createInterface({
@@ -67,7 +67,7 @@ async function fixShortSummariesFlexible() {
     rl.close();
     
     if (answer.toLowerCase() !== 'y') {
-      console.log('新規に処理を開始します。');
+      console.error('新規に処理を開始します。');
       progress.processedIds = [];
       progress.successCount = 0;
       progress.errorCount = 0;
@@ -117,9 +117,9 @@ async function fixShortSummariesFlexible() {
       return a.summary.length < 80;
     });
     
-    console.log(`対象記事数: ${articlesToProcess.length}件`);
-    console.log(`バッチサイズ: ${BATCH_SIZE}件`);
-    console.log(`推定処理時間: ${Math.ceil(articlesToProcess.length * API_DELAY / 1000 / 60)}分\n`);
+    console.error(`対象記事数: ${articlesToProcess.length}件`);
+    console.error(`バッチサイズ: ${BATCH_SIZE}件`);
+    console.error(`推定処理時間: ${Math.ceil(articlesToProcess.length * API_DELAY / 1000 / 60)}分\n`);
     
     // 結果記録用
     const results: any[] = [];
@@ -133,8 +133,8 @@ async function fixShortSummariesFlexible() {
       const batchEnd = Math.min(batchStart + BATCH_SIZE, articlesToProcess.length);
       const batchArticles = articlesToProcess.slice(batchStart, batchEnd);
       
-      console.log(`\n📦 バッチ ${batchNum + 1}/${totalBatches} (${batchArticles.length}件)`);
-      console.log('=' .repeat(40));
+      console.error(`\n📦 バッチ ${batchNum + 1}/${totalBatches} (${batchArticles.length}件)`);
+      console.error('=' .repeat(40));
       
       for (let i = 0; i < batchArticles.length; i++) {
         const article = batchArticles[i];
@@ -144,18 +144,18 @@ async function fixShortSummariesFlexible() {
         if (globalIndex % 10 === 0) {
           const elapsed = Math.floor((Date.now() - startTime) / 1000);
           const rate = progress.successCount / (elapsed / 60) || 0;
-          console.log(`\n📊 全体進捗: ${globalIndex}/${articlesToProcess.length} (${Math.round(globalIndex/articlesToProcess.length*100)}%)`);
-          console.log(`✅ 成功: ${progress.successCount}, ⏭️ スキップ: ${progress.skipCount}, ❌ エラー: ${progress.errorCount}`);
-          console.log(`⏱️ 経過: ${Math.floor(elapsed/60)}分${elapsed%60}秒`);
-          console.log(`🚀 処理速度: ${rate.toFixed(1)}件/分\n`);
+          console.error(`\n📊 全体進捗: ${globalIndex}/${articlesToProcess.length} (${Math.round(globalIndex/articlesToProcess.length*100)}%)`);
+          console.error(`✅ 成功: ${progress.successCount}, ⏭️ スキップ: ${progress.skipCount}, ❌ エラー: ${progress.errorCount}`);
+          console.error(`⏱️ 経過: ${Math.floor(elapsed/60)}分${elapsed%60}秒`);
+          console.error(`🚀 処理速度: ${rate.toFixed(1)}件/分\n`);
         }
         
-        console.log(`[${globalIndex}/${articlesToProcess.length}] ${article.id}`);
+        console.error(`[${globalIndex}/${articlesToProcess.length}] ${article.id}`);
         
         try {
           // 特定の短い要約はスキップ（技術用語のみなど適切なもの）
           if (article.summary && shouldSkipSummary(article.summary, article.title || '')) {
-            console.log(`  ⏭️ スキップ: 適切な短い要約`);
+            console.error(`  ⏭️ スキップ: 適切な短い要約`);
             progress.skipCount++;
             progress.processedIds.push(article.id);
             results.push({
@@ -205,7 +205,7 @@ async function fixShortSummariesFlexible() {
           
           // 200文字を超える場合のみ警告（エラーにはしない）
           if (newSummary.length > 200) {
-            console.log(`  ⚠️ 要約が長め: ${newSummary.length}文字（許容）`);
+            console.error(`  ⚠️ 要約が長め: ${newSummary.length}文字（許容）`);
             // 250文字を超える場合のみ再試行
             if (newSummary.length > 250) {
               const retryPrompt = `
@@ -224,7 +224,7 @@ async function fixShortSummariesFlexible() {
               
               if (shortSummary && shortSummary.length <= 200 && shortSummary.length >= 70) {
                 newSummary = shortSummary;
-                console.log(`  ✅ 短縮成功: ${newSummary.length}文字`);
+                console.error(`  ✅ 短縮成功: ${newSummary.length}文字`);
               }
             }
           }
@@ -246,7 +246,7 @@ async function fixShortSummariesFlexible() {
             }
           });
           
-          console.log(`  ✅ 成功: ${article.summary?.length}文字 → ${newSummary.length}文字`);
+          console.error(`  ✅ 成功: ${article.summary?.length}文字 → ${newSummary.length}文字`);
           
           progress.successCount++;
           progress.processedIds.push(article.id);
@@ -261,7 +261,7 @@ async function fixShortSummariesFlexible() {
           });
           
         } catch (error) {
-          console.log(`  ❌ エラー: ${error instanceof Error ? error.message : String(error)}`);
+          console.error(`  ❌ エラー: ${error instanceof Error ? error.message : String(error)}`);
           progress.errorCount++;
           progress.processedIds.push(article.id);
           results.push({
@@ -289,7 +289,7 @@ async function fixShortSummariesFlexible() {
       
       // バッチ間の休憩（5秒）
       if (batchNum < totalBatches - 1) {
-        console.log(`\n⏸️ 次のバッチまで5秒待機...`);
+        console.error(`\n⏸️ 次のバッチまで5秒待機...`);
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
@@ -298,24 +298,24 @@ async function fixShortSummariesFlexible() {
     const endTime = Date.now();
     const totalTime = Math.floor((endTime - startTime) / 1000);
     
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 最終処理結果\n');
-    console.log(`✅ 成功: ${progress.successCount}件`);
-    console.log(`⏭️ スキップ: ${progress.skipCount}件`);
-    console.log(`❌ エラー: ${progress.errorCount}件`);
-    console.log(`📈 成功率: ${((progress.successCount / articlesToProcess.length) * 100).toFixed(1)}%`);
-    console.log(`⏱️ 総処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
-    console.log(`🚀 平均処理速度: ${(articlesToProcess.length / (totalTime / 60)).toFixed(1)}件/分`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 最終処理結果\n');
+    console.error(`✅ 成功: ${progress.successCount}件`);
+    console.error(`⏭️ スキップ: ${progress.skipCount}件`);
+    console.error(`❌ エラー: ${progress.errorCount}件`);
+    console.error(`📈 成功率: ${((progress.successCount / articlesToProcess.length) * 100).toFixed(1)}%`);
+    console.error(`⏱️ 総処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
+    console.error(`🚀 平均処理速度: ${(articlesToProcess.length / (totalTime / 60)).toFixed(1)}件/分`);
     
     // 成功した結果の統計
     const successfulResults = results.filter(r => r.status === 'success');
     if (successfulResults.length > 0) {
       const avgOldLength = successfulResults.reduce((sum, r) => sum + (r.oldLength || 0), 0) / successfulResults.length;
       const avgNewLength = successfulResults.reduce((sum, r) => sum + r.newLength, 0) / successfulResults.length;
-      console.log(`\n📏 平均文字数の変化:`);
-      console.log(`  変更前: ${avgOldLength.toFixed(1)}文字`);
-      console.log(`  変更後: ${avgNewLength.toFixed(1)}文字`);
-      console.log(`  改善率: ${((avgNewLength / avgOldLength - 1) * 100).toFixed(1)}%`);
+      console.error(`\n📏 平均文字数の変化:`);
+      console.error(`  変更前: ${avgOldLength.toFixed(1)}文字`);
+      console.error(`  変更後: ${avgNewLength.toFixed(1)}文字`);
+      console.error(`  改善率: ${((avgNewLength / avgOldLength - 1) * 100).toFixed(1)}%`);
     }
     
     // 結果をファイルに保存
@@ -331,12 +331,12 @@ async function fixShortSummariesFlexible() {
       results: results
     }, null, 2));
     
-    console.log(`\n📁 詳細な結果を ${resultFile} に保存しました`);
+    console.error(`\n📁 詳細な結果を ${resultFile} に保存しました`);
     
     // 進捗ファイルを削除（完了時）
     if (fs.existsSync(PROGRESS_FILE)) {
       fs.unlinkSync(PROGRESS_FILE);
-      console.log('✅ 進捗ファイルを削除しました');
+      console.error('✅ 進捗ファイルを削除しました');
     }
     
   } catch (error) {
@@ -344,7 +344,7 @@ async function fixShortSummariesFlexible() {
     // エラー時も進捗を保存
     progress.lastProcessedAt = new Date().toISOString();
     saveProgress(progress);
-    console.log('\n⚠️ 進捗を保存しました。再実行で続きから処理できます。');
+    console.error('\n⚠️ 進捗を保存しました。再実行で続きから処理できます。');
     process.exit(1);
   } finally {
     await prisma.$disconnect();
@@ -375,11 +375,11 @@ function shouldSkipSummary(summary: string, title: string): boolean {
 
 // Ctrl+C などでの中断時に進捗を保存
 process.on('SIGINT', () => {
-  console.log('\n\n⚠️ 処理を中断しています...');
+  console.error('\n\n⚠️ 処理を中断しています...');
   const progress = loadProgress();
   progress.lastProcessedAt = new Date().toISOString();
   saveProgress(progress);
-  console.log('✅ 進捗を保存しました。再実行で続きから処理できます。');
+  console.error('✅ 進捗を保存しました。再実行で続きから処理できます。');
   process.exit(0);
 });
 

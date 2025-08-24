@@ -38,18 +38,18 @@ async function getSkippedArticles(continueFrom?: string, limit?: number) {
 
 async function regenerateSummary(article: any, summaryService: UnifiedSummaryService, dryRun: boolean) {
   try {
-    console.log(`\n処理中: ${article.id}`);
-    console.log(`  タイトル: ${article.title}`);
-    console.log(`  コンテンツ長: ${article.content?.length || 0}文字`);
-    console.log(`  ソース: ${article.source.name}`);
+    console.error(`\n処理中: ${article.id}`);
+    console.error(`  タイトル: ${article.title}`);
+    console.error(`  コンテンツ長: ${article.content?.length || 0}文字`);
+    console.error(`  ソース: ${article.source.name}`);
     
     if (!article.content || article.content.length === 0) {
-      console.log('  ⚠️ コンテンツが空のためスキップ');
+      console.error('  ⚠️ コンテンツが空のためスキップ');
       return { skipped: true };
     }
     
     if (dryRun) {
-      console.log('  🔍 ドライラン - 実際の更新はスキップ');
+      console.error('  🔍 ドライラン - 実際の更新はスキップ');
       return { dryRun: true };
     }
     
@@ -80,10 +80,10 @@ async function regenerateSummary(article: any, summaryService: UnifiedSummarySer
       }
     });
     
-    console.log('  ✅ 更新完了');
-    console.log(`  一覧要約: ${result.summary.substring(0, 50)}...`);
-    console.log(`  詳細要約: ${result.detailedSummary.substring(0, 100)}...`);
-    console.log(`  品質スコア: ${result.qualityScore}`);
+    console.error('  ✅ 更新完了');
+    console.error(`  一覧要約: ${result.summary.substring(0, 50)}...`);
+    console.error(`  詳細要約: ${result.detailedSummary.substring(0, 100)}...`);
+    console.error(`  品質スコア: ${result.qualityScore}`);
     
     return { success: true };
   } catch (error) {
@@ -106,20 +106,20 @@ async function main() {
     batchSize: 10
   };
   
-  console.log('===================================');
-  console.log('詳細要約スキップ記事の再生成');
-  console.log('===================================\n');
+  console.error('===================================');
+  console.error('詳細要約スキップ記事の再生成');
+  console.error('===================================\n');
   
   if (options.dryRun) {
-    console.log('🔍 ドライランモード - 実際の更新は行いません\n');
+    console.error('🔍 ドライランモード - 実際の更新は行いません\n');
   }
   
   // 対象記事を取得
   const articles = await getSkippedArticles(options.continueFrom, options.limit);
-  console.log(`対象記事数: ${articles.length}件\n`);
+  console.error(`対象記事数: ${articles.length}件\n`);
   
   if (articles.length === 0) {
-    console.log('処理対象の記事がありません');
+    console.error('処理対象の記事がありません');
     await prisma.$disconnect();
     return;
   }
@@ -130,17 +130,17 @@ async function main() {
     return acc;
   }, {} as Record<string, number>);
   
-  console.log('ソース別内訳:');
+  console.error('ソース別内訳:');
   Object.entries(sourceCounts)
     .sort(([, a], [, b]) => b - a)
     .forEach(([source, count]) => {
-      console.log(`  ${source}: ${count}件`);
+      console.error(`  ${source}: ${count}件`);
     });
-  console.log('');
+  console.error('');
   
   // 確認
   if (!options.dryRun && !args.includes('--yes')) {
-    console.log('処理を開始しますか？ (y/n)');
+    console.error('処理を開始しますか？ (y/n)');
     const readline = require('readline').createInterface({
       input: process.stdin,
       output: process.stdout
@@ -154,7 +154,7 @@ async function main() {
     });
     
     if (answer.toLowerCase() !== 'y') {
-      console.log('処理を中止しました');
+      console.error('処理を中止しました');
       await prisma.$disconnect();
       return;
     }
@@ -176,7 +176,7 @@ async function main() {
     const article = articles[i];
     
     // 進捗表示
-    console.log(`\n[${i + 1}/${articles.length}] 進捗: ${Math.round((i + 1) / articles.length * 100)}%`);
+    console.error(`\n[${i + 1}/${articles.length}] 進捗: ${Math.round((i + 1) / articles.length * 100)}%`);
     
     const result = await regenerateSummary(article, summaryService, options.dryRun);
     
@@ -187,7 +187,7 @@ async function main() {
     
     // バッチごとに長めの待機
     if ((i + 1) % options.batchSize! === 0 && i < articles.length - 1) {
-      console.log(`\n⏸ バッチ完了 - 30秒待機中...`);
+      console.error(`\n⏸ バッチ完了 - 30秒待機中...`);
       await delay(30000);
     } else if (i < articles.length - 1) {
       // 通常の待機
@@ -196,22 +196,22 @@ async function main() {
     
     // 最後に処理したIDを表示（再開用）
     if ((i + 1) % 20 === 0 || i === articles.length - 1) {
-      console.log(`\n📌 最後に処理したID: ${article.id}`);
-      console.log(`   再開する場合: npm run fix:skipped-summaries -- --continue=${article.id}`);
+      console.error(`\n📌 最後に処理したID: ${article.id}`);
+      console.error(`   再開する場合: npm run fix:skipped-summaries -- --continue=${article.id}`);
     }
   }
   
   // 結果サマリー
-  console.log('\n===================================');
-  console.log('処理結果サマリー');
-  console.log('===================================');
-  console.log(`総数: ${stats.total}件`);
+  console.error('\n===================================');
+  console.error('処理結果サマリー');
+  console.error('===================================');
+  console.error(`総数: ${stats.total}件`);
   if (options.dryRun) {
-    console.log(`ドライラン: ${stats.dryRun}件`);
+    console.error(`ドライラン: ${stats.dryRun}件`);
   } else {
-    console.log(`成功: ${stats.success}件`);
-    console.log(`スキップ: ${stats.skipped}件`);
-    console.log(`エラー: ${stats.error}件`);
+    console.error(`成功: ${stats.success}件`);
+    console.error(`スキップ: ${stats.skipped}件`);
+    console.error(`エラー: ${stats.error}件`);
   }
   
   await prisma.$disconnect();

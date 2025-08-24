@@ -8,8 +8,8 @@ import fetch from 'node-fetch';
 import { checkSummaryQuality } from '../../lib/utils/summary-quality-checker';
 
 async function testJapanesePrompt() {
-  console.log('🎌 完全日本語システムプロンプトテスト\n');
-  console.log('================================================================================');
+  console.error('🎌 完全日本語システムプロンプトテスト\n');
+  console.error('================================================================================');
   
   const localLLMUrl = process.env.LOCAL_LLM_URL || 'http://192.168.11.7:1234';
   const localLLMModel = process.env.LOCAL_LLM_MODEL || 'openai/gpt-oss-20b';
@@ -26,9 +26,9 @@ async function testJapanesePrompt() {
     `
   };
   
-  console.log('📝 テスト記事:');
-  console.log(`  タイトル: ${testArticle.title}`);
-  console.log(`  内容長: ${testArticle.content.length}文字\n`);
+  console.error('📝 テスト記事:');
+  console.error(`  タイトル: ${testArticle.title}`);
+  console.error(`  内容長: ${testArticle.content.length}文字\n`);
   
   // ユーザープロンプト（統一フォーマット用）
   const userPrompt = `
@@ -55,7 +55,7 @@ async function testJapanesePrompt() {
 - 指定形式を厳守`;
   
   try {
-    console.log('⏳ LocalLLMで生成中...\n');
+    console.error('⏳ LocalLLMで生成中...\n');
     const startTime = Date.now();
     
     const response = await fetch(`${localLLMUrl}/v1/chat/completions`, {
@@ -79,11 +79,11 @@ async function testJapanesePrompt() {
     const output = data.choices[0].message.content;
     const processingTime = Date.now() - startTime;
     
-    console.log('✅ 生成完了\n');
-    console.log('【生成結果】');
-    console.log('────────────────────────────────────────────────────────────────────────────');
-    console.log(output);
-    console.log('────────────────────────────────────────────────────────────────────────────\n');
+    console.error('✅ 生成完了\n');
+    console.error('【生成結果】');
+    console.error('────────────────────────────────────────────────────────────────────────────');
+    console.error(output);
+    console.error('────────────────────────────────────────────────────────────────────────────\n');
     
     // 英語混入チェック
     const englishPatterns = [
@@ -130,41 +130,41 @@ async function testJapanesePrompt() {
     // 品質スコア計算
     const score = summary ? checkSummaryQuality(summary, detailedSummary).score : 0;
     
-    console.log('📊 分析結果');
-    console.log('────────────────────────────────────────────────────────────────────────────');
-    console.log(`  処理時間: ${processingTime}ms`);
-    console.log(`  英語混入: ${hasEnglish ? '❌ あり' : '✅ なし'}`);
+    console.error('📊 分析結果');
+    console.error('────────────────────────────────────────────────────────────────────────────');
+    console.error(`  処理時間: ${processingTime}ms`);
+    console.error(`  英語混入: ${hasEnglish ? '❌ あり' : '✅ なし'}`);
     if (hasEnglish) {
-      console.log(`  検出パターン: ${englishMatches.map(p => p.toString()).join(', ')}`);
+      console.error(`  検出パターン: ${englishMatches.map(p => p.toString()).join(', ')}`);
     }
-    console.log(`  統一フォーマット: ${hasUnifiedFormat ? '✅ 対応' : '❌ 非対応'}`);
-    console.log(`  品質スコア: ${score}点`);
-    console.log(`  要約文字数: ${summary.length}文字`);
-    console.log(`  タグ数: ${tags.length}個`);
+    console.error(`  統一フォーマット: ${hasUnifiedFormat ? '✅ 対応' : '❌ 非対応'}`);
+    console.error(`  品質スコア: ${score}点`);
+    console.error(`  要約文字数: ${summary.length}文字`);
+    console.error(`  タグ数: ${tags.length}個`);
     
     if (summary) {
-      console.log(`\n  要約内容: ${summary.substring(0, 50)}...`);
+      console.error(`\n  要約内容: ${summary.substring(0, 50)}...`);
     }
     if (tags.length > 0) {
-      console.log(`  タグ: ${tags.join(', ')}`);
+      console.error(`  タグ: ${tags.join(', ')}`);
     }
     
     // 成功判定
-    console.log('\n✨ 判定結果');
-    console.log('────────────────────────────────────────────────────────────────────────────');
+    console.error('\n✨ 判定結果');
+    console.error('────────────────────────────────────────────────────────────────────────────');
     
     if (!hasEnglish && hasUnifiedFormat && score >= 40 && summary.length <= 130) {
-      console.log('✅ 完全日本語システムプロンプトは成功です！');
-      console.log('   - 英語混入なし');
-      console.log('   - 統一フォーマット対応');
-      console.log('   - 適切な品質スコア');
-      console.log('   - 文字数制限遵守');
+      console.error('✅ 完全日本語システムプロンプトは成功です！');
+      console.error('   - 英語混入なし');
+      console.error('   - 統一フォーマット対応');
+      console.error('   - 適切な品質スコア');
+      console.error('   - 文字数制限遵守');
     } else {
-      console.log('⚠️  改善が必要な点:');
-      if (hasEnglish) console.log('   - 英語が混入している');
-      if (!hasUnifiedFormat) console.log('   - 統一フォーマットに非対応');
-      if (score < 40) console.log(`   - 品質スコアが低い (${score}点)`);
-      if (summary.length > 130) console.log(`   - 要約が長すぎる (${summary.length}文字)`);
+      console.error('⚠️  改善が必要な点:');
+      if (hasEnglish) console.error('   - 英語が混入している');
+      if (!hasUnifiedFormat) console.error('   - 統一フォーマットに非対応');
+      if (score < 40) console.error(`   - 品質スコアが低い (${score}点)`);
+      if (summary.length > 130) console.error(`   - 要約が長すぎる (${summary.length}文字)`);
     }
     
   } catch (error) {

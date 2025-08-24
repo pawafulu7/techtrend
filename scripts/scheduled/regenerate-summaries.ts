@@ -15,7 +15,7 @@ interface RegenerationOptions {
  * 問題のある要約を持つ記事を再生成
  */
 async function regenerateSummaries(options: RegenerationOptions = {}) {
-  console.log('===== 要約再生成スクリプト =====\n');
+  console.error('===== 要約再生成スクリプト =====\n');
   
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
@@ -30,7 +30,7 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
   
   if (options.articleIds && options.articleIds.length > 0) {
     // 特定の記事IDを指定
-    console.log(`指定された記事ID: ${options.articleIds.join(', ')}`);
+    console.error(`指定された記事ID: ${options.articleIds.join(', ')}`);
     articles = await prisma.article.findMany({
       where: {
         id: { in: options.articleIds }
@@ -78,10 +78,10 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
     });
   }
   
-  console.log(`対象記事数: ${articles.length}件\n`);
+  console.error(`対象記事数: ${articles.length}件\n`);
   
   if (articles.length === 0) {
-    console.log('✅ 再生成が必要な記事はありません');
+    console.error('✅ 再生成が必要な記事はありません');
     return;
   }
   
@@ -92,10 +92,10 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
   
   // 各記事の要約を再生成
   for (const article of articles) {
-    console.log(`\n処理中: ${article.title.substring(0, 50)}...`);
-    console.log(`  ID: ${article.id}`);
-    console.log(`  ソース: ${article.source.name}`);
-    console.log(`  現在の要約: ${article.summary?.substring(0, 50)}...`);
+    console.error(`\n処理中: ${article.title.substring(0, 50)}...`);
+    console.error(`  ID: ${article.id}`);
+    console.error(`  ソース: ${article.source.name}`);
+    console.error(`  現在の要約: ${article.summary?.substring(0, 50)}...`);
     
     try {
       // コンテンツの確認
@@ -141,7 +141,7 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
         const newTagNames = result.tags.filter(t => !existingTagNames.includes(t));
         
         if (newTagNames.length > 0) {
-          console.log(`  新しいタグ: ${newTagNames.join(', ')}`);
+          console.error(`  新しいタグ: ${newTagNames.join(', ')}`);
           
           // 新しいタグを作成・接続
           for (const tagName of newTagNames) {
@@ -163,8 +163,8 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
         }
       }
       
-      console.log('  ✅ 再生成完了');
-      console.log(`  新要約: ${result.summary.substring(0, 50)}...`);
+      console.error('  ✅ 再生成完了');
+      console.error(`  新要約: ${result.summary.substring(0, 50)}...`);
       successCount++;
       
     } catch (error) {
@@ -182,15 +182,15 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
   }
   
   // 結果サマリー
-  console.log('\n===== 再生成完了 =====');
-  console.log(`成功: ${successCount}件`);
-  console.log(`失敗: ${failureCount}件`);
+  console.error('\n===== 再生成完了 =====');
+  console.error(`成功: ${successCount}件`);
+  console.error(`失敗: ${failureCount}件`);
   
   if (errors.length > 0) {
-    console.log('\n失敗した記事:');
+    console.error('\n失敗した記事:');
     errors.forEach(e => {
-      console.log(`  - ${e.title.substring(0, 50)}... (${e.id})`);
-      console.log(`    エラー: ${e.error}`);
+      console.error(`  - ${e.title.substring(0, 50)}... (${e.id})`);
+      console.error(`    エラー: ${e.error}`);
     });
   }
   
@@ -227,7 +227,7 @@ if (require.main === module) {
   
   // ヘルプ表示
   if (args.includes('--help')) {
-    console.log(`
+    console.error(`
 使用方法:
   npx tsx scripts/scheduled/regenerate-summaries.ts [オプション]
 

@@ -7,8 +7,8 @@ const prisma = new PrismaClient();
 async function fixArticleFormat() {
   const articleId = 'cme3sdz74000fte6gig7urb0t';
   
-  console.log('📋 記事の要約を正しい形式で再生成します');
-  console.log('=====================================\n');
+  console.error('📋 記事の要約を正しい形式で再生成します');
+  console.error('=====================================\n');
   
   try {
     // 記事を取得
@@ -22,14 +22,14 @@ async function fixArticleFormat() {
       return;
     }
     
-    console.log('📰 記事情報:');
-    console.log(`  タイトル: ${article.title}`);
-    console.log(`  ソース: ${article.source.name}`);
-    console.log(`  URL: ${article.url}\n`);
+    console.error('📰 記事情報:');
+    console.error(`  タイトル: ${article.title}`);
+    console.error(`  ソース: ${article.source.name}`);
+    console.error(`  URL: ${article.url}\n`);
     
-    console.log('❌ 現在の問題:');
-    console.log('  1. 一覧要約が「限界。」で途切れている');
-    console.log('  2. 詳細要約が箇条書き形式ではない\n');
+    console.error('❌ 現在の問題:');
+    console.error('  1. 一覧要約が「限界。」で途切れている');
+    console.error('  2. 詳細要約が箇条書き形式ではない\n');
     
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -72,7 +72,7 @@ URL: ${article.url}
   "tags": ["タグ1", "タグ2", "タグ3"]
 }`;
 
-    console.log('🔄 Gemini APIで正しい形式の要約を生成中...');
+    console.error('🔄 Gemini APIで正しい形式の要約を生成中...');
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -104,22 +104,22 @@ URL: ${article.url}
     
     const result = JSON.parse(jsonMatch[0]);
     
-    console.log('\n✅ 新しい要約（正しい形式）:');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('【一覧要約】');
-    console.log(`  "${result.summary}"`);
-    console.log(`  文字数: ${result.summary.length}文字`);
-    console.log(`  文字数チェック: ${result.summary.length >= 150 && result.summary.length <= 180 ? '✅ OK (150-180文字)' : '❌ NG'}`); 
-    console.log(`  完結チェック: ${result.summary.endsWith('。') ? '✅ OK' : '❌ NG'}`);
+    console.error('\n✅ 新しい要約（正しい形式）:');
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('【一覧要約】');
+    console.error(`  "${result.summary}"`);
+    console.error(`  文字数: ${result.summary.length}文字`);
+    console.error(`  文字数チェック: ${result.summary.length >= 150 && result.summary.length <= 180 ? '✅ OK (150-180文字)' : '❌ NG'}`); 
+    console.error(`  完結チェック: ${result.summary.endsWith('。') ? '✅ OK' : '❌ NG'}`);
     
-    console.log('\n【詳細要約】');
+    console.error('\n【詳細要約】');
     const detailLines = result.detailedSummary.split('\n');
     detailLines.forEach((line: string) => {
-      console.log(`  ${line}`);
+      console.error(`  ${line}`);
     });
-    console.log(`  文字数: ${result.detailedSummary.length}文字`);
-    console.log(`  文字数チェック: ${result.detailedSummary.length >= 300 && result.detailedSummary.length <= 350 ? '✅ OK (300-350文字)' : '❌ NG'}`);  
-    console.log(`  箇条書きチェック: ${result.detailedSummary.startsWith('・') ? '✅ OK' : '❌ NG'}`);
+    console.error(`  文字数: ${result.detailedSummary.length}文字`);
+    console.error(`  文字数チェック: ${result.detailedSummary.length >= 300 && result.detailedSummary.length <= 350 ? '✅ OK (300-350文字)' : '❌ NG'}`);  
+    console.error(`  箇条書きチェック: ${result.detailedSummary.startsWith('・') ? '✅ OK' : '❌ NG'}`);
     
     // データベース更新
     await prisma.article.update({
@@ -131,11 +131,11 @@ URL: ${article.url}
       }
     });
     
-    console.log('\n✅ データベースを更新しました');
+    console.error('\n✅ データベースを更新しました');
     
     // タグの処理
     if (result.tags && result.tags.length > 0) {
-      console.log(`\n📌 タグ: ${result.tags.join(', ')}`);
+      console.error(`\n📌 タグ: ${result.tags.join(', ')}`);
     }
     
   } catch (error) {

@@ -22,19 +22,19 @@ if (!process.env.GEMINI_API_KEY) {
 const geminiClient = new GeminiClient(process.env.GEMINI_API_KEY);
 
 async function main() {
-  console.log('🔄 自動再生成プロセスを開始します...');
-  console.log(`実行時刻: ${new Date().toISOString()}\n`);
+  console.error('🔄 自動再生成プロセスを開始します...');
+  console.error(`実行時刻: ${new Date().toISOString()}\n`);
 
   try {
     // Step 1: 低品質な要約を検出
     const lowQualityArticles = await detectLowQualityArticles();
     
     if (lowQualityArticles.length === 0) {
-      console.log('✅ 再生成が必要な記事はありませんでした。');
+      console.error('✅ 再生成が必要な記事はありませんでした。');
       return;
     }
 
-    console.log(`\n📝 ${lowQualityArticles.length}件の記事を再生成します...\n`);
+    console.error(`\n📝 ${lowQualityArticles.length}件の記事を再生成します...\n`);
 
     // Step 2: 記事を再生成
     const results = await regenerateArticles(lowQualityArticles);
@@ -61,7 +61,7 @@ async function detectLowQualityArticles(): Promise<Array<{
   score: number;
   issues: string[];
 }>> {
-  console.log('🔍 低品質な要約を検出中...');
+  console.error('🔍 低品質な要約を検出中...');
 
   // 過去7日間の記事を対象
   const sevenDaysAgo = new Date();
@@ -105,8 +105,8 @@ async function detectLowQualityArticles(): Promise<Array<{
     }
   }
 
-  console.log(`  検査記事数: ${articles.length}件`);
-  console.log(`  低品質記事: ${lowQualityArticles.length}件`);
+  console.error(`  検査記事数: ${articles.length}件`);
+  console.error(`  低品質記事: ${lowQualityArticles.length}件`);
 
   return lowQualityArticles;
 }
@@ -133,9 +133,9 @@ async function regenerateArticles(articles: Array<{
 
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
-    console.log(`[${i + 1}/${articles.length}] ${article.title.substring(0, 50)}...`);
-    console.log(`  旧スコア: ${article.score}点`);
-    console.log(`  問題: ${article.issues.slice(0, 3).join(', ')}`);
+    console.error(`[${i + 1}/${articles.length}] ${article.title.substring(0, 50)}...`);
+    console.error(`  旧スコア: ${article.score}点`);
+    console.error(`  問題: ${article.issues.slice(0, 3).join(', ')}`);
 
     try {
       // コンテンツを最適化
@@ -167,7 +167,7 @@ async function regenerateArticles(articles: Array<{
 
       // 新しい要約のスコアを計算
       const newScore = calculateSummaryScore(summary, { tags });
-      console.log(`  新スコア: ${newScore.totalScore}点`);
+      console.error(`  新スコア: ${newScore.totalScore}点`);
 
       // 改善された場合のみ更新
       if (newScore.totalScore > article.score) {
@@ -218,7 +218,7 @@ async function regenerateArticles(articles: Array<{
           }
         }
 
-        console.log(`  ✅ 更新成功（+${newScore.totalScore - article.score}点改善）`);
+        console.error(`  ✅ 更新成功（+${newScore.totalScore - article.score}点改善）`);
         results.push({
           id: article.id,
           title: article.title,
@@ -227,7 +227,7 @@ async function regenerateArticles(articles: Array<{
           success: true,
         });
       } else {
-        console.log(`  ⚠️ スコアが改善されなかったためスキップ`);
+        console.error(`  ⚠️ スコアが改善されなかったためスキップ`);
         results.push({
           id: article.id,
           title: article.title,
@@ -271,14 +271,14 @@ async function generateReport(results: Array<{
   success: boolean;
   error?: string;
 }>) {
-  console.log('\n' + '='.repeat(60));
-  console.log('📊 自動再生成レポート');
-  console.log('='.repeat(60));
+  console.error('\n' + '='.repeat(60));
+  console.error('📊 自動再生成レポート');
+  console.error('='.repeat(60));
 
   const successful = results.filter(r => r.success);
   const failed = results.filter(r => !r.success);
 
-  console.log(`
+  console.error(`
 処理結果:
   総処理数: ${results.length}件
   成功: ${successful.length}件
@@ -292,25 +292,25 @@ async function generateReport(results: Array<{
     );
     const avgImprovement = Math.round(totalImprovement / successful.length);
 
-    console.log(`品質改善:
+    console.error(`品質改善:
   平均スコア改善: +${avgImprovement}点
   最大改善: +${Math.max(...successful.map(r => r.newScore - r.oldScore))}点
 `);
 
-    console.log('成功した再生成:');
+    console.error('成功した再生成:');
     successful
       .sort((a, b) => (b.newScore - b.oldScore) - (a.newScore - a.oldScore))
       .slice(0, 5)
       .forEach(r => {
-        console.log(`  [+${r.newScore - r.oldScore}点] ${r.title.substring(0, 50)}...`);
+        console.error(`  [+${r.newScore - r.oldScore}点] ${r.title.substring(0, 50)}...`);
       });
   }
 
   if (failed.length > 0) {
-    console.log('\n失敗した再生成:');
+    console.error('\n失敗した再生成:');
     failed.slice(0, 5).forEach(r => {
-      console.log(`  ${r.title.substring(0, 50)}...`);
-      console.log(`    理由: ${r.error}`);
+      console.error(`  ${r.title.substring(0, 50)}...`);
+      console.error(`    理由: ${r.error}`);
     });
   }
 
@@ -330,12 +330,12 @@ async function generateReport(results: Array<{
   
   try {
     await fs.appendFile(logPath, JSON.stringify(logEntry) + '\n');
-    console.log(`\n📄 ログを記録しました: ${logPath}`);
+    console.error(`\n📄 ログを記録しました: ${logPath}`);
   } catch (error) {
     console.warn('ログファイルへの記録に失敗しました:', error);
   }
 
-  console.log('\n✅ 自動再生成プロセスが完了しました。');
+  console.error('\n✅ 自動再生成プロセスが完了しました。');
 }
 
 // エラーハンドリング

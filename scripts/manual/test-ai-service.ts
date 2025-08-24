@@ -5,17 +5,17 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function testAIService() {
-  console.log('🧪 AI Service テスト開始\n');
+  console.error('🧪 AI Service テスト開始\n');
   
   // AIサービスの初期化
   const aiService = AIService.fromEnv();
   
   // 接続テスト
-  console.log('📡 接続テスト中...');
+  console.error('📡 接続テスト中...');
   const connections = await aiService.testConnections();
-  console.log('Gemini API:', connections.gemini ? '✅ 接続成功' : '❌ 接続失敗');
-  console.log('Local LLM:', connections.localLLM ? '✅ 接続成功' : '❌ 接続失敗');
-  console.log();
+  console.error('Gemini API:', connections.gemini ? '✅ 接続成功' : '❌ 接続失敗');
+  console.error('Local LLM:', connections.localLLM ? '✅ 接続成功' : '❌ 接続失敗');
+  console.error();
   
   // テスト用記事を取得
   const article = await prisma.article.findFirst({
@@ -31,14 +31,14 @@ async function testAIService() {
     process.exit(1);
   }
   
-  console.log('📄 テスト記事:');
-  console.log(`タイトル: ${article.title}`);
-  console.log(`ソース: ${article.source.name}`);
-  console.log();
+  console.error('📄 テスト記事:');
+  console.error(`タイトル: ${article.title}`);
+  console.error(`ソース: ${article.source.name}`);
+  console.error();
   
   // 要約生成テスト
   try {
-    console.log('🌟 Gemini API優先モードでテスト...');
+    console.error('🌟 Gemini API優先モードでテスト...');
     const startTime = Date.now();
     const result = await aiService.generateSummaryWithTags(
       article.title,
@@ -46,19 +46,19 @@ async function testAIService() {
     );
     const elapsed = Date.now() - startTime;
     
-    console.log(`✅ 生成成功 (${elapsed}ms)`);
-    console.log('要約:', result.summary);
-    console.log('タグ:', result.tags.join(', '));
-    console.log();
+    console.error(`✅ 生成成功 (${elapsed}ms)`);
+    console.error('要約:', result.summary);
+    console.error('タグ:', result.tags.join(', '));
+    console.error();
   } catch (error) {
     console.error('❌ エラー:', error);
-    console.log();
+    console.error();
   }
   
   // ローカルLLM優先モードのテスト
   if (process.env.LOCAL_LLM_URL) {
     try {
-      console.log('📟 ローカルLLM優先モードでテスト...');
+      console.error('📟 ローカルLLM優先モードでテスト...');
       
       // 環境変数を一時的に変更
       const originalPrefer = process.env.PREFER_LOCAL_LLM;
@@ -72,22 +72,22 @@ async function testAIService() {
       );
       const elapsed = Date.now() - startTime;
       
-      console.log(`✅ 生成成功 (${elapsed}ms)`);
-      console.log('要約:', result.summary);
-      console.log('タグ:', result.tags.join(', '));
-      console.log();
+      console.error(`✅ 生成成功 (${elapsed}ms)`);
+      console.error('要約:', result.summary);
+      console.error('タグ:', result.tags.join(', '));
+      console.error();
       
       // 環境変数を元に戻す
       process.env.PREFER_LOCAL_LLM = originalPrefer;
     } catch (error) {
       console.error('❌ エラー:', error);
-      console.log();
+      console.error();
     }
   }
   
   // フォールバックテスト
-  console.log('🔄 フォールバックテスト...');
-  console.log('（Gemini APIエラーをシミュレート）');
+  console.error('🔄 フォールバックテスト...');
+  console.error('（Gemini APIエラーをシミュレート）');
   
   // 一時的に不正なAPIキーを設定してエラーを発生させる
   const originalApiKey = process.env.GEMINI_API_KEY;
@@ -100,9 +100,9 @@ async function testAIService() {
       article.title,
       article.content || ''
     );
-    console.log('✅ フォールバック成功');
-    console.log('要約:', result.summary);
-    console.log('タグ:', result.tags.join(', '));
+    console.error('✅ フォールバック成功');
+    console.error('要約:', result.summary);
+    console.error('タグ:', result.tags.join(', '));
   } catch (error) {
     console.error('❌ フォールバックも失敗:', error);
   }
@@ -110,7 +110,7 @@ async function testAIService() {
   // 環境変数を元に戻す
   process.env.GEMINI_API_KEY = originalApiKey;
   
-  console.log('\n✨ テスト完了');
+  console.error('\n✨ テスト完了');
 }
 
 testAIService()

@@ -7,7 +7,7 @@ import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
 const prisma = new PrismaClient();
 
 async function regenerateWithNewFormat() {
-  console.log('🔄 マネーフォワード記事の要約を新形式で再生成\n');
+  console.error('🔄 マネーフォワード記事の要約を新形式で再生成\n');
 
   const articleId = 'cmebj56760006texkokzz8exg';
   const apiKey = process.env.GEMINI_API_KEY;
@@ -26,31 +26,31 @@ async function regenerateWithNewFormat() {
       throw new Error('記事またはコンテンツが見つかりません');
     }
 
-    console.log('📄 記事情報:');
-    console.log(`  タイトル: ${article.title}`);
-    console.log(`  コンテンツ長: ${article.content.length}文字\n`);
+    console.error('📄 記事情報:');
+    console.error(`  タイトル: ${article.title}`);
+    console.error(`  コンテンツ長: ${article.content.length}文字\n`);
 
     // 2. Geminiクライアントを初期化
     const gemini = new GeminiClient(apiKey);
 
     // 3. 統一プロンプトで要約生成
-    console.log('🤖 新形式で要約を生成中...');
+    console.error('🤖 新形式で要約を生成中...');
     
     // 一覧要約
     const summary = await gemini.generateSummary(article.title, article.content);
-    console.log('✅ 一覧要約生成完了');
+    console.error('✅ 一覧要約生成完了');
     
     // 詳細要約（統一プロンプト使用）
     const unifiedPrompt = generateUnifiedPrompt(article.title, article.content);
     const detailedResult = await gemini.generateDetailedSummary(article.title, article.content);
-    console.log('✅ 詳細要約生成完了\n');
+    console.error('✅ 詳細要約生成完了\n');
 
     const detailedSummary = detailedResult.detailedSummary;
 
     // 詳細要約の形式確認
-    console.log('📝 詳細要約プレビュー（最初の500文字）:');
-    console.log(detailedSummary.substring(0, 500));
-    console.log('...\n');
+    console.error('📝 詳細要約プレビュー（最初の500文字）:');
+    console.error(detailedSummary.substring(0, 500));
+    console.error('...\n');
 
     // 固定項目が含まれていないか確認
     const hasFixedItems = detailedSummary.includes('主要トピック') || 
@@ -58,13 +58,13 @@ async function regenerateWithNewFormat() {
                          detailedSummary.includes('技術的詳細');
     
     if (hasFixedItems) {
-      console.log('⚠️ 警告: 固定項目が検出されました。再生成が必要かもしれません。');
+      console.error('⚠️ 警告: 固定項目が検出されました。再生成が必要かもしれません。');
     } else {
-      console.log('✅ 新形式での生成を確認（固定項目なし）');
+      console.error('✅ 新形式での生成を確認（固定項目なし）');
     }
 
     // 4. データベース更新
-    console.log('\n💾 データベースを更新中...');
+    console.error('\n💾 データベースを更新中...');
     const updated = await prisma.article.update({
       where: { id: articleId },
       data: {
@@ -75,9 +75,9 @@ async function regenerateWithNewFormat() {
       }
     });
 
-    console.log('✅ 更新完了！');
-    console.log(`  要約長: ${updated.summary?.length}文字`);
-    console.log(`  詳細要約長: ${updated.detailedSummary?.length}文字`);
+    console.error('✅ 更新完了！');
+    console.error(`  要約長: ${updated.summary?.length}文字`);
+    console.error(`  詳細要約長: ${updated.detailedSummary?.length}文字`);
 
   } catch (error) {
     console.error('❌ エラー:', error);

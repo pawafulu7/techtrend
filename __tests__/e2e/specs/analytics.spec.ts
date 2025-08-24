@@ -106,7 +106,7 @@ test.describe('分析ページ', () => {
         }
       } catch (e) {
         // チャートが表示されない場合はスキップ（データがない可能性）
-        console.log('Chart not visible, possibly no data available');
+        console.error('Chart not visible, possibly no data available');
       }
     }
     

@@ -22,13 +22,13 @@ async function enrichStackOverflowArticle() {
       return;
     }
     
-    console.log('=== 記事情報 ===');
-    console.log(`タイトル: ${article.title}`);
-    console.log(`URL: ${article.url}`);
-    console.log(`現在のコンテンツ長: ${article.content?.length}文字`);
-    console.log(`現在のコンテンツ: ${article.content}`);
+    console.error('=== 記事情報 ===');
+    console.error(`タイトル: ${article.title}`);
+    console.error(`URL: ${article.url}`);
+    console.error(`現在のコンテンツ長: ${article.content?.length}文字`);
+    console.error(`現在のコンテンツ: ${article.content}`);
     
-    console.log('\n=== エンリッチメント実行 ===');
+    console.error('\n=== エンリッチメント実行 ===');
     
     const enrichedData = await enricher.enrich(article.url);
     
@@ -41,9 +41,9 @@ async function enrichStackOverflowArticle() {
         }
       });
       
-      console.log(`\n✅ エンリッチメント成功`);
-      console.log(`新しいコンテンツ長: ${enrichedData.content.length}文字`);
-      console.log(`コンテンツプレビュー: ${enrichedData.content.substring(0, 200)}...`);
+      console.error(`\n✅ エンリッチメント成功`);
+      console.error(`新しいコンテンツ長: ${enrichedData.content.length}文字`);
+      console.error(`コンテンツプレビュー: ${enrichedData.content.substring(0, 200)}...`);
     } else {
       console.error('エンリッチメント失敗');
     }

@@ -5,7 +5,7 @@ import { LocalLLMClient } from '../lib/ai/local-llm';
 const prisma = new PrismaClient();
 
 async function fixAllInsufficientSummaries() {
-  console.log('🚀 要約情報が不足している全記事を修正\n');
+  console.error('🚀 要約情報が不足している全記事を修正\n');
   
   try {
     // すべての記事を取得
@@ -23,7 +23,7 @@ async function fixAllInsufficientSummaries() {
       orderBy: { createdAt: 'desc' }
     });
     
-    console.log(`全記事数: ${allArticles.length}件\n`);
+    console.error(`全記事数: ${allArticles.length}件\n`);
     
     // 修正が必要な記事を検出
     const needsFix = [];
@@ -117,7 +117,7 @@ async function fixAllInsufficientSummaries() {
     // 重要度順にソート（高い順）
     needsFix.sort((a, b) => b.severity - a.severity);
     
-    console.log(`修正が必要な記事: ${needsFix.length}件\n`);
+    console.error(`修正が必要な記事: ${needsFix.length}件\n`);
     
     // 問題別の統計
     const issueStats = {};
@@ -127,13 +127,13 @@ async function fixAllInsufficientSummaries() {
       });
     });
     
-    console.log('問題の内訳:');
+    console.error('問題の内訳:');
     Object.entries(issueStats)
       .sort((a, b) => b[1] - a[1])
       .forEach(([issue, count]) => {
-        console.log(`  - ${issue}: ${count}件`);
+        console.error(`  - ${issue}: ${count}件`);
       });
-    console.log();
+    console.error();
     
     // 重要度別の統計
     const severityStats = {};
@@ -142,16 +142,16 @@ async function fixAllInsufficientSummaries() {
       severityStats[sev] = (severityStats[sev] || 0) + 1;
     });
     
-    console.log('重要度別:');
+    console.error('重要度別:');
     Object.entries(severityStats)
       .sort((a, b) => parseInt(b[0].replace('重要度', '')) - parseInt(a[0].replace('重要度', '')))
       .forEach(([sev, count]) => {
-        console.log(`  - ${sev}: ${count}件`);
+        console.error(`  - ${sev}: ${count}件`);
       });
-    console.log();
+    console.error();
     
     if (needsFix.length === 0) {
-      console.log('✅ 修正が必要な記事はありません');
+      console.error('✅ 修正が必要な記事はありません');
       return;
     }
     
@@ -170,7 +170,7 @@ async function fixAllInsufficientSummaries() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     let successCount = 0;
     let errorCount = 0;
@@ -184,16 +184,16 @@ async function fixAllInsufficientSummaries() {
       if (i % 10 === 0 && i > 0) {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         const rate = successCount / (elapsed / 60) || 0;
-        console.log(`\n📊 進捗: ${i}/${needsFix.length} (${Math.round(i/needsFix.length*100)}%)`);
-        console.log(`✅ 成功: ${successCount}, ❌ エラー: ${errorCount}`);
-        console.log(`⏱️ 経過: ${Math.floor(elapsed/60)}分${elapsed%60}秒`);
-        console.log(`🚀 速度: ${rate.toFixed(1)}件/分`);
-        console.log(`⏳ 推定残り: ${Math.round((needsFix.length - i) / rate)}分\n`);
+        console.error(`\n📊 進捗: ${i}/${needsFix.length} (${Math.round(i/needsFix.length*100)}%)`);
+        console.error(`✅ 成功: ${successCount}, ❌ エラー: ${errorCount}`);
+        console.error(`⏱️ 経過: ${Math.floor(elapsed/60)}分${elapsed%60}秒`);
+        console.error(`🚀 速度: ${rate.toFixed(1)}件/分`);
+        console.error(`⏳ 推定残り: ${Math.round((needsFix.length - i) / rate)}分\n`);
       }
       
-      console.log(`[${i + 1}/${needsFix.length}] 処理中: ${article.id}`);
-      console.log(`  📝 ${article.title?.substring(0, 50)}...`);
-      console.log(`  ⚠️ 問題: ${article.issues.join(', ')} (重要度: ${article.severity})`);
+      console.error(`[${i + 1}/${needsFix.length}] 処理中: ${article.id}`);
+      console.error(`  📝 ${article.title?.substring(0, 50)}...`);
+      console.error(`  ⚠️ 問題: ${article.issues.join(', ')} (重要度: ${article.severity})`);
       
       try {
         // コンテンツを準備（要約生成に必要な情報を追加）
@@ -260,7 +260,7 @@ ${additionalContext}
           `.trim();
         }
         
-        console.log('  🔄 要約を生成中...');
+        console.error('  🔄 要約を生成中...');
         
         const result = await localLLM.generateDetailedSummary(
           article.title || 'タイトル不明',
@@ -314,7 +314,7 @@ ${additionalContext}
             }
           });
           
-          console.log('  ✅ 修正成功');
+          console.error('  ✅ 修正成功');
           successCount++;
         } else {
           const problems = [];
@@ -322,7 +322,7 @@ ${additionalContext}
           if (!hasContent) problems.push('内容不足');
           if (!hasProperTechnicalBackground) problems.push('技術的背景なし');
           if (!hasEnoughItems) problems.push('項目数不足');
-          console.log(`  ⚠️ 品質チェック失敗: ${problems.join(', ')}`);
+          console.error(`  ⚠️ 品質チェック失敗: ${problems.join(', ')}`);
           errorCount++;
         }
         
@@ -337,12 +337,12 @@ ${additionalContext}
     }
     
     const totalTime = Math.floor((Date.now() - startTime) / 1000);
-    console.log('\n' + '='.repeat(60));
-    console.log('🎉 処理完了');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`⏱️ 総処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
-    console.log(`🚀 平均処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
+    console.error('\n' + '='.repeat(60));
+    console.error('🎉 処理完了');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`⏱️ 総処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
+    console.error(`🚀 平均処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

@@ -65,9 +65,9 @@ interface CollectResult {
 }
 
 async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
-  console.log('📡 フィード収集を開始します...');
+  console.error('📡 フィード収集を開始します...');
   if (sourceTypes && sourceTypes.length > 0) {
-    console.log(`   対象ソース: ${sourceTypes.join(', ')}`);
+    console.error(`   対象ソース: ${sourceTypes.join(', ')}`);
   }
   const startTime = Date.now();
   
@@ -88,7 +88,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     for (const source of sources) {
       const FetcherClass = fetchers[source.name];
       if (!FetcherClass) {
-        console.log(`⚠️  ${source.name}: フェッチャーが見つかりません`);
+        console.error(`⚠️  ${source.name}: フェッチャーが見つかりません`);
         continue;
       }
 
@@ -135,7 +135,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
             );
 
             if (hasSimilarTitle) {
-              console.log(`   重複記事を検出: ${article.title.substring(0, 50)}...`);
+              console.error(`   重複記事を検出: ${article.title.substring(0, 50)}...`);
               duplicateCount++;
               continue;
             }
@@ -176,7 +176,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
             const enricher = enrichers[source.name];
             if (enricher && enricher.canHandle(article.url)) {
               try {
-                console.log(`   🔍 エンリッチメント実行: ${article.title.substring(0, 40)}...`);
+                console.error(`   🔍 エンリッチメント実行: ${article.title.substring(0, 40)}...`);
                 const enrichedData = await enricher.enrich(article.url);
                 
                 if (enrichedData && enrichedData.content) {
@@ -188,9 +188,9 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                       ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
                     }
                   });
-                  console.log(`   ✅ エンリッチメント成功: ${enrichedData.content.length}文字`);
+                  console.error(`   ✅ エンリッチメント成功: ${enrichedData.content.length}文字`);
                 } else {
-                  console.log(`   ⚠️ エンリッチメント失敗: コンテンツなし`);
+                  console.error(`   ⚠️ エンリッチメント失敗: コンテンツなし`);
                 }
               } catch (enrichError) {
                 console.error(`   ⚠️ エンリッチメントエラー:`, enrichError instanceof Error ? enrichError.message : String(enrichError));
@@ -208,7 +208,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
         }
 
         if (newCount > 0 || duplicateCount > 0) {
-          console.log(`   ✅ 新規: ${newCount}件, 重複: ${duplicateCount}件`);
+          console.error(`   ✅ 新規: ${newCount}件, 重複: ${duplicateCount}件`);
         }
         
         totalNewArticles += newCount;
@@ -220,19 +220,19 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     }
 
     const duration = Math.round((Date.now() - startTime) / 1000);
-    console.log(`\n📊 収集完了: 新規${totalNewArticles}件, 重複${totalDuplicates}件 (${duration}秒)`);
+    console.error(`\n📊 収集完了: 新規${totalNewArticles}件, 重複${totalDuplicates}件 (${duration}秒)`);
 
     // 新規記事が追加された場合はキャッシュを無効化
     if (totalNewArticles > 0) {
-      console.log('🔄 キャッシュを無効化中...');
+      console.error('🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
       
       // 新規記事があれば要約生成を自動実行
-      console.log('\n📝 要約生成を自動実行します...');
+      console.error('\n📝 要約生成を自動実行します...');
       try {
         const { generateSummaries } = await import('../maintenance/generate-summaries');
         const result = await generateSummaries();
-        console.log(`✅ 要約生成完了: ${result.generated}件の要約を生成`);
+        console.error(`✅ 要約生成完了: ${result.generated}件の要約を生成`);
       } catch (error) {
         console.error('⚠️ 要約生成でエラーが発生しましたが、記事収集は成功しています:', 
           error instanceof Error ? error.message : String(error));

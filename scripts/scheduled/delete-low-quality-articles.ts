@@ -4,17 +4,17 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 const prisma = new PrismaClient();
 
 async function deleteLowQualityArticles() {
-  console.log('=== 低品質記事の削除 ===\n');
+  console.error('=== 低品質記事の削除 ===\n');
 
   // Dev.to: 反応数0の記事を削除
-  console.log('Dev.toの反応数0の記事を削除中...');
+  console.error('Dev.toの反応数0の記事を削除中...');
   const devtoDeleted = await prisma.article.deleteMany({
     where: {
       source: { name: 'Dev.to' },
       bookmarks: 0
     }
   });
-  console.log(`削除完了: ${devtoDeleted.count}件`);
+  console.error(`削除完了: ${devtoDeleted.count}件`);
 
   // 古い記事を削除（3ヶ月以上前）
   // 2025年8月: 古い記事も価値があるため、自動削除を無効化
@@ -23,7 +23,7 @@ async function deleteLowQualityArticles() {
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
   
-  console.log('\n3ヶ月以上前の記事を削除中...');
+  console.error('\n3ヶ月以上前の記事を削除中...');
   const oldDeleted = await prisma.article.deleteMany({
     where: {
       publishedAt: {
@@ -31,20 +31,20 @@ async function deleteLowQualityArticles() {
       }
     }
   });
-  console.log(`削除完了: ${oldDeleted.count}件`);
+  console.error(`削除完了: ${oldDeleted.count}件`);
   */
   const oldDeleted = { count: 0 }; // 削除処理をスキップ
 
   // 削除件数が0より大きい場合はキャッシュを無効化
   const totalDeleted = devtoDeleted.count + oldDeleted.count;
   if (totalDeleted > 0) {
-    console.log('\n🔄 キャッシュを無効化中...');
+    console.error('\n🔄 キャッシュを無効化中...');
     await cacheInvalidator.onBulkImport();
-    console.log('キャッシュ無効化完了');
+    console.error('キャッシュ無効化完了');
   }
 
   // 削除後の統計
-  console.log('\n=== 削除後の統計 ===');
+  console.error('\n=== 削除後の統計 ===');
   const sources = await prisma.source.findMany({
     where: { enabled: true },
     include: {
@@ -55,7 +55,7 @@ async function deleteLowQualityArticles() {
   });
 
   sources.forEach(source => {
-    console.log(`${source.name}: ${source._count.articles}件`);
+    console.error(`${source.name}: ${source._count.articles}件`);
   });
 
   await prisma.$disconnect();

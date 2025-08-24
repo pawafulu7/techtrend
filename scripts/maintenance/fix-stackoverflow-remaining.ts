@@ -13,7 +13,7 @@ const summaryService = new UnifiedSummaryService();
 
 async function main() {
   try {
-    console.log('=== Stack Overflow Blog残りの問題記事を修正 ===\n');
+    console.error('=== Stack Overflow Blog残りの問題記事を修正 ===\n');
     
     // 要約が25文字の記事を優先的に取得
     const articles = await prisma.article.findMany({
@@ -33,10 +33,10 @@ async function main() {
       }
     });
     
-    console.log(`要約25文字の記事: ${articles.length}件\n`);
+    console.error(`要約25文字の記事: ${articles.length}件\n`);
     
     if (articles.length === 0) {
-      console.log('処理対象の記事がありません');
+      console.error('処理対象の記事がありません');
       return;
     }
     
@@ -46,16 +46,16 @@ async function main() {
     
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i];
-      console.log(`[${i + 1}/${articles.length}] ${article.title.substring(0, 60)}...`);
+      console.error(`[${i + 1}/${articles.length}] ${article.title.substring(0, 60)}...`);
       
       let content = article.content || '';
       const contentLen = content.length;
-      console.log(`  現在のコンテンツ: ${contentLen}文字`);
+      console.error(`  現在のコンテンツ: ${contentLen}文字`);
       
       // 1. コンテンツが不足している場合はエンリッチメント
       if (contentLen < 500) {
         try {
-          console.log(`  エンリッチメント実行中...`);
+          console.error(`  エンリッチメント実行中...`);
           const enrichedData = await enricher.enrich(article.url);
           
           if (enrichedData?.content && enrichedData.content.length > 300) {
@@ -68,10 +68,10 @@ async function main() {
             });
             
             content = enrichedData.content;
-            console.log(`  ✅ エンリッチ成功: ${contentLen} → ${enrichedData.content.length}文字`);
+            console.error(`  ✅ エンリッチ成功: ${contentLen} → ${enrichedData.content.length}文字`);
             enrichSuccess++;
           } else {
-            console.log(`  ⚠️ エンリッチ失敗またはコンテンツ不足`);
+            console.error(`  ⚠️ エンリッチ失敗またはコンテンツ不足`);
             failedIds.push(article.id);
             continue;
           }
@@ -87,7 +87,7 @@ async function main() {
       // 2. 要約生成（コンテンツが十分な場合）
       if (content && content.length >= 300) {
         try {
-          console.log(`  要約生成実行中...`);
+          console.error(`  要約生成実行中...`);
           
           const result = await summaryService.generate(
             article.title,
@@ -116,14 +116,14 @@ async function main() {
               const sectionCount = result.detailedSummary.split('\n').filter(line => 
                 line.includes('：') || line.includes(':')).length;
               
-              console.log(`  ✅ 要約生成成功: ${result.detailedSummary.length}文字, ${sectionCount}セクション`);
+              console.error(`  ✅ 要約生成成功: ${result.detailedSummary.length}文字, ${sectionCount}セクション`);
               summarySuccess++;
             } else {
-              console.log(`  ⚠️ セクション形式でない要約が生成されました`);
+              console.error(`  ⚠️ セクション形式でない要約が生成されました`);
               failedIds.push(article.id);
             }
           } else {
-            console.log(`  ❌ 要約生成失敗`);
+            console.error(`  ❌ 要約生成失敗`);
             failedIds.push(article.id);
           }
         } catch (error) {
@@ -132,32 +132,32 @@ async function main() {
           failedIds.push(article.id);
           
           if (errorMsg.includes('503') || errorMsg.includes('429')) {
-            console.log('  ⏳ Rate limit検出。60秒待機...');
+            console.error('  ⏳ Rate limit検出。60秒待機...');
             await new Promise(resolve => setTimeout(resolve, 60000));
           }
         }
         
         await new Promise(resolve => setTimeout(resolve, 5000));
       } else {
-        console.log(`  ⚠️ コンテンツ不足のため要約生成をスキップ`);
+        console.error(`  ⚠️ コンテンツ不足のため要約生成をスキップ`);
         failedIds.push(article.id);
       }
       
       // 10件ごとに進捗報告
       if ((i + 1) % 10 === 0) {
-        console.log(`\n--- 進捗: ${i + 1}/${articles.length}件完了 ---`);
-        console.log(`エンリッチ成功: ${enrichSuccess}, 要約成功: ${summarySuccess}, 失敗: ${failedIds.length}\n`);
+        console.error(`\n--- 進捗: ${i + 1}/${articles.length}件完了 ---`);
+        console.error(`エンリッチ成功: ${enrichSuccess}, 要約成功: ${summarySuccess}, 失敗: ${failedIds.length}\n`);
       }
     }
     
-    console.log('\n=== 処理完了 ===');
-    console.log(`エンリッチメント成功: ${enrichSuccess}件`);
-    console.log(`要約生成成功: ${summarySuccess}件`);
-    console.log(`処理失敗: ${failedIds.length}件`);
+    console.error('\n=== 処理完了 ===');
+    console.error(`エンリッチメント成功: ${enrichSuccess}件`);
+    console.error(`要約生成成功: ${summarySuccess}件`);
+    console.error(`処理失敗: ${failedIds.length}件`);
     
     if (failedIds.length > 0) {
-      console.log('\n処理失敗した記事ID:');
-      failedIds.forEach(id => console.log(`  - ${id}`));
+      console.error('\n処理失敗した記事ID:');
+      failedIds.forEach(id => console.error(`  - ${id}`));
     }
     
   } catch (error) {

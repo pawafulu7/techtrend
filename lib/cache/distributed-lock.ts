@@ -31,7 +31,7 @@ export class DistributedLock {
       );
       
       if (result === 'OK') {
-        console.log(`[DistributedLock] Lock acquired for key: ${lockKey}`);
+        console.error(`[DistributedLock] Lock acquired for key: ${lockKey}`);
         return lockToken;
       }
       
@@ -61,7 +61,7 @@ export class DistributedLock {
       await this.sleep(this.retryInterval);
     }
     
-    console.log(`[DistributedLock] Failed to acquire lock after ${this.maxWaitTime}ms for key: lock:${key}`);
+    console.error(`[DistributedLock] Failed to acquire lock after ${this.maxWaitTime}ms for key: lock:${key}`);
     return null;
   }
 
@@ -89,11 +89,11 @@ export class DistributedLock {
       const result = await this.redis.eval(RELEASE_SCRIPT, 1, lockKey, token) as number;
       
       if (result === 1) {
-        console.log(`[DistributedLock] Lock released for key: ${lockKey}`);
+        console.error(`[DistributedLock] Lock released for key: ${lockKey}`);
         return true;
       }
       
-      console.log(`[DistributedLock] Lock release failed - token mismatch for key: ${lockKey}`);
+      console.error(`[DistributedLock] Lock release failed - token mismatch for key: ${lockKey}`);
       return false;
     } catch (error) {
       console.error('[DistributedLock] Failed to release lock:', error);
@@ -116,7 +116,7 @@ export class DistributedLock {
     const token = await this.acquireWithWait(key, ttl);
     
     if (!token) {
-      console.log(`[DistributedLock] Could not acquire lock for key: ${key}`);
+      console.error(`[DistributedLock] Could not acquire lock for key: ${key}`);
       return null;
     }
     

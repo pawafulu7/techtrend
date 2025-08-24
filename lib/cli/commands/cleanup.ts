@@ -113,9 +113,9 @@ cleanupCommand
         }
       });
       
-      console.log('\n🗑️  削除候補記事:');
-      console.log(`  30日以上前の低品質記事: ${lowQuality30Days.toLocaleString()} 件`);
-      console.log(`  90日以上前の低品質記事: ${lowQuality90Days.toLocaleString()} 件`);
+      console.error('\n🗑️  削除候補記事:');
+      console.error(`  30日以上前の低品質記事: ${lowQuality30Days.toLocaleString()} 件`);
+      console.error(`  90日以上前の低品質記事: ${lowQuality90Days.toLocaleString()} 件`);
       
       // 空のタグ
       const emptyTags = await prisma.tag.findMany({
@@ -129,9 +129,9 @@ cleanupCommand
         }
       });
       
-      console.log(`\n🏷️  空のタグ: ${emptyTags.length} 件`);
+      console.error(`\n🏷️  空のタグ: ${emptyTags.length} 件`);
       if (emptyTags.length > 0 && emptyTags.length <= 10) {
-        emptyTags.forEach(tag => console.log(`    - ${tag.name}`));
+        emptyTags.forEach(tag => console.error(`    - ${tag.name}`));
       }
       
       // 重複記事の可能性
@@ -147,7 +147,7 @@ cleanupCommand
         }
       });
       
-      console.log(`\n🔄 重複URL: ${duplicateUrls.length} 件`);
+      console.error(`\n🔄 重複URL: ${duplicateUrls.length} 件`);
       
       logger.success('統計情報の取得が完了しました');
     } catch (error) {

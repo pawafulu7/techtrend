@@ -220,8 +220,8 @@ async function testPrompt(
 }
 
 async function main() {
-  console.log('🧪 LocalLLMプロンプト改善テスト\n');
-  console.log('================================================================================');
+  console.error('🧪 LocalLLMプロンプト改善テスト\n');
+  console.error('================================================================================');
   
   // テスト記事
   const testArticles = [
@@ -245,16 +245,16 @@ async function main() {
     }
   ];
   
-  console.log(`📝 ${prompts.length}種類のプロンプトを${testArticles.length}記事でテスト\n`);
+  console.error(`📝 ${prompts.length}種類のプロンプトを${testArticles.length}記事でテスト\n`);
   
   const results: any[] = [];
   
   for (const article of testArticles) {
-    console.log(`\n📄 記事: ${article.title}`);
-    console.log('────────────────────────────────────────────────────────────────────────────\n');
+    console.error(`\n📄 記事: ${article.title}`);
+    console.error('────────────────────────────────────────────────────────────────────────────\n');
     
     for (const prompt of prompts) {
-      console.log(`🔸 ${prompt.name}をテスト中...`);
+      console.error(`🔸 ${prompt.name}をテスト中...`);
       
       const result = await testPrompt(prompt, article.title, article.content);
       
@@ -265,13 +265,13 @@ async function main() {
       });
       
       if (result.success) {
-        console.log(`  ✅ 成功 (${result.processingTime}ms)`);
-        console.log(`  📊 スコア: ${result.score}点`);
-        console.log(`  🌐 英語混入: ${result.hasEnglish ? '❌ あり' : '✅ なし'}`);
-        console.log(`  📝 要約: ${result.summary.substring(0, 50)}...`);
-        console.log(`  🏷️  タグ: ${result.tags.join(', ')}`);
+        console.error(`  ✅ 成功 (${result.processingTime}ms)`);
+        console.error(`  📊 スコア: ${result.score}点`);
+        console.error(`  🌐 英語混入: ${result.hasEnglish ? '❌ あり' : '✅ なし'}`);
+        console.error(`  📝 要約: ${result.summary.substring(0, 50)}...`);
+        console.error(`  🏷️  タグ: ${result.tags.join(', ')}`);
       } else {
-        console.log(`  ❌ 失敗`);
+        console.error(`  ❌ 失敗`);
       }
       
       // API負荷軽減
@@ -280,9 +280,9 @@ async function main() {
   }
   
   // 結果集計
-  console.log('\n================================================================================');
-  console.log('📊 プロンプト比較結果');
-  console.log('================================================================================\n');
+  console.error('\n================================================================================');
+  console.error('📊 プロンプト比較結果');
+  console.error('================================================================================\n');
   
   const promptStats = prompts.map(p => {
     const promptResults = results.filter(r => r.prompt === p.name && r.success);
@@ -298,25 +298,25 @@ async function main() {
   }).filter(s => s !== null);
   
   // ランキング表示
-  console.log('【品質スコアランキング】');
+  console.error('【品質スコアランキング】');
   promptStats
     .sort((a, b) => b!.avgScore - a!.avgScore)
     .forEach((stat, i) => {
-      console.log(`  ${i + 1}. ${stat!.name}: ${stat!.avgScore.toFixed(1)}点`);
+      console.error(`  ${i + 1}. ${stat!.name}: ${stat!.avgScore.toFixed(1)}点`);
     });
   
-  console.log('\n【英語混入率ランキング（低い順）】');
+  console.error('\n【英語混入率ランキング（低い順）】');
   promptStats
     .sort((a, b) => a!.englishRate - b!.englishRate)
     .forEach((stat, i) => {
-      console.log(`  ${i + 1}. ${stat!.name}: ${(stat!.englishRate * 100).toFixed(0)}%`);
+      console.error(`  ${i + 1}. ${stat!.name}: ${(stat!.englishRate * 100).toFixed(0)}%`);
     });
   
-  console.log('\n【処理速度ランキング】');
+  console.error('\n【処理速度ランキング】');
   promptStats
     .sort((a, b) => a!.avgTime - b!.avgTime)
     .forEach((stat, i) => {
-      console.log(`  ${i + 1}. ${stat!.name}: ${Math.round(stat!.avgTime)}ms`);
+      console.error(`  ${i + 1}. ${stat!.name}: ${Math.round(stat!.avgTime)}ms`);
     });
   
   // 最適プロンプトの推奨
@@ -325,15 +325,15 @@ async function main() {
     .sort((a, b) => b!.avgScore - a!.avgScore)[0];
   
   if (bestPrompt) {
-    console.log('\n✨ 推奨プロンプト');
-    console.log('────────────────────────────────────────────────────────────────────────────');
-    console.log(`  ${bestPrompt.name}`);
-    console.log(`  - 品質スコア: ${bestPrompt.avgScore.toFixed(1)}点`);
-    console.log(`  - 英語混入: なし`);
-    console.log(`  - 処理速度: ${Math.round(bestPrompt.avgTime)}ms`);
+    console.error('\n✨ 推奨プロンプト');
+    console.error('────────────────────────────────────────────────────────────────────────────');
+    console.error(`  ${bestPrompt.name}`);
+    console.error(`  - 品質スコア: ${bestPrompt.avgScore.toFixed(1)}点`);
+    console.error(`  - 英語混入: なし`);
+    console.error(`  - 処理速度: ${Math.round(bestPrompt.avgTime)}ms`);
   }
   
-  console.log('\n✅ テスト完了！');
+  console.error('\n✅ テスト完了！');
 }
 
 // 実行

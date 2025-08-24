@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function addNewSources() {
-  console.log('Adding new AI and Tech blog sources...');
+  console.error('Adding new AI and Tech blog sources...');
 
   const sources = [
     {
@@ -34,26 +34,26 @@ async function addNewSources() {
       });
 
       if (existing) {
-        console.log(`Source "${source.name}" already exists. Updating URL if different...`);
+        console.error(`Source "${source.name}" already exists. Updating URL if different...`);
         if (existing.url !== source.url) {
           await prisma.source.update({
             where: { name: source.name },
             data: { url: source.url, enabled: source.enabled },
           });
-          console.log(`Updated URL for "${source.name}"`);
+          console.error(`Updated URL for "${source.name}"`);
         }
       } else {
         await prisma.source.create({
           data: source,
         });
-        console.log(`Added new source: "${source.name}"`);
+        console.error(`Added new source: "${source.name}"`);
       }
     } catch (error) {
       console.error(`Failed to add/update source "${source.name}":`, error);
     }
   }
 
-  console.log('Completed adding new sources');
+  console.error('Completed adding new sources');
 }
 
 async function main() {

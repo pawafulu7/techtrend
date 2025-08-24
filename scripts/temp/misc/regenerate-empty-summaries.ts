@@ -5,7 +5,7 @@ import { LocalLLMClient } from '../lib/ai/local-llm';
 const prisma = new PrismaClient();
 
 async function regenerateEmptySummaries() {
-  console.log('🔍 詳細要約が空の記事を優先的に再生成\n');
+  console.error('🔍 詳細要約が空の記事を優先的に再生成\n');
   
   try {
     // ローカルLLMクライアントを初期化
@@ -23,7 +23,7 @@ async function regenerateEmptySummaries() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     // 詳細要約が空でコンテンツがある記事を取得
     const emptyArticles = await prisma.article.findMany({
@@ -53,10 +53,10 @@ async function regenerateEmptySummaries() {
       take: 10 // 10件ずつ処理
     });
     
-    console.log(`詳細要約が空の記事: ${emptyArticles.length}件\n`);
+    console.error(`詳細要約が空の記事: ${emptyArticles.length}件\n`);
     
     if (emptyArticles.length === 0) {
-      console.log('✅ 処理対象の記事がありません');
+      console.error('✅ 処理対象の記事がありません');
       return;
     }
     
@@ -66,17 +66,17 @@ async function regenerateEmptySummaries() {
     for (let i = 0; i < emptyArticles.length; i++) {
       const article = emptyArticles[i];
       
-      console.log(`\n[${i + 1}/${emptyArticles.length}] 処理中: ${article.id}`);
-      console.log(`タイトル: ${article.title?.substring(0, 60)}...`);
-      console.log(`コンテンツ長: ${article.content?.length}文字`);
+      console.error(`\n[${i + 1}/${emptyArticles.length}] 処理中: ${article.id}`);
+      console.error(`タイトル: ${article.title?.substring(0, 60)}...`);
+      console.error(`コンテンツ長: ${article.content?.length}文字`);
       
       if (!article.content || article.content.length < 30) {
-        console.log('⚠️ コンテンツが短すぎるためスキップ');
+        console.error('⚠️ コンテンツが短すぎるためスキップ');
         continue;
       }
       
       try {
-        console.log('🤖 ローカルLLMで生成中...');
+        console.error('🤖 ローカルLLMで生成中...');
         const startTime = Date.now();
         
         const result = await localLLM.generateDetailedSummary(
@@ -88,8 +88,8 @@ async function regenerateEmptySummaries() {
         
         // 品質チェック
         const newLines = result.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
-        console.log(`生成時間: ${duration}ms`);
-        console.log(`項目数: ${newLines.length}`);
+        console.error(`生成時間: ${duration}ms`);
+        console.error(`項目数: ${newLines.length}`);
         
         if (newLines.length >= 3) {
           // タグを準備
@@ -121,13 +121,13 @@ async function regenerateEmptySummaries() {
           });
           
           if (newLines.length === 6) {
-            console.log('✅ 6項目で正常に生成されました');
+            console.error('✅ 6項目で正常に生成されました');
           } else {
-            console.log(`✅ ${newLines.length}項目で生成完了`);
+            console.error(`✅ ${newLines.length}項目で生成完了`);
           }
           successCount++;
         } else {
-          console.log('⚠️ 生成された項目数が少なすぎます');
+          console.error('⚠️ 生成された項目数が少なすぎます');
           errorCount++;
         }
         
@@ -140,10 +140,10 @@ async function regenerateEmptySummaries() {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('処理完了');
-    console.log(`成功: ${successCount}件`);
-    console.log(`エラー: ${errorCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('処理完了');
+    console.error(`成功: ${successCount}件`);
+    console.error(`エラー: ${errorCount}件`);
     
     // 残り件数を確認
     const remainingCount = await prisma.article.count({
@@ -155,7 +155,7 @@ async function regenerateEmptySummaries() {
       }
     });
     
-    console.log(`\n残りの詳細要約なし記事: ${remainingCount}件`);
+    console.error(`\n残りの詳細要約なし記事: ${remainingCount}件`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

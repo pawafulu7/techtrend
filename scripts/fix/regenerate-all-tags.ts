@@ -53,7 +53,7 @@ async function delay(ms: number): Promise<void> {
 function saveProgress(progress: Progress): void {
   try {
     fs.writeFileSync(PROGRESS_FILE, JSON.stringify(progress, null, 2));
-    console.log(`💾 進捗を保存しました: ${PROGRESS_FILE}`);
+    console.error(`💾 進捗を保存しました: ${PROGRESS_FILE}`);
   } catch (error) {
     console.error('⚠️ 進捗の保存に失敗:', error);
   }
@@ -68,11 +68,11 @@ function loadProgress(mode: string): Progress | null {
       const data = JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'));
       // モードが一致する場合のみ進捗を使用
       if (data.mode === mode) {
-        console.log(`📂 前回の進捗を読み込みました: ${data.totalProcessed}件処理済み`);
-        console.log(`   最後に処理したID: ${data.lastProcessedId}`);
+        console.error(`📂 前回の進捗を読み込みました: ${data.totalProcessed}件処理済み`);
+        console.error(`   最後に処理したID: ${data.lastProcessedId}`);
         return data;
       } else {
-        console.log(`⚠️ モードが異なるため進捗をリセットします（前回: ${data.mode}, 今回: ${mode}）`);
+        console.error(`⚠️ モードが異なるため進捗をリセットします（前回: ${data.mode}, 今回: ${mode}）`);
       }
     }
   } catch (error) {
@@ -88,7 +88,7 @@ function clearProgress(): void {
   try {
     if (fs.existsSync(PROGRESS_FILE)) {
       fs.unlinkSync(PROGRESS_FILE);
-      console.log('🗑️ 進捗ファイルを削除しました');
+      console.error('🗑️ 進捗ファイルを削除しました');
     }
   } catch (error) {
     console.error('⚠️ 進捗ファイルの削除に失敗:', error);
@@ -133,7 +133,7 @@ async function regenerateTagsWithoutAPI(articleId: string, existingTags: string[
       });
     });
     
-    console.log(`✅ タグ正規化完了: ${existingTags.join(', ')} → ${normalizedTags.map(t => t.name).join(', ')}`);
+    console.error(`✅ タグ正規化完了: ${existingTags.join(', ')} → ${normalizedTags.map(t => t.name).join(', ')}`);
   } catch (error) {
     console.error(`❌ タグ正規化エラー (ID: ${articleId}):`, error);
     throw error;
@@ -155,7 +155,7 @@ async function regenerateTagsWithAI(
   const textContent = content || detailedSummary || '';
   
   if (!textContent) {
-    console.log(`⚠️ コンテンツ不足のためスキップ (ID: ${articleId})`);
+    console.error(`⚠️ コンテンツ不足のためスキップ (ID: ${articleId})`);
     throw new Error('No content available');
   }
   
@@ -165,7 +165,7 @@ async function regenerateTagsWithAI(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       // AI要約生成（タグとカテゴリのみ使用）
-      console.log(`🤖 AI生成開始 (試行 ${attempt}/${maxRetries}): ${title.substring(0, 50)}...`);
+      console.error(`🤖 AI生成開始 (試行 ${attempt}/${maxRetries}): ${title.substring(0, 50)}...`);
       const result = await summaryService.generate(title, textContent);
       
       // データベース更新
@@ -198,7 +198,7 @@ async function regenerateTagsWithAI(
       });
     });
       
-      console.log(`✅ AI生成完了: タグ=${result.tags.join(', ')}, カテゴリ=${result.category || 'なし'}`);
+      console.error(`✅ AI生成完了: タグ=${result.tags.join(', ')}, カテゴリ=${result.category || 'なし'}`);
       return; // 成功したらリトライループを抜ける
       
     } catch (error) {
@@ -207,11 +207,11 @@ async function regenerateTagsWithAI(
       
       // Rate Limitエラーの場合は長めに待機
       if (error?.message?.includes('429') || error?.message?.includes('rate')) {
-        console.log(`⏳ Rate Limitエラーのため30秒待機...`);
+        console.error(`⏳ Rate Limitエラーのため30秒待機...`);
         await delay(30000);
       } else if (attempt < maxRetries) {
         // 通常のエラーの場合は5秒待機してリトライ
-        console.log(`⏳ ${5}秒後にリトライします...`);
+        console.error(`⏳ ${5}秒後にリトライします...`);
         await delay(5000);
       }
     }
@@ -238,17 +238,17 @@ async function main() {
     const continueFlag = process.argv.includes('--continue');
     const resetFlag = process.argv.includes('--reset');
     
-    console.log('='.repeat(60));
-    console.log('🏷️  既存記事のタグ再生成スクリプト');
-    console.log('='.repeat(60));
-    console.log(`モード: ${mode === 'regenerate' ? 'AI再生成' : 'タグ正規化のみ'}`);
-    console.log(`バッチサイズ: ${BATCH_SIZE}記事`);
-    console.log(`記事間待機: ${DELAY_BETWEEN_ARTICLES}ms`);
-    console.log(`バッチ間待機: ${DELAY_BETWEEN_BATCHES}ms`);
-    if (limit) console.log(`処理上限: ${limit}記事`);
-    if (continueFlag) console.log(`📂 前回の続きから処理を再開`);
-    if (resetFlag) console.log(`🔄 進捗をリセットして最初から処理`);
-    console.log('='.repeat(60));
+    console.error('='.repeat(60));
+    console.error('🏷️  既存記事のタグ再生成スクリプト');
+    console.error('='.repeat(60));
+    console.error(`モード: ${mode === 'regenerate' ? 'AI再生成' : 'タグ正規化のみ'}`);
+    console.error(`バッチサイズ: ${BATCH_SIZE}記事`);
+    console.error(`記事間待機: ${DELAY_BETWEEN_ARTICLES}ms`);
+    console.error(`バッチ間待機: ${DELAY_BETWEEN_BATCHES}ms`);
+    if (limit) console.error(`処理上限: ${limit}記事`);
+    if (continueFlag) console.error(`📂 前回の続きから処理を再開`);
+    if (resetFlag) console.error(`🔄 進捗をリセットして最初から処理`);
+    console.error('='.repeat(60));
     
     // リセットフラグが指定された場合は進捗をクリア
     if (resetFlag) {
@@ -292,22 +292,22 @@ async function main() {
     
     // 前回の進捗がある場合は累計を引き継ぐ
     if (progress) {
-      console.log(`\n📊 今回の対象記事数: ${stats.total}件`);
-      console.log(`📈 累計処理済み: ${progress.totalProcessed}件`);
+      console.error(`\n📊 今回の対象記事数: ${stats.total}件`);
+      console.error(`📈 累計処理済み: ${progress.totalProcessed}件`);
       stats.processed = progress.totalProcessed;
       stats.success = progress.totalSuccess;
       stats.failed = progress.totalFailed;
     } else {
-      console.log(`\n📊 対象記事数: ${stats.total}件\n`);
+      console.error(`\n📊 対象記事数: ${stats.total}件\n`);
     }
     
     if (stats.total === 0) {
-      console.log('✨ 処理対象の記事がありません');
+      console.error('✨ 処理対象の記事がありません');
       if (progress) {
-        console.log(`\n🎉 全記事の処理が完了しています！`);
-        console.log(`   累計処理: ${progress.totalProcessed}件`);
-        console.log(`   成功: ${progress.totalSuccess}件`);
-        console.log(`   失敗: ${progress.totalFailed}件`);
+        console.error(`\n🎉 全記事の処理が完了しています！`);
+        console.error(`   累計処理: ${progress.totalProcessed}件`);
+        console.error(`   成功: ${progress.totalSuccess}件`);
+        console.error(`   失敗: ${progress.totalFailed}件`);
         clearProgress();
       }
       return;
@@ -322,17 +322,17 @@ async function main() {
       const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
       const totalBatches = Math.ceil(articles.length / BATCH_SIZE);
       
-      console.log(`\n📦 バッチ ${batchNumber}/${totalBatches} を処理中...`);
-      console.log('-'.repeat(40));
+      console.error(`\n📦 バッチ ${batchNumber}/${totalBatches} を処理中...`);
+      console.error('-'.repeat(40));
       
       for (const article of batch) {
         stats.processed++;
         const progressText = `[${stats.processed}]`;
         
         try {
-          console.log(`\n${progressText} 処理中: ${article.title.substring(0, 60)}...`);
-          console.log(`  ソース: ${article.source.name}`);
-          console.log(`  現在のタグ: ${article.tags.map(t => t.name).join(', ')}`);
+          console.error(`\n${progressText} 処理中: ${article.title.substring(0, 60)}...`);
+          console.error(`  ソース: ${article.source.name}`);
+          console.error(`  現在のタグ: ${article.tags.map(t => t.name).join(', ')}`);
           
           if (mode === 'regenerate') {
             // AI再生成モード
@@ -377,7 +377,7 @@ async function main() {
           console.error(`  ⚠️ 最終的なエラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
           
           // 失敗した記事のIDは進捗に含めない（lastProcessedIdは更新しない）
-          console.log(`  ⚠️ 記事ID ${article.id} は処理に失敗したため、次回再試行されます`);
+          console.error(`  ⚠️ 記事ID ${article.id} は処理に失敗したため、次回再試行されます`);
           
           // 1つでも失敗したら即座に中断（リトライ3回後の失敗）
           console.error('\n❌ 処理に失敗したため中断します');
@@ -398,7 +398,7 @@ async function main() {
       
       // バッチ間の待機（最後のバッチ以外）
       if (mode === 'regenerate' && i + BATCH_SIZE < articles.length) {
-        console.log(`\n⏳ 次のバッチまで ${DELAY_BETWEEN_BATCHES / 1000}秒待機中...`);
+        console.error(`\n⏳ 次のバッチまで ${DELAY_BETWEEN_BATCHES / 1000}秒待機中...`);
         await delay(DELAY_BETWEEN_BATCHES);
       }
     }
@@ -419,22 +419,22 @@ async function main() {
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - stats.startTime.getTime()) / 1000);
     
-    console.log('\n' + '='.repeat(60));
-    console.log('📈 処理完了統計');
-    console.log('='.repeat(60));
-    console.log(`今回の処理: ${stats.total}件`);
-    console.log(`累計処理済み: ${stats.processed}件`);
-    console.log(`累計成功: ${stats.success}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📈 処理完了統計');
+    console.error('='.repeat(60));
+    console.error(`今回の処理: ${stats.total}件`);
+    console.error(`累計処理済み: ${stats.processed}件`);
+    console.error(`累計成功: ${stats.success}件`);
     if (stats.processed > 0) {
-      console.log(`成功率: ${Math.round(stats.success / stats.processed * 100)}%`);
+      console.error(`成功率: ${Math.round(stats.success / stats.processed * 100)}%`);
     }
-    console.log(`累計失敗: ${stats.failed}件`);
-    console.log(`今回の処理時間: ${duration}秒`);
-    console.log('='.repeat(60));
+    console.error(`累計失敗: ${stats.failed}件`);
+    console.error(`今回の処理時間: ${duration}秒`);
+    console.error('='.repeat(60));
     
     // 不要になったタグのクリーンアップ
     if (mode === 'normalize') {
-      console.log('\n🧹 未使用タグのクリーンアップ...');
+      console.error('\n🧹 未使用タグのクリーンアップ...');
       const orphanedTags = await prisma.tag.findMany({
         where: {
           articles: {
@@ -444,7 +444,7 @@ async function main() {
       });
       
       if (orphanedTags.length > 0) {
-        console.log(`  ${orphanedTags.length}個の未使用タグを削除します`);
+        console.error(`  ${orphanedTags.length}個の未使用タグを削除します`);
         await prisma.tag.deleteMany({
           where: {
             id: {
@@ -452,9 +452,9 @@ async function main() {
             }
           }
         });
-        console.log('  ✅ クリーンアップ完了');
+        console.error('  ✅ クリーンアップ完了');
       } else {
-        console.log('  ✨ 未使用タグはありません');
+        console.error('  ✨ 未使用タグはありません');
       }
     }
     
@@ -468,7 +468,7 @@ async function main() {
 
 // 使用方法の表示
 if (process.argv.includes('--help')) {
-  console.log(`
+  console.error(`
 使用方法:
   npx tsx scripts/fix/regenerate-all-tags.ts [mode] [limit] [options]
 

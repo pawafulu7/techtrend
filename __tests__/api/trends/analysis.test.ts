@@ -2,9 +2,10 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/trends/analysis/route';
 
 // Mock dependencies
+const mockQueryRaw = jest.fn();
 jest.mock('@/lib/database', () => ({
   prisma: {
-    $queryRaw: jest.fn().mockResolvedValue([])
+    $queryRaw: mockQueryRaw
   }
 }));
 
@@ -24,7 +25,7 @@ describe('/api/trends/analysis', () => {
     jest.clearAllMocks();
     
     // Setup default mock responses
-    (prisma.$queryRaw as jest.Mock).mockResolvedValue([]);
+    mockQueryRaw.mockResolvedValue([]);
   });
 
   describe('days parameter validation', () => {

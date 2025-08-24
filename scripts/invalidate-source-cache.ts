@@ -3,9 +3,9 @@
 import { sourceCache } from '../lib/cache/source-cache';
 
 async function main() {
-  console.log('Invalidating source cache...');
+  console.error('Invalidating source cache...');
   await sourceCache.invalidate();
-  console.log('Source cache invalidated successfully');
+  console.error('Source cache invalidated successfully');
   process.exit(0);
 }
 

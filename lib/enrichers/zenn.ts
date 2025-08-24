@@ -19,7 +19,7 @@ export class ZennContentEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.log(`[ZennEnricher] Fetching content from: ${url}`);
+      console.error(`[ZennEnricher] Fetching content from: ${url}`);
       
       const html = await this.fetchWithRetry(url);
       
@@ -54,27 +54,27 @@ export class ZennContentEnricher extends BaseContentEnricher {
         // Zennの場合、APIから取得を試みる
         const apiContent = await this.fetchFromAPI(url);
         if (apiContent && this.isContentSufficient(apiContent, 500)) {
-          console.log(`[ZennEnricher] Using API content (${apiContent.length} chars)`);
+          console.error(`[ZennEnricher] Using API content (${apiContent.length} chars)`);
           return { content: apiContent, thumbnail };
         }
         
         // より広範囲を取得する試み
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
-          console.log(`[ZennEnricher] Using fallback content (${fallbackContent.length} chars)`);
+          console.error(`[ZennEnricher] Using fallback content (${fallbackContent.length} chars)`);
           return { content: fallbackContent, thumbnail };
         }
         
         // コンテンツが不十分でもサムネイルがあれば返す
         if (thumbnail) {
-          console.log(`[ZennEnricher] Content insufficient but thumbnail found`);
+          console.error(`[ZennEnricher] Content insufficient but thumbnail found`);
           return { content: content || null, thumbnail };
         }
         
         return null;
       }
       
-      console.log(`[ZennEnricher] Successfully enriched: ${content.length} characters`);
+      console.error(`[ZennEnricher] Successfully enriched: ${content.length} characters`);
       return { content, thumbnail };
       
     } catch (error) {
@@ -98,7 +98,7 @@ export class ZennContentEnricher extends BaseContentEnricher {
       
       // 注意: Zenn公式APIは現在公開されていないため、
       // 将来的にAPIが公開された場合の実装プレースホルダー
-      console.log(`[ZennEnricher] API fetch not yet implemented for slug: ${slug}`);
+      console.error(`[ZennEnricher] API fetch not yet implemented for slug: ${slug}`);
       return null;
       
       // 将来的な実装例:

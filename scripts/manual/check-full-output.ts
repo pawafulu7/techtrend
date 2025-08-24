@@ -7,8 +7,8 @@
 import fetch from 'node-fetch';
 
 async function checkFullOutput() {
-  console.log('📝 LocalLLMフル出力確認\n');
-  console.log('================================================================================');
+  console.error('📝 LocalLLMフル出力確認\n');
+  console.error('================================================================================');
   
   const localLLMUrl = process.env.LOCAL_LLM_URL || 'http://192.168.11.7:1234';
   const localLLMModel = process.env.LOCAL_LLM_MODEL || 'openai/gpt-oss-20b';
@@ -23,8 +23,8 @@ async function checkFullOutput() {
     `
   };
   
-  console.log('📄 テスト記事:');
-  console.log(`  タイトル: ${testArticle.title}\n`);
+  console.error('📄 テスト記事:');
+  console.error(`  タイトル: ${testArticle.title}\n`);
   
   const userPrompt = `
 技術記事を分析して、以下の形式で出力してください。
@@ -45,7 +45,7 @@ async function checkFullOutput() {
 タグ: [技術タグ3-5個、カンマ区切り]`;
   
   try {
-    console.log('⏳ LocalLLMで生成中...\n');
+    console.error('⏳ LocalLLMで生成中...\n');
     
     const response = await fetch(`${localLLMUrl}/v1/chat/completions`, {
       method: 'POST',
@@ -67,21 +67,21 @@ async function checkFullOutput() {
     const data = await response.json() as any;
     const output = data.choices[0].message.content;
     
-    console.log('✅ 生成完了\n');
-    console.log('【完全な出力内容】');
-    console.log('════════════════════════════════════════════════════════════════════════════');
-    console.log(output);
-    console.log('════════════════════════════════════════════════════════════════════════════\n');
+    console.error('✅ 生成完了\n');
+    console.error('【完全な出力内容】');
+    console.error('════════════════════════════════════════════════════════════════════════════');
+    console.error(output);
+    console.error('════════════════════════════════════════════════════════════════════════════\n');
     
     // 行ごとに分析
     const lines = output.split('\n');
-    console.log('【行ごとの分析】');
-    console.log('────────────────────────────────────────────────────────────────────────────');
+    console.error('【行ごとの分析】');
+    console.error('────────────────────────────────────────────────────────────────────────────');
     
     lines.forEach((line, index) => {
       const trimmed = line.trim();
       if (!trimmed) {
-        console.log(`行${index + 1}: [空行]`);
+        console.error(`行${index + 1}: [空行]`);
         return;
       }
       
@@ -101,12 +101,12 @@ async function checkFullOutput() {
         lineType = '🟡 日本語含む';
       }
       
-      console.log(`行${index + 1}: ${lineType}`);
-      console.log(`  内容: "${trimmed.substring(0, 60)}${trimmed.length > 60 ? '...' : ''}"`);
+      console.error(`行${index + 1}: ${lineType}`);
+      console.error(`  内容: "${trimmed.substring(0, 60)}${trimmed.length > 60 ? '...' : ''}"`);
     });
     
-    console.log('\n【除去ルールの提案】');
-    console.log('────────────────────────────────────────────────────────────────────────────');
+    console.error('\n【除去ルールの提案】');
+    console.error('────────────────────────────────────────────────────────────────────────────');
     
     // 最初の非空行を確認
     const firstNonEmptyLine = lines.find(line => line.trim());
@@ -117,52 +117,52 @@ async function checkFullOutput() {
       const summaryIndex = lines.findIndex(line => line.trim().match(/^(一覧)?要約[:：]/));
       
       if (summaryIndex > 0) {
-        console.log('✅ 推奨除去方法:');
-        console.log('  1. 「一覧要約:」より前の英語行をすべて除去');
-        console.log(`  2. 除去対象: 行1～行${summaryIndex}（${summaryIndex}行）`);
-        console.log('\n```typescript');
-        console.log('function cleanLocalLLMOutput(output: string): string {');
-        console.log('  const lines = output.split("\\n");');
-        console.log('  ');
-        console.log('  // 「一覧要約:」を探す');
-        console.log('  const summaryIndex = lines.findIndex(line => ');
-        console.log('    /^(一覧)?要約[:：]/.test(line.trim())');
-        console.log('  );');
-        console.log('  ');
-        console.log('  if (summaryIndex > 0) {');
-        console.log('    // 「一覧要約:」から開始');
-        console.log('    return lines.slice(summaryIndex).join("\\n");');
-        console.log('  }');
-        console.log('  ');
-        console.log('  // フォールバック: 英語のみの行を除去');
-        console.log('  while (lines.length > 0 && /^[A-Za-z][A-Za-z\\s.,!?]*$/.test(lines[0].trim())) {');
-        console.log('    lines.shift();');
-        console.log('  }');
-        console.log('  ');
-        console.log('  return lines.join("\\n");');
-        console.log('}');
-        console.log('```');
+        console.error('✅ 推奨除去方法:');
+        console.error('  1. 「一覧要約:」より前の英語行をすべて除去');
+        console.error(`  2. 除去対象: 行1～行${summaryIndex}（${summaryIndex}行）`);
+        console.error('\n```typescript');
+        console.error('function cleanLocalLLMOutput(output: string): string {');
+        console.error('  const lines = output.split("\\n");');
+        console.error('  ');
+        console.error('  // 「一覧要約:」を探す');
+        console.error('  const summaryIndex = lines.findIndex(line => ');
+        console.error('    /^(一覧)?要約[:：]/.test(line.trim())');
+        console.error('  );');
+        console.error('  ');
+        console.error('  if (summaryIndex > 0) {');
+        console.error('    // 「一覧要約:」から開始');
+        console.error('    return lines.slice(summaryIndex).join("\\n");');
+        console.error('  }');
+        console.error('  ');
+        console.error('  // フォールバック: 英語のみの行を除去');
+        console.error('  while (lines.length > 0 && /^[A-Za-z][A-Za-z\\s.,!?]*$/.test(lines[0].trim())) {');
+        console.error('    lines.shift();');
+        console.error('  }');
+        console.error('  ');
+        console.error('  return lines.join("\\n");');
+        console.error('}');
+        console.error('```');
       } else if (summaryIndex === 0) {
-        console.log('✅ 英語の前置きなし！正常な出力です。');
+        console.error('✅ 英語の前置きなし！正常な出力です。');
       } else {
-        console.log('⚠️  「一覧要約:」が見つかりません。');
-        console.log('  フォールバック: 英語のみの行を除去');
+        console.error('⚠️  「一覧要約:」が見つかりません。');
+        console.error('  フォールバック: 英語のみの行を除去');
       }
     } else {
-      console.log('✅ 英語の前置きなし！完璧な日本語出力です。');
+      console.error('✅ 英語の前置きなし！完璧な日本語出力です。');
     }
     
     // クリーンアップ後の出力を表示
     if (isEnglishFirst) {
-      console.log('\n【クリーンアップ後の出力】');
-      console.log('════════════════════════════════════════════════════════════════════════════');
+      console.error('\n【クリーンアップ後の出力】');
+      console.error('════════════════════════════════════════════════════════════════════════════');
       
       const summaryIndex = lines.findIndex(line => line.trim().match(/^(一覧)?要約[:：]/));
       if (summaryIndex > 0) {
         const cleaned = lines.slice(summaryIndex).join('\n');
-        console.log(cleaned);
+        console.error(cleaned);
       }
-      console.log('════════════════════════════════════════════════════════════════════════════');
+      console.error('════════════════════════════════════════════════════════════════════════════');
     }
     
   } catch (error) {

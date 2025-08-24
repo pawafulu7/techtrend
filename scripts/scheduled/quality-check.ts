@@ -55,7 +55,7 @@ async function main() {
   });
 
   if (values.help) {
-    console.log(`
+    console.error(`
 Usage: quality-check.ts [options]
 
 Options:
@@ -87,8 +87,8 @@ Examples:
     verbose: values.verbose as boolean,
   };
 
-  console.log('📊 記事要約の品質チェックを開始します...\n');
-  console.log(`設定:
+  console.error('📊 記事要約の品質チェックを開始します...\n');
+  console.error(`設定:
   - 対象期間: 過去${options.days}日間
   - 対象ソース: ${options.sourceId || 'すべて'}
   - 最大件数: ${options.limit}件
@@ -132,11 +132,11 @@ async function checkQuality(options: QualityCheckOptions) {
   });
 
   if (articles.length === 0) {
-    console.log('✅ チェック対象の記事が見つかりませんでした。');
+    console.error('✅ チェック対象の記事が見つかりませんでした。');
     return;
   }
 
-  console.log(`📝 ${articles.length}件の記事をチェックします...\n`);
+  console.error(`📝 ${articles.length}件の記事をチェックします...\n`);
 
   // 品質スコアを計算
   const results = [];
@@ -178,9 +178,9 @@ async function checkQuality(options: QualityCheckOptions) {
     }
 
     if (verbose) {
-      console.log(`[${score.totalScore}点] ${article.title.substring(0, 50)}...`);
+      console.error(`[${score.totalScore}点] ${article.title.substring(0, 50)}...`);
       if (score.issues.length > 0) {
-        console.log(`  問題: ${score.issues.join(', ')}`);
+        console.error(`  問題: ${score.issues.join(', ')}`);
       }
     }
   }
@@ -197,10 +197,10 @@ async function checkQuality(options: QualityCheckOptions) {
   const stats = calculateAverageScore(summariesForAverage);
 
   // 結果を表示
-  console.log('\n' + '='.repeat(60));
-  console.log('📊 品質チェック結果サマリー');
-  console.log('='.repeat(60));
-  console.log(`
+  console.error('\n' + '='.repeat(60));
+  console.error('📊 品質チェック結果サマリー');
+  console.error('='.repeat(60));
+  console.error(`
 総合スコア: ${stats.averageScore}点
 
 品質分布:
@@ -212,39 +212,39 @@ async function checkQuality(options: QualityCheckOptions) {
 
   // 問題タイプ別の集計を表示
   if (issuesByType.size > 0) {
-    console.log('頻出する問題:');
+    console.error('頻出する問題:');
     const sortedIssues = Array.from(issuesByType.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
     
     for (const [issue, count] of sortedIssues) {
-      console.log(`  - ${issue}: ${count}件`);
+      console.error(`  - ${issue}: ${count}件`);
     }
   }
 
   // 低品質記事のリスト
   if (lowQualityArticles.length > 0) {
-    console.log(`\n⚠️  低品質記事（70点未満）: ${lowQualityArticles.length}件\n`);
+    console.error(`\n⚠️  低品質記事（70点未満）: ${lowQualityArticles.length}件\n`);
     
     const topWorst = lowQualityArticles
       .sort((a, b) => a.score - b.score)
       .slice(0, 10);
 
     for (const article of topWorst) {
-      console.log(`[${article.score}点] ${article.title.substring(0, 60)}...`);
-      console.log(`  ID: ${article.id}`);
-      console.log(`  問題: ${article.issues.slice(0, 3).join(', ')}`);
-      console.log('');
+      console.error(`[${article.score}点] ${article.title.substring(0, 60)}...`);
+      console.error(`  ID: ${article.id}`);
+      console.error(`  問題: ${article.issues.slice(0, 3).join(', ')}`);
+      console.error('');
     }
   }
 
   // 再生成が必要な記事
   const needsRegenerationCount = results.filter(r => r.needsRegeneration).length;
   if (needsRegenerationCount > 0) {
-    console.log(`\n🔄 再生成が必要な記事: ${needsRegenerationCount}件`);
+    console.error(`\n🔄 再生成が必要な記事: ${needsRegenerationCount}件`);
 
     if (autoRegenerate) {
-      console.log('\n再生成マークを付与しています...');
+      console.error('\n再生成マークを付与しています...');
       
       const articleIds = results
         .filter(r => r.needsRegeneration)
@@ -260,35 +260,35 @@ async function checkQuality(options: QualityCheckOptions) {
         },
       });
 
-      console.log(`✅ ${articleIds.length}件の記事に再生成マークを付与しました。`);
-      console.log('次回のregenerate-summaries.tsで自動的に再生成されます。');
+      console.error(`✅ ${articleIds.length}件の記事に再生成マークを付与しました。`);
+      console.error('次回のregenerate-summaries.tsで自動的に再生成されます。');
     } else {
-      console.log('再生成を実行するには、regenerate-summaries.tsを使用してください。');
+      console.error('再生成を実行するには、regenerate-summaries.tsを使用してください。');
       
       const articleIds = results
         .filter(r => r.needsRegeneration)
         .map(r => r.articleId)
         .slice(0, 5);
       
-      console.log(`\n例:\nnpx tsx scripts/scheduled/regenerate-summaries.ts --ids ${articleIds.join(',')}`);
+      console.error(`\n例:\nnpx tsx scripts/scheduled/regenerate-summaries.ts --ids ${articleIds.join(',')}`);
     }
   }
 
   // 推奨事項
-  console.log('\n' + '='.repeat(60));
-  console.log('💡 推奨事項');
-  console.log('='.repeat(60));
+  console.error('\n' + '='.repeat(60));
+  console.error('💡 推奨事項');
+  console.error('='.repeat(60));
 
   if (stats.averageScore >= 85) {
-    console.log('✅ 全体的に高品質な要約が生成されています。');
+    console.error('✅ 全体的に高品質な要約が生成されています。');
   } else if (stats.averageScore >= 70) {
-    console.log('⚠️  品質は良好ですが、改善の余地があります。');
+    console.error('⚠️  品質は良好ですが、改善の余地があります。');
     if (stats.distribution.poor > 0) {
-      console.log('   低品質な要約の再生成を検討してください。');
+      console.error('   低品質な要約の再生成を検討してください。');
     }
   } else {
-    console.log('❌ 要約品質に問題があります。');
-    console.log('   プロンプトの見直しや、AI設定の調整を検討してください。');
+    console.error('❌ 要約品質に問題があります。');
+    console.error('   プロンプトの見直しや、AI設定の調整を検討してください。');
   }
 
   // 詳細レポートの保存オプション
@@ -306,7 +306,7 @@ async function checkQuality(options: QualityCheckOptions) {
       }, null, 2)
     );
     
-    console.log(`\n📄 詳細レポートを保存しました: ${reportPath}`);
+    console.error(`\n📄 詳細レポートを保存しました: ${reportPath}`);
   }
 }
 

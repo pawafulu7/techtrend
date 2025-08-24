@@ -31,7 +31,7 @@ export async function POST() {
       try {
         // コンテンツが空の場合はスキップ
         if (!article.content || article.content.trim() === '') {
-          console.log(`Skipping article ${article.id} - no content`);
+          console.error(`Skipping article ${article.id} - no content`);
           continue;
         }
 
@@ -66,7 +66,7 @@ export async function POST() {
             }
           });
           generated++;
-          console.log(`Generated tags for article ${article.id}: ${normalizedTags.join(', ')}`);
+          console.error(`Generated tags for article ${article.id}: ${normalizedTags.join(', ')}`);
         }
       } catch (error) {
         errors++;

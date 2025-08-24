@@ -83,7 +83,7 @@ function loadProgress(): Progress | null {
 function log(message: string, level: 'INFO' | 'ERROR' | 'SUCCESS' = 'INFO') {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] [${level}] ${message}`;
-  console.log(logMessage);
+  console.error(logMessage);
   
   // ファイルにも記録
   fs.appendFileSync(LOG_FILE, logMessage + '\n');
@@ -111,12 +111,12 @@ async function checkBackup(skipBackup: boolean): Promise<boolean> {
     return true;
   }
 
-  console.log('\n' + '='.repeat(60));
-  console.log('⚠️  重要: データベースのバックアップを作成しましたか？');
-  console.log('='.repeat(60));
-  console.log('このスクリプトは既存の要約を上書きします。');
-  console.log('バックアップコマンド: cp prisma/dev.db prisma/backup/dev_$(date +%Y%m%d_%H%M%S).db');
-  console.log('='.repeat(60) + '\n');
+  console.error('\n' + '='.repeat(60));
+  console.error('⚠️  重要: データベースのバックアップを作成しましたか？');
+  console.error('='.repeat(60));
+  console.error('このスクリプトは既存の要約を上書きします。');
+  console.error('バックアップコマンド: cp prisma/dev.db prisma/backup/dev_$(date +%Y%m%d_%H%M%S).db');
+  console.error('='.repeat(60) + '\n');
 
   return await confirmAction('バックアップを作成済みですか？');
 }

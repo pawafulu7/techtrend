@@ -22,13 +22,13 @@ async function regenerateGemmaArticle() {
       return;
     }
     
-    console.log('=== 記事情報 ===');
-    console.log(`タイトル: ${article.title}`);
-    console.log(`コンテンツ長: ${article.content?.length}文字`);
-    console.log(`現在の詳細要約長: ${article.detailedSummary?.length}文字`);
-    console.log(`現在の項目数: ${article.detailedSummary?.split('\n・').length}個`);
+    console.error('=== 記事情報 ===');
+    console.error(`タイトル: ${article.title}`);
+    console.error(`コンテンツ長: ${article.content?.length}文字`);
+    console.error(`現在の詳細要約長: ${article.detailedSummary?.length}文字`);
+    console.error(`現在の項目数: ${article.detailedSummary?.split('\n・').length}個`);
     
-    console.log('\n=== 要約を再生成 ===');
+    console.error('\n=== 要約を再生成 ===');
     
     const result = await summaryService.generate(
       article.title,
@@ -46,11 +46,11 @@ async function regenerateGemmaArticle() {
         }
       });
       
-      console.log('\n✅ 再生成完了');
-      console.log(`新しい詳細要約長: ${result.detailedSummary.length}文字`);
-      console.log(`新しい項目数: ${result.detailedSummary.split('\n・').length}個`);
-      console.log('\n=== 新しい詳細要約 ===');
-      console.log(result.detailedSummary);
+      console.error('\n✅ 再生成完了');
+      console.error(`新しい詳細要約長: ${result.detailedSummary.length}文字`);
+      console.error(`新しい項目数: ${result.detailedSummary.split('\n・').length}個`);
+      console.error('\n=== 新しい詳細要約 ===');
+      console.error(result.detailedSummary);
     }
     
   } catch (error) {

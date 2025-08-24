@@ -85,9 +85,9 @@ export class ContentEnricherFactory {
     const enricher = this.enrichers.find(e => e.canHandle(url));
     
     if (enricher) {
-      console.log(`[EnricherFactory] Found enricher for ${url}: ${enricher.constructor.name}`);
+      console.error(`[EnricherFactory] Found enricher for ${url}: ${enricher.constructor.name}`);
     } else {
-      console.log(`[EnricherFactory] No enricher found for ${url}`);
+      console.error(`[EnricherFactory] No enricher found for ${url}`);
     }
     
     return enricher || null;

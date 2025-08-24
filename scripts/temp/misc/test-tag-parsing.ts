@@ -219,41 +219,41 @@ React、Next.js、Web開発`,
 ];
 
 // テスト実行
-console.log('=== タグパーステストを開始 ===\n');
+console.error('=== タグパーステストを開始 ===\n');
 
 let passed = 0;
 let failed = 0;
 
 testCases.forEach((testCase, index) => {
-  console.log(`テストケース ${index + 1}: ${testCase.name}`);
+  console.error(`テストケース ${index + 1}: ${testCase.name}`);
   
   const result = parseSummaryAndTags(testCase.input);
   const tagsMatch = JSON.stringify(result.tags.sort()) === JSON.stringify(testCase.expected.sort());
   
   if (tagsMatch) {
-    console.log('✅ 成功');
-    console.log(`  期待値: ${JSON.stringify(testCase.expected)}`);
-    console.log(`  実際値: ${JSON.stringify(result.tags)}`);
+    console.error('✅ 成功');
+    console.error(`  期待値: ${JSON.stringify(testCase.expected)}`);
+    console.error(`  実際値: ${JSON.stringify(result.tags)}`);
     passed++;
   } else {
-    console.log('❌ 失敗');
-    console.log(`  期待値: ${JSON.stringify(testCase.expected)}`);
-    console.log(`  実際値: ${JSON.stringify(result.tags)}`);
+    console.error('❌ 失敗');
+    console.error(`  期待値: ${JSON.stringify(testCase.expected)}`);
+    console.error(`  実際値: ${JSON.stringify(result.tags)}`);
     failed++;
   }
   
-  console.log('');
+  console.error('');
 });
 
-console.log('=== テスト結果 ===');
-console.log(`成功: ${passed}件`);
-console.log(`失敗: ${failed}件`);
-console.log(`合計: ${passed + failed}件`);
+console.error('=== テスト結果 ===');
+console.error(`成功: ${passed}件`);
+console.error(`失敗: ${failed}件`);
+console.error(`合計: ${passed + failed}件`);
 
 if (failed === 0) {
-  console.log('\n✅ すべてのテストが成功しました！');
+  console.error('\n✅ すべてのテストが成功しました！');
   process.exit(0);
 } else {
-  console.log('\n❌ 一部のテストが失敗しました。');
+  console.error('\n❌ 一部のテストが失敗しました。');
   process.exit(1);
 }

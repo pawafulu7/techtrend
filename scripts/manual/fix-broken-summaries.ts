@@ -26,10 +26,10 @@ async function fixBrokenSummaries() {
 
   const unifiedSummaryService = new UnifiedSummaryService();
 
-  console.log(`📝 ${brokenArticleIds.length}件の壊れた要約を修正します`);
+  console.error(`📝 ${brokenArticleIds.length}件の壊れた要約を修正します`);
 
   for (const articleId of brokenArticleIds) {
-    console.log(`\n処理中: ${articleId}`);
+    console.error(`\n処理中: ${articleId}`);
     
     try {
       const article = await prisma.article.findUnique({
@@ -42,7 +42,7 @@ async function fixBrokenSummaries() {
         continue;
       }
 
-      console.log(`  📰 ${article.title.substring(0, 50)}...`);
+      console.error(`  📰 ${article.title.substring(0, 50)}...`);
       
       const prompt = generateUnifiedPrompt(
         article.title,
@@ -85,7 +85,7 @@ async function fixBrokenSummaries() {
         }
       });
 
-      console.log(`  ✅ 修正完了`);
+      console.error(`  ✅ 修正完了`);
       
       // レート制限対策
       await new Promise(resolve => setTimeout(resolve, 3000));
@@ -95,7 +95,7 @@ async function fixBrokenSummaries() {
     }
   }
 
-  console.log('\n✅ すべての修正が完了しました');
+  console.error('\n✅ すべての修正が完了しました');
 }
 
 fixBrokenSummaries()

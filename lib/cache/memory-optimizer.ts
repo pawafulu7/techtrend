@@ -40,11 +40,11 @@ export class MemoryOptimizer {
    */
   startMonitoring(): void {
     if (this.monitoringInterval) {
-      console.log('[MemoryOptimizer] Monitoring already started');
+      console.error('[MemoryOptimizer] Monitoring already started');
       return;
     }
 
-    console.log('[MemoryOptimizer] Starting memory monitoring...');
+    console.error('[MemoryOptimizer] Starting memory monitoring...');
     
     // 初回チェック
     this.checkMemoryUsage();
@@ -62,7 +62,7 @@ export class MemoryOptimizer {
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
-      console.log('[MemoryOptimizer] Monitoring stopped');
+      console.error('[MemoryOptimizer] Monitoring stopped');
     }
   }
 
@@ -74,7 +74,7 @@ export class MemoryOptimizer {
       const info = await this.getMemoryInfo();
       const usagePercent = (info.used / info.maxMemory) * 100;
       
-      console.log(`[MemoryOptimizer] Memory usage: ${usagePercent.toFixed(2)}% (${this.formatBytes(info.used)}/${this.formatBytes(info.maxMemory)})`);
+      console.error(`[MemoryOptimizer] Memory usage: ${usagePercent.toFixed(2)}% (${this.formatBytes(info.used)}/${this.formatBytes(info.maxMemory)})`);
       
       // アラートレベルチェック
       if (usagePercent >= this.optimizationConfig.monitoring.criticalThreshold) {
@@ -84,7 +84,7 @@ export class MemoryOptimizer {
         console.warn('[MemoryOptimizer] WARNING: Memory usage exceeds alert threshold');
         await this.performOptimization();
       } else if (usagePercent >= this.maxMemoryUsagePercent) {
-        console.log('[MemoryOptimizer] Memory usage high, performing optimization');
+        console.error('[MemoryOptimizer] Memory usage high, performing optimization');
         await this.performOptimization();
       }
     } catch (error) {
@@ -134,7 +134,7 @@ export class MemoryOptimizer {
    * 通常の最適化を実行
    */
   private async performOptimization(): Promise<void> {
-    console.log('[MemoryOptimizer] Performing optimization...');
+    console.error('[MemoryOptimizer] Performing optimization...');
     
     const tasks: Promise<void>[] = [];
     
@@ -150,14 +150,14 @@ export class MemoryOptimizer {
     tasks.push(this.resetCacheStats());
     
     await Promise.allSettled(tasks);
-    console.log('[MemoryOptimizer] Optimization completed');
+    console.error('[MemoryOptimizer] Optimization completed');
   }
 
   /**
    * 緊急最適化を実行
    */
   private async performEmergencyOptimization(): Promise<void> {
-    console.log('[MemoryOptimizer] Performing emergency optimization...');
+    console.error('[MemoryOptimizer] Performing emergency optimization...');
     
     // 最も古いキーから削除
     await this.evictOldestKeys(100);
@@ -168,7 +168,7 @@ export class MemoryOptimizer {
     // 低優先度キャッシュをクリア
     await this.clearLowPriorityCaches();
     
-    console.log('[MemoryOptimizer] Emergency optimization completed');
+    console.error('[MemoryOptimizer] Emergency optimization completed');
   }
 
   /**
@@ -177,7 +177,7 @@ export class MemoryOptimizer {
   private async adjustTTLs(factor?: number): Promise<void> {
     const adjustmentFactor = factor || this.optimizationConfig.ttlAdjustment.adjustmentFactor;
     
-    console.log(`[MemoryOptimizer] Adjusting TTLs by factor ${adjustmentFactor}`);
+    console.error(`[MemoryOptimizer] Adjusting TTLs by factor ${adjustmentFactor}`);
     
     // 各キャッシュのTTLを調整
     const currentStatsTTL = (statsCache as unknown).defaultTTL;
@@ -200,7 +200,7 @@ export class MemoryOptimizer {
     );
     (trendsCache as unknown).defaultTTL = newTrendsTTL;
     
-    console.log(`[MemoryOptimizer] TTLs adjusted - Stats: ${newStatsTTL}s, Trends: ${newTrendsTTL}s`);
+    console.error(`[MemoryOptimizer] TTLs adjusted - Stats: ${newStatsTTL}s, Trends: ${newTrendsTTL}s`);
   }
 
   /**
@@ -230,7 +230,7 @@ export class MemoryOptimizer {
       // Redisの内部メカニズムで期限切れキーをクリーンアップ
       await this.redis.eval(cleanupScript, 0);
       
-      console.log('[MemoryOptimizer] Expired keys cleanup completed');
+      console.error('[MemoryOptimizer] Expired keys cleanup completed');
     } catch (error) {
       console.error('[MemoryOptimizer] Failed to cleanup expired keys:', error);
     }
@@ -267,7 +267,7 @@ export class MemoryOptimizer {
       // バッチで削除
       if (keysToDelete.length > 0) {
         await this.redis.del(...keysToDelete);
-        console.log(`[MemoryOptimizer] Evicted ${keysToDelete.length} oldest keys`);
+        console.error(`[MemoryOptimizer] Evicted ${keysToDelete.length} oldest keys`);
       }
     } catch (error) {
       console.error('[MemoryOptimizer] Failed to evict oldest keys:', error);
@@ -283,7 +283,7 @@ export class MemoryOptimizer {
       const searchKeys = await this.redis.keys('@techtrend/cache:search:*');
       if (searchKeys.length > 0) {
         await this.redis.del(...searchKeys);
-        console.log(`[MemoryOptimizer] Cleared ${searchKeys.length} search cache entries`);
+        console.error(`[MemoryOptimizer] Cleared ${searchKeys.length} search cache entries`);
       }
     } catch (error) {
       console.error('[MemoryOptimizer] Failed to clear low priority caches:', error);
@@ -297,7 +297,7 @@ export class MemoryOptimizer {
     statsCache.resetStats();
     trendsCache.resetStats();
     searchCache.resetStats();
-    console.log('[MemoryOptimizer] Cache stats reset');
+    console.error('[MemoryOptimizer] Cache stats reset');
   }
 
   /**
@@ -305,7 +305,7 @@ export class MemoryOptimizer {
    */
   updateConfig(config: Partial<typeof this.optimizationConfig>): void {
     Object.assign(this.optimizationConfig, config);
-    console.log('[MemoryOptimizer] Configuration updated');
+    console.error('[MemoryOptimizer] Configuration updated');
   }
 
   /**
@@ -348,7 +348,7 @@ export class MemoryOptimizer {
    * 手動最適化実行
    */
   async optimizeManual(aggressive: boolean = false): Promise<void> {
-    console.log(`[MemoryOptimizer] Manual optimization (aggressive: ${aggressive})`);
+    console.error(`[MemoryOptimizer] Manual optimization (aggressive: ${aggressive})`);
     
     if (aggressive) {
       await this.performEmergencyOptimization();
@@ -357,7 +357,7 @@ export class MemoryOptimizer {
     }
     
     const status = await this.getStatus();
-    console.log('[MemoryOptimizer] Optimization result:', status.memory);
+    console.error('[MemoryOptimizer] Optimization result:', status.memory);
   }
 }
 

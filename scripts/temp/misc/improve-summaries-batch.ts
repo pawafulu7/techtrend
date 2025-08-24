@@ -35,10 +35,10 @@ interface ImprovementResult {
 }
 
 async function improveSummariesBatch() {
-  console.log('===== Phase 4: バッチ要約改善 =====\n');
+  console.error('===== Phase 4: バッチ要約改善 =====\n');
   
   if (isDryRun) {
-    console.log('🔍 ドライランモード: 実際の更新は行いません\n');
+    console.error('🔍 ドライランモード: 実際の更新は行いません\n');
   }
   
   const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -55,7 +55,7 @@ async function improveSummariesBatch() {
   }
   
   // 低品質要約の検出
-  console.log('📊 低品質要約を検出中...\n');
+  console.error('📊 低品質要約を検出中...\n');
   
   const whereClause: any = {
     summary: {
@@ -80,7 +80,7 @@ async function improveSummariesBatch() {
     take: limit
   });
   
-  console.log(`対象記事数: ${articles.length}件\n`);
+  console.error(`対象記事数: ${articles.length}件\n`);
   
   const results: ImprovementResult[] = [];
   let processedCount = 0;
@@ -94,7 +94,7 @@ async function improveSummariesBatch() {
   for (let i = 0; i < articles.length; i += batchSize) {
     const batch = articles.slice(i, Math.min(i + batchSize, articles.length));
     
-    console.log(`\n📦 バッチ ${Math.floor(i / batchSize) + 1}/${Math.ceil(articles.length / batchSize)} を処理中...`);
+    console.error(`\n📦 バッチ ${Math.floor(i / batchSize) + 1}/${Math.ceil(articles.length / batchSize)} を処理中...`);
     
     for (const article of batch) {
       processedCount++;
@@ -108,16 +108,16 @@ async function improveSummariesBatch() {
         continue;
       }
       
-      console.log(`\n[${processedCount}/${articles.length}] ${article.title.substring(0, 50)}...`);
-      console.log(`  元の文字数: ${article.summary.length}文字`);
-      console.log(`  問題: ${validation.errors.join(', ')}`);
+      console.error(`\n[${processedCount}/${articles.length}] ${article.title.substring(0, 50)}...`);
+      console.error(`  元の文字数: ${article.summary.length}文字`);
+      console.error(`  問題: ${validation.errors.join(', ')}`);
       
       // まず自動修正を試みる
       const autoFixed = autoFixSummary(article.summary, 130);
       const autoFixValidation = validateSummary(autoFixed);
       
       if (autoFixValidation.isValid) {
-        console.log(`  ✅ 自動修正で解決（${autoFixed.length}文字）`);
+        console.error(`  ✅ 自動修正で解決（${autoFixed.length}文字）`);
         
         if (!isDryRun) {
           await prisma.article.update({
@@ -144,7 +144,7 @@ async function improveSummariesBatch() {
         improvedCount++;
       } else {
         // 自動修正で解決しない場合は再生成
-        console.log(`  🔄 再生成を実行中...`);
+        console.error(`  🔄 再生成を実行中...`);
         
         try {
           const content = article.content || article.summary;
@@ -152,7 +152,7 @@ async function improveSummariesBatch() {
           const newValidation = validateSummary(newSummary);
           
           if (newValidation.isValid) {
-            console.log(`  ✅ 再生成成功（${newSummary.length}文字）`);
+            console.error(`  ✅ 再生成成功（${newSummary.length}文字）`);
             
             if (!isDryRun) {
               await prisma.article.update({
@@ -178,7 +178,7 @@ async function improveSummariesBatch() {
             
             regeneratedCount++;
           } else {
-            console.log(`  ❌ 再生成後も問題あり: ${newValidation.errors.join(', ')}`);
+            console.error(`  ❌ 再生成後も問題あり: ${newValidation.errors.join(', ')}`);
             
             results.push({
               articleId: article.id,
@@ -220,25 +220,25 @@ async function improveSummariesBatch() {
       // 進捗表示
       if (processedCount % 10 === 0) {
         const progress = Math.round((processedCount / articles.length) * 100);
-        console.log(`\n📈 進捗: ${progress}% (${processedCount}/${articles.length})`);
+        console.error(`\n📈 進捗: ${progress}% (${processedCount}/${articles.length})`);
       }
     }
     
     // バッチ間の待機
     if (i + batchSize < articles.length) {
-      console.log('\n⏳ 次のバッチまで待機中...');
+      console.error('\n⏳ 次のバッチまで待機中...');
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
   
   // 結果レポートの生成
-  console.log('\n\n===== 改善結果レポート =====\n');
+  console.error('\n\n===== 改善結果レポート =====\n');
   
-  console.log('📊 処理サマリー:');
-  console.log(`  処理済み: ${processedCount}件`);
-  console.log(`  自動修正: ${improvedCount}件`);
-  console.log(`  再生成: ${regeneratedCount}件`);
-  console.log(`  失敗: ${failedCount}件`);
+  console.error('📊 処理サマリー:');
+  console.error(`  処理済み: ${processedCount}件`);
+  console.error(`  自動修正: ${improvedCount}件`);
+  console.error(`  再生成: ${regeneratedCount}件`);
+  console.error(`  失敗: ${failedCount}件`);
   
   // ソース別の統計
   const sourceStats = new Map<string, { improved: number; regenerated: number; failed: number }>();
@@ -254,12 +254,12 @@ async function improveSummariesBatch() {
     else stats.failed++;
   }
   
-  console.log('\n📈 ソース別結果:');
+  console.error('\n📈 ソース別結果:');
   for (const [source, stats] of sourceStats) {
-    console.log(`  ${source}:`);
-    console.log(`    自動修正: ${stats.improved}件`);
-    console.log(`    再生成: ${stats.regenerated}件`);
-    console.log(`    失敗: ${stats.failed}件`);
+    console.error(`  ${source}:`);
+    console.error(`    自動修正: ${stats.improved}件`);
+    console.error(`    再生成: ${stats.regenerated}件`);
+    console.error(`    失敗: ${stats.failed}件`);
   }
   
   // 文字数の改善
@@ -275,10 +275,10 @@ async function improveSummariesBatch() {
     const avgBefore = Math.round(lengthImprovements.reduce((sum, i) => sum + i.before, 0) / lengthImprovements.length);
     const avgAfter = Math.round(lengthImprovements.reduce((sum, i) => sum + i.after, 0) / lengthImprovements.length);
     
-    console.log('\n📏 文字数の改善:');
-    console.log(`  改善前平均: ${avgBefore}文字`);
-    console.log(`  改善後平均: ${avgAfter}文字`);
-    console.log(`  平均増加: ${avgAfter - avgBefore}文字`);
+    console.error('\n📏 文字数の改善:');
+    console.error(`  改善前平均: ${avgBefore}文字`);
+    console.error(`  改善後平均: ${avgAfter}文字`);
+    console.error(`  平均増加: ${avgAfter - avgBefore}文字`);
   }
   
   // 詳細レポートの保存
@@ -292,16 +292,16 @@ async function improveSummariesBatch() {
     }
     
     fs.writeFileSync(reportPath, JSON.stringify(results, null, 2));
-    console.log(`\n📝 詳細レポート保存: ${reportPath}`);
+    console.error(`\n📝 詳細レポート保存: ${reportPath}`);
   }
   
   await prisma.$disconnect();
   
-  console.log('\n===== バッチ処理完了 =====');
+  console.error('\n===== バッチ処理完了 =====');
 }
 
 async function createBackupFile() {
-  console.log('💾 バックアップを作成中...');
+  console.error('💾 バックアップを作成中...');
   
   const articles = await prisma.article.findMany({
     where: {
@@ -325,12 +325,12 @@ async function createBackupFile() {
   }
   
   fs.writeFileSync(backupPath, JSON.stringify(articles, null, 2));
-  console.log(`  バックアップ保存: ${backupPath}\n`);
+  console.error(`  バックアップ保存: ${backupPath}\n`);
 }
 
 // 使用方法の表示
 if (args.includes('--help')) {
-  console.log(`
+  console.error(`
 使用方法:
   npx tsx scripts/improve-summaries-batch.ts [オプション]
 

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Filter, SortAsc } from 'lucide-react';
-import type { SourceCategory, SourceWithStats } from '@/types/source';
+import type { SourceCategoryWithAll, SourceWithStats } from '@/types/source';
 
 type SortBy = 'articles' | 'quality' | 'frequency' | 'name';
 
@@ -23,7 +23,7 @@ export default function SourcesContent() {
   const [sources, setSources] = useState<SourceWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<SourceCategory>('all');
+  const [category, setCategory] = useState<SourceCategoryWithAll>('all');
   const [sortBy, setSortBy] = useState<SortBy>('articles');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 

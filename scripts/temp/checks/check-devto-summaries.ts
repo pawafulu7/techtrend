@@ -18,13 +18,13 @@ async function checkDevtoSummaries() {
     take: 20
   });
   
-  console.log('Dev.to 最新記事20件の要約\n');
-  console.log('='.repeat(100));
+  console.error('Dev.to 最新記事20件の要約\n');
+  console.error('='.repeat(100));
   
   articles.forEach((a, i) => {
-    console.log(`\n${i+1}. [${a.id}]`);
-    console.log(`📝 ${a.title?.substring(0, 60)}...`);
-    console.log(`📄 ${a.summary}`);
+    console.error(`\n${i+1}. [${a.id}]`);
+    console.error(`📝 ${a.title?.substring(0, 60)}...`);
+    console.error(`📄 ${a.summary}`);
     
     // 問題のパターンを検出
     const issues = [];
@@ -42,18 +42,18 @@ async function checkDevtoSummaries() {
     if (!s.endsWith('。')) issues.push('句点なし');
     
     if (issues.length > 0) {
-      console.log(`⚠️ 問題: ${issues.join(', ')}`);
+      console.error(`⚠️ 問題: ${issues.join(', ')}`);
     }
   });
   
-  console.log('\n' + '='.repeat(100));
+  console.error('\n' + '='.repeat(100));
   
   // 全体統計
   const allArticles = await prisma.article.count({
     where: { source: { name: 'Dev.to' } }
   });
   
-  console.log(`\nDev.to 記事総数: ${allArticles}件`);
+  console.error(`\nDev.to 記事総数: ${allArticles}件`);
   
   // 問題のある記事を集計
   const problemArticles = await prisma.article.findMany({
@@ -88,13 +88,13 @@ async function checkDevtoSummaries() {
     if (!s.endsWith('。')) noPeriod++;
   });
   
-  console.log('\n問題のパターン別統計:');
-  console.log(`  短すぎ（<60文字）: ${tooShort}件`);
-  console.log(`  長すぎ（>130文字）: ${tooLong}件`);
-  console.log(`  英語混在（日本語<50%）: ${englishMixed}件`);
-  console.log(`  一般的表現: ${generic}件`);
-  console.log(`  「記事」言及: ${articleMention}件`);
-  console.log(`  句点なし: ${noPeriod}件`);
+  console.error('\n問題のパターン別統計:');
+  console.error(`  短すぎ（<60文字）: ${tooShort}件`);
+  console.error(`  長すぎ（>130文字）: ${tooLong}件`);
+  console.error(`  英語混在（日本語<50%）: ${englishMixed}件`);
+  console.error(`  一般的表現: ${generic}件`);
+  console.error(`  「記事」言及: ${articleMention}件`);
+  console.error(`  句点なし: ${noPeriod}件`);
   
   await prisma.$disconnect();
 }

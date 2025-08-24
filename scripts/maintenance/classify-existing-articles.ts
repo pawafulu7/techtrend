@@ -10,7 +10,7 @@ interface ClassificationResult {
 }
 
 async function classifyExistingArticles(): Promise<ClassificationResult> {
-  console.log('📊 既存記事の分類を開始します...');
+  console.error('📊 既存記事の分類を開始します...');
   
   try {
     // summaryVersion = 1 の記事（旧形式）を取得
@@ -26,10 +26,10 @@ async function classifyExistingArticles(): Promise<ClassificationResult> {
       }
     });
     
-    console.log(`\n📄 分類対象記事数: ${articles.length}件`);
+    console.error(`\n📄 分類対象記事数: ${articles.length}件`);
     
     if (articles.length === 0) {
-      console.log('✅ すべての記事が既に分類済みです');
+      console.error('✅ すべての記事が既に分類済みです');
       return { total: 0, classified: 0, byType: {} };
     }
     
@@ -47,7 +47,7 @@ async function classifyExistingArticles(): Promise<ClassificationResult> {
     // バッチ処理で記事を分類
     for (let i = 0; i < articles.length; i += batchSize) {
       const batch = articles.slice(i, i + batchSize);
-      console.log(`\n処理中: ${i + 1}-${Math.min(i + batchSize, articles.length)}件目`);
+      console.error(`\n処理中: ${i + 1}-${Math.min(i + batchSize, articles.length)}件目`);
       
       await Promise.all(
         batch.map(async (article) => {
@@ -67,7 +67,7 @@ async function classifyExistingArticles(): Promise<ClassificationResult> {
             byType[articleType]++;
             classifiedCount++;
             
-            console.log(`✓ ${article.title.substring(0, 50)}... → ${articleType}`);
+            console.error(`✓ ${article.title.substring(0, 50)}... → ${articleType}`);
           } catch (error) {
             console.error(`✗ エラー: ${article.id}`, error);
           }
@@ -76,14 +76,14 @@ async function classifyExistingArticles(): Promise<ClassificationResult> {
     }
     
     // 結果を表示
-    console.log('\n📊 分類結果:');
-    console.log('================');
+    console.error('\n📊 分類結果:');
+    console.error('================');
     Object.entries(byType).forEach(([type, count]) => {
       const percentage = articles.length > 0 ? ((count / articles.length) * 100).toFixed(1) : 0;
-      console.log(`${type.padEnd(20)}: ${count.toString().padStart(5)}件 (${percentage}%)`);
+      console.error(`${type.padEnd(20)}: ${count.toString().padStart(5)}件 (${percentage}%)`);
     });
-    console.log('================');
-    console.log(`合計: ${classifiedCount}件を分類`);
+    console.error('================');
+    console.error(`合計: ${classifiedCount}件を分類`);
     
     return {
       total: articles.length,
@@ -103,7 +103,7 @@ async function classifyExistingArticles(): Promise<ClassificationResult> {
 if (require.main === module) {
   classifyExistingArticles()
     .then((result) => {
-      console.log('\n✅ 分類完了');
+      console.error('\n✅ 分類完了');
       process.exit(0);
     })
     .catch((error) => {

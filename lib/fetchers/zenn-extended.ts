@@ -90,7 +90,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
       }
     }
 
-    console.log(`✅ Zenn: ${articles.length}件の記事を取得`);
+    console.error(`✅ Zenn: ${articles.length}件の記事を取得`);
     return { articles: articles.slice(0, 30), errors };
   }
 
@@ -107,13 +107,13 @@ export class ZennExtendedFetcher extends BaseFetcher {
       if (enricher) {
         try {
           const currentContent = article.content || '';
-          console.log(`[Zenn] Enriching content for: ${item.title} (current: ${currentContent.length} chars)`);
+          console.error(`[Zenn] Enriching content for: ${item.title} (current: ${currentContent.length} chars)`);
           const enrichedData = await enricher.enrich(item.link);
           
           if (enrichedData && enrichedData.content) {
             // より長いコンテンツが取得できた場合に更新
             if (enrichedData.content.length > currentContent.length) {
-              console.log(`[Zenn] Content enriched: ${currentContent.length} -> ${enrichedData.content.length} chars`);
+              console.error(`[Zenn] Content enriched: ${currentContent.length} -> ${enrichedData.content.length} chars`);
               article.content = enrichedData.content;
               
               // サムネイルも取得できていれば更新

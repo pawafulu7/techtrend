@@ -155,7 +155,7 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
 }
 
 async function testSingleArticle() {
-  console.log('=== タグなし記事での実際の生成テスト ===\n');
+  console.error('=== タグなし記事での実際の生成テスト ===\n');
   
   // タグなし記事を1件取得
   const article = await prisma.article.findFirst({
@@ -170,16 +170,16 @@ async function testSingleArticle() {
   });
   
   if (!article) {
-    console.log('タグなし記事が見つかりません');
+    console.error('タグなし記事が見つかりません');
     await prisma.$disconnect();
     return;
   }
   
-  console.log('テスト対象記事:');
-  console.log(`- タイトル: ${article.title}`);
-  console.log(`- ソース: ${article.source.name}`);
-  console.log(`- URL: ${article.url}`);
-  console.log('');
+  console.error('テスト対象記事:');
+  console.error(`- タイトル: ${article.title}`);
+  console.error(`- ソース: ${article.source.name}`);
+  console.error(`- URL: ${article.url}`);
+  console.error('');
   
   // Gemini APIのモックレスポンス（実際のAPIは呼ばない）
   const mockResponse = `要約:
@@ -194,25 +194,25 @@ ${article.title}に関する技術記事の要約内容がここに入ります�
 タグ:
 技術記事, プログラミング, Web開発, ${article.source.name}`;
   
-  console.log('=== Gemini API モックレスポンス ===');
-  console.log(mockResponse);
-  console.log('');
+  console.error('=== Gemini API モックレスポンス ===');
+  console.error(mockResponse);
+  console.error('');
   
   // パース実行
   const result = parseSummaryAndTags(mockResponse);
   
-  console.log('=== パース結果 ===');
-  console.log(`要約: ${result.summary}`);
-  console.log(`詳細要約: ${result.detailedSummary}`);
-  console.log(`タグ: ${result.tags.join(', ')}`);
-  console.log(`タグ数: ${result.tags.length}`);
+  console.error('=== パース結果 ===');
+  console.error(`要約: ${result.summary}`);
+  console.error(`詳細要約: ${result.detailedSummary}`);
+  console.error(`タグ: ${result.tags.join(', ')}`);
+  console.error(`タグ数: ${result.tags.length}`);
   
   // 結果検証
-  console.log('\n=== 検証結果 ===');
+  console.error('\n=== 検証結果 ===');
   if (result.tags.length > 0) {
-    console.log('✅ タグが正しく抽出されました');
+    console.error('✅ タグが正しく抽出されました');
   } else {
-    console.log('❌ タグの抽出に失敗しました');
+    console.error('❌ タグの抽出に失敗しました');
   }
   
   await prisma.$disconnect();

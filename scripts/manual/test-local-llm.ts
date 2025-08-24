@@ -2,18 +2,18 @@
 import fetch from 'node-fetch';
 
 async function testLocalLLM() {
-  console.log('🧪 ローカルLLM接続テスト\n');
+  console.error('🧪 ローカルLLM接続テスト\n');
   
   const url = process.env.LOCAL_LLM_URL || 'http://192.168.11.7:1234';
   
-  console.log(`URL: ${url}`);
-  console.log('環境変数 LOCAL_LLM_URL:', process.env.LOCAL_LLM_URL);
-  console.log('環境変数 LOCAL_LLM_MODEL:', process.env.LOCAL_LLM_MODEL);
-  console.log('環境変数 USE_LOCAL_LLM_FALLBACK:', process.env.USE_LOCAL_LLM_FALLBACK);
-  console.log();
+  console.error(`URL: ${url}`);
+  console.error('環境変数 LOCAL_LLM_URL:', process.env.LOCAL_LLM_URL);
+  console.error('環境変数 LOCAL_LLM_MODEL:', process.env.LOCAL_LLM_MODEL);
+  console.error('環境変数 USE_LOCAL_LLM_FALLBACK:', process.env.USE_LOCAL_LLM_FALLBACK);
+  console.error();
   
   // 1. モデル一覧取得テスト
-  console.log('📡 モデル一覧取得テスト...');
+  console.error('📡 モデル一覧取得テスト...');
   try {
     const response = await fetch(`${url}/v1/models`, {
       method: 'GET',
@@ -22,16 +22,16 @@ async function testLocalLLM() {
       },
     });
     
-    console.log('Status:', response.status);
-    console.log('OK:', response.ok);
+    console.error('Status:', response.status);
+    console.error('OK:', response.ok);
     
     if (response.ok) {
       const data = await response.json();
-      console.log('モデル数:', data.data?.length || 0);
+      console.error('モデル数:', data.data?.length || 0);
       if (data.data && data.data.length > 0) {
-        console.log('利用可能モデル:');
+        console.error('利用可能モデル:');
         data.data.forEach((model: any) => {
-          console.log(`  - ${model.id}`);
+          console.error(`  - ${model.id}`);
         });
       }
     }
@@ -39,10 +39,10 @@ async function testLocalLLM() {
     console.error('❌ エラー:', error);
   }
   
-  console.log();
+  console.error();
   
   // 2. チャット補完テスト
-  console.log('💬 チャット補完テスト...');
+  console.error('💬 チャット補完テスト...');
   try {
     const response = await fetch(`${url}/v1/chat/completions`, {
       method: 'POST',
@@ -62,13 +62,13 @@ async function testLocalLLM() {
       }),
     });
     
-    console.log('Status:', response.status);
+    console.error('Status:', response.status);
     
     if (response.ok) {
       const data = await response.json();
-      console.log('✅ 応答:', data.choices?.[0]?.message?.content);
+      console.error('✅ 応答:', data.choices?.[0]?.message?.content);
     } else {
-      console.log('❌ エラー:', await response.text());
+      console.error('❌ エラー:', await response.text());
     }
   } catch (error) {
     console.error('❌ エラー:', error);

@@ -9,7 +9,7 @@ async function checkRecentSpeakerDeck() {
     });
     
     if (!source) {
-      console.log('Speaker Deckソースが見つかりません');
+      console.error('Speaker Deckソースが見つかりません');
       return;
     }
     
@@ -25,18 +25,18 @@ async function checkRecentSpeakerDeck() {
       orderBy: { createdAt: 'desc' }
     });
     
-    console.log(`\n=== 今日追加されたSpeaker Deck記事 ===`);
-    console.log(`件数: ${todayArticles.length}\n`);
+    console.error(`\n=== 今日追加されたSpeaker Deck記事 ===`);
+    console.error(`件数: ${todayArticles.length}\n`);
     
     todayArticles.forEach((article, index) => {
-      console.log(`--- 記事 #${index + 1} ---`);
-      console.log(`タイトル: ${article.title}`);
-      console.log(`作成日時: ${article.createdAt.toISOString()}`);
-      console.log(`公開日: ${article.publishedAt.toISOString()}`);
-      console.log(`コンテンツ長: ${article.content?.length || 0}文字`);
-      console.log(`説明長: ${article.description?.length || 0}文字`);
-      console.log(`要約: ${article.summary ? 'あり' : 'なし'}`);
-      console.log('');
+      console.error(`--- 記事 #${index + 1} ---`);
+      console.error(`タイトル: ${article.title}`);
+      console.error(`作成日時: ${article.createdAt.toISOString()}`);
+      console.error(`公開日: ${article.publishedAt.toISOString()}`);
+      console.error(`コンテンツ長: ${article.content?.length || 0}文字`);
+      console.error(`説明長: ${article.description?.length || 0}文字`);
+      console.error(`要約: ${article.summary ? 'あり' : 'なし'}`);
+      console.error('');
     });
     
     // 昨日追加された記事も確認
@@ -55,17 +55,17 @@ async function checkRecentSpeakerDeck() {
       take: 5
     });
     
-    console.log(`\n=== 昨日追加されたSpeaker Deck記事（最新5件） ===`);
-    console.log(`件数: ${yesterdayArticles.length}\n`);
+    console.error(`\n=== 昨日追加されたSpeaker Deck記事（最新5件） ===`);
+    console.error(`件数: ${yesterdayArticles.length}\n`);
     
     yesterdayArticles.forEach((article, index) => {
-      console.log(`--- 記事 #${index + 1} ---`);
-      console.log(`タイトル: ${article.title.substring(0, 50)}...`);
-      console.log(`作成日時: ${article.createdAt.toISOString()}`);
-      console.log(`コンテンツ長: ${article.content?.length || 0}文字`);
-      console.log(`説明長: ${article.description?.length || 0}文字`);
-      console.log(`要約: ${article.summary ? 'あり' : 'なし'}`);
-      console.log('');
+      console.error(`--- 記事 #${index + 1} ---`);
+      console.error(`タイトル: ${article.title.substring(0, 50)}...`);
+      console.error(`作成日時: ${article.createdAt.toISOString()}`);
+      console.error(`コンテンツ長: ${article.content?.length || 0}文字`);
+      console.error(`説明長: ${article.description?.length || 0}文字`);
+      console.error(`要約: ${article.summary ? 'あり' : 'なし'}`);
+      console.error('');
     });
     
   } catch (error) {

@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio';
 async function testSpeakerDeckFetch() {
   const url = 'https://speakerdeck.com/twada/amazon-q-cli-kai-fa-de-xue-ndaaikodingutsurufalsecodeshi-jifang';
   
-  console.log(`テスト対象URL: ${url}\n`);
+  console.error(`テスト対象URL: ${url}\n`);
   
   try {
     const response = await fetch(url, {
@@ -21,40 +21,40 @@ async function testSpeakerDeckFetch() {
     const html = await response.text();
     const $ = cheerio.load(html);
     
-    console.log('=== JSON-LD情報 ===');
+    console.error('=== JSON-LD情報 ===');
     const jsonLdScript = $('script[type="application/ld+json"]').html();
     if (jsonLdScript) {
       try {
         const data = JSON.parse(jsonLdScript);
-        console.log('datePublished:', data.datePublished);
-        console.log('description:', data.description);
-        console.log('thumbnailUrl:', data.thumbnailUrl);
+        console.error('datePublished:', data.datePublished);
+        console.error('description:', data.description);
+        console.error('thumbnailUrl:', data.thumbnailUrl);
       } catch (error) {
-        console.log('JSON-LD解析エラー:', error);
+        console.error('JSON-LD解析エラー:', error);
       }
     } else {
-      console.log('JSON-LDが見つかりません');
+      console.error('JSON-LDが見つかりません');
     }
     
-    console.log('\n=== HTML要素から直接取得 ===');
+    console.error('\n=== HTML要素から直接取得 ===');
     const dateText = $('.deck-date').text();
-    console.log('deck-date:', dateText);
+    console.error('deck-date:', dateText);
     
     const description = $('.deck-description').text().trim();
-    console.log('deck-description:', description);
+    console.error('deck-description:', description);
     
     const metaDescription = $('meta[name="description"]').attr('content');
-    console.log('meta description:', metaDescription);
+    console.error('meta description:', metaDescription);
     
     const ogImage = $('meta[property="og:image"]').attr('content');
-    console.log('og:image:', ogImage);
+    console.error('og:image:', ogImage);
     
     // ページタイトルも確認
     const pageTitle = $('title').text();
-    console.log('\ntitle tag:', pageTitle);
+    console.error('\ntitle tag:', pageTitle);
     
     const h1Title = $('h1.deck-title').text().trim();
-    console.log('h1.deck-title:', h1Title);
+    console.error('h1.deck-title:', h1Title);
     
   } catch (error) {
     console.error('エラー:', error);

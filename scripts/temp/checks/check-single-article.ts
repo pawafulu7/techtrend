@@ -19,26 +19,26 @@ async function checkSingleArticle(articleId: string) {
   });
   
   if (article) {
-    console.log('📊 記事の現在の状態');
-    console.log('='.repeat(60));
-    console.log('ID:', article.id);
-    console.log('ソース:', article.source?.name);
-    console.log('作成日:', article.createdAt.toISOString());
-    console.log('更新日:', article.updatedAt.toISOString());
-    console.log('タイトル:', article.title);
-    console.log('コンテンツ長:', (article.content || '').length, '文字');
-    console.log('\n📝 要約:');
-    console.log(article.summary || '(なし)');
+    console.error('📊 記事の現在の状態');
+    console.error('='.repeat(60));
+    console.error('ID:', article.id);
+    console.error('ソース:', article.source?.name);
+    console.error('作成日:', article.createdAt.toISOString());
+    console.error('更新日:', article.updatedAt.toISOString());
+    console.error('タイトル:', article.title);
+    console.error('コンテンツ長:', (article.content || '').length, '文字');
+    console.error('\n📝 要約:');
+    console.error(article.summary || '(なし)');
     
-    console.log('\n📋 詳細要約:');
+    console.error('\n📋 詳細要約:');
     if (article.detailedSummary) {
       const lines = article.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
-      console.log('項目数:', lines.length);
+      console.error('項目数:', lines.length);
       lines.forEach((line, i) => {
-        console.log((i + 1) + '.', line.substring(0, 70) + '...');
+        console.error((i + 1) + '.', line.substring(0, 70) + '...');
       });
     } else {
-      console.log('(なし)');
+      console.error('(なし)');
     }
     
     // 問題の分析
@@ -53,12 +53,12 @@ async function checkSingleArticle(articleId: string) {
     }
     
     if (issues.length > 0) {
-      console.log('\n⚠️ 問題:', issues.join(', '));
+      console.error('\n⚠️ 問題:', issues.join(', '));
     } else {
-      console.log('\n✅ 問題なし');
+      console.error('\n✅ 問題なし');
     }
   } else {
-    console.log('記事が見つかりません');
+    console.error('記事が見つかりません');
   }
   
   await prisma.$disconnect();

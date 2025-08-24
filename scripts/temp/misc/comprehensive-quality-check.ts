@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function comprehensiveQualityCheck() {
-  console.log('🔍 全記事の一覧要約・詳細要約を包括的にチェック\n');
+  console.error('🔍 全記事の一覧要約・詳細要約を包括的にチェック\n');
   
   try {
     // すべての記事を取得
@@ -20,7 +20,7 @@ async function comprehensiveQualityCheck() {
       orderBy: { createdAt: 'desc' }
     });
     
-    console.log(`全記事数: ${allArticles.length}件\n`);
+    console.error(`全記事数: ${allArticles.length}件\n`);
     
     const problems = {
       // 一覧要約の問題
@@ -194,26 +194,26 @@ async function comprehensiveQualityCheck() {
     }
     
     // 結果を表示
-    console.log('='.repeat(60));
-    console.log('📊 問題検出結果\n');
+    console.error('='.repeat(60));
+    console.error('📊 問題検出結果\n');
     
-    console.log('【一覧要約の問題】');
-    console.log(`  ❌ 要約なし: ${problems.summaryMissing.length}件`);
-    console.log(`  📏 短すぎる（<20文字）: ${problems.summaryTooShort.length}件`);
-    console.log(`  📏 長すぎる（>150文字）: ${problems.summaryTooLong.length}件`);
-    console.log(`  🌍 英語要約: ${problems.summaryEnglish.length}件`);
-    console.log(`  🏷️ プレフィックスあり: ${problems.summaryPrefix.length}件`);
-    console.log(`  📝 Markdown記法: ${problems.summaryMarkdown.length}件`);
-    console.log(`  ❓ 不明瞭な内容: ${problems.summaryUnclear.length}件`);
-    console.log(`  ✂️ 文末不完全: ${problems.summaryIncomplete.length}件`);
+    console.error('【一覧要約の問題】');
+    console.error(`  ❌ 要約なし: ${problems.summaryMissing.length}件`);
+    console.error(`  📏 短すぎる（<20文字）: ${problems.summaryTooShort.length}件`);
+    console.error(`  📏 長すぎる（>150文字）: ${problems.summaryTooLong.length}件`);
+    console.error(`  🌍 英語要約: ${problems.summaryEnglish.length}件`);
+    console.error(`  🏷️ プレフィックスあり: ${problems.summaryPrefix.length}件`);
+    console.error(`  📝 Markdown記法: ${problems.summaryMarkdown.length}件`);
+    console.error(`  ❓ 不明瞭な内容: ${problems.summaryUnclear.length}件`);
+    console.error(`  ✂️ 文末不完全: ${problems.summaryIncomplete.length}件`);
     
-    console.log('\n【詳細要約の問題】');
-    console.log(`  ❌ 詳細要約なし: ${problems.detailedMissing.length}件`);
-    console.log(`  🎯 技術的背景なし: ${problems.detailedNoTechnicalBg.length}件`);
-    console.log(`  📉 項目数不足（<6）: ${problems.detailedTooFewItems.length}件`);
-    console.log(`  🌍 英語詳細要約: ${problems.detailedEnglish.length}件`);
-    console.log(`  📝 Markdown記法: ${problems.detailedMarkdown.length}件`);
-    console.log(`  ⚠️ フォーマットエラー: ${problems.detailedFormat.length}件`);
+    console.error('\n【詳細要約の問題】');
+    console.error(`  ❌ 詳細要約なし: ${problems.detailedMissing.length}件`);
+    console.error(`  🎯 技術的背景なし: ${problems.detailedNoTechnicalBg.length}件`);
+    console.error(`  📉 項目数不足（<6）: ${problems.detailedTooFewItems.length}件`);
+    console.error(`  🌍 英語詳細要約: ${problems.detailedEnglish.length}件`);
+    console.error(`  📝 Markdown記法: ${problems.detailedMarkdown.length}件`);
+    console.error(`  ⚠️ フォーマットエラー: ${problems.detailedFormat.length}件`);
     
     // 全体統計
     const totalProblems = new Set([
@@ -233,39 +233,39 @@ async function comprehensiveQualityCheck() {
       ...problems.detailedFormat.map(a => a.id)
     ]);
     
-    console.log('\n' + '='.repeat(60));
-    console.log(`\n🔴 問題のある記事総数: ${totalProblems.size}件 / ${allArticles.length}件`);
-    console.log(`✅ 問題なし: ${allArticles.length - totalProblems.size}件`);
-    console.log(`📈 品質スコア: ${((allArticles.length - totalProblems.size) / allArticles.length * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error(`\n🔴 問題のある記事総数: ${totalProblems.size}件 / ${allArticles.length}件`);
+    console.error(`✅ 問題なし: ${allArticles.length - totalProblems.size}件`);
+    console.error(`📈 品質スコア: ${((allArticles.length - totalProblems.size) / allArticles.length * 100).toFixed(1)}%`);
     
     // 詳細な問題リストを出力（最も重要な問題のみ）
     if (problems.summaryMissing.length > 0) {
-      console.log('\n🚨 要約が完全に欠落している記事:');
+      console.error('\n🚨 要約が完全に欠落している記事:');
       problems.summaryMissing.slice(0, 5).forEach(a => {
-        console.log(`  - ${a.id}: ${a.title} (${a.source})`);
+        console.error(`  - ${a.id}: ${a.title} (${a.source})`);
       });
       if (problems.summaryMissing.length > 5) {
-        console.log(`  ... 他${problems.summaryMissing.length - 5}件`);
+        console.error(`  ... 他${problems.summaryMissing.length - 5}件`);
       }
     }
     
     if (problems.summaryEnglish.length > 0) {
-      console.log('\n🌍 英語の一覧要約（日本語化が必要）:');
+      console.error('\n🌍 英語の一覧要約（日本語化が必要）:');
       problems.summaryEnglish.slice(0, 5).forEach(a => {
-        console.log(`  - ${a.id}: 日本語${a.japaneseRatio}% - ${a.summary}`);
+        console.error(`  - ${a.id}: 日本語${a.japaneseRatio}% - ${a.summary}`);
       });
       if (problems.summaryEnglish.length > 5) {
-        console.log(`  ... 他${problems.summaryEnglish.length - 5}件`);
+        console.error(`  ... 他${problems.summaryEnglish.length - 5}件`);
       }
     }
     
     if (problems.detailedNoTechnicalBg.length > 0) {
-      console.log('\n🎯 技術的背景がない詳細要約:');
+      console.error('\n🎯 技術的背景がない詳細要約:');
       problems.detailedNoTechnicalBg.slice(0, 5).forEach(a => {
-        console.log(`  - ${a.id}: ${a.firstLine}`);
+        console.error(`  - ${a.id}: ${a.firstLine}`);
       });
       if (problems.detailedNoTechnicalBg.length > 5) {
-        console.log(`  ... 他${problems.detailedNoTechnicalBg.length - 5}件`);
+        console.error(`  ... 他${problems.detailedNoTechnicalBg.length - 5}件`);
       }
     }
     
@@ -294,7 +294,7 @@ async function comprehensiveQualityCheck() {
     
     const fs = require('fs');
     fs.writeFileSync('problem-articles.json', JSON.stringify(outputData, null, 2));
-    console.log('\n📁 問題のある記事IDを problem-articles.json に保存しました');
+    console.error('\n📁 問題のある記事IDを problem-articles.json に保存しました');
     
   } catch (error) {
     console.error('エラー:', error);

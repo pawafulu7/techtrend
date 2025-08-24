@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q') || '';
     
-    console.log('[Tag Search API] Query:', query);
+    console.error('[Tag Search API] Query:', query);
     
     // 空クエリの場合は人気順で返す
     if (!query) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         take: 50,
       });
       
-      console.log('[Tag Search API] Found tags (no query):', tags.length);
+      console.error('[Tag Search API] Found tags (no query):', tags.length);
       
       return Response.json(tags.map(tag => ({
         id: tag.id,
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       take: 100, // 検索結果は最大100件
     });
     
-    console.log('[Tag Search API] Found tags with query:', tags.length);
+    console.error('[Tag Search API] Found tags with query:', tags.length);
     
     const result = tags.map(tag => ({
       id: tag.id,

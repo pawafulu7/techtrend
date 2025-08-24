@@ -57,7 +57,7 @@ interface TypeStats {
 }
 
 async function checkSummaryQuality() {
-  console.log('===== Phase 4: 要約品質チェック =====\n');
+  console.error('===== Phase 4: 要約品質チェック =====\n');
   
   // クエリ条件の構築
   const whereClause: any = {};
@@ -77,7 +77,7 @@ async function checkSummaryQuality() {
   }
   
   // 記事の取得
-  console.log('📊 記事データを取得中...');
+  console.error('📊 記事データを取得中...');
   
   const articles = await prisma.article.findMany({
     where: whereClause,
@@ -90,7 +90,7 @@ async function checkSummaryQuality() {
     }
   });
   
-  console.log(`  取得記事数: ${articles.length}件\n`);
+  console.error(`  取得記事数: ${articles.length}件\n`);
   
   // 分析の初期化
   const analysis: QualityAnalysis = {
@@ -113,7 +113,7 @@ async function checkSummaryQuality() {
   };
   
   // 記事ごとの分析
-  console.log('🔍 要約品質を分析中...\n');
+  console.error('🔍 要約品質を分析中...\n');
   
   let totalLength = 0;
   let processedCount = 0;
@@ -124,7 +124,7 @@ async function checkSummaryQuality() {
     // 進捗表示
     if (processedCount % 100 === 0) {
       const progress = Math.round((processedCount / articles.length) * 100);
-      console.log(`  進捗: ${progress}% (${processedCount}/${articles.length})`);
+      console.error(`  進捗: ${progress}% (${processedCount}/${articles.length})`);
     }
     
     if (!article.summary) {
@@ -218,7 +218,7 @@ async function checkSummaryQuality() {
   generateRecommendations(analysis);
   
   // レポートの出力
-  console.log('\n\n===== 品質分析レポート =====\n');
+  console.error('\n\n===== 品質分析レポート =====\n');
   
   if (outputFormat === 'markdown') {
     outputMarkdownReport(analysis);
@@ -234,12 +234,12 @@ async function checkSummaryQuality() {
     
     const outputPath = path.resolve(outputFile);
     fs.writeFileSync(outputPath, reportContent);
-    console.log(`\n📝 レポート保存: ${outputPath}`);
+    console.error(`\n📝 レポート保存: ${outputPath}`);
   }
   
   await prisma.$disconnect();
   
-  console.log('\n===== 品質チェック完了 =====');
+  console.error('\n===== 品質チェック完了 =====');
 }
 
 function getLengthBucket(length: number): string {
@@ -306,66 +306,66 @@ function generateRecommendations(analysis: QualityAnalysis) {
 }
 
 function outputMarkdownReport(analysis: QualityAnalysis) {
-  console.log('## 📊 基本統計\n');
-  console.log(`- 総記事数: ${analysis.totalArticles}件`);
-  console.log(`- 要約あり: ${analysis.articlesWithSummary}件 (${Math.round((analysis.articlesWithSummary / analysis.totalArticles) * 100)}%)`);
-  console.log(`- 有効な要約: ${analysis.validSummaries}件 (${Math.round((analysis.validSummaries / analysis.articlesWithSummary) * 100)}%)`);
-  console.log(`- 無効な要約: ${analysis.invalidSummaries}件 (${Math.round((analysis.invalidSummaries / analysis.articlesWithSummary) * 100)}%)`);
-  console.log(`- 平均文字数: ${analysis.averageLength}文字`);
+  console.error('## 📊 基本統計\n');
+  console.error(`- 総記事数: ${analysis.totalArticles}件`);
+  console.error(`- 要約あり: ${analysis.articlesWithSummary}件 (${Math.round((analysis.articlesWithSummary / analysis.totalArticles) * 100)}%)`);
+  console.error(`- 有効な要約: ${analysis.validSummaries}件 (${Math.round((analysis.validSummaries / analysis.articlesWithSummary) * 100)}%)`);
+  console.error(`- 無効な要約: ${analysis.invalidSummaries}件 (${Math.round((analysis.invalidSummaries / analysis.articlesWithSummary) * 100)}%)`);
+  console.error(`- 平均文字数: ${analysis.averageLength}文字`);
   
-  console.log('\n## 📈 文字数分布\n');
+  console.error('\n## 📈 文字数分布\n');
   const sortedDistribution = Array.from(analysis.lengthDistribution.entries()).sort();
   for (const [bucket, count] of sortedDistribution) {
     const percentage = Math.round((count / analysis.articlesWithSummary) * 100);
     const bar = '█'.repeat(Math.round(percentage / 2));
-    console.log(`${bucket.padEnd(10)} ${bar} ${count}件 (${percentage}%)`);
+    console.error(`${bucket.padEnd(10)} ${bar} ${count}件 (${percentage}%)`);
   }
   
-  console.log('\n## ⭐ 品質スコア分布\n');
-  console.log(`- 優秀 (90-100): ${analysis.qualityScores.excellent}件 (${Math.round((analysis.qualityScores.excellent / analysis.articlesWithSummary) * 100)}%)`);
-  console.log(`- 良好 (70-89): ${analysis.qualityScores.good}件 (${Math.round((analysis.qualityScores.good / analysis.articlesWithSummary) * 100)}%)`);
-  console.log(`- 可 (50-69): ${analysis.qualityScores.fair}件 (${Math.round((analysis.qualityScores.fair / analysis.articlesWithSummary) * 100)}%)`);
-  console.log(`- 要改善 (0-49): ${analysis.qualityScores.poor}件 (${Math.round((analysis.qualityScores.poor / analysis.articlesWithSummary) * 100)}%)`);
+  console.error('\n## ⭐ 品質スコア分布\n');
+  console.error(`- 優秀 (90-100): ${analysis.qualityScores.excellent}件 (${Math.round((analysis.qualityScores.excellent / analysis.articlesWithSummary) * 100)}%)`);
+  console.error(`- 良好 (70-89): ${analysis.qualityScores.good}件 (${Math.round((analysis.qualityScores.good / analysis.articlesWithSummary) * 100)}%)`);
+  console.error(`- 可 (50-69): ${analysis.qualityScores.fair}件 (${Math.round((analysis.qualityScores.fair / analysis.articlesWithSummary) * 100)}%)`);
+  console.error(`- 要改善 (0-49): ${analysis.qualityScores.poor}件 (${Math.round((analysis.qualityScores.poor / analysis.articlesWithSummary) * 100)}%)`);
   
-  console.log('\n## 📰 ソース別分析\n');
+  console.error('\n## 📰 ソース別分析\n');
   const sortedSources = Array.from(analysis.sourceAnalysis.entries())
     .sort((a, b) => b[1].count - a[1].count);
   
   for (const [source, stats] of sortedSources) {
     const validRate = Math.round((stats.validCount / stats.count) * 100);
     const status = validRate >= 80 ? '✅' : validRate >= 50 ? '⚠️' : '❌';
-    console.log(`### ${status} ${source}`);
-    console.log(`  - 記事数: ${stats.count}件`);
-    console.log(`  - 有効率: ${validRate}%`);
-    console.log(`  - 平均文字数: ${Math.round(stats.averageLength)}文字`);
-    console.log(`  - 平均スコア: ${Math.round(stats.averageScore)}点`);
+    console.error(`### ${status} ${source}`);
+    console.error(`  - 記事数: ${stats.count}件`);
+    console.error(`  - 有効率: ${validRate}%`);
+    console.error(`  - 平均文字数: ${Math.round(stats.averageLength)}文字`);
+    console.error(`  - 平均スコア: ${Math.round(stats.averageScore)}点`);
   }
   
-  console.log('\n## 🏷️ 記事タイプ別分析\n');
+  console.error('\n## 🏷️ 記事タイプ別分析\n');
   for (const [type, stats] of analysis.articleTypeAnalysis) {
     const validRate = Math.round((stats.validCount / stats.count) * 100);
-    console.log(`### ${type}`);
-    console.log(`  - 記事数: ${stats.count}件`);
-    console.log(`  - 有効率: ${validRate}%`);
-    console.log(`  - 平均文字数: ${Math.round(stats.averageLength)}文字`);
-    console.log(`  - 平均スコア: ${Math.round(stats.averageScore)}点`);
+    console.error(`### ${type}`);
+    console.error(`  - 記事数: ${stats.count}件`);
+    console.error(`  - 有効率: ${validRate}%`);
+    console.error(`  - 平均文字数: ${Math.round(stats.averageLength)}文字`);
+    console.error(`  - 平均スコア: ${Math.round(stats.averageScore)}点`);
   }
   
   if (analysis.commonIssues.size > 0) {
-    console.log('\n## ⚠️ よくある問題\n');
+    console.error('\n## ⚠️ よくある問題\n');
     const sortedIssues = Array.from(analysis.commonIssues.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
     
     for (const [issue, count] of sortedIssues) {
-      console.log(`- ${issue}: ${count}件`);
+      console.error(`- ${issue}: ${count}件`);
     }
   }
   
   if (analysis.recommendations.length > 0) {
-    console.log('\n## 💡 推奨事項\n');
+    console.error('\n## 💡 推奨事項\n');
     for (const recommendation of analysis.recommendations) {
-      console.log(`- ${recommendation}`);
+      console.error(`- ${recommendation}`);
     }
   }
 }
@@ -390,12 +390,12 @@ function outputJsonReport(analysis: QualityAnalysis) {
     commonIssues: Object.fromEntries(analysis.commonIssues)
   };
   
-  console.log(JSON.stringify(jsonAnalysis, null, 2));
+  console.error(JSON.stringify(jsonAnalysis, null, 2));
 }
 
 // 使用方法の表示
 if (args.includes('--help')) {
-  console.log(`
+  console.error(`
 使用方法:
   npx tsx scripts/check-summary-quality.ts [オプション]
 

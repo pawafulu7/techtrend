@@ -2,8 +2,8 @@
 import { AIService } from '@/lib/ai/ai-service';
 
 async function testDetailedSummary() {
-  console.log('🧪 詳細要約生成テスト\n');
-  console.log('='.repeat(60));
+  console.error('🧪 詳細要約生成テスト\n');
+  console.error('='.repeat(60));
   
   const testArticle = {
     title: 'Next.js 14の新機能: App RouterとServer Actionsの実装ガイド',
@@ -71,7 +71,7 @@ Server Actionsはフォーム処理のレイテンシを50%改善することが
     // AIサービスのインスタンスを作成
     const aiService = AIService.fromEnv();
     
-    console.log('📝 詳細要約を生成中...\n');
+    console.error('📝 詳細要約を生成中...\n');
     const startTime = Date.now();
     
     // 詳細要約を生成
@@ -82,29 +82,29 @@ Server Actionsはフォーム処理のレイテンシを50%改善することが
     
     const duration = Date.now() - startTime;
     
-    console.log('✅ 生成完了\n');
-    console.log('-'.repeat(60));
+    console.error('✅ 生成完了\n');
+    console.error('-'.repeat(60));
     
     // 結果の表示
-    console.log('【要約】');
-    console.log(result.summary);
-    console.log(`文字数: ${result.summary.length}文字`);
-    console.log();
+    console.error('【要約】');
+    console.error(result.summary);
+    console.error(`文字数: ${result.summary.length}文字`);
+    console.error();
     
-    console.log('【詳細要約】');
-    console.log(result.detailedSummary);
-    console.log();
+    console.error('【詳細要約】');
+    console.error(result.detailedSummary);
+    console.error();
     
-    console.log('【タグ】');
-    console.log(result.tags.join(', '));
-    console.log();
+    console.error('【タグ】');
+    console.error(result.tags.join(', '));
+    console.error();
     
-    console.log('-'.repeat(60));
-    console.log('【品質チェック】\n');
+    console.error('-'.repeat(60));
+    console.error('【品質チェック】\n');
     
     // 詳細要約の項目数をチェック
     const bulletPoints = result.detailedSummary.split('\n').filter(line => line.trim().startsWith('・'));
-    console.log(`✓ 項目数: ${bulletPoints.length}個 ${bulletPoints.length === 6 ? '✅' : '⚠️'}`);
+    console.error(`✓ 項目数: ${bulletPoints.length}個 ${bulletPoints.length === 6 ? '✅' : '⚠️'}`);
     
     // 必須キーワードのチェック
     const requiredKeywords = [
@@ -116,34 +116,34 @@ Server Actionsはフォーム処理のレイテンシを50%改善することが
       '実装時の注意点'
     ];
     
-    console.log('\n項目別チェック:');
+    console.error('\n項目別チェック:');
     requiredKeywords.forEach((keyword, index) => {
       const hasKeyword = bulletPoints[index]?.includes(keyword) || false;
-      console.log(`  ${index + 1}. 「${keyword}」: ${hasKeyword ? '✅' : '❌'}`);
+      console.error(`  ${index + 1}. 「${keyword}」: ${hasKeyword ? '✅' : '❌'}`);
       if (bulletPoints[index]) {
         const content = bulletPoints[index].split('、')[1] || '';
-        console.log(`     内容文字数: ${content.length}文字`);
+        console.error(`     内容文字数: ${content.length}文字`);
       }
     });
     
     // 要約の品質チェック
-    console.log('\n要約の品質:');
-    console.log(`  文字数範囲（60-80文字）: ${result.summary.length >= 60 && result.summary.length <= 80 ? '✅' : '❌'}`);
-    console.log(`  句点で終了: ${result.summary.endsWith('。') ? '✅' : '❌'}`);
+    console.error('\n要約の品質:');
+    console.error(`  文字数範囲（60-80文字）: ${result.summary.length >= 60 && result.summary.length <= 80 ? '✅' : '❌'}`);
+    console.error(`  句点で終了: ${result.summary.endsWith('。') ? '✅' : '❌'}`);
     
     // タグのチェック
-    console.log('\nタグの品質:');
-    console.log(`  タグ数（3-5個）: ${result.tags.length >= 3 && result.tags.length <= 5 ? '✅' : '❌'}`);
+    console.error('\nタグの品質:');
+    console.error(`  タグ数（3-5個）: ${result.tags.length >= 3 && result.tags.length <= 5 ? '✅' : '❌'}`);
     
-    console.log('\n-'.repeat(60));
-    console.log(`処理時間: ${duration}ms`);
+    console.error('\n-'.repeat(60));
+    console.error(`処理時間: ${duration}ms`);
     
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
   }
   
-  console.log('\n' + '='.repeat(60));
-  console.log('テスト完了');
+  console.error('\n' + '='.repeat(60));
+  console.error('テスト完了');
 }
 
 // テスト実行

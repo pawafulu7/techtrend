@@ -217,8 +217,8 @@ function calculateSimilarity(text1: string, text2: string): number {
 }
 
 async function validateQuality() {
-  console.log('🔬 LocalLLM品質検証（ロール明確化版プロンプト）\n');
-  console.log('================================================================================');
+  console.error('🔬 LocalLLM品質検証（ロール明確化版プロンプト）\n');
+  console.error('================================================================================');
   
   // 様々なソースから記事を取得（3件に削減）
   const articles = await prisma.article.findMany({
@@ -233,7 +233,7 @@ async function validateQuality() {
     include: { source: true }
   });
   
-  console.log(`📝 ${articles.length}件の実記事で検証\n`);
+  console.error(`📝 ${articles.length}件の実記事で検証\n`);
   
   const results: ValidationResult[] = [];
   let geminiErrors = 0;
@@ -243,38 +243,38 @@ async function validateQuality() {
     const article = articles[i];
     const content = article.content || article.description || '';
     
-    console.log(`\n[記事 ${i + 1}/${articles.length}]`);
-    console.log('────────────────────────────────────────────────────────────────────────────');
-    console.log(`📄 ${article.title.substring(0, 60)}...`);
-    console.log(`📚 ソース: ${article.source.name}`);
-    console.log(`📅 ${article.publishedAt.toLocaleDateString()}\n`);
+    console.error(`\n[記事 ${i + 1}/${articles.length}]`);
+    console.error('────────────────────────────────────────────────────────────────────────────');
+    console.error(`📄 ${article.title.substring(0, 60)}...`);
+    console.error(`📚 ソース: ${article.source.name}`);
+    console.error(`📅 ${article.publishedAt.toLocaleDateString()}\n`);
     
     let geminiResult: any = null;
     let localResult: any = null;
     
     // Gemini生成
     try {
-      console.log('🔷 Gemini生成中...');
+      console.error('🔷 Gemini生成中...');
       geminiResult = await generateWithGemini(article.title, content);
       const geminiScore = checkSummaryQuality(geminiResult.summary, geminiResult.detailedSummary).score;
       geminiResult.score = geminiScore;
-      console.log(`  ✅ 完了 (${geminiResult.processingTime}ms, スコア: ${geminiScore}点)`);
+      console.error(`  ✅ 完了 (${geminiResult.processingTime}ms, スコア: ${geminiScore}点)`);
     } catch (error) {
-      console.log(`  ❌ エラー: ${error}`);
+      console.error(`  ❌ エラー: ${error}`);
       geminiErrors++;
     }
     
     // LocalLLM生成
     try {
-      console.log('🟠 LocalLLM生成中...');
+      console.error('🟠 LocalLLM生成中...');
       localResult = await generateWithOptimizedLocalLLM(article.title, content);
       const localScore = checkSummaryQuality(localResult.summary, localResult.detailedSummary).score;
       localResult.score = localScore;
-      console.log(`  ✅ 完了 (${localResult.processingTime}ms, スコア: ${localScore}点)`);
-      console.log(`  🌐 英語混入: ${localResult.hasEnglish ? '❌ あり' : '✅ なし'}`);
-      console.log(`  📋 統一フォーマット: ${localResult.hasUnifiedFormat ? '✅' : '❌'}`);
+      console.error(`  ✅ 完了 (${localResult.processingTime}ms, スコア: ${localScore}点)`);
+      console.error(`  🌐 英語混入: ${localResult.hasEnglish ? '❌ あり' : '✅ なし'}`);
+      console.error(`  📋 統一フォーマット: ${localResult.hasUnifiedFormat ? '✅' : '❌'}`);
     } catch (error) {
-      console.log(`  ❌ エラー: ${error}`);
+      console.error(`  ❌ エラー: ${error}`);
       localLLMErrors++;
     }
     
@@ -298,10 +298,10 @@ async function validateQuality() {
       });
       
       // 簡易比較表示
-      console.log('\n📊 比較結果:');
-      console.log(`  品質スコア差: ${comparison.scoreDiff > 0 ? '+' : ''}${comparison.scoreDiff}点`);
-      console.log(`  要約類似度: ${comparison.contentSimilarity.toFixed(1)}%`);
-      console.log(`  タグ数差: ${comparison.tagCountDiff > 0 ? '+' : ''}${comparison.tagCountDiff}個`);
+      console.error('\n📊 比較結果:');
+      console.error(`  品質スコア差: ${comparison.scoreDiff > 0 ? '+' : ''}${comparison.scoreDiff}点`);
+      console.error(`  要約類似度: ${comparison.contentSimilarity.toFixed(1)}%`);
+      console.error(`  タグ数差: ${comparison.tagCountDiff > 0 ? '+' : ''}${comparison.tagCountDiff}個`);
     }
     
     // API制限対策
@@ -311,9 +311,9 @@ async function validateQuality() {
   }
   
   // 総合レポート
-  console.log('\n================================================================================');
-  console.log('📊 品質検証レポート');
-  console.log('================================================================================\n');
+  console.error('\n================================================================================');
+  console.error('📊 品質検証レポート');
+  console.error('================================================================================\n');
   
   if (results.length > 0) {
     // 統計計算
@@ -323,29 +323,29 @@ async function validateQuality() {
     const englishRate = results.filter(r => r.localLLM.hasEnglish).length / results.length;
     const unifiedFormatRate = results.filter(r => r.localLLM.hasUnifiedFormat).length / results.length;
     
-    console.log('【品質スコア】');
-    console.log(`  Gemini平均: ${avgGeminiScore.toFixed(1)}点`);
-    console.log(`  LocalLLM平均: ${avgLocalScore.toFixed(1)}点`);
-    console.log(`  スコア差: ${(avgLocalScore - avgGeminiScore).toFixed(1)}点`);
-    console.log();
+    console.error('【品質スコア】');
+    console.error(`  Gemini平均: ${avgGeminiScore.toFixed(1)}点`);
+    console.error(`  LocalLLM平均: ${avgLocalScore.toFixed(1)}点`);
+    console.error(`  スコア差: ${(avgLocalScore - avgGeminiScore).toFixed(1)}点`);
+    console.error();
     
-    console.log('【要約内容】');
-    console.log(`  平均類似度: ${avgSimilarity.toFixed(1)}%`);
-    console.log(`  英語混入率: ${(englishRate * 100).toFixed(0)}%`);
-    console.log(`  統一フォーマット適合率: ${(unifiedFormatRate * 100).toFixed(0)}%`);
-    console.log();
+    console.error('【要約内容】');
+    console.error(`  平均類似度: ${avgSimilarity.toFixed(1)}%`);
+    console.error(`  英語混入率: ${(englishRate * 100).toFixed(0)}%`);
+    console.error(`  統一フォーマット適合率: ${(unifiedFormatRate * 100).toFixed(0)}%`);
+    console.error();
     
-    console.log('【エラー率】');
-    console.log(`  Geminiエラー: ${geminiErrors}/${articles.length}件`);
-    console.log(`  LocalLLMエラー: ${localLLMErrors}/${articles.length}件`);
-    console.log();
+    console.error('【エラー率】');
+    console.error(`  Geminiエラー: ${geminiErrors}/${articles.length}件`);
+    console.error(`  LocalLLMエラー: ${localLLMErrors}/${articles.length}件`);
+    console.error();
     
     // 個別記事の詳細
-    console.log('【記事別詳細】');
+    console.error('【記事別詳細】');
     results.forEach((r, i) => {
-      console.log(`\n${i + 1}. ${r.title.substring(0, 40)}... (${r.source})`);
-      console.log(`   Gemini: ${r.gemini.score}点 | LocalLLM: ${r.localLLM.score}点 (差: ${r.comparison.scoreDiff > 0 ? '+' : ''}${r.comparison.scoreDiff})`);
-      console.log(`   類似度: ${r.comparison.contentSimilarity.toFixed(1)}% | 英語: ${r.localLLM.hasEnglish ? '有' : '無'}`);
+      console.error(`\n${i + 1}. ${r.title.substring(0, 40)}... (${r.source})`);
+      console.error(`   Gemini: ${r.gemini.score}点 | LocalLLM: ${r.localLLM.score}点 (差: ${r.comparison.scoreDiff > 0 ? '+' : ''}${r.comparison.scoreDiff})`);
+      console.error(`   類似度: ${r.comparison.contentSimilarity.toFixed(1)}% | 英語: ${r.localLLM.hasEnglish ? '有' : '無'}`);
     });
     
     // レポートファイル生成
@@ -363,11 +363,11 @@ async function validateQuality() {
     
     fs.mkdirSync(path.dirname(reportPath), { recursive: true });
     fs.writeFileSync(reportPath, reportContent);
-    console.log(`\n📝 詳細レポート生成: ${reportPath}`);
+    console.error(`\n📝 詳細レポート生成: ${reportPath}`);
     
     // 実用性判定
-    console.log('\n✨ 実用性判定');
-    console.log('────────────────────────────────────────────────────────────────────────────');
+    console.error('\n✨ 実用性判定');
+    console.error('────────────────────────────────────────────────────────────────────────────');
     
     const isViable = 
       avgLocalScore >= avgGeminiScore * 0.8 &&  // 品質80%以上
@@ -376,25 +376,25 @@ async function validateQuality() {
       localLLMErrors <= geminiErrors + 1;        // エラー率が同等
     
     if (isViable) {
-      console.log('✅ LocalLLMは実用レベルに達しています');
-      console.log('   - 品質スコアがGeminiの80%以上');
-      console.log('   - 英語混入が少ない');
-      console.log('   - 統一フォーマットに対応');
+      console.error('✅ LocalLLMは実用レベルに達しています');
+      console.error('   - 品質スコアがGeminiの80%以上');
+      console.error('   - 英語混入が少ない');
+      console.error('   - 統一フォーマットに対応');
     } else {
-      console.log('⚠️  LocalLLMはさらなる改善が必要です');
+      console.error('⚠️  LocalLLMはさらなる改善が必要です');
       if (avgLocalScore < avgGeminiScore * 0.8) {
-        console.log(`   - 品質スコアが不足 (${(avgLocalScore / avgGeminiScore * 100).toFixed(0)}%)`);
+        console.error(`   - 品質スコアが不足 (${(avgLocalScore / avgGeminiScore * 100).toFixed(0)}%)`);
       }
       if (englishRate > 0.2) {
-        console.log(`   - 英語混入が多い (${(englishRate * 100).toFixed(0)}%)`);
+        console.error(`   - 英語混入が多い (${(englishRate * 100).toFixed(0)}%)`);
       }
       if (unifiedFormatRate < 0.8) {
-        console.log(`   - フォーマット適合率が低い (${(unifiedFormatRate * 100).toFixed(0)}%)`);
+        console.error(`   - フォーマット適合率が低い (${(unifiedFormatRate * 100).toFixed(0)}%)`);
       }
     }
   }
   
-  console.log('\n✅ 検証完了！');
+  console.error('\n✅ 検証完了！');
   await prisma.$disconnect();
 }
 

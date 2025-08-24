@@ -57,7 +57,7 @@ function countSpeculativeExpressions(text: string): number {
 }
 
 async function main() {
-  console.log('=== はてなブックマーク経由外部記事の分析 ===\n');
+  console.error('=== はてなブックマーク経由外部記事の分析 ===\n');
 
   try {
     // はてなブックマークソースのIDを取得
@@ -90,7 +90,7 @@ async function main() {
       }
     });
 
-    console.log(`対象記事数: ${articles.length}件\n`);
+    console.error(`対象記事数: ${articles.length}件\n`);
 
     const problematicArticles: ProblematicArticle[] = [];
 
@@ -113,34 +113,34 @@ async function main() {
     }
 
     // 結果をレポート
-    console.log('=== 分析結果 ===\n');
-    console.log(`問題のある記事: ${problematicArticles.length}件\n`);
+    console.error('=== 分析結果 ===\n');
+    console.error(`問題のある記事: ${problematicArticles.length}件\n`);
 
     if (problematicArticles.length > 0) {
-      console.log('詳細：');
-      console.log('---');
+      console.error('詳細：');
+      console.error('---');
       
       for (const article of problematicArticles) {
-        console.log(`\nID: ${article.id}`);
-        console.log(`タイトル: ${article.title}`);
-        console.log(`URL: ${article.url}`);
-        console.log(`コンテンツ長: ${article.contentLength}文字`);
-        console.log(`推測表現数: ${article.speculativeCount}個`);
-        console.log(`品質スコア: ${article.qualityScore}`);
-        console.log('---');
+        console.error(`\nID: ${article.id}`);
+        console.error(`タイトル: ${article.title}`);
+        console.error(`URL: ${article.url}`);
+        console.error(`コンテンツ長: ${article.contentLength}文字`);
+        console.error(`推測表現数: ${article.speculativeCount}個`);
+        console.error(`品質スコア: ${article.qualityScore}`);
+        console.error('---');
       }
 
       // 処理オプションを表示
-      console.log('\n=== 推奨アクション ===\n');
-      console.log('1. これらの記事の要約を再生成する場合:');
-      console.log('   npx tsx scripts/manual/regenerate-single-article.ts [記事ID]');
-      console.log('\n2. これらの記事を削除する場合:');
-      console.log('   以下のSQLを実行:');
+      console.error('\n=== 推奨アクション ===\n');
+      console.error('1. これらの記事の要約を再生成する場合:');
+      console.error('   npx tsx scripts/manual/regenerate-single-article.ts [記事ID]');
+      console.error('\n2. これらの記事を削除する場合:');
+      console.error('   以下のSQLを実行:');
       
       const idsToDelete = problematicArticles.map(a => `'${a.id}'`).join(', ');
-      console.log(`   DELETE FROM Article WHERE id IN (${idsToDelete});`);
+      console.error(`   DELETE FROM Article WHERE id IN (${idsToDelete});`);
       
-      console.log('\n3. 今後の要約生成をスキップするため、generate-summaries.tsの修正が必要です');
+      console.error('\n3. 今後の要約生成をスキップするため、generate-summaries.tsの修正が必要です');
       
       // CSVエクスポート
       const csvPath = 'problematic-hatena-articles.csv';
@@ -153,7 +153,7 @@ async function main() {
       
       const fs = await import('fs');
       await fs.promises.writeFile(csvPath, csv, 'utf-8');
-      console.log(`\n結果をCSVファイルに保存しました: ${csvPath}`);
+      console.error(`\n結果をCSVファイルに保存しました: ${csvPath}`);
     }
 
   } catch (error) {

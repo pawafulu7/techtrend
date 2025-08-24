@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function cleanSummaryPrefixes() {
-  console.log('🧹 要約のプレフィックスとMarkdown記法をクリーンアップ\n');
+  console.error('🧹 要約のプレフィックスとMarkdown記法をクリーンアップ\n');
   
   try {
     // 問題のあるパターンを持つ記事を検索
@@ -28,7 +28,7 @@ async function cleanSummaryPrefixes() {
       }
     });
     
-    console.log(`対象記事: ${articles.length}件\n`);
+    console.error(`対象記事: ${articles.length}件\n`);
     
     let successCount = 0;
     let errorCount = 0;
@@ -36,17 +36,17 @@ async function cleanSummaryPrefixes() {
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i];
       
-      console.log(`[${i + 1}/${articles.length}] 処理中: ${article.id}`);
-      console.log(`  タイトル: ${article.title?.substring(0, 50)}...`);
+      console.error(`[${i + 1}/${articles.length}] 処理中: ${article.id}`);
+      console.error(`  タイトル: ${article.title?.substring(0, 50)}...`);
       
       if (!article.summary) {
-        console.log('  ⚠️ 要約が空のためスキップ');
+        console.error('  ⚠️ 要約が空のためスキップ');
         errorCount++;
         continue;
       }
       
       // 元の要約を表示
-      console.log(`  元の要約: ${article.summary.substring(0, 60)}...`);
+      console.error(`  元の要約: ${article.summary.substring(0, 60)}...`);
       
       // 要約をクリーンアップ
       let cleanedSummary = article.summary;
@@ -68,7 +68,7 @@ async function cleanSummaryPrefixes() {
         cleanedSummary = cleanedSummary + '。';
       }
       
-      console.log(`  修正後: ${cleanedSummary.substring(0, 60)}...`);
+      console.error(`  修正後: ${cleanedSummary.substring(0, 60)}...`);
       
       try {
         // データベースを更新
@@ -80,20 +80,20 @@ async function cleanSummaryPrefixes() {
           }
         });
         
-        console.log('  ✅ 更新完了');
+        console.error('  ✅ 更新完了');
         successCount++;
       } catch (error) {
         console.error(`  ❌ エラー: ${error}`);
         errorCount++;
       }
       
-      console.log();
+      console.error();
     }
     
-    console.log('='.repeat(60));
-    console.log('処理完了');
-    console.log(`成功: ${successCount}件`);
-    console.log(`エラー: ${errorCount}件`);
+    console.error('='.repeat(60));
+    console.error('処理完了');
+    console.error(`成功: ${successCount}件`);
+    console.error(`エラー: ${errorCount}件`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

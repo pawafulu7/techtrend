@@ -2,9 +2,9 @@
 import fetch from 'node-fetch';
 
 async function testNewPrompt() {
-  console.log('🧪 新しいシステムプロンプト設定のテスト\n');
-  console.log('前提: LLMサーバー側に以下のシステムプロンプトが設定されていることを想定\n');
-  console.log('=' * 60);
+  console.error('🧪 新しいシステムプロンプト設定のテスト\n');
+  console.error('前提: LLMサーバー側に以下のシステムプロンプトが設定されていることを想定\n');
+  console.error('=' * 60);
   
   const url = 'http://192.168.11.7:1234';
   const model = 'openai/gpt-oss-20b';
@@ -82,8 +82,8 @@ GraphQLとRESTの選択は、プロジェクトの要件、チームのスキル
   };
 
   // テストケース1: 要約とタグ生成
-  console.log('📝 テスト1: 要約とタグ生成（標準形式）');
-  console.log('-'.repeat(60));
+  console.error('📝 テスト1: 要約とタグ生成（標準形式）');
+  console.error('-'.repeat(60));
   
   try {
     const prompt1 = `以下の技術記事を分析してください。
@@ -110,8 +110,8 @@ GraphQLとRESTの選択は、プロジェクトの要件、チームのスキル
       const data = await response1.json() as any;
       const output = data.choices?.[0]?.message?.content || '';
       
-      console.log('出力:');
-      console.log(output);
+      console.error('出力:');
+      console.error(output);
       
       // 品質チェック
       const lines = output.split('\n');
@@ -120,17 +120,17 @@ GraphQLとRESTの選択は、プロジェクトの要件、チームのスキル
       
       if (summaryLine) {
         const summary = summaryLine.replace('要約:', '').trim();
-        console.log('\n✅ 要約チェック:');
-        console.log(`  文字数: ${summary.length}文字 ${summary.length >= 60 && summary.length <= 80 ? '✅' : '❌'}`);
-        console.log(`  句点終了: ${summary.endsWith('。') ? '✅' : '❌'}`);
-        console.log(`  英語混入なし: ${!/need|let's|count/i.test(summary) ? '✅' : '❌'}`);
+        console.error('\n✅ 要約チェック:');
+        console.error(`  文字数: ${summary.length}文字 ${summary.length >= 60 && summary.length <= 80 ? '✅' : '❌'}`);
+        console.error(`  句点終了: ${summary.endsWith('。') ? '✅' : '❌'}`);
+        console.error(`  英語混入なし: ${!/need|let's|count/i.test(summary) ? '✅' : '❌'}`);
       }
       
       if (tagsLine) {
         const tags = tagsLine.replace('タグ:', '').trim().split(/[,、]/);
-        console.log('\n✅ タグチェック:');
-        console.log(`  タグ数: ${tags.length}個 ${tags.length >= 3 && tags.length <= 5 ? '✅' : '❌'}`);
-        console.log(`  タグ: ${tags.map(t => t.trim()).join(', ')}`);
+        console.error('\n✅ タグチェック:');
+        console.error(`  タグ数: ${tags.length}個 ${tags.length >= 3 && tags.length <= 5 ? '✅' : '❌'}`);
+        console.error(`  タグ: ${tags.map(t => t.trim()).join(', ')}`);
       }
     }
   } catch (error) {
@@ -141,8 +141,8 @@ GraphQLとRESTの選択は、プロジェクトの要件、チームのスキル
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   // テストケース2: 詳細要約生成
-  console.log('\n\n📝 テスト2: 詳細要約生成（箇条書き形式）');
-  console.log('-'.repeat(60));
+  console.error('\n\n📝 テスト2: 詳細要約生成（箇条書き形式）');
+  console.error('-'.repeat(60));
   
   try {
     const prompt2 = `以下の技術記事を詳細に分析してください。
@@ -175,14 +175,14 @@ GraphQLとRESTの選択は、プロジェクトの要件、チームのスキル
       const data = await response2.json() as any;
       const output = data.choices?.[0]?.message?.content || '';
       
-      console.log('出力:');
-      console.log(output);
+      console.error('出力:');
+      console.error(output);
       
       // 品質チェック
       const bulletPoints = output.split('\n').filter(line => line.trim().startsWith('・'));
       
-      console.log('\n✅ 詳細要約チェック:');
-      console.log(`  項目数: ${bulletPoints.length}個 ${bulletPoints.length === 6 ? '✅' : '⚠️'}`);
+      console.error('\n✅ 詳細要約チェック:');
+      console.error(`  項目数: ${bulletPoints.length}個 ${bulletPoints.length === 6 ? '✅' : '⚠️'}`);
       
       const requiredKeywords = [
         '記事の主題',
@@ -195,25 +195,25 @@ GraphQLとRESTの選択は、プロジェクトの要件、チームのスキル
       
       requiredKeywords.forEach(keyword => {
         const hasKeyword = bulletPoints.some(line => line.includes(keyword));
-        console.log(`  「${keyword}」: ${hasKeyword ? '✅' : '❌'}`);
+        console.error(`  「${keyword}」: ${hasKeyword ? '✅' : '❌'}`);
       });
       
       // 英語の混入チェック
       const hasEnglishThinking = /need|let's|count|craft/i.test(output);
-      console.log(`  英語思考過程なし: ${!hasEnglishThinking ? '✅' : '❌'}`);
+      console.error(`  英語思考過程なし: ${!hasEnglishThinking ? '✅' : '❌'}`);
     }
   } catch (error) {
     console.error('❌ エラー:', error);
   }
 
-  console.log('\n' + '=' * 60);
-  console.log('📊 テスト完了');
-  console.log('=' * 60);
-  console.log('\n推奨事項:');
-  console.log('1. システムプロンプトが正しく設定されているか確認');
-  console.log('2. 英語の思考過程が出力される場合は、プロンプトを強化');
-  console.log('3. 項目が不足する場合は、max_tokensを増やす');
-  console.log('4. 形式が崩れる場合は、temperatureを下げる（0.2-0.3推奨）');
+  console.error('\n' + '=' * 60);
+  console.error('📊 テスト完了');
+  console.error('=' * 60);
+  console.error('\n推奨事項:');
+  console.error('1. システムプロンプトが正しく設定されているか確認');
+  console.error('2. 英語の思考過程が出力される場合は、プロンプトを強化');
+  console.error('3. 項目が不足する場合は、max_tokensを増やす');
+  console.error('4. 形式が崩れる場合は、temperatureを下げる（0.2-0.3推奨）');
 }
 
 testNewPrompt().catch(console.error);

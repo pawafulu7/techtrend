@@ -14,7 +14,7 @@ interface ProblematicArticle {
 }
 
 async function checkInvalidSummaries() {
-  console.log('🔍 不正な要約パターンをチェック中...\n');
+  console.error('🔍 不正な要約パターンをチェック中...\n');
   
   try {
     const articles = await prisma.article.findMany({
@@ -35,7 +35,7 @@ async function checkInvalidSummaries() {
       take: 500 // 最新500件をチェック
     });
     
-    console.log(`📊 チェック対象: ${articles.length}件\n`);
+    console.error(`📊 チェック対象: ${articles.length}件\n`);
     
     const problematicArticles: ProblematicArticle[] = [];
     
@@ -146,21 +146,21 @@ async function checkInvalidSummaries() {
     }
     
     // 結果表示
-    console.log('📈 問題パターン統計:');
-    console.log('─'.repeat(60));
-    console.log(`冒頭コロン: ${specialProblems.colonStart}件`);
-    console.log(`改行含む: ${specialProblems.multiLine}件`);
-    console.log(`長すぎ(>150文字): ${specialProblems.tooLong}件`);
-    console.log(`短すぎ(<20文字): ${specialProblems.tooShort}件`);
-    console.log(`英語混在: ${specialProblems.englishMixed}件`);
-    console.log(`途切れ: ${specialProblems.truncated}件`);
-    console.log(`Markdown記法: ${specialProblems.markdown}件`);
-    console.log(`一般的表現: ${specialProblems.genericPhrase}件`);
-    console.log(`技術的背景なし: ${specialProblems.noTechnicalBg}件`);
-    console.log(`空/無効: ${specialProblems.emptyOrInvalid}件`);
-    console.log('─'.repeat(60));
-    console.log(`問題のある記事総数: ${problematicArticles.length}件 / ${articles.length}件`);
-    console.log(`問題率: ${(problematicArticles.length / articles.length * 100).toFixed(1)}%\n`);
+    console.error('📈 問題パターン統計:');
+    console.error('─'.repeat(60));
+    console.error(`冒頭コロン: ${specialProblems.colonStart}件`);
+    console.error(`改行含む: ${specialProblems.multiLine}件`);
+    console.error(`長すぎ(>150文字): ${specialProblems.tooLong}件`);
+    console.error(`短すぎ(<20文字): ${specialProblems.tooShort}件`);
+    console.error(`英語混在: ${specialProblems.englishMixed}件`);
+    console.error(`途切れ: ${specialProblems.truncated}件`);
+    console.error(`Markdown記法: ${specialProblems.markdown}件`);
+    console.error(`一般的表現: ${specialProblems.genericPhrase}件`);
+    console.error(`技術的背景なし: ${specialProblems.noTechnicalBg}件`);
+    console.error(`空/無効: ${specialProblems.emptyOrInvalid}件`);
+    console.error('─'.repeat(60));
+    console.error(`問題のある記事総数: ${problematicArticles.length}件 / ${articles.length}件`);
+    console.error(`問題率: ${(problematicArticles.length / articles.length * 100).toFixed(1)}%\n`);
     
     // 特に問題の多い記事を表示（冒頭コロン、改行、途切れを優先）
     const criticalProblems = problematicArticles
@@ -175,28 +175,28 @@ async function checkInvalidSummaries() {
       .slice(0, 10);
     
     if (criticalProblems.length > 0) {
-      console.log('⚠️  特に修正が必要な記事（最大10件）:');
-      console.log('─'.repeat(60));
+      console.error('⚠️  特に修正が必要な記事（最大10件）:');
+      console.error('─'.repeat(60));
       
       for (const article of criticalProblems) {
-        console.log(`\n📄 ${article.title}`);
-        console.log(`   ID: ${article.id}`);
-        console.log(`   ソース: ${article.source}`);
-        console.log(`   問題: ${article.problems.join(', ')}`);
+        console.error(`\n📄 ${article.title}`);
+        console.error(`   ID: ${article.id}`);
+        console.error(`   ソース: ${article.source}`);
+        console.error(`   問題: ${article.problems.join(', ')}`);
         
         if (article.summary && (article.problems.includes('冒頭コロン') || article.problems.includes('改行含む'))) {
           const preview = article.summary.substring(0, 100).replace(/\n/g, '\\n');
-          console.log(`   要約冒頭: "${preview}..."`);
+          console.error(`   要約冒頭: "${preview}..."`);
         }
       }
     }
     
     // 修正スクリプトの提案
     if (problematicArticles.length > 0) {
-      console.log('\n💡 修正方法:');
-      console.log('1. 個別修正: npx tsx scripts/fix-o3-pro-article.ts [記事ID]');
-      console.log('2. 一括修正: npx tsx scripts/fix-all-invalid-summaries.ts');
-      console.log('3. ソース別修正: npx tsx scripts/fix-source-summaries.ts [ソース名]');
+      console.error('\n💡 修正方法:');
+      console.error('1. 個別修正: npx tsx scripts/fix-o3-pro-article.ts [記事ID]');
+      console.error('2. 一括修正: npx tsx scripts/fix-all-invalid-summaries.ts');
+      console.error('3. ソース別修正: npx tsx scripts/fix-source-summaries.ts [ソース名]');
     }
     
   } catch (error) {

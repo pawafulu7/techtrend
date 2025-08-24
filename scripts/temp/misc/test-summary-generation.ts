@@ -35,27 +35,27 @@ const testArticle = {
 };
 
 async function testSummaryGeneration() {
-  console.log('=== 要約生成テスト ===\n');
+  console.error('=== 要約生成テスト ===\n');
   
   // 記事タイプを判定
   const articleType = detectArticleType(testArticle.title, testArticle.content);
-  console.log(`記事タイプ: ${articleType}\n`);
+  console.error(`記事タイプ: ${articleType}\n`);
   
   // プロンプトを生成
   const prompt = generatePromptForArticleType(articleType, testArticle.title, testArticle.content);
   
-  console.log('生成されたプロンプト（一部）:\n');
-  console.log(prompt.substring(0, 500) + '...\n');
+  console.error('生成されたプロンプト（一部）:\n');
+  console.error(prompt.substring(0, 500) + '...\n');
   
   // プロンプトに不要な前置き文言の禁止が含まれているか確認
   const hasWarning = prompt.includes('前置き文言を使わない');
-  console.log(`前置き文言禁止の指示: ${hasWarning ? '✓ 含まれています' : '✗ 含まれていません'}\n`);
+  console.error(`前置き文言禁止の指示: ${hasWarning ? '✓ 含まれています' : '✗ 含まれていません'}\n`);
   
   // 詳細要約のフォーマット確認
   const detailFormat = prompt.match(/詳細要約:[\s\S]*?・(.+)/);
   if (detailFormat) {
-    console.log('詳細要約の最初の項目:');
-    console.log(detailFormat[1]);
+    console.error('詳細要約の最初の項目:');
+    console.error(detailFormat[1]);
   }
 }
 

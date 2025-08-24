@@ -6,7 +6,7 @@ import * as fs from 'fs';
 const prisma = new PrismaClient();
 
 async function fixAllInBatches() {
-  console.log('🔧 全記事の品質問題を50件ずつバッチ処理\n');
+  console.error('🔧 全記事の品質問題を50件ずつバッチ処理\n');
   
   try {
     // 問題のある記事IDを読み込み
@@ -40,9 +40,9 @@ async function fixAllInBatches() {
     
     const remainingIds = allProblemIds.filter(id => !processedIds.has(id));
     
-    console.log(`全問題記事数: ${allProblemIds.length}件`);
-    console.log(`処理済み: ${processedIds.size}件`);
-    console.log(`残り処理対象: ${remainingIds.length}件\n`);
+    console.error(`全問題記事数: ${allProblemIds.length}件`);
+    console.error(`処理済み: ${processedIds.size}件`);
+    console.error(`残り処理対象: ${remainingIds.length}件\n`);
     
     // 50件ずつ処理
     const batchSize = 50;
@@ -50,10 +50,10 @@ async function fixAllInBatches() {
     const endIndex = Math.min(startIndex + batchSize, remainingIds.length);
     const batchIds = remainingIds.slice(startIndex, endIndex);
     
-    console.log(`このバッチ: ${startIndex + 1}-${endIndex}件目 (${batchIds.length}件)\n`);
+    console.error(`このバッチ: ${startIndex + 1}-${endIndex}件目 (${batchIds.length}件)\n`);
     
     if (batchIds.length === 0) {
-      console.log('処理する記事がありません');
+      console.error('処理する記事がありません');
       return;
     }
     
@@ -72,7 +72,7 @@ async function fixAllInBatches() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     let successCount = 0;
     let errorCount = 0;
@@ -81,7 +81,7 @@ async function fixAllInBatches() {
     
     for (let i = 0; i < batchIds.length; i++) {
       const articleId = batchIds[i];
-      console.log(`[${i + 1}/${batchIds.length}] 処理中: ${articleId}`);
+      console.error(`[${i + 1}/${batchIds.length}] 処理中: ${articleId}`);
       
       try {
         // 記事を取得
@@ -99,7 +99,7 @@ async function fixAllInBatches() {
         });
         
         if (!article) {
-          console.log('  ❌ 記事が見つかりません');
+          console.error('  ❌ 記事が見つかりません');
           errorCount++;
           continue;
         }
@@ -181,12 +181,12 @@ async function fixAllInBatches() {
         }
         
         if (issues.length === 0) {
-          console.log('  ⏭️ 修正不要');
+          console.error('  ⏭️ 修正不要');
           skipCount++;
           continue;
         }
         
-        console.log(`  ⚠️ 問題: ${issues.join(', ')}`);
+        console.error(`  ⚠️ 問題: ${issues.join(', ')}`);
         
         if (simpleCleanupOnly && !needsRegeneration) {
           // 単純なクリーンアップのみ
@@ -199,11 +199,11 @@ async function fixAllInBatches() {
             }
           });
           
-          console.log('  ✅ クリーンアップ成功');
+          console.error('  ✅ クリーンアップ成功');
           successCount++;
         } else {
           // 再生成が必要
-          console.log('  🔄 要約を再生成中...');
+          console.error('  🔄 要約を再生成中...');
           
           // コンテンツを準備
           let content = article.content || '';
@@ -297,7 +297,7 @@ ${additionalContext}
               }
             });
             
-            console.log('  ✅ 再生成成功');
+            console.error('  ✅ 再生成成功');
             successCount++;
           } else {
             const problems = [];
@@ -305,7 +305,7 @@ ${additionalContext}
             if (!hasContent) problems.push('内容不適切');
             if (!hasProperTechnicalBackground) problems.push('技術的背景なし');
             if (!hasEnoughItems) problems.push('項目数不足');
-            console.log(`  ⚠️ 品質チェック失敗: ${problems.join(', ')}`);
+            console.error(`  ⚠️ 品質チェック失敗: ${problems.join(', ')}`);
             errorCount++;
           }
         }
@@ -320,18 +320,18 @@ ${additionalContext}
     }
     
     const totalTime = Math.floor((Date.now() - startTime) / 1000);
-    console.log('\n' + '='.repeat(60));
-    console.log(`🎉 バッチ処理完了 (${startIndex + 1}-${endIndex}件目)`);
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`⏭️ スキップ: ${skipCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`⏱️ 処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
-    console.log(`🚀 処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
+    console.error('\n' + '='.repeat(60));
+    console.error(`🎉 バッチ処理完了 (${startIndex + 1}-${endIndex}件目)`);
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`⏭️ スキップ: ${skipCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`⏱️ 処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
+    console.error(`🚀 処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
     
     if (endIndex < remainingIds.length) {
-      console.log(`\n📌 次のバッチ: npx tsx scripts/fix-all-in-batches.ts ${endIndex}`);
+      console.error(`\n📌 次のバッチ: npx tsx scripts/fix-all-in-batches.ts ${endIndex}`);
     } else {
-      console.log('\n✨ すべてのバッチ処理が完了しました！');
+      console.error('\n✨ すべてのバッチ処理が完了しました！');
     }
     
   } catch (error) {

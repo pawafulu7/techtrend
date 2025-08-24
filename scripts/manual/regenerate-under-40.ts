@@ -147,8 +147,8 @@ function parseResponse(text: string): SummaryResult {
 }
 
 async function main() {
-  console.log('🔄 40点未満の低品質要約を全て再生成します');
-  console.log('================================================================================\n');
+  console.error('🔄 40点未満の低品質要約を全て再生成します');
+  console.error('================================================================================\n');
 
   const stats: ProcessStats = {
     totalTargets: 0,
@@ -162,7 +162,7 @@ async function main() {
 
   try {
     // 40点未満の記事を取得
-    console.log('📊 低品質記事を検索中...');
+    console.error('📊 低品質記事を検索中...');
     const allArticles = await prisma.article.findMany({
       where: { summary: { not: null } },
       include: { source: true },
@@ -178,15 +178,15 @@ async function main() {
     }
 
     stats.totalTargets = targetArticles.length;
-    console.log(`\n✅ 対象記事: ${stats.totalTargets}件（40点未満）`);
+    console.error(`\n✅ 対象記事: ${stats.totalTargets}件（40点未満）`);
     
     if (isDryRun) {
-      console.log('⚠️  DRY-RUNモード: 実際の更新は行いません\n');
+      console.error('⚠️  DRY-RUNモード: 実際の更新は行いません\n');
     }
 
     // 処理開始
-    console.log('\n処理を開始します...\n');
-    console.log('=' .repeat(80));
+    console.error('\n処理を開始します...\n');
+    console.error('=' .repeat(80));
 
     for (let i = 0; i < targetArticles.length; i++) {
       const article = targetArticles[i];
@@ -198,20 +198,20 @@ async function main() {
         const rate = Math.round(stats.processed / elapsed * 60);
         const eta = Math.round((stats.totalTargets - stats.processed) / (stats.processed / elapsed));
         
-        console.log('\n' + '=' .repeat(80));
-        console.log(`📈 進捗: ${stats.processed}/${stats.totalTargets} (${Math.round(stats.processed / stats.totalTargets * 100)}%)`);
-        console.log(`⏱️  経過時間: ${elapsed}秒 | 処理速度: ${rate}件/分 | 推定残り時間: ${eta}秒`);
-        console.log(`✅ 改善: ${stats.improved}件 | ⏭️  変化なし: ${stats.unchanged}件 | ❌ 失敗: ${stats.failed}件`);
+        console.error('\n' + '=' .repeat(80));
+        console.error(`📈 進捗: ${stats.processed}/${stats.totalTargets} (${Math.round(stats.processed / stats.totalTargets * 100)}%)`);
+        console.error(`⏱️  経過時間: ${elapsed}秒 | 処理速度: ${rate}件/分 | 推定残り時間: ${eta}秒`);
+        console.error(`✅ 改善: ${stats.improved}件 | ⏭️  変化なし: ${stats.unchanged}件 | ❌ 失敗: ${stats.failed}件`);
         
         if (stats.scoreImprovements.length > 0) {
           const avgImprovement = Math.round(stats.scoreImprovements.reduce((a, b) => a + b, 0) / stats.scoreImprovements.length);
-          console.log(`📊 平均改善度: +${avgImprovement}点`);
+          console.error(`📊 平均改善度: +${avgImprovement}点`);
         }
-        console.log('=' .repeat(80) + '\n');
+        console.error('=' .repeat(80) + '\n');
       }
       
-      console.log(`[${i + 1}/${stats.totalTargets}] ${article.title.substring(0, 50)}...`);
-      console.log(`  現在: ${currentScore}点 | ソース: ${article.source.name}`);
+      console.error(`[${i + 1}/${stats.totalTargets}] ${article.title.substring(0, 50)}...`);
+      console.error(`  現在: ${currentScore}点 | ソース: ${article.source.name}`);
       
       try {
         // コンテンツの準備
@@ -219,7 +219,7 @@ async function main() {
         
         // 短すぎるコンテンツの警告
         if (content.length < 100) {
-          console.log(`  ⚠️  極短コンテンツ: ${content.length}文字`);
+          console.error(`  ⚠️  極短コンテンツ: ${content.length}文字`);
         }
 
         // 新しい要約を生成
@@ -261,11 +261,11 @@ async function main() {
           }
 
           const improvement = newScore - currentScore;
-          console.log(`  ✅ 改善: ${currentScore} → ${newScore}点 (+${improvement}点)`);
+          console.error(`  ✅ 改善: ${currentScore} → ${newScore}点 (+${improvement}点)`);
           stats.improved++;
           stats.scoreImprovements.push(improvement);
         } else {
-          console.log(`  ⏭️  変化なし: ${currentScore}点`);
+          console.error(`  ⏭️  変化なし: ${currentScore}点`);
           stats.unchanged++;
         }
         
@@ -289,38 +289,38 @@ async function main() {
     const minutes = Math.floor(totalTime / 60);
     const seconds = totalTime % 60;
     
-    console.log('\n' + '=' .repeat(80));
-    console.log('📊 最終結果レポート');
-    console.log('=' .repeat(80));
-    console.log(`\n【処理統計】`);
-    console.log(`  対象記事数: ${stats.totalTargets}件`);
-    console.log(`  処理完了: ${stats.processed}件`);
-    console.log(`  改善成功: ${stats.improved}件 (${Math.round(stats.improved / stats.processed * 100)}%)`);
-    console.log(`  変化なし: ${stats.unchanged}件`);
-    console.log(`  処理失敗: ${stats.failed}件`);
+    console.error('\n' + '=' .repeat(80));
+    console.error('📊 最終結果レポート');
+    console.error('=' .repeat(80));
+    console.error(`\n【処理統計】`);
+    console.error(`  対象記事数: ${stats.totalTargets}件`);
+    console.error(`  処理完了: ${stats.processed}件`);
+    console.error(`  改善成功: ${stats.improved}件 (${Math.round(stats.improved / stats.processed * 100)}%)`);
+    console.error(`  変化なし: ${stats.unchanged}件`);
+    console.error(`  処理失敗: ${stats.failed}件`);
     
     if (stats.scoreImprovements.length > 0) {
       const avgImprovement = Math.round(stats.scoreImprovements.reduce((a, b) => a + b, 0) / stats.scoreImprovements.length);
       const maxImprovement = Math.max(...stats.scoreImprovements);
       
-      console.log(`\n【品質改善】`);
-      console.log(`  平均改善度: +${avgImprovement}点`);
-      console.log(`  最大改善度: +${maxImprovement}点`);
-      console.log(`  改善率: ${Math.round(stats.improved / stats.processed * 100)}%`);
+      console.error(`\n【品質改善】`);
+      console.error(`  平均改善度: +${avgImprovement}点`);
+      console.error(`  最大改善度: +${maxImprovement}点`);
+      console.error(`  改善率: ${Math.round(stats.improved / stats.processed * 100)}%`);
     }
     
-    console.log(`\n【処理時間】`);
-    console.log(`  総処理時間: ${minutes}分${seconds}秒`);
-    console.log(`  平均処理時間: ${Math.round(totalTime / stats.processed)}秒/件`);
+    console.error(`\n【処理時間】`);
+    console.error(`  総処理時間: ${minutes}分${seconds}秒`);
+    console.error(`  平均処理時間: ${Math.round(totalTime / stats.processed)}秒/件`);
 
     // キャッシュ無効化
     if (!isDryRun && stats.improved > 0) {
-      console.log('\n🔄 キャッシュを無効化中...');
+      console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
-      console.log('✅ キャッシュ無効化完了');
+      console.error('✅ キャッシュ無効化完了');
     }
 
-    console.log('\n✨ 全ての処理が完了しました！');
+    console.error('\n✨ 全ての処理が完了しました！');
 
   } catch (error) {
     console.error('\n❌ 致命的エラーが発生しました:', error);

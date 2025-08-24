@@ -16,7 +16,7 @@ interface ProblematicPattern {
 }
 
 async function deepCheckSummaries() {
-  console.log('🔍 要約の深層チェックを開始\n');
+  console.error('🔍 要約の深層チェックを開始\n');
   
   try {
     const articles = await prisma.article.findMany({
@@ -37,7 +37,7 @@ async function deepCheckSummaries() {
       take: 2000 // 最新2000件をチェック
     });
     
-    console.log(`📊 チェック対象: ${articles.length}件\n`);
+    console.error(`📊 チェック対象: ${articles.length}件\n`);
     
     const patterns: ProblematicPattern[] = [
       {
@@ -201,15 +201,15 @@ async function deepCheckSummaries() {
     }
     
     // 結果表示
-    console.log('📈 問題パターン別統計:');
-    console.log('─'.repeat(80));
+    console.error('📈 問題パターン別統計:');
+    console.error('─'.repeat(80));
     
     let totalProblematic = 0;
     const problemArticleIds = new Set<string>();
     
     for (const pattern of patterns) {
       if (pattern.articles.length > 0) {
-        console.log(`\n【${pattern.description}】: ${pattern.articles.length}件`);
+        console.error(`\n【${pattern.description}】: ${pattern.articles.length}件`);
         totalProblematic += pattern.articles.length;
         
         // 重複を除いたユニークな記事IDを記録
@@ -218,26 +218,26 @@ async function deepCheckSummaries() {
         // 最初の3件を例として表示
         for (let i = 0; i < Math.min(3, pattern.articles.length); i++) {
           const article = pattern.articles[i];
-          console.log(`  ${i + 1}. ${article.title.substring(0, 40)}...`);
-          console.log(`     ID: ${article.id}`);
-          console.log(`     ソース: ${article.source.name}`);
+          console.error(`  ${i + 1}. ${article.title.substring(0, 40)}...`);
+          console.error(`     ID: ${article.id}`);
+          console.error(`     ソース: ${article.source.name}`);
           
           if (pattern.pattern === 'html_entities' || 
               pattern.pattern === 'english_mixed' ||
               pattern.pattern === 'quote_as_summary') {
             const preview = article.summary?.substring(0, 80).replace(/\n/g, '\\n');
-            console.log(`     要約: "${preview}..."`);
+            console.error(`     要約: "${preview}..."`);
           }
         }
       }
     }
     
     // サマリー
-    console.log('\n' + '='.repeat(80));
-    console.log('📊 問題サマリー:');
-    console.log(`・チェック対象: ${articles.length}件`);
-    console.log(`・問題のある記事（ユニーク）: ${problemArticleIds.size}件`);
-    console.log(`・問題率: ${(problemArticleIds.size / articles.length * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(80));
+    console.error('📊 問題サマリー:');
+    console.error(`・チェック対象: ${articles.length}件`);
+    console.error(`・問題のある記事（ユニーク）: ${problemArticleIds.size}件`);
+    console.error(`・問題率: ${(problemArticleIds.size / articles.length * 100).toFixed(1)}%`);
     
     // 最も問題の多いパターントップ5
     const sortedPatterns = patterns
@@ -245,10 +245,10 @@ async function deepCheckSummaries() {
       .sort((a, b) => b.articles.length - a.articles.length)
       .slice(0, 5);
     
-    console.log('\n⚠️ 最も多い問題パターン（トップ5）:');
+    console.error('\n⚠️ 最も多い問題パターン（トップ5）:');
     for (let i = 0; i < sortedPatterns.length; i++) {
       const pattern = sortedPatterns[i];
-      console.log(`${i + 1}. ${pattern.description}: ${pattern.articles.length}件`);
+      console.error(`${i + 1}. ${pattern.description}: ${pattern.articles.length}件`);
     }
     
     // 複数の問題を持つ記事を特定
@@ -268,25 +268,25 @@ async function deepCheckSummaries() {
       .sort((a, b) => b[1].length - a[1].length);
     
     if (severeProblemArticles.length > 0) {
-      console.log('\n🚨 複数の問題を持つ記事（3つ以上）:');
+      console.error('\n🚨 複数の問題を持つ記事（3つ以上）:');
       for (let i = 0; i < Math.min(5, severeProblemArticles.length); i++) {
         const [id, problems] = severeProblemArticles[i];
         const article = articles.find(a => a.id === id);
         if (article) {
-          console.log(`\n${i + 1}. ${article.title.substring(0, 50)}...`);
-          console.log(`   ID: ${id}`);
-          console.log(`   問題数: ${problems.length}`);
-          console.log(`   問題: ${problems.join(', ')}`);
+          console.error(`\n${i + 1}. ${article.title.substring(0, 50)}...`);
+          console.error(`   ID: ${id}`);
+          console.error(`   問題数: ${problems.length}`);
+          console.error(`   問題: ${problems.join(', ')}`);
         }
       }
     }
     
     // 修正提案
     if (problemArticleIds.size > 0) {
-      console.log('\n💡 修正提案:');
-      console.log('1. HTMLエンティティの修正: npx tsx scripts/fix-html-entities.ts');
-      console.log('2. 英語混在の修正: npx tsx scripts/fix-english-mixed.ts');
-      console.log('3. 全問題の一括修正: npx tsx scripts/fix-all-deep-problems.ts');
+      console.error('\n💡 修正提案:');
+      console.error('1. HTMLエンティティの修正: npx tsx scripts/fix-html-entities.ts');
+      console.error('2. 英語混在の修正: npx tsx scripts/fix-english-mixed.ts');
+      console.error('3. 全問題の一括修正: npx tsx scripts/fix-all-deep-problems.ts');
     }
     
   } catch (error) {

@@ -6,7 +6,7 @@ import { cleanSummary, cleanDetailedSummary } from '../lib/utils/summary-cleaner
 const prisma = new PrismaClient();
 
 async function fixAllDeepProblems() {
-  console.log('🔧 深層チェックで検出された問題を一括修正\n');
+  console.error('🔧 深層チェックで検出された問題を一括修正\n');
   
   const localLLM = new LocalLLMClient({
     url: 'http://192.168.11.7:1234',
@@ -23,7 +23,7 @@ async function fixAllDeepProblems() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     // 問題のある記事を取得
     const articles = await prisma.article.findMany({
@@ -111,7 +111,7 @@ async function fixAllDeepProblems() {
       }
     }
     
-    console.log(`📊 修正対象: ${problematicArticles.length}件\n`);
+    console.error(`📊 修正対象: ${problematicArticles.length}件\n`);
     
     // 優先順位付け（問題の多い記事を優先）
     problematicArticles.sort((a, b) => b.problems.length - a.problems.length);
@@ -126,9 +126,9 @@ async function fixAllDeepProblems() {
     for (let i = 0; i < maxProcess; i++) {
       const article = problematicArticles[i];
       
-      console.log(`\n[${i + 1}/${maxProcess}] 処理中: ${article.title.substring(0, 50)}...`);
-      console.log(`   問題: ${article.problems.join(', ')}`);
-      console.log(`   現在の要約: "${article.summary?.substring(0, 60)}..."`);
+      console.error(`\n[${i + 1}/${maxProcess}] 処理中: ${article.title.substring(0, 50)}...`);
+      console.error(`   問題: ${article.problems.join(', ')}`);
+      console.error(`   現在の要約: "${article.summary?.substring(0, 60)}..."`);
       
       try {
         // 再生成が必要かどうか判断
@@ -140,7 +140,7 @@ async function fixAllDeepProblems() {
         
         if (needsRegeneration) {
           // 再生成
-          console.log('   🔄 要約を再生成...');
+          console.error('   🔄 要約を再生成...');
           
           const content = article.content || `
 タイトル: ${article.title}
@@ -168,7 +168,7 @@ URL: ${article.url}
             }
           });
           
-          console.log(`   ✅ 再生成完了: "${cleanedSummary.substring(0, 60)}..."`);
+          console.error(`   ✅ 再生成完了: "${cleanedSummary.substring(0, 60)}..."`);
           regeneratedCount++;
           
           // API制限対策
@@ -232,7 +232,7 @@ URL: ${article.url}
             }
           });
           
-          console.log(`   ✅ クリーンアップ完了`);
+          console.error(`   ✅ クリーンアップ完了`);
           fixedCount++;
         }
         
@@ -243,16 +243,16 @@ URL: ${article.url}
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 修正完了サマリー:');
-    console.log(`✅ クリーンアップ: ${fixedCount}件`);
-    console.log(`🔄 再生成: ${regeneratedCount}件`);
-    console.log(`❌ 失敗: ${failedCount}件`);
-    console.log(`📈 合計処理: ${fixedCount + regeneratedCount + failedCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 修正完了サマリー:');
+    console.error(`✅ クリーンアップ: ${fixedCount}件`);
+    console.error(`🔄 再生成: ${regeneratedCount}件`);
+    console.error(`❌ 失敗: ${failedCount}件`);
+    console.error(`📈 合計処理: ${fixedCount + regeneratedCount + failedCount}件`);
     
     if (problematicArticles.length > maxProcess) {
-      console.log(`\n⚠️ 残り ${problematicArticles.length - maxProcess}件の問題記事があります`);
-      console.log('再度実行して残りを処理してください。');
+      console.error(`\n⚠️ 残り ${problematicArticles.length - maxProcess}件の問題記事があります`);
+      console.error('再度実行して残りを処理してください。');
     }
     
   } catch (error) {

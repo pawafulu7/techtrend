@@ -6,9 +6,9 @@ import * as fs from 'fs';
 const prisma = new PrismaClient();
 
 async function fixLongSummaries() {
-  console.log('📝 長すぎる要約（200文字超）を適切な長さに修正します\n');
-  console.log('=' .repeat(60));
-  console.log('目標: 100-200文字の範囲に収める\n');
+  console.error('📝 長すぎる要約（200文字超）を適切な長さに修正します\n');
+  console.error('=' .repeat(60));
+  console.error('目標: 100-200文字の範囲に収める\n');
   
   try {
     // Gemini API キーの確認
@@ -41,7 +41,7 @@ async function fixLongSummaries() {
       return a.summary.length > 200;
     });
     
-    console.log(`対象記事数: ${articlesToFix.length}件\n`);
+    console.error(`対象記事数: ${articlesToFix.length}件\n`);
     
     let successCount = 0;
     let errorCount = 0;
@@ -51,12 +51,12 @@ async function fixLongSummaries() {
       const article = articlesToFix[i];
       
       if (i % 10 === 0 && i > 0) {
-        console.log(`\n📊 進捗: ${i}/${articlesToFix.length} (${Math.round(i/articlesToFix.length*100)}%)\n`);
+        console.error(`\n📊 進捗: ${i}/${articlesToFix.length} (${Math.round(i/articlesToFix.length*100)}%)\n`);
       }
       
-      console.log(`[${i + 1}/${articlesToFix.length}] ${article.id}`);
-      console.log(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
-      console.log(`  📏 現在の文字数: ${article.summary?.length}文字`);
+      console.error(`[${i + 1}/${articlesToFix.length}] ${article.id}`);
+      console.error(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
+      console.error(`  📏 現在の文字数: ${article.summary?.length}文字`);
       
       try {
         // プロンプトを作成（要約を短縮）
@@ -83,7 +83,7 @@ ${article.summary}
           // 210文字まで許容（若干の誤差）
           if (newSummary && newSummary.length > 210 && newSummary.length < 250) {
             // 210-250文字の場合は警告のみ
-            console.log(`  ⚠️ 少し長め: ${newSummary.length}文字（許容）`);
+            console.error(`  ⚠️ 少し長め: ${newSummary.length}文字（許容）`);
           } else {
             throw new Error(`要約の長さが不適切: ${newSummary?.length || 0}文字`);
           }
@@ -103,7 +103,7 @@ ${article.summary}
         const similarity = calculateSimilarity(originalStart, newStart);
         
         if (similarity < 0.3) {
-          console.log(`  ⚠️ 内容が大きく変わった可能性があります`);
+          console.error(`  ⚠️ 内容が大きく変わった可能性があります`);
         }
         
         // データベース更新
@@ -115,7 +115,7 @@ ${article.summary}
           }
         });
         
-        console.log(`  ✅ 成功: ${article.summary?.length}文字 → ${newSummary.length}文字`);
+        console.error(`  ✅ 成功: ${article.summary?.length}文字 → ${newSummary.length}文字`);
         
         successCount++;
         results.push({
@@ -147,21 +147,21 @@ ${article.summary}
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 処理結果サマリー\n');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`📈 成功率: ${((successCount / articlesToFix.length) * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 処理結果サマリー\n');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`📈 成功率: ${((successCount / articlesToFix.length) * 100).toFixed(1)}%`);
     
     // 平均文字数の改善
     const successfulResults = results.filter(r => r.status === 'success');
     if (successfulResults.length > 0) {
       const avgOldLength = successfulResults.reduce((sum, r) => sum + (r.oldLength || 0), 0) / successfulResults.length;
       const avgNewLength = successfulResults.reduce((sum, r) => sum + r.newLength, 0) / successfulResults.length;
-      console.log(`\n📏 平均文字数の変化:`);
-      console.log(`  変更前: ${avgOldLength.toFixed(1)}文字`);
-      console.log(`  変更後: ${avgNewLength.toFixed(1)}文字`);
-      console.log(`  削減率: ${((1 - avgNewLength / avgOldLength) * 100).toFixed(1)}%`);
+      console.error(`\n📏 平均文字数の変化:`);
+      console.error(`  変更前: ${avgOldLength.toFixed(1)}文字`);
+      console.error(`  変更後: ${avgNewLength.toFixed(1)}文字`);
+      console.error(`  削減率: ${((1 - avgNewLength / avgOldLength) * 100).toFixed(1)}%`);
     }
     
     // 結果をファイルに保存
@@ -175,7 +175,7 @@ ${article.summary}
       results
     }, null, 2));
     
-    console.log(`\n📁 詳細な結果を ${resultFile} に保存しました`);
+    console.error(`\n📁 詳細な結果を ${resultFile} に保存しました`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

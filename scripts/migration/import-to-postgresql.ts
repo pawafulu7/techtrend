@@ -47,11 +47,11 @@ async function verifyExportFiles() {
     }
   }
   
-  console.log('✓ All export files verified');
+  console.error('✓ All export files verified');
 }
 
 async function clearDatabase() {
-  console.log('Clearing existing data...');
+  console.error('Clearing existing data...');
   
   // 順序重要: 外部キー制約のため
   await prisma.$executeRaw`DELETE FROM "_ArticleToTag"`;
@@ -59,11 +59,11 @@ async function clearDatabase() {
   await prisma.tag.deleteMany({});
   await prisma.source.deleteMany({});
   
-  console.log('✓ Database cleared');
+  console.error('✓ Database cleared');
 }
 
 async function importSources() {
-  console.log('Importing sources...');
+  console.error('Importing sources...');
   
   const data = await fs.readFile(
     path.join(EXPORT_DIR, 'sources.json'),
@@ -85,12 +85,12 @@ async function importSources() {
     });
   }
   
-  console.log(`✓ Imported ${sources.length} sources`);
+  console.error(`✓ Imported ${sources.length} sources`);
   return sources.length;
 }
 
 async function importTags() {
-  console.log('Importing tags...');
+  console.error('Importing tags...');
   
   const data = await fs.readFile(
     path.join(EXPORT_DIR, 'tags.json'),
@@ -112,12 +112,12 @@ async function importTags() {
     process.stdout.write(`\r  Processing: ${Math.min(i + batchSize, tags.length)}/${tags.length} tags...`);
   }
   
-  console.log(`\n✓ Imported ${tags.length} tags`);
+  console.error(`\n✓ Imported ${tags.length} tags`);
   return tags.length;
 }
 
 async function importArticles() {
-  console.log('Importing articles...');
+  console.error('Importing articles...');
   
   const data = await fs.readFile(
     path.join(EXPORT_DIR, 'articles.json'),
@@ -162,12 +162,12 @@ async function importArticles() {
     process.stdout.write(`\r  Processing: ${Math.min(i + batchSize, articles.length)}/${articles.length} articles...`);
   }
   
-  console.log(`\n✓ Imported ${articles.length} articles`);
+  console.error(`\n✓ Imported ${articles.length} articles`);
   return articles.length;
 }
 
 async function verifyImport() {
-  console.log('\nVerifying import...');
+  console.error('\nVerifying import...');
   
   const sourcesCount = await prisma.source.count();
   const tagsCount = await prisma.tag.count();
@@ -183,27 +183,27 @@ async function verifyImport() {
     articles: articlesCount === manifest.stats.articles
   };
   
-  console.log('Verification results:');
-  console.log(`  Sources: ${sourcesCount}/${manifest.stats.sources} ${verification.sources ? '✓' : '✗'}`);
-  console.log(`  Tags: ${tagsCount}/${manifest.stats.tags} ${verification.tags ? '✓' : '✗'}`);
-  console.log(`  Articles: ${articlesCount}/${manifest.stats.articles} ${verification.articles ? '✓' : '✗'}`);
+  console.error('Verification results:');
+  console.error(`  Sources: ${sourcesCount}/${manifest.stats.sources} ${verification.sources ? '✓' : '✗'}`);
+  console.error(`  Tags: ${tagsCount}/${manifest.stats.tags} ${verification.tags ? '✓' : '✗'}`);
+  console.error(`  Articles: ${articlesCount}/${manifest.stats.articles} ${verification.articles ? '✓' : '✗'}`);
   
   const allVerified = Object.values(verification).every(v => v);
   if (!allVerified) {
     throw new Error('Import verification failed!');
   }
   
-  console.log('\n✓ All data verified successfully');
+  console.error('\n✓ All data verified successfully');
 }
 
 async function setupPostgreSQLExtensions() {
-  console.log('Setting up PostgreSQL extensions...');
+  console.error('Setting up PostgreSQL extensions...');
   
   try {
     // 全文検索用拡張
     await prisma.$executeRaw`CREATE EXTENSION IF NOT EXISTS pg_trgm`;
     await prisma.$executeRaw`CREATE EXTENSION IF NOT EXISTS unaccent`;
-    console.log('✓ PostgreSQL extensions configured');
+    console.error('✓ PostgreSQL extensions configured');
   } catch (error) {
     console.warn('Warning: Could not create extensions (may require superuser privileges)');
     console.warn('Please run the following SQL manually:');
@@ -214,14 +214,14 @@ async function setupPostgreSQLExtensions() {
 
 async function main() {
   try {
-    console.log('Starting PostgreSQL data import...\n');
+    console.error('Starting PostgreSQL data import...\n');
     
     await verifyExportFiles();
     
     const confirm = process.argv.includes('--force');
     if (!confirm) {
-      console.log('⚠️  This will DELETE all existing data in the PostgreSQL database!');
-      console.log('Run with --force flag to confirm');
+      console.error('⚠️  This will DELETE all existing data in the PostgreSQL database!');
+      console.error('Run with --force flag to confirm');
       process.exit(1);
     }
     
@@ -236,13 +236,13 @@ async function main() {
     
     await verifyImport();
     
-    console.log('\n========================================');
-    console.log('Import completed successfully!');
-    console.log('========================================\n');
-    console.log('Summary:');
-    console.log(`  Sources: ${stats.sources}`);
-    console.log(`  Tags: ${stats.tags}`);
-    console.log(`  Articles: ${stats.articles}`);
+    console.error('\n========================================');
+    console.error('Import completed successfully!');
+    console.error('========================================\n');
+    console.error('Summary:');
+    console.error(`  Sources: ${stats.sources}`);
+    console.error(`  Tags: ${stats.tags}`);
+    console.error(`  Articles: ${stats.articles}`);
     
   } catch (error) {
     console.error('Import failed:', error);

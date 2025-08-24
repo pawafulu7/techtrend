@@ -23,7 +23,7 @@ async function ensureExportDir() {
 }
 
 async function exportSources() {
-  console.log('Exporting sources...');
+  console.error('Exporting sources...');
   const sources = await prisma.source.findMany({
     orderBy: { createdAt: 'asc' }
   });
@@ -33,12 +33,12 @@ async function exportSources() {
     JSON.stringify(sources, null, 2)
   );
   
-  console.log(`✓ Exported ${sources.length} sources`);
+  console.error(`✓ Exported ${sources.length} sources`);
   return sources.length;
 }
 
 async function exportTags() {
-  console.log('Exporting tags...');
+  console.error('Exporting tags...');
   const tags = await prisma.tag.findMany({
     orderBy: { name: 'asc' }
   });
@@ -48,12 +48,12 @@ async function exportTags() {
     JSON.stringify(tags, null, 2)
   );
   
-  console.log(`✓ Exported ${tags.length} tags`);
+  console.error(`✓ Exported ${tags.length} tags`);
   return tags.length;
 }
 
 async function exportArticles() {
-  console.log('Exporting articles...');
+  console.error('Exporting articles...');
   const batchSize = 100;
   let offset = 0;
   let totalArticles = 0;
@@ -88,12 +88,12 @@ async function exportArticles() {
     JSON.stringify(allArticles, null, 2)
   );
 
-  console.log(`\n✓ Exported ${totalArticles} articles`);
+  console.error(`\n✓ Exported ${totalArticles} articles`);
   return totalArticles;
 }
 
 async function exportArticleTagRelations() {
-  console.log('Exporting article-tag relations...');
+  console.error('Exporting article-tag relations...');
   
   const articles = await prisma.article.findMany({
     select: {
@@ -121,7 +121,7 @@ async function exportArticleTagRelations() {
     JSON.stringify(relations, null, 2)
   );
 
-  console.log(`✓ Exported ${relations.length} article-tag relations`);
+  console.error(`✓ Exported ${relations.length} article-tag relations`);
   return relations.length;
 }
 
@@ -143,12 +143,12 @@ async function createExportManifest(stats: any) {
     JSON.stringify(manifest, null, 2)
   );
 
-  console.log('✓ Created export manifest');
+  console.error('✓ Created export manifest');
 }
 
 async function main() {
   try {
-    console.log('Starting SQLite data export...\n');
+    console.error('Starting SQLite data export...\n');
     
     await ensureExportDir();
     
@@ -161,15 +161,15 @@ async function main() {
 
     await createExportManifest(stats);
 
-    console.log('\n========================================');
-    console.log('Export completed successfully!');
-    console.log(`Data exported to: ${EXPORT_DIR}`);
-    console.log('========================================\n');
-    console.log('Summary:');
-    console.log(`  Sources: ${stats.sources}`);
-    console.log(`  Tags: ${stats.tags}`);
-    console.log(`  Articles: ${stats.articles}`);
-    console.log(`  Relations: ${stats.relations}`);
+    console.error('\n========================================');
+    console.error('Export completed successfully!');
+    console.error(`Data exported to: ${EXPORT_DIR}`);
+    console.error('========================================\n');
+    console.error('Summary:');
+    console.error(`  Sources: ${stats.sources}`);
+    console.error(`  Tags: ${stats.tags}`);
+    console.error(`  Articles: ${stats.articles}`);
+    console.error(`  Relations: ${stats.relations}`);
     
   } catch (error) {
     console.error('Export failed:', error);

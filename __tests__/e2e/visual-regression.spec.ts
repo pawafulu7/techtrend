@@ -142,7 +142,7 @@ test.describe('Visual Regression Tests', () => {
           await page.waitForURL(/\/(article|articles)/, { timeout: 10000 });
         } catch {
           // URLが変わらない場合でも継続
-          console.log('Firefox: URL navigation timeout, continuing...');
+          console.error('Firefox: URL navigation timeout, continuing...');
         }
       } else {
         await page.waitForLoadState('networkidle');

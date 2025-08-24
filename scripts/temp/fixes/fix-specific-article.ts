@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 async function fixSpecificArticle() {
   const articleId = process.argv[2] || 'cme2asfhm0005te8548b5dwdt';
   
-  console.log(`🔧 記事 ${articleId} の要約を改善\n`);
+  console.error(`🔧 記事 ${articleId} の要約を改善\n`);
   
   try {
     // 記事を取得
@@ -29,11 +29,11 @@ async function fixSpecificArticle() {
       return;
     }
     
-    console.log('📝 記事情報:');
-    console.log(`タイトル: ${article.title}`);
-    console.log(`ソース: ${article.source?.name}`);
-    console.log(`URL: ${article.url}`);
-    console.log(`\n現在の一覧要約: ${article.summary}`);
+    console.error('📝 記事情報:');
+    console.error(`タイトル: ${article.title}`);
+    console.error(`ソース: ${article.source?.name}`);
+    console.error(`URL: ${article.url}`);
+    console.error(`\n現在の一覧要約: ${article.summary}`);
     
     // ローカルLLMクライアントを初期化
     const localLLM = new LocalLLMClient({
@@ -50,7 +50,7 @@ async function fixSpecificArticle() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     // コンテンツを準備（タイトルとURLから具体的な内容を推測）
     const content = `
@@ -88,7 +88,7 @@ ${article.content || 'コンテンツが利用できません'}
 6. プレフィックスやMarkdown記法は使用しない
     `.trim();
     
-    console.log('🔄 より具体的な要約を生成中...');
+    console.error('🔄 より具体的な要約を生成中...');
     
     const result = await localLLM.generateDetailedSummary(
       article.title || '',
@@ -112,11 +112,11 @@ ${article.content || 'コンテンツが利用できません'}
       .replace(/```/g, '')
       .trim();
     
-    console.log('\n生成された新しい要約:');
-    console.log(`一覧要約: ${cleanedSummary}`);
-    console.log(`\n詳細要約（最初の3行）:`);
+    console.error('\n生成された新しい要約:');
+    console.error(`一覧要約: ${cleanedSummary}`);
+    console.error(`\n詳細要約（最初の3行）:`);
     const newLines = cleanedDetailedSummary.split('\n').slice(0, 3);
-    newLines.forEach(line => console.log(line));
+    newLines.forEach(line => console.error(line));
     
     // 品質チェック
     const japaneseChars = (cleanedSummary.match(/[ぁ-んァ-ヶー一-龠々]/g) || []).length;
@@ -155,14 +155,14 @@ ${article.content || 'コンテンツが利用できません'}
         }
       });
       
-      console.log('\n✅ 要約を更新しました');
+      console.error('\n✅ 要約を更新しました');
     } else {
       const problems = [];
       if (!isJapanese) problems.push('日本語化失敗');
       if (!hasContent) problems.push('内容不適切');
       if (!hasProperTechnicalBackground) problems.push('技術的背景なし');
       if (!hasEnoughItems) problems.push('項目数不足');
-      console.log(`\n⚠️ 品質チェック失敗: ${problems.join(', ')}`);
+      console.error(`\n⚠️ 品質チェック失敗: ${problems.join(', ')}`);
     }
     
   } catch (error) {

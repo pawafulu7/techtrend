@@ -17,7 +17,7 @@ const START_INDEX = parseInt(process.argv[3] || '0');
 
 async function main() {
   try {
-    console.log(`=== Stack Overflow Blog修正（バッチ ${START_INDEX}-${START_INDEX + BATCH_SIZE}） ===\n`);
+    console.error(`=== Stack Overflow Blog修正（バッチ ${START_INDEX}-${START_INDEX + BATCH_SIZE}） ===\n`);
     
     // 問題のある記事を取得
     const allArticles = await prisma.article.findMany({
@@ -50,10 +50,10 @@ async function main() {
     // バッチ分割
     const articles = problemArticles.slice(START_INDEX, START_INDEX + BATCH_SIZE);
     
-    console.log(`処理対象: ${articles.length}件\n`);
+    console.error(`処理対象: ${articles.length}件\n`);
     
     if (articles.length === 0) {
-      console.log('処理対象の記事がありません');
+      console.error('処理対象の記事がありません');
       return;
     }
     
@@ -62,18 +62,18 @@ async function main() {
     
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i];
-      console.log(`[${i + 1}/${articles.length}] ${article.title.substring(0, 60)}...`);
+      console.error(`[${i + 1}/${articles.length}] ${article.title.substring(0, 60)}...`);
       
       const contentLen = article.content?.length || 0;
       const summaryLen = article.detailedSummary?.length || 0;
-      console.log(`  現在: コンテンツ ${contentLen}文字, 要約 ${summaryLen}文字`);
+      console.error(`  現在: コンテンツ ${contentLen}文字, 要約 ${summaryLen}文字`);
       
       let content = article.content || '';
       
       // 1. エンリッチメント（コンテンツが不足の場合）
       if (contentLen < 1000) {
         try {
-          console.log(`  エンリッチメント実行中...`);
+          console.error(`  エンリッチメント実行中...`);
           const enrichedData = await enricher.enrich(article.url);
           
           if (enrichedData?.content && enrichedData.content.length > 500) {
@@ -86,10 +86,10 @@ async function main() {
             });
             
             content = enrichedData.content;
-            console.log(`  ✅ エンリッチ成功: ${contentLen} → ${enrichedData.content.length}文字`);
+            console.error(`  ✅ エンリッチ成功: ${contentLen} → ${enrichedData.content.length}文字`);
             enrichSuccess++;
           } else {
-            console.log(`  ⚠️ エンリッチ失敗`);
+            console.error(`  ⚠️ エンリッチ失敗`);
           }
         } catch (error) {
           console.error(`  ❌ エンリッチエラー:`, error instanceof Error ? error.message : error);
@@ -107,7 +107,7 @@ async function main() {
         
         if (needsSummary) {
           try {
-            console.log(`  要約再生成実行中...`);
+            console.error(`  要約再生成実行中...`);
             
             const result = await summaryService.generate(
               article.title,
@@ -133,17 +133,17 @@ async function main() {
               const sectionCount = result.detailedSummary.split('\n').filter(line => 
                 line.includes('：') || line.includes(':')).length;
               
-              console.log(`  ✅ 要約再生成成功: ${result.detailedSummary.length}文字, ${sectionCount}セクション`);
+              console.error(`  ✅ 要約再生成成功: ${result.detailedSummary.length}文字, ${sectionCount}セクション`);
               summarySuccess++;
             } else {
-              console.log(`  ❌ 要約生成失敗`);
+              console.error(`  ❌ 要約生成失敗`);
             }
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
             console.error(`  ❌ 要約生成エラー:`, errorMsg);
             
             if (errorMsg.includes('503') || errorMsg.includes('429')) {
-              console.log('  ⏳ Rate limit検出。60秒待機...');
+              console.error('  ⏳ Rate limit検出。60秒待機...');
               await new Promise(resolve => setTimeout(resolve, 60000));
             }
           }
@@ -153,9 +153,9 @@ async function main() {
       }
     }
     
-    console.log('\n=== バッチ処理完了 ===');
-    console.log(`エンリッチメント成功: ${enrichSuccess}件`);
-    console.log(`要約再生成成功: ${summarySuccess}件`);
+    console.error('\n=== バッチ処理完了 ===');
+    console.error(`エンリッチメント成功: ${enrichSuccess}件`);
+    console.error(`要約再生成成功: ${summarySuccess}件`);
     
     // 残りの件数を確認
     const remainingArticles = await prisma.article.findMany({
@@ -179,10 +179,10 @@ async function main() {
     }).length;
     
     if (remaining > 0) {
-      console.log(`\n残り ${remaining}件の記事が要修正です`);
-      console.log(`次のバッチを実行: npx tsx scripts/maintenance/fix-stackoverflow-blog-batch.ts ${BATCH_SIZE} ${START_INDEX + BATCH_SIZE}`);
+      console.error(`\n残り ${remaining}件の記事が要修正です`);
+      console.error(`次のバッチを実行: npx tsx scripts/maintenance/fix-stackoverflow-blog-batch.ts ${BATCH_SIZE} ${START_INDEX + BATCH_SIZE}`);
     } else {
-      console.log('\nすべての記事が修正されました！');
+      console.error('\nすべての記事が修正されました！');
     }
     
   } catch (error) {

@@ -69,7 +69,6 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   
   // スライドサービス判定（Speaker DeckとDocswell）
   const isSlideService = article.source.name === 'Speaker Deck' || article.source.name === 'Docswell';
-  const isSpeakerDeck = article.source.name === 'Speaker Deck';  // 後方互換性のため残す
   
   // 短い記事（500文字以下）の判定
   const isShortArticle = article.detailedSummary === '__SKIP_DETAILED_SUMMARY__' || 

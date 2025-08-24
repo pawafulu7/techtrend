@@ -55,21 +55,21 @@ function parseArgs(): Options {
 async function main() {
   const options = parseArgs();
   
-  console.log('========================================');
-  console.log('薄いコンテンツのエンリッチメント');
-  console.log('========================================');
-  console.log('オプション:', {
+  console.error('========================================');
+  console.error('薄いコンテンツのエンリッチメント');
+  console.error('========================================');
+  console.error('オプション:', {
     dryRun: options.dryRun ? 'Yes' : 'No',
     source: options.source || 'All',
     limit: options.limit || 'No limit',
     skip: options.skip || 0,
     skipSummary: options.skipSummary ? 'Yes' : 'No',
   });
-  console.log('');
+  console.error('');
 
   if (options.dryRun) {
-    console.log('⚠️  ドライランモード: 実際の更新は行いません');
-    console.log('');
+    console.error('⚠️  ドライランモード: 実際の更新は行いません');
+    console.error('');
   }
 
   try {
@@ -122,7 +122,7 @@ async function main() {
 
     // skipを適用
     if (options.skip && options.skip > 0) {
-      console.log(`⏭️  最初の${options.skip}件をスキップします`);
+      console.error(`⏭️  最初の${options.skip}件をスキップします`);
       thinArticles = thinArticles.slice(options.skip);
     }
 
@@ -131,10 +131,10 @@ async function main() {
       thinArticles = thinArticles.slice(0, options.limit);
     }
 
-    console.log(`📊 対象記事数: ${thinArticles.length}件`);
+    console.error(`📊 対象記事数: ${thinArticles.length}件`);
     
     if (thinArticles.length === 0) {
-      console.log('処理対象の記事がありません。');
+      console.error('処理対象の記事がありません。');
       return;
     }
 
@@ -149,27 +149,27 @@ async function main() {
       const article = thinArticles[i];
       const progress = `[${i + 1}/${thinArticles.length}]`;
       
-      console.log(`\n${progress} 処理中: ${article.title.substring(0, 50)}...`);
-      console.log(`  ソース: ${article.source.name}`);
-      console.log(`  現在のコンテンツ: ${article.content?.length || 0}文字`);
-      console.log(`  URL: ${article.url}`);
+      console.error(`\n${progress} 処理中: ${article.title.substring(0, 50)}...`);
+      console.error(`  ソース: ${article.source.name}`);
+      console.error(`  現在のコンテンツ: ${article.content?.length || 0}文字`);
+      console.error(`  URL: ${article.url}`);
 
       // エンリッチャーを取得
       const enricher = enricherFactory.getEnricher(article.url);
       
       if (!enricher) {
-        console.log(`  ⏭️  スキップ: 対応するEnricherがありません`);
+        console.error(`  ⏭️  スキップ: 対応するEnricherがありません`);
         skipCount++;
         continue;
       }
 
       try {
         // コンテンツをエンリッチ
-        console.log(`  🔄 エンリッチ中...`);
+        console.error(`  🔄 エンリッチ中...`);
         const enrichedData = await enricher.enrich(article.url);
         
         if (!enrichedData) {
-          console.log(`  ❌ エンリッチ失敗: コンテンツを取得できませんでした`);
+          console.error(`  ❌ エンリッチ失敗: コンテンツを取得できませんでした`);
           failCount++;
           continue;
         }
@@ -178,17 +178,17 @@ async function main() {
         const hasNewThumbnail = enrichedData.thumbnail && !article.thumbnail;
 
         if (!hasNewContent && !hasNewThumbnail) {
-          console.log(`  ⏭️  スキップ: 新しいデータがありません`);
+          console.error(`  ⏭️  スキップ: 新しいデータがありません`);
           skipCount++;
           continue;
         }
 
-        console.log(`  ✅ エンリッチ成功:`);
+        console.error(`  ✅ エンリッチ成功:`);
         if (hasNewContent) {
-          console.log(`    - コンテンツ: ${article.content?.length || 0} → ${enrichedData.content?.length}文字`);
+          console.error(`    - コンテンツ: ${article.content?.length || 0} → ${enrichedData.content?.length}文字`);
         }
         if (hasNewThumbnail) {
-          console.log(`    - サムネイル: 取得成功`);
+          console.error(`    - サムネイル: 取得成功`);
           thumbnailCount++;
         }
 
@@ -204,7 +204,7 @@ async function main() {
               updateData.detailedSummary = null;
               // summaryVersionはnullableでないため、0に設定
               updateData.summaryVersion = 0;
-              console.log(`    - 要約: リセット（再生成が必要）`);
+              console.error(`    - 要約: リセット（再生成が必要）`);
             }
           }
           
@@ -217,7 +217,7 @@ async function main() {
             data: updateData,
           });
           
-          console.log(`  💾 データベース更新完了`);
+          console.error(`  💾 データベース更新完了`);
         }
         
         successCount++;
@@ -232,21 +232,21 @@ async function main() {
     }
 
     // 結果サマリー
-    console.log('\n========================================');
-    console.log('処理結果サマリー');
-    console.log('========================================');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ 失敗: ${failCount}件`);
-    console.log(`⏭️  スキップ: ${skipCount}件`);
-    console.log(`🖼️  サムネイル取得: ${thumbnailCount}件`);
-    console.log(`📊 合計: ${thinArticles.length}件`);
+    console.error('\n========================================');
+    console.error('処理結果サマリー');
+    console.error('========================================');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ 失敗: ${failCount}件`);
+    console.error(`⏭️  スキップ: ${skipCount}件`);
+    console.error(`🖼️  サムネイル取得: ${thumbnailCount}件`);
+    console.error(`📊 合計: ${thinArticles.length}件`);
 
     if (options.dryRun) {
-      console.log('\n⚠️  ドライランモードのため、実際の更新は行われませんでした。');
-      console.log('本番実行するには --dry-run オプションを外してください。');
+      console.error('\n⚠️  ドライランモードのため、実際の更新は行われませんでした。');
+      console.error('本番実行するには --dry-run オプションを外してください。');
     } else if (successCount > 0 && !options.skipSummary) {
-      console.log('\n📝 要約の再生成が必要です:');
-      console.log('   npm run scripts:summarize');
+      console.error('\n📝 要約の再生成が必要です:');
+      console.error('   npm run scripts:summarize');
     }
 
   } catch (error) {

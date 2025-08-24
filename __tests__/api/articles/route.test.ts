@@ -15,6 +15,12 @@ const cacheMock = CacheMockFactory.createMock();
 
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
+import { NextRequest } from 'next/server';
+
+// NextRequestを作成するヘルパー関数
+function createMockNextRequest(url: string): NextRequest {
+  return new NextRequest(url);
+}
 
 const prismaMock = prisma as any;
 
@@ -97,7 +103,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(2);
 
-      const request = new Request('http://localhost:3000/api/articles');
+      const request = createMockNextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
       const data = await response.json();
 
@@ -132,7 +138,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue([]);
       prismaMock.article.count.mockResolvedValue(100);
 
-      const request = new Request('http://localhost:3000/api/articles?page=3&limit=10');
+      const request = createMockNextRequest('http://localhost:3000/api/articles?page=3&limit=10');
       const response = await GET(request);
       const data = await response.json();
 
@@ -159,7 +165,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue([mockArticles[0]]);
       prismaMock.article.count.mockResolvedValue(1);
 
-      const request = new Request('http://localhost:3000/api/articles?sourceId=qiita');
+      const request = createMockNextRequest('http://localhost:3000/api/articles?sourceId=qiita');
       const response = await GET(request);
       const data = await response.json();
 
@@ -180,7 +186,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(2);
 
-      const request = new Request('http://localhost:3000/api/articles?sources=qiita,zenn');
+      const request = createMockNextRequest('http://localhost:3000/api/articles?sources=qiita,zenn');
       const response = await GET(request);
       const data = await response.json();
 
@@ -200,7 +206,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue([mockArticles[0]]);
       prismaMock.article.count.mockResolvedValue(1);
 
-      const request = new Request('http://localhost:3000/api/articles?tag=React');
+      const request = createMockNextRequest('http://localhost:3000/api/articles?tag=React');
       const response = await GET(request);
       const data = await response.json();
 
@@ -222,7 +228,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue([mockArticles[0]]);
       prismaMock.article.count.mockResolvedValue(1);
 
-      const request = new Request('http://localhost:3000/api/articles?search=React');
+      const request = createMockNextRequest('http://localhost:3000/api/articles?search=React');
       const response = await GET(request);
       const data = await response.json();
 
@@ -243,7 +249,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue([mockArticles[0]]);
       prismaMock.article.count.mockResolvedValue(1);
 
-      const request = new Request('http://localhost:3000/api/articles?search=React TypeScript');
+      const request = createMockNextRequest('http://localhost:3000/api/articles?search=React TypeScript');
       const response = await GET(request);
       const data = await response.json();
 
@@ -275,7 +281,7 @@ describe('/api/articles', () => {
       prismaMock.article.count.mockResolvedValue(2);
 
       // qualityScoreでソート
-      const request = new Request('http://localhost:3000/api/articles?sortBy=qualityScore&sortOrder=desc');
+      const request = createMockNextRequest('http://localhost:3000/api/articles?sortBy=qualityScore&sortOrder=desc');
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -291,7 +297,7 @@ describe('/api/articles', () => {
     it('handles database errors gracefully', async () => {
       prismaMock.article.findMany.mockRejectedValue(new Error('Database connection failed'));
 
-      const request = new Request('http://localhost:3000/api/articles');
+      const request = createMockNextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
       const data = await response.json();
 
@@ -306,7 +312,7 @@ describe('/api/articles', () => {
       prismaMock.article.count.mockResolvedValue(0);
 
       // 不正なlimit値
-      const request = new Request('http://localhost:3000/api/articles?limit=1000');
+      const request = createMockNextRequest('http://localhost:3000/api/articles?limit=1000');
       const response = await GET(request);
       const data = await response.json();
 
@@ -321,7 +327,7 @@ describe('/api/articles', () => {
       prismaMock.article.count.mockResolvedValue(1);
 
       // APIは dateRange パラメータを使用（例: "7d", "30d", "90d"）
-      const request = new Request(`http://localhost:3000/api/articles?dateRange=30d`);
+      const request = createMockNextRequest(`http://localhost:3000/api/articles?dateRange=30d`);
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -336,7 +342,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(2);
 
-      const request = new Request('http://localhost:3000/api/articles');
+      const request = createMockNextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
       const data = await response.json();
 
@@ -350,7 +356,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue([]);
       prismaMock.article.count.mockResolvedValue(0);
 
-      const request = new Request('http://localhost:3000/api/articles?sources=none');
+      const request = createMockNextRequest('http://localhost:3000/api/articles?sources=none');
       const response = await GET(request);
       const data = await response.json();
 
@@ -368,7 +374,7 @@ describe('/api/articles', () => {
       prismaMock.article.findMany.mockResolvedValue(mockArticles);
       prismaMock.article.count.mockResolvedValue(2);
 
-      const request = new Request('http://localhost:3000/api/articles');
+      const request = createMockNextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
 
       expect(response.headers.get('X-Cache-Status')).toBeTruthy();

@@ -6,11 +6,11 @@ import { Source } from '@prisma/client';
 async function fetchAndSaveCorporateBlog() {
   const prisma = new PrismaClient();
   
-  console.log("=== Corporate Tech Blog 記事取得・保存 V2 ===");
-  console.log(`環境変数 EXCLUDE_EVENT_ARTICLES: ${process.env.EXCLUDE_EVENT_ARTICLES || 'false'}`);
-  console.log(`環境変数 MAX_ARTICLES_PER_COMPANY: ${process.env.MAX_ARTICLES_PER_COMPANY || '30'}`);
-  console.log(`実行時刻: ${new Date().toISOString()}`);
-  console.log("");
+  console.error("=== Corporate Tech Blog 記事取得・保存 V2 ===");
+  console.error(`環境変数 EXCLUDE_EVENT_ARTICLES: ${process.env.EXCLUDE_EVENT_ARTICLES || 'false'}`);
+  console.error(`環境変数 MAX_ARTICLES_PER_COMPANY: ${process.env.MAX_ARTICLES_PER_COMPANY || '30'}`);
+  console.error(`実行時刻: ${new Date().toISOString()}`);
+  console.error("");
   
   try {
     // Corporate Tech Blogソースを取得または作成
@@ -19,7 +19,7 @@ async function fetchAndSaveCorporateBlog() {
     });
     
     if (!source) {
-      console.log("Corporate Tech Blogソースを作成します...");
+      console.error("Corporate Tech Blogソースを作成します...");
       source = await prisma.source.create({
         data: {
           name: 'Corporate Tech Blog',
@@ -35,22 +35,22 @@ async function fetchAndSaveCorporateBlog() {
     // sourceを設定
     (fetcher as any).source = source;
     
-    console.log("記事を取得中...");
+    console.error("記事を取得中...");
     const startTime = Date.now();
     
     // 記事を取得
     const result = await fetcher.fetch();
     
     const fetchTime = Date.now() - startTime;
-    console.log(`\n取得完了: ${result.articles.length}件の記事を${(fetchTime / 1000).toFixed(2)}秒で取得`);
+    console.error(`\n取得完了: ${result.articles.length}件の記事を${(fetchTime / 1000).toFixed(2)}秒で取得`);
     
     if (result.errors.length > 0) {
-      console.log(`エラー: ${result.errors.length}件`);
+      console.error(`エラー: ${result.errors.length}件`);
       result.errors.forEach(error => console.error(`  - ${error.message}`));
     }
     
     // 記事をデータベースに保存
-    console.log("\n記事をデータベースに保存中...");
+    console.error("\n記事をデータベースに保存中...");
     let savedCount = 0;
     let skippedCount = 0;
     let errorCount = 0;
@@ -71,7 +71,7 @@ async function fetchAndSaveCorporateBlog() {
         // コンテンツのサイズ制限（10KB）
         let content = article.content || '';
         if (content.length > 10000) {
-          console.log(`  コンテンツを切り詰め: ${article.title} (${content.length} -> 10000)`);
+          console.error(`  コンテンツを切り詰め: ${article.title} (${content.length} -> 10000)`);
           content = content.substring(0, 10000);
         }
         
@@ -111,9 +111,9 @@ async function fetchAndSaveCorporateBlog() {
         
         // マネーフォワードの記事を特別にログ出力
         if (saved.url.includes('moneyforward-dev.jp')) {
-          console.log(`✅ マネーフォワード記事を保存: ${saved.title}`);
+          console.error(`✅ マネーフォワード記事を保存: ${saved.title}`);
           if (saved.title.includes('SECCON')) {
-            console.log(`   🎯 SECCON記事が保存されました！`);
+            console.error(`   🎯 SECCON記事が保存されました！`);
           }
         }
         
@@ -123,10 +123,10 @@ async function fetchAndSaveCorporateBlog() {
       }
     }
     
-    console.log("\n=== 保存結果サマリー ===");
-    console.log(`新規保存: ${savedCount}件`);
-    console.log(`スキップ（既存）: ${skippedCount}件`);
-    console.log(`エラー: ${errorCount}件`);
+    console.error("\n=== 保存結果サマリー ===");
+    console.error(`新規保存: ${savedCount}件`);
+    console.error(`スキップ（既存）: ${skippedCount}件`);
+    console.error(`エラー: ${errorCount}件`);
     
     // マネーフォワードの記事数を確認
     const moneyForwardCount = await prisma.article.count({
@@ -137,7 +137,7 @@ async function fetchAndSaveCorporateBlog() {
       }
     });
     
-    console.log(`\nマネーフォワード記事の総数: ${moneyForwardCount}件`);
+    console.error(`\nマネーフォワード記事の総数: ${moneyForwardCount}件`);
     
     // SECCON記事の確認
     const secconArticle = await prisma.article.findFirst({
@@ -155,12 +155,12 @@ async function fetchAndSaveCorporateBlog() {
     });
     
     if (secconArticle) {
-      console.log("\n=== SECCON記事の詳細 ===");
-      console.log(`タイトル: ${secconArticle.title}`);
-      console.log(`URL: ${secconArticle.url}`);
-      console.log(`公開日: ${secconArticle.publishedAt}`);
-      console.log(`タグ: ${secconArticle.tags.map(t => t.name).join(', ')}`);
-      console.log(`要約: ${secconArticle.summary || '未生成'}`);
+      console.error("\n=== SECCON記事の詳細 ===");
+      console.error(`タイトル: ${secconArticle.title}`);
+      console.error(`URL: ${secconArticle.url}`);
+      console.error(`公開日: ${secconArticle.publishedAt}`);
+      console.error(`タグ: ${secconArticle.tags.map(t => t.name).join(', ')}`);
+      console.error(`要約: ${secconArticle.summary || '未生成'}`);
     }
     
     return savedArticles;
@@ -177,7 +177,7 @@ async function fetchAndSaveCorporateBlog() {
 if (require.main === module) {
   fetchAndSaveCorporateBlog()
     .then(articles => {
-      console.log(`\n処理完了: ${articles.length}件の記事を保存しました`);
+      console.error(`\n処理完了: ${articles.length}件の記事を保存しました`);
       process.exit(0);
     })
     .catch(error => {

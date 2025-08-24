@@ -166,13 +166,13 @@ export async function generateSummaryWithRetry(
       
       // 品質レポートをログ出力
       if (attempt === 1 || quality.requiresRegeneration) {
-        console.log(`\n=== 品質チェック (試行 ${attempt}/${maxTries}) ===`);
-        console.log(generateQualityReport(quality));
+        console.error(`\n=== 品質チェック (試行 ${attempt}/${maxTries}) ===`);
+        console.error(generateQualityReport(quality));
       }
       
       // 品質基準を満たした場合
       if (quality.isValid && !quality.requiresRegeneration) {
-        console.log(`✅ 品質チェック合格（試行 ${attempt}/${maxTries}）スコア: ${quality.score}/100`);
+        console.error(`✅ 品質チェック合格（試行 ${attempt}/${maxTries}）スコア: ${quality.score}/100`);
         return {
           ...result,
           qualityScore: quality.score,
@@ -185,7 +185,7 @@ export async function generateSummaryWithRetry(
       
       // 再生成が必要な場合
       if (attempt < maxTries && quality.requiresRegeneration) {
-        console.log(`⚠️ 品質問題検出 - 再生成を実行します`);
+        console.error(`⚠️ 品質問題検出 - 再生成を実行します`);
         
         // API負荷軽減のため待機
         const waitTime = attempt * 1000; // 試行回数に応じて待機時間を増やす
@@ -207,7 +207,7 @@ export async function generateSummaryWithRetry(
   
   // 最大試行回数に達した場合、最後の結果を返す（ベストエフォート）
   if (lastResult && lastQuality) {
-    console.log(`⚠️ 品質基準を満たせませんでしたが、最後の結果を使用します（スコア: ${lastQuality.score}/100）`);
+    console.error(`⚠️ 品質基準を満たせませんでしたが、最後の結果を使用します（スコア: ${lastQuality.score}/100）`);
     return {
       ...lastResult,
       qualityScore: lastQuality.score,

@@ -10,8 +10,8 @@ async function fixProblematicArticles() {
     "cme161c5x000kte0trki33fk3"
   ];
   
-  console.log('🤖 問題のある記事を品質を維持して修正\n');
-  console.log(`処理対象: ${articleIds.length}件\n`);
+  console.error('🤖 問題のある記事を品質を維持して修正\n');
+  console.error(`処理対象: ${articleIds.length}件\n`);
   
   try {
     // ローカルLLMクライアントを初期化（品質重視の設定）
@@ -29,15 +29,15 @@ async function fixProblematicArticles() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     let successCount = 0;
     let errorCount = 0;
     
     for (let i = 0; i < articleIds.length; i++) {
       const articleId = articleIds[i];
-      console.log(`\n[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
-      console.log('='.repeat(60));
+      console.error(`\n[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
+      console.error('='.repeat(60));
       
       try {
         // 記事を取得
@@ -55,17 +55,17 @@ async function fixProblematicArticles() {
         });
         
         if (!article) {
-          console.log('❌ 記事が見つかりません');
+          console.error('❌ 記事が見つかりません');
           errorCount++;
           continue;
         }
         
-        console.log(`タイトル: ${article.title?.substring(0, 50)}...`);
-        console.log(`ソース: ${article.source?.name}`);
+        console.error(`タイトル: ${article.title?.substring(0, 50)}...`);
+        console.error(`ソース: ${article.source?.name}`);
         
         // 現在の状態を表示
         if (article.summary) {
-          console.log(`\n現在の要約: ${article.summary.substring(0, 60)}...`);
+          console.error(`\n現在の要約: ${article.summary.substring(0, 60)}...`);
           const currentIssues = [];
           if (article.summary.startsWith('要約:') || article.summary.startsWith(' 要約:')) {
             currentIssues.push('プレフィックス');
@@ -77,13 +77,13 @@ async function fixProblematicArticles() {
             currentIssues.push(`短い(${article.summary.length}文字)`);
           }
           if (currentIssues.length > 0) {
-            console.log(`問題: ${currentIssues.join(', ')}`);
+            console.error(`問題: ${currentIssues.join(', ')}`);
           }
         }
         
         if (article.detailedSummary) {
           const currentLines = article.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
-          console.log(`現在の詳細項目数: ${currentLines.length}`);
+          console.error(`現在の詳細項目数: ${currentLines.length}`);
         }
         
         // コンテンツを構築（記事の内容をしっかり取得）
@@ -118,10 +118,10 @@ ${additionalContext}
           `.trim();
         }
         
-        console.log(`コンテンツ長: ${enhancedContent.length}文字`);
+        console.error(`コンテンツ長: ${enhancedContent.length}文字`);
         
-        console.log('\n🔄 品質を重視して詳細要約を生成中...');
-        console.log('（時間がかかる場合があります）');
+        console.error('\n🔄 品質を重視して詳細要約を生成中...');
+        console.error('（時間がかかる場合があります）');
         const startTime = Date.now();
         
         // 品質重視で生成
@@ -131,7 +131,7 @@ ${additionalContext}
         );
         
         const duration = Date.now() - startTime;
-        console.log(`生成時間: ${duration}ms`);
+        console.error(`生成時間: ${duration}ms`);
         
         // 要約を徹底的にクリーンアップ
         let cleanedSummary = result.summary
@@ -172,12 +172,12 @@ ${additionalContext}
           !cleanedSummary.includes('要約：') &&
           !cleanedSummary.includes('**');
         
-        console.log(`\n📝 生成結果:`);
-        console.log(`要約: ${cleanedSummary.substring(0, 80)}...`);
-        console.log(`要約長: ${cleanedSummary.length}文字`);
-        console.log(`要約品質: ${summaryQuality ? '✅ 良好' : '⚠️ 要改善'}`);
-        console.log(`詳細項目数: ${detailLines.length}`);
-        console.log(`詳細品質: ${detailLines.length === 6 ? '✅ 完璧' : detailLines.length >= 5 ? '✅ 良好' : '⚠️ 不足'}`);
+        console.error(`\n📝 生成結果:`);
+        console.error(`要約: ${cleanedSummary.substring(0, 80)}...`);
+        console.error(`要約長: ${cleanedSummary.length}文字`);
+        console.error(`要約品質: ${summaryQuality ? '✅ 良好' : '⚠️ 要改善'}`);
+        console.error(`詳細項目数: ${detailLines.length}`);
+        console.error(`詳細品質: ${detailLines.length === 6 ? '✅ 完璧' : detailLines.length >= 5 ? '✅ 良好' : '⚠️ 不足'}`);
         
         // 5項目以上の詳細要約と適切な要約があれば更新
         if (detailLines.length >= 5 && summaryQuality) {
@@ -209,11 +209,11 @@ ${additionalContext}
             }
           });
           
-          console.log('✅ 更新完了');
+          console.error('✅ 更新完了');
           successCount++;
         } else {
-          console.log('⚠️ 品質基準を満たさないためスキップ');
-          console.log('  （要約45文字以上、詳細5項目以上が必要）');
+          console.error('⚠️ 品質基準を満たさないためスキップ');
+          console.error('  （要約45文字以上、詳細5項目以上が必要）');
           errorCount++;
         }
         
@@ -226,10 +226,10 @@ ${additionalContext}
       await new Promise(resolve => setTimeout(resolve, 5000));
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('処理完了');
-    console.log(`成功: ${successCount}件`);
-    console.log(`エラー: ${errorCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('処理完了');
+    console.error(`成功: ${successCount}件`);
+    console.error(`エラー: ${errorCount}件`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

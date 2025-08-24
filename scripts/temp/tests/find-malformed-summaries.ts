@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function findMalformedSummaries() {
-  console.log('🔍 不正な形式の要約を検索中...\n');
+  console.error('🔍 不正な形式の要約を検索中...\n');
   
   try {
     // 最近の記事を取得
@@ -69,8 +69,8 @@ async function findMalformedSummaries() {
       }
     }
     
-    console.log(`検査した記事: ${articles.length}件`);
-    console.log(`問題のある記事: ${malformedArticles.length}件\n`);
+    console.error(`検査した記事: ${articles.length}件`);
+    console.error(`問題のある記事: ${malformedArticles.length}件\n`);
     
     // 問題タイプ別に集計
     const issueStats: Record<string, number> = {};
@@ -80,28 +80,28 @@ async function findMalformedSummaries() {
       }
     }
     
-    console.log('📊 問題タイプ別統計');
-    console.log('-'.repeat(60));
+    console.error('📊 問題タイプ別統計');
+    console.error('-'.repeat(60));
     for (const [issue, count] of Object.entries(issueStats)) {
-      console.log(`${issue}: ${count}件`);
+      console.error(`${issue}: ${count}件`);
     }
     
     // 最初の10件を表示
-    console.log('\n📝 問題のある記事（最初の10件）');
-    console.log('-'.repeat(60));
+    console.error('\n📝 問題のある記事（最初の10件）');
+    console.error('-'.repeat(60));
     
     const displayArticles = malformedArticles.slice(0, 10);
     for (const article of displayArticles) {
-      console.log(`\nID: ${article.id}`);
-      console.log(`タイトル: ${article.title?.substring(0, 50)}...`);
-      console.log(`問題: ${article.issues.join(', ')}`);
+      console.error(`\nID: ${article.id}`);
+      console.error(`タイトル: ${article.title?.substring(0, 50)}...`);
+      console.error(`問題: ${article.issues.join(', ')}`);
     }
     
     // IDリストを出力（再生成用）
     if (malformedArticles.length > 0) {
-      console.log('\n📋 再生成用IDリスト（最初の20件）:');
+      console.error('\n📋 再生成用IDリスト（最初の20件）:');
       const ids = malformedArticles.slice(0, 20).map(a => a.id);
-      console.log(ids.join(' '));
+      console.error(ids.join(' '));
     }
     
   } catch (error) {

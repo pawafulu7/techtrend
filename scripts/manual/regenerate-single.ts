@@ -48,22 +48,22 @@ async function main() {
   const article = await prisma.article.findUnique({ where: { id }, include: { source: true } });
   if (!article) throw new Error('Not found');
   
-  console.log('Article:', article.title);
-  console.log('現在:', checkSummaryQuality(article.summary!, article.detailedSummary || '').score, '点');
-  console.log('\n=== 現在の詳細要約 ===\n', article.detailedSummary, '\n');
+  console.error('Article:', article.title);
+  console.error('現在:', checkSummaryQuality(article.summary!, article.detailedSummary || '').score, '点');
+  console.error('\n=== 現在の詳細要約 ===\n', article.detailedSummary, '\n');
   
   const result = await generateUnifiedSummary(article.title, article.content || article.summary || article.title);
   const newScore = checkSummaryQuality(result.summary, result.detailedSummary).score;
   
-  console.log('\n=== 新しい詳細要約 ===\n', result.detailedSummary, '\n');
-  console.log('新スコア:', newScore, '点');
+  console.error('\n=== 新しい詳細要約 ===\n', result.detailedSummary, '\n');
+  console.error('新スコア:', newScore, '点');
   
   await prisma.article.update({
     where: { id },
     data: { summary: result.summary, detailedSummary: result.detailedSummary, articleType: 'unified', summaryVersion: 5 }
   });
   
-  console.log('✅ 完了');
+  console.error('✅ 完了');
   await prisma.$disconnect();
 }
 

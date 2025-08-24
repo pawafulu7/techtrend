@@ -82,7 +82,7 @@ export function adjustTimezoneForArticle(
   
   // 未来日付の調整
   if (publishedAt > now) {
-    console.log(`[Timezone Adjustment] Future date detected for ${sourceName || 'unknown source'}: ${publishedAt.toISOString()} -> ${now.toISOString()}`);
+    console.error(`[Timezone Adjustment] Future date detected for ${sourceName || 'unknown source'}: ${publishedAt.toISOString()} -> ${now.toISOString()}`);
     return now;
   }
   

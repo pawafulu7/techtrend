@@ -124,7 +124,7 @@ export class ContentAwareSummaryService extends UnifiedSummaryService {
   ): Promise<UnifiedSummaryResult> {
     const config = this.categorizeContent(content);
     
-    console.log(`Content category: ${config.category} (${content?.length || 0} chars)`);
+    console.error(`Content category: ${config.category} (${content?.length || 0} chars)`);
     
     // 非常に短いコンテンツの場合
     if (!config.generateDetailed) {

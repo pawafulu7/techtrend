@@ -6,7 +6,7 @@ import { cleanSummary, cleanDetailedSummary } from '../lib/utils/summary-cleaner
 const prisma = new PrismaClient();
 
 async function fixAllRemainingIssues() {
-  console.log('🔧 すべての残存問題を完全修正\n');
+  console.error('🔧 すべての残存問題を完全修正\n');
   
   const localLLM = new LocalLLMClient({
     url: 'http://192.168.11.7:1234',
@@ -23,7 +23,7 @@ async function fixAllRemainingIssues() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     // すべての記事を取得
     const articles = await prisma.article.findMany({
@@ -134,7 +134,7 @@ async function fixAllRemainingIssues() {
       }
     }
     
-    console.log(`📊 修正対象: ${problematicArticles.length}件\n`);
+    console.error(`📊 修正対象: ${problematicArticles.length}件\n`);
     
     // 問題の多い順にソート
     problematicArticles.sort((a, b) => {
@@ -160,13 +160,13 @@ async function fixAllRemainingIssues() {
       const end = Math.min(start + batchSize, problematicArticles.length);
       const batchArticles = problematicArticles.slice(start, end);
       
-      console.log(`\n📦 バッチ ${batch + 1}/${totalBatches} (${start + 1}-${end}件目)`);
-      console.log('─'.repeat(60));
+      console.error(`\n📦 バッチ ${batch + 1}/${totalBatches} (${start + 1}-${end}件目)`);
+      console.error('─'.repeat(60));
       
       for (const article of batchArticles) {
         const index = start + batchArticles.indexOf(article) + 1;
-        console.log(`\n[${index}/${problematicArticles.length}] ${article.title.substring(0, 40)}...`);
-        console.log(`   問題: ${article.problems.join(', ')}`);
+        console.error(`\n[${index}/${problematicArticles.length}] ${article.title.substring(0, 40)}...`);
+        console.error(`   問題: ${article.problems.join(', ')}`);
         
         try {
           // 再生成が必要な条件
@@ -179,7 +179,7 @@ async function fixAllRemainingIssues() {
             article.problems.length >= 3;
           
           if (needsRegeneration) {
-            console.log('   🔄 再生成中...');
+            console.error('   🔄 再生成中...');
             
             // コンテンツを準備（英語記事の場合は翻訳指示を追加）
             let content = article.content || '';
@@ -245,10 +245,10 @@ URL: ${article.url}
                 }
               });
               
-              console.log(`   ✅ 再生成成功`);
+              console.error(`   ✅ 再生成成功`);
               regeneratedCount++;
             } else {
-              console.log(`   ⚠️ 品質基準未達`);
+              console.error(`   ⚠️ 品質基準未達`);
               failedCount++;
             }
             
@@ -319,7 +319,7 @@ URL: ${article.url}
               }
             });
             
-            console.log(`   ✅ クリーンアップ完了`);
+            console.error(`   ✅ クリーンアップ完了`);
             fixedCount++;
           }
           
@@ -331,24 +331,24 @@ URL: ${article.url}
       
       // バッチ間の待機
       if (batch < totalBatches - 1) {
-        console.log('\n⏳ 次のバッチまで3秒待機...');
+        console.error('\n⏳ 次のバッチまで3秒待機...');
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
     
     // 最終結果
-    console.log('\n' + '='.repeat(80));
-    console.log('📊 完全修正結果:');
-    console.log(`✅ クリーンアップ: ${fixedCount}件`);
-    console.log(`🔄 再生成: ${regeneratedCount}件`);
-    console.log(`❌ 失敗: ${failedCount}件`);
-    console.log(`📈 合計処理: ${fixedCount + regeneratedCount + failedCount}件`);
-    console.log(`🎯 成功率: ${Math.round((fixedCount + regeneratedCount) / (fixedCount + regeneratedCount + failedCount) * 100)}%`);
+    console.error('\n' + '='.repeat(80));
+    console.error('📊 完全修正結果:');
+    console.error(`✅ クリーンアップ: ${fixedCount}件`);
+    console.error(`🔄 再生成: ${regeneratedCount}件`);
+    console.error(`❌ 失敗: ${failedCount}件`);
+    console.error(`📈 合計処理: ${fixedCount + regeneratedCount + failedCount}件`);
+    console.error(`🎯 成功率: ${Math.round((fixedCount + regeneratedCount) / (fixedCount + regeneratedCount + failedCount) * 100)}%`);
     
     if (failedCount === 0) {
-      console.log('\n✨ 完璧！すべての問題が修正されました。');
+      console.error('\n✨ 完璧！すべての問題が修正されました。');
     } else {
-      console.log(`\n⚠️ ${failedCount}件の記事は手動確認が必要です。`);
+      console.error(`\n⚠️ ${failedCount}件の記事は手動確認が必要です。`);
     }
     
   } catch (error) {

@@ -6,8 +6,8 @@ import * as fs from 'fs';
 const prisma = new PrismaClient();
 
 async function enhanceTechnicalBackground() {
-  console.log('🎯 詳細要約に技術的背景を追加します\n');
-  console.log('=' .repeat(60));
+  console.error('🎯 詳細要約に技術的背景を追加します\n');
+  console.error('=' .repeat(60));
   
   try {
     // 問題のある記事IDを読み込み
@@ -16,8 +16,8 @@ async function enhanceTechnicalBackground() {
     // 技術的背景が欠如している記事IDを取得
     const noTechnicalBgIds = problemData.details.detailedNoTechnicalBg;
     
-    console.log(`対象記事数: ${noTechnicalBgIds.length}件`);
-    console.log('目標: 技術的背景を含む適切な詳細要約に改善\n');
+    console.error(`対象記事数: ${noTechnicalBgIds.length}件`);
+    console.error('目標: 技術的背景を含む適切な詳細要約に改善\n');
     
     // Gemini API キーの確認
     const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -35,8 +35,8 @@ async function enhanceTechnicalBackground() {
     
     for (let i = 0; i < noTechnicalBgIds.length; i++) {
       const articleId = noTechnicalBgIds[i];
-      console.log(`\n[${i + 1}/${noTechnicalBgIds.length}] 処理中: ${articleId}`);
-      console.log('-'.repeat(40));
+      console.error(`\n[${i + 1}/${noTechnicalBgIds.length}] 処理中: ${articleId}`);
+      console.error('-'.repeat(40));
       
       try {
         // 記事を取得
@@ -46,19 +46,19 @@ async function enhanceTechnicalBackground() {
         });
         
         if (!article) {
-          console.log(`  ⚠️ 記事が見つかりません`);
+          console.error(`  ⚠️ 記事が見つかりません`);
           errorCount++;
           continue;
         }
         
-        console.log(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
-        console.log(`  🏷️ ソース: ${article.source?.name}`);
-        console.log(`  📝 現在の詳細要約の先頭:`);
+        console.error(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
+        console.error(`  🏷️ ソース: ${article.source?.name}`);
+        console.error(`  📝 現在の詳細要約の先頭:`);
         const currentLines = article.detailedSummary?.split('\n').filter(l => l.trim());
-        console.log(`     ${currentLines?.[0]?.substring(0, 60)}...`);
+        console.error(`     ${currentLines?.[0]?.substring(0, 60)}...`);
         
         // 詳細要約を再生成
-        console.log(`  🔄 詳細要約を再生成中...`);
+        console.error(`  🔄 詳細要約を再生成中...`);
         
         // コンテンツを準備
         const content = article.content || article.summary || article.title || '';
@@ -74,7 +74,7 @@ async function enhanceTechnicalBackground() {
         const qualityCheck = validateDetailedSummary(newDetailedSummary);
         
         if (!qualityCheck.isValid) {
-          console.log(`  ⚠️ 生成された詳細要約が基準を満たしていません: ${qualityCheck.reason}`);
+          console.error(`  ⚠️ 生成された詳細要約が基準を満たしていません: ${qualityCheck.reason}`);
           
           // 再試行（より明確な指示で）
           const retryPrompt = `
@@ -97,7 +97,7 @@ async function enhanceTechnicalBackground() {
           
           const retryCheck = validateDetailedSummary(retrySummary);
           if (!retryCheck.isValid) {
-            console.log(`  ❌ 再試行も失敗: ${retryCheck.reason}`);
+            console.error(`  ❌ 再試行も失敗: ${retryCheck.reason}`);
             errorCount++;
             results.push({
               id: articleId,
@@ -109,7 +109,7 @@ async function enhanceTechnicalBackground() {
           } else {
             await updateDetailedSummary(articleId, retrySummary);
             successCount++;
-            console.log(`  ✅ 再試行成功 - 技術的背景を追加`);
+            console.error(`  ✅ 再試行成功 - 技術的背景を追加`);
             results.push({
               id: articleId,
               title: article.title,
@@ -119,10 +119,10 @@ async function enhanceTechnicalBackground() {
             });
           }
         } else {
-          console.log(`  ✅ 新しい詳細要約の先頭:`);
+          console.error(`  ✅ 新しい詳細要約の先頭:`);
           const newLines = newDetailedSummary.split('\n').filter(l => l.trim());
-          console.log(`     ${newLines[0]?.substring(0, 60)}...`);
-          console.log(`  📊 項目数: ${newLines.length}項目`);
+          console.error(`     ${newLines[0]?.substring(0, 60)}...`);
+          console.error(`  📊 項目数: ${newLines.length}項目`);
           
           // データベースを更新
           await updateDetailedSummary(articleId, newDetailedSummary);
@@ -153,11 +153,11 @@ async function enhanceTechnicalBackground() {
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 処理結果サマリー\n');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`📈 成功率: ${((successCount / noTechnicalBgIds.length) * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 処理結果サマリー\n');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`📈 成功率: ${((successCount / noTechnicalBgIds.length) * 100).toFixed(1)}%`);
     
     // 結果をファイルに保存
     const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
@@ -170,7 +170,7 @@ async function enhanceTechnicalBackground() {
       results
     }, null, 2));
     
-    console.log(`\n📁 詳細な結果を ${resultFile} に保存しました`);
+    console.error(`\n📁 詳細な結果を ${resultFile} に保存しました`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

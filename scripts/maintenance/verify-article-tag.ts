@@ -12,10 +12,10 @@ async function verifyCleanup() {
     });
     
     if (articleTag) {
-      console.log('❌ articleタグがまだ存在します');
+      console.error('❌ articleタグがまだ存在します');
       success = false;
     } else {
-      console.log('✅ articleタグは正常に削除されています');
+      console.error('✅ articleタグは正常に削除されています');
     }
     
     // book, scrapタグは残っていることを確認
@@ -28,20 +28,20 @@ async function verifyCleanup() {
     });
     
     if (bookTag) {
-      console.log('✅ bookタグは正常に存在します');
+      console.error('✅ bookタグは正常に存在します');
     } else {
-      console.log('ℹ️  bookタグは存在しません（まだ該当記事がない可能性）');
+      console.error('ℹ️  bookタグは存在しません（まだ該当記事がない可能性）');
     }
     
     if (scrapTag) {
-      console.log('✅ scrapタグは正常に存在します');
+      console.error('✅ scrapタグは正常に存在します');
     } else {
-      console.log('ℹ️  scrapタグは存在しません（まだ該当記事がない可能性）');
+      console.error('ℹ️  scrapタグは存在しません（まだ該当記事がない可能性）');
     }
     
     // タグ統計を表示
     const tagCount = await prisma.tag.count();
-    console.log(`\n📊 現在のタグ総数: ${tagCount}件`);
+    console.error(`\n📊 現在のタグ総数: ${tagCount}件`);
     
     // 人気タグTop5を表示
     const popularTags = await prisma.tag.findMany({
@@ -58,9 +58,9 @@ async function verifyCleanup() {
       }
     });
     
-    console.log('\n🏆 人気タグTop5:');
+    console.error('\n🏆 人気タグTop5:');
     popularTags.forEach((tag, index) => {
-      console.log(`  ${index + 1}. ${tag.name} (${tag._count.articles}件)`);
+      console.error(`  ${index + 1}. ${tag.name} (${tag._count.articles}件)`);
     });
     
     return success;

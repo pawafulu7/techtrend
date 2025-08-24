@@ -21,7 +21,7 @@ interface UnbalancedArticle {
 }
 
 async function findUnbalancedArticles(): Promise<UnbalancedArticle[]> {
-  console.log('=== 不適切な要約を持つ記事を検索中 ===');
+  console.error('=== 不適切な要約を持つ記事を検索中 ===');
   
   const articles = await prisma.article.findMany({
     where: {
@@ -75,7 +75,7 @@ async function findUnbalancedArticles(): Promise<UnbalancedArticle[]> {
 }
 
 async function regenerateSummaries(articles: UnbalancedArticle[]) {
-  console.log(`\n=== ${articles.length}件の記事の要約を再生成 ===\n`);
+  console.error(`\n=== ${articles.length}件の記事の要約を再生成 ===\n`);
   
   let successCount = 0;
   let failedCount = 0;
@@ -83,10 +83,10 @@ async function regenerateSummaries(articles: UnbalancedArticle[]) {
   
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
-    console.log(`[${i + 1}/${articles.length}] ${article.title.substring(0, 50)}...`);
-    console.log(`  ソース: ${article.source.name}`);
-    console.log(`  コンテンツ: ${article.contentLength}文字`);
-    console.log(`  現在の要約: ${article.summaryLength}文字 (最小: ${article.expectedMinLength}文字)`);
+    console.error(`[${i + 1}/${articles.length}] ${article.title.substring(0, 50)}...`);
+    console.error(`  ソース: ${article.source.name}`);
+    console.error(`  コンテンツ: ${article.contentLength}文字`);
+    console.error(`  現在の要約: ${article.summaryLength}文字 (最小: ${article.expectedMinLength}文字)`);
     
     try {
       const result = await summaryService.generate(
@@ -110,13 +110,13 @@ async function regenerateSummaries(articles: UnbalancedArticle[]) {
           }
         });
         
-        console.log(`  ✅ 再生成成功: ${result.detailedSummary.length}文字`);
+        console.error(`  ✅ 再生成成功: ${result.detailedSummary.length}文字`);
         successCount++;
       } else if (result) {
-        console.log(`  ⚠️ 再生成したが基準未満: ${result.detailedSummary.length}文字`);
+        console.error(`  ⚠️ 再生成したが基準未満: ${result.detailedSummary.length}文字`);
         failedCount++;
       } else {
-        console.log(`  ❌ 生成失敗`);
+        console.error(`  ❌ 生成失敗`);
         failedCount++;
       }
       
@@ -125,13 +125,13 @@ async function regenerateSummaries(articles: UnbalancedArticle[]) {
       
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      console.log(`  ❌ エラー: ${errorMsg}`);
+      console.error(`  ❌ エラー: ${errorMsg}`);
       errors.push(`${article.id}: ${errorMsg}`);
       failedCount++;
       
       // Rate limitエラーの場合は長めに待機
       if (errorMsg.includes('429') || errorMsg.includes('503')) {
-        console.log('  ⏳ Rate limit検出。60秒待機...');
+        console.error('  ⏳ Rate limit検出。60秒待機...');
         await new Promise(resolve => setTimeout(resolve, 60000));
       } else {
         await new Promise(resolve => setTimeout(resolve, 5000));
@@ -140,19 +140,19 @@ async function regenerateSummaries(articles: UnbalancedArticle[]) {
     
     // 10件ごとに進捗報告
     if ((i + 1) % 10 === 0) {
-      console.log(`\n--- 進捗: ${i + 1}/${articles.length}件完了 (成功: ${successCount}, 失敗: ${failedCount}) ---\n`);
+      console.error(`\n--- 進捗: ${i + 1}/${articles.length}件完了 (成功: ${successCount}, 失敗: ${failedCount}) ---\n`);
     }
   }
   
-  console.log('\n=== 処理完了 ===');
-  console.log(`成功: ${successCount}件`);
-  console.log(`失敗: ${failedCount}件`);
+  console.error('\n=== 処理完了 ===');
+  console.error(`成功: ${successCount}件`);
+  console.error(`失敗: ${failedCount}件`);
   
   if (errors.length > 0) {
-    console.log('\n=== エラー詳細 ===');
-    errors.slice(0, 10).forEach(err => console.log(err));
+    console.error('\n=== エラー詳細 ===');
+    errors.slice(0, 10).forEach(err => console.error(err));
     if (errors.length > 10) {
-      console.log(`... 他 ${errors.length - 10}件のエラー`);
+      console.error(`... 他 ${errors.length - 10}件のエラー`);
     }
   }
 }
@@ -162,19 +162,19 @@ async function main() {
     const unbalanced = await findUnbalancedArticles();
     
     if (unbalanced.length === 0) {
-      console.log('不適切な要約を持つ記事はありません');
+      console.error('不適切な要約を持つ記事はありません');
       return;
     }
     
-    console.log(`\n不適切な要約を持つ記事: ${unbalanced.length}件`);
-    console.log('\n--- トップ10 ---');
+    console.error(`\n不適切な要約を持つ記事: ${unbalanced.length}件`);
+    console.error('\n--- トップ10 ---');
     unbalanced.slice(0, 10).forEach((article, i) => {
-      console.log(`${i + 1}. ${article.title.substring(0, 50)}...`);
-      console.log(`   ${article.contentLength}文字 → ${article.summaryLength}文字 (最小: ${article.expectedMinLength}文字)`);
+      console.error(`${i + 1}. ${article.title.substring(0, 50)}...`);
+      console.error(`   ${article.contentLength}文字 → ${article.summaryLength}文字 (最小: ${article.expectedMinLength}文字)`);
     });
     
     // 確認プロンプト
-    console.log('\n再生成を開始しますか？ (Ctrl+Cでキャンセル)');
+    console.error('\n再生成を開始しますか？ (Ctrl+Cでキャンセル)');
     await new Promise(resolve => setTimeout(resolve, 3000));
     
     await regenerateSummaries(unbalanced);

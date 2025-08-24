@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 const summaryService = new UnifiedSummaryService();
 
 async function regenerateSummaries() {
-  console.log('=== Google AI Blog要約再生成 ===');
+  console.error('=== Google AI Blog要約再生成 ===');
   
   try {
     // Google AI Blogの全記事を取得（強制再生成）
@@ -28,26 +28,26 @@ async function regenerateSummaries() {
       }
     });
     
-    console.log(`Google AI Blog全記事を再生成: ${articles.length}件`);
+    console.error(`Google AI Blog全記事を再生成: ${articles.length}件`);
     
     if (articles.length === 0) {
-      console.log('再生成対象の記事がありません。');
+      console.error('再生成対象の記事がありません。');
       return;
     }
     
-    console.log('\n=== 強制再生成モード ===');
-    console.log('すべての記事の要約を再生成します。');
+    console.error('\n=== 強制再生成モード ===');
+    console.error('すべての記事の要約を再生成します。');
     
     let successCount = 0;
     let failedCount = 0;
     
     for (const article of articles) {
       try {
-        console.log(`\n生成中: ${article.title}`);
-        console.log(`コンテンツ長: ${article.content?.length || 0}文字`);
+        console.error(`\n生成中: ${article.title}`);
+        console.error(`コンテンツ長: ${article.content?.length || 0}文字`);
         
         if (!article.content || article.content.length < 100) {
-          console.log('⚠️ コンテンツが不十分のためスキップ（100文字未満）');
+          console.error('⚠️ コンテンツが不十分のためスキップ（100文字未満）');
           failedCount++;
           continue;
         }
@@ -75,19 +75,19 @@ async function regenerateSummaries() {
             }
           });
           
-          console.log('✅ 要約生成成功');
-          console.log(`  一覧要約: ${result.summary.length}文字`);
-          console.log(`  詳細要約: ${result.detailedSummary.length}文字`);
+          console.error('✅ 要約生成成功');
+          console.error(`  一覧要約: ${result.summary.length}文字`);
+          console.error(`  詳細要約: ${result.detailedSummary.length}文字`);
           
           // 詳細要約の最初の3行を表示
           const detailLines = result.detailedSummary.split('\n').slice(0, 3);
           detailLines.forEach(line => {
-            console.log(`  ${line.substring(0, 60)}${line.length > 60 ? '...' : ''}`);
+            console.error(`  ${line.substring(0, 60)}${line.length > 60 ? '...' : ''}`);
           });
           
           successCount++;
         } else {
-          console.log('❌ 要約生成失敗');
+          console.error('❌ 要約生成失敗');
           failedCount++;
         }
         
@@ -100,15 +100,15 @@ async function regenerateSummaries() {
         
         // Rate limitエラーの場合は長めに待機
         if (error instanceof Error && (error.message.includes('429') || error.message.includes('503'))) {
-          console.log('⏳ Rate limit検出、60秒待機...');
+          console.error('⏳ Rate limit検出、60秒待機...');
           await new Promise(resolve => setTimeout(resolve, 60000));
         }
       }
     }
     
-    console.log('\n=== 要約再生成完了 ===');
-    console.log(`成功: ${successCount}件`);
-    console.log(`失敗: ${failedCount}件`);
+    console.error('\n=== 要約再生成完了 ===');
+    console.error(`成功: ${successCount}件`);
+    console.error(`失敗: ${failedCount}件`);
     
     // 再生成後の統計
     if (successCount > 0) {
@@ -121,13 +121,13 @@ async function regenerateSummaries() {
         }
       });
       
-      console.log(`\nsummaryVersion 7の記事: ${updatedArticles.length}件`);
+      console.error(`\nsummaryVersion 7の記事: ${updatedArticles.length}件`);
       
       const avgDetailedSummaryLength = updatedArticles
         .filter(a => a.detailedSummary)
         .reduce((sum, a) => sum + (a.detailedSummary?.length || 0), 0) / updatedArticles.length;
       
-      console.log(`平均詳細要約長: ${Math.round(avgDetailedSummaryLength)}文字`);
+      console.error(`平均詳細要約長: ${Math.round(avgDetailedSummaryLength)}文字`);
     }
     
   } catch (error) {

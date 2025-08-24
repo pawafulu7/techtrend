@@ -15,8 +15,8 @@ interface ProblemArticle {
 }
 
 async function fixCriticalIssues() {
-  console.log('🚨 重大な品質問題を修正します\n');
-  console.log('=' .repeat(60));
+  console.error('🚨 重大な品質問題を修正します\n');
+  console.error('=' .repeat(60));
   
   try {
     // 問題のある記事IDを読み込み
@@ -28,13 +28,13 @@ async function fixCriticalIssues() {
       ...problemData.details.summaryUnclear,    // 不明瞭な内容
     ];
     
-    console.log(`対象記事数: ${criticalIds.length}件\n`);
+    console.error(`対象記事数: ${criticalIds.length}件\n`);
     
     // Gemini API キーの確認
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
       console.error('❌ GEMINI_API_KEY が設定されていません');
-      console.log('環境変数 GEMINI_API_KEY を設定してください');
+      console.error('環境変数 GEMINI_API_KEY を設定してください');
       process.exit(1);
     }
     
@@ -46,8 +46,8 @@ async function fixCriticalIssues() {
     const results: any[] = [];
     
     for (const articleId of criticalIds) {
-      console.log(`\n処理中: ${articleId}`);
-      console.log('-'.repeat(40));
+      console.error(`\n処理中: ${articleId}`);
+      console.error('-'.repeat(40));
       
       try {
         // 記事を取得
@@ -57,7 +57,7 @@ async function fixCriticalIssues() {
         });
         
         if (!article) {
-          console.log(`  ⚠️ 記事が見つかりません: ${articleId}`);
+          console.error(`  ⚠️ 記事が見つかりません: ${articleId}`);
           errorCount++;
           continue;
         }
@@ -70,20 +70,20 @@ async function fixCriticalIssues() {
           problemType = '不明瞭な内容';
         }
         
-        console.log(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
-        console.log(`  🏷️ ソース: ${article.source?.name}`);
-        console.log(`  ⚠️ 問題: ${problemType}`);
-        console.log(`  📝 現在の要約: ${article.summary?.substring(0, 80)}...`);
-        console.log(`  📏 現在の文字数: ${article.summary?.length || 0}文字`);
+        console.error(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
+        console.error(`  🏷️ ソース: ${article.source?.name}`);
+        console.error(`  ⚠️ 問題: ${problemType}`);
+        console.error(`  📝 現在の要約: ${article.summary?.substring(0, 80)}...`);
+        console.error(`  📏 現在の文字数: ${article.summary?.length || 0}文字`);
         
         // 要約を再生成
-        console.log(`  🔄 要約を再生成中...`);
+        console.error(`  🔄 要約を再生成中...`);
         
         // コンテンツを準備（contentがない場合は既存の要約やタイトルから生成）
         const content = article.content || article.detailedSummary || article.summary || '';
         
         if (!content && article.title) {
-          console.log(`  ⚠️ コンテンツが不足しているため、タイトルベースで生成`);
+          console.error(`  ⚠️ コンテンツが不足しているため、タイトルベースで生成`);
         }
         
         // 新しい要約を生成
@@ -96,8 +96,8 @@ async function fixCriticalIssues() {
         const qualityCheck = validateSummary(newSummary);
         
         if (!qualityCheck.isValid) {
-          console.log(`  ⚠️ 生成された要約が品質基準を満たしていません: ${qualityCheck.reason}`);
-          console.log(`  🔄 再試行中...`);
+          console.error(`  ⚠️ 生成された要約が品質基準を満たしていません: ${qualityCheck.reason}`);
+          console.error(`  🔄 再試行中...`);
           
           // 再試行（より詳細な指示で）
           const retryContent = `タイトル: ${article.title}\n内容: ${content}`;
@@ -105,7 +105,7 @@ async function fixCriticalIssues() {
           
           const retryCheck = validateSummary(retrySummary);
           if (retryCheck.isValid) {
-            console.log(`  ✅ 再試行成功`);
+            console.error(`  ✅ 再試行成功`);
             await updateArticle(articleId, retrySummary);
             successCount++;
             results.push({
@@ -117,7 +117,7 @@ async function fixCriticalIssues() {
               status: 'success'
             });
           } else {
-            console.log(`  ❌ 再試行も失敗: ${retryCheck.reason}`);
+            console.error(`  ❌ 再試行も失敗: ${retryCheck.reason}`);
             errorCount++;
             results.push({
               id: articleId,
@@ -128,8 +128,8 @@ async function fixCriticalIssues() {
             });
           }
         } else {
-          console.log(`  ✅ 新しい要約: ${newSummary.substring(0, 80)}...`);
-          console.log(`  📏 新しい文字数: ${newSummary.length}文字`);
+          console.error(`  ✅ 新しい要約: ${newSummary.substring(0, 80)}...`);
+          console.error(`  📏 新しい文字数: ${newSummary.length}文字`);
           
           // データベースを更新
           await updateArticle(articleId, newSummary);
@@ -156,11 +156,11 @@ async function fixCriticalIssues() {
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 処理結果サマリー\n');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`📈 成功率: ${((successCount / criticalIds.length) * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 処理結果サマリー\n');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`📈 成功率: ${((successCount / criticalIds.length) * 100).toFixed(1)}%`);
     
     // 結果をファイルに保存
     const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
@@ -173,18 +173,18 @@ async function fixCriticalIssues() {
       results
     }, null, 2));
     
-    console.log(`\n📁 詳細な結果を ${resultFile} に保存しました`);
+    console.error(`\n📁 詳細な結果を ${resultFile} に保存しました`);
     
     // 品質チェックを再実行して確認
-    console.log('\n🔍 修正後の品質チェックを実行中...');
+    console.error('\n🔍 修正後の品質チェックを実行中...');
     const remainingProblems = await checkRemainingProblems(criticalIds);
     
     if (remainingProblems.length === 0) {
-      console.log('✅ すべての重大問題が解決されました！');
+      console.error('✅ すべての重大問題が解決されました！');
     } else {
-      console.log(`⚠️ まだ ${remainingProblems.length}件の問題が残っています`);
+      console.error(`⚠️ まだ ${remainingProblems.length}件の問題が残っています`);
       remainingProblems.forEach(p => {
-        console.log(`  - ${p.id}: ${p.problem}`);
+        console.error(`  - ${p.id}: ${p.problem}`);
       });
     }
     

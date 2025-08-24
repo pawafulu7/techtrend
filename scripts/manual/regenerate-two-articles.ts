@@ -16,7 +16,7 @@ async function regenerateTwoArticles() {
   }
 
   for (const articleId of articleIds) {
-    console.log(`\n📝 処理中: ${articleId}`);
+    console.error(`\n📝 処理中: ${articleId}`);
     
     const article = await prisma.article.findUnique({
       where: { id: articleId },
@@ -28,14 +28,14 @@ async function regenerateTwoArticles() {
       continue;
     }
 
-    console.log(`  タイトル: ${article.title.substring(0, 50)}...`);
+    console.error(`  タイトル: ${article.title.substring(0, 50)}...`);
     
     const prompt = generateUnifiedPrompt(
       article.title,
       article.content || ''
     );
 
-    console.log('  APIリクエスト送信中...');
+    console.error('  APIリクエスト送信中...');
     
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
@@ -67,8 +67,8 @@ async function regenerateTwoArticles() {
       const service = new UnifiedSummaryService();
       const result = service.parseResponse(responseText);
       
-      console.log(`  要約文字数: ${result.summary.length}`);
-      console.log(`  詳細要約文字数: ${result.detailedSummary.length}`);
+      console.error(`  要約文字数: ${result.summary.length}`);
+      console.error(`  詳細要約文字数: ${result.detailedSummary.length}`);
 
       // データベース更新
       await prisma.article.update({
@@ -103,7 +103,7 @@ async function regenerateTwoArticles() {
         });
       }
 
-      console.log('  ✅ 更新完了');
+      console.error('  ✅ 更新完了');
       
       // API レート制限対策
       await new Promise(resolve => setTimeout(resolve, 3000));
@@ -113,7 +113,7 @@ async function regenerateTwoArticles() {
     }
   }
 
-  console.log('\n✅ すべての記事の再生成が完了しました');
+  console.error('\n✅ すべての記事の再生成が完了しました');
 }
 
 regenerateTwoArticles()

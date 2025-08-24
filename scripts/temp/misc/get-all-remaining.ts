@@ -137,9 +137,9 @@ async function getAllRemaining() {
   ];
   
   const toFix = needsFix.filter(id => !alreadyFixed.includes(id));
-  console.log('残り修正必要数:', toFix.length);
-  console.log('\nすべての残りID:');
-  console.log(JSON.stringify(toFix, null, 2));
+  console.error('残り修正必要数:', toFix.length);
+  console.error('\nすべての残りID:');
+  console.error(JSON.stringify(toFix, null, 2));
   
   await prisma.$disconnect();
 }

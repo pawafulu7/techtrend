@@ -2,8 +2,8 @@ import { adjustTimezoneForArticle, parseRSSDate, formatDate, formatDateWithTime 
 
 describe('adjustTimezoneForArticle', () => {
   beforeEach(() => {
-    // console.logをモック化
-    jest.spyOn(console, 'log').mockImplementation();
+    // console.errorをモック化
+    jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterEach(() => {
@@ -17,7 +17,7 @@ describe('adjustTimezoneForArticle', () => {
     const adjusted = adjustTimezoneForArticle(futureDate);
     
     expect(adjusted.getTime()).toBeLessThanOrEqual(new Date().getTime());
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('[Timezone Adjustment] Future date detected')
     );
   });
@@ -29,7 +29,7 @@ describe('adjustTimezoneForArticle', () => {
     const adjusted = adjustTimezoneForArticle(futureDate, 'Test Source');
     
     expect(adjusted.getTime()).toBeLessThanOrEqual(new Date().getTime());
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Test Source')
     );
   });
@@ -41,7 +41,7 @@ describe('adjustTimezoneForArticle', () => {
     const adjusted = adjustTimezoneForArticle(pastDate);
     
     expect(adjusted.getTime()).toEqual(pastDate.getTime());
-    expect(console.log).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
   });
 
   it('現在時刻は変更しない', () => {
@@ -50,7 +50,7 @@ describe('adjustTimezoneForArticle', () => {
     const adjusted = adjustTimezoneForArticle(now);
     
     expect(adjusted.getTime()).toEqual(now.getTime());
-    expect(console.log).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
   });
 
   it('ソース名が提供された場合、ログに含まれる', () => {
@@ -59,7 +59,7 @@ describe('adjustTimezoneForArticle', () => {
     
     adjustTimezoneForArticle(futureDate, 'Google Developers Blog');
     
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Google Developers Blog')
     );
   });
@@ -70,7 +70,7 @@ describe('adjustTimezoneForArticle', () => {
     
     adjustTimezoneForArticle(futureDate);
     
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('unknown source')
     );
   });

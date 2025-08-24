@@ -73,14 +73,14 @@ feedsCommand
         orderBy: { name: 'asc' }
       });
       
-      console.log('\n📡 利用可能なソース:');
-      console.log('━'.repeat(60));
-      console.log('ソース名'.padEnd(25) + 'タイプ'.padEnd(15) + '記事数'.padEnd(10) + '状態');
-      console.log('─'.repeat(60));
+      console.error('\n📡 利用可能なソース:');
+      console.error('━'.repeat(60));
+      console.error('ソース名'.padEnd(25) + 'タイプ'.padEnd(15) + '記事数'.padEnd(10) + '状態');
+      console.error('─'.repeat(60));
       
       for (const source of sources) {
         const status = source.enabled ? '✅ 有効' : '❌ 無効';
-        console.log(
+        console.error(
           source.name.padEnd(25) +
           source.type.padEnd(15) +
           source._count.articles.toLocaleString().padEnd(10) +
@@ -88,8 +88,8 @@ feedsCommand
         );
       }
       
-      console.log('━'.repeat(60));
-      console.log(`合計: ${sources.length} ソース`);
+      console.error('━'.repeat(60));
+      console.error(`合計: ${sources.length} ソース`);
       
       logger.success('ソース一覧の取得が完了しました');
     } catch (error) {
@@ -137,11 +137,11 @@ feedsCommand
         }
       });
       
-      console.log(`\n📊 過去${days}日間の収集統計:`);
-      console.log(`  総記事数: ${totalArticles.toLocaleString()}`);
-      console.log(`  1日平均: ${Math.round(totalArticles / days).toLocaleString()} 記事`);
+      console.error(`\n📊 過去${days}日間の収集統計:`);
+      console.error(`  総記事数: ${totalArticles.toLocaleString()}`);
+      console.error(`  1日平均: ${Math.round(totalArticles / days).toLocaleString()} 記事`);
       
-      console.log('\n📑 ソース別収集数:');
+      console.error('\n📑 ソース別収集数:');
       const sourcesWithCount = sources
         .map(s => ({ name: s.name, count: s.articles.length }))
         .filter(s => s.count > 0)
@@ -149,7 +149,7 @@ feedsCommand
       
       for (const source of sourcesWithCount) {
         const percentage = Math.round(source.count / totalArticles * 100);
-        console.log(`  ${source.name}: ${source.count} 記事 (${percentage}%)`);
+        console.error(`  ${source.name}: ${source.count} 記事 (${percentage}%)`);
       }
       
       logger.success('統計情報の取得が完了しました');

@@ -38,21 +38,21 @@ async function saveProgress(progress: Progress) {
 }
 
 async function migrateV7Staged() {
-  console.log('========================================');
-  console.log('Version 7 段階的移行');
-  console.log(`バッチサイズ: ${BATCH_SIZE}件`);
-  console.log(`タイムアウト: ${TIMEOUT_MS / 1000 / 60}分`);
-  console.log('========================================\n');
+  console.error('========================================');
+  console.error('Version 7 段階的移行');
+  console.error(`バッチサイズ: ${BATCH_SIZE}件`);
+  console.error(`タイムアウト: ${TIMEOUT_MS / 1000 / 60}分`);
+  console.error('========================================\n');
 
   // 進捗の読み込み
   let progress = await loadProgress();
   
   if (progress) {
-    console.log('📂 前回の進捗を読み込みました:');
-    console.log(`  処理済み: ${progress.processedCount}件`);
-    console.log(`  成功: ${progress.successCount}件`);
-    console.log(`  エラー: ${progress.errorCount}件`);
-    console.log(`  最終更新: ${progress.updatedAt}\n`);
+    console.error('📂 前回の進捗を読み込みました:');
+    console.error(`  処理済み: ${progress.processedCount}件`);
+    console.error(`  成功: ${progress.successCount}件`);
+    console.error(`  エラー: ${progress.errorCount}件`);
+    console.error(`  最終更新: ${progress.updatedAt}\n`);
     
     const readline = require('readline').createInterface({
       input: process.stdin,
@@ -67,7 +67,7 @@ async function migrateV7Staged() {
     if (answer.toLowerCase() !== 'y') {
       progress = null;
       await fs.unlink(PROGRESS_FILE).catch(() => {});
-      console.log('新規実行を開始します\n');
+      console.error('新規実行を開始します\n');
     }
   }
   
@@ -102,21 +102,21 @@ async function migrateV7Staged() {
   });
 
   if (articles.length === 0) {
-    console.log('✨ すべての記事の移行が完了しました！');
+    console.error('✨ すべての記事の移行が完了しました！');
     
     // 最終統計
     const v7Count = await prisma.article.count({
       where: { summaryVersion: 7 }
     });
     
-    console.log('\n========================================');
-    console.log('最終統計');
-    console.log('========================================');
-    console.log(`Version 7の記事数: ${v7Count}件`);
-    console.log(`処理総数: ${progress.processedCount}件`);
-    console.log(`成功: ${progress.successCount}件`);
-    console.log(`エラー: ${progress.errorCount}件`);
-    console.log(`成功率: ${(progress.successCount / progress.processedCount * 100).toFixed(1)}%`);
+    console.error('\n========================================');
+    console.error('最終統計');
+    console.error('========================================');
+    console.error(`Version 7の記事数: ${v7Count}件`);
+    console.error(`処理総数: ${progress.processedCount}件`);
+    console.error(`成功: ${progress.successCount}件`);
+    console.error(`エラー: ${progress.errorCount}件`);
+    console.error(`成功率: ${(progress.successCount / progress.processedCount * 100).toFixed(1)}%`);
     
     // 進捗ファイルの削除
     await fs.unlink(PROGRESS_FILE).catch(() => {});
@@ -124,12 +124,12 @@ async function migrateV7Staged() {
     return;
   }
 
-  console.log(`\n📋 今回の処理: ${articles.length}件\n`);
+  console.error(`\n📋 今回の処理: ${articles.length}件\n`);
 
   for (const article of articles) {
     // タイムアウトチェック
     if (Date.now() - startTime > TIMEOUT_MS) {
-      console.log('\n⏰ タイムアウトに達しました。進捗を保存して終了します。');
+      console.error('\n⏰ タイムアウトに達しました。進捗を保存して終了します。');
       break;
     }
 
@@ -137,12 +137,12 @@ async function migrateV7Staged() {
       ? article.title.substring(0, 50) + '...'
       : article.title;
     
-    console.log(`[${progress.processedCount + 1}] ${displayTitle}`);
-    console.log(`  ソース: ${article.source.name}`);
-    console.log(`  コンテンツ: ${article.content?.length || 0}文字`);
+    console.error(`[${progress.processedCount + 1}] ${displayTitle}`);
+    console.error(`  ソース: ${article.source.name}`);
+    console.error(`  コンテンツ: ${article.content?.length || 0}文字`);
 
     if (!article.content || article.content.length < 100) {
-      console.log('  ⚠️ コンテンツ不十分 - スキップ\n');
+      console.error('  ⚠️ コンテンツ不十分 - スキップ\n');
       progress.processedCount++;
       progress.lastProcessedId = article.id;
       continue;
@@ -186,9 +186,9 @@ async function migrateV7Staged() {
         }
       });
 
-      console.log(`  ✅ 成功 (v${article.summaryVersion}→v${result.summaryVersion})`);
-      console.log(`  要約: ${result.summary.length}文字`);
-      console.log(`  詳細: ${result.detailedSummary === '__SKIP_DETAILED_SUMMARY__' ? 'スキップ' : result.detailedSummary.length + '文字'}\n`);
+      console.error(`  ✅ 成功 (v${article.summaryVersion}→v${result.summaryVersion})`);
+      console.error(`  要約: ${result.summary.length}文字`);
+      console.error(`  詳細: ${result.detailedSummary === '__SKIP_DETAILED_SUMMARY__' ? 'スキップ' : result.detailedSummary.length + '文字'}\n`);
       
       progress.successCount++;
     } catch (error) {
@@ -203,7 +203,7 @@ async function migrateV7Staged() {
     // 10件ごとに進捗を保存
     if (progress.processedCount % 10 === 0) {
       await saveProgress(progress);
-      console.log(`💾 進捗保存 (${progress.processedCount}件処理済み)\n`);
+      console.error(`💾 進捗保存 (${progress.processedCount}件処理済み)\n`);
     }
 
     // Rate limit対策
@@ -213,14 +213,14 @@ async function migrateV7Staged() {
   // 最終進捗の保存
   await saveProgress(progress);
 
-  console.log('\n========================================');
-  console.log('今回のバッチ処理完了');
-  console.log('========================================');
-  console.log(`処理件数: ${articles.length}件`);
-  console.log(`累計処理: ${progress.processedCount}件`);
-  console.log(`累計成功: ${progress.successCount}件`);
-  console.log(`累計エラー: ${progress.errorCount}件`);
-  console.log(`成功率: ${progress.successCount > 0 ? (progress.successCount / progress.processedCount * 100).toFixed(1) : 0}%`);
+  console.error('\n========================================');
+  console.error('今回のバッチ処理完了');
+  console.error('========================================');
+  console.error(`処理件数: ${articles.length}件`);
+  console.error(`累計処理: ${progress.processedCount}件`);
+  console.error(`累計成功: ${progress.successCount}件`);
+  console.error(`累計エラー: ${progress.errorCount}件`);
+  console.error(`成功率: ${progress.successCount > 0 ? (progress.successCount / progress.processedCount * 100).toFixed(1) : 0}%`);
 
   // 残り件数の確認
   const remaining = await prisma.article.count({
@@ -231,9 +231,9 @@ async function migrateV7Staged() {
   });
 
   if (remaining > 0) {
-    console.log(`\n📊 残り: ${remaining}件`);
-    console.log('次回実行時は自動的に続きから処理されます。');
-    console.log('再実行コマンド: npm run migrate:v7:staged');
+    console.error(`\n📊 残り: ${remaining}件`);
+    console.error('次回実行時は自動的に続きから処理されます。');
+    console.error('再実行コマンド: npm run migrate:v7:staged');
   }
 
   await prisma.$disconnect();
@@ -241,8 +241,8 @@ async function migrateV7Staged() {
 
 // エラーハンドリング
 process.on('SIGINT', async () => {
-  console.log('\n\n⚠️ 処理を中断しています...');
-  console.log('進捗は保存されました。次回実行時に続きから再開できます。');
+  console.error('\n\n⚠️ 処理を中断しています...');
+  console.error('進捗は保存されました。次回実行時に続きから再開できます。');
   await prisma.$disconnect();
   process.exit(0);
 });

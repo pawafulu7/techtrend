@@ -4,9 +4,9 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function truncateLongSummaries() {
-  console.log('📝 長すぎる要約（200文字超）を物理的に短縮します\n');
-  console.log('=' .repeat(60));
-  console.log('方針: 200文字で切り詰め、自然な位置で終了させる\n');
+  console.error('📝 長すぎる要約（200文字超）を物理的に短縮します\n');
+  console.error('=' .repeat(60));
+  console.error('方針: 200文字で切り詰め、自然な位置で終了させる\n');
   
   try {
     // 200文字を超える要約を持つ記事を取得
@@ -30,7 +30,7 @@ async function truncateLongSummaries() {
       return a.summary.length > 200;
     });
     
-    console.log(`対象記事数: ${articlesToFix.length}件\n`);
+    console.error(`対象記事数: ${articlesToFix.length}件\n`);
     
     let successCount = 0;
     const results: any[] = [];
@@ -39,7 +39,7 @@ async function truncateLongSummaries() {
       const article = articlesToFix[i];
       
       if (i % 50 === 0 && i > 0) {
-        console.log(`\n📊 進捗: ${i}/${articlesToFix.length} (${Math.round(i/articlesToFix.length*100)}%)\n`);
+        console.error(`\n📊 進捗: ${i}/${articlesToFix.length} (${Math.round(i/articlesToFix.length*100)}%)\n`);
       }
       
       const originalSummary = article.summary || '';
@@ -89,7 +89,7 @@ async function truncateLongSummaries() {
           }
         });
         
-        console.log(`[${i + 1}/${articlesToFix.length}] ${article.id}: ${originalSummary.length}文字 → ${newSummary.length}文字`);
+        console.error(`[${i + 1}/${articlesToFix.length}] ${article.id}: ${originalSummary.length}文字 → ${newSummary.length}文字`);
         successCount++;
         
         results.push({
@@ -104,18 +104,18 @@ async function truncateLongSummaries() {
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 処理結果サマリー\n');
-    console.log(`✅ 修正: ${successCount}件`);
-    console.log(`⏭️ スキップ: ${articlesToFix.length - successCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 処理結果サマリー\n');
+    console.error(`✅ 修正: ${successCount}件`);
+    console.error(`⏭️ スキップ: ${articlesToFix.length - successCount}件`);
     
     if (results.length > 0) {
       const avgOldLength = results.reduce((sum, r) => sum + r.oldLength, 0) / results.length;
       const avgNewLength = results.reduce((sum, r) => sum + r.newLength, 0) / results.length;
-      console.log(`\n📏 平均文字数の変化:`);
-      console.log(`  変更前: ${avgOldLength.toFixed(1)}文字`);
-      console.log(`  変更後: ${avgNewLength.toFixed(1)}文字`);
-      console.log(`  削減率: ${((1 - avgNewLength / avgOldLength) * 100).toFixed(1)}%`);
+      console.error(`\n📏 平均文字数の変化:`);
+      console.error(`  変更前: ${avgOldLength.toFixed(1)}文字`);
+      console.error(`  変更後: ${avgNewLength.toFixed(1)}文字`);
+      console.error(`  削減率: ${((1 - avgNewLength / avgOldLength) * 100).toFixed(1)}%`);
     }
     
     // 結果をファイルに保存
@@ -129,7 +129,7 @@ async function truncateLongSummaries() {
       results
     }, null, 2));
     
-    console.log(`\n📁 詳細な結果を ${resultFile} に保存しました`);
+    console.error(`\n📁 詳細な結果を ${resultFile} に保存しました`);
     
   } catch (error) {
     console.error('エラー:', error);

@@ -80,8 +80,8 @@ export default function ProfilePage() {
               <div>
                 <h3 className="text-sm font-medium mb-2">アカウント作成日</h3>
                 <p className="text-sm text-muted-foreground">
-                  {'createdAt' in (session?.user || {}) && session?.user?.createdAt
-                    ? new Date(session.user.createdAt as string).toLocaleDateString('ja-JP')
+                  {session?.user && 'createdAt' in session.user && (session.user as any).createdAt
+                    ? new Date((session.user as any).createdAt).toLocaleDateString('ja-JP')
                     : '不明'}
                 </p>
               </div>

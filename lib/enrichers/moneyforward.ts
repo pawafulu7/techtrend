@@ -16,7 +16,7 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.log(`[MoneyForward Enricher] Starting enrichment for: ${url}`);
+      console.error(`[MoneyForward Enricher] Starting enrichment for: ${url}`);
       
       const html = await this.fetchWithRetry(url);
       
@@ -49,7 +49,7 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
       
       // コンテンツ取得結果のログ
       if (content && content.length > 0) {
-        console.log(`[MoneyForward Enricher] Content extracted: ${content.length} characters`);
+        console.error(`[MoneyForward Enricher] Content extracted: ${content.length} characters`);
         
         // 最小限のコンテンツチェック（200文字以上あれば有効とする）
         if (content.length < 200) {
@@ -62,7 +62,7 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
         
         // コンテンツが取得できなくてもサムネイルがあれば返す
         if (thumbnail) {
-          console.log(`[MoneyForward Enricher] No content but thumbnail found`);
+          console.error(`[MoneyForward Enricher] No content but thumbnail found`);
           return { content: null, thumbnail };
         }
         

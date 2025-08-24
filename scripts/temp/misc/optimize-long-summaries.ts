@@ -6,8 +6,8 @@ import * as fs from 'fs';
 const prisma = new PrismaClient();
 
 async function optimizeLongSummaries() {
-  console.log('📏 長すぎる要約を最適化します\n');
-  console.log('=' .repeat(60));
+  console.error('📏 長すぎる要約を最適化します\n');
+  console.error('=' .repeat(60));
   
   try {
     // 問題のある記事IDを読み込み
@@ -16,8 +16,8 @@ async function optimizeLongSummaries() {
     // 長すぎる要約の記事IDを取得
     const longSummaryIds = problemData.details.summaryTooLong;
     
-    console.log(`対象記事数: ${longSummaryIds.length}件`);
-    console.log('目標: 100〜120文字の適切な要約に最適化\n');
+    console.error(`対象記事数: ${longSummaryIds.length}件`);
+    console.error('目標: 100〜120文字の適切な要約に最適化\n');
     
     // Gemini API キーの確認
     const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -35,8 +35,8 @@ async function optimizeLongSummaries() {
     
     for (let i = 0; i < longSummaryIds.length; i++) {
       const articleId = longSummaryIds[i];
-      console.log(`\n[${i + 1}/${longSummaryIds.length}] 処理中: ${articleId}`);
-      console.log('-'.repeat(40));
+      console.error(`\n[${i + 1}/${longSummaryIds.length}] 処理中: ${articleId}`);
+      console.error('-'.repeat(40));
       
       try {
         // 記事を取得
@@ -46,18 +46,18 @@ async function optimizeLongSummaries() {
         });
         
         if (!article) {
-          console.log(`  ⚠️ 記事が見つかりません`);
+          console.error(`  ⚠️ 記事が見つかりません`);
           errorCount++;
           continue;
         }
         
-        console.log(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
-        console.log(`  🏷️ ソース: ${article.source?.name}`);
-        console.log(`  📝 現在の要約: ${article.summary?.substring(0, 80)}...`);
-        console.log(`  📏 現在の文字数: ${article.summary?.length || 0}文字`);
+        console.error(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
+        console.error(`  🏷️ ソース: ${article.source?.name}`);
+        console.error(`  📝 現在の要約: ${article.summary?.substring(0, 80)}...`);
+        console.error(`  📏 現在の文字数: ${article.summary?.length || 0}文字`);
         
         // 最適化された要約を生成
-        console.log(`  🔄 要約を最適化中...`);
+        console.error(`  🔄 要約を最適化中...`);
         
         // カスタムプロンプトで短縮を指示
         const optimizationPrompt = `
@@ -86,7 +86,7 @@ async function optimizeLongSummaries() {
         const qualityCheck = validateOptimizedSummary(optimizedSummary);
         
         if (!qualityCheck.isValid) {
-          console.log(`  ⚠️ 最適化された要約が基準を満たしていません: ${qualityCheck.reason}`);
+          console.error(`  ⚠️ 最適化された要約が基準を満たしていません: ${qualityCheck.reason}`);
           
           // 再試行：別のアプローチ
           const retryPrompt = `
@@ -98,7 +98,7 @@ async function optimizeLongSummaries() {
           
           const retryCheck = validateOptimizedSummary(optimizedSummary);
           if (!retryCheck.isValid) {
-            console.log(`  ❌ 再試行も失敗: ${retryCheck.reason}`);
+            console.error(`  ❌ 再試行も失敗: ${retryCheck.reason}`);
             errorCount++;
             results.push({
               id: articleId,
@@ -110,8 +110,8 @@ async function optimizeLongSummaries() {
           }
         }
         
-        console.log(`  ✅ 最適化後: ${optimizedSummary}`);
-        console.log(`  📏 新しい文字数: ${optimizedSummary.length}文字`);
+        console.error(`  ✅ 最適化後: ${optimizedSummary}`);
+        console.error(`  📏 新しい文字数: ${optimizedSummary.length}文字`);
         
         // データベースを更新
         await prisma.article.update({
@@ -150,21 +150,21 @@ async function optimizeLongSummaries() {
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 処理結果サマリー\n');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`📈 成功率: ${((successCount / longSummaryIds.length) * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 処理結果サマリー\n');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`📈 成功率: ${((successCount / longSummaryIds.length) * 100).toFixed(1)}%`);
     
     // 平均文字数の改善を計算
     const successfulResults = results.filter(r => r.status === 'success');
     if (successfulResults.length > 0) {
       const avgOldLength = successfulResults.reduce((sum, r) => sum + r.oldLength, 0) / successfulResults.length;
       const avgNewLength = successfulResults.reduce((sum, r) => sum + r.newLength, 0) / successfulResults.length;
-      console.log(`\n📏 平均文字数の変化:`);
-      console.log(`  変更前: ${avgOldLength.toFixed(1)}文字`);
-      console.log(`  変更後: ${avgNewLength.toFixed(1)}文字`);
-      console.log(`  削減率: ${((1 - avgNewLength / avgOldLength) * 100).toFixed(1)}%`);
+      console.error(`\n📏 平均文字数の変化:`);
+      console.error(`  変更前: ${avgOldLength.toFixed(1)}文字`);
+      console.error(`  変更後: ${avgNewLength.toFixed(1)}文字`);
+      console.error(`  削減率: ${((1 - avgNewLength / avgOldLength) * 100).toFixed(1)}%`);
     }
     
     // 結果をファイルに保存
@@ -178,7 +178,7 @@ async function optimizeLongSummaries() {
       results
     }, null, 2));
     
-    console.log(`\n📁 詳細な結果を ${resultFile} に保存しました`);
+    console.error(`\n📁 詳細な結果を ${resultFile} に保存しました`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

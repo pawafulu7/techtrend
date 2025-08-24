@@ -2,7 +2,8 @@
  * ソース関連の共通型定義
  */
 
-export type SourceCategory = 'all' | 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
+export type SourceCategory = 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
+export type SourceCategoryWithAll = SourceCategory | 'all';
 
 export interface SourceStats {
   totalArticles: number;

@@ -128,16 +128,16 @@ function cleanHtmlContent(html: string): string {
 async function main() {
   const options = parseArgs();
   
-  console.log('🚀 Dev.to記事コンテンツ更新スクリプト');
-  console.log('================================');
-  console.log(`モード: ${options.dryRun ? 'ドライラン（更新なし）' : '本番実行'}`);
+  console.error('🚀 Dev.to記事コンテンツ更新スクリプト');
+  console.error('================================');
+  console.error(`モード: ${options.dryRun ? 'ドライラン（更新なし）' : '本番実行'}`);
   if (options.limit) {
-    console.log(`処理記事数: ${options.limit}件`);
+    console.error(`処理記事数: ${options.limit}件`);
   }
   if (options.specificId) {
-    console.log(`特定記事ID: ${options.specificId}`);
+    console.error(`特定記事ID: ${options.specificId}`);
   }
-  console.log('================================\n');
+  console.error('================================\n');
 
   try {
     // Dev.toソースのIDを取得
@@ -165,7 +165,7 @@ async function main() {
       take: options.limit
     });
 
-    console.log(`📊 対象記事数: ${articles.length}件\n`);
+    console.error(`📊 対象記事数: ${articles.length}件\n`);
 
     // 統計情報
     let successCount = 0;
@@ -179,44 +179,44 @@ async function main() {
       const article = articles[i];
       const progress = `[${i + 1}/${articles.length}]`;
       
-      console.log(`${progress} 処理中: ${article.title.substring(0, 50)}...`);
+      console.error(`${progress} 処理中: ${article.title.substring(0, 50)}...`);
       
       // URLから記事IDを抽出
       const articleId = extractArticleId(article.url);
       
       if (!articleId) {
-        console.log(`  ⚠️ スキップ: 記事IDを抽出できません`);
+        console.error(`  ⚠️ スキップ: 記事IDを抽出できません`);
         skipCount++;
         continue;
       }
       
-      console.log(`  📄 記事ID: ${articleId}`);
-      console.log(`  📏 現在のコンテンツ長: ${article.content?.length || 0}文字`);
+      console.error(`  📄 記事ID: ${articleId}`);
+      console.error(`  📏 現在のコンテンツ長: ${article.content?.length || 0}文字`);
       
       // API呼び出し
       const result = await fetchArticleContent(articleId);
       
       if (result.error) {
-        console.log(`  ❌ エラー: ${result.error}`);
+        console.error(`  ❌ エラー: ${result.error}`);
         errorCount++;
         
         // Rate limitエラーの場合は長めに待機
         if (result.error.includes('Rate limit')) {
-          console.log(`  ⏰ Rate limit待機中（30秒）...`);
+          console.error(`  ⏰ Rate limit待機中（30秒）...`);
           await delay(30000);
         }
         continue;
       }
       
       if (!result.content) {
-        console.log(`  ⚠️ スキップ: コンテンツが取得できません`);
+        console.error(`  ⚠️ スキップ: コンテンツが取得できません`);
         skipCount++;
         continue;
       }
       
       // コンテンツのクリーンアップ
       const cleanedContent = cleanHtmlContent(result.content);
-      console.log(`  📏 新しいコンテンツ長: ${cleanedContent.length}文字`);
+      console.error(`  📏 新しいコンテンツ長: ${cleanedContent.length}文字`);
       
       // 統計情報の更新
       contentLengthBefore += article.content?.length || 0;
@@ -235,9 +235,9 @@ async function main() {
             summaryVersion: 0  // 0にリセット（再生成が必要）
           }
         });
-        console.log(`  ✅ 更新完了`);
+        console.error(`  ✅ 更新完了`);
       } else {
-        console.log(`  🔍 ドライラン: 更新をスキップ`);
+        console.error(`  🔍 ドライラン: 更新をスキップ`);
       }
       
       successCount++;
@@ -249,21 +249,21 @@ async function main() {
     }
 
     // 結果サマリー
-    console.log('\n================================');
-    console.log('📊 処理結果サマリー');
-    console.log('================================');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`⚠️ スキップ: ${skipCount}件`);
-    console.log(`📏 コンテンツ長（平均）:`);
-    console.log(`   更新前: ${Math.round(contentLengthBefore / articles.length)}文字`);
-    console.log(`   更新後: ${Math.round(contentLengthAfter / successCount)}文字`);
-    console.log(`   改善率: ${Math.round((contentLengthAfter / contentLengthBefore - 1) * 100)}%`);
+    console.error('\n================================');
+    console.error('📊 処理結果サマリー');
+    console.error('================================');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`⚠️ スキップ: ${skipCount}件`);
+    console.error(`📏 コンテンツ長（平均）:`);
+    console.error(`   更新前: ${Math.round(contentLengthBefore / articles.length)}文字`);
+    console.error(`   更新後: ${Math.round(contentLengthAfter / successCount)}文字`);
+    console.error(`   改善率: ${Math.round((contentLengthAfter / contentLengthBefore - 1) * 100)}%`);
     
     if (!options.dryRun && successCount > 0) {
-      console.log('\n💡 次のステップ:');
-      console.log('1. 要約を再生成: npm run scripts:summarize');
-      console.log('2. 品質を確認: npx tsx scripts/check-article-quality.ts');
+      console.error('\n💡 次のステップ:');
+      console.error('1. 要約を再生成: npm run scripts:summarize');
+      console.error('2. 品質を確認: npx tsx scripts/check-article-quality.ts');
     }
 
   } catch (error) {

@@ -116,14 +116,14 @@ async function generateWithClaude(
 }> {
   const startTime = Date.now();
   
-  console.log('\n=== Claude Code要約生成 ===');
+  console.error('\n=== Claude Code要約生成 ===');
   const prompt = claudeHandler.getPromptForArticle(title, content);
-  console.log('プロンプト（最初の300文字）:');
-  console.log(prompt.substring(0, 300) + '...\n');
+  console.error('プロンプト（最初の300文字）:');
+  console.error(prompt.substring(0, 300) + '...\n');
   
-  console.log('Claude Codeで要約を生成してください。');
-  console.log('形式: 要約: / 詳細要約: / タグ:');
-  console.log('入力完了後、空行を2回入力してください。\n');
+  console.error('Claude Codeで要約を生成してください。');
+  console.error('形式: 要約: / 詳細要約: / タグ:');
+  console.error('入力完了後、空行を2回入力してください。\n');
   
   // ユーザー入力を受け取る
   let inputLines: string[] = [];
@@ -208,31 +208,31 @@ function parseGeminiResponse(text: string): {
 
 // 比較結果の表示
 function displayComparison(result: ComparisonResult) {
-  console.log('\n' + '='.repeat(80));
-  console.log(`記事: ${result.title}`);
-  console.log('='.repeat(80));
+  console.error('\n' + '='.repeat(80));
+  console.error(`記事: ${result.title}`);
+  console.error('='.repeat(80));
   
-  console.log('\n--- Gemini ---');
+  console.error('\n--- Gemini ---');
   if (result.gemini.error) {
-    console.log(`エラー: ${result.gemini.error}`);
+    console.error(`エラー: ${result.gemini.error}`);
   } else {
-    console.log(`要約: ${result.gemini.summary}`);
-    console.log(`文字数: ${result.gemini.metrics.summaryLength}`);
-    console.log(`タグ: ${result.gemini.tags.join(', ')}`);
-    console.log(`処理時間: ${result.gemini.metrics.processingTime}ms`);
+    console.error(`要約: ${result.gemini.summary}`);
+    console.error(`文字数: ${result.gemini.metrics.summaryLength}`);
+    console.error(`タグ: ${result.gemini.tags.join(', ')}`);
+    console.error(`処理時間: ${result.gemini.metrics.processingTime}ms`);
   }
   
-  console.log('\n--- Claude ---');
+  console.error('\n--- Claude ---');
   if (result.claude.error) {
-    console.log(`エラー: ${result.claude.error}`);
+    console.error(`エラー: ${result.claude.error}`);
   } else {
-    console.log(`要約: ${result.claude.summary}`);
-    console.log(`文字数: ${result.claude.metrics.summaryLength}`);
-    console.log(`タグ: ${result.claude.tags.join(', ')}`);
-    console.log(`処理時間: ${result.claude.metrics.processingTime}ms`);
+    console.error(`要約: ${result.claude.summary}`);
+    console.error(`文字数: ${result.claude.metrics.summaryLength}`);
+    console.error(`タグ: ${result.claude.tags.join(', ')}`);
+    console.error(`処理時間: ${result.claude.metrics.processingTime}ms`);
   }
   
-  console.log('\n--- 品質評価 ---');
+  console.error('\n--- 品質評価 ---');
   displayQualityComparison(result);
 }
 
@@ -241,14 +241,14 @@ function displayQualityComparison(result: ComparisonResult) {
   const geminiScore = calculateQualityScore(result.gemini.metrics);
   const claudeScore = calculateQualityScore(result.claude.metrics);
   
-  console.log(`Gemini スコア: ${geminiScore}/100`);
-  console.log(`Claude スコア: ${claudeScore}/100`);
+  console.error(`Gemini スコア: ${geminiScore}/100`);
+  console.error(`Claude スコア: ${claudeScore}/100`);
   
   // 詳細比較
-  console.log('\n詳細比較:');
-  console.log(`目標文字数達成: Gemini ${result.gemini.metrics.isWithinTargetLength ? '✓' : '✗'} / Claude ${result.claude.metrics.isWithinTargetLength ? '✓' : '✗'}`);
-  console.log(`句点終了: Gemini ${result.gemini.metrics.hasProperPunctuation ? '✓' : '✗'} / Claude ${result.claude.metrics.hasProperPunctuation ? '✓' : '✗'}`);
-  console.log(`タグ数: Gemini ${result.gemini.metrics.tagCount} / Claude ${result.claude.metrics.tagCount}`);
+  console.error('\n詳細比較:');
+  console.error(`目標文字数達成: Gemini ${result.gemini.metrics.isWithinTargetLength ? '✓' : '✗'} / Claude ${result.claude.metrics.isWithinTargetLength ? '✓' : '✗'}`);
+  console.error(`句点終了: Gemini ${result.gemini.metrics.hasProperPunctuation ? '✓' : '✗'} / Claude ${result.claude.metrics.hasProperPunctuation ? '✓' : '✗'}`);
+  console.error(`タグ数: Gemini ${result.gemini.metrics.tagCount} / Claude ${result.claude.metrics.tagCount}`);
 }
 
 // 品質スコア計算
@@ -286,8 +286,8 @@ function calculateQualityScore(metrics: QualityMetrics): number {
 
 // メイン処理
 async function main() {
-  console.log('🔍 要約品質比較ツール');
-  console.log('=====================\n');
+  console.error('🔍 要約品質比較ツール');
+  console.error('=====================\n');
   
   try {
     // 比較対象の記事を選択
@@ -302,17 +302,17 @@ async function main() {
     });
     
     if (articles.length === 0) {
-      console.log('記事が見つかりません');
+      console.error('記事が見つかりません');
       return;
     }
     
-    console.log(`\n${articles.length}件の記事で比較を開始します...\n`);
+    console.error(`\n${articles.length}件の記事で比較を開始します...\n`);
     
     const results: ComparisonResult[] = [];
     
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i];
-      console.log(`\n[${i + 1}/${articles.length}] ${article.title}`);
+      console.error(`\n[${i + 1}/${articles.length}] ${article.title}`);
       
       const content = article.content || '';
       const result: ComparisonResult = {
@@ -333,7 +333,7 @@ async function main() {
       };
       
       // Gemini生成
-      console.log('\nGeminiで生成中...');
+      console.error('\nGeminiで生成中...');
       try {
         const geminiResult = await generateWithGemini(article.title, content);
         result.gemini = geminiResult;
@@ -343,7 +343,7 @@ async function main() {
       }
       
       // Claude生成
-      console.log('\nClaudeで生成します:');
+      console.error('\nClaudeで生成します:');
       try {
         const claudeResult = await generateWithClaude(article.title, content);
         result.claude = claudeResult;
@@ -357,9 +357,9 @@ async function main() {
     }
     
     // 総合結果
-    console.log('\n' + '='.repeat(80));
-    console.log('総合結果');
-    console.log('='.repeat(80));
+    console.error('\n' + '='.repeat(80));
+    console.error('総合結果');
+    console.error('='.repeat(80));
     
     let geminiTotalScore = 0;
     let claudeTotalScore = 0;
@@ -373,15 +373,15 @@ async function main() {
       }
     });
     
-    console.log(`\nGemini 平均スコア: ${Math.round(geminiTotalScore / results.length)}/100`);
-    console.log(`Claude 平均スコア: ${Math.round(claudeTotalScore / results.length)}/100`);
+    console.error(`\nGemini 平均スコア: ${Math.round(geminiTotalScore / results.length)}/100`);
+    console.error(`Claude 平均スコア: ${Math.round(claudeTotalScore / results.length)}/100`);
     
     if (claudeTotalScore > geminiTotalScore) {
-      console.log('\n✨ Claudeの品質が優れています！');
+      console.error('\n✨ Claudeの品質が優れています！');
     } else if (geminiTotalScore > claudeTotalScore) {
-      console.log('\n📊 Geminiの品質が優れています。');
+      console.error('\n📊 Geminiの品質が優れています。');
     } else {
-      console.log('\n🤝 両者は同等の品質です。');
+      console.error('\n🤝 両者は同等の品質です。');
     }
     
   } catch (error) {

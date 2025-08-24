@@ -5,7 +5,7 @@ import { AIService } from '../lib/ai/ai-service';
 const prisma = new PrismaClient();
 
 async function fixMalformedSummaries() {
-  console.log('🔧 不正な形式の要約を修正中...\n');
+  console.error('🔧 不正な形式の要約を修正中...\n');
   
   try {
     // 環境変数を一時的にGemini APIに設定
@@ -27,7 +27,7 @@ async function fixMalformedSummaries() {
       'cmdrgpeu7000aten2m9z2m7pl'
     ];
     
-    console.log(`処理対象: ${targetIds.length}件\n`);
+    console.error(`処理対象: ${targetIds.length}件\n`);
     
     let successCount = 0;
     let errorCount = 0;
@@ -35,7 +35,7 @@ async function fixMalformedSummaries() {
     for (let i = 0; i < targetIds.length; i++) {
       const articleId = targetIds[i];
       
-      console.log(`\n[${i + 1}/${targetIds.length}] 処理中: ${articleId}`);
+      console.error(`\n[${i + 1}/${targetIds.length}] 処理中: ${articleId}`);
       
       try {
         // 記事を取得
@@ -52,17 +52,17 @@ async function fixMalformedSummaries() {
         });
         
         if (!article) {
-          console.log('❌ 記事が見つかりません');
+          console.error('❌ 記事が見つかりません');
           errorCount++;
           continue;
         }
         
-        console.log(`タイトル: ${article.title?.substring(0, 60)}...`);
+        console.error(`タイトル: ${article.title?.substring(0, 60)}...`);
         
         // コンテンツがない場合はURLから取得を試みる
         let content = article.content;
         if (!content && article.url) {
-          console.log('⚠️ コンテンツがないため、タイトルとURLから生成');
+          console.error('⚠️ コンテンツがないため、タイトルとURLから生成');
           content = `
 記事タイトル: ${article.title}
 記事URL: ${article.url}
@@ -72,12 +72,12 @@ async function fixMalformedSummaries() {
         }
         
         if (!content) {
-          console.log('❌ コンテンツが取得できません');
+          console.error('❌ コンテンツが取得できません');
           errorCount++;
           continue;
         }
         
-        console.log('🌟 Gemini APIで詳細要約を再生成中...');
+        console.error('🌟 Gemini APIで詳細要約を再生成中...');
         const startTime = Date.now();
         
         // 詳細要約を生成
@@ -90,8 +90,8 @@ async function fixMalformedSummaries() {
         
         // 品質チェック
         const newLines = result.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
-        console.log(`生成時間: ${duration}ms`);
-        console.log(`項目数: ${newLines.length}`);
+        console.error(`生成時間: ${duration}ms`);
+        console.error(`項目数: ${newLines.length}`);
         
         // Markdown記法を除去
         const cleanSummary = result.summary
@@ -128,9 +128,9 @@ async function fixMalformedSummaries() {
         });
         
         if (newLines.length === 6) {
-          console.log('✅ 6項目で正常に再生成されました');
+          console.error('✅ 6項目で正常に再生成されました');
         } else {
-          console.log(`✅ ${newLines.length}項目で生成完了`);
+          console.error(`✅ ${newLines.length}項目で生成完了`);
         }
         successCount++;
         
@@ -140,7 +140,7 @@ async function fixMalformedSummaries() {
         
         // レート制限エラーの場合は待機
         if (error.message?.includes('503') || error.message?.includes('overload')) {
-          console.log('⏳ レート制限のため30秒待機...');
+          console.error('⏳ レート制限のため30秒待機...');
           await new Promise(resolve => setTimeout(resolve, 30000));
         }
       }
@@ -149,14 +149,14 @@ async function fixMalformedSummaries() {
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('処理完了');
-    console.log(`成功: ${successCount}件`);
-    console.log(`エラー: ${errorCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('処理完了');
+    console.error(`成功: ${successCount}件`);
+    console.error(`エラー: ${errorCount}件`);
     
     // 修正後の確認
     if (successCount > 0) {
-      console.log('\n📝 修正された記事の確認（最初の1件）');
+      console.error('\n📝 修正された記事の確認（最初の1件）');
       const fixedArticle = await prisma.article.findUnique({
         where: { id: targetIds[0] },
         select: {
@@ -168,16 +168,16 @@ async function fixMalformedSummaries() {
       });
       
       if (fixedArticle) {
-        console.log(`\nID: ${fixedArticle.id}`);
-        console.log(`タイトル: ${fixedArticle.title?.substring(0, 50)}...`);
-        console.log(`\n要約:`, fixedArticle.summary?.substring(0, 100));
+        console.error(`\nID: ${fixedArticle.id}`);
+        console.error(`タイトル: ${fixedArticle.title?.substring(0, 50)}...`);
+        console.error(`\n要約:`, fixedArticle.summary?.substring(0, 100));
         
         const lines = fixedArticle.detailedSummary?.split('\n').filter(l => l.trim().startsWith('・')) || [];
-        console.log(`\n詳細要約の項目数: ${lines.length}`);
+        console.error(`\n詳細要約の項目数: ${lines.length}`);
         
         // Markdown記法のチェック
         const hasMarkdown = fixedArticle.summary?.includes('**') || fixedArticle.summary?.includes('## ');
-        console.log(`Markdown記法: ${hasMarkdown ? '❌ あり' : '✅ なし'}`);
+        console.error(`Markdown記法: ${hasMarkdown ? '❌ あり' : '✅ なし'}`);
       }
     }
     

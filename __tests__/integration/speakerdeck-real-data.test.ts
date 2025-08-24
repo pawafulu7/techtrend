@@ -22,7 +22,7 @@ describe('Speaker Deck Real Data Test', () => {
     });
 
     if (!speakerDeckSource) {
-      console.log('Speaker Deck source not found, skipping test');
+      console.error('Speaker Deck source not found, skipping test');
       return;
     }
 
@@ -31,17 +31,17 @@ describe('Speaker Deck Real Data Test', () => {
       take: 5
     });
 
-    console.log(`\nAnalyzing ${articles.length} Speaker Deck articles:`);
+    console.error(`\nAnalyzing ${articles.length} Speaker Deck articles:`);
     
     articles.forEach(article => {
       const content = article.content || '';
       const analysis = analyzeContent(content, 'Speaker Deck');
       
-      console.log(`\n- Title: ${article.title.substring(0, 50)}...`);
-      console.log(`  Content length: ${content.length}`);
-      console.log(`  Current summary length: ${article.summary?.length || 0}`);
-      console.log(`  Is thin content: ${analysis.isThinContent}`);
-      console.log(`  Recommended: ${analysis.recommendedMinLength}-${analysis.recommendedMaxLength} chars`);
+      console.error(`\n- Title: ${article.title.substring(0, 50)}...`);
+      console.error(`  Content length: ${content.length}`);
+      console.error(`  Current summary length: ${article.summary?.length || 0}`);
+      console.error(`  Is thin content: ${analysis.isThinContent}`);
+      console.error(`  Recommended: ${analysis.recommendedMinLength}-${analysis.recommendedMaxLength} chars`);
       
       // すべてのSpeaker Deck記事は薄いコンテンツとして扱われるべき
       expect(analysis.isThinContent).toBe(true);
@@ -56,7 +56,7 @@ describe('Speaker Deck Real Data Test', () => {
     });
 
     if (!speakerDeckSource) {
-      console.log('Speaker Deck source not found, skipping test');
+      console.error('Speaker Deck source not found, skipping test');
       return;
     }
 
@@ -65,7 +65,7 @@ describe('Speaker Deck Real Data Test', () => {
     });
 
     if (!article) {
-      console.log('No Speaker Deck articles found, skipping test');
+      console.error('No Speaker Deck articles found, skipping test');
       return;
     }
 
@@ -80,8 +80,8 @@ describe('Speaker Deck Real Data Test', () => {
     expect(prompt).toContain('推測や一般論での補完は絶対に禁止');
     expect(prompt).toContain('最小60文字、最大100文字程度');
     
-    console.log('\nGenerated prompt preview:');
-    console.log(prompt.substring(0, 300) + '...');
+    console.error('\nGenerated prompt preview:');
+    console.error(prompt.substring(0, 300) + '...');
   });
 
   it('should identify content length issues in existing summaries', async () => {
@@ -90,7 +90,7 @@ describe('Speaker Deck Real Data Test', () => {
     });
 
     if (!speakerDeckSource) {
-      console.log('Speaker Deck source not found, skipping test');
+      console.error('Speaker Deck source not found, skipping test');
       return;
     }
 
@@ -132,11 +132,11 @@ describe('Speaker Deck Real Data Test', () => {
       }
     });
 
-    console.log(`\n\nFound ${issueCount} issues in ${articles.length} articles:`);
+    console.error(`\n\nFound ${issueCount} issues in ${articles.length} articles:`);
     issues.forEach(issue => {
-      console.log(`\n- ${issue.title}...`);
-      console.log(`  Issue: ${issue.issue}`);
-      console.log(`  Content: ${issue.contentLength} chars, Summary: ${issue.summaryLength} chars`);
+      console.error(`\n- ${issue.title}...`);
+      console.error(`  Issue: ${issue.issue}`);
+      console.error(`  Content: ${issue.contentLength} chars, Summary: ${issue.summaryLength} chars`);
     });
 
     // 現状では多くの記事が問題を抱えている可能性がある

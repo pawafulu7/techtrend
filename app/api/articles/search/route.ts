@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     const searchResult = await searchCache.getOrSet(
       cacheKey,
       async () => {
-        console.log(`[Search API] Cache miss for key: ${cacheKey}`);
+        console.error(`[Search API] Cache miss for key: ${cacheKey}`);
         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let articles: any[] = [];
@@ -222,7 +222,7 @@ export async function GET(request: NextRequest) {
       `
     ]);
 
-        console.log('[Search API] Data fetched and cached successfully');
+        console.error('[Search API] Data fetched and cached successfully');
         return {
           articles,
           totalCount,
@@ -246,7 +246,7 @@ export async function GET(request: NextRequest) {
 
     // キャッシュ統計をログ出力
     const cacheStats = searchCache.getSearchStats();
-    console.log('[Search API] Cache stats:', cacheStats);
+    console.error('[Search API] Cache stats:', cacheStats);
 
     return NextResponse.json({
       ...searchResult,

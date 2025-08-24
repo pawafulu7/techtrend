@@ -141,7 +141,7 @@ test.describe('リーディングリスト機能', () => {
       expect(parsedData.length).toBeGreaterThan(0);
     } else {
       // 機能が未実装の場合はスキップ
-      console.log('リーディングリスト機能が未実装の可能性があります');
+      console.error('リーディングリスト機能が未実装の可能性があります');
     }
     
     // 保存されたデータの構造を確認
@@ -193,7 +193,7 @@ test.describe('リーディングリスト機能', () => {
     if (savedAfter && savedAfter.length > 0) {
       expect(savedAfter.length).toBeGreaterThan(0);
     } else {
-      console.log('リーディングリスト機能が未実装またはデータが保存されていません');
+      console.error('リーディングリスト機能が未実装またはデータが保存されていません');
     }
     
     // ホームに戻る
@@ -251,7 +251,7 @@ test.describe('リーディングリスト機能', () => {
       await waitForPageLoad(page);
     } catch (error) {
       // フォールバック処理
-      console.log('Reading list navigation failed, retrying...');
+      console.error('Reading list navigation failed, retrying...');
       await page.goto('/', { waitUntil: 'domcontentloaded' });
       await page.click('a[href*="reading"]', { timeout: 5000 }).catch(() => {
         // リンクが見つからない場合は直接URLへ

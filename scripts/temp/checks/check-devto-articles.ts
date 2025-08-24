@@ -24,19 +24,19 @@ async function checkDevtoArticles() {
     take: 10
   });
   
-  console.log('📊 Dev.toの直近10件の記事');
-  console.log('='.repeat(80));
-  console.log('取得件数: ' + articles.length + '件\n');
+  console.error('📊 Dev.toの直近10件の記事');
+  console.error('='.repeat(80));
+  console.error('取得件数: ' + articles.length + '件\n');
   
   articles.forEach((article, i) => {
-    console.log('\n' + '='.repeat(60));
-    console.log('[' + (i + 1) + '] ID: ' + article.id);
-    console.log('作成日: ' + article.createdAt.toISOString());
-    console.log('更新日: ' + article.updatedAt.toISOString());
-    console.log('タイトル: ' + (article.title?.substring(0, 50) || '') + '...');
+    console.error('\n' + '='.repeat(60));
+    console.error('[' + (i + 1) + '] ID: ' + article.id);
+    console.error('作成日: ' + article.createdAt.toISOString());
+    console.error('更新日: ' + article.updatedAt.toISOString());
+    console.error('タイトル: ' + (article.title?.substring(0, 50) || '') + '...');
     
-    console.log('\n📝 要約:');
-    console.log(article.summary || '(なし)');
+    console.error('\n📝 要約:');
+    console.error(article.summary || '(なし)');
     
     // 要約の問題分析
     const summaryIssues = [];
@@ -57,28 +57,28 @@ async function checkDevtoArticles() {
       }
     }
     
-    console.log('\n📋 詳細要約:');
+    console.error('\n📋 詳細要約:');
     if (article.detailedSummary) {
       const lines = article.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
-      console.log('項目数: ' + lines.length);
+      console.error('項目数: ' + lines.length);
       
       // 最初の2項目だけ表示
       lines.slice(0, 2).forEach(line => {
-        console.log(line.substring(0, 80) + '...');
+        console.error(line.substring(0, 80) + '...');
       });
       
       if (lines.length < 5) {
         summaryIssues.push('詳細要約不完全(' + lines.length + '項目)');
       }
     } else {
-      console.log('(なし)');
+      console.error('(なし)');
       summaryIssues.push('詳細要約なし');
     }
     
     if (summaryIssues.length > 0) {
-      console.log('\n⚠️ 問題: ' + summaryIssues.join(', '));
+      console.error('\n⚠️ 問題: ' + summaryIssues.join(', '));
     } else {
-      console.log('\n✅ 問題なし');
+      console.error('\n✅ 問題なし');
     }
   });
   
@@ -94,9 +94,9 @@ async function checkDevtoArticles() {
     .map(a => a.id);
   
   if (problematicIds.length > 0) {
-    console.log('\n' + '='.repeat(60));
-    console.log('\n🚨 問題のある記事ID:');
-    console.log(JSON.stringify(problematicIds, null, 2));
+    console.error('\n' + '='.repeat(60));
+    console.error('\n🚨 問題のある記事ID:');
+    console.error(JSON.stringify(problematicIds, null, 2));
   }
   
   await prisma.$disconnect();

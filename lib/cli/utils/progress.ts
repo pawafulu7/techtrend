@@ -18,7 +18,7 @@ export class ProgressBar {
   
   complete(message?: string) {
     this.update(this.total);
-    console.log(message ? `\n${message}` : '\n');
+    console.error(message ? `\n${message}` : '\n');
   }
   
   clear() {

@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio';
 async function getSpeakerDeckUrl() {
   const listUrl = 'https://speakerdeck.com/c/programming?lang=ja&page=1';
   
-  console.log(`トレンドページ: ${listUrl}\n`);
+  console.error(`トレンドページ: ${listUrl}\n`);
   
   try {
     const response = await fetch(listUrl, {
@@ -21,7 +21,7 @@ async function getSpeakerDeckUrl() {
     const html = await response.text();
     const $ = cheerio.load(html);
     
-    console.log('=== 最初の5件のプレゼンテーション ===\n');
+    console.error('=== 最初の5件のプレゼンテーション ===\n');
     
     let count = 0;
     $('.deck-preview').each((index, element) => {
@@ -39,17 +39,17 @@ async function getSpeakerDeckUrl() {
       if (!hasJapanese) return;
       
       const fullUrl = `https://speakerdeck.com${href}`;
-      console.log(`${count + 1}. ${title}`);
-      console.log(`   URL: ${fullUrl}`);
+      console.error(`${count + 1}. ${title}`);
+      console.error(`   URL: ${fullUrl}`);
       
       // Views数も取得
       const viewsElement = $item.find('span[title*="views"]');
       const viewsTitle = viewsElement.attr('title');
       if (viewsTitle) {
-        console.log(`   Views: ${viewsTitle}`);
+        console.error(`   Views: ${viewsTitle}`);
       }
       
-      console.log('');
+      console.error('');
       count++;
     });
     

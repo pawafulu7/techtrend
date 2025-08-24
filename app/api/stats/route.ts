@@ -11,7 +11,7 @@ export async function GET() {
     const stats = await statsCache.getOrSet(
       cacheKey,
       async () => {
-        console.log('[Stats API] Cache miss - fetching from database');
+        console.error('[Stats API] Cache miss - fetching from database');
         
         // 記事の統計情報を取得
         const [
@@ -125,14 +125,14 @@ export async function GET() {
           })),
         };
 
-        console.log('[Stats API] Data fetched and cached successfully');
+        console.error('[Stats API] Data fetched and cached successfully');
         return formattedStats;
       }
     );
 
     // キャッシュ統計をログ出力
     const cacheStats = statsCache.getStats();
-    console.log('[Stats API] Cache stats:', cacheStats);
+    console.error('[Stats API] Cache stats:', cacheStats);
 
     return NextResponse.json({
       success: true,

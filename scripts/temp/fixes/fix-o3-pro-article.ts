@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 async function fixO3ProArticle() {
   const articleId = 'cme2nni77000gte7cvxdgpxmz';
   
-  console.log(`🔧 記事 ${articleId} の要約を修正\n`);
+  console.error(`🔧 記事 ${articleId} の要約を修正\n`);
   
   try {
     // 記事を取得
@@ -30,12 +30,12 @@ async function fixO3ProArticle() {
       return;
     }
     
-    console.log('📝 記事情報:');
-    console.log(`タイトル: ${article.title}`);
-    console.log(`ソース: ${article.source?.name}`);
-    console.log(`URL: ${article.url}`);
-    console.log(`\n現在の一覧要約: ${article.summary}`);
-    console.log(`文字数: ${article.summary?.length || 0}`);
+    console.error('📝 記事情報:');
+    console.error(`タイトル: ${article.title}`);
+    console.error(`ソース: ${article.source?.name}`);
+    console.error(`URL: ${article.url}`);
+    console.error(`\n現在の一覧要約: ${article.summary}`);
+    console.error(`文字数: ${article.summary?.length || 0}`);
     
     // 問題を分析
     const problems = [];
@@ -50,7 +50,7 @@ async function fixO3ProArticle() {
     }
     
     if (problems.length > 0) {
-      console.log(`\n⚠️ 検出された問題: ${problems.join(', ')}`);
+      console.error(`\n⚠️ 検出された問題: ${problems.join(', ')}`);
     }
     
     // ローカルLLMクライアントを初期化
@@ -68,7 +68,7 @@ async function fixO3ProArticle() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     // 実際の記事内容に基づいてコンテンツを準備
     const content = `
@@ -104,7 +104,7 @@ ${article.content || 'コンテンツなし'}
 4. 詳細要約の第1項目は必ず「記事の主題は」で始める
     `.trim();
     
-    console.log('🔄 要約を生成中...');
+    console.error('🔄 要約を生成中...');
     
     const result = await localLLM.generateDetailedSummary(
       article.title || '',
@@ -128,12 +128,12 @@ ${article.content || 'コンテンツなし'}
       cleanedSummary = cleanedSummary.substring(0, 117) + '...';
     }
     
-    console.log('\n生成された新しい要約:');
-    console.log(`一覧要約: ${cleanedSummary}`);
-    console.log(`文字数: ${cleanedSummary.length}`);
-    console.log(`\n詳細要約（最初の3行）:`);
+    console.error('\n生成された新しい要約:');
+    console.error(`一覧要約: ${cleanedSummary}`);
+    console.error(`文字数: ${cleanedSummary.length}`);
+    console.error(`\n詳細要約（最初の3行）:`);
     const newLines = cleanedDetailedSummary.split('\n').slice(0, 3);
-    newLines.forEach(line => console.log(line));
+    newLines.forEach(line => console.error(line));
     
     // 品質チェック
     const japaneseChars = (cleanedSummary.match(/[ぁ-んァ-ヶー一-龠々]/g) || []).length;
@@ -174,7 +174,7 @@ ${article.content || 'コンテンツなし'}
         }
       });
       
-      console.log('\n✅ 要約を更新しました');
+      console.error('\n✅ 要約を更新しました');
     } else {
       const failedChecks = [];
       if (!isJapanese) failedChecks.push('日本語率不足');
@@ -182,7 +182,7 @@ ${article.content || 'コンテンツなし'}
       if (!noProblems) failedChecks.push('フォーマット問題');
       if (!hasProperTechnicalBackground) failedChecks.push('技術的背景なし');
       if (!hasEnoughItems) failedChecks.push('項目数不足');
-      console.log(`\n⚠️ 品質チェック失敗: ${failedChecks.join(', ')}`);
+      console.error(`\n⚠️ 品質チェック失敗: ${failedChecks.join(', ')}`);
     }
     
   } catch (error) {

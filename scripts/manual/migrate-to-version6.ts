@@ -107,29 +107,29 @@ function displayStats(stats: ProcessStats) {
   const elapsed = (Date.now() - stats.startTime) / 1000;
   const avgTime = stats.processed > 0 ? elapsed / stats.processed : 0;
   
-  console.log('\n📊 処理統計:');
-  console.log(`  対象記事数: ${stats.totalTargets}`);
-  console.log(`  処理済み: ${stats.processed}`);
-  console.log(`  改善: ${stats.improved}`);
-  console.log(`  変更なし: ${stats.unchanged}`);
-  console.log(`  失敗: ${stats.failed}`);
-  console.log(`  経過時間: ${elapsed.toFixed(1)}秒`);
-  console.log(`  平均処理時間: ${avgTime.toFixed(1)}秒/記事`);
+  console.error('\n📊 処理統計:');
+  console.error(`  対象記事数: ${stats.totalTargets}`);
+  console.error(`  処理済み: ${stats.processed}`);
+  console.error(`  改善: ${stats.improved}`);
+  console.error(`  変更なし: ${stats.unchanged}`);
+  console.error(`  失敗: ${stats.failed}`);
+  console.error(`  経過時間: ${elapsed.toFixed(1)}秒`);
+  console.error(`  平均処理時間: ${avgTime.toFixed(1)}秒/記事`);
   
   if (stats.detailedSummaryLengths.length > 0) {
     const avgLength = stats.detailedSummaryLengths.reduce((a, b) => a + b, 0) / stats.detailedSummaryLengths.length;
     const minLength = Math.min(...stats.detailedSummaryLengths);
     const maxLength = Math.max(...stats.detailedSummaryLengths);
-    console.log(`  詳細要約文字数 - 平均: ${avgLength.toFixed(0)}, 最小: ${minLength}, 最大: ${maxLength}`);
+    console.error(`  詳細要約文字数 - 平均: ${avgLength.toFixed(0)}, 最小: ${minLength}, 最大: ${maxLength}`);
   }
 }
 
 async function main() {
-  console.log('🚀 summaryVersion 6への移行を開始します');
-  console.log(`📋 設定: priority=${priority}, limit=${maxArticles || '無制限'}, dryRun=${isDryRun}`);
+  console.error('🚀 summaryVersion 6への移行を開始します');
+  console.error(`📋 設定: priority=${priority}, limit=${maxArticles || '無制限'}, dryRun=${isDryRun}`);
   
   if (isDryRun) {
-    console.log('⚠️  ドライランモード: 実際の更新は行いません');
+    console.error('⚠️  ドライランモード: 実際の更新は行いません');
   }
   
   const stats: ProcessStats = {
@@ -148,25 +148,25 @@ async function main() {
     stats.totalTargets = articles.length;
     
     if (articles.length === 0) {
-      console.log('✅ 処理対象の記事がありません');
+      console.error('✅ 処理対象の記事がありません');
       return;
     }
     
-    console.log(`📝 ${articles.length}件の記事を処理します`);
+    console.error(`📝 ${articles.length}件の記事を処理します`);
     
     // コンテンツ長対応サービスを取得
     const service = getContentAwareSummaryService();
     
     for (const [index, article] of articles.entries()) {
       const progress = `[${index + 1}/${articles.length}]`;
-      console.log(`\n${progress} 処理中: ${article.title.substring(0, 50)}...`);
+      console.error(`\n${progress} 処理中: ${article.title.substring(0, 50)}...`);
       
       // 現在の品質を確認
       const currentDetailedLength = article.detailedSummary?.length || 0;
-      console.log(`  現在の詳細要約: ${currentDetailedLength}文字, version=${article.summaryVersion || 'null'}`);
+      console.error(`  現在の詳細要約: ${currentDetailedLength}文字, version=${article.summaryVersion || 'null'}`);
       
       if (isDryRun) {
-        console.log('  [DRY RUN] スキップ');
+        console.error('  [DRY RUN] スキップ');
         stats.processed++;
         continue;
       }
@@ -233,10 +233,10 @@ async function main() {
         // 統計更新
         if (newDetailedLength > currentDetailedLength) {
           stats.improved++;
-          console.log(`  ✅ 改善: ${currentDetailedLength}文字 → ${newDetailedLength}文字`);
+          console.error(`  ✅ 改善: ${currentDetailedLength}文字 → ${newDetailedLength}文字`);
         } else {
           stats.unchanged++;
-          console.log(`  ➖ 変更なし: ${newDetailedLength}文字`);
+          console.error(`  ➖ 変更なし: ${newDetailedLength}文字`);
         }
         
         stats.processed++;
@@ -244,13 +244,13 @@ async function main() {
         // API負荷軽減のため間隔を空ける
         if (index < articles.length - 1) {
           const waitTime = 5000; // 5秒
-          console.log(`  ⏳ ${waitTime / 1000}秒待機...`);
+          console.error(`  ⏳ ${waitTime / 1000}秒待機...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
         
         // 100件ごとに長めの休憩
         if (stats.processed % 100 === 0 && index < articles.length - 1) {
-          console.log('\n🔄 100件処理完了。30秒の長期待機...');
+          console.error('\n🔄 100件処理完了。30秒の長期待機...');
           displayStats(stats);
           await new Promise(resolve => setTimeout(resolve, 30000));
         }
@@ -261,7 +261,7 @@ async function main() {
         
         // Rate Limitエラーの場合は長めに待機
         if (error instanceof Error && error.message.includes('429')) {
-          console.log('  ⚠️  Rate Limit検出。60秒待機...');
+          console.error('  ⚠️  Rate Limit検出。60秒待機...');
           await new Promise(resolve => setTimeout(resolve, 60000));
         }
       }
@@ -285,11 +285,11 @@ async function main() {
       });
       
       if (remaining > 0) {
-        console.log(`\n📝 残り${remaining}件の記事がversion 6への移行を待っています`);
-        console.log('継続するには以下のコマンドを実行してください:');
-        console.log('npm run migrate:version6 -- --continue');
+        console.error(`\n📝 残り${remaining}件の記事がversion 6への移行を待っています`);
+        console.error('継続するには以下のコマンドを実行してください:');
+        console.error('npm run migrate:version6 -- --continue');
       } else {
-        console.log('\n✅ すべての記事がversion 6に移行されました！');
+        console.error('\n✅ すべての記事がversion 6に移行されました！');
       }
     }
     
@@ -299,7 +299,7 @@ async function main() {
 
 // エラーハンドリング
 process.on('SIGINT', async () => {
-  console.log('\n⚠️  処理を中断しました');
+  console.error('\n⚠️  処理を中断しました');
   await prisma.$disconnect();
   process.exit(0);
 });

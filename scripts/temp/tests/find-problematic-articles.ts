@@ -17,8 +17,8 @@ async function findProblematicArticles() {
     take: 500  // 直近500件をチェック
   });
   
-  console.log('🔍 問題のある記事を検索中...');
-  console.log('検査対象: ' + allArticles.length + '件\n');
+  console.error('🔍 問題のある記事を検索中...');
+  console.error('検査対象: ' + allArticles.length + '件\n');
   
   const problematicArticles: any[] = [];
   
@@ -61,8 +61,8 @@ async function findProblematicArticles() {
     }
   });
   
-  console.log('='.repeat(80));
-  console.log('問題のある記事: ' + problematicArticles.length + '件\n');
+  console.error('='.repeat(80));
+  console.error('問題のある記事: ' + problematicArticles.length + '件\n');
   
   // 問題別に集計
   const issueTypes: Record<string, number> = {};
@@ -75,26 +75,26 @@ async function findProblematicArticles() {
     });
   });
   
-  console.log('問題の内訳:');
+  console.error('問題の内訳:');
   Object.entries(issueTypes).forEach(([issue, count]) => {
-    console.log('- ' + issue + ': ' + count + '件');
+    console.error('- ' + issue + ': ' + count + '件');
   });
   
   // 最初の20件を表示
-  console.log('\n最初の20件:');
+  console.error('\n最初の20件:');
   problematicArticles.slice(0, 20).forEach((article, i) => {
-    console.log((i + 1) + '. ' + article.id);
-    console.log('   ' + article.title + '...');
-    console.log('   問題: ' + article.issues.join(', '));
+    console.error((i + 1) + '. ' + article.id);
+    console.error('   ' + article.title + '...');
+    console.error('   問題: ' + article.issues.join(', '));
     if (article.summary) {
-      console.log('   要約: ' + article.summary + '...');
+      console.error('   要約: ' + article.summary + '...');
     }
-    console.log();
+    console.error();
   });
   
   // IDリストを出力（処理用）
-  console.log('\n処理対象IDリスト（最初の30件）:');
-  console.log(JSON.stringify(problematicArticles.slice(0, 30).map(a => a.id), null, 2));
+  console.error('\n処理対象IDリスト（最初の30件）:');
+  console.error(JSON.stringify(problematicArticles.slice(0, 30).map(a => a.id), null, 2));
   
   await prisma.$disconnect();
 }

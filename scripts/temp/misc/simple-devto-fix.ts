@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function simpleDevtoFix() {
-  console.log('🔧 Dev.to記事の簡易修正（プレフィックス除去と形式調整）\n');
+  console.error('🔧 Dev.to記事の簡易修正（プレフィックス除去と形式調整）\n');
   
   try {
     const articles = await prisma.article.findMany({
@@ -18,7 +18,7 @@ async function simpleDevtoFix() {
       }
     });
     
-    console.log(`Dev.to記事総数: ${articles.length}件\n`);
+    console.error(`Dev.to記事総数: ${articles.length}件\n`);
     
     let updateCount = 0;
     
@@ -134,7 +134,7 @@ async function simpleDevtoFix() {
           updateCount++;
           
           if (updateCount % 10 === 0) {
-            console.log(`✅ ${updateCount}件修正完了`);
+            console.error(`✅ ${updateCount}件修正完了`);
           }
         } catch (error) {
           console.error(`❌ エラー (${article.id}): ${error}`);
@@ -142,10 +142,10 @@ async function simpleDevtoFix() {
       }
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('🎉 処理完了');
-    console.log(`✅ 修正した記事: ${updateCount}件`);
-    console.log(`📊 修正率: ${(updateCount / articles.length * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error('🎉 処理完了');
+    console.error(`✅ 修正した記事: ${updateCount}件`);
+    console.error(`📊 修正率: ${(updateCount / articles.length * 100).toFixed(1)}%`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

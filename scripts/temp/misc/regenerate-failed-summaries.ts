@@ -6,7 +6,7 @@ import { AIService } from '../lib/ai/ai-service';
 const prisma = new PrismaClient();
 
 async function regenerateFailedSummaries() {
-  console.log('🔍 詳細要約の生成に失敗している記事を検索中...\n');
+  console.error('🔍 詳細要約の生成に失敗している記事を検索中...\n');
   
   try {
     // ローカルLLMクライアントを初期化
@@ -23,9 +23,9 @@ async function regenerateFailedSummaries() {
     const useLocalLLM = connected;
     
     if (useLocalLLM) {
-      console.log('✅ ローカルLLMサーバー接続成功\n');
+      console.error('✅ ローカルLLMサーバー接続成功\n');
     } else {
-      console.log('⚠️ ローカルLLM未接続、Gemini APIを使用します\n');
+      console.error('⚠️ ローカルLLM未接続、Gemini APIを使用します\n');
     }
     
     // Gemini APIサービス（フォールバック用）
@@ -84,16 +84,16 @@ async function regenerateFailedSummaries() {
       new Map(failedArticles.map(a => [a.id, a])).values()
     );
     
-    console.log(`詳細要約が失敗している記事: ${uniqueArticles.length}件\n`);
+    console.error(`詳細要約が失敗している記事: ${uniqueArticles.length}件\n`);
     
     if (uniqueArticles.length === 0) {
-      console.log('✅ すべての記事に詳細要約があります');
+      console.error('✅ すべての記事に詳細要約があります');
       return;
     }
     
     // 処理数を制限（最大10件）
     const targetArticles = uniqueArticles.slice(0, 10);
-    console.log(`処理対象: ${targetArticles.length}件\n`);
+    console.error(`処理対象: ${targetArticles.length}件\n`);
     
     let successCount = 0;
     let skipCount = 0;
@@ -102,34 +102,34 @@ async function regenerateFailedSummaries() {
     for (let i = 0; i < targetArticles.length; i++) {
       const article = targetArticles[i];
       
-      console.log(`\n[${i + 1}/${targetArticles.length}] 処理中: ${article.id}`);
-      console.log(`タイトル: ${article.title?.substring(0, 60)}...`);
-      console.log(`公開日: ${article.publishedAt?.toISOString()}`);
+      console.error(`\n[${i + 1}/${targetArticles.length}] 処理中: ${article.id}`);
+      console.error(`タイトル: ${article.title?.substring(0, 60)}...`);
+      console.error(`公開日: ${article.publishedAt?.toISOString()}`);
       
       if (!article.content) {
-        console.log('⚠️ コンテンツがないためスキップ');
+        console.error('⚠️ コンテンツがないためスキップ');
         skipCount++;
         continue;
       }
       
-      console.log(`コンテンツ長: ${article.content.length}文字`);
+      console.error(`コンテンツ長: ${article.content.length}文字`);
       
       try {
         let result;
         
         if (useLocalLLM && article.content.length > 50) {
           // ローカルLLMを優先使用（短すぎる記事は除外）
-          console.log('🤖 ローカルLLMで生成中...');
+          console.error('🤖 ローカルLLMで生成中...');
           const startTime = Date.now();
           result = await localLLM.generateDetailedSummary(
             article.title || '',
             article.content
           );
           const duration = Date.now() - startTime;
-          console.log(`生成時間: ${duration}ms`);
+          console.error(`生成時間: ${duration}ms`);
         } else {
           // Gemini APIを使用
-          console.log('🌟 Gemini APIで生成中...');
+          console.error('🌟 Gemini APIで生成中...');
           result = await aiService.generateDetailedSummary(
             article.title || '',
             article.content
@@ -138,7 +138,7 @@ async function regenerateFailedSummaries() {
         
         // 品質チェック
         const newLines = result.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
-        console.log(`項目数: ${newLines.length}`);
+        console.error(`項目数: ${newLines.length}`);
         
         if (newLines.length >= 3) {
           // タグを準備
@@ -170,13 +170,13 @@ async function regenerateFailedSummaries() {
           });
           
           if (newLines.length === 6) {
-            console.log('✅ 6項目で正常に生成されました');
+            console.error('✅ 6項目で正常に生成されました');
           } else {
-            console.log(`✅ ${newLines.length}項目で生成完了`);
+            console.error(`✅ ${newLines.length}項目で生成完了`);
           }
           successCount++;
         } else {
-          console.log('⚠️ 生成された項目数が少なすぎます');
+          console.error('⚠️ 生成された項目数が少なすぎます');
           errorCount++;
         }
         
@@ -186,7 +186,7 @@ async function regenerateFailedSummaries() {
         
         // レート制限エラーの場合は待機
         if (error.message?.includes('503') || error.message?.includes('overload')) {
-          console.log('⏳ レート制限のため30秒待機...');
+          console.error('⏳ レート制限のため30秒待機...');
           await new Promise(resolve => setTimeout(resolve, 30000));
         }
       }
@@ -195,12 +195,12 @@ async function regenerateFailedSummaries() {
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('処理完了');
-    console.log(`成功: ${successCount}件`);
-    console.log(`スキップ: ${skipCount}件`);
-    console.log(`エラー: ${errorCount}件`);
-    console.log(`残り: ${uniqueArticles.length - targetArticles.length}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('処理完了');
+    console.error(`成功: ${successCount}件`);
+    console.error(`スキップ: ${skipCount}件`);
+    console.error(`エラー: ${errorCount}件`);
+    console.error(`残り: ${uniqueArticles.length - targetArticles.length}件`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

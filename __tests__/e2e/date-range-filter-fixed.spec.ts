@@ -155,7 +155,7 @@ test.describe('Date Range Filter - Fixed', () => {
       expect(page.url()).toContain('dateRange=week');
     } else {
       // Mobile filter may not have date range filter
-      console.log('Date range filter not found in mobile view');
+      console.error('Date range filter not found in mobile view');
     }
   });
 });

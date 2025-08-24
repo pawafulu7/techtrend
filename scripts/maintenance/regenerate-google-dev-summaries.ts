@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 const summaryService = new UnifiedSummaryService();
 
 async function regenerateSummaries() {
-  console.log('=== Google Developers Blog要約再生成 ===');
+  console.error('=== Google Developers Blog要約再生成 ===');
   
   try {
     // 要約が不完全な記事を取得
@@ -34,18 +34,18 @@ async function regenerateSummaries() {
       }
     });
     
-    console.log(`要約再生成が必要な記事: ${articles.length}件`);
+    console.error(`要約再生成が必要な記事: ${articles.length}件`);
     
     let successCount = 0;
     let failedCount = 0;
     
     for (const article of articles) {
       try {
-        console.log(`\n生成中: ${article.title}`);
-        console.log(`コンテンツ長: ${article.content?.length || 0}文字`);
+        console.error(`\n生成中: ${article.title}`);
+        console.error(`コンテンツ長: ${article.content?.length || 0}文字`);
         
         if (!article.content || article.content.length < 100) {
-          console.log('⚠️ コンテンツが不十分のためスキップ');
+          console.error('⚠️ コンテンツが不十分のためスキップ');
           failedCount++;
           continue;
         }
@@ -68,12 +68,12 @@ async function regenerateSummaries() {
             }
           });
           
-          console.log('✅ 要約生成成功');
-          console.log(`  一覧要約: ${result.summary.length}文字`);
-          console.log(`  詳細要約: ${result.detailedSummary.length}文字`);
+          console.error('✅ 要約生成成功');
+          console.error(`  一覧要約: ${result.summary.length}文字`);
+          console.error(`  詳細要約: ${result.detailedSummary.length}文字`);
           successCount++;
         } else {
-          console.log('❌ 要約生成失敗');
+          console.error('❌ 要約生成失敗');
           failedCount++;
         }
         
@@ -86,15 +86,15 @@ async function regenerateSummaries() {
         
         // Rate limitエラーの場合は長めに待機
         if (error instanceof Error && error.message.includes('429')) {
-          console.log('⏳ Rate limit検出。60秒待機...');
+          console.error('⏳ Rate limit検出。60秒待機...');
           await new Promise(resolve => setTimeout(resolve, 60000));
         }
       }
     }
     
-    console.log('\n=== 要約再生成完了 ===');
-    console.log(`成功: ${successCount}件`);
-    console.log(`失敗: ${failedCount}件`);
+    console.error('\n=== 要約再生成完了 ===');
+    console.error(`成功: ${successCount}件`);
+    console.error(`失敗: ${failedCount}件`);
     
   } catch (error) {
     console.error('要約再生成失敗:', error);
