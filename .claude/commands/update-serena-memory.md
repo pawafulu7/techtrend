@@ -4,7 +4,7 @@
 
 以下の手順で実行：
 
-1. まず現在のSerenaメモリ一覧を確認する
+1. まず現在のSerenaメモリ一覧を確認し、本日の日付を取得する
 2. プロジェクト構造の最新情報を収集：
    - ディレクトリ構造の確認（lib/, scripts/, app/, components/）
    - 主要ファイルの更新状況確認
@@ -20,7 +20,7 @@
    - TypeScriptエラーの確認
    - テストカバレッジの状況
 
-5. 収集した情報をもとに、以下のSerenaメモリを更新：
+5. 収集した情報をもとに、以下のSerenaメモリを更、本日の日付を正確に指定すること：
    - techtrend_project_overview_[YYYYMM]
    - techtrend_recent_improvements_[YYYYMM]
    - 必要に応じて新しいメモリを作成
