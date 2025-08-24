@@ -1,16 +1,29 @@
 // next-auth コアモック
 import { jest } from '@jest/globals';
 
-// NextAuth メインエクスポート
-export default jest.fn(() => ({
-  auth: jest.fn().mockResolvedValue(null),
-  signIn: jest.fn().mockResolvedValue({ success: true }),
-  signOut: jest.fn().mockResolvedValue({ success: true }),
+// Mock types
+type MockAuth = () => {
+  auth: jest.Mock;
+  signIn: jest.Mock;
+  signOut: jest.Mock;
   handlers: {
-    GET: jest.fn(),
-    POST: jest.fn(),
+    GET: jest.Mock;
+    POST: jest.Mock;
+  };
+};
+
+// NextAuth メインエクスポート
+const mockNextAuth: MockAuth = jest.fn(() => ({
+  auth: jest.fn().mockResolvedValue(null) as jest.Mock,
+  signIn: jest.fn().mockResolvedValue({ success: true }) as jest.Mock,
+  signOut: jest.fn().mockResolvedValue({ success: true }) as jest.Mock,
+  handlers: {
+    GET: jest.fn() as jest.Mock,
+    POST: jest.fn() as jest.Mock,
   },
-}));
+})) as unknown as MockAuth;
+
+export default mockNextAuth;
 
 // NextAuthOptions タイプ
 export interface NextAuthOptions {
@@ -36,14 +49,14 @@ export const AuthOptions: NextAuthOptions = {
 };
 
 // getServerSession モック
-export const getServerSession = jest.fn().mockResolvedValue(null);
+export const getServerSession = jest.fn().mockResolvedValue(null) as jest.Mock;
 
 // JWT関連
-export const encode = jest.fn().mockResolvedValue('mock-jwt-token');
+export const encode = jest.fn().mockResolvedValue('mock-jwt-token') as jest.Mock;
 export const decode = jest.fn().mockResolvedValue({ 
   sub: 'user-id',
   email: 'test@example.com' 
-});
+}) as jest.Mock;
 
 // アダプター関連のモック
 export const PrismaAdapter = jest.fn(() => ({

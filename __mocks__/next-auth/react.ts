@@ -30,12 +30,12 @@ export const signIn = jest.fn().mockResolvedValue({
   error: undefined,
   status: 200,
   url: null 
-});
+}) as jest.Mock;
 
 // signOut モック
 export const signOut = jest.fn().mockResolvedValue({ 
   url: '/' 
-});
+}) as jest.Mock;
 
 // SessionProvider モック
 export const SessionProvider = ({ children }: { children: React.ReactNode }) => children;
@@ -62,7 +62,7 @@ export const getProviders = jest.fn().mockResolvedValue({
     signinUrl: '/api/auth/signin/github',
     callbackUrl: '/api/auth/callback/github',
   },
-});
+}) as jest.Mock;
 
 // getSession モック
-export const getSession = jest.fn().mockResolvedValue(null);
+export const getSession = jest.fn().mockResolvedValue(null) as jest.Mock;

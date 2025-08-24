@@ -120,7 +120,7 @@ describe('Articles API (Simplified)', () => {
       const data = await response.json();
 
       expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/articles?source=qiita');
-      expect(data.data.items.every(item => item.sourceId === 'qiita')).toBe(true);
+      expect(data.data.items.every((item: any) => item.sourceId === 'qiita')).toBe(true);
     });
 
     it('should handle server errors gracefully', async () => {
@@ -232,7 +232,7 @@ describe('Articles API (Simplified)', () => {
       const response = await fetch('http://localhost:3000/api/articles');
       const data = await response.json();
 
-      data.data.items.forEach(article => {
+      data.data.items.forEach((article: any) => {
         expect(article.summary.length).toBeGreaterThanOrEqual(90);
         expect(article.summary.length).toBeLessThanOrEqual(130);
       });
