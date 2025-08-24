@@ -15,18 +15,59 @@ export function ScrollToTopButton() {
   useEffect(() => {
     console.log('Setting up scroll listener...');
     
-    const toggleVisibility = () => {
-      // main要素を取得
-      const mainElement = document.querySelector('main');
-      console.log('Main element found:', !!mainElement);
-      
-      if (!mainElement) {
-        console.log('Main element not found, returning');
-        return;
+    // スクロール可能な要素を探す
+    const findScrollableElement = () => {
+      // まずwindowでスクロールしているか確認
+      if (window.scrollY > 0 || document.documentElement.scrollTop > 0) {
+        console.log('Window is scrollable');
+        return window;
       }
       
-      const scrollY = mainElement.scrollTop;
-      console.log('Scroll position:', scrollY);
+      // main要素を確認
+      const mainElement = document.querySelector('main');
+      if (mainElement && (mainElement.scrollHeight > mainElement.clientHeight)) {
+        console.log('Main element is scrollable');
+        return mainElement;
+      }
+      
+      // overflow-y: autoまたはscrollの要素を探す
+      const scrollableElements = document.querySelectorAll('[style*="overflow"], .overflow-y-auto, .overflow-y-scroll');
+      for (const elem of scrollableElements) {
+        if ((elem as HTMLElement).scrollHeight > (elem as HTMLElement).clientHeight) {
+          console.log('Found scrollable element:', elem.className || elem.tagName);
+          return elem;
+        }
+      }
+      
+      console.log('No scrollable element found, defaulting to window');
+      return window;
+    };
+    
+    const toggleVisibility = (event?: Event) => {
+      let scrollY = 0;
+      
+      // イベントターゲットから判断
+      if (event && event.target) {
+        if (event.target === window || event.target === document) {
+          scrollY = window.scrollY || document.documentElement.scrollTop;
+          console.log('Window scroll position:', scrollY);
+        } else {
+          const target = event.target as HTMLElement;
+          scrollY = target.scrollTop;
+          console.log(`Element scroll position (${target.className || target.tagName}):`, scrollY);
+        }
+      } else {
+        // 初期チェック時
+        scrollY = window.scrollY || document.documentElement.scrollTop;
+        const mainElement = document.querySelector('main');
+        if (mainElement) {
+          const mainScroll = mainElement.scrollTop;
+          if (mainScroll > 0) {
+            scrollY = mainScroll;
+            console.log('Using main element scroll:', scrollY);
+          }
+        }
+      }
       
       // 50px以上スクロールしたらボタンを表示（テスト用に閾値を下げる）
       if (scrollY > 50) {
@@ -38,34 +79,52 @@ export function ScrollToTopButton() {
       }
     };
 
-    // main要素にスクロールイベントリスナーを追加
+    // 複数の要素にリスナーを追加（どれがスクロールするか不明なため）
+    const scrollableElement = findScrollableElement();
+    
+    // windowとmain要素の両方にリスナーを追加
+    console.log('Adding scroll listeners...');
+    window.addEventListener('scroll', toggleVisibility, true);  // captureフェーズでも監視
+    document.addEventListener('scroll', toggleVisibility, true);
+    
     const mainElement = document.querySelector('main');
     if (mainElement) {
-      console.log('Adding scroll event listener to main element');
       mainElement.addEventListener('scroll', toggleVisibility);
-      
-      // 初期状態のチェック
-      toggleVisibility();
-      
-      // クリーンアップ
-      return () => {
-        console.log('Removing scroll event listener');
-        mainElement.removeEventListener('scroll', toggleVisibility);
-      };
-    } else {
-      console.log('Main element not found during setup');
+      console.log('Added listener to main element');
     }
+    
+    // 初期状態のチェック
+    toggleVisibility();
+    
+    // クリーンアップ
+    return () => {
+      console.log('Removing scroll event listeners');
+      window.removeEventListener('scroll', toggleVisibility, true);
+      document.removeEventListener('scroll', toggleVisibility, true);
+      if (mainElement) {
+        mainElement.removeEventListener('scroll', toggleVisibility);
+      }
+    };
   }, []);
 
-  // トップへスクロール（main要素をスクロール）
+  // トップへスクロール（複数の要素を試す）
   const scrollToTop = useCallback(() => {
+    console.log('ScrollToTop clicked');
+    
+    // window, document, main要素すべてでスクロールを試みる
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+    
     const mainElement = document.querySelector('main');
     if (mainElement) {
-      mainElement.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      mainElement.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    
+    // overflow要素も探してスクロール
+    const scrollableElements = document.querySelectorAll('.overflow-y-auto, .overflow-y-scroll');
+    scrollableElements.forEach(elem => {
+      (elem as HTMLElement).scrollTo({ top: 0, behavior: 'smooth' });
+    });
   }, []);
 
   // キーボードショートカット（Home、Ctrl+Home）
