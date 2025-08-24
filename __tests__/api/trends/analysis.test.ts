@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/trends/analysis/route';
+import { createMockRequest } from '@/test/helpers/api';
 
 // Mock dependencies
 const mockQueryRaw = jest.fn();
@@ -30,7 +30,7 @@ describe('/api/trends/analysis', () => {
 
   describe('days parameter validation', () => {
     it('should return 400 for invalid days parameter', async () => {
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=invalid');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=invalid');
       const response = await GET(request);
       const data = await response.json();
 
@@ -40,7 +40,7 @@ describe('/api/trends/analysis', () => {
     });
 
     it('should return 400 for negative days', async () => {
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=-5');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=-5');
       const response = await GET(request);
       const data = await response.json();
 
@@ -50,7 +50,7 @@ describe('/api/trends/analysis', () => {
     });
 
     it('should return 400 for days exceeding maximum', async () => {
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=366');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=366');
       const response = await GET(request);
       const data = await response.json();
 
@@ -60,7 +60,7 @@ describe('/api/trends/analysis', () => {
     });
 
     it('should return 400 for zero days', async () => {
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=0');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=0');
       const response = await GET(request);
       const data = await response.json();
 
@@ -70,7 +70,7 @@ describe('/api/trends/analysis', () => {
     });
 
     it('should return 400 for non-numeric string', async () => {
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=abc');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=abc');
       const response = await GET(request);
       const data = await response.json();
 
@@ -80,7 +80,7 @@ describe('/api/trends/analysis', () => {
     });
 
     it('should return 400 for NaN string', async () => {
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=NaN');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=NaN');
       const response = await GET(request);
       const data = await response.json();
 
@@ -106,7 +106,7 @@ describe('/api/trends/analysis', () => {
         return fetcher();
       });
 
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=30');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=30');
       const response = await GET(request);
       const data = await response.json();
 
@@ -121,7 +121,7 @@ describe('/api/trends/analysis', () => {
         return fetcher();
       });
 
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis');
       const response = await GET(request);
       const data = await response.json();
 
@@ -135,7 +135,7 @@ describe('/api/trends/analysis', () => {
         return fetcher();
       });
 
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=1');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=1');
       const response = await GET(request);
       const data = await response.json();
 
@@ -149,7 +149,7 @@ describe('/api/trends/analysis', () => {
         return fetcher();
       });
 
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=365');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=365');
       const response = await GET(request);
       const data = await response.json();
 
@@ -163,7 +163,7 @@ describe('/api/trends/analysis', () => {
         return fetcher();
       });
 
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=7&tag=javascript');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=7&tag=javascript');
       const response = await GET(request);
       const data = await response.json();
 
@@ -179,7 +179,7 @@ describe('/api/trends/analysis', () => {
         throw new Error('Database connection failed');
       });
 
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=30');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=30');
       const response = await GET(request);
       const data = await response.json();
 
@@ -194,7 +194,7 @@ describe('/api/trends/analysis', () => {
         return fetcher();
       });
 
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=30');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=30');
       const response = await GET(request);
 
       expect(response.headers.get('Cache-Control')).toBe('public, s-maxage=300, stale-while-revalidate=600');
@@ -207,7 +207,7 @@ describe('/api/trends/analysis', () => {
         return fetcher();
       });
 
-      const request = new NextRequest('http://localhost:3000/api/trends/analysis?days=30');
+      const request = createMockRequest('http://localhost:3000/api/trends/analysis?days=30');
       const response = await GET(request);
       const data = await response.json();
 
