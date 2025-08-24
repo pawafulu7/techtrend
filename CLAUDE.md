@@ -390,7 +390,7 @@ npm run scheduler:logs     # ログ確認
 
 **スクレイピング系ソース（12時間ごと更新 - 0時・12時）:**
 - Speaker Deck
-- Docswell（スケジューラー統合保留中）
+- Docswell
 
 設定ファイル: `scripts/scheduled/scheduler.ts`
 PM2設定: `ecosystem.config.js`
