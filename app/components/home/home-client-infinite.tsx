@@ -129,7 +129,7 @@ export function HomeClientInfinite({
   return (
     <>
       {/* 記事リスト */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 relative">
+      <div ref={scrollContainerRef} id="main-scroll-container" className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 relative">
         {/* スクロール位置復元中のローディング表示 */}
         {isRestoring && (
           <ScrollRestorationLoading

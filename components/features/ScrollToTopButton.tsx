@@ -22,7 +22,9 @@ export function ScrollToTopButton() {
 
     // スクロール可能な要素を定期的にチェック
     const setupScrollListener = () => {
-      const scrollableElement = document.querySelector('.overflow-y-auto');
+      // IDで特定の要素を取得（より確実）
+      const scrollableElement = document.getElementById('main-scroll-container') || 
+                               document.querySelector('.overflow-y-auto');
       if (scrollableElement) {
         // 既存のリスナーを削除
         scrollableElement.removeEventListener('scroll', toggleVisibility);
@@ -55,7 +57,8 @@ export function ScrollToTopButton() {
       return () => {
         clearInterval(intervalId);
         clearTimeout(timeoutId);
-        const scrollableElement = document.querySelector('.overflow-y-auto');
+        const scrollableElement = document.getElementById('main-scroll-container') || 
+                                 document.querySelector('.overflow-y-auto');
         if (scrollableElement) {
           scrollableElement.removeEventListener('scroll', toggleVisibility);
         }
@@ -64,7 +67,8 @@ export function ScrollToTopButton() {
     
     // クリーンアップ
     return () => {
-      const scrollableElement = document.querySelector('.overflow-y-auto');
+      const scrollableElement = document.getElementById('main-scroll-container') || 
+                               document.querySelector('.overflow-y-auto');
       if (scrollableElement) {
         scrollableElement.removeEventListener('scroll', toggleVisibility);
       }
@@ -73,8 +77,9 @@ export function ScrollToTopButton() {
 
   // トップへスクロール
   const scrollToTop = useCallback(() => {
-    // overflow-y-autoクラスを持つ要素をスクロール
-    const scrollableElement = document.querySelector('.overflow-y-auto');
+    // IDで特定の要素を取得してスクロール
+    const scrollableElement = document.getElementById('main-scroll-container') || 
+                             document.querySelector('.overflow-y-auto');
     if (scrollableElement) {
       scrollableElement.scrollTo({
         top: 0,
