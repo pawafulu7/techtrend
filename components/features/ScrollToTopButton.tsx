@@ -41,32 +41,40 @@ export function ScrollToTopButton() {
     };
 
     // 初回セットアップ
+    let intervalId: NodeJS.Timeout | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     if (!setupScrollListener()) {
       // 要素が見つからない場合は少し待って再試行
-      const intervalId = setInterval(() => {
+      intervalId = setInterval(() => {
         if (setupScrollListener()) {
-          clearInterval(intervalId);
+          if (intervalId) clearInterval(intervalId);
         }
       }, 500);
       
       // 10秒後にはタイムアウト
-      const timeoutId = setTimeout(() => {
-        clearInterval(intervalId);
+      timeoutId = setTimeout(() => {
+        if (intervalId) clearInterval(intervalId);
       }, 10000);
-      
-      return () => {
-        clearInterval(intervalId);
-        clearTimeout(timeoutId);
-        const scrollableElement = document.getElementById('main-scroll-container') || 
-                                 document.querySelector('.overflow-y-auto');
-        if (scrollableElement) {
-          scrollableElement.removeEventListener('scroll', toggleVisibility);
-        }
-      };
     }
+    
+    // MutationObserverでDOM変更を監視（無限スクロール対応）
+    const observer = new MutationObserver(() => {
+      // DOM変更時にリスナーを再設定
+      setupScrollListener();
+    });
+    
+    // body全体を監視（記事リストの追加を検知）
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
     
     // クリーンアップ
     return () => {
+      if (intervalId) clearInterval(intervalId);
+      if (timeoutId) clearTimeout(timeoutId);
+      observer.disconnect();
       const scrollableElement = document.getElementById('main-scroll-container') || 
                                document.querySelector('.overflow-y-auto');
       if (scrollableElement) {
@@ -106,25 +114,35 @@ export function ScrollToTopButton() {
     const handleScrollRestored = (event: Event) => {
       const customEvent = event as CustomEvent;
       const { scrollY, restored, cancelled } = customEvent.detail;
-      console.log('[ScrollToTopButton] イベント受信 - scrollY:', scrollY, 'restored:', restored, 'cancelled:', cancelled);
       
       if (restored && !cancelled) {
-        // 少し遅延を入れてからチェック（スムーススクロール完了待ち）
+        // 復元成功：少し遅延を入れてからチェック（スムーススクロール完了待ち）
         setTimeout(() => {
           const scrollableElement = document.getElementById('main-scroll-container') || 
                                    document.querySelector('.overflow-y-auto');
           if (scrollableElement) {
             const currentScrollY = scrollableElement.scrollTop;
-            console.log('[ScrollToTopButton] スクロール位置再チェック - currentScrollY:', currentScrollY);
             setIsVisible(currentScrollY > 300);
-          } else {
-            console.log('[ScrollToTopButton] スクロール要素が見つかりません');
           }
         }, 1000); // 1秒待機
+      } else if (cancelled || !restored) {
+        // 復元がキャンセルまたはスキップされた場合
+        // スクロールリスナーを再設定して通常の動作を確保
+        setTimeout(() => {
+          const scrollableElement = document.getElementById('main-scroll-container') || 
+                                   document.querySelector('.overflow-y-auto');
+          if (scrollableElement) {
+            // 現在のスクロール位置をチェック
+            const currentScrollY = scrollableElement.scrollTop;
+            setIsVisible(currentScrollY > 300);
+            
+            // スクロールイベントを手動で発火して状態を同期
+            scrollableElement.dispatchEvent(new Event('scroll'));
+          }
+        }, 100); // 短い待機時間
       }
     };
     
-    console.log('[ScrollToTopButton] イベントリスナー登録');
     window.addEventListener('scrollRestored', handleScrollRestored);
     return () => {
       window.removeEventListener('scrollRestored', handleScrollRestored);

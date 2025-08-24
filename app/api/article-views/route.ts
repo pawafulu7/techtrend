@@ -117,22 +117,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // 同じ記事の最近の閲覧記録を確認（1時間以内は重複記録しない）
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const recentView = await prisma.articleView.findFirst({
+    // 既存の閲覧記録を確認（ユニーク制約があるため）
+    const existingView = await prisma.articleView.findFirst({
       where: {
         userId: session.user.id,
         articleId,
-        viewedAt: {
-          gte: oneHourAgo,
-        },
       },
     });
 
-    if (recentView) {
-      // 最近閲覧済みの場合は時刻を更新
+    if (existingView) {
+      // 既存の記録がある場合は時刻を更新
       const updatedView = await prisma.articleView.update({
-        where: { id: recentView.id },
+        where: { id: existingView.id },
         data: { viewedAt: new Date() },
       });
 

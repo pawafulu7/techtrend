@@ -50,6 +50,13 @@ export function useScrollRestoration(
                       window.scrollY;
     }
     
+    // 保存が必要ない条件をチェック
+    // スクロール位置が小さい（100px未満）場合は保存しない
+    if (currentScrollY < 100) {
+      // 保存しない（既存のデータがあれば削除）
+      sessionStorage.removeItem(STORAGE_KEY);
+      return;
+    }
     
     const data: ScrollRestoreData = {
       scrollY: currentScrollY,
@@ -177,6 +184,16 @@ export function useScrollRestoration(
         return;
       }
 
+      // 復元が必要ない条件をチェック
+      // スクロール位置が小さい（100px未満）場合のみ復元をスキップ
+      // 保存されたスクロール位置が大きければページ数に関わらず復元する
+      if (data.scrollY < 100) {
+        // 復元不要なのでクリーンアップ
+        sessionStorage.removeItem(STORAGE_KEY);
+        cleanupReturningParam();
+        return;
+      }
+
       // 復元開始
       
       isRestoringRef.current = true;
@@ -234,7 +251,6 @@ export function useScrollRestoration(
             cleanupReturningParam();
             
             // スクロール復元完了イベントを発火（即座に復元の場合）
-            console.log('[ScrollRestoration] 即座復元完了イベント発火 - scrollY:', scrollTarget);
             window.dispatchEvent(new CustomEvent('scrollRestored', {
               detail: {
                 scrollY: scrollTarget,
@@ -314,7 +330,6 @@ export function useScrollRestoration(
               cleanupReturningParam();
               
               // スクロール復元完了イベントを発火
-              console.log('[ScrollRestoration] 復元完了イベント発火 - scrollY:', scrollTarget);
               window.dispatchEvent(new CustomEvent('scrollRestored', {
                 detail: {
                   scrollY: scrollTarget,
@@ -349,7 +364,6 @@ export function useScrollRestoration(
               cleanupReturningParam();
               
               // スクロール復元完了イベントを発火
-              console.log('[ScrollRestoration] 復元完了イベント発火 - scrollY:', scrollTarget);
               window.dispatchEvent(new CustomEvent('scrollRestored', {
                 detail: {
                   scrollY: scrollTarget,

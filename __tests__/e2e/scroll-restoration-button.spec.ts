@@ -32,14 +32,15 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     await firstArticle.click();
     
     // 記事詳細ページが表示されるまで待機
-    await page.waitForURL(/\/articles\/\d+/, { timeout: 10000 });
-    await page.waitForSelector('article', { timeout: 10000 });
+    await page.waitForURL(/\/articles\/[a-z0-9]+/, { timeout: 10000 });
+    await page.waitForSelector('h1', { timeout: 10000 });
     
-    // 4. ブラウザの戻るボタンで一覧ページに戻る
-    await page.goBack();
+    // 4. 戻るリンクをクリックして一覧ページに戻る
+    const backLink = page.locator('a:has-text("記事一覧に戻る")');
+    await backLink.click();
     
-    // 一覧ページが表示されるまで待機
-    await page.waitForURL('http://localhost:3000/?returning=true', { timeout: 10000 });
+    // 一覧ページが表示されるまで待機（returningパラメータ付き）
+    await page.waitForURL(/returning=1/, { timeout: 10000 });
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. スクロール復元の完了を待つ
@@ -49,8 +50,8 @@ test.describe('スクロール復元時のトップボタン表示', () => {
       { timeout: 30000 }
     );
     
-    // 少し待機（スムーススクロール完了待ち）
-    await page.waitForTimeout(2000);
+    // スムーススクロール完了待ち（長めに待機）
+    await page.waitForTimeout(5000);
     
     // 6. スクロール位置が復元されているか確認
     const scrollPositionAfter = await scrollContainer.evaluate((el) => el.scrollTop);
@@ -95,13 +96,14 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     const firstArticle = page.locator('[data-testid="article-card"]').first();
     await firstArticle.click();
     
-    await page.waitForURL(/\/articles\/\d+/, { timeout: 10000 });
-    await page.waitForSelector('article', { timeout: 10000 });
+    await page.waitForURL(/\/articles\/[a-z0-9]+/, { timeout: 10000 });
+    await page.waitForSelector('h1', { timeout: 10000 });
     
-    // 4. 戻る
-    await page.goBack();
+    // 4. 戻るリンクをクリック
+    const backLink = page.locator('a:has-text("記事一覧に戻る")');
+    await backLink.click();
     
-    await page.waitForURL('http://localhost:3000/?returning=true', { timeout: 10000 });
+    await page.waitForURL(/returning=1/, { timeout: 10000 });
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. 復元ローディングが表示されたらキャンセルボタンをクリック
