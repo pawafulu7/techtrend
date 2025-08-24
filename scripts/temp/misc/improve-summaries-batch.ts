@@ -4,12 +4,12 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { GeminiClient } from '../lib/ai/gemini';
+import { GeminiClient } from '../../lib/ai/gemini';
 import { 
   validateSummary,
   autoFixSummary
-} from '../lib/utils/summary-validator';
-import { detectArticleType } from '../lib/utils/article-type-detector';
+} from '../../lib/utils/summary-validator';
+import { detectArticleType } from '../../lib/utils/article-type-detector';
 import * as fs from 'fs';
 import * as path from 'path';
 

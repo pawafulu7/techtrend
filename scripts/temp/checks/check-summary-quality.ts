@@ -7,9 +7,9 @@ import { PrismaClient } from '@prisma/client';
 import { 
   validateSummary,
   validateByArticleType
-} from '../lib/utils/summary-validator';
-import { detectArticleType } from '../lib/utils/article-type-detector';
-import { calculateSummaryScore } from '../lib/utils/quality-scorer';
+} from '../../lib/utils/summary-validator';
+import { detectArticleType } from '../../lib/utils/article-type-detector';
+import { calculateSummaryScore } from '../../lib/utils/quality-scorer';
 import * as fs from 'fs';
 import * as path from 'path';
 

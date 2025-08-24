@@ -110,7 +110,7 @@ async function regenerateEnglishMixedSummaries() {
       console.error(`  現在のスコア: ${qualityCheck.score}/100`);
       
       try {
-        const content = article.content || article.description || '';
+        const content = article.content || '';
         
         // 強化プロンプトで再生成
         const prompt = createEnhancedPrompt(

@@ -120,7 +120,7 @@ describe('Sources API (Simplified)', () => {
       const response = await fetch('http://localhost:3000/api/sources');
       const data = await response.json();
 
-      data.sources.forEach(source => {
+      data.sources.forEach((source: any) => {
         expect(source.enabled).toBe(true);
       });
     });
@@ -251,7 +251,7 @@ describe('Sources API (Simplified)', () => {
       const response = await fetch('http://localhost:3000/api/sources/stats');
       const data = await response.json();
 
-      data.stats.forEach(stat => {
+      data.stats.forEach((stat: any) => {
         expect(stat.avgQualityScore).toBeGreaterThanOrEqual(0);
         expect(stat.avgQualityScore).toBeLessThanOrEqual(100);
       });

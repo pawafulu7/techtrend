@@ -274,7 +274,7 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
     };
     
     try {
-      const content = article.content || article.description || '';
+      const content = article.content || '';
       
       if (content.length < 300) {
         console.error('   ⚠️  コンテンツが短すぎるためスキップ（最低300文字必要）');

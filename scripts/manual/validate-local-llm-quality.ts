@@ -241,7 +241,7 @@ async function validateQuality() {
   
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
-    const content = article.content || article.description || '';
+    const content = article.content || '';
     
     console.error(`\n[記事 ${i + 1}/${articles.length}]`);
     console.error('────────────────────────────────────────────────────────────────────────────');

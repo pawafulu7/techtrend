@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { AIService } from '../lib/ai/ai-service';
+import { AIService } from '../../lib/ai/ai-service';
 
 const prisma = new PrismaClient();
 

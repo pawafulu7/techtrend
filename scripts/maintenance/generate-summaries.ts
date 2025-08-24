@@ -501,7 +501,7 @@ async function generateSummaries(): Promise<GenerateResult> {
           
           while (retryCount < MAX_RETRIES) {
             try {
-              const content = article.content || article.description || '';
+              const content = article.content || '';
               
               // 削除メッセージを含む記事はスキップ
               if (isDeletedContent(content)) {

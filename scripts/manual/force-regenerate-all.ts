@@ -165,7 +165,7 @@ async function main() {
         console.error(`  現在の品質スコア: ${currentQuality}点`);
 
         // コンテンツの準備
-        const content = article.content || article.description || article.title;
+        const content = article.content || article.title;
         console.error(`  コンテンツ長: ${content.length}文字`);
 
         // 新しい要約を生成

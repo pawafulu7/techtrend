@@ -19,8 +19,8 @@ import {
 import { generateSampleArticle } from './test-utils';
 
 // Manual mocksのインポート
-import prismaMock from '../../__mocks__/lib/prisma';
-import redisMock from '../../__mocks__/lib/redis/client';
+import prismaMock from '@/__mocks__/lib/prisma';
+import redisMock from '@/__mocks__/lib/redis/client';
 
 // モックの自動適用
 jest.mock('@/lib/database');
@@ -242,7 +242,7 @@ describe('Articles API Tests', () => {
         tags: ['JavaScript', 'React'],
       };
 
-      prismaMock.$transaction.mockImplementation(async (callback) => {
+      prismaMock.$transaction.mockImplementation(async (callback: any) => {
         return callback(prismaMock);
       });
 

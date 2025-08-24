@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { cleanSummary, cleanDetailedSummary } from '../lib/utils/summary-cleaner';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { cleanSummary, cleanDetailedSummary } from '../../lib/utils/summary-cleaner';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 const prisma = new PrismaClient();
 

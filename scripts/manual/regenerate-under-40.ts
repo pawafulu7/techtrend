@@ -215,7 +215,7 @@ async function main() {
       
       try {
         // コンテンツの準備
-        const content = article.content || article.description || article.title;
+        const content = article.content || article.title;
         
         // 短すぎるコンテンツの警告
         if (content.length < 100) {

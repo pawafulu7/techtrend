@@ -208,29 +208,30 @@ export class MemoryOptimizer {
    */
   private async cleanupExpiredKeys(): Promise<void> {
     try {
-      // Luaスクリプトを定数として定義（安全性向上）
-      const cleanupScript = [
-        'local cursor = "0"',
-        'local count = 0',
-        'repeat',
-        '  local result = redis.call("SCAN", cursor, "COUNT", 100)',
-        '  cursor = result[1]',
-        '  local keys = result[2]',
-        '  for i, key in ipairs(keys) do',
-        '    local ttl = redis.call("TTL", key)',
-        '    if ttl == -1 then',
-        '      redis.call("EXPIRE", key, 3600)',
-        '      count = count + 1',
-        '    end',
-        '  end',
-        'until cursor == "0"',
-        'return count'
-      ].join('\n');
+      // eval使用を避けるため、通常のRedisコマンドで実装
+      // SCANコマンドを使用してTTLが設定されていないキーを検出し、有効期限を設定
+      let cursor = '0';
+      let count = 0;
+      const DEFAULT_TTL = 3600; // 1時間
       
-      // Redisの内部メカニズムで期限切れキーをクリーンアップ
-      await this.redis.eval(cleanupScript, 0);
+      do {
+        // SCANコマンドで100件ずつキーを取得
+        const result = await this.redis.scan(cursor, 'COUNT', '100');
+        cursor = result[0];
+        const keys = result[1];
+        
+        // 各キーのTTLをチェックし、必要に応じて有効期限を設定
+        for (const key of keys) {
+          const ttl = await this.redis.ttl(key);
+          // TTLが-1の場合は有効期限が設定されていないので設定
+          if (ttl === -1) {
+            await this.redis.expire(key, DEFAULT_TTL);
+            count++;
+          }
+        }
+      } while (cursor !== '0');
       
-      console.error('[MemoryOptimizer] Expired keys cleanup completed');
+      console.error(`[MemoryOptimizer] Expired keys cleanup completed. Set TTL for ${count} keys`);
     } catch (error) {
       console.error('[MemoryOptimizer] Failed to cleanup expired keys:', error);
     }

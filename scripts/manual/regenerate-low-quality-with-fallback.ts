@@ -272,7 +272,7 @@ async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArt
     };
     
     try {
-      const content = article.content || article.description || '';
+      const content = article.content || '';
       
       // コンテンツ長チェック（緩和）
       if (content.length < 200) {

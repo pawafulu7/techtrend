@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { GeminiClient } from '../lib/ai/gemini';
+import { GeminiClient } from '../../lib/ai/gemini';
 import * as fs from 'fs';
 
 const prisma = new PrismaClient();

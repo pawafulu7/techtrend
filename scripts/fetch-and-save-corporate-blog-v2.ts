@@ -46,7 +46,7 @@ async function fetchAndSaveCorporateBlog() {
     
     if (result.errors.length > 0) {
       console.error(`エラー: ${result.errors.length}件`);
-      result.errors.forEach(error => console.error(`  - ${error.message}`));
+      result.errors.forEach((error: any) => console.error(`  - ${error.message}`));
     }
     
     // 記事をデータベースに保存

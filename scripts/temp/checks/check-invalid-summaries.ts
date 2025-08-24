@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { checkSummaryQuality, checkDetailedSummaryQuality } from '../lib/utils/summary-cleaner';
+import { checkSummaryQuality, checkDetailedSummaryQuality } from '../../lib/utils/summary-cleaner';
 
 const prisma = new PrismaClient();
 

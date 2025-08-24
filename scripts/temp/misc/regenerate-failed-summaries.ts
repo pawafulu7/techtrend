@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
-import { AIService } from '../lib/ai/ai-service';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
+import { AIService } from '../../lib/ai/ai-service';
 
 const prisma = new PrismaClient();
 

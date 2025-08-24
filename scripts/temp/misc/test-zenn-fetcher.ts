@@ -1,4 +1,4 @@
-import { ZennExtendedFetcher } from '../lib/fetchers/zenn-extended';
+import { ZennExtendedFetcher } from '../../lib/fetchers/zenn-extended';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();

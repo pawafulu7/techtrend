@@ -167,7 +167,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       });
 
       const results = await Promise.all(promises);
-      const validArticles = results.filter((a): a is CreateArticleInput => a !== null);
+      const validArticles = results.filter((a: CreateArticleInput | null): a is CreateArticleInput => a !== null);
       articles.push(...validArticles);
       
       console.error(`  ✅ 処理済み: ${articles.length}/${speakerDeckConfig.maxArticles}`);

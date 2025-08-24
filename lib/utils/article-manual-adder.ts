@@ -198,7 +198,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     }
     
     // エンリッチャーがタイトルを返さなかった場合、またはエンリッチャーが使えない場合は基本メタデータを取得
-    let metadata: {title?: string; description?: string; image?: string} | null = null;
+    let metadata: {title?: string; description?: string; image?: string; content?: string; thumbnail?: string | null; keywords?: string[]} | null = null;
     if (!finalTitle && !customTitle) {
       console.error('📥 基本メタデータ取得中...');
       metadata = await fetchBasicMetadata(url);

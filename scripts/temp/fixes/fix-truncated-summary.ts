@@ -3,7 +3,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { GeminiClient } from '../lib/ai/gemini';
+import { GeminiClient } from '../../lib/ai/gemini';
 
 const prisma = new PrismaClient();
 
