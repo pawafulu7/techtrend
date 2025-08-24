@@ -57,7 +57,16 @@
 - [ ] ブラウザで実際の表示を確認したか？
 - [ ] 大量データへの影響を考慮したか？
 
-## 🔴 最新アップデート（2025年8月）
+## 🔴 最新アップデート（2025年1月）
+
+### Docswell Fetcher実装（2025年1月24日）
+- **新ソース追加**: 日本語技術プレゼンテーション共有サイトDocswell.com対応
+- **HTML スクレイピング実装**: トレンドページから人気記事を取得
+- **サムネイル表示対応**: Speaker Deckと同様の表示方式
+- **要約生成スキップ**: スライドコンテンツのため要約不要
+- **画像ホスト設定**: bcdn.docswell.com、video.docswell.com対応
+
+## 過去の主要アップデート（2024年8月）
 
 ### タグ生成高度化機能（2025年8月22日実装）
 - **タグ正規化サービス**: 698行の詳細な正規化ルール実装
@@ -153,10 +162,10 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 **現在のデータベース**: PostgreSQL（2025年8月移行完了）
 - SQLiteからPostgreSQLへの移行が完了しています
 - 接続設定は`.env`ファイルの`DATABASE_URL`を参照
-- **データ統計（2025年8月現在）**:
-  - 記事数: 2,035件以上
-  - タグ数: 9,605件以上
-  - ソース数: 15件
+- **データ統計（2025年1月現在）**:
+  - 記事数: 2,100件以上
+  - タグ数: 9,800件以上
+  - ソース数: 17件（Docswell追加）
   - ユーザ数: 6名以上
   - テスト成功率: 単体テスト92.4%、E2Eテスト100%
 
@@ -173,9 +182,10 @@ TechTrendの検索機能は、半角スペースまたは全角スペースで�
 3. 関連メモリを mcp__serena__read_memory で読み込み
 ```
 
-#### 2. 主要メモリファイル（整理済み - 88件に削減）
-- `techtrend_project_overview_202508`: プロジェクト全体概要（最新・更新済み）
-- `techtrend_recent_improvements_202508`: 最近の改善内容（最新・更新済み）
+#### 2. 主要メモリファイル
+- `techtrend_project_overview_202501`: プロジェクト全体概要（最新・更新済み）
+- `techtrend_recent_improvements_202501`: 最近の改善内容（最新・更新済み）
+- `docswell_fetcher_implementation_202501`: Docswell実装詳細（新規）
 - `techtrend_database_schema_202508`: データベース構造
 - `techtrend_api_endpoints_202508`: APIエンドポイント一覧
 - `techtrend_fetchers_implementation_202508`: フェッチャー実装詳細
@@ -341,6 +351,13 @@ echo '\d "Article"' | docker exec -i techtrend-postgres psql -U postgres -d tech
 - 日本語プレゼンテーション
 - Programming/Technology/How-to & DIYの3カテゴリー
 - 各カテゴリー35件、合計100件まで/回
+- サムネイル表示のみ（要約生成スキップ）
+
+**Docswell:**
+- 日本語技術プレゼンテーション
+- トレンドページから取得
+- 最大30件/回
+- サムネイル表示のみ（要約生成スキップ）
 
 ### 3. スケジューラー設定
 
@@ -373,6 +390,7 @@ npm run scheduler:logs     # ログ確認
 
 **スクレイピング系ソース（12時間ごと更新 - 0時・12時）:**
 - Speaker Deck
+- Docswell（スケジューラー統合保留中）
 
 設定ファイル: `scripts/scheduled/scheduler.ts`
 PM2設定: `ecosystem.config.js`
@@ -882,6 +900,7 @@ npm run auth:test             # 認証機能テスト
 
 # 特定ソースのみ収集
 npx tsx scripts/scheduled/collect-feeds.ts "Dev.to"
+npx tsx scripts/scheduled/collect-feeds.ts "Docswell"  # Docswell記事収集
 
 # 手動記事追加（CLI版）
 npm run manual:add
