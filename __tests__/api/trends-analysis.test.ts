@@ -134,19 +134,17 @@ describe('/api/trends/analysis API Tests', () => {
 
   describe('エラーハンドリング', () => {
     test('無効なdays値', async () => {
-      // NaNになる値はparseIntで0として扱われ、その後30にフォールバックされる
+      // 無効な値は400エラーを返すように修正済み
       try {
         const response = await axios.get(`${baseURL}/api/trends/analysis?days=invalid`);
-        expect(response.status).toBe(200);
-        
-        const data = response.data;
-        // 無効な値はデフォルト値（30）にフォールバック
-        expect(data.period.days).toBe(30);
+        // 400エラーが返されるため、ここには到達しないはず
+        expect(response.status).not.toBe(200);
       } catch (error) {
-        // 500エラーの場合も許容（本来は修正が必要）
-        if (axios.isAxiosError(error) && error.response?.status === 500) {
-          console.warn('API returned 500 for invalid days value - this should be handled gracefully');
-          expect(error.response.status).toBe(500);
+        // 400 Bad Requestが期待される
+        if (axios.isAxiosError(error) && error.response?.status === 400) {
+          expect(error.response.status).toBe(400);
+          expect(error.response.data).toHaveProperty('error');
+          expect(error.response.data.error).toContain('Invalid days parameter');
         } else {
           throw error;
         }
