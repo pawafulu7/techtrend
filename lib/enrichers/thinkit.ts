@@ -19,7 +19,7 @@ export class ThinkITContentEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.log(`[ThinkITEnricher] Fetching content from: ${url}`);
+      console.error(`[ThinkITEnricher] Fetching content from: ${url}`);
       
       const html = await this.fetchWithRetry(url);
       
@@ -58,20 +58,20 @@ export class ThinkITContentEnricher extends BaseContentEnricher {
         // より広範囲を取得する試み
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
-          console.log(`[ThinkITEnricher] Using fallback content (${fallbackContent.length} chars)`);
+          console.error(`[ThinkITEnricher] Using fallback content (${fallbackContent.length} chars)`);
           return { content: fallbackContent, thumbnail };
         }
         
         // コンテンツが不十分でもサムネイルがあれば返す
         if (thumbnail) {
-          console.log(`[ThinkITEnricher] Content insufficient but thumbnail found`);
+          console.error(`[ThinkITEnricher] Content insufficient but thumbnail found`);
           return { content: content || null, thumbnail };
         }
         
         return null;
       }
       
-      console.log(`[ThinkITEnricher] Successfully enriched: ${content.length} characters`);
+      console.error(`[ThinkITEnricher] Successfully enriched: ${content.length} characters`);
       return { content, thumbnail };
       
     } catch (error) {

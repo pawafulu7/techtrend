@@ -14,8 +14,8 @@ interface TestResult {
 }
 
 async function analyzePatterns() {
-  console.log('🔍 LocalLLM冒頭英語パターン分析\n');
-  console.log('================================================================================');
+  console.error('🔍 LocalLLM冒頭英語パターン分析\n');
+  console.error('================================================================================');
   
   const localLLMUrl = process.env.LOCAL_LLM_URL || 'http://192.168.11.7:1234';
   const localLLMModel = process.env.LOCAL_LLM_MODEL || 'openai/gpt-oss-20b';
@@ -47,12 +47,12 @@ async function analyzePatterns() {
   const results: TestResult[] = [];
   const englishPatterns: Map<string, number> = new Map();
   
-  console.log(`📝 ${testArticles.length}記事でパターンを収集\n`);
+  console.error(`📝 ${testArticles.length}記事でパターンを収集\n`);
   
   for (let i = 0; i < testArticles.length; i++) {
     const article = testArticles[i];
-    console.log(`\n[記事 ${i + 1}/${testArticles.length}] ${article.title}`);
-    console.log('────────────────────────────────────────────────────────────────────────────');
+    console.error(`\n[記事 ${i + 1}/${testArticles.length}] ${article.title}`);
+    console.error('────────────────────────────────────────────────────────────────────────────');
     
     const userPrompt = `
 技術記事を分析して、以下の形式で出力してください。
@@ -87,7 +87,7 @@ async function analyzePatterns() {
       });
       
       if (!response.ok) {
-        console.log('  ❌ API エラー');
+        console.error('  ❌ API エラー');
         continue;
       }
       
@@ -121,11 +121,11 @@ async function analyzePatterns() {
         englishPattern
       });
       
-      console.log(`  最初の行: "${firstLine.substring(0, 60)}${firstLine.length > 60 ? '...' : ''}"`);
-      console.log(`  英語プレフィックス: ${hasEnglishPrefix ? `✅ あり ("${englishPattern}")` : '❌ なし'}`);
+      console.error(`  最初の行: "${firstLine.substring(0, 60)}${firstLine.length > 60 ? '...' : ''}"`);
+      console.error(`  英語プレフィックス: ${hasEnglishPrefix ? `✅ あり ("${englishPattern}")` : '❌ なし'}`);
       
     } catch (error) {
-      console.log(`  ❌ エラー: ${error}`);
+      console.error(`  ❌ エラー: ${error}`);
     }
     
     // API負荷軽減
@@ -133,79 +133,79 @@ async function analyzePatterns() {
   }
   
   // 結果分析
-  console.log('\n================================================================================');
-  console.log('📊 パターン分析結果');
-  console.log('================================================================================\n');
+  console.error('\n================================================================================');
+  console.error('📊 パターン分析結果');
+  console.error('================================================================================\n');
   
-  console.log('【検出された英語パターン】');
+  console.error('【検出された英語パターン】');
   if (englishPatterns.size > 0) {
     const sortedPatterns = Array.from(englishPatterns.entries())
       .sort((a, b) => b[1] - a[1]);
     
     sortedPatterns.forEach(([pattern, count]) => {
-      console.log(`  "${pattern}": ${count}回`);
+      console.error(`  "${pattern}": ${count}回`);
     });
     
     // 最頻出パターン
     const mostCommon = sortedPatterns[0];
-    console.log(`\n🏆 最頻出パターン: "${mostCommon[0]}" (${mostCommon[1]}/${testArticles.length}回)`);
+    console.error(`\n🏆 最頻出パターン: "${mostCommon[0]}" (${mostCommon[1]}/${testArticles.length}回)`);
     
     // 一貫性チェック
     const consistency = (mostCommon[1] / testArticles.length) * 100;
-    console.log(`📈 一貫性: ${consistency.toFixed(0)}%`);
+    console.error(`📈 一貫性: ${consistency.toFixed(0)}%`);
     
     if (consistency >= 60) {
-      console.log('\n✅ パターンは一貫しています。以下の除去ルールを推奨:');
-      console.log('```typescript');
-      console.log(`// LocalLLMの出力から冒頭の英語を除去`);
-      console.log(`function removeEnglishPrefix(output: string): string {`);
-      console.log(`  const lines = output.split('\\n');`);
-      console.log(`  const firstLine = lines[0].trim();`);
-      console.log(`  `);
-      console.log(`  // 最頻出パターンを除去`);
-      console.log(`  if (firstLine.startsWith('${mostCommon[0]}')) {`);
-      console.log(`    lines.shift(); // 最初の行を削除`);
-      console.log(`    return lines.join('\\n').trim();`);
-      console.log(`  }`);
-      console.log(`  `);
-      console.log(`  // その他の英語パターンも除去`);
-      console.log(`  if (/^[A-Za-z\\s.,!?]+/.test(firstLine) && !firstLine.includes('要約')) {`);
-      console.log(`    lines.shift();`);
-      console.log(`    return lines.join('\\n').trim();`);
-      console.log(`  }`);
-      console.log(`  `);
-      console.log(`  return output;`);
-      console.log(`}`);
-      console.log('```');
+      console.error('\n✅ パターンは一貫しています。以下の除去ルールを推奨:');
+      console.error('```typescript');
+      console.error(`// LocalLLMの出力から冒頭の英語を除去`);
+      console.error(`function removeEnglishPrefix(output: string): string {`);
+      console.error(`  const lines = output.split('\\n');`);
+      console.error(`  const firstLine = lines[0].trim();`);
+      console.error(`  `);
+      console.error(`  // 最頻出パターンを除去`);
+      console.error(`  if (firstLine.startsWith('${mostCommon[0]}')) {`);
+      console.error(`    lines.shift(); // 最初の行を削除`);
+      console.error(`    return lines.join('\\n').trim();`);
+      console.error(`  }`);
+      console.error(`  `);
+      console.error(`  // その他の英語パターンも除去`);
+      console.error(`  if (/^[A-Za-z\\s.,!?]+/.test(firstLine) && !firstLine.includes('要約')) {`);
+      console.error(`    lines.shift();`);
+      console.error(`    return lines.join('\\n').trim();`);
+      console.error(`  }`);
+      console.error(`  `);
+      console.error(`  return output;`);
+      console.error(`}`);
+      console.error('```');
     } else {
-      console.log('\n⚠️  パターンにばらつきがあります。汎用的な英語除去ルールを推奨:');
-      console.log('```typescript');
-      console.log(`// 冒頭の英語行を汎用的に除去`);
-      console.log(`function removeEnglishPrefix(output: string): string {`);
-      console.log(`  const lines = output.split('\\n');`);
-      console.log(`  const firstLine = lines[0].trim();`);
-      console.log(`  `);
-      console.log(`  // 英語で始まり、日本語の「要約」を含まない行を除去`);
-      console.log(`  if (/^[A-Za-z][A-Za-z\\s.,!?]*$/.test(firstLine)) {`);
-      console.log(`    lines.shift();`);
-      console.log(`    return lines.join('\\n').trim();`);
-      console.log(`  }`);
-      console.log(`  `);
-      console.log(`  return output;`);
-      console.log(`}`);
-      console.log('```');
+      console.error('\n⚠️  パターンにばらつきがあります。汎用的な英語除去ルールを推奨:');
+      console.error('```typescript');
+      console.error(`// 冒頭の英語行を汎用的に除去`);
+      console.error(`function removeEnglishPrefix(output: string): string {`);
+      console.error(`  const lines = output.split('\\n');`);
+      console.error(`  const firstLine = lines[0].trim();`);
+      console.error(`  `);
+      console.error(`  // 英語で始まり、日本語の「要約」を含まない行を除去`);
+      console.error(`  if (/^[A-Za-z][A-Za-z\\s.,!?]*$/.test(firstLine)) {`);
+      console.error(`    lines.shift();`);
+      console.error(`    return lines.join('\\n').trim();`);
+      console.error(`  }`);
+      console.error(`  `);
+      console.error(`  return output;`);
+      console.error(`}`);
+      console.error('```');
     }
     
   } else {
-    console.log('  英語パターンは検出されませんでした！');
-    console.log('\n✅ 完全日本語システムプロンプトは完璧に動作しています！');
+    console.error('  英語パターンは検出されませんでした！');
+    console.error('\n✅ 完全日本語システムプロンプトは完璧に動作しています！');
   }
   
   // 個別結果の表示
-  console.log('\n【記事別詳細】');
+  console.error('\n【記事別詳細】');
   results.forEach((result, i) => {
-    console.log(`${i + 1}. ${result.articleTitle.substring(0, 30)}...`);
-    console.log(`   英語: ${result.hasEnglishPrefix ? `"${result.englishPattern}"` : 'なし'}`);
+    console.error(`${i + 1}. ${result.articleTitle.substring(0, 30)}...`);
+    console.error(`   英語: ${result.hasEnglishPrefix ? `"${result.englishPattern}"` : 'なし'}`);
   });
 }
 

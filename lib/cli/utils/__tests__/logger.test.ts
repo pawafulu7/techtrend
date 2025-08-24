@@ -42,9 +42,9 @@ describe('logger', () => {
       logger.warn('警告メッセージ');
       logger.error('エラーメッセージ');
       
-      expect(consoleLogSpy).toHaveBeenCalledTimes(2); // debug, info
+      expect(consoleLogSpy).toHaveBeenCalledTimes(0); // console.logは使用されない
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1); // warn
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // error
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(3); // debug, info, error
     });
     
     it('INFO レベルでは debug ログが出力されない', () => {
@@ -55,9 +55,9 @@ describe('logger', () => {
       logger.warn('警告メッセージ');
       logger.error('エラーメッセージ');
       
-      expect(consoleLogSpy).toHaveBeenCalledTimes(1); // info のみ
+      expect(consoleLogSpy).toHaveBeenCalledTimes(0); // console.logは使用されない
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1); // warn
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // error
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(2); // info + error
     });
     
     it('WARN レベルでは debug と info ログが出力されない', () => {
@@ -70,7 +70,7 @@ describe('logger', () => {
       
       expect(consoleLogSpy).not.toHaveBeenCalled();
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1); // warn
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // error
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // error only
     });
     
     it('ERROR レベルでは error ログのみ出力される', () => {
@@ -81,7 +81,7 @@ describe('logger', () => {
       logger.warn('警告メッセージ');
       logger.error('エラーメッセージ');
       
-      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
       expect(consoleWarnSpy).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // error のみ
     });
@@ -127,8 +127,8 @@ describe('logger', () => {
     it('タイムスタンプが含まれる', () => {
       logger.info('テストメッセージ');
       
-      expect(consoleLogSpy).toHaveBeenCalled();
-      const logOutput = consoleLogSpy.mock.calls[0][0];
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      const logOutput = consoleErrorSpy.mock.calls[0][0];
       expect(logOutput).toMatch(/\[\d{2}:\d{2}:\d{2}\]/);
     });
     
@@ -138,10 +138,10 @@ describe('logger', () => {
       logger.warn('警告');
       logger.error('エラー');
       
-      expect(consoleLogSpy.mock.calls[0][0]).toContain('ℹ️');
-      expect(consoleLogSpy.mock.calls[1][0]).toContain('✅');
-      expect(consoleWarnSpy.mock.calls[0][0]).toContain('⚠️');
-      expect(consoleErrorSpy.mock.calls[0][0]).toContain('❌');
+      expect(consoleErrorSpy.mock.calls[0][0]).toContain('ℹ️'); // info
+      expect(consoleErrorSpy.mock.calls[1][0]).toContain('✅'); // success
+      expect(consoleWarnSpy.mock.calls[0][0]).toContain('⚠️'); // warn
+      expect(consoleErrorSpy.mock.calls[2][0]).toContain('❌'); // error
     });
   });
   
@@ -182,7 +182,7 @@ describe('logger', () => {
       logger.setLevel(LogLevel.INFO);
       logger.success('成功メッセージ');
       
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('✅ 成功メッセージ')
       );
     });
@@ -191,7 +191,7 @@ describe('logger', () => {
       logger.setLevel(LogLevel.WARN);
       logger.success('成功メッセージ');
       
-      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
   });
 });

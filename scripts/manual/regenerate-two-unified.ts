@@ -24,7 +24,7 @@ async function regenerateTwoArticles() {
   const unifiedSummaryService = new UnifiedSummaryService();
 
   for (const articleId of articleIds) {
-    console.log(`\n📝 処理中: ${articleId}`);
+    console.error(`\n📝 処理中: ${articleId}`);
     
     try {
       // 記事を取得
@@ -41,15 +41,15 @@ async function regenerateTwoArticles() {
       const titlePreview = article.title.length > 60 
         ? article.title.substring(0, 60) + '...' 
         : article.title;
-      console.log(`  📰 タイトル: ${titlePreview}`);
-      console.log(`  📚 ソース: ${article.source.name}`);
+      console.error(`  📰 タイトル: ${titlePreview}`);
+      console.error(`  📚 ソース: ${article.source.name}`);
       
       // コンテンツ確認
       const content = article.content || '';
-      console.log(`  📄 コンテンツ長: ${content.length}文字`);
+      console.error(`  📄 コンテンツ長: ${content.length}文字`);
       if (content.length < 500) {
-        console.log(`  ⚠️  警告: コンテンツが短すぎます`);
-        console.log(`     内容: ${content.substring(0, 200)}`);
+        console.error(`  ⚠️  警告: コンテンツが短すぎます`);
+        console.error(`     内容: ${content.substring(0, 200)}`);
       }
       
       // 統一プロンプトを生成（共通処理）
@@ -58,7 +58,7 @@ async function regenerateTwoArticles() {
         content
       );
 
-      console.log('  🔄 Gemini APIリクエスト送信中...');
+      console.error('  🔄 Gemini APIリクエスト送信中...');
       
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       
@@ -87,19 +87,19 @@ async function regenerateTwoArticles() {
       const responseText = data.candidates[0].content.parts[0].text.trim();
       
       // デバッグ: API応答を表示
-      console.log(`  📝 APIレスポンス長: ${responseText.length}文字`);
+      console.error(`  📝 APIレスポンス長: ${responseText.length}文字`);
       if (articleId === 'cme5mu08l000etecq13hr77jw') {
-        console.log(`  🔍 Cybozu記事のAPI応答（最初の1000文字）:`);
-        console.log(responseText.substring(0, 1000));
+        console.error(`  🔍 Cybozu記事のAPI応答（最初の1000文字）:`);
+        console.error(responseText.substring(0, 1000));
       }
       
       // 統一サービスでパース（共通処理）
       const result = unifiedSummaryService.parseResponse(responseText);
       
-      console.log(`  📊 生成結果:`);
-      console.log(`     一覧要約: ${result.summary.length}文字`);
-      console.log(`     詳細要約: ${result.detailedSummary.length}文字`);
-      console.log(`     タグ: ${result.tags.join(', ')}`);
+      console.error(`  📊 生成結果:`);
+      console.error(`     一覧要約: ${result.summary.length}文字`);
+      console.error(`     詳細要約: ${result.detailedSummary.length}文字`);
+      console.error(`     タグ: ${result.tags.join(', ')}`);
 
       // データベース更新
       await prisma.article.update({
@@ -132,10 +132,10 @@ async function regenerateTwoArticles() {
             }
           }
         });
-        console.log(`  🏷️  タグ更新完了`);
+        console.error(`  🏷️  タグ更新完了`);
       }
 
-      console.log(`  ✅ 記事の要約再生成完了`);
+      console.error(`  ✅ 記事の要約再生成完了`);
       
       // API レート制限対策
       await new Promise(resolve => setTimeout(resolve, 3000));
@@ -145,7 +145,7 @@ async function regenerateTwoArticles() {
     }
   }
 
-  console.log('\n✨ すべての記事の再生成が完了しました');
+  console.error('\n✨ すべての記事の再生成が完了しました');
 }
 
 
@@ -153,7 +153,7 @@ async function regenerateTwoArticles() {
 // メイン処理
 regenerateTwoArticles()
   .then(() => {
-    console.log('🎉 処理完了');
+    console.error('🎉 処理完了');
   })
   .catch((error) => {
     console.error('💥 致命的エラー:', error);

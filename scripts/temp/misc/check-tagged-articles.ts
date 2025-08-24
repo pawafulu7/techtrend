@@ -18,11 +18,11 @@ async function checkTaggedArticles() {
       take: 10
     });
     
-    console.log('最近タグ付けされた記事:');
+    console.error('最近タグ付けされた記事:');
     articles.forEach((article, i) => {
-      console.log(`\n${i + 1}. [${article.source.name}] ${article.title.substring(0, 60)}...`);
-      console.log(`   タグ: ${article.tags.map(t => t.name).join(', ')}`);
-      console.log(`   公開日: ${article.publishedAt.toLocaleDateString('ja-JP')}`);
+      console.error(`\n${i + 1}. [${article.source.name}] ${article.title.substring(0, 60)}...`);
+      console.error(`   タグ: ${article.tags.map(t => t.name).join(', ')}`);
+      console.error(`   公開日: ${article.publishedAt.toLocaleDateString('ja-JP')}`);
     });
     
     // タグの統計
@@ -40,9 +40,9 @@ async function checkTaggedArticles() {
       take: 20
     });
     
-    console.log('\n\n人気のタグ TOP20:');
+    console.error('\n\n人気のタグ TOP20:');
     tagStats.forEach((tag, i) => {
-      console.log(`${i + 1}. ${tag.name}: ${tag._count.articles}件`);
+      console.error(`${i + 1}. ${tag.name}: ${tag._count.articles}件`);
     });
     
   } catch (error) {

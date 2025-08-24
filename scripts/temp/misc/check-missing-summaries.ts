@@ -21,12 +21,12 @@ async function main() {
     }
   });
   
-  console.log('要約がない記事のサンプル:');
+  console.error('要約がない記事のサンプル:');
   articles.forEach((a, i) => {
-    console.log(`${i+1}. ${a.title}`);
-    console.log(`   URL: ${a.url}`);
-    console.log(`   作成日: ${a.createdAt}`);
-    console.log(`   コンテンツ長: ${a.content ? a.content.length : 0}文字`);
+    console.error(`${i+1}. ${a.title}`);
+    console.error(`   URL: ${a.url}`);
+    console.error(`   作成日: ${a.createdAt}`);
+    console.error(`   コンテンツ長: ${a.content ? a.content.length : 0}文字`);
   });
   
   // 統計情報
@@ -44,9 +44,9 @@ async function main() {
     }
   });
   
-  console.log('\n統計情報:');
-  console.log(`Corporate Tech Blog: 要約なし ${corporateStats}件`);
-  console.log(`Speaker Deck: 要約なし ${speakerStats}件`);
+  console.error('\n統計情報:');
+  console.error(`Corporate Tech Blog: 要約なし ${corporateStats}件`);
+  console.error(`Speaker Deck: 要約なし ${speakerStats}件`);
   
   // 最近の要約生成状況を確認
   const recentWithSummary = await prisma.article.count({
@@ -62,7 +62,7 @@ async function main() {
     }
   });
   
-  console.log(`\n過去24時間の要約生成率: ${recentWithSummary}/${recentTotal} (${Math.round(recentWithSummary / recentTotal * 100)}%)`);
+  console.error(`\n過去24時間の要約生成率: ${recentWithSummary}/${recentTotal} (${Math.round(recentWithSummary / recentTotal * 100)}%)`);
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());

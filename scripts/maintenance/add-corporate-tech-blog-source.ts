@@ -10,7 +10,7 @@ async function addCorporateTechBlogSource() {
     });
 
     if (existingSource) {
-      console.log('Corporate Tech Blog source already exists:', existingSource);
+      console.error('Corporate Tech Blog source already exists:', existingSource);
       return;
     }
 
@@ -24,13 +24,13 @@ async function addCorporateTechBlogSource() {
       }
     });
 
-    console.log('Successfully created Corporate Tech Blog source:', newSource);
-    console.log('\n含まれる企業ブログ:');
-    console.log('- DeNA: https://engineering.dena.com/blog/');
-    console.log('- Yahoo! JAPAN: https://techblog.yahoo.co.jp/');
-    console.log('- メルカリ: https://engineering.mercari.com/');
-    console.log('- サイバーエージェント: https://developers.cyberagent.co.jp/');
-    console.log('- LINEヤフー: https://techblog.lycorp.co.jp/');
+    console.error('Successfully created Corporate Tech Blog source:', newSource);
+    console.error('\n含まれる企業ブログ:');
+    console.error('- DeNA: https://engineering.dena.com/blog/');
+    console.error('- Yahoo! JAPAN: https://techblog.yahoo.co.jp/');
+    console.error('- メルカリ: https://engineering.mercari.com/');
+    console.error('- サイバーエージェント: https://developers.cyberagent.co.jp/');
+    console.error('- LINEヤフー: https://techblog.lycorp.co.jp/');
 
   } catch (error) {
     console.error('Error adding Corporate Tech Blog source:', error);
@@ -43,9 +43,9 @@ async function addCorporateTechBlogSource() {
 // スクリプトを実行
 addCorporateTechBlogSource()
   .then(() => {
-    console.log('\nデータベースへの登録が完了しました');
-    console.log('次のコマンドで記事を取得できます:');
-    console.log('npx tsx scripts/collect-feeds.ts "Corporate Tech Blog"');
+    console.error('\nデータベースへの登録が完了しました');
+    console.error('次のコマンドで記事を取得できます:');
+    console.error('npx tsx scripts/collect-feeds.ts "Corporate Tech Blog"');
   })
   .catch((error) => {
     console.error('Script failed:', error);

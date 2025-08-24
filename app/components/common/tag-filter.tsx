@@ -62,7 +62,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         return;
       }
       
-      console.log('[TagFilter] Searching for:', debouncedSearchQuery);
+      console.error('[TagFilter] Searching for:', debouncedSearchQuery);
       
       setIsSearching(true);
       try {

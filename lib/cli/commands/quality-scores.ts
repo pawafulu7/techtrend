@@ -102,11 +102,11 @@ qualityScoresCommand
         _count: true
       });
       
-      console.log('\n📊 品質スコア統計:');
-      console.log(`  平均スコア: ${stats._avg.qualityScore?.toFixed(1) || '0'}`);
-      console.log(`  最小スコア: ${stats._min.qualityScore || 0}`);
-      console.log(`  最大スコア: ${stats._max.qualityScore || 0}`);
-      console.log(`  記事総数: ${stats._count.toLocaleString()}`);
+      console.error('\n📊 品質スコア統計:');
+      console.error(`  平均スコア: ${stats._avg.qualityScore?.toFixed(1) || '0'}`);
+      console.error(`  最小スコア: ${stats._min.qualityScore || 0}`);
+      console.error(`  最大スコア: ${stats._max.qualityScore || 0}`);
+      console.error(`  記事総数: ${stats._count.toLocaleString()}`);
       
       // スコア分布
       const distribution = await Promise.all([
@@ -117,12 +117,12 @@ qualityScoresCommand
         prisma.article.count({ where: { qualityScore: { lt: 20 } } }),
       ]);
       
-      console.log('\n📈 スコア分布:');
-      console.log(`  80以上: ${distribution[0].toLocaleString()} 記事`);
-      console.log(`  60-79: ${distribution[1].toLocaleString()} 記事`);
-      console.log(`  40-59: ${distribution[2].toLocaleString()} 記事`);
-      console.log(`  20-39: ${distribution[3].toLocaleString()} 記事`);
-      console.log(`  20未満: ${distribution[4].toLocaleString()} 記事`);
+      console.error('\n📈 スコア分布:');
+      console.error(`  80以上: ${distribution[0].toLocaleString()} 記事`);
+      console.error(`  60-79: ${distribution[1].toLocaleString()} 記事`);
+      console.error(`  40-59: ${distribution[2].toLocaleString()} 記事`);
+      console.error(`  20-39: ${distribution[3].toLocaleString()} 記事`);
+      console.error(`  20未満: ${distribution[4].toLocaleString()} 記事`);
       
       // ゼロスコアの記事
       const zeroScore = await prisma.article.count({
@@ -130,7 +130,7 @@ qualityScoresCommand
       });
       
       if (zeroScore > 0) {
-        console.log(`\n⚠️  品質スコアが0の記事: ${zeroScore.toLocaleString()} 件`);
+        console.error(`\n⚠️  品質スコアが0の記事: ${zeroScore.toLocaleString()} 件`);
       }
       
       logger.success('統計情報の取得が完了しました');

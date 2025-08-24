@@ -2,12 +2,12 @@
 import { LocalLLMClient } from '@/lib/ai/local-llm';
 
 async function finalValidation() {
-  console.log('🎯 Local LLM 最終動作確認\n');
-  console.log('設定:');
-  console.log(`  maxTokens: ${process.env.LOCAL_LLM_MAX_TOKENS || '800'} (デフォルト)`);
-  console.log(`  maxContentLength: ${process.env.LOCAL_LLM_MAX_CONTENT_LENGTH || '8000'} (デフォルト)`);
-  console.log(`  コンテキスト: 30000トークン (LLMサーバー側設定)`);
-  console.log();
+  console.error('🎯 Local LLM 最終動作確認\n');
+  console.error('設定:');
+  console.error(`  maxTokens: ${process.env.LOCAL_LLM_MAX_TOKENS || '800'} (デフォルト)`);
+  console.error(`  maxContentLength: ${process.env.LOCAL_LLM_MAX_CONTENT_LENGTH || '8000'} (デフォルト)`);
+  console.error(`  コンテキスト: 30000トークン (LLMサーバー側設定)`);
+  console.error();
 
   const testArticle = {
     title: 'React Server Componentsの実装ガイド: Next.js 14での活用方法',
@@ -186,17 +186,17 @@ React Server ComponentsとNext.js 14の組み合わせにより、
   });
 
   try {
-    console.log('=' * 60);
-    console.log('📝 要約生成テスト');
-    console.log('=' * 60);
+    console.error('=' * 60);
+    console.error('📝 要約生成テスト');
+    console.error('=' * 60);
     
     const startTime1 = Date.now();
     const summary = await client.generateSummary(testArticle.title, testArticle.content);
     const time1 = Date.now() - startTime1;
     
-    console.log(`\n要約: ${summary}`);
-    console.log(`文字数: ${summary.length}文字`);
-    console.log(`処理時間: ${time1}ms`);
+    console.error(`\n要約: ${summary}`);
+    console.error(`文字数: ${summary.length}文字`);
+    console.error(`処理時間: ${time1}ms`);
     
     // 品質チェック
     const checks = {
@@ -207,43 +207,43 @@ React Server ComponentsとNext.js 14の組み合わせにより、
       noTruncation: !summary.endsWith('...') && !summary.endsWith('、')
     };
     
-    console.log('\n✅ 品質チェック結果:');
-    console.log(`  日本語: ${checks.japanese ? '✅' : '❌'}`);
-    console.log(`  英語混入なし: ${checks.noEnglish ? '✅' : '❌'}`);
-    console.log(`  句点で終了: ${checks.endsPeriod ? '✅' : '❌'}`);
-    console.log(`  文字数適正(60-100): ${checks.lengthOk ? '✅' : '❌'}`);
-    console.log(`  途切れなし: ${checks.noTruncation ? '✅' : '❌'}`);
+    console.error('\n✅ 品質チェック結果:');
+    console.error(`  日本語: ${checks.japanese ? '✅' : '❌'}`);
+    console.error(`  英語混入なし: ${checks.noEnglish ? '✅' : '❌'}`);
+    console.error(`  句点で終了: ${checks.endsPeriod ? '✅' : '❌'}`);
+    console.error(`  文字数適正(60-100): ${checks.lengthOk ? '✅' : '❌'}`);
+    console.error(`  途切れなし: ${checks.noTruncation ? '✅' : '❌'}`);
     
-    console.log('\n' + '=' * 60);
-    console.log('🏷️ 要約とタグ生成テスト');
-    console.log('=' * 60);
+    console.error('\n' + '=' * 60);
+    console.error('🏷️ 要約とタグ生成テスト');
+    console.error('=' * 60);
     
     const startTime2 = Date.now();
     const result = await client.generateSummaryWithTags(testArticle.title, testArticle.content);
     const time2 = Date.now() - startTime2;
     
-    console.log(`\n要約: ${result.summary}`);
-    console.log(`文字数: ${result.summary.length}文字`);
-    console.log(`タグ: ${result.tags.join(', ')}`);
-    console.log(`タグ数: ${result.tags.length}個`);
-    console.log(`処理時間: ${time2}ms`);
+    console.error(`\n要約: ${result.summary}`);
+    console.error(`文字数: ${result.summary.length}文字`);
+    console.error(`タグ: ${result.tags.join(', ')}`);
+    console.error(`タグ数: ${result.tags.length}個`);
+    console.error(`処理時間: ${time2}ms`);
     
     const allChecksPassed = Object.values(checks).every(v => v);
     
-    console.log('\n' + '=' * 60);
-    console.log('📊 最終評価');
-    console.log('=' * 60);
+    console.error('\n' + '=' * 60);
+    console.error('📊 最終評価');
+    console.error('=' * 60);
     
     if (allChecksPassed && result.tags.length >= 3) {
-      console.log('✅ すべてのチェックに合格しました！');
-      console.log('\n改善効果:');
-      console.log('1. maxTokens 800設定で要約が途切れない');
-      console.log('2. maxContentLength 8000で長文記事も処理可能');
-      console.log('3. コンテキスト30000で品質が向上');
-      console.log('4. 英語の思考過程が効果的に除去された');
+      console.error('✅ すべてのチェックに合格しました！');
+      console.error('\n改善効果:');
+      console.error('1. maxTokens 800設定で要約が途切れない');
+      console.error('2. maxContentLength 8000で長文記事も処理可能');
+      console.error('3. コンテキスト30000で品質が向上');
+      console.error('4. 英語の思考過程が効果的に除去された');
     } else {
-      console.log('⚠️ 一部のチェックに問題があります');
-      console.log('追加の調整が必要かもしれません');
+      console.error('⚠️ 一部のチェックに問題があります');
+      console.error('追加の調整が必要かもしれません');
     }
     
   } catch (error) {

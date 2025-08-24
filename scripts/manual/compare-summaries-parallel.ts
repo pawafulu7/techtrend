@@ -30,7 +30,7 @@ async function processArticleInParallel(
   index: number,
   total: number
 ): Promise<ComparisonResult> {
-  console.log(`\n[${index + 1}/${total}] ${article.title}`);
+  console.error(`\n[${index + 1}/${total}] ${article.title}`);
   
   const content = article.content || '';
   const result: ComparisonResult = {
@@ -54,7 +54,7 @@ async function processArticleInParallel(
   const geminiPromise = generateWithGemini(article.title, content)
     .then(geminiResult => {
       result.gemini = geminiResult;
-      console.log(`✓ Gemini完了: ${article.title.substring(0, 30)}...`);
+      console.error(`✓ Gemini完了: ${article.title.substring(0, 30)}...`);
     })
     .catch(error => {
       result.gemini.error = error instanceof Error ? error.message : String(error);
@@ -62,11 +62,11 @@ async function processArticleInParallel(
     });
   
   // Claude生成（対話的なので順次実行）
-  console.log('\nClaudeで生成します:');
+  console.error('\nClaudeで生成します:');
   try {
     const claudeResult = await generateWithClaudeSimulated(article.title, content);
     result.claude = claudeResult;
-    console.log(`✓ Claude完了: ${article.title.substring(0, 30)}...`);
+    console.error(`✓ Claude完了: ${article.title.substring(0, 30)}...`);
   } catch (error) {
     result.claude.error = error instanceof Error ? error.message : String(error);
     console.error(`✗ Claudeエラー: ${article.title.substring(0, 30)}...`);
@@ -91,7 +91,7 @@ async function generateWithClaudeSimulated(
   const startTime = Date.now();
   
   // 実際の使用時はここで対話的な入力を求める
-  console.log('Claude生成をシミュレート中...');
+  console.error('Claude生成をシミュレート中...');
   
   // シミュレーション用のレスポンス
   const simulatedResponse = `要約: ${title.substring(0, 70)}について解説し、実装方法と効果を説明。
@@ -122,7 +122,7 @@ async function generateWithClaudeSimulated(
 async function processBatch(
   articles: Array<Article & { source: Source; tags: Tag[] }>
 ): Promise<ComparisonResult[]> {
-  console.log(`\n${articles.length}件の記事をバッチ処理します...\n`);
+  console.error(`\n${articles.length}件の記事をバッチ処理します...\n`);
   
   // 各記事を並列処理
   const promises = articles.map((article, index) => 
@@ -137,9 +137,9 @@ async function processBatch(
 
 // 結果のサマリー表示
 function displayBatchSummary(results: ComparisonResult[]) {
-  console.log('\n' + '='.repeat(80));
-  console.log('バッチ処理結果サマリー');
-  console.log('='.repeat(80));
+  console.error('\n' + '='.repeat(80));
+  console.error('バッチ処理結果サマリー');
+  console.error('='.repeat(80));
   
   let geminiSuccess = 0;
   let geminiError = 0;
@@ -164,22 +164,22 @@ function displayBatchSummary(results: ComparisonResult[]) {
     }
   });
   
-  console.log('\n処理結果:');
-  console.log(`Gemini: 成功 ${geminiSuccess}件 / エラー ${geminiError}件`);
-  console.log(`Claude: 成功 ${claudeSuccess}件 / エラー ${claudeError}件`);
+  console.error('\n処理結果:');
+  console.error(`Gemini: 成功 ${geminiSuccess}件 / エラー ${geminiError}件`);
+  console.error(`Claude: 成功 ${claudeSuccess}件 / エラー ${claudeError}件`);
   
   if (geminiSuccess > 0 && claudeSuccess > 0) {
-    console.log('\n品質スコア:');
-    console.log(`Gemini 平均: ${Math.round(geminiTotalScore / geminiSuccess)}/100`);
-    console.log(`Claude 平均: ${Math.round(claudeTotalScore / claudeSuccess)}/100`);
+    console.error('\n品質スコア:');
+    console.error(`Gemini 平均: ${Math.round(geminiTotalScore / geminiSuccess)}/100`);
+    console.error(`Claude 平均: ${Math.round(claudeTotalScore / claudeSuccess)}/100`);
     
     const difference = Math.abs(geminiTotalScore / geminiSuccess - claudeTotalScore / claudeSuccess);
     if (difference < 5) {
-      console.log('\n🤝 両者はほぼ同等の品質です。');
+      console.error('\n🤝 両者はほぼ同等の品質です。');
     } else if (claudeTotalScore > geminiTotalScore) {
-      console.log('\n✨ Claudeの品質が優れています！');
+      console.error('\n✨ Claudeの品質が優れています！');
     } else {
-      console.log('\n📊 Geminiの品質が優れています。');
+      console.error('\n📊 Geminiの品質が優れています。');
     }
   }
   
@@ -192,9 +192,9 @@ function displayBatchSummary(results: ComparisonResult[]) {
     .filter(r => !r.claude.error)
     .reduce((sum, r) => sum + r.claude.metrics.processingTime, 0) / claudeSuccess || 0;
   
-  console.log('\n平均処理時間:');
-  console.log(`Gemini: ${Math.round(geminiAvgTime)}ms`);
-  console.log(`Claude: ${Math.round(claudeAvgTime)}ms`);
+  console.error('\n平均処理時間:');
+  console.error(`Gemini: ${Math.round(geminiAvgTime)}ms`);
+  console.error(`Claude: ${Math.round(claudeAvgTime)}ms`);
 }
 
 // 既存の関数を再利用（インポート部分省略）
@@ -336,8 +336,8 @@ function calculateQualityScore(metrics: QualityMetrics): number {
 
 // メイン処理（並列実行版）
 async function main() {
-  console.log('🚀 要約品質比較ツール（並列実行版）');
-  console.log('===================================\n');
+  console.error('🚀 要約品質比較ツール（並列実行版）');
+  console.error('===================================\n');
   
   try {
     const limitStr = await askQuestion('比較する記事数を入力してください (デフォルト: 5): ');
@@ -350,7 +350,7 @@ async function main() {
     });
     
     if (articles.length === 0) {
-      console.log('記事が見つかりません');
+      console.error('記事が見つかりません');
       return;
     }
     
@@ -362,8 +362,8 @@ async function main() {
     // 結果の表示
     displayBatchSummary(results);
     
-    console.log(`\n総処理時間: ${(totalTime / 1000).toFixed(2)}秒`);
-    console.log(`平均処理時間: ${(totalTime / articles.length / 1000).toFixed(2)}秒/記事`);
+    console.error(`\n総処理時間: ${(totalTime / 1000).toFixed(2)}秒`);
+    console.error(`平均処理時間: ${(totalTime / articles.length / 1000).toFixed(2)}秒/記事`);
     
   } catch (error) {
     console.error('エラーが発生しました:', error);

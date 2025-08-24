@@ -94,7 +94,7 @@ async function fetchThumbnailUrl(articleUrl: string): Promise<string | null> {
     const urlMatch = articleUrl.match(/speakerdeck\.com\/[^\/]+\/([^\/\?]+)/);
     if (urlMatch) {
       // これは推測なので、実際のパターンと異なる場合がある
-      console.log('  サムネイルURLが見つからないため、スキップします');
+      console.error('  サムネイルURLが見つからないため、スキップします');
       return null;
     }
     
@@ -109,9 +109,9 @@ async function fetchThumbnailUrl(articleUrl: string): Promise<string | null> {
  * メイン処理
  */
 async function updateSpeakerDeckThumbnails(): Promise<UpdateResult> {
-  console.log('🖼️ Speaker Deck記事のサムネイル更新を開始します');
-  console.log(`   モード: ${isDryRun ? 'ドライラン' : '実行'}`);
-  if (limit) console.log(`   処理数制限: ${limit}件`);
+  console.error('🖼️ Speaker Deck記事のサムネイル更新を開始します');
+  console.error(`   モード: ${isDryRun ? 'ドライラン' : '実行'}`);
+  if (limit) console.error(`   処理数制限: ${limit}件`);
   
   const result: UpdateResult = {
     success: 0,
@@ -138,17 +138,17 @@ async function updateSpeakerDeckThumbnails(): Promise<UpdateResult> {
       }
     });
 
-    console.log(`\n📊 処理対象: ${articles.length}件の記事\n`);
+    console.error(`\n📊 処理対象: ${articles.length}件の記事\n`);
 
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i];
       const progress = `[${i + 1}/${articles.length}]`;
       
-      console.log(`${progress} 処理中: ${article.title.substring(0, 50)}...`);
-      console.log(`   URL: ${article.url}`);
+      console.error(`${progress} 処理中: ${article.title.substring(0, 50)}...`);
+      console.error(`   URL: ${article.url}`);
       
       if (isDryRun) {
-        console.log('   ⏭️ ドライラン: スキップ\n');
+        console.error('   ⏭️ ドライラン: スキップ\n');
         result.skipped++;
         continue;
       }
@@ -158,7 +158,7 @@ async function updateSpeakerDeckThumbnails(): Promise<UpdateResult> {
         const thumbnailUrl = await fetchThumbnailUrl(article.url);
         
         if (!thumbnailUrl) {
-          console.log('   ⚠️ サムネイルが見つかりません\n');
+          console.error('   ⚠️ サムネイルが見つかりません\n');
           result.failed++;
           result.errors.push(`${article.title}: サムネイル取得失敗`);
           continue;
@@ -173,7 +173,7 @@ async function updateSpeakerDeckThumbnails(): Promise<UpdateResult> {
           }
         });
 
-        console.log(`   ✅ 更新完了: ${thumbnailUrl.substring(0, 50)}...\n`);
+        console.error(`   ✅ 更新完了: ${thumbnailUrl.substring(0, 50)}...\n`);
         result.success++;
 
         // Rate Limit対策
@@ -181,13 +181,13 @@ async function updateSpeakerDeckThumbnails(): Promise<UpdateResult> {
         
         // 10件ごとに長めの待機
         if ((i + 1) % 10 === 0 && i < articles.length - 1) {
-          console.log('⏸️ Rate Limit対策: 5秒待機...\n');
+          console.error('⏸️ Rate Limit対策: 5秒待機...\n');
           await delay(5000);
         }
         
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.log(`   ❌ エラー: ${errorMessage}\n`);
+        console.error(`   ❌ エラー: ${errorMessage}\n`);
         result.failed++;
         result.errors.push(`${article.title}: ${errorMessage}`);
         
@@ -209,19 +209,19 @@ async function updateSpeakerDeckThumbnails(): Promise<UpdateResult> {
     });
 
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 サムネイル更新完了');
-    console.log('='.repeat(60));
-    console.log(`✅ 成功: ${result.success}件`);
-    console.log(`❌ 失敗: ${result.failed}件`);
-    console.log(`⏭️ スキップ: ${result.skipped}件`);
-    console.log(`📷 サムネイル設定済み: ${articlesWithThumbnail}件（全体）`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 サムネイル更新完了');
+    console.error('='.repeat(60));
+    console.error(`✅ 成功: ${result.success}件`);
+    console.error(`❌ 失敗: ${result.failed}件`);
+    console.error(`⏭️ スキップ: ${result.skipped}件`);
+    console.error(`📷 サムネイル設定済み: ${articlesWithThumbnail}件（全体）`);
     
     if (result.errors.length > 0 && result.errors.length <= 5) {
-      console.log('\n❌ エラー詳細:');
-      result.errors.forEach(err => console.log(`   - ${err}`));
+      console.error('\n❌ エラー詳細:');
+      result.errors.forEach(err => console.error(`   - ${err}`));
     } else if (result.errors.length > 5) {
-      console.log(`\n❌ エラー: ${result.errors.length}件（詳細は省略）`);
+      console.error(`\n❌ エラー: ${result.errors.length}件（詳細は省略）`);
     }
 
     return result;

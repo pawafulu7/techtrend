@@ -8,8 +8,8 @@ const prisma = new PrismaClient();
 
 async function regenerateSingleArticle(articleId: string) {
   
-  console.log('📋 記事の要約再生成を開始します');
-  console.log('=====================================\n');
+  console.error('📋 記事の要約再生成を開始します');
+  console.error('=====================================\n');
   
   try {
     // 記事を取得
@@ -23,33 +23,33 @@ async function regenerateSingleArticle(articleId: string) {
       return;
     }
     
-    console.log('📰 記事情報:');
-    console.log(`  タイトル: ${article.title}`);
-    console.log(`  ソース: ${article.source.name}`);
-    console.log(`  URL: ${article.url}`);
-    console.log('');
+    console.error('📰 記事情報:');
+    console.error(`  タイトル: ${article.title}`);
+    console.error(`  ソース: ${article.source.name}`);
+    console.error(`  URL: ${article.url}`);
+    console.error('');
     
-    console.log('❌ 現在の要約の問題点:');
-    console.log(`  一覧要約: "${article.summary}"`);
-    console.log(`  文字数: ${article.summary?.length || 0}文字 (目標: 80-120文字)`);
-    console.log(`  問題: 文字数が38文字と短すぎる、内容が不明瞭`);
-    console.log('');
+    console.error('❌ 現在の要約の問題点:');
+    console.error(`  一覧要約: "${article.summary}"`);
+    console.error(`  文字数: ${article.summary?.length || 0}文字 (目標: 80-120文字)`);
+    console.error(`  問題: 文字数が38文字と短すぎる、内容が不明瞭`);
+    console.error('');
     
-    console.log('❌ 詳細要約の問題点:');
-    console.log(`  文字数: ${article.detailedSummary?.length || 0}文字`);
-    console.log(`  問題: 箇条書き形式が不自然、内容が断片的`);
-    console.log('');
+    console.error('❌ 詳細要約の問題点:');
+    console.error(`  文字数: ${article.detailedSummary?.length || 0}文字`);
+    console.error(`  問題: 箇条書き形式が不自然、内容が断片的`);
+    console.error('');
     
     // コンテンツを取得（既存のコンテンツを使用）
     const content = article.content || '';
     
     if (!content) {
       console.error('❌ コンテンツが保存されていません');
-      console.log('手動で記事を追加した際にエンリッチャーでコンテンツを取得済みのはずです');
+      console.error('手動で記事を追加した際にエンリッチャーでコンテンツを取得済みのはずです');
       return;
     }
     
-    console.log(`📄 保存済みコンテンツ: ${content.length}文字`);
+    console.error(`📄 保存済みコンテンツ: ${content.length}文字`);
     
     // 新しい要約を生成
     const apiKey = process.env.GEMINI_API_KEY;
@@ -130,7 +130,7 @@ ${content.substring(0, 8000)}
 }`;
     }
 
-    console.log('🔄 Gemini APIで要約を再生成中...');
+    console.error('🔄 Gemini APIで要約を再生成中...');
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -161,23 +161,23 @@ ${content.substring(0, 8000)}
     
     const result = JSON.parse(jsonMatch[0]);
     
-    console.log('\n✅ 新しい要約:');
-    console.log(`  一覧要約: "${result.summary}"`);
-    console.log(`  文字数: ${result.summary.length}文字`);
+    console.error('\n✅ 新しい要約:');
+    console.error(`  一覧要約: "${result.summary}"`);
+    console.error(`  文字数: ${result.summary.length}文字`);
     
     // 品質チェック
     const qualityCheck = checkContentQuality(result.summary, result.detailedSummary, article.title);
-    console.log(`  品質スコア: ${qualityCheck.score}/100`);
+    console.error(`  品質スコア: ${qualityCheck.score}/100`);
     
     // 必要に応じて修正
     if (qualityCheck.issues.length > 0 && !qualityCheck.requiresRegeneration) {
       result.summary = fixSummary(result.summary, qualityCheck.issues);
-      console.log(`  修正後: "${result.summary}"`);
+      console.error(`  修正後: "${result.summary}"`);
     }
     
-    console.log('\n✅ 詳細要約:');
-    console.log(`  ${result.detailedSummary}`);
-    console.log(`  文字数: ${result.detailedSummary.length}文字`);
+    console.error('\n✅ 詳細要約:');
+    console.error(`  ${result.detailedSummary}`);
+    console.error(`  文字数: ${result.detailedSummary.length}文字`);
     
     // データベース更新
     await prisma.article.update({
@@ -189,11 +189,11 @@ ${content.substring(0, 8000)}
       }
     });
     
-    console.log('\n✅ データベースを更新しました');
+    console.error('\n✅ データベースを更新しました');
     
     // タグの処理
     if (result.tags && result.tags.length > 0) {
-      console.log(`\n📌 タグ: ${result.tags.join(', ')}`);
+      console.error(`\n📌 タグ: ${result.tags.join(', ')}`);
       
       // タグをデータベースに追加
       const tagRecords = await Promise.all(
@@ -226,7 +226,7 @@ ${content.substring(0, 8000)}
     
     // キャッシュ無効化
     await cacheInvalidator.invalidateArticle(articleId);
-    console.log('\n🔄 キャッシュを無効化しました');
+    console.error('\n🔄 キャッシュを無効化しました');
     
   } catch (error) {
     console.error('❌ エラー:', error);

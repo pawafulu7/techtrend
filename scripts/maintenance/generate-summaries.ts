@@ -85,25 +85,25 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
   // デバッグログ追加（Phase 1）
   const DEBUG_SUMMARIES = process.env.DEBUG_SUMMARIES === 'true';
   if (DEBUG_SUMMARIES) {
-    console.log('\n========== API Response Debug ==========');
-    console.log('Title:', title);
-    console.log('Response Text Length:', responseText.length);
-    console.log('First 500 chars:', responseText.substring(0, 500));
-    console.log('========================================\n');
+    console.error('\n========== API Response Debug ==========');
+    console.error('Title:', title);
+    console.error('Response Text Length:', responseText.length);
+    console.error('First 500 chars:', responseText.substring(0, 500));
+    console.error('========================================\n');
   }
   
   const result = parseSummaryAndTags(responseText, title, content);
   
   // デバッグログ追加（パース後）
   if (DEBUG_SUMMARIES) {
-    console.log('\n========== Parse Result Debug ==========');
-    console.log('Summary Length:', result.summary.length);
-    console.log('Summary First 100:', result.summary.substring(0, 100));
-    console.log('Detailed Summary Length:', result.detailedSummary.length);
-    console.log('Detailed Summary First 100:', result.detailedSummary.substring(0, 100));
-    console.log('Are they same?:', result.summary === result.detailedSummary);
-    console.log('Are first 100 chars same?:', result.summary.substring(0, 100) === result.detailedSummary.substring(0, 100));
-    console.log('========================================\n');
+    console.error('\n========== Parse Result Debug ==========');
+    console.error('Summary Length:', result.summary.length);
+    console.error('Summary First 100:', result.summary.substring(0, 100));
+    console.error('Detailed Summary Length:', result.detailedSummary.length);
+    console.error('Detailed Summary First 100:', result.detailedSummary.substring(0, 100));
+    console.error('Are they same?:', result.summary === result.detailedSummary);
+    console.error('Are first 100 chars same?:', result.summary.substring(0, 100) === result.detailedSummary.substring(0, 100));
+    console.error('========================================\n');
   }
   
   // 新しい品質チェックシステムを使用
@@ -118,7 +118,7 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
   
   // 品質レポートを出力（デバッグ用）
   if (qualityCheck.issues.length > 0 && process.env.DEBUG === 'true') {
-    console.log(generateQualityReport(qualityCheck));
+    console.error(generateQualityReport(qualityCheck));
   }
   
   // 再生成が必要な場合は例外をスロー
@@ -382,7 +382,7 @@ async function sleep(ms: number): Promise<void> {
 type ArticleWithSource = Article & { source: Source; description?: string | null };
 
 async function generateSummaries(): Promise<GenerateResult> {
-  console.log('📝 要約とタグの生成を開始します...');
+  console.error('📝 要約とタグの生成を開始します...');
   const startTime = Date.now();
 
   try {
@@ -472,16 +472,16 @@ async function generateSummaries(): Promise<GenerateResult> {
     );
 
     if (uniqueArticles.length === 0) {
-      console.log('✅ すべての記事が適切な要約とタグを持っています');
+      console.error('✅ すべての記事が適切な要約とタグを持っています');
       return { generated: 0, errors: 0 };
     }
 
-    console.log(`📄 処理対象の記事数:`);
-    console.log(`   - 要約なし: ${articlesWithoutSummary.length}件`);
-    console.log(`   - 英語要約: ${articlesWithEnglishSummary.length}件`);
-    console.log(`   - 途切れた要約: ${truncatedArticles.length}件`);
-    console.log(`   - タグなし: ${articlesWithoutTags.length}件`);
-    console.log(`   - 合計（重複除去後）: ${uniqueArticles.length}件`);
+    console.error(`📄 処理対象の記事数:`);
+    console.error(`   - 要約なし: ${articlesWithoutSummary.length}件`);
+    console.error(`   - 英語要約: ${articlesWithEnglishSummary.length}件`);
+    console.error(`   - 途切れた要約: ${truncatedArticles.length}件`);
+    console.error(`   - タグなし: ${articlesWithoutTags.length}件`);
+    console.error(`   - 合計（重複除去後）: ${uniqueArticles.length}件`);
 
     let generatedCount = 0;
     let errorCount = 0;
@@ -490,7 +490,7 @@ async function generateSummaries(): Promise<GenerateResult> {
     // バッチ処理で要約を生成
     for (let i = 0; i < uniqueArticles.length; i += batchSize) {
       const batch = uniqueArticles.slice(i, i + batchSize);
-      console.log(`\n処理中: ${i + 1}-${Math.min(i + batchSize, uniqueArticles.length)}件目`);
+      console.error(`\n処理中: ${i + 1}-${Math.min(i + batchSize, uniqueArticles.length)}件目`);
 
       // リトライ機能を追加
       const MAX_RETRIES = 3;
@@ -501,11 +501,11 @@ async function generateSummaries(): Promise<GenerateResult> {
           
           while (retryCount < MAX_RETRIES) {
             try {
-              const content = article.content || article.description || '';
+              const content = article.content || '';
               
               // 削除メッセージを含む記事はスキップ
               if (isDeletedContent(content)) {
-                console.log(`  ⏭️ スキップ: ${article.title} (削除メッセージを検出)`);
+                console.error(`  ⏭️ スキップ: ${article.title} (削除メッセージを検出)`);
                 break; // このarticleの処理をスキップ
               }
               
@@ -514,13 +514,13 @@ async function generateSummaries(): Promise<GenerateResult> {
                   content.length < 300 &&
                   (article.url.includes('speakerdeck.com') || 
                    article.url.includes('slideshare.net'))) {
-                console.log(`  ⏭️ スキップ: ${article.title} (はてなブックマーク経由の外部サイト記事でコンテンツ不足)`);
+                console.error(`  ⏭️ スキップ: ${article.title} (はてなブックマーク経由の外部サイト記事でコンテンツ不足)`);
                 break; // このarticleの処理をスキップ
               }
               
               // スライドサービス（Speaker DeckとDocswell）の記事はスキップ（サムネイル表示のみ）
               if (article.source.name === 'Speaker Deck' || article.source.name === 'Docswell') {
-                console.log(`  ⏭️ スキップ: ${article.title} (${article.source.name}記事はサムネイル表示のみ)`);
+                console.error(`  ⏭️ スキップ: ${article.title} (${article.source.name}記事はサムネイル表示のみ)`);
                 break; // このarticleの処理をスキップ
               }
               
@@ -557,9 +557,9 @@ async function generateSummaries(): Promise<GenerateResult> {
                       if (qualityCheck.requiresRegeneration && regenerationCount < MAX_REGENERATIONS) {
                         regenerationCount++;
                         apiStats.regenerations++;
-                        console.log(`  ⚠️ 品質スコア: ${qualityCheck.score}/100`);
-                        console.log(`  再生成中 (${regenerationCount}/${MAX_REGENERATIONS})...`);
-                        console.log(generateQualityReport(qualityCheck));
+                        console.error(`  ⚠️ 品質スコア: ${qualityCheck.score}/100`);
+                        console.error(`  再生成中 (${regenerationCount}/${MAX_REGENERATIONS})...`);
+                        console.error(generateQualityReport(qualityCheck));
                         await sleep(1000); // API負荷軽減
                         continue;
                       }
@@ -570,8 +570,8 @@ async function generateSummaries(): Promise<GenerateResult> {
                     const errorMessage = error instanceof Error ? error.message : String(error);
                     if (errorMessage.startsWith('QUALITY_ISSUE:') && regenerationCount < MAX_REGENERATIONS) {
                       regenerationCount++;
-                      console.log(`  品質問題検出: ${errorMessage.replace('QUALITY_ISSUE: ', '')}`);
-                      console.log(`  再生成中 (${regenerationCount}/${MAX_REGENERATIONS})...`);
+                      console.error(`  品質問題検出: ${errorMessage.replace('QUALITY_ISSUE: ', '')}`);
+                      console.error(`  再生成中 (${regenerationCount}/${MAX_REGENERATIONS})...`);
                       await sleep(1000); // API負荷軽減
                       continue;
                     }
@@ -603,7 +603,7 @@ async function generateSummaries(): Promise<GenerateResult> {
                   const result = await generateSummaryAndTags(article.title, content);
                   tags = result.tags;
                 } else {
-                  console.log(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (日本語要約あり、スキップ)`);
+                  console.error(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (日本語要約あり、スキップ)`);
                   generatedCount++;
                   return;
                 }
@@ -639,7 +639,7 @@ async function generateSummaries(): Promise<GenerateResult> {
                 });
               }
               
-              console.log(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
+              console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
               generatedCount++;
               apiStats.successes++;
               break; // 成功したらループを抜ける
@@ -652,7 +652,7 @@ async function generateSummaries(): Promise<GenerateResult> {
                 
                 // エクスポネンシャルバックオフ: 10秒 → 20秒 → 40秒
                 const waitTime = 10000 * Math.pow(2, retryCount - 1);
-                console.log(`  リトライ ${retryCount}/${MAX_RETRIES} - ${waitTime/1000}秒待機中...`);
+                console.error(`  リトライ ${retryCount}/${MAX_RETRIES} - ${waitTime/1000}秒待機中...`);
                 await sleep(waitTime);
                 continue;
               }
@@ -677,35 +677,35 @@ async function generateSummaries(): Promise<GenerateResult> {
     const totalDuration = Math.round((Date.now() - apiStats.startTime) / 1000);
     const successRate = apiStats.attempts > 0 ? Math.round((apiStats.successes / apiStats.attempts) * 100) : 0;
     
-    console.log(`\n📊 要約とタグ生成完了:`);
-    console.log(`   成功: ${generatedCount}件`);
-    console.log(`   エラー: ${errorCount}件`);
-    console.log(`   処理時間: ${duration}秒`);
+    console.error(`\n📊 要約とタグ生成完了:`);
+    console.error(`   成功: ${generatedCount}件`);
+    console.error(`   エラー: ${errorCount}件`);
+    console.error(`   処理時間: ${duration}秒`);
 
     // 要約が生成された場合はキャッシュを無効化
     if (generatedCount > 0) {
-      console.log('\n🔄 キャッシュを無効化中...');
+      console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
     }
-    console.log(`\n📈 API統計:`);
-    console.log(`   総試行回数: ${apiStats.attempts}`);
-    console.log(`   成功: ${apiStats.successes}`);
-    console.log(`   失敗: ${apiStats.failures}`);
-    console.log(`   503エラー: ${apiStats.overloadErrors}`);
-    console.log(`   成功率: ${successRate}%`);
-    console.log(`   再生成回数: ${apiStats.regenerations}`);
-    console.log(`   実行時間: ${totalDuration}秒`);
+    console.error(`\n📈 API統計:`);
+    console.error(`   総試行回数: ${apiStats.attempts}`);
+    console.error(`   成功: ${apiStats.successes}`);
+    console.error(`   失敗: ${apiStats.failures}`);
+    console.error(`   503エラー: ${apiStats.overloadErrors}`);
+    console.error(`   成功率: ${successRate}%`);
+    console.error(`   再生成回数: ${apiStats.regenerations}`);
+    console.error(`   実行時間: ${totalDuration}秒`);
     
-    console.log(`\n📊 品質問題の内訳:`);
-    console.log(`   文字数問題: ${apiStats.qualityIssues.length}件`);
-    console.log(`   途切れ: ${apiStats.qualityIssues.truncation}件`);
-    console.log(`   内容薄い: ${apiStats.qualityIssues.thinContent}件`);
-    console.log(`   英語混入: ${apiStats.qualityIssues.languageMix}件`);
-    console.log(`   形式問題: ${apiStats.qualityIssues.format}件`);
+    console.error(`\n📊 品質問題の内訳:`);
+    console.error(`   文字数問題: ${apiStats.qualityIssues.length}件`);
+    console.error(`   途切れ: ${apiStats.qualityIssues.truncation}件`);
+    console.error(`   内容薄い: ${apiStats.qualityIssues.thinContent}件`);
+    console.error(`   英語混入: ${apiStats.qualityIssues.languageMix}件`);
+    console.error(`   形式問題: ${apiStats.qualityIssues.format}件`);
     
     // 成功率が低い場合は警告
     if (successRate < 50 && apiStats.attempts > 10) {
-      console.log(`\n⚠️  警告: API成功率が${successRate}%と低いです。深夜の実行を推奨します。`);
+      console.error(`\n⚠️  警告: API成功率が${successRate}%と低いです。深夜の実行を推奨します。`);
     }
 
     return { generated: generatedCount, errors: errorCount };

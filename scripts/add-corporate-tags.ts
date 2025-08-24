@@ -39,9 +39,9 @@ const argv = yargs(hideBin(process.argv))
 const isDryRun = argv['dry-run'];
 
 async function main() {
-  console.log('=== 企業技術ブログタグ付与スクリプト ===');
-  console.log(`モード: ${isDryRun ? 'ドライラン' : '実行'}`);
-  console.log('');
+  console.error('=== 企業技術ブログタグ付与スクリプト ===');
+  console.error(`モード: ${isDryRun ? 'ドライラン' : '実行'}`);
+  console.error('');
 
   try {
     // Corporate Tech Blogソースを取得
@@ -63,8 +63,8 @@ async function main() {
       orderBy: { publishedAt: 'desc' },
     });
 
-    console.log(`対象記事数: ${articles.length}件`);
-    console.log('');
+    console.error(`対象記事数: ${articles.length}件`);
+    console.error('');
 
     // 統計情報
     let processed = 0;
@@ -89,7 +89,7 @@ async function main() {
       const companyName = domainToCompany[domain];
       
       if (!companyName) {
-        console.log(`[SKIP] 企業が判定できません: ${domain} - ${article.title.substring(0, 50)}...`);
+        console.error(`[SKIP] 企業が判定できません: ${domain} - ${article.title.substring(0, 50)}...`);
         skipped++;
         continue;
       }
@@ -98,7 +98,7 @@ async function main() {
       const hasCompanyTag = article.tags.some(tag => tag.name === companyName);
       
       if (hasCompanyTag) {
-        console.log(`[SKIP] 既にタグ付与済み: ${companyName} - ${article.title.substring(0, 50)}...`);
+        console.error(`[SKIP] 既にタグ付与済み: ${companyName} - ${article.title.substring(0, 50)}...`);
         skipped++;
         continue;
       }
@@ -106,25 +106,25 @@ async function main() {
       // 更新対象として記録
       updates.push({ articleId: article.id, companyName });
       processed++;
-      console.log(`[処理対象] ${companyName} - ${article.title.substring(0, 50)}...`);
+      console.error(`[処理対象] ${companyName} - ${article.title.substring(0, 50)}...`);
     }
 
-    console.log('');
-    console.log('=== 処理サマリー ===');
-    console.log(`処理対象: ${processed}件`);
-    console.log(`スキップ: ${skipped}件`);
-    console.log(`エラー: ${failed}件`);
+    console.error('');
+    console.error('=== 処理サマリー ===');
+    console.error(`処理対象: ${processed}件`);
+    console.error(`スキップ: ${skipped}件`);
+    console.error(`エラー: ${failed}件`);
 
     if (updates.length === 0) {
-      console.log('');
-      console.log('更新対象の記事がありません');
+      console.error('');
+      console.error('更新対象の記事がありません');
       return;
     }
 
     if (isDryRun) {
-      console.log('');
-      console.log('ドライランモードのため、実際の更新は行いません');
-      console.log('更新対象の企業別内訳:');
+      console.error('');
+      console.error('ドライランモードのため、実際の更新は行いません');
+      console.error('更新対象の企業別内訳:');
       
       const companyCounts: Record<string, number> = {};
       for (const update of updates) {
@@ -132,11 +132,11 @@ async function main() {
       }
       
       for (const [company, count] of Object.entries(companyCounts)) {
-        console.log(`  ${company}: ${count}件`);
+        console.error(`  ${company}: ${count}件`);
       }
     } else {
-      console.log('');
-      console.log('タグを付与しています...');
+      console.error('');
+      console.error('タグを付与しています...');
       
       // トランザクションで一括更新
       await prisma.$transaction(async (tx) => {
@@ -163,8 +163,8 @@ async function main() {
         }
       });
       
-      console.log('');
-      console.log('✅ タグ付与が完了しました');
+      console.error('');
+      console.error('✅ タグ付与が完了しました');
     }
 
   } catch (error) {

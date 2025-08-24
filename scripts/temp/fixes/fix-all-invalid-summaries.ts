@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { cleanSummary, cleanDetailedSummary } from '../lib/utils/summary-cleaner';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { cleanSummary, cleanDetailedSummary } from '../../lib/utils/summary-cleaner';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 const prisma = new PrismaClient();
 
@@ -13,7 +13,7 @@ interface FixResult {
 }
 
 async function fixAllInvalidSummaries() {
-  console.log('🔧 不正な要約を一括修正\n');
+  console.error('🔧 不正な要約を一括修正\n');
   
   const localLLM = new LocalLLMClient({
     url: 'http://192.168.11.7:1234',
@@ -30,7 +30,7 @@ async function fixAllInvalidSummaries() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     // 問題のある記事を取得
     const articles = await prisma.article.findMany({
@@ -58,7 +58,7 @@ async function fixAllInvalidSummaries() {
     let regeneratedCount = 0;
     let failedCount = 0;
     
-    console.log(`📊 処理対象: ${articles.length}件\n`);
+    console.error(`📊 処理対象: ${articles.length}件\n`);
     
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i];
@@ -108,14 +108,14 @@ async function fixAllInvalidSummaries() {
       
       // 進捗表示
       if ((i + 1) % 10 === 0) {
-        console.log(`処理中: ${i + 1}/${articles.length}`);
+        console.error(`処理中: ${i + 1}/${articles.length}`);
       }
       
       try {
         if (needsRegeneration || problems.includes('生成失敗')) {
           // 再生成が必要な場合
-          console.log(`\n🔄 再生成: ${article.title.substring(0, 50)}...`);
-          console.log(`   問題: ${problems.join(', ')}`);
+          console.error(`\n🔄 再生成: ${article.title.substring(0, 50)}...`);
+          console.error(`   問題: ${problems.join(', ')}`);
           
           const content = article.content || article.title;
           const result = await localLLM.generateDetailedSummary(
@@ -223,19 +223,19 @@ async function fixAllInvalidSummaries() {
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 修正完了サマリー:');
-    console.log(`✅ クリーンアップ修正: ${fixedCount}件`);
-    console.log(`🔄 再生成: ${regeneratedCount}件`);
-    console.log(`❌ 失敗: ${failedCount}件`);
-    console.log(`📈 合計処理: ${fixedCount + regeneratedCount + failedCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 修正完了サマリー:');
+    console.error(`✅ クリーンアップ修正: ${fixedCount}件`);
+    console.error(`🔄 再生成: ${regeneratedCount}件`);
+    console.error(`❌ 失敗: ${failedCount}件`);
+    console.error(`📈 合計処理: ${fixedCount + regeneratedCount + failedCount}件`);
     
     // 失敗した記事のリスト
     const failed = results.filter(r => r.status === 'failed');
     if (failed.length > 0) {
-      console.log('\n⚠️ 修正に失敗した記事:');
+      console.error('\n⚠️ 修正に失敗した記事:');
       for (const f of failed) {
-        console.log(`- ${f.title}: ${f.reason}`);
+        console.error(`- ${f.title}: ${f.reason}`);
       }
     }
     

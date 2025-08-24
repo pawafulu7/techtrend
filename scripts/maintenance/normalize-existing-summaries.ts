@@ -51,7 +51,7 @@ function normalizeDetailedSummary(text: string): string {
 }
 
 async function normalizeExistingSummaries(dryRun = false) {
-  console.log(`📝 既存の詳細要約を正規化します...${dryRun ? ' (ドライランモード)' : ''}`);
+  console.error(`📝 既存の詳細要約を正規化します...${dryRun ? ' (ドライランモード)' : ''}`);
   
   // ラベルなしの記事を取得
   const articles = await prisma.article.findMany({
@@ -68,7 +68,7 @@ async function normalizeExistingSummaries(dryRun = false) {
     }
   });
   
-  console.log(`対象記事数: ${articles.length}件`);
+  console.error(`対象記事数: ${articles.length}件`);
   
   let updatedCount = 0;
   let skipCount = 0;
@@ -80,23 +80,23 @@ async function normalizeExistingSummaries(dryRun = false) {
     
     // 変更があった場合のみ更新
     if (normalized !== article.detailedSummary) {
-      console.log(`\n--- ${article.title.substring(0, 50)}...`);
-      console.log('変更前:');
+      console.error(`\n--- ${article.title.substring(0, 50)}...`);
+      console.error('変更前:');
       const beforeLines = article.detailedSummary.split('\n').slice(0, 3);
-      beforeLines.forEach(line => console.log(`  ${line.substring(0, 80)}${line.length > 80 ? '...' : ''}`));
+      beforeLines.forEach(line => console.error(`  ${line.substring(0, 80)}${line.length > 80 ? '...' : ''}`));
       
-      console.log('変更後:');
+      console.error('変更後:');
       const afterLines = normalized.split('\n').slice(0, 3);
-      afterLines.forEach(line => console.log(`  ${line.substring(0, 80)}${line.length > 80 ? '...' : ''}`));
+      afterLines.forEach(line => console.error(`  ${line.substring(0, 80)}${line.length > 80 ? '...' : ''}`));
       
       if (!dryRun) {
         await prisma.article.update({
           where: { id: article.id },
           data: { detailedSummary: normalized }
         });
-        console.log('✓ 更新しました');
+        console.error('✓ 更新しました');
       } else {
-        console.log('→ ドライランのため更新をスキップ');
+        console.error('→ ドライランのため更新をスキップ');
       }
       
       updatedCount++;
@@ -105,14 +105,14 @@ async function normalizeExistingSummaries(dryRun = false) {
     }
   }
   
-  console.log(`\n📊 処理結果:`);
-  console.log(`   正規化対象: ${updatedCount}件`);
-  console.log(`   変更なし: ${skipCount}件`);
+  console.error(`\n📊 処理結果:`);
+  console.error(`   正規化対象: ${updatedCount}件`);
+  console.error(`   変更なし: ${skipCount}件`);
   
   if (dryRun) {
-    console.log(`\n💡 実際に更新するには、--no-dry-run オプションを付けて実行してください`);
+    console.error(`\n💡 実際に更新するには、--no-dry-run オプションを付けて実行してください`);
   } else {
-    console.log(`\n✅ 正規化完了: ${updatedCount}件を更新`);
+    console.error(`\n✅ 正規化完了: ${updatedCount}件を更新`);
   }
   
   await prisma.$disconnect();

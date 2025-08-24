@@ -54,15 +54,15 @@ export class SREFetcher extends BaseFetcher {
     // 各RSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
       try {
-        console.log(`[SRE - ${feedInfo.name}] フィードを取得中...`);
+        console.error(`[SRE - ${feedInfo.name}] フィードを取得中...`);
         const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
         
         if (!feed.items || feed.items.length === 0) {
-          console.log(`[SRE - ${feedInfo.name}] 記事が見つかりませんでした`);
+          console.error(`[SRE - ${feedInfo.name}] 記事が見つかりませんでした`);
           continue;
         }
 
-        console.log(`[SRE - ${feedInfo.name}] ${feed.items.length}件の記事を取得`);
+        console.error(`[SRE - ${feedInfo.name}] ${feed.items.length}件の記事を取得`);
 
         for (const item of feed.items) {
           try {
@@ -130,7 +130,7 @@ export class SREFetcher extends BaseFetcher {
     allArticles.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
     const limitedArticles = allArticles.slice(0, 80);
 
-    console.log(`[SRE] 合計 ${limitedArticles.length}件の記事を処理`);
+    console.error(`[SRE] 合計 ${limitedArticles.length}件の記事を処理`);
     return { articles: limitedArticles, errors: allErrors };
   }
 

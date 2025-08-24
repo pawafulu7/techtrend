@@ -5,7 +5,7 @@ async function test() {
   const content = "Apple Silicon MacでQEMU仮想化を廃止しApple VirtualizationフレームワークをデフォルトVMMとした「Docker Desktop for Mac v4.44.0」がリリースされています。";
   
   try {
-    console.log('Testing direct API call...');
+    console.error('Testing direct API call...');
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.error('GEMINI_API_KEY is not set');
@@ -60,22 +60,22 @@ Docker, Mac, Apple Silicon, 仮想化`;
     const data = await response.json() as any;
     const responseText = data.candidates[0].content.parts[0].text;
     
-    console.log('=== Raw API Response ===');
-    console.log(responseText);
+    console.error('=== Raw API Response ===');
+    console.error(responseText);
     
-    console.log('\n=== Testing Parser ===');
+    console.error('\n=== Testing Parser ===');
     const parsed = parseUnifiedResponse(responseText);
-    console.log('Parsed:', JSON.stringify(parsed, null, 2));
+    console.error('Parsed:', JSON.stringify(parsed, null, 2));
     
-    console.log('\n=== Testing Validation ===');
+    console.error('\n=== Testing Validation ===');
     const isValid = validateParsedResult(parsed);
-    console.log('Is valid:', isValid);
+    console.error('Is valid:', isValid);
     
     if (!isValid) {
-      console.log('Validation failed. Checking what is missing...');
-      console.log('Has summary:', !!parsed.summary && parsed.summary.length > 0);
-      console.log('Has detailedSummary:', !!parsed.detailedSummary && parsed.detailedSummary.length > 0);
-      console.log('Has tags:', Array.isArray(parsed.tags) && parsed.tags.length > 0);
+      console.error('Validation failed. Checking what is missing...');
+      console.error('Has summary:', !!parsed.summary && parsed.summary.length > 0);
+      console.error('Has detailedSummary:', !!parsed.detailedSummary && parsed.detailedSummary.length > 0);
+      console.error('Has tags:', Array.isArray(parsed.tags) && parsed.tags.length > 0);
     }
     
   } catch (error) {

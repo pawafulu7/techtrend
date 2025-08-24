@@ -2,7 +2,7 @@
 import fetch from 'node-fetch';
 
 async function testDirectPrompt() {
-  console.log('🧪 Local LLM プロンプト直接テスト\n');
+  console.error('🧪 Local LLM プロンプト直接テスト\n');
   
   const url = 'http://192.168.11.7:1234';
   
@@ -49,9 +49,9 @@ async function testDirectPrompt() {
   ];
 
   for (const prompt of testPrompts) {
-    console.log(`\n${'='.repeat(60)}`);
-    console.log(`📝 テスト: ${prompt.name}`);
-    console.log('='.repeat(60));
+    console.error(`\n${'='.repeat(60)}`);
+    console.error(`📝 テスト: ${prompt.name}`);
+    console.error('='.repeat(60));
     
     try {
       const response = await fetch(`${url}/v1/chat/completions`, {
@@ -71,31 +71,31 @@ async function testDirectPrompt() {
         const data = await response.json() as any;
         const content = data.choices?.[0]?.message?.content || '';
         
-        console.log(`\n応答: ${content}`);
-        console.log(`文字数: ${content.length}文字`);
+        console.error(`\n応答: ${content}`);
+        console.error(`文字数: ${content.length}文字`);
         
         // 品質チェック
         const hasEnglishThinking = /need|chars|count|let's/i.test(content);
-        console.log(`英語の思考過程: ${hasEnglishThinking ? '含まれる ❌' : '含まれない ✅'}`);
+        console.error(`英語の思考過程: ${hasEnglishThinking ? '含まれる ❌' : '含まれない ✅'}`);
       } else {
-        console.log('❌ エラー:', await response.text());
+        console.error('❌ エラー:', await response.text());
       }
     } catch (error) {
       console.error('❌ エラー:', error);
     }
   }
   
-  console.log('\n' + '='.repeat(60));
-  console.log('📊 分析結果');
-  console.log('='.repeat(60));
-  console.log('Local LLMの特性:');
-  console.log('- 英語の思考過程が出力に混入しやすい');
-  console.log('- システムメッセージの効果が限定的');
-  console.log('- プロンプトエンジニアリングでの制御が難しい');
-  console.log('\n対策案:');
-  console.log('1. 後処理で英語部分を除去');
-  console.log('2. より強力なLocal LLMモデルの使用');
-  console.log('3. Few-shot promptingの活用');
+  console.error('\n' + '='.repeat(60));
+  console.error('📊 分析結果');
+  console.error('='.repeat(60));
+  console.error('Local LLMの特性:');
+  console.error('- 英語の思考過程が出力に混入しやすい');
+  console.error('- システムメッセージの効果が限定的');
+  console.error('- プロンプトエンジニアリングでの制御が難しい');
+  console.error('\n対策案:');
+  console.error('1. 後処理で英語部分を除去');
+  console.error('2. より強力なLocal LLMモデルの使用');
+  console.error('3. Few-shot promptingの活用');
 }
 
 testDirectPrompt().catch(console.error);

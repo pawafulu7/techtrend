@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { ExtendedArticle } from '@/types/common';
 import { 
   UserInterests, 
   RecommendedArticle, 
@@ -123,7 +124,7 @@ export class RecommendationService {
    * 記事の推薦スコアを計算
    */
   calculateRecommendationScore(
-    article: {id: string; title: string; tags: Array<{name: string} | string>; source?: {name: string}},
+    article: ExtendedArticle & {tags: Array<{name: string} | string>; source?: {name: string}; publishedAt: Date},
     interests: UserInterests
   ): RecommendationScore {
     let score = 0;

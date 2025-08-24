@@ -68,7 +68,7 @@ async function generateTags(title: string, content: string): Promise<string[]> {
 }
 
 async function generateTagsForArticles(): Promise<GenerateResult> {
-  console.log('🏷️ タグ生成バッチを開始します...');
+  console.error('🏷️ タグ生成バッチを開始します...');
   const startTime = Date.now();
 
   try {
@@ -113,14 +113,14 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
     );
 
     if (uniqueArticles.length === 0) {
-      console.log('✅ タグ生成が必要な記事はありません');
+      console.error('✅ タグ生成が必要な記事はありません');
       return { generated: 0, errors: 0 };
     }
 
-    console.log(`📊 処理対象:`);
-    console.log(`   - タグなし: ${articlesWithoutTags.length}件`);
-    console.log(`   - 「article」タグのみ: ${singleArticleTagArticles.length}件`);
-    console.log(`   - 合計: ${uniqueArticles.length}件`);
+    console.error(`📊 処理対象:`);
+    console.error(`   - タグなし: ${articlesWithoutTags.length}件`);
+    console.error(`   - 「article」タグのみ: ${singleArticleTagArticles.length}件`);
+    console.error(`   - 合計: ${uniqueArticles.length}件`);
 
     let generatedCount = 0;
     let errorCount = 0;
@@ -166,7 +166,7 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
             }
           });
           
-          console.log(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
+          console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
           generatedCount++;
         }
         
@@ -181,14 +181,14 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
     }
 
     const duration = Math.round((Date.now() - startTime) / 1000);
-    console.log(`\n📊 タグ生成完了:`);
-    console.log(`   成功: ${generatedCount}件`);
-    console.log(`   エラー: ${errorCount}件`);
-    console.log(`   処理時間: ${duration}秒`);
+    console.error(`\n📊 タグ生成完了:`);
+    console.error(`   成功: ${generatedCount}件`);
+    console.error(`   エラー: ${errorCount}件`);
+    console.error(`   処理時間: ${duration}秒`);
 
     // タグが生成された場合はキャッシュを無効化
     if (generatedCount > 0) {
-      console.log('\n🔄 キャッシュを無効化中...');
+      console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
     }
 

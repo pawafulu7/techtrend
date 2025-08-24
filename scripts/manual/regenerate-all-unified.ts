@@ -73,18 +73,18 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
     // フォールバック: summaryから詳細要約を生成
     if (finalSummary && finalSummary.length > 100) {
       finalDetailedSummary = `・${finalSummary}\n・技術的な詳細については元記事を参照してください`;
-      console.log('📝 フォールバック: 一覧要約から詳細要約を生成しました');
+      console.error('📝 フォールバック: 一覧要約から詳細要約を生成しました');
     }
   }
   
   // デバッグログ
   if (process.env.DEBUG_REGENERATE) {
-    console.log('=== DEBUG: API Response ===');
-    console.log('Summary length:', finalSummary.length);
-    console.log('Summary preview:', finalSummary.substring(0, 100));
-    console.log('DetailedSummary length:', finalDetailedSummary.length);
-    console.log('DetailedSummary preview:', finalDetailedSummary.substring(0, 100));
-    console.log('===========================');
+    console.error('=== DEBUG: API Response ===');
+    console.error('Summary length:', finalSummary.length);
+    console.error('Summary preview:', finalSummary.substring(0, 100));
+    console.error('DetailedSummary length:', finalDetailedSummary.length);
+    console.error('DetailedSummary preview:', finalDetailedSummary.substring(0, 100));
+    console.error('===========================');
   }
   
   return {
@@ -97,16 +97,16 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
 // parseResponseは統一サービス内で処理されるため削除
 
 async function main() {
-  console.log('🔄 全記事を統一フォーマットで再生成します');
+  console.error('🔄 全記事を統一フォーマットで再生成します');
   
   if (continueMode) {
-    console.log('📌 継続モード: 未処理記事のみを対象にします');
+    console.error('📌 継続モード: 未処理記事のみを対象にします');
   }
   if (forceRegenerate) {
-    console.log('⚠️  強制再生成モード: 処理済み記事も含めて全て再生成します');
+    console.error('⚠️  強制再生成モード: 処理済み記事も含めて全て再生成します');
   }
   
-  console.log('================================================================================\n');
+  console.error('================================================================================\n');
 
   const stats: ProcessStats = {
     totalTargets: 0,
@@ -120,7 +120,7 @@ async function main() {
 
   try {
     // 処理対象の記事を取得
-    console.log('📊 記事を取得中...');
+    console.error('📊 記事を取得中...');
     
     // 未処理記事の条件（summaryVersion < 6 または forceRegenerate）
     // Prismaのバグ回避のため、簡略化したクエリを使用
@@ -141,15 +141,15 @@ async function main() {
     const articles = await prisma.article.findMany(query);
     stats.totalTargets = articles.length;
 
-    console.log(`\n✅ 対象記事: ${stats.totalTargets}件`);
+    console.error(`\n✅ 対象記事: ${stats.totalTargets}件`);
     
     if (isDryRun) {
-      console.log('⚠️  DRY-RUNモード: 実際の更新は行いません\n');
+      console.error('⚠️  DRY-RUNモード: 実際の更新は行いません\n');
     }
 
     // 処理開始
-    console.log('\n処理を開始します...\n');
-    console.log('=' .repeat(80));
+    console.error('\n処理を開始します...\n');
+    console.error('=' .repeat(80));
 
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i];
@@ -166,34 +166,34 @@ async function main() {
         const rate = Math.round(stats.processed / elapsed * 60);
         const eta = Math.round((stats.totalTargets - stats.processed) / (stats.processed / elapsed));
         
-        console.log('\n' + '=' .repeat(80));
-        console.log(`📈 進捗: ${stats.processed}/${stats.totalTargets} (${Math.round(stats.processed / stats.totalTargets * 100)}%)`);
-        console.log(`⏱️  経過時間: ${elapsed}秒 | 処理速度: ${rate}件/分 | 推定残り時間: ${eta}秒`);
-        console.log(`✅ 改善: ${stats.improved}件 | ⏭️  変化なし: ${stats.unchanged}件 | ❌ 失敗: ${stats.failed}件`);
+        console.error('\n' + '=' .repeat(80));
+        console.error(`📈 進捗: ${stats.processed}/${stats.totalTargets} (${Math.round(stats.processed / stats.totalTargets * 100)}%)`);
+        console.error(`⏱️  経過時間: ${elapsed}秒 | 処理速度: ${rate}件/分 | 推定残り時間: ${eta}秒`);
+        console.error(`✅ 改善: ${stats.improved}件 | ⏭️  変化なし: ${stats.unchanged}件 | ❌ 失敗: ${stats.failed}件`);
         
         if (stats.scoreImprovements.length > 0) {
           const avgImprovement = Math.round(stats.scoreImprovements.reduce((a, b) => a + b, 0) / stats.scoreImprovements.length);
-          console.log(`📊 平均改善度: +${avgImprovement}点`);
+          console.error(`📊 平均改善度: +${avgImprovement}点`);
         }
-        console.log('=' .repeat(80) + '\n');
+        console.error('=' .repeat(80) + '\n');
         
         // 100件ごとに長めの休憩
         if (i % 100 === 0) {
-          console.log('💤 API負荷軽減のため30秒待機...');
+          console.error('💤 API負荷軽減のため30秒待機...');
           await new Promise(resolve => setTimeout(resolve, 30000));
         }
       }
       
-      console.log(`[${i + 1}/${stats.totalTargets}] ${article.title.substring(0, 50)}...`);
-      console.log(`  現在: ${currentScore}点 | ソース: ${article.source.name}`);
+      console.error(`[${i + 1}/${stats.totalTargets}] ${article.title.substring(0, 50)}...`);
+      console.error(`  現在: ${currentScore}点 | ソース: ${article.source.name}`);
       
       try {
         // コンテンツの準備
-        const content = article.content || article.description || article.title;
+        const content = article.content || article.title;
         
         // 短すぎるコンテンツの警告
         if (content.length < 100) {
-          console.log(`  ⚠️  極短コンテンツ: ${content.length}文字`);
+          console.error(`  ⚠️  極短コンテンツ: ${content.length}文字`);
         }
 
         // 新しい要約を生成
@@ -251,18 +251,18 @@ async function main() {
 
           const improvement = newScore - currentScore;
           if (improvement > 0) {
-            console.log(`  ✅ 改善: ${currentScore} → ${newScore}点 (+${improvement}点)`);
+            console.error(`  ✅ 改善: ${currentScore} → ${newScore}点 (+${improvement}点)`);
             stats.improved++;
             stats.scoreImprovements.push(improvement);
           } else if (improvement < 0) {
-            console.log(`  📝 統一フォーマット適用: ${currentScore} → ${newScore}点 (${improvement}点)`);
+            console.error(`  📝 統一フォーマット適用: ${currentScore} → ${newScore}点 (${improvement}点)`);
             stats.improved++; // 統一フォーマット適用も改善としてカウント
           } else {
-            console.log(`  📝 統一フォーマット適用: ${currentScore}点（スコア変化なし）`);
+            console.error(`  📝 統一フォーマット適用: ${currentScore}点（スコア変化なし）`);
             stats.improved++; // 統一フォーマット適用も改善としてカウント
           }
         } else {
-          console.log(`  ⏭️  変化なし: ${currentScore}点`);
+          console.error(`  ⏭️  変化なし: ${currentScore}点`);
           stats.unchanged++;
         }
         
@@ -277,14 +277,14 @@ async function main() {
         
         // Rate Limitエラーの場合は特別処理
         if (errorMessage.includes('429') || errorMessage.includes('rate') || errorMessage.includes('quota')) {
-          console.log('⚠️  Rate Limitエラーを検出しました。');
-          console.log('📊 現在の進捗:');
-          console.log(`  - 処理済み: ${stats.processed}件`);
-          console.log(`  - 改善: ${stats.improved}件`);
-          console.log(`  - 失敗: ${stats.failed}件`);
+          console.error('⚠️  Rate Limitエラーを検出しました。');
+          console.error('📊 現在の進捗:');
+          console.error(`  - 処理済み: ${stats.processed}件`);
+          console.error(`  - 改善: ${stats.improved}件`);
+          console.error(`  - 失敗: ${stats.failed}件`);
           
           if (continueMode) {
-            console.log('⏸️  60秒待機してから再試行します...');
+            console.error('⏸️  60秒待機してから再試行します...');
             await new Promise(resolve => setTimeout(resolve, 60000));
             
             // 再試行
@@ -302,25 +302,25 @@ async function main() {
                     summaryVersion: getUnifiedSummaryService().getSummaryVersion()
                   }
                 });
-                console.log(`  ✅ 再試行成功: ${currentScore} → ${retryScore}点`);
+                console.error(`  ✅ 再試行成功: ${currentScore} → ${retryScore}点`);
                 stats.improved++;
               }
             } catch (retryError) {
               console.error(`  ❌ 再試行も失敗: ${retryError}`);
               stats.failed++;
               
-              console.log('\n⚠️  Rate Limitが継続しています。');
-              console.log('後で以下のコマンドで再開してください:');
-              console.log(`npm run regenerate:all-unified -- --continue`);
-              console.log(`\n処理済み記事は自動的にスキップされます。\n`);
+              console.error('\n⚠️  Rate Limitが継続しています。');
+              console.error('後で以下のコマンドで再開してください:');
+              console.error(`npm run regenerate:all-unified -- --continue`);
+              console.error(`\n処理済み記事は自動的にスキップされます。\n`);
               break; // ループを抜ける
             }
           } else {
             stats.failed++;
-            console.log('\n⚠️  Rate Limitエラーのため処理を中断します。');
-            console.log('再開するには以下のコマンドを実行してください:');
-            console.log(`npm run regenerate:all-unified -- --continue`);
-            console.log(`\n処理済み記事（summaryVersion: 5）は自動的にスキップされます。\n`);
+            console.error('\n⚠️  Rate Limitエラーのため処理を中断します。');
+            console.error('再開するには以下のコマンドを実行してください:');
+            console.error(`npm run regenerate:all-unified -- --continue`);
+            console.error(`\n処理済み記事（summaryVersion: 5）は自動的にスキップされます。\n`);
             break; // ループを抜ける
           }
         } else {
@@ -338,38 +338,38 @@ async function main() {
     const minutes = Math.floor(totalTime / 60);
     const seconds = totalTime % 60;
     
-    console.log('\n' + '=' .repeat(80));
-    console.log('📊 最終結果レポート');
-    console.log('=' .repeat(80));
-    console.log(`\n【処理統計】`);
-    console.log(`  対象記事数: ${stats.totalTargets}件`);
-    console.log(`  処理完了: ${stats.processed}件`);
-    console.log(`  改善成功: ${stats.improved}件 (${Math.round(stats.improved / stats.processed * 100)}%)`);
-    console.log(`  変化なし: ${stats.unchanged}件`);
-    console.log(`  処理失敗: ${stats.failed}件`);
+    console.error('\n' + '=' .repeat(80));
+    console.error('📊 最終結果レポート');
+    console.error('=' .repeat(80));
+    console.error(`\n【処理統計】`);
+    console.error(`  対象記事数: ${stats.totalTargets}件`);
+    console.error(`  処理完了: ${stats.processed}件`);
+    console.error(`  改善成功: ${stats.improved}件 (${Math.round(stats.improved / stats.processed * 100)}%)`);
+    console.error(`  変化なし: ${stats.unchanged}件`);
+    console.error(`  処理失敗: ${stats.failed}件`);
     
     if (stats.scoreImprovements.length > 0) {
       const avgImprovement = Math.round(stats.scoreImprovements.reduce((a, b) => a + b, 0) / stats.scoreImprovements.length);
       const maxImprovement = Math.max(...stats.scoreImprovements);
       
-      console.log(`\n【品質改善】`);
-      console.log(`  平均改善度: +${avgImprovement}点`);
-      console.log(`  最大改善度: +${maxImprovement}点`);
-      console.log(`  改善率: ${Math.round(stats.improved / stats.processed * 100)}%`);
+      console.error(`\n【品質改善】`);
+      console.error(`  平均改善度: +${avgImprovement}点`);
+      console.error(`  最大改善度: +${maxImprovement}点`);
+      console.error(`  改善率: ${Math.round(stats.improved / stats.processed * 100)}%`);
     }
     
-    console.log(`\n【処理時間】`);
-    console.log(`  総処理時間: ${minutes}分${seconds}秒`);
-    console.log(`  平均処理時間: ${Math.round(totalTime / stats.processed)}秒/件`);
+    console.error(`\n【処理時間】`);
+    console.error(`  総処理時間: ${minutes}分${seconds}秒`);
+    console.error(`  平均処理時間: ${Math.round(totalTime / stats.processed)}秒/件`);
 
     // キャッシュ無効化
     if (!isDryRun && stats.improved > 0) {
-      console.log('\n🔄 キャッシュを無効化中...');
+      console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
-      console.log('✅ キャッシュ無効化完了');
+      console.error('✅ キャッシュ無効化完了');
     }
 
-    console.log('\n✨ 処理が完了しました！');
+    console.error('\n✨ 処理が完了しました！');
     
     // 未処理記事の確認
     const remainingCount = await prisma.article.count({
@@ -380,13 +380,13 @@ async function main() {
     });
     
     if (remainingCount > 0) {
-      console.log(`\n⚠️  未処理記事が ${remainingCount} 件残っています。`);
-      console.log('以下のコマンドで継続できます:');
-      console.log(`npm run regenerate:all-unified -- --continue`);
+      console.error(`\n⚠️  未処理記事が ${remainingCount} 件残っています。`);
+      console.error('以下のコマンドで継続できます:');
+      console.error(`npm run regenerate:all-unified -- --continue`);
     } else {
-      console.log('\n【重要】');
-      console.log('✅ 全記事の統一フォーマットへの移行が完了しました。');
-      console.log('今後生成される要約も全て統一フォーマットになります。');
+      console.error('\n【重要】');
+      console.error('✅ 全記事の統一フォーマットへの移行が完了しました。');
+      console.error('今後生成される要約も全て統一フォーマットになります。');
     }
 
   } catch (error) {

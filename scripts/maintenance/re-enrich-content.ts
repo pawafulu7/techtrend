@@ -51,9 +51,9 @@ function saveProgress(progress: Progress) {
 }
 
 async function reEnrichContent() {
-  console.log('========================================');
-  console.log('既存記事のコンテンツ再取得');
-  console.log('========================================\n');
+  console.error('========================================');
+  console.error('既存記事のコンテンツ再取得');
+  console.error('========================================\n');
 
   const factory = new ContentEnricherFactory();
   const progress = loadProgress();
@@ -107,7 +107,7 @@ async function reEnrichContent() {
     return contentLength <= 500;
   });
 
-  console.log(`対象記事数: ${shortArticles.length}件\n`);
+  console.error(`対象記事数: ${shortArticles.length}件\n`);
   progress.stats.total = shortArticles.length + progress.stats.processed;
 
   let batchCount = 0;
@@ -115,17 +115,17 @@ async function reEnrichContent() {
 
   for (const article of shortArticles) {
     const sourceName = sourceMap.get(article.sourceId) || 'Unknown';
-    console.log(`\n[${progress.stats.processed + 1}/${progress.stats.total}] ${article.title.substring(0, 50)}...`);
-    console.log(`  ソース: ${sourceName}`);
-    console.log(`  URL: ${article.url}`);
-    console.log(`  現在のコンテンツ: ${article.content?.length || 0}文字`);
+    console.error(`\n[${progress.stats.processed + 1}/${progress.stats.total}] ${article.title.substring(0, 50)}...`);
+    console.error(`  ソース: ${sourceName}`);
+    console.error(`  URL: ${article.url}`);
+    console.error(`  現在のコンテンツ: ${article.content?.length || 0}文字`);
 
     try {
       // エンリッチャーを取得
       const enricher = factory.getEnricher(article.url);
       
       if (!enricher) {
-        console.log('  ⚠️ エンリッチャーが見つかりません - スキップ');
+        console.error('  ⚠️ エンリッチャーが見つかりません - スキップ');
         progress.stats.skipped++;
         progress.processedIds.push(article.id);
         progress.stats.processed++;
@@ -133,7 +133,7 @@ async function reEnrichContent() {
       }
 
       // エンリッチ実行
-      console.log('  エンリッチ中...');
+      console.error('  エンリッチ中...');
       const enriched = await enricher.enrich(article.url);
       
       if (enriched && enriched.content && enriched.content.length > (article.content?.length || 0)) {
@@ -146,10 +146,10 @@ async function reEnrichContent() {
           },
         });
         
-        console.log(`  ✅ 成功: ${enriched.content.length}文字に更新`);
+        console.error(`  ✅ 成功: ${enriched.content.length}文字に更新`);
         progress.stats.enriched++;
       } else {
-        console.log('  ⚠️ 新しいコンテンツが取得できませんでした');
+        console.error('  ⚠️ 新しいコンテンツが取得できませんでした');
         progress.stats.skipped++;
       }
       
@@ -166,10 +166,10 @@ async function reEnrichContent() {
     // 10件ごとに進捗を保存
     if (++batchCount % BATCH_SIZE === 0) {
       saveProgress(progress);
-      console.log('\n--- 進捗を保存しました ---');
+      console.error('\n--- 進捗を保存しました ---');
       
       // Rate limit対策で少し長めに待機
-      console.log('Rate limit対策で10秒待機...');
+      console.error('Rate limit対策で10秒待機...');
       await new Promise(resolve => setTimeout(resolve, 10000));
     } else {
       // 通常の待機
@@ -181,22 +181,22 @@ async function reEnrichContent() {
   saveProgress(progress);
 
   // 結果サマリー
-  console.log('\n========================================');
-  console.log('処理完了');
-  console.log('========================================\n');
-  console.log(`総処理数: ${progress.stats.processed}件`);
-  console.log(`エンリッチ成功: ${progress.stats.enriched}件`);
-  console.log(`スキップ: ${progress.stats.skipped}件`);
-  console.log(`エラー: ${progress.stats.failed}件`);
+  console.error('\n========================================');
+  console.error('処理完了');
+  console.error('========================================\n');
+  console.error(`総処理数: ${progress.stats.processed}件`);
+  console.error(`エンリッチ成功: ${progress.stats.enriched}件`);
+  console.error(`スキップ: ${progress.stats.skipped}件`);
+  console.error(`エラー: ${progress.stats.failed}件`);
 
   // 進捗ファイルを削除するか確認
   if (progress.stats.processed === progress.stats.total) {
-    console.log('\n✅ すべての記事の処理が完了しました');
-    console.log('進捗ファイルを削除します...');
+    console.error('\n✅ すべての記事の処理が完了しました');
+    console.error('進捗ファイルを削除します...');
     fs.unlinkSync(PROGRESS_FILE);
   } else {
-    console.log('\n⚠️ 未処理の記事が残っています');
-    console.log('再度実行すると続きから処理を再開します');
+    console.error('\n⚠️ 未処理の記事が残っています');
+    console.error('再度実行すると続きから処理を再開します');
   }
 
   await prisma.$disconnect();
@@ -204,8 +204,8 @@ async function reEnrichContent() {
 
 // エラーハンドリング
 process.on('SIGINT', () => {
-  console.log('\n\n中断されました。進捗は保存されています。');
-  console.log('再実行時は続きから処理を再開します。');
+  console.error('\n\n中断されました。進捗は保存されています。');
+  console.error('再実行時は続きから処理を再開します。');
   process.exit(0);
 });
 

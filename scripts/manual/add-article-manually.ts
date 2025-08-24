@@ -54,12 +54,12 @@ function loadUrlsFromFile(filePath: string): string[] {
  * メイン処理
  */
 async function main() {
-  console.log('🚀 TechTrend 手動記事追加ツール\n');
+  console.error('🚀 TechTrend 手動記事追加ツール\n');
   
   try {
     // バッチ処理モード
     if (options.batch) {
-      console.log(`📋 バッチファイル読み込み: ${options.batch}`);
+      console.error(`📋 バッチファイル読み込み: ${options.batch}`);
       const urls = loadUrlsFromFile(options.batch);
       
       if (urls.length === 0) {
@@ -67,7 +67,7 @@ async function main() {
         process.exit(1);
       }
       
-      console.log(`📊 ${urls.length}件のURLを処理します\n`);
+      console.error(`📊 ${urls.length}件のURLを処理します\n`);
       
       const results = await addArticlesBatch(urls, {
         title: options.title,
@@ -81,35 +81,35 @@ async function main() {
       const failed = results.filter(r => !r.success);
       
       if (failed.length > 0) {
-        console.log('\n❌ 失敗した記事:');
+        console.error('\n❌ 失敗した記事:');
         failed.forEach((r, i) => {
-          console.log(`  ${i + 1}. ${r.error}`);
+          console.error(`  ${i + 1}. ${r.error}`);
         });
       }
       
-      console.log(`\n✅ 完了: 成功 ${successful.length}件, 失敗 ${failed.length}件`);
+      console.error(`\n✅ 完了: 成功 ${successful.length}件, 失敗 ${failed.length}件`);
       
     } else {
       // 単一記事処理モード
-      console.log(`📍 URL: ${options.url}`);
+      console.error(`📍 URL: ${options.url}`);
       
       if (options.title) {
-        console.log(`📝 タイトル: ${options.title}`);
+        console.error(`📝 タイトル: ${options.title}`);
       }
       
       if (options.dryRun) {
-        console.log('🔄 ドライランモード（実際の保存なし）');
+        console.error('🔄 ドライランモード（実際の保存なし）');
       }
       
       if (options.skipSummary) {
-        console.log('⏭️ 要約生成をスキップ');
+        console.error('⏭️ 要約生成をスキップ');
       }
       
       if (options.skipEnrichment) {
-        console.log('⏭️ エンリッチメント処理をスキップ');
+        console.error('⏭️ エンリッチメント処理をスキップ');
       }
       
-      console.log(''); // 空行
+      console.error(''); // 空行
       
       const result = await addArticleManually({
         url: options.url,
@@ -119,43 +119,43 @@ async function main() {
         dryRun: options.dryRun
       });
       
-      console.log('\n' + '='.repeat(60));
+      console.error('\n' + '='.repeat(60));
       
       if (result.success) {
-        console.log('✅ 記事追加成功！\n');
-        console.log(`📄 タイトル: ${result.title}`);
-        console.log(`🏷️ ソース: ${result.source}`);
+        console.error('✅ 記事追加成功！\n');
+        console.error(`📄 タイトル: ${result.title}`);
+        console.error(`🏷️ ソース: ${result.source}`);
         
         if (result.articleId) {
-          console.log(`🆔 記事ID: ${result.articleId}`);
+          console.error(`🆔 記事ID: ${result.articleId}`);
         }
         
         if (result.summary) {
-          console.log(`\n📝 要約:\n${result.summary}`);
+          console.error(`\n📝 要約:\n${result.summary}`);
         }
         
         if (result.detailedSummary) {
-          console.log(`\n📋 詳細要約:\n${result.detailedSummary}`);
+          console.error(`\n📋 詳細要約:\n${result.detailedSummary}`);
         }
         
         if (result.message) {
-          console.log(`\n💬 ${result.message}`);
+          console.error(`\n💬 ${result.message}`);
         }
       } else {
         console.error('❌ 記事追加失敗\n');
         console.error(`エラー: ${result.error}`);
         
         if (result.articleId) {
-          console.log(`\n既存記事ID: ${result.articleId}`);
-          console.log(`既存記事タイトル: ${result.title}`);
+          console.error(`\n既存記事ID: ${result.articleId}`);
+          console.error(`既存記事タイトル: ${result.title}`);
         }
         
         process.exit(1);
       }
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('👋 処理完了');
+    console.error('\n' + '='.repeat(60));
+    console.error('👋 処理完了');
     
   } catch (error) {
     console.error('\n❌ 予期しないエラーが発生しました:', error);

@@ -1,19 +1,19 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 import * as fs from 'fs';
 
 const prisma = new PrismaClient();
 
 async function fixAllQualityIssues() {
-  console.log('🔧 すべての品質問題を修正\n');
+  console.error('🔧 すべての品質問題を修正\n');
   
   try {
     // 問題のある記事IDを読み込み
     const problemData = JSON.parse(fs.readFileSync('problem-articles.json', 'utf-8'));
     const allProblemIds = problemData.problemIds;
     
-    console.log(`修正対象: ${allProblemIds.length}件\n`);
+    console.error(`修正対象: ${allProblemIds.length}件\n`);
     
     // 優先度順にソート（重要な問題から修正）
     const prioritizedIds = [];
@@ -50,7 +50,7 @@ async function fixAllQualityIssues() {
       }
     });
     
-    console.log(`優先度付け完了: ${prioritizedIds.length}件を処理\n`);
+    console.error(`優先度付け完了: ${prioritizedIds.length}件を処理\n`);
     
     // ローカルLLMクライアントを初期化
     const localLLM = new LocalLLMClient({
@@ -67,7 +67,7 @@ async function fixAllQualityIssues() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     let successCount = 0;
     let errorCount = 0;
@@ -83,7 +83,7 @@ async function fixAllQualityIssues() {
       const batchEnd = Math.min(batchStart + batchSize, prioritizedIds.length);
       const batchIds = prioritizedIds.slice(batchStart, batchEnd);
       
-      console.log(`\n📦 バッチ ${batch + 1}/${batches} (${batchIds.length}件)\n`);
+      console.error(`\n📦 バッチ ${batch + 1}/${batches} (${batchIds.length}件)\n`);
       
       for (let i = 0; i < batchIds.length; i++) {
         const articleId = batchIds[i];
@@ -93,13 +93,13 @@ async function fixAllQualityIssues() {
         if (globalIndex % 10 === 0) {
           const elapsed = Math.floor((Date.now() - startTime) / 1000);
           const rate = successCount / (elapsed / 60) || 0;
-          console.log(`\n📊 進捗: ${globalIndex}/${prioritizedIds.length} (${Math.round(globalIndex/prioritizedIds.length*100)}%)`);
-          console.log(`✅ 成功: ${successCount}, ⏭️ スキップ: ${skipCount}, ❌ エラー: ${errorCount}`);
-          console.log(`⏱️ 経過: ${Math.floor(elapsed/60)}分${elapsed%60}秒`);
-          console.log(`🚀 速度: ${rate.toFixed(1)}件/分\n`);
+          console.error(`\n📊 進捗: ${globalIndex}/${prioritizedIds.length} (${Math.round(globalIndex/prioritizedIds.length*100)}%)`);
+          console.error(`✅ 成功: ${successCount}, ⏭️ スキップ: ${skipCount}, ❌ エラー: ${errorCount}`);
+          console.error(`⏱️ 経過: ${Math.floor(elapsed/60)}分${elapsed%60}秒`);
+          console.error(`🚀 速度: ${rate.toFixed(1)}件/分\n`);
         }
         
-        console.log(`[${globalIndex}/${prioritizedIds.length}] 処理中: ${articleId}`);
+        console.error(`[${globalIndex}/${prioritizedIds.length}] 処理中: ${articleId}`);
         
         try {
           // 記事を取得
@@ -117,12 +117,12 @@ async function fixAllQualityIssues() {
           });
           
           if (!article) {
-            console.log('  ❌ 記事が見つかりません');
+            console.error('  ❌ 記事が見つかりません');
             errorCount++;
             continue;
           }
           
-          console.log(`  📝 ${article.title?.substring(0, 50)}...`);
+          console.error(`  📝 ${article.title?.substring(0, 50)}...`);
           
           // 問題を特定
           const issues = [];
@@ -183,12 +183,12 @@ async function fixAllQualityIssues() {
           }
           
           if (!needsRegeneration) {
-            console.log('  ⏭️ 修正不要');
+            console.error('  ⏭️ 修正不要');
             skipCount++;
             continue;
           }
           
-          console.log(`  ⚠️ 問題: ${issues.join(', ')}`);
+          console.error(`  ⚠️ 問題: ${issues.join(', ')}`);
           
           // コンテンツを準備
           let content = article.content || '';
@@ -242,7 +242,7 @@ ${additionalContext}
             `.trim();
           }
           
-          console.log('  🔄 要約を再生成中...');
+          console.error('  🔄 要約を再生成中...');
           
           const result = await localLLM.generateDetailedSummary(
             article.title || '',
@@ -305,7 +305,7 @@ ${additionalContext}
               }
             });
             
-            console.log('  ✅ 修正成功');
+            console.error('  ✅ 修正成功');
             successCount++;
           } else {
             const problems = [];
@@ -313,7 +313,7 @@ ${additionalContext}
             if (!hasContent) problems.push('内容不適切');
             if (!hasProperTechnicalBackground) problems.push('技術的背景なし');
             if (!hasEnoughItems) problems.push('項目数不足');
-            console.log(`  ⚠️ 品質チェック失敗: ${problems.join(', ')}`);
+            console.error(`  ⚠️ 品質チェック失敗: ${problems.join(', ')}`);
             errorCount++;
           }
           
@@ -330,13 +330,13 @@ ${additionalContext}
     }
     
     const totalTime = Math.floor((Date.now() - startTime) / 1000);
-    console.log('\n' + '='.repeat(60));
-    console.log('🎉 処理完了');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`⏭️ スキップ: ${skipCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`⏱️ 総処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
-    console.log(`🚀 平均処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
+    console.error('\n' + '='.repeat(60));
+    console.error('🎉 処理完了');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`⏭️ スキップ: ${skipCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`⏱️ 総処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
+    console.error(`🚀 平均処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

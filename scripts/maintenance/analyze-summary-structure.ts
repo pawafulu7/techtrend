@@ -14,14 +14,14 @@ async function analyzeSummaryStructure() {
     });
 
     if (!article || !article.detailedSummary) {
-      console.log(`記事ID ${articleId} が見つからないか、詳細要約がありません`);
+      console.error(`記事ID ${articleId} が見つからないか、詳細要約がありません`);
       continue;
     }
 
-    console.log('='*60);
-    console.log(`記事ID: ${articleId}`);
-    console.log(`タイトル: ${article.title}`);
-    console.log('\n--- 詳細要約の構造分析 ---');
+    console.error('='*60);
+    console.error(`記事ID: ${articleId}`);
+    console.error(`タイトル: ${article.title}`);
+    console.error('\n--- 詳細要約の構造分析 ---');
     
     const lines = article.detailedSummary.split('\n');
     lines.forEach((line, index) => {
@@ -33,31 +33,31 @@ async function analyzeSummaryStructure() {
           const topic = content.substring(0, firstSentenceEnd);
           const description = content.substring(firstSentenceEnd + 1).trim();
           
-          console.log(`\n項目${index + 1}:`);
-          console.log(`  トピック: ${topic}`);
-          console.log(`  説明: ${description.substring(0, 100)}${description.length > 100 ? '...' : ''}`);
+          console.error(`\n項目${index + 1}:`);
+          console.error(`  トピック: ${topic}`);
+          console.error(`  説明: ${description.substring(0, 100)}${description.length > 100 ? '...' : ''}`);
           
           // 項目の構造パターンを判定
           if (topic.includes('記事の主題')) {
-            console.log(`  パターン: 主題説明`);
+            console.error(`  パターン: 主題説明`);
           } else if (topic.includes('問題')) {
-            console.log(`  パターン: 問題説明`);
+            console.error(`  パターン: 問題説明`);
           } else if (topic.includes('解決策')) {
-            console.log(`  パターン: 解決策説明`);
+            console.error(`  パターン: 解決策説明`);
           } else if (topic.includes('実装')) {
-            console.log(`  パターン: 実装説明`);
+            console.error(`  パターン: 実装説明`);
           } else if (topic.includes('効果')) {
-            console.log(`  パターン: 効果説明`);
+            console.error(`  パターン: 効果説明`);
           } else if (topic.includes('注意点')) {
-            console.log(`  パターン: 注意事項`);
+            console.error(`  パターン: 注意事項`);
           }
         } else {
-          console.log(`\n項目${index + 1}: ${line.trim()}`);
-          console.log(`  パターン: 単一文`);
+          console.error(`\n項目${index + 1}: ${line.trim()}`);
+          console.error(`  パターン: 単一文`);
         }
       }
     });
-    console.log('\n');
+    console.error('\n');
   }
   
   await prisma.$disconnect();

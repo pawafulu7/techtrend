@@ -84,36 +84,36 @@ async function enrichExistingZennArticles(limit?: number, testMode: boolean = fa
 
     result.total = targetArticles.length;
     
-    console.log('='.repeat(60));
-    console.log('Zenn記事エンリッチメント');
-    console.log('='.repeat(60));
-    console.log(`処理対象: ${result.total}件（300文字ちょうどの記事）`);
-    console.log('='.repeat(60));
+    console.error('='.repeat(60));
+    console.error('Zenn記事エンリッチメント');
+    console.error('='.repeat(60));
+    console.error(`処理対象: ${result.total}件（300文字ちょうどの記事）`);
+    console.error('='.repeat(60));
 
     if (testMode) {
-      console.log('🧪 テストモード: 実際の更新は行いません');
+      console.error('🧪 テストモード: 実際の更新は行いません');
     }
 
     // 各記事に対してエンリッチメント実行
     for (const article of targetArticles) {
       result.processed++;
       
-      console.log(`\n[${result.processed}/${result.total}] ${article.title}`);
-      console.log(`  URL: ${article.url}`);
-      console.log(`  現在のコンテンツ長: ${article.content?.length || 0}文字`);
+      console.error(`\n[${result.processed}/${result.total}] ${article.title}`);
+      console.error(`  URL: ${article.url}`);
+      console.error(`  現在のコンテンツ長: ${article.content?.length || 0}文字`);
       
       // エンリッチャーを取得
       const enricher = enricherFactory.getEnricher(article.url);
       
       if (!enricher) {
-        console.log('  ⚠️ エンリッチャーが見つかりません');
+        console.error('  ⚠️ エンリッチャーが見つかりません');
         result.skipped++;
         continue;
       }
       
       try {
         // エンリッチメント実行
-        console.log('  📥 コンテンツ取得中...');
+        console.error('  📥 コンテンツ取得中...');
         const enrichedData = await enricher.enrich(article.url);
         
         if (enrichedData && enrichedData.content) {
@@ -133,14 +133,14 @@ async function enrichExistingZennArticles(limit?: number, testMode: boolean = fa
             }
             
             enrichedLengths.push(newContentLength);
-            console.log(`  ✅ エンリッチメント成功: ${article.content?.length || 0} -> ${newContentLength}文字`);
+            console.error(`  ✅ エンリッチメント成功: ${article.content?.length || 0} -> ${newContentLength}文字`);
             result.enriched++;
           } else {
-            console.log(`  ⏭️ スキップ: 既存コンテンツの方が長い`);
+            console.error(`  ⏭️ スキップ: 既存コンテンツの方が長い`);
             result.skipped++;
           }
         } else {
-          console.log('  ⚠️ コンテンツが取得できませんでした');
+          console.error('  ⚠️ コンテンツが取得できませんでした');
           result.failed++;
         }
         
@@ -181,7 +181,7 @@ async function main() {
   const limitArg = args.find(arg => arg.startsWith('--limit='));
   const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : undefined;
 
-  console.log('🚀 Zenn記事エンリッチメントを開始します\n');
+  console.error('🚀 Zenn記事エンリッチメントを開始します\n');
 
   const startTime = Date.now();
   const result = await enrichExistingZennArticles(limit, testMode);
@@ -189,36 +189,36 @@ async function main() {
   const duration = Math.round((endTime - startTime) / 1000);
 
   // 結果サマリー
-  console.log('\n' + '='.repeat(60));
-  console.log('処理結果サマリー');
-  console.log('='.repeat(60));
-  console.log(`総対象記事数: ${result.total}`);
-  console.log(`処理済み: ${result.processed}`);
-  console.log(`エンリッチメント成功: ${result.enriched}`);
-  console.log(`失敗: ${result.failed}`);
-  console.log(`スキップ: ${result.skipped}`);
-  console.log(`成功率: ${result.total > 0 ? Math.round((result.enriched / result.total) * 100) : 0}%`);
-  console.log(`処理時間: ${duration}秒`);
+  console.error('\n' + '='.repeat(60));
+  console.error('処理結果サマリー');
+  console.error('='.repeat(60));
+  console.error(`総対象記事数: ${result.total}`);
+  console.error(`処理済み: ${result.processed}`);
+  console.error(`エンリッチメント成功: ${result.enriched}`);
+  console.error(`失敗: ${result.failed}`);
+  console.error(`スキップ: ${result.skipped}`);
+  console.error(`成功率: ${result.total > 0 ? Math.round((result.enriched / result.total) * 100) : 0}%`);
+  console.error(`処理時間: ${duration}秒`);
 
   if (result.enriched > 0) {
-    console.log('\n📊 エンリッチメント統計:');
-    console.log(`  最小文字数: ${result.stats.minLength.toLocaleString()}文字`);
-    console.log(`  最大文字数: ${result.stats.maxLength.toLocaleString()}文字`);
-    console.log(`  平均文字数: ${result.stats.avgLength.toLocaleString()}文字`);
+    console.error('\n📊 エンリッチメント統計:');
+    console.error(`  最小文字数: ${result.stats.minLength.toLocaleString()}文字`);
+    console.error(`  最大文字数: ${result.stats.maxLength.toLocaleString()}文字`);
+    console.error(`  平均文字数: ${result.stats.avgLength.toLocaleString()}文字`);
   }
 
   if (result.errors.length > 0) {
-    console.log('\n⚠️ エラー詳細:');
+    console.error('\n⚠️ エラー詳細:');
     result.errors.slice(0, 10).forEach(error => {
-      console.log(`  - ${error}`);
+      console.error(`  - ${error}`);
     });
     if (result.errors.length > 10) {
-      console.log(`  ... 他${result.errors.length - 10}件のエラー`);
+      console.error(`  ... 他${result.errors.length - 10}件のエラー`);
     }
   }
 
   if (testMode) {
-    console.log('\n🧪 テストモードで実行されました。実際のデータベース更新は行われていません。');
+    console.error('\n🧪 テストモードで実行されました。実際のデータベース更新は行われていません。');
   }
 
   process.exit(result.failed > 0 ? 1 : 0);

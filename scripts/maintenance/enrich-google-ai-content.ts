@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 const enricher = new GoogleAIEnricher();
 
 async function enrichGoogleAIContent() {
-  console.log('=== Google AI Blog Content Enrichment ===');
+  console.error('=== Google AI Blog Content Enrichment ===');
   
   try {
     // Google AI Blogの記事を取得
@@ -28,7 +28,7 @@ async function enrichGoogleAIContent() {
       }
     });
     
-    console.log(`Found ${articles.length} Google AI Blog articles`);
+    console.error(`Found ${articles.length} Google AI Blog articles`);
     
     let enrichedCount = 0;
     let failedCount = 0;
@@ -38,18 +38,18 @@ async function enrichGoogleAIContent() {
       try {
         // コンテンツが既に十分な長さがある場合はスキップ
         if (article.content && article.content.length > 5000) {
-          console.log(`[SKIP] Article already has sufficient content (${article.content.length} chars): ${article.title}`);
+          console.error(`[SKIP] Article already has sufficient content (${article.content.length} chars): ${article.title}`);
           skippedCount++;
           continue;
         }
         
-        console.log(`\nEnriching: ${article.title}`);
-        console.log(`Current content length: ${article.content?.length || 0} chars`);
-        console.log(`URL: ${article.url}`);
+        console.error(`\nEnriching: ${article.title}`);
+        console.error(`Current content length: ${article.content?.length || 0} chars`);
+        console.error(`URL: ${article.url}`);
         
         // URLがエンリッチャーで処理可能か確認
         if (!enricher.canHandle(article.url)) {
-          console.log(`[SKIP] URL not handled by enricher: ${article.url}`);
+          console.error(`[SKIP] URL not handled by enricher: ${article.url}`);
           skippedCount++;
           continue;
         }
@@ -71,17 +71,17 @@ async function enrichGoogleAIContent() {
               }
             });
             
-            console.log(`✅ Enriched: ${currentLength} -> ${newLength} chars`);
+            console.error(`✅ Enriched: ${currentLength} -> ${newLength} chars`);
             if (enrichedData.thumbnail) {
-              console.log(`   Thumbnail: ${enrichedData.thumbnail}`);
+              console.error(`   Thumbnail: ${enrichedData.thumbnail}`);
             }
             enrichedCount++;
           } else {
-            console.log(`[SKIP] New content not better (${newLength} chars)`);
+            console.error(`[SKIP] New content not better (${newLength} chars)`);
             skippedCount++;
           }
         } else {
-          console.log(`❌ Failed to enrich content`);
+          console.error(`❌ Failed to enrich content`);
           failedCount++;
         }
         
@@ -94,11 +94,11 @@ async function enrichGoogleAIContent() {
       }
     }
     
-    console.log('\n=== Enrichment Summary ===');
-    console.log(`Total articles: ${articles.length}`);
-    console.log(`Enriched: ${enrichedCount}`);
-    console.log(`Skipped: ${skippedCount}`);
-    console.log(`Failed: ${failedCount}`);
+    console.error('\n=== Enrichment Summary ===');
+    console.error(`Total articles: ${articles.length}`);
+    console.error(`Enriched: ${enrichedCount}`);
+    console.error(`Skipped: ${skippedCount}`);
+    console.error(`Failed: ${failedCount}`);
     
     // エンリッチメント後の統計
     if (enrichedCount > 0) {
@@ -114,7 +114,7 @@ async function enrichGoogleAIContent() {
       });
       
       const avgContentLength = updatedArticles.reduce((sum, a) => sum + (a.content?.length || 0), 0) / updatedArticles.length;
-      console.log(`\nAverage content length after enrichment: ${Math.round(avgContentLength)} characters`);
+      console.error(`\nAverage content length after enrichment: ${Math.round(avgContentLength)} characters`);
     }
     
   } catch (error) {

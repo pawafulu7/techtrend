@@ -19,7 +19,7 @@ export class InfoQEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.log(`[InfoQEnricher] Fetching content from: ${url}`);
+      console.error(`[InfoQEnricher] Fetching content from: ${url}`);
       
       const html = await this.fetchWithRetry(url);
       
@@ -53,20 +53,20 @@ export class InfoQEnricher extends BaseContentEnricher {
         // より広範囲を取得する試み
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
-          console.log(`[InfoQEnricher] Using fallback content (${fallbackContent.length} chars)`);
+          console.error(`[InfoQEnricher] Using fallback content (${fallbackContent.length} chars)`);
           return { content: fallbackContent, thumbnail };
         }
         
         // コンテンツが不十分でもサムネイルがあれば返す
         if (thumbnail) {
-          console.log(`[InfoQEnricher] Content insufficient but thumbnail found`);
+          console.error(`[InfoQEnricher] Content insufficient but thumbnail found`);
           return { content: content || null, thumbnail };
         }
         
         return null;
       }
       
-      console.log(`[InfoQEnricher] Successfully enriched: ${content.length} characters`);
+      console.error(`[InfoQEnricher] Successfully enriched: ${content.length} characters`);
       return { content, thumbnail };
       
     } catch (error) {

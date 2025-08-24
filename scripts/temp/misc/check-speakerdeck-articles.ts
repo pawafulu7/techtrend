@@ -10,7 +10,7 @@ async function checkSpeakerDeckArticles() {
     });
     
     if (!source) {
-      console.log('Speaker Deckソースが見つかりません');
+      console.error('Speaker Deckソースが見つかりません');
       return;
     }
     
@@ -21,18 +21,18 @@ async function checkSpeakerDeckArticles() {
       take: 10
     });
     
-    console.log(`\n=== Speaker Deck記事の確認 (最新10件) ===`);
-    console.log(`合計記事数: ${articles.length}\n`);
+    console.error(`\n=== Speaker Deck記事の確認 (最新10件) ===`);
+    console.error(`合計記事数: ${articles.length}\n`);
     
     articles.forEach((article, index) => {
-      console.log(`--- 記事 #${index + 1} ---`);
-      console.log(`タイトル: ${article.title.substring(0, 50)}...`);
-      console.log(`公開日: ${article.publishedAt.toISOString()}`);
-      console.log(`要約: ${article.summary ? article.summary.substring(0, 50) + '...' : 'NULL'}`);
-      console.log(`詳細要約: ${article.detailedSummary ? article.detailedSummary.substring(0, 50) + '...' : 'NULL'}`);
-      console.log(`コンテンツ: ${article.content ? article.content.substring(0, 50) + '...' : 'NULL'}`);
-      console.log(`説明: ${article.description ? article.description.substring(0, 50) + '...' : 'NULL'}`);
-      console.log('');
+      console.error(`--- 記事 #${index + 1} ---`);
+      console.error(`タイトル: ${article.title.substring(0, 50)}...`);
+      console.error(`公開日: ${article.publishedAt.toISOString()}`);
+      console.error(`要約: ${article.summary ? article.summary.substring(0, 50) + '...' : 'NULL'}`);
+      console.error(`詳細要約: ${article.detailedSummary ? article.detailedSummary.substring(0, 50) + '...' : 'NULL'}`);
+      console.error(`コンテンツ: ${article.content ? article.content.substring(0, 50) + '...' : 'NULL'}`);
+      console.error(`説明: ${article.description ? article.description.substring(0, 50) + '...' : 'NULL'}`);
+      console.error('');
     });
     
     // 要約がない記事をカウント
@@ -54,10 +54,10 @@ async function checkSpeakerDeckArticles() {
       where: { sourceId: source.id }
     });
     
-    console.log(`\n=== 統計情報 ===`);
-    console.log(`総記事数: ${totalArticles}`);
-    console.log(`要約なし: ${articlesWithoutSummary} (${(articlesWithoutSummary/totalArticles*100).toFixed(1)}%)`);
-    console.log(`詳細要約なし: ${articlesWithoutDetailedSummary} (${(articlesWithoutDetailedSummary/totalArticles*100).toFixed(1)}%)`);
+    console.error(`\n=== 統計情報 ===`);
+    console.error(`総記事数: ${totalArticles}`);
+    console.error(`要約なし: ${articlesWithoutSummary} (${(articlesWithoutSummary/totalArticles*100).toFixed(1)}%)`);
+    console.error(`詳細要約なし: ${articlesWithoutDetailedSummary} (${(articlesWithoutDetailedSummary/totalArticles*100).toFixed(1)}%)`);
     
   } catch (error) {
     console.error('エラー:', error);

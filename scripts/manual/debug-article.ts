@@ -10,27 +10,27 @@ async function debug() {
   });
   
   if (!article) {
-    console.log('Article not found');
+    console.error('Article not found');
     return;
   }
   
-  console.log('=== Article Info ===');
-  console.log('Title:', article.title);
-  console.log('Content length:', article.content?.length || 0);
-  console.log('Summary:', article.summary);
-  console.log('Content preview:', article.content?.substring(0, 200));
+  console.error('=== Article Info ===');
+  console.error('Title:', article.title);
+  console.error('Content length:', article.content?.length || 0);
+  console.error('Summary:', article.summary);
+  console.error('Content preview:', article.content?.substring(0, 200));
   
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.log('No API key');
+    console.error('No API key');
     return;
   }
   
   const content = article.content || article.summary || article.title;
   const prompt = generateUnifiedPrompt(article.title, content);
   
-  console.log('\n=== Prompt ===');
-  console.log(prompt.substring(0, 500) + '...');
+  console.error('\n=== Prompt ===');
+  console.error(prompt.substring(0, 500) + '...');
   
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -52,8 +52,8 @@ async function debug() {
   const data = await response.json() as any;
   const responseText = data.candidates[0].content.parts[0].text.trim();
   
-  console.log('\n=== Gemini Response ===');
-  console.log(responseText);
+  console.error('\n=== Gemini Response ===');
+  console.error(responseText);
   
   // Parse response
   const lines = responseText.split('\n');
@@ -64,13 +64,13 @@ async function debug() {
     const trimmed = line.trim();
     if (trimmed.startsWith('一覧要約:') || trimmed.startsWith('要約:')) {
       summary = trimmed.replace(/^(一覧)?要約:/, '').trim();
-      console.log('\n=== Parsed Summary ===');
-      console.log('Found:', summary);
+      console.error('\n=== Parsed Summary ===');
+      console.error('Found:', summary);
     }
   }
   
   if (!summary) {
-    console.log('\n=== No summary found! ===');
+    console.error('\n=== No summary found! ===');
   }
   
   await prisma.$disconnect();

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { GeminiClient } from '../lib/ai/gemini';
+import { GeminiClient } from '../../lib/ai/gemini';
 
 const prisma = new PrismaClient();
 
@@ -10,8 +10,8 @@ const priorityIds = [
 ];
 
 async function fixShortSummaries() {
-  console.log('📝 短すぎる要約を適切な長さに修正します\n');
-  console.log('=' .repeat(60));
+  console.error('📝 短すぎる要約を適切な長さに修正します\n');
+  console.error('=' .repeat(60));
   
   try {
     // Gemini API キーの確認
@@ -60,8 +60,8 @@ async function fixShortSummaries() {
     // 処理を30件に制限（API制限対策）
     const targetArticles = articlesToFix.slice(0, 30);
     
-    console.log(`対象記事数: ${targetArticles.length}件`);
-    console.log('目標: 80〜120文字の適切な要約に修正\n');
+    console.error(`対象記事数: ${targetArticles.length}件`);
+    console.error('目標: 80〜120文字の適切な要約に修正\n');
     
     let successCount = 0;
     let errorCount = 0;
@@ -71,17 +71,17 @@ async function fixShortSummaries() {
       const article = targetArticles[i];
       const isPriority = priorityIds.includes(article.id);
       
-      console.log(`\n[${i + 1}/${targetArticles.length}] 処理中: ${article.id}`);
+      console.error(`\n[${i + 1}/${targetArticles.length}] 処理中: ${article.id}`);
       if (isPriority) {
-        console.log('  ⭐ 優先記事');
+        console.error('  ⭐ 優先記事');
       }
-      console.log('-'.repeat(40));
+      console.error('-'.repeat(40));
       
       try {
-        console.log(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
-        console.log(`  🏷️ ソース: ${article.source?.name}`);
-        console.log(`  📝 現在の要約: ${article.summary}`);
-        console.log(`  📏 現在の文字数: ${article.summary?.length || 0}文字`);
+        console.error(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
+        console.error(`  🏷️ ソース: ${article.source?.name}`);
+        console.error(`  📝 現在の要約: ${article.summary}`);
+        console.error(`  📏 現在の文字数: ${article.summary?.length || 0}文字`);
         
         // コンテンツを準備（優先順位: content > detailedSummary > title）
         let sourceContent = article.content || '';
@@ -95,7 +95,7 @@ async function fixShortSummaries() {
         }
         
         // 新しい要約を生成
-        console.log(`  🔄 要約を生成中...`);
+        console.error(`  🔄 要約を生成中...`);
         
         // タイトルと内容を明確に伝える
         const fullContent = `記事タイトル: ${article.title}\n\n記事内容:\n${sourceContent}`;
@@ -108,7 +108,7 @@ async function fixShortSummaries() {
         // 品質チェック
         if (!newSummary || newSummary.length < 80 || newSummary.length > 150) {
           // 長さが不適切な場合は再試行
-          console.log(`  ⚠️ 生成された要約の長さが不適切（${newSummary?.length || 0}文字）、再試行中...`);
+          console.error(`  ⚠️ 生成された要約の長さが不適切（${newSummary?.length || 0}文字）、再試行中...`);
           
           const retryPrompt = `
 以下の記事の要約を80〜120文字で作成してください。
@@ -128,8 +128,8 @@ async function fixShortSummaries() {
             .trim();
           
           if (retrySummary && retrySummary.length >= 70 && retrySummary.length <= 150) {
-            console.log(`  ✅ 再試行成功: ${retrySummary}`);
-            console.log(`  📏 新しい文字数: ${retrySummary.length}文字`);
+            console.error(`  ✅ 再試行成功: ${retrySummary}`);
+            console.error(`  📏 新しい文字数: ${retrySummary.length}文字`);
             
             await prisma.article.update({
               where: { id: article.id },
@@ -153,8 +153,8 @@ async function fixShortSummaries() {
             throw new Error(`要約の長さが不適切: ${retrySummary?.length || 0}文字`);
           }
         } else {
-          console.log(`  ✅ 新しい要約: ${newSummary}`);
-          console.log(`  📏 新しい文字数: ${newSummary.length}文字`);
+          console.error(`  ✅ 新しい要約: ${newSummary}`);
+          console.error(`  📏 新しい文字数: ${newSummary.length}文字`);
           
           await prisma.article.update({
             where: { id: article.id },
@@ -194,34 +194,34 @@ async function fixShortSummaries() {
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 処理結果サマリー\n');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`📈 成功率: ${((successCount / targetArticles.length) * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 処理結果サマリー\n');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`📈 成功率: ${((successCount / targetArticles.length) * 100).toFixed(1)}%`);
     
     // 平均文字数の改善
     const successfulResults = results.filter(r => r.status === 'success');
     if (successfulResults.length > 0) {
       const avgOldLength = successfulResults.reduce((sum, r) => sum + (r.oldLength || 0), 0) / successfulResults.length;
       const avgNewLength = successfulResults.reduce((sum, r) => sum + r.newLength, 0) / successfulResults.length;
-      console.log(`\n📏 平均文字数の変化:`);
-      console.log(`  変更前: ${avgOldLength.toFixed(1)}文字`);
-      console.log(`  変更後: ${avgNewLength.toFixed(1)}文字`);
-      console.log(`  改善率: ${((avgNewLength / avgOldLength - 1) * 100).toFixed(1)}%`);
+      console.error(`\n📏 平均文字数の変化:`);
+      console.error(`  変更前: ${avgOldLength.toFixed(1)}文字`);
+      console.error(`  変更後: ${avgNewLength.toFixed(1)}文字`);
+      console.error(`  改善率: ${((avgNewLength / avgOldLength - 1) * 100).toFixed(1)}%`);
     }
     
     // 優先記事の処理結果を特別に表示
     const priorityResults = results.filter(r => priorityIds.includes(r.id));
     if (priorityResults.length > 0) {
-      console.log('\n⭐ 優先記事の処理結果:');
+      console.error('\n⭐ 優先記事の処理結果:');
       priorityResults.forEach(r => {
         if (r.status === 'success') {
-          console.log(`  ✅ ${r.id}:`);
-          console.log(`     旧: ${r.oldSummary}`);
-          console.log(`     新: ${r.newSummary}`);
+          console.error(`  ✅ ${r.id}:`);
+          console.error(`     旧: ${r.oldSummary}`);
+          console.error(`     新: ${r.newSummary}`);
         } else {
-          console.log(`  ❌ ${r.id}: ${r.error}`);
+          console.error(`  ❌ ${r.id}: ${r.error}`);
         }
       });
     }
@@ -238,7 +238,7 @@ async function fixShortSummaries() {
       results
     }, null, 2));
     
-    console.log(`\n📁 詳細な結果を ${resultFile} に保存しました`);
+    console.error(`\n📁 詳細な結果を ${resultFile} に保存しました`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

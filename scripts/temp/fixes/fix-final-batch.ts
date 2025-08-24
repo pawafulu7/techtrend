@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 const prisma = new PrismaClient();
 
@@ -23,8 +23,8 @@ async function fixFinalBatch() {
     "cmdq44z94005zte3tw2v0nnj7"
   ];
   
-  console.log('🔧 最終バッチ - 技術的背景を含む詳細要約を再生成\n');
-  console.log(`処理対象: ${articleIds.length}件\n`);
+  console.error('🔧 最終バッチ - 技術的背景を含む詳細要約を再生成\n');
+  console.error(`処理対象: ${articleIds.length}件\n`);
   
   try {
     // ローカルLLMクライアントを初期化
@@ -42,7 +42,7 @@ async function fixFinalBatch() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     let successCount = 0;
     let errorCount = 0;
@@ -51,8 +51,8 @@ async function fixFinalBatch() {
     
     for (let i = 0; i < articleIds.length; i++) {
       const articleId = articleIds[i];
-      console.log(`\n[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
-      console.log('='.repeat(60));
+      console.error(`\n[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
+      console.error('='.repeat(60));
       
       try {
         // 記事を取得
@@ -70,24 +70,24 @@ async function fixFinalBatch() {
         });
         
         if (!article) {
-          console.log('❌ 記事が見つかりません');
+          console.error('❌ 記事が見つかりません');
           errorCount++;
           continue;
         }
         
-        console.log(`タイトル: ${article.title?.substring(0, 50)}...`);
-        console.log(`ソース: ${article.source?.name}`);
+        console.error(`タイトル: ${article.title?.substring(0, 50)}...`);
+        console.error(`ソース: ${article.source?.name}`);
         
         // 現在の詳細要約の確認
         if (article.detailedSummary) {
           const lines = article.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
           if (lines.length > 0) {
             const firstLine = lines[0];
-            console.log(`現在の第1項目: ${firstLine.substring(0, 50)}...`);
+            console.error(`現在の第1項目: ${firstLine.substring(0, 50)}...`);
             
             // すでに「記事の主題は」で始まっている場合はスキップ
             if (firstLine.includes('記事の主題は')) {
-              console.log('✅ すでに技術的背景が含まれています');
+              console.error('✅ すでに技術的背景が含まれています');
               skipCount++;
               continue;
             }
@@ -157,9 +157,9 @@ ${additionalContext}
           `.trim();
         }
         
-        console.log(`コンテンツ長: ${content.length}文字`);
+        console.error(`コンテンツ長: ${content.length}文字`);
         
-        console.log('🔄 技術的背景を含む詳細要約を生成中...');
+        console.error('🔄 技術的背景を含む詳細要約を生成中...');
         const genStartTime = Date.now();
         
         const result = await localLLM.generateDetailedSummary(
@@ -168,7 +168,7 @@ ${additionalContext}
         );
         
         const duration = Date.now() - genStartTime;
-        console.log(`生成時間: ${duration}ms`);
+        console.error(`生成時間: ${duration}ms`);
         
         // 要約をクリーンアップ
         let cleanedSummary = result.summary
@@ -191,7 +191,7 @@ ${additionalContext}
         const hasEnoughItems = newLines.length >= 6;
         
         if (newLines.length > 0) {
-          console.log(`新しい第1項目: ${newLines[0].substring(0, 50)}...`);
+          console.error(`新しい第1項目: ${newLines[0].substring(0, 50)}...`);
         }
         
         if (isJapanese && hasContent && hasProperTechnicalBackground && hasEnoughItems) {
@@ -221,7 +221,7 @@ ${additionalContext}
             }
           });
           
-          console.log('✅ 修正成功');
+          console.error('✅ 修正成功');
           successCount++;
         } else {
           const problems = [];
@@ -229,7 +229,7 @@ ${additionalContext}
           if (!hasContent) problems.push('内容不足');
           if (!hasProperTechnicalBackground) problems.push('技術的背景なし');
           if (!hasEnoughItems) problems.push('項目数不足');
-          console.log(`⚠️ 品質チェック失敗: ${problems.join(', ')}`);
+          console.error(`⚠️ 品質チェック失敗: ${problems.join(', ')}`);
           errorCount++;
         }
         
@@ -243,17 +243,17 @@ ${additionalContext}
     }
     
     const totalTime = Math.floor((Date.now() - startTime) / 1000);
-    console.log('\n' + '='.repeat(60));
-    console.log('🎉 最終バッチ処理完了');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`⏭️ スキップ: ${skipCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`⏱️ 総処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
-    console.log(`🚀 平均処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
+    console.error('\n' + '='.repeat(60));
+    console.error('🎉 最終バッチ処理完了');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`⏭️ スキップ: ${skipCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`⏱️ 総処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
+    console.error(`🚀 平均処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
     
     // 全体の修正結果を確認
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 全体の修正完了状況を確認中...');
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 全体の修正完了状況を確認中...');
     
     const allArticles = await prisma.article.findMany({
       where: {
@@ -281,10 +281,10 @@ ${additionalContext}
       }
     }
     
-    console.log(`\n🎊 全体統計:`);
-    console.log(`✅ 技術的背景あり: ${technicalBackgroundCount}件`);
-    console.log(`❌ 技術的背景なし: ${missingBackgroundCount}件`);
-    console.log(`📈 完了率: ${((technicalBackgroundCount / (technicalBackgroundCount + missingBackgroundCount)) * 100).toFixed(1)}%`);
+    console.error(`\n🎊 全体統計:`);
+    console.error(`✅ 技術的背景あり: ${technicalBackgroundCount}件`);
+    console.error(`❌ 技術的背景なし: ${missingBackgroundCount}件`);
+    console.error(`📈 完了率: ${((technicalBackgroundCount / (technicalBackgroundCount + missingBackgroundCount)) * 100).toFixed(1)}%`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

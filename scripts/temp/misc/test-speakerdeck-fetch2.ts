@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio';
 async function testSpeakerDeckFetch() {
   const url = 'https://speakerdeck.com/hiyanger/terraform-yarunarasutairugaidowodu-mou-zhong-yao-xiang-mu-10xuan';
   
-  console.log(`テスト対象URL: ${url}\n`);
+  console.error(`テスト対象URL: ${url}\n`);
   
   try {
     const response = await fetch(url, {
@@ -21,44 +21,44 @@ async function testSpeakerDeckFetch() {
     const html = await response.text();
     const $ = cheerio.load(html);
     
-    console.log('=== JSON-LD情報 ===');
+    console.error('=== JSON-LD情報 ===');
     const jsonLdScript = $('script[type="application/ld+json"]').html();
     if (jsonLdScript) {
       try {
         const data = JSON.parse(jsonLdScript);
-        console.log('datePublished:', data.datePublished);
-        console.log('description:', data.description ? data.description.substring(0, 100) + '...' : 'NULL');
-        console.log('thumbnailUrl:', data.thumbnailUrl ? 'あり' : 'なし');
+        console.error('datePublished:', data.datePublished);
+        console.error('description:', data.description ? data.description.substring(0, 100) + '...' : 'NULL');
+        console.error('thumbnailUrl:', data.thumbnailUrl ? 'あり' : 'なし');
       } catch (error) {
-        console.log('JSON-LD解析エラー:', error);
+        console.error('JSON-LD解析エラー:', error);
       }
     } else {
-      console.log('JSON-LDが見つかりません');
+      console.error('JSON-LDが見つかりません');
     }
     
-    console.log('\n=== HTML要素から直接取得 ===');
+    console.error('\n=== HTML要素から直接取得 ===');
     const dateText = $('.deck-date').text();
-    console.log('deck-date:', dateText);
+    console.error('deck-date:', dateText);
     
     const description = $('.deck-description').text().trim();
-    console.log('deck-description:', description ? description.substring(0, 100) + '...' : 'なし');
+    console.error('deck-description:', description ? description.substring(0, 100) + '...' : 'なし');
     
     const metaDescription = $('meta[name="description"]').attr('content');
-    console.log('meta description:', metaDescription ? metaDescription.substring(0, 100) + '...' : 'なし');
+    console.error('meta description:', metaDescription ? metaDescription.substring(0, 100) + '...' : 'なし');
     
     const ogImage = $('meta[property="og:image"]').attr('content');
-    console.log('og:image:', ogImage ? 'あり' : 'なし');
+    console.error('og:image:', ogImage ? 'あり' : 'なし');
     
     // ページタイトルも確認
     const pageTitle = $('title').text();
-    console.log('\ntitle tag:', pageTitle);
+    console.error('\ntitle tag:', pageTitle);
     
     const h1Title = $('h1.deck-title').text().trim();
-    console.log('h1.deck-title:', h1Title);
+    console.error('h1.deck-title:', h1Title);
     
     // speaker情報
     const speaker = $('.deck-user-username').text().trim();
-    console.log('\nspeaker:', speaker);
+    console.error('\nspeaker:', speaker);
     
   } catch (error) {
     console.error('エラー:', error);

@@ -109,10 +109,10 @@ summariesCommand
         where: { summary: null }
       });
       
-      console.log('\n📊 要約生成状況:');
-      console.log(`  総記事数: ${total.toLocaleString()}`);
-      console.log(`  要約あり: ${withSummary.toLocaleString()} (${Math.round(withSummary / total * 100)}%)`);
-      console.log(`  要約なし: ${withoutSummary.toLocaleString()} (${Math.round(withoutSummary / total * 100)}%)`);
+      console.error('\n📊 要約生成状況:');
+      console.error(`  総記事数: ${total.toLocaleString()}`);
+      console.error(`  要約あり: ${withSummary.toLocaleString()} (${Math.round(withSummary / total * 100)}%)`);
+      console.error(`  要約なし: ${withoutSummary.toLocaleString()} (${Math.round(withoutSummary / total * 100)}%)`);
       
       // ソース別の統計
       const sources = await prisma.source.findMany({
@@ -124,7 +124,7 @@ summariesCommand
         }
       });
       
-      console.log('\n📑 ソース別記事数:');
+      console.error('\n📑 ソース別記事数:');
       for (const source of sources) {
         const withSummaryCount = await prisma.article.count({
           where: {
@@ -137,7 +137,7 @@ summariesCommand
           ? Math.round(withSummaryCount / source._count.articles * 100)
           : 0;
           
-        console.log(`  ${source.name}: ${source._count.articles} 記事 (要約率: ${percentage}%)`);
+        console.error(`  ${source.name}: ${source._count.articles} 記事 (要約率: ${percentage}%)`);
       }
       
       logger.success('チェックが完了しました');

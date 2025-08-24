@@ -202,8 +202,8 @@ async function saveTagsToDatabase(articleId: string, tags: string[]): Promise<vo
 
 // バッチ処理でタグを生成
 async function generateTagsBatch(): Promise<TagGenerationResult> {
-  console.log('🏷️ Claude Codeタグ生成バッチを開始します...');
-  console.log('📊 Rate limitを考慮せず、すべての対象記事を処理します');
+  console.error('🏷️ Claude Codeタグ生成バッチを開始します...');
+  console.error('📊 Rate limitを考慮せず、すべての対象記事を処理します');
   const startTime = Date.now();
   
   try {
@@ -245,15 +245,15 @@ async function generateTagsBatch(): Promise<TagGenerationResult> {
     );
     
     if (uniqueArticles.length === 0) {
-      console.log('✅ タグ生成が必要な記事はありません');
+      console.error('✅ タグ生成が必要な記事はありません');
       return { generated: 0, errors: 0, skipped: 0 };
     }
     
-    console.log(`\n📊 処理対象:`);
-    console.log(`   - タグなし: ${articlesWithoutTags.length}件`);
-    console.log(`   - タグ1個以下: ${articlesWith1Tag.length}件`);
-    console.log(`   - 合計: ${uniqueArticles.length}件`);
-    console.log(`\n⚡ Claude Codeでの処理のため、Rate limitなしで高速処理します`);
+    console.error(`\n📊 処理対象:`);
+    console.error(`   - タグなし: ${articlesWithoutTags.length}件`);
+    console.error(`   - タグ1個以下: ${articlesWith1Tag.length}件`);
+    console.error(`   - 合計: ${uniqueArticles.length}件`);
+    console.error(`\n⚡ Claude Codeでの処理のため、Rate limitなしで高速処理します`);
     
     let generatedCount = 0;
     let errorCount = 0;
@@ -297,15 +297,15 @@ async function generateTagsBatch(): Promise<TagGenerationResult> {
       }
     }
     
-    console.log('\n'); // プログレスバーの後に改行
+    console.error('\n'); // プログレスバーの後に改行
     
     const duration = Math.round((Date.now() - startTime) / 1000);
-    console.log(`\n📊 タグ生成完了:`);
-    console.log(`   成功: ${generatedCount}件`);
-    console.log(`   スキップ: ${skippedCount}件`);
-    console.log(`   エラー: ${errorCount}件`);
-    console.log(`   処理時間: ${duration}秒`);
-    console.log(`   平均処理時間: ${(duration / uniqueArticles.length).toFixed(2)}秒/記事`);
+    console.error(`\n📊 タグ生成完了:`);
+    console.error(`   成功: ${generatedCount}件`);
+    console.error(`   スキップ: ${skippedCount}件`);
+    console.error(`   エラー: ${errorCount}件`);
+    console.error(`   処理時間: ${duration}秒`);
+    console.error(`   平均処理時間: ${(duration / uniqueArticles.length).toFixed(2)}秒/記事`);
     
     return { generated: generatedCount, errors: errorCount, skipped: skippedCount };
     
@@ -319,9 +319,9 @@ async function generateTagsBatch(): Promise<TagGenerationResult> {
 
 // 直接実行された場合
 if (require.main === module) {
-  console.log('⚠️  このスクリプトはClaude Code環境で実行してください');
-  console.log('📝 生成されたタグをコード内に直接記述する必要があります');
-  console.log('\n実行を続けますか？ (Ctrl+Cでキャンセル)');
+  console.error('⚠️  このスクリプトはClaude Code環境で実行してください');
+  console.error('📝 生成されたタグをコード内に直接記述する必要があります');
+  console.error('\n実行を続けますか？ (Ctrl+Cでキャンセル)');
   
   // 3秒待機
   setTimeout(() => {

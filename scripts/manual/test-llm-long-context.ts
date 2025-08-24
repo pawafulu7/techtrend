@@ -2,7 +2,7 @@
 import { LocalLLMClient } from '@/lib/ai/local-llm';
 
 async function testLongContext() {
-  console.log('🧪 Local LLM 長文コンテキストテスト (30000トークン対応)\n');
+  console.error('🧪 Local LLM 長文コンテキストテスト (30000トークン対応)\n');
   
   // 長い技術記事のサンプル（実際の記事を想定）
   const longArticle = {
@@ -205,7 +205,7 @@ server.addService(userProto.UserService.service, {
 
 server.bindAsync('0.0.0.0:50051', grpc.ServerCredentials.createInsecure(), () => {
   server.start();
-  console.log('gRPC server running on port 50051');
+  console.error('gRPC server running on port 50051');
 });
 \`\`\`
 
@@ -456,14 +456,14 @@ spec:
     // maxTokensは環境変数または800がデフォルト
   });
 
-  console.log('=' * 60);
-  console.log(`記事: ${longArticle.title}`);
-  console.log(`全文の長さ: ${longArticle.content.length}文字`);
-  console.log('=' * 60);
+  console.error('=' * 60);
+  console.error(`記事: ${longArticle.title}`);
+  console.error(`全文の長さ: ${longArticle.content.length}文字`);
+  console.error('=' * 60);
 
   for (const testCase of testCases) {
-    console.log(`\n📝 ${testCase.name} テスト`);
-    console.log('-'.repeat(40));
+    console.error(`\n📝 ${testCase.name} テスト`);
+    console.error('-'.repeat(40));
     
     try {
       // 要約生成
@@ -471,30 +471,30 @@ spec:
       const summary = await client.generateSummary(longArticle.title, testCase.content);
       const time1 = Date.now() - startTime1;
       
-      console.log(`要約: ${summary}`);
-      console.log(`要約文字数: ${summary.length}文字`);
-      console.log(`処理時間: ${time1}ms`);
+      console.error(`要約: ${summary}`);
+      console.error(`要約文字数: ${summary.length}文字`);
+      console.error(`処理時間: ${time1}ms`);
       
       // 品質チェック
       const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(summary);
       const hasEnglishThinking = /need|chars|count|let's/i.test(summary);
       const endsWithPeriod = summary.endsWith('。');
       
-      console.log('\n品質:');
-      console.log(`  日本語: ${hasJapanese ? '✅' : '❌'}`);
-      console.log(`  英語混入なし: ${!hasEnglishThinking ? '✅' : '❌'}`);
-      console.log(`  句点終了: ${endsWithPeriod ? '✅' : '❌'}`);
+      console.error('\n品質:');
+      console.error(`  日本語: ${hasJapanese ? '✅' : '❌'}`);
+      console.error(`  英語混入なし: ${!hasEnglishThinking ? '✅' : '❌'}`);
+      console.error(`  句点終了: ${endsWithPeriod ? '✅' : '❌'}`);
       
       // タグ生成も試す（長文のみ）
       if (testCase.name.includes('長文')) {
-        console.log('\n🏷️ タグ生成テスト');
+        console.error('\n🏷️ タグ生成テスト');
         const startTime2 = Date.now();
         const result = await client.generateSummaryWithTags(longArticle.title, testCase.content);
         const time2 = Date.now() - startTime2;
         
-        console.log(`タグ: ${result.tags.join(', ')}`);
-        console.log(`タグ数: ${result.tags.length}個`);
-        console.log(`処理時間: ${time2}ms`);
+        console.error(`タグ: ${result.tags.join(', ')}`);
+        console.error(`タグ数: ${result.tags.length}個`);
+        console.error(`処理時間: ${time2}ms`);
       }
       
     } catch (error) {
@@ -505,16 +505,16 @@ spec:
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
-  console.log('\n' + '=' * 60);
-  console.log('📊 検証結果サマリー');
-  console.log('=' * 60);
-  console.log('1. コンテキスト30000トークンにより、長文記事の処理が可能');
-  console.log('2. 文章量が増えても要約品質は維持される');
-  console.log('3. 処理時間は文章量に比例して増加');
-  console.log('\n推奨設定:');
-  console.log('- 通常記事: 3000-5000文字でカット');
-  console.log('- 詳細分析: 8000-10000文字まで拡張');
-  console.log('- maxTokens: 800-1000で十分');
+  console.error('\n' + '=' * 60);
+  console.error('📊 検証結果サマリー');
+  console.error('=' * 60);
+  console.error('1. コンテキスト30000トークンにより、長文記事の処理が可能');
+  console.error('2. 文章量が増えても要約品質は維持される');
+  console.error('3. 処理時間は文章量に比例して増加');
+  console.error('\n推奨設定:');
+  console.error('- 通常記事: 3000-5000文字でカット');
+  console.error('- 詳細分析: 8000-10000文字まで拡張');
+  console.error('- maxTokens: 800-1000で十分');
 }
 
 testLongContext().catch(console.error);

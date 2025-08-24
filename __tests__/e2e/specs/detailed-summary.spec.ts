@@ -87,7 +87,7 @@ test.describe('詳細要約表示', () => {
       }
     } else {
       // Compactスタイルが存在しない場合はスキップ（テストは成功扱い）
-      console.log('Compact style summary not found, skipping test');
+      console.error('Compact style summary not found, skipping test');
     }
   });
 

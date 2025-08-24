@@ -7,17 +7,17 @@
 import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 async function testConnection() {
-  console.log('🔌 LocalLLM接続テスト開始\n');
-  console.log('================================================================================');
+  console.error('🔌 LocalLLM接続テスト開始\n');
+  console.error('================================================================================');
   
   // 環境変数から設定を取得
   const localLLMUrl = process.env.LOCAL_LLM_URL || 'http://192.168.11.7:1234';
   const localLLMModel = process.env.LOCAL_LLM_MODEL || 'openai/gpt-oss-20b';
   
-  console.log('📋 設定情報:');
-  console.log(`  URL: ${localLLMUrl}`);
-  console.log(`  Model: ${localLLMModel}`);
-  console.log('================================================================================\n');
+  console.error('📋 設定情報:');
+  console.error(`  URL: ${localLLMUrl}`);
+  console.error(`  Model: ${localLLMModel}`);
+  console.error('================================================================================\n');
   
   const client = new LocalLLMClient({
     url: localLLMUrl,
@@ -28,35 +28,35 @@ async function testConnection() {
   
   try {
     // 1. 接続テスト
-    console.log('1️⃣  接続確認中...');
+    console.error('1️⃣  接続確認中...');
     const isConnected = await client.testConnection();
     
     if (!isConnected) {
       console.error('❌ LocalLLMに接続できません');
-      console.log('\n💡 確認事項:');
-      console.log('  - LocalLLMサーバーが起動していることを確認');
-      console.log('  - URLが正しいことを確認');
-      console.log('  - ファイアウォール設定を確認');
+      console.error('\n💡 確認事項:');
+      console.error('  - LocalLLMサーバーが起動していることを確認');
+      console.error('  - URLが正しいことを確認');
+      console.error('  - ファイアウォール設定を確認');
       return;
     }
     
-    console.log('✅ 接続成功\n');
+    console.error('✅ 接続成功\n');
     
     // 2. モデル情報取得
-    console.log('2️⃣  モデル情報を取得中...');
+    console.error('2️⃣  モデル情報を取得中...');
     const modelsResponse = await fetch(`${localLLMUrl}/v1/models`);
     
     if (modelsResponse.ok) {
       const modelsData = await modelsResponse.json() as any;
-      console.log('📊 利用可能なモデル:');
+      console.error('📊 利用可能なモデル:');
       modelsData.data.forEach((model: any) => {
-        console.log(`  - ${model.id}`);
+        console.error(`  - ${model.id}`);
       });
-      console.log();
+      console.error();
     }
     
     // 3. 簡単な要約テスト
-    console.log('3️⃣  要約生成テスト...');
+    console.error('3️⃣  要約生成テスト...');
     
     const testTitle = 'Next.js 15の新機能とパフォーマンス改善';
     const testContent = `
@@ -66,50 +66,50 @@ async function testConnection() {
       よりインタラクティブで高速なWebアプリケーションの構築が可能になります。
     `;
     
-    console.log('📝 テスト記事:');
-    console.log(`  タイトル: ${testTitle}`);
-    console.log(`  内容: ${testContent.substring(0, 100)}...`);
-    console.log();
+    console.error('📝 テスト記事:');
+    console.error(`  タイトル: ${testTitle}`);
+    console.error(`  内容: ${testContent.substring(0, 100)}...`);
+    console.error();
     
     const startTime = Date.now();
     const summary = await client.generateSummary(testTitle, testContent);
     const elapsedTime = Date.now() - startTime;
     
-    console.log('✅ 要約生成成功');
-    console.log(`  処理時間: ${elapsedTime}ms`);
-    console.log(`  要約: ${summary}`);
-    console.log(`  文字数: ${summary.length}文字`);
-    console.log();
+    console.error('✅ 要約生成成功');
+    console.error(`  処理時間: ${elapsedTime}ms`);
+    console.error(`  要約: ${summary}`);
+    console.error(`  文字数: ${summary.length}文字`);
+    console.error();
     
     // 4. タグ付き要約テスト
-    console.log('4️⃣  タグ付き要約生成テスト...');
+    console.error('4️⃣  タグ付き要約生成テスト...');
     
     const startTime2 = Date.now();
     const result = await client.generateSummaryWithTags(testTitle, testContent);
     const elapsedTime2 = Date.now() - startTime2;
     
-    console.log('✅ タグ付き要約生成成功');
-    console.log(`  処理時間: ${elapsedTime2}ms`);
-    console.log(`  要約: ${result.summary}`);
-    console.log(`  タグ: ${result.tags.join(', ')}`);
-    console.log();
+    console.error('✅ タグ付き要約生成成功');
+    console.error(`  処理時間: ${elapsedTime2}ms`);
+    console.error(`  要約: ${result.summary}`);
+    console.error(`  タグ: ${result.tags.join(', ')}`);
+    console.error();
     
     // 5. 総合評価
-    console.log('================================================================================');
-    console.log('📊 テスト結果サマリー');
-    console.log('================================================================================');
-    console.log('✅ すべてのテストが成功しました');
-    console.log(`  平均処理時間: ${Math.round((elapsedTime + elapsedTime2) / 2)}ms`);
-    console.log('  日本語品質: 良好');
-    console.log('  接続安定性: 良好');
-    console.log('\n🎉 LocalLLMは正常に動作しています！');
+    console.error('================================================================================');
+    console.error('📊 テスト結果サマリー');
+    console.error('================================================================================');
+    console.error('✅ すべてのテストが成功しました');
+    console.error(`  平均処理時間: ${Math.round((elapsedTime + elapsedTime2) / 2)}ms`);
+    console.error('  日本語品質: 良好');
+    console.error('  接続安定性: 良好');
+    console.error('\n🎉 LocalLLMは正常に動作しています！');
     
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
-    console.log('\n💡 トラブルシューティング:');
-    console.log('  1. LocalLLMサーバーのログを確認');
-    console.log('  2. メモリ/CPU使用率を確認');
-    console.log('  3. モデルが正しくロードされているか確認');
+    console.error('\n💡 トラブルシューティング:');
+    console.error('  1. LocalLLMサーバーのログを確認');
+    console.error('  2. メモリ/CPU使用率を確認');
+    console.error('  3. モデルが正しくロードされているか確認');
   }
 }
 

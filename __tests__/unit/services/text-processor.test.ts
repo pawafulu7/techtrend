@@ -129,15 +129,17 @@ describe('text-processor', () => {
     });
 
     it('should use custom suffix', () => {
-      const input = '長いテキストをカット';
+      const input = '長いテキストをカットする必要があります';
       const result = truncateText(input, 10, '…');
       expect(result).toContain('…');
+      expect(result.length).toBeLessThanOrEqual(10);
     });
 
     it('should try to cut at sentence boundary', () => {
       const input = 'これは文章です。次の文章。';
       const result = truncateText(input, 15);
-      expect(result).toBe('これは文章です。...');
+      // 15文字以内の場合、切られない
+      expect(result).toBe('これは文章です。次の文章。');
     });
 
     it('should handle empty input', () => {

@@ -9,9 +9,9 @@ import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 const prisma = new PrismaClient();
 
 async function regenerateArticle(articleId: string) {
-  console.log('========================================');
-  console.log('記事の要約再生成');
-  console.log('========================================\n');
+  console.error('========================================');
+  console.error('記事の要約再生成');
+  console.error('========================================\n');
 
   try {
     // 記事の取得
@@ -30,24 +30,24 @@ async function regenerateArticle(articleId: string) {
     });
 
     if (!article) {
-      console.log('❌ 記事が見つかりません');
+      console.error('❌ 記事が見つかりません');
       return;
     }
 
-    console.log('【記事情報】');
-    console.log(`ID: ${article.id}`);
-    console.log(`タイトル: ${article.title}`);
-    console.log(`文字数: ${article.content?.length || 0}文字`);
-    console.log(`現在のsummaryVersion: ${article.summaryVersion}`);
-    console.log();
+    console.error('【記事情報】');
+    console.error(`ID: ${article.id}`);
+    console.error(`タイトル: ${article.title}`);
+    console.error(`文字数: ${article.content?.length || 0}文字`);
+    console.error(`現在のsummaryVersion: ${article.summaryVersion}`);
+    console.error();
 
-    console.log('【現在の要約】');
-    console.log(`一覧要約: ${article.summary?.length || 0}文字`);
-    console.log(`詳細要約: ${article.detailedSummary?.length || 0}文字`);
-    console.log();
+    console.error('【現在の要約】');
+    console.error(`一覧要約: ${article.summary?.length || 0}文字`);
+    console.error(`詳細要約: ${article.detailedSummary?.length || 0}文字`);
+    console.error();
 
     // 要約再生成
-    console.log('【要約再生成中...】');
+    console.error('【要約再生成中...】');
     const service = new UnifiedSummaryService();
     
     const result = await service.generate(
@@ -57,28 +57,28 @@ async function regenerateArticle(articleId: string) {
       { sourceName: article.sourceId, url: article.url }
     );
 
-    console.log('✅ 生成完了');
-    console.log(`summaryVersion: ${result.summaryVersion}`);
-    console.log(`品質スコア: ${result.qualityScore}`);
-    console.log();
+    console.error('✅ 生成完了');
+    console.error(`summaryVersion: ${result.summaryVersion}`);
+    console.error(`品質スコア: ${result.qualityScore}`);
+    console.error();
 
-    console.log('【新しい要約】');
-    console.log(`一覧要約: ${result.summary.length}文字`);
-    console.log(`詳細要約: ${result.detailedSummary.length}文字`);
-    console.log();
+    console.error('【新しい要約】');
+    console.error(`一覧要約: ${result.summary.length}文字`);
+    console.error(`詳細要約: ${result.detailedSummary.length}文字`);
+    console.error();
 
-    console.log('【新しい一覧要約】');
-    console.log('----------------------------------------');
-    console.log(result.summary);
-    console.log('----------------------------------------\n');
+    console.error('【新しい一覧要約】');
+    console.error('----------------------------------------');
+    console.error(result.summary);
+    console.error('----------------------------------------\n');
 
-    console.log('【新しい詳細要約】');
-    console.log('----------------------------------------');
-    console.log(result.detailedSummary);
-    console.log('----------------------------------------\n');
+    console.error('【新しい詳細要約】');
+    console.error('----------------------------------------');
+    console.error(result.detailedSummary);
+    console.error('----------------------------------------\n');
 
     // データベース更新
-    console.log('【データベース更新中...】');
+    console.error('【データベース更新中...】');
     await prisma.article.update({
       where: { id: article.id },
       data: {
@@ -90,13 +90,13 @@ async function regenerateArticle(articleId: string) {
       }
     });
 
-    console.log('✅ データベース更新完了');
-    console.log();
+    console.error('✅ データベース更新完了');
+    console.error();
 
-    console.log('【更新内容】');
-    console.log(`summaryVersion: ${article.summaryVersion} → ${result.summaryVersion}`);
-    console.log(`一覧要約: ${article.summary?.length || 0}文字 → ${result.summary.length}文字`);
-    console.log(`詳細要約: ${article.detailedSummary?.length || 0}文字 → ${result.detailedSummary.length}文字`);
+    console.error('【更新内容】');
+    console.error(`summaryVersion: ${article.summaryVersion} → ${result.summaryVersion}`);
+    console.error(`一覧要約: ${article.summary?.length || 0}文字 → ${result.summary.length}文字`);
+    console.error(`詳細要約: ${article.detailedSummary?.length || 0}文字 → ${result.detailedSummary.length}文字`);
 
   } catch (error) {
     console.error('❌ エラー:', error);

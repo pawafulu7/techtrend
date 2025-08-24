@@ -20,7 +20,7 @@ export class GoogleDevEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.log(`[GoogleDevEnricher] Fetching content from: ${url}`);
+      console.error(`[GoogleDevEnricher] Fetching content from: ${url}`);
       
       const html = await this.fetchWithRetry(url);
       
@@ -58,20 +58,20 @@ export class GoogleDevEnricher extends BaseContentEnricher {
         // より広範囲を取得する試み
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
-          console.log(`[GoogleDevEnricher] Using fallback content (${fallbackContent.length} chars)`);
+          console.error(`[GoogleDevEnricher] Using fallback content (${fallbackContent.length} chars)`);
           return { content: fallbackContent, thumbnail };
         }
         
         // コンテンツが不十分でもサムネイルがあれば返す
         if (thumbnail) {
-          console.log(`[GoogleDevEnricher] Content insufficient but thumbnail found`);
+          console.error(`[GoogleDevEnricher] Content insufficient but thumbnail found`);
           return { content: content || null, thumbnail };
         }
         
         return null;
       }
       
-      console.log(`[GoogleDevEnricher] Successfully enriched: ${content.length} characters`);
+      console.error(`[GoogleDevEnricher] Successfully enriched: ${content.length} characters`);
       return { content, thumbnail };
       
     } catch (error) {

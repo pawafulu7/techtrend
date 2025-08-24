@@ -61,7 +61,7 @@ async function fixUnwantedPrefixes() {
       }
     });
     
-    console.log(`不要な前置きを含む記事: ${articles.length}件`);
+    console.error(`不要な前置きを含む記事: ${articles.length}件`);
     
     // 各記事の要約を修正
     let updatedCount = 0;
@@ -71,13 +71,13 @@ async function fixUnwantedPrefixes() {
       
       // 変更がある場合のみ更新
       if (cleanedSummary !== article.summary || cleanedDetailedSummary !== article.detailedSummary) {
-        console.log(`\n更新中: ${article.title}`);
+        console.error(`\n更新中: ${article.title}`);
         
         if (cleanedSummary !== article.summary) {
-          console.log('  要約を修正');
+          console.error('  要約を修正');
         }
         if (cleanedDetailedSummary !== article.detailedSummary) {
-          console.log('  詳細要約を修正');
+          console.error('  詳細要約を修正');
         }
         
         await prisma.article.update({
@@ -92,7 +92,7 @@ async function fixUnwantedPrefixes() {
       }
     }
     
-    console.log(`\n修正完了: ${updatedCount}件の記事を更新しました。`);
+    console.error(`\n修正完了: ${updatedCount}件の記事を更新しました。`);
     
   } catch (error) {
     console.error('エラーが発生しました:', error);
@@ -103,9 +103,9 @@ async function fixUnwantedPrefixes() {
 
 // 実行前の確認
 async function main() {
-  console.log('既存の要約から不要な前置き文言を削除します。');
-  console.log('削除対象の前置き:', unwantedPrefixes.join(', '));
-  console.log('\n続行しますか？ (y/n)');
+  console.error('既存の要約から不要な前置き文言を削除します。');
+  console.error('削除対象の前置き:', unwantedPrefixes.join(', '));
+  console.error('\n続行しますか？ (y/n)');
   
   const readline = require('readline').createInterface({
     input: process.stdin,
@@ -116,7 +116,7 @@ async function main() {
     if (answer.toLowerCase() === 'y') {
       await fixUnwantedPrefixes();
     } else {
-      console.log('キャンセルしました。');
+      console.error('キャンセルしました。');
       await prisma.$disconnect();
     }
     readline.close();

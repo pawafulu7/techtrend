@@ -46,14 +46,14 @@ export const logger = {
   info: (msg: string) => {
     if (shouldLog(LogLevel.INFO)) {
       const timestamp = getTimestamp();
-      console.log(`${timestamp}ℹ️  ${msg}`);
+      console.error(`${timestamp}ℹ️  ${msg}`);
     }
   },
   
   success: (msg: string) => {
     if (shouldLog(LogLevel.INFO)) {
       const timestamp = getTimestamp();
-      console.log(`${timestamp}✅ ${msg}`);
+      console.error(`${timestamp}✅ ${msg}`);
     }
   },
   
@@ -80,7 +80,7 @@ export const logger = {
   debug: (msg: string) => {
     if (shouldLog(LogLevel.DEBUG)) {
       const timestamp = getTimestamp();
-      console.log(`${timestamp}🐛 ${msg}`);
+      console.error(`${timestamp}🐛 ${msg}`);
     }
   },
 

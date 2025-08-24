@@ -105,8 +105,8 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
   
   // デバッグログ
   if (detailedSummaryLines.length === 0) {
-    console.log('[パーサー] 詳細要約が空 - 箇条書きが見つかりませんでした');
-    console.log('[パーサー] 入力テキスト(最初の500文字):', text.substring(0, 500));
+    console.error('[パーサー] 詳細要約が空 - 箇条書きが見つかりませんでした');
+    console.error('[パーサー] 入力テキスト(最初の500文字):', text.substring(0, 500));
   }
 
   // フォールバック処理

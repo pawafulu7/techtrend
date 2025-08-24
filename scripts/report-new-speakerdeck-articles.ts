@@ -3,8 +3,8 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function reportNewArticles() {
-  console.log('📊 Speaker Deck 新規記事取得レポート');
-  console.log('=====================================\n');
+  console.error('📊 Speaker Deck 新規記事取得レポート');
+  console.error('=====================================\n');
   
   // 最新10件の記事を取得
   const latestArticles = await prisma.article.findMany({
@@ -22,14 +22,14 @@ async function reportNewArticles() {
     }
   });
   
-  console.log('🆕 新規取得記事（作成日時順）:');
-  console.log('--------------------------------');
+  console.error('🆕 新規取得記事（作成日時順）:');
+  console.error('--------------------------------');
   
   latestArticles.forEach((article, index) => {
-    console.log(`\n${index + 1}. ${article.title}`);
-    console.log(`   📅 公開日: ${new Date(article.publishedAt).toLocaleDateString('ja-JP')}`);
-    console.log(`   🔗 URL: ${article.url}`);
-    console.log(`   🖼️  サムネイル: ${article.thumbnail ? '有' : '無'}`);
+    console.error(`\n${index + 1}. ${article.title}`);
+    console.error(`   📅 公開日: ${new Date(article.publishedAt).toLocaleDateString('ja-JP')}`);
+    console.error(`   🔗 URL: ${article.url}`);
+    console.error(`   🖼️  サムネイル: ${article.thumbnail ? '有' : '無'}`);
   });
   
   // 統計情報
@@ -51,16 +51,16 @@ async function reportNewArticles() {
     take: 5
   });
   
-  console.log('\n\n📈 統計情報:');
-  console.log('-------------');
-  console.log(`総記事数: ${totalCount}件`);
-  console.log(`（前回: 97件 → 今回: ${totalCount}件）`);
-  console.log(`増加数: ${totalCount - 97}件`);
+  console.error('\n\n📈 統計情報:');
+  console.error('-------------');
+  console.error(`総記事数: ${totalCount}件`);
+  console.error(`（前回: 97件 → 今回: ${totalCount}件）`);
+  console.error(`増加数: ${totalCount - 97}件`);
   
-  console.log('\n📅 最近の記事分布:');
+  console.error('\n📅 最近の記事分布:');
   dateCount.forEach(item => {
     const date = new Date(item.publishedAt);
-    console.log(`  ${date.toLocaleDateString('ja-JP')}: ${item._count}件`);
+    console.error(`  ${date.toLocaleDateString('ja-JP')}: ${item._count}件`);
   });
   
   await prisma.$disconnect();

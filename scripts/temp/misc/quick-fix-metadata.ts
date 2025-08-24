@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { cleanSummary, cleanDetailedSummary } from '../lib/utils/summary-cleaner';
+import { cleanSummary, cleanDetailedSummary } from '../../lib/utils/summary-cleaner';
 
 const prisma = new PrismaClient();
 
 async function quickFixMetadata() {
-  console.log('🔧 メタデータ混入問題を高速修正\n');
+  console.error('🔧 メタデータ混入問題を高速修正\n');
   
   try {
     // メタデータ問題のある記事を取得
@@ -33,7 +33,7 @@ async function quickFixMetadata() {
       }
     });
     
-    console.log(`📊 メタデータ混入記事: ${articles.length}件\n`);
+    console.error(`📊 メタデータ混入記事: ${articles.length}件\n`);
     
     let fixedCount = 0;
     
@@ -96,17 +96,17 @@ async function quickFixMetadata() {
           });
           
           fixedCount++;
-          console.log(`✅ [${fixedCount}/${articles.length}] ${article.title.substring(0, 40)}...`);
-          console.log(`   修正前: "${originalSummary.substring(0, 60)}..."`);
-          console.log(`   修正後: "${summary.substring(0, 60)}..."`);
+          console.error(`✅ [${fixedCount}/${articles.length}] ${article.title.substring(0, 40)}...`);
+          console.error(`   修正前: "${originalSummary.substring(0, 60)}..."`);
+          console.error(`   修正後: "${summary.substring(0, 60)}..."`);
         } catch (error) {
           console.error(`❌ 更新エラー (${article.id}):`, error);
         }
       }
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log(`✅ メタデータ修正完了: ${fixedCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error(`✅ メタデータ修正完了: ${fixedCount}件`);
     
   } catch (error) {
     console.error('エラー:', error);

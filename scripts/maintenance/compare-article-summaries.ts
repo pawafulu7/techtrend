@@ -18,24 +18,24 @@ async function compareArticles() {
     });
 
     if (!article) {
-      console.log(`記事ID ${articleId} が見つかりません`);
+      console.error(`記事ID ${articleId} が見つかりません`);
       continue;
     }
 
-    console.log('='*60);
-    console.log(`記事ID: ${article.id}`);
-    console.log(`タイトル: ${article.title}`);
-    console.log(`ソース: ${article.source.name}`);
-    console.log(`公開日: ${article.publishedAt.toLocaleString('ja-JP')}`);
-    console.log(`作成日: ${article.createdAt.toLocaleString('ja-JP')}`);
-    console.log(`更新日: ${article.updatedAt.toLocaleString('ja-JP')}`);
-    console.log('\n--- 要約 ---');
-    console.log(article.summary);
-    console.log('\n--- 詳細要約 ---');
-    console.log(article.detailedSummary);
-    console.log('\n--- タグ ---');
-    console.log(article.tags.map(t => t.name).join(', '));
-    console.log('\n');
+    console.error('='*60);
+    console.error(`記事ID: ${article.id}`);
+    console.error(`タイトル: ${article.title}`);
+    console.error(`ソース: ${article.source.name}`);
+    console.error(`公開日: ${article.publishedAt.toLocaleString('ja-JP')}`);
+    console.error(`作成日: ${article.createdAt.toLocaleString('ja-JP')}`);
+    console.error(`更新日: ${article.updatedAt.toLocaleString('ja-JP')}`);
+    console.error('\n--- 要約 ---');
+    console.error(article.summary);
+    console.error('\n--- 詳細要約 ---');
+    console.error(article.detailedSummary);
+    console.error('\n--- タグ ---');
+    console.error(article.tags.map(t => t.name).join(', '));
+    console.error('\n');
   }
   
   await prisma.$disconnect();

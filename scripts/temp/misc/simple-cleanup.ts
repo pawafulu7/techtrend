@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function simpleCleanup() {
-  console.log('🧹 プレフィックスとMarkdownの単純クリーンアップ\n');
+  console.error('🧹 プレフィックスとMarkdownの単純クリーンアップ\n');
   
   try {
     // すべての記事を取得
@@ -16,7 +16,7 @@ async function simpleCleanup() {
       }
     });
     
-    console.log(`全記事数: ${allArticles.length}件\n`);
+    console.error(`全記事数: ${allArticles.length}件\n`);
     
     let cleanupCount = 0;
     let processedCount = 0;
@@ -25,7 +25,7 @@ async function simpleCleanup() {
       processedCount++;
       
       if (processedCount % 100 === 0) {
-        console.log(`処理中: ${processedCount}/${allArticles.length} (${Math.round(processedCount/allArticles.length*100)}%)`);
+        console.error(`処理中: ${processedCount}/${allArticles.length} (${Math.round(processedCount/allArticles.length*100)}%)`);
       }
       
       let needsUpdate = false;
@@ -92,7 +92,7 @@ async function simpleCleanup() {
           cleanupCount++;
           
           if (cleanupCount % 10 === 0) {
-            console.log(`  ✅ ${cleanupCount}件クリーンアップ完了`);
+            console.error(`  ✅ ${cleanupCount}件クリーンアップ完了`);
           }
         } catch (error) {
           console.error(`  ❌ エラー (${article.id}): ${error}`);
@@ -100,10 +100,10 @@ async function simpleCleanup() {
       }
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('🎉 クリーンアップ完了');
-    console.log(`✅ 修正した記事: ${cleanupCount}件`);
-    console.log(`📊 修正率: ${(cleanupCount / allArticles.length * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error('🎉 クリーンアップ完了');
+    console.error(`✅ 修正した記事: ${cleanupCount}件`);
+    console.error(`📊 修正率: ${(cleanupCount / allArticles.length * 100).toFixed(1)}%`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

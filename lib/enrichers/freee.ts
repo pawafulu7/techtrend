@@ -19,7 +19,7 @@ export class FreeeContentEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.log(`[FreeeEnricher] Fetching content from: ${url}`);
+      console.error(`[FreeeEnricher] Fetching content from: ${url}`);
       
       const html = await this.fetchWithRetry(url);
       
@@ -49,14 +49,14 @@ export class FreeeContentEnricher extends BaseContentEnricher {
         // より広範囲を取得する試み
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
-          console.log(`[FreeeEnricher] Using fallback content (${fallbackContent.length} chars)`);
+          console.error(`[FreeeEnricher] Using fallback content (${fallbackContent.length} chars)`);
           return { content: fallbackContent, thumbnail };
         }
         
         return null;
       }
       
-      console.log(`[FreeeEnricher] Successfully enriched: ${content.length} characters`);
+      console.error(`[FreeeEnricher] Successfully enriched: ${content.length} characters`);
       return { content, thumbnail };
       
     } catch (error) {

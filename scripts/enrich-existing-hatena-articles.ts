@@ -74,23 +74,23 @@ async function enrichExistingArticles(limit?: number, testMode: boolean = false)
 
     result.total = targetArticles.length;
     
-    console.log('='.repeat(60));
-    console.log('はてなブックマーク記事エンリッチメント');
-    console.log('='.repeat(60));
-    console.log(`処理対象: ${result.total}件`);
-    console.log(`モード: ${testMode ? 'テスト' : '本番'}`);
-    if (limit) console.log(`制限: ${limit}件`);
-    console.log('='.repeat(60));
-    console.log('');
+    console.error('='.repeat(60));
+    console.error('はてなブックマーク記事エンリッチメント');
+    console.error('='.repeat(60));
+    console.error(`処理対象: ${result.total}件`);
+    console.error(`モード: ${testMode ? 'テスト' : '本番'}`);
+    if (limit) console.error(`制限: ${limit}件`);
+    console.error('='.repeat(60));
+    console.error('');
 
     // 各記事を処理
     for (let i = 0; i < targetArticles.length; i++) {
       const article = targetArticles[i];
       const currentLength = article.content?.length || 0;
       
-      console.log(`[${i + 1}/${result.total}] ${article.title.substring(0, 50)}...`);
-      console.log(`  URL: ${article.url}`);
-      console.log(`  現在のコンテンツ: ${currentLength}文字`);
+      console.error(`[${i + 1}/${result.total}] ${article.title.substring(0, 50)}...`);
+      console.error(`  URL: ${article.url}`);
+      console.error(`  現在のコンテンツ: ${currentLength}文字`);
       
       result.processed++;
 
@@ -99,13 +99,13 @@ async function enrichExistingArticles(limit?: number, testMode: boolean = false)
         const enricher = enricherFactory.getEnricher(article.url);
         
         if (!enricher) {
-          console.log(`  ⚠️  エンリッチャーなし（スキップ）`);
+          console.error(`  ⚠️  エンリッチャーなし（スキップ）`);
           result.skipped++;
           continue;
         }
 
         // エンリッチメント実行
-        console.log(`  エンリッチメント実行中...`);
+        console.error(`  エンリッチメント実行中...`);
         const startTime = Date.now();
         const enrichedData = await enricher.enrich(article.url);
         const endTime = Date.now();
@@ -125,32 +125,32 @@ async function enrichExistingArticles(limit?: number, testMode: boolean = false)
           const newLength = enrichedData.content.length;
           const expansion = (newLength / Math.max(currentLength, 1)).toFixed(1);
           
-          console.log(`  ✅ 成功: ${currentLength} → ${newLength}文字 (${expansion}倍)`);
+          console.error(`  ✅ 成功: ${currentLength} → ${newLength}文字 (${expansion}倍)`);
           if (enrichedData.thumbnail && !article.thumbnail) {
-            console.log(`  📷 サムネイル取得`);
+            console.error(`  📷 サムネイル取得`);
           }
-          console.log(`  実行時間: ${endTime - startTime}ms`);
+          console.error(`  実行時間: ${endTime - startTime}ms`);
           
           result.enriched++;
         } else {
-          console.log(`  ⚠️  コンテンツ改善なし（スキップ）`);
+          console.error(`  ⚠️  コンテンツ改善なし（スキップ）`);
           result.skipped++;
         }
         
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.log(`  ❌ エラー: ${errorMsg}`);
+        console.error(`  ❌ エラー: ${errorMsg}`);
         result.failed++;
         result.errors.push(`${article.title}: ${errorMsg}`);
       }
       
       // Rate limit対策（本番モードのみ）
       if (!testMode && i < targetArticles.length - 1) {
-        console.log(`  待機中... (2秒)`);
+        console.error(`  待機中... (2秒)`);
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
-      console.log('');
+      console.error('');
     }
 
   } catch (error) {
@@ -172,34 +172,34 @@ async function main() {
   const result = await enrichExistingArticles(limit, testMode);
   
   // 結果サマリー
-  console.log('='.repeat(60));
-  console.log('処理結果サマリー');
-  console.log('='.repeat(60));
-  console.log(`対象記事数: ${result.total}`);
-  console.log(`処理済み: ${result.processed}`);
-  console.log(`エンリッチメント成功: ${result.enriched}`);
-  console.log(`スキップ: ${result.skipped}`);
-  console.log(`失敗: ${result.failed}`);
+  console.error('='.repeat(60));
+  console.error('処理結果サマリー');
+  console.error('='.repeat(60));
+  console.error(`対象記事数: ${result.total}`);
+  console.error(`処理済み: ${result.processed}`);
+  console.error(`エンリッチメント成功: ${result.enriched}`);
+  console.error(`スキップ: ${result.skipped}`);
+  console.error(`失敗: ${result.failed}`);
   
   if (result.enriched > 0) {
     const successRate = ((result.enriched / result.processed) * 100).toFixed(1);
-    console.log(`成功率: ${successRate}%`);
+    console.error(`成功率: ${successRate}%`);
   }
   
   if (result.errors.length > 0 && result.errors.length <= 5) {
-    console.log('\nエラー詳細:');
-    result.errors.forEach(err => console.log(`  - ${err}`));
+    console.error('\nエラー詳細:');
+    result.errors.forEach(err => console.error(`  - ${err}`));
   } else if (result.errors.length > 5) {
-    console.log(`\nエラー: ${result.errors.length}件（詳細は省略）`);
+    console.error(`\nエラー: ${result.errors.length}件（詳細は省略）`);
   }
   
   if (testMode) {
-    console.log('\n⚠️  テストモード: データベースは更新されていません');
+    console.error('\n⚠️  テストモード: データベースは更新されていません');
   } else if (result.enriched > 0) {
-    console.log('\n✅ データベースが更新されました');
+    console.error('\n✅ データベースが更新されました');
   }
   
-  console.log('='.repeat(60));
+  console.error('='.repeat(60));
   
   await prisma.$disconnect();
   process.exit(result.failed > result.enriched ? 1 : 0);
@@ -207,18 +207,18 @@ async function main() {
 
 // 使用方法の表示
 if (process.argv.includes('--help')) {
-  console.log('使用方法:');
-  console.log('  npx tsx scripts/enrich-existing-hatena-articles.ts [オプション]');
-  console.log('');
-  console.log('オプション:');
-  console.log('  --test        テストモード（データベース更新なし）');
-  console.log('  --limit=N     処理する記事数を制限');
-  console.log('  --help        このヘルプを表示');
-  console.log('');
-  console.log('例:');
-  console.log('  npx tsx scripts/enrich-existing-hatena-articles.ts --test --limit=10');
-  console.log('  npx tsx scripts/enrich-existing-hatena-articles.ts --limit=50');
-  console.log('  npx tsx scripts/enrich-existing-hatena-articles.ts');
+  console.error('使用方法:');
+  console.error('  npx tsx scripts/enrich-existing-hatena-articles.ts [オプション]');
+  console.error('');
+  console.error('オプション:');
+  console.error('  --test        テストモード（データベース更新なし）');
+  console.error('  --limit=N     処理する記事数を制限');
+  console.error('  --help        このヘルプを表示');
+  console.error('');
+  console.error('例:');
+  console.error('  npx tsx scripts/enrich-existing-hatena-articles.ts --test --limit=10');
+  console.error('  npx tsx scripts/enrich-existing-hatena-articles.ts --limit=50');
+  console.error('  npx tsx scripts/enrich-existing-hatena-articles.ts');
   process.exit(0);
 }
 

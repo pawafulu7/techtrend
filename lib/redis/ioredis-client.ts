@@ -30,11 +30,11 @@ export class IoRedisClient implements IRedisClient {
     });
 
     this.client.on('connect', () => {
-      console.log('Redis Client Connected');
+      console.error('Redis Client Connected');
     });
 
     this.client.on('ready', () => {
-      console.log('Redis Client Ready');
+      console.error('Redis Client Ready');
     });
 
     // Auto-connect

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { ExtendedArticle } from '@/types/common';
 import { 
   UserInterests, 
   RecommendedArticle, 
@@ -136,7 +137,7 @@ export class RecommendationServiceDI {
    * 記事のレコメンドスコアを計算
    */
   calculateRecommendationScore(
-    article: {id: string; title: string; tags: Array<{name: string} | string>; source?: {name: string}},
+    article: ExtendedArticle & {tags: Array<{name: string} | string>; source?: {name: string}},
     interests: UserInterests
   ): RecommendationScore {
     let score = 0;

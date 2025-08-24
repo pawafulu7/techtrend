@@ -1,13 +1,13 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 const prisma = new PrismaClient();
 
 async function fixSingleArticleLocal() {
   const articleId = 'cmdx9g01a0012tebmigtqb255';
   
-  console.log('🤖 ローカルLLMで記事を修正\n');
+  console.error('🤖 ローカルLLMで記事を修正\n');
   
   try {
     // ローカルLLMクライアントを初期化（maxTokensを増やす）
@@ -25,7 +25,7 @@ async function fixSingleArticleLocal() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     // 記事を取得
     const article = await prisma.article.findUnique({
@@ -39,12 +39,12 @@ async function fixSingleArticleLocal() {
     });
     
     if (!article) {
-      console.log('記事が見つかりません');
+      console.error('記事が見つかりません');
       return;
     }
     
-    console.log(`記事: ${article.title}`);
-    console.log(`URL: ${article.url}`);
+    console.error(`記事: ${article.title}`);
+    console.error(`URL: ${article.url}`);
     
     // コンテンツを強化（短い場合）
     let enhancedContent = article.content || '';
@@ -60,9 +60,9 @@ Context: This article discusses how Google is making data centers more flexible 
       `.trim();
     }
     
-    console.log(`コンテンツ長: ${enhancedContent.length}文字\n`);
+    console.error(`コンテンツ長: ${enhancedContent.length}文字\n`);
     
-    console.log('🔄 ローカルLLMで詳細要約を生成中...');
+    console.error('🔄 ローカルLLMで詳細要約を生成中...');
     const startTime = Date.now();
     
     const result = await localLLM.generateDetailedSummary(
@@ -72,16 +72,16 @@ Context: This article discusses how Google is making data centers more flexible 
     
     const duration = Date.now() - startTime;
     
-    console.log(`生成時間: ${duration}ms\n`);
+    console.error(`生成時間: ${duration}ms\n`);
     
-    console.log('📝 生成された要約:');
-    console.log(result.summary);
+    console.error('📝 生成された要約:');
+    console.error(result.summary);
     
-    console.log('\n📋 生成された詳細要約:');
-    console.log(result.detailedSummary);
+    console.error('\n📋 生成された詳細要約:');
+    console.error(result.detailedSummary);
     
     const lines = result.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
-    console.log(`\n項目数: ${lines.length}`);
+    console.error(`\n項目数: ${lines.length}`);
     
     if (lines.length >= 5) {
       // タグを準備
@@ -112,14 +112,14 @@ Context: This article discusses how Google is making data centers more flexible 
         }
       });
       
-      console.log('\n✅ データベースを更新しました');
+      console.error('\n✅ データベースを更新しました');
       
-      console.log('\n⚠️ キャッシュクリアの手順:');
-      console.log('1. ブラウザでハードリロード（Ctrl+Shift+R）');
-      console.log('2. Next.jsサーバーを再起動（必要に応じて）');
+      console.error('\n⚠️ キャッシュクリアの手順:');
+      console.error('1. ブラウザでハードリロード（Ctrl+Shift+R）');
+      console.error('2. Next.jsサーバーを再起動（必要に応じて）');
       
     } else {
-      console.log('\n⚠️ 項目数が少ないため更新をスキップしました');
+      console.error('\n⚠️ 項目数が少ないため更新をスキップしました');
     }
     
   } catch (error) {

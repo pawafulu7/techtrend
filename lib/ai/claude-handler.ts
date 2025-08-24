@@ -32,9 +32,9 @@ export class ClaudeHandler {
     
     // Claude Codeでの処理のため、ここでプロンプトを返す
     // 実際の要約生成はClaude Code自身が行う
-    console.log('=== Claude Code要約生成プロンプト ===');
-    console.log(prompt);
-    console.log('=====================================');
+    console.error('=== Claude Code要約生成プロンプト ===');
+    console.error(prompt);
+    console.error('=====================================');
     
     // Claude Codeが生成した結果を受け取る想定のインターフェース
     // 実際の処理はgenerate-summaries-claude.tsで行う

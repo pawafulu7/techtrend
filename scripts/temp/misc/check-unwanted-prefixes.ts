@@ -23,14 +23,14 @@ async function checkUnwantedPrefixes() {
     take: 10
   });
   
-  console.log('不要な前置きを含む要約:', articles.length, '件');
+  console.error('不要な前置きを含む要約:', articles.length, '件');
   articles.forEach((article, index) => {
-    console.log(`\n--- ${index + 1} ---`);
-    console.log('ID:', article.id);
-    console.log('タイトル:', article.title);
-    console.log('要約:', article.summary);
+    console.error(`\n--- ${index + 1} ---`);
+    console.error('ID:', article.id);
+    console.error('タイトル:', article.title);
+    console.error('要約:', article.summary);
     if (article.detailedSummary) {
-      console.log('詳細要約:', article.detailedSummary.substring(0, 100) + '...');
+      console.error('詳細要約:', article.detailedSummary.substring(0, 100) + '...');
     }
   });
   

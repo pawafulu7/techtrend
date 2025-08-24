@@ -118,7 +118,7 @@ function parseResponse(text: string): SummaryResult {
 }
 
 async function main() {
-  console.log('🔧 要約生成に失敗した記事を修正します\n');
+  console.error('🔧 要約生成に失敗した記事を修正します\n');
 
   try {
     // 失敗記事を取得
@@ -129,21 +129,21 @@ async function main() {
       include: { source: true }
     });
 
-    console.log(`📊 対象記事: ${failedArticles.length}件\n`);
+    console.error(`📊 対象記事: ${failedArticles.length}件\n`);
 
     let successCount = 0;
     let failCount = 0;
 
     for (let i = 0; i < failedArticles.length; i++) {
       const article = failedArticles[i];
-      console.log(`[${i + 1}/${failedArticles.length}] ${article.title.substring(0, 50)}...`);
-      console.log(`  ソース: ${article.source.name}`);
+      console.error(`[${i + 1}/${failedArticles.length}] ${article.title.substring(0, 50)}...`);
+      console.error(`  ソース: ${article.source.name}`);
 
       try {
         const content = article.content || article.summary || article.title;
         
         if (content.length < 100) {
-          console.log(`  ⚠️  極短コンテンツ: ${content.length}文字`);
+          console.error(`  ⚠️  極短コンテンツ: ${content.length}文字`);
         }
 
         const result = await generateUnifiedSummary(article.title, content);
@@ -159,10 +159,10 @@ async function main() {
             }
           });
 
-          console.log(`  ✅ 修正成功`);
+          console.error(`  ✅ 修正成功`);
           successCount++;
         } else {
-          console.log(`  ❌ 修正失敗（要約生成できず）`);
+          console.error(`  ❌ 修正失敗（要約生成できず）`);
           failCount++;
         }
 
@@ -175,17 +175,17 @@ async function main() {
         
         // Rate Limitエラーの場合は待機
         if (String(error).includes('429') || String(error).includes('rate')) {
-          console.log('⏸️  60秒待機...');
+          console.error('⏸️  60秒待機...');
           await new Promise(resolve => setTimeout(resolve, 60000));
         }
       }
     }
 
-    console.log('\n================================================================================');
-    console.log('📊 最終結果');
-    console.log(`  成功: ${successCount}件`);
-    console.log(`  失敗: ${failCount}件`);
-    console.log('================================================================================');
+    console.error('\n================================================================================');
+    console.error('📊 最終結果');
+    console.error(`  成功: ${successCount}件`);
+    console.error(`  失敗: ${failCount}件`);
+    console.error('================================================================================');
 
   } catch (error) {
     console.error('❌ 致命的エラー:', error);

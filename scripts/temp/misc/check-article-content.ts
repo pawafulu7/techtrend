@@ -10,16 +10,16 @@ async function checkArticleContent() {
   });
 
   if (!article) {
-    console.log(`記事ID ${articleId} が見つかりません`);
+    console.error(`記事ID ${articleId} が見つかりません`);
     return;
   }
 
-  console.log('=== 記事コンテンツ全文 ===');
-  console.log(article.content || 'コンテンツなし');
-  console.log('\n=== 記事の要約 ===');
-  console.log(article.summary || '要約なし');
-  console.log('\n=== 記事のdescription ===');
-  console.log(article.description || 'descriptionなし');
+  console.error('=== 記事コンテンツ全文 ===');
+  console.error(article.content || 'コンテンツなし');
+  console.error('\n=== 記事の要約 ===');
+  console.error(article.summary || '要約なし');
+  console.error('\n=== 記事のdescription ===');
+  console.error(article.description || 'descriptionなし');
   
   // 要約とコンテンツの関連性をチェック
   if (article.content) {
@@ -30,9 +30,9 @@ async function checkArticleContent() {
       リソース管理: article.content.includes('リソース管理')
     };
     
-    console.log('\n=== コンテンツ内のキーワード確認 ===');
+    console.error('\n=== コンテンツ内のキーワード確認 ===');
     Object.entries(contentIncludes).forEach(([key, value]) => {
-      console.log(`${key}: ${value ? '含まれる' : '含まれない'}`);
+      console.error(`${key}: ${value ? '含まれる' : '含まれない'}`);
     });
   }
   

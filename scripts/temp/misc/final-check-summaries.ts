@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function finalCheckSummaries() {
-  console.log('🔍 最終的な要約品質チェック\n');
+  console.error('🔍 最終的な要約品質チェック\n');
   
   try {
     // 全記事を取得（最新3000件）
@@ -28,7 +28,7 @@ async function finalCheckSummaries() {
       take: 3000
     });
     
-    console.log(`📊 チェック対象: ${articles.length}件\n`);
+    console.error(`📊 チェック対象: ${articles.length}件\n`);
     
     // 新しい問題パターンも含めて詳細にチェック
     const detailedProblems: {[key: string]: any[]} = {
@@ -194,8 +194,8 @@ async function finalCheckSummaries() {
     }
     
     // 問題の集計と表示
-    console.log('📈 検出された問題パターン:');
-    console.log('─'.repeat(80));
+    console.error('📈 検出された問題パターン:');
+    console.error('─'.repeat(80));
     
     const problemSummary: {[key: string]: number} = {};
     let totalProblems = 0;
@@ -213,16 +213,16 @@ async function finalCheckSummaries() {
             .replace(/([A-Z])/g, ' $1')
             .replace(/^./, str => str.toUpperCase());
           
-          console.log(`\n【${displayName}】: ${articles.length}件`);
+          console.error(`\n【${displayName}】: ${articles.length}件`);
           
           // 最初の2件を例として表示
           for (let i = 0; i < Math.min(2, articles.length); i++) {
             const article = articles[i] as any;
-            console.log(`  ${i + 1}. ${article.title.substring(0, 40)}...`);
-            console.log(`     ID: ${article.id}`);
-            console.log(`     ソース: ${article.source.name}`);
+            console.error(`  ${i + 1}. ${article.title.substring(0, 40)}...`);
+            console.error(`     ID: ${article.id}`);
+            console.error(`     ソース: ${article.source.name}`);
             if (problemType !== 'emptyDetail') {
-              console.log(`     要約: "${article.summary?.substring(0, 60)}..."`);
+              console.error(`     要約: "${article.summary?.substring(0, 60)}..."`);
             }
           }
         }
@@ -230,11 +230,11 @@ async function finalCheckSummaries() {
     }
     
     // 最終サマリー
-    console.log('\n' + '='.repeat(80));
-    console.log('📊 最終品質レポート:');
-    console.log(`・総記事数: ${articles.length}件`);
-    console.log(`・問題のある記事（ユニーク）: ${uniqueProblematicIds.size}件`);
-    console.log(`・品質スコア: ${((1 - uniqueProblematicIds.size / articles.length) * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(80));
+    console.error('📊 最終品質レポート:');
+    console.error(`・総記事数: ${articles.length}件`);
+    console.error(`・問題のある記事（ユニーク）: ${uniqueProblematicIds.size}件`);
+    console.error(`・品質スコア: ${((1 - uniqueProblematicIds.size / articles.length) * 100).toFixed(1)}%`);
     
     // 問題の深刻度別分類
     const critical = ['englishThinking', 'jsonLeak', 'codeFragment', 'brokenEncoding', 'englishOnly'];
@@ -245,10 +245,10 @@ async function finalCheckSummaries() {
     const moderateCount = moderate.reduce((sum, key) => sum + (problemSummary[key] || 0), 0);
     const minorCount = minor.reduce((sum, key) => sum + (problemSummary[key] || 0), 0);
     
-    console.log('\n⚠️ 問題の深刻度:');
-    console.log(`・重大: ${criticalCount}件`);
-    console.log(`・中程度: ${moderateCount}件`);
-    console.log(`・軽微: ${minorCount}件`);
+    console.error('\n⚠️ 問題の深刻度:');
+    console.error(`・重大: ${criticalCount}件`);
+    console.error(`・中程度: ${moderateCount}件`);
+    console.error(`・軽微: ${minorCount}件`);
     
     // トップ問題
     const sortedProblems = Object.entries(problemSummary)
@@ -256,36 +256,36 @@ async function finalCheckSummaries() {
       .slice(0, 5);
     
     if (sortedProblems.length > 0) {
-      console.log('\n🔝 最も多い問題（トップ5）:');
+      console.error('\n🔝 最も多い問題（トップ5）:');
       for (let i = 0; i < sortedProblems.length; i++) {
         const [type, count] = sortedProblems[i];
         const displayName = type
           .replace(/([A-Z])/g, ' $1')
           .replace(/^./, str => str.toUpperCase());
-        console.log(`${i + 1}. ${displayName}: ${count}件`);
+        console.error(`${i + 1}. ${displayName}: ${count}件`);
       }
     }
     
     // 推奨アクション
     if (uniqueProblematicIds.size > 0) {
-      console.log('\n💡 推奨アクション:');
+      console.error('\n💡 推奨アクション:');
       
       if (criticalCount > 0) {
-        console.log('1. 重大な問題の即時修正: npx tsx scripts/fix-critical-issues.ts');
+        console.error('1. 重大な問題の即時修正: npx tsx scripts/fix-critical-issues.ts');
       }
       if (moderateCount > 0) {
-        console.log('2. 中程度の問題の修正: npx tsx scripts/fix-moderate-issues.ts');
+        console.error('2. 中程度の問題の修正: npx tsx scripts/fix-moderate-issues.ts');
       }
       if (detailedProblems.emptyDetail.length > 0) {
-        console.log('3. 詳細要約の生成: npx tsx scripts/generate-missing-details.ts');
+        console.error('3. 詳細要約の生成: npx tsx scripts/generate-missing-details.ts');
       }
       
-      console.log('\n✨ 品質向上のヒント:');
-      console.log('- 定期的な品質チェックの実施');
-      console.log('- AIサービスのプロンプト最適化');
-      console.log('- エラーハンドリングの強化');
+      console.error('\n✨ 品質向上のヒント:');
+      console.error('- 定期的な品質チェックの実施');
+      console.error('- AIサービスのプロンプト最適化');
+      console.error('- エラーハンドリングの強化');
     } else {
-      console.log('\n✨ 素晴らしい！すべての記事が高品質です。');
+      console.error('\n✨ 素晴らしい！すべての記事が高品質です。');
     }
     
   } catch (error) {

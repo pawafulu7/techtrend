@@ -49,11 +49,11 @@ export class CircuitBreaker {
       
       // タイムアウト経過後、HALF_OPEN状態に移行
       if (timeSinceLastFailure > this.timeout) {
-        console.log('[CircuitBreaker] Transitioning to HALF_OPEN state');
+        console.error('[CircuitBreaker] Transitioning to HALF_OPEN state');
         this.state = 'HALF_OPEN';
         this.successCount = 0;
       } else {
-        console.log('[CircuitBreaker] Circuit is OPEN, using fallback');
+        console.error('[CircuitBreaker] Circuit is OPEN, using fallback');
         if (fallback) {
           return await fallback();
         }
@@ -67,11 +67,11 @@ export class CircuitBreaker {
       // 成功時の処理
       if (this.state === 'HALF_OPEN') {
         this.successCount++;
-        console.log(`[CircuitBreaker] Success in HALF_OPEN state (${this.successCount}/${this.halfOpenRequests})`);
+        console.error(`[CircuitBreaker] Success in HALF_OPEN state (${this.successCount}/${this.halfOpenRequests})`);
         
         // 必要な成功回数に達したら回路を閉じる
         if (this.successCount >= this.halfOpenRequests) {
-          console.log('[CircuitBreaker] Circuit is now CLOSED');
+          console.error('[CircuitBreaker] Circuit is now CLOSED');
           this.state = 'CLOSED';
           this.failureCount = 0;
           this.successCount = 0;
@@ -87,24 +87,24 @@ export class CircuitBreaker {
       this.lastFailureTime = Date.now();
       
       if (this.state === 'HALF_OPEN') {
-        console.log('[CircuitBreaker] Failure in HALF_OPEN state, reopening circuit');
+        console.error('[CircuitBreaker] Failure in HALF_OPEN state, reopening circuit');
         this.state = 'OPEN';
         this.failureCount = this.threshold;
         this.successCount = 0;
       } else if (this.state === 'CLOSED') {
         this.failureCount++;
-        console.log(`[CircuitBreaker] Failure count: ${this.failureCount}/${this.threshold}`);
+        console.error(`[CircuitBreaker] Failure count: ${this.failureCount}/${this.threshold}`);
         
         // 閾値に達したら回路を開く
         if (this.failureCount >= this.threshold) {
-          console.log('[CircuitBreaker] Opening circuit due to failures');
+          console.error('[CircuitBreaker] Opening circuit due to failures');
           this.state = 'OPEN';
         }
       }
       
       // フォールバック実行
       if (fallback) {
-        console.log('[CircuitBreaker] Executing fallback');
+        console.error('[CircuitBreaker] Executing fallback');
         return await fallback();
       }
       
@@ -120,7 +120,7 @@ export class CircuitBreaker {
     this.failureCount = 0;
     this.successCount = 0;
     this.lastFailureTime = undefined;
-    console.log('[CircuitBreaker] Circuit reset');
+    console.error('[CircuitBreaker] Circuit reset');
   }
 }
 

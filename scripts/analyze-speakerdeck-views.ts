@@ -6,7 +6,7 @@ const originalMinViews = speakerDeckConfig.minViews;
 speakerDeckConfig.minViews = 0; // すべての記事を取得
 
 async function analyzeSpeakerDeckViews() {
-  console.log('📊 Speaker Deck Views分析開始...\n');
+  console.error('📊 Speaker Deck Views分析開始...\n');
   
   const viewsDistribution: { [key: string]: number } = {
     '0-100': 0,
@@ -23,7 +23,7 @@ async function analyzeSpeakerDeckViews() {
   try {
     for (let page = 1; page <= 5; page++) {
       const url = `https://speakerdeck.com/c/programming?lang=ja&page=${page}`;
-      console.log(`📄 ページ${page}を取得中...`);
+      console.error(`📄 ページ${page}を取得中...`);
       
       const response = await fetch(url);
       const html = await response.text();
@@ -68,49 +68,49 @@ async function analyzeSpeakerDeckViews() {
     const percentile75 = sorted[Math.floor(total * 0.75)];
     const percentile90 = sorted[Math.floor(total * 0.90)];
     
-    console.log('\n📊 Views数分布:');
-    console.log('================');
+    console.error('\n📊 Views数分布:');
+    console.error('================');
     for (const [range, count] of Object.entries(viewsDistribution)) {
       const percentage = ((count / total) * 100).toFixed(1);
       const bar = '█'.repeat(Math.round(count / 2));
-      console.log(`${range.padEnd(10)} : ${count.toString().padStart(3)} (${percentage.padStart(5)}%) ${bar}`);
+      console.error(`${range.padEnd(10)} : ${count.toString().padStart(3)} (${percentage.padStart(5)}%) ${bar}`);
     }
     
-    console.log('\n📈 統計情報:');
-    console.log('============');
-    console.log(`総記事数: ${total}`);
-    console.log(`最小値: ${sorted[0]} views`);
-    console.log(`最大値: ${sorted[total - 1]} views`);
-    console.log(`中央値: ${median} views`);
-    console.log(`平均値: ${average} views`);
-    console.log(`75パーセンタイル: ${percentile75} views`);
-    console.log(`90パーセンタイル: ${percentile90} views`);
+    console.error('\n📈 統計情報:');
+    console.error('============');
+    console.error(`総記事数: ${total}`);
+    console.error(`最小値: ${sorted[0]} views`);
+    console.error(`最大値: ${sorted[total - 1]} views`);
+    console.error(`中央値: ${median} views`);
+    console.error(`平均値: ${average} views`);
+    console.error(`75パーセンタイル: ${percentile75} views`);
+    console.error(`90パーセンタイル: ${percentile90} views`);
     
-    console.log('\n💡 現在の設定:');
-    console.log('==============');
-    console.log(`最小views数: ${originalMinViews} views`);
+    console.error('\n💡 現在の設定:');
+    console.error('==============');
+    console.error(`最小views数: ${originalMinViews} views`);
     
     const above500 = allViews.filter(v => v >= 500).length;
     const above300 = allViews.filter(v => v >= 300).length;
     const above200 = allViews.filter(v => v >= 200).length;
     
-    console.log('\n📊 閾値別の記事数:');
-    console.log('==================');
-    console.log(`200 views以上: ${above200}件 (${((above200 / total) * 100).toFixed(1)}%)`);
-    console.log(`300 views以上: ${above300}件 (${((above300 / total) * 100).toFixed(1)}%)`);
-    console.log(`500 views以上: ${above500}件 (${((above500 / total) * 100).toFixed(1)}%) ← 現在の設定`);
+    console.error('\n📊 閾値別の記事数:');
+    console.error('==================');
+    console.error(`200 views以上: ${above200}件 (${((above200 / total) * 100).toFixed(1)}%)`);
+    console.error(`300 views以上: ${above300}件 (${((above300 / total) * 100).toFixed(1)}%)`);
+    console.error(`500 views以上: ${above500}件 (${((above500 / total) * 100).toFixed(1)}%) ← 現在の設定`);
     
-    console.log('\n🎯 推奨事項:');
-    console.log('============');
+    console.error('\n🎯 推奨事項:');
+    console.error('============');
     if (median < 300) {
-      console.log('⚠️  中央値が300未満です。500viewsの閾値は高すぎる可能性があります。');
-      console.log('    → 200-300viewsへの引き下げを検討してください。');
+      console.error('⚠️  中央値が300未満です。500viewsの閾値は高すぎる可能性があります。');
+      console.error('    → 200-300viewsへの引き下げを検討してください。');
     } else if (median > 1000) {
-      console.log('✅ 中央値が1000以上です。500viewsの閾値は適切です。');
+      console.error('✅ 中央値が1000以上です。500viewsの閾値は適切です。');
     } else {
-      console.log('📌 中央値は' + median + 'viewsです。');
-      console.log('    → 300viewsへの引き下げで、より多くの記事を取得できます。');
-      console.log('    → 品質を重視する場合は500viewsを維持してください。');
+      console.error('📌 中央値は' + median + 'viewsです。');
+      console.error('    → 300viewsへの引き下げで、より多くの記事を取得できます。');
+      console.error('    → 品質を重視する場合は500viewsを維持してください。');
     }
     
   } catch (error) {

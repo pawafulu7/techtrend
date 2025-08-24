@@ -27,7 +27,7 @@ const urlToCompanyMap: Record<string, string> = {
 };
 
 async function addCompanyTags() {
-  console.log('🏢 Corporate Tech Blog記事に企業名タグを追加します\n');
+  console.error('🏢 Corporate Tech Blog記事に企業名タグを追加します\n');
 
   try {
     // Corporate Tech Blogの記事を取得
@@ -42,7 +42,7 @@ async function addCompanyTags() {
       }
     });
 
-    console.log(`📊 対象記事数: ${articles.length}件\n`);
+    console.error(`📊 対象記事数: ${articles.length}件\n`);
 
     const updateCounts: Record<string, number> = {};
     let updatedCount = 0;
@@ -58,7 +58,7 @@ async function addCompanyTags() {
       }
 
       if (!company) {
-        console.log(`⚠️ 企業判定不可: ${article.url}`);
+        console.error(`⚠️ 企業判定不可: ${article.url}`);
         continue;
       }
 
@@ -93,19 +93,19 @@ async function addCompanyTags() {
           });
         }
 
-        console.log(`✅ ${company}タグを追加: ${article.title.substring(0, 50)}...`);
+        console.error(`✅ ${company}タグを追加: ${article.title.substring(0, 50)}...`);
         updateCounts[company] = (updateCounts[company] || 0) + 1;
         updatedCount++;
       }
     }
 
-    console.log('\n📊 更新結果:');
-    console.log('─'.repeat(60));
+    console.error('\n📊 更新結果:');
+    console.error('─'.repeat(60));
     for (const [company, count] of Object.entries(updateCounts).sort()) {
-      console.log(`${company.padEnd(20)}: ${count}件`);
+      console.error(`${company.padEnd(20)}: ${count}件`);
     }
-    console.log('─'.repeat(60));
-    console.log(`合計: ${updatedCount}件の記事にタグを追加\n`);
+    console.error('─'.repeat(60));
+    console.error(`合計: ${updatedCount}件の記事にタグを追加\n`);
 
   } catch (error) {
     console.error('❌ エラー:', error);

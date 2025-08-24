@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 const prisma = new PrismaClient();
 
 async function fixDevtoSummaries() {
-  console.log('🔧 Dev.to記事の要約を改善\n');
+  console.error('🔧 Dev.to記事の要約を改善\n');
   
   try {
     // Dev.toの全記事を取得
@@ -24,7 +24,7 @@ async function fixDevtoSummaries() {
       }
     });
     
-    console.log(`Dev.to記事総数: ${articles.length}件\n`);
+    console.error(`Dev.to記事総数: ${articles.length}件\n`);
     
     // 問題のある記事を特定
     const needsFix = [];
@@ -52,10 +52,10 @@ async function fixDevtoSummaries() {
       }
     }
     
-    console.log(`修正が必要な記事: ${needsFix.length}件\n`);
+    console.error(`修正が必要な記事: ${needsFix.length}件\n`);
     
     if (needsFix.length === 0) {
-      console.log('✅ 修正が必要な記事はありません');
+      console.error('✅ 修正が必要な記事はありません');
       return;
     }
     
@@ -74,7 +74,7 @@ async function fixDevtoSummaries() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     let successCount = 0;
     let errorCount = 0;
@@ -85,10 +85,10 @@ async function fixDevtoSummaries() {
     
     for (let i = 0; i < processLimit; i++) {
       const article = needsFix[i];
-      console.log(`[${i + 1}/${processLimit}] 処理中: ${article.id}`);
-      console.log(`  📝 ${article.title?.substring(0, 50)}...`);
-      console.log(`  現在: ${article.summary?.substring(0, 80)}...`);
-      console.log(`  問題: ${article.issues.join(', ')}`);
+      console.error(`[${i + 1}/${processLimit}] 処理中: ${article.id}`);
+      console.error(`  📝 ${article.title?.substring(0, 50)}...`);
+      console.error(`  現在: ${article.summary?.substring(0, 80)}...`);
+      console.error(`  問題: ${article.issues.join(', ')}`);
       
       try {
         // コンテンツを準備（Dev.to記事の特性を考慮）
@@ -123,7 +123,7 @@ ${article.title?.includes('Performance') || article.title?.includes('Fast') ? '-
 ${article.title?.includes('AI') || article.title?.includes('LLM') || article.title?.includes('GPT') ? '- AI/LLMの活用方法と実装' : ''}
         `.trim();
         
-        console.log('  🔄 要約を再生成中...');
+        console.error('  🔄 要約を再生成中...');
         
         const result = await localLLM.generateDetailedSummary(
           article.title || '',
@@ -161,7 +161,7 @@ ${article.title?.includes('AI') || article.title?.includes('LLM') || article.tit
           .replace(/```/g, '')
           .trim();
         
-        console.log(`  新要約: ${cleanedSummary.substring(0, 80)}...`);
+        console.error(`  新要約: ${cleanedSummary.substring(0, 80)}...`);
         
         // 品質チェック
         const newJapaneseChars = (cleanedSummary.match(/[ぁ-んァ-ヶー一-龠々]/g) || []).length;
@@ -204,7 +204,7 @@ ${article.title?.includes('AI') || article.title?.includes('LLM') || article.tit
             }
           });
           
-          console.log('  ✅ 修正成功');
+          console.error('  ✅ 修正成功');
           successCount++;
         } else {
           const problems = [];
@@ -213,7 +213,7 @@ ${article.title?.includes('AI') || article.title?.includes('LLM') || article.tit
           if (!notGeneric) problems.push('まだ一般的');
           if (!hasProperTechnicalBackground) problems.push('技術的背景なし');
           if (!hasEnoughItems) problems.push('項目数不足');
-          console.log(`  ⚠️ 品質チェック失敗: ${problems.join(', ')}`);
+          console.error(`  ⚠️ 品質チェック失敗: ${problems.join(', ')}`);
           errorCount++;
         }
         
@@ -227,15 +227,15 @@ ${article.title?.includes('AI') || article.title?.includes('LLM') || article.tit
     }
     
     const totalTime = Math.floor((Date.now() - startTime) / 1000);
-    console.log('\n' + '='.repeat(60));
-    console.log('🎉 処理完了');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`⏱️ 処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
-    console.log(`🚀 処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
+    console.error('\n' + '='.repeat(60));
+    console.error('🎉 処理完了');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`⏱️ 処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
+    console.error(`🚀 処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
     
     if (needsFix.length > processLimit) {
-      console.log(`\n📌 残り${needsFix.length - processLimit}件の記事があります`);
+      console.error(`\n📌 残り${needsFix.length - processLimit}件の記事があります`);
     }
     
   } catch (error) {

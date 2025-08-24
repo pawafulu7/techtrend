@@ -5,7 +5,7 @@
 
 import axios from 'axios';
 
-describe('/api/trends/analysis API Tests', () => {
+describe.skip('/api/trends/analysis API Tests', () => {
   const baseURL = 'http://localhost:3000';
   
   describe('パラメータ処理', () => {

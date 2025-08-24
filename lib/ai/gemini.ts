@@ -84,7 +84,7 @@ export class GeminiClient {
       // 品質チェックと再生成
       const score = calculateSummaryScore(parsedResult.summary, { tags: parsedResult.tags });
       if (needsRegeneration(score) && maxRetries > 0) {
-        console.log(`要約品質が低い（${score.totalScore}点）、再生成を試みます...`);
+        console.error(`要約品質が低い（${score.totalScore}点）、再生成を試みます...`);
         return this.generateSummaryWithTags(title, content, maxRetries - 1);
       }
       

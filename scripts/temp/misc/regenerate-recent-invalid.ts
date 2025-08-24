@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { AIService } from '../lib/ai/ai-service';
+import { AIService } from '../../lib/ai/ai-service';
 
 const prisma = new PrismaClient();
 
 async function regenerateRecentInvalid() {
-  console.log('🔍 最近の問題のある記事を再生成中...\n');
+  console.error('🔍 最近の問題のある記事を再生成中...\n');
   
   try {
     const aiService = AIService.fromEnv();
@@ -41,18 +41,18 @@ async function regenerateRecentInvalid() {
       // 問題がある記事のみ処理
       if (bulletPoints.length < 6 || summaryInDetailed) {
         processedCount++;
-        console.log(`\n処理中 #${processedCount}: ${article.id}`);
-        console.log(`タイトル: ${article.title?.substring(0, 60)}...`);
-        console.log(`現在の項目数: ${bulletPoints.length}`);
+        console.error(`\n処理中 #${processedCount}: ${article.id}`);
+        console.error(`タイトル: ${article.title?.substring(0, 60)}...`);
+        console.error(`現在の項目数: ${bulletPoints.length}`);
         
         if (!article.content) {
-          console.log('⚠️ コンテンツがないためスキップ');
+          console.error('⚠️ コンテンツがないためスキップ');
           continue;
         }
         
         try {
           // 詳細要約を再生成
-          console.log('🔄 詳細要約を再生成中...');
+          console.error('🔄 詳細要約を再生成中...');
           const result = await aiService.generateDetailedSummary(
             article.title || '',
             article.content
@@ -88,7 +88,7 @@ async function regenerateRecentInvalid() {
           
           // 新しい詳細要約の項目数を確認
           const newLines = result.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
-          console.log(`✅ 再生成完了 - 新しい項目数: ${newLines.length}`);
+          console.error(`✅ 再生成完了 - 新しい項目数: ${newLines.length}`);
           
           if (newLines.length === 6) {
             successCount++;
@@ -103,10 +103,10 @@ async function regenerateRecentInvalid() {
       }
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('再生成完了');
-    console.log(`処理した記事: ${processedCount}件`);
-    console.log(`成功（6項目）: ${successCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('再生成完了');
+    console.error(`処理した記事: ${processedCount}件`);
+    console.error(`成功（6項目）: ${successCount}件`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

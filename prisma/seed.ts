@@ -92,8 +92,8 @@ async function main() {
     }),
   ]);
 
-  console.log('Seed data created successfully');
-  console.log(`Created ${sources.length} sources`);
+  console.error('Seed data created successfully');
+  console.error(`Created ${sources.length} sources`);
 }
 
 main()

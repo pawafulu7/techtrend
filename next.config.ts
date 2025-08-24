@@ -5,10 +5,22 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 })
 
 const nextConfig: NextConfig = {
+  // ビルド最適化設定
+  swcMinify: true,
+  compress: true,
+  productionBrowserSourceMaps: false,
+  
+  // 実験的機能で最適化
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['@radix-ui', 'lucide-react', 'recharts'],
+  },
+  
+  // 画像最適化
   images: {
     formats: ['image/avif', 'image/webp'],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    deviceSizes: [640, 750, 828, 1080, 1200],  // 不要な大きいサイズを削除
+    imageSizes: [16, 32, 48, 64, 96, 128],     // 不要な大きいサイズを削除
     remotePatterns: [
       {
         protocol: 'https',

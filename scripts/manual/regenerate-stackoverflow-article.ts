@@ -22,19 +22,19 @@ async function regenerateSummary() {
       return;
     }
     
-    console.log('=== 記事情報 ===');
-    console.log(`タイトル: ${article.title}`);
-    console.log(`URL: ${article.url}`);
-    console.log(`コンテンツ長: ${article.content?.length}文字`);
-    console.log(`現在の要約長: ${article.detailedSummary?.length}文字`);
-    console.log(`現在のsummaryVersion: ${article.summaryVersion}`);
+    console.error('=== 記事情報 ===');
+    console.error(`タイトル: ${article.title}`);
+    console.error(`URL: ${article.url}`);
+    console.error(`コンテンツ長: ${article.content?.length}文字`);
+    console.error(`現在の要約長: ${article.detailedSummary?.length}文字`);
+    console.error(`現在のsummaryVersion: ${article.summaryVersion}`);
     
     if (!article.content) {
       console.error('コンテンツがありません');
       return;
     }
     
-    console.log('\n=== 要約再生成実行 ===');
+    console.error('\n=== 要約再生成実行 ===');
     
     const result = await summaryService.generate(
       article.title,
@@ -48,11 +48,11 @@ async function regenerateSummary() {
     
     if (result) {
       // 詳細要約の形式を確認
-      console.log('\n=== 生成された詳細要約 ===');
-      console.log(result.detailedSummary);
-      console.log(`\n要約長: ${result.detailedSummary.length}文字`);
-      console.log(`summaryVersion: ${result.summaryVersion}`);
-      console.log(`articleType: ${result.articleType}`);
+      console.error('\n=== 生成された詳細要約 ===');
+      console.error(result.detailedSummary);
+      console.error(`\n要約長: ${result.detailedSummary.length}文字`);
+      console.error(`summaryVersion: ${result.summaryVersion}`);
+      console.error(`articleType: ${result.articleType}`);
       
       // データベース更新
       await prisma.article.update({
@@ -65,18 +65,18 @@ async function regenerateSummary() {
         }
       });
       
-      console.log('\n✅ 要約を更新しました');
+      console.error('\n✅ 要約を更新しました');
       
       // セクションの確認
       const sections = result.detailedSummary.split('\n').filter(line => line.trim());
-      console.log(`\nセクション数: ${sections.length}`);
+      console.error(`\nセクション数: ${sections.length}`);
       sections.forEach((section, i) => {
         const hasTitle = section.includes('：') || section.includes(':');
-        console.log(`${i + 1}. タイトル付き: ${hasTitle ? 'YES' : 'NO'}`);
+        console.error(`${i + 1}. タイトル付き: ${hasTitle ? 'YES' : 'NO'}`);
         if (hasTitle) {
           const match = section.match(/^[・-]\s*(.+?)[:：]/);
           if (match) {
-            console.log(`   タイトル: "${match[1]}"`);
+            console.error(`   タイトル: "${match[1]}"`);
           }
         }
       });

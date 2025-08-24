@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 const prisma = new PrismaClient();
 
@@ -14,8 +14,8 @@ async function fixMultipleArticles() {
     "cme0lfamu006itevw9dx50xbe"
   ];
   
-  console.log('🤖 ローカルLLMで複数記事を修正\n');
-  console.log(`処理対象: ${articleIds.length}件\n`);
+  console.error('🤖 ローカルLLMで複数記事を修正\n');
+  console.error(`処理対象: ${articleIds.length}件\n`);
   
   try {
     // ローカルLLMクライアントを初期化（maxTokensを増やす）
@@ -33,15 +33,15 @@ async function fixMultipleArticles() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     let successCount = 0;
     let errorCount = 0;
     
     for (let i = 0; i < articleIds.length; i++) {
       const articleId = articleIds[i];
-      console.log(`\n[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
-      console.log('='.repeat(60));
+      console.error(`\n[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
+      console.error('='.repeat(60));
       
       try {
         // 記事を取得
@@ -57,13 +57,13 @@ async function fixMultipleArticles() {
         });
         
         if (!article) {
-          console.log('❌ 記事が見つかりません');
+          console.error('❌ 記事が見つかりません');
           errorCount++;
           continue;
         }
         
-        console.log(`タイトル: ${article.title?.substring(0, 50)}...`);
-        console.log(`ソース: ${article.source}`);
+        console.error(`タイトル: ${article.title?.substring(0, 50)}...`);
+        console.error(`ソース: ${article.source}`);
         
         // コンテンツを強化（短い場合）
         let enhancedContent = article.content || '';
@@ -80,9 +80,9 @@ Context: This is a technical article that discusses modern software development 
           `.trim();
         }
         
-        console.log(`コンテンツ長: ${enhancedContent.length}文字`);
+        console.error(`コンテンツ長: ${enhancedContent.length}文字`);
         
-        console.log('🔄 詳細要約を生成中...');
+        console.error('🔄 詳細要約を生成中...');
         const startTime = Date.now();
         
         const result = await localLLM.generateDetailedSummary(
@@ -91,7 +91,7 @@ Context: This is a technical article that discusses modern software development 
         );
         
         const duration = Date.now() - startTime;
-        console.log(`生成時間: ${duration}ms`);
+        console.error(`生成時間: ${duration}ms`);
         
         // 品質チェック
         const lines = result.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
@@ -99,9 +99,9 @@ Context: This is a technical article that discusses modern software development 
                                result.summary.endsWith('。') && 
                                result.summary.length >= 60;
         
-        console.log(`要約: ${result.summary.substring(0, 50)}...`);
-        console.log(`要約完全性: ${summaryComplete ? '✅' : '⚠️'} (${result.summary.length}文字)`);
-        console.log(`詳細項目数: ${lines.length}`);
+        console.error(`要約: ${result.summary.substring(0, 50)}...`);
+        console.error(`要約完全性: ${summaryComplete ? '✅' : '⚠️'} (${result.summary.length}文字)`);
+        console.error(`詳細項目数: ${lines.length}`);
         
         if (lines.length >= 5 && summaryComplete) {
           // タグを準備
@@ -132,10 +132,10 @@ Context: This is a technical article that discusses modern software development 
             }
           });
           
-          console.log('✅ 更新完了');
+          console.error('✅ 更新完了');
           successCount++;
         } else {
-          console.log('⚠️ 品質が不十分なためスキップ');
+          console.error('⚠️ 品質が不十分なためスキップ');
           errorCount++;
         }
         
@@ -148,10 +148,10 @@ Context: This is a technical article that discusses modern software development 
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('処理完了');
-    console.log(`成功: ${successCount}件`);
-    console.log(`エラー: ${errorCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('処理完了');
+    console.error(`成功: ${successCount}件`);
+    console.error(`エラー: ${errorCount}件`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

@@ -9,7 +9,7 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  console.log('Starting test data seeding...');
+  console.error('Starting test data seeding...');
   
   // Clear existing data
   await prisma.article.deleteMany();
@@ -19,21 +19,21 @@ async function main() {
 
   // Create sources
   const sources = await createSources();
-  console.log(`Created ${sources.length} sources`);
+  console.error(`Created ${sources.length} sources`);
 
   // Create tags
   const tags = await createTags();
-  console.log(`Created ${tags.length} tags`);
+  console.error(`Created ${tags.length} tags`);
 
   // Create test users
   const users = await createUsers();
-  console.log(`Created ${users.length} users`);
+  console.error(`Created ${users.length} users`);
 
   // Create articles with relationships
   const articles = await createArticles(sources, tags);
-  console.log(`Created ${articles.length} articles`);
+  console.error(`Created ${articles.length} articles`);
 
-  console.log('Test data seeded successfully!');
+  console.error('Test data seeded successfully!');
 }
 
 async function createSources() {

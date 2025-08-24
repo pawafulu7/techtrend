@@ -154,8 +154,8 @@ function parseResponse(text: string) {
 }
 
 async function compareQuality() {
-  console.log('🔬 Gemini vs LocalLLM品質比較テスト\n');
-  console.log('================================================================================');
+  console.error('🔬 Gemini vs LocalLLM品質比較テスト\n');
+  console.error('================================================================================');
   
   // テスト用に最新の記事を5件取得
   const articles = await prisma.article.findMany({
@@ -168,32 +168,32 @@ async function compareQuality() {
     include: { source: true }
   });
   
-  console.log(`📝 ${articles.length}件の記事で比較テスト\n`);
+  console.error(`📝 ${articles.length}件の記事で比較テスト\n`);
   
   const results: ComparisonResult[] = [];
   
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
-    const content = article.content || article.description || '';
+    const content = article.content || '';
     
-    console.log(`\n[記事 ${i + 1}/${articles.length}]`);
-    console.log('────────────────────────────────────────────────────────────────────────────');
-    console.log(`📄 ${article.title.substring(0, 60)}...`);
-    console.log(`📅 ${article.publishedAt.toLocaleDateString()}`);
-    console.log(`📚 ソース: ${article.source.name}\n`);
+    console.error(`\n[記事 ${i + 1}/${articles.length}]`);
+    console.error('────────────────────────────────────────────────────────────────────────────');
+    console.error(`📄 ${article.title.substring(0, 60)}...`);
+    console.error(`📅 ${article.publishedAt.toLocaleDateString()}`);
+    console.error(`📚 ソース: ${article.source.name}\n`);
     
     try {
       // Geminiで生成
-      console.log('🔷 Gemini生成中...');
+      console.error('🔷 Gemini生成中...');
       const geminiResult = await generateWithGemini(article.title, content);
       const geminiScore = checkSummaryQuality(geminiResult.summary, geminiResult.detailedSummary).score;
-      console.log(`  ✅ 完了 (${geminiResult.processingTime}ms, スコア: ${geminiScore}点)`);
+      console.error(`  ✅ 完了 (${geminiResult.processingTime}ms, スコア: ${geminiScore}点)`);
       
       // LocalLLMで生成
-      console.log('🟠 LocalLLM生成中...');
+      console.error('🟠 LocalLLM生成中...');
       const localResult = await generateWithLocalLLM(article.title, content);
       const localScore = checkSummaryQuality(localResult.summary, localResult.detailedSummary).score;
-      console.log(`  ✅ 完了 (${localResult.processingTime}ms, スコア: ${localScore}点)`);
+      console.error(`  ✅ 完了 (${localResult.processingTime}ms, スコア: ${localScore}点)`);
       
       // 結果を保存
       results.push({
@@ -210,14 +210,14 @@ async function compareQuality() {
       });
       
       // 簡易比較表示
-      console.log('\n📊 比較結果:');
-      console.log(`  品質スコア: Gemini ${geminiScore}点 vs LocalLLM ${localScore}点`);
-      console.log(`  処理速度: Gemini ${geminiResult.processingTime}ms vs LocalLLM ${localResult.processingTime}ms`);
-      console.log(`  タグ数: Gemini ${geminiResult.tags.length}個 vs LocalLLM ${localResult.tags.length}個`);
+      console.error('\n📊 比較結果:');
+      console.error(`  品質スコア: Gemini ${geminiScore}点 vs LocalLLM ${localScore}点`);
+      console.error(`  処理速度: Gemini ${geminiResult.processingTime}ms vs LocalLLM ${localResult.processingTime}ms`);
+      console.error(`  タグ数: Gemini ${geminiResult.tags.length}個 vs LocalLLM ${localResult.tags.length}個`);
       
       // API制限対策で待機（Gemini用）
       if (i < articles.length - 1) {
-        console.log('\n⏳ 次の記事まで5秒待機...');
+        console.error('\n⏳ 次の記事まで5秒待機...');
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
       
@@ -227,9 +227,9 @@ async function compareQuality() {
   }
   
   // 総合レポート生成
-  console.log('\n================================================================================');
-  console.log('📊 総合比較レポート');
-  console.log('================================================================================\n');
+  console.error('\n================================================================================');
+  console.error('📊 総合比較レポート');
+  console.error('================================================================================\n');
   
   if (results.length > 0) {
     // 平均値計算
@@ -239,25 +239,25 @@ async function compareQuality() {
     const avgLocalTime = results.reduce((sum, r) => sum + r.localLLM.processingTime, 0) / results.length;
     const totalGeminiCost = results.reduce((sum, r) => sum + r.gemini.cost, 0);
     
-    console.log('【品質スコア】');
-    console.log(`  Gemini平均: ${avgGeminiScore.toFixed(1)}点`);
-    console.log(`  LocalLLM平均: ${avgLocalScore.toFixed(1)}点`);
-    console.log(`  優位性: ${avgGeminiScore > avgLocalScore ? 'Gemini' : avgLocalScore > avgGeminiScore ? 'LocalLLM' : '同等'}`);
-    console.log();
+    console.error('【品質スコア】');
+    console.error(`  Gemini平均: ${avgGeminiScore.toFixed(1)}点`);
+    console.error(`  LocalLLM平均: ${avgLocalScore.toFixed(1)}点`);
+    console.error(`  優位性: ${avgGeminiScore > avgLocalScore ? 'Gemini' : avgLocalScore > avgGeminiScore ? 'LocalLLM' : '同等'}`);
+    console.error();
     
-    console.log('【処理速度】');
-    console.log(`  Gemini平均: ${Math.round(avgGeminiTime)}ms`);
-    console.log(`  LocalLLM平均: ${Math.round(avgLocalTime)}ms`);
-    console.log(`  速度差: ${avgGeminiTime > avgLocalTime ? 
+    console.error('【処理速度】');
+    console.error(`  Gemini平均: ${Math.round(avgGeminiTime)}ms`);
+    console.error(`  LocalLLM平均: ${Math.round(avgLocalTime)}ms`);
+    console.error(`  速度差: ${avgGeminiTime > avgLocalTime ? 
       `LocalLLMが${Math.round(avgGeminiTime / avgLocalTime)}倍高速` : 
       `Geminiが${Math.round(avgLocalTime / avgGeminiTime)}倍高速`}`);
-    console.log();
+    console.error();
     
-    console.log('【コスト】');
-    console.log(`  Gemini: $${totalGeminiCost.toFixed(4)} (${results.length}記事)`);
-    console.log(`  LocalLLM: $0.00 (電気代除く)`);
-    console.log(`  月間予測 (1000記事): Gemini $${(totalGeminiCost * 1000 / results.length).toFixed(2)} vs LocalLLM $0.00`);
-    console.log();
+    console.error('【コスト】');
+    console.error(`  Gemini: $${totalGeminiCost.toFixed(4)} (${results.length}記事)`);
+    console.error(`  LocalLLM: $0.00 (電気代除く)`);
+    console.error(`  月間予測 (1000記事): Gemini $${(totalGeminiCost * 1000 / results.length).toFixed(2)} vs LocalLLM $0.00`);
+    console.error();
     
     // レポートファイル生成
     const reportPath = path.join('reports', 'llm-comparison-report.md');
@@ -271,10 +271,10 @@ async function compareQuality() {
     
     fs.mkdirSync(path.dirname(reportPath), { recursive: true });
     fs.writeFileSync(reportPath, reportContent);
-    console.log(`📝 詳細レポート生成: ${reportPath}`);
+    console.error(`📝 詳細レポート生成: ${reportPath}`);
   }
   
-  console.log('\n✨ 比較テスト完了！');
+  console.error('\n✨ 比較テスト完了！');
   await prisma.$disconnect();
 }
 

@@ -23,7 +23,7 @@ interface ArticleToFix {
 }
 
 async function analyzeArticles(): Promise<ArticleToFix[]> {
-  console.log('=== Stack Overflow Blog記事の分析 ===\n');
+  console.error('=== Stack Overflow Blog記事の分析 ===\n');
   
   const articles = await prisma.article.findMany({
     where: {
@@ -72,7 +72,7 @@ async function analyzeArticles(): Promise<ArticleToFix[]> {
 
 async function enrichArticle(article: ArticleToFix): Promise<string | null> {
   try {
-    console.log(`  エンリッチメント実行中...`);
+    console.error(`  エンリッチメント実行中...`);
     const enrichedData = await enricher.enrich(article.url);
     
     if (enrichedData?.content && enrichedData.content.length > 500) {
@@ -84,10 +84,10 @@ async function enrichArticle(article: ArticleToFix): Promise<string | null> {
         }
       });
       
-      console.log(`  ✅ エンリッチ成功: ${article.content?.length || 0} → ${enrichedData.content.length}文字`);
+      console.error(`  ✅ エンリッチ成功: ${article.content?.length || 0} → ${enrichedData.content.length}文字`);
       return enrichedData.content;
     } else {
-      console.log(`  ⚠️ エンリッチ失敗またはコンテンツ不足`);
+      console.error(`  ⚠️ エンリッチ失敗またはコンテンツ不足`);
       return null;
     }
   } catch (error) {
@@ -98,7 +98,7 @@ async function enrichArticle(article: ArticleToFix): Promise<string | null> {
 
 async function regenerateSummary(article: ArticleToFix, content: string): Promise<boolean> {
   try {
-    console.log(`  要約再生成実行中...`);
+    console.error(`  要約再生成実行中...`);
     
     const result = await summaryService.generate(
       article.title,
@@ -128,14 +128,14 @@ async function regenerateSummary(article: ArticleToFix, content: string): Promis
         const sectionCount = result.detailedSummary.split('\n').filter(line => 
           line.includes('：') || line.includes(':')).length;
         
-        console.log(`  ✅ 要約再生成成功: ${result.detailedSummary.length}文字, ${sectionCount}セクション`);
+        console.error(`  ✅ 要約再生成成功: ${result.detailedSummary.length}文字, ${sectionCount}セクション`);
         return true;
       } else {
-        console.log(`  ⚠️ セクション形式でない要約が生成されました`);
+        console.error(`  ⚠️ セクション形式でない要約が生成されました`);
         return false;
       }
     } else {
-      console.log(`  ❌ 要約生成失敗`);
+      console.error(`  ❌ 要約生成失敗`);
       return false;
     }
   } catch (error) {
@@ -144,7 +144,7 @@ async function regenerateSummary(article: ArticleToFix, content: string): Promis
     
     // Rate limitエラーの場合は長めに待機
     if (errorMsg.includes('503') || errorMsg.includes('429')) {
-      console.log('  ⏳ Rate limit検出。60秒待機...');
+      console.error('  ⏳ Rate limit検出。60秒待機...');
       await new Promise(resolve => setTimeout(resolve, 60000));
     }
     
@@ -153,7 +153,7 @@ async function regenerateSummary(article: ArticleToFix, content: string): Promis
 }
 
 async function fixArticles(articles: ArticleToFix[]) {
-  console.log(`\n=== ${articles.length}件の記事を修正 ===\n`);
+  console.error(`\n=== ${articles.length}件の記事を修正 ===\n`);
   
   let enrichSuccess = 0;
   let enrichFailed = 0;
@@ -162,9 +162,9 @@ async function fixArticles(articles: ArticleToFix[]) {
   
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
-    console.log(`\n[${i + 1}/${articles.length}] ${article.title.substring(0, 60)}...`);
-    console.log(`  現在: コンテンツ ${article.content?.length || 0}文字, 要約 ${article.detailedSummary?.length || 0}文字`);
-    console.log(`  必要: エンリッチ ${article.needsEnrichment ? '✓' : '×'}, 要約再生成 ${article.needsSummary ? '✓' : '×'}`);
+    console.error(`\n[${i + 1}/${articles.length}] ${article.title.substring(0, 60)}...`);
+    console.error(`  現在: コンテンツ ${article.content?.length || 0}文字, 要約 ${article.detailedSummary?.length || 0}文字`);
+    console.error(`  必要: エンリッチ ${article.needsEnrichment ? '✓' : '×'}, 要約再生成 ${article.needsSummary ? '✓' : '×'}`);
     
     let content = article.content || '';
     
@@ -180,7 +180,7 @@ async function fixArticles(articles: ArticleToFix[]) {
         enrichFailed++;
         // エンリッチ失敗の場合、コンテンツが不足なら要約生成をスキップ
         if (!content || content.length < 500) {
-          console.log(`  ⚠️ コンテンツ不足のため要約生成をスキップ`);
+          console.error(`  ⚠️ コンテンツ不足のため要約生成をスキップ`);
           continue;
         }
       }
@@ -204,15 +204,15 @@ async function fixArticles(articles: ArticleToFix[]) {
     
     // 10件ごとに進捗報告
     if ((i + 1) % 10 === 0) {
-      console.log(`\n--- 進捗: ${i + 1}/${articles.length}件完了 ---`);
-      console.log(`エンリッチ: 成功 ${enrichSuccess}, 失敗 ${enrichFailed}`);
-      console.log(`要約再生成: 成功 ${summarySuccess}, 失敗 ${summaryFailed}\n`);
+      console.error(`\n--- 進捗: ${i + 1}/${articles.length}件完了 ---`);
+      console.error(`エンリッチ: 成功 ${enrichSuccess}, 失敗 ${enrichFailed}`);
+      console.error(`要約再生成: 成功 ${summarySuccess}, 失敗 ${summaryFailed}\n`);
     }
   }
   
-  console.log('\n=== 処理完了 ===');
-  console.log(`エンリッチメント: 成功 ${enrichSuccess}件, 失敗 ${enrichFailed}件`);
-  console.log(`要約再生成: 成功 ${summarySuccess}件, 失敗 ${summaryFailed}件`);
+  console.error('\n=== 処理完了 ===');
+  console.error(`エンリッチメント: 成功 ${enrichSuccess}件, 失敗 ${enrichFailed}件`);
+  console.error(`要約再生成: 成功 ${summarySuccess}件, 失敗 ${summaryFailed}件`);
 }
 
 async function main() {
@@ -222,25 +222,25 @@ async function main() {
     const needsEnrichment = articles.filter(a => a.needsEnrichment);
     const needsSummary = articles.filter(a => a.needsSummary);
     
-    console.log(`分析結果:`);
-    console.log(`- エンリッチメントが必要: ${needsEnrichment.length}件`);
-    console.log(`- 要約再生成が必要: ${needsSummary.length}件`);
-    console.log(`- 修正が必要な記事: ${articles.length}件`);
+    console.error(`分析結果:`);
+    console.error(`- エンリッチメントが必要: ${needsEnrichment.length}件`);
+    console.error(`- 要約再生成が必要: ${needsSummary.length}件`);
+    console.error(`- 修正が必要な記事: ${articles.length}件`);
     
     if (articles.length === 0) {
-      console.log('\n修正が必要な記事はありません');
+      console.error('\n修正が必要な記事はありません');
       return;
     }
     
-    console.log('\n--- 修正が必要な記事（最初の10件） ---');
+    console.error('\n--- 修正が必要な記事（最初の10件） ---');
     articles.slice(0, 10).forEach((article, i) => {
-      console.log(`${i + 1}. ${article.title.substring(0, 60)}...`);
-      console.log(`   コンテンツ: ${article.content?.length || 0}文字 ${article.needsEnrichment ? '(要エンリッチ)' : ''}`);
-      console.log(`   要約: ${article.detailedSummary?.length || 0}文字 ${article.needsSummary ? '(要再生成)' : ''}`);
+      console.error(`${i + 1}. ${article.title.substring(0, 60)}...`);
+      console.error(`   コンテンツ: ${article.content?.length || 0}文字 ${article.needsEnrichment ? '(要エンリッチ)' : ''}`);
+      console.error(`   要約: ${article.detailedSummary?.length || 0}文字 ${article.needsSummary ? '(要再生成)' : ''}`);
     });
     
     // 実行確認
-    console.log('\n処理を開始しますか？ (Ctrl+Cでキャンセル)');
+    console.error('\n処理を開始しますか？ (Ctrl+Cでキャンセル)');
     await new Promise(resolve => setTimeout(resolve, 3000));
     
     await fixArticles(articles);

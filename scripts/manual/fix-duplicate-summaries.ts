@@ -47,7 +47,7 @@ async function callGeminiAPI(prompt: string): Promise<string> {
 }
 
 async function fixDuplicateSummaries() {
-  console.log('🔍 重複要約を持つ記事を検索中...\n');
+  console.error('🔍 重複要約を持つ記事を検索中...\n');
 
   // 影響を受けた記事を特定
   const affectedArticles = await prisma.$queryRaw<Array<{
@@ -75,50 +75,50 @@ async function fixDuplicateSummaries() {
   `;
 
   if (affectedArticles.length === 0) {
-    console.log('✅ 重複要約を持つ記事はありません');
+    console.error('✅ 重複要約を持つ記事はありません');
     return;
   }
 
-  console.log(`📊 影響を受けた記事: ${affectedArticles.length}件\n`);
+  console.error(`📊 影響を受けた記事: ${affectedArticles.length}件\n`);
 
   let fixedCount = 0;
   let errorCount = 0;
 
   for (let i = 0; i < affectedArticles.length; i++) {
     const article = affectedArticles[i];
-    console.log(`\n[${i + 1}/${affectedArticles.length}] 処理中: ${article.title.substring(0, 50)}...`);
-    console.log(`  ソース: ${article.sourceName}`);
+    console.error(`\n[${i + 1}/${affectedArticles.length}] 処理中: ${article.title.substring(0, 50)}...`);
+    console.error(`  ソース: ${article.sourceName}`);
     
     // 現在の要約を表示
-    console.log(`  現在の要約（最初の50文字）: ${article.summary?.substring(0, 50)}...`);
-    console.log(`  現在の詳細要約（最初の50文字）: ${article.detailedSummary?.substring(0, 50)}...`);
+    console.error(`  現在の要約（最初の50文字）: ${article.summary?.substring(0, 50)}...`);
+    console.error(`  現在の詳細要約（最初の50文字）: ${article.detailedSummary?.substring(0, 50)}...`);
     
     const content = article.content || article.title;
     
     try {
       // 新しい要約を生成
       const prompt = generateUnifiedPrompt(article.title, content);
-      console.log('  🤖 Gemini APIを呼び出し中...');
+      console.error('  🤖 Gemini APIを呼び出し中...');
       
       const responseText = await callGeminiAPI(prompt);
       const parsed = parseUnifiedResponse(responseText);
       
       // デバッグ情報
       if (process.env.DEBUG_SUMMARIES === 'true') {
-        console.log('\n  === デバッグ情報 ===');
-        console.log('  新しい要約（最初の50文字）:', parsed.summary.substring(0, 50));
-        console.log('  新しい詳細要約（最初の50文字）:', parsed.detailedSummary.substring(0, 50));
-        console.log('  重複？:', parsed.summary === parsed.detailedSummary);
+        console.error('\n  === デバッグ情報 ===');
+        console.error('  新しい要約（最初の50文字）:', parsed.summary.substring(0, 50));
+        console.error('  新しい詳細要約（最初の50文字）:', parsed.detailedSummary.substring(0, 50));
+        console.error('  重複？:', parsed.summary === parsed.detailedSummary);
       }
       
       // 品質チェック
       const qualityCheck = checkSummaryQuality(parsed.summary, parsed.detailedSummary);
-      console.log(`  📊 品質スコア: ${qualityCheck.score}/100`);
+      console.error(`  📊 品質スコア: ${qualityCheck.score}/100`);
       
       // 重複チェック
       const isDuplicate = qualityCheck.issues.some(issue => issue.type === 'duplicate');
       if (isDuplicate) {
-        console.log('  ⚠️ 再生成後も重複が検出されました。スキップします。');
+        console.error('  ⚠️ 再生成後も重複が検出されました。スキップします。');
         errorCount++;
         continue;
       }
@@ -134,12 +134,12 @@ async function fixDuplicateSummaries() {
         }
       });
       
-      console.log('  ✅ 修正完了');
+      console.error('  ✅ 修正完了');
       fixedCount++;
       
       // APIレート制限対策
       if (i < affectedArticles.length - 1) {
-        console.log('  ⏳ 5秒待機中...');
+        console.error('  ⏳ 5秒待機中...');
         await sleep(5000);
       }
       
@@ -155,11 +155,11 @@ async function fixDuplicateSummaries() {
   }
 
   // 結果レポート
-  console.log('\n========================================');
-  console.log('📈 修復結果:');
-  console.log(`  成功: ${fixedCount}件`);
-  console.log(`  失敗: ${errorCount}件`);
-  console.log('========================================\n');
+  console.error('\n========================================');
+  console.error('📈 修復結果:');
+  console.error(`  成功: ${fixedCount}件`);
+  console.error(`  失敗: ${errorCount}件`);
+  console.error('========================================\n');
   
   // 再確認
   const remainingDuplicates = await prisma.$queryRaw<Array<{ count: number }>>`
@@ -173,9 +173,9 @@ async function fixDuplicateSummaries() {
   
   const remaining = remainingDuplicates[0]?.count || 0;
   if (remaining > 0) {
-    console.log(`⚠️ まだ ${remaining} 件の重複要約が残っています`);
+    console.error(`⚠️ まだ ${remaining} 件の重複要約が残っています`);
   } else {
-    console.log('✅ すべての重複要約が修正されました');
+    console.error('✅ すべての重複要約が修正されました');
   }
 }
 
@@ -183,7 +183,7 @@ async function fixDuplicateSummaries() {
 if (require.main === module) {
   fixDuplicateSummaries()
     .then(() => {
-      console.log('\n✨ 処理完了');
+      console.error('\n✨ 処理完了');
       process.exit(0);
     })
     .catch((error) => {

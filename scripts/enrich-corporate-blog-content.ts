@@ -69,11 +69,11 @@ async function main() {
   const options = parseArgs();
   const enricherFactory = new ContentEnricherFactory();
 
-  console.log('=== 企業技術ブログコンテンツエンリッチメント ===');
-  console.log(`モード: ${options.dryRun ? 'ドライラン' : '実行'}`);
-  if (options.limit) console.log(`処理数制限: ${options.limit}件`);
-  if (options.company) console.log(`対象企業: ${options.company}`);
-  console.log('');
+  console.error('=== 企業技術ブログコンテンツエンリッチメント ===');
+  console.error(`モード: ${options.dryRun ? 'ドライラン' : '実行'}`);
+  if (options.limit) console.error(`処理数制限: ${options.limit}件`);
+  if (options.company) console.error(`対象企業: ${options.company}`);
+  console.error('');
 
   try {
     // Corporate Tech Blogソースを取得
@@ -126,10 +126,10 @@ async function main() {
       return contentLength < 500;
     });
 
-    console.log(`対象記事数: ${targetArticles.length}件`);
+    console.error(`対象記事数: ${targetArticles.length}件`);
 
     if (targetArticles.length === 0) {
-      console.log('エンリッチが必要な記事がありません');
+      console.error('エンリッチが必要な記事がありません');
       return;
     }
 
@@ -144,24 +144,24 @@ async function main() {
     
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
       const batch = batches[batchIndex];
-      console.log(`\nバッチ ${batchIndex + 1}/${batches.length} を処理中...`);
+      console.error(`\nバッチ ${batchIndex + 1}/${batches.length} を処理中...`);
 
       for (const article of batch) {
         const enricher = enricherFactory.getEnricher(article.url);
         
         if (!enricher) {
-          console.log(`[SKIP] ${article.title} - エンリッチャー未対応`);
+          console.error(`[SKIP] ${article.title} - エンリッチャー未対応`);
           skipCount++;
           continue;
         }
 
         try {
           const beforeLength = article.content?.length || 0;
-          console.log(`[処理中] ${article.title}`);
-          console.log(`  現在: ${beforeLength}文字`);
+          console.error(`[処理中] ${article.title}`);
+          console.error(`  現在: ${beforeLength}文字`);
           
           if (options.dryRun) {
-            console.log(`  [DRY-RUN] ${article.url} をエンリッチします`);
+            console.error(`  [DRY-RUN] ${article.url} をエンリッチします`);
             successCount++;
             continue;
           }
@@ -182,7 +182,7 @@ async function main() {
             });
             
             const afterLength = enrichedContent.length;
-            console.log(`  成功: ${afterLength}文字 (${Math.round((afterLength / beforeLength - 1) * 100)}%改善)`);
+            console.error(`  成功: ${afterLength}文字 (${Math.round((afterLength / beforeLength - 1) * 100)}%改善)`);
             
             improvements.push({
               title: article.title,
@@ -192,7 +192,7 @@ async function main() {
             
             successCount++;
           } else {
-            console.log(`  [FAIL] コンテンツ取得失敗`);
+            console.error(`  [FAIL] コンテンツ取得失敗`);
             failCount++;
           }
           
@@ -207,31 +207,31 @@ async function main() {
 
       // バッチ間の待機
       if (batchIndex < batches.length - 1) {
-        console.log('次のバッチまで5秒待機...');
+        console.error('次のバッチまで5秒待機...');
         await delay(5000);
       }
     }
 
     // 結果サマリー
-    console.log('\n=== エンリッチメント完了 ===');
-    console.log(`成功: ${successCount}件`);
-    console.log(`失敗: ${failCount}件`);
-    console.log(`スキップ: ${skipCount}件`);
+    console.error('\n=== エンリッチメント完了 ===');
+    console.error(`成功: ${successCount}件`);
+    console.error(`失敗: ${failCount}件`);
+    console.error(`スキップ: ${skipCount}件`);
     
     if (improvements.length > 0 && !options.dryRun) {
-      console.log('\n改善された記事:');
+      console.error('\n改善された記事:');
       improvements.forEach(imp => {
         const improvement = Math.round((imp.after / imp.before - 1) * 100);
-        console.log(`  - ${imp.title}`);
-        console.log(`    ${imp.before} → ${imp.after}文字 (${improvement}%改善)`);
+        console.error(`  - ${imp.title}`);
+        console.error(`    ${imp.before} → ${imp.after}文字 (${improvement}%改善)`);
       });
       
       const avgImprovement = improvements.reduce((sum, imp) => 
         sum + (imp.after / imp.before - 1), 0) / improvements.length * 100;
-      console.log(`\n平均改善率: ${Math.round(avgImprovement)}%`);
+      console.error(`\n平均改善率: ${Math.round(avgImprovement)}%`);
       
-      console.log('\n注意: 要約がリセットされました。要約生成スクリプトを実行してください:');
-      console.log('  npm run scripts:summarize');
+      console.error('\n注意: 要約がリセットされました。要約生成スクリプトを実行してください:');
+      console.error('  npm run scripts:summarize');
     }
 
   } catch (error) {

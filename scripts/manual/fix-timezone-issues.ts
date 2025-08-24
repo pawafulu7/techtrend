@@ -23,7 +23,7 @@ async function createBackup(): Promise<string> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
   const backupPath = path.join('prisma', `dev.db.backup.${timestamp}_before_data_fix`);
   
-  console.log(`Creating backup: ${backupPath}`);
+  console.error(`Creating backup: ${backupPath}`);
   fs.copyFileSync('prisma/dev.db', backupPath);
   
   return backupPath;
@@ -72,9 +72,9 @@ async function detectProblematicArticles() {
  */
 async function fixArticles(articles: any[], dryRun: boolean) {
   if (dryRun) {
-    console.log('\n[DRY RUN MODE] 以下の修正を実行します（実際には変更されません）:');
+    console.error('\n[DRY RUN MODE] 以下の修正を実行します（実際には変更されません）:');
   } else {
-    console.log('\n記事を修正しています...');
+    console.error('\n記事を修正しています...');
   }
 
   let fixedCount = 0;
@@ -82,9 +82,9 @@ async function fixArticles(articles: any[], dryRun: boolean) {
   for (const article of articles) {
     const newPublishedAt = article.createdAt;
     
-    console.log(`  - ${article.title.substring(0, 50)}...`);
-    console.log(`    旧: ${article.publishedAt.toISOString()}`);
-    console.log(`    新: ${newPublishedAt.toISOString()}`);
+    console.error(`  - ${article.title.substring(0, 50)}...`);
+    console.error(`    旧: ${article.publishedAt.toISOString()}`);
+    console.error(`    新: ${newPublishedAt.toISOString()}`);
     
     if (!dryRun) {
       await prisma.article.update({
@@ -108,71 +108,71 @@ async function main() {
   const args = process.argv.slice(2);
   const isDryRun = !args.includes('--execute');
   
-  console.log('========================================');
-  console.log(' タイムゾーン問題修正スクリプト');
-  console.log('========================================\n');
+  console.error('========================================');
+  console.error(' タイムゾーン問題修正スクリプト');
+  console.error('========================================\n');
   
   if (isDryRun) {
-    console.log('[ドライランモード] 実際の変更は行われません\n');
+    console.error('[ドライランモード] 実際の変更は行われません\n');
   } else {
-    console.log('[実行モード] データベースを更新します\n');
+    console.error('[実行モード] データベースを更新します\n');
     
     // バックアップ作成
     const backupPath = await createBackup();
-    console.log(`バックアップ完了: ${backupPath}\n`);
+    console.error(`バックアップ完了: ${backupPath}\n`);
   }
   
   // 問題記事の検出
-  console.log('問題のある記事を検出中...');
+  console.error('問題のある記事を検出中...');
   const { problematicArticles, bySource } = await detectProblematicArticles();
   
   if (problematicArticles.length === 0) {
-    console.log('\n問題のある記事は見つかりませんでした。');
+    console.error('\n問題のある記事は見つかりませんでした。');
     await prisma.$disconnect();
     return;
   }
   
   // 統計情報の表示
-  console.log(`\n問題のある記事: ${problematicArticles.length}件\n`);
-  console.log('ソース別内訳:');
-  console.log('----------------------------------------');
+  console.error(`\n問題のある記事: ${problematicArticles.length}件\n`);
+  console.error('ソース別内訳:');
+  console.error('----------------------------------------');
   
   for (const [sourceName, articles] of Object.entries(bySource)) {
-    console.log(`${sourceName}: ${articles.length}件`);
+    console.error(`${sourceName}: ${articles.length}件`);
     
     // 各ソースの最初の3件を表示
     articles.slice(0, 3).forEach((article: any) => {
-      console.log(`  - ${article.title.substring(0, 40)}... (時差: ${article.diffHours.toFixed(1)}時間)`);
+      console.error(`  - ${article.title.substring(0, 40)}... (時差: ${article.diffHours.toFixed(1)}時間)`);
     });
     
     if (articles.length > 3) {
-      console.log(`  ... 他 ${articles.length - 3}件`);
+      console.error(`  ... 他 ${articles.length - 3}件`);
     }
   }
   
-  console.log('----------------------------------------\n');
+  console.error('----------------------------------------\n');
   
   // 修正実行
   const fixedCount = await fixArticles(problematicArticles, isDryRun);
   
   // 結果表示
-  console.log('\n========================================');
+  console.error('\n========================================');
   if (isDryRun) {
-    console.log(`[ドライラン完了] ${fixedCount}件の記事が修正対象です`);
-    console.log('\n実際に修正を実行するには以下のコマンドを実行してください:');
-    console.log('npx tsx scripts/manual/fix-timezone-issues.ts --execute');
+    console.error(`[ドライラン完了] ${fixedCount}件の記事が修正対象です`);
+    console.error('\n実際に修正を実行するには以下のコマンドを実行してください:');
+    console.error('npx tsx scripts/manual/fix-timezone-issues.ts --execute');
   } else {
-    console.log(`[修正完了] ${fixedCount}件の記事を修正しました`);
+    console.error(`[修正完了] ${fixedCount}件の記事を修正しました`);
     
     // 修正後の確認
     const { problematicArticles: remaining } = await detectProblematicArticles();
     if (remaining.length === 0) {
-      console.log('\n全ての問題が解決されました！');
+      console.error('\n全ての問題が解決されました！');
     } else {
-      console.log(`\n警告: まだ ${remaining.length}件の問題が残っています`);
+      console.error(`\n警告: まだ ${remaining.length}件の問題が残っています`);
     }
   }
-  console.log('========================================');
+  console.error('========================================');
   
   await prisma.$disconnect();
 }

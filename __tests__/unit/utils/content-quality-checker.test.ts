@@ -4,6 +4,7 @@ import {
   createEnhancedPrompt,
   fixSummary,
   TECHNICAL_TERMS,
+  QualityIssue,
 } from '@/lib/utils/content-quality-checker';
 
 describe('content-quality-checker', () => {
@@ -142,7 +143,7 @@ describe('content-quality-checker', () => {
     it('should create basic enhanced prompt', () => {
       const title = 'React 19の新機能';
       const content = 'React 19の新機能について解説します...';
-      const issues = [];
+      const issues: QualityIssue[] = [];
 
       const prompt = createEnhancedPrompt(title, content, issues);
 
@@ -154,7 +155,7 @@ describe('content-quality-checker', () => {
     it('should include language mix issues in prompt', () => {
       const title = 'テスト記事';
       const content = 'テスト内容';
-      const issues = [
+      const issues: QualityIssue[] = [
         { 
           type: 'language_mix', 
           description: '不適切な英語表現が混入', 
@@ -178,7 +179,7 @@ describe('content-quality-checker', () => {
     it('should handle empty issues', () => {
       const title = 'タイトル';
       const content = 'コンテンツ';
-      const issues = [];
+      const issues: QualityIssue[] = [];
 
       const prompt = createEnhancedPrompt(title, content, issues);
 
@@ -191,7 +192,7 @@ describe('content-quality-checker', () => {
   describe('fixSummary', () => {
     it('should fix language mixing issues', () => {
       const summary = 'This システムは available です';
-      const issues = [
+      const issues: QualityIssue[] = [
         { type: 'language_mix', severity: 'major', description: '英語混入' }
       ];
       
@@ -205,7 +206,7 @@ describe('content-quality-checker', () => {
 
     it('should fix truncation by adding period', () => {
       const summary = 'ReactのuseStateとTypeScriptを使用したAPIの実装について';
-      const issues = [
+      const issues: QualityIssue[] = [
         { type: 'truncation', severity: 'critical', description: '途切れ' }
       ];
       
@@ -219,7 +220,7 @@ describe('content-quality-checker', () => {
 
     it('should add period if missing', () => {
       const summary = '重要なプロジェクトのタスクを完了しました';
-      const issues = [
+      const issues: QualityIssue[] = [
         { type: 'format', severity: 'minor', description: '句点で終わっていない' }
       ];
       
@@ -231,7 +232,7 @@ describe('content-quality-checker', () => {
 
     it('should handle empty issues', () => {
       const summary = '正常な要約です。';
-      const issues = [];
+      const issues: QualityIssue[] = [];
       
       const fixed = fixSummary(summary, issues);
       

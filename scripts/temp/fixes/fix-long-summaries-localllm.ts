@@ -55,19 +55,19 @@ async function tryMultipleTimes(summary: string, maxAttempts: number = 3): Promi
   
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      console.log(`    試行 ${i + 1}/${maxAttempts}...`);
+      console.error(`    試行 ${i + 1}/${maxAttempts}...`);
       
       // 目標文字数を段階的に調整（180→170→160）
       const targetLength = 180 - (i * 10);
       const newSummary = await shortenWithLocalLLM(summary, targetLength);
       
       if (!newSummary || newSummary.length < 80) {
-        console.log(`      短すぎ: ${newSummary?.length || 0}文字`);
+        console.error(`      短すぎ: ${newSummary?.length || 0}文字`);
         continue;
       }
       
       if (newSummary.length > 200) {
-        console.log(`      長すぎ: ${newSummary.length}文字`);
+        console.error(`      長すぎ: ${newSummary.length}文字`);
         continue;
       }
       
@@ -76,7 +76,7 @@ async function tryMultipleTimes(summary: string, maxAttempts: number = 3): Promi
       const japaneseRatio = japaneseChars / newSummary.length;
       
       if (japaneseRatio < 0.3) {
-        console.log(`      日本語が少ない: ${(japaneseRatio * 100).toFixed(1)}%`);
+        console.error(`      日本語が少ない: ${(japaneseRatio * 100).toFixed(1)}%`);
         continue;
       }
       
@@ -94,10 +94,10 @@ async function tryMultipleTimes(summary: string, maxAttempts: number = 3): Promi
         score
       });
       
-      console.log(`      成功: ${newSummary.length}文字 (スコア: ${score.toFixed(1)})`);
+      console.error(`      成功: ${newSummary.length}文字 (スコア: ${score.toFixed(1)})`);
       
     } catch (error) {
-      console.log(`      エラー: ${error}`);
+      console.error(`      エラー: ${error}`);
     }
     
     // 少し待機
@@ -116,9 +116,9 @@ async function tryMultipleTimes(summary: string, maxAttempts: number = 3): Promi
 }
 
 async function fixLongSummariesWithLocalLLM() {
-  console.log('📝 localLLMを使用して長すぎる要約（250文字超）を短縮します\n');
-  console.log('=' .repeat(60));
-  console.log('目標: 150-180文字（最大200文字）\n');
+  console.error('📝 localLLMを使用して長すぎる要約（250文字超）を短縮します\n');
+  console.error('=' .repeat(60));
+  console.error('目標: 150-180文字（最大200文字）\n');
   
   // ollamaが利用可能か確認
   try {
@@ -161,7 +161,7 @@ async function fixLongSummariesWithLocalLLM() {
       return a.summary.length > 250;
     });
     
-    console.log(`対象記事数: ${articlesToFix.length}件\n`);
+    console.error(`対象記事数: ${articlesToFix.length}件\n`);
     
     // 処理履歴の読み込み
     const progressFile = 'fix-long-summaries-localllm-progress.json';
@@ -170,7 +170,7 @@ async function fixLongSummariesWithLocalLLM() {
     if (fs.existsSync(progressFile)) {
       const progress = JSON.parse(fs.readFileSync(progressFile, 'utf-8'));
       processedIds = new Set(progress.processedIds || []);
-      console.log(`📂 前回の進捗を読み込みました: ${processedIds.size}件処理済み\n`);
+      console.error(`📂 前回の進捗を読み込みました: ${processedIds.size}件処理済み\n`);
     }
     
     let successCount = 0;
@@ -188,7 +188,7 @@ async function fixLongSummariesWithLocalLLM() {
       }
       
       if ((i - skipCount) % 10 === 0 && (i - skipCount) > 0) {
-        console.log(`\n📊 進捗: ${i}/${articlesToFix.length} (${Math.round(i/articlesToFix.length*100)}%)\n`);
+        console.error(`\n📊 進捗: ${i}/${articlesToFix.length} (${Math.round(i/articlesToFix.length*100)}%)\n`);
         
         // 進捗を保存
         fs.writeFileSync(progressFile, JSON.stringify({
@@ -197,9 +197,9 @@ async function fixLongSummariesWithLocalLLM() {
         }, null, 2));
       }
       
-      console.log(`[${i + 1}/${articlesToFix.length}] ${article.id}`);
-      console.log(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
-      console.log(`  📏 現在の文字数: ${article.summary?.length}文字`);
+      console.error(`[${i + 1}/${articlesToFix.length}] ${article.id}`);
+      console.error(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
+      console.error(`  📏 現在の文字数: ${article.summary?.length}文字`);
       
       try {
         // 複数回試行して最適な結果を得る
@@ -218,7 +218,7 @@ async function fixLongSummariesWithLocalLLM() {
           }
         });
         
-        console.log(`  ✅ 成功: ${article.summary?.length}文字 → ${newSummary.length}文字`);
+        console.error(`  ✅ 成功: ${article.summary?.length}文字 → ${newSummary.length}文字`);
         
         successCount++;
         processedIds.add(article.id);
@@ -254,22 +254,22 @@ async function fixLongSummariesWithLocalLLM() {
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 処理結果サマリー\n');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
-    console.log(`⏭️ スキップ（処理済み）: ${skipCount}件`);
-    console.log(`📈 成功率: ${((successCount / (successCount + errorCount)) * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 処理結果サマリー\n');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
+    console.error(`⏭️ スキップ（処理済み）: ${skipCount}件`);
+    console.error(`📈 成功率: ${((successCount / (successCount + errorCount)) * 100).toFixed(1)}%`);
     
     // 平均文字数の改善
     const successfulResults = results.filter(r => r.status === 'success');
     if (successfulResults.length > 0) {
       const avgOldLength = successfulResults.reduce((sum, r) => sum + (r.oldLength || 0), 0) / successfulResults.length;
       const avgNewLength = successfulResults.reduce((sum, r) => sum + r.newLength, 0) / successfulResults.length;
-      console.log(`\n📏 平均文字数の変化:`);
-      console.log(`  変更前: ${avgOldLength.toFixed(1)}文字`);
-      console.log(`  変更後: ${avgNewLength.toFixed(1)}文字`);
-      console.log(`  削減率: ${((1 - avgNewLength / avgOldLength) * 100).toFixed(1)}%`);
+      console.error(`\n📏 平均文字数の変化:`);
+      console.error(`  変更前: ${avgOldLength.toFixed(1)}文字`);
+      console.error(`  変更後: ${avgNewLength.toFixed(1)}文字`);
+      console.error(`  削減率: ${((1 - avgNewLength / avgOldLength) * 100).toFixed(1)}%`);
     }
     
     // 結果をファイルに保存
@@ -284,12 +284,12 @@ async function fixLongSummariesWithLocalLLM() {
       results
     }, null, 2));
     
-    console.log(`\n📁 詳細な結果を ${resultFile} に保存しました`);
+    console.error(`\n📁 詳細な結果を ${resultFile} に保存しました`);
     
     // 進捗ファイルを削除（完了したため）
     if (fs.existsSync(progressFile)) {
       fs.unlinkSync(progressFile);
-      console.log(`✅ 進捗ファイルを削除しました`);
+      console.error(`✅ 進捗ファイルを削除しました`);
     }
     
   } catch (error) {

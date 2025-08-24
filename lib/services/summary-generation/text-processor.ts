@@ -101,8 +101,16 @@ export function truncateText(
 ): string {
   if (!text || text.length <= maxLength) return text;
   
-  const trimmedLength = maxLength - suffix.length;
-  const trimmed = text.substring(0, trimmedLength);
+  // Unicode文字を考慮した文字数計算
+  const chars = Array.from(text);
+  if (chars.length <= maxLength) return text;
+  
+  const suffixChars = Array.from(suffix);
+  const trimmedLength = maxLength - suffixChars.length;
+  
+  if (trimmedLength <= 0) return suffix;
+  
+  const trimmed = chars.slice(0, trimmedLength).join('');
   
   // 文の途中で切れないように調整
   const lastSentenceEnd = Math.max(

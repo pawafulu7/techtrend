@@ -11,7 +11,7 @@ export async function GET() {
     const keywordsData = await keywordsCache.getOrSet(
       cacheKey,
       async () => {
-        console.log(`[Keywords API] Cache miss for key: ${cacheKey}`);
+        console.error(`[Keywords API] Cache miss for key: ${cacheKey}`);
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -99,7 +99,7 @@ export async function GET() {
       LIMIT 10
     ` as { id: string; name: string; count: bigint }[];
 
-        console.log('[Keywords API] Data fetched and cached successfully');
+        console.error('[Keywords API] Data fetched and cached successfully');
         return {
           trending: trendingKeywords,
           newTags: newTags.map(tag => ({
@@ -117,7 +117,7 @@ export async function GET() {
 
     // キャッシュ統計をログ出力
     const cacheStats = keywordsCache.getStats();
-    console.log('[Keywords API] Cache stats:', cacheStats);
+    console.error('[Keywords API] Cache stats:', cacheStats);
 
     return NextResponse.json({
       ...keywordsData,

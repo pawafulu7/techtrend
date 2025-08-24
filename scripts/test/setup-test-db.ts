@@ -25,16 +25,16 @@ const prisma = new PrismaClient({
 
 async function setupTestDatabase() {
   try {
-    console.log('Setting up test database...');
-    console.log('Database URL:', TEST_DATABASE_URL);
+    console.error('Setting up test database...');
+    console.error('Database URL:', TEST_DATABASE_URL);
     
     // 接続テスト
-    console.log('Testing connection...');
+    console.error('Testing connection...');
     await prisma.$connect();
-    console.log('Connected successfully!');
+    console.error('Connected successfully!');
     
     // 既存データのクリア
-    console.log('Clearing existing data...');
+    console.error('Clearing existing data...');
     await prisma.articleView.deleteMany();
     await prisma.favorite.deleteMany();
     await prisma.article.deleteMany();
@@ -45,7 +45,7 @@ async function setupTestDatabase() {
     await prisma.user.deleteMany();
     
     // ソース作成
-    console.log('Creating sources...');
+    console.error('Creating sources...');
     const sources = await Promise.all([
       prisma.source.create({
         data: { name: 'Dev.to', type: 'API', url: 'https://dev.to/api/articles', enabled: true }
@@ -63,10 +63,10 @@ async function setupTestDatabase() {
         data: { name: 'Publickey', type: 'RSS', url: 'https://www.publickey1.jp/atom.xml', enabled: true }
       }),
     ]);
-    console.log(`Created ${sources.length} sources`);
+    console.error(`Created ${sources.length} sources`);
     
     // タグ作成
-    console.log('Creating tags...');
+    console.error('Creating tags...');
     const tagData = [
       { name: 'JavaScript', category: 'language' },
       { name: 'TypeScript', category: 'language' },
@@ -97,10 +97,10 @@ async function setupTestDatabase() {
         })
       )
     );
-    console.log(`Created ${tags.length} tags`);
+    console.error(`Created ${tags.length} tags`);
     
     // 記事作成
-    console.log('Creating articles...');
+    console.error('Creating articles...');
     const articles = [];
     const now = new Date();
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -140,8 +140,8 @@ async function setupTestDatabase() {
       articles.push(article);
     }
     
-    console.log(`Created ${articles.length} articles`);
-    console.log('Test database setup completed successfully!');
+    console.error(`Created ${articles.length} articles`);
+    console.error('Test database setup completed successfully!');
     
   } catch (error) {
     console.error('Error setting up test database:', error);

@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import { ArticleCard } from '@/app/components/article/card';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { createTestArticle, createTestTag } from '@/test/types/test-data';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
@@ -59,12 +60,14 @@ describe('ArticleCard', () => {
       { 
         id: '1', 
         name: 'React',
+        category: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
       { 
         id: '2', 
         name: 'Testing',
+        category: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

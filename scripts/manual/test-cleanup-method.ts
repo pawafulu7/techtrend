@@ -41,8 +41,8 @@ function cleanLocalLLMOutput(output: string): string {
 }
 
 async function testCleanupMethod() {
-  console.log('🧹 英語除去メソッドテスト\n');
-  console.log('================================================================================');
+  console.error('🧹 英語除去メソッドテスト\n');
+  console.error('================================================================================');
   
   const localLLMUrl = process.env.LOCAL_LLM_URL || 'http://192.168.11.7:1234';
   const localLLMModel = process.env.LOCAL_LLM_MODEL || 'openai/gpt-oss-20b';
@@ -63,15 +63,15 @@ async function testCleanupMethod() {
     }
   ];
   
-  console.log(`📝 ${testArticles.length}記事でクリーンアップをテスト\n`);
+  console.error(`📝 ${testArticles.length}記事でクリーンアップをテスト\n`);
   
   let successCount = 0;
   let totalScore = 0;
   
   for (let i = 0; i < testArticles.length; i++) {
     const article = testArticles[i];
-    console.log(`\n[記事 ${i + 1}/${testArticles.length}] ${article.title}`);
-    console.log('────────────────────────────────────────────────────────────────────────────');
+    console.error(`\n[記事 ${i + 1}/${testArticles.length}] ${article.title}`);
+    console.error('────────────────────────────────────────────────────────────────────────────');
     
     const userPrompt = `
 技術記事を分析して、以下の形式で出力してください。
@@ -106,7 +106,7 @@ async function testCleanupMethod() {
       });
       
       if (!response.ok) {
-        console.log('  ❌ API エラー');
+        console.error('  ❌ API エラー');
         continue;
       }
       
@@ -115,18 +115,18 @@ async function testCleanupMethod() {
       
       // 生の出力の最初の部分を表示
       const firstPart = rawOutput.substring(0, 100);
-      console.log(`  生の出力: "${firstPart}..."`);
+      console.error(`  生の出力: "${firstPart}..."`);
       
       // クリーンアップ実行
       const cleanedOutput = cleanLocalLLMOutput(rawOutput);
       
       // クリーンアップ後の最初の部分を表示
       const cleanedFirstPart = cleanedOutput.substring(0, 100);
-      console.log(`  除去後: "${cleanedFirstPart}..."`);
+      console.error(`  除去後: "${cleanedFirstPart}..."`);
       
       // 英語チェック
       const hasEnglish = /^[A-Za-z][A-Za-z\s.,!?]+/.test(cleanedOutput);
-      console.log(`  英語混入: ${hasEnglish ? '❌ あり' : '✅ なし'}`);
+      console.error(`  英語混入: ${hasEnglish ? '❌ あり' : '✅ なし'}`);
       
       // パース処理
       const lines = cleanedOutput.split('\n');
@@ -156,20 +156,20 @@ async function testCleanupMethod() {
       
       // 品質スコア計算
       const score = summary ? checkSummaryQuality(summary, detailedSummary).score : 0;
-      console.log(`  品質スコア: ${score}点`);
-      console.log(`  要約文字数: ${summary.length}文字`);
-      console.log(`  タグ数: ${tags.length}個`);
+      console.error(`  品質スコア: ${score}点`);
+      console.error(`  要約文字数: ${summary.length}文字`);
+      console.error(`  タグ数: ${tags.length}個`);
       
       if (!hasEnglish && score > 0) {
         successCount++;
         totalScore += score;
-        console.log('  ✅ 成功: 英語除去成功、要約正常');
+        console.error('  ✅ 成功: 英語除去成功、要約正常');
       } else {
-        console.log('  ⚠️  問題あり');
+        console.error('  ⚠️  問題あり');
       }
       
     } catch (error) {
-      console.log(`  ❌ エラー: ${error}`);
+      console.error(`  ❌ エラー: ${error}`);
     }
     
     // API負荷軽減
@@ -177,38 +177,38 @@ async function testCleanupMethod() {
   }
   
   // 結果サマリー
-  console.log('\n================================================================================');
-  console.log('📊 テスト結果サマリー');
-  console.log('================================================================================');
+  console.error('\n================================================================================');
+  console.error('📊 テスト結果サマリー');
+  console.error('================================================================================');
   
-  console.log(`  成功率: ${successCount}/${testArticles.length} (${Math.round(successCount / testArticles.length * 100)}%)`);
+  console.error(`  成功率: ${successCount}/${testArticles.length} (${Math.round(successCount / testArticles.length * 100)}%)`);
   if (successCount > 0) {
-    console.log(`  平均品質スコア: ${Math.round(totalScore / successCount)}点`);
+    console.error(`  平均品質スコア: ${Math.round(totalScore / successCount)}点`);
   }
   
   if (successCount === testArticles.length) {
-    console.log('\n✅ クリーンアップメソッドは完璧に動作しています！');
-    console.log('\n【推奨実装】');
-    console.log('```typescript');
-    console.log('// LocalLLMClient または処理部分に以下を追加');
-    console.log('function cleanLocalLLMOutput(output: string): string {');
-    console.log('  // 「一覧要約:」より前の英語を除去');
-    console.log('  let cleaned = output.replace(');
-    console.log('    /^[A-Za-z\\s.,!?]+(?=一覧要約[:：])/m,');
-    console.log("    ''");
-    console.log('  );');
-    console.log('  ');
-    console.log('  // 独立した英語行も除去（フォールバック）');
-    console.log('  const lines = cleaned.split("\\n");');
-    console.log('  while (lines.length > 0 && /^[A-Za-z][A-Za-z\\s.,!?]*$/.test(lines[0].trim())) {');
-    console.log('    lines.shift();');
-    console.log('  }');
-    console.log('  ');
-    console.log('  return lines.join("\\n").trim();');
-    console.log('}');
-    console.log('```');
+    console.error('\n✅ クリーンアップメソッドは完璧に動作しています！');
+    console.error('\n【推奨実装】');
+    console.error('```typescript');
+    console.error('// LocalLLMClient または処理部分に以下を追加');
+    console.error('function cleanLocalLLMOutput(output: string): string {');
+    console.error('  // 「一覧要約:」より前の英語を除去');
+    console.error('  let cleaned = output.replace(');
+    console.error('    /^[A-Za-z\\s.,!?]+(?=一覧要約[:：])/m,');
+    console.error("    ''");
+    console.error('  );');
+    console.error('  ');
+    console.error('  // 独立した英語行も除去（フォールバック）');
+    console.error('  const lines = cleaned.split("\\n");');
+    console.error('  while (lines.length > 0 && /^[A-Za-z][A-Za-z\\s.,!?]*$/.test(lines[0].trim())) {');
+    console.error('    lines.shift();');
+    console.error('  }');
+    console.error('  ');
+    console.error('  return lines.join("\\n").trim();');
+    console.error('}');
+    console.error('```');
   } else {
-    console.log('\n⚠️  一部の記事で問題が発生しました。追加の調整が必要です。');
+    console.error('\n⚠️  一部の記事で問題が発生しました。追加の調整が必要です。');
   }
 }
 

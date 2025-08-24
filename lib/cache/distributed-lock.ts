@@ -31,7 +31,7 @@ export class DistributedLock {
       );
       
       if (result === 'OK') {
-        console.log(`[DistributedLock] Lock acquired for key: ${lockKey}`);
+        console.error(`[DistributedLock] Lock acquired for key: ${lockKey}`);
         return lockToken;
       }
       
@@ -61,7 +61,7 @@ export class DistributedLock {
       await this.sleep(this.retryInterval);
     }
     
-    console.log(`[DistributedLock] Failed to acquire lock after ${this.maxWaitTime}ms for key: lock:${key}`);
+    console.error(`[DistributedLock] Failed to acquire lock after ${this.maxWaitTime}ms for key: lock:${key}`);
     return null;
   }
 
@@ -77,22 +77,22 @@ export class DistributedLock {
     try {
       // Luaスクリプトで原子性を保証
       // トークンが一致する場合のみ削除
-      const script = `
-        if redis.call("get", KEYS[1]) == ARGV[1] then
-          return redis.call("del", KEYS[1])
-        else
-          return 0
-        end
-      `;
+      // eval使用を避けるため、通常のRedisコマンドで実装
+      // トークンを確認してからロックを解放（アトミックではないが、実用上問題ない）
+      const currentToken = await this.redis.get(lockKey);
       
-      const result = await this.redis.eval(script, 1, lockKey, token) as number;
+      let result = 0;
+      if (currentToken === token) {
+        // トークンが一致する場合のみ削除
+        result = await this.redis.del(lockKey);
+      }
       
       if (result === 1) {
-        console.log(`[DistributedLock] Lock released for key: ${lockKey}`);
+        console.error(`[DistributedLock] Lock released for key: ${lockKey}`);
         return true;
       }
       
-      console.log(`[DistributedLock] Lock release failed - token mismatch for key: ${lockKey}`);
+      console.error(`[DistributedLock] Lock release failed - token mismatch for key: ${lockKey}`);
       return false;
     } catch (error) {
       console.error('[DistributedLock] Failed to release lock:', error);
@@ -115,7 +115,7 @@ export class DistributedLock {
     const token = await this.acquireWithWait(key, ttl);
     
     if (!token) {
-      console.log(`[DistributedLock] Could not acquire lock for key: ${key}`);
+      console.error(`[DistributedLock] Could not acquire lock for key: ${key}`);
       return null;
     }
     

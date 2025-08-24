@@ -105,7 +105,7 @@ function parseArgs(args: string[]): Options {
 
 // ヘルプメッセージを表示
 function printHelp() {
-  console.log(`
+  console.error(`
 要約生成の統合管理ツール
 
 使用方法:
@@ -385,7 +385,7 @@ type ArticleWithSource = Article & { source: Source };
 
 // generateコマンドの実装（generate-summaries.tsから移植）
 async function generateSummaries(options: Options): Promise<GenerateResult> {
-  console.log('📝 要約とタグの生成を開始します...');
+  console.error('📝 要約とタグの生成を開始します...');
   const startTime = Date.now();
 
   try {
@@ -489,16 +489,16 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     );
 
     if (uniqueArticles.length === 0) {
-      console.log('✅ すべての記事が適切な要約とタグを持っています');
+      console.error('✅ すべての記事が適切な要約とタグを持っています');
       return { generated: 0, errors: 0 };
     }
 
-    console.log(`📄 処理対象の記事数:`);
-    console.log(`   - 要約なし: ${articlesWithoutSummary.length}件`);
-    console.log(`   - 英語要約: ${articlesWithEnglishSummary.length}件`);
-    console.log(`   - 途切れた要約: ${truncatedArticles.length}件`);
-    console.log(`   - タグなし: ${articlesWithoutTags.length}件`);
-    console.log(`   - 合計（重複除去後）: ${uniqueArticles.length}件`);
+    console.error(`📄 処理対象の記事数:`);
+    console.error(`   - 要約なし: ${articlesWithoutSummary.length}件`);
+    console.error(`   - 英語要約: ${articlesWithEnglishSummary.length}件`);
+    console.error(`   - 途切れた要約: ${truncatedArticles.length}件`);
+    console.error(`   - タグなし: ${articlesWithoutTags.length}件`);
+    console.error(`   - 合計（重複除去後）: ${uniqueArticles.length}件`);
 
     let generatedCount = 0;
     let errorCount = 0;
@@ -507,7 +507,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     // バッチ処理で要約を生成
     for (let i = 0; i < uniqueArticles.length; i += batchSize) {
       const batch = uniqueArticles.slice(i, i + batchSize);
-      console.log(`\n処理中: ${i + 1}-${Math.min(i + batchSize, uniqueArticles.length)}件目`);
+      console.error(`\n処理中: ${i + 1}-${Math.min(i + batchSize, uniqueArticles.length)}件目`);
 
       // リトライ機能を追加
       const MAX_RETRIES = 3;
@@ -554,7 +554,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                   const result = await generateSummaryAndTags(article.title, content);
                   tags = result.tags;
                 } else {
-                  console.log(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (日本語要約あり、スキップ)`);
+                  console.error(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (日本語要約あり、スキップ)`);
                   generatedCount++;
                   return;
                 }
@@ -590,7 +590,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                 });
               }
               
-              console.log(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
+              console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
               generatedCount++;
               apiStats.successes++;
               break; // 成功したらループを抜ける
@@ -603,7 +603,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                 
                 // エクスポネンシャルバックオフ: 10秒 → 20秒 → 40秒
                 const waitTime = 10000 * Math.pow(2, retryCount - 1);
-                console.log(`  リトライ ${retryCount}/${MAX_RETRIES} - ${waitTime/1000}秒待機中...`);
+                console.error(`  リトライ ${retryCount}/${MAX_RETRIES} - ${waitTime/1000}秒待機中...`);
                 await sleep(waitTime);
                 continue;
               }
@@ -628,27 +628,27 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     const totalDuration = Math.round((Date.now() - apiStats.startTime) / 1000);
     const successRate = apiStats.attempts > 0 ? Math.round((apiStats.successes / apiStats.attempts) * 100) : 0;
     
-    console.log(`\n📊 要約とタグ生成完了:`);
-    console.log(`   成功: ${generatedCount}件`);
-    console.log(`   エラー: ${errorCount}件`);
-    console.log(`   処理時間: ${duration}秒`);
+    console.error(`\n📊 要約とタグ生成完了:`);
+    console.error(`   成功: ${generatedCount}件`);
+    console.error(`   エラー: ${errorCount}件`);
+    console.error(`   処理時間: ${duration}秒`);
 
     // 要約が生成された場合はキャッシュを無効化
     if (generatedCount > 0) {
-      console.log('\n🔄 キャッシュを無効化中...');
+      console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
     }
-    console.log(`\n📈 API統計:`);
-    console.log(`   総試行回数: ${apiStats.attempts}`);
-    console.log(`   成功: ${apiStats.successes}`);
-    console.log(`   失敗: ${apiStats.failures}`);
-    console.log(`   503エラー: ${apiStats.overloadErrors}`);
-    console.log(`   成功率: ${successRate}%`);
-    console.log(`   実行時間: ${totalDuration}秒`);
+    console.error(`\n📈 API統計:`);
+    console.error(`   総試行回数: ${apiStats.attempts}`);
+    console.error(`   成功: ${apiStats.successes}`);
+    console.error(`   失敗: ${apiStats.failures}`);
+    console.error(`   503エラー: ${apiStats.overloadErrors}`);
+    console.error(`   成功率: ${successRate}%`);
+    console.error(`   実行時間: ${totalDuration}秒`);
     
     // 成功率が低い場合は警告
     if (successRate < 50 && apiStats.attempts > 10) {
-      console.log(`\n⚠️  警告: API成功率が${successRate}%と低いです。深夜の実行を推奨します。`);
+      console.error(`\n⚠️  警告: API成功率が${successRate}%と低いです。深夜の実行を推奨します。`);
     }
 
     return { generated: generatedCount, errors: errorCount };
@@ -661,7 +661,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
 
 // regenerateコマンドの実装
 async function regenerateSummaries(options: Options): Promise<GenerateResult> {
-  console.log('📝 要約の再生成を開始します...');
+  console.error('📝 要約の再生成を開始します...');
   const startTime = Date.now();
 
   try {
@@ -690,18 +690,18 @@ async function regenerateSummaries(options: Options): Promise<GenerateResult> {
     const articles = await prisma.article.findMany(query) as ArticleWithSource[];
 
     if (articles.length === 0) {
-      console.log('✅ 再生成対象の記事はありません');
+      console.error('✅ 再生成対象の記事はありません');
       return { generated: 0, errors: 0 };
     }
 
-    console.log(`📄 再生成対象: ${articles.length}件`);
+    console.error(`📄 再生成対象: ${articles.length}件`);
     
     let generatedCount = 0;
     let errorCount = 0;
 
     for (const article of articles) {
       try {
-        console.log(`\n処理中: [${article.source.name}] ${article.title}`);
+        console.error(`\n処理中: [${article.source.name}] ${article.title}`);
         
         const content = article.content || '';
         const result = await generateSummaryAndTags(article.title, content);
@@ -744,7 +744,7 @@ async function regenerateSummaries(options: Options): Promise<GenerateResult> {
           });
         }
         
-        console.log(`✓ 再生成完了`);
+        console.error(`✓ 再生成完了`);
         generatedCount++;
         
         // API制限対策
@@ -757,10 +757,10 @@ async function regenerateSummaries(options: Options): Promise<GenerateResult> {
     }
 
     const duration = Math.round((Date.now() - startTime) / 1000);
-    console.log(`\n📊 再生成完了:`);
-    console.log(`   成功: ${generatedCount}件`);
-    console.log(`   エラー: ${errorCount}件`);
-    console.log(`   処理時間: ${duration}秒`);
+    console.error(`\n📊 再生成完了:`);
+    console.error(`   成功: ${generatedCount}件`);
+    console.error(`   エラー: ${errorCount}件`);
+    console.error(`   処理時間: ${duration}秒`);
 
     return { generated: generatedCount, errors: errorCount };
 
@@ -772,7 +772,7 @@ async function regenerateSummaries(options: Options): Promise<GenerateResult> {
 
 // missingコマンドの実装
 async function generateMissingSummaries(options: Options): Promise<GenerateResult> {
-  console.log('📝 要約が欠損している記事の処理を開始します...');
+  console.error('📝 要約が欠損している記事の処理を開始します...');
   
   try {
     const daysAgo = new Date();
@@ -798,10 +798,10 @@ async function generateMissingSummaries(options: Options): Promise<GenerateResul
 
     const articles = await prisma.article.findMany(query) as ArticleWithSource[];
     
-    console.log(`📄 処理対象: ${articles.length}件（過去${options.days}日間）`);
+    console.error(`📄 処理対象: ${articles.length}件（過去${options.days}日間）`);
     
     if (articles.length === 0) {
-      console.log('✅ 要約が欠損している記事はありません');
+      console.error('✅ 要約が欠損している記事はありません');
       return { generated: 0, errors: 0 };
     }
 
@@ -810,7 +810,7 @@ async function generateMissingSummaries(options: Options): Promise<GenerateResul
     
     for (const article of articles) {
       try {
-        console.log(`\n処理中: [${article.source.name}] ${article.title}`);
+        console.error(`\n処理中: [${article.source.name}] ${article.title}`);
         
         const content = article.content || article.title;
         const result = await generateSummaryAndTags(article.title, content);
@@ -852,8 +852,8 @@ async function generateMissingSummaries(options: Options): Promise<GenerateResul
           });
         }
         
-        console.log(`✓ 要約生成完了`);
-        console.log(`  要約: ${result.summary.substring(0, 100)}...`);
+        console.error(`✓ 要約生成完了`);
+        console.error(`  要約: ${result.summary.substring(0, 100)}...`);
         
         generatedCount++;
         
@@ -866,9 +866,9 @@ async function generateMissingSummaries(options: Options): Promise<GenerateResul
       }
     }
     
-    console.log(`\n📊 処理完了:`);
-    console.log(`   成功: ${generatedCount}件`);
-    console.log(`   エラー: ${errorCount}件`);
+    console.error(`\n📊 処理完了:`);
+    console.error(`   成功: ${generatedCount}件`);
+    console.error(`   エラー: ${errorCount}件`);
 
     return { generated: generatedCount, errors: errorCount };
     

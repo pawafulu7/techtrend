@@ -20,31 +20,31 @@ async function checkGenerationTiming() {
     }
   });
 
-  console.log('=== 記事の生成タイミング比較 ===\n');
+  console.error('=== 記事の生成タイミング比較 ===\n');
   
   articles.forEach((article, index) => {
-    console.log(`記事${index + 1}:`);
-    console.log(`  ID: ${article.id}`);
-    console.log(`  タイトル: ${article.title}`);
-    console.log(`  ソース: ${article.source.name}`);
-    console.log(`  公開日時: ${article.publishedAt.toLocaleString('ja-JP')}`);
-    console.log(`  DB作成日時: ${article.createdAt.toLocaleString('ja-JP')}`);
-    console.log(`  DB更新日時: ${article.updatedAt.toLocaleString('ja-JP')}`);
-    console.log(`  要約あり: ${article.summary ? 'はい' : 'いいえ'}`);
-    console.log(`  詳細要約あり: ${article.detailedSummary ? 'はい' : 'いいえ'}`);
-    console.log('');
+    console.error(`記事${index + 1}:`);
+    console.error(`  ID: ${article.id}`);
+    console.error(`  タイトル: ${article.title}`);
+    console.error(`  ソース: ${article.source.name}`);
+    console.error(`  公開日時: ${article.publishedAt.toLocaleString('ja-JP')}`);
+    console.error(`  DB作成日時: ${article.createdAt.toLocaleString('ja-JP')}`);
+    console.error(`  DB更新日時: ${article.updatedAt.toLocaleString('ja-JP')}`);
+    console.error(`  要約あり: ${article.summary ? 'はい' : 'いいえ'}`);
+    console.error(`  詳細要約あり: ${article.detailedSummary ? 'はい' : 'いいえ'}`);
+    console.error('');
   });
 
   // 時間差を計算
   if (articles.length === 2) {
     const timeDiff = Math.abs(articles[0].updatedAt.getTime() - articles[1].updatedAt.getTime());
     const seconds = Math.floor(timeDiff / 1000);
-    console.log(`更新時刻の差: ${seconds}秒`);
+    console.error(`更新時刻の差: ${seconds}秒`);
     
     if (seconds < 60) {
-      console.log('→ ほぼ同時に要約が生成されています（同一バッチ処理の可能性が高い）');
+      console.error('→ ほぼ同時に要約が生成されています（同一バッチ処理の可能性が高い）');
     } else {
-      console.log('→ 異なるタイミングで要約が生成されています');
+      console.error('→ 異なるタイミングで要約が生成されています');
     }
   }
 
@@ -73,11 +73,11 @@ async function checkGenerationTiming() {
     }
   });
 
-  console.log(`\n=== 同時期（${startTime.toLocaleTimeString('ja-JP')} - ${endTime.toLocaleTimeString('ja-JP')}）に生成されたZenn記事 ===`);
+  console.error(`\n=== 同時期（${startTime.toLocaleTimeString('ja-JP')} - ${endTime.toLocaleTimeString('ja-JP')}）に生成されたZenn記事 ===`);
   nearbyArticles.forEach(article => {
     const hasLabel = article.detailedSummary?.includes('記事の主題は') || 
                      article.detailedSummary?.includes('具体的な問題は');
-    console.log(`${article.updatedAt.toLocaleTimeString('ja-JP')} - ${article.id} - ラベル${hasLabel ? 'あり' : 'なし'}`);
+    console.error(`${article.updatedAt.toLocaleTimeString('ja-JP')} - ${article.id} - ラベル${hasLabel ? 'あり' : 'なし'}`);
   });
   
   await prisma.$disconnect();

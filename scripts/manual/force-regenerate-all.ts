@@ -137,8 +137,8 @@ function parseResponse(text: string): SummaryResult {
 }
 
 async function main() {
-  console.log('🔄 全記事の要約を強制再生成します');
-  console.log(`処理上限: ${limit}件\n`);
+  console.error('🔄 全記事の要約を強制再生成します');
+  console.error(`処理上限: ${limit}件\n`);
 
   try {
     // 全記事を取得（最新順）
@@ -148,7 +148,7 @@ async function main() {
       take: limit
     });
 
-    console.log(`対象記事数: ${articles.length}件\n`);
+    console.error(`対象記事数: ${articles.length}件\n`);
 
     let successCount = 0;
     let improvedCount = 0;
@@ -156,24 +156,24 @@ async function main() {
 
     for (let i = 0; i < articles.length; i++) {
       const article = articles[i];
-      console.log(`[${i + 1}/${articles.length}] ${article.title.substring(0, 50)}...`);
+      console.error(`[${i + 1}/${articles.length}] ${article.title.substring(0, 50)}...`);
       
       try {
         // 現在の品質をチェック
         const currentQuality = article.summary ? 
           checkSummaryQuality(article.summary, article.detailedSummary || '').score : 0;
-        console.log(`  現在の品質スコア: ${currentQuality}点`);
+        console.error(`  現在の品質スコア: ${currentQuality}点`);
 
         // コンテンツの準備
-        const content = article.content || article.description || article.title;
-        console.log(`  コンテンツ長: ${content.length}文字`);
+        const content = article.content || article.title;
+        console.error(`  コンテンツ長: ${content.length}文字`);
 
         // 新しい要約を生成
         const result = await generateImprovedSummary(article.title, content);
         
         // 新しい品質をチェック
         const newQuality = checkSummaryQuality(result.summary, result.detailedSummary).score;
-        console.log(`  新しい品質スコア: ${newQuality}点`);
+        console.error(`  新しい品質スコア: ${newQuality}点`);
 
         if (newQuality > currentQuality) {
           // データベース更新
@@ -205,10 +205,10 @@ async function main() {
             }
           }
 
-          console.log(`  ✅ 改善成功: ${currentQuality} → ${newQuality}点`);
+          console.error(`  ✅ 改善成功: ${currentQuality} → ${newQuality}点`);
           improvedCount++;
         } else {
-          console.log(`  ⏭️  改善なし（現状維持）`);
+          console.error(`  ⏭️  改善なし（現状維持）`);
         }
         successCount++;
 
@@ -223,17 +223,17 @@ async function main() {
     }
 
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 処理結果');
-    console.log('='.repeat(60));
-    console.log(`処理成功: ${successCount}件`);
-    console.log(`品質改善: ${improvedCount}件`);
-    console.log(`処理失敗: ${failedCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 処理結果');
+    console.error('='.repeat(60));
+    console.error(`処理成功: ${successCount}件`);
+    console.error(`品質改善: ${improvedCount}件`);
+    console.error(`処理失敗: ${failedCount}件`);
 
     if (improvedCount > 0) {
-      console.log('\n🔄 キャッシュを無効化中...');
+      console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
-      console.log('✅ キャッシュ無効化完了');
+      console.error('✅ キャッシュ無効化完了');
     }
 
   } catch (error) {

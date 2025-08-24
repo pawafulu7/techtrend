@@ -19,8 +19,8 @@ async function findMissingTechnicalBackground() {
     take: 500
   });
   
-  console.log('🔍 技術的背景が欠落している記事を検索中...');
-  console.log('検査対象: ' + articles.length + '件\n');
+  console.error('🔍 技術的背景が欠落している記事を検索中...');
+  console.error('検査対象: ' + articles.length + '件\n');
   
   const problematicArticles: any[] = [];
   
@@ -58,8 +58,8 @@ async function findMissingTechnicalBackground() {
     }
   });
   
-  console.log('='.repeat(80));
-  console.log('技術的背景が欠落している記事: ' + problematicArticles.length + '件\n');
+  console.error('='.repeat(80));
+  console.error('技術的背景が欠落している記事: ' + problematicArticles.length + '件\n');
   
   // 問題のタイプ別に集計
   const issueTypes: Record<string, number> = {};
@@ -71,26 +71,26 @@ async function findMissingTechnicalBackground() {
     issueTypes[type]++;
   });
   
-  console.log('問題のタイプ:');
+  console.error('問題のタイプ:');
   Object.entries(issueTypes).forEach(([type, count]) => {
-    console.log('- ' + type + ': ' + count + '件');
+    console.error('- ' + type + ': ' + count + '件');
   });
   
   // 最初の20件を表示
-  console.log('\n最初の20件:');
+  console.error('\n最初の20件:');
   problematicArticles.slice(0, 20).forEach((article, i) => {
-    console.log((i + 1) + '. ' + article.id);
-    console.log('   ' + article.title + '...');
-    console.log('   ソース: ' + article.source);
-    console.log('   項目数: ' + article.itemCount);
-    console.log('   第1項目: ' + article.firstLine + '...');
-    console.log('   タイプ: ' + article.firstItemType);
-    console.log();
+    console.error((i + 1) + '. ' + article.id);
+    console.error('   ' + article.title + '...');
+    console.error('   ソース: ' + article.source);
+    console.error('   項目数: ' + article.itemCount);
+    console.error('   第1項目: ' + article.firstLine + '...');
+    console.error('   タイプ: ' + article.firstItemType);
+    console.error();
   });
   
   // 処理対象IDリストを出力
-  console.log('\n処理対象IDリスト（最初の20件）:');
-  console.log(JSON.stringify(problematicArticles.slice(0, 20).map(a => a.id), null, 2));
+  console.error('\n処理対象IDリスト（最初の20件）:');
+  console.error(JSON.stringify(problematicArticles.slice(0, 20).map(a => a.id), null, 2));
   
   await prisma.$disconnect();
 }

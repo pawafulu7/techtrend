@@ -102,7 +102,7 @@ export class TechTermsManager {
     const updateUrl = url || process.env.TECH_TERMS_UPDATE_URL;
     
     if (!updateUrl) {
-      console.log('技術用語の更新URLが設定されていません');
+      console.error('技術用語の更新URLが設定されていません');
       return;
     }
     
@@ -117,7 +117,7 @@ export class TechTermsManager {
         this.addCustomTerms(data.terms);
         this.lastUpdated = new Date();
         await this.saveCustomTerms();
-        console.log(`技術用語辞書を更新しました: ${data.terms.length}件の用語を追加`);
+        console.error(`技術用語辞書を更新しました: ${data.terms.length}件の用語を追加`);
       }
     } catch (error) {
       console.error('リモートからの技術用語更新に失敗:', error);

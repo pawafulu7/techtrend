@@ -8,9 +8,9 @@ async function analyzeProblems() {
   const data = JSON.parse(readFileSync('/home/tomoaki/work/techtrend/data/problematic-articles.json', 'utf-8'));
   const articleIds = data.articleIds;
 
-  console.log('問題のある記事の詳細分析');
-  console.log('=====================================');
-  console.log('総記事数: ' + articleIds.length);
+  console.error('問題のある記事の詳細分析');
+  console.error('=====================================');
+  console.error('総記事数: ' + articleIds.length);
 
   // データベースから記事を取得
   const articles = await prisma.article.findMany({
@@ -67,32 +67,32 @@ async function analyzeProblems() {
   }
 
   // 結果を表示
-  console.log('\n【ソース別の問題記事数】');
+  console.error('\n【ソース別の問題記事数】');
   const sortedSources = Array.from(sourceStats.entries()).sort((a, b) => b[1] - a[1]);
   for (const [source, count] of sortedSources) {
-    console.log('  ' + source + ': ' + count + '件');
+    console.error('  ' + source + ': ' + count + '件');
   }
 
-  console.log('\n【問題タイプ別の統計】');
-  console.log('  要約なし: ' + problemTypeStats.noSummary + '件');
-  console.log('  要約が短すぎる（<50文字）: ' + problemTypeStats.summaryTooShort + '件');
-  console.log('  要約が長すぎる（>200文字）: ' + problemTypeStats.summaryTooLong + '件');
-  console.log('  要約が途切れている可能性: ' + problemTypeStats.truncated + '件');
-  console.log('  詳細要約なし: ' + problemTypeStats.noDetailedSummary + '件');
-  console.log('  詳細要約が箇条書きでない: ' + problemTypeStats.detailedSummaryNotBullet + '件');
-  console.log('  詳細要約が短すぎる（<150文字）: ' + problemTypeStats.detailedSummaryTooShort + '件');
+  console.error('\n【問題タイプ別の統計】');
+  console.error('  要約なし: ' + problemTypeStats.noSummary + '件');
+  console.error('  要約が短すぎる（<50文字）: ' + problemTypeStats.summaryTooShort + '件');
+  console.error('  要約が長すぎる（>200文字）: ' + problemTypeStats.summaryTooLong + '件');
+  console.error('  要約が途切れている可能性: ' + problemTypeStats.truncated + '件');
+  console.error('  詳細要約なし: ' + problemTypeStats.noDetailedSummary + '件');
+  console.error('  詳細要約が箇条書きでない: ' + problemTypeStats.detailedSummaryNotBullet + '件');
+  console.error('  詳細要約が短すぎる（<150文字）: ' + problemTypeStats.detailedSummaryTooShort + '件');
 
   // 最も問題のあるソースのサンプルを表示
   const topProblematicSource = sortedSources[0][0];
   const sampleArticles = articles.filter(a => a.source === topProblematicSource).slice(0, 3);
   
-  console.log('\n【問題の多い「' + topProblematicSource + '」のサンプル】');
+  console.error('\n【問題の多い「' + topProblematicSource + '」のサンプル】');
   for (const article of sampleArticles) {
-    console.log('\n  タイトル: ' + article.title.substring(0, 50) + '...');
-    console.log('  要約文字数: ' + (article.summary?.length || 0));
-    console.log('  詳細要約文字数: ' + (article.detailedSummary?.length || 0));
+    console.error('\n  タイトル: ' + article.title.substring(0, 50) + '...');
+    console.error('  要約文字数: ' + (article.summary?.length || 0));
+    console.error('  詳細要約文字数: ' + (article.detailedSummary?.length || 0));
     if (article.summary && article.summary.length > 180) {
-      console.log('  要約（末尾50文字）: ...' + article.summary.substring(article.summary.length - 50));
+      console.error('  要約（末尾50文字）: ...' + article.summary.substring(article.summary.length - 50));
     }
   }
 

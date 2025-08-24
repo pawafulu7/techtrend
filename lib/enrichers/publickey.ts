@@ -19,7 +19,7 @@ export class PublickeyEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      console.log(`[PublickeyEnricher] Fetching content from: ${url}`);
+      console.error(`[PublickeyEnricher] Fetching content from: ${url}`);
       
       const html = await this.fetchWithRetry(url);
       
@@ -53,20 +53,20 @@ export class PublickeyEnricher extends BaseContentEnricher {
         // より広範囲を取得する試み
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 500)) {
-          console.log(`[PublickeyEnricher] Using fallback content (${fallbackContent.length} chars)`);
+          console.error(`[PublickeyEnricher] Using fallback content (${fallbackContent.length} chars)`);
           return { content: fallbackContent, thumbnail };
         }
         
         // コンテンツが不十分でもサムネイルがあれば返す
         if (thumbnail) {
-          console.log(`[PublickeyEnricher] Content insufficient but thumbnail found`);
+          console.error(`[PublickeyEnricher] Content insufficient but thumbnail found`);
           return { content: content || null, thumbnail };
         }
         
         return null;
       }
       
-      console.log(`[PublickeyEnricher] Successfully enriched: ${content.length} characters`);
+      console.error(`[PublickeyEnricher] Successfully enriched: ${content.length} characters`);
       return { content, thumbnail };
       
     } catch (error) {

@@ -44,15 +44,15 @@ export class RailsReleasesFetcher extends BaseFetcher {
     const errors: Error[] = [];
 
     try {
-      console.log('[Rails Releases] フィードを取得中...');
+      console.error('[Rails Releases] フィードを取得中...');
       const feed = await this.retry(() => this.parser.parseURL(this.source.url));
       
       if (!feed.items || feed.items.length === 0) {
-        console.log('[Rails Releases] 記事が見つかりませんでした');
+        console.error('[Rails Releases] 記事が見つかりませんでした');
         return { articles, errors };
       }
 
-      console.log(`[Rails Releases] ${feed.items.length}件のリリースを取得`);
+      console.error(`[Rails Releases] ${feed.items.length}件のリリースを取得`);
 
       // 最新30件のリリースのみ処理
       for (const item of feed.items.slice(0, 30)) {
@@ -94,7 +94,7 @@ export class RailsReleasesFetcher extends BaseFetcher {
         }
       }
 
-      console.log(`[Rails Releases] ${articles.length}件の記事を処理`);
+      console.error(`[Rails Releases] ${articles.length}件の記事を処理`);
     } catch (error) {
       errors.push(new Error(`Failed to fetch Rails releases: ${error instanceof Error ? error.message : String(error)}`));
     }

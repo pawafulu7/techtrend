@@ -137,24 +137,24 @@ async function getModels() {
 
 // メイン実行関数
 async function main() {
-  console.log('🚀 ローカルLLM動作検証を開始します...\n');
+  console.error('🚀 ローカルLLM動作検証を開始します...\n');
   
   // 1. モデル情報の確認
-  console.log('📋 利用可能なモデルを確認中...');
+  console.error('📋 利用可能なモデルを確認中...');
   const models = await getModels();
   if (models) {
-    console.log('✅ 利用可能なモデル:');
+    console.error('✅ 利用可能なモデル:');
     models.data.forEach((model: any) => {
-      console.log(`   - ${model.id}`);
+      console.error(`   - ${model.id}`);
     });
   } else {
-    console.log('⚠️  モデル情報を取得できませんでした');
+    console.error('⚠️  モデル情報を取得できませんでした');
   }
-  console.log('');
+  console.error('');
   
   // 2. 要約生成テスト
-  console.log('📝 要約生成をテスト中...');
-  console.log(`テスト記事: "${TEST_ARTICLE.title}"\n`);
+  console.error('📝 要約生成をテスト中...');
+  console.error(`テスト記事: "${TEST_ARTICLE.title}"\n`);
   
   try {
     const prompt = createSummaryPrompt(TEST_ARTICLE.title, TEST_ARTICLE.content);
@@ -163,41 +163,41 @@ async function main() {
     const response = await callLocalLLM(prompt);
     const elapsed = Date.now() - startTime;
     
-    console.log('✅ LLMからの応答を受信しました');
-    console.log(`⏱️  処理時間: ${elapsed}ms\n`);
+    console.error('✅ LLMからの応答を受信しました');
+    console.error(`⏱️  処理時間: ${elapsed}ms\n`);
     
-    console.log('--- 生のレスポンス ---');
-    console.log(response);
-    console.log('--- 生のレスポンス終了 ---\n');
+    console.error('--- 生のレスポンス ---');
+    console.error(response);
+    console.error('--- 生のレスポンス終了 ---\n');
     
     // レスポンスをパース
     const result = parseSummaryAndTags(response);
     
-    console.log('📊 パース結果:');
-    console.log('要約:', result.summary);
-    console.log('\n詳細要約:', result.detailedSummary);
-    console.log('\nタグ:', result.tags.join(', '));
+    console.error('📊 パース結果:');
+    console.error('要約:', result.summary);
+    console.error('\n詳細要約:', result.detailedSummary);
+    console.error('\nタグ:', result.tags.join(', '));
     
     // 結果の検証
-    console.log('\n✨ 検証結果:');
-    console.log(`- 要約の文字数: ${result.summary.length}文字`);
-    console.log(`- 詳細要約の文字数: ${result.detailedSummary.length}文字`);
-    console.log(`- タグ数: ${result.tags.length}個`);
+    console.error('\n✨ 検証結果:');
+    console.error(`- 要約の文字数: ${result.summary.length}文字`);
+    console.error(`- 詳細要約の文字数: ${result.detailedSummary.length}文字`);
+    console.error(`- タグ数: ${result.tags.length}個`);
     
     if (result.summary.length > 0 && result.tags.length > 0) {
-      console.log('\n✅ ローカルLLMは正常に動作しています！');
+      console.error('\n✅ ローカルLLMは正常に動作しています！');
     } else {
-      console.log('\n⚠️  一部の項目が正しく生成されませんでした');
+      console.error('\n⚠️  一部の項目が正しく生成されませんでした');
     }
     
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
-    console.log('\n💡 確認事項:');
-    console.log('1. LM Studioが起動しているか');
-    console.log('2. モデルが読み込まれているか');
-    console.log(`3. APIサーバーが有効になっているか（${USE_PORT_FORWARD ? 'http://localhost:1234' : `http://${WINDOWS_HOST}:1234`}）`);
-    console.log('\n💡 socatを使用する場合:');
-    console.log(`   別のターミナルで実行: socat TCP-LISTEN:1234,fork TCP:${WINDOWS_HOST}:1234`);
+    console.error('\n💡 確認事項:');
+    console.error('1. LM Studioが起動しているか');
+    console.error('2. モデルが読み込まれているか');
+    console.error(`3. APIサーバーが有効になっているか（${USE_PORT_FORWARD ? 'http://localhost:1234' : `http://${WINDOWS_HOST}:1234`}）`);
+    console.error('\n💡 socatを使用する場合:');
+    console.error(`   別のターミナルで実行: socat TCP-LISTEN:1234,fork TCP:${WINDOWS_HOST}:1234`);
   }
 }
 

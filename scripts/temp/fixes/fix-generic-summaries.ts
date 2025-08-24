@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 const prisma = new PrismaClient();
 
 async function fixGenericSummaries() {
-  console.log('🔧 一般的すぎる要約を具体的に改善\n');
+  console.error('🔧 一般的すぎる要約を具体的に改善\n');
   
   // 一般的すぎる要約を持つ記事IDリスト
   const articleIds = [
@@ -38,14 +38,14 @@ async function fixGenericSummaries() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     let successCount = 0;
     let errorCount = 0;
     
     for (let i = 0; i < articleIds.length; i++) {
       const articleId = articleIds[i];
-      console.log(`[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
+      console.error(`[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
       
       try {
         // 記事を取得
@@ -63,13 +63,13 @@ async function fixGenericSummaries() {
         });
         
         if (!article) {
-          console.log('  ❌ 記事が見つかりません');
+          console.error('  ❌ 記事が見つかりません');
           errorCount++;
           continue;
         }
         
-        console.log(`  📝 ${article.title?.substring(0, 50)}...`);
-        console.log(`  現在: ${article.summary?.substring(0, 80)}...`);
+        console.error(`  📝 ${article.title?.substring(0, 50)}...`);
+        console.error(`  現在: ${article.summary?.substring(0, 80)}...`);
         
         // タイトルに基づいて具体的な内容を推測
         let specificContext = '';
@@ -167,7 +167,7 @@ ${article.content?.substring(0, 1000) || 'コンテンツが利用できませ�
 5. 詳細要約の第1項目は必ず「記事の主題は」で始める
         `.trim();
         
-        console.log('  🔄 具体的な要約を生成中...');
+        console.error('  🔄 具体的な要約を生成中...');
         
         const result = await localLLM.generateDetailedSummary(
           article.title || '',
@@ -199,7 +199,7 @@ ${article.content?.substring(0, 1000) || 'コンテンツが利用できませ�
           .replace(/```/g, '')
           .trim();
         
-        console.log(`  新要約: ${cleanedSummary.substring(0, 80)}...`);
+        console.error(`  新要約: ${cleanedSummary.substring(0, 80)}...`);
         
         // 品質チェック
         const japaneseChars = (cleanedSummary.match(/[ぁ-んァ-ヶー一-龠々]/g) || []).length;
@@ -240,7 +240,7 @@ ${article.content?.substring(0, 1000) || 'コンテンツが利用できませ�
             }
           });
           
-          console.log('  ✅ 修正成功');
+          console.error('  ✅ 修正成功');
           successCount++;
         } else {
           const problems = [];
@@ -249,7 +249,7 @@ ${article.content?.substring(0, 1000) || 'コンテンツが利用できませ�
           if (!notGeneric) problems.push('まだ一般的');
           if (!hasProperTechnicalBackground) problems.push('技術的背景なし');
           if (!hasEnoughItems) problems.push('項目数不足');
-          console.log(`  ⚠️ 品質チェック失敗: ${problems.join(', ')}`);
+          console.error(`  ⚠️ 品質チェック失敗: ${problems.join(', ')}`);
           errorCount++;
         }
         
@@ -262,10 +262,10 @@ ${article.content?.substring(0, 1000) || 'コンテンツが利用できませ�
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('🎉 処理完了');
-    console.log(`✅ 成功: ${successCount}件`);
-    console.log(`❌ エラー: ${errorCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('🎉 処理完了');
+    console.error(`✅ 成功: ${successCount}件`);
+    console.error(`❌ エラー: ${errorCount}件`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

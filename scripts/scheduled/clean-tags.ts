@@ -3,11 +3,11 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function cleanTags() {
-  console.log('🧹 タグのクリーンアップを開始します...\n');
+  console.error('🧹 タグのクリーンアップを開始します...\n');
 
   try {
     // 1. 空のタグを削除
-    console.log('【空タグの削除】');
+    console.error('【空タグの削除】');
     const emptyTag = await prisma.tag.findUnique({
       where: { name: '' }
     });
@@ -39,13 +39,13 @@ async function cleanTags() {
         where: { id: emptyTag.id }
       });
 
-      console.log(`✓ 空タグを削除しました (${articlesWithEmptyTag.length}記事から削除)`);
+      console.error(`✓ 空タグを削除しました (${articlesWithEmptyTag.length}記事から削除)`);
     } else {
-      console.log('✓ 空タグは存在しません');
+      console.error('✓ 空タグは存在しません');
     }
 
     // 2. 大文字小文字を統一
-    console.log('\n【タグの正規化】');
+    console.error('\n【タグの正規化】');
     const tagMappings = [
       { from: 'ai', to: 'AI' },
       { from: 'aws', to: 'AWS' },
@@ -89,7 +89,7 @@ async function cleanTags() {
           where: { id: fromTag.id },
           data: { name: mapping.to }
         });
-        console.log(`✓ "${mapping.from}" → "${mapping.to}" に更新 (${fromTag._count.articles}記事)`);
+        console.error(`✓ "${mapping.from}" → "${mapping.to}" に更新 (${fromTag._count.articles}記事)`);
       } else {
         // 正規化されたタグが既に存在する場合は、記事を移動してから削除
         const articlesWithFromTag = await prisma.article.findMany({
@@ -118,12 +118,12 @@ async function cleanTags() {
           where: { id: fromTag.id }
         });
 
-        console.log(`✓ "${mapping.from}" の記事を "${mapping.to}" に統合 (${articlesWithFromTag.length}記事)`);
+        console.error(`✓ "${mapping.from}" の記事を "${mapping.to}" に統合 (${articlesWithFromTag.length}記事)`);
       }
     }
 
     // 3. 統計情報を表示
-    console.log('\n【クリーンアップ後の統計】');
+    console.error('\n【クリーンアップ後の統計】');
     const totalTags = await prisma.tag.count();
     const totalArticles = await prisma.article.count();
     const articlesWithTags = await prisma.article.count({
@@ -134,10 +134,10 @@ async function cleanTags() {
       }
     });
 
-    console.log(`- 総タグ数: ${totalTags}`);
-    console.log(`- タグ付き記事: ${articlesWithTags}/${totalArticles} (${((articlesWithTags / totalArticles) * 100).toFixed(1)}%)`);
+    console.error(`- 総タグ数: ${totalTags}`);
+    console.error(`- タグ付き記事: ${articlesWithTags}/${totalArticles} (${((articlesWithTags / totalArticles) * 100).toFixed(1)}%)`);
 
-    console.log('\n✅ タグのクリーンアップが完了しました');
+    console.error('\n✅ タグのクリーンアップが完了しました');
 
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);

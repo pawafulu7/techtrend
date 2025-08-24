@@ -48,10 +48,10 @@ export class AIService {
     return this.executeWithFallback(
       async () => {
         if (this.config.preferLocalLLM && this.localLLMClient) {
-          console.log('📟 Using Local LLM for summary generation');
+          console.error('📟 Using Local LLM for summary generation');
           return await this.localLLMClient.generateSummary(title, content);
         } else if (this.geminiClient) {
-          console.log('🌟 Using Gemini API for summary generation');
+          console.error('🌟 Using Gemini API for summary generation');
           return await this.geminiClient.generateSummary(title, content);
         } else {
           throw new Error('No AI service configured');
@@ -59,7 +59,7 @@ export class AIService {
       },
       async () => {
         if (this.config.useLocalLLMFallback && this.localLLMClient) {
-          console.log('🔄 Falling back to Local LLM');
+          console.error('🔄 Falling back to Local LLM');
           return await this.localLLMClient.generateSummary(title, content);
         }
         throw new Error('No fallback available');
@@ -74,10 +74,10 @@ export class AIService {
     return this.executeWithFallback(
       async () => {
         if (this.config.preferLocalLLM && this.localLLMClient) {
-          console.log('📟 Using Local LLM for summary and tags generation');
+          console.error('📟 Using Local LLM for summary and tags generation');
           return await this.localLLMClient.generateSummaryWithTags(title, content);
         } else if (this.geminiClient) {
-          console.log('🌟 Using Gemini API for summary and tags generation');
+          console.error('🌟 Using Gemini API for summary and tags generation');
           return await this.geminiClient.generateSummaryWithTags(title, content);
         } else {
           throw new Error('No AI service configured');
@@ -85,7 +85,7 @@ export class AIService {
       },
       async () => {
         if (this.config.useLocalLLMFallback && this.localLLMClient) {
-          console.log('🔄 Falling back to Local LLM');
+          console.error('🔄 Falling back to Local LLM');
           return await this.localLLMClient.generateSummaryWithTags(title, content);
         }
         throw new Error('No fallback available');
@@ -100,12 +100,12 @@ export class AIService {
     const result = await this.executeWithFallback(
       async () => {
         if (this.config.preferLocalLLM && this.localLLMClient) {
-          console.log('📟 Using Local LLM for detailed summary generation');
+          console.error('📟 Using Local LLM for detailed summary generation');
           // LocalLLMClientのgenerateDetailedSummaryメソッドを使用
           const llmResult = await this.localLLMClient.generateDetailedSummary(title, content);
           return llmResult;
         } else if (this.geminiClient) {
-          console.log('🌟 Using Gemini API for detailed summary generation');
+          console.error('🌟 Using Gemini API for detailed summary generation');
           return await this.geminiClient.generateDetailedSummary(title, content);
         } else {
           throw new Error('No AI service configured');
@@ -113,7 +113,7 @@ export class AIService {
       },
       async () => {
         if (this.config.useLocalLLMFallback && this.localLLMClient) {
-          console.log('🔄 Falling back to Local LLM');
+          console.error('🔄 Falling back to Local LLM');
           const llmResult = await this.localLLMClient.generateDetailedSummary(title, content);
           return llmResult;
         }
@@ -181,7 +181,7 @@ export class AIService {
         }
 
         if (attempt < (this.retryOptions.maxRetries || 3) - 1) {
-          console.log(`Retry attempt ${attempt + 1} after ${delay}ms...`);
+          console.error(`Retry attempt ${attempt + 1} after ${delay}ms...`);
           await this.sleep(delay);
           delay = Math.min(
             delay * (this.retryOptions.backoffMultiplier || 2),
@@ -207,7 +207,7 @@ export class AIService {
     }
 
     // ネットワークエラーの場合
-    if (error.message && error.message.includes('fetch')) {
+    if (error instanceof Error && error.message && error.message.includes('fetch')) {
       return true;
     }
 
@@ -225,7 +225,7 @@ export class AIService {
     }
     
     // ネットワークエラーもリトライ可能
-    if (error.message && (error.message.includes('fetch') || error.message.includes('network'))) {
+    if (error instanceof Error && error.message && (error.message.includes('fetch') || error.message.includes('network'))) {
       return true;
     }
 

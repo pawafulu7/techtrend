@@ -11,7 +11,7 @@ async function testSpeakerDeckSummary() {
     });
     
     if (!source) {
-      console.log('Speaker Deckソースが見つかりません');
+      console.error('Speaker Deckソースが見つかりません');
       return;
     }
     
@@ -24,24 +24,24 @@ async function testSpeakerDeckSummary() {
     });
     
     if (!article) {
-      console.log('要約がないSpeaker Deck記事が見つかりません');
+      console.error('要約がないSpeaker Deck記事が見つかりません');
       return;
     }
     
-    console.log('=== テスト対象記事 ===');
-    console.log(`タイトル: ${article.title}`);
-    console.log(`コンテンツ: ${article.content}`);
-    console.log(`説明: ${article.description}`);
-    console.log('');
+    console.error('=== テスト対象記事 ===');
+    console.error(`タイトル: ${article.title}`);
+    console.error(`コンテンツ: ${article.content}`);
+    console.error(`説明: ${article.description}`);
+    console.error('');
     
     const content = article.content || article.description || '';
-    console.log(`要約生成に使用するコンテンツ: "${content}"`);
-    console.log(`コンテンツ長: ${content.length}文字`);
-    console.log('');
+    console.error(`要約生成に使用するコンテンツ: "${content}"`);
+    console.error(`コンテンツ長: ${content.length}文字`);
+    console.error('');
     
     if (content.length < 50) {
-      console.log('⚠️ 警告: コンテンツが短すぎます（50文字未満）');
-      console.log('この状態では適切な要約を生成できない可能性があります。');
+      console.error('⚠️ 警告: コンテンツが短すぎます（50文字未満）');
+      console.error('この状態では適切な要約を生成できない可能性があります。');
     }
     
     // 実際のプロンプトの一部を表示
@@ -53,8 +53,8 @@ async function testSpeakerDeckSummary() {
 以下の観点で分析し、指定された形式で回答してください：
 ...（省略）`;
     
-    console.log('=== Gemini APIに送るプロンプト（一部） ===');
-    console.log(prompt.substring(0, 300) + '...');
+    console.error('=== Gemini APIに送るプロンプト（一部） ===');
+    console.error(prompt.substring(0, 300) + '...');
     
   } catch (error) {
     console.error('エラー:', error);

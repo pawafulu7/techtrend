@@ -9,7 +9,7 @@ async function checkArticleTag() {
     });
     
     if (articleTag) {
-      console.log('Article tag found:', articleTag);
+      console.error('Article tag found:', articleTag);
       
       // このタグを持つ記事数をカウント
       const count = await prisma.article.count({
@@ -22,7 +22,7 @@ async function checkArticleTag() {
         }
       });
       
-      console.log('Number of articles with article tag:', count);
+      console.error('Number of articles with article tag:', count);
       
       // 最近の記事でarticleタグを持つものを5件取得
       const recentArticles = await prisma.article.findMany({
@@ -42,14 +42,14 @@ async function checkArticleTag() {
         }
       });
       
-      console.log('\nRecent articles with article tag:');
+      console.error('\nRecent articles with article tag:');
       recentArticles.forEach(article => {
-        console.log(`- ${article.title.substring(0, 50)}... (source: ${article.sourceId})`);
+        console.error(`- ${article.title.substring(0, 50)}... (source: ${article.sourceId})`);
       });
       
       // 各ソースごとのarticleタグ使用状況
       const sources = await prisma.source.findMany();
-      console.log('\nArticle tag usage by source:');
+      console.error('\nArticle tag usage by source:');
       for (const source of sources) {
         const sourceCount = await prisma.article.count({
           where: {
@@ -62,11 +62,11 @@ async function checkArticleTag() {
           }
         });
         if (sourceCount > 0) {
-          console.log(`- ${source.name}: ${sourceCount} articles`);
+          console.error(`- ${source.name}: ${sourceCount} articles`);
         }
       }
     } else {
-      console.log('No article tag found in database');
+      console.error('No article tag found in database');
     }
   } finally {
     await prisma.$disconnect();

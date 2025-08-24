@@ -27,11 +27,11 @@ interface ProcessStats {
 }
 
 async function main() {
-  console.log('🔧 コンテンツが短い記事の詳細要約を修正します');
-  console.log(`📋 設定: dryRun=${isDryRun}, limit=${maxArticles || '無制限'}`);
+  console.error('🔧 コンテンツが短い記事の詳細要約を修正します');
+  console.error(`📋 設定: dryRun=${isDryRun}, limit=${maxArticles || '無制限'}`);
   
   if (isDryRun) {
-    console.log('⚠️  ドライランモード: 実際の更新は行いません');
+    console.error('⚠️  ドライランモード: 実際の更新は行いません');
   }
   
   const stats: ProcessStats = {
@@ -69,7 +69,7 @@ async function main() {
       return content.length < 1000;
     });
     
-    console.log(`📝 ${shortContentArticles.length}件の短いコンテンツ記事を処理します`);
+    console.error(`📝 ${shortContentArticles.length}件の短いコンテンツ記事を処理します`);
     
     const service = getContentAwareSummaryService();
     
@@ -78,18 +78,18 @@ async function main() {
       const contentLength = content.length;
       const progress = `[${index + 1}/${shortContentArticles.length}]`;
       
-      console.log(`\n${progress} 処理中: ${article.title.substring(0, 50)}...`);
-      console.log(`  コンテンツ長: ${contentLength}文字`);
+      console.error(`\n${progress} 処理中: ${article.title.substring(0, 50)}...`);
+      console.error(`  コンテンツ長: ${contentLength}文字`);
       
       if (isDryRun) {
         if (contentLength < 200) {
-          console.log('  [DRY RUN] 詳細要約を削除予定');
+          console.error('  [DRY RUN] 詳細要約を削除予定');
           stats.veryShort++;
         } else if (contentLength < 500) {
-          console.log('  [DRY RUN] 簡略版に再生成予定');
+          console.error('  [DRY RUN] 簡略版に再生成予定');
           stats.short++;
         } else {
-          console.log('  [DRY RUN] 通常再生成予定');
+          console.error('  [DRY RUN] 通常再生成予定');
           stats.medium++;
         }
         stats.processed++;
@@ -108,7 +108,7 @@ async function main() {
             }
           });
           
-          console.log('  ✅ 詳細要約を削除');
+          console.error('  ✅ 詳細要約を削除');
           stats.veryShort++;
           
         } else {
@@ -154,10 +154,10 @@ async function main() {
           }
           
           if (contentLength < 500) {
-            console.log('  ✅ 簡略版に再生成');
+            console.error('  ✅ 簡略版に再生成');
             stats.short++;
           } else {
-            console.log('  ✅ 通常再生成');
+            console.error('  ✅ 通常再生成');
             stats.medium++;
           }
         }
@@ -182,12 +182,12 @@ async function main() {
     console.error('❌ 致命的エラー:', error);
   } finally {
     // 統計表示
-    console.log('\n📊 処理統計:');
-    console.log(`  非常に短い（<200文字）: ${stats.veryShort}件`);
-    console.log(`  短い（200-500文字）: ${stats.short}件`);
-    console.log(`  中程度（500-1000文字）: ${stats.medium}件`);
-    console.log(`  処理済み: ${stats.processed}件`);
-    console.log(`  失敗: ${stats.failed}件`);
+    console.error('\n📊 処理統計:');
+    console.error(`  非常に短い（<200文字）: ${stats.veryShort}件`);
+    console.error(`  短い（200-500文字）: ${stats.short}件`);
+    console.error(`  中程度（500-1000文字）: ${stats.medium}件`);
+    console.error(`  処理済み: ${stats.processed}件`);
+    console.error(`  失敗: ${stats.failed}件`);
     
     await prisma.$disconnect();
   }

@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 const prisma = new PrismaClient();
 
 async function fixAllRemainingTechnical() {
-  console.log('🚀 技術的背景を含む詳細要約を一括再生成\n');
+  console.error('🚀 技術的背景を含む詳細要約を一括再生成\n');
   
   try {
     // まず残りの記事IDを取得
@@ -144,7 +144,7 @@ async function fixAllRemainingTechnical() {
     
     const articleIds = needsFix.filter(id => !alreadyFixed.includes(id));
     
-    console.log(`処理対象: ${articleIds.length}件\n`);
+    console.error(`処理対象: ${articleIds.length}件\n`);
     
     // ローカルLLMクライアントを初期化
     const localLLM = new LocalLLMClient({
@@ -161,7 +161,7 @@ async function fixAllRemainingTechnical() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     let successCount = 0;
     let errorCount = 0;
@@ -177,11 +177,11 @@ async function fixAllRemainingTechnical() {
       if (i % 10 === 0) {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         const rate = successCount / (elapsed / 60) || 0;
-        console.log(`\n📊 進捗: ${i}/${articleIds.length} (${Math.round(i/articleIds.length*100)}%) - 成功: ${successCount}, スキップ: ${skipCount}, エラー: ${errorCount}`);
-        console.log(`⏱️ 経過時間: ${Math.floor(elapsed/60)}分${elapsed%60}秒 - 処理速度: ${rate.toFixed(1)}件/分\n`);
+        console.error(`\n📊 進捗: ${i}/${articleIds.length} (${Math.round(i/articleIds.length*100)}%) - 成功: ${successCount}, スキップ: ${skipCount}, エラー: ${errorCount}`);
+        console.error(`⏱️ 経過時間: ${Math.floor(elapsed/60)}分${elapsed%60}秒 - 処理速度: ${rate.toFixed(1)}件/分\n`);
       }
       
-      console.log(`[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
+      console.error(`[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
       
       try {
         // 記事を取得
@@ -199,7 +199,7 @@ async function fixAllRemainingTechnical() {
         });
         
         if (!article) {
-          console.log('  ❌ 記事が見つかりません');
+          console.error('  ❌ 記事が見つかりません');
           errorCount++;
           continue;
         }
@@ -212,7 +212,7 @@ async function fixAllRemainingTechnical() {
             
             // すでに「記事の主題は」で始まっている場合はスキップ
             if (firstLine.includes('記事の主題は')) {
-              console.log('  ✅ すでに技術的背景が含まれています');
+              console.error('  ✅ すでに技術的背景が含まれています');
               skipCount++;
               continue;
             }
@@ -260,7 +260,7 @@ ${additionalContext}
           `.trim();
         }
         
-        console.log('  🔄 技術的背景を含む詳細要約を生成中...');
+        console.error('  🔄 技術的背景を含む詳細要約を生成中...');
         
         const result = await localLLM.generateDetailedSummary(
           article.title || '',
@@ -306,14 +306,14 @@ ${additionalContext}
               }
             });
             
-            console.log('  ✅ 技術的背景を含む詳細要約を生成成功');
+            console.error('  ✅ 技術的背景を含む詳細要約を生成成功');
             successCount++;
           } else {
-            console.log('  ⚠️ 技術的背景が生成されませんでした');
+            console.error('  ⚠️ 技術的背景が生成されませんでした');
             errorCount++;
           }
         } else {
-          console.log('  ⚠️ 詳細要約の生成に失敗');
+          console.error('  ⚠️ 詳細要約の生成に失敗');
           errorCount++;
         }
         
@@ -327,13 +327,13 @@ ${additionalContext}
     }
     
     const totalTime = Math.floor((Date.now() - startTime) / 1000);
-    console.log('\n' + '='.repeat(60));
-    console.log('🎉 処理完了');
-    console.log(`成功: ${successCount}件`);
-    console.log(`スキップ: ${skipCount}件`);
-    console.log(`エラー: ${errorCount}件`);
-    console.log(`総処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
-    console.log(`平均処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
+    console.error('\n' + '='.repeat(60));
+    console.error('🎉 処理完了');
+    console.error(`成功: ${successCount}件`);
+    console.error(`スキップ: ${skipCount}件`);
+    console.error(`エラー: ${errorCount}件`);
+    console.error(`総処理時間: ${Math.floor(totalTime/60)}分${totalTime%60}秒`);
+    console.error(`平均処理速度: ${(successCount / (totalTime / 60)).toFixed(1)}件/分`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

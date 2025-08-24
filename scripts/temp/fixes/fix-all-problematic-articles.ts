@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 const prisma = new PrismaClient();
 
@@ -22,8 +22,8 @@ async function fixAllProblematicArticles() {
     "cme0lebmv001ltevwql3x3q1x"
   ];
   
-  console.log('🧹 プレフィックス・Markdown記法の除去と詳細要約の修正\n');
-  console.log(`処理対象: ${articleIds.length}件\n`);
+  console.error('🧹 プレフィックス・Markdown記法の除去と詳細要約の修正\n');
+  console.error(`処理対象: ${articleIds.length}件\n`);
   
   try {
     // ローカルLLMクライアントを初期化
@@ -39,9 +39,9 @@ async function fixAllProblematicArticles() {
     const connected = await localLLM.testConnection();
     if (!connected) {
       console.error('❌ ローカルLLMサーバーに接続できません');
-      console.log('⚠️ プレフィックス・Markdown記法の除去のみ実行します\n');
+      console.error('⚠️ プレフィックス・Markdown記法の除去のみ実行します\n');
     } else {
-      console.log('✅ ローカルLLMサーバー接続成功\n');
+      console.error('✅ ローカルLLMサーバー接続成功\n');
     }
     
     let successCount = 0;
@@ -50,8 +50,8 @@ async function fixAllProblematicArticles() {
     
     for (let i = 0; i < articleIds.length; i++) {
       const articleId = articleIds[i];
-      console.log(`\n[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
-      console.log('='.repeat(60));
+      console.error(`\n[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
+      console.error('='.repeat(60));
       
       try {
         // 記事を取得
@@ -69,11 +69,11 @@ async function fixAllProblematicArticles() {
         });
         
         if (!article) {
-          console.log('❌ 記事が見つかりません');
+          console.error('❌ 記事が見つかりません');
           continue;
         }
         
-        console.log(`タイトル: ${article.title?.substring(0, 50)}...`);
+        console.error(`タイトル: ${article.title?.substring(0, 50)}...`);
         
         let needsUpdate = false;
         let cleanedSummary = article.summary || '';
@@ -90,7 +90,7 @@ async function fixAllProblematicArticles() {
             .trim();
           
           if (cleanedSummary !== originalSummary) {
-            console.log('📝 要約をクリーンアップ');
+            console.error('📝 要約をクリーンアップ');
             needsUpdate = true;
             cleanupCount++;
           }
@@ -113,7 +113,7 @@ async function fixAllProblematicArticles() {
           cleanedDetailedSummary = cleanedLines.join('\n');
           
           if (cleanedDetailedSummary !== originalDetailed) {
-            console.log('📝 詳細要約をクリーンアップ');
+            console.error('📝 詳細要約をクリーンアップ');
             needsUpdate = true;
             cleanupCount++;
           }
@@ -124,7 +124,7 @@ async function fixAllProblematicArticles() {
           cleanedDetailedSummary.split('\n').filter(l => l.trim().startsWith('・')).length : 0;
         
         if (detailLines < 6 && connected) {
-          console.log(`⚠️ 詳細要約が${detailLines}項目しかないため再生成`);
+          console.error(`⚠️ 詳細要約が${detailLines}項目しかないため再生成`);
           
           // コンテンツを準備
           let content = article.content || '';
@@ -139,7 +139,7 @@ ${article.content || 'Technical article content'}
             `.trim();
           }
           
-          console.log('🔄 詳細要約を生成中...');
+          console.error('🔄 詳細要約を生成中...');
           const startTime = Date.now();
           
           try {
@@ -149,7 +149,7 @@ ${article.content || 'Technical article content'}
             );
             
             const duration = Date.now() - startTime;
-            console.log(`生成時間: ${duration}ms`);
+            console.error(`生成時間: ${duration}ms`);
             
             // 生成結果をクリーンアップ
             cleanedSummary = result.summary
@@ -161,7 +161,7 @@ ${article.content || 'Technical article content'}
             const newDetailLines = cleanedDetailedSummary.split('\n').filter(l => l.trim().startsWith('・')).length;
             
             if (newDetailLines >= 6) {
-              console.log(`✅ 詳細要約を${newDetailLines}項目で生成成功`);
+              console.error(`✅ 詳細要約を${newDetailLines}項目で生成成功`);
               needsUpdate = true;
               regenerateCount++;
               
@@ -193,10 +193,10 @@ ${article.content || 'Technical article content'}
               successCount++;
               continue;
             } else {
-              console.log(`⚠️ 生成された詳細要約が${newDetailLines}項目のため、クリーンアップのみ実行`);
+              console.error(`⚠️ 生成された詳細要約が${newDetailLines}項目のため、クリーンアップのみ実行`);
             }
           } catch (error) {
-            console.log('⚠️ 再生成エラー。クリーンアップのみ実行');
+            console.error('⚠️ 再生成エラー。クリーンアップのみ実行');
           }
         }
         
@@ -210,10 +210,10 @@ ${article.content || 'Technical article content'}
               updatedAt: new Date()
             }
           });
-          console.log('✅ 更新完了');
+          console.error('✅ 更新完了');
           successCount++;
         } else {
-          console.log('ℹ️ 更新不要');
+          console.error('ℹ️ 更新不要');
         }
         
       } catch (error: any) {
@@ -226,11 +226,11 @@ ${article.content || 'Technical article content'}
       }
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('処理完了');
-    console.log(`更新: ${successCount}件`);
-    console.log(`クリーンアップ: ${cleanupCount}件`);
-    console.log(`詳細要約再生成: ${regenerateCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('処理完了');
+    console.error(`更新: ${successCount}件`);
+    console.error(`クリーンアップ: ${cleanupCount}件`);
+    console.error(`詳細要約再生成: ${regenerateCount}件`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

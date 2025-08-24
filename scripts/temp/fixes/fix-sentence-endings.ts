@@ -5,8 +5,8 @@ import * as fs from 'fs';
 const prisma = new PrismaClient();
 
 async function fixSentenceEndings() {
-  console.log('✂️ 文末が不完全な要約を修正します\n');
-  console.log('=' .repeat(60));
+  console.error('✂️ 文末が不完全な要約を修正します\n');
+  console.error('=' .repeat(60));
   
   try {
     // 問題のある記事IDを読み込み
@@ -15,8 +15,8 @@ async function fixSentenceEndings() {
     // 文末が不完全な記事IDを取得
     const incompleteEndingIds = problemData.details.summaryIncomplete;
     
-    console.log(`対象記事数: ${incompleteEndingIds.length}件`);
-    console.log('目標: 適切な句読点で終わる完全な文章に修正\n');
+    console.error(`対象記事数: ${incompleteEndingIds.length}件`);
+    console.error('目標: 適切な句読点で終わる完全な文章に修正\n');
     
     // 処理結果の記録
     let successCount = 0;
@@ -25,8 +25,8 @@ async function fixSentenceEndings() {
     
     for (let i = 0; i < incompleteEndingIds.length; i++) {
       const articleId = incompleteEndingIds[i];
-      console.log(`\n[${i + 1}/${incompleteEndingIds.length}] 処理中: ${articleId}`);
-      console.log('-'.repeat(40));
+      console.error(`\n[${i + 1}/${incompleteEndingIds.length}] 処理中: ${articleId}`);
+      console.error('-'.repeat(40));
       
       try {
         // 記事を取得
@@ -36,21 +36,21 @@ async function fixSentenceEndings() {
         });
         
         if (!article || !article.summary) {
-          console.log(`  ⚠️ 記事または要約が見つかりません`);
+          console.error(`  ⚠️ 記事または要約が見つかりません`);
           skipCount++;
           continue;
         }
         
-        console.log(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
-        console.log(`  🏷️ ソース: ${article.source?.name}`);
-        console.log(`  📝 現在の要約: ${article.summary}`);
-        console.log(`  📏 文字数: ${article.summary.length}文字`);
+        console.error(`  📄 タイトル: ${article.title?.substring(0, 50)}...`);
+        console.error(`  🏷️ ソース: ${article.source?.name}`);
+        console.error(`  📝 現在の要約: ${article.summary}`);
+        console.error(`  📏 文字数: ${article.summary.length}文字`);
         
         // 文末を修正
         const fixedSummary = fixSentenceEnding(article.summary);
         
         if (fixedSummary === article.summary) {
-          console.log(`  ℹ️ 修正不要（既に適切な文末）`);
+          console.error(`  ℹ️ 修正不要（既に適切な文末）`);
           skipCount++;
           results.push({
             id: articleId,
@@ -62,8 +62,8 @@ async function fixSentenceEndings() {
           continue;
         }
         
-        console.log(`  ✅ 修正後: ${fixedSummary}`);
-        console.log(`  📏 文字数: ${fixedSummary.length}文字`);
+        console.error(`  ✅ 修正後: ${fixedSummary}`);
+        console.error(`  📏 文字数: ${fixedSummary.length}文字`);
         
         // データベースを更新
         await prisma.article.update({
@@ -94,11 +94,11 @@ async function fixSentenceEndings() {
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 処理結果サマリー\n');
-    console.log(`✅ 修正成功: ${successCount}件`);
-    console.log(`⏭️ スキップ: ${skipCount}件`);
-    console.log(`📈 処理率: ${((successCount + skipCount) / incompleteEndingIds.length * 100).toFixed(1)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 処理結果サマリー\n');
+    console.error(`✅ 修正成功: ${successCount}件`);
+    console.error(`⏭️ スキップ: ${skipCount}件`);
+    console.error(`📈 処理率: ${((successCount + skipCount) / incompleteEndingIds.length * 100).toFixed(1)}%`);
     
     // 結果をファイルに保存
     const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
@@ -111,7 +111,7 @@ async function fixSentenceEndings() {
       results
     }, null, 2));
     
-    console.log(`\n📁 詳細な結果を ${resultFile} に保存しました`);
+    console.error(`\n📁 詳細な結果を ${resultFile} に保存しました`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

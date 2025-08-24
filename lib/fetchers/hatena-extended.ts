@@ -152,14 +152,14 @@ export class HatenaExtendedFetcher extends BaseFetcher {
             if (this.isQiitaArticle(item.link)) {
               // コンテンツが削除メッセージの場合
               if (!this.validateContent(content)) {
-                console.log(`[はてなブックマーク] Qiita記事の削除メッセージを検出、スキップ: ${item.link}`);
+                console.error(`[はてなブックマーク] Qiita記事の削除メッセージを検出、スキップ: ${item.link}`);
                 // 実際のコンテンツを取得
                 const qiitaContent = await this.fetchQiitaContent(item.link);
                 if (qiitaContent) {
                   content = qiitaContent;
                 } else {
                   // コンテンツが取得できない場合はスキップ
-                  console.log(`[はてなブックマーク] Qiita記事のコンテンツ取得失敗、スキップ: ${item.link}`);
+                  console.error(`[はてなブックマーク] Qiita記事のコンテンツ取得失敗、スキップ: ${item.link}`);
                   continue;
                 }
               }
@@ -170,13 +170,13 @@ export class HatenaExtendedFetcher extends BaseFetcher {
               const enricher = enricherFactory.getEnricher(item.link);
               if (enricher) {
                 try {
-                  console.log(`[はてなブックマーク] Enriching content for: ${item.title} (current: ${content.length} chars)`);
+                  console.error(`[はてなブックマーク] Enriching content for: ${item.title} (current: ${content.length} chars)`);
                   const enrichedData = await enricher.enrich(item.link);
                   
                   if (enrichedData && enrichedData.content) {
                     // エンリッチメントが成功し、より長いコンテンツが取得できた場合
                     if (enrichedData.content.length > content.length) {
-                      console.log(`[はてなブックマーク] Content enriched: ${content.length} -> ${enrichedData.content.length} chars`);
+                      console.error(`[はてなブックマーク] Content enriched: ${content.length} -> ${enrichedData.content.length} chars`);
                       content = enrichedData.content;
                       thumbnail = enrichedData.thumbnail || undefined;
                     }

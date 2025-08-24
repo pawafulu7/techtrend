@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { cleanSummary, cleanDetailedSummary } from '../lib/utils/summary-cleaner';
+import { cleanSummary, cleanDetailedSummary } from '../../lib/utils/summary-cleaner';
 
 const prisma = new PrismaClient();
 
 async function fixOtherIssues() {
-  console.log('🔧 その他の問題（不完全な文、短すぎる要約等）を修正\n');
+  console.error('🔧 その他の問題（不完全な文、短すぎる要約等）を修正\n');
   
   try {
     // 問題のある記事を取得
@@ -162,7 +162,7 @@ async function fixOtherIssues() {
           });
           
           if (fixedCount % 10 === 0) {
-            console.log(`✅ ${fixedCount}件修正完了`);
+            console.error(`✅ ${fixedCount}件修正完了`);
           }
         } catch (error) {
           console.error(`❌ 更新エラー (${article.id}):`, error);
@@ -171,18 +171,18 @@ async function fixOtherIssues() {
     }
     
     // 結果表示
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 修正完了サマリー:');
-    console.log(`✅ 修正された記事: ${fixedCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 修正完了サマリー:');
+    console.error(`✅ 修正された記事: ${fixedCount}件`);
     
     if (problems.length > 0) {
-      console.log('\n修正例（最初の5件）:');
+      console.error('\n修正例（最初の5件）:');
       for (let i = 0; i < Math.min(5, problems.length); i++) {
         const p = problems[i];
-        console.log(`\n${i + 1}. ${p.title}...`);
-        console.log(`   問題: ${p.problems.join(', ')}`);
-        console.log(`   修正前: "${p.before.substring(0, 60)}..."`);
-        console.log(`   修正後: "${p.after.substring(0, 60)}..."`);
+        console.error(`\n${i + 1}. ${p.title}...`);
+        console.error(`   問題: ${p.problems.join(', ')}`);
+        console.error(`   修正前: "${p.before.substring(0, 60)}..."`);
+        console.error(`   修正後: "${p.after.substring(0, 60)}..."`);
       }
     }
     

@@ -175,7 +175,7 @@ function parseSummaryAndTags(responseText: string): SummaryAndTags {
  * 低品質な要約を持つ記事を検出（改良版）
  */
 async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
-  console.log('\n🔍 低品質な要約を検出中...');
+  console.error('\n🔍 低品質な要約を検出中...');
   
   // 要約がある全記事を取得
   const articles = await prisma.article.findMany({
@@ -191,7 +191,7 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
     take: limit || undefined
   }) as ArticleWithSource[];
   
-  console.log(`   検査対象記事数: ${articles.length}件`);
+  console.error(`   検査対象記事数: ${articles.length}件`);
   
   const lowQualityArticles: LowQualityArticle[] = [];
   const scoreDistribution = {
@@ -228,14 +228,14 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   }
   
   // 検出結果サマリー
-  console.log('\n📊 品質分布:');
-  console.log(`   優秀 (70+):     ${scoreDistribution.excellent}件 (${Math.round(scoreDistribution.excellent / articles.length * 100)}%)`);
-  console.log(`   良好 (60-69):   ${scoreDistribution.good}件 (${Math.round(scoreDistribution.good / articles.length * 100)}%)`);
-  console.log(`   許容 (50-59):   ${scoreDistribution.acceptable}件 (${Math.round(scoreDistribution.acceptable / articles.length * 100)}%)`);
-  console.log(`   要改善 (40-49): ${scoreDistribution.poor}件 (${Math.round(scoreDistribution.poor / articles.length * 100)}%)`);
-  console.log(`   不良 (<40):     ${scoreDistribution.veryPoor}件 (${Math.round(scoreDistribution.veryPoor / articles.length * 100)}%)`);
+  console.error('\n📊 品質分布:');
+  console.error(`   優秀 (70+):     ${scoreDistribution.excellent}件 (${Math.round(scoreDistribution.excellent / articles.length * 100)}%)`);
+  console.error(`   良好 (60-69):   ${scoreDistribution.good}件 (${Math.round(scoreDistribution.good / articles.length * 100)}%)`);
+  console.error(`   許容 (50-59):   ${scoreDistribution.acceptable}件 (${Math.round(scoreDistribution.acceptable / articles.length * 100)}%)`);
+  console.error(`   要改善 (40-49): ${scoreDistribution.poor}件 (${Math.round(scoreDistribution.poor / articles.length * 100)}%)`);
+  console.error(`   不良 (<40):     ${scoreDistribution.veryPoor}件 (${Math.round(scoreDistribution.veryPoor / articles.length * 100)}%)`);
   
-  console.log(`\n✅ 極低品質記事検出完了: ${lowQualityArticles.length}件`);
+  console.error(`\n✅ 極低品質記事検出完了: ${lowQualityArticles.length}件`);
   
   return lowQualityArticles;
 }
@@ -244,10 +244,10 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
  * 要約を段階的な品質目標で再生成
  */
 async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArticle[]): Promise<RegenerationResult[]> {
-  console.log('\n♻️  要約の再生成を開始（段階的品質目標）...');
+  console.error('\n♻️  要約の再生成を開始（段階的品質目標）...');
   
   if (isDryRun) {
-    console.log('   ⚠️  DRY-RUNモード: 実際の更新は行いません');
+    console.error('   ⚠️  DRY-RUNモード: 実際の更新は行いません');
   }
   
   const results: RegenerationResult[] = [];
@@ -256,9 +256,9 @@ async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArt
   for (let i = 0; i < lowQualityArticles.length; i++) {
     const { article, score: beforeScore, issues } = lowQualityArticles[i];
     
-    console.log(`\n[${i + 1}/${lowQualityArticles.length}] 処理中: ${article.title.substring(0, 50)}...`);
-    console.log(`   現在のスコア: ${beforeScore}点`);
-    console.log(`   主な問題: ${issues.slice(0, 3).map(i => i.type).join(', ')}`);
+    console.error(`\n[${i + 1}/${lowQualityArticles.length}] 処理中: ${article.title.substring(0, 50)}...`);
+    console.error(`   現在のスコア: ${beforeScore}点`);
+    console.error(`   主な問題: ${issues.slice(0, 3).map(i => i.type).join(', ')}`);
     
     const result: RegenerationResult = {
       id: article.id,
@@ -272,11 +272,11 @@ async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArt
     };
     
     try {
-      const content = article.content || article.description || '';
+      const content = article.content || '';
       
       // コンテンツ長チェック（緩和）
       if (content.length < 200) {
-        console.log('   ⚠️  コンテンツが非常に短い（200文字未満）');
+        console.error('   ⚠️  コンテンツが非常に短い（200文字未満）');
         // それでも試みる
       }
       
@@ -289,12 +289,12 @@ async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArt
       for (const target of QUALITY_TARGETS) {
         if (achieved) break;
         
-        console.log(`   目標品質: ${target.label} (${target.threshold}点以上)`);
+        console.error(`   目標品質: ${target.label} (${target.threshold}点以上)`);
         result.targetScore = target.threshold;
         
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
           result.attempts++;
-          console.log(`   再生成試行 ${attempt}/${MAX_ATTEMPTS}...`);
+          console.error(`   再生成試行 ${attempt}/${MAX_ATTEMPTS}...`);
           
           try {
             // 要約とタグを生成
@@ -320,12 +320,12 @@ async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArt
             }
             
             if (currentScore >= target.threshold) {
-              console.log(`   ✅ 目標達成! スコア: ${currentScore}点 (${target.label})`);
+              console.error(`   ✅ 目標達成! スコア: ${currentScore}点 (${target.label})`);
               result.finalQuality = target.label as any;
               achieved = true;
               break;
             } else {
-              console.log(`   未達成: ${currentScore}点 (目標: ${target.threshold}点)`);
+              console.error(`   未達成: ${currentScore}点 (目標: ${target.threshold}点)`);
               if (attempt < MAX_ATTEMPTS) {
                 await sleep(2000);
               }
@@ -341,7 +341,7 @@ async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArt
         
         if (!achieved && bestScore > beforeScore) {
           // 目標には届かなかったが、改善はされた
-          console.log(`   ⚠️  部分的改善: ${beforeScore} → ${bestScore}点`);
+          console.error(`   ⚠️  部分的改善: ${beforeScore} → ${bestScore}点`);
         }
       }
       
@@ -382,10 +382,10 @@ async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArt
         } else {
           result.status = 'partial';
         }
-        console.log(`   💫 改善完了: ${beforeScore} → ${bestScore}点`);
+        console.error(`   💫 改善完了: ${beforeScore} → ${bestScore}点`);
       } else if (bestScore === beforeScore) {
         result.status = 'failed';
-        console.log(`   ❌ 改善できませんでした`);
+        console.error(`   ❌ 改善できませんでした`);
       }
       
     } catch (error) {
@@ -405,11 +405,11 @@ async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArt
     const processed = i + 1;
     const successCount = results.filter(r => r.status === 'success' || r.status === 'partial').length;
     const percentage = Math.round(processed / lowQualityArticles.length * 100);
-    console.log(`\n📈 進捗: ${processed}/${lowQualityArticles.length} (${percentage}%) | 改善: ${successCount}件`);
+    console.error(`\n📈 進捗: ${processed}/${lowQualityArticles.length} (${percentage}%) | 改善: ${successCount}件`);
   }
   
   const processingTime = Math.round((Date.now() - startTime) / 1000);
-  console.log(`\n✅ 再生成処理完了（処理時間: ${processingTime}秒）`);
+  console.error(`\n✅ 再生成処理完了（処理時間: ${processingTime}秒）`);
   
   return results;
 }
@@ -418,20 +418,20 @@ async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArt
  * レポートを出力（改良版）
  */
 function printDetailedReport(results: RegenerationResult[]) {
-  console.log('\n' + '='.repeat(80));
-  console.log('📊 再生成結果レポート（段階的品質目標）');
-  console.log('='.repeat(80));
+  console.error('\n' + '='.repeat(80));
+  console.error('📊 再生成結果レポート（段階的品質目標）');
+  console.error('='.repeat(80));
   
   const successResults = results.filter(r => r.status === 'success');
   const partialResults = results.filter(r => r.status === 'partial');
   const failedResults = results.filter(r => r.status === 'failed');
   const skippedResults = results.filter(r => r.status === 'skipped');
   
-  console.log('\n【処理結果サマリー】');
-  console.log(`  完全成功（50点以上）: ${successResults.length}件`);
-  console.log(`  部分改善（改善あり）: ${partialResults.length}件`);
-  console.log(`  失敗（改善なし）:     ${failedResults.length}件`);
-  console.log(`  スキップ:             ${skippedResults.length}件`);
+  console.error('\n【処理結果サマリー】');
+  console.error(`  完全成功（50点以上）: ${successResults.length}件`);
+  console.error(`  部分改善（改善あり）: ${partialResults.length}件`);
+  console.error(`  失敗（改善なし）:     ${failedResults.length}件`);
+  console.error(`  スキップ:             ${skippedResults.length}件`);
   
   // 品質別の達成状況
   const qualityAchievement = {
@@ -441,11 +441,11 @@ function printDetailedReport(results: RegenerationResult[]) {
     poor: results.filter(r => r.finalQuality === 'poor').length
   };
   
-  console.log('\n【最終品質分布】');
-  console.log(`  優秀 (70+):   ${qualityAchievement.excellent}件`);
-  console.log(`  良好 (60-69): ${qualityAchievement.good}件`);
-  console.log(`  許容 (50-59): ${qualityAchievement.acceptable}件`);
-  console.log(`  要改善 (<50): ${qualityAchievement.poor}件`);
+  console.error('\n【最終品質分布】');
+  console.error(`  優秀 (70+):   ${qualityAchievement.excellent}件`);
+  console.error(`  良好 (60-69): ${qualityAchievement.good}件`);
+  console.error(`  許容 (50-59): ${qualityAchievement.acceptable}件`);
+  console.error(`  要改善 (<50): ${qualityAchievement.poor}件`);
   
   // 改善度の統計
   const improvements = results
@@ -456,10 +456,10 @@ function printDetailedReport(results: RegenerationResult[]) {
     const avgImprovement = Math.round(improvements.reduce((a, b) => a + b, 0) / improvements.length);
     const maxImprovement = Math.max(...improvements);
     
-    console.log('\n【改善統計】');
-    console.log(`  改善された記事数: ${improvements.length}件`);
-    console.log(`  平均改善度: +${avgImprovement}点`);
-    console.log(`  最大改善度: +${maxImprovement}点`);
+    console.error('\n【改善統計】');
+    console.error(`  改善された記事数: ${improvements.length}件`);
+    console.error(`  平均改善度: +${avgImprovement}点`);
+    console.error(`  最大改善度: +${maxImprovement}点`);
   }
   
   // 成功事例トップ5
@@ -469,15 +469,15 @@ function printDetailedReport(results: RegenerationResult[]) {
     .slice(0, 5);
   
   if (topImprovements.length > 0) {
-    console.log('\n【改善トップ5】');
+    console.error('\n【改善トップ5】');
     topImprovements.forEach((r, i) => {
       const improvement = r.afterScore - r.beforeScore;
-      console.log(`  ${i + 1}. ${r.title.substring(0, 40)}...`);
-      console.log(`     ${r.beforeScore} → ${r.afterScore}点 (+${improvement}点, ${r.finalQuality})`);
+      console.error(`  ${i + 1}. ${r.title.substring(0, 40)}...`);
+      console.error(`     ${r.beforeScore} → ${r.afterScore}点 (+${improvement}点, ${r.finalQuality})`);
     });
   }
   
-  console.log('\n' + '='.repeat(80));
+  console.error('\n' + '='.repeat(80));
 }
 
 /**
@@ -491,8 +491,8 @@ function sleep(ms: number): Promise<void> {
  * メイン処理
  */
 async function main() {
-  console.log('🚀 低品質要約の段階的再生成スクリプト');
-  console.log('='.repeat(80));
+  console.error('🚀 低品質要約の段階的再生成スクリプト');
+  console.error('='.repeat(80));
   
   const startTime = Date.now();
   
@@ -504,25 +504,25 @@ async function main() {
     }
     
     // 設定表示
-    console.log('\n⚙️  設定:');
-    console.log(`   最低品質閾値: 40点（極低品質のみ対象）`);
-    console.log(`   処理上限: ${limit ? `${limit}件` : '無制限'}`);
-    console.log(`   実行モード: ${isDryRun ? 'DRY-RUN' : '本番実行'}`);
-    console.log(`   品質目標: 段階的（70→60→50→40）`);
+    console.error('\n⚙️  設定:');
+    console.error(`   最低品質閾値: 40点（極低品質のみ対象）`);
+    console.error(`   処理上限: ${limit ? `${limit}件` : '無制限'}`);
+    console.error(`   実行モード: ${isDryRun ? 'DRY-RUN' : '本番実行'}`);
+    console.error(`   品質目標: 段階的（70→60→50→40）`);
     
     // 低品質記事の検出
     const lowQualityArticles = await detectLowQualityArticles();
     
     if (lowQualityArticles.length === 0) {
-      console.log('\n✨ 極低品質な要約（40点未満）は見つかりませんでした');
+      console.error('\n✨ 極低品質な要約（40点未満）は見つかりませんでした');
       await prisma.$disconnect();
       return;
     }
     
     // 確認プロンプト
     if (!isDryRun && lowQualityArticles.length > 5) {
-      console.log(`\n⚠️  ${lowQualityArticles.length}件の極低品質記事を再生成します`);
-      console.log('   処理を続行する場合は5秒お待ちください...');
+      console.error(`\n⚠️  ${lowQualityArticles.length}件の極低品質記事を再生成します`);
+      console.error('   処理を続行する場合は5秒お待ちください...');
       await sleep(5000);
     }
     
@@ -535,14 +535,14 @@ async function main() {
     // キャッシュ無効化
     const improvedCount = results.filter(r => r.afterScore > r.beforeScore).length;
     if (!isDryRun && improvedCount > 0) {
-      console.log('\n🔄 キャッシュを無効化中...');
+      console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
-      console.log('✅ キャッシュ無効化完了');
+      console.error('✅ キャッシュ無効化完了');
     }
     
     const totalTime = Math.round((Date.now() - startTime) / 1000);
-    console.log(`\n⏱️  総処理時間: ${totalTime}秒`);
-    console.log('\n✨ 処理が完了しました');
+    console.error(`\n⏱️  総処理時間: ${totalTime}秒`);
+    console.error('\n✨ 処理が完了しました');
     
   } catch (error) {
     console.error('\n❌ エラーが発生しました:', error);

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
 
 const prisma = new PrismaClient();
 
@@ -29,8 +29,8 @@ async function fixMissingTechnicalBackground() {
     "cmdy3i8b70011te0y446v9z6t"
   ];
   
-  console.log('🔧 技術的背景を含む詳細要約を再生成\n');
-  console.log(`処理対象: ${articleIds.length}件\n`);
+  console.error('🔧 技術的背景を含む詳細要約を再生成\n');
+  console.error(`処理対象: ${articleIds.length}件\n`);
   
   try {
     // ローカルLLMクライアントを初期化
@@ -48,15 +48,15 @@ async function fixMissingTechnicalBackground() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     let successCount = 0;
     let errorCount = 0;
     
     for (let i = 0; i < articleIds.length; i++) {
       const articleId = articleIds[i];
-      console.log(`\n[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
-      console.log('='.repeat(60));
+      console.error(`\n[${i + 1}/${articleIds.length}] 処理中: ${articleId}`);
+      console.error('='.repeat(60));
       
       try {
         // 記事を取得
@@ -74,24 +74,24 @@ async function fixMissingTechnicalBackground() {
         });
         
         if (!article) {
-          console.log('❌ 記事が見つかりません');
+          console.error('❌ 記事が見つかりません');
           errorCount++;
           continue;
         }
         
-        console.log(`タイトル: ${article.title?.substring(0, 50)}...`);
-        console.log(`ソース: ${article.source?.name}`);
+        console.error(`タイトル: ${article.title?.substring(0, 50)}...`);
+        console.error(`ソース: ${article.source?.name}`);
         
         // 現在の詳細要約の確認
         if (article.detailedSummary) {
           const lines = article.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
           if (lines.length > 0) {
             const firstLine = lines[0];
-            console.log(`現在の第1項目: ${firstLine.substring(0, 50)}...`);
+            console.error(`現在の第1項目: ${firstLine.substring(0, 50)}...`);
             
             // すでに「記事の主題は」で始まっている場合はスキップ
             if (firstLine.includes('記事の主題は')) {
-              console.log('✅ すでに技術的背景が含まれています');
+              console.error('✅ すでに技術的背景が含まれています');
               continue;
             }
           }
@@ -134,9 +134,9 @@ ${additionalContext}
           `.trim();
         }
         
-        console.log(`コンテンツ長: ${content.length}文字`);
+        console.error(`コンテンツ長: ${content.length}文字`);
         
-        console.log('🔄 技術的背景を含む詳細要約を生成中...');
+        console.error('🔄 技術的背景を含む詳細要約を生成中...');
         const startTime = Date.now();
         
         const result = await localLLM.generateDetailedSummary(
@@ -145,7 +145,7 @@ ${additionalContext}
         );
         
         const duration = Date.now() - startTime;
-        console.log(`生成時間: ${duration}ms`);
+        console.error(`生成時間: ${duration}ms`);
         
         // 要約をクリーンアップ
         let cleanedSummary = result.summary
@@ -157,11 +157,11 @@ ${additionalContext}
         const newLines = result.detailedSummary.split('\n').filter(l => l.trim().startsWith('・'));
         if (newLines.length > 0) {
           const firstLine = newLines[0];
-          console.log(`新しい第1項目: ${firstLine.substring(0, 50)}...`);
+          console.error(`新しい第1項目: ${firstLine.substring(0, 50)}...`);
           
           // 「記事の主題は」で始まっているか確認
           if (firstLine.includes('記事の主題は')) {
-            console.log('✅ 技術的背景を含む詳細要約を生成成功');
+            console.error('✅ 技術的背景を含む詳細要約を生成成功');
             
             // タグを準備
             const tagConnections = await Promise.all(
@@ -191,11 +191,11 @@ ${additionalContext}
             
             successCount++;
           } else {
-            console.log('⚠️ 技術的背景が生成されませんでした');
+            console.error('⚠️ 技術的背景が生成されませんでした');
             errorCount++;
           }
         } else {
-          console.log('⚠️ 詳細要約の生成に失敗');
+          console.error('⚠️ 詳細要約の生成に失敗');
           errorCount++;
         }
         
@@ -208,10 +208,10 @@ ${additionalContext}
       await new Promise(resolve => setTimeout(resolve, 3000));
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('処理完了');
-    console.log(`成功: ${successCount}件`);
-    console.log(`エラー: ${errorCount}件`);
+    console.error('\n' + '='.repeat(60));
+    console.error('処理完了');
+    console.error(`成功: ${successCount}件`);
+    console.error(`エラー: ${errorCount}件`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

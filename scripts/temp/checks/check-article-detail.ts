@@ -26,39 +26,39 @@ async function checkArticleDetail() {
     });
     
     if (!article) {
-      console.log('記事が見つかりません');
+      console.error('記事が見つかりません');
       return;
     }
     
-    console.log('📄 記事詳細');
-    console.log('='.repeat(80));
-    console.log(`ID: ${article.id}`);
-    console.log(`タイトル: ${article.title}`);
-    console.log(`URL: ${article.url}`);
-    console.log(`公開日: ${article.publishedAt?.toISOString()}`);
-    console.log(`タグ: ${article.tags.map(t => t.name).join(', ')}`);
+    console.error('📄 記事詳細');
+    console.error('='.repeat(80));
+    console.error(`ID: ${article.id}`);
+    console.error(`タイトル: ${article.title}`);
+    console.error(`URL: ${article.url}`);
+    console.error(`公開日: ${article.publishedAt?.toISOString()}`);
+    console.error(`タグ: ${article.tags.map(t => t.name).join(', ')}`);
     
-    console.log('\n📝 要約');
-    console.log('-'.repeat(80));
-    console.log(article.summary);
+    console.error('\n📝 要約');
+    console.error('-'.repeat(80));
+    console.error(article.summary);
     
-    console.log('\n📋 詳細要約（生データ）');
-    console.log('-'.repeat(80));
-    console.log(article.detailedSummary);
+    console.error('\n📋 詳細要約（生データ）');
+    console.error('-'.repeat(80));
+    console.error(article.detailedSummary);
     
-    console.log('\n📄 コンテンツ');
-    console.log('-'.repeat(80));
+    console.error('\n📄 コンテンツ');
+    console.error('-'.repeat(80));
     if (article.content) {
-      console.log(`コンテンツ長: ${article.content.length}文字`);
-      console.log('\n内容:');
-      console.log(article.content);
+      console.error(`コンテンツ長: ${article.content.length}文字`);
+      console.error('\n内容:');
+      console.error(article.content);
     } else {
-      console.log('(コンテンツなし)');
+      console.error('(コンテンツなし)');
     }
     
     // 問題の分析
-    console.log('\n🔍 問題分析');
-    console.log('-'.repeat(80));
+    console.error('\n🔍 問題分析');
+    console.error('-'.repeat(80));
     
     // 要約に含まれる問題パターンをチェック
     const issues = [];
@@ -85,10 +85,10 @@ async function checkArticleDetail() {
     }
     
     if (issues.length > 0) {
-      console.log('❌ 発見された問題:');
-      issues.forEach(issue => console.log(`  ・${issue}`));
+      console.error('❌ 発見された問題:');
+      issues.forEach(issue => console.error(`  ・${issue}`));
     } else {
-      console.log('✅ 形式的な問題は見つかりませんでした');
+      console.error('✅ 形式的な問題は見つかりませんでした');
     }
     
   } catch (error) {

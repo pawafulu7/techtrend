@@ -23,17 +23,17 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
   private rssUrl = 'https://stackoverflow.blog/feed/';
 
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
-    console.log('[Stack Overflow Blog] 記事を取得します...');
+    console.error('[Stack Overflow Blog] 記事を取得します...');
     
     try {
       const feed = await this.parser.parseURL(this.rssUrl);
       
       if (!feed.items || feed.items.length === 0) {
-        console.log('[Stack Overflow Blog] 記事が見つかりませんでした');
+        console.error('[Stack Overflow Blog] 記事が見つかりませんでした');
         return [];
       }
       
-      console.log(`[Stack Overflow Blog] ${feed.items.length}件の記事を取得しました`);
+      console.error(`[Stack Overflow Blog] ${feed.items.length}件の記事を取得しました`);
       
       const articles: CreateArticleInput[] = [];
       

@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function checkRecentSummaries() {
-  console.log('🔍 最近の記事の要約状態を確認中...\n');
+  console.error('🔍 最近の記事の要約状態を確認中...\n');
   
   try {
     // 最新の10件の記事を取得
@@ -28,7 +28,7 @@ async function checkRecentSummaries() {
       take: 20
     });
     
-    console.log(`過去24時間の記事数: ${recentArticles.length}\n`);
+    console.error(`過去24時間の記事数: ${recentArticles.length}\n`);
     
     let invalidCount = 0;
     
@@ -42,29 +42,29 @@ async function checkRecentSummaries() {
       // 問題がある記事を表示
       if (bulletPoints.length < 6 || summaryInDetailed) {
         invalidCount++;
-        console.log(`❌ 問題のある記事 #${invalidCount}`);
-        console.log(`ID: ${article.id}`);
-        console.log(`タイトル: ${article.title?.substring(0, 60)}...`);
-        console.log(`公開日: ${article.publishedAt?.toISOString()}`);
-        console.log(`項目数: ${bulletPoints.length}`);
-        console.log(`要約が詳細要約に含まれる: ${summaryInDetailed ? 'はい' : 'いいえ'}`);
+        console.error(`❌ 問題のある記事 #${invalidCount}`);
+        console.error(`ID: ${article.id}`);
+        console.error(`タイトル: ${article.title?.substring(0, 60)}...`);
+        console.error(`公開日: ${article.publishedAt?.toISOString()}`);
+        console.error(`項目数: ${bulletPoints.length}`);
+        console.error(`要約が詳細要約に含まれる: ${summaryInDetailed ? 'はい' : 'いいえ'}`);
         
         if (article.summary) {
-          console.log(`要約: ${article.summary.substring(0, 80)}...`);
+          console.error(`要約: ${article.summary.substring(0, 80)}...`);
         }
         
         if (bulletPoints.length > 0) {
-          console.log(`詳細要約の最初の項目: ${bulletPoints[0].substring(0, 80)}...`);
+          console.error(`詳細要約の最初の項目: ${bulletPoints[0].substring(0, 80)}...`);
         }
         
-        console.log('-'.repeat(80));
+        console.error('-'.repeat(80));
       }
     }
     
     if (invalidCount === 0) {
-      console.log('✅ 過去24時間の記事に問題は見つかりませんでした');
+      console.error('✅ 過去24時間の記事に問題は見つかりませんでした');
     } else {
-      console.log(`\n⚠️ 問題のある記事: ${invalidCount}件`);
+      console.error(`\n⚠️ 問題のある記事: ${invalidCount}件`);
     }
     
   } catch (error) {

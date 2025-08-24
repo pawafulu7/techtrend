@@ -63,7 +63,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       for (const speaker of techSpeakers) {
         try {
           const feedUrl = `https://speakerdeck.com/${speaker}.rss`;
-          console.log(`📥 Speaker Deck: ${speaker} のフィードを取得中...`);
+          console.error(`📥 Speaker Deck: ${speaker} のフィードを取得中...`);
           
           const feed = await this.parser.parseURL(feedUrl);
           
@@ -93,7 +93,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       }
     }
 
-    console.log(`✅ Speaker Deck: ${articles.length}件のプレゼンテーションを取得`);
+    console.error(`✅ Speaker Deck: ${articles.length}件のプレゼンテーションを取得`);
     return { articles, errors };
   }
 
@@ -108,15 +108,15 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     
-    console.log('📥 Speaker Deck: 複数カテゴリーから取得中...');
-    console.log(`  - 最小views数: ${speakerDeckConfig.minViews}`);
-    console.log(`  - 対象期間: ${oneYearAgo.toISOString().split('T')[0]} 以降`);
-    console.log(`  - 最大取得件数: ${speakerDeckConfig.maxArticles}`);
-    console.log(`  - カテゴリー数: ${speakerDeckConfig.categories.filter(c => c.enabled).length}`);
+    console.error('📥 Speaker Deck: 複数カテゴリーから取得中...');
+    console.error(`  - 最小views数: ${speakerDeckConfig.minViews}`);
+    console.error(`  - 対象期間: ${oneYearAgo.toISOString().split('T')[0]} 以降`);
+    console.error(`  - 最大取得件数: ${speakerDeckConfig.maxArticles}`);
+    console.error(`  - カテゴリー数: ${speakerDeckConfig.categories.filter(c => c.enabled).length}`);
 
     // Step 1: 一覧ページから候補を収集
     const candidates = await this.collectCandidates();
-    console.log(`  📋 候補数: ${candidates.length}件（views数フィルタリング後）`);
+    console.error(`  📋 候補数: ${candidates.length}件（views数フィルタリング後）`);
 
     if (!speakerDeckConfig.enableDetailFetch) {
       // 詳細取得を無効化している場合は、現在日付で記事を作成
@@ -135,7 +135,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     }
 
     // Step 2: 個別ページから詳細情報を取得（並列処理）
-    console.log('  📖 個別ページから詳細情報を取得中...');
+    console.error('  📖 個別ページから詳細情報を取得中...');
     const chunks = this.chunkArray(candidates, speakerDeckConfig.parallelLimit);
     
     for (const chunk of chunks) {
@@ -158,7 +158,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
           }
           
           if (speakerDeckConfig.debug) {
-            console.log(`  ⏭️ スキップ: ${candidate.title} (${details.publishedAt.toISOString().split('T')[0]})`);
+            console.error(`  ⏭️ スキップ: ${candidate.title} (${details.publishedAt.toISOString().split('T')[0]})`);
           }
         } catch (error) {
           console.error(`  ❌ 詳細取得失敗: ${candidate.url}`, error);
@@ -167,10 +167,10 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       });
 
       const results = await Promise.all(promises);
-      const validArticles = results.filter((a): a is CreateArticleInput => a !== null);
+      const validArticles = results.filter((a: CreateArticleInput | null): a is CreateArticleInput => a !== null);
       articles.push(...validArticles);
       
-      console.log(`  ✅ 処理済み: ${articles.length}/${speakerDeckConfig.maxArticles}`);
+      console.error(`  ✅ 処理済み: ${articles.length}/${speakerDeckConfig.maxArticles}`);
       
       if (articles.length >= speakerDeckConfig.maxArticles) {
         break;
@@ -181,7 +181,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     }
 
     const finalArticles = articles.slice(0, speakerDeckConfig.maxArticles);
-    console.log(`✅ Speaker Deck: ${finalArticles.length}件の高品質プレゼンテーションを取得`);
+    console.error(`✅ Speaker Deck: ${finalArticles.length}件の高品質プレゼンテーションを取得`);
     
     return finalArticles;
   }
@@ -193,10 +193,10 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     const allCandidates = new Map<string, PresentationCandidate>();
     const enabledCategories = speakerDeckConfig.categories.filter(c => c.enabled);
     
-    console.log(`Speaker Deck: ${enabledCategories.length}カテゴリーから記事を取得開始`);
+    console.error(`Speaker Deck: ${enabledCategories.length}カテゴリーから記事を取得開始`);
     
     for (const category of enabledCategories) {
-      console.log(`  カテゴリー: ${category.name}を取得中...`);
+      console.error(`  カテゴリー: ${category.name}を取得中...`);
       const categoryCandidates = await this.collectCandidatesFromCategory(category);
       
       // URL重複を排除しながらMapに追加
@@ -207,18 +207,18 @@ export class SpeakerDeckFetcher extends BaseFetcher {
             category: category.name  // カテゴリー情報を追加
           });
         } else if (speakerDeckConfig.debug) {
-          console.log(`    重複記事をスキップ: ${candidate.title}`);
+          console.error(`    重複記事をスキップ: ${candidate.title}`);
         }
       }
       
-      console.log(`    ${category.name}: ${categoryCandidates.length}件の候補を取得`);
+      console.error(`    ${category.name}: ${categoryCandidates.length}件の候補を取得`);
     }
     
     // Views数で降順ソート
     const candidates = Array.from(allCandidates.values());
     candidates.sort((a, b) => b.views - a.views);
     
-    console.log(`  合計: ${candidates.length}件の候補（重複除外後）`);
+    console.error(`  合計: ${candidates.length}件の候補（重複除外後）`);
     
     return candidates;
   }
@@ -238,7 +238,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       const listUrl = `https://speakerdeck.com/c/${category.path}?lang=ja&page=${page}`;
       
       if (speakerDeckConfig.debug) {
-        console.log(`    ページ${page}を取得中...`);
+        console.error(`    ページ${page}を取得中...`);
       }
 
       try {
@@ -284,7 +284,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
         });
 
         if (speakerDeckConfig.debug) {
-          console.log(`      → ${foundOnPage}件の候補を発見`);
+          console.error(`      → ${foundOnPage}件の候補を発見`);
         }
 
         // 候補が見つからなくなったら終了
@@ -377,7 +377,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       if (retries < speakerDeckConfig.retryLimit) {
         const waitTime = speakerDeckConfig.requestDelay * (retries + 1);
         if (speakerDeckConfig.debug) {
-          console.log(`  🔄 リトライ ${retries + 1}/${speakerDeckConfig.retryLimit} (${waitTime}ms待機)`);
+          console.error(`  🔄 リトライ ${retries + 1}/${speakerDeckConfig.retryLimit} (${waitTime}ms待機)`);
         }
         await this.delay(waitTime);
         return this.fetchWithRetry(url, retries + 1);

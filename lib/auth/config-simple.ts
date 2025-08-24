@@ -1,4 +1,4 @@
-import { NextAuthOptions } from 'next-auth';
+import type { AuthOptions } from 'next-auth';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
@@ -6,7 +6,7 @@ import GitHubProvider from 'next-auth/providers/github';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 
-export const authOptions: NextAuthOptions = {
+export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   
   providers: [
@@ -24,7 +24,7 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: {
-            email: credentials.email,
+            email: credentials.email as string,
           },
         });
 
@@ -112,19 +112,19 @@ export const authOptions: NextAuthOptions = {
 
   events: {
     async signIn({ user, account, profile }) {
-      console.log(`User ${user.email} signed in via ${account?.provider || 'credentials'}`);
+      console.error(`User ${user.email} signed in via ${account?.provider || 'credentials'}`);
     },
     async signOut({ session }) {
-      console.log('User signed out');
+      console.error('User signed out');
     },
     async createUser({ user }) {
-      console.log(`New user created: ${user.email}`);
+      console.error(`New user created: ${user.email}`);
     },
     async updateUser({ user }) {
-      console.log(`User updated: ${user.email}`);
+      console.error(`User updated: ${user.email}`);
     },
     async linkAccount({ user, account }) {
-      console.log(`Account linked: ${user.email} with ${account.provider}`);
+      console.error(`Account linked: ${user.email} with ${account.provider}`);
     },
   },
 

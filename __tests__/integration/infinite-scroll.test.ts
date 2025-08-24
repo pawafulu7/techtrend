@@ -5,11 +5,11 @@ describe('/api/articles - Infinite Scroll Pagination', () => {
   
   beforeAll(() => {
     // Docker環境が起動していることを前提
-    console.log('Testing Infinite Scroll API endpoints...');
+    console.error('Testing Infinite Scroll API endpoints...');
   });
 
   afterAll(() => {
-    console.log('Infinite Scroll API tests completed');
+    console.error('Infinite Scroll API tests completed');
   });
 
   it('should return first page with default limit', async () => {

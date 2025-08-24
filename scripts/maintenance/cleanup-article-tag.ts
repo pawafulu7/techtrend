@@ -12,11 +12,11 @@ async function cleanupArticleTag() {
       });
       
       if (!articleTag) {
-        console.log('❌ articleタグが見つかりません');
+        console.error('❌ articleタグが見つかりません');
         return;
       }
       
-      console.log(`📋 articleタグ情報: ID=${articleTag.id}`);
+      console.error(`📋 articleタグ情報: ID=${articleTag.id}`);
       
       // このタグを持つ記事数を確認
       const articleCount = await tx.article.count({
@@ -29,7 +29,7 @@ async function cleanupArticleTag() {
         }
       });
       
-      console.log(`📊 影響を受ける記事数: ${articleCount}件`);
+      console.error(`📊 影響を受ける記事数: ${articleCount}件`);
       
       // 関連を削除（Prismaの多対多リレーション）
       const deletedRelations = await tx.$executeRaw`
@@ -37,17 +37,17 @@ async function cleanupArticleTag() {
         WHERE B = ${articleTag.id}
       `;
       
-      console.log(`✅ ${deletedRelations}件の関連を削除しました`);
+      console.error(`✅ ${deletedRelations}件の関連を削除しました`);
       
       // タグ自体を削除
       await tx.tag.delete({
         where: { id: articleTag.id }
       });
       
-      console.log('✅ articleタグを削除しました');
+      console.error('✅ articleタグを削除しました');
     });
     
-    console.log('🎉 クリーンアップ完了！');
+    console.error('🎉 クリーンアップ完了！');
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
   } finally {

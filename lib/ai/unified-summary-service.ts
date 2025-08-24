@@ -109,13 +109,13 @@ export class UnifiedSummaryService {
         }
         
         // レスポンスのパース
-        console.log('[UnifiedSummaryService] レスポンス受信:', responseText.length, '文字');
+        console.error('[UnifiedSummaryService] レスポンス受信:', responseText.length, '文字');
         const parsed = parseUnifiedResponse(responseText);
-        console.log('[UnifiedSummaryService] パース結果 - 詳細要約:', parsed.detailedSummary.substring(0, 100));
+        console.error('[UnifiedSummaryService] パース結果 - 詳細要約:', parsed.detailedSummary.substring(0, 100));
         
         // 検証
         if (!validateParsedResult(parsed)) {
-          console.log('[UnifiedSummaryService] 検証失敗 - 詳細要約長:', parsed.detailedSummary.length);
+          console.error('[UnifiedSummaryService] 検証失敗 - 詳細要約長:', parsed.detailedSummary.length);
           throw new Error('Invalid parsed result');
         }
         
@@ -131,7 +131,7 @@ export class UnifiedSummaryService {
         
         // 品質スコアが閾値以下の場合、再試行
         if (qualityScore < opts.minQualityScore! && attempt < opts.maxRetries!) {
-          console.log(`Quality score ${qualityScore} is below threshold ${opts.minQualityScore}. Retrying...`);
+          console.error(`Quality score ${qualityScore} is below threshold ${opts.minQualityScore}. Retrying...`);
           await this.delay(opts.retryDelay!);
           continue;
         }
@@ -202,7 +202,7 @@ export class UnifiedSummaryService {
     if (sourceInfo?.url?.toLowerCase().endsWith('.pdf') || 
         content.includes('%PDF-') || 
         content.includes('%%EOF')) {
-      console.log(`[UnifiedSummaryService] PDFファイルを検出、要約生成をスキップ: ${sourceInfo?.url}`);
+      console.error(`[UnifiedSummaryService] PDFファイルを検出、要約生成をスキップ: ${sourceInfo?.url}`);
       // PDFは要約生成不可
       return '__SKIP_SUMMARY_GENERATION__';
     }
@@ -254,15 +254,23 @@ export class UnifiedSummaryService {
       throw new Error(`API request failed: ${response.status} - ${error}`);
     }
 
-    const data = await response.json() as unknown;
-    return data.candidates[0].content.parts[0].text.trim();
+    const data = await response.json() as {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{
+            text?: string;
+          }>;
+        };
+      }>;
+    };
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
   }
 
   /**
    * Rate limitエラーかチェック
    */
   private isRateLimitError(error: unknown): boolean {
-    const message = error?.message || String(error);
+    const message = error instanceof Error ? error.message : String(error);
     return message.includes('429') || 
            message.includes('rate') || 
            message.includes('quota') ||

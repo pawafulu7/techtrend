@@ -22,7 +22,7 @@ describe('統一フォーマットAPIエンドポイントテスト', () => {
       
       if (targetArticle) {
         testArticleId = targetArticle.id;
-        console.log(`テスト対象記事: ${testArticleId} - ${targetArticle.title}`);
+        console.error(`テスト対象記事: ${testArticleId} - ${targetArticle.title}`);
       }
     }
   });
@@ -30,7 +30,7 @@ describe('統一フォーマットAPIエンドポイントテスト', () => {
   describe('POST /api/ai/summarize - 単一記事要約生成', () => {
     it('統一フォーマットで要約を生成すること', async () => {
       if (!testArticleId) {
-        console.log('テスト対象記事がないためスキップ');
+        console.error('テスト対象記事がないためスキップ');
         return;
       }
 
@@ -70,11 +70,11 @@ describe('統一フォーマットAPIエンドポイントテスト', () => {
       // 詳細要約が箇条書き形式であることを確認
       expect(article.detailedSummary).toContain('・');
       
-      console.log('✅ 統一フォーマット確認:');
-      console.log(`  - summary: ${article.summary.length}文字`);
-      console.log(`  - detailedSummary: ${article.detailedSummary.length}文字`);
-      console.log(`  - articleType: ${article.articleType}`);
-      console.log(`  - summaryVersion: ${article.summaryVersion}`);
+      console.error('✅ 統一フォーマット確認:');
+      console.error(`  - summary: ${article.summary.length}文字`);
+      console.error(`  - detailedSummary: ${article.detailedSummary.length}文字`);
+      console.error(`  - articleType: ${article.articleType}`);
+      console.error(`  - summaryVersion: ${article.summaryVersion}`);
     }, 30000); // タイムアウト30秒
 
     it('記事IDが指定されていない場合は400エラーを返すこと', async () => {
@@ -119,7 +119,7 @@ describe('統一フォーマットAPIエンドポイントテスト', () => {
       const data = await response.json();
       
       if (!data.success || !data.data.articles || data.data.articles.length === 0) {
-        console.log('テスト用記事がないためスキップ');
+        console.error('テスト用記事がないためスキップ');
         return;
       }
 
@@ -147,7 +147,7 @@ describe('統一フォーマットAPIエンドポイントテスト', () => {
       expect(batchData.data).toHaveProperty('processed');
       expect(batchData.data).toHaveProperty('total');
       
-      console.log(`✅ バッチ処理完了: ${batchData.data.processed}/${batchData.data.total}件`);
+      console.error(`✅ バッチ処理完了: ${batchData.data.processed}/${batchData.data.total}件`);
     }, 60000); // タイムアウト60秒
 
     it('articleIdsが配列でない場合は400エラーを返すこと', async () => {
@@ -172,7 +172,7 @@ describe('統一フォーマットAPIエンドポイントテスト', () => {
   describe('統一フォーマット検証', () => {
     it('生成された要約が期待される形式であること', async () => {
       if (!testArticleId) {
-        console.log('テスト対象記事がないためスキップ');
+        console.error('テスト対象記事がないためスキップ');
         return;
       }
 
@@ -194,7 +194,7 @@ describe('統一フォーマットAPIエンドポイントテスト', () => {
           // 各項目が適切な長さであることを確認
           bulletPoints.forEach((point: string, index: number) => {
             if (point.trim()) {
-              console.log(`  項目${index + 1}: ${point.trim().length}文字`);
+              console.error(`  項目${index + 1}: ${point.trim().length}文字`);
               expect(point.trim().length).toBeGreaterThanOrEqual(100);
             }
           });
@@ -204,11 +204,11 @@ describe('統一フォーマットAPIエンドポイントテスト', () => {
   });
 
   afterAll(async () => {
-    console.log('\n📊 テスト完了サマリー');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('✅ 統一フォーマット（summaryVersion: 5）の生成確認');
-    console.log('✅ 詳細要約の生成確認');
-    console.log('✅ エラーハンドリングの確認');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('\n📊 テスト完了サマリー');
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('✅ 統一フォーマット（summaryVersion: 5）の生成確認');
+    console.error('✅ 詳細要約の生成確認');
+    console.error('✅ エラーハンドリングの確認');
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   });
 });

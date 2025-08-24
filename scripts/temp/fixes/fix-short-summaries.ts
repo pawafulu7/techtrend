@@ -1,12 +1,12 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { LocalLLMClient } from '../lib/ai/local-llm';
-import { cleanSummary, cleanDetailedSummary } from '../lib/utils/summary-cleaner';
+import { LocalLLMClient } from '../../lib/ai/local-llm';
+import { cleanSummary, cleanDetailedSummary } from '../../lib/utils/summary-cleaner';
 
 const prisma = new PrismaClient();
 
 async function fixShortSummaries() {
-  console.log('🔧 短い要約と問題のある要約を修正\n');
+  console.error('🔧 短い要約と問題のある要約を修正\n');
   
   const localLLM = new LocalLLMClient({
     url: 'http://192.168.11.7:1234',
@@ -23,7 +23,7 @@ async function fixShortSummaries() {
       console.error('❌ ローカルLLMサーバーに接続できません');
       return;
     }
-    console.log('✅ ローカルLLMサーバー接続成功\n');
+    console.error('✅ ローカルLLMサーバー接続成功\n');
     
     // 問題のある記事を取得
     const articles = await prisma.article.findMany({
@@ -62,7 +62,7 @@ async function fixShortSummaries() {
       );
     });
     
-    console.log(`📊 修正対象: ${problematicArticles.length}件\n`);
+    console.error(`📊 修正対象: ${problematicArticles.length}件\n`);
     
     let fixedCount = 0;
     let failedCount = 0;
@@ -76,9 +76,9 @@ async function fixShortSummaries() {
     for (let i = 0; i < sortedArticles.length && i < 50; i++) { // 最大50件まで
       const article = sortedArticles[i];
       
-      console.log(`\n[${i + 1}/${Math.min(sortedArticles.length, 50)}] 処理中: ${article.title.substring(0, 50)}...`);
-      console.log(`   現在の要約: "${article.summary?.substring(0, 80)}..."`);
-      console.log(`   文字数: ${article.summary?.length || 0}`);
+      console.error(`\n[${i + 1}/${Math.min(sortedArticles.length, 50)}] 処理中: ${article.title.substring(0, 50)}...`);
+      console.error(`   現在の要約: "${article.summary?.substring(0, 80)}..."`);
+      console.error(`   文字数: ${article.summary?.length || 0}`);
       
       try {
         // コンテンツを準備
@@ -164,11 +164,11 @@ ${content}
             }
           });
           
-          console.log(`   ✅ 修正完了: "${cleanedSummary}"`);
-          console.log(`   新文字数: ${cleanedSummary.length}`);
+          console.error(`   ✅ 修正完了: "${cleanedSummary}"`);
+          console.error(`   新文字数: ${cleanedSummary.length}`);
           fixedCount++;
         } else {
-          console.log(`   ⚠️ 品質チェック失敗`);
+          console.error(`   ⚠️ 品質チェック失敗`);
           failedCount++;
         }
         
@@ -182,11 +182,11 @@ ${content}
     }
     
     // 結果サマリー
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 修正完了サマリー:');
-    console.log(`✅ 修正成功: ${fixedCount}件`);
-    console.log(`❌ 失敗: ${failedCount}件`);
-    console.log(`📈 成功率: ${Math.round(fixedCount / (fixedCount + failedCount) * 100)}%`);
+    console.error('\n' + '='.repeat(60));
+    console.error('📊 修正完了サマリー:');
+    console.error(`✅ 修正成功: ${fixedCount}件`);
+    console.error(`❌ 失敗: ${failedCount}件`);
+    console.error(`📈 成功率: ${Math.round(fixedCount / (fixedCount + failedCount) * 100)}%`);
     
   } catch (error) {
     console.error('致命的エラー:', error);

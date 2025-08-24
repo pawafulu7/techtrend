@@ -17,7 +17,7 @@ interface RegenerationResult {
 }
 
 async function regenerateEnglishMixedSummaries() {
-  console.log('🔄 英語混入要約の再生成を開始します...\n');
+  console.error('🔄 英語混入要約の再生成を開始します...\n');
   
   const startTime = Date.now();
   const result: RegenerationResult = {
@@ -37,9 +37,9 @@ async function regenerateEnglishMixedSummaries() {
       const data = await fs.readFile(dataPath, 'utf-8');
       const parsed = JSON.parse(data);
       targetArticleIds = parsed.articleIds || [];
-      console.log(`📁 保存済みの問題記事リストを読み込みました: ${targetArticleIds.length}件`);
+      console.error(`📁 保存済みの問題記事リストを読み込みました: ${targetArticleIds.length}件`);
     } catch {
-      console.log('💡 保存済みリストがないため、全記事をチェックします');
+      console.error('💡 保存済みリストがないため、全記事をチェックします');
     }
     
     // 対象記事を取得
@@ -62,7 +62,7 @@ async function regenerateEnglishMixedSummaries() {
       });
     }
     
-    console.log(`\n🔍 検査対象: ${articles.length}件の記事`);
+    console.error(`\n🔍 検査対象: ${articles.length}件の記事`);
     
     // 英語混入問題がある記事を特定
     const problematicArticles = [];
@@ -87,12 +87,12 @@ async function regenerateEnglishMixedSummaries() {
     result.total = problematicArticles.length;
     
     if (result.total === 0) {
-      console.log('✅ 英語混入問題のある要約は見つかりませんでした！');
+      console.error('✅ 英語混入問題のある要約は見つかりませんでした！');
       return;
     }
     
-    console.log(`\n⚠️  ${result.total}件の要約に問題が見つかりました`);
-    console.log('再生成を開始します...\n');
+    console.error(`\n⚠️  ${result.total}件の要約に問題が見つかりました`);
+    console.error('再生成を開始します...\n');
     
     // Gemini API設定
     const apiKey = process.env.GEMINI_API_KEY;
@@ -106,11 +106,11 @@ async function regenerateEnglishMixedSummaries() {
     for (let i = 0; i < problematicArticles.length; i++) {
       const { article, qualityCheck } = problematicArticles[i];
       
-      console.log(`\n[${i + 1}/${result.total}] ${article.title.substring(0, 50)}...`);
-      console.log(`  現在のスコア: ${qualityCheck.score}/100`);
+      console.error(`\n[${i + 1}/${result.total}] ${article.title.substring(0, 50)}...`);
+      console.error(`  現在のスコア: ${qualityCheck.score}/100`);
       
       try {
-        const content = article.content || article.description || '';
+        const content = article.content || '';
         
         // 強化プロンプトで再生成
         const prompt = createEnhancedPrompt(
@@ -143,7 +143,7 @@ async function regenerateEnglishMixedSummaries() {
         // 新しい要約の品質をチェック
         const newQualityCheck = checkContentQuality(newSummary);
         
-        console.log(`  新しいスコア: ${newQualityCheck.score}/100`);
+        console.error(`  新しいスコア: ${newQualityCheck.score}/100`);
         
         if (newQualityCheck.score > qualityCheck.score) {
           // 品質が改善された場合のみ更新
@@ -158,12 +158,12 @@ async function regenerateEnglishMixedSummaries() {
           result.regenerated++;
           if (newQualityCheck.score >= 80) {
             result.improved++;
-            console.log(`  ✅ 品質改善: ${qualityCheck.score} → ${newQualityCheck.score}`);
+            console.error(`  ✅ 品質改善: ${qualityCheck.score} → ${newQualityCheck.score}`);
           } else {
-            console.log(`  ⚠️  部分改善: ${qualityCheck.score} → ${newQualityCheck.score}`);
+            console.error(`  ⚠️  部分改善: ${qualityCheck.score} → ${newQualityCheck.score}`);
           }
         } else {
-          console.log(`  ❌ 改善なし（更新をスキップ）`);
+          console.error(`  ❌ 改善なし（更新をスキップ）`);
         }
         
         // API制限対策
@@ -171,7 +171,7 @@ async function regenerateEnglishMixedSummaries() {
         
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.log(`  ❌ エラー: ${errorMessage}`);
+        console.error(`  ❌ エラー: ${errorMessage}`);
         result.failed++;
         result.errors.push(`${article.title}: ${errorMessage}`);
       }
@@ -179,31 +179,31 @@ async function regenerateEnglishMixedSummaries() {
     
     // キャッシュを無効化
     if (result.regenerated > 0) {
-      console.log('\n🔄 キャッシュを無効化中...');
+      console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
     }
     
     // 結果サマリー
     const duration = Math.round((Date.now() - startTime) / 1000);
     
-    console.log('\n' + '=' .repeat(80));
-    console.log('📊 再生成完了');
-    console.log('=' .repeat(80));
-    console.log(`  処理時間: ${duration}秒`);
-    console.log(`  対象記事: ${result.total}件`);
-    console.log(`  再生成成功: ${result.regenerated}件`);
-    console.log(`  品質改善: ${result.improved}件`);
-    console.log(`  失敗: ${result.failed}件`);
+    console.error('\n' + '=' .repeat(80));
+    console.error('📊 再生成完了');
+    console.error('=' .repeat(80));
+    console.error(`  処理時間: ${duration}秒`);
+    console.error(`  対象記事: ${result.total}件`);
+    console.error(`  再生成成功: ${result.regenerated}件`);
+    console.error(`  品質改善: ${result.improved}件`);
+    console.error(`  失敗: ${result.failed}件`);
     
     if (result.regenerated > 0) {
       const improvementRate = Math.round(result.improved / result.regenerated * 100);
-      console.log(`  改善率: ${improvementRate}%`);
+      console.error(`  改善率: ${improvementRate}%`);
     }
     
     if (result.errors.length > 0) {
-      console.log('\n❌ エラー詳細:');
+      console.error('\n❌ エラー詳細:');
       result.errors.forEach(error => {
-        console.log(`  - ${error}`);
+        console.error(`  - ${error}`);
       });
     }
     
@@ -225,7 +225,7 @@ async function regenerateEnglishMixedSummaries() {
       }, null, 2)
     );
     
-    console.log(`\n📁 レポートを保存しました: ${reportPath}`);
+    console.error(`\n📁 レポートを保存しました: ${reportPath}`);
     
   } catch (error) {
     console.error('❌ 再生成エラー:', error);

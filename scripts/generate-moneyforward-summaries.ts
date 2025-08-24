@@ -6,7 +6,7 @@ async function generateMoneyForwardSummaries() {
   const prisma = new PrismaClient();
   const summaryService = new UnifiedSummaryService();
   
-  console.log("=== マネーフォワード記事の要約生成 ===");
+  console.error("=== マネーフォワード記事の要約生成 ===");
   
   try {
     // 要約が未生成のマネーフォワード記事を取得
@@ -17,10 +17,10 @@ async function generateMoneyForwardSummaries() {
       }
     });
     
-    console.log(`要約が必要な記事: ${articles.length}件`);
+    console.error(`要約が必要な記事: ${articles.length}件`);
     
     for (const article of articles) {
-      console.log(`\n処理中: ${article.title}`);
+      console.error(`\n処理中: ${article.title}`);
       
       try {
         // 要約生成
@@ -41,10 +41,10 @@ async function generateMoneyForwardSummaries() {
           }
         });
         
-        console.log(`✅ 要約生成成功`);
-        console.log(`  一覧要約: ${summary.substring(0, 50)}...`);
+        console.error(`✅ 要約生成成功`);
+        console.error(`  一覧要約: ${summary.substring(0, 50)}...`);
         if (article.title.includes('SECCON')) {
-          console.log(`  🎯 SECCON記事の要約が生成されました！`);
+          console.error(`  🎯 SECCON記事の要約が生成されました！`);
         }
         
         // Rate Limit対策
@@ -63,8 +63,8 @@ async function generateMoneyForwardSummaries() {
       }
     });
     
-    console.log(`\n=== 完了 ===`);
-    console.log(`要約済みのマネーフォワード記事: ${completed}件`);
+    console.error(`\n=== 完了 ===`);
+    console.error(`要約済みのマネーフォワード記事: ${completed}件`);
     
   } catch (error) {
     console.error("エラー:", error);

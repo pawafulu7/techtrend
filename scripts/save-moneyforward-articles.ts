@@ -6,7 +6,7 @@ async function saveMoneyForwardArticles() {
   const prisma = new PrismaClient();
   const parser = new Parser();
   
-  console.log("=== マネーフォワード記事を保存 ===");
+  console.error("=== マネーフォワード記事を保存 ===");
   
   try {
     // ソースを取得または作成
@@ -27,7 +27,7 @@ async function saveMoneyForwardArticles() {
     
     // RSSフィードを取得
     const feed = await parser.parseURL('https://moneyforward-dev.jp/feed');
-    console.log(`RSSフィードから${feed.items?.length || 0}件の記事を取得`);
+    console.error(`RSSフィードから${feed.items?.length || 0}件の記事を取得`);
     
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -56,7 +56,7 @@ async function saveMoneyForwardArticles() {
         });
         
         if (existing) {
-          console.log(`スキップ（既存）: ${item.title}`);
+          console.error(`スキップ（既存）: ${item.title}`);
           skippedCount++;
           continue;
         }
@@ -92,9 +92,9 @@ async function saveMoneyForwardArticles() {
           }
         });
         
-        console.log(`✅ 保存成功: ${saved.title}`);
+        console.error(`✅ 保存成功: ${saved.title}`);
         if (saved.title.includes('SECCON')) {
-          console.log(`   🎯 SECCON記事が保存されました！`);
+          console.error(`   🎯 SECCON記事が保存されました！`);
         }
         savedCount++;
         
@@ -103,9 +103,9 @@ async function saveMoneyForwardArticles() {
       }
     }
     
-    console.log("\n=== 結果 ===");
-    console.log(`新規保存: ${savedCount}件`);
-    console.log(`スキップ: ${skippedCount}件`);
+    console.error("\n=== 結果 ===");
+    console.error(`新規保存: ${savedCount}件`);
+    console.error(`スキップ: ${skippedCount}件`);
     
     // 最終確認
     const total = await prisma.article.count({
@@ -113,7 +113,7 @@ async function saveMoneyForwardArticles() {
         url: { contains: 'moneyforward-dev.jp' }
       }
     });
-    console.log(`\nマネーフォワード記事の総数: ${total}件`);
+    console.error(`\nマネーフォワード記事の総数: ${total}件`);
     
   } catch (error) {
     console.error("エラー:", error);

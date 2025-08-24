@@ -66,7 +66,7 @@ function parseArgs(args: string[]): Options {
 
 // ヘルプメッセージを表示
 function printHelp() {
-  console.log(`
+  console.error(`
 品質スコア管理の統合ツール
 
 使用方法:
@@ -94,7 +94,7 @@ recalculateオプション:
 
 // calculateコマンドの実装（calculate-quality-scores.tsから移植）
 async function calculateAllQualityScores(options: Options) {
-  console.log('📊 品質スコアの計算を開始します...\n');
+  console.error('📊 品質スコアの計算を開始します...\n');
 
   try {
     // 記事を取得
@@ -111,9 +111,9 @@ async function calculateAllQualityScores(options: Options) {
 
     const articles = await prisma.article.findMany(query);
 
-    console.log(`📄 処理対象の記事数: ${articles.length}件`);
+    console.error(`📄 処理対象の記事数: ${articles.length}件`);
     if (options.source) {
-      console.log(`   ソース: ${options.source}`);
+      console.error(`   ソース: ${options.source}`);
     }
 
     let processedCount = 0;
@@ -138,7 +138,7 @@ async function calculateAllQualityScores(options: Options) {
         })
       );
       
-      console.log(`✓ 処理済み: ${processedCount}/${articles.length}件`);
+      console.error(`✓ 処理済み: ${processedCount}/${articles.length}件`);
     }
 
     // スコア分布を表示
@@ -177,9 +177,9 @@ async function calculateAllQualityScores(options: Options) {
       `;
     }
 
-    console.log('\n【品質スコア分布】');
+    console.error('\n【品質スコア分布】');
     scoreDistribution.forEach(dist => {
-      console.log(`${dist.range}: ${Number(dist.count)}件`);
+      console.error(`${dist.range}: ${Number(dist.count)}件`);
     });
 
     // 上位10記事を表示
@@ -195,12 +195,12 @@ async function calculateAllQualityScores(options: Options) {
 
     const topArticles = await prisma.article.findMany(topArticlesQuery);
 
-    console.log('\n【品質スコア上位10記事】');
+    console.error('\n【品質スコア上位10記事】');
     topArticles.forEach((article, index) => {
-      console.log(`${index + 1}. [${article.source.name}] ${article.title.substring(0, 50)}... (スコア: ${article.qualityScore})`);
+      console.error(`${index + 1}. [${article.source.name}] ${article.title.substring(0, 50)}... (スコア: ${article.qualityScore})`);
     });
 
-    console.log('\n✅ 品質スコアの計算が完了しました');
+    console.error('\n✅ 品質スコアの計算が完了しました');
 
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
@@ -210,7 +210,7 @@ async function calculateAllQualityScores(options: Options) {
 
 // fix-zeroコマンドの実装（fix-quality-scores.tsから移植）
 async function fixZeroScores(options: Options) {
-  console.log('📊 品質スコアの修正を開始します...\n');
+  console.error('📊 品質スコアの修正を開始します...\n');
 
   try {
     // 品質スコアが0の記事を取得
@@ -229,17 +229,17 @@ async function fixZeroScores(options: Options) {
 
     const articlesWithoutScore = await prisma.article.findMany(query);
 
-    console.log(`📄 品質スコア0の記事数: ${articlesWithoutScore.length}件`);
+    console.error(`📄 品質スコア0の記事数: ${articlesWithoutScore.length}件`);
     if (options.source) {
-      console.log(`   ソース: ${options.source}`);
+      console.error(`   ソース: ${options.source}`);
     }
 
     if (options.dryRun) {
-      console.log('\n【ドライラン - 対象記事一覧】');
+      console.error('\n【ドライラン - 対象記事一覧】');
       articlesWithoutScore.forEach((article, index) => {
-        console.log(`${index + 1}. [${article.source.name}] ${article.title.substring(0, 60)}...`);
+        console.error(`${index + 1}. [${article.source.name}] ${article.title.substring(0, 60)}...`);
       });
-      console.log('\n💡 実際に更新する場合は --dry-run オプションを外してください');
+      console.error('\n💡 実際に更新する場合は --dry-run オプションを外してください');
       return;
     }
 
@@ -276,10 +276,10 @@ async function fixZeroScores(options: Options) {
         data: { qualityScore: finalScore }
       });
 
-      console.log(`✓ ${article.title.slice(0, 50)}... -> スコア: ${finalScore}`);
+      console.error(`✓ ${article.title.slice(0, 50)}... -> スコア: ${finalScore}`);
     }
 
-    console.log('\n✅ 品質スコアの修正が完了しました');
+    console.error('\n✅ 品質スコアの修正が完了しました');
 
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
@@ -289,17 +289,17 @@ async function fixZeroScores(options: Options) {
 
 // recalculateコマンドの実装
 async function recalculateScores(options: Options) {
-  console.log('📊 品質スコアの再計算を開始します...\n');
+  console.error('📊 品質スコアの再計算を開始します...\n');
 
   if (!options.force) {
-    console.log('⚠️  警告: このコマンドはすべての品質スコアをリセットして再計算します。');
-    console.log('続行する場合は --force オプションを付けて実行してください。');
+    console.error('⚠️  警告: このコマンドはすべての品質スコアをリセットして再計算します。');
+    console.error('続行する場合は --force オプションを付けて実行してください。');
     return;
   }
 
   try {
     // まず、すべての品質スコアをリセット
-    console.log('🔄 品質スコアをリセット中...');
+    console.error('🔄 品質スコアをリセット中...');
     
     if (options.source) {
       const source = await prisma.source.findFirst({
@@ -318,7 +318,7 @@ async function recalculateScores(options: Options) {
       });
     }
 
-    console.log('✓ リセット完了\n');
+    console.error('✓ リセット完了\n');
 
     // その後、通常の計算を実行
     await calculateAllQualityScores(options);
