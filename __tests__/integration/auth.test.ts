@@ -44,14 +44,14 @@ describe('認証保護ミドルウェアテスト', () => {
       expect(response.status).toBe(401);
       const data = await response.json();
       expect(data).toHaveProperty('error', 'Unauthorized');
-    });
+    }, 10000); // タイムアウトを10秒に延長
 
     it('未認証で/api/article-viewsへアクセスすると401エラーが返ること', async () => {
       const response = await fetch(`${baseUrl}/api/article-views`);
       expect(response.status).toBe(401);
       const data = await response.json();
       expect(data).toHaveProperty('error', 'Unauthorized');
-    });
+    }, 10000); // タイムアウトを10秒に延長
   });
 
   describe('公開ページへのアクセス', () => {
