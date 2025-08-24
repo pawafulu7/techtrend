@@ -2,11 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { Prisma } from '@prisma/client';
 import { trendsCache } from '@/lib/cache/trends-cache';
+import { parseIntParam, VALIDATION_RANGES } from '@/lib/utils/validation';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const days = parseInt(searchParams.get('days') || '30');
+    
+    // Validate days parameter
+    const daysParam = parseIntParam(
+      searchParams.get('days'),
+      30,
+      {
+        min: VALIDATION_RANGES.days.min,
+        max: VALIDATION_RANGES.days.max,
+        paramName: 'days'
+      }
+    );
+    
+    // Return error if validation failed
+    if (daysParam.error) {
+      return NextResponse.json(
+        { error: daysParam.error },
+        { status: 400 }
+      );
+    }
+    
+    const days = daysParam.value;
     const tagName = searchParams.get('tag');
 
     // キャッシュキーを生成

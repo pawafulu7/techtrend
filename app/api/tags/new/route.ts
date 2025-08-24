@@ -1,12 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { parseIntParam, VALIDATION_RANGES } from '@/lib/utils/validation';
 
 const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const days = parseInt(searchParams.get('days') || '7');
+    
+    // Validate days parameter (for tags, use more restrictive range)
+    const daysParam = parseIntParam(
+      searchParams.get('days'),
+      7,
+      {
+        min: VALIDATION_RANGES.tagDays.min,
+        max: VALIDATION_RANGES.tagDays.max,
+        paramName: 'days'
+      }
+    );
+    
+    // Return error if validation failed
+    if (daysParam.error) {
+      return NextResponse.json(
+        { error: daysParam.error },
+        { status: 400 }
+      );
+    }
+    
+    const days = daysParam.value;
     
     const since = new Date();
     since.setDate(since.getDate() - days);
