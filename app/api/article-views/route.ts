@@ -146,6 +146,7 @@ export async function POST(request: Request) {
       data: {
         userId: session.user.id,
         articleId,
+        isRead: false,  // デフォルトは未読
       },
     });
 

@@ -5,10 +5,42 @@ import { ChevronUp } from 'lucide-react';
 
 export function ScrollToTopButton() {
   const [isVisible, setIsVisible] = useState(false);
+  const [isRestoringScroll, setIsRestoringScroll] = useState(false);
+
+  // スクロール復元状態を監視
+  useEffect(() => {
+    // sessionStorageにスクロール復元データがあるかチェック
+    const checkRestoration = () => {
+      const restorationData = sessionStorage.getItem('articleListScroll');
+      setIsRestoringScroll(!!restorationData);
+    };
+    
+    checkRestoration();
+    
+    // 定期的にチェック（復元処理が終わるまで）
+    const intervalId = setInterval(checkRestoration, 500);
+    
+    // 5秒後には必ず有効化（フェイルセーフ）
+    const timeoutId = setTimeout(() => {
+      setIsRestoringScroll(false);
+      clearInterval(intervalId);
+    }, 5000);
+    
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
+  }, []);
 
   // スクロール位置を監視
   useEffect(() => {
     const toggleVisibility = (event: Event) => {
+      // スクロール復元中は表示しない
+      if (isRestoringScroll) {
+        setIsVisible(false);
+        return;
+      }
+      
       const target = event.target as HTMLElement;
       const scrollY = target.scrollTop;
       
@@ -25,16 +57,18 @@ export function ScrollToTopButton() {
     if (scrollableElement) {
       scrollableElement.addEventListener('scroll', toggleVisibility);
       
-      // 初期状態のチェック
-      const initialScrollY = scrollableElement.scrollTop;
-      setIsVisible(initialScrollY > 300);
+      // 初期状態のチェック（復元中でなければ）
+      if (!isRestoringScroll) {
+        const initialScrollY = scrollableElement.scrollTop;
+        setIsVisible(initialScrollY > 300);
+      }
       
       // クリーンアップ
       return () => {
         scrollableElement.removeEventListener('scroll', toggleVisibility);
       };
     }
-  }, []);
+  }, [isRestoringScroll]);
 
   // トップへスクロール
   const scrollToTop = useCallback(() => {
