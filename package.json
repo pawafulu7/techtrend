@@ -111,6 +111,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "commander": "^14.0.0",
+    "critters": "^0.0.23",
     "date-fns": "^4.1.0",
     "idb": "^8.0.3",
     "ioredis": "^5.7.0",

@@ -28,16 +28,22 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
       const feed = await this.parser.parseURL(this.rssUrl);
       
       if (!feed.items || feed.items.length === 0) {
-        return [];
+        return {
+          articles: [],
+          errors: []
+        };
       }
       
+      // ContentEnricherFactory を動的インポート
+      const { ContentEnricherFactory } = await import('../enrichers');
+      const enricherFactory = new ContentEnricherFactory();
       
       const articles: CreateArticleInput[] = [];
       
       for (const item of feed.items) {
         if (!item.title || !item.link) continue;
         
-        const article = this.parseItem(item);
+        const article = await this.parseItem(item, enricherFactory);
         if (article) {
           articles.push(article);
         }
@@ -56,11 +62,36 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
     }
   }
   
-  private parseItem(item: StackOverflowBlogItem): CreateArticleInput | null {
+  private async parseItem(item: StackOverflowBlogItem, enricherFactory: any): Promise<CreateArticleInput | null> {
     if (!item.title || !item.link) return null;
     
     // コンテンツの取得（HTMLタグを含む場合がある）
-    const content = item.content || item.contentSnippet || '';
+    let content = item.content || item.contentSnippet || '';
+    let thumbnail: string | undefined;
+    
+    // コンテンツエンリッチメント（2000文字未満の場合のみ実行）
+    if (content && content.length < 2000) {
+      const enricher = enricherFactory.getEnricher(item.link);
+      if (enricher) {
+        try {
+          const enrichedData = await enricher.enrich(item.link);
+          if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
+            console.log(`[StackOverflow Blog] Enriched content for ${item.link}: ${content.length} -> ${enrichedData.content.length} chars`);
+            content = enrichedData.content;
+            thumbnail = enrichedData.thumbnail || undefined;
+          } else {
+            console.log(`[StackOverflow Blog] Enrichment did not improve content for ${item.link}`);
+          }
+        } catch (error) {
+          console.error(`[StackOverflow Blog] Enrichment failed for ${item.link}:`, error);
+          // エラー時は元のコンテンツを使用
+        }
+      } else {
+        console.log(`[StackOverflow Blog] No enricher available for ${item.link}`);
+      }
+    } else if (content && content.length >= 2000) {
+      console.log(`[StackOverflow Blog] Content already sufficient for ${item.link}: ${content.length} chars`);
+    }
     
     // 要約は generate-summaries.ts で日本語生成するため undefined を設定
     const summary = undefined;
@@ -76,7 +107,7 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
                        item.pubDate ? new Date(item.pubDate) : 
                        new Date();
     
-    return {
+    const article: CreateArticleInput = {
       title: item.title,
       url: item.link,
       content,
@@ -85,5 +116,12 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
       sourceId: this.source.id,
       tagNames: tags
     };
+    
+    // サムネイルがある場合は追加
+    if (thumbnail) {
+      (article as any).thumbnail = thumbnail;
+    }
+    
+    return article;
   }
 }
