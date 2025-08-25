@@ -44,3 +44,10 @@ export interface RecommendationConfig {
   newArticleBoost: number;
   minQualityScore: number;
 }
+
+// キャッシュ用の型定義
+export interface CachedUserInterests {
+  tagScores: Record<string, number>;
+  totalActions: number;
+  lastUpdated: string;
+}

@@ -3,7 +3,8 @@ import { ExtendedArticle } from '@/types/common';
 import { 
   UserInterests, 
   RecommendedArticle, 
-  RecommendationScore
+  RecommendationScore,
+  CachedUserInterests
 } from './types';
 import { 
   defaultConfig, 
@@ -25,13 +26,19 @@ export class RecommendationService {
   async getUserInterests(userId: string): Promise<UserInterests | null> {
     // キャッシュ確認
     const cacheKey = `user:interests:${userId}`;
-    const cached = await redisService.getJSON<{favoriteTopics: string[]; recentTopics: string[]}>(cacheKey);
-    if (cached) {
-      return {
-        tagScores: new Map(Object.entries(cached.tagScores)),
-        totalActions: cached.totalActions,
-        lastUpdated: new Date(cached.lastUpdated),
-      };
+    
+    try {
+      const cached = await redisService.getJSON<CachedUserInterests>(cacheKey);
+      if (cached && cached.tagScores) {
+        return {
+          tagScores: new Map(Object.entries(cached.tagScores)),
+          totalActions: cached.totalActions,
+          lastUpdated: new Date(cached.lastUpdated),
+        };
+      }
+    } catch (error) {
+      console.error('Failed to restore cache:', error);
+      // キャッシュを無視して処理を継続
     }
 
     // 過去30日間の閲覧履歴を取得
@@ -133,10 +140,11 @@ export class RecommendationService {
     // タグマッチングスコア
     const matchedTags: string[] = [];
     for (const tag of article.tags) {
-      const tagScore = interests.tagScores.get(tag.name) || 0;
+      const tagName = typeof tag === 'string' ? tag : tag.name;
+      const tagScore = interests.tagScores.get(tagName) || 0;
       if (tagScore > 0) {
         score += tagScore;
-        matchedTags.push(tag.name);
+        matchedTags.push(tagName);
       }
     }
 
@@ -229,7 +237,7 @@ export class RecommendationService {
       if (selected.length >= limit) break;
 
       const sourceName = scored.article.source.name;
-      const tagSet = hashTagSet(scored.article.tags.map(t => t.name));
+      const tagSet = hashTagSet(scored.article.tags.map(t => typeof t === 'string' ? t : t.name));
 
       // ソース制限チェック
       const currentSourceCount = sourceCount.get(sourceName) || 0;
@@ -253,7 +261,7 @@ export class RecommendationService {
       thumbnail: item.article.thumbnail,
       publishedAt: item.article.publishedAt,
       sourceName: item.article.source.name,
-      tags: item.article.tags.map(t => t.name),
+      tags: item.article.tags.map(t => typeof t === 'string' ? t : t.name),
       recommendationScore: normalizeScore(item.score, selected[0]?.score || 1),
       recommendationReasons: item.reasons,
     }));
