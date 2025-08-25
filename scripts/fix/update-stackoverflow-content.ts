@@ -42,7 +42,6 @@ const { values } = parseArgs({
     },
     'regenerate-summary': {
       type: 'boolean',
-      default: true,
     }
   },
   allowPositionals: true,
@@ -52,7 +51,7 @@ const isDryRun = values['dry-run'] as boolean;
 const batchSize = parseInt(values['batch-size'] as string, 10);
 const isBackupOnly = values['backup-only'] as boolean;
 const isRestore = values['restore'] as boolean;
-const shouldRegenerateSummary = values['regenerate-summary'] as boolean;
+const shouldRegenerateSummary = values['regenerate-summary'] !== false;
 
 // 遅延処理用のsleep関数
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
