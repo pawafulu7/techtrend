@@ -37,7 +37,9 @@ export async function GET(request: NextRequest) {
     // Parse filters
     const sources = searchParams.get('sources'); // Multiple sources support
     const sourceId = searchParams.get('sourceId'); // Backward compatibility
-    const tag = searchParams.get('tag');
+    const tag = searchParams.get('tag'); // Single tag (backward compatibility)
+    const tags = searchParams.get('tags'); // Multiple tags support
+    const tagMode = searchParams.get('tagMode') || 'OR'; // Tag filter mode (OR/AND)
     const search = searchParams.get('search');
     const dateRange = searchParams.get('dateRange'); // Date range filter
     const readFilter = searchParams.get('readFilter'); // Read status filter
@@ -67,6 +69,8 @@ export async function GET(request: NextRequest) {
         sortOrder,
         sources: normalizedSources, // Use normalized sources
         tag: tag || 'all',
+        tags: tags || 'none', // Multiple tags support
+        tagMode: tagMode, // Tag filter mode
         search: normalizedSearch,
         dateRange: dateRange || 'all',
         readFilter: readFilter || 'all',
@@ -135,12 +139,38 @@ export async function GET(request: NextRequest) {
         // Backward compatibility with single sourceId
         where.sourceId = sourceId;
       }
+      // Tag filtering with backward compatibility
       if (tag) {
+        // Single tag (backward compatibility)
         where.tags = {
           some: {
             name: tag
           }
         };
+      } else if (tags) {
+        // Multiple tags support
+        const tagList = tags.split(',').filter(t => t.trim());
+        if (tagList.length > 0) {
+          if (tagMode === 'AND') {
+            // AND search: articles with all specified tags
+            where.AND = tagList.map(tagName => ({
+              tags: {
+                some: {
+                  name: tagName
+                }
+              }
+            }));
+          } else {
+            // OR search: articles with any of the specified tags
+            where.tags = {
+              some: {
+                name: {
+                  in: tagList
+                }
+              }
+            };
+          }
+        }
       }
       if (search) {
         // Split search string by spaces (both half-width and full-width)
