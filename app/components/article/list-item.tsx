@@ -29,11 +29,14 @@ export function ArticleListItem({
     // URLパラメータを保持して記事詳細ページに遷移
     const params = new URLSearchParams(searchParams.toString());
     
-    // returningパラメータは除外（記事一覧に戻る時のみ使用）
+    // returningパラメータは除外（記事詳細からの戻りを示すパラメータなので）
     params.delete('returning');
     
+    // 記事一覧に戻る時用にreturningパラメータを追加
+    params.set('returning', '1');
+    
     // 現在のフィルター状態を保持したURLを生成
-    const returnUrl = params.toString() ? `/?${params.toString()}` : '/';
+    const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
     window.location.href = articleUrl;
   };
