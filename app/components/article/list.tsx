@@ -5,17 +5,29 @@ import { ArticleListItem } from './list-item';
 import type { ArticleListProps } from '@/types/components';
 import { useReadStatus } from '@/app/hooks/use-read-status';
 import { useMemo } from 'react';
+import { useSession } from 'next-auth/react';
 
 export function ArticleList({ 
   articles, 
   viewMode = 'card',
   onArticleClick 
 }: ArticleListProps) {
+  // 認証状態を取得
+  const { data: session } = useSession();
+  
   // 記事IDリストを作成
   const articleIds = useMemo(() => articles.map(a => a.id), [articles]);
   
   // 既読状態を取得
   const { isRead, isLoading } = useReadStatus(articleIds);
+  
+  // 未認証時は全て既読として扱う
+  const getReadStatus = (articleId: string) => {
+    if (!session?.user) {
+      return true; // 未認証時は既読扱い（未読マークを表示しない）
+    }
+    return isRead(articleId);
+  };
   if (articles.length === 0) {
     return (
       <div className="text-center py-12">
@@ -35,7 +47,7 @@ export function ArticleList({
             articleIndex={index}
             totalArticleCount={articles.length}
             onArticleClick={onArticleClick}
-            isRead={isRead(article.id)}
+            isRead={isLoading ? true : getReadStatus(article.id)}
           />
         ))}
       </div>
@@ -50,7 +62,7 @@ export function ArticleList({
           key={article.id} 
           article={article}
           onArticleClick={onArticleClick}
-          isRead={isLoading ? true : isRead(article.id)}
+          isRead={isLoading ? true : getReadStatus(article.id)}
         />
       ))}
     </div>
