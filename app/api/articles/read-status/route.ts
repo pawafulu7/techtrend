@@ -186,8 +186,7 @@ export async function PUT(req: NextRequest) {
         },
         update: {
           isRead: true,
-          readAt: now,
-          viewedAt: now
+          readAt: now
         },
         create: {
           userId: session.user.id,

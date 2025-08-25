@@ -54,17 +54,8 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    // 重複を除去（同じ記事の複数回閲覧を最新のもののみに）
-    const uniqueViews = views.reduce((acc, view) => {
-      const existing = acc.find(v => v.article.id === view.article.id);
-      if (!existing || view.viewedAt > existing.viewedAt) {
-        return [...acc.filter(v => v.article.id !== view.article.id), view];
-      }
-      return acc;
-    }, [] as typeof views);
-
     return NextResponse.json({
-      views: uniqueViews.map(v => ({
+      views: views.map(v => ({
         ...v.article,
         viewId: v.id,
         viewedAt: v.viewedAt,
