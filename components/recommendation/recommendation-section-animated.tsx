@@ -155,7 +155,8 @@ export function RecommendationSectionAnimated() {
         </div>
       ) : (
         <div className="text-center py-8 text-muted-foreground">
-          <p>もう少し記事を読むと、おすすめが表示されます</p>
+          <p>現在、おすすめできる新しい記事がありません</p>
+          <p className="text-sm mt-2">新着記事が追加されるまでお待ちください</p>
         </div>
       )}
     </section>

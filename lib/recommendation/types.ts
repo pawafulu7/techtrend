@@ -24,6 +24,7 @@ export interface RecommendedArticle {
   tags: string[];
   recommendationScore: number;
   recommendationReasons: string[];
+  isViewed?: boolean;  // 既読フラグを追加
 }
 
 export interface UserAction {

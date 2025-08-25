@@ -31,6 +31,15 @@ export function RecommendationSection({ forceHidden = false }: RecommendationSec
     const hidden = localStorage.getItem(STORAGE_KEY) === 'true';
     setIsHidden(hidden || forceHidden);
     
+    console.log('[RecommendationSection] Component state:', {
+      status,
+      hasSession: !!session?.user,
+      userId: session?.user?.id,
+      hidden,
+      forceHidden,
+      shouldFetch: status === 'authenticated' && session?.user && !hidden && !forceHidden
+    });
+    
     if (status === 'authenticated' && session?.user && !hidden && !forceHidden) {
       fetchRecommendations();
     }
@@ -41,15 +50,20 @@ export function RecommendationSection({ forceHidden = false }: RecommendationSec
     setError(null);
     
     try {
+      console.log('[RecommendationSection] Fetching recommendations...');
       const response = await fetch('/api/recommendations?limit=5');
       
       if (!response.ok) {
-        throw new Error('Failed to fetch recommendations');
+        const errorText = await response.text();
+        console.error('[RecommendationSection] API error:', response.status, errorText);
+        throw new Error(`Failed to fetch recommendations: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('[RecommendationSection] Received recommendations:', data.length, 'items');
       setRecommendations(data);
     } catch (err) {
+      console.error('[RecommendationSection] Error fetching recommendations:', err);
       setError('推薦記事の取得に失敗しました');
     } finally {
       setLoading(false);
@@ -111,7 +125,8 @@ export function RecommendationSection({ forceHidden = false }: RecommendationSec
         </div>
       ) : (
         <div className="text-center py-8 text-muted-foreground">
-          <p>もう少し記事を読むと、おすすめが表示されます</p>
+          <p>現在、おすすめできる新しい記事がありません</p>
+          <p className="text-sm mt-2">新着記事が追加されるまでお待ちください</p>
         </div>
       )}
     </section>

@@ -24,12 +24,14 @@ export class RecommendationService {
    * ユーザーの興味分野を分析
    */
   async getUserInterests(userId: string): Promise<UserInterests | null> {
+    console.log('[RecommendationService] Getting user interests for:', userId);
     // キャッシュ確認
     const cacheKey = `user:interests:${userId}`;
     
     try {
       const cached = await redisService.getJSON<CachedUserInterests>(cacheKey);
       if (cached && cached.tagScores) {
+        console.log('[RecommendationService] Cache hit - returning cached interests');
         return {
           tagScores: new Map(Object.entries(cached.tagScores)),
           totalActions: cached.totalActions,
@@ -37,7 +39,7 @@ export class RecommendationService {
         };
       }
     } catch (error) {
-      console.error('Failed to restore cache:', error);
+      console.error('[RecommendationService] Failed to restore cache:', error);
       // キャッシュを無視して処理を継続
     }
 
@@ -74,7 +76,13 @@ export class RecommendationService {
       }),
     ]);
 
+    console.log('[RecommendationService] User activity:', {
+      views: views.length,
+      favorites: favorites.length
+    });
+
     if (views.length === 0 && favorites.length === 0) {
+      console.log('[RecommendationService] No user activity found');
       return null;
     }
 
@@ -182,28 +190,40 @@ export class RecommendationService {
     userId: string,
     limit: number = 10
   ): Promise<RecommendedArticle[]> {
+    console.log('[RecommendationService] Getting recommendations for user:', userId, 'limit:', limit);
+    
     // ユーザーの興味を取得
     const interests = await this.getUserInterests(userId);
     
     if (!interests || interests.totalActions < 3) {
+      console.log('[RecommendationService] User has insufficient activity, returning default recommendations', {
+        hasInterests: !!interests,
+        totalActions: interests?.totalActions || 0
+      });
       // 新規ユーザーまたは履歴が少ない場合はデフォルト推薦
       return this.getDefaultRecommendations(limit);
     }
 
-    // 既読記事を取得（除外用）
-    const viewedArticleIds = await prisma.articleView.findMany({
-      where: { userId },
+    // 最近読んだ記事を取得（重複を下げるため）
+    const recentlyViewedIds = await prisma.articleView.findMany({
+      where: { 
+        userId,
+        viewedAt: { 
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7日以内
+        }
+      },
       select: { articleId: true },
     }).then(views => views.map(v => v.articleId));
 
-    // 候補記事を取得（過去7日間、品質スコア50以上）
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // 候補記事を取得（過去30日間、品質スコア50以上）
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const candidates = await prisma.article.findMany({
       where: {
-        id: { notIn: viewedArticleIds },
-        publishedAt: { gte: sevenDaysAgo },
+        // 7日以内に読んだ記事のみ除外（それ以前の既読は推薦対象）
+        id: { notIn: recentlyViewedIds },
+        publishedAt: { gte: thirtyDaysAgo },
         qualityScore: { gte: this.config.minQualityScore },
       },
       include: {
@@ -252,6 +272,12 @@ export class RecommendationService {
       tagSetCount.set(tagSet, currentTagSetCount + 1);
     }
 
+    // 全ての閲覧済み記事IDを取得（既読マーク用）
+    const allViewedIds = await prisma.articleView.findMany({
+      where: { userId },
+      select: { articleId: true },
+    }).then(views => new Set(views.map(v => v.articleId)));
+
     // RecommendedArticle形式に変換
     return selected.map(item => ({
       id: item.article.id,
@@ -264,6 +290,7 @@ export class RecommendationService {
       tags: item.article.tags.map(t => typeof t === 'string' ? t : t.name),
       recommendationScore: normalizeScore(item.score, selected[0]?.score || 1),
       recommendationReasons: item.reasons,
+      isViewed: allViewedIds.has(item.article.id),  // 既読フラグを追加
     }));
   }
 
