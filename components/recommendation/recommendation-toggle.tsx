@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 const STORAGE_KEY = 'hide-recommendations';
 
@@ -11,6 +12,7 @@ interface RecommendationToggleProps {
 }
 
 export function RecommendationToggle({ onToggle }: RecommendationToggleProps) {
+  const { data: session } = useSession();
   const [isHidden, setIsHidden] = useState(false); // デフォルトは表示
   const [isClient, setIsClient] = useState(false);
 
@@ -34,20 +36,14 @@ export function RecommendationToggle({ onToggle }: RecommendationToggleProps) {
     window.dispatchEvent(new Event('recommendation-toggle'));
   };
 
-  // クライアントサイドでレンダリングされるまで、デフォルト状態を表示
+  // クライアントサイドでレンダリングされるまで何も表示しない
   if (!isClient) {
-    return (
-      <Button
-        variant="secondary"
-        size="sm"
-        disabled
-        className="flex items-center gap-2"
-        aria-label="おすすめ"
-      >
-        <EyeOff className="h-4 w-4" />
-        <span className="hidden sm:inline">おすすめを非表示</span>
-      </Button>
-    );
+    return null;
+  }
+
+  // 未認証時は非表示
+  if (!session?.user) {
+    return null;
   }
 
   return (
