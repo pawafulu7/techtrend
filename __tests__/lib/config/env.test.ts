@@ -302,6 +302,48 @@ describe('Environment Configuration - features', () => {
   });
 });
 
+// Phase 2 Stage 3: env proxy tests (enabled with isolation)
+describe('Environment Configuration - env proxy', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    // Deep clean of environment and module cache
+    jest.resetModules();
+    process.env = { ...originalEnv };
+    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+  });
+
+  afterEach(() => {
+    jest.resetModules();
+    process.env = originalEnv;
+  });
+
+  it('provides type-safe access to environment variables', () => {
+    // Use jest.isolateModules for complete isolation
+    jest.isolateModules(() => {
+      process.env.REDIS_HOST = 'redis.example.com';
+      process.env.ENABLE_CACHE = 'false';
+      
+      // Import within isolated module context
+      const { env } = require('@/lib/config/env');
+      
+      expect(env.REDIS_HOST).toBe('redis.example.com');
+      expect(env.ENABLE_CACHE).toBe('false');
+    });
+  });
+
+  it('returns undefined for non-existent variables', () => {
+    // Use jest.isolateModules for complete isolation
+    jest.isolateModules(() => {
+      // Import within isolated module context
+      const { env } = require('@/lib/config/env');
+      
+      // Access a non-existent property
+      expect((env as any).NON_EXISTENT_VAR).toBeUndefined();
+    });
+  });
+});
+
 // Phase 2 Stage 1: Config helpers tests (enabled)
 describe('Environment Configuration - Config Helpers', () => {
   const originalEnv = process.env;
