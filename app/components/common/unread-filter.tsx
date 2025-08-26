@@ -2,7 +2,6 @@
 
 import { Eye, EyeOff, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,11 +14,7 @@ import { cn } from '@/lib/utils';
 
 type ReadFilterMode = 'all' | 'unread' | 'read';
 
-interface UnreadFilterProps {
-  unreadCount?: number;
-}
-
-export function UnreadFilter({ unreadCount = 0 }: UnreadFilterProps) {
+export function UnreadFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentMode = (searchParams.get('readFilter') as ReadFilterMode) || 'all';
@@ -77,14 +72,6 @@ export function UnreadFilter({ unreadCount = 0 }: UnreadFilterProps) {
           <span className="sm:hidden">
             {currentMode === 'unread' ? '未' : currentMode === 'read' ? '既' : '全'}
           </span>
-          {unreadCount > 0 && currentMode === 'all' && (
-            <Badge 
-              variant="destructive" 
-              className="ml-1 h-5 px-1.5 text-xs"
-            >
-              {unreadCount}
-            </Badge>
-          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
