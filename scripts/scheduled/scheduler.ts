@@ -25,7 +25,9 @@ const RSS_SOURCES = [
   'Hugging Face Blog',
   'Google AI Blog',
   'InfoQ Japan',
-  // 'GitHub Blog',
+  'GitHub Blog',
+  'Cloudflare Blog',
+  'Mozilla Hacks',
   // 'Microsoft Developer Blog'
 ];
 

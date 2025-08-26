@@ -21,6 +21,9 @@ import { HatenaDeveloperContentEnricher } from './hatena-developer';
 import { PepaboContentEnricher } from './pepabo';
 import { SansanContentEnricher } from './sansan';
 import { MoneyForwardContentEnricher } from './moneyforward';
+import { GitHubBlogEnricher } from './github-blog';
+import { CloudflareBlogEnricher } from './cloudflare-blog';
+import { MozillaHacksEnricher } from './mozilla-hacks';
 
 export { IContentEnricher, BaseContentEnricher, EnrichedContent } from './base';
 export { GMOContentEnricher } from './gmo';
@@ -40,6 +43,9 @@ export { HatenaDeveloperContentEnricher } from './hatena-developer';
 export { PepaboContentEnricher } from './pepabo';
 export { SansanContentEnricher } from './sansan';
 export { MoneyForwardContentEnricher } from './moneyforward';
+export { GitHubBlogEnricher } from './github-blog';
+export { CloudflareBlogEnricher } from './cloudflare-blog';
+export { MozillaHacksEnricher } from './mozilla-hacks';
 
 /**
  * エンリッチャーファクトリークラス
@@ -69,6 +75,10 @@ export class ContentEnricherFactory {
       new PepaboContentEnricher(),
       new SansanContentEnricher(),
       new MoneyForwardContentEnricher(),
+      // 新規追加（2025年8月27日）英語ソース
+      new GitHubBlogEnricher(),
+      new CloudflareBlogEnricher(),
+      new MozillaHacksEnricher(),
       new HatenaContentEnricher(),  // 最後（すべてのURLに対応するため）
       // 将来的に他の企業のエンリッチャーを追加
       // new CookpadContentEnricher(),

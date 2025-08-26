@@ -17,7 +17,9 @@ import { HuggingFaceFetcher } from './huggingface';
 import { GoogleAIFetcher } from './google-ai';
 import { InfoQJapanFetcher } from './infoq-japan';
 import { DocswellFetcher } from './docswell';
-// import { GitHubBlogFetcher } from './github-blog';
+import { GitHubBlogFetcher } from './github-blog';
+import { CloudflareBlogFetcher } from './cloudflare-blog';
+import { MozillaHacksFetcher } from './mozilla-hacks';
 // import { MicrosoftDevBlogFetcher } from './microsoft-dev-blog';
 
 export function createFetcher(source: Source): BaseFetcher {
@@ -56,8 +58,12 @@ export function createFetcher(source: Source): BaseFetcher {
       return new InfoQJapanFetcher(source);
     case 'Docswell':
       return new DocswellFetcher(source);
-    // case 'GitHub Blog':
-    //   return new GitHubBlogFetcher(source);
+    case 'GitHub Blog':
+      return new GitHubBlogFetcher(source);
+    case 'Cloudflare Blog':
+      return new CloudflareBlogFetcher(source);
+    case 'Mozilla Hacks':
+      return new MozillaHacksFetcher(source);
     // case 'Microsoft Developer Blog':
     //   return new MicrosoftDevBlogFetcher(source);
     default:
@@ -83,8 +89,10 @@ export {
   HuggingFaceFetcher,
   GoogleAIFetcher,
   InfoQJapanFetcher,
-  DocswellFetcher
-  // GitHubBlogFetcher,
+  DocswellFetcher,
+  GitHubBlogFetcher,
+  CloudflareBlogFetcher,
+  MozillaHacksFetcher
   // MicrosoftDevBlogFetcher
 };
 export type { FetchResult } from './base';
