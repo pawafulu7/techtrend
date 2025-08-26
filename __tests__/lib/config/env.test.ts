@@ -190,6 +190,118 @@ describe.skip('Environment Configuration', () => {
   });
 });
 
+// Phase 2 Stage 2: getEnv tests (enabled)
+describe('Environment Configuration - getEnv', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    // Reset module cache and environment
+    jest.resetModules();
+    resetEnvCache();
+    process.env = { ...originalEnv };
+  });
+
+  afterEach(() => {
+    resetEnvCache();
+    process.env = originalEnv;
+  });
+
+  it('validates required environment variables', () => {
+    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.NODE_ENV = 'test';
+    
+    const result = getEnv();
+    expect(result).toBeDefined();
+    expect(result.NEXTAUTH_SECRET).toBe('test-secret-key-for-testing-purposes-only-32chars');
+  });
+
+  it('provides defaults for optional variables', () => {
+    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    resetEnvCache();
+    
+    const result = getEnv();
+    expect(result.REDIS_HOST).toBe('localhost');
+    expect(result.REDIS_PORT).toBe('6379');
+    expect(result.ENABLE_CACHE).toBe('true');
+  });
+
+  it('validates URL format for DATABASE_URL', () => {
+    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.DATABASE_URL = 'not-a-valid-url';
+    process.env.NODE_ENV = 'production';
+    resetEnvCache();
+    
+    expect(() => getEnv()).toThrow('Environment validation failed');
+  });
+
+  it('validates port numbers', () => {
+    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.PORT = 'not-a-number';
+    process.env.NODE_ENV = 'production';
+    resetEnvCache();
+    
+    expect(() => getEnv()).toThrow('Environment validation failed');
+  });
+
+  it('validates enum values', () => {
+    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.NODE_ENV = 'invalid-env';
+    resetEnvCache();
+    
+    expect(() => getEnv()).toThrow();
+  });
+
+  it('handles development mode with warnings', () => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.NEXTAUTH_SECRET;
+    resetEnvCache();
+    
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+    const result = getEnv();
+    
+    expect(result).toBeDefined();
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+});
+
+// Phase 2 Stage 2: features tests (enabled)
+describe('Environment Configuration - features', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    // Reset module cache and environment
+    jest.resetModules();
+    resetEnvCache();
+    process.env = { ...originalEnv };
+    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+  });
+
+  afterEach(() => {
+    resetEnvCache();
+    process.env = originalEnv;
+  });
+
+  it('correctly interprets feature flags', () => {
+    process.env.ENABLE_CACHE = 'true';
+    process.env.ENABLE_AUTH = 'false';
+    process.env.QUALITY_CHECK_ENABLED = 'true';
+    resetEnvCache();
+    
+    expect(features.isCacheEnabled()).toBe(true);
+    expect(features.isAuthEnabled()).toBe(false);
+    expect(features.isQualityCheckEnabled()).toBe(true);
+  });
+
+  it('uses defaults when flags are not set', () => {
+    resetEnvCache();
+    
+    expect(features.isCacheEnabled()).toBe(true); // default
+    expect(features.isAuthEnabled()).toBe(true); // default
+    expect(features.isAnalyticsEnabled()).toBe(false); // default
+  });
+});
+
 // Phase 2 Stage 1: Config helpers tests (enabled)
 describe('Environment Configuration - Config Helpers', () => {
   const originalEnv = process.env;

@@ -64,6 +64,9 @@ export type Env = z.infer<typeof envSchema>;
 
 // Validation error formatting
 function formatValidationErrors(errors: z.ZodError): string {
+  if (!errors || !errors.errors) {
+    return '  - Unknown validation error';
+  }
   return errors.errors
     .map(err => `  - ${err.path.join('.')}: ${err.message}`)
     .join('\n');
