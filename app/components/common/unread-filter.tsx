@@ -77,7 +77,7 @@ export function UnreadFilter({ unreadCount = 0 }: UnreadFilterProps) {
           <span className="sm:hidden">
             {currentMode === 'unread' ? '未' : currentMode === 'read' ? '既' : '全'}
           </span>
-          {unreadCount > 0 && currentMode !== 'read' && (
+          {unreadCount > 0 && currentMode === 'all' && (
             <Badge 
               variant="destructive" 
               className="ml-1 h-5 px-1.5 text-xs"
