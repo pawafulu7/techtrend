@@ -64,6 +64,9 @@ export type Env = z.infer<typeof envSchema>;
 
 // Validation error formatting
 function formatValidationErrors(errors: z.ZodError): string {
+  if (!errors || !errors.errors) {
+    return '  - Unknown validation error';
+  }
   return errors.errors
     .map(err => `  - ${err.path.join('.')}: ${err.message}`)
     .join('\n');
@@ -157,6 +160,16 @@ export const config = {
     isTest: () => env.NODE_ENV === 'test',
   },
 };
+
+/**
+ * Reset environment cache for testing
+ * Only available in test environment
+ */
+export function resetEnvCache(): void {
+  if (process.env.NODE_ENV === 'test') {
+    _env = null;
+  }
+}
 
 /**
  * Validate environment on module load in production
