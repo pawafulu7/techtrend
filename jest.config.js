@@ -10,6 +10,10 @@ const customJestConfig = {
   // setupFiles: ['<rootDir>/__tests__/helpers/setup.ts'], // 一時的にコメントアウト
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'node',
+  // ESモジュール対応設定
+  transformIgnorePatterns: [
+    'node_modules/(?!(next-auth|@auth)/)'
+  ],
   moduleNameMapper: {
     // Manual mocks for Prisma and Redis (must come before generic alias)
     '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
@@ -19,6 +23,9 @@ const customJestConfig = {
     '^next/navigation$': '<rootDir>/__tests__/__mocks__/next-navigation.ts',
     // Mock ioredis
     '^ioredis$': '<rootDir>/__tests__/__mocks__/ioredis.ts',
+    // next-authのモックマッピング
+    '^next-auth$': '<rootDir>/__mocks__/next-auth.ts',
+    '^next-auth/providers/(.*)$': '<rootDir>/__mocks__/next-auth/providers/$1.ts',
     // Handle module aliases (must be last due to wildcard)
     '^@/(.*)$': '<rootDir>/$1',
   },

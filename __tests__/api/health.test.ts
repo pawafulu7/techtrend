@@ -20,8 +20,8 @@ describe('Health Check API', () => {
   });
 
   it('should return healthy status when all services are up', async () => {
-    const { prisma } = await import('@/lib/database');
-    const { getRedisClient } = await import('@/lib/redis/client');
+    const { prisma } = require('@/lib/database');
+    const { getRedisClient } = require('@/lib/redis/client');
     
     // Mock successful responses
     (prisma.$queryRaw as any).mockResolvedValue([{ result: 1 }]);
@@ -41,7 +41,7 @@ describe('Health Check API', () => {
   });
 
   it('should return unhealthy status when database is down', async () => {
-    const { prisma } = await import('@/lib/database');
+    const { prisma } = require('@/lib/database');
     
     // Mock database failure
     (prisma.$queryRaw as any).mockRejectedValue(new Error('Database connection failed'));
