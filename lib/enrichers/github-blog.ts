@@ -1,15 +1,11 @@
-import { BaseEnricher } from './base';
+import { BaseContentEnricher } from './base';
 import * as cheerio from 'cheerio';
 
-export class GitHubBlogEnricher extends BaseEnricher {
-  constructor() {
-    super('GitHub Blog');
-  }
-
+export class GitHubBlogEnricher extends BaseContentEnricher {
   /**
    * GitHub Blogの記事URLかどうかを判定
    */
-  canEnrich(url: string): boolean {
+  canHandle(url: string): boolean {
     return url.includes('github.blog') || url.includes('github.com/blog');
   }
 

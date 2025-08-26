@@ -24,7 +24,11 @@ import { HuggingFaceFetcher } from '@/lib/fetchers/huggingface';
 import { GoogleAIFetcher } from '@/lib/fetchers/google-ai';
 import { InfoQJapanFetcher } from '@/lib/fetchers/infoq-japan';
 import { DocswellFetcher } from '@/lib/fetchers/docswell';
-// import { GitHubBlogFetcher } from '@/lib/fetchers/github-blog';
+import { GitHubBlogFetcher } from '@/lib/fetchers/github-blog';
+import { CloudflareBlogFetcher } from '@/lib/fetchers/cloudflare-blog';
+import { MozillaHacksFetcher } from '@/lib/fetchers/mozilla-hacks';
+import { HackerNewsFetcher } from '@/lib/fetchers/hacker-news';
+import { MediumEngineeringFetcher } from '@/lib/fetchers/medium-engineering';
 // import { MicrosoftDevBlogFetcher } from '@/lib/fetchers/microsoft-dev-blog';
 import { BaseFetcher } from '@/lib/fetchers/base';
 
@@ -55,7 +59,11 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'Google AI Blog': GoogleAIFetcher,
   'InfoQ Japan': InfoQJapanFetcher,
   'Docswell': DocswellFetcher,
-  // 'GitHub Blog': GitHubBlogFetcher,
+  'GitHub Blog': GitHubBlogFetcher,
+  'Cloudflare Blog': CloudflareBlogFetcher,
+  'Mozilla Hacks': MozillaHacksFetcher,
+  'Hacker News': HackerNewsFetcher,
+  'Medium Engineering': MediumEngineeringFetcher,
   // 'Microsoft Developer Blog': MicrosoftDevBlogFetcher,
 };
 

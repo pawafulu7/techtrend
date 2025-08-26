@@ -2,10 +2,10 @@ import { BaseFetcher } from './base';
 import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
-import { parseRSSDate } from '@/lib/utils/date-parser';
-import { extractContent, checkContentQuality } from '@/lib/utils/content-utils';
+import { parseRSSDate } from '@/lib/utils/date';
+import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
-import { normalizeTagInput } from '@/lib/services/tag-normalizer';
+import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 
 interface MozillaHacksItem {
   title?: string;

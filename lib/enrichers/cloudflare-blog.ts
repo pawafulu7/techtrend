@@ -1,15 +1,11 @@
-import { BaseEnricher } from './base';
+import { BaseContentEnricher } from './base';
 import * as cheerio from 'cheerio';
 
-export class CloudflareBlogEnricher extends BaseEnricher {
-  constructor() {
-    super('Cloudflare Blog');
-  }
-
+export class CloudflareBlogEnricher extends BaseContentEnricher {
   /**
    * Cloudflare Blogの記事URLかどうかを判定
    */
-  canEnrich(url: string): boolean {
+  canHandle(url: string): boolean {
     return url.includes('blog.cloudflare.com') || url.includes('cloudflare.com/blog');
   }
 

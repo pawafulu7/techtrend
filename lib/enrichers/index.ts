@@ -24,6 +24,8 @@ import { MoneyForwardContentEnricher } from './moneyforward';
 import { GitHubBlogEnricher } from './github-blog';
 import { CloudflareBlogEnricher } from './cloudflare-blog';
 import { MozillaHacksEnricher } from './mozilla-hacks';
+import { HackerNewsEnricher } from './hacker-news';
+import { MediumEngineeringEnricher } from './medium-engineering';
 
 export { IContentEnricher, BaseContentEnricher, EnrichedContent } from './base';
 export { GMOContentEnricher } from './gmo';
@@ -46,6 +48,8 @@ export { MoneyForwardContentEnricher } from './moneyforward';
 export { GitHubBlogEnricher } from './github-blog';
 export { CloudflareBlogEnricher } from './cloudflare-blog';
 export { MozillaHacksEnricher } from './mozilla-hacks';
+export { HackerNewsEnricher } from './hacker-news';
+export { MediumEngineeringEnricher } from './medium-engineering';
 
 /**
  * エンリッチャーファクトリークラス
@@ -79,6 +83,8 @@ export class ContentEnricherFactory {
       new GitHubBlogEnricher(),
       new CloudflareBlogEnricher(),
       new MozillaHacksEnricher(),
+      new HackerNewsEnricher(),
+      new MediumEngineeringEnricher(),
       new HatenaContentEnricher(),  // 最後（すべてのURLに対応するため）
       // 将来的に他の企業のエンリッチャーを追加
       // new CookpadContentEnricher(),

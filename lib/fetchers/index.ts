@@ -20,6 +20,8 @@ import { DocswellFetcher } from './docswell';
 import { GitHubBlogFetcher } from './github-blog';
 import { CloudflareBlogFetcher } from './cloudflare-blog';
 import { MozillaHacksFetcher } from './mozilla-hacks';
+import { HackerNewsFetcher } from './hacker-news';
+import { MediumEngineeringFetcher } from './medium-engineering';
 // import { MicrosoftDevBlogFetcher } from './microsoft-dev-blog';
 
 export function createFetcher(source: Source): BaseFetcher {
@@ -64,6 +66,10 @@ export function createFetcher(source: Source): BaseFetcher {
       return new CloudflareBlogFetcher(source);
     case 'Mozilla Hacks':
       return new MozillaHacksFetcher(source);
+    case 'Hacker News':
+      return new HackerNewsFetcher(source);
+    case 'Medium Engineering':
+      return new MediumEngineeringFetcher(source);
     // case 'Microsoft Developer Blog':
     //   return new MicrosoftDevBlogFetcher(source);
     default:
@@ -92,7 +98,9 @@ export {
   DocswellFetcher,
   GitHubBlogFetcher,
   CloudflareBlogFetcher,
-  MozillaHacksFetcher
+  MozillaHacksFetcher,
+  HackerNewsFetcher,
+  MediumEngineeringFetcher
   // MicrosoftDevBlogFetcher
 };
 export type { FetchResult } from './base';

@@ -1,15 +1,11 @@
-import { BaseEnricher } from './base';
+import { BaseContentEnricher } from './base';
 import * as cheerio from 'cheerio';
 
-export class MozillaHacksEnricher extends BaseEnricher {
-  constructor() {
-    super('Mozilla Hacks');
-  }
-
+export class MozillaHacksEnricher extends BaseContentEnricher {
   /**
    * Mozilla Hacksの記事URLかどうかを判定
    */
-  canEnrich(url: string): boolean {
+  canHandle(url: string): boolean {
     return url.includes('hacks.mozilla.org');
   }
 

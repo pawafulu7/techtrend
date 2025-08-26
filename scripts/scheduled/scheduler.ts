@@ -28,6 +28,8 @@ const RSS_SOURCES = [
   'GitHub Blog',
   'Cloudflare Blog',
   'Mozilla Hacks',
+  'Hacker News',
+  'Medium Engineering',
   // 'Microsoft Developer Blog'
 ];
 
