@@ -42,51 +42,20 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
         return { articles, errors };
       }
 
+      // ContentEnricherFactoryを動的インポート
+      const { ContentEnricherFactory } = await import('../enrichers');
+      const enricherFactory = new ContentEnricherFactory();
 
       // 最新30件に制限
       const limitedItems = feed.items.slice(0, 30);
 
       for (const item of limitedItems) {
         try {
-          if (!item.title || !item.link) continue;
-
-          // 技術記事のフィルタリング（Google I/Oやプロダクトアップデートなど）
-          const techKeywords = [
-            'android', 'chrome', 'firebase', 'flutter', 'tensorflow',
-            'cloud', 'ai', 'ml', 'api', 'developer', 'web', 'mobile',
-            'platform', 'framework', 'release', 'update', 'beta',
-            'machine learning', 'artificial intelligence'
-          ];
-
-          const titleLower = item.title.toLowerCase();
-          const contentLower = (item.content || item.contentSnippet || '').toLowerCase();
-          
-          const isTechArticle = techKeywords.some(keyword => 
-            titleLower.includes(keyword) || contentLower.includes(keyword)
-          );
-
-          if (!isTechArticle) {
-            continue;
+          // parseItemメソッドに処理を委譲
+          const article = await this.parseItem(item, enricherFactory, thirtyDaysAgo);
+          if (article) {
+            articles.push(article);
           }
-
-          const publishedAt = item.pubDate ? parseRSSDate(item.pubDate) : new Date();
-          
-          // 30日以内の記事のみ処理
-          if (publishedAt < thirtyDaysAgo) {
-            continue;
-          }
-
-          const article: CreateArticleInput = {
-            title: this.sanitizeText(item.title),
-            url: this.normalizeUrl(item.link),
-            summary: undefined, // 要約は後で日本語で生成
-            content: item.content || item.contentSnippet || '',
-            publishedAt,
-            sourceId: this.source.id,
-            tagNames: item.categories || [],
-          };
-
-          articles.push(article);
         } catch (error) {
           errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
         }
@@ -98,5 +67,80 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
     }
 
     return { articles, errors };
+  }
+
+  private async parseItem(
+    item: GoogleDevBlogItem,
+    enricherFactory: any,
+    thirtyDaysAgo: Date
+  ): Promise<CreateArticleInput | null> {
+    if (!item.title || !item.link) return null;
+
+    // 技術記事のフィルタリング
+    const techKeywords = [
+      'android', 'chrome', 'firebase', 'flutter', 'tensorflow',
+      'cloud', 'ai', 'ml', 'api', 'developer', 'web', 'mobile',
+      'platform', 'framework', 'release', 'update', 'beta',
+      'machine learning', 'artificial intelligence', 'gemini'
+    ];
+
+    const titleLower = item.title.toLowerCase();
+    const contentLower = (item.content || item.contentSnippet || '').toLowerCase();
+    
+    const isTechArticle = techKeywords.some(keyword => 
+      titleLower.includes(keyword) || contentLower.includes(keyword)
+    );
+
+    if (!isTechArticle) {
+      return null;
+    }
+
+    const publishedAt = item.pubDate ? parseRSSDate(item.pubDate) : new Date();
+    
+    // 30日以内の記事のみ処理
+    if (publishedAt < thirtyDaysAgo) {
+      return null;
+    }
+
+    // コンテンツの取得
+    let content = item.content || item.contentSnippet || '';
+    let thumbnail: string | undefined;
+
+    // コンテンツエンリッチメント（2000文字未満の場合のみ実行）
+    if (content && content.length < 2000) {
+      const enricher = enricherFactory.getEnricher(item.link);
+      if (enricher) {
+        try {
+          const enrichedData = await enricher.enrich(item.link);
+          if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
+            console.log(`[Google Dev Blog] Enriched content for ${item.link}: ${content.length} -> ${enrichedData.content.length} chars`);
+            content = enrichedData.content;
+            thumbnail = enrichedData.thumbnail || undefined;
+          } else {
+            console.log(`[Google Dev Blog] Enrichment did not improve content for ${item.link}`);
+          }
+        } catch (error) {
+          console.error(`[Google Dev Blog] Enrichment failed for ${item.link}:`, error);
+          // エラー時は元のコンテンツを使用
+        }
+      } else {
+        console.log(`[Google Dev Blog] No enricher available for ${item.link}`);
+      }
+    } else if (content && content.length >= 2000) {
+      console.log(`[Google Dev Blog] Content already sufficient for ${item.link}: ${content.length} chars`);
+    }
+
+    const article: CreateArticleInput = {
+      title: this.sanitizeText(item.title),
+      url: this.normalizeUrl(item.link),
+      summary: undefined, // 要約は後で日本語で生成
+      content,
+      publishedAt,
+      sourceId: this.source.id,
+      tagNames: item.categories || [],
+      thumbnail, // サムネイル追加
+    };
+
+    return article;
   }
 }
