@@ -138,6 +138,12 @@ function cleanupText(text: string): string {
     .trim();
 }
 
+// Markdown太字記法を適切に削除する関数
+function removeMarkdownBold(text: string): string {
+  // **text** 形式のMarkdown太字を削除
+  return text.replace(/\*\*([^*]+)\*\*/g, '$1');
+}
+
 // 最終クリーンアップ関数
 function finalCleanup(text: string): string {
   if (!text) return text;
@@ -282,9 +288,9 @@ function parseSummaryAndTags(text: string, title: string = '', content: string =
     }
     // 詳細要約ラベル後の内容待ち
     else if (expectingDetailedContent && line.trim() && !line.match(/^タグ[:：]/)) {
-      // 箇条書きの場合はそのまま追加
+      // 箇条書きの場合もMarkdown削除を適用
       if (line.trim().startsWith('・')) {
-        detailedSummary = line.trim();
+        detailedSummary = removeMarkdownBold(line.trim());
       } else {
         detailedSummary = cleanupText(line);
       }
@@ -293,13 +299,14 @@ function parseSummaryAndTags(text: string, title: string = '', content: string =
     }
     // detailedSummaryの続きの行
     else if (isDetailedSummary && line.trim() && !line.match(/^タグ[:：]/)) {
-      // 箇条書きの場合はそのまま追加（cleanupTextを適用しない）
+      // 箇条書きの場合もMarkdown削除を適用
       if (line.trim().startsWith('・')) {
         // 最初の行の場合は改行を追加しない
+        const cleanedLine = removeMarkdownBold(line.trim());
         if (detailedSummary) {
-          detailedSummary += '\n' + line.trim();
+          detailedSummary += '\n' + cleanedLine;
         } else {
-          detailedSummary = line.trim();
+          detailedSummary = cleanedLine;
         }
       } else {
         // 最初の行の場合は改行を追加しない
