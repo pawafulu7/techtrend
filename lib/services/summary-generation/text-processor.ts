@@ -12,14 +12,15 @@ export function cleanupText(text: string): string {
   if (!text) return '';
   
   return text
-    .replace(/\n{3,}/g, '\n\n')        // 3つ以上の改行を2つに
-    .replace(/\s{3,}/g, '  ')           // 3つ以上のスペースを2つに
+    .replace(/\n/g, ' ')                // すべての改行をスペースに変換
+    .replace(/\s{3,}/g, ' ')            // 3つ以上のスペースを1つに
     .replace(/[・•]\s*/g, '・')         // 中点の統一
     .replace(/：/g, ':')                // 全角コロンを半角に
     .replace(/（/g, '(')                // 全角括弧を半角に
     .replace(/）/g, ')')
     .replace(/\s*。\s*/g, '。')         // 句点前後の空白を削除
     .replace(/。{2,}/g, '。')           // 重複する句点を削除
+    .replace(/\s+/g, ' ')               // 連続するスペースを1つに
     .trim();
 }
 
