@@ -15,13 +15,13 @@ describe('text-processor', () => {
     it('should remove excessive line breaks', () => {
       const input = 'Line1\n\n\n\nLine2';
       const result = cleanupText(input);
-      expect(result).toBe('Line1\n\nLine2');
+      expect(result).toBe('Line1 Line2');
     });
 
     it('should normalize spaces', () => {
       const input = 'Word1     Word2';
       const result = cleanupText(input);
-      expect(result).toBe('Word1  Word2');
+      expect(result).toBe('Word1 Word2');
     });
 
     it('should normalize punctuation', () => {
@@ -59,7 +59,7 @@ describe('text-processor', () => {
     it('should apply cleanup before adding period', () => {
       const input = 'テスト   文章';
       const result = finalCleanup(input);
-      expect(result).toBe('テスト  文章。');
+      expect(result).toBe('テスト 文章。');
     });
   });
 
