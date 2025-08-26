@@ -159,6 +159,16 @@ export const config = {
 };
 
 /**
+ * Reset environment cache for testing
+ * Only available in test environment
+ */
+export function resetEnvCache(): void {
+  if (process.env.NODE_ENV === 'test') {
+    _env = null;
+  }
+}
+
+/**
  * Validate environment on module load in production
  */
 if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
