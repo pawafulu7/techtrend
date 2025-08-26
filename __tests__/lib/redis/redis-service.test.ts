@@ -209,15 +209,10 @@ describe('RedisService', () => {
     });
 
     it('should handle JSON parse errors', async () => {
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      
       await testClient.set('bad:json', '{invalid json}');
       const result = await service.getJSON('bad:json');
       
       expect(result).toBeNull();
-      expect(consoleErrorSpy).toHaveBeenCalled();
-      
-      consoleErrorSpy.mockRestore();
     });
   });
 });

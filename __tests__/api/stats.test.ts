@@ -1,20 +1,27 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+// Create mock functions
+const mockArticleCount = jest.fn();
+const mockArticleFindMany = jest.fn();
+const mockSourceCount = jest.fn();
+const mockTagCount = jest.fn();
+const mockUserCount = jest.fn();
 
 // Mock Prisma
 jest.mock('@/lib/database', () => ({
   prisma: {
     article: {
-      count: jest.fn(),
-      findMany: jest.fn()
+      count: mockArticleCount,
+      findMany: mockArticleFindMany
     },
     source: {
-      count: jest.fn()
+      count: mockSourceCount
     },
     tag: {
-      count: jest.fn()
+      count: mockTagCount
     },
     user: {
-      count: jest.fn()
+      count: mockUserCount
     }
   }
 }));
@@ -24,16 +31,14 @@ describe('Stats API', () => {
     jest.clearAllMocks();
   });
 
-  it('should return correct statistics', async () => {
-    const { prisma } = await import('@/lib/database');
-    
+  it('should return correct statistics', async () => {    
     // Mock database responses
-    (prisma.article.count as any).mockResolvedValue(1000);
-    (prisma.source.count as any).mockResolvedValue(17);
-    (prisma.tag.count as any).mockResolvedValue(500);
-    (prisma.user.count as any).mockResolvedValue(10);
+    mockArticleCount.mockResolvedValue(1000);
+    mockSourceCount.mockResolvedValue(17);
+    mockTagCount.mockResolvedValue(500);
+    mockUserCount.mockResolvedValue(10);
     
-    (prisma.article.findMany as any).mockResolvedValue([
+    mockArticleFindMany.mockResolvedValue([
       { qualityScore: 80 },
       { qualityScore: 70 },
       { qualityScore: 90 }
@@ -54,15 +59,13 @@ describe('Stats API', () => {
     expect(stats.averageQualityScore).toBe(80);
   });
 
-  it('should handle empty database', async () => {
-    const { prisma } = await import('@/lib/database');
-    
+  it('should handle empty database', async () => {    
     // Mock empty database
-    (prisma.article.count as any).mockResolvedValue(0);
-    (prisma.source.count as any).mockResolvedValue(0);
-    (prisma.tag.count as any).mockResolvedValue(0);
-    (prisma.user.count as any).mockResolvedValue(0);
-    (prisma.article.findMany as any).mockResolvedValue([]);
+    mockArticleCount.mockResolvedValue(0);
+    mockSourceCount.mockResolvedValue(0);
+    mockTagCount.mockResolvedValue(0);
+    mockUserCount.mockResolvedValue(0);
+    mockArticleFindMany.mockResolvedValue([]);
 
     const stats = {
       articles: 0,

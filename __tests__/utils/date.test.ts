@@ -1,7 +1,15 @@
 import { adjustTimezoneForArticle, parseRSSDate, formatDate, formatDateWithTime } from '@/lib/utils/date';
 
 describe('adjustTimezoneForArticle', () => {
-  // console文削除に伴い、モック設定も削除
+  let consoleErrorSpy: jest.SpyInstance;
+  
+  beforeEach(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+  });
+  
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
 
   it('未来の日付を現在時刻に調整する', () => {
     const futureDate = new Date();
@@ -30,7 +38,7 @@ describe('adjustTimezoneForArticle', () => {
     const adjusted = adjustTimezoneForArticle(pastDate);
     
     expect(adjusted.getTime()).toEqual(pastDate.getTime());
-    expect(console.error).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
   it('現在時刻は変更しない', () => {
@@ -39,7 +47,7 @@ describe('adjustTimezoneForArticle', () => {
     const adjusted = adjustTimezoneForArticle(now);
     
     expect(adjusted.getTime()).toEqual(now.getTime());
-    expect(console.error).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
   it('ソース名が提供された場合、ログに含まれる', () => {
