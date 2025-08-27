@@ -191,6 +191,32 @@ cron.schedule('0 2 * * 0', async () => {
   }
 });
 
+// 毎日午前3時に品質チェックと自動再生成を実行
+cron.schedule('0 3 * * *', async () => {
+  const startTime = new Date();
+  console.error(`\n🔍 品質チェックと自動再生成を開始: ${startTime.toLocaleString('ja-JP')}`);
+  
+  try {
+    // まず品質チェックを実行
+    console.error('📊 品質チェックを実行中...');
+    const { stdout: qualityOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/quality-check.ts --days 7 --auto-regenerate');
+    console.error(qualityOutput);
+    
+    // 次に低品質記事の自動再生成を実行
+    console.error('♻️ 低品質記事の自動再生成を実行中...');
+    const { stdout: regenerateOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/auto-regenerate-low-quality.ts --threshold 70 --limit 10');
+    console.error(regenerateOutput);
+    
+    const endTime = new Date();
+    const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+    console.error(`✅ 品質チェックと自動再生成が完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
+    
+  } catch (error) {
+    console.error('❌ 品質チェック・自動再生成でエラーが発生しました:', 
+      error instanceof Error ? error.message : String(error));
+  }
+});
+
 // 要約生成を午前に実行（毎日午前10時30分）
 // タグ生成バッチ（8:30）の後に実行
 cron.schedule('30 10 * * *', async () => {
@@ -263,8 +289,9 @@ cron.schedule('30 8,20 * * *', async () => {
     console.error('   - RSS系: 毎時0分');
     console.error('   - スクレイピング系: 0時・12時');
     console.error('   - Qiita Popular: 5:05・17:05');
-    console.error('   - 要約生成: 毎日10:30（午前）');
+    console.error('   - 品質チェック・再生成: 毎日3時');
     console.error('   - タグ生成: 8:30・20:30');
+    console.error('   - 要約生成: 毎日10:30（午前）');
     console.error('   - クリーンアップ: 毎日22時');
     console.error('   - 週次クリーンアップ: 毎週日曜日2時');
   } catch (error) {
