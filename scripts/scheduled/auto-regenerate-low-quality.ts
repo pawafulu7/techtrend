@@ -112,21 +112,19 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
             },
           });
 
-          // 新しい品質スコアを計算
-          const newScore = calculateQualityScore({
-            title: article.title,
+          // 新しい品質スコアを計算（sourceを含む完全なarticleオブジェクトを渡す）
+          const updatedArticle = {
+            ...article,
             summary: result.summary,
             detailedSummary: result.detailedSummary || '',
-            url: article.url,
-            createdAt: article.createdAt,
-            tags: article.tags,
-          });
+          };
+          const newScoreValue = calculateQualityScore(updatedArticle as any);
 
           // 品質スコアをデータベースに保存
           await prisma.article.update({
             where: { id: article.id },
             data: {
-              qualityScore: newScore.score,
+              qualityScore: newScoreValue,
             },
           });
 
@@ -134,14 +132,14 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
             articleId: article.id,
             title: article.title,
             oldScore: article.qualityScore || 0,
-            newScore: newScore.score,
+            newScore: newScoreValue,
             success: true,
           });
 
           succeeded++;
 
           if (verbose) {
-            console.log(`  ✅ 成功: 新スコア ${newScore.score}点 (${newScore.score - (article.qualityScore || 0) > 0 ? '+' : ''}${newScore.score - (article.qualityScore || 0)}点)`);
+            console.log(`  ✅ 成功: 新スコア ${newScoreValue}点 (${newScoreValue - (article.qualityScore || 0) > 0 ? '+' : ''}${newScoreValue - (article.qualityScore || 0)}点)`);
           }
         } else {
           failed++;
@@ -253,6 +251,7 @@ async function getLowQualityArticles(
     },
     include: {
       tags: true,
+      source: true,  // calculateQualityScoreで必要
     },
     orderBy: {
       qualityScore: 'asc',

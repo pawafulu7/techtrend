@@ -119,7 +119,7 @@ export class QualityMonitor {
             lt: nextDate,
           },
           qualityScore: {
-            not: null,
+            gt: 0,  // nullではなく0より大きい値でフィルタリング
           },
         },
         select: {
