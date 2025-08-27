@@ -191,8 +191,8 @@ cron.schedule('0 2 * * 0', async () => {
   }
 });
 
-// 毎日午前3時に品質チェックと自動再生成を実行
-cron.schedule('0 3 * * *', async () => {
+// 毎日午後3時30分に品質チェックと自動再生成を実行
+cron.schedule('30 15 * * *', async () => {
   const startTime = new Date();
   console.error(`\n🔍 品質チェックと自動再生成を開始: ${startTime.toLocaleString('ja-JP')}`);
   
@@ -289,7 +289,7 @@ cron.schedule('30 8,20 * * *', async () => {
     console.error('   - RSS系: 毎時0分');
     console.error('   - スクレイピング系: 0時・12時');
     console.error('   - Qiita Popular: 5:05・17:05');
-    console.error('   - 品質チェック・再生成: 毎日3時');
+    console.error('   - 品質チェック・再生成: 毎日15:30');
     console.error('   - タグ生成: 8:30・20:30');
     console.error('   - 要約生成: 毎日10:30（午前）');
     console.error('   - クリーンアップ: 毎日22時');
