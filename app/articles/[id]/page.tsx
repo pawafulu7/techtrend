@@ -14,6 +14,7 @@ import { ViewTracker } from '@/components/article/view-tracker';
 import { ReadTracker } from '@/components/article/read-tracker';
 import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summary-display';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
+import { FavoriteButton } from '@/components/article/favorite-button';
 
 interface PageProps {
   params: Promise<{
@@ -94,45 +95,51 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
           <Card>
             <CardHeader>
               <div className="space-y-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {isNew && (
-                    <Badge className="text-xs" variant="destructive">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      New
-                    </Badge>
-                  )}
-                  <Badge 
-                    variant="secondary" 
-                    className={cn("text-xs font-medium", sourceColor.tag)}
-                  >
-                    {article.source.name}
-                  </Badge>
-                  <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span>📅 配信:</span>
-                      <span>{formatDateWithTime(article.publishedAt)}</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span>📥 取込:</span>
-                      <span>{formatDateWithTime(article.createdAt)}</span>
-                    </span>
-                  </div>
-                  {article.difficulty && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isNew && (
+                      <Badge className="text-xs" variant="destructive">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        New
+                      </Badge>
+                    )}
                     <Badge 
-                      variant="outline" 
-                      className={cn(
-                        "text-xs font-medium",
-                        article.difficulty === 'beginner' && "bg-green-50 text-green-700 border-green-200",
-                        article.difficulty === 'intermediate' && "bg-blue-50 text-blue-700 border-blue-200",
-                        article.difficulty === 'advanced' && "bg-purple-50 text-purple-700 border-purple-200"
-                      )}
+                      variant="secondary" 
+                      className={cn("text-xs font-medium", sourceColor.tag)}
                     >
-                      <GraduationCap className="h-3 w-3 mr-1" />
-                      {article.difficulty === 'beginner' && '初級'}
-                      {article.difficulty === 'intermediate' && '中級'}
-                      {article.difficulty === 'advanced' && '上級'}
+                      {article.source.name}
                     </Badge>
-                  )}
+                    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <span>📅 配信:</span>
+                        <span>{formatDateWithTime(article.publishedAt)}</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span>📥 取込:</span>
+                        <span>{formatDateWithTime(article.createdAt)}</span>
+                      </span>
+                    </div>
+                    {article.difficulty && (
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs font-medium",
+                          article.difficulty === 'beginner' && "bg-green-50 text-green-700 border-green-200",
+                          article.difficulty === 'intermediate' && "bg-blue-50 text-blue-700 border-blue-200",
+                          article.difficulty === 'advanced' && "bg-purple-50 text-purple-700 border-purple-200"
+                        )}
+                      >
+                        <GraduationCap className="h-3 w-3 mr-1" />
+                        {article.difficulty === 'beginner' && '初級'}
+                        {article.difficulty === 'intermediate' && '中級'}
+                        {article.difficulty === 'advanced' && '上級'}
+                      </Badge>
+                    )}
+                  </div>
+                  <FavoriteButton 
+                    articleId={article.id}
+                    className="h-9"
+                  />
                 </div>
 
                 <h1 className="text-2xl font-bold">{article.title}</h1>
