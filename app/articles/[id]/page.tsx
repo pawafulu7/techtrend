@@ -14,6 +14,7 @@ import { ViewTracker } from '@/components/article/view-tracker';
 import { ReadTracker } from '@/components/article/read-tracker';
 import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summary-display';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
+import { FavoriteButton } from '@/components/article/favorite-button';
 
 interface PageProps {
   params: Promise<{
@@ -210,17 +211,23 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   <Badge variant="secondary">{Math.round(article.qualityScore)}</Badge>
                 </div>
                 
-                <Button asChild>
-                  <a 
-                    href={article.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    元記事を読む
-                  </a>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <FavoriteButton 
+                    articleId={article.id}
+                    className="h-9"
+                  />
+                  <Button asChild>
+                    <a 
+                      href={article.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      元記事を読む
+                    </a>
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
