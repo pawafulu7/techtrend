@@ -108,8 +108,8 @@ export async function POST(req: NextRequest) {
       },
       update: {
         isRead: true,
-        readAt: new Date(),
-        viewedAt: new Date()
+        readAt: new Date()
+        // viewedAtは更新しない（既読マークのみ）
       },
       create: {
         userId: session.user.id,
