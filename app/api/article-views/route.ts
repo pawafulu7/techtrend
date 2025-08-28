@@ -76,6 +76,39 @@ export async function GET(request: Request) {
   }
 }
 
+// DELETE: 閲覧履歴をクリア
+export async function DELETE(request: Request) {
+  try {
+    const session = await auth();
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    // viewedAtがnullでない記録のみ削除
+    const result = await prisma.articleView.deleteMany({
+      where: {
+        userId: session.user.id,
+        viewedAt: { not: null }
+      }
+    });
+    
+    return NextResponse.json({
+      message: 'View history cleared',
+      clearedCount: result.count
+    });
+  } catch (error) {
+    console.error('[DELETE /api/article-views] Error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
 // POST: 記事閲覧を記録
 export async function POST(request: Request) {
   try {
@@ -120,7 +153,11 @@ export async function POST(request: Request) {
       // 既存の記録がある場合は時刻を更新
       const updatedView = await prisma.articleView.update({
         where: { id: existingView.id },
-        data: { viewedAt: new Date() },
+        data: { 
+          viewedAt: new Date(),
+          isRead: true,  // 閲覧時は既読にする
+          readAt: existingView.readAt || new Date()
+        },
       });
 
       return NextResponse.json({
@@ -134,7 +171,9 @@ export async function POST(request: Request) {
       data: {
         userId: session.user.id,
         articleId,
-        isRead: false,  // デフォルトは未読
+        viewedAt: new Date(),  // 明示的に設定
+        isRead: true,
+        readAt: new Date()
       },
     });
 

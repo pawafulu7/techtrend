@@ -174,10 +174,10 @@ export async function PUT(req: NextRequest) {
       });
     }
 
-    // トランザクションで一括処理
+    // 個別のupsertで処理（createManyではnullを設定できないため）
     const now = new Date();
-    const upsertPromises = unreadArticles.map(article => 
-      prisma.articleView.upsert({
+    for (const article of unreadArticles) {
+      await prisma.articleView.upsert({
         where: {
           userId_articleId: {
             userId: session.user.id,
@@ -187,17 +187,17 @@ export async function PUT(req: NextRequest) {
         update: {
           isRead: true,
           readAt: now
+          // viewedAtは更新しない（既に閲覧済みの場合は保持）
         },
         create: {
           userId: session.user.id,
           articleId: article.id,
           isRead: true,
           readAt: now
+          // viewedAtは指定しない（NULL）
         }
-      })
-    );
-
-    await Promise.all(upsertPromises);
+      });
+    }
 
     return NextResponse.json({ 
       success: true, 
