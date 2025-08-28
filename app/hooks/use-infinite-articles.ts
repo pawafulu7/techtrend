@@ -51,9 +51,10 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   // 既読状態が変更されたときに記事リストを再取得
   useEffect(() => {
     const handleReadStatusChanged = () => {
-      // 記事リストのキャッシュを破棄して再取得
-      queryClient.removeQueries({ queryKey: ['infinite-articles'] });
-      queryClient.refetchQueries({ queryKey: ['infinite-articles'] });
+      // まずキャッシュを無効化してから再取得
+      queryClient.invalidateQueries({ queryKey: ['infinite-articles'] });
+      // 既読状態のキャッシュも無効化
+      queryClient.invalidateQueries({ queryKey: ['read-status'] });
     };
     
     window.addEventListener('articles-read-status-changed', handleReadStatusChanged);

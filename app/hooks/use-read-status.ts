@@ -130,13 +130,18 @@ export function useReadStatus(articleIds?: string[]) {
 
       if (response.ok) {
         const data = await response.json();
-        // 全記事を既読として扱うため、再取得
-        await fetchReadStatus();
-        // 未読数を0に更新
+        
+        // 未読数を0に即座に更新
         setUnreadCount(0);
         
         // 記事リストを再取得するためのカスタムイベントを発火
-        window.dispatchEvent(new CustomEvent('articles-read-status-changed'));
+        // タイミングを少し遅らせて確実にキャッシュをクリアする
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('articles-read-status-changed'));
+        }, 100);
+        
+        // 全記事を既読として扱うため、再取得
+        await fetchReadStatus();
         
         return data;
       }

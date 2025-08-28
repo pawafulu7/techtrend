@@ -4,7 +4,7 @@ import { ArticleCard } from './card';
 import { ArticleListItem } from './list-item';
 import type { ArticleListProps } from '@/types/components';
 import { useReadStatus } from '@/app/hooks/use-read-status';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
 export function ArticleList({ 
@@ -19,7 +19,25 @@ export function ArticleList({
   const articleIds = useMemo(() => articles.map(a => a.id), [articles]);
   
   // 既読状態を取得
-  const { isRead, isLoading } = useReadStatus(articleIds);
+  const { isRead, isLoading, refetch } = useReadStatus(articleIds);
+  
+  // 強制再レンダリング用のstate
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  // 既読状態変更イベントをリッスンして再レンダリング
+  useEffect(() => {
+    const handleReadStatusChanged = () => {
+      // 既読状態を再取得して再レンダリング
+      refetch();
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('articles-read-status-changed', handleReadStatusChanged);
+    
+    return () => {
+      window.removeEventListener('articles-read-status-changed', handleReadStatusChanged);
+    };
+  }, [refetch]);
   
   // 未認証時は全て既読として扱う
   const getReadStatus = (articleId: string) => {
@@ -39,10 +57,10 @@ export function ArticleList({
   // リスト形式の場合
   if (viewMode === 'list') {
     return (
-      <div className="space-y-2" data-testid="article-list">
+      <div className="space-y-2" data-testid="article-list" key={refreshKey}>
         {articles.map((article, index) => (
           <ArticleListItem 
-            key={article.id} 
+            key={`${article.id}-${refreshKey}`} 
             article={article}
             articleIndex={index}
             totalArticleCount={articles.length}
@@ -56,10 +74,10 @@ export function ArticleList({
 
   // カード形式の場合（既存のコード）
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4" data-testid="article-list">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4" data-testid="article-list" key={refreshKey}>
       {articles.map((article) => (
         <ArticleCard 
-          key={article.id} 
+          key={`${article.id}-${refreshKey}`} 
           article={article}
           onArticleClick={onArticleClick}
           isRead={isLoading ? true : getReadStatus(article.id)}
