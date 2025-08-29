@@ -45,7 +45,22 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
     name: '企業ブログ',
     description: '日本企業の技術ブログ',
     sourceIds: [
-      'cmdwgsk1b0000te2vrjnpm6gc'   // Corporate Tech Blog
+      // 個別企業ブログ
+      'freee_tech_blog',            // freee Developers Hub
+      'cyberagent_tech_blog',       // CyberAgent Developers Blog
+      'dena_tech_blog',             // DeNA Engineering
+      'smarthr_tech_blog',          // SmartHR Tech Blog
+      'lycorp_tech_blog',           // LY Corporation Tech Blog
+      'gmo_tech_blog',              // GMO Developers
+      'sansan_tech_blog',           // Sansan Builders Box
+      'mercari_tech_blog',          // Mercari Engineering
+      'zozo_tech_blog',             // ZOZO TECH BLOG
+      'moneyforward_tech_blog',     // Money Forward Developers Blog
+      'hatena_tech_blog',           // Hatena Developer Blog
+      'pepabo_tech_blog',           // ペパボテックブログ
+      'cookpad_tech_blog',          // Cookpad Tech Life
+      // 旧統合ソース（移行期間中は残す）
+      'cmdwgsk1b0000te2vrjnpm6gc'   // Corporate Tech Blog (legacy)
     ]
   },
   presentation: {

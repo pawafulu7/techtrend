@@ -48,7 +48,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   };
   
   const [selectedSources, setSelectedSources] = useState<string[]>(getInitialSources);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['foreign', 'domestic', 'company', 'presentation']));
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   
   // ソースをカテゴリごとにグループ化
   const groupedSources = groupSourcesByCategory(sources);
