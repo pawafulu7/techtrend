@@ -121,12 +121,19 @@ export function useReadStatus(articleIds?: string[]) {
   const markAllAsRead = useCallback(async () => {
     if (!session?.user) return;
 
+    // タイムアウトを5分に延長
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
+
     try {
       const response = await fetch('/api/articles/read-status', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}) // 空のボディ（サーバー側で全未読を取得）
+        body: JSON.stringify({}), // 空のボディ（サーバー側で全未読を取得）
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
@@ -146,7 +153,12 @@ export function useReadStatus(articleIds?: string[]) {
         return data;
       }
     } catch (error) {
-      console.error('Error marking all as read:', error);
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('Request timeout after 5 minutes');
+      } else {
+        console.error('Error marking all as read:', error);
+      }
     }
   }, [session, fetchReadStatus]);
 

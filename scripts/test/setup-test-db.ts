@@ -24,25 +24,44 @@ const prisma = new PrismaClient({
 });
 
 async function setupTestDatabase() {
+  // 環境チェック
+  if (process.env.NODE_ENV !== 'test' && !process.env.FORCE_TEST_SETUP) {
+    console.error('ERROR: This script should only run in test environment');
+    console.error('Set NODE_ENV=test or FORCE_TEST_SETUP=true to continue');
+    process.exit(1);
+  }
+
+  if (!TEST_DATABASE_URL.includes('test')) {
+    console.error('ERROR: DATABASE_URL must point to test database');
+    console.error('URL must contain "test" in database name');
+    process.exit(1);
+  }
+
   try {
     console.error('Setting up test database...');
     console.error('Database URL:', TEST_DATABASE_URL);
+    console.error('Environment:', process.env.NODE_ENV || 'development');
     
     // 接続テスト
     console.error('Testing connection...');
     await prisma.$connect();
     console.error('Connected successfully!');
     
-    // 既存データのクリア
-    console.error('Clearing existing data...');
-    await prisma.articleView.deleteMany();
-    await prisma.favorite.deleteMany();
-    await prisma.article.deleteMany();
-    await prisma.tag.deleteMany();
-    await prisma.source.deleteMany();
-    await prisma.account.deleteMany();
-    await prisma.verificationToken.deleteMany();
-    await prisma.user.deleteMany();
+    // テスト環境でのみデータクリア
+    if (process.env.NODE_ENV === 'test' || process.env.FORCE_TEST_SETUP) {
+      console.error('Clearing existing data...');
+      await prisma.articleView.deleteMany();
+      await prisma.favorite.deleteMany();
+      await prisma.article.deleteMany();
+      await prisma.tag.deleteMany();
+      await prisma.source.deleteMany();
+      await prisma.account.deleteMany();
+      await prisma.verificationToken.deleteMany();
+      await prisma.user.deleteMany();
+    } else {
+      console.error('Safety check failed: Not in test environment');
+      process.exit(1);
+    }
     
     // ソース作成
     console.error('Creating sources...');
