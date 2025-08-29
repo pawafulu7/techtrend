@@ -65,9 +65,11 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
       setSelectedSources(sourcesParam.split(',').filter(id => id));
     } else if (sourceIdParam) {
       setSelectedSources([sourceIdParam]);
+    } else {
+      // URLパラメータがない場合は全選択状態（デフォルト）
+      setSelectedSources(sources.map(s => s.id));
     }
-    // URLパラメータがない場合は現在の状態を維持
-  }, [searchParams]);
+  }, [searchParams, sources]);
 
   const handleSourceToggle = (sourceId: string) => {
     const newSelection = selectedSources.includes(sourceId)
@@ -92,7 +94,9 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     const categorySourceIds = category.sourceIds.filter(id => 
       sources.some(s => s.id === id)
     );
-    const newSelection = [...new Set([...selectedSources, ...categorySourceIds])];
+    // カテゴリ内のソースのみを選択（他のカテゴリはそのまま）
+    const otherSources = selectedSources.filter(id => !category.sourceIds.includes(id));
+    const newSelection = [...otherSources, ...categorySourceIds];
     applySourceFilter(newSelection);
   };
   
@@ -221,34 +225,34 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                   onOpenChange={() => toggleCategory(category.id)}
                 >
                   <div className="border rounded-md">
-                    <Collapsible.Trigger className="w-full">
-                      <div className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <div className="flex items-center gap-2">
-                          {isExpanded ? (
-                            <ChevronDown className="w-3 h-3" />
-                          ) : (
-                            <ChevronRight className="w-3 h-3" />
-                          )}
-                          {categoryIcons[category.id]}
-                          <span className="text-xs font-medium">{category.name}</span>
-                          <span className="text-xs text-gray-500">
-                            ({categorySelectedCount}/{categorySources.length})
-                          </span>
+                    <Collapsible.Trigger asChild>
+                      <button className="w-full text-left">
+                        <div className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? (
+                              <ChevronDown className="w-3 h-3" />
+                            ) : (
+                              <ChevronRight className="w-3 h-3" />
+                            )}
+                            {categoryIcons[category.id]}
+                            <span className="text-xs font-medium">{category.name}</span>
+                            <span className="text-xs text-gray-500">
+                              ({categorySelectedCount}/{categorySources.length})
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      </button>
                     </Collapsible.Trigger>
                     
                     <Collapsible.Content>
+                      {isExpanded && (
                       <div className="px-2 pb-2">
                         {/* Category Actions */}
                         <div className="flex gap-1 mb-1">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCategorySelectAll(category);
-                            }}
+                            onClick={() => handleCategorySelectAll(category)}
                             className="h-6 text-xs px-2"
                             type="button"
                           >
@@ -257,10 +261,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCategoryDeselectAll(category);
-                            }}
+                            onClick={() => handleCategoryDeselectAll(category)}
                             className="h-6 text-xs px-2"
                             type="button"
                           >
@@ -274,7 +275,12 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             <div
                               key={source.id}
                               className="flex items-center gap-2 py-1 px-1 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer"
-                              onClick={() => handleSourceToggle(source.id)}
+                              onClick={(e) => {
+                                // Prevent double toggle when clicking directly on checkbox
+                                if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                                  handleSourceToggle(source.id);
+                                }
+                              }}
                               data-testid={`source-checkbox-${source.id}`}
                             >
                               <Checkbox
@@ -290,6 +296,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                           ))}
                         </div>
                       </div>
+                      )}
                     </Collapsible.Content>
                   </div>
                 </Collapsible.Root>
