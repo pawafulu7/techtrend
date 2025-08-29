@@ -4,14 +4,24 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckSquare, Square } from 'lucide-react';
+import * as Collapsible from '@radix-ui/react-collapsible';
+import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation } from 'lucide-react';
 import { DateRangeFilter } from './date-range-filter';
+import { groupSourcesByCategory, SourceCategory, getAllCategories, getSourceIdsByCategory } from '@/lib/constants/source-categories';
 
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;
   tags: Array<{ id: string; name: string; count: number }>;
   initialSourceIds?: string[];
 }
+
+// カテゴリごとのアイコンマッピング
+const categoryIcons: Record<string, React.ReactNode> = {
+  foreign: <Globe className="w-3 h-3" />,
+  domestic: <FileText className="w-3 h-3" />,
+  company: <Building2 className="w-3 h-3" />,
+  presentation: <Presentation className="w-3 h-3" />
+};
 
 export function Filters({ sources, initialSourceIds }: FiltersProps) {
   const router = useRouter();
@@ -39,6 +49,10 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   };
   
   const [selectedSources, setSelectedSources] = useState<string[]>(getInitialSources);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(getAllCategories().map(c => c.id));
+  
+  // ソースをカテゴリごとにグループ化
+  const groupedSources = groupSourcesByCategory(sources);
   
   // URLパラメータが変更されたときに選択状態を更新
   useEffect(() => {
@@ -71,6 +85,30 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   const handleDeselectAll = () => {
     // Clear all selections
     applySourceFilter([]);
+  };
+  
+  // カテゴリ単位の選択/解除
+  const handleCategorySelectAll = (category: SourceCategory) => {
+    const categorySourceIds = category.sourceIds.filter(id => 
+      sources.some(s => s.id === id)
+    );
+    const newSelection = [...new Set([...selectedSources, ...categorySourceIds])];
+    applySourceFilter(newSelection);
+  };
+  
+  const handleCategoryDeselectAll = (category: SourceCategory) => {
+    const categorySourceIds = category.sourceIds;
+    const newSelection = selectedSources.filter(id => !categorySourceIds.includes(id));
+    applySourceFilter(newSelection);
+  };
+  
+  // カテゴリの展開/折りたたみ
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => 
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
   };
   
   const applySourceFilterRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -132,10 +170,9 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     }, 150); // 150ms のデバウンス
   };
 
-
   return (
     <div className="space-y-3" data-testid="filter-area">
-      {/* Source Filter */}
+      {/* Source Filter with Categories */}
       <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 border border-white/20 shadow-sm" data-testid="source-filter">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold">ソース</h3>
@@ -144,7 +181,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
           </span>
         </div>
         <div className="flex flex-col gap-1">
-          <div className="flex gap-1">
+          <div className="flex gap-1 mb-2">
             <Button
               variant="outline"
               size="sm"
@@ -168,25 +205,96 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               すべて解除
             </Button>
           </div>
-          <div className="border-t pt-1">
-            {sources.map((source) => (
-              <div
-                key={source.id}
-                className="flex items-center gap-2 py-1 px-1 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer"
-                onClick={() => handleSourceToggle(source.id)}
-                data-testid={`source-checkbox-${source.id}`}
-              >
-                <Checkbox
-                  checked={selectedSources.includes(source.id)}
-                  onCheckedChange={() => handleSourceToggle(source.id)}
-                  className="h-4 w-4"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <label className="text-xs cursor-pointer flex-1">
-                  {source.name}
-                </label>
-              </div>
-            ))}
+          
+          {/* Categories */}
+          <div className="space-y-2">
+            {Array.from(groupedSources.entries()).map(([category, categorySources]) => {
+              const isExpanded = expandedCategories.includes(category.id);
+              const categorySelectedCount = categorySources.filter(s => 
+                selectedSources.includes(s.id)
+              ).length;
+              
+              return (
+                <Collapsible.Root
+                  key={category.id}
+                  open={isExpanded}
+                  onOpenChange={() => toggleCategory(category.id)}
+                >
+                  <div className="border rounded-md">
+                    <Collapsible.Trigger className="w-full">
+                      <div className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <div className="flex items-center gap-2">
+                          {isExpanded ? (
+                            <ChevronDown className="w-3 h-3" />
+                          ) : (
+                            <ChevronRight className="w-3 h-3" />
+                          )}
+                          {categoryIcons[category.id]}
+                          <span className="text-xs font-medium">{category.name}</span>
+                          <span className="text-xs text-gray-500">
+                            ({categorySelectedCount}/{categorySources.length})
+                          </span>
+                        </div>
+                      </div>
+                    </Collapsible.Trigger>
+                    
+                    <Collapsible.Content>
+                      <div className="px-2 pb-2">
+                        {/* Category Actions */}
+                        <div className="flex gap-1 mb-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCategorySelectAll(category);
+                            }}
+                            className="h-6 text-xs px-2"
+                            type="button"
+                          >
+                            全選択
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCategoryDeselectAll(category);
+                            }}
+                            className="h-6 text-xs px-2"
+                            type="button"
+                          >
+                            全解除
+                          </Button>
+                        </div>
+                        
+                        {/* Source Items */}
+                        <div className="space-y-1 pl-6">
+                          {categorySources.map((source) => (
+                            <div
+                              key={source.id}
+                              className="flex items-center gap-2 py-1 px-1 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer"
+                              onClick={() => handleSourceToggle(source.id)}
+                              data-testid={`source-checkbox-${source.id}`}
+                            >
+                              <Checkbox
+                                checked={selectedSources.includes(source.id)}
+                                onCheckedChange={() => handleSourceToggle(source.id)}
+                                className="h-4 w-4"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <label className="text-xs cursor-pointer flex-1">
+                                {source.name}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </Collapsible.Content>
+                  </div>
+                </Collapsible.Root>
+              );
+            })}
           </div>
         </div>
       </div>
