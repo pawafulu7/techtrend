@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/database';
+import { getRedisService } from '@/lib/redis/factory';
 
 // GET: 記事の既読状態を取得
 export async function GET(req: NextRequest) {
@@ -140,69 +141,49 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // まず未読記事のIDを全て取得
-    const unreadArticles = await prisma.article.findMany({
-      where: {
-        OR: [
-          {
-            articleViews: {
-              none: {
-                userId: session.user.id
-              }
-            }
-          },
-          {
-            articleViews: {
-              some: {
-                userId: session.user.id,
-                isRead: false
-              }
-            }
-          }
-        ]
-      },
-      select: {
-        id: true
+    // SQL直接実行による高速化
+    // gen_random_uuid()はPostgreSQL 13以降で使用可能
+    const result = await prisma.$executeRaw`
+      INSERT INTO "ArticleView" ("id", "userId", "articleId", "isRead", "readAt", "viewedAt")
+      SELECT 
+        gen_random_uuid(),
+        ${session.user.id}::uuid,
+        a.id,
+        true,
+        NOW(),
+        NULL
+      FROM "Article" a
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "ArticleView" av 
+        WHERE av."userId" = ${session.user.id}::uuid 
+        AND av."articleId" = a.id
+        AND av."isRead" = true
+      )
+      ON CONFLICT ("userId", "articleId") 
+      DO UPDATE SET 
+        "isRead" = true,
+        "readAt" = NOW()
+    `;
+
+    // 処理件数を取得
+    const markedCount = result;
+
+    // Redisキャッシュをクリア
+    const redisService = getRedisService();
+    if (redisService) {
+      try {
+        await redisService.clearPattern(`unread:${session.user.id}*`);
+        await redisService.clearPattern(`read:${session.user.id}*`);
+      } catch (redisError) {
+        console.error('Redis cache clear error:', redisError);
+        // Redisエラーは無視して処理を続行
       }
-    });
-
-    if (unreadArticles.length === 0) {
-      return NextResponse.json({ 
-        success: true,
-        markedCount: 0,
-        remainingUnreadCount: 0
-      });
-    }
-
-    // 個別のupsertで処理（createManyではnullを設定できないため）
-    const now = new Date();
-    for (const article of unreadArticles) {
-      await prisma.articleView.upsert({
-        where: {
-          userId_articleId: {
-            userId: session.user.id,
-            articleId: article.id
-          }
-        },
-        update: {
-          isRead: true,
-          readAt: now
-          // viewedAtは更新しない（既に閲覧済みの場合は保持）
-        },
-        create: {
-          userId: session.user.id,
-          articleId: article.id,
-          isRead: true,
-          readAt: now
-          // viewedAtは指定しない（NULL）
-        }
-      });
     }
 
     return NextResponse.json({ 
       success: true, 
-      markedCount: unreadArticles.length,
-      remainingUnreadCount: 0 // 全て既読にしたので0
+      markedCount,
+      remainingUnreadCount: 0
     });
   } catch (error) {
     console.error('Error marking all articles as read:', error);
