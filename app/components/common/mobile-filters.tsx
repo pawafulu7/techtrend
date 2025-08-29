@@ -36,7 +36,7 @@ export function MobileFilters({ sources, tags, initialSourceIds }: MobileFilters
           フィルター
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+      <SheetContent side="left" className="w-[300px] sm:w-[400px]" data-testid="mobile-filter-sheet">
         <SheetHeader>
           <SheetTitle>フィルター</SheetTitle>
           <SheetDescription>

@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import * as Collapsible from '@radix-ui/react-collapsible';
 import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation } from 'lucide-react';
 import { DateRangeFilter } from './date-range-filter';
 import { groupSourcesByCategory, SourceCategory, getAllCategories, getSourceIdsByCategory } from '@/lib/constants/source-categories';
@@ -49,7 +48,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   };
   
   const [selectedSources, setSelectedSources] = useState<string[]>(getInitialSources);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(getAllCategories().map(c => c.id));
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['foreign', 'domestic', 'company', 'presentation']));
   
   // ソースをカテゴリごとにグループ化
   const groupedSources = groupSourcesByCategory(sources);
@@ -108,11 +107,15 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   
   // カテゴリの展開/折りたたみ
   const toggleCategory = (categoryId: string) => {
-    setExpandedCategories(prev => 
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
+      } else {
+        newSet.add(categoryId);
+      }
+      return newSet;
+    });
   };
   
   const applySourceFilterRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -213,40 +216,41 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
           {/* Categories */}
           <div className="space-y-2">
             {Array.from(groupedSources.entries()).map(([category, categorySources]) => {
-              const isExpanded = expandedCategories.includes(category.id);
+              const isExpanded = expandedCategories.has(category.id);
               const categorySelectedCount = categorySources.filter(s => 
                 selectedSources.includes(s.id)
               ).length;
               
               return (
-                <Collapsible.Root
+                <div
                   key={category.id}
-                  open={isExpanded}
-                  onOpenChange={() => toggleCategory(category.id)}
+                  className="border rounded-md"
+                  data-testid={`category-${category.id}`}
                 >
-                  <div className="border rounded-md">
-                    <Collapsible.Trigger asChild>
-                      <button className="w-full text-left">
-                        <div className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800">
-                          <div className="flex items-center gap-2">
-                            {isExpanded ? (
-                              <ChevronDown className="w-3 h-3" />
-                            ) : (
-                              <ChevronRight className="w-3 h-3" />
-                            )}
-                            {categoryIcons[category.id]}
-                            <span className="text-xs font-medium">{category.name}</span>
-                            <span className="text-xs text-gray-500">
-                              ({categorySelectedCount}/{categorySources.length})
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                    </Collapsible.Trigger>
-                    
-                    <Collapsible.Content>
-                      {isExpanded && (
-                      <div className="px-2 pb-2">
+                  <button 
+                    className="w-full text-left"
+                    onClick={() => toggleCategory(category.id)}
+                    type="button"
+                    data-testid={`category-${category.id}-header`}
+                  >
+                    <div className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <div className="flex items-center gap-2">
+                        {isExpanded ? (
+                          <ChevronDown className="w-3 h-3" />
+                        ) : (
+                          <ChevronRight className="w-3 h-3" />
+                        )}
+                        {categoryIcons[category.id]}
+                        <span className="text-xs font-medium">{category.name}</span>
+                        <span className="text-xs text-gray-500" data-testid={`category-${category.id}-count`}>
+                          ({categorySelectedCount}/{categorySources.length})
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  {isExpanded && (
+                    <div className="px-2 pb-2" data-testid={`category-${category.id}-content`}>
                         {/* Category Actions */}
                         <div className="flex gap-1 mb-1">
                           <Button
@@ -255,6 +259,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             onClick={() => handleCategorySelectAll(category)}
                             className="h-6 text-xs px-2"
                             type="button"
+                            data-testid={`category-${category.id}-select-all`}
                           >
                             全選択
                           </Button>
@@ -264,6 +269,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             onClick={() => handleCategoryDeselectAll(category)}
                             className="h-6 text-xs px-2"
                             type="button"
+                            data-testid={`category-${category.id}-deselect-all`}
                           >
                             全解除
                           </Button>
@@ -295,11 +301,9 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             </div>
                           ))}
                         </div>
-                      </div>
-                      )}
-                    </Collapsible.Content>
-                  </div>
-                </Collapsible.Root>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
