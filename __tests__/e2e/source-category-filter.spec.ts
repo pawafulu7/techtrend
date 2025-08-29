@@ -19,25 +19,27 @@ test.describe('ソースカテゴリフィルター機能', () => {
     // 海外ソースのカテゴリコンテナを特定（見出しボタンを含む）
     const foreignSection = page.getByTestId('category-foreign');
 
-    // 初期状態（展開）では、チェックボックスが1つ以上存在する
-    const initialCount = await foreignSection.getByTestId('category-foreign-content').locator('[role="checkbox"]').count();
-    expect(initialCount).toBeGreaterThan(0);
+    // 初期状態（閉じている）では、コンテンツが存在しない
+    await expect(foreignSection.locator('[data-testid="category-foreign-content"]')).toHaveCount(0);
+
+    // 展開
+    await page.getByTestId('category-foreign-header').click();
+    await expect(foreignSection.getByTestId('category-foreign-content')).toBeVisible();
+    const expandedCount = await foreignSection.getByTestId('category-foreign-content').locator('[role="checkbox"]').count();
+    expect(expandedCount).toBeGreaterThan(0);
 
     // 折りたたみ
     await page.getByTestId('category-foreign-header').click();
     // 折りたたみ時はカテゴリ内のコンテンツ自体が存在しない
     await expect(foreignSection.locator('[data-testid="category-foreign-content"]')).toHaveCount(0);
-
-    // 再展開
-    await page.getByTestId('category-foreign-header').click();
-    await expect(foreignSection.getByTestId('category-foreign-content')).toBeVisible();
-    const expandedCount = await foreignSection.getByTestId('category-foreign-content').locator('[role="checkbox"]').count();
-    expect(expandedCount).toBeGreaterThan(0);
   });
 
   test('カテゴリ単位での全選択が動作する', async ({ page }) => {
     // まず全解除
     await page.getByTestId('deselect-all-button').click();
+
+    // 海外ソースカテゴリを展開
+    await page.getByTestId('category-foreign-header').click();
 
     const foreignSection = page.getByTestId('category-foreign');
     const content = foreignSection.getByTestId('category-foreign-content');
@@ -57,6 +59,9 @@ test.describe('ソースカテゴリフィルター機能', () => {
   });
 
   test('カテゴリ単位での全解除が動作する', async ({ page }) => {
+    // 海外ソースカテゴリを展開
+    await page.getByTestId('category-foreign-header').click();
+    
     const foreignSection = page.getByTestId('category-foreign');
     const content = foreignSection.getByTestId('category-foreign-content');
 
@@ -73,6 +78,9 @@ test.describe('ソースカテゴリフィルター機能', () => {
   test('個別ソースの選択が動作する', async ({ page }) => {
     // 全解除
     await page.getByTestId('deselect-all-button').click();
+
+    // 海外ソースカテゴリを展開
+    await page.getByTestId('category-foreign-header').click();
 
     // 海外カテゴリの最初のソース行を使う（固定IDを排除）
     const foreignSection = page.getByTestId('category-foreign');
@@ -105,6 +113,8 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await expect(sourceCount).toHaveText(new RegExp(`^0\/${total}$`));
 
     // 海外カテゴリのみ選択 → N/Y（NはDOMから計算）
+    // 海外ソースカテゴリを展開
+    await page.getByTestId('category-foreign-header').click();
     const foreignSection = page.getByTestId('category-foreign');
     await page.getByTestId('category-foreign-select-all').click();
     const n = await foreignSection.getByTestId('category-foreign-content').locator('[role="checkbox"]').count();
@@ -112,6 +122,9 @@ test.describe('ソースカテゴリフィルター機能', () => {
   });
 
   test('カテゴリごとの選択数が表示される', async ({ page }) => {
+    // 海外ソースカテゴリを展開
+    await page.getByTestId('category-foreign-header').click();
+    
     const foreignHeader = page.getByTestId('category-foreign');
     const countBadge = page.getByTestId('category-foreign-count');
     await expect(countBadge).toBeVisible();
