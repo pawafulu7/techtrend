@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
 }
 
 // PUT: 全未読記事を一括既読にマーク
-export async function PUT(req: NextRequest) {
+export async function PUT(_req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -147,7 +147,7 @@ export async function PUT(req: NextRequest) {
       INSERT INTO "ArticleView" ("id", "userId", "articleId", "isRead", "readAt", "viewedAt")
       SELECT 
         gen_random_uuid(),
-        ${session.user.id}::uuid,
+        ${session.user.id},
         a.id,
         true,
         NOW(),
@@ -155,7 +155,7 @@ export async function PUT(req: NextRequest) {
       FROM "Article" a
       WHERE NOT EXISTS (
         SELECT 1 FROM "ArticleView" av 
-        WHERE av."userId" = ${session.user.id}::uuid 
+        WHERE av."userId" = ${session.user.id}
         AND av."articleId" = a.id
         AND av."isRead" = true
       )
