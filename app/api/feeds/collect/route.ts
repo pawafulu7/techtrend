@@ -7,9 +7,7 @@ import type { ApiResponse, CollectResult } from '@/types/api';
 import { distributedLock } from '@/lib/cache/distributed-lock';
 
 function isAuthorized(req: NextRequest): boolean {
-  // Allow Vercel Cron requests
-  if (req.headers.get('x-vercel-cron') === '1') return true;
-  // Bearer or query token must match CRON_TOKEN
+  // Require a valid CRON_TOKEN for all manual/cron invocations
   const token = process.env.CRON_TOKEN || '';
   if (!token) return false;
   const auth = req.headers.get('authorization');
