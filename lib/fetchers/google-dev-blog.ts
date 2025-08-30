@@ -113,21 +113,17 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
         try {
           const enrichedData = await enricher.enrich(item.link);
           if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-            console.log(`[Google Dev Blog] Enriched content for ${item.link}: ${content.length} -> ${enrichedData.content.length} chars`);
             content = enrichedData.content;
             thumbnail = enrichedData.thumbnail || undefined;
           } else {
-            console.log(`[Google Dev Blog] Enrichment did not improve content for ${item.link}`);
           }
         } catch (error) {
           console.error(`[Google Dev Blog] Enrichment failed for ${item.link}:`, error);
           // エラー時は元のコンテンツを使用
         }
       } else {
-        console.log(`[Google Dev Blog] No enricher available for ${item.link}`);
       }
     } else if (content && content.length >= 2000) {
-      console.log(`[Google Dev Blog] Content already sufficient for ${item.link}: ${content.length} chars`);
     }
 
     const article: CreateArticleInput = {

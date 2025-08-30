@@ -79,11 +79,9 @@ export class CloudflareBlogFetcher extends BaseFetcher {
               try {
                 const enrichedData = await enricher.enrich(item.link);
                 if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-                  console.log(`[Cloudflare Blog] Enriched content for ${item.link}: ${content.length} -> ${enrichedData.content.length} chars`);
                   content = enrichedData.content;
                   thumbnail = enrichedData.thumbnail || undefined;
                 } else {
-                  console.log(`[Cloudflare Blog] Enrichment did not improve content for ${item.link}`);
                 }
               } catch (error) {
                 console.error(`[Cloudflare Blog] Enrichment failed for ${item.link}:`, error);
@@ -91,13 +89,11 @@ export class CloudflareBlogFetcher extends BaseFetcher {
               }
             }
           } else if (content && content.length >= 2000) {
-            console.log(`[Cloudflare Blog] Content already sufficient for ${item.link}: ${content.length} chars`);
           }
           
           // コンテンツ品質チェック
           const contentCheck = checkContentQuality(content, item.title);
           if (contentCheck.warning) {
-            console.log(`[Cloudflare Blog] Content quality warning for ${item.link}: ${contentCheck.warning}`);
           }
           
           // タグの生成

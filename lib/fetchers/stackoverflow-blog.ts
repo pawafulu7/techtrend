@@ -76,21 +76,17 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
         try {
           const enrichedData = await enricher.enrich(item.link);
           if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-            console.log(`[StackOverflow Blog] Enriched content for ${item.link}: ${content.length} -> ${enrichedData.content.length} chars`);
             content = enrichedData.content;
             thumbnail = enrichedData.thumbnail || undefined;
           } else {
-            console.log(`[StackOverflow Blog] Enrichment did not improve content for ${item.link}`);
           }
         } catch (error) {
           console.error(`[StackOverflow Blog] Enrichment failed for ${item.link}:`, error);
           // エラー時は元のコンテンツを使用
         }
       } else {
-        console.log(`[StackOverflow Blog] No enricher available for ${item.link}`);
       }
     } else if (content && content.length >= 2000) {
-      console.log(`[StackOverflow Blog] Content already sufficient for ${item.link}: ${content.length} chars`);
     }
     
     // 要約は generate-summaries.ts で日本語生成するため undefined を設定

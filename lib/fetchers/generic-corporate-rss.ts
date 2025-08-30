@@ -27,7 +27,6 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
 
   async fetch(): Promise<FetchResult[]> {
     try {
-      console.log(`📡 ${this.sourceName}のRSSフィードを取得中...`);
       
       const feed = await this.parser.parseURL(this.feedUrl);
       const results: FetchResult[] = [];
@@ -56,7 +55,6 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
         }
       }
       
-      console.log(`✅ ${this.sourceName}: ${results.length}件の記事を取得`);
       return results;
     } catch (error) {
       console.error(`❌ ${this.sourceName}のフィード取得エラー:`, error);

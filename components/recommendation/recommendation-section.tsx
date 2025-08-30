@@ -31,14 +31,6 @@ export function RecommendationSection({ forceHidden = false }: RecommendationSec
     const hidden = localStorage.getItem(STORAGE_KEY) === 'true';
     setIsHidden(hidden || forceHidden);
     
-    console.log('[RecommendationSection] Component state:', {
-      status,
-      hasSession: !!session?.user,
-      userId: session?.user?.id,
-      hidden,
-      forceHidden,
-      shouldFetch: status === 'authenticated' && session?.user && !hidden && !forceHidden
-    });
     
     if (status === 'authenticated' && session?.user && !hidden && !forceHidden) {
       fetchRecommendations();
@@ -50,7 +42,6 @@ export function RecommendationSection({ forceHidden = false }: RecommendationSec
     setError(null);
     
     try {
-      console.log('[RecommendationSection] Fetching recommendations...');
       const response = await fetch('/api/recommendations?limit=5');
       
       if (!response.ok) {
@@ -60,7 +51,6 @@ export function RecommendationSection({ forceHidden = false }: RecommendationSec
       }
       
       const data = await response.json();
-      console.log('[RecommendationSection] Received recommendations:', data.length, 'items');
       setRecommendations(data);
     } catch (err) {
       console.error('[RecommendationSection] Error fetching recommendations:', err);

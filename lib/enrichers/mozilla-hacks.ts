@@ -14,7 +14,6 @@ export class MozillaHacksEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<{ content?: string; thumbnail?: string } | null> {
     try {
-      console.log(`[Mozilla Hacks Enricher] Fetching content from: ${url}`);
       
       const response = await fetch(url, {
         headers: {
@@ -117,11 +116,9 @@ export class MozillaHacksEnricher extends BaseContentEnricher {
       
       // 結果の検証
       if (!content || content.length < 200) {
-        console.log(`[Mozilla Hacks Enricher] Insufficient content extracted: ${content.length} chars`);
         return null;
       }
       
-      console.log(`[Mozilla Hacks Enricher] Successfully enriched: ${content.length} chars, thumbnail: ${thumbnail ? 'yes' : 'no'}`);
       
       return {
         content,

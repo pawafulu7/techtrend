@@ -79,11 +79,9 @@ export class GitHubBlogFetcher extends BaseFetcher {
               try {
                 const enrichedData = await enricher.enrich(item.link);
                 if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-                  console.log(`[GitHub Blog] Enriched content for ${item.link}: ${content.length} -> ${enrichedData.content.length} chars`);
                   content = enrichedData.content;
                   thumbnail = enrichedData.thumbnail || undefined;
                 } else {
-                  console.log(`[GitHub Blog] Enrichment did not improve content for ${item.link}`);
                 }
               } catch (error) {
                 console.error(`[GitHub Blog] Enrichment failed for ${item.link}:`, error);
@@ -91,13 +89,11 @@ export class GitHubBlogFetcher extends BaseFetcher {
               }
             }
           } else if (content && content.length >= 2000) {
-            console.log(`[GitHub Blog] Content already sufficient for ${item.link}: ${content.length} chars`);
           }
           
           // コンテンツ品質チェック
           const contentCheck = checkContentQuality(content, item.title);
           if (contentCheck.warning) {
-            console.log(`[GitHub Blog] Content quality warning for ${item.link}: ${contentCheck.warning}`);
           }
           
           // タグの生成

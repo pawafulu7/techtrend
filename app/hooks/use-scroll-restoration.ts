@@ -50,18 +50,10 @@ export function useScrollRestoration(
                       window.scrollY;
     }
     
-    console.log('[ScrollRestore] Saving position:', {
-      scrollY: currentScrollY,
-      articleCount,
-      pageCount,
-      filters,
-      timestamp: new Date().toISOString()
-    });
     
     // 保存が必要ない条件をチェック
     // スクロール位置が小さい（100px未満）場合は保存しない
     if (currentScrollY < 100) {
-      console.log('[ScrollRestore] Not saving: scroll position too small (<100px)');
       // 保存しない（既存のデータがあれば削除）
       sessionStorage.removeItem(STORAGE_KEY);
       return;
@@ -77,7 +69,6 @@ export function useScrollRestoration(
     
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      console.log('[ScrollRestore] Position saved successfully to sessionStorage');
     } catch (e) {
       console.error('[ScrollRestore] Failed to save position:', e);
     }
@@ -157,21 +148,12 @@ export function useScrollRestoration(
 
   // 復元チェック
   useEffect(() => {
-    console.log('[ScrollRestore] Restoration check:', {
-      isReturningFromArticle,
-      isRestoring: isRestoringRef.current,
-      restorationComplete: restorationCompleteRef.current,
-      userInteracted: userInteractedRef.current,
-      filters,
-      hasStoredData: !!sessionStorage.getItem(STORAGE_KEY)
-    });
     
     // 記事詳細から戻ってきた場合のみ復元を実行
     if (!isReturningFromArticle) {
       // リロードや通常アクセスの場合はsessionStorageをクリア
       const stored = sessionStorage.getItem(STORAGE_KEY);
       if (stored) {
-        console.log('[ScrollRestore] Not returning from article, clearing stored data');
         sessionStorage.removeItem(STORAGE_KEY);
       }
       return;
@@ -179,30 +161,25 @@ export function useScrollRestoration(
 
     // すでに復元処理中または完了している場合はスキップ
     if (isRestoringRef.current || restorationCompleteRef.current || userInteractedRef.current) {
-      console.log('[ScrollRestore] Skipping: already restoring or completed');
       return;
     }
 
     // filtersがnullまたはundefinedの場合はまだ準備ができていない
     // 空のオブジェクトはOK（全記事表示の場合）
     if (filters === null || filters === undefined) {
-      console.log('[ScrollRestore] Filters not ready yet (null or undefined)');
       return;
     }
 
     const stored = sessionStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      console.log('[ScrollRestore] No stored data found');
       return;
     }
 
     try {
       const data = JSON.parse(stored) as ScrollRestoreData;
-      console.log('[ScrollRestore] Stored data found:', data);
       
       // 有効期限チェック
       if (Date.now() - data.timestamp > EXPIRY_TIME) {
-        console.log('[ScrollRestore] Data expired (older than 5 minutes)');
         sessionStorage.removeItem(STORAGE_KEY);
         return;
       }
@@ -211,10 +188,6 @@ export function useScrollRestoration(
       const currentFiltersStr = JSON.stringify(filters);
       const storedFiltersStr = JSON.stringify(data.filters);
       if (currentFiltersStr !== storedFiltersStr) {
-        console.log('[ScrollRestore] Filter mismatch:', {
-          current: filters,
-          stored: data.filters
-        });
         sessionStorage.removeItem(STORAGE_KEY);
         return;
       }
@@ -230,7 +203,6 @@ export function useScrollRestoration(
       }
 
       // 復元開始
-      console.log('[ScrollRestore] Starting restoration to position:', data.scrollY);
       
       isRestoringRef.current = true;
       targetScrollYRef.current = data.scrollY;
