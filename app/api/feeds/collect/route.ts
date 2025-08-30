@@ -1,11 +1,26 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { createFetcher } from '@/lib/fetchers';
 import { ArticleSummarizer } from '@/lib/ai';
 import { normalizeTagInput, isValidTagArray } from '@/lib/utils/tag-normalizer';
 import type { ApiResponse, CollectResult } from '@/types/api';
+import { distributedLock } from '@/lib/cache/distributed-lock';
 
-export async function POST() {
+function isAuthorized(req: NextRequest): boolean {
+  // Allow Vercel Cron requests
+  if (req.headers.get('x-vercel-cron') === '1') return true;
+  // Bearer or query token must match CRON_TOKEN
+  const token = process.env.CRON_TOKEN || '';
+  if (!token) return false;
+  const auth = req.headers.get('authorization');
+  const bearer = auth?.startsWith('Bearer ')
+    ? auth.substring('Bearer '.length)
+    : undefined;
+  const qp = req.nextUrl.searchParams.get('token') || undefined;
+  return bearer === token || qp === token;
+}
+
+async function performCollect() {
   try {
     const results: CollectResult[] = [];
     
@@ -135,7 +150,19 @@ export async function POST() {
   }
 }
 
-// Allow manual triggering via GET for testing
-export async function GET() {
-  return POST();
+export async function POST(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  // Avoid concurrent runs
+  const result = await distributedLock.executeWithLock('feeds:collect', performCollect, 300);
+  if (!result) {
+    return NextResponse.json({ success: false, error: 'Another run in progress' }, { status: 423 });
+  }
+  return result;
+}
+
+// Allow manual triggering via GET with token
+export async function GET(req: NextRequest) {
+  return POST(req);
 }
