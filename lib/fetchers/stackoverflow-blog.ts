@@ -2,6 +2,7 @@ import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types/article';
 import Parser from 'rss-parser';
+import type { ContentEnricherFactory } from '../enrichers';
 
 interface StackOverflowBlogItem {
   title?: string;
@@ -62,7 +63,7 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
     }
   }
   
-  private async parseItem(item: StackOverflowBlogItem, enricherFactory: any): Promise<CreateArticleInput | null> {
+  private async parseItem(item: StackOverflowBlogItem, enricherFactory: ContentEnricherFactory): Promise<CreateArticleInput | null> {
     if (!item.title || !item.link) return null;
     
     // コンテンツの取得（HTMLタグを含む場合がある）
@@ -110,13 +111,9 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
       summary,
       publishedAt,
       sourceId: this.source.id,
-      tagNames: tags
+      tagNames: tags,
+      thumbnail
     };
-    
-    // サムネイルがある場合は追加
-    if (thumbnail) {
-      (article as any).thumbnail = thumbnail;
-    }
     
     return article;
   }

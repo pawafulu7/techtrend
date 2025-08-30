@@ -3,6 +3,7 @@ import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
+import type { ContentEnricherFactory } from '../enrichers';
 
 interface GoogleDevBlogItem {
   title?: string;
@@ -71,7 +72,7 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
 
   private async parseItem(
     item: GoogleDevBlogItem,
-    enricherFactory: any,
+    enricherFactory: ContentEnricherFactory,
     thirtyDaysAgo: Date
   ): Promise<CreateArticleInput | null> {
     if (!item.title || !item.link) return null;

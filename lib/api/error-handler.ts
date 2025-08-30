@@ -4,8 +4,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { ZodError } from 'zod';
+import { ZodError, z } from 'zod';
 import { Prisma } from '@prisma/client';
+import type { Session } from 'next-auth';
 
 // Error types
 export class ApiError extends Error {
@@ -198,7 +199,7 @@ export function handleApiError(
 /**
  * Async error wrapper for API routes
  */
-export function withErrorHandler<T extends (...args: any[]) => Promise<any>>(
+export function withErrorHandler<T extends (...args: unknown[]) => Promise<unknown>>(
   handler: T
 ): T {
   return (async (...args) => {
@@ -215,7 +216,7 @@ export function withErrorHandler<T extends (...args: any[]) => Promise<any>>(
  */
 export async function validateRequest<T>(
   request: Request,
-  schema: any
+  schema: z.ZodSchema<T>
 ): Promise<T> {
   try {
     const data = await request.json();
@@ -231,7 +232,7 @@ export async function validateRequest<T>(
 /**
  * Check if user is authenticated
  */
-export function requireAuth(session: any): void {
+export function requireAuth(session: Session | null): void {
   if (!session?.user) {
     throw new UnauthorizedError('Authentication required');
   }
@@ -240,9 +241,9 @@ export function requireAuth(session: any): void {
 /**
  * Check if user has required role
  */
-export function requireRole(session: any, role: string): void {
+export function requireRole(session: Session | null, role: string): void {
   requireAuth(session);
-  if (session.user.role !== role) {
+  if (!session || session.user.role !== role) {
     throw new ForbiddenError(`Role '${role}' required`);
   }
 }

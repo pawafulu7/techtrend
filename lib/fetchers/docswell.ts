@@ -19,6 +19,20 @@ interface PresentationInfo {
   publishedAt?: Date;
 }
 
+interface DocswellRSSItem {
+  title?: string;
+  link?: string;
+  creator?: string;
+  content?: string;
+  contentSnippet?: string;
+  pubDate?: string;
+  'media:thumbnail'?: {
+    $?: { url?: string };
+    url?: string;
+  } | string;
+  'dc:creator'?: string;
+}
+
 export class DocswellFetcher extends BaseFetcher {
   private parser: RSSParser;
   
@@ -118,13 +132,19 @@ export class DocswellFetcher extends BaseFetcher {
       
       // サムネイルを取得
       let thumbnail: string | undefined;
-      const thumbnailElement = (item as any)['media:thumbnail'];
+      const thumbnailElement = (item as DocswellRSSItem)['media:thumbnail'];
       if (thumbnailElement) {
-        thumbnail = thumbnailElement.$.url || thumbnailElement.url || thumbnailElement;
+        if (typeof thumbnailElement === 'string') {
+          thumbnail = thumbnailElement;
+        } else if (thumbnailElement.$ && thumbnailElement.$.url) {
+          thumbnail = thumbnailElement.$.url;
+        } else if (thumbnailElement.url) {
+          thumbnail = thumbnailElement.url;
+        }
       }
       
       // 作者を取得
-      const author = (item as any)['dc:creator'] || item.creator || 'Unknown';
+      const author = (item as DocswellRSSItem)['dc:creator'] || item.creator || 'Unknown';
       
       articles.push({
         title: item.title,

@@ -3,6 +3,7 @@ import Parser from 'rss-parser';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
+import type { ContentEnricherFactory } from '../enrichers';
 
 interface ZennRSSItem {
   title?: string;
@@ -94,7 +95,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
 
   private async createArticleWithEnrichment(
     item: ZennRSSItem, 
-    enricherFactory: any
+    enricherFactory: ContentEnricherFactory
   ): Promise<CreateArticleInput> {
     // 基本的な記事データを作成
     const article = this.createArticle(item);

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Rss, TrendingUp, Menu, X, BarChart3, Bookmark, LineChart, Hash, Award, Database, Star, Filter, Home } from 'lucide-react';
+import { Rss, TrendingUp, Menu, X, BarChart3, LineChart, Hash, Database, Star, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';

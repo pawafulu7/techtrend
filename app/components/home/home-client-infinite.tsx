@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
@@ -10,7 +10,6 @@ import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
 import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { RecommendationSectionInline } from '@/components/recommendation/recommendation-section-inline';
-import { MarkAllReadWrapper } from '@/app/components/common/mark-all-read-wrapper';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
 
 interface HomeClientInfiniteProps {
@@ -83,7 +82,6 @@ export function HomeClientInfinite({
     isLoading,
     isError,
     error,
-    refetch,
   } = useInfiniteArticles(filters);
 
   // ページごとの記事を1つの配列にフラット化

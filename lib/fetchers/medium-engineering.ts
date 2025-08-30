@@ -206,7 +206,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
   private generateMediumTags(
     feedTags: string[],
     categories?: string[],
-    _title?: string,
+    title?: string,
     _author?: string
   ): string[] {
     const tags = new Set<string>();
