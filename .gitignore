@@ -102,6 +102,9 @@ deleted_scripts_list.txt
 test-*.ts
 test-*.md
 
+# Keep the in-repo test Redis client used by runtime factory
+!lib/redis/test-redis-client.ts
+
 # Serena MCP cache and memories
 .serena/cache/
 .serena/memories/
