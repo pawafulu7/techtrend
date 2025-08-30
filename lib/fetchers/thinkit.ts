@@ -51,7 +51,7 @@ export class ThinkITFetcher extends BaseFetcher {
         errors: []
       };
       
-    } catch (error) {
+    } catch (_error) {
       return {
         articles: [],
         errors: [error as Error]

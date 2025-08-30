@@ -32,7 +32,7 @@ export async function generateSummaryAndTags(
       tags: result.tags,
       articleType: result.articleType
     };
-  } catch (error) {
+  } catch (_error) {
     throw error;
   }
 }

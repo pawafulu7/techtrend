@@ -57,13 +57,13 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
           if (article) {
             articles.push(article);
           }
-        } catch (error) {
+        } catch (_error) {
           errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
 
 
-    } catch (error) {
+    } catch (_error) {
       errors.push(new Error(`Failed to fetch Google Dev Blog: ${error instanceof Error ? error.message : String(error)}`));
     }
 
@@ -118,7 +118,7 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
             thumbnail = enrichedData.thumbnail || undefined;
           } else {
           }
-        } catch (error) {
+        } catch (_error) {
           console.error(`[Google Dev Blog] Enrichment failed for ${item.link}:`, error);
           // エラー時は元のコンテンツを使用
         }

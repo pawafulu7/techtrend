@@ -125,7 +125,7 @@ export class MozillaHacksEnricher extends BaseContentEnricher {
         thumbnail,
       };
       
-    } catch (error) {
+    } catch (_error) {
       console.error(`[Mozilla Hacks Enricher] Error enriching ${url}:`, error);
       return null;
     }

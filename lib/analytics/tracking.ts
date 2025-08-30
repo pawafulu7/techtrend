@@ -164,7 +164,7 @@ class AnalyticsTracker {
       await this.db.add('readingEvents', event);
       await this.updateDailyStats(event);
       this.currentSession.delete(articleId);
-    } catch (error) {
+    } catch (_error) {
     }
   }
 

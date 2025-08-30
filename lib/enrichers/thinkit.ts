@@ -69,7 +69,7 @@ export class ThinkITContentEnricher extends BaseContentEnricher {
       
       return { content, thumbnail };
       
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

@@ -105,7 +105,7 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
         thumbnail,
       };
       
-    } catch (error) {
+    } catch (_error) {
       console.error(`[GitHub Blog Enricher] Error enriching ${url}:`, error);
       return null;
     }

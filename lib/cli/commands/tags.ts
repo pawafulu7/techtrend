@@ -48,7 +48,7 @@ tagsCommand
       
       
       logger.success(`上位${limit}件のタグを表示しました`);
-    } catch (error) {
+    } catch (_error) {
       logger.error('タグ一覧取得中にエラーが発生しました', error);
       process.exit(1);
     }
@@ -105,7 +105,7 @@ tagsCommand
       });
       
       logger.success('統計情報の取得が完了しました');
-    } catch (error) {
+    } catch (_error) {
       logger.error('統計情報取得中にエラーが発生しました', error);
       process.exit(1);
     }
@@ -157,7 +157,7 @@ tagsCommand
         logger.info('--dry-run モードのため、実際の削除は行いませんでした');
       }
       
-    } catch (error) {
+    } catch (_error) {
       logger.error('タグクリーンアップ中にエラーが発生しました', error);
       process.exit(1);
     }
@@ -258,7 +258,7 @@ tagsCommand
         logger.info(`  ${categoryName}: ${stat._count}件`);
       });
       
-    } catch (error) {
+    } catch (_error) {
       logger.error('カテゴリ分類中にエラーが発生しました', error);
       process.exit(1);
     }

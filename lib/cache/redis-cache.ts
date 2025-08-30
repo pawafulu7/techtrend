@@ -62,7 +62,7 @@ export class RedisCache {
       
       this.stats.hits++;
       return JSON.parse(value) as T;
-    } catch (error) {
+    } catch (_error) {
       this.stats.errors++;
       return null;
     }
@@ -82,7 +82,7 @@ export class RedisCache {
         'EX',
         finalTTL
       );
-    } catch (error) {
+    } catch (_error) {
       this.stats.errors++;
     }
   }
@@ -94,7 +94,7 @@ export class RedisCache {
     try {
       const fullKey = this.generateKey(key);
       await this.redis.del(fullKey);
-    } catch (error) {
+    } catch (_error) {
       this.stats.errors++;
     }
   }
@@ -110,7 +110,7 @@ export class RedisCache {
       if (keys.length > 0) {
         await this.redis.del(...keys);
       }
-    } catch (error) {
+    } catch (_error) {
       this.stats.errors++;
     }
   }

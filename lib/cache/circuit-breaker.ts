@@ -78,7 +78,7 @@ export class CircuitBreaker {
       }
       
       return result;
-    } catch (error) {
+    } catch (_error) {
       // 失敗時の処理
       this.lastFailureTime = Date.now();
       

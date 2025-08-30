@@ -73,7 +73,7 @@ export class CacheWarmer {
       await this.warmKeywords();
       await this.warmSearchQueries();
       
-    } catch (error) {
+    } catch (_error) {
     } finally {
       this.isWarming = false;
       await distributedLock.release('cache:warming:startup', lockToken);
@@ -144,7 +144,7 @@ export class CacheWarmer {
     try {
       const stats = await this.fetchStats();
       await statsCache.set('overall-stats', stats);
-    } catch (error) {
+    } catch (_error) {
     }
   }
 
@@ -159,7 +159,7 @@ export class CacheWarmer {
         const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
         await trendsCache.set(key, data);
       }
-    } catch (error) {
+    } catch (_error) {
     }
   }
 
@@ -171,7 +171,7 @@ export class CacheWarmer {
     try {
       const data = await this.fetchKeywords();
       await trendsCache.set('keywords:trending', data);
-    } catch (error) {
+    } catch (_error) {
     }
   }
 
@@ -186,7 +186,7 @@ export class CacheWarmer {
         const data = await this.fetchSearchResults(query);
         await searchCache.set(key, data);
       }
-    } catch (error) {
+    } catch (_error) {
     }
   }
 

@@ -54,7 +54,7 @@ export function TagStats() {
         newTags: newData.count || 0,
         topGrowthTags: growthTags
       });
-    } catch (error) {
+    } catch (_error) {
     } finally {
       setLoading(false);
     }

@@ -252,7 +252,7 @@ async function processSource(
   options: RegenerationOptions
 ) {
   // 対象記事を取得
-  let query = prisma.article.findMany({
+  const query = prisma.article.findMany({
     where: {
       source: {
         name: sourceName

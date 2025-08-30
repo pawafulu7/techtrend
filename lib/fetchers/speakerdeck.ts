@@ -44,7 +44,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     try {
       const trendingArticles = await this.fetchTrendingPresentations();
       articles.push(...trendingArticles);
-    } catch (error) {
+    } catch (_error) {
       const err = error instanceof Error ? error : new Error(String(error));
       errors.push(err);
     }
@@ -83,7 +83,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
 
             articles.push(article);
           }
-        } catch (error) {
+        } catch (_error) {
           const err = error instanceof Error ? error : new Error(String(error));
           errors.push(err);
         }
@@ -148,7 +148,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
           
           if (speakerDeckConfig.debug) {
           }
-        } catch (error) {
+        } catch (_error) {
         }
         return null;
       });
@@ -270,7 +270,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
           break;
         }
 
-      } catch (error) {
+      } catch (_error) {
         break;
       }
 
@@ -298,7 +298,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
           description: data.description,
           thumbnail: data.thumbnailUrl
         };
-      } catch (error) {
+      } catch (_error) {
         if (speakerDeckConfig.debug) {
         }
       }
@@ -349,7 +349,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       }
       
       return await response.text();
-    } catch (error) {
+    } catch (_error) {
       if (retries < speakerDeckConfig.retryLimit) {
         const waitTime = speakerDeckConfig.requestDelay * (retries + 1);
         if (speakerDeckConfig.debug) {

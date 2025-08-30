@@ -53,7 +53,7 @@ export function TagCloud({
       
       const data = await response.json();
       setTags(data.tags);
-    } catch (err) {
+    } catch (_error) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
       setLoading(false);

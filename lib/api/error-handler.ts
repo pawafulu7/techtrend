@@ -205,7 +205,7 @@ export function withErrorHandler<T extends (...args: unknown[]) => Promise<unkno
   return (async (...args) => {
     try {
       return await handler(...args);
-    } catch (error) {
+    } catch (_error) {
       return handleApiError(error);
     }
   }) as T;
@@ -221,7 +221,7 @@ export async function validateRequest<T>(
   try {
     const data = await request.json();
     return schema.parse(data);
-  } catch (error) {
+  } catch (_error) {
     if (error instanceof SyntaxError) {
       throw new ValidationError('Invalid JSON');
     }

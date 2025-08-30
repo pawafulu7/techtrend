@@ -86,7 +86,7 @@ export class HackerNewsFetcher extends BaseFetcher {
                 content = enrichedData.content;
                 thumbnail = enrichedData.thumbnail || undefined;
               }
-            } catch (error) {
+            } catch (_error) {
               console.error(`[Hacker News] Enrichment failed for ${story.url}:`, error);
             }
           }
@@ -127,12 +127,12 @@ export class HackerNewsFetcher extends BaseFetcher {
           // レート制限対策（APIコールの間に短い待機）
           await new Promise(resolve => setTimeout(resolve, 100));
           
-        } catch (error) {
+        } catch (_error) {
           errors.push(new Error(`Failed to fetch story ${storyId}: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
       
-    } catch (error) {
+    } catch (_error) {
       errors.push(new Error(`Failed to fetch Hacker News top stories: ${error instanceof Error ? error.message : String(error)}`));
     }
 

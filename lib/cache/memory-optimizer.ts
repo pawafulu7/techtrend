@@ -80,7 +80,7 @@ export class MemoryOptimizer {
       } else if (usagePercent >= this.maxMemoryUsagePercent) {
         await this.performOptimization();
       }
-    } catch (error) {
+    } catch (_error) {
     }
   }
 
@@ -116,7 +116,7 @@ export class MemoryOptimizer {
       const maxMemory = parseInt(configResult[1]) || 2 * 1024 * 1024 * 1024; // デフォルト2GB
       
       return { used, peak, maxMemory, fragmentation };
-    } catch (error) {
+    } catch (_error) {
       return { used: 0, peak: 0, maxMemory: 2 * 1024 * 1024 * 1024, fragmentation: 1 };
     }
   }
@@ -216,7 +216,7 @@ export class MemoryOptimizer {
         }
       } while (cursor !== '0');
       
-    } catch (error) {
+    } catch (_error) {
     }
   }
 
@@ -252,7 +252,7 @@ export class MemoryOptimizer {
       if (keysToDelete.length > 0) {
         await this.redis.del(...keysToDelete);
       }
-    } catch (error) {
+    } catch (_error) {
     }
   }
 
@@ -266,7 +266,7 @@ export class MemoryOptimizer {
       if (searchKeys.length > 0) {
         await this.redis.del(...searchKeys);
       }
-    } catch (error) {
+    } catch (_error) {
     }
   }
 

@@ -43,7 +43,7 @@ feedsCommand
         }
       });
       
-    } catch (error) {
+    } catch (_error) {
       if (error instanceof ValidationError) {
         logger.error(error.message);
       } else {
@@ -86,7 +86,7 @@ feedsCommand
       
       
       logger.success('ソース一覧の取得が完了しました');
-    } catch (error) {
+    } catch (_error) {
       if (error instanceof DatabaseError) {
         logger.error(`データベースエラー: ${error.message}`);
       } else {
@@ -142,7 +142,7 @@ feedsCommand
       }
       
       logger.success('統計情報の取得が完了しました');
-    } catch (error) {
+    } catch (_error) {
       logger.error('統計情報取得中にエラーが発生しました', error);
       process.exit(1);
     }

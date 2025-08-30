@@ -35,7 +35,7 @@ export class DistributedLock {
       }
       
       return null;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -89,7 +89,7 @@ export class DistributedLock {
       }
       
       return false;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -130,7 +130,7 @@ export class DistributedLock {
     try {
       const exists = await this.redis.exists(lockKey);
       return exists === 1;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -145,7 +145,7 @@ export class DistributedLock {
     try {
       const ttl = await this.redis.ttl(lockKey);
       return ttl;
-    } catch (error) {
+    } catch (_error) {
       return -1;
     }
   }

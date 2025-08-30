@@ -80,7 +80,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         await this.delay(this.rateLimit);
         
         return html;
-      } catch (error) {
+      } catch (_error) {
         lastError = error as Error;
       }
     }
@@ -177,7 +177,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
             return data.image.url;
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // JSON解析エラーは無視
       }
     }

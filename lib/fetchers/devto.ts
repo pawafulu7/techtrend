@@ -109,7 +109,7 @@ export class DevToFetcher extends BaseFetcher {
 
           // レート制限対策
           await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (error) {
+        } catch (_error) {
           errors.push(new Error(`Failed to fetch articles for tag ${tag}: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
@@ -162,11 +162,11 @@ export class DevToFetcher extends BaseFetcher {
             };
 
           articles.push(article);
-        } catch (error) {
+        } catch (_error) {
           errors.push(new Error(`Failed to parse article: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
-    } catch (error) {
+    } catch (_error) {
       errors.push(new Error(`Failed to fetch from Dev.to: ${error instanceof Error ? error.message : String(error)}`));
     }
 

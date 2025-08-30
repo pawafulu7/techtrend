@@ -83,7 +83,7 @@ export function getEnv(): Env {
   if (_env === null) {
     try {
       _env = envSchema.parse(process.env);
-    } catch (error) {
+    } catch (_error) {
       if (error instanceof z.ZodError) {
         const errorMessage = `
 Environment validation failed:

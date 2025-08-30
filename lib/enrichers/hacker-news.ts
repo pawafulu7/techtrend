@@ -132,7 +132,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
         thumbnail: thumbnail || undefined
       };
       
-    } catch (error) {
+    } catch (_error) {
       console.error(`[HackerNewsEnricher] Error enriching ${url}:`, error);
       return null;
     }

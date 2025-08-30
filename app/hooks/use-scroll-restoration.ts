@@ -69,7 +69,7 @@ export function useScrollRestoration(
     
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {
+    } catch (_error) {
       console.error('[ScrollRestore] Failed to save position:', e);
     }
   }, [articleCount, pageCount, filters]);
@@ -269,7 +269,7 @@ export function useScrollRestoration(
           }, 1000); // スムーススクロール完了待ち
         }, 200); // 待機時間を短縮
       }
-    } catch (e) {
+    } catch (_error) {
       sessionStorage.removeItem(STORAGE_KEY);
       isRestoringRef.current = false;
     }
@@ -386,7 +386,7 @@ export function useScrollRestoration(
         // まだページが不足している場合は追加読み込み
         fetchNextPage();
       }
-    } catch (e) {
+    } catch (_error) {
       isRestoringRef.current = false;
     }
   }, [pageCount, hasNextPage, isFetchingNextPage, fetchNextPage, cleanupReturningParam]);

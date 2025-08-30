@@ -71,7 +71,7 @@ export class ZennContentEnricher extends BaseContentEnricher {
       
       return { content, thumbnail };
       
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -99,7 +99,7 @@ export class ZennContentEnricher extends BaseContentEnricher {
       // const data = await response.json();
       // return data.body || data.content;
       
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

@@ -55,7 +55,7 @@ export default function SourceDetailPage() {
       }
       const data = await response.json();
       setData(data);
-    } catch (error) {
+    } catch (_error) {
     } finally {
       setLoading(false);
     }

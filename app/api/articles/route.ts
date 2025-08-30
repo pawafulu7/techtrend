@@ -281,7 +281,7 @@ export async function GET(request: NextRequest) {
     response.headers.set('X-Response-Time', `${responseTime}ms`);
     
     return response;
-  } catch (error) {
+  } catch (_error) {
     log.error('Error fetching articles:', error);
     const dbError = error instanceof Error 
       ? new DatabaseError(`Failed to fetch articles: ${error.message}`, 'select')
@@ -357,7 +357,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: article,
     } as ApiResponse<ArticleWithRelations>, { status: 201 });
-  } catch (error) {
+  } catch (_error) {
     log.error('Error creating article:', error);
     return NextResponse.json({
       success: false,

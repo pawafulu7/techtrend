@@ -54,7 +54,7 @@ export class RedisService implements IRedisService {
       const value = await this.client.get(key);
       if (!value) return null;
       return JSON.parse(value) as T;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -96,7 +96,7 @@ export class RedisService implements IRedisService {
         if (value) {
           try {
             result.set(key, JSON.parse(value) as T);
-          } catch (error) {
+          } catch (_error) {
           }
         }
       });

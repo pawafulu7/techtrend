@@ -171,7 +171,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sources: sourceIds }),
         });
-      } catch (error) {
+      } catch (_error) {
         // Silently fail cookie update - URL params are the primary source
       }
     }, 150); // 150ms のデバウンス

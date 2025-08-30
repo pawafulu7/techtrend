@@ -41,7 +41,7 @@ cleanupCommand
         }
       });
       
-    } catch (error) {
+    } catch (_error) {
       logger.error('記事削除でエラーが発生しました', error);
       process.exit(1);
     }
@@ -78,7 +78,7 @@ cleanupCommand
         }
       });
       
-    } catch (error) {
+    } catch (_error) {
       logger.error('タグクリーンアップでエラーが発生しました', error);
       process.exit(1);
     }
@@ -144,7 +144,7 @@ cleanupCommand
       
       
       logger.success('統計情報の取得が完了しました');
-    } catch (error) {
+    } catch (_error) {
       logger.error('統計情報取得中にエラーが発生しました', error);
       process.exit(1);
     }

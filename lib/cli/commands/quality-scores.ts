@@ -45,7 +45,7 @@ qualityScoresCommand
         }
       });
       
-    } catch (error) {
+    } catch (_error) {
       logger.error('品質スコア計算でエラーが発生しました', error);
       process.exit(1);
     }
@@ -80,7 +80,7 @@ qualityScoresCommand
         }
       });
       
-    } catch (error) {
+    } catch (_error) {
       logger.error('品質スコア修正でエラーが発生しました', error);
       process.exit(1);
     }
@@ -122,7 +122,7 @@ qualityScoresCommand
       }
       
       logger.success('統計情報の取得が完了しました');
-    } catch (error) {
+    } catch (_error) {
       logger.error('統計情報取得中にエラーが発生しました', error);
       process.exit(1);
     }

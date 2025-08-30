@@ -128,7 +128,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
                     content = enrichedData.content;
                     thumbnail = enrichedData.thumbnail || undefined;
                   }
-                } catch (error) {
+                } catch (_error) {
                   console.error(`[Medium Engineering] Enrichment failed for ${cleanUrl}:`, error);
                 }
               }
@@ -177,7 +177,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
             }
 
             articles.push(article);
-          } catch (error) {
+          } catch (_error) {
             errors.push(new Error(`Failed to parse item from ${feedInfo.name}: ${error instanceof Error ? error.message : String(error)}`));
           }
         }
@@ -185,7 +185,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
         // レート制限対策
         await new Promise(resolve => setTimeout(resolve, 500));
         
-      } catch (error) {
+      } catch (_error) {
         errors.push(new Error(`Failed to fetch ${feedInfo.name} RSS feed: ${error instanceof Error ? error.message : String(error)}`));
       }
     }

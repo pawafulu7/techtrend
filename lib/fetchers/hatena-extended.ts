@@ -176,7 +176,7 @@ export class HatenaExtendedFetcher extends BaseFetcher {
                       thumbnail = enrichedData.thumbnail || undefined;
                     }
                   }
-                } catch (error) {
+                } catch (_error) {
                   // エンリッチメント失敗時は元のコンテンツを使用
                 }
               }
@@ -199,14 +199,14 @@ export class HatenaExtendedFetcher extends BaseFetcher {
               seenUrls.add(item.link);
               allArticles.push(article);
             }
-          } catch (error) {
+          } catch (_error) {
             allErrors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
           }
         }
 
         // レート制限を考慮して少し待機
         await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (error) {
+      } catch (_error) {
         allErrors.push(new Error(`Failed to fetch from ${rssUrl}: ${error instanceof Error ? error.message : String(error)}`));
       }
     }

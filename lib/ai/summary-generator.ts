@@ -188,7 +188,7 @@ export async function generateSummaryWithRetry(
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
       
-    } catch (error) {
+    } catch (_error) {
       
       // 最終試行でエラーの場合は例外を再スロー
       if (attempt === maxTries) {

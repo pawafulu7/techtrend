@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     await redisService.setJSON(cacheKey, recommendations, 300);
 
     return NextResponse.json(recommendations);
-  } catch (error) {
+  } catch (_error) {
     console.error('[API/recommendations] Error:', error);
     return NextResponse.json(
       { error: 'Failed to get recommendations' },

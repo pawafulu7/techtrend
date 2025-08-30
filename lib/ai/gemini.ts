@@ -53,7 +53,7 @@ export class GeminiClient {
       }
       
       return summary;
-    } catch (error) {
+    } catch (_error) {
       throw new ExternalAPIError(
         'Gemini',
         `Failed to generate summary: ${error instanceof Error ? error.message : String(error)}`,
@@ -86,7 +86,7 @@ export class GeminiClient {
       }
       
       return parsedResult;
-    } catch (error) {
+    } catch (_error) {
       throw new ExternalAPIError(
         'Gemini',
         `Failed to generate summary and tags: ${error instanceof Error ? error.message : String(error)}`,
@@ -130,7 +130,7 @@ export class GeminiClient {
       }
       
       return parsedResult;
-    } catch (error) {
+    } catch (_error) {
       throw new ExternalAPIError(
         'Gemini',
         `Failed to generate detailed summary: ${error instanceof Error ? error.message : String(error)}`,
@@ -421,7 +421,7 @@ export class GeminiClient {
           try {
             const summary = await this.generateSummary(article.title, article.content || '');
             summaries.set(i + index, summary);
-          } catch (error) {
+          } catch (_error) {
             // Continue with other articles even if one fails
           }
         })

@@ -83,7 +83,7 @@ export function ThemeInitializer({ cookieTheme }: { cookieTheme?: string }) {
         document.documentElement.classList.remove('light', 'dark');
         document.documentElement.classList.add(activeTheme);
       }
-    } catch (e) {
+    } catch (_error) {
       console.error('Theme initialization error:', e);
     }
   }, []);

@@ -121,7 +121,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
         thumbnail: thumbnail || undefined
       };
       
-    } catch (error) {
+    } catch (_error) {
       console.error(`[MediumEngineeringEnricher] Error enriching ${url}:`, error);
       return null;
     }

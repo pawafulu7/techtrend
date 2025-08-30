@@ -152,7 +152,7 @@ export class ContentAwareSummaryService extends UnifiedSummaryService {
           summaryVersion: this.getSummaryVersion(),
           qualityScore: checkSummaryQuality(parsed.summary, parsed.detailedSummary).score
         };
-      } catch (error) {
+      } catch (_error) {
         // フォールバック
         return {
           summary: `${title.substring(0, 100)}に関する技術記事です。`,

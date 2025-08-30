@@ -55,7 +55,7 @@ export class DocswellFetcher extends BaseFetcher {
 
     try {
       articles = await this.fetchTrendingPresentations();
-    } catch (error) {
+    } catch (_error) {
       const err = error instanceof Error ? error : new Error(String(error));
       errors.push(err);
     }
@@ -190,7 +190,7 @@ export class DocswellFetcher extends BaseFetcher {
       }
       
       return await response.text();
-    } catch (error) {
+    } catch (_error) {
       if (retries < docswellConfig.retryLimit) {
         const waitTime = docswellConfig.requestDelay * (retries + 1);
         if (docswellConfig.debug) {

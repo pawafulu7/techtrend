@@ -81,7 +81,7 @@ export default function TrendsPage() {
         setTrendingKeywords(data.trending || []);
         setNewTags(data.newTags || []);
       }
-    } catch (error) {
+    } catch (_error) {
       // エラー時はデフォルト値を設定
       setTrendingKeywords([]);
       setNewTags([]);
@@ -98,7 +98,7 @@ export default function TrendsPage() {
       });
       const data = await response.json();
       setTrendAnalysis(data);
-    } catch (error) {
+    } catch (_error) {
     } finally {
       setLoadingAnalysis(false);
     }
@@ -140,7 +140,7 @@ export default function TrendsPage() {
         
         setSourceData(sourceStats);
       }
-    } catch (error) {
+    } catch (_error) {
     } finally {
       setLoadingSource(false);
     }

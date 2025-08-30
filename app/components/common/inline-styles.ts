@@ -116,7 +116,7 @@ export const themeInitScript = `
     if (activeTheme === 'dark') {
       document.documentElement.classList.add('dark');
     }
-  } catch (e) {
+  } catch (_error) {
     // localStorageが使用できない場合は何もしない
   }
 })();

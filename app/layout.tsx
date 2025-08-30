@@ -109,7 +109,7 @@ export default async function RootLayout({
                     document.documentElement.classList.remove('light', 'dark');
                     document.documentElement.classList.add(activeTheme);
                   }
-                } catch (e) {}
+                } catch (_error) {}
               })();
             `,
           }}

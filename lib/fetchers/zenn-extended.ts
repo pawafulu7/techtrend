@@ -61,7 +61,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
           articles.push(article);
         }
       }
-    } catch (error) {
+    } catch (_error) {
       errors.push(new Error(`メインフィード取得エラー: ${error instanceof Error ? error.message : String(error)}`));
     }
 
@@ -85,7 +85,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
         
         // レート制限対策
         await new Promise(resolve => setTimeout(resolve, 300));
-      } catch (error) {
+      } catch (_error) {
         // 個別トピックのエラーは警告レベル
       }
     }
@@ -119,7 +119,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
               }
             }
           }
-        } catch (error) {
+        } catch (_error) {
           // エンリッチメント失敗時は元のコンテンツを使用
         }
       }

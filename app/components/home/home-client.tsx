@@ -61,7 +61,7 @@ export function HomeClient({ viewMode, _sources, _tags, _showInitialSkeleton = t
         requestAnimationFrame(() => {
           setLoading(false);
         });
-      } catch (err) {
+      } catch (_error) {
         setError(err instanceof Error ? err.message : 'An error occurred');
         setLoading(false);
       }

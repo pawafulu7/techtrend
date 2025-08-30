@@ -64,7 +64,7 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
         return null;
       }
       
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

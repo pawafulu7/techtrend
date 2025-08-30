@@ -68,7 +68,7 @@ export function getValidatedEnv(): EnvConfig {
     const validated = envSchema.parse(process.env);
     cachedConfig = validated;
     return validated;
-  } catch (error) {
+  } catch (_error) {
     if (error instanceof z.ZodError) {
       const missingVars = error.errors
         .filter(e => e.message === 'Required')
@@ -185,7 +185,7 @@ export function getEnvSummary(): Record<string, string> {
 if (process.env.NODE_ENV !== 'test') {
   try {
     getValidatedEnv();
-  } catch (error) {
+  } catch (_error) {
     // 本番環境では起動を中止
     if (process.env.NODE_ENV === 'production') {
       process.exit(1);

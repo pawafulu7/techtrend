@@ -83,7 +83,7 @@ export class GitHubBlogFetcher extends BaseFetcher {
                   thumbnail = enrichedData.thumbnail || undefined;
                 } else {
                 }
-              } catch (error) {
+              } catch (_error) {
                 console.error(`[GitHub Blog] Enrichment failed for ${item.link}:`, error);
                 // エラー時は元のコンテンツを使用
               }
@@ -121,7 +121,7 @@ export class GitHubBlogFetcher extends BaseFetcher {
           }
 
           articles.push(article);
-        } catch (error) {
+        } catch (_error) {
           errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
@@ -129,7 +129,7 @@ export class GitHubBlogFetcher extends BaseFetcher {
       // レート制限対策
       await new Promise(resolve => setTimeout(resolve, 500));
       
-    } catch (error) {
+    } catch (_error) {
       errors.push(new Error(`Failed to fetch GitHub Blog RSS feed: ${error instanceof Error ? error.message : String(error)}`));
     }
 

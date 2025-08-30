@@ -64,7 +64,7 @@ export class InfoQEnricher extends BaseContentEnricher {
       
       return { content, thumbnail };
       
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

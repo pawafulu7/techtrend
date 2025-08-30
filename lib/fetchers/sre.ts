@@ -110,14 +110,14 @@ export class SREFetcher extends BaseFetcher {
             }
 
             allArticles.push(article);
-          } catch (error) {
+          } catch (_error) {
             allErrors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
           }
         }
 
         // レート制限対策
         await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (error) {
+      } catch (_error) {
         allErrors.push(new Error(`Failed to fetch SRE ${feedInfo.name} feed: ${error instanceof Error ? error.message : String(error)}`));
       }
     }

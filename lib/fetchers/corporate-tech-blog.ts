@@ -158,7 +158,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
                     thumbnail = enrichedData.thumbnail || undefined;
                   } else {
                   }
-                } catch (error) {
+                } catch (_error) {
                   // エンリッチメント失敗時は元のコンテンツを使用
                 }
               } else {
@@ -190,14 +190,14 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
 
             allArticles.push(article);
             processedCount++; // 処理済み記事数をインクリメント
-          } catch (error) {
+          } catch (_error) {
             allErrors.push(new Error(`Failed to parse item from ${feedInfo.name}: ${error instanceof Error ? error.message : String(error)}`));
           }
         }
 
         // レート制限対策
         await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (error) {
+      } catch (_error) {
         allErrors.push(new Error(`Failed to fetch ${feedInfo.name} feed: ${error instanceof Error ? error.message : String(error)}`));
       }
     }

@@ -86,12 +86,12 @@ export class RailsReleasesFetcher extends BaseFetcher {
           }
 
           articles.push(article);
-        } catch (error) {
+        } catch (_error) {
           errors.push(new Error(`Failed to parse release: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
 
-    } catch (error) {
+    } catch (_error) {
       errors.push(new Error(`Failed to fetch Rails releases: ${error instanceof Error ? error.message : String(error)}`));
     }
 

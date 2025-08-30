@@ -16,7 +16,7 @@ export function useReadStatus(articleIds?: string[]) {
       if (stored) {
         return new Set<string>(JSON.parse(stored));
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Error loading read status from localStorage:', error);
     }
     return new Set<string>();
@@ -48,11 +48,11 @@ export function useReadStatus(articleIds?: string[]) {
         // localStorageに保存
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newReadArticleIds)));
-        } catch (error) {
+        } catch (_error) {
           console.error('Error saving read status to localStorage:', error);
         }
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Error fetching read status:', error);
     } finally {
       setIsLoading(false);
@@ -77,14 +77,14 @@ export function useReadStatus(articleIds?: string[]) {
           // localStorageに保存
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-          } catch (error) {
+          } catch (_error) {
             console.error('Error saving read status to localStorage:', error);
           }
           return newSet;
         });
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Error marking as read:', error);
     }
   }, [session]);
@@ -105,14 +105,14 @@ export function useReadStatus(articleIds?: string[]) {
           // localStorageに保存
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-          } catch (error) {
+          } catch (_error) {
             console.error('Error saving read status to localStorage:', error);
           }
           return newSet;
         });
         setUnreadCount(prev => prev + 1);
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Error marking as unread:', error);
     }
   }, [session]);
@@ -152,7 +152,7 @@ export function useReadStatus(articleIds?: string[]) {
         
         return data;
       }
-    } catch (error) {
+    } catch (_error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
         console.error('Request timeout after 5 minutes');

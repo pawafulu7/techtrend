@@ -78,7 +78,7 @@ export class TechTermsManager {
         this.customTermsPath,
         JSON.stringify({ terms: customTerms, updated: new Date() }, null, 2)
       );
-    } catch (error) {
+    } catch (_error) {
     }
   }
   
@@ -88,7 +88,7 @@ export class TechTermsManager {
       const data = await fs.readFile(this.customTermsPath, 'utf-8');
       const { terms } = JSON.parse(data);
       this.addCustomTerms(terms);
-    } catch (error) {
+    } catch (_error) {
       // ファイルが存在しない場合は無視
       if ((error as unknown).code !== 'ENOENT') {
       }
@@ -115,7 +115,7 @@ export class TechTermsManager {
         this.lastUpdated = new Date();
         await this.saveCustomTerms();
       }
-    } catch (error) {
+    } catch (_error) {
     }
   }
   

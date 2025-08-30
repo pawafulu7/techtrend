@@ -43,7 +43,7 @@ export const summariesCommand = new Command('summaries')
         }
       });
       
-    } catch (error) {
+    } catch (_error) {
       logger.error('要約生成でエラーが発生しました', error);
       process.exit(1);
     }
@@ -87,7 +87,7 @@ summariesCommand
         }
       });
       
-    } catch (error) {
+    } catch (_error) {
       logger.error('要約再生成でエラーが発生しました', error);
       process.exit(1);
     }
@@ -135,7 +135,7 @@ summariesCommand
       }
       
       logger.success('チェックが完了しました');
-    } catch (error) {
+    } catch (_error) {
       logger.error('チェック中にエラーが発生しました', error);
       process.exit(1);
     }

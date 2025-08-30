@@ -30,7 +30,7 @@ export class WebFetcher {
       });
 
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       if (axios.isAxiosError(error)) {
         if (error.response) {
           throw new Error(`HTTP ${error.response.status}: ${error.response.statusText}`);

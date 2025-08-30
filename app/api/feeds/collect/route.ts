@@ -100,14 +100,14 @@ export async function POST() {
                 }
               }
             }
-          } catch (error) {
+          } catch (_error) {
             if (!result.error) {
               result.error = '';
             }
             result.error += `Article error: ${error instanceof Error ? error.message : String(error)}; `;
           }
         }
-      } catch (error) {
+      } catch (_error) {
         result.success = false;
         result.error = `Source error: ${error instanceof Error ? error.message : String(error)}`;
       }

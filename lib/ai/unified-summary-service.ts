@@ -143,7 +143,7 @@ export class UnifiedSummaryService {
           qualityScore
         };
         
-      } catch (error) {
+      } catch (_error) {
         lastError = error as Error;
         
         // Rate limitエラーの場合は長めに待機

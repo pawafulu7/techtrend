@@ -58,7 +58,7 @@ export function PopularArticles({
       
       const data = await response.json();
       setArticles(data.articles);
-    } catch (error) {
+    } catch (_error) {
     } finally {
       setLoading(false);
     }

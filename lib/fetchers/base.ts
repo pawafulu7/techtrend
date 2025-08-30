@@ -39,7 +39,7 @@ export abstract class BaseFetcher {
       }
       
       return result;
-    } catch (error) {
+    } catch (_error) {
       const err = error instanceof Error 
         ? new ExternalAPIError(this.source.name, error.message, error)
         : new ExternalAPIError(this.source.name, String(error));
@@ -60,7 +60,7 @@ export abstract class BaseFetcher {
   ): Promise<T> {
     try {
       return await fn();
-    } catch (error) {
+    } catch (_error) {
       if (retries > 0) {
         await new Promise(resolve => setTimeout(resolve, this.retryDelay));
         return this.retry(fn, retries - 1);

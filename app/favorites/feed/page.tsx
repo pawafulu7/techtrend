@@ -77,7 +77,7 @@ export default function FavoritesFeedPage() {
 
       setArticles(sortedArticles);
       setTotalPages(data.pagination.totalPages);
-    } catch (error) {
+    } catch (_error) {
     } finally {
       setLoading(false);
       setRefreshing(false);

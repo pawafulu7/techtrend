@@ -65,7 +65,7 @@ export function StatsClient() {
             setLoading(false);
           });
         });
-      } catch (err) {
+      } catch (_error) {
         setError(err instanceof Error ? err.message : 'An error occurred');
         setLoading(false);
       }

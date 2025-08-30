@@ -55,7 +55,7 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
         errors: []
       };
       
-    } catch (error) {
+    } catch (_error) {
       return {
         articles: [],
         errors: [error as Error]
@@ -81,7 +81,7 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
             thumbnail = enrichedData.thumbnail || undefined;
           } else {
           }
-        } catch (error) {
+        } catch (_error) {
           console.error(`[StackOverflow Blog] Enrichment failed for ${item.link}:`, error);
           // エラー時は元のコンテンツを使用
         }

@@ -52,7 +52,7 @@ export function useFavoriteSources() {
             createdAt: new Date(f.createdAt)
           })));
         }
-      } catch (error) {
+      } catch (_error) {
       } finally {
         setIsLoading(false);
       }
@@ -66,7 +66,7 @@ export function useFavoriteSources() {
     try {
       localStorage.setItem(STORAGE_KEY_SOURCES, JSON.stringify(newFavorites));
       setFavorites(newFavorites);
-    } catch (error) {
+    } catch (_error) {
     }
   }, []);
 
@@ -74,7 +74,7 @@ export function useFavoriteSources() {
     try {
       localStorage.setItem(STORAGE_KEY_FOLDERS, JSON.stringify(newFolders));
       setFolders(newFolders);
-    } catch (error) {
+    } catch (_error) {
     }
   }, []);
 
@@ -227,7 +227,7 @@ export function useFavoriteSources() {
       }
       
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }, [saveFavorites, saveFolders]);

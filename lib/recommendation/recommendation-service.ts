@@ -36,7 +36,7 @@ export class RecommendationService {
           lastUpdated: new Date(cached.lastUpdated),
         };
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('[RecommendationService] Failed to restore cache:', error);
       // キャッシュを無視して処理を継続
     }

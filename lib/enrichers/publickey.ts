@@ -64,7 +64,7 @@ export class PublickeyEnricher extends BaseContentEnricher {
       
       return { content, thumbnail };
       
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

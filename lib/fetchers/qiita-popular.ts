@@ -85,13 +85,13 @@ export class QiitaPopularFetcher extends BaseFetcher {
           }
 
           articles.push(article);
-        } catch (error) {
+        } catch (_error) {
           errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
 
       logger.success(`[Qiita Popular] ${articles.length}件の記事を処理`);
-    } catch (error) {
+    } catch (_error) {
       errors.push(new Error(`Failed to fetch Qiita popular articles: ${error instanceof Error ? error.message : String(error)}`));
     }
 

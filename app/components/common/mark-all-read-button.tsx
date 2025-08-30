@@ -58,7 +58,7 @@ export function MarkAllReadButton({
         type: 'success'
       });
       setShowConfirm(false);
-    } catch (error) {
+    } catch (_error) {
       setNotification({
         message: '一括既読処理に失敗しました',
         type: 'error'

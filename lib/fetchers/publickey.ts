@@ -71,11 +71,11 @@ export class PublickeyFetcher extends BaseFetcher {
           }
 
           articles.push(article);
-        } catch (error) {
+        } catch (_error) {
           errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
-    } catch (error) {
+    } catch (_error) {
       errors.push(new Error(`Failed to fetch RSS feed: ${error instanceof Error ? error.message : String(error)}`));
     }
 

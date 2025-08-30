@@ -108,7 +108,7 @@ export class CloudflareBlogEnricher extends BaseContentEnricher {
         thumbnail,
       };
       
-    } catch (error) {
+    } catch (_error) {
       console.error(`[Cloudflare Blog Enricher] Error enriching ${url}:`, error);
       return null;
     }

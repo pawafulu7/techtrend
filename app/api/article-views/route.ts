@@ -67,7 +67,7 @@ export async function GET(request: Request) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
+  } catch (_error) {
     console.error('[POST /api/article-views] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
@@ -100,7 +100,7 @@ export async function DELETE(_request: Request) {
       message: 'View history cleared',
       clearedCount: result.count
     });
-  } catch (error) {
+  } catch (_error) {
     console.error('[DELETE /api/article-views] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
@@ -221,7 +221,7 @@ export async function POST(request: Request) {
       message: 'Article view recorded',
       viewId: view.id,
     });
-  } catch (error) {
+  } catch (_error) {
     console.error('[POST /api/article-views] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },

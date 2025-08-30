@@ -101,7 +101,7 @@ async function fetchBasicMetadata(url: string) {
     const keywords = keywordsContent ? keywordsContent.split(',').map(k => k.trim()).filter(k => k) : [];
     
     return { title, thumbnail, description, content: description, keywords };
-  } catch (error) {
+  } catch (_error) {
     return { title: 'Untitled Article', thumbnail: null, description: '', content: '', keywords: [] };
   }
 }
@@ -336,7 +336,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
       message: '記事を正常に追加しました'
     };
     
-  } catch (error) {
+  } catch (_error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : '不明なエラーが発生しました'
