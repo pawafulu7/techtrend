@@ -16,7 +16,11 @@ const eslintConfig = [
       // TypeScript厳密性ルール
       '@typescript-eslint/no-explicit-any': 'warn', // 段階的に'error'に移行
       '@typescript-eslint/explicit-function-return-type': 'off', // 推論可能な場合は不要
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['error', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_'
+      }],
       
       // コード品質ルール
       'no-console': ['warn', { allow: ['warn', 'error'] }],
@@ -27,7 +31,7 @@ const eslintConfig = [
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
     },
-    ignores: ['**/__mocks__/**', '**/__tests__/**', '**/node_modules/**'],
+    ignores: ['**/__mocks__/**', '**/__tests__/**', '**/node_modules/**', '.next/**', 'out/**', 'build/**'],
   },
 ];
 
