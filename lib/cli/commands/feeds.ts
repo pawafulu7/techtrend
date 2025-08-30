@@ -137,8 +137,9 @@ feedsCommand
         .filter(s => s.count > 0)
         .sort((a, b) => b.count - a.count);
       
-      for (const source of sourcesWithCount) {
-        const percentage = Math.round(source.count / totalArticles * 100);
+      for (const _source of sourcesWithCount) {
+        // 統計計算のみ実行
+        Math.round(_source.count / totalArticles * 100);
       }
       
       logger.success('統計情報の取得が完了しました');

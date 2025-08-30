@@ -89,7 +89,6 @@ export function DailyChart({ data }: DailyChartProps) {
           
           <div className="absolute inset-0 flex items-end justify-between gap-1">
             {data.map((item, index) => {
-              const totalHeight = maxCount > 0 ? (item.total / maxCount) * 100 : 0;
               const date = new Date(item.date);
               
               // 各ソースの高さを計算

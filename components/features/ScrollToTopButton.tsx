@@ -113,7 +113,7 @@ export function ScrollToTopButton() {
   useEffect(() => {
     const handleScrollRestored = (event: Event) => {
       const customEvent = event as CustomEvent;
-      const { scrollY, restored, cancelled } = customEvent.detail;
+      const { restored, cancelled } = customEvent.detail;
       
       if (restored && !cancelled) {
         // 復元成功：少し遅延を入れてからチェック（スムーススクロール完了待ち）

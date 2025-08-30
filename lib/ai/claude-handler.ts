@@ -28,7 +28,7 @@ export class ClaudeHandler {
     const articleType = detectArticleType(title, content);
     
     // 記事タイプに応じたプロンプトを生成
-    const prompt = generatePromptForArticleType(articleType, title, content);
+    const _prompt = generatePromptForArticleType(articleType, title, content);
     
     // Claude Codeでの処理のため、ここでプロンプトを返す
     // 実際の要約生成はClaude Code自身が行う

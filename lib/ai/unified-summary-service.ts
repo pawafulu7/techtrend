@@ -4,7 +4,7 @@
  */
 
 import fetch from 'node-fetch';
-import { generateUnifiedPrompt, generateEnhancedUnifiedPrompt } from '../utils/article-type-prompts';
+import { generateEnhancedUnifiedPrompt } from '../utils/article-type-prompts';
 import { parseUnifiedResponse, validateParsedResult, ParsedSummaryResult } from './unified-summary-parser';
 import { checkSummaryQuality } from '../utils/summary-quality-checker';
 

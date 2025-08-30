@@ -26,7 +26,6 @@ export function HomeClient({ viewMode, _sources, _tags, _showInitialSkeleton = t
     totalPages: 1,
     limit: 24
   });
-  const [totalCount, setTotalCount] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchArticles() {
@@ -55,7 +54,6 @@ export function HomeClient({ viewMode, _sources, _tags, _showInitialSkeleton = t
           totalPages: data.totalPages || 1,
           limit: data.limit || 24
         });
-        setTotalCount(data.total || 0);
         
         // アニメーション開始を少し遅らせる
         requestAnimationFrame(() => {

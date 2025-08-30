@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Loader2, Upload } from 'lucide-react';
 import { ProfileImage } from '@/app/components/common/optimized-image';
 
@@ -71,7 +71,7 @@ export function ProfileForm() {
         type: 'success',
         text: 'プロフィールを更新しました',
       });
-    } catch (error) {
+    } catch (_error) {
       setMessage({
         type: 'error',
         text: 'プロフィールの更新に失敗しました',

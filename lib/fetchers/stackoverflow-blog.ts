@@ -1,4 +1,3 @@
-import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types/article';
 import Parser from 'rss-parser';
@@ -95,9 +94,6 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
     
     // タグの処理
     const tags = item.categories || [];
-    
-    // 著者名の取得
-    const authorName = item.creator || 'Stack Overflow';
     
     // 日付の処理
     const publishedAt = item.isoDate ? new Date(item.isoDate) : 

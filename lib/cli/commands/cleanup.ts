@@ -99,14 +99,14 @@ cleanupCommand
       const ninetyDaysAgo = new Date();
       ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
       
-      const lowQuality30Days = await prisma.article.count({
+      await prisma.article.count({
         where: {
           qualityScore: { lt: 30 },
           publishedAt: { lt: thirtyDaysAgo }
         }
       });
       
-      const lowQuality90Days = await prisma.article.count({
+      await prisma.article.count({
         where: {
           qualityScore: { lt: 30 },
           publishedAt: { lt: ninetyDaysAgo }
@@ -130,7 +130,7 @@ cleanupCommand
       }
       
       // 重複記事の可能性
-      const duplicateUrls = await prisma.article.groupBy({
+      await prisma.article.groupBy({
         by: ['url'],
         _count: true,
         having: {
@@ -145,7 +145,7 @@ cleanupCommand
       
       logger.success('統計情報の取得が完了しました');
     } catch (_error) {
-      logger.error('統計情報取得中にエラーが発生しました', error);
+      logger.error('統計情報取得中にエラーが発生しました', _error);
       process.exit(1);
     }
   });

@@ -140,7 +140,7 @@ export class SourceCache {
         const category = estimateSourceCategory(source.name);
         
         // articlesフィールドは含めない（大きすぎるため）
-        const { articles, _count, ...sourceData } = source;
+        const { _count, ...sourceData } = source;
         
         return {
           ...sourceData,

@@ -39,7 +39,6 @@ export function StatsClient() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     async function fetchStats() {
@@ -55,9 +54,6 @@ export function StatsClient() {
         
         // データをセット
         setStats(result.data);
-        
-        // トランジション開始
-        setIsTransitioning(true);
         
         // スムーズなトランジションのために2フレーム待つ
         requestAnimationFrame(() => {

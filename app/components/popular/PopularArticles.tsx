@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  TrendingUp, TrendingDown, Minus, Award, 
+  TrendingUp, Minus, Award, 
   Bookmark, ThumbsUp, Star, Zap, ChevronUp,
   ChevronDown, Calendar, ExternalLink
 } from 'lucide-react';
@@ -103,31 +103,6 @@ export function PopularArticles({
     }
   };
 
-  const getMetricLabel = (metric: string) => {
-    switch (metric) {
-      case 'bookmarks':
-        return 'ブックマーク';
-      case 'votes':
-        return '投票';
-      case 'quality':
-        return '品質';
-      default:
-        return '総合';
-    }
-  };
-
-  const getPeriodLabel = (period: string) => {
-    switch (period) {
-      case 'today':
-        return '今日';
-      case 'week':
-        return '週間';
-      case 'month':
-        return '月間';
-      default:
-        return '全期間';
-    }
-  };
 
   if (compact) {
     return (

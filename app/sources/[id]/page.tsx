@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArticleCard } from '@/app/components/article/card';
 import { 
-  ArrowLeft, ExternalLink, BookOpen, Star, 
+  ArrowLeft, ExternalLink, 
   TrendingUp, Calendar, Tag, BarChart
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';

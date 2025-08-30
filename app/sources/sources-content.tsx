@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Filter, SortAsc } from 'lucide-react';
+import { Search, SortAsc } from 'lucide-react';
 import type { SourceCategory, SourceCategoryWithAll, SourceWithStats } from '@/types/source';
 
 type SortBy = 'articles' | 'quality' | 'frequency' | 'name';

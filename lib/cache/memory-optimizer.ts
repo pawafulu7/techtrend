@@ -196,7 +196,6 @@ export class MemoryOptimizer {
       // eval使用を避けるため、通常のRedisコマンドで実装
       // SCANコマンドを使用してTTLが設定されていないキーを検出し、有効期限を設定
       let cursor = '0';
-      let count = 0;
       const DEFAULT_TTL = 3600; // 1時間
       
       do {
@@ -211,7 +210,6 @@ export class MemoryOptimizer {
           // TTLが-1の場合は有効期限が設定されていないので設定
           if (ttl === -1) {
             await this.redis.expire(key, DEFAULT_TTL);
-            count++;
           }
         }
       } while (cursor !== '0');
@@ -332,8 +330,6 @@ export class MemoryOptimizer {
     } else {
       await this.performOptimization();
     }
-    
-    const status = await this.getStatus();
   }
 }
 

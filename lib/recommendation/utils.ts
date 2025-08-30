@@ -1,5 +1,3 @@
-import { RecommendationConfig } from './types';
-
 // デフォルト設定
 export const defaultConfig: any = {
   maxRecommendations: 20,

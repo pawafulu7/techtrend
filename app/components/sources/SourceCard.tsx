@@ -12,7 +12,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from './FavoriteButton';
-import type { SourceCategory, SourceWithStats } from '@/types/source';
+import type { SourceWithStats } from '@/types/source';
 
 interface SourceCardProps {
   source: SourceWithStats;

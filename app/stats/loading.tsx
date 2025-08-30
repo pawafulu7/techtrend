@@ -1,4 +1,4 @@
-import { Loader2, BarChart3 } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { StatsOverviewSkeleton } from '@/app/components/stats/stats-overview-skeleton';
 import { ChartSkeleton } from '@/app/components/stats/chart-skeleton';
 import { SourceChartSkeleton } from '@/app/components/stats/source-chart-skeleton';

@@ -1,4 +1,4 @@
-import { Adapter, AdapterSession, AdapterUser } from 'next-auth/adapters';
+import { Adapter } from 'next-auth/adapters';
 import Redis from 'ioredis';
 
 // Redis key prefixes

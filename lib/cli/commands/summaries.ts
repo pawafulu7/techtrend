@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import { logger } from '../utils/logger';
 import { getPrismaClient } from '../utils/database';
-import { ProgressBar } from '../utils/progress';
 import path from 'path';
 import { fork } from 'child_process';
 
@@ -101,11 +100,11 @@ summariesCommand
       logger.info('要約状態のチェックを開始します');
       const prisma = getPrismaClient();
       
-      const total = await prisma.article.count();
-      const withSummary = await prisma.article.count({
+      await prisma.article.count();
+      await prisma.article.count({
         where: { summary: { not: null } }
       });
-      const withoutSummary = await prisma.article.count({
+      await prisma.article.count({
         where: { summary: null }
       });
       
@@ -128,7 +127,7 @@ summariesCommand
           }
         });
         
-        const percentage = source._count.articles > 0
+        source._count.articles > 0
           ? Math.round(withSummaryCount / source._count.articles * 100)
           : 0;
           
@@ -136,7 +135,7 @@ summariesCommand
       
       logger.success('チェックが完了しました');
     } catch (_error) {
-      logger.error('チェック中にエラーが発生しました', error);
+      logger.error('チェック中にエラーが発生しました', _error);
       process.exit(1);
     }
   });

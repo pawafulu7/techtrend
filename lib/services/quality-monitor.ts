@@ -4,7 +4,6 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { calculateQualityScore } from '../utils/quality-score';
 
 const prisma = new PrismaClient();
 

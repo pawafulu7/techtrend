@@ -31,7 +31,7 @@ interface ArticleView {
 }
 
 export default function HistoryPage() {
-  const { data: session, status } = useSession();
+  const { data: _session, status } = useSession();
   const router = useRouter();
   const [views, setViews] = useState<ArticleView[]>([]);
   const [loading, setLoading] = useState(true);

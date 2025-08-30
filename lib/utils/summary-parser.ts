@@ -1,4 +1,4 @@
-import { ArticleType, getArticleTypeSections, getUnifiedSections } from './article-type-prompts';
+import { ArticleType, getArticleTypeSections } from './article-type-prompts';
 
 export interface SummarySection {
   title: string;

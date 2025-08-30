@@ -10,15 +10,6 @@ import * as cheerio from 'cheerio';
 import RSSParser from 'rss-parser';
 import { docswellConfig } from '../config/docswell';
 
-interface PresentationInfo {
-  title: string;
-  url: string;
-  author: string;
-  views: number;
-  thumbnail?: string;
-  publishedAt?: Date;
-}
-
 interface DocswellRSSItem {
   title?: string;
   link?: string;
