@@ -1,7 +1,46 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
+import fs from 'fs';
+import path from 'path';
 
 const logLevel = process.env.LOG_LEVEL || 'info';
+
+// Detect serverless (e.g., Vercel) where filesystem is read-only (except /tmp)
+const isServerless = !!process.env.VERCEL;
+
+// Build transports dynamically to avoid file I/O on serverless platforms
+const transports: winston.transport[] = [
+  new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple()
+    ),
+    silent: process.env.NODE_ENV === 'test'
+  })
+];
+
+if (process.env.NODE_ENV === 'production' && !isServerless) {
+  // Local/server targets: write rotating files to ./logs
+  const dir = path.resolve(process.cwd(), 'logs');
+  try {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch {
+    // ignore directory creation errors; console transport remains
+  }
+  transports.push(
+    new DailyRotateFile({
+      filename: path.join('logs', 'error-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      level: 'error',
+      maxFiles: '14d'
+    }),
+    new DailyRotateFile({
+      filename: path.join('logs', 'combined-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      maxFiles: '7d'
+    })
+  );
+}
 
 // Create winston logger instance
 export const logger = winston.createLogger({
@@ -12,30 +51,7 @@ export const logger = winston.createLogger({
     winston.format.json()
   ),
   defaultMeta: { service: 'techtrend' },
-  transports: [
-    // Console transport for development
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      ),
-      silent: process.env.NODE_ENV === 'test'
-    }),
-    // File transport for production
-    ...(process.env.NODE_ENV === 'production' ? [
-      new DailyRotateFile({
-        filename: 'logs/error-%DATE%.log',
-        datePattern: 'YYYY-MM-DD',
-        level: 'error',
-        maxFiles: '14d'
-      }),
-      new DailyRotateFile({
-        filename: 'logs/combined-%DATE%.log',
-        datePattern: 'YYYY-MM-DD',
-        maxFiles: '7d'
-      })
-    ] : [])
-  ]
+  transports
 });
 
 // Compatibility layer with existing console.* calls
