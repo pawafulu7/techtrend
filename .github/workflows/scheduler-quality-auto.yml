@@ -24,6 +24,10 @@ jobs:
         run: npm ci
       - name: Generate Prisma Client
         run: npx prisma generate
+      - name: Apply DB migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate deploy
       - name: Run quality check and auto-regenerate
         env:
           NODE_ENV: production
@@ -33,4 +37,3 @@ jobs:
         run: |
           npx tsx scripts/scheduled/quality-check.ts --days 7 --auto-regenerate
           npx tsx scripts/scheduled/auto-regenerate-low-quality.ts --threshold 70 --limit 10
-

@@ -24,6 +24,10 @@ jobs:
         run: npm ci
       - name: Generate Prisma Client
         run: npx prisma generate
+      - name: Apply DB migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate deploy
       - name: Collect RSS sources and post-process
         env:
           NODE_ENV: production
@@ -35,4 +39,3 @@ jobs:
           npx tsx scripts/scheduled/manage-summaries.ts generate
           npx tsx scripts/scheduled/manage-quality-scores.ts calculate
           npx tsx scripts/scheduled/calculate-difficulty-levels.ts
-
