@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     
     strategy:
+      fail-fast: false
       matrix:
         node-version: [18.x, 20.x]
     
@@ -53,6 +54,8 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
+          REDIS_URL: redis://localhost:6379
           NODE_ENV: test
         run: npm test -- --coverage
 
