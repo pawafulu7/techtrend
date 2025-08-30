@@ -191,29 +191,38 @@ export async function POST(request: Request) {
       },
     });
 
-    // 100件を超える場合は古い履歴を削除
-    const userViewCount = await prisma.articleView.count({
-      where: { userId: session.user.id },
+    // 閲覧履歴が100件を超える場合は古い履歴をクリア（既読状態は保持）
+    const viewedCount = await prisma.articleView.count({
+      where: { 
+        userId: session.user.id,
+        viewedAt: { not: null }  // 閲覧履歴のあるレコードのみカウント
+      },
     });
 
-    if (userViewCount > 100) {
-      // 最新100件以外を削除するため、101件目以降のIDを取得
-      const viewsToKeep = await prisma.articleView.findMany({
-        where: { userId: session.user.id },
+    if (viewedCount > 100) {
+      // 最新100件の閲覧履歴を保持
+      const recentViews = await prisma.articleView.findMany({
+        where: { 
+          userId: session.user.id,
+          viewedAt: { not: null }  // 閲覧履歴のみ対象
+        },
         orderBy: { viewedAt: 'desc' },
         take: 100,
         select: { id: true },
       });
 
-      const idsToKeep = viewsToKeep.map(v => v.id);
+      const recentViewIds = recentViews.map(v => v.id);
 
-      await prisma.articleView.deleteMany({
+      // 削除ではなく、viewedAtをNULLに更新（既読状態は保持）
+      await prisma.articleView.updateMany({
         where: {
           userId: session.user.id,
-          id: {
-            notIn: idsToKeep,
-          },
+          viewedAt: { not: null },
+          id: { notIn: recentViewIds },
         },
+        data: {
+          viewedAt: null  // 閲覧履歴のみクリア、isReadとreadAtは保持
+        }
       });
     }
 
