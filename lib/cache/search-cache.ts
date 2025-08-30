@@ -19,7 +19,7 @@ export class SearchCache extends RedisCache {
    * @param query 検索クエリパラメータ
    * @returns キャッシュキー
    */
-  generateKey(query: {
+  generateQueryKey(query: {
     q?: string;
     source?: string;
     tag?: string;

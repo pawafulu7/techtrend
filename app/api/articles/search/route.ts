@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
       limit
     };
     
-    const cacheKey = searchCache.generateKey(cacheQuery);
+    const cacheKey = searchCache.generateQueryKey(cacheQuery);
     
     // キャッシュから取得またはDBから取得してキャッシュに保存
     const searchResult = await searchCache.getOrSet(
