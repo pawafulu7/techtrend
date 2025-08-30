@@ -148,32 +148,32 @@ async function calculateAllQualityScores(options: Options) {
       scoreDistribution = await prisma.$queryRaw`
         SELECT 
           CASE 
-            WHEN qualityScore >= 80 THEN '80-100 (優秀)'
-            WHEN qualityScore >= 60 THEN '60-79 (良好)'
-            WHEN qualityScore >= 40 THEN '40-59 (普通)'
-            WHEN qualityScore >= 20 THEN '20-39 (低)'
+            WHEN "qualityScore" >= 80 THEN '80-100 (優秀)'
+            WHEN "qualityScore" >= 60 THEN '60-79 (良好)'
+            WHEN "qualityScore" >= 40 THEN '40-59 (普通)'
+            WHEN "qualityScore" >= 20 THEN '20-39 (低)'
             ELSE '0-19 (非常に低い)'
           END as range,
           COUNT(*) as count
-        FROM Article
-        WHERE sourceId IN (SELECT id FROM Source WHERE name = ${options.source})
+        FROM "Article"
+        WHERE "sourceId" IN (SELECT id FROM "Source" WHERE name = ${options.source})
         GROUP BY range
-        ORDER BY MIN(qualityScore) DESC
+        ORDER BY MIN("qualityScore") DESC
       `;
     } else {
       scoreDistribution = await prisma.$queryRaw`
         SELECT 
           CASE 
-            WHEN qualityScore >= 80 THEN '80-100 (優秀)'
-            WHEN qualityScore >= 60 THEN '60-79 (良好)'
-            WHEN qualityScore >= 40 THEN '40-59 (普通)'
-            WHEN qualityScore >= 20 THEN '20-39 (低)'
+            WHEN "qualityScore" >= 80 THEN '80-100 (優秀)'
+            WHEN "qualityScore" >= 60 THEN '60-79 (良好)'
+            WHEN "qualityScore" >= 40 THEN '40-59 (普通)'
+            WHEN "qualityScore" >= 20 THEN '20-39 (低)'
             ELSE '0-19 (非常に低い)'
           END as range,
           COUNT(*) as count
-        FROM Article
+        FROM "Article"
         GROUP BY range
-        ORDER BY MIN(qualityScore) DESC
+        ORDER BY MIN("qualityScore") DESC
       `;
     }
 

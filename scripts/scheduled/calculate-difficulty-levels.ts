@@ -56,13 +56,13 @@ async function calculateDifficultyLevels() {
     const sourceStats = await prisma.$queryRaw`
       SELECT 
         s.name as source_name,
-        a.difficulty,
+        a."difficulty",
         COUNT(*) as count
-      FROM Article a
-      JOIN Source s ON a.sourceId = s.id
-      WHERE a.difficulty IS NOT NULL
-      GROUP BY s.name, a.difficulty
-      ORDER BY s.name, a.difficulty
+      FROM "Article" a
+      JOIN "Source" s ON a."sourceId" = s.id
+      WHERE a."difficulty" IS NOT NULL
+      GROUP BY s.name, a."difficulty"
+      ORDER BY s.name, a."difficulty"
     ` as { source_name: string; difficulty: string; count: bigint }[];
 
     console.error('\n【ソース別難易度分布】');

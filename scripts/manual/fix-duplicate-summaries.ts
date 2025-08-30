@@ -65,13 +65,13 @@ async function fixDuplicateSummaries() {
       a.summary,
       a.detailedSummary,
       s.name as sourceName
-    FROM Article a
-    JOIN Source s ON a.sourceId = s.id
+    FROM "Article" a
+    JOIN "Source" s ON a."sourceId" = s.id
     WHERE 
-      a.summaryVersion = 5
-      AND substr(a.summary, 1, 100) = substr(a.detailedSummary, 1, 100)
-      AND length(a.summary) >= 100
-    ORDER BY a.publishedAt DESC
+      a."summaryVersion" = 5
+      AND substr(a."summary", 1, 100) = substr(a."detailedSummary", 1, 100)
+      AND length(a."summary") >= 100
+    ORDER BY a."publishedAt" DESC
   `;
 
   if (affectedArticles.length === 0) {
@@ -164,11 +164,11 @@ async function fixDuplicateSummaries() {
   // 再確認
   const remainingDuplicates = await prisma.$queryRaw<Array<{ count: number }>>`
     SELECT COUNT(*) as count
-    FROM Article
+    FROM "Article"
     WHERE 
-      summaryVersion = 5
-      AND substr(summary, 1, 100) = substr(detailedSummary, 1, 100)
-      AND length(summary) >= 100
+      "summaryVersion" = 5
+      AND substr("summary", 1, 100) = substr("detailedSummary", 1, 100)
+      AND length("summary") >= 100
   `;
   
   const remaining = remainingDuplicates[0]?.count || 0;

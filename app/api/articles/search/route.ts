@@ -213,10 +213,10 @@ export async function GET(request: NextRequest) {
       
       // 難易度のファセット
       prisma.$queryRaw<{ difficulty: string; count: number }[]>`
-        SELECT difficulty, COUNT(*) as count
-        FROM Article
-        WHERE difficulty IS NOT NULL
-        GROUP BY difficulty
+        SELECT "difficulty", COUNT(*) as count
+        FROM "Article"
+        WHERE "difficulty" IS NOT NULL
+        GROUP BY "difficulty"
         ORDER BY count DESC
       `
     ]);

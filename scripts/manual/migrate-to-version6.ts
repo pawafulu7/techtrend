@@ -50,11 +50,11 @@ async function getTargetArticles(priority: string, limit?: number) {
       // SQLで文字数フィルタリング
       const criticalArticles = await prisma.$queryRaw`
         SELECT id, title, url, content, sourceId, summary, detailedSummary, summaryVersion
-        FROM Article
-        WHERE (summaryVersion < 6 OR summaryVersion IS NULL)
-        AND detailedSummary IS NOT NULL
-        AND LENGTH(detailedSummary) < 400
-        ORDER BY publishedAt DESC
+        FROM "Article"
+        WHERE ("summaryVersion" < 6 OR "summaryVersion" IS NULL)
+        AND "detailedSummary" IS NOT NULL
+        AND LENGTH("detailedSummary") < 400
+        ORDER BY "publishedAt" DESC
         ${limit ? prisma.$queryRaw`LIMIT ${limit}` : prisma.$queryRaw``}
       `;
       return criticalArticles as any[];
@@ -63,12 +63,12 @@ async function getTargetArticles(priority: string, limit?: number) {
       // 詳細要約が800文字未満の記事
       const substandardArticles = await prisma.$queryRaw`
         SELECT id, title, url, content, sourceId, summary, detailedSummary, summaryVersion
-        FROM Article
-        WHERE (summaryVersion < 6 OR summaryVersion IS NULL)
-        AND detailedSummary IS NOT NULL
-        AND LENGTH(detailedSummary) >= 400
-        AND LENGTH(detailedSummary) < 800
-        ORDER BY publishedAt DESC
+        FROM "Article"
+        WHERE ("summaryVersion" < 6 OR "summaryVersion" IS NULL)
+        AND "detailedSummary" IS NOT NULL
+        AND LENGTH("detailedSummary") >= 400
+        AND LENGTH("detailedSummary") < 800
+        ORDER BY "publishedAt" DESC
         ${limit ? prisma.$queryRaw`LIMIT ${limit}` : prisma.$queryRaw``}
       `;
       return substandardArticles as any[];
