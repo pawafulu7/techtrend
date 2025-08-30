@@ -115,7 +115,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
             }
 
             // コンテンツの取得
-            let content = extractContent(item);
+          let content = extractContent(item as unknown as Record<string, unknown>);
             let thumbnail: string | undefined;
             
             // Medium記事のコンテンツエンリッチメント
@@ -129,7 +129,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
                     thumbnail = enrichedData.thumbnail || undefined;
                   }
                 } catch (_error) {
-                  console.error(`[Medium Engineering] Enrichment failed for ${cleanUrl}:`, error);
+                  console.error(`[Medium Engineering] Enrichment failed for ${cleanUrl}:`, _error);
                 }
               }
             }
@@ -178,7 +178,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
 
             articles.push(article);
           } catch (_error) {
-            errors.push(new Error(`Failed to parse item from ${feedInfo.name}: ${error instanceof Error ? error.message : String(error)}`));
+            errors.push(new Error(`Failed to parse item from ${feedInfo.name}: ${_error instanceof Error ? _error.message : String(_error)}`));
           }
         }
         
@@ -186,7 +186,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
         await new Promise(resolve => setTimeout(resolve, 500));
         
       } catch (_error) {
-        errors.push(new Error(`Failed to fetch ${feedInfo.name} RSS feed: ${error instanceof Error ? error.message : String(error)}`));
+        errors.push(new Error(`Failed to fetch ${feedInfo.name} RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`));
       }
     }
 

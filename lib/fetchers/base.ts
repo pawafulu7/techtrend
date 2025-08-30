@@ -1,7 +1,5 @@
 import { Source } from '@prisma/client';
-import { CreateArticleInput, FetchResult } from '@/types/fetchers';
-import { ExternalAPIError } from '@/lib/errors';
-import { logger } from '@/lib/cli/utils/logger';
+import { FetchResult } from '@/types/fetchers';
 
 export abstract class BaseFetcher {
   protected source: Source;
@@ -13,46 +11,6 @@ export abstract class BaseFetcher {
   }
 
   abstract fetch(): Promise<FetchResult>;
-
-  /**
-   * 共通のfetchラッパー - エラーハンドリングとログを統一
-   */
-  protected async safeFetch(): Promise<FetchResult> {
-    const errors: Error[] = [];
-    const articles: CreateArticleInput[] = [];
-
-    try {
-      logger.info(`${this.source.name} から記事を取得中...`);
-      
-      // ソースが無効化されている場合は早期リターン
-      if (!this.source.enabled) {
-        logger.warn(`${this.source.name} は無効化されています`);
-        return { articles: [], errors: [] };
-      }
-
-      const result = await this.fetchInternal();
-      
-      if (result.articles.length === 0) {
-        logger.info(`${this.source.name}: 記事が見つかりませんでした`);
-      } else {
-        logger.success(`${this.source.name}: ${result.articles.length}件の記事を取得`);
-      }
-      
-      return result;
-    } catch (_error) {
-      const err = _error instanceof Error 
-        ? new ExternalAPIError(this.source.name, _error.message, _error)
-        : new ExternalAPIError(this.source.name, String(_error));
-      logger.error(`${this.source.name} エラー:`, err);
-      errors.push(err);
-      return { articles, errors };
-    }
-  }
-
-  /**
-   * 各フェッチャーが実装する内部fetchメソッド
-   */
-  protected abstract fetchInternal(): Promise<FetchResult>;
 
   protected async retry<T>(
     fn: () => Promise<T>,

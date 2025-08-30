@@ -1,7 +1,8 @@
 import Parser from 'rss-parser';
 import { Source } from '@prisma/client';
-import { BaseFetcher, FetchResult } from './base';
-import { CreateArticleInput } from '@/types/models';
+import { BaseFetcher } from './base';
+import { FetchResult } from '@/types/fetchers';
+import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 
 interface AWSRSSItem {
@@ -120,14 +121,14 @@ export class AWSFetcher extends BaseFetcher {
 
             allArticles.push(article);
           } catch (_error) {
-            allErrors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
+            allErrors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
           }
         }
 
         // レート制限対策
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (_error) {
-        allErrors.push(new Error(`Failed to fetch AWS ${feedInfo.name} feed: ${error instanceof Error ? error.message : String(error)}`));
+        allErrors.push(new Error(`Failed to fetch AWS ${feedInfo.name} feed: ${_error instanceof Error ? _error.message : String(_error)}`));
       }
     }
 

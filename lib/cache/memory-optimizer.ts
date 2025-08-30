@@ -167,7 +167,7 @@ export class MemoryOptimizer {
     
     
     // 各キャッシュのTTLを調整
-    const currentStatsTTL = (statsCache as any).defaultTTL as number;
+    const currentStatsTTL = statsCache.getDefaultTTL();
     const newStatsTTL = Math.max(
       this.optimizationConfig.ttlAdjustment.minTTL,
       Math.min(
@@ -175,9 +175,9 @@ export class MemoryOptimizer {
         Math.floor(currentStatsTTL * adjustmentFactor)
       )
     );
-    (statsCache as any).defaultTTL = newStatsTTL;
+    statsCache.setDefaultTTL(newStatsTTL);
     
-    const currentTrendsTTL = (trendsCache as any).defaultTTL as number;
+    const currentTrendsTTL = trendsCache.getDefaultTTL();
     const newTrendsTTL = Math.max(
       this.optimizationConfig.ttlAdjustment.minTTL,
       Math.min(
@@ -185,7 +185,7 @@ export class MemoryOptimizer {
         Math.floor(currentTrendsTTL * adjustmentFactor)
       )
     );
-    (trendsCache as any).defaultTTL = newTrendsTTL;
+    trendsCache.setDefaultTTL(newTrendsTTL);
     
   }
 

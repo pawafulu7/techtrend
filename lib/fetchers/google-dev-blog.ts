@@ -1,7 +1,8 @@
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
-import { BaseFetcher, FetchResult } from './base';
-import { CreateArticleInput } from '@/types/models';
+import { BaseFetcher } from './base';
+import { FetchResult } from '@/types/fetchers';
+import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import type { ContentEnricherFactory } from '../enrichers';
 
@@ -58,7 +59,7 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
             articles.push(article);
           }
         } catch (_error) {
-          errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
+          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
         }
       }
 
@@ -119,7 +120,7 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
           } else {
           }
         } catch (_error) {
-          console.error(`[Google Dev Blog] Enrichment failed for ${item.link}:`, error);
+          console.error(`[Google Dev Blog] Enrichment failed for ${item.link}:`, _error);
           // エラー時は元のコンテンツを使用
         }
       } else {

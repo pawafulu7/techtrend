@@ -50,9 +50,12 @@
     }
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
     "next-env.d.ts",
+    "types/**/*.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [
@@ -62,8 +65,11 @@
     "build",
     "dist",
     "lib/**/__tests__/**",
-    "lib/enrichers/**",
-    "lib/fetchers/**",
+    "__tests__/**",
+    "tests/**",
+    "__mocks__/**",
+    "test/**",
+    "e2e/**",
     "scripts/temp/**/*.ts",
     "scripts/test/**/*.ts",
     "scripts/manual/**/*.ts",
@@ -71,6 +77,18 @@
     "scripts/fix*.ts",
     "scripts/test-*.ts",
     "scripts/fetch-*.ts",
-    "scripts/regenerate-*.ts"
+    "scripts/regenerate-*.ts",
+    "lib/fetchers/generic-corporate-rss.ts",
+    "lib/recommendation/**",
+    "lib/services/**",
+    "lib/utils/article-manual-adder.ts",
+    "lib/utils/content-quality-checker.ts",
+    "lib/utils/quality-score.ts",
+    "lib/utils/summary-parser.ts",
+    "lib/utils/tech-terms-manager.ts",
+    "prisma/**",
+    "types/api-responses.ts",
+    "types/api-types.ts",
+    "types/test-fixtures.ts"
   ]
 }

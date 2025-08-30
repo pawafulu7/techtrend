@@ -86,7 +86,7 @@ export class HackerNewsFetcher extends BaseFetcher {
                 thumbnail = enrichedData.thumbnail || undefined;
               }
             } catch (_error) {
-              console.error(`[Hacker News] Enrichment failed for ${story.url}:`, error);
+              console.error(`[Hacker News] Enrichment failed for ${story.url}:`, _error);
             }
           }
           
@@ -127,12 +127,12 @@ export class HackerNewsFetcher extends BaseFetcher {
           await new Promise(resolve => setTimeout(resolve, 100));
           
         } catch (_error) {
-          errors.push(new Error(`Failed to fetch story ${storyId}: ${error instanceof Error ? error.message : String(error)}`));
+          errors.push(new Error(`Failed to fetch story ${storyId}: ${_error instanceof Error ? _error.message : String(_error)}`));
         }
       }
       
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch Hacker News top stories: ${error instanceof Error ? error.message : String(error)}`));
+      errors.push(new Error(`Failed to fetch Hacker News top stories: ${_error instanceof Error ? _error.message : String(_error)}`));
     }
 
     // 日付順にソートして返す

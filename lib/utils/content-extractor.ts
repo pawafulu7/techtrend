@@ -6,7 +6,7 @@
  * RSSアイテムから本文コンテンツを抽出
  * 複数のフィールドをチェックして最適なコンテンツを取得
  */
-export function extractContent(item: unknown): string {
+export function extractContent(item: Record<string, unknown>): string {
   // 優先順位順にチェック
   const contentFields = [
     'content:encoded',
@@ -17,7 +17,7 @@ export function extractContent(item: unknown): string {
   ];
   
   for (const field of contentFields) {
-    const content = item[field];
+    const content = item[field] as unknown;
     if (content && typeof content === 'string' && content.length > 0) {
       // HTMLタグを含む場合はそのまま返す（後続の処理でサニタイズされる）
       return content;
@@ -147,44 +147,45 @@ export function optimizeContentForSummary(
  * RSSアイテムからメタデータを抽出
  * 作者、カテゴリ、公開日などの追加情報を取得
  */
-export function extractMetadata(item: unknown): {
+export function extractMetadata(item: Record<string, unknown>): {
   author?: string;
   categories?: string[];
   pubDate?: string;
   guid?: string;
 } {
-  const metadata: unknown = {};
+  const metadata: { author?: string; categories?: string[]; pubDate?: string; guid?: string } = {};
   
   // 作者情報
-  if (item.author) {
+  if (typeof item.author === 'string') {
     metadata.author = item.author;
-  } else if (item['dc:creator']) {
-    metadata.author = item['dc:creator'];
-  } else if (item.creator) {
-    metadata.author = item.creator;
+  } else if (typeof (item['dc:creator'] as unknown) === 'string') {
+    metadata.author = item['dc:creator'] as string;
+  } else if (typeof item.creator === 'string') {
+    metadata.author = item.creator as string;
   }
   
   // カテゴリ情報
-  if (item.categories && Array.isArray(item.categories)) {
-    metadata.categories = item.categories;
+  if (Array.isArray(item.categories)) {
+    metadata.categories = item.categories as string[];
   } else if (item.category) {
-    metadata.categories = Array.isArray(item.category) ? item.category : [item.category];
+    const cat = item.category as unknown;
+    metadata.categories = Array.isArray(cat) ? (cat as string[]) : [String(cat)];
   }
   
   // 公開日
-  if (item.pubDate) {
+  if (typeof item.pubDate === 'string') {
     metadata.pubDate = item.pubDate;
-  } else if (item.published) {
-    metadata.pubDate = item.published;
-  } else if (item.isoDate) {
-    metadata.pubDate = item.isoDate;
+  } else if (typeof item.published === 'string') {
+    metadata.pubDate = item.published as string;
+  } else if (typeof item.isoDate === 'string') {
+    metadata.pubDate = item.isoDate as string;
   }
   
   // GUID
-  if (item.guid) {
+  if (typeof item.guid === 'string') {
     metadata.guid = item.guid;
-  } else if (item.id) {
-    metadata.guid = item.id;
+  } else if (typeof item.id === 'string') {
+    metadata.guid = item.id as string;
   }
   
   return metadata;

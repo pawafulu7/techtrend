@@ -103,4 +103,4 @@ export {
   MediumEngineeringFetcher
   // MicrosoftDevBlogFetcher
 };
-export type { FetchResult } from './base';
+export type { FetchResult } from '@/types/fetchers';

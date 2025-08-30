@@ -100,7 +100,7 @@ export interface ArticleStats {
   averageQualityScore: number;
   sourceDistribution: Record<string, number>;
   tagDistribution: Record<string, number>;
-  typeDistribution: Record<ArticleType | 'null', number>;
+  typeDistribution: Record<Exclude<ArticleType, null> | 'null', number>;
   dailyCount: number;
   weeklyCount: number;
   monthlyCount: number;

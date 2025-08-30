@@ -1,21 +1,6 @@
 // フェッチャー関連の型定義
 import { Source } from '@prisma/client';
-
-// 記事作成用の入力型
-export interface CreateArticleInput {
-  title: string;
-  url: string;
-  summary?: string;
-  thumbnail?: string;
-  content?: string;
-  publishedAt: Date;
-  sourceId: string;
-  bookmarks?: number;
-  qualityScore?: number;
-  userVotes?: number;
-  difficulty?: string;
-  detailedSummary?: string;
-}
+export type CreateArticleInput = import('./models').CreateArticleInput;
 
 // フェッチ結果の型
 export interface FetchResult {

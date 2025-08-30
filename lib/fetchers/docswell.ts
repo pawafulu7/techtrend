@@ -5,7 +5,7 @@
 
 import { BaseFetcher } from './base';
 import { Source } from '@prisma/client';
-import { CreateArticleInput } from '@/types/article';
+import { CreateArticleInput } from '@/types';
 import * as cheerio from 'cheerio';
 import RSSParser from 'rss-parser';
 import { docswellConfig } from '../config/docswell';
@@ -37,17 +37,13 @@ export class DocswellFetcher extends BaseFetcher {
   }
 
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
-    return this.safeFetch();
-  }
-
-  protected async fetchInternal(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
     const errors: Error[] = [];
     let articles: CreateArticleInput[] = [];
 
     try {
       articles = await this.fetchTrendingPresentations();
     } catch (_error) {
-      const err = error instanceof Error ? error : new Error(String(error));
+      const err = _error instanceof Error ? _error : new Error(String(_error));
       errors.push(err);
     }
 
@@ -189,7 +185,7 @@ export class DocswellFetcher extends BaseFetcher {
         await this.delay(waitTime);
         return this.fetchWithRetry(url, retries + 1);
       }
-      throw error;
+      throw _error as Error;
     }
   }
 

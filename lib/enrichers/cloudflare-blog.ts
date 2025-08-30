@@ -12,7 +12,7 @@ export class CloudflareBlogEnricher extends BaseContentEnricher {
   /**
    * Cloudflare Blogの記事を詳細に取得してエンリッチ
    */
-  async enrich(url: string): Promise<{ content?: string; thumbnail?: string } | null> {
+  async enrich(url: string): Promise<{ content: string | null; thumbnail?: string | null } | null> {
     try {
       
       const response = await fetch(url, {
@@ -104,12 +104,12 @@ export class CloudflareBlogEnricher extends BaseContentEnricher {
       
       
       return {
-        content,
-        thumbnail,
+        content: content || null,
+        thumbnail: thumbnail ?? null,
       };
       
     } catch (_error) {
-      console.error(`[Cloudflare Blog Enricher] Error enriching ${url}:`, error);
+      console.error(`[Cloudflare Blog Enricher] Error enriching ${url}:`, _error);
       return null;
     }
   }

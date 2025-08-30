@@ -12,7 +12,7 @@ export class MozillaHacksEnricher extends BaseContentEnricher {
   /**
    * Mozilla Hacksの記事を詳細に取得してエンリッチ
    */
-  async enrich(url: string): Promise<{ content?: string; thumbnail?: string } | null> {
+  async enrich(url: string): Promise<{ content: string | null; thumbnail?: string | null } | null> {
     try {
       
       const response = await fetch(url, {
@@ -121,12 +121,12 @@ export class MozillaHacksEnricher extends BaseContentEnricher {
       
       
       return {
-        content,
-        thumbnail,
+        content: content || null,
+        thumbnail: thumbnail ?? null,
       };
       
     } catch (_error) {
-      console.error(`[Mozilla Hacks Enricher] Error enriching ${url}:`, error);
+      console.error(`[Mozilla Hacks Enricher] Error enriching ${url}:`, _error);
       return null;
     }
   }

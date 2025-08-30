@@ -1,5 +1,5 @@
 import { BaseFetcher } from './base';
-import { CreateArticleInput } from '@/types/article';
+import { CreateArticleInput } from '@/types';
 import Parser from 'rss-parser';
 import type { ContentEnricherFactory } from '../enrichers';
 
@@ -57,7 +57,7 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
     } catch (_error) {
       return {
         articles: [],
-        errors: [error as Error]
+        errors: [_error as Error]
       };
     }
   }
@@ -81,7 +81,7 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
           } else {
           }
         } catch (_error) {
-          console.error(`[StackOverflow Blog] Enrichment failed for ${item.link}:`, error);
+          console.error(`[StackOverflow Blog] Enrichment failed for ${item.link}:`, _error);
           // エラー時は元のコンテンツを使用
         }
       } else {

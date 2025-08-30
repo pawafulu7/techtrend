@@ -1,6 +1,7 @@
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
-import { BaseFetcher, FetchResult } from './base';
+import { BaseFetcher } from './base';
+import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
 import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
@@ -81,7 +82,7 @@ export class SREFetcher extends BaseFetcher {
             tags.unshift('SRE'); // 必ずSREタグを先頭に追加
             
             // コンテンツを抽出
-            const content = extractContent(item);
+          const content = extractContent(item as unknown as Record<string, unknown>);
             
             // コンテンツ品質チェック
             const contentCheck = checkContentQuality(content, item.title || '');
@@ -111,14 +112,14 @@ export class SREFetcher extends BaseFetcher {
 
             allArticles.push(article);
           } catch (_error) {
-            allErrors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
+            allErrors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
           }
         }
 
         // レート制限対策
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (_error) {
-        allErrors.push(new Error(`Failed to fetch SRE ${feedInfo.name} feed: ${error instanceof Error ? error.message : String(error)}`));
+        allErrors.push(new Error(`Failed to fetch SRE ${feedInfo.name} feed: ${_error instanceof Error ? _error.message : String(_error)}`));
       }
     }
 

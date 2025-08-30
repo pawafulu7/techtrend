@@ -1,5 +1,5 @@
 import { BaseFetcher } from './base';
-import { CreateArticleInput } from '@/types/article';
+import { CreateArticleInput } from '@/types';
 import Parser from 'rss-parser';
 
 interface ThinkITItem {
@@ -24,12 +24,11 @@ export class ThinkITFetcher extends BaseFetcher {
   private rssUrl = 'https://thinkit.co.jp/rss.xml';
 
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
-    
     try {
       const feed = await this.parser.parseURL(this.rssUrl);
       
       if (!feed.items || feed.items.length === 0) {
-        return [];
+        return { articles: [], errors: [] };
       }
       
       
@@ -53,7 +52,7 @@ export class ThinkITFetcher extends BaseFetcher {
     } catch (_error) {
       return {
         articles: [],
-        errors: [error as Error]
+        errors: [_error as Error]
       };
     }
   }

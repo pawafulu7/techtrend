@@ -1,6 +1,7 @@
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
-import { BaseFetcher, FetchResult } from './base';
+import { BaseFetcher } from './base';
+import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
 import { ContentEnricherFactory } from '../enrichers';
@@ -194,37 +195,25 @@ export class HatenaExtendedFetcher extends BaseFetcher {
               tagNames: item.categories || [],
             };
 
-            // 技術記事かチェック + 品質フィルタリング
-            if (this.isTechArticle(article) && (article.bookmarks || 0) >= 10) {
+            // 技術記事かチェック
+            if (this.isTechArticle(article)) {
               seenUrls.add(item.link);
               allArticles.push(article);
             }
           } catch (_error) {
-            allErrors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
+            allErrors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
           }
         }
 
         // レート制限を考慮して少し待機
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (_error) {
-        allErrors.push(new Error(`Failed to fetch from ${rssUrl}: ${error instanceof Error ? error.message : String(error)}`));
+        allErrors.push(new Error(`Failed to fetch from ${rssUrl}: ${_error instanceof Error ? _error.message : String(_error)}`));
       }
     }
 
-    // ブックマーク数でソートして上位30件を返す（品質重視）
-    allArticles.sort((a, b) => (b.bookmarks || 0) - (a.bookmarks || 0));
-
-    // 50users以上の記事を優先
-    const highQualityArticles = allArticles.filter(a => (a.bookmarks || 0) >= 50);
-    const mediumQualityArticles = allArticles.filter(a => (a.bookmarks || 0) >= 10 && (a.bookmarks || 0) < 50);
-    
-    const finalArticles = [
-      ...highQualityArticles,
-      ...mediumQualityArticles.slice(0, Math.max(0, 40 - highQualityArticles.length))
-    ];
-
     return { 
-      articles: finalArticles.slice(0, 40), // 品質の高い記事40件
+      articles: allArticles.slice(0, 40),
       errors: allErrors 
     };
   }

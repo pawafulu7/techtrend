@@ -69,7 +69,7 @@ export class CloudflareBlogFetcher extends BaseFetcher {
           }
 
           // コンテンツの取得
-          let content = extractContent(item);
+          let content = extractContent(item as unknown as Record<string, unknown>);
           let thumbnail: string | undefined;
           
           // コンテンツエンリッチメント（2000文字未満の場合のみ実行）
@@ -84,7 +84,7 @@ export class CloudflareBlogFetcher extends BaseFetcher {
                 } else {
                 }
               } catch (_error) {
-                console.error(`[Cloudflare Blog] Enrichment failed for ${item.link}:`, error);
+          console.error(`[Cloudflare Blog] Enrichment failed for ${item.link}:`, _error);
                 // エラー時は元のコンテンツを使用
               }
             }
@@ -122,7 +122,7 @@ export class CloudflareBlogFetcher extends BaseFetcher {
 
           articles.push(article);
         } catch (_error) {
-          errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
+          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
         }
       }
       
@@ -130,7 +130,7 @@ export class CloudflareBlogFetcher extends BaseFetcher {
       await new Promise(resolve => setTimeout(resolve, 500));
       
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch Cloudflare Blog RSS feed: ${error instanceof Error ? error.message : String(error)}`));
+      errors.push(new Error(`Failed to fetch Cloudflare Blog RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`));
     }
 
     // 日付順にソートして最新30件を返す

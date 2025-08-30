@@ -1,7 +1,8 @@
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
-import { BaseFetcher, FetchResult } from './base';
-import { CreateArticleInput } from '@/types/models';
+import { BaseFetcher } from './base';
+import { FetchResult } from '@/types/fetchers';
+import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
 
@@ -52,7 +53,7 @@ export class GoogleAIFetcher extends BaseFetcher {
           }
 
           // コンテンツを抽出
-          const content = extractContent(item);
+          const content = extractContent(item as unknown as Record<string, unknown>);
           
           // コンテンツ品質チェック
           const contentCheck = checkContentQuality(content, item.title);
@@ -79,11 +80,11 @@ export class GoogleAIFetcher extends BaseFetcher {
 
           articles.push(article);
         } catch (_error) {
-          errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
+          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
         }
       }
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch RSS feed: ${error instanceof Error ? error.message : String(error)}`));
+      errors.push(new Error(`Failed to fetch RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`));
     }
 
     return { articles, errors };

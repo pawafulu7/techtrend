@@ -1,7 +1,7 @@
 import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import RSSParser from 'rss-parser';
-import type { CreateArticleInput } from '@/types/models';
+import type { CreateArticleInput } from '@/types';
 import { speakerDeckConfig } from '@/lib/config/speakerdeck';
 import * as cheerio from 'cheerio';
 
@@ -32,10 +32,6 @@ export class SpeakerDeckFetcher extends BaseFetcher {
   }
 
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
-    return this.safeFetch();
-  }
-
-  protected async fetchInternal(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
     const errors: Error[] = [];
     const articles: CreateArticleInput[] = [];
 
@@ -44,7 +40,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       const trendingArticles = await this.fetchTrendingPresentations();
       articles.push(...trendingArticles);
     } catch (_error) {
-      const err = error instanceof Error ? error : new Error(String(error));
+      const err = _error instanceof Error ? _error : new Error(String(_error));
       errors.push(err);
     }
 
@@ -83,7 +79,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
             articles.push(article);
           }
         } catch (_error) {
-          const err = error instanceof Error ? error : new Error(String(error));
+          const err = _error instanceof Error ? _error : new Error(String(_error));
           errors.push(err);
         }
       }
@@ -356,7 +352,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
         await this.delay(waitTime);
         return this.fetchWithRetry(url, retries + 1);
       }
-      throw error;
+      throw _error as Error;
     }
   }
 

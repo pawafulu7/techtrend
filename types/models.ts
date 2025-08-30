@@ -57,10 +57,13 @@ export type CreateArticleInput = {
   content?: string | null;
   thumbnail?: string | null;
   tags?: string[];
+  tagNames?: string[];
   qualityScore?: number;
   summaryVersion?: number;
   articleType?: string | null;
   difficulty?: string | null;
+  metadata?: Record<string, unknown>;
+  author?: string;
 };
 
 // Where条件の型

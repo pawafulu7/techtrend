@@ -134,6 +134,20 @@ export class RedisCache {
   }
 
   /**
+   * 現在のデフォルトTTL（秒）を取得
+   */
+  getDefaultTTL(): number {
+    return this.defaultTTL;
+  }
+
+  /**
+   * デフォルトTTL（秒）を設定
+   */
+  setDefaultTTL(seconds: number): void {
+    this.defaultTTL = seconds;
+  }
+
+  /**
    * Helper method to handle cache with fallback
    */
   async getOrSet<T>(
