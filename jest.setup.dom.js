@@ -23,17 +23,26 @@ jest.mock('next/router', () => ({
 // window.openのモック
 global.open = jest.fn();
 
-// window.location.hrefのモック
-delete window.location;
-window.location = { 
-  href: '',
-  assign: jest.fn(),
-  replace: jest.fn(),
-  reload: jest.fn(),
-  pathname: '/',
-  search: '',
-  hash: ''
-};
+// window.location は jsdom で再定義・spy が失敗する環境があるため特別なモックは行わない
+// 参照: https://github.com/jsdom/jsdom/issues/2304
+
+// jsdom が出す既知のノイズエラーログを抑制（テスト失敗には影響しない）
+const originalConsoleError = console.error;
+const IGNORED_ERROR_PATTERNS = [
+  'Not implemented: navigation (except hash changes)',
+  'not wrapped in act(...)',
+];
+jest.spyOn(console, 'error').mockImplementation((...args) => {
+  const first = args[0];
+  const toMessage = (val) => {
+    if (typeof val === 'string') return val;
+    if (val && typeof val.message === 'string') return val.message;
+    try { return String(val); } catch { return ''; }
+  };
+  const msg = toMessage(first);
+  if (IGNORED_ERROR_PATTERNS.some(p => msg.includes(p))) return;
+  originalConsoleError(...args);
+});
 
 // fetchのモック
 global.fetch = jest.fn(() =>

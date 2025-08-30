@@ -8,6 +8,7 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.node.js'],
   testEnvironment: 'node',
+  reporters: ['summary'],
   transformIgnorePatterns: [
     'node_modules/(?!(node-fetch)/)',
   ],

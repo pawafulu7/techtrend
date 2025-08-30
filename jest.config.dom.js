@@ -8,6 +8,7 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.dom.js'],
   testEnvironment: 'jsdom',
+  reporters: ['summary'],
   moduleNameMapper: {
     // CSS modules
     '^.+\\.module\\.(css|sass|scss)$': 'identity-obj-proxy',
