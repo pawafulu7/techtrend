@@ -59,7 +59,15 @@
 
 ## 🔴 最新アップデート（2025年8月）
 
-### ArticleView既読データ消失問題の修正（2025年8月30日 - 最新）
+### DOM環境テストの安定化（2025年8月30日 - 最新）
+- **問題**: jsdomのCSSパースエラーがテスト出力を汚染
+- **修正内容**:
+  - `__tests__/jest.setup.dom.js`でconsole.errorをモック
+  - virtualConsoleで警告を制御
+  - テスト出力のノイズを完全除去
+- **成果**: クリーンなテスト出力、デバッグ効率向上
+
+### ArticleView既読データ消失問題の修正（2025年8月30日）
 - **問題**: 「全て既読」実行後、数時間で3000件以上が未読に戻る
 - **原因**: 閲覧履歴100件制限処理が既読データも削除していた
 - **修正内容**:
@@ -1006,6 +1014,39 @@ npm run regenerate:all-unified -- --continue --limit=50
 - Rate Limitエラー時: 60秒待機して再試行
 - 継続オプション: `--continue`で中断箇所から再開
 
+## データベースマイグレーション管理（2025年8月30日更新）
+
+### 重要: 本番環境対応のマイグレーション管理を導入済み
+
+**これまでの問題:**
+- `prisma db push`で直接DB変更（マイグレーション履歴なし）
+- 本番環境デプロイ時に再現性がない
+
+**現在の正しい運用:**
+
+#### 開発時のスキーマ変更
+```bash
+# 必ずmigrate devを使用（db pushは禁止）
+npx prisma migrate dev --name 変更内容の説明
+
+# 例
+npx prisma migrate dev --name add_user_profile_fields
+```
+
+#### 本番環境へのデプロイ
+```bash
+# migrate deployで安全に適用
+DATABASE_URL=$PRODUCTION_DATABASE_URL npx prisma migrate deploy
+```
+
+#### マイグレーション管理のルール
+1. **必ず`migrate dev`使用**: `db push`は使わない
+2. **Gitで管理**: `prisma/migrations`をコミット
+3. **本番は`migrate deploy`のみ**: 新規作成は開発環境で
+4. **マイグレーションファイルは編集しない**: 一度作成したら変更禁止
+
+詳細: Serenaメモリ `database_migration_management_202508`
+
 ## 主要なディレクトリ構造
 
 - `app/`: Next.js App Router（ページ、API）
@@ -1018,7 +1059,8 @@ npm run regenerate:all-unified -- --continue --limit=50
   - `recommendation/`: 推薦システム
   - `services/`: タグ正規化等
 - `scripts/`: メンテナンススクリプト
-- `prisma/`: データベーススキーマ
+- `prisma/`: データベーススキーマ、マイグレーション
+  - `migrations/`: マイグレーション履歴（Git管理必須）
 - `__tests__/`: テストファイル
 - `.claude/`: Claude Code用設定
 

@@ -51,6 +51,10 @@ next-env.d.ts
 development.db
 techtrend.db
 
+# seed data files (full backup)
+prisma/seed-data-full.json
+prisma/seed-full.ts
+
 # backup directories
 prisma/backups/auto/
 # Note: prisma/backups/manual/ is NOT ignored (important milestones)
