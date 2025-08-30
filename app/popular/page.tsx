@@ -1,5 +1,5 @@
 import { PopularArticles } from '@/app/components/popular/PopularArticles';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Info } from 'lucide-react';
 
 export default function PopularPage() {

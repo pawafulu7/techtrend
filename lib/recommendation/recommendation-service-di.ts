@@ -9,11 +9,10 @@ import {
   defaultConfig, 
   calculateTimeWeight, 
   calculateFreshnessBoost,
-  hashTagSet,
   normalizeScore
 } from './utils';
 import { getRedisService } from '@/lib/redis/factory';
-import { getPrismaClient, getRedisClient } from '@/lib/di';
+import { getPrismaClient } from '@/lib/di';
 
 const redisService = getRedisService();
 

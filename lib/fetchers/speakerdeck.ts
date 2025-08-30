@@ -2,7 +2,6 @@ import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import RSSParser from 'rss-parser';
 import type { CreateArticleInput } from '@/types/models';
-import { fetcherConfig } from '@/lib/config/fetchers';
 import { speakerDeckConfig } from '@/lib/config/speakerdeck';
 import * as cheerio from 'cheerio';
 

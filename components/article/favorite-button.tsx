@@ -40,7 +40,7 @@ export function FavoriteButton({
         const data = await response.json();
         setIsFavorited(data.isFavorited);
       }
-    } catch (error) {
+    } catch (_error) {
     }
   };
 
@@ -104,7 +104,7 @@ export function FavoriteButton({
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'エラーが発生しました',
         description: 'もう一度お試しください。',

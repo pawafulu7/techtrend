@@ -2,7 +2,6 @@ import { BaseFetcher } from './base';
 import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
 import { ContentEnricherFactory } from '@/lib/enrichers';
-import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 
 interface HackerNewsStory {
   id: number;

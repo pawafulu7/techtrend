@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GEMINI_API } from '../constants';
 import { ExternalAPIError } from '../errors';
-import { cleanSummary as cleanSummaryUtil, cleanDetailedSummary as cleanDetailedSummaryUtil } from '../utils/summary-cleaner';
+import { cleanSummary as cleanSummaryUtil } from '../utils/summary-cleaner';
 import { validateSummary, cleanupSummary, validateAndNormalizeTags } from '../utils/summary-validator';
 import { calculateSummaryScore, needsRegeneration } from '../utils/quality-scorer';
 // import { detectArticleType } from '../utils/article-type-detector';  // 統一プロンプト移行により無効化
@@ -9,7 +9,6 @@ import { calculateSummaryScore, needsRegeneration } from '../utils/quality-score
 import { generateUnifiedPrompt } from '../utils/article-type-prompts';
 import { 
   createSummaryPrompt as createSummaryPromptNew,
-  createDetailedSummaryPrompt as createDetailedSummaryPromptNew,
   postProcessSummary,
   validateSummaryQuality
 } from './summary-generator';
@@ -365,7 +364,7 @@ export class GeminiClient {
     
     if (!detailedSummary) {
       // フォールバック: より意味のある内容を生成
-      const bulletPoints: any[] = [];
+      const bulletPoints: string[] = [];
       bulletPoints.push(`・記事の主題: ${summary}`);
       if (tags.length > 0) {
         bulletPoints.push(`・関連技術: ${tags.slice(0, 3).join('、')}`);

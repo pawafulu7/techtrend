@@ -3,7 +3,6 @@
  */
 
 import { UnifiedSummaryService, UnifiedSummaryResult, GenerateOptions } from './unified-summary-service';
-import { generateUnifiedPrompt } from '../utils/article-type-prompts';
 import { checkSummaryQuality } from '../utils/summary-quality-checker';
 
 /**

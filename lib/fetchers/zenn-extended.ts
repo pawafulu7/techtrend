@@ -129,8 +129,6 @@ export class ZennExtendedFetcher extends BaseFetcher {
   }
 
   private createArticle(item: ZennRSSItem): CreateArticleInput {
-    const hasJapanese = item.title ? /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(item.title) : false;
-    
     const article: CreateArticleInput = {
       title: this.sanitizeText(item.title || ''),
       url: this.normalizeUrl(item.link || ''),

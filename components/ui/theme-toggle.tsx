@@ -11,7 +11,7 @@ import {
 import { useThemeContext } from "@/app/providers/theme-provider"
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useThemeContext()
+  const { setTheme } = useThemeContext()
 
   return (
     <DropdownMenu>

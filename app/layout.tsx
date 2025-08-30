@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/app/components/layout/header";
 import { NoTransitions } from "@/app/components/layout/no-transitions";

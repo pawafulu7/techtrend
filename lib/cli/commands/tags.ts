@@ -64,7 +64,7 @@ tagsCommand
       
       // 基本統計
       const totalTags = await prisma.tag.count();
-      const tagsWithCategory = await prisma.tag.count({
+      await prisma.tag.count({
         where: { category: { not: null } }
       });
       
@@ -81,8 +81,8 @@ tagsCommand
       
       
       for (const cat of categories) {
-        const categoryName = cat.category || '未分類';
-        const percentage = Math.round(cat._count / totalTags * 100);
+        cat.category || '未分類';
+        Math.round(cat._count / totalTags * 100);
       }
       
       // 人気タグTop10

@@ -9,7 +9,7 @@ interface UseFadeInOptions {
 }
 
 export function useFadeIn(options: UseFadeInOptions = {}) {
-  const { delay = 0, duration = 300, enabled = true } = options;
+  const { delay = 0, duration: _duration = 300, enabled = true } = options;
   const [isVisible, setIsVisible] = useState(!enabled);
   const elementRef = useRef<HTMLDivElement>(null);
 

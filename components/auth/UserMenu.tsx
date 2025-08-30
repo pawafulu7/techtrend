@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +30,7 @@ export function UserMenu() {
     setIsSigningOut(true);
     try {
       await signOut({ callbackUrl: '/' });
-    } catch (error) {
+    } catch (_error) {
     } finally {
       setIsSigningOut(false);
     }

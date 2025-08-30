@@ -47,7 +47,7 @@ export function RecommendationSectionAnimated() {
       
       const data = await response.json();
       setRecommendations(data);
-    } catch (err) {
+    } catch (_err) {
       setError('推薦記事の取得に失敗しました');
     } finally {
       setLoading(false);

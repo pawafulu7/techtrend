@@ -148,7 +148,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     if (!source) {
       if (dryRun) {
         // ドライランの場合は仮のソースオブジェクトを作成
-        source = { id: 'dry-run-source', name: sourceName } as Source;
+        source = { id: 'dry-run-source', name: sourceName } as any;
       } else {
         source = await prisma.source.create({
           data: {
@@ -336,7 +336,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
       message: '記事を正常に追加しました'
     };
     
-  } catch (_error) {
+  } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : '不明なエラーが発生しました'
@@ -361,11 +361,6 @@ export async function addArticlesBatch(urls: string[], options: Omit<AddArticleO
       await new Promise(resolve => setTimeout(resolve, 3000));
     }
   }
-  
-  // サマリー表示
-  const successful = results.filter(r => r.success).length;
-  const failed = results.filter(r => !r.success).length;
-  
   
   return results;
 }

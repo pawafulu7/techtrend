@@ -87,8 +87,6 @@ export class ZennContentEnricher extends BaseContentEnricher {
         return null;
       }
       
-      const slug = match[1];
-      
       // 注意: Zenn公式APIは現在公開されていないため、
       // 将来的にAPIが公開された場合の実装プレースホルダー
       return null;

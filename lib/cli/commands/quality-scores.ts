@@ -95,7 +95,7 @@ qualityScoresCommand
       const prisma = getPrismaClient();
       
       // 基本統計
-      const stats = await prisma.article.aggregate({
+      await prisma.article.aggregate({
         _avg: { qualityScore: true },
         _min: { qualityScore: true },
         _max: { qualityScore: true },
@@ -104,7 +104,7 @@ qualityScoresCommand
       
       
       // スコア分布
-      const distribution = await Promise.all([
+      await Promise.all([
         prisma.article.count({ where: { qualityScore: { gte: 80 } } }),
         prisma.article.count({ where: { qualityScore: { gte: 60, lt: 80 } } }),
         prisma.article.count({ where: { qualityScore: { gte: 40, lt: 60 } } }),

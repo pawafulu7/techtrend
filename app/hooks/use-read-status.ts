@@ -25,7 +25,6 @@ export function useReadStatus(articleIds?: string[]) {
   const [readArticleIds, setReadArticleIds] = useState<Set<string>>(getInitialReadStatus);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
 
   // 既読状態を取得
   const fetchReadStatus = useCallback(async () => {

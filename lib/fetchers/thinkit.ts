@@ -1,4 +1,3 @@
-import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types/article';
 import Parser from 'rss-parser';
@@ -79,9 +78,6 @@ export class ThinkITFetcher extends BaseFetcher {
     
     // タグの処理
     const tags = item.categories || [];
-    
-    // 著者名の取得（dc:creatorフィールドも確認）
-    const authorName = item.author || item['dc:creator'] || 'Think IT';
     
     // 日付の処理
     const publishedAt = item.isoDate ? new Date(item.isoDate) : 

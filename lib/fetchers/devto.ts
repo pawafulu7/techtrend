@@ -1,4 +1,3 @@
-import { Source } from '@prisma/client';
 import { BaseFetcher, FetchResult } from './base';
 import { CreateArticleInput } from '@/types/models';
 import { normalizeTagInput } from '../utils/tag-normalizer';
