@@ -72,7 +72,7 @@ export function HomeClientInfinite({
     }
     
     return params;
-  }, [searchParams, initialSortBy, initialSourceIds, sources]);
+  }, [searchParams, initialSortBy]);
 
   const {
     data,

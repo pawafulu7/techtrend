@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArticleCard } from '@/app/components/article/card';
@@ -36,7 +36,7 @@ export default function FavoritesFeedPage() {
   const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'quality'>('recent');
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadArticles = async () => {
+  const loadArticles = useCallback(async () => {
     setLoading(true);
     try {
       // フォルダーに基づいてソースIDを取得
@@ -81,13 +81,13 @@ export default function FavoritesFeedPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [favorites, selectedFolder, page, sortBy, getFavoritesByFolder]);
 
   useEffect(() => {
     if (!favoritesLoading) {
       loadArticles();
     }
-  }, [favoritesLoading, selectedFolder, page, sortBy]);
+  }, [favoritesLoading, loadArticles]);
 
   const handleRefresh = () => {
     setRefreshing(true);

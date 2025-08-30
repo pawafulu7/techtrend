@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,11 +41,7 @@ export function PopularArticles({
   const [period, setPeriod] = useState(initialPeriod);
   const [metric, setMetric] = useState(initialMetric);
 
-  useEffect(() => {
-    loadArticles();
-  }, [period, metric, limit]);
-
-  const loadArticles = async () => {
+  const loadArticles = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(
@@ -62,7 +58,11 @@ export function PopularArticles({
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, metric, limit]);
+
+  useEffect(() => {
+    loadArticles();
+  }, [loadArticles]);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {

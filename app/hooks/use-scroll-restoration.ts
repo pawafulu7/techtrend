@@ -69,10 +69,10 @@ export function useScrollRestoration(
     
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (_error) {
+    } catch (e) {
       console.error('[ScrollRestore] Failed to save position:', e);
     }
-  }, [articleCount, pageCount, filters]);
+  }, [articleCount, pageCount, filters, scrollContainerRef]);
 
   // ユーザー操作の検知
   useEffect(() => {
@@ -111,7 +111,7 @@ export function useScrollRestoration(
         window.removeEventListener('mousedown', handleUserInteraction);
       }
     };
-  }, [isRestoringRef.current, scrollContainerRef]);
+  }, [scrollContainerRef]);
 
   // URLから'returning'パラメータを削除する関数
   const cleanupReturningParam = useCallback(() => {
@@ -273,7 +273,7 @@ export function useScrollRestoration(
       sessionStorage.removeItem(STORAGE_KEY);
       isRestoringRef.current = false;
     }
-  }, [filters, pageCount, hasNextPage, isFetchingNextPage, fetchNextPage, cleanupReturningParam]); // 依存関係を追加
+  }, [filters, pageCount, hasNextPage, isFetchingNextPage, fetchNextPage, cleanupReturningParam, isReturningFromArticle, scrollContainerRef]);
 
   // ページ読み込み完了時のスクロール実行
   useEffect(() => {
@@ -389,7 +389,7 @@ export function useScrollRestoration(
     } catch (_error) {
       isRestoringRef.current = false;
     }
-  }, [pageCount, hasNextPage, isFetchingNextPage, fetchNextPage, cleanupReturningParam]);
+  }, [pageCount, hasNextPage, isFetchingNextPage, fetchNextPage, cleanupReturningParam, scrollContainerRef]);
 
   return {
     saveScrollPosition,
