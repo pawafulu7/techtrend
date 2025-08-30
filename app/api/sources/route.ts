@@ -252,7 +252,7 @@ export async function GET(request: NextRequest) {
       response.headers.set('X-Response-Time', `${responseTime}ms`);
       
       return response;
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

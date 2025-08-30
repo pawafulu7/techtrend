@@ -123,7 +123,7 @@ export async function GET() {
         stats: cacheStats
       }
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { 
         error: 'Failed to fetch trending keywords',

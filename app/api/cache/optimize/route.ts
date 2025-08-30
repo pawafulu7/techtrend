@@ -17,7 +17,7 @@ export async function GET() {
       warmer: warmerStatus,
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to get optimization status' },
       { status: 500 }
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       ...result,
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to execute optimization action' },
       { status: 500 }

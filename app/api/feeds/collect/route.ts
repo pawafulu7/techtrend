@@ -96,7 +96,7 @@ export async function POST() {
                       summaryVersion: result.summaryVersion,
                     },
                   });
-                } catch (error) {
+                } catch {
                 }
               }
             }

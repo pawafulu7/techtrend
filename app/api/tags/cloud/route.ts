@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
     await tagCloudCache.set(cacheKey, response);
 
     return NextResponse.json(response);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

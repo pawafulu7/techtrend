@@ -34,7 +34,7 @@ export async function GET() {
         memoryPeak,
         connected: true
       };
-    } catch (error) {
+    } catch {
       redisInfo = {
         connected: false,
         error: 'Failed to connect to Redis'
@@ -78,7 +78,7 @@ export async function GET() {
     };
     
     return NextResponse.json(response);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,

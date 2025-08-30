@@ -252,7 +252,7 @@ export async function GET(request: NextRequest) {
         stats: cacheStats
       }
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

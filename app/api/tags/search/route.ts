@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     }));
     
     return Response.json(result);
-  } catch (error) {
+  } catch {
     return Response.json(
       { error: 'Failed to search tags' },
       { status: 500 }
