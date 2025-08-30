@@ -69,7 +69,9 @@ export function RedisAdapter(client: Redis): Adapter {
 
     async updateUser(user) {
       const existing = await this.getUser!(user.id);
-      if (!existing) return null;
+      if (!existing) {
+        throw new Error(`User with id ${user.id} not found`);
+      }
       
       const updated = {
         ...existing,
@@ -198,7 +200,7 @@ export function RedisAdapter(client: Redis): Adapter {
     // OAuth methods - using Prisma for these
     async linkAccount(account) {
       // Will be handled by Prisma adapter
-      return account as unknown as ReturnType<Adapter['linkAccount']>;
+      return account;
     },
 
     async unlinkAccount({ provider: _provider, providerAccountId: _providerAccountId }) {

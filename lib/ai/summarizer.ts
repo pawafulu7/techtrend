@@ -67,7 +67,7 @@ export class ArticleSummarizer {
         });
         
         item.resolve(result);
-      } catch (_error) {
+      } catch (error) {
         item.reject(error instanceof Error ? error : new Error(String(error)));
       }
 
@@ -111,7 +111,7 @@ export class ArticleSummarizer {
           item.content
         );
         item.resolve(summary);
-      } catch (_error) {
+      } catch (error) {
         item.reject(error instanceof Error ? error : new Error(String(error)));
       }
 

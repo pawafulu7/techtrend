@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,13 +41,7 @@ export default function SourceDetailPage() {
   const [data, setData] = useState<SourceDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (sourceId) {
-      loadSourceDetail();
-    }
-  }, [sourceId]);
-
-  const loadSourceDetail = async () => {
+  const loadSourceDetail = useCallback(async () => {
     try {
       const response = await fetch(`/api/sources/${sourceId}`);
       if (!response.ok) {
@@ -59,7 +53,13 @@ export default function SourceDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sourceId]);
+
+  useEffect(() => {
+    if (sourceId) {
+      loadSourceDetail();
+    }
+  }, [sourceId, loadSourceDetail]);
 
   if (loading) {
     return (

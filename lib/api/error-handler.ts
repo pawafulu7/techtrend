@@ -121,7 +121,7 @@ export function handleApiError(
   if (error instanceof ZodError) {
     const validationError = new ValidationError(
       'Validation failed',
-      error.errors.map(e => ({
+      error.issues.map(e => ({
         field: e.path.join('.'),
         message: e.message,
       }))
@@ -205,7 +205,7 @@ export function withErrorHandler<T extends (...args: unknown[]) => Promise<unkno
   return (async (...args) => {
     try {
       return await handler(...args);
-    } catch (_error) {
+    } catch (error) {
       return handleApiError(error);
     }
   }) as T;
@@ -221,7 +221,7 @@ export async function validateRequest<T>(
   try {
     const data = await request.json();
     return schema.parse(data);
-  } catch (_error) {
+  } catch (error) {
     if (error instanceof SyntaxError) {
       throw new ValidationError('Invalid JSON');
     }

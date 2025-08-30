@@ -35,7 +35,7 @@ export const authOptions: NextAuthConfig = {
 
         const user = await prisma.user.findUnique({
           where: {
-            email: credentials.email,
+            email: credentials.email as string,
           },
         });
 
@@ -44,7 +44,7 @@ export const authOptions: NextAuthConfig = {
         }
 
         const isPasswordValid = await bcrypt.compare(
-          credentials.password,
+          credentials.password as string,
           user.password
         );
 
@@ -120,7 +120,10 @@ export const authOptions: NextAuthConfig = {
   events: {
     async signIn({ user: _user, account: _account, profile: _profile }) {
     },
-    async signOut({ session: _session }) {
+    async signOut(params) {
+      // sessionまたはtokenが含まれる可能性がある
+      const _session = 'session' in params ? params.session : null;
+      const _token = 'token' in params ? params.token : null;
     },
     async createUser({ user: _user }) {
     },

@@ -1,12 +1,5 @@
 import { logger, LogLevel } from '../logger';
 
-// console メソッドのモック
-const _originalConsole = {
-  log: console.log,
-  error: console.error,
-  warn: console.warn
-};
-
 describe('logger', () => {
   let consoleLogSpy: jest.SpyInstance;
   let consoleErrorSpy: jest.SpyInstance;

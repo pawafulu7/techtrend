@@ -26,7 +26,7 @@ interface MediumFeed {
 }
 
 export class MediumEngineeringFetcher extends BaseFetcher {
-  private parser: Parser<any, MediumItem>;
+  private parser: Parser<unknown, MediumItem>;
   
   // 主要な技術系Mediumブログ
   private feeds: MediumFeed[] = [

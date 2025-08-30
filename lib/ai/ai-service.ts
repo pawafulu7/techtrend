@@ -143,7 +143,7 @@ export class AIService {
   ): Promise<T> {
     try {
       return await this.withRetry(primaryFn);
-    } catch (_error) {
+    } catch (error) {
       if (this.shouldFallback(error)) {
         try {
           return await this.withRetry(fallbackFn);
@@ -162,11 +162,11 @@ export class AIService {
     for (let attempt = 0; attempt < (this.retryOptions.maxRetries || 3); attempt++) {
       try {
         return await fn();
-      } catch (_error) {
+      } catch (error) {
         lastError = error as Error;
         
         if (!this.isRetryableError(error)) {
-          throw _error;
+          throw error;
         }
 
         if (attempt < (this.retryOptions.maxRetries || 3) - 1) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SourceCard } from '@/app/components/sources/SourceCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,29 +27,26 @@ export default function SourcesContent() {
   const [sortBy, setSortBy] = useState<SortBy>('articles');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 
-  // 初回ロード時のみ全データを取得
-  useEffect(() => {
-    loadAllSources();
-  }, []);
-
-  // フィルタリングとソートを適用
-  useEffect(() => {
-    applyFiltersAndSort();
-  }, [allSources, category, sortBy, order, search]);
-
-  const loadAllSources = async () => {
+  const loadAllSources = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/sources');
       const data = await response.json();
       setAllSources(data.sources);
-    } catch (_error) {
+    } catch (error) {
+      console.error('Failed to load sources:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const applyFiltersAndSort = () => {
+  // 初回ロード時のみ全データを取得
+  useEffect(() => {
+    loadAllSources();
+  }, [loadAllSources]);
+
+  // フィルタリングとソートを適用
+  const applyFiltersAndSort = useCallback(() => {
     if (allSources.length === 0) return;
 
     let filtered = [...allSources];
@@ -103,7 +100,11 @@ export default function SourcesContent() {
     });
 
     setSources(filtered);
-  };
+  }, [allSources, category, sortBy, order, search]);
+
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [applyFiltersAndSort]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

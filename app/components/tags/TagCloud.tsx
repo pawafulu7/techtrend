@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,11 +34,7 @@ export function TagCloud({
   const [period, setPeriod] = useState(initialPeriod);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadTags();
-  }, [period, limit]);
-
-  const loadTags = async () => {
+  const loadTags = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -53,12 +49,16 @@ export function TagCloud({
       
       const data = await response.json();
       setTags(data.tags);
-    } catch (_error) {
+    } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, limit]);
+
+  useEffect(() => {
+    loadTags();
+  }, [loadTags]);
 
   // フォントサイズの計算
   const { minCount, maxCount, fontSizes } = useMemo(() => {

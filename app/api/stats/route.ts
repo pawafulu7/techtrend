@@ -139,7 +139,7 @@ export async function GET() {
         stats: cacheStats
       }
     });
-  } catch (_error) {
+  } catch (error) {
     
     // Redisエラーの場合はフォールバックとしてDBから直接取得を試みる
     if (error instanceof Error && error.message.includes('Redis')) {

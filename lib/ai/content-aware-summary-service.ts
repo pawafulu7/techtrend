@@ -84,9 +84,9 @@ export class ContentAwareSummaryService extends UnifiedSummaryService {
   }
   
   /**
-   * 簡略版のプロンプトを生成
+   * 簡略版のプロンプトを生成（短いコンテンツ用）
    */
-  private generateShortContentPrompt(title: string, content: string, targetItems: number): string {
+  private generateShortPromptForLimitedContent(title: string, content: string, targetItems: number): string {
     return `
 技術記事を分析して、以下の形式で要約を作成してください。
 
@@ -138,11 +138,11 @@ export class ContentAwareSummaryService extends UnifiedSummaryService {
     
     // 短いコンテンツ用の処理
     if (config.category === ContentCategory.SHORT || config.category === ContentCategory.MEDIUM) {
-      const prompt = this.generateShortContentPrompt(title, content, config.targetItems);
+      const prompt = this.generateShortPromptForLimitedContent(title, content, config.targetItems);
       
       try {
         // 親クラスのcallGeminiAPIメソッドを使用
-        const responseText = await (this as unknown).callGeminiAPI(prompt);
+        const responseText = await super['callGeminiAPI'](prompt);
         const parsed = await this.parseAndValidateResponse(responseText, config.targetItems);
         
         return {

@@ -14,7 +14,7 @@ export async function GET() {
         api: 'operational'
       }
     });
-  } catch (_error) {
+  } catch (error) {
     return NextResponse.json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),

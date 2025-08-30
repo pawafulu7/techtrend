@@ -2,7 +2,7 @@
  * 手動記事追加のコアロジック
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Source } from '@prisma/client';
 import { UnifiedSummaryService } from '../ai/unified-summary-service';
 import { ContentEnricherFactory } from '../enrichers';
 import { detectSourceFromUrl, normalizeSourceName, isValidUrl } from './source-detector';
@@ -148,7 +148,15 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     if (!source) {
       if (dryRun) {
         // ドライランの場合は仮のソースオブジェクトを作成
-        source = { id: 'dry-run-source', name: sourceName } as any;
+        source = { 
+          id: 'dry-run-source', 
+          name: sourceName,
+          type: 'manual',
+          url: new URL(url).origin,
+          enabled: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        } as Source;
       } else {
         source = await prisma.source.create({
           data: {

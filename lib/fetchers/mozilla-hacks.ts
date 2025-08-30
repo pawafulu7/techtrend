@@ -20,7 +20,7 @@ interface MozillaHacksItem {
 }
 
 export class MozillaHacksFetcher extends BaseFetcher {
-  private parser: Parser<any, MozillaHacksItem>;
+  private parser: Parser<unknown, MozillaHacksItem>;
   private rssUrl = 'https://hacks.mozilla.org/feed/';
   
   constructor(source: Source) {
@@ -83,7 +83,7 @@ export class MozillaHacksFetcher extends BaseFetcher {
                   thumbnail = enrichedData.thumbnail || undefined;
                 } else {
                 }
-              } catch (_error) {
+              } catch (error) {
                 console.error(`[Mozilla Hacks] Enrichment failed for ${item.link}:`, error);
                 // エラー時は元のコンテンツを使用
               }
@@ -121,7 +121,7 @@ export class MozillaHacksFetcher extends BaseFetcher {
           }
 
           articles.push(article);
-        } catch (_error) {
+        } catch (error) {
           errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
@@ -129,7 +129,7 @@ export class MozillaHacksFetcher extends BaseFetcher {
       // レート制限対策
       await new Promise(resolve => setTimeout(resolve, 500));
       
-    } catch (_error) {
+    } catch (error) {
       errors.push(new Error(`Failed to fetch Mozilla Hacks RSS feed: ${error instanceof Error ? error.message : String(error)}`));
     }
 

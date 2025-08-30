@@ -81,8 +81,8 @@ tagsCommand
       
       
       for (const cat of categories) {
-        cat.category || '未分類';
-        Math.round(cat._count / totalTags * 100);
+        const _categoryName = cat.category || '未分類';
+        const _percentage = Math.round(cat._count / totalTags * 100);
       }
       
       // 人気タグTop10

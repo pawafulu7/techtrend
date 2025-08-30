@@ -10,7 +10,7 @@ import { checkSummaryQuality } from '../utils/summary-quality-checker';
 
 export interface UnifiedSummaryResult extends ParsedSummaryResult {
   articleType: 'unified';
-  summaryVersion: 8;
+  summaryVersion: number;
   qualityScore?: number;
 }
 
@@ -144,10 +144,10 @@ export class UnifiedSummaryService {
         };
         
       } catch (_error) {
-        lastError = error as Error;
+        lastError = _error as Error;
         
         // Rate limitエラーの場合は長めに待機
-        if (this.isRateLimitError(error)) {
+        if (this.isRateLimitError(_error)) {
           await this.delay(opts.retryDelay! * 3);
         } else if (attempt < opts.maxRetries!) {
           await this.delay(opts.retryDelay!);

@@ -6,7 +6,7 @@ import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import type { Source, Tag } from '@prisma/client';
-import type { ArticleWithRelations } from '@/types/api-responses';
+import type { ArticleWithRelations } from '@/types/models';
 
 interface HomeClientProps {
   viewMode: 'card' | 'list';
@@ -15,7 +15,7 @@ interface HomeClientProps {
   showInitialSkeleton?: boolean;
 }
 
-export function HomeClient({ viewMode, _sources, _tags, _showInitialSkeleton = true }: HomeClientProps) {
+export function HomeClient({ viewMode, sources: _sources, tags: _tags, showInitialSkeleton: _showInitialSkeleton = true }: HomeClientProps) {
   const searchParams = useSearchParams();
   const [articles, setArticles] = useState<ArticleWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,8 +59,8 @@ export function HomeClient({ viewMode, _sources, _tags, _showInitialSkeleton = t
         requestAnimationFrame(() => {
           setLoading(false);
         });
-      } catch (_error) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'An error occurred');
         setLoading(false);
       }
     }

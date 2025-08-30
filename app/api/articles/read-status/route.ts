@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
       readArticleIds: readArticles.map(a => a.articleId),
       unreadCount
     });
-  } catch (_error) {
+  } catch (error) {
     console.error('Error fetching read status:', error);
     return NextResponse.json(
       { error: 'Failed to fetch read status' },
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, articleView });
-  } catch (_error) {
+  } catch (error) {
     console.error('Error marking article as read:', error);
     return NextResponse.json(
       { error: 'Failed to mark article as read' },
@@ -185,7 +185,7 @@ export async function PUT(_req: NextRequest) {
       markedCount,
       remainingUnreadCount: 0
     });
-  } catch (_error) {
+  } catch (error) {
     console.error('Error marking all articles as read:', error);
     return NextResponse.json(
       { error: 'Failed to mark all articles as read' },
@@ -228,7 +228,7 @@ export async function DELETE(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (_error) {
+  } catch (error) {
     console.error('Error marking article as unread:', error);
     return NextResponse.json(
       { error: 'Failed to mark article as unread' },
