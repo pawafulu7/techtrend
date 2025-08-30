@@ -35,7 +35,7 @@ export class IoRedisClient implements IRedisClient {
     });
 
     // Auto-connect
-    this.client.connect().catch(err => {
+    this.client.connect().catch(() => {
     });
   }
 
