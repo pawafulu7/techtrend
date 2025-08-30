@@ -83,7 +83,7 @@ export function ArticleCard({ article, onArticleClick, isRead = false }: Article
         setVotes(data.votes);
         setHasVoted(true);
       }
-    } catch (error) {
+    } catch {
     }
   };
 

@@ -43,7 +43,7 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sortBy: newSortBy }),
       });
-    } catch (error) {
+    } catch {
     }
   };
 

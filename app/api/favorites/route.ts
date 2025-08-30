@@ -53,7 +53,7 @@ export async function GET(request: Request) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
         favoritedAt: favorite.createdAt,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -191,7 +191,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({
       message: 'Article removed from favorites',
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

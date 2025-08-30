@@ -147,8 +147,8 @@ export class AIService {
       if (this.shouldFallback(error)) {
         try {
           return await this.withRetry(fallbackFn);
-        } catch (fallbackError) {
-          throw fallbackError;
+        } catch {
+          throw new Error('Fallback function also failed');
         }
       }
       throw error;

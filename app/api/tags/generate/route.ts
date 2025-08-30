@@ -66,7 +66,7 @@ export async function POST() {
           });
           generated++;
         }
-      } catch (error) {
+      } catch {
         errors++;
       }
     }
@@ -79,7 +79,7 @@ export async function POST() {
         total: articlesWithoutTags.length
       }
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { 
         success: false, 

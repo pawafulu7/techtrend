@@ -49,7 +49,7 @@ export class DevToFetcher extends BaseFetcher {
       });
 
       return response;
-    } catch (error) {
+    } catch {
       return null;
     }
   }

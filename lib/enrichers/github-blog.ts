@@ -14,7 +14,6 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<{ content?: string; thumbnail?: string } | null> {
     try {
-      console.log(`[GitHub Blog Enricher] Fetching content from: ${url}`);
       
       const response = await fetch(url, {
         headers: {
@@ -97,11 +96,9 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
       
       // 結果の検証
       if (!content || content.length < 200) {
-        console.log(`[GitHub Blog Enricher] Insufficient content extracted: ${content.length} chars`);
         return null;
       }
       
-      console.log(`[GitHub Blog Enricher] Successfully enriched: ${content.length} chars, thumbnail: ${thumbnail ? 'yes' : 'no'}`);
       
       return {
         content,

@@ -32,7 +32,7 @@ export async function GET(
       isFavorited: !!favorite,
       favoriteId: favorite?.id || null,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

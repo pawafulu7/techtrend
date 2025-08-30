@@ -61,7 +61,7 @@ export function RedisAdapter(client: Redis): Adapter {
       return this.getUser!(userId);
     },
 
-    async getUserByAccount({ provider, providerAccountId }) {
+    async getUserByAccount({ provider: _provider, providerAccountId: _providerAccountId }) {
       // For OAuth, we'll use Prisma adapter
       // This is a simplified implementation
       return null;
@@ -201,7 +201,7 @@ export function RedisAdapter(client: Redis): Adapter {
       return account as unknown as ReturnType<Adapter['linkAccount']>;
     },
 
-    async unlinkAccount({ provider, providerAccountId }) {
+    async unlinkAccount({ provider: _provider, providerAccountId: _providerAccountId }) {
       // Will be handled by Prisma adapter
     },
 

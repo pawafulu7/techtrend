@@ -87,11 +87,9 @@ export class MediumEngineeringFetcher extends BaseFetcher {
     // 各フィードから記事を取得
     for (const feedInfo of this.feeds) {
       try {
-        console.log(`[Medium Engineering] Fetching from ${feedInfo.name}...`);
         const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
         
         if (!feed.items || feed.items.length === 0) {
-          console.log(`[Medium Engineering] No items in ${feedInfo.name}`);
           continue;
         }
 
@@ -127,7 +125,6 @@ export class MediumEngineeringFetcher extends BaseFetcher {
                 try {
                   const enrichedData = await enricher.enrich(cleanUrl);
                   if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-                    console.log(`[Medium Engineering] Enriched content for ${cleanUrl}: ${content.length} -> ${enrichedData.content.length} chars`);
                     content = enrichedData.content;
                     thumbnail = enrichedData.thumbnail || undefined;
                   }
@@ -140,7 +137,6 @@ export class MediumEngineeringFetcher extends BaseFetcher {
             // コンテンツ品質チェック
             const contentCheck = checkContentQuality(content, item.title);
             if (contentCheck.warning) {
-              console.log(`[Medium Engineering] Content quality warning for ${cleanUrl}: ${contentCheck.warning}`);
             }
             
             // タグの生成（フィード固有のタグ + カテゴリ + 自動生成）
@@ -211,7 +207,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
     feedTags: string[],
     categories?: string[],
     title?: string,
-    author?: string
+    _author?: string
   ): string[] {
     const tags = new Set<string>();
     

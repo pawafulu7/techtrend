@@ -96,7 +96,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         } else {
           setSearchResults([]);
         }
-      } catch (error) {
+      } catch {
         setSearchResults([]);
       } finally {
         setIsSearching(false);

@@ -254,7 +254,7 @@ export function isValidTagArray(tags: unknown): tags is string[] {
  * @param source - ソース名（ログ出力用）
  * @returns 正規化されたタグ配列
  */
-export function validateAndNormalizeTags(tags: unknown, source?: string): string[] {
+export function validateAndNormalizeTags(tags: unknown, _source?: string): string[] {
   const normalized = normalizeTagInput(tags);
   
   // デバッグ用: 元のデータと正規化後のデータが大きく異なる場合は警告

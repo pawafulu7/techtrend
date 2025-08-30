@@ -96,7 +96,7 @@ export async function POST() {
                       summaryVersion: result.summaryVersion,
                     },
                   });
-                } catch (error) {
+                } catch {
                 }
               }
             }
@@ -126,7 +126,7 @@ export async function POST() {
         },
       },
     } as ApiResponse<{ results: CollectResult[]; summary: { totalFetched: number; totalCreated: number; totalErrors: number; } }>);
-  } catch (error) {
+  } catch {
     return NextResponse.json({
       success: false,
       error: 'Failed to collect feeds',

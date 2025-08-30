@@ -17,7 +17,7 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       await signIn(provider, { callbackUrl: '/profile' });
-    } catch (error) {
+    } catch {
     } finally {
       setIsLoading(false);
     }

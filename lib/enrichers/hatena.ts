@@ -11,7 +11,7 @@ export class HatenaContentEnricher extends BaseContentEnricher {
    * はてなブックマーク記事のURLかチェック
    * 注意: これは実際のコンテンツURLをチェック（はてなのURL自体ではない）
    */
-  canHandle(url: string): boolean {
+  canHandle(_url: string): boolean {
     // はてなブックマーク経由の記事すべてに対応
     // 特定のドメインに限定しない（様々なサイトの記事が対象のため）
     return true;

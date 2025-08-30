@@ -76,11 +76,10 @@ export async function POST(request: NextRequest) {
       success: true,
       data: updatedArticle,
     } as ApiResponse<ArticleWithRelations>);
-  } catch (error) {
+  } catch {
     return NextResponse.json({
       success: false,
       error: 'Failed to generate summary',
-      details: error instanceof Error ? error.message : undefined,
     } as ApiResponse<never>, { status: 500 });
   }
 }
@@ -169,11 +168,10 @@ export async function PUT(request: NextRequest) {
         message: `Summarized ${processed} out of ${articles.length} articles`,
       },
     } as ApiResponse<{ processed: number; total: number; message: string }>);
-  } catch (error) {
+  } catch {
     return NextResponse.json({
       success: false,
       error: 'Failed to process batch summarization',
-      details: error instanceof Error ? error.message : undefined,
     } as ApiResponse<never>, { status: 500 });
   }
 }

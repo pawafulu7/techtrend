@@ -12,7 +12,7 @@ qualityScoresCommand
   .description('品質スコアを計算')
   .option('-s, --source <source>', 'ソースを指定')
   .option('-r, --recalculate', '既存のスコアも再計算')
-  .action(async (options) => {
+  .action(async (_options) => {
     try {
       logger.info('品質スコア計算を開始します');
       
@@ -54,7 +54,7 @@ qualityScoresCommand
 qualityScoresCommand
   .command('fix')
   .description('品質スコアが0の記事を修正')
-  .action(async (options) => {
+  .action(async (_options) => {
     try {
       logger.info('品質スコア修正を開始します');
       

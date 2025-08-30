@@ -2,6 +2,22 @@ import Parser from 'rss-parser';
 import { BaseFetcher } from './base';
 import { FetchResult } from '../types';
 
+interface RSSItem {
+  title?: string;
+  link?: string;
+  pubDate?: string;
+  'content:encoded'?: string;
+  content?: string;
+  contentSnippet?: string;
+  description?: string;
+  summary?: string;
+  categories?: string | string[] | Array<{ _?: string; term?: string }>;
+  'dc:subject'?: string | string[];
+  'media:thumbnail'?: string | { $?: { url?: string } };
+  enclosure?: { url?: string };
+  guid?: string;
+}
+
 /**
  * 企業ブログ用の汎用RSSフェッチャー
  * 各企業のRSSフィードから記事を取得する
@@ -27,7 +43,6 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
 
   async fetch(): Promise<FetchResult[]> {
     try {
-      console.log(`📡 ${this.sourceName}のRSSフィードを取得中...`);
       
       const feed = await this.parser.parseURL(this.feedUrl);
       const results: FetchResult[] = [];
@@ -56,7 +71,6 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
         }
       }
       
-      console.log(`✅ ${this.sourceName}: ${results.length}件の記事を取得`);
       return results;
     } catch (error) {
       console.error(`❌ ${this.sourceName}のフィード取得エラー:`, error);
@@ -67,7 +81,7 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
   /**
    * RSS項目からコンテンツを抽出
    */
-  private extractContent(item: any): string {
+  private extractContent(item: RSSItem): string {
     // 優先順位: content:encoded > content > description > summary
     const content = 
       item['content:encoded'] || 
@@ -83,14 +97,14 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
   /**
    * RSS項目からタグを抽出
    */
-  private extractTags(item: any): string[] {
+  private extractTags(item: RSSItem): string[] {
     const tags: string[] = [];
     
     // カテゴリーからタグを抽出
     if (item.categories) {
       if (Array.isArray(item.categories)) {
-        tags.push(...item.categories.map((cat: any) => 
-          typeof cat === 'string' ? cat : cat._ || cat.term || ''
+        tags.push(...item.categories.map((cat) => 
+          typeof cat === 'string' ? cat : (cat && typeof cat === 'object' ? cat._ || cat.term || '' : '')
         ).filter(Boolean));
       } else if (typeof item.categories === 'string') {
         tags.push(item.categories);
@@ -112,7 +126,7 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
   /**
    * RSS項目からサムネイルを抽出
    */
-  private extractThumbnail(item: any): string | undefined {
+  private extractThumbnail(item: RSSItem): string | undefined {
     // media:thumbnail
     if (item['media:thumbnail']) {
       const thumbnail = item['media:thumbnail'];

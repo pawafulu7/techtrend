@@ -52,7 +52,7 @@ export function SearchBox() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ search: searchQuery || undefined }),
       });
-    } catch (error) {
+    } catch {
       // Silent fail
     }
   }, [router, searchParams]);

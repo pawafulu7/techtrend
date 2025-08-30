@@ -34,7 +34,7 @@ export function FilterResetButton() {
       // Navigate to clean URL and reload
       // window.location.hrefを使用して完全にクリーンなURLに遷移
       window.location.href = '/';
-    } catch (error) {
+    } catch {
     } finally {
       setIsResetting(false);
     }

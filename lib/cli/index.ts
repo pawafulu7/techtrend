@@ -25,6 +25,6 @@ program.exitOverride();
 
 try {
   program.parse();
-} catch (err) {
+} catch {
   process.exit(1);
 }

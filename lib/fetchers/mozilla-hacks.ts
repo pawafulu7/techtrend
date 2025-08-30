@@ -79,11 +79,9 @@ export class MozillaHacksFetcher extends BaseFetcher {
               try {
                 const enrichedData = await enricher.enrich(item.link);
                 if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-                  console.log(`[Mozilla Hacks] Enriched content for ${item.link}: ${content.length} -> ${enrichedData.content.length} chars`);
                   content = enrichedData.content;
                   thumbnail = enrichedData.thumbnail || undefined;
                 } else {
-                  console.log(`[Mozilla Hacks] Enrichment did not improve content for ${item.link}`);
                 }
               } catch (error) {
                 console.error(`[Mozilla Hacks] Enrichment failed for ${item.link}:`, error);
@@ -91,13 +89,11 @@ export class MozillaHacksFetcher extends BaseFetcher {
               }
             }
           } else if (content && content.length >= 2000) {
-            console.log(`[Mozilla Hacks] Content already sufficient for ${item.link}: ${content.length} chars`);
           }
           
           // コンテンツ品質チェック
           const contentCheck = checkContentQuality(content, item.title);
           if (contentCheck.warning) {
-            console.log(`[Mozilla Hacks] Content quality warning for ${item.link}: ${contentCheck.warning}`);
           }
           
           // タグの生成

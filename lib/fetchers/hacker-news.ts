@@ -83,7 +83,6 @@ export class HackerNewsFetcher extends BaseFetcher {
             try {
               const enrichedData = await enricher.enrich(story.url);
               if (enrichedData && enrichedData.content) {
-                console.log(`[Hacker News] Enriched content for ${story.url}: ${enrichedData.content.length} chars`);
                 content = enrichedData.content;
                 thumbnail = enrichedData.thumbnail || undefined;
               }

@@ -102,7 +102,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ tags: undefined, tagMode: undefined }),
                     });
-                  } catch (error) {
+                  } catch {
                   }
                 }}
                 className="h-6 text-xs px-2"

@@ -68,7 +68,7 @@ export function SignupForm() {
         router.push('/profile');
         router.refresh();
       }
-    } catch (error) {
+    } catch {
       setError('登録中にエラーが発生しました');
     } finally {
       setIsLoading(false);

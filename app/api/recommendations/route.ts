@@ -7,15 +7,9 @@ const redisService = getRedisService();
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('[API/recommendations] Request received');
     
     // 認証チェック
     const session = await auth();
-    console.log('[API/recommendations] Session:', {
-      hasSession: !!session,
-      userId: session?.user?.id,
-      userName: session?.user?.name
-    });
     
     if (!session?.user?.id) {
       console.error('[API/recommendations] No authenticated user');
@@ -34,14 +28,11 @@ export async function GET(request: NextRequest) {
     const cached = await redisService.getJSON(cacheKey);
     
     if (cached) {
-      console.log('[API/recommendations] Returning cached data');
       return NextResponse.json(cached);
     }
 
     // 推薦記事を取得
-    console.log('[API/recommendations] Fetching recommendations for user:', userId, 'limit:', limit);
     const recommendations = await recommendationService.getRecommendations(userId, limit);
-    console.log('[API/recommendations] Got recommendations:', recommendations.length, 'items');
 
     // キャッシュに保存（5分間）
     await redisService.setJSON(cacheKey, recommendations, 300);

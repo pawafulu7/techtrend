@@ -31,7 +31,7 @@ export function AnalyticsSettings() {
       setShowDeleteConfirm(false);
       // データ削除後にページをリロード
       window.location.reload();
-    } catch (error) {
+    } catch {
     } finally {
       setIsDeleting(false);
     }

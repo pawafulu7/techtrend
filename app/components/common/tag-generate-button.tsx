@@ -39,7 +39,7 @@ export function TagGenerateButton() {
           variant: 'destructive',
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: 'エラー',
         description: 'タグ生成中にエラーが発生しました',

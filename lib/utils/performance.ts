@@ -1,4 +1,4 @@
-export function measureQueryTime(queryName: string) {
+export function measureQueryTime(_queryName: string) {
   const start = performance.now();
   return {
     end: () => {
@@ -8,6 +8,6 @@ export function measureQueryTime(queryName: string) {
   };
 }
 
-export function logPerformance(operation: string, duration: number) {
-  const timestamp = new Date().toISOString();
+export function logPerformance(_operation: string, _duration: number) {
+  const _timestamp = new Date().toISOString();
 }

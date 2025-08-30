@@ -21,7 +21,7 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
       });
       // ページをリロードして新しい表示モードを適用
       window.location.reload();
-    } catch (error) {
+    } catch {
     }
   };
 

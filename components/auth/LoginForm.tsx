@@ -48,7 +48,7 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
         router.push(callbackUrl);
         router.refresh();
       }
-    } catch (error) {
+    } catch {
       setError('ログイン中にエラーが発生しました');
     } finally {
       setIsLoading(false);

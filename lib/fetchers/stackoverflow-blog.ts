@@ -2,6 +2,7 @@ import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types/article';
 import Parser from 'rss-parser';
+import type { ContentEnricherFactory } from '../enrichers';
 
 interface StackOverflowBlogItem {
   title?: string;
@@ -62,7 +63,7 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
     }
   }
   
-  private async parseItem(item: StackOverflowBlogItem, enricherFactory: any): Promise<CreateArticleInput | null> {
+  private async parseItem(item: StackOverflowBlogItem, enricherFactory: ContentEnricherFactory): Promise<CreateArticleInput | null> {
     if (!item.title || !item.link) return null;
     
     // コンテンツの取得（HTMLタグを含む場合がある）
@@ -76,21 +77,17 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
         try {
           const enrichedData = await enricher.enrich(item.link);
           if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-            console.log(`[StackOverflow Blog] Enriched content for ${item.link}: ${content.length} -> ${enrichedData.content.length} chars`);
             content = enrichedData.content;
             thumbnail = enrichedData.thumbnail || undefined;
           } else {
-            console.log(`[StackOverflow Blog] Enrichment did not improve content for ${item.link}`);
           }
         } catch (error) {
           console.error(`[StackOverflow Blog] Enrichment failed for ${item.link}:`, error);
           // エラー時は元のコンテンツを使用
         }
       } else {
-        console.log(`[StackOverflow Blog] No enricher available for ${item.link}`);
       }
     } else if (content && content.length >= 2000) {
-      console.log(`[StackOverflow Blog] Content already sufficient for ${item.link}: ${content.length} chars`);
     }
     
     // 要約は generate-summaries.ts で日本語生成するため undefined を設定
@@ -114,13 +111,9 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
       summary,
       publishedAt,
       sourceId: this.source.id,
-      tagNames: tags
+      tagNames: tags,
+      thumbnail
     };
-    
-    // サムネイルがある場合は追加
-    if (thumbnail) {
-      (article as any).thumbnail = thumbnail;
-    }
     
     return article;
   }

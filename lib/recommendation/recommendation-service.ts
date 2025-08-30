@@ -24,14 +24,12 @@ export class RecommendationService {
    * ユーザーの興味分野を分析
    */
   async getUserInterests(userId: string): Promise<UserInterests | null> {
-    console.log('[RecommendationService] Getting user interests for:', userId);
     // キャッシュ確認
     const cacheKey = `user:interests:${userId}`;
     
     try {
       const cached = await redisService.getJSON<CachedUserInterests>(cacheKey);
       if (cached && cached.tagScores) {
-        console.log('[RecommendationService] Cache hit - returning cached interests');
         return {
           tagScores: new Map(Object.entries(cached.tagScores)),
           totalActions: cached.totalActions,
@@ -76,13 +74,8 @@ export class RecommendationService {
       }),
     ]);
 
-    console.log('[RecommendationService] User activity:', {
-      views: views.length,
-      favorites: favorites.length
-    });
 
     if (views.length === 0 && favorites.length === 0) {
-      console.log('[RecommendationService] No user activity found');
       return null;
     }
 
@@ -190,16 +183,11 @@ export class RecommendationService {
     userId: string,
     limit: number = 10
   ): Promise<RecommendedArticle[]> {
-    console.log('[RecommendationService] Getting recommendations for user:', userId, 'limit:', limit);
     
     // ユーザーの興味を取得
     const interests = await this.getUserInterests(userId);
     
     if (!interests || interests.totalActions < 3) {
-      console.log('[RecommendationService] User has insufficient activity, returning default recommendations', {
-        hasInterests: !!interests,
-        totalActions: interests?.totalActions || 0
-      });
       // 新規ユーザーまたは履歴が少ない場合はデフォルト推薦
       return this.getDefaultRecommendations(limit);
     }

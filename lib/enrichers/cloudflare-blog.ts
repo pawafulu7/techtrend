@@ -14,7 +14,6 @@ export class CloudflareBlogEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<{ content?: string; thumbnail?: string } | null> {
     try {
-      console.log(`[Cloudflare Blog Enricher] Fetching content from: ${url}`);
       
       const response = await fetch(url, {
         headers: {
@@ -100,11 +99,9 @@ export class CloudflareBlogEnricher extends BaseContentEnricher {
       
       // 結果の検証
       if (!content || content.length < 200) {
-        console.log(`[Cloudflare Blog Enricher] Insufficient content extracted: ${content.length} chars`);
         return null;
       }
       
-      console.log(`[Cloudflare Blog Enricher] Successfully enriched: ${content.length} chars, thumbnail: ${thumbnail ? 'yes' : 'no'}`);
       
       return {
         content,

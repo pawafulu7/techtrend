@@ -15,7 +15,7 @@ interface HomeClientProps {
   showInitialSkeleton?: boolean;
 }
 
-export function HomeClient({ viewMode, sources, tags, showInitialSkeleton = true }: HomeClientProps) {
+export function HomeClient({ viewMode, _sources, _tags, _showInitialSkeleton = true }: HomeClientProps) {
   const searchParams = useSearchParams();
   const [articles, setArticles] = useState<ArticleWithRelations[]>([]);
   const [loading, setLoading] = useState(true);

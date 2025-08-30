@@ -39,7 +39,7 @@ export function SummaryGenerateButton() {
           variant: 'destructive',
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: 'エラー',
         description: '要約生成中にエラーが発生しました',

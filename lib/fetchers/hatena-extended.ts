@@ -118,7 +118,7 @@ export class HatenaExtendedFetcher extends BaseFetcher {
       }
       
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }

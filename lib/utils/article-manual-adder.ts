@@ -186,7 +186,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
               tagNames = enrichedData.tags;
             }
           }
-        } catch (enrichError) {
+        } catch {
         }
       }
     }
@@ -320,7 +320,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
           });
         }
         
-      } catch (summaryError) {
+      } catch {
       }
     } else if (skipSummary) {
     } else {

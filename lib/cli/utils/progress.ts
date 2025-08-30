@@ -20,7 +20,7 @@ export class ProgressBar {
     this.update(this.current + 1, extraInfo);
   }
   
-  complete(message?: string) {
+  complete(_message?: string) {
     this.update(this.total);
   }
   

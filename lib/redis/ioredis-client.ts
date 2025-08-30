@@ -25,7 +25,7 @@ export class IoRedisClient implements IRedisClient {
     });
 
     // Set up event handlers
-    this.client.on('error', (err) => {
+    this.client.on('error', (_err) => {
     });
 
     this.client.on('connect', () => {
@@ -35,7 +35,7 @@ export class IoRedisClient implements IRedisClient {
     });
 
     // Auto-connect
-    this.client.connect().catch(err => {
+    this.client.connect().catch(() => {
     });
   }
 

@@ -39,7 +39,7 @@ export function FeedUpdateButton() {
           variant: 'destructive',
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: 'エラー',
         description: 'フィード更新中にエラーが発生しました',

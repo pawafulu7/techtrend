@@ -20,7 +20,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signIn(provider, { callbackUrl });
-    } catch (error) {
+    } catch {
     } finally {
       setIsLoading(false);
     }
