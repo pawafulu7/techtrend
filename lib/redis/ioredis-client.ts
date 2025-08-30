@@ -8,21 +8,39 @@ export class IoRedisClient implements IRedisClient {
   private client: Redis;
 
   constructor(config?: IRedisConfig) {
-    this.client = new Redis({
-      host: config?.host || process.env.REDIS_HOST || 'localhost',
-      port: config?.port || parseInt(process.env.REDIS_PORT || '6379'),
-      password: config?.password,
+    const url = process.env.REDIS_URL;
+
+    // Common options
+    const commonOptions = {
       db: config?.db || 0,
-      retryStrategy: config?.retryStrategy || ((times) => {
+      retryStrategy: config?.retryStrategy || ((times: number) => {
         const delay = Math.min(times * 50, 2000);
         return delay;
       }),
       enableOfflineQueue: config?.enableOfflineQueue !== false,
       connectTimeout: config?.connectTimeout || 10000,
-      maxRetriesPerRequest: config?.maxRetriesPerRequest || 3,
+      maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 3,
       enableReadyCheck: true,
       lazyConnect: true,
-    });
+    } as const;
+
+    // Prefer URL (e.g. Upstash rediss://)
+    if (url) {
+      const useTLS = url.startsWith('rediss://');
+      this.client = new Redis(url, {
+        ...commonOptions,
+        // Ensure TLS on rediss schemes (some providers auto-detect, this is explicit)
+        tls: useTLS ? {} : undefined,
+      });
+    } else {
+      // Fallback to host/port/password
+      this.client = new Redis({
+        host: config?.host || process.env.REDIS_HOST || 'localhost',
+        port: config?.port || parseInt(process.env.REDIS_PORT || '6379'),
+        password: config?.password ?? process.env.REDIS_PASSWORD,
+        ...commonOptions,
+      });
+    }
 
     // Set up event handlers
     this.client.on('error', (_err) => {

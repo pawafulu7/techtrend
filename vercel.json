@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "runtime": "nodejs20.x"
+  },
+  "regions": ["hnd1"],
+  "crons": [
+    {
+      "path": "/api/feeds/collect",
+      "schedule": "0 * * * *" 
+    }
+  ]
+}
+
