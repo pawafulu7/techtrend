@@ -23,11 +23,11 @@ interface HomeClientInfiniteProps {
 
 export function HomeClientInfinite({ 
   viewMode, 
-  sources, 
-  _tags,
+  sources: _sources, 
+  tags: _tags,
   enableInfiniteScroll = true,
   initialSortBy,
-  initialSourceIds
+  initialSourceIds: _initialSourceIds
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
   const scrollContainerRef = useRef<HTMLDivElement>(null);

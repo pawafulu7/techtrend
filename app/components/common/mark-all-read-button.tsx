@@ -14,7 +14,7 @@ import {
 
 interface MarkAllReadButtonProps {
   unreadCount: number;
-  onMarkAllRead: () => Promise<void>;
+  onMarkAllRead: () => Promise<{ markedCount?: number } | void>;
   disabled?: boolean;
 }
 

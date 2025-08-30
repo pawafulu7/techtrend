@@ -16,7 +16,7 @@ export function useReadStatus(articleIds?: string[]) {
       if (stored) {
         return new Set<string>(JSON.parse(stored));
       }
-    } catch (_error) {
+    } catch (error) {
       console.error('Error loading read status from localStorage:', error);
     }
     return new Set<string>();
@@ -41,21 +41,20 @@ export function useReadStatus(articleIds?: string[]) {
       const response = await fetch(`/api/articles/read-status${params}`);
       if (response.ok) {
         const data = await response.json();
-        const newReadArticleIds = new Set(data.readArticleIds);
+        const newReadArticleIds = new Set<string>(data.readArticleIds as string[]);
         setReadArticleIds(newReadArticleIds);
         setUnreadCount(data.unreadCount || 0);
         // localStorageに保存
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newReadArticleIds)));
-        } catch (_error) {
+        } catch (error) {
           console.error('Error saving read status to localStorage:', error);
         }
       }
-    } catch (_error) {
+    } catch (error) {
       console.error('Error fetching read status:', error);
     } finally {
       setIsLoading(false);
-      setHasLoadedInitial(true);
     }
   }, [session, articleIds]);
 
@@ -76,14 +75,14 @@ export function useReadStatus(articleIds?: string[]) {
           // localStorageに保存
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-          } catch (_error) {
+          } catch (error) {
             console.error('Error saving read status to localStorage:', error);
           }
           return newSet;
         });
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
-    } catch (_error) {
+    } catch (error) {
       console.error('Error marking as read:', error);
     }
   }, [session]);
@@ -104,14 +103,14 @@ export function useReadStatus(articleIds?: string[]) {
           // localStorageに保存
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-          } catch (_error) {
+          } catch (error) {
             console.error('Error saving read status to localStorage:', error);
           }
           return newSet;
         });
         setUnreadCount(prev => prev + 1);
       }
-    } catch (_error) {
+    } catch (error) {
       console.error('Error marking as unread:', error);
     }
   }, [session]);
@@ -151,7 +150,7 @@ export function useReadStatus(articleIds?: string[]) {
         
         return data;
       }
-    } catch (_error) {
+    } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
         console.error('Request timeout after 5 minutes');

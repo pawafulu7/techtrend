@@ -46,10 +46,6 @@ export default function SourcesContent() {
   }, [loadAllSources]);
 
   // フィルタリングとソートを適用
-  useEffect(() => {
-    applyFiltersAndSort();
-  }, [applyFiltersAndSort]);
-
   const applyFiltersAndSort = useCallback(() => {
     if (allSources.length === 0) return;
 
@@ -105,6 +101,10 @@ export default function SourcesContent() {
 
     setSources(filtered);
   }, [allSources, category, sortBy, order, search]);
+
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [applyFiltersAndSort]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

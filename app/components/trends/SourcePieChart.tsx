@@ -92,11 +92,13 @@ export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
   }: {
     cx: number;
     cy: number;
-    midAngle: number;
+    midAngle?: number;
     innerRadius: number;
     outerRadius: number;
-    percent: number;
-  }) => {
+    percent?: number;
+  }): React.ReactNode => {
+    if (!midAngle || !percent) return null;
+    
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);

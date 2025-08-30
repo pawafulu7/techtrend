@@ -151,7 +151,12 @@ export async function generateSummaryWithRetry(
   }
 
   const maxTries = maxAttempts || getMaxRegenerationAttempts();
-  let lastResult: unknown = null;
+  let lastResult: {
+    summary: string;
+    detailedSummary: string;
+    tags: string[];
+    articleType: string;
+  } | null = null;
   let lastQuality: QualityCheckResult | null = null;
   
   for (let attempt = 1; attempt <= maxTries; attempt++) {
@@ -201,7 +206,10 @@ export async function generateSummaryWithRetry(
   // 最大試行回数に達した場合、最後の結果を返す（ベストエフォート）
   if (lastResult && lastQuality) {
     return {
-      ...lastResult,
+      summary: lastResult.summary,
+      detailedSummary: lastResult.detailedSummary,
+      tags: lastResult.tags,
+      articleType: lastResult.articleType,
       qualityScore: lastQuality.score,
       attempts: maxTries
     };

@@ -30,7 +30,7 @@ export async function GET(
       success: true,
       data: article,
     } as ApiResponse<ArticleWithRelations>);
-  } catch (_error) {
+  } catch (error) {
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch article',
@@ -80,7 +80,7 @@ export async function PATCH(
       success: true,
       data: article,
     } as ApiResponse<ArticleWithRelations>);
-  } catch (_error) {
+  } catch (error) {
     return NextResponse.json({
       success: false,
       error: 'Failed to update article',
@@ -106,7 +106,7 @@ export async function DELETE(
       success: true,
       data: { message: 'Article deleted successfully' },
     } as ApiResponse<{ message: string }>);
-  } catch (_error) {
+  } catch (error) {
     return NextResponse.json({
       success: false,
       error: 'Failed to delete article',
