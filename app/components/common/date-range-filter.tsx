@@ -35,7 +35,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dateRange: value === 'all' ? undefined : value }),
       });
-    } catch (error) {
+    } catch {
     }
   };
 
