@@ -7,8 +7,13 @@ type Theme = "light" | "dark" | "system"
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
-      const storedTheme = localStorage.getItem("theme") as Theme
-      return storedTheme || "system"
+      try {
+        const storedTheme = (window?.localStorage?.getItem("theme") as Theme) || null
+        return storedTheme || "system"
+      } catch {
+        // localStorage が利用できない環境（テスト等）では安全にフォールバック
+        return "system"
+      }
     }
     return "system"
   })
@@ -43,7 +48,11 @@ export function useTheme() {
       root.classList.add(activeTheme)
     }
     
-    localStorage.setItem("theme", theme)
+    try {
+      window?.localStorage?.setItem("theme", theme)
+    } catch {
+      // localStorage が使えない場合は何もしない
+    }
   }, [theme, systemTheme])
 
   return {
