@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/sheet';
 import { Filters } from './filters';
 import { TagFilter } from './tag-filter';
-import type { Source, Tag } from '@prisma/client';
+import type { Source } from '@prisma/client';
 
 interface MobileFiltersProps {
   sources: (Source & { _count: { articles: number } })[];

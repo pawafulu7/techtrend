@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation } from 'lucide-react';
 import { DateRangeFilter } from './date-range-filter';
-import { groupSourcesByCategory, SourceCategory, getAllCategories, getSourceIdsByCategory } from '@/lib/constants/source-categories';
+import { groupSourcesByCategory, SourceCategory } from '@/lib/constants/source-categories';
 
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;
