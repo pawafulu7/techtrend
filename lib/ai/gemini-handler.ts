@@ -33,7 +33,7 @@ export async function generateSummaryAndTags(
       articleType: result.articleType
     };
   } catch (_error) {
-    throw error;
+    throw _error;
   }
 }
 

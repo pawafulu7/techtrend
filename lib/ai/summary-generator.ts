@@ -192,7 +192,7 @@ export async function generateSummaryWithRetry(
       
       // 最終試行でエラーの場合は例外を再スロー
       if (attempt === maxTries) {
-        throw error;
+        throw _error;
       }
       
       // エラー時はより長い待機時間

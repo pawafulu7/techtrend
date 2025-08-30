@@ -166,7 +166,7 @@ export class AIService {
         lastError = error as Error;
         
         if (!this.isRetryableError(error)) {
-          throw error;
+          throw _error;
         }
 
         if (attempt < (this.retryOptions.maxRetries || 3) - 1) {

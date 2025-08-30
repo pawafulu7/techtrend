@@ -64,7 +64,7 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
 
 
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch Google Dev Blog: ${error instanceof Error ? error.message : String(error)}`));
+      errors.push(new Error(`Failed to fetch Google Dev Blog: ${_error instanceof Error ? _error.message : String(_error)}`));
     }
 
     return { articles, errors };

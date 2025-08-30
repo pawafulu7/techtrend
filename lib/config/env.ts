@@ -84,10 +84,10 @@ export function getEnv(): Env {
     try {
       _env = envSchema.parse(process.env);
     } catch (_error) {
-      if (error instanceof z.ZodError) {
+      if (_error instanceof z.ZodError) {
         const errorMessage = `
 Environment validation failed:
-${formatValidationErrors(error)}
+${formatValidationErrors(_error)}
 
 Please check your .env file and ensure all required variables are set correctly.
         `.trim();
@@ -105,7 +105,7 @@ Please check your .env file and ensure all required variables are set correctly.
           throw new Error(errorMessage);
         }
       } else {
-        throw error;
+        throw _error;
       }
     }
   }

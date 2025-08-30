@@ -40,9 +40,9 @@ export abstract class BaseFetcher {
       
       return result;
     } catch (_error) {
-      const err = error instanceof Error 
-        ? new ExternalAPIError(this.source.name, error.message, error)
-        : new ExternalAPIError(this.source.name, String(error));
+      const err = _error instanceof Error 
+        ? new ExternalAPIError(this.source.name, _error.message, _error)
+        : new ExternalAPIError(this.source.name, String(_error));
       logger.error(`${this.source.name} エラー:`, err);
       errors.push(err);
       return { articles, errors };
@@ -65,7 +65,7 @@ export abstract class BaseFetcher {
         await new Promise(resolve => setTimeout(resolve, this.retryDelay));
         return this.retry(fn, retries - 1);
       }
-      throw error;
+      throw _error;
     }
   }
 
