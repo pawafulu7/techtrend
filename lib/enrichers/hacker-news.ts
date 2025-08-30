@@ -133,7 +133,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[HackerNewsEnricher] Error enriching ${url}:`, error);
+      console.error(`[HackerNewsEnricher] Error enriching ${url}:`, _error);
       return null;
     }
   }

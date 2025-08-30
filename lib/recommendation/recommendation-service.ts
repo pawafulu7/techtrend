@@ -37,7 +37,7 @@ export class RecommendationService {
         };
       }
     } catch (_error) {
-      console.error('[RecommendationService] Failed to restore cache:', error);
+      console.error('[RecommendationService] Failed to restore cache:', _error);
       // キャッシュを無視して処理を継続
     }
 
@@ -81,12 +81,12 @@ export class RecommendationService {
 
     // タグごとのスコアを計算
     const tagScores = new Map<string, number>();
-    const now = new Date();
+    const now = Date.now();
     let totalActions = 0;
 
     // 閲覧履歴からスコア計算
     for (const view of views) {
-      const timeWeight = calculateTimeWeight(view.viewedAt, now);
+      const timeWeight = calculateTimeWeight(view.viewedAt ?? new Date(0), now, this.config.activityWindow);
       const actionScore = this.config.viewWeight * timeWeight;
       
       for (const tag of view.article.tags) {
@@ -98,7 +98,7 @@ export class RecommendationService {
 
     // お気に入りからスコア計算
     for (const favorite of favorites) {
-      const timeWeight = calculateTimeWeight(favorite.createdAt, now);
+      const timeWeight = calculateTimeWeight(favorite.createdAt, now, this.config.activityWindow);
       const actionScore = this.config.favoriteWeight * timeWeight;
       
       for (const tag of favorite.article.tags) {
@@ -154,7 +154,7 @@ export class RecommendationService {
     }
 
     // 時間減衰（新しい記事を優先）
-    const freshnessBoost = calculateFreshnessBoost(article.publishedAt);
+    const freshnessBoost = calculateFreshnessBoost(article.publishedAt, this.config.freshnessWindow);
     score *= freshnessBoost;
     
     if (freshnessBoost > 1) {
@@ -162,10 +162,10 @@ export class RecommendationService {
     }
 
     // 品質スコアの考慮
-    const qualityMultiplier = article.qualityScore / 100;
+    const qualityMultiplier = ((article.qualityScore ?? 0) as number) / 100;
     score *= qualityMultiplier;
 
-    if (article.qualityScore >= 80) {
+    if ((article.qualityScore ?? 0) >= 80) {
       reasons.push('高品質な記事');
     }
 
@@ -173,6 +173,7 @@ export class RecommendationService {
       articleId: article.id,
       score,
       reasons,
+      matchedTags,
     };
   }
 
@@ -276,7 +277,7 @@ export class RecommendationService {
       publishedAt: item.article.publishedAt,
       sourceName: item.article.source.name,
       tags: item.article.tags.map(t => typeof t === 'string' ? t : t.name),
-      recommendationScore: normalizeScore(item.score, selected[0]?.score || 1),
+      recommendationScore: normalizeScore(item.score),
       recommendationReasons: item.reasons,
       isViewed: allViewedIds.has(item.article.id),  // 既読フラグを追加
     }));

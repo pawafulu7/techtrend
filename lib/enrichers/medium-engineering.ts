@@ -122,7 +122,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[MediumEngineeringEnricher] Error enriching ${url}:`, error);
+      console.error(`[MediumEngineeringEnricher] Error enriching ${url}:`, _error);
       return null;
     }
   }

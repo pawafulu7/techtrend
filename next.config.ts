@@ -6,7 +6,6 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 const nextConfig: NextConfig = {
   // ビルド最適化設定
-  swcMinify: true,
   compress: true,
   productionBrowserSourceMaps: false,
   

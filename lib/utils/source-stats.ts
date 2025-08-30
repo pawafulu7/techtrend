@@ -1,7 +1,7 @@
-import { Article, Tag } from '@prisma/client';
-
-export interface ArticleWithTags extends Article {
-  tags: Tag[];
+export interface ArticleWithTags {
+  publishedAt: Date;
+  qualityScore: number;
+  tags: { name: string }[];
 }
 
 export interface SourceStats {
@@ -16,7 +16,7 @@ export interface SourceStats {
 /**
  * 品質スコアの平均値を計算
  */
-export function calculateAverageQualityScore(articles: Article[]): number {
+export function calculateAverageQualityScore(articles: Array<{ qualityScore: number }>): number {
   if (articles.length === 0) return 0;
   
   const totalScore = articles.reduce((sum, article) => sum + article.qualityScore, 0);
@@ -26,7 +26,7 @@ export function calculateAverageQualityScore(articles: Article[]): number {
 /**
  * 投稿頻度を計算（過去30日間の記事数から日あたりの記事数を算出）
  */
-export function calculatePublishFrequency(articles: Article[]): number {
+export function calculatePublishFrequency(articles: Array<{ publishedAt: Date }>): number {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   
@@ -41,7 +41,7 @@ export function calculatePublishFrequency(articles: Article[]): number {
 /**
  * 人気タグを抽出（上位5つ）
  */
-export function extractPopularTags(articles: ArticleWithTags[], limit: number = 5): string[] {
+export function extractPopularTags(articles: Array<{ tags: { name: string }[] }>, limit: number = 5): string[] {
   const tagCounts: Record<string, number> = {};
   
   articles.forEach(article => {
@@ -59,7 +59,7 @@ export function extractPopularTags(articles: ArticleWithTags[], limit: number = 
 /**
  * 成長率を計算（過去30日と過去60-30日の比較）
  */
-export function calculateGrowthRate(articles: Article[]): number {
+export function calculateGrowthRate(articles: Array<{ publishedAt: Date }>): number {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   
@@ -89,7 +89,7 @@ export function calculateGrowthRate(articles: Article[]): number {
 /**
  * 最終投稿日を取得
  */
-export function getLastPublishedDate(articles: Article[]): Date | null {
+export function getLastPublishedDate(articles: Array<{ publishedAt: Date }>): Date | null {
   if (articles.length === 0) return null;
   
   // publishedAtで降順ソート済みの場合は最初の要素

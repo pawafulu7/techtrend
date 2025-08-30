@@ -191,7 +191,7 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
   // セクションの定義を取得（記事タイプがある場合は動的に、ない場合は旧形式）
   let sectionDefinitions;
   
-  if (options?.articleType === 'unified' || options?.summaryVersion === 5) {
+  if ((options?.articleType as unknown as string) === 'unified' || options?.summaryVersion === 5) {
     // summaryVersion 5も動的項目名として処理する
     for (const line of lines) {
       const trimmedLine = line.trim();

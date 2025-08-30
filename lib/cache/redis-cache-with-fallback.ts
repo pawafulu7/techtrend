@@ -27,7 +27,7 @@ export class RedisCacheWithFallback extends RedisCache {
         // メモリキャッシュをチェック
         const cached = this.memoryCache.get(key);
         if (cached && cached.expires > Date.now()) {
-          return cached.data;
+          return cached.data as T;
         }
         
         // データを直接取得

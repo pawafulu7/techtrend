@@ -26,7 +26,7 @@ export async function withTransaction<T>(
     logger.debug('トランザクション完了');
     return result;
   } catch (_error) {
-    logger.error('トランザクションエラー', error);
+    logger.error('トランザクションエラー', _error);
     throw _error;
   }
 }

@@ -3,6 +3,7 @@ import { trendsCache } from './trends-cache';
 import { searchCache } from './search-cache';
 import { prisma } from '@/lib/database';
 import { distributedLock } from './distributed-lock';
+import type { Prisma } from '@prisma/client';
 
 /**
  * キャッシュウォーミング機能
@@ -182,7 +183,7 @@ export class CacheWarmer {
     
     try {
       for (const query of this.warmingConfig.search.queries) {
-        const key = searchCache.generateKey(query);
+        const key = searchCache.generateQueryKey(query);
         const data = await this.fetchSearchResults(query);
         await searchCache.set(key, data);
       }
@@ -244,7 +245,7 @@ export class CacheWarmer {
     const now = new Date();
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     
-    const whereClause: unknown = {
+    const whereClause: Prisma.ArticleWhereInput = {
       publishedAt: { gte: startDate }
     };
     

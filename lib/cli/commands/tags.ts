@@ -49,7 +49,7 @@ tagsCommand
       
       logger.success(`上位${limit}件のタグを表示しました`);
     } catch (_error) {
-      logger.error('タグ一覧取得中にエラーが発生しました', error);
+      logger.error('タグ一覧取得中にエラーが発生しました', _error);
       process.exit(1);
     }
   });
@@ -106,7 +106,7 @@ tagsCommand
       
       logger.success('統計情報の取得が完了しました');
     } catch (_error) {
-      logger.error('統計情報取得中にエラーが発生しました', error);
+      logger.error('統計情報取得中にエラーが発生しました', _error);
       process.exit(1);
     }
   });
@@ -158,7 +158,7 @@ tagsCommand
       }
       
     } catch (_error) {
-      logger.error('タグクリーンアップ中にエラーが発生しました', error);
+      logger.error('タグクリーンアップ中にエラーが発生しました', _error);
       process.exit(1);
     }
   });
@@ -259,7 +259,7 @@ tagsCommand
       });
       
     } catch (_error) {
-      logger.error('カテゴリ分類中にエラーが発生しました', error);
+      logger.error('カテゴリ分類中にエラーが発生しました', _error);
       process.exit(1);
     }
   });

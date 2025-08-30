@@ -69,7 +69,7 @@ export class MozillaHacksFetcher extends BaseFetcher {
           }
 
           // コンテンツの取得
-          let content = extractContent(item);
+          let content = extractContent(item as unknown as Record<string, unknown>);
           let thumbnail: string | undefined;
           
           // コンテンツエンリッチメント（2000文字未満の場合のみ実行）
@@ -83,8 +83,8 @@ export class MozillaHacksFetcher extends BaseFetcher {
                   thumbnail = enrichedData.thumbnail || undefined;
                 } else {
                 }
-              } catch (error) {
-                console.error(`[Mozilla Hacks] Enrichment failed for ${item.link}:`, error);
+              } catch (_error) {
+                console.error(`[Mozilla Hacks] Enrichment failed for ${item.link}:`, _error);
                 // エラー時は元のコンテンツを使用
               }
             }
@@ -121,16 +121,16 @@ export class MozillaHacksFetcher extends BaseFetcher {
           }
 
           articles.push(article);
-        } catch (error) {
-          errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
+        } catch (_error) {
+          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
         }
       }
       
       // レート制限対策
       await new Promise(resolve => setTimeout(resolve, 500));
       
-    } catch (error) {
-      errors.push(new Error(`Failed to fetch Mozilla Hacks RSS feed: ${error instanceof Error ? error.message : String(error)}`));
+    } catch (_error) {
+      errors.push(new Error(`Failed to fetch Mozilla Hacks RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`));
     }
 
     // 日付順にソートして最新20件を返す

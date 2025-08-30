@@ -116,11 +116,7 @@ export class SourceCache {
             select: {
               qualityScore: true,
               publishedAt: true,
-              tags: {
-                select: {
-                  name: true
-                }
-              }
+              tags: true
             },
             orderBy: {
               publishedAt: 'desc'

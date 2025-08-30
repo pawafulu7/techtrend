@@ -7,7 +7,7 @@ import { distributedLock } from './distributed-lock';
  */
 export class RedisCacheWithLock extends RedisCacheWithFallback {
   private readonly lockTTL = 30; // ロックの有効期限（秒）
-  private readonly stampedePrevention = true; // スタンピード防止を有効化
+  private stampedePrevention = true; // スタンピード防止を有効化
 
   /**
    * getOrSetの分散ロック対応版
@@ -110,7 +110,7 @@ export class RedisCacheWithLock extends RedisCacheWithFallback {
    * @param enabled 有効化フラグ
    */
   setStampedePrevention(enabled: boolean) {
-    (this as unknown).stampedePrevention = enabled;
+    this.stampedePrevention = enabled;
   }
 
   /**

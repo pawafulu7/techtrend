@@ -152,7 +152,7 @@ export function checkCategoryQuality(article: ArticleWithDetails): {
   qualityBonus: number;
 } {
   const tagNames = article.tags.map(t => t.name.toLowerCase());
-  let category = null;
+  let category: string | null = null;
   let qualityBonus = 0;
 
   // AI/機械学習カテゴリー

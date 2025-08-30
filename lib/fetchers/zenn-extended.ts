@@ -1,7 +1,8 @@
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
-import { BaseFetcher, FetchResult } from './base';
-import { CreateArticleInput } from '@/types/models';
+import { BaseFetcher } from './base';
+import { FetchResult } from '@/types/fetchers';
+import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import type { ContentEnricherFactory } from '../enrichers';
 
@@ -62,7 +63,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
         }
       }
     } catch (_error) {
-      errors.push(new Error(`メインフィード取得エラー: ${error instanceof Error ? error.message : String(error)}`));
+      errors.push(new Error(`メインフィード取得エラー: ${_error instanceof Error ? _error.message : String(_error)}`));
     }
 
     // 各トピックから追加取得

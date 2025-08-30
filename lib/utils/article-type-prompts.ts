@@ -4,6 +4,7 @@
  */
 
 import { ArticleType } from './article-type-detector';
+export type { ArticleType } from './article-type-detector';
 
 /**
  * 統一プロンプト - すべての記事に適用

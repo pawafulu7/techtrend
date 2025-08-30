@@ -1,6 +1,7 @@
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
-import { BaseFetcher, FetchResult } from './base';
+import { BaseFetcher } from './base';
+import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
 
@@ -191,14 +192,14 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             allArticles.push(article);
             processedCount++; // 処理済み記事数をインクリメント
           } catch (_error) {
-            allErrors.push(new Error(`Failed to parse item from ${feedInfo.name}: ${error instanceof Error ? error.message : String(error)}`));
+            allErrors.push(new Error(`Failed to parse item from ${feedInfo.name}: ${_error instanceof Error ? _error.message : String(_error)}`));
           }
         }
 
         // レート制限対策
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (_error) {
-        allErrors.push(new Error(`Failed to fetch ${feedInfo.name} feed: ${error instanceof Error ? error.message : String(error)}`));
+        allErrors.push(new Error(`Failed to fetch ${feedInfo.name} feed: ${_error instanceof Error ? _error.message : String(_error)}`));
       }
     }
 

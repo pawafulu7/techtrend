@@ -113,7 +113,8 @@ export class MemoryOptimizer {
       
       // maxmemoryの取得
       const configResult = await this.redis.config('GET', 'maxmemory');
-      const maxMemory = parseInt(configResult[1]) || 2 * 1024 * 1024 * 1024; // デフォルト2GB
+      const cfg = configResult as unknown as string[];
+      const maxMemory = parseInt(cfg?.[1] ?? '0') || 2 * 1024 * 1024 * 1024; // デフォルト2GB
       
       return { used, peak, maxMemory, fragmentation };
     } catch (_error) {
@@ -166,7 +167,7 @@ export class MemoryOptimizer {
     
     
     // 各キャッシュのTTLを調整
-    const currentStatsTTL = (statsCache as unknown).defaultTTL;
+    const currentStatsTTL = statsCache.getDefaultTTL();
     const newStatsTTL = Math.max(
       this.optimizationConfig.ttlAdjustment.minTTL,
       Math.min(
@@ -174,9 +175,9 @@ export class MemoryOptimizer {
         Math.floor(currentStatsTTL * adjustmentFactor)
       )
     );
-    (statsCache as unknown).defaultTTL = newStatsTTL;
+    statsCache.setDefaultTTL(newStatsTTL);
     
-    const currentTrendsTTL = (trendsCache as unknown).defaultTTL;
+    const currentTrendsTTL = trendsCache.getDefaultTTL();
     const newTrendsTTL = Math.max(
       this.optimizationConfig.ttlAdjustment.minTTL,
       Math.min(
@@ -184,7 +185,7 @@ export class MemoryOptimizer {
         Math.floor(currentTrendsTTL * adjustmentFactor)
       )
     );
-    (trendsCache as unknown).defaultTTL = newTrendsTTL;
+    trendsCache.setDefaultTTL(newTrendsTTL);
     
   }
 

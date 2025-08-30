@@ -27,7 +27,8 @@ import { MozillaHacksEnricher } from './mozilla-hacks';
 import { HackerNewsEnricher } from './hacker-news';
 import { MediumEngineeringEnricher } from './medium-engineering';
 
-export { IContentEnricher, BaseContentEnricher, EnrichedContent } from './base';
+export { BaseContentEnricher } from './base';
+export type { IContentEnricher, EnrichedContent, EnrichmentResult } from './base';
 export { GMOContentEnricher } from './gmo';
 export { FreeeContentEnricher } from './freee';
 export { HatenaContentEnricher } from './hatena';

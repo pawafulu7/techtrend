@@ -1,6 +1,7 @@
 import { Source } from '@prisma/client';
-import { BaseFetcher, FetchResult } from './base';
-import { CreateArticleInput } from '@/types/models';
+import { BaseFetcher } from './base';
+import { FetchResult } from '@/types/fetchers';
+import { CreateArticleInput } from '@/types';
 import { logger } from '@/lib/cli/utils/logger';
 
 interface QiitaArticle {
@@ -86,13 +87,13 @@ export class QiitaPopularFetcher extends BaseFetcher {
 
           articles.push(article);
         } catch (_error) {
-          errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
+          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
         }
       }
 
       logger.success(`[Qiita Popular] ${articles.length}件の記事を処理`);
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch Qiita popular articles: ${error instanceof Error ? error.message : String(error)}`));
+      errors.push(new Error(`Failed to fetch Qiita popular articles: ${_error instanceof Error ? _error.message : String(_error)}`));
     }
 
     return { articles, errors };

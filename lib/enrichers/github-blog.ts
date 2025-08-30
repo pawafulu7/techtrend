@@ -12,7 +12,7 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
   /**
    * GitHub Blogの記事を詳細に取得してエンリッチ
    */
-  async enrich(url: string): Promise<{ content?: string; thumbnail?: string } | null> {
+  async enrich(url: string): Promise<{ content: string | null; thumbnail?: string | null } | null> {
     try {
       
       const response = await fetch(url, {
@@ -101,12 +101,12 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
       
       
       return {
-        content,
-        thumbnail,
+        content: content || null,
+        thumbnail: thumbnail ?? null,
       };
       
     } catch (_error) {
-      console.error(`[GitHub Blog Enricher] Error enriching ${url}:`, error);
+      console.error(`[GitHub Blog Enricher] Error enriching ${url}:`, _error);
       return null;
     }
   }

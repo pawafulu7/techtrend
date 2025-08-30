@@ -1,5 +1,6 @@
-import { BaseFetcher, FetchResult } from './base';
-import { CreateArticleInput } from '@/types/models';
+import { BaseFetcher } from './base';
+import { FetchResult } from '@/types/fetchers';
+import { CreateArticleInput } from '@/types';
 import { normalizeTagInput } from '../utils/tag-normalizer';
 
 interface DevToArticle {
@@ -109,7 +110,7 @@ export class DevToFetcher extends BaseFetcher {
           // レート制限対策
           await new Promise(resolve => setTimeout(resolve, 500));
         } catch (_error) {
-          errors.push(new Error(`Failed to fetch articles for tag ${tag}: ${error instanceof Error ? error.message : String(error)}`));
+          errors.push(new Error(`Failed to fetch articles for tag ${tag}: ${_error instanceof Error ? _error.message : String(_error)}`));
         }
       }
 
@@ -153,7 +154,6 @@ export class DevToFetcher extends BaseFetcher {
             summary: undefined, // 要約は後で日本語で生成するため、ここではセットしない
             // body_htmlがあればそれを、なければbody_markdownを、それもなければdescriptionを使用
             content: articleData.body_html || articleData.body_markdown || articleData.description || '',
-            description: articleData.description || '',
             thumbnail: articleData.cover_image || undefined,
             publishedAt: new Date(articleData.published_at),
             sourceId: this.source.id,
@@ -162,11 +162,11 @@ export class DevToFetcher extends BaseFetcher {
 
           articles.push(article);
         } catch (_error) {
-          errors.push(new Error(`Failed to parse article: ${error instanceof Error ? error.message : String(error)}`));
+          errors.push(new Error(`Failed to parse article: ${_error instanceof Error ? _error.message : String(_error)}`));
         }
       }
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch from Dev.to: ${error instanceof Error ? error.message : String(error)}`));
+      errors.push(new Error(`Failed to fetch from Dev.to: ${_error instanceof Error ? _error.message : String(_error)}`));
     }
 
     return { articles, errors };

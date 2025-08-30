@@ -1,7 +1,8 @@
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
-import { BaseFetcher, FetchResult } from './base';
-import { CreateArticleInput } from '@/types/models';
+import { BaseFetcher } from './base';
+import { FetchResult } from '@/types/fetchers';
+import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 
 interface PublickeyRSSItem {
@@ -72,11 +73,11 @@ export class PublickeyFetcher extends BaseFetcher {
 
           articles.push(article);
         } catch (_error) {
-          errors.push(new Error(`Failed to parse item: ${error instanceof Error ? error.message : String(error)}`));
+          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
         }
       }
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch RSS feed: ${error instanceof Error ? error.message : String(error)}`));
+      errors.push(new Error(`Failed to fetch RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`));
     }
 
     return { articles, errors };

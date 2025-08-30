@@ -1,6 +1,5 @@
 import { Source } from '@prisma/client';
-import { CreateArticleInput, FetchResult } from '@/types/fetchers';
-import { ExternalAPIError } from '@/lib/errors';
+import { FetchResult } from '@/types/fetchers';
 import { logger } from '@/lib/cli/utils/logger';
 
 export abstract class BaseFetcher {
@@ -12,47 +11,50 @@ export abstract class BaseFetcher {
     this.source = source;
   }
 
+  /**
+   * Fetch implementation. Subclasses should implement this.
+   */
   abstract fetch(): Promise<FetchResult>;
 
   /**
-   * 共通のfetchラッパー - エラーハンドリングとログを統一
+   * Backward-compat: internal fetch for tests that used fetchInternal().
+   * Default implementation delegates to fetch().
+   * Deprecated — prefer overriding fetch() directly.
    */
-  protected async safeFetch(): Promise<FetchResult> {
-    const errors: Error[] = [];
-    const articles: CreateArticleInput[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected async fetchInternal(): Promise<FetchResult> {
+    return this.fetch();
+  }
 
+  /**
+   * Backward-compat: safeFetch wrapper preserved for older tests.
+   * It returns empty results if source is disabled and catches errors
+   * to surface them via the errors array.
+   * Deprecated — callers should call fetch() directly and handle errors.
+   */
+  async safeFetch(): Promise<FetchResult> {
+    const errors: Error[] = [];
     try {
+      // start log
       logger.info(`${this.source.name} から記事を取得中...`);
-      
-      // ソースが無効化されている場合は早期リターン
       if (!this.source.enabled) {
         logger.warn(`${this.source.name} は無効化されています`);
         return { articles: [], errors: [] };
       }
-
       const result = await this.fetchInternal();
-      
-      if (result.articles.length === 0) {
+      if (!result.articles || result.articles.length === 0) {
         logger.info(`${this.source.name}: 記事が見つかりませんでした`);
       } else {
         logger.success(`${this.source.name}: ${result.articles.length}件の記事を取得`);
       }
-      
       return result;
     } catch (_error) {
-      const err = _error instanceof Error 
-        ? new ExternalAPIError(this.source.name, _error.message, _error)
-        : new ExternalAPIError(this.source.name, String(_error));
+      const err = _error instanceof Error ? _error : new Error(String(_error));
       logger.error(`${this.source.name} エラー:`, err);
       errors.push(err);
-      return { articles, errors };
+      return { articles: [], errors };
     }
   }
-
-  /**
-   * 各フェッチャーが実装する内部fetchメソッド
-   */
-  protected abstract fetchInternal(): Promise<FetchResult>;
 
   protected async retry<T>(
     fn: () => Promise<T>,

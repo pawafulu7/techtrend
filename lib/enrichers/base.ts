@@ -12,6 +12,7 @@ export interface EnrichedContent {
   content: string | null;
   thumbnail?: string | null;
 }
+export type EnrichmentResult = EnrichedContent;
 
 /**
  * コンテンツエンリッチャーのインターフェース
@@ -40,8 +41,55 @@ export abstract class BaseContentEnricher implements IContentEnricher {
   protected maxRetries = 3;
   protected retryDelay = 1000; // 1秒
 
-  abstract enrich(url: string): Promise<EnrichedContent | null>;
+  // 既定実装: セレクタベースで本文抽出
+  async enrich(url: string): Promise<EnrichedContent | null> {
+    try {
+      const html = await this.fetchWithRetry(url);
+      const $ = cheerio.load(html);
+
+      // 不要要素を削除
+      $('script, style, noscript, iframe').remove();
+
+      const selectors = this.getContentSelectors();
+      let text = '';
+      for (const sel of selectors) {
+        const el = $(sel);
+        if (el.length > 0) {
+          text = el.text().trim();
+          if (this.isContentSufficient(text, this.getMinContentLength())) break;
+        }
+      }
+
+      if (!this.isContentSufficient(text, this.getMinContentLength())) {
+        // フォールバック: 段落を収集
+        const paras: string[] = [];
+        $('article p, main p, .post p, .entry-content p').each((_, e) => {
+          const t = $(e).text().trim();
+          if (t.length > 50) paras.push(t);
+        });
+        if (paras.length > 0) text = paras.join('\n\n');
+      }
+
+      if (!this.isContentSufficient(text, 100)) {
+        return null;
+      }
+
+      const thumbnail = this.extractThumbnail(html);
+      return { content: text || null, thumbnail: thumbnail ?? null };
+    } catch {
+      return null;
+    }
+  }
+
   abstract canHandle(url: string): boolean;
+
+  // 既定の抽出セレクタと最小長
+  protected getContentSelectors(): string[] {
+    return ['article', '.entry-content', '.post-content', 'main'];
+  }
+  protected getMinContentLength(): number {
+    return 200;
+  }
 
   /**
    * リトライ機能付きのfetch
@@ -81,7 +129,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         
         return html;
       } catch (_error) {
-        lastError = error as Error;
+        lastError = _error as Error;
       }
     }
 
@@ -141,7 +189,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
    * コンテンツの最小文字数チェック
    */
   protected isContentSufficient(content: string, minLength: number = 100): boolean {
-    return content && content.length >= minLength;
+    return !!content && content.length >= minLength;
   }
 
   /**
