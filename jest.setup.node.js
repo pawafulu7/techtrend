@@ -3,6 +3,21 @@ import '@testing-library/jest-dom';
 import { RedisMockFactory } from './test/factories/redis-mock-factory';
 import { CacheMockFactory } from './test/factories/cache-mock-factory';
 import { initializeTestDI, resetTestProviders } from './lib/di';
+// Polyfill for web File/Blob in Node test environment
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const undici = require('undici');
+  if (undici?.File && !global.File) {
+    // @ts-ignore
+    global.File = undici.File;
+  }
+  if (undici?.Blob && !global.Blob) {
+    // @ts-ignore
+    global.Blob = undici.Blob;
+  }
+} catch (_) {
+  // ignore if undici is unavailable here
+}
 
 // Redisクライアントのモックは__mocks__ディレクトリから自動的に読み込まれる
 jest.mock('@/lib/redis/client');
