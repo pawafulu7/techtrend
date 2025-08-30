@@ -360,35 +360,37 @@ if (require.main === module) {
   const monitor = new QualityMonitor();
 
   (async () => {
-    console.log('=== 品質モニタリングレポート ===\n');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('=== 品質モニタリングレポート ===\n');
 
-    // 全体統計
-    const stats = await monitor.getQualityStats(30);
-    console.log('📊 全体統計（過去30日）:');
-    console.log(`  総記事数: ${stats.totalArticles}件`);
-    console.log(`  平均スコア: ${stats.averageScore}点`);
-    console.log(`  高品質記事: ${stats.highQualityCount}件`);
-    console.log(`  低品質記事: ${stats.lowQualityCount}件`);
-    console.log(`  再生成必要: ${stats.needsRegenerationCount}件`);
-    console.log('\n  品質分布:');
-    console.log(`    優秀 (90点以上): ${stats.distribution.excellent}件`);
-    console.log(`    良好 (70-89点): ${stats.distribution.good}件`);
-    console.log(`    普通 (50-69点): ${stats.distribution.fair}件`);
-    console.log(`    不良 (50点未満): ${stats.distribution.poor}件`);
+      // 全体統計
+      const stats = await monitor.getQualityStats(30);
+      console.log('📊 全体統計（過去30日）:');
+      console.log(`  総記事数: ${stats.totalArticles}件`);
+      console.log(`  平均スコア: ${stats.averageScore}点`);
+      console.log(`  高品質記事: ${stats.highQualityCount}件`);
+      console.log(`  低品質記事: ${stats.lowQualityCount}件`);
+      console.log(`  再生成必要: ${stats.needsRegenerationCount}件`);
+      console.log('\n  品質分布:');
+      console.log(`    優秀 (90点以上): ${stats.distribution.excellent}件`);
+      console.log(`    良好 (70-89点): ${stats.distribution.good}件`);
+      console.log(`    普通 (50-69点): ${stats.distribution.fair}件`);
+      console.log(`    不良 (50点未満): ${stats.distribution.poor}件`);
 
-    // トレンド
-    console.log('\n📈 品質トレンド（過去7日）:');
-    const trends = await monitor.getQualityTrend(7);
-    for (const trend of trends) {
-      console.log(`  ${trend.date.toLocaleDateString('ja-JP')}: 平均${trend.averageScore}点 (高品質${trend.highQualityCount}件/低品質${trend.lowQualityCount}件)`);
-    }
+      // トレンド
+      console.log('\n📈 品質トレンド（過去7日）:');
+      const trends = await monitor.getQualityTrend(7);
+      for (const trend of trends) {
+        console.log(`  ${trend.date.toLocaleDateString('ja-JP')}: 平均${trend.averageScore}点 (高品質${trend.highQualityCount}件/低品質${trend.lowQualityCount}件)`);
+      }
 
-    // 推薦
-    console.log('\n🎯 再生成推薦（上位10件）:');
-    const recommendations = await monitor.getRegenerationRecommendations(10);
-    for (const rec of recommendations) {
-      console.log(`  [${rec.priority.toUpperCase()}] ${rec.title.substring(0, 50)}...`);
-      console.log(`    現在スコア: ${rec.currentScore}点 | 理由: ${rec.reason}`);
+      // 推薦
+      console.log('\n🎯 再生成推薦（上位10件）:');
+      const recommendations = await monitor.getRegenerationRecommendations(10);
+      for (const rec of recommendations) {
+        console.log(`  [${rec.priority.toUpperCase()}] ${rec.title.substring(0, 50)}...`);
+        console.log(`    現在スコア: ${rec.currentScore}点 | 理由: ${rec.reason}`);
+      }
     }
 
     await monitor.disconnect();

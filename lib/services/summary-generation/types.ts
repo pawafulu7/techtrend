@@ -65,9 +65,9 @@ export interface BatchProcessingOptions {
   /** 進捗コールバック */
   onProgress?: (current: number, total: number) => void;
   /** エラーコールバック */
-  onError?: (error: Error, item: any) => void;
+  onError?: (error: Error, item: ArticleData) => void;
   /** 成功コールバック */
-  onSuccess?: (result: SummaryResult, item: any) => void;
+  onSuccess?: (result: SummaryResult, item: ArticleData) => void;
 }
 
 /**

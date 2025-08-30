@@ -201,10 +201,11 @@ export class CacheWarmer {
     
     // 最後の実行時刻を記録（簡易実装）
     const lastRunKey = `lastWarm:${type}`;
-    const lastRun = (global as any)[lastRunKey] || 0;
+    const globalWithLastRun = global as typeof globalThis & { [key: string]: number };
+    const lastRun = globalWithLastRun[lastRunKey] || 0;
     
     if (now - lastRun >= config.interval) {
-      (global as any)[lastRunKey] = now;
+      globalWithLastRun[lastRunKey] = now;
       return true;
     }
     
@@ -297,7 +298,7 @@ export class CacheWarmer {
   /**
    * 検索結果取得
    */
-  private async fetchSearchResults(query: any) {
+  private async fetchSearchResults(query: { q: string; limit?: number }) {
     const { q, limit = 20 } = query;
     
     // FTSを使用した検索（簡易実装）

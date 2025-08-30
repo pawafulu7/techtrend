@@ -20,7 +20,7 @@ interface CloudflareBlogItem {
 }
 
 export class CloudflareBlogFetcher extends BaseFetcher {
-  private parser: Parser<any, CloudflareBlogItem>;
+  private parser: Parser<unknown, CloudflareBlogItem>;
   private rssUrl = 'https://blog.cloudflare.com/rss/';
   
   constructor(source: Source) {

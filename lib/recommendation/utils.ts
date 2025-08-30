@@ -1,5 +1,29 @@
+// デフォルト設定の型定義
+interface RecommendationConfig {
+  maxRecommendations: number;
+  maxPerSource: number;
+  maxSameTagSet: number;
+  viewWeight: number;
+  favoriteWeight: number;
+  recentBoost7Days: number;
+  recentBoost30Days: number;
+  newArticleBoost: number;
+  minQualityScore: number;
+  activityWindow: number;
+  maxActivityHistory: number;
+  weights: {
+    view: number;
+    favorite: number;
+  };
+  cacheExpiry: {
+    userInterests: number;
+  };
+  freshnessWindow: number;
+  candidateWindow: number;
+}
+
 // デフォルト設定
-export const defaultConfig: any = {
+export const defaultConfig: RecommendationConfig = {
   maxRecommendations: 20,
   maxPerSource: 3,
   maxSameTagSet: 2,

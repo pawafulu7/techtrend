@@ -20,7 +20,7 @@ interface GitHubBlogItem {
 }
 
 export class GitHubBlogFetcher extends BaseFetcher {
-  private parser: Parser<any, GitHubBlogItem>;
+  private parser: Parser<unknown, GitHubBlogItem>;
   private rssUrl = 'https://github.blog/feed/';
   
   constructor(source: Source) {

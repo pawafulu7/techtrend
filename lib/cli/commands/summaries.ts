@@ -127,7 +127,7 @@ summariesCommand
           }
         });
         
-        source._count.articles > 0
+        const _percentage = source._count.articles > 0
           ? Math.round(withSummaryCount / source._count.articles * 100)
           : 0;
           
