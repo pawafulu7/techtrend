@@ -100,7 +100,7 @@ export class CircuitBreaker {
         return await fallback();
       }
       
-      throw error;
+      throw _error;
     }
   }
 

@@ -42,7 +42,7 @@ cleanupCommand
       });
       
     } catch (_error) {
-      logger.error('記事削除でエラーが発生しました', error);
+      logger.error('記事削除でエラーが発生しました', _error);
       process.exit(1);
     }
   });
@@ -79,7 +79,7 @@ cleanupCommand
       });
       
     } catch (_error) {
-      logger.error('タグクリーンアップでエラーが発生しました', error);
+      logger.error('タグクリーンアップでエラーが発生しました', _error);
       process.exit(1);
     }
   });

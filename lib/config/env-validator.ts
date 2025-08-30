@@ -35,16 +35,16 @@ const envSchema = z.object({
   PORT: z.string().regex(/^\d+$/).optional().default('3000'),
   
   // Feature Flags
-  EXCLUDE_EVENT_ARTICLES: z.string().transform(val => val === 'true').optional().default('false'),
-  QUALITY_CHECK_ENABLED: z.string().transform(val => val === 'true').optional().default('true'),
+  EXCLUDE_EVENT_ARTICLES: z.string().transform(val => val === 'true').optional().default(false),
+  QUALITY_CHECK_ENABLED: z.string().transform(val => val === 'true').optional().default(true),
   QUALITY_MIN_SCORE: z.string().regex(/^\d+$/).optional().default('70'),
-  QUALITY_AUTO_FIX: z.string().transform(val => val === 'true').optional().default('false'),
+  QUALITY_AUTO_FIX: z.string().transform(val => val === 'true').optional().default(false),
   MAX_REGENERATION_ATTEMPTS: z.string().regex(/^\d+$/).optional().default('3'),
   MAX_ARTICLES_PER_COMPANY: z.string().regex(/^\d+$/).optional().default('50'),
   
   // Monitoring (optional)
   SENTRY_DSN: z.string().url().optional(),
-  ENABLE_ANALYTICS: z.string().transform(val => val === 'true').optional().default('false'),
+  ENABLE_ANALYTICS: z.string().transform(val => val === 'true').optional().default(false),
 });
 
 // 環境変数の型定義
@@ -69,12 +69,12 @@ export function getValidatedEnv(): EnvConfig {
     cachedConfig = validated;
     return validated;
   } catch (_error) {
-    if (error instanceof z.ZodError) {
-      const missingVars = error.errors
+    if (_error instanceof z.ZodError) {
+      const missingVars = _error.issues
         .filter(e => e.message === 'Required')
         .map(e => e.path.join('.'));
       
-      const invalidVars = error.errors
+      const invalidVars = _error.issues
         .filter(e => e.message !== 'Required')
         .map(e => `${e.path.join('.')}: ${e.message}`);
       
@@ -91,7 +91,7 @@ export function getValidatedEnv(): EnvConfig {
       
       throw new Error(`Environment validation failed. Check your .env file.`);
     }
-    throw error;
+    throw _error;
   }
 }
 

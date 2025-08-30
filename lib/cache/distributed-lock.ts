@@ -21,13 +21,13 @@ export class DistributedLock {
     const lockToken = this.generateToken();
     
     try {
-      // SET key value NX EX ttl
+      // SET key value EX ttl NX
       const result = await this.redis.set(
         lockKey,
         lockToken,
-        'NX', // Only set if not exists
         'EX', // Expire time in seconds
-        ttl
+        ttl,
+        'NX' // Only set if not exists
       );
       
       if (result === 'OK') {

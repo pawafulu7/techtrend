@@ -6,7 +6,7 @@ class DIContainer implements IDIContainer {
 
   get<T>(token: symbol): T {
     if (this.singletons.has(token)) {
-      return this.singletons.get(token);
+      return this.singletons.get(token) as T;
     }
 
     const provider = this.providers.get(token);
@@ -14,7 +14,7 @@ class DIContainer implements IDIContainer {
       throw new Error(`No provider registered for token: ${token.toString()}`);
     }
 
-    return provider();
+    return provider() as T;
   }
 
   register<T>(token: symbol, provider: () => T): void {

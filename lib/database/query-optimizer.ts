@@ -106,7 +106,6 @@ export class ArticleQueryOptimizer {
           _count: {
             select: {
               favorites: true,
-              views: true,
             },
           },
         },
@@ -146,7 +145,6 @@ export class ArticleQueryOptimizer {
         _count: {
           select: {
             favorites: true,
-            views: true,
           },
         },
       },
@@ -213,7 +211,8 @@ export class ArticleQueryOptimizer {
   ) {
     // Use transaction for consistency
     return this.prisma.$transaction(async (tx) => {
-      const results = [];
+      type CreatedArticle = Prisma.ArticleGetPayload<{ include: { tags: true; source: true } }>;
+      const results: CreatedArticle[] = [];
 
       for (const { article, tagNames } of articles) {
         // Create or connect tags

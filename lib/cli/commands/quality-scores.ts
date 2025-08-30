@@ -19,11 +19,11 @@ qualityScoresCommand
       const scriptPath = path.join(process.cwd(), 'scripts/core/manage-quality-scores.ts');
       const args = ['calculate'];
       
-      if (options.recalculate) {
+      if (_options.recalculate) {
         args.push('--recalculate');
       }
-      if (options.source) {
-        args.push('--source', options.source);
+      if (_options.source) {
+        args.push('--source', _options.source);
       }
       
       const child = fork(scriptPath, args, {
@@ -46,7 +46,7 @@ qualityScoresCommand
       });
       
     } catch (_error) {
-      logger.error('品質スコア計算でエラーが発生しました', error);
+      logger.error('品質スコア計算でエラーが発生しました', _error);
       process.exit(1);
     }
   });
@@ -81,7 +81,7 @@ qualityScoresCommand
       });
       
     } catch (_error) {
-      logger.error('品質スコア修正でエラーが発生しました', error);
+      logger.error('品質スコア修正でエラーが発生しました', _error);
       process.exit(1);
     }
   });
@@ -123,7 +123,7 @@ qualityScoresCommand
       
       logger.success('統計情報の取得が完了しました');
     } catch (_error) {
-      logger.error('統計情報取得中にエラーが発生しました', error);
+      logger.error('統計情報取得中にエラーが発生しました', _error);
       process.exit(1);
     }
   });

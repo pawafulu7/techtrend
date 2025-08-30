@@ -81,7 +81,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         
         return html;
       } catch (_error) {
-        lastError = error as Error;
+        lastError = _error as Error;
       }
     }
 
@@ -141,7 +141,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
    * コンテンツの最小文字数チェック
    */
   protected isContentSufficient(content: string, minLength: number = 100): boolean {
-    return content && content.length >= minLength;
+    return !!content && content.length >= minLength;
   }
 
   /**

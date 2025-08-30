@@ -44,10 +44,10 @@ feedsCommand
       });
       
     } catch (_error) {
-      if (error instanceof ValidationError) {
-        logger.error(error.message);
+      if (_error instanceof ValidationError) {
+        logger.error(_error.message);
       } else {
-        logger.error('フィード収集でエラーが発生しました', error);
+        logger.error('フィード収集でエラーが発生しました', _error);
       }
       process.exit(1);
     }
@@ -87,10 +87,10 @@ feedsCommand
       
       logger.success('ソース一覧の取得が完了しました');
     } catch (_error) {
-      if (error instanceof DatabaseError) {
-        logger.error(`データベースエラー: ${error.message}`);
+      if (_error instanceof DatabaseError) {
+        logger.error(`データベースエラー: ${_error.message}`);
       } else {
-        logger.error('ソース一覧取得中にエラーが発生しました', error);
+        logger.error('ソース一覧取得中にエラーが発生しました', _error);
       }
       process.exit(1);
     }
@@ -144,7 +144,7 @@ feedsCommand
       
       logger.success('統計情報の取得が完了しました');
     } catch (_error) {
-      logger.error('統計情報取得中にエラーが発生しました', error);
+      logger.error('統計情報取得中にエラーが発生しました', _error);
       process.exit(1);
     }
   });

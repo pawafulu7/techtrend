@@ -48,8 +48,8 @@ export function getRedisClient(): Redis {
           if (prop === 'connect') return () => Promise.resolve();
           if (prop === 'disconnect') return () => client.quit();
           
-          // Default
-          return (target as Record<string, unknown>)[prop];
+          // Default - pass-through
+          return (target as unknown as Record<PropertyKey, unknown>)[prop as PropertyKey];
         }
       });
     } else {
@@ -87,7 +87,7 @@ export const redis = (() => {
       if (!_instance) {
         _instance = getRedisClient();
       }
-      return (_instance as Record<string, unknown>)[prop];
+      return (_instance as unknown as Record<PropertyKey, unknown>)[prop as PropertyKey];
     }
   });
 })();

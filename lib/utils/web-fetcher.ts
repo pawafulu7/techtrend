@@ -31,14 +31,14 @@ export class WebFetcher {
 
       return response.data;
     } catch (_error) {
-      if (axios.isAxiosError(error)) {
-        if (error.response) {
-          throw new Error(`HTTP ${error.response.status}: ${error.response.statusText}`);
-        } else if (error.request) {
+      if (axios.isAxiosError(_error)) {
+        if (_error.response) {
+          throw new Error(`HTTP ${_error.response.status}: ${_error.response.statusText}`);
+        } else if (_error.request) {
           throw new Error('ネットワークエラー: サーバーから応答がありません');
         }
       }
-      throw error;
+      throw _error;
     }
   }
 }
