@@ -285,7 +285,7 @@ function evaluateClarity(summary: string, issues: string[]): number {
 /**
  * 推奨事項を生成
  */
-function generateRecommendation(score: number, issues: string[]): string {
+function generateRecommendation(score: number, _issues: string[]): string {
   if (score >= 90) {
     return '優秀な要約です。現状を維持してください。';
   } else if (score >= 70) {

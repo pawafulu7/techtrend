@@ -25,7 +25,7 @@ export class IoRedisClient implements IRedisClient {
     });
 
     // Set up event handlers
-    this.client.on('error', (err) => {
+    this.client.on('error', (_err) => {
     });
 
     this.client.on('connect', () => {

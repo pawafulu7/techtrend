@@ -101,7 +101,7 @@ tagsCommand
         take: 10
       });
       
-      popularTags.forEach((tag, index) => {
+      popularTags.forEach((_tag, _index) => {
       });
       
       logger.success('統計情報の取得が完了しました');

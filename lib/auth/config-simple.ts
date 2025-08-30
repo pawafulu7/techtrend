@@ -111,15 +111,15 @@ export const authOptions: NextAuthConfig = {
   },
 
   events: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user: _user, account: _account, profile: _profile }) {
     },
-    async signOut({ session }) {
+    async signOut({ session: _session }) {
     },
-    async createUser({ user }) {
+    async createUser({ user: _user }) {
     },
-    async updateUser({ user }) {
+    async updateUser({ user: _user }) {
     },
-    async linkAccount({ user, account }) {
+    async linkAccount({ user: _user, account: _account }) {
     },
   },
 

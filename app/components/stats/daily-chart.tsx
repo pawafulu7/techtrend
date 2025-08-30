@@ -108,7 +108,7 @@ export function DailyChart({ data }: DailyChartProps) {
                   className="flex-1 flex flex-col items-center gap-1"
                 >
                   <div className="w-full flex items-end relative" style={{ height: chartHeight - 20 }}>
-                    {sourceHeights.map(({ source, height, offset, count }) => (
+                    {sourceHeights.map(({ source, height, offset, count: _count }) => (
                       <div
                         key={source}
                         className={`absolute bottom-0 w-full transition-all duration-300 hover:opacity-80 cursor-pointer ${

@@ -15,7 +15,7 @@ export function registerRedisProvider(): void {
         },
       });
 
-      redisInstance.on('error', (err) => {
+      redisInstance.on('error', (_err) => {
       });
     }
     return redisInstance;

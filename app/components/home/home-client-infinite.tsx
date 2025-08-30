@@ -25,7 +25,7 @@ interface HomeClientInfiniteProps {
 export function HomeClientInfinite({ 
   viewMode, 
   sources, 
-  tags,
+  _tags,
   enableInfiniteScroll = true,
   initialSortBy,
   initialSourceIds

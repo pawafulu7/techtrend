@@ -191,7 +191,7 @@ export interface QualityIssue {
 export function checkContentQuality(
   summary: string,
   detailedSummary?: string,
-  title?: string
+  _title?: string
 ): ContentQualityCheckResult {
   const issues: QualityIssue[] = [];
   let score = 100;

@@ -73,7 +73,7 @@ export function parseRSSDate(dateString: string): Date {
  */
 export function adjustTimezoneForArticle(
   publishedAt: Date,
-  sourceName?: string
+  _sourceName?: string
 ): Date {
   const now = new Date();
   

@@ -77,7 +77,7 @@ export async function GET(request: Request) {
 }
 
 // DELETE: 閲覧履歴をクリア
-export async function DELETE(request: Request) {
+export async function DELETE(_request: Request) {
   try {
     const session = await auth();
     
