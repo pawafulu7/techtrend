@@ -37,7 +37,7 @@ export class DigestGenerator {
     const adjustedStart = this.getWeekStart(weekStart);
     const adjustedEnd = this.getWeekEnd(adjustedStart);
 
-    console.log(`Generating digest for ${adjustedStart.toISOString()} to ${adjustedEnd.toISOString()}`);
+    // Digest generation for week
 
     // 既存のダイジェストをチェック
     const existing = await this.prisma.weeklyDigest.findUnique({
@@ -45,7 +45,7 @@ export class DigestGenerator {
     });
 
     if (existing) {
-      console.log('Digest already exists for this week');
+      // Digest already exists
       return existing.id;
     }
 
@@ -65,7 +65,7 @@ export class DigestGenerator {
       }
     });
 
-    console.log(`Found ${articles.length} articles for the week`);
+    // Found articles for the week
 
     // トップ記事を計算
     const topArticles = this.calculateTopArticles(articles);
@@ -84,12 +84,12 @@ export class DigestGenerator {
           title: a.title,
           url: a.url,
           score: a.score
-        })),
-        categories: categories
+        })) as any,
+        categories: categories as any
       }
     });
 
-    console.log(`Weekly digest created: ${digest.id}`);
+    // Weekly digest created
     return digest.id;
   }
 
@@ -108,7 +108,7 @@ export class DigestGenerator {
     }
 
     // 記事の詳細情報を取得
-    const topArticleIds = (digest.topArticles as any[]).map(a => a.id);
+    const topArticleIds = (digest.topArticles as Array<{id: string; title: string; url: string; score: number}>).map(a => a.id);
     const articles = await this.prisma.article.findMany({
       where: { id: { in: topArticleIds } },
       include: {
@@ -128,7 +128,7 @@ export class DigestGenerator {
   /**
    * トップ記事を計算
    */
-  private calculateTopArticles(articles: any[]): TopArticle[] {
+  private calculateTopArticles(articles: Array<{id: string; title: string; url: string; articleViews: Array<unknown>; favorites: Array<unknown>}>): TopArticle[] {
     return articles.map(article => {
       const viewCount = article.articleViews.length;
       const favoriteCount = article.favorites.length;
@@ -148,8 +148,8 @@ export class DigestGenerator {
   /**
    * カテゴリ別集計
    */
-  private calculateCategories(articles: any[]): CategorySummary[] {
-    const categoryMap = new Map<string, any[]>();
+  private calculateCategories(articles: Array<{id: string; title: string; url: string; tags: Array<{name: string}>; articleViews: Array<unknown>; favorites: Array<unknown>}>): CategorySummary[] {
+    const categoryMap = new Map<string, typeof articles>();
     
     // タグからカテゴリを推定
     const categoryTags = {
@@ -163,7 +163,7 @@ export class DigestGenerator {
     };
 
     articles.forEach(article => {
-      const articleTags = article.tags.map((t: any) => t.name);
+      const articleTags = article.tags.map((t) => t.name);
       
       for (const [category, tags] of Object.entries(categoryTags)) {
         if (articleTags.some((tag: string) => tags.includes(tag))) {
@@ -185,7 +185,7 @@ export class DigestGenerator {
         topArticle: topArticle ? {
           id: topArticle.id,
           title: topArticle.title
-        } : null as any
+        } : { id: '', title: '' }
       });
     }
 

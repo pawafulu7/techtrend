@@ -78,7 +78,7 @@ export class RedisCache {
       const fullKey = this.generateKey(key);
       const finalTTL = ttl || this.defaultTTL;
       
-      await (this.redis as any).set(
+      await this.redis.set(
         fullKey,
         JSON.stringify(value),
         'EX',

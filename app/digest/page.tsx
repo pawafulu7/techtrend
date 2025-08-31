@@ -61,7 +61,7 @@ export default function DigestPage() {
       } else {
         setError('ダイジェストの取得に失敗しました');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('エラーが発生しました');
     } finally {
       setLoading(false);
@@ -84,7 +84,7 @@ export default function DigestPage() {
       } else {
         setError('ダイジェストの生成に失敗しました');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('エラーが発生しました');
     } finally {
       setGenerating(false);
