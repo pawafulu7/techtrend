@@ -125,7 +125,6 @@ async function createTags() {
         data: {
           name,
           category,
-          count: Math.floor(Math.random() * 50) + 1,
         },
       })
     )
