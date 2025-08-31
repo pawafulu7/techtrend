@@ -201,7 +201,7 @@ describe('Sources API Tests', () => {
       const result = await parseResponse(response);
       
       expectApiError(result, 500);
-      expect(result.body.error).toContain('Failed to fetch sources');
+      expect(result.body.error).toContain('Internal server error');
     });
 
     it('最終取得日時でフィルタリングできる', async () => {
