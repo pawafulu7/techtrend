@@ -113,7 +113,7 @@ describe('Articles API Tests V2', () => {
       prismaMock.article.findMany.mockResolvedValue([]);
       prismaMock.article.count.mockResolvedValue(0);
 
-      const request = new NextRequest('http://localhost:3000/api/articles?source=qiita&tag=react');
+      const request = new NextRequest('http://localhost:3000/api/articles?sourceId=qiita&tag=react');
       await GET(request);
 
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
