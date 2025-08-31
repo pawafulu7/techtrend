@@ -5,8 +5,7 @@ import crypto from 'crypto';
 
 // 確認メール送信用の関数をインポート
 async function sendVerificationEmail(email: string, token: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let nodemailer: any;
+  let nodemailer: typeof import('nodemailer') | undefined;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     nodemailer = require('nodemailer');

@@ -242,11 +242,9 @@ export async function GET(request: NextRequest) {
     }
 
     // ArticleWithRelations形式に変換
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const articlesWithRelations = articles.map((article: any) => ({
+    const articlesWithRelations = articles.map((article) => ({
       ...article,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tags: article.tags.map((tag: any) => tag.name),
+      tags: article.tags.map((tag) => typeof tag === 'string' ? tag : tag.name),
       bookmarkCount: article._count?.readingList || 0,
       voteScore: article._count?.votes || 0
     }));
