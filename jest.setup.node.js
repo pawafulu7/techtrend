@@ -22,6 +22,26 @@ try {
 // Redisクライアントのモックは__mocks__ディレクトリから自動的に読み込まれる
 jest.mock('@/lib/redis/client');
 
+// next-authのEmailProviderをモック
+jest.mock('next-auth/providers/email', () => {
+  return jest.fn(() => ({
+    id: 'email',
+    type: 'email',
+    name: 'Email',
+    server: {
+      host: 'smtp.resend.com',
+      port: 465,
+      auth: {
+        user: 'resend',
+        pass: 'dummy',
+      },
+    },
+    from: 'noreply@techtrend.example.com',
+    sendVerificationRequest: jest.fn(),
+    maxAge: 24 * 60 * 60,
+  }));
+});
+
 // テスト環境のDI初期化
 beforeAll(() => {
   initializeTestDI();

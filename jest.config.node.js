@@ -12,7 +12,7 @@ const customJestConfig = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   reporters: ['summary'],
   transformIgnorePatterns: [
-    'node_modules/(?!(node-fetch)/)',
+    'node_modules/(?!(node-fetch|next-auth|@auth)/)',
   ],
   moduleNameMapper: {
     // Manual mocks for Prisma and Redis (must come before generic alias)
