@@ -237,6 +237,29 @@ jobs:
     name: E2E Tests
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: techtrend_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
     steps:
       - uses: actions/checkout@v4
       
@@ -251,6 +274,14 @@ jobs:
       
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
+
+      - name: Setup test database (E2E)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+        run: |
+          npx prisma generate
+          npx prisma db push
+          npx tsx prisma/seed-test.ts
       
       - name: Run E2E tests
         env:
