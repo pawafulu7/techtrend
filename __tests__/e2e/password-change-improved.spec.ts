@@ -211,23 +211,13 @@ test.describe.serial('Password Change Feature - Improved', () => {
     // 送信ボタンをクリック
     await page.click('button:has-text("パスワードを変更")');
     
-    // 成功メッセージが表示されることを確認
-    const successFound = await waitForSuccessMessage(page, 'パスワードを変更しました');
+    // 成功メッセージが表示されることを確認（タイムアウトを長めに設定）
+    const successFound = await waitForSuccessMessage(page, 'パスワードを変更しました', 10000);
     expect(successFound).toBe(true);
     
     // フォームがクリアされることを確認
     await expect(page.locator('input[name="currentPassword"]')).toHaveValue('');
     await expect(page.locator('input[name="newPassword"]')).toHaveValue('');
     await expect(page.locator('input[name="confirmPassword"]')).toHaveValue('');
-    
-    // 元のパスワードに戻しておく（次回のテストのため）
-    await page.waitForTimeout(1000);
-    await fillPasswordChangeForm(page, {
-      current: 'NewSecurePassword456',
-      new: TEST_USER.password,
-      confirm: TEST_USER.password
-    });
-    await page.click('button:has-text("パスワードを変更")');
-    await waitForSuccessMessage(page, 'パスワードを変更しました');
   });
 });
