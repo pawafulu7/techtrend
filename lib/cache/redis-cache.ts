@@ -14,7 +14,9 @@ export class RedisCache {
   constructor(options?: CacheOptions) {
     this.redis = getRedisClient();
     this.defaultTTL = options?.ttl || 3600; // 1 hour default
-    this.namespace = options?.namespace || '@techtrend/cache';
+    // Separate cache namespace per environment to avoid cross-environment bleed
+    const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
+    this.namespace = options?.namespace || `@techtrend/cache:${envName}`;
   }
 
   /**
