@@ -7,42 +7,9 @@
 jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
-// Helper import with robust multi-path resolution for CI differences (no alias fallback)
+// Import local test-utils directly - file exists in same directory
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const _helpers = (() => {
-  try {
-    // Prefer local bridge in same folder
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('./test-utils.ts');
-  } catch (_e1) {
-    try {
-      // Extensionless local bridge
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      return require('./test-utils');
-    } catch (_e2) {
-      try {
-        // Sibling helpers folder
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        return require('../helpers/test-utils.ts');
-      } catch (_e3) {
-        try {
-          // Sibling helpers without extension
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          return require('../helpers/test-utils');
-        } catch (_e4) {
-          // Top-level helpers (two levels up from articles/)
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            return require('../../helpers/test-utils.ts');
-          } catch (_e5) {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            return require('../../helpers/test-utils');
-          }
-        }
-      }
-    }
-  }
-})();
+const _helpers = require('./test-utils');
 
 const { testApiHandler, assertSuccessResponse, assertErrorResponse } = _helpers as {
   testApiHandler: any;
