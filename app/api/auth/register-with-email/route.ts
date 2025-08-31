@@ -11,7 +11,7 @@ async function sendVerificationEmail(email: string, token: string) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     nodemailer = require('nodemailer');
   } catch (_error) {
-    console.warn('Nodemailer not installed. Email sending disabled.');
+    // Nodemailer not installed. Email sending disabled.
     return;
   }
   
@@ -180,7 +180,7 @@ export async function POST(request: Request) {
     try {
       await sendVerificationEmail(email, token);
     } catch (emailError) {
-      console.error('📧 Failed to send verification email:', emailError);
+      // Failed to send verification email
       // メール送信に失敗してもユーザー作成は成功扱い（後で再送信できるように）
     }
 
@@ -189,7 +189,7 @@ export async function POST(request: Request) {
       message: 'アカウントを作成しました。確認メールをご確認ください。',
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    // Registration error
     return NextResponse.json(
       { error: 'アカウント作成中にエラーが発生しました' },
       { status: 500 }

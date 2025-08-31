@@ -84,7 +84,6 @@ export class CloudflareBlogFetcher extends BaseFetcher {
                 } else {
                 }
               } catch (_error) {
-          console.error(`[Cloudflare Blog] Enrichment failed for ${item.link}:`, _error);
                 // エラー時は元のコンテンツを使用
               }
             }

@@ -24,7 +24,6 @@ export class MozillaHacksEnricher extends BaseContentEnricher {
       });
 
       if (!response.ok) {
-        console.error(`[Mozilla Hacks Enricher] Failed to fetch: ${response.status}`);
         return null;
       }
 
@@ -126,7 +125,6 @@ export class MozillaHacksEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[Mozilla Hacks Enricher] Error enriching ${url}:`, _error);
       return null;
     }
   }

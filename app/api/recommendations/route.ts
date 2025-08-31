@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
     const session = await auth();
     
     if (!session?.user?.id) {
-      console.error('[API/recommendations] No authenticated user');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -39,7 +38,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(recommendations);
   } catch (error) {
-    console.error('[API/recommendations] Error:', error);
     return NextResponse.json(
       { error: 'Failed to get recommendations' },
       { status: 500 }

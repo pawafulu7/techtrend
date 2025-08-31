@@ -99,13 +99,11 @@ function createTransporter() {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     nodemailer = require('nodemailer');
   } catch (_error) {
-    console.warn('Nodemailer not installed. Email sending will be disabled.');
     return null;
   }
   
   // Gmail設定（アプリパスワードが必要）
   if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
-    // console.log('📧 Using Gmail SMTP');
     return nodemailer.createTransport({  // createTransporter → createTransport に修正
       service: 'gmail',
       auth: {
@@ -117,7 +115,6 @@ function createTransporter() {
   
   // カスタムSMTP設定
   if (process.env.SMTP_HOST && process.env.SMTP_PORT) {
-    // console.log('📧 Using custom SMTP');
     return nodemailer.createTransport({  // createTransporter → createTransport に修正
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT),
@@ -131,7 +128,6 @@ function createTransporter() {
   
   // テスト用（Ethereal Email）
   if (process.env.NODE_ENV === 'development') {
-    // console.log('📧 Using test email (Ethereal)');
     // Etherealは実際にはメールを送信しませんが、プレビューできます
     return nodemailer.createTransport({  // createTransporter → createTransport に修正
       host: 'smtp.ethereal.email',
@@ -153,21 +149,12 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
 
   // Development mode - skip only if explicitly requested AND no Gmail configured
   if (process.env.NODE_ENV === 'development' && process.env.SKIP_EMAIL_SEND === 'true' && !process.env.GMAIL_USER) {
-    // console.log('📧 [DEV] Email verification request (skipped):');
-    // console.log('  To:', to);
-    // console.log('  From:', from);
-    // console.log('  URL:', url);
-    // console.log('  Expires:', params.expires);
     return;
   }
 
   const transporter = createTransporter();
   
   if (!transporter) {
-    console.error('❌ Email configuration missing. Please set Gmail or SMTP settings.');
-    // console.log('Required environment variables:');
-    // console.log('  For Gmail: GMAIL_USER and GMAIL_APP_PASSWORD');
-    // console.log('  For SMTP: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD');
     throw new Error('Email configuration is missing');
   }
 
@@ -180,7 +167,6 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
       text: text({ url, host }),
     });
 
-    // console.log('📧 Email sent successfully:', info.messageId);
     
     // Etherealの場合、プレビューURLを表示（nodemailerを再度requireする必要がある）
     if (info.messageId && process.env.NODE_ENV === 'development') {
@@ -188,14 +174,12 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const nodemailer = require('nodemailer');
         if (nodemailer.getTestMessageUrl) {
-          // console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
         }
       } catch (_error) {
         // nodemailer not available, skip preview URL
       }
     }
   } catch (error) {
-    console.error('📧 Failed to send email:', error);
     throw new Error('Failed to send verification email');
   }
 }

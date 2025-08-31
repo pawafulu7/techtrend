@@ -20,7 +20,6 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
       });
       
       if (!response.ok) {
-        console.warn(`[MediumEngineeringEnricher] Failed to fetch ${url}: ${response.status}`);
         return null;
       }
       
@@ -112,7 +111,6 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
       }
       
       if (content.length < 100) {
-        console.warn(`[MediumEngineeringEnricher] Content too short for ${url}: ${content.length} chars`);
         return null;
       }
       
@@ -122,7 +120,6 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[MediumEngineeringEnricher] Error enriching ${url}:`, _error);
       return null;
     }
   }

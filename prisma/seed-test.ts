@@ -205,7 +205,6 @@ async function createArticles(sources: any[], tags: any[]) {
 
 main()
   .catch((e) => {
-    console.error('Prisma test seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

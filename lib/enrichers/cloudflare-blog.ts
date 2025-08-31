@@ -24,7 +24,6 @@ export class CloudflareBlogEnricher extends BaseContentEnricher {
       });
 
       if (!response.ok) {
-        console.error(`[Cloudflare Blog Enricher] Failed to fetch: ${response.status}`);
         return null;
       }
 
@@ -109,7 +108,6 @@ export class CloudflareBlogEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[Cloudflare Blog Enricher] Error enriching ${url}:`, _error);
       return null;
     }
   }

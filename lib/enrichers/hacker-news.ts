@@ -33,7 +33,6 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       });
       
       if (!response.ok) {
-        console.warn(`[HackerNewsEnricher] Failed to fetch ${url}: ${response.status}`);
         return null;
       }
       
@@ -123,7 +122,6 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       }
       
       if (content.length < 100) {
-        console.warn(`[HackerNewsEnricher] Content too short for ${url}: ${content.length} chars`);
         return null;
       }
       
@@ -133,7 +131,6 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[HackerNewsEnricher] Error enriching ${url}:`, _error);
       return null;
     }
   }

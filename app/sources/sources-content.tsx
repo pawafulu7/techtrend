@@ -34,7 +34,6 @@ export default function SourcesContent() {
       const data = await response.json();
       setAllSources(data.sources);
     } catch (error) {
-      console.error('Failed to load sources:', error);
     } finally {
       setLoading(false);
     }

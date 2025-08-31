@@ -68,13 +68,11 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
           
           results.push(result);
         } catch (_error) {
-          console.error(`❌ 記事の処理中にエラー: ${item.title}`, _error);
         }
       }
       
       return results;
     } catch (_error) {
-      console.error(`❌ ${this.sourceName}のフィード取得エラー:`, _error);
       return [];
     }
   }

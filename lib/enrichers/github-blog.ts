@@ -24,7 +24,6 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
       });
 
       if (!response.ok) {
-        console.error(`[GitHub Blog Enricher] Failed to fetch: ${response.status}`);
         return null;
       }
 
@@ -106,7 +105,6 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[GitHub Blog Enricher] Error enriching ${url}:`, _error);
       return null;
     }
   }

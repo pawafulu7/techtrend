@@ -129,7 +129,6 @@ export class MediumEngineeringFetcher extends BaseFetcher {
                     thumbnail = enrichedData.thumbnail || undefined;
                   }
                 } catch (_error) {
-                  console.error(`[Medium Engineering] Enrichment failed for ${cleanUrl}:`, _error);
                 }
               }
             }

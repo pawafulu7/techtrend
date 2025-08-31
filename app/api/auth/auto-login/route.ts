@@ -48,7 +48,6 @@ export async function POST(request: Request) {
       message: 'Token is valid',
     });
   } catch (error) {
-    console.error('Auto-login validation error:', error);
     return NextResponse.json(
       { error: 'Token validation failed' },
       { status: 500 }

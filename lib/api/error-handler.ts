@@ -103,7 +103,6 @@ export function handleApiError(
   path?: string
 ): NextResponse<ErrorResponse> {
   // Log error for monitoring
-  console.error('[API Error]', {
     error,
     path,
     timestamp: new Date().toISOString(),

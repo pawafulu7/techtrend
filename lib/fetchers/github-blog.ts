@@ -84,7 +84,6 @@ export class GitHubBlogFetcher extends BaseFetcher {
                 } else {
                 }
               } catch (_error) {
-          console.error(`[GitHub Blog] Enrichment failed for ${item.link}:`, _error);
                 // エラー時は元のコンテンツを使用
               }
             }

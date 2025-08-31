@@ -14,7 +14,6 @@ if (process.env.RESEND_API_KEY) {
     const { Resend } = require('resend');
     resend = new Resend(process.env.RESEND_API_KEY);
   } catch (_error) {
-    console.warn('Resend module not installed. Email sending via Resend will be disabled.');
   }
 }
 
@@ -110,17 +109,11 @@ export async function sendVerificationRequest(params: SendVerificationRequestPar
 
   // Development mode - just log the email
   if (process.env.NODE_ENV === 'development' && !resend) {
-    // console.log('📧 [DEV] Email verification request:');
-    // console.log('  To:', to);
-    // console.log('  From:', from);
-    // console.log('  URL:', url);
-    // console.log('  Expires:', params.expires);
     return;
   }
 
   // Test mode - skip actual email sending
   if (process.env.NODE_ENV === 'test' || process.env.SKIP_EMAIL_SEND === 'true') {
-    // console.log('📧 [TEST] Skipping email send to:', to);
     return;
   }
 
@@ -138,9 +131,7 @@ export async function sendVerificationRequest(params: SendVerificationRequestPar
       text: text({ url, host }),
     });
 
-    // console.log('📧 Email sent successfully:', data);
   } catch (error) {
-    console.error('📧 Failed to send email:', error);
     throw new Error('Failed to send verification email');
   }
 }

@@ -42,13 +42,13 @@ export default function VerifyPage() {
             router.refresh();
           }, 3000);
         } else {
-          console.error('Auto-login failed:', result?.error);
+          // Auto-login failed
         }
       } else {
-        console.error('Token validation failed');
+        // Token validation failed
       }
     } catch (error) {
-      console.error('Auto-login error:', error);
+      // Auto-login error
     }
   };
 

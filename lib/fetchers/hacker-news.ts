@@ -86,7 +86,6 @@ export class HackerNewsFetcher extends BaseFetcher {
                 thumbnail = enrichedData.thumbnail || undefined;
               }
             } catch (_error) {
-              console.error(`[Hacker News] Enrichment failed for ${story.url}:`, _error);
             }
           }
           

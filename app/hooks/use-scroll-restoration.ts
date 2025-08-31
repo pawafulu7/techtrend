@@ -70,7 +70,7 @@ export function useScrollRestoration(
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
-      console.error('[ScrollRestore] Failed to save position:', e);
+      // Failed to save position to localStorage
     }
   }, [articleCount, pageCount, filters, scrollContainerRef]);
 

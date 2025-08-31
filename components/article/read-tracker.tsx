@@ -22,7 +22,6 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
           body: JSON.stringify({ articleId })
         });
       } catch (error) {
-        console.error('Error marking article as read:', error);
       }
     };
 

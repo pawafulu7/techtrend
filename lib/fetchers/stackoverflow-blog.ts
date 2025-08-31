@@ -81,7 +81,6 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
           } else {
           }
         } catch (_error) {
-          console.error(`[StackOverflow Blog] Enrichment failed for ${item.link}:`, _error);
           // エラー時は元のコンテンツを使用
         }
       } else {

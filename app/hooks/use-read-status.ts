@@ -17,7 +17,7 @@ export function useReadStatus(articleIds?: string[]) {
         return new Set<string>(JSON.parse(stored));
       }
     } catch (error) {
-      console.error('Error loading read status from localStorage:', error);
+      // Silently handle localStorage errors
     }
     return new Set<string>();
   };
@@ -48,11 +48,11 @@ export function useReadStatus(articleIds?: string[]) {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newReadArticleIds)));
         } catch (error) {
-          console.error('Error saving read status to localStorage:', error);
+          // Error saving read status to localStorage
         }
       }
     } catch (error) {
-      console.error('Error fetching read status:', error);
+      // Error fetching read status
     } finally {
       setIsLoading(false);
     }
@@ -76,14 +76,13 @@ export function useReadStatus(articleIds?: string[]) {
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
           } catch (error) {
-            console.error('Error saving read status to localStorage:', error);
+            // Error saving read status to localStorage
           }
           return newSet;
         });
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error('Error marking as read:', error);
     }
   }, [session]);
 
@@ -104,14 +103,13 @@ export function useReadStatus(articleIds?: string[]) {
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
           } catch (error) {
-            console.error('Error saving read status to localStorage:', error);
+            // Error saving read status to localStorage
           }
           return newSet;
         });
         setUnreadCount(prev => prev + 1);
       }
     } catch (error) {
-      console.error('Error marking as unread:', error);
     }
   }, [session]);
 
@@ -153,9 +151,7 @@ export function useReadStatus(articleIds?: string[]) {
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
-        console.error('Request timeout after 5 minutes');
       } else {
-        console.error('Error marking all as read:', error);
       }
     }
   }, [session, fetchReadStatus]);

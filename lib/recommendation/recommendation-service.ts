@@ -37,7 +37,6 @@ export class RecommendationService {
         };
       }
     } catch (_error) {
-      console.error('[RecommendationService] Failed to restore cache:', _error);
       // キャッシュを無視して処理を継続
     }
 

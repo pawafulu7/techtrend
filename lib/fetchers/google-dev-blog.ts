@@ -120,7 +120,6 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
           } else {
           }
         } catch (_error) {
-          console.error(`[Google Dev Blog] Enrichment failed for ${item.link}:`, _error);
           // エラー時は元のコンテンツを使用
         }
       } else {
