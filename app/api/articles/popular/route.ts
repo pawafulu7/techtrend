@@ -118,9 +118,36 @@ export async function GET(request: NextRequest) {
             ...categoryFilter,
             qualityScore: { gte: 30 } // 品質フィルター
           },
-          include: {
-            source: true,
-            tags: true
+          select: {
+            id: true,
+            title: true,
+            url: true,
+            summary: true,
+            thumbnail: true,
+            publishedAt: true,
+            qualityScore: true,
+            bookmarks: true,
+            userVotes: true,
+            difficulty: true,
+            createdAt: true,
+            updatedAt: true,
+            sourceId: true,
+            summaryVersion: true,
+            articleType: true,
+            source: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                url: true
+              }
+            },
+            tags: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           },
           take: limit * 2 // スコア計算後にカットするため多めに取得
         });
