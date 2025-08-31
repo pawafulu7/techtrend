@@ -133,6 +133,111 @@ test.describe('無限スクロール機能', () => {
   });
 });
 
+test.describe('APIレスポンス構造とページネーション', () => {
+  test('APIレスポンス構造が正しいことを確認', async ({ page }) => {
+    await page.goto('/');
+    
+    // APIレスポンスをインターセプト
+    const apiResponse = await page.waitForResponse(
+      response => response.url().includes('/api/articles') && response.status() === 200,
+      { timeout: 10000 }
+    );
+    
+    const json = await apiResponse.json();
+    
+    // レスポンスのトップレベル構造を確認
+    expect(json).toHaveProperty('success', true);
+    expect(json).toHaveProperty('data');
+    
+    // data構造の確認
+    const { data } = json;
+    expect(data).toHaveProperty('items');
+    expect(data).toHaveProperty('total');
+    expect(data).toHaveProperty('page');
+    expect(data).toHaveProperty('totalPages');
+    expect(data).toHaveProperty('limit');
+    
+    // items配列の確認
+    expect(Array.isArray(data.items)).toBe(true);
+    expect(data.items.length).toBeGreaterThan(0);
+    expect(data.items.length).toBeLessThanOrEqual(20);
+    
+    // ページネーション値の確認
+    expect(data.page).toBe(1);
+    expect(data.limit).toBeGreaterThan(0);
+    expect(typeof data.total).toBe('number');
+    expect(typeof data.totalPages).toBe('number');
+  });
+
+  test('複数ページが正しく処理される', async ({ page }) => {
+    await page.goto('/');
+    
+    // 最初のページのレスポンス
+    const page1Response = await page.waitForResponse(
+      response => response.url().includes('/api/articles') && response.status() === 200,
+      { timeout: 10000 }
+    );
+    const page1Data = await page1Response.json();
+    
+    // 無限スクロールトリガーまでスクロール
+    await page.waitForSelector('[data-testid="infinite-scroll-trigger"]');
+    await page.locator('[data-testid="infinite-scroll-trigger"]').scrollIntoViewIfNeeded();
+    
+    // 2ページ目のレスポンスを待つ
+    const page2Response = await page.waitForResponse(
+      response => response.url().includes('/api/articles') && response.url().includes('page=2'),
+      { timeout: 10000 }
+    );
+    const page2Data = await page2Response.json();
+    
+    expect(page1Data.success).toBe(true);
+    expect(page2Data.success).toBe(true);
+    
+    // 記事の重複がないことを確認
+    if (page1Data.data.items.length > 0 && page2Data.data.items.length > 0) {
+      const page1Ids = page1Data.data.items.map((item: any) => item.id);
+      const page2Ids = page2Data.data.items.map((item: any) => item.id);
+      const intersection = page1Ids.filter((id: string) => page2Ids.includes(id));
+      expect(intersection).toEqual([]);
+    }
+    
+    // 合計数が一致することを確認
+    expect(page1Data.data.total).toBe(page2Data.data.total);
+    expect(page1Data.data.totalPages).toBe(page2Data.data.totalPages);
+  });
+
+  test('フィルター付きページネーションが動作する', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('[data-testid="article-card"]');
+    
+    // ソースフィルターを選択（実装に依存）
+    const sourceFilterExists = await page.locator('[data-testid="source-filter-trigger"]').count() > 0;
+    
+    if (sourceFilterExists) {
+      await page.click('[data-testid="source-filter-trigger"]');
+      await page.click('[data-testid="source-option-0"]'); // 最初のソースを選択
+      
+      // フィルター付きのAPIレスポンスを待つ
+      const filteredResponse = await page.waitForResponse(
+        response => response.url().includes('/api/articles') && response.url().includes('sourceId='),
+        { timeout: 10000 }
+      );
+      const data = await filteredResponse.json();
+      
+      expect(data.success).toBe(true);
+      expect(data.data).toBeDefined();
+      
+      // フィルターが適用されていることを確認（記事が存在する場合）
+      if (data.data.items.length > 0) {
+        // sourceIdが統一されていることを確認
+        const sourceIds = data.data.items.map((item: any) => item.sourceId);
+        const uniqueSourceIds = [...new Set(sourceIds)];
+        expect(uniqueSourceIds.length).toBe(1);
+      }
+    }
+  });
+});
+
 test.describe('無限スクロール無効時の動作', () => {
   test('「さらに読み込む」ボタンが表示される', async ({ page }) => {
     // enableInfiniteScroll=falseの場合のテスト
