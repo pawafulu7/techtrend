@@ -30,8 +30,8 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('2. ログインしてパスワード変更フォームが表示される', async ({ page }) => {
-    // ログイン実行
-    const loginSuccess = await loginTestUser(page);
+    // ログイン実行（デバッグモード有効）
+    const loginSuccess = await loginTestUser(page, { debug: true });
     expect(loginSuccess).toBe(true);
     
     // アカウントタブを開く

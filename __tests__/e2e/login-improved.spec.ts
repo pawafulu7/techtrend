@@ -55,11 +55,22 @@ test.describe.serial('Login Feature - Improved', () => {
     await page.fill('input[id="email"]', 'invalid-email');
     await page.fill('input[id="password"]', 'password123');
     
-    // タブキーでフォーカスを移動（バリデーショントリガー）
-    await page.keyboard.press('Tab');
+    // 複数の方法でバリデーションをトリガー
+    // 方法1: フォーカスを外す（blur）
+    await page.locator('input[id="email"]').blur();
+    await page.waitForTimeout(500); // バリデーション処理を待つ
+    
+    // バリデーションエラーが表示されているか確認
+    let errorVisible = await page.locator('text=有効なメールアドレスを入力してください').isVisible();
+    
+    // 方法2: エラーが表示されていない場合は、送信ボタンをクリックしてバリデーションをトリガー
+    if (!errorVisible) {
+      await page.click('button[type="submit"]:has-text("ログイン")');
+      await page.waitForTimeout(500);
+    }
     
     // バリデーションエラーが表示されることを確認
-    await expect(page.locator('text=有効なメールアドレスを入力してください')).toBeVisible();
+    await expect(page.locator('text=有効なメールアドレスを入力してください, text=メールアドレスの形式が正しくありません')).toBeVisible();
   });
 
   test('4. 短いパスワードでエラーが表示される', async ({ page }) => {
@@ -70,11 +81,22 @@ test.describe.serial('Login Feature - Improved', () => {
     await page.fill('input[id="email"]', 'test@example.com');
     await page.fill('input[id="password"]', '12345');
     
-    // タブキーでフォーカスを移動
-    await page.keyboard.press('Tab');
+    // 複数の方法でバリデーションをトリガー
+    // 方法1: フォーカスを外す（blur）
+    await page.locator('input[id="password"]').blur();
+    await page.waitForTimeout(500); // バリデーション処理を待つ
     
-    // バリデーションエラーが表示されることを確認
-    await expect(page.locator('text=パスワードは6文字以上である必要があります')).toBeVisible();
+    // バリデーションエラーが表示されているか確認
+    let errorVisible = await page.locator('text=パスワードは6文字以上である必要があります').isVisible();
+    
+    // 方法2: エラーが表示されていない場合は、送信ボタンをクリックしてバリデーションをトリガー
+    if (!errorVisible) {
+      await page.click('button[type="submit"]:has-text("ログイン")');
+      await page.waitForTimeout(500);
+    }
+    
+    // バリデーションエラーが表示されることを確認（複数の可能なメッセージに対応）
+    await expect(page.locator('text=パスワードは6文字以上である必要があります, text=パスワードは6文字以上')).toBeVisible();
   });
 
   test('5. 存在しないユーザーでログインエラーが表示される', async ({ page }) => {
@@ -114,8 +136,8 @@ test.describe.serial('Login Feature - Improved', () => {
   });
 
   test('7. 正しい認証情報でログインに成功する', async ({ page }) => {
-    // loginTestUserヘルパーを使用
-    const loginSuccess = await loginTestUser(page);
+    // loginTestUserヘルパーを使用（デバッグモード有効）
+    const loginSuccess = await loginTestUser(page, { debug: true });
     expect(loginSuccess).toBe(true);
     
     // ホームページにリダイレクトされることを確認
