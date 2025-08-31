@@ -12,7 +12,7 @@ import Link from 'next/link';
 export default function VerifyPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [verificationState, setVerificationState] = useState<'verifying' | 'success' | 'error' | 'expired'>('verifying');
   const [message, setMessage] = useState('');
   const [isAutoLogin, setIsAutoLogin] = useState(false);
@@ -36,7 +36,6 @@ export default function VerifyPage() {
         });
 
         if (result?.ok) {
-          console.log('✅ Auto-login successful');
           // 3秒後にホームへリダイレクト
           setTimeout(() => {
             router.push('/');
@@ -84,6 +83,7 @@ export default function VerifyPage() {
       setVerificationState('success');
       setMessage('確認メールを送信しました。メールをご確認ください。');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // 自動ログイン後のリダイレクト処理

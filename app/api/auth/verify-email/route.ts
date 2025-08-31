@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     }
 
     // ユーザーのemailVerifiedを更新
-    const user = await prisma.user.update({
+    await prisma.user.update({
       where: { email },
       data: {
         emailVerified: new Date(),
@@ -61,9 +61,6 @@ export async function GET(request: Request) {
         },
       },
     });
-    
-    console.log('✅ Email verified successfully for:', email);
-    console.log('🔑 Created temporary login token');
 
     // 成功ページへリダイレクト（一時トークンを付与）
     return NextResponse.redirect(

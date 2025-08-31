@@ -66,7 +66,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           // ユーザー情報取得
           const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
+            where: { email: credentials.email as string },
           });
 
           if (!user || !user.emailVerified) {
@@ -78,7 +78,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: {
               identifier_token: {
                 identifier: `login:${credentials.email}`,
-                token: credentials.loginToken,
+                token: credentials.loginToken as string,
               },
             },
           });

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,7 +34,7 @@ const validatePassword = (password: string) => {
   const allRequirementsMet = Object.values(requirements).every(Boolean);
   
   if (!allRequirementsMet) {
-    const missing = [];
+    const missing: string[] = [];
     if (!requirements.minLength) missing.push('8文字以上');
     if (!requirements.hasUpperCase) missing.push('大文字');
     if (!requirements.hasLowerCase) missing.push('小文字');

@@ -5,6 +5,7 @@ import crypto from 'crypto';
 
 // 確認メール送信用の関数をインポート
 async function sendVerificationEmail(email: string, token: string) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const nodemailer = require('nodemailer');
   
   // Gmail設定がある場合はそれを使用
@@ -147,7 +148,7 @@ export async function POST(request: Request) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // ユーザーの作成（emailVerifiedはnullのまま）
-    const user = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
@@ -171,7 +172,6 @@ export async function POST(request: Request) {
     // 確認メールの送信
     try {
       await sendVerificationEmail(email, token);
-      console.log('📧 Verification email sent to:', email);
     } catch (emailError) {
       console.error('📧 Failed to send verification email:', emailError);
       // メール送信に失敗してもユーザー作成は成功扱い（後で再送信できるように）

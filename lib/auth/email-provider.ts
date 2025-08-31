@@ -1,5 +1,10 @@
 import { Resend } from 'resend';
-import type { Theme } from 'next-auth';
+// Theme type for email template
+interface Theme {
+  colorScheme?: string;
+  brandColor?: string;
+  buttonText?: string;
+}
 
 // Initialize Resend client (will use mock in development if no API key)
 const resend = process.env.RESEND_API_KEY 
@@ -82,7 +87,7 @@ export interface SendVerificationRequestParams {
   url: string;
   expires: Date;
   provider: {
-    server?: any;
+    server?: unknown;
     from?: string;
     maxAge?: number;
   };
@@ -98,17 +103,17 @@ export async function sendVerificationRequest(params: SendVerificationRequestPar
 
   // Development mode - just log the email
   if (process.env.NODE_ENV === 'development' && !resend) {
-    console.log('📧 [DEV] Email verification request:');
-    console.log('  To:', to);
-    console.log('  From:', from);
-    console.log('  URL:', url);
-    console.log('  Expires:', params.expires);
+    // console.log('📧 [DEV] Email verification request:');
+    // console.log('  To:', to);
+    // console.log('  From:', from);
+    // console.log('  URL:', url);
+    // console.log('  Expires:', params.expires);
     return;
   }
 
   // Test mode - skip actual email sending
   if (process.env.NODE_ENV === 'test' || process.env.SKIP_EMAIL_SEND === 'true') {
-    console.log('📧 [TEST] Skipping email send to:', to);
+    // console.log('📧 [TEST] Skipping email send to:', to);
     return;
   }
 
@@ -118,7 +123,7 @@ export async function sendVerificationRequest(params: SendVerificationRequestPar
   }
 
   try {
-    const data = await resend.emails.send({
+    await resend.emails.send({
       from,
       to,
       subject: `TechTrend - メールアドレスの確認`,
@@ -126,7 +131,7 @@ export async function sendVerificationRequest(params: SendVerificationRequestPar
       text: text({ url, host }),
     });
 
-    console.log('📧 Email sent successfully:', data);
+    // console.log('📧 Email sent successfully:', data);
   } catch (error) {
     console.error('📧 Failed to send email:', error);
     throw new Error('Failed to send verification email');
