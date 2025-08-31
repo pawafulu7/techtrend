@@ -51,13 +51,12 @@ jobs:
           npx prisma generate
           npx prisma db push
 
-      - name: Run tests
+      - name: Run tests (node env only)
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
           NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
-          REDIS_URL: redis://localhost:6379
           NODE_ENV: test
-        run: npm test -- --coverage
+        run: npm run test:coverage
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3

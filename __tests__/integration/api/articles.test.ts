@@ -15,7 +15,7 @@ import {
   expectCacheHit,
   _expectCacheSet,
   expectDatabaseQuery,
-} from '../helpers/mock-helpers';
+} from '@/__tests__/helpers/mock-helpers';
 import { generateSampleArticle } from './test-utils';
 
 // Manual mocksのインポート

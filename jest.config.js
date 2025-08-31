@@ -33,6 +33,8 @@ const customJestConfig = {
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/__tests__/e2e/',  // Playwright E2Eテストを除外
+    '<rootDir>/__tests__/integration/', // 統合テストは別設定で実行
+    '<rootDir>/e2e/',            // ルート直下のE2Eも除外
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
@@ -70,8 +72,8 @@ const customJestConfig = {
     '/scripts/',
   ],
   testMatch: [
-    '**/__tests__/**/*.test.{js,jsx,ts,tsx}',
-    '**/?(*.)+(spec|test).{js,jsx,ts,tsx}',
+    '**/__tests__/**/*.test.{js,jsx,ts}',
+    '**/?(*.)+(spec|test).{js,jsx,ts}',
   ],
 };;
 

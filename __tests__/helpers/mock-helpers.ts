@@ -117,6 +117,10 @@ export function setupRedisMock() {
   redisMock.keys.mockResolvedValue([]);
   
   // パイプラインのモック
+  // 一部のモック実装では pipeline が未定義のため安全にスタブ化
+  if (!(redisMock as any).pipeline) {
+    (redisMock as any).pipeline = jest.fn();
+  }
   const pipelineMock = {
     get: jest.fn().mockReturnThis(),
     set: jest.fn().mockReturnThis(),

@@ -103,5 +103,11 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: true, // 既存サーバーを再利用
     timeout: 120000,
+    env: {
+      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/techtrend_test',
+      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'test-secret-key-for-testing-purposes-only-32chars',
+      REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+      NODE_ENV: 'test',
+    },
   },
 });

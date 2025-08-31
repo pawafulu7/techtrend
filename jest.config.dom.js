@@ -32,6 +32,7 @@ const customJestConfig = {
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/__tests__/e2e/',
+    '<rootDir>/e2e/',
   ],
   testMatch: [
     '**/__tests__/**/*.test.tsx',

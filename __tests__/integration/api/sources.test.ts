@@ -15,11 +15,11 @@ import {
   expectCacheHit,
   expectCacheSet,
   expectDatabaseQuery,
-} from '../helpers/mock-helpers';
+} from '@/__tests__/helpers/mock-helpers';
 
 // Manual mocksのインポート
-import prismaMock from '../../__mocks__/lib/prisma';
-import redisMock from '../../__mocks__/lib/redis/client';
+import prismaMock from '@/__mocks__/lib/prisma';
+import redisMock from '@/__mocks__/lib/redis/client';
 
 // モックの自動適用
 jest.mock('@/lib/database');

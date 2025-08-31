@@ -61,3 +61,8 @@ jest.mock('ioredis', () => {
   }));
   return RedisMock;
 });
+
+// Mock next-auth-like auth helper used in API routes
+jest.mock('@/lib/auth/auth', () => ({
+  auth: jest.fn().mockResolvedValue(null),
+}));

@@ -1,33 +1,53 @@
-// 統合テスト用のセットアップ
-import '@testing-library/jest-dom';
+// Integration test setup
 
-// テスト用環境変数の設定
+// Polyfill for Node.js environment
+const { TextEncoder, TextDecoder } = require('util');
+const { MessageChannel, MessagePort } = require('worker_threads');
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+global.MessageChannel = MessageChannel;
+global.MessagePort = MessagePort;
+
+// Polyfill for streams
+const { ReadableStream, WritableStream, TransformStream } = require('web-streams-polyfill');
+global.ReadableStream = ReadableStream;
+global.WritableStream = WritableStream;
+global.TransformStream = TransformStream;
+
+// Setup undici for Next.js App Router API tests
+const { Request, Response, Headers, fetch, FormData } = require('undici');
+global.Request = Request;
+global.Response = Response;
+global.Headers = Headers;
+global.fetch = fetch;
+global.FormData = FormData;
+
+// Do not override DATABASE_URL here — server uses its own env
+process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'test-api-key';
 process.env.NODE_ENV = 'test';
-// PostgreSQL接続設定（テスト用DB）
-process.env.DATABASE_URL_POSTGRESQL = 'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_test';
-process.env.DATABASE_URL = process.env.DATABASE_URL_POSTGRESQL;
 
-// Redisの設定
-process.env.REDIS_HOST = 'localhost';
-process.env.REDIS_PORT = '6379';
+// Mock next/navigation only if needed
+jest.mock('next/navigation', () => ({
+  useRouter() {
+    return {
+      push: jest.fn(),
+      replace: jest.fn(),
+      refresh: jest.fn(),
+      back: jest.fn(),
+      prefetch: jest.fn(),
+    };
+  },
+  useSearchParams() {
+    return new URLSearchParams();
+  },
+  usePathname() {
+    return '';
+  },
+}));
 
-// グローバルタイムアウトの設定
-jest.setTimeout(10000);
+// Mock next-auth-like auth helper used in API routes
+jest.mock('@/lib/auth/auth', () => ({
+  auth: jest.fn().mockResolvedValue(null),
+}));
 
-// エラーログの抑制
-const originalError = console.error;
-beforeAll(() => {
-  console.error = (...args) => {
-    if (
-      typeof args[0] === 'string' &&
-      args[0].includes('Warning:')
-    ) {
-      return;
-    }
-    originalError.call(console, ...args);
-  };
-});
-
-afterAll(() => {
-  console.error = originalError;
-});
