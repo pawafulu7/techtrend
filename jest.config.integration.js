@@ -18,9 +18,6 @@ const customJestConfig = {
     '^@/app/(.*)$': '<rootDir>/app/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/components/(.*)$': '<rootDir>/components/$1',
-    // Manual mocks for integration tests as well
-    '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
-    '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
     '^next/navigation$': '<rootDir>/__mocks__/next/navigation.ts',
     '^ioredis$': '<rootDir>/__mocks__/ioredis.ts',
   },
@@ -35,7 +32,9 @@ const customJestConfig = {
     '!**/__mocks__/**',
   ],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.integration.js'],
-  testTimeout: 30000, // 統合テストは時間がかかるため30秒に設定
+  globalSetup: '<rootDir>/__tests__/integration/jest.global-setup.ts',
+  globalTeardown: '<rootDir>/__tests__/integration/jest.global-teardown.ts',
+  testTimeout: 45000, // サーバ起動・初回アクセスに余裕を持たせる
   maxWorkers: 1, // 統合テストは順次実行
   bail: false, // エラーがあっても全テスト実行
   verbose: true, // 詳細な出力
@@ -43,6 +42,7 @@ const customJestConfig = {
   clearMocks: false,
   resetMocks: false,
   restoreMocks: false,
+  modulePathIgnorePatterns: ['<rootDir>/.next/standalone'],
 };
 
 module.exports = createJestConfig(customJestConfig);
