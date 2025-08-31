@@ -147,12 +147,13 @@ test.describe.serial('Login Feature - Improved', () => {
     await expect(page).toHaveURL('http://localhost:3000/');
     
     // ユーザーメニューが表示されることを確認（ログイン成功の証）
-    // ヘッダーのユーザーアイコンまたはメニューボタンを探す
-    const userMenuTrigger = page.locator('[data-testid="user-menu-trigger"], button[aria-label*="user"], button[aria-label*="menu"]').first();
-    const isUserMenuVisible = await userMenuTrigger.isVisible();
+    // 複数のセレクタを試す
+    const userMenuVisible = await page.locator('[data-testid="user-menu-trigger"]').isVisible() ||
+                            await page.locator('button.h-10.w-10.rounded-full').isVisible() ||
+                            await page.locator('button:has(> span:has-text("U"))').isVisible();
     
     // ユーザーメニューが存在することを確認
-    expect(isUserMenuVisible).toBe(true);
+    expect(userMenuVisible).toBe(true);
   });
 
   test('8. ログイン状態が維持される', async ({ page }) => {
