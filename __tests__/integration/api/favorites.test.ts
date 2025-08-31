@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeAll } from '@jest/globals';
 import { prisma } from '@/lib/database';
 
-describe('お気に入りAPIエンドポイントテスト', () => {
+const run = process.env.INTEGRATION_E2E === 'true' ? describe : describe.skip;
+
+run('お気に入りAPIエンドポイントテスト', () => {
   const baseUrl = 'http://localhost:3000';
   let testArticleId: string;
   let sessionCookie: string | undefined;
