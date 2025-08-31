@@ -71,6 +71,10 @@ backups/
 # documentation files
 docs/
 
+# data and reports
+data/
+reports/
+
 # test and temporary files
 scripts/test-*.ts
 scripts/*-test.ts
