@@ -18,6 +18,11 @@ const customJestConfig = {
     '^@/app/(.*)$': '<rootDir>/app/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/components/(.*)$': '<rootDir>/components/$1',
+    // Manual mocks for integration tests as well
+    '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
+    '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
+    '^next/navigation$': '<rootDir>/__mocks__/next/navigation.ts',
+    '^ioredis$': '<rootDir>/__mocks__/ioredis.ts',
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   coverageDirectory: '<rootDir>/coverage/integration',
