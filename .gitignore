@@ -126,3 +126,10 @@ __tests__/e2e/**/*-actual/
 
 toolbox
 .mcp.json
+
+# Claude Code related files
+.claude/
+CLAUDE.md
+claudedocs/
+*.claude.*
+*claude-*.ts
