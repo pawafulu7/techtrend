@@ -30,6 +30,8 @@ const customJestConfig = {
     '^ioredis$': '<rootDir>/__tests__/__mocks__/ioredis.ts',
     // Mock node-fetch
     '^node-fetch$': '<rootDir>/__tests__/__mocks__/node-fetch.ts',
+    // Explicit helpers mapping for __tests__
+    '^@/__tests__/helpers/(.*)$': '<rootDir>/__tests__/helpers/$1',
     // Handle module aliases (must be last due to wildcard)
     '^@/(.*)$': '<rootDir>/$1',
   },

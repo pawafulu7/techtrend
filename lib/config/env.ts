@@ -148,11 +148,10 @@ export const config = {
     url: () => {
       const liveUrl = process.env.REDIS_URL;
       if (liveUrl && liveUrl.length > 0) return liveUrl;
-      const liveHost = process.env.REDIS_HOST;
-      const livePort = process.env.REDIS_PORT;
-      if (liveHost && livePort) return `redis://${liveHost}:${livePort}`;
       const e = getEnv();
-      return e.REDIS_URL || `redis://${e.REDIS_HOST}:${e.REDIS_PORT}`;
+      const host = process.env.REDIS_HOST || e.REDIS_HOST;
+      const port = process.env.REDIS_PORT || e.REDIS_PORT;
+      return `redis://${host}:${port}`;
     },
     host: () => env.REDIS_HOST,
     port: () => parseInt(env.REDIS_PORT, 10),
