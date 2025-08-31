@@ -143,13 +143,14 @@ export const config = {
     url: () => env.NODE_ENV === 'test' ? env.TEST_DATABASE_URL || env.DATABASE_URL : env.DATABASE_URL,
   },
   redis: {
-    // Build URL from live process.env values to reflect runtime/test overrides,
-    // falling back to sensible defaults when unset.
+    // Prefer live process.env to accommodate dynamic test changes,
+    // then fall back to validated env defaults
     url: () => {
       const liveUrl = process.env.REDIS_URL;
       if (liveUrl && liveUrl.length > 0) return liveUrl;
-      const host = process.env.REDIS_HOST || 'localhost';
-      const port = process.env.REDIS_PORT || '6379';
+      const e = getEnv();
+      const host = process.env.REDIS_HOST || e.REDIS_HOST;
+      const port = process.env.REDIS_PORT || e.REDIS_PORT;
       return `redis://${host}:${port}`;
     },
     host: () => env.REDIS_HOST,
