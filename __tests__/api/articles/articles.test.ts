@@ -8,7 +8,8 @@ jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
 // Use a direct static import to avoid CI resolution quirks
-import { testApiHandler, assertSuccessResponse, assertErrorResponse } from './test-utils.ts';
+// Use sibling helpers to avoid any per-folder resolver quirks in CI
+import { testApiHandler, assertSuccessResponse, assertErrorResponse } from '../helpers/test-utils';
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { getRedisClient } from '@/lib/redis/client';
