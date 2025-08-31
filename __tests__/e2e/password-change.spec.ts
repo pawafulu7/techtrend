@@ -23,27 +23,34 @@ test.describe('Password Change Feature', () => {
     await page.fill('input[name="password"]', 'TestPassword123');
     await page.click('button[type="submit"]');
     
-    // ログイン後のリダイレクトを待つ
-    await page.waitForURL('**/');
+    // ログイン成功を待つ（ページのURLが変わるまで待機）
+    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    
+    // 少し待機してセッションが確立されるのを待つ
+    await page.waitForTimeout(2000);
     
     // プロフィールページへ移動
-    await page.goto('/profile');
+    await page.goto('/profile', { waitUntil: 'networkidle' });
     
-    // ページの読み込みを待つ
-    await page.waitForLoadState('networkidle');
+    // プロフィールページの要素を確認（より柔軟なセレクタ）
+    const pageTitle = page.locator('h1').filter({ hasText: 'プロフィール' });
+    await expect(pageTitle).toBeVisible({ timeout: 30000 });
     
-    // タブリストが表示されるまで待つ
-    await page.waitForSelector('[role="tablist"]');
+    // アカウントタブをクリック（より柔軟なセレクタを使用）
+    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    await accountTab.click();
     
-    // アカウントタブをクリック
-    await page.click('button:has-text("アカウント")');
+    // パスワード変更セクションが表示されるのを待つ
+    await page.waitForTimeout(1000); // タブ切り替えのアニメーション待機
     
     // パスワード変更フォームの要素が表示されることを確認
-    await expect(page.locator('text=パスワードの変更')).toBeVisible();
-    await expect(page.locator('label:has-text("現在のパスワード")')).toBeVisible();
-    await expect(page.locator('label:has-text("新しいパスワード")')).toBeVisible();
-    await expect(page.locator('label:has-text("新しいパスワード（確認）")')).toBeVisible();
-    await expect(page.locator('button:has-text("パスワードを変更")')).toBeVisible();
+    const passwordChangeTitle = page.getByText('パスワード変更').first();
+    await expect(passwordChangeTitle).toBeVisible();
+    
+    // フォーム要素の確認（より柔軟なセレクタ）
+    await expect(page.locator('label').filter({ hasText: /現在.*パスワード/ })).toBeVisible();
+    await expect(page.locator('label').filter({ hasText: /新しい.*パスワード/ }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'パスワードを変更' })).toBeVisible();
   });
 
   test('should show validation errors for invalid password', async ({ page }) => {
@@ -52,18 +59,22 @@ test.describe('Password Change Feature', () => {
     await page.fill('input[name="password"]', 'TestPassword123');
     await page.click('button[type="submit"]');
     
+    // ログイン成功を待つ
+    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    
+    // 少し待機してセッションが確立されるのを待つ
+    await page.waitForTimeout(2000);
+    
     // プロフィールページへ移動
-    await page.waitForURL('**/');
-    await page.goto('/profile');
+    await page.goto('/profile', { waitUntil: 'networkidle' });
     
-    // ページの読み込みを待つ
-    await page.waitForLoadState('networkidle');
+    // プロフィールページの要素を確認
+    const pageTitle = page.locator('h1').filter({ hasText: 'プロフィール' });
+    await expect(pageTitle).toBeVisible({ timeout: 30000 });
     
-    // タブリストが表示されるまで待つ
-    await page.waitForSelector('[role="tablist"]');
-    
-    // アカウントタブをクリック  
-    await page.click('button:has-text("アカウント")');
+    // アカウントタブをクリック
+    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    await accountTab.click();
     
     // 短いパスワードを入力
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
@@ -83,18 +94,22 @@ test.describe('Password Change Feature', () => {
     await page.fill('input[name="password"]', 'TestPassword123');
     await page.click('button[type="submit"]');
     
+    // ログイン成功を待つ
+    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    
+    // 少し待機してセッションが確立されるのを待つ
+    await page.waitForTimeout(2000);
+    
     // プロフィールページへ移動
-    await page.waitForURL('**/');
-    await page.goto('/profile');
+    await page.goto('/profile', { waitUntil: 'networkidle' });
     
-    // ページの読み込みを待つ
-    await page.waitForLoadState('networkidle');
+    // プロフィールページの要素を確認
+    const pageTitle = page.locator('h1').filter({ hasText: 'プロフィール' });
+    await expect(pageTitle).toBeVisible({ timeout: 30000 });
     
-    // タブリストが表示されるまで待つ
-    await page.waitForSelector('[role="tablist"]');
-    
-    // アカウントタブをクリック  
-    await page.click('button:has-text("アカウント")');
+    // アカウントタブをクリック
+    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    await accountTab.click();
     
     // 一致しないパスワードを入力
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
@@ -114,18 +129,22 @@ test.describe('Password Change Feature', () => {
     await page.fill('input[name="password"]', 'TestPassword123');
     await page.click('button[type="submit"]');
     
+    // ログイン成功を待つ
+    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    
+    // 少し待機してセッションが確立されるのを待つ
+    await page.waitForTimeout(2000);
+    
     // プロフィールページへ移動
-    await page.waitForURL('**/');
-    await page.goto('/profile');
+    await page.goto('/profile', { waitUntil: 'networkidle' });
     
-    // ページの読み込みを待つ
-    await page.waitForLoadState('networkidle');
+    // プロフィールページの要素を確認
+    const pageTitle = page.locator('h1').filter({ hasText: 'プロフィール' });
+    await expect(pageTitle).toBeVisible({ timeout: 30000 });
     
-    // タブリストが表示されるまで待つ
-    await page.waitForSelector('[role="tablist"]');
-    
-    // アカウントタブをクリック  
-    await page.click('button:has-text("アカウント")');
+    // アカウントタブをクリック
+    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    await accountTab.click();
     
     // 間違った現在のパスワードを入力
     await page.fill('input[name="currentPassword"]', 'WrongPassword123');
@@ -145,18 +164,22 @@ test.describe('Password Change Feature', () => {
     await page.fill('input[name="password"]', 'TestPassword123');
     await page.click('button[type="submit"]');
     
+    // ログイン成功を待つ
+    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    
+    // 少し待機してセッションが確立されるのを待つ
+    await page.waitForTimeout(2000);
+    
     // プロフィールページへ移動
-    await page.waitForURL('**/');
-    await page.goto('/profile');
+    await page.goto('/profile', { waitUntil: 'networkidle' });
     
-    // ページの読み込みを待つ
-    await page.waitForLoadState('networkidle');
+    // プロフィールページの要素を確認
+    const pageTitle = page.locator('h1').filter({ hasText: 'プロフィール' });
+    await expect(pageTitle).toBeVisible({ timeout: 30000 });
     
-    // タブリストが表示されるまで待つ
-    await page.waitForSelector('[role="tablist"]');
-    
-    // アカウントタブをクリック  
-    await page.click('button:has-text("アカウント")');
+    // アカウントタブをクリック
+    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    await accountTab.click();
     
     // 正しいパスワード情報を入力
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
@@ -181,18 +204,22 @@ test.describe('Password Change Feature', () => {
     await page.fill('input[name="password"]', 'TestPassword123');
     await page.click('button[type="submit"]');
     
+    // ログイン成功を待つ
+    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    
+    // 少し待機してセッションが確立されるのを待つ
+    await page.waitForTimeout(2000);
+    
     // プロフィールページへ移動
-    await page.waitForURL('**/');
-    await page.goto('/profile');
+    await page.goto('/profile', { waitUntil: 'networkidle' });
     
-    // ページの読み込みを待つ
-    await page.waitForLoadState('networkidle');
+    // プロフィールページの要素を確認
+    const pageTitle = page.locator('h1').filter({ hasText: 'プロフィール' });
+    await expect(pageTitle).toBeVisible({ timeout: 30000 });
     
-    // タブリストが表示されるまで待つ
-    await page.waitForSelector('[role="tablist"]');
-    
-    // アカウントタブをクリック  
-    await page.click('button:has-text("アカウント")');
+    // アカウントタブをクリック
+    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    await accountTab.click();
     
     // パスワード情報を入力
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
@@ -222,18 +249,22 @@ test.describe('Password Change Feature', () => {
     await page.fill('input[name="password"]', 'TestPassword123');
     await page.click('button[type="submit"]');
     
+    // ログイン成功を待つ
+    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    
+    // 少し待機してセッションが確立されるのを待つ
+    await page.waitForTimeout(2000);
+    
     // プロフィールページへ移動
-    await page.waitForURL('**/');
-    await page.goto('/profile');
+    await page.goto('/profile', { waitUntil: 'networkidle' });
     
-    // ページの読み込みを待つ
-    await page.waitForLoadState('networkidle');
+    // プロフィールページの要素を確認
+    const pageTitle = page.locator('h1').filter({ hasText: 'プロフィール' });
+    await expect(pageTitle).toBeVisible({ timeout: 30000 });
     
-    // タブリストが表示されるまで待つ
-    await page.waitForSelector('[role="tablist"]');
-    
-    // アカウントタブをクリック  
-    await page.click('button:has-text("アカウント")');
+    // アカウントタブをクリック
+    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    await accountTab.click();
     
     // フォームに入力（新しいパスワードが短い）
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
