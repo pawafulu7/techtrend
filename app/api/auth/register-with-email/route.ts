@@ -5,8 +5,15 @@ import crypto from 'crypto';
 
 // 確認メール送信用の関数をインポート
 async function sendVerificationEmail(email: string, token: string) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const nodemailer = require('nodemailer');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let nodemailer: any;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    nodemailer = require('nodemailer');
+  } catch (_error) {
+    console.warn('Nodemailer not installed. Email sending disabled.');
+    return;
+  }
   
   // Gmail設定がある場合はそれを使用
   const transporter = nodemailer.createTransport({

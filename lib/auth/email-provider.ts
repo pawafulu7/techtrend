@@ -1,4 +1,3 @@
-import { Resend } from 'resend';
 // Theme type for email template
 interface Theme {
   colorScheme?: string;
@@ -6,10 +5,18 @@ interface Theme {
   buttonText?: string;
 }
 
-// Initialize Resend client (will use mock in development if no API key)
-const resend = process.env.RESEND_API_KEY 
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
+// Initialize Resend client dynamically
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let resend: any = null;
+if (process.env.RESEND_API_KEY) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Resend } = require('resend');
+    resend = new Resend(process.env.RESEND_API_KEY);
+  } catch (_error) {
+    console.warn('Resend module not installed. Email sending via Resend will be disabled.');
+  }
+}
 
 // Email templates
 function html(params: { url: string; host: string; theme?: Theme }) {

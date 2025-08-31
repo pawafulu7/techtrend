@@ -93,8 +93,15 @@ export interface SendVerificationRequestParams {
 // Create transporter based on environment
 function createTransporter() {
   // nodemailerを関数内で動的にインポート
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const nodemailer = require('nodemailer');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let nodemailer: any;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    nodemailer = require('nodemailer');
+  } catch (_error) {
+    console.warn('Nodemailer not installed. Email sending will be disabled.');
+    return null;
+  }
   
   // Gmail設定（アプリパスワードが必要）
   if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
@@ -177,10 +184,14 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
     
     // Etherealの場合、プレビューURLを表示（nodemailerを再度requireする必要がある）
     if (info.messageId && process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const nodemailer = require('nodemailer');
-      if (nodemailer.getTestMessageUrl) {
-        // console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const nodemailer = require('nodemailer');
+        if (nodemailer.getTestMessageUrl) {
+          // console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+        }
+      } catch (_error) {
+        // nodemailer not available, skip preview URL
       }
     }
   } catch (error) {
