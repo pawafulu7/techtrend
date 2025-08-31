@@ -7,11 +7,71 @@
 jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
-// Import test-utils directly using ES6 import
-import { testApiHandler, assertSuccessResponse, assertErrorResponse } from './test-utils';
+import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { getRedisClient } from '@/lib/redis/client';
+
+// Inline test utilities to avoid CI module resolution issues
+async function testApiHandler(
+  handler: any,
+  options: {
+    method?: string;
+    url?: string;
+    body?: any;
+    headers?: Record<string, string>;
+  } = {}
+) {
+  const {
+    method = 'GET',
+    url = 'http://localhost:3000/api/test',
+    body,
+    headers = {},
+  } = options;
+
+  const request = new NextRequest(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const response = await handler(request);
+
+  let data;
+  try {
+    data = await response.json();
+  } catch (_) {
+    data = await response.text();
+  }
+
+  return {
+    data,
+    status: response.status,
+    headers: Object.fromEntries(response.headers.entries()),
+  };
+}
+
+function assertApiResponse(response: any) {
+  expect(response).toBeDefined();
+  expect(response.status).toBeDefined();
+  expect(response.data).toBeDefined();
+}
+
+function assertSuccessResponse(response: any) {
+  assertApiResponse(response);
+  expect(response.status).toBe(200);
+  expect(response.data.success).toBe(true);
+}
+
+function assertErrorResponse(response: any, expectedStatus: number) {
+  assertApiResponse(response);
+  expect(response.status).toBe(expectedStatus);
+  expect(response.data.success).toBe(false);
+  expect(response.data.error).toBeDefined();
+}
 
 // モックインスタンスを取得
 const prismaMock = prisma as any;
