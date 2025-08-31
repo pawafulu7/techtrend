@@ -12,12 +12,20 @@ test.describe('Password Change Feature', () => {
     await page.fill('input[name="password"]', 'TestPassword123');
     await page.click('button[type="submit"]');
     
-    // プロフィールページへ移動
+    // ログイン後のリダイレクトを待つ
     await page.waitForURL('**/');
+    
+    // プロフィールページへ移動
     await page.goto('/profile');
     
+    // ページの読み込みを待つ
+    await page.waitForLoadState('networkidle');
+    
+    // タブリストが表示されるまで待つ
+    await page.waitForSelector('[role="tablist"]');
+    
     // アカウントタブをクリック
-    await page.click('button[role="tab"]:has-text("アカウント")');
+    await page.click('button:has-text("アカウント")');
     
     // パスワード変更フォームの要素が表示されることを確認
     await expect(page.locator('text=パスワードの変更')).toBeVisible();
@@ -37,8 +45,14 @@ test.describe('Password Change Feature', () => {
     await page.waitForURL('**/');
     await page.goto('/profile');
     
-    // アカウントタブをクリック
-    await page.click('button[role="tab"]:has-text("アカウント")');
+    // ページの読み込みを待つ
+    await page.waitForLoadState('networkidle');
+    
+    // タブリストが表示されるまで待つ
+    await page.waitForSelector('[role="tablist"]');
+    
+    // アカウントタブをクリック  
+    await page.click('button:has-text("アカウント")');
     
     // 短いパスワードを入力
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
@@ -62,8 +76,14 @@ test.describe('Password Change Feature', () => {
     await page.waitForURL('**/');
     await page.goto('/profile');
     
-    // アカウントタブをクリック
-    await page.click('button[role="tab"]:has-text("アカウント")');
+    // ページの読み込みを待つ
+    await page.waitForLoadState('networkidle');
+    
+    // タブリストが表示されるまで待つ
+    await page.waitForSelector('[role="tablist"]');
+    
+    // アカウントタブをクリック  
+    await page.click('button:has-text("アカウント")');
     
     // 一致しないパスワードを入力
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
@@ -87,8 +107,14 @@ test.describe('Password Change Feature', () => {
     await page.waitForURL('**/');
     await page.goto('/profile');
     
-    // アカウントタブをクリック
-    await page.click('button[role="tab"]:has-text("アカウント")');
+    // ページの読み込みを待つ
+    await page.waitForLoadState('networkidle');
+    
+    // タブリストが表示されるまで待つ
+    await page.waitForSelector('[role="tablist"]');
+    
+    // アカウントタブをクリック  
+    await page.click('button:has-text("アカウント")');
     
     // 間違った現在のパスワードを入力
     await page.fill('input[name="currentPassword"]', 'WrongPassword123');
@@ -112,8 +138,14 @@ test.describe('Password Change Feature', () => {
     await page.waitForURL('**/');
     await page.goto('/profile');
     
-    // アカウントタブをクリック
-    await page.click('button[role="tab"]:has-text("アカウント")');
+    // ページの読み込みを待つ
+    await page.waitForLoadState('networkidle');
+    
+    // タブリストが表示されるまで待つ
+    await page.waitForSelector('[role="tablist"]');
+    
+    // アカウントタブをクリック  
+    await page.click('button:has-text("アカウント")');
     
     // 正しいパスワード情報を入力
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
@@ -142,8 +174,14 @@ test.describe('Password Change Feature', () => {
     await page.waitForURL('**/');
     await page.goto('/profile');
     
-    // アカウントタブをクリック
-    await page.click('button[role="tab"]:has-text("アカウント")');
+    // ページの読み込みを待つ
+    await page.waitForLoadState('networkidle');
+    
+    // タブリストが表示されるまで待つ
+    await page.waitForSelector('[role="tablist"]');
+    
+    // アカウントタブをクリック  
+    await page.click('button:has-text("アカウント")');
     
     // パスワード情報を入力
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
@@ -177,8 +215,14 @@ test.describe('Password Change Feature', () => {
     await page.waitForURL('**/');
     await page.goto('/profile');
     
-    // アカウントタブをクリック
-    await page.click('button[role="tab"]:has-text("アカウント")');
+    // ページの読み込みを待つ
+    await page.waitForLoadState('networkidle');
+    
+    // タブリストが表示されるまで待つ
+    await page.waitForSelector('[role="tablist"]');
+    
+    // アカウントタブをクリック  
+    await page.click('button:has-text("アカウント")');
     
     // フォームに入力（新しいパスワードが短い）
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
