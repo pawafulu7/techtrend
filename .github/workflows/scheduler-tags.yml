@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: techtrend-scheduler
+  group: techtrend-scheduler-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
