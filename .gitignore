@@ -64,8 +64,12 @@ logs/
 *.log
 
 # backup files
+backup/
 backups/
 *.backup
+
+# documentation files
+docs/
 
 # test and temporary files
 scripts/test-*.ts
