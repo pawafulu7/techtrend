@@ -45,13 +45,13 @@ export function RecommendationSection({ forceHidden = false }: RecommendationSec
       const response = await fetch('/api/recommendations?limit=5');
       
       if (!response.ok) {
-        const errorText = await response.text();
+        await response.text(); // Read error text but don't use it
         throw new Error(`Failed to fetch recommendations: ${response.status}`);
       }
       
       const data = await response.json();
       setRecommendations(data);
-    } catch (err) {
+    } catch (_err) {
       setError('推薦記事の取得に失敗しました');
     } finally {
       setLoading(false);

@@ -47,7 +47,7 @@ export default function VerifyPage() {
       } else {
         // Token validation failed
       }
-    } catch (error) {
+    } catch (_error) {
       // Auto-login error
     }
   };

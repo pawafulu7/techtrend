@@ -16,7 +16,7 @@ export function useReadStatus(articleIds?: string[]) {
       if (stored) {
         return new Set<string>(JSON.parse(stored));
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently handle localStorage errors
     }
     return new Set<string>();
@@ -47,11 +47,11 @@ export function useReadStatus(articleIds?: string[]) {
         // localStorageに保存
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newReadArticleIds)));
-        } catch (error) {
+        } catch (_error) {
           // Error saving read status to localStorage
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Error fetching read status
     } finally {
       setIsLoading(false);
@@ -75,14 +75,14 @@ export function useReadStatus(articleIds?: string[]) {
           // localStorageに保存
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-          } catch (error) {
+          } catch (_error) {
             // Error saving read status to localStorage
           }
           return newSet;
         });
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
-    } catch (error) {
+    } catch (_error) {
     }
   }, [session]);
 
@@ -102,14 +102,14 @@ export function useReadStatus(articleIds?: string[]) {
           // localStorageに保存
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-          } catch (error) {
+          } catch (_error) {
             // Error saving read status to localStorage
           }
           return newSet;
         });
         setUnreadCount(prev => prev + 1);
       }
-    } catch (error) {
+    } catch (_error) {
     }
   }, [session]);
 

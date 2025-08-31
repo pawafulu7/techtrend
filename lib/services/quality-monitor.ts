@@ -372,8 +372,9 @@ if (require.main === module) {
 
       // 推薦
       const recommendations = await monitor.getRegenerationRecommendations(10);
-      for (const rec of recommendations) {
-      }
+      // Process recommendations if needed
+      // for (const rec of recommendations) {
+      // }
     }
 
     await monitor.disconnect();

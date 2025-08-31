@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (_error) {
     
     if (error instanceof Error && error.message === 'User already exists') {
       return NextResponse.json(

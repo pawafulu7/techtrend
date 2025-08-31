@@ -344,7 +344,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
       message: '記事を正常に追加しました'
     };
     
-  } catch (error) {
+  } catch (_error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : '不明なエラーが発生しました'

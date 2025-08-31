@@ -33,7 +33,7 @@ export default function SourcesContent() {
       const response = await fetch('/api/sources');
       const data = await response.json();
       setAllSources(data.sources);
-    } catch (error) {
+    } catch (_error) {
     } finally {
       setLoading(false);
     }

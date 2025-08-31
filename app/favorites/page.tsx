@@ -55,7 +55,7 @@ export default function FavoritesPage() {
 
       const data = await response.json();
       setFavorites(data.favorites);
-    } catch (error) {
+    } catch (_error) {
       setError(error instanceof Error ? error.message : 'エラーが発生しました');
     } finally {
       setLoading(false);
@@ -74,7 +74,7 @@ export default function FavoritesPage() {
 
       // 楽観的UIアップデート
       setFavorites(prev => prev.filter(fav => fav.id !== articleId));
-    } catch (error) {
+    } catch (_error) {
       setError(error instanceof Error ? error.message : 'エラーが発生しました');
     }
   };

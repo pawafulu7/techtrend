@@ -59,7 +59,7 @@ export function HomeClient({ viewMode, sources: _sources, tags: _tags, showIniti
         requestAnimationFrame(() => {
           setLoading(false);
         });
-      } catch (error) {
+      } catch (_error) {
         setError(error instanceof Error ? error.message : 'An error occurred');
         setLoading(false);
       }

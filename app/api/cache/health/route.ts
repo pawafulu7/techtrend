@@ -26,7 +26,7 @@ export async function GET() {
         responseTime,
         error: null
       };
-    } catch (error) {
+    } catch (_error) {
       redisHealth = {
         connected: false,
         responseTime: -1,
@@ -73,7 +73,7 @@ export async function GET() {
     return NextResponse.json(response, {
       status: isHealthy ? 200 : 503
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       {
         status: 'error',

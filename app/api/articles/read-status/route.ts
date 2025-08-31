@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
       readArticleIds: readArticles.map(a => a.articleId),
       unreadCount
     });
-  } catch (error) {
+  } catch (_error) {
     // Error fetching read status
     return NextResponse.json(
       { error: 'Failed to fetch read status' },
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, articleView });
-  } catch (error) {
+  } catch (_error) {
     // Error marking article as read
     return NextResponse.json(
       { error: 'Failed to mark article as read' },
@@ -174,7 +174,7 @@ export async function PUT(_req: NextRequest) {
       try {
         await redisService.clearPattern(`unread:${session.user.id}*`);
         await redisService.clearPattern(`read:${session.user.id}*`);
-      } catch (redisError) {
+      } catch (_redisError) {
         // Redis cache clear error
         // Redisエラーは無視して処理を続行
       }
@@ -185,7 +185,7 @@ export async function PUT(_req: NextRequest) {
       markedCount,
       remainingUnreadCount: 0
     });
-  } catch (error) {
+  } catch (_error) {
     // Error marking all articles as read
     return NextResponse.json(
       { error: 'Failed to mark all articles as read' },
@@ -228,7 +228,7 @@ export async function DELETE(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (_error) {
     // Error marking article as unread
     return NextResponse.json(
       { error: 'Failed to mark article as unread' },

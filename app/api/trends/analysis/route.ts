@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
     response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
     
     return response;
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Failed to fetch trend analysis' },
       { status: 500 }

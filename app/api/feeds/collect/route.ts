@@ -113,14 +113,14 @@ async function performCollect() {
                 }
               }
             }
-          } catch (error) {
+          } catch (_error) {
             if (!result.error) {
               result.error = '';
             }
             result.error += `Article error: ${error instanceof Error ? error.message : String(error)}; `;
           }
         }
-      } catch (error) {
+      } catch (_error) {
         result.success = false;
         result.error = `Source error: ${error instanceof Error ? error.message : String(error)}`;
       }
@@ -139,7 +139,7 @@ async function performCollect() {
         },
       },
     } as ApiResponse<{ results: CollectResult[]; summary: { totalFetched: number; totalCreated: number; totalErrors: number; } }>);
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({
       success: false,
       error: 'Failed to collect feeds',

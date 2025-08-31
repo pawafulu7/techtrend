@@ -21,7 +21,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ articleId })
         });
-      } catch (error) {
+      } catch (_error) {
       }
     };
 

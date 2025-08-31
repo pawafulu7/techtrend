@@ -178,7 +178,7 @@ export async function POST(request: Request) {
     // 確認メールの送信
     try {
       await sendVerificationEmail(email, token);
-    } catch (emailError) {
+    } catch (_emailError) {
       // Failed to send verification email
       // メール送信に失敗してもユーザー作成は成功扱い（後で再送信できるように）
     }
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
       success: true,
       message: 'アカウントを作成しました。確認メールをご確認ください。',
     });
-  } catch (error) {
+  } catch (_error) {
     // Registration error
     return NextResponse.json(
       { error: 'アカウント作成中にエラーが発生しました' },

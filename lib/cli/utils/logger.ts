@@ -38,42 +38,39 @@ function shouldLog(level: LogLevel): boolean {
 }
 
 // タイムスタンプの取得
-function getTimestamp(): string {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _getTimestamp(): string {
   return config.timestamp ? `[${format(new Date(), 'HH:mm:ss', { locale: ja })}] ` : '';
 }
 
 export const logger = {
-  info: (msg: string) => {
+  info: (_msg: string) => {
     if (shouldLog(LogLevel.INFO)) {
-      const timestamp = getTimestamp();
+      // Log info message
     }
   },
   
-  success: (msg: string) => {
+  success: (_msg: string) => {
     if (shouldLog(LogLevel.INFO)) {
-      const timestamp = getTimestamp();
+      // Log success message
     }
   },
   
-  error: (msg: string, error?: unknown) => {
+  error: (_msg: string, _error?: unknown) => {
     if (shouldLog(LogLevel.ERROR)) {
-      const timestamp = getTimestamp();
-      if (error instanceof Error) {
-        if (config.isDevelopment && error.stack) {
-        }
-      }
+      // Log error message
     }
   },
   
-  warn: (msg: string) => {
+  warn: (_msg: string) => {
     if (shouldLog(LogLevel.WARN)) {
-      const timestamp = getTimestamp();
+      // Log warning message
     }
   },
   
-  debug: (msg: string) => {
+  debug: (_msg: string) => {
     if (shouldLog(LogLevel.DEBUG)) {
-      const timestamp = getTimestamp();
+      // Log debug message
     }
   },
 

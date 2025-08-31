@@ -179,7 +179,7 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
         // nodemailer not available, skip preview URL
       }
     }
-  } catch (error) {
+  } catch (_error) {
     throw new Error('Failed to send verification email');
   }
 }

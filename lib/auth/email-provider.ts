@@ -131,7 +131,7 @@ export async function sendVerificationRequest(params: SendVerificationRequestPar
       text: text({ url, host }),
     });
 
-  } catch (error) {
+  } catch (_error) {
     throw new Error('Failed to send verification email');
   }
 }

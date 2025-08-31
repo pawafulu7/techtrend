@@ -59,7 +59,7 @@ export default function HistoryPage() {
 
       const data = await response.json();
       setViews(data.views);
-    } catch (error) {
+    } catch (_error) {
       setError(error instanceof Error ? error.message : 'エラーが発生しました');
     } finally {
       setLoading(false);
@@ -77,7 +77,7 @@ export default function HistoryPage() {
       }
 
       setViews([]);
-    } catch (error) {
+    } catch (_error) {
       setError(error instanceof Error ? error.message : 'エラーが発生しました');
     }
   };

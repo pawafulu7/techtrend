@@ -103,10 +103,6 @@ export function handleApiError(
   path?: string
 ): NextResponse<ErrorResponse> {
   // Log error for monitoring
-    error,
-    path,
-    timestamp: new Date().toISOString(),
-  });
 
   // Handle known error types
   if (error instanceof ApiError) {

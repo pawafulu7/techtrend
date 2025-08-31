@@ -66,7 +66,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(
       new URL(`/auth/verify?success=true&email=${encodeURIComponent(email)}&loginToken=${tempLoginToken}`, request.url)
     );
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.redirect(
       new URL('/auth/verify?error=verification_failed', request.url)
     );

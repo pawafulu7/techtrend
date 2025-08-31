@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       success: true,
       message: 'Token is valid',
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Token validation failed' },
       { status: 500 }

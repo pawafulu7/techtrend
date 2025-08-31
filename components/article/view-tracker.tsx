@@ -24,7 +24,7 @@ export function ViewTracker({ articleId }: ViewTrackerProps) {
         if (response.ok) {
           hasRecordedRef.current = true;
         }
-      } catch (error) {
+      } catch (_error) {
       }
     };
     
