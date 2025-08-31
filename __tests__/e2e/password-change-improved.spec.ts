@@ -54,7 +54,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
     await accountTab.click();
     await page.waitForTimeout(500);
     
@@ -78,7 +78,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
     await accountTab.click();
     await page.waitForTimeout(500);
     
@@ -102,7 +102,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
     await accountTab.click();
     await page.waitForTimeout(500);
     
@@ -126,7 +126,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
     await accountTab.click();
     await page.waitForTimeout(500);
     
@@ -150,7 +150,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
     await accountTab.click();
     await page.waitForTimeout(500);
     
@@ -179,7 +179,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
     await accountTab.click();
     await page.waitForTimeout(500);
     
