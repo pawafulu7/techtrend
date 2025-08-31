@@ -99,7 +99,7 @@ describe('content-analyzer', () => {
         
         expect(analysis.isThinContent).toBe(false);
         expect(analysis.recommendedMinLength).toBe(180);
-        expect(analysis.recommendedMaxLength).toBe(400);
+        expect(analysis.recommendedMaxLength).toBe(300);
       });
     });
   });
