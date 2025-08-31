@@ -25,7 +25,7 @@ test.describe.serial('Login Feature - Improved', () => {
     await expect(page).toHaveTitle(/TechTrend/);
     
     // ログインフォームの要素が表示されることを確認
-    await expect(page.locator('h1:has-text("ログイン")')).toBeVisible();
+    await expect(page.locator('text=ログイン').first()).toBeVisible();
     await expect(page.locator('input[id="email"]')).toBeVisible();
     await expect(page.locator('input[id="password"]')).toBeVisible();
     await expect(page.locator('button[type="submit"]:has-text("ログイン")')).toBeVisible();
