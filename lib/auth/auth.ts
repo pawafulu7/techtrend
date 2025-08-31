@@ -16,6 +16,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     // Email provider for magic link authentication
     EmailProvider({
+      // Dummy server config for Resend (actual sending is handled by sendVerificationRequest)
+      server: {
+        host: 'smtp.resend.com',
+        port: 465,
+        auth: {
+          user: 'resend',
+          pass: process.env.RESEND_API_KEY || 'dummy',
+        },
+      },
       from: process.env.EMAIL_FROM || 'noreply@techtrend.example.com',
       sendVerificationRequest,
       maxAge: 24 * 60 * 60, // 24 hours
