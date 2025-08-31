@@ -7,9 +7,10 @@
 jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
-// Import local test-utils directly - file exists in same directory
+// Import test-utils using absolute path for CI reliability
+import * as path from 'path';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const _helpers = require('./test-utils');
+const _helpers = require(path.join(__dirname, 'test-utils'));
 
 const { testApiHandler, assertSuccessResponse, assertErrorResponse } = _helpers as {
   testApiHandler: any;
