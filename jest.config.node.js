@@ -14,6 +14,8 @@ const customJestConfig = {
     'node_modules/(?!(node-fetch)/)',
   ],
   moduleNameMapper: {
+    // Direct mapping for relative helper import used in some tests
+    '^\.\.\/\.\.\/helpers\/test-utils$': '<rootDir>/__tests__/helpers/test-utils.ts',
     // Manual mocks for Prisma and Redis (must come before generic alias)
     '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
     '^@/lib/prisma/(.*)$': '<rootDir>/__mocks__/lib/prisma.ts',
