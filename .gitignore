@@ -133,3 +133,4 @@ CLAUDE.md
 claudedocs/
 *.claude.*
 *claude-*.ts
+.serena/
