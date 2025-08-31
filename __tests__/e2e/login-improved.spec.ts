@@ -42,9 +42,15 @@ test.describe.serial('Login Feature - Improved', () => {
     // 何も入力せずに送信ボタンをクリック
     await page.click('button[type="submit"]:has-text("ログイン")');
     
+    // バリデーションエラーが表示されるまで少し待つ
+    await page.waitForTimeout(500);
+    
     // バリデーションエラーが表示されることを確認
-    await expect(page.locator('text=メールアドレスを入力してください')).toBeVisible();
-    await expect(page.locator('text=パスワードを入力してください')).toBeVisible();
+    // React Hook Formのエラーは <p class="text-sm text-destructive"> 内に表示される
+    const emailError = page.locator('p.text-destructive:has-text("メールアドレスを入力してください")');
+    const passwordError = page.locator('p.text-destructive:has-text("パスワードを入力してください")');
+    await expect(emailError).toBeVisible({ timeout: 5000 });
+    await expect(passwordError).toBeVisible({ timeout: 5000 });
   });
 
   test('3. 無効なメールアドレスでエラーが表示される', async ({ page }) => {
@@ -55,22 +61,17 @@ test.describe.serial('Login Feature - Improved', () => {
     await page.fill('input[id="email"]', 'invalid-email');
     await page.fill('input[id="password"]', 'password123');
     
-    // 複数の方法でバリデーションをトリガー
-    // 方法1: フォーカスを外す（blur）
-    await page.locator('input[id="email"]').blur();
-    await page.waitForTimeout(500); // バリデーション処理を待つ
+    // 送信ボタンをクリックしてバリデーションをトリガー
+    // React Hook Formは送信時に確実にバリデーションを実行する
+    await page.click('button[type="submit"]:has-text("ログイン")');
     
-    // バリデーションエラーが表示されているか確認
-    let errorVisible = await page.locator('text=有効なメールアドレスを入力してください').isVisible();
-    
-    // 方法2: エラーが表示されていない場合は、送信ボタンをクリックしてバリデーションをトリガー
-    if (!errorVisible) {
-      await page.click('button[type="submit"]:has-text("ログイン")');
-      await page.waitForTimeout(500);
-    }
+    // バリデーションエラーが表示されるまで少し待つ
+    await page.waitForTimeout(500);
     
     // バリデーションエラーが表示されることを確認
-    await expect(page.locator('text=有効なメールアドレスを入力してください, text=メールアドレスの形式が正しくありません')).toBeVisible();
+    // React Hook Formのエラーは <p class="text-sm text-destructive"> 内に表示される
+    const errorMessage = page.locator('p.text-destructive:has-text("有効なメールアドレスを入力してください")');
+    await expect(errorMessage).toBeVisible({ timeout: 5000 });
   });
 
   test('4. 短いパスワードでエラーが表示される', async ({ page }) => {
@@ -81,22 +82,17 @@ test.describe.serial('Login Feature - Improved', () => {
     await page.fill('input[id="email"]', 'test@example.com');
     await page.fill('input[id="password"]', '12345');
     
-    // 複数の方法でバリデーションをトリガー
-    // 方法1: フォーカスを外す（blur）
-    await page.locator('input[id="password"]').blur();
-    await page.waitForTimeout(500); // バリデーション処理を待つ
+    // 送信ボタンをクリックしてバリデーションをトリガー
+    // React Hook Formは送信時に確実にバリデーションを実行する
+    await page.click('button[type="submit"]:has-text("ログイン")');
     
-    // バリデーションエラーが表示されているか確認
-    let errorVisible = await page.locator('text=パスワードは6文字以上である必要があります').isVisible();
+    // バリデーションエラーが表示されるまで少し待つ
+    await page.waitForTimeout(500);
     
-    // 方法2: エラーが表示されていない場合は、送信ボタンをクリックしてバリデーションをトリガー
-    if (!errorVisible) {
-      await page.click('button[type="submit"]:has-text("ログイン")');
-      await page.waitForTimeout(500);
-    }
-    
-    // バリデーションエラーが表示されることを確認（複数の可能なメッセージに対応）
-    await expect(page.locator('text=パスワードは6文字以上である必要があります, text=パスワードは6文字以上')).toBeVisible();
+    // バリデーションエラーが表示されることを確認
+    // React Hook Formのエラーは <p class="text-sm text-destructive"> 内に表示される
+    const errorMessage = page.locator('p.text-destructive:has-text("パスワードは6文字以上である必要があります")');
+    await expect(errorMessage).toBeVisible({ timeout: 5000 });
   });
 
   test('5. 存在しないユーザーでログインエラーが表示される', async ({ page }) => {
