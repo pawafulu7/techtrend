@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { SignupForm } from '@/components/auth/SignupForm';
+import { EmailSignupForm } from '@/components/auth/EmailSignupForm';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -63,7 +65,18 @@ export default function SignupPage() {
             </div>
           </div>
 
-          <SignupForm />
+          <Tabs defaultValue="email" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="email">メールで登録</TabsTrigger>
+              <TabsTrigger value="password">パスワードで登録</TabsTrigger>
+            </TabsList>
+            <TabsContent value="email" className="mt-4">
+              <EmailSignupForm />
+            </TabsContent>
+            <TabsContent value="password" className="mt-4">
+              <SignupForm />
+            </TabsContent>
+          </Tabs>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <div className="text-sm text-muted-foreground text-center">

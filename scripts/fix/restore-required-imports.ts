@@ -17,7 +17,7 @@ let fixedCount = 0;
 files.forEach(file => {
   const filePath = path.resolve(file);
   let content = readFileSync(filePath, 'utf-8');
-  let originalContent = content;
+  const originalContent = content;
   const changes: string[] = [];
   
   // ESLintでこのファイルのエラーをチェック

@@ -21,7 +21,7 @@ export abstract class BaseFetcher {
    * Default implementation delegates to fetch().
    * Deprecated — prefer overriding fetch() directly.
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   protected async fetchInternal(): Promise<FetchResult> {
     return this.fetch();
   }
