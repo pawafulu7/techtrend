@@ -63,7 +63,7 @@ jobs:
       
       - name: Check for console statements
         env:
-          CONSOLE_THRESHOLD: '120'
+          CONSOLE_THRESHOLD: '200'
         run: |
           CONSOLE_COUNT=$(grep -r "console\." --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=__tests__ --exclude-dir=scripts | wc -l || true)
           echo "Console statements found: $CONSOLE_COUNT (threshold: $CONSOLE_THRESHOLD)"

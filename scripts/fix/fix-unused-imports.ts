@@ -36,8 +36,8 @@ const fixedFiles: string[] = [];
 files.forEach(file => {
   const filePath = path.resolve(file);
   let content = readFileSync(filePath, 'utf-8');
-  let originalContent = content;
-  let changes: string[] = [];
+  const originalContent = content;
+  const changes: string[] = [];
 
   // catch文のerrorを_errorに変更（まだ残っているもの）
   const catchPattern = /catch\s*\(\s*(?:error|err)\s*\)/g;

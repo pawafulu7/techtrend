@@ -42,7 +42,7 @@ results.forEach((file: any) => {
   if (unusedErrors.length === 0) return;
   
   let content = readFileSync(filePath, 'utf-8');
-  let originalContent = content;
+  const originalContent = content;
   const fixes = new Set<string>();
   
   unusedErrors.forEach((error: any) => {
