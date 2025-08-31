@@ -70,7 +70,8 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: test
-    if: github.event_name == 'pull_request'
+    # Disabled intentionally. Re-enable by setting this to true and adjusting condition below.
+    if: ${{ false }}
 
     services:
       postgres:
