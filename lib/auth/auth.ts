@@ -1,10 +1,12 @@
 import NextAuth from 'next-auth';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import EmailProvider from 'next-auth/providers/email';
 import GoogleProvider from 'next-auth/providers/google';
 import GitHubProvider from 'next-auth/providers/github';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import { sendVerificationRequest } from './email-provider';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Ensure secret is picked up in all environments
@@ -12,6 +14,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   
   providers: [
+    // Email provider for magic link authentication
+    EmailProvider({
+      server: process.env.EMAIL_SERVER,
+      from: process.env.EMAIL_FROM || 'noreply@techtrend.example.com',
+      sendVerificationRequest,
+      maxAge: 24 * 60 * 60, // 24 hours
+    }),
+    
     CredentialsProvider({
       name: 'credentials',
       credentials: {

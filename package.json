@@ -128,6 +128,7 @@
     "react-dom": "19.1.0",
     "react-hook-form": "^7.62.0",
     "recharts": "^3.1.0",
+    "resend": "^6.0.2",
     "rss-parser": "^3.13.0",
     "tailwind-merge": "^3.3.1",
     "winston": "^3.17.0",
