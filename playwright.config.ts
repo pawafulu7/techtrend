@@ -12,13 +12,13 @@ export default defineConfig({
   /* Global timeout for each test */
   timeout: 120000,  // 120秒に延長
   /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,  // E2Eテストの安定性向上のためシリアル実行に変更
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,  // 並列実行時の競合を避けるため1ワーカーに制限
   /* Global setup and teardown */
   // globalSetup: './__tests__/e2e/global-setup.ts',
   // globalTeardown: './__tests__/e2e/global-teardown.ts',

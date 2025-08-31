@@ -19,12 +19,12 @@ test.describe('Password Change Feature', () => {
 
   test('should display password change form in profile page', async ({ page }) => {
     // テストユーザーでログイン
-    await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="password"]', 'TestPassword123');
-    await page.click('button[type="submit"]');
+    await page.fill('input[id="email"]', 'test@example.com');
+    await page.fill('input[id="password"]', 'TestPassword123');
+    await page.click('button[type="submit"]:has-text("ログイン")');
     
-    // ログイン成功を待つ（ページのURLが変わるまで待機）
-    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    // ログイン成功を待つ（ホームページへのリダイレクトを待つ）
+    await page.waitForURL('/', { timeout: 30000 });
     
     // 少し待機してセッションが確立されるのを待つ
     await page.waitForTimeout(2000);
@@ -55,12 +55,12 @@ test.describe('Password Change Feature', () => {
 
   test('should show validation errors for invalid password', async ({ page }) => {
     // テストユーザーでログイン
-    await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="password"]', 'TestPassword123');
-    await page.click('button[type="submit"]');
+    await page.fill('input[id="email"]', 'test@example.com');
+    await page.fill('input[id="password"]', 'TestPassword123');
+    await page.click('button[type="submit"]:has-text("ログイン")');
     
     // ログイン成功を待つ
-    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    await page.waitForURL('/', { timeout: 30000 });
     
     // 少し待機してセッションが確立されるのを待つ
     await page.waitForTimeout(2000);
@@ -90,12 +90,12 @@ test.describe('Password Change Feature', () => {
 
   test('should show error when passwords do not match', async ({ page }) => {
     // テストユーザーでログイン
-    await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="password"]', 'TestPassword123');
-    await page.click('button[type="submit"]');
+    await page.fill('input[id="email"]', 'test@example.com');
+    await page.fill('input[id="password"]', 'TestPassword123');
+    await page.click('button[type="submit"]:has-text("ログイン")');
     
     // ログイン成功を待つ
-    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    await page.waitForURL('/', { timeout: 30000 });
     
     // 少し待機してセッションが確立されるのを待つ
     await page.waitForTimeout(2000);
@@ -125,12 +125,12 @@ test.describe('Password Change Feature', () => {
 
   test('should show error for incorrect current password', async ({ page }) => {
     // テストユーザーでログイン
-    await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="password"]', 'TestPassword123');
-    await page.click('button[type="submit"]');
+    await page.fill('input[id="email"]', 'test@example.com');
+    await page.fill('input[id="password"]', 'TestPassword123');
+    await page.click('button[type="submit"]:has-text("ログイン")');
     
     // ログイン成功を待つ
-    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    await page.waitForURL('/', { timeout: 30000 });
     
     // 少し待機してセッションが確立されるのを待つ
     await page.waitForTimeout(2000);
@@ -160,12 +160,12 @@ test.describe('Password Change Feature', () => {
 
   test('should successfully change password with valid inputs', async ({ page }) => {
     // テストユーザーでログイン
-    await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="password"]', 'TestPassword123');
-    await page.click('button[type="submit"]');
+    await page.fill('input[id="email"]', 'test@example.com');
+    await page.fill('input[id="password"]', 'TestPassword123');
+    await page.click('button[type="submit"]:has-text("ログイン")');
     
     // ログイン成功を待つ
-    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    await page.waitForURL('/', { timeout: 30000 });
     
     // 少し待機してセッションが確立されるのを待つ
     await page.waitForTimeout(2000);
@@ -190,7 +190,7 @@ test.describe('Password Change Feature', () => {
     await page.click('button:has-text("パスワードを変更")');
     
     // 成功メッセージが表示されることを確認
-    await expect(page.locator('text=/パスワードが正常に変更されました|Password changed successfully/')).toBeVisible();
+    await expect(page.locator('text=/パスワードを変更しました|Password changed successfully/')).toBeVisible();
     
     // フォームがクリアされることを確認
     await expect(page.locator('input[name="currentPassword"]')).toHaveValue('');
@@ -200,12 +200,12 @@ test.describe('Password Change Feature', () => {
 
   test('should show loading state during password change', async ({ page }) => {
     // テストユーザーでログイン
-    await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="password"]', 'TestPassword123');
-    await page.click('button[type="submit"]');
+    await page.fill('input[id="email"]', 'test@example.com');
+    await page.fill('input[id="password"]', 'TestPassword123');
+    await page.click('button[type="submit"]:has-text("ログイン")');
     
     // ログイン成功を待つ
-    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    await page.waitForURL('/', { timeout: 30000 });
     
     // 少し待機してセッションが確立されるのを待つ
     await page.waitForTimeout(2000);
@@ -245,12 +245,12 @@ test.describe('Password Change Feature', () => {
 
   test('should maintain form state on validation error', async ({ page }) => {
     // テストユーザーでログイン
-    await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="password"]', 'TestPassword123');
-    await page.click('button[type="submit"]');
+    await page.fill('input[id="email"]', 'test@example.com');
+    await page.fill('input[id="password"]', 'TestPassword123');
+    await page.click('button[type="submit"]:has-text("ログイン")');
     
     // ログイン成功を待つ
-    await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 30000 });
+    await page.waitForURL('/', { timeout: 30000 });
     
     // 少し待機してセッションが確立されるのを待つ
     await page.waitForTimeout(2000);

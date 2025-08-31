@@ -18,7 +18,7 @@ export async function setupTestUser() {
         'test@example.com',
         'Test User',
         -- bcrypt hash of 'TestPassword123' (10 rounds)
-        '$2a$10$K7L1OGQvgBqNw2K8HZbJnOXxJ5VZJaE7ePWPQhYpYc.bY.dNZKWze',
+        '$2a$10$3RXlx0pvlAYMNSOgkQ6Mn.vqxhkbzOs4loaPljQcIWOzha7KAqq7O',
         NOW(),
         NOW(),
         NOW()
@@ -26,8 +26,9 @@ export async function setupTestUser() {
     `;
     
     // Docker経由でPostgreSQLに直接SQLを実行
+    // Note: Using development database as the dev server connects to it
     execSync(
-      `echo "${sql}" | docker exec -i techtrend-postgres-test psql -U postgres -d techtrend_test`,
+      `echo "${sql}" | docker exec -i techtrend-postgres psql -U postgres -d techtrend_dev`,
       { stdio: 'pipe' }
     );
     
@@ -47,7 +48,7 @@ export async function cleanupTestUser() {
     const sql = `DELETE FROM "User" WHERE email = 'test@example.com';`;
     
     execSync(
-      `echo '${sql}' | docker exec -i techtrend-postgres-test psql -U postgres -d techtrend_test`,
+      `echo '${sql}' | docker exec -i techtrend-postgres psql -U postgres -d techtrend_dev`,
       { stdio: 'pipe' }
     );
     
