@@ -7,9 +7,43 @@
 jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
-// Use a direct static import to avoid CI resolution quirks
-// Use sibling helpers to avoid any per-folder resolver quirks in CI
-import { testApiHandler, assertSuccessResponse, assertErrorResponse } from '../helpers/test-utils.ts';
+// Helper import with robust multi-path resolution for CI differences
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const _helpers = (() => {
+  try {
+    // Prefer sibling helpers folder
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('../helpers/test-utils.ts');
+  } catch (_e1) {
+    try {
+      // Without extension (some resolvers handle this)
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      return require('../helpers/test-utils');
+    } catch (_e2) {
+      try {
+        // Local bridge in same folder
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        return require('./test-utils.ts');
+      } catch (_e3) {
+        try {
+          // Extensionless local bridge
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          return require('./test-utils');
+        } catch (_e4) {
+          // Fallback to top-level alias
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          return require('@/__tests__/helpers/test-utils');
+        }
+      }
+    }
+  }
+})();
+
+const { testApiHandler, assertSuccessResponse, assertErrorResponse } = _helpers as {
+  testApiHandler: any;
+  assertSuccessResponse: (resp: any) => void;
+  assertErrorResponse: (resp: any, status: number) => void;
+};
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { getRedisClient } from '@/lib/redis/client';
