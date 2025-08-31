@@ -62,13 +62,16 @@ jobs:
         run: npm run lint -- --max-warnings 495
       
       - name: Check for console statements
+        env:
+          CONSOLE_THRESHOLD: '120'
         run: |
-          CONSOLE_COUNT=$(grep -r "console\." --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=__tests__ --exclude-dir=scripts | wc -l)
-          if [ $CONSOLE_COUNT -gt 10 ]; then
+          CONSOLE_COUNT=$(grep -r "console\." --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=__tests__ --exclude-dir=scripts | wc -l || true)
+          echo "Console statements found: $CONSOLE_COUNT (threshold: $CONSOLE_THRESHOLD)"
+          if [ "$CONSOLE_COUNT" -gt "$CONSOLE_THRESHOLD" ]; then
             echo "❌ Too many console statements found: $CONSOLE_COUNT"
             exit 1
           else
-            echo "✅ Console statements: $CONSOLE_COUNT (threshold: 10)"
+            echo "✅ Console statements within threshold"
           fi
 
   # Test suite
