@@ -7,16 +7,8 @@
 jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
-// Import test-utils using absolute path for CI reliability
-import * as path from 'path';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const _helpers = require(path.join(__dirname, 'test-utils'));
-
-const { testApiHandler, assertSuccessResponse, assertErrorResponse } = _helpers as {
-  testApiHandler: any;
-  assertSuccessResponse: (resp: any) => void;
-  assertErrorResponse: (resp: any, status: number) => void;
-};
+// Import test-utils directly using ES6 import
+import { testApiHandler, assertSuccessResponse, assertErrorResponse } from './test-utils';
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { getRedisClient } from '@/lib/redis/client';
