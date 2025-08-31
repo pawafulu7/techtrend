@@ -61,3 +61,5 @@ const customJestConfig = {
 };
 
 module.exports = createJestConfig(customJestConfig);
+    // Dedicated test utils alias to avoid relative path issues
+    '^#test-utils$': '<rootDir>/__tests__/helpers/test-utils.ts',
