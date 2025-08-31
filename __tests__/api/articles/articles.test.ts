@@ -7,8 +7,31 @@
 jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
-// Use local bridge to avoid resolver differences across environments
-import { testApiHandler, assertSuccessResponse, assertErrorResponse } from './test-utils';
+// Robust helper import across CI variants (fallback to ../helpers)
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const helpers = (() => {
+  try {
+    // Local bridge (preferred)
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('./test-utils');
+  } catch (_e) {
+    try {
+      // Direct sibling helpers
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      return require('../helpers/test-utils');
+    } catch (_e2) {
+      // Top-level helpers fallback
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      return require('@/__tests__/helpers/test-utils');
+    }
+  }
+})();
+
+const { testApiHandler, assertSuccessResponse, assertErrorResponse } = helpers as {
+  testApiHandler: any;
+  assertSuccessResponse: (resp: any) => void;
+  assertErrorResponse: (resp: any, status: number) => void;
+};
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { getRedisClient } from '@/lib/redis/client';
