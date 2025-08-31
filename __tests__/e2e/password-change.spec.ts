@@ -1,6 +1,17 @@
 import { test, expect } from '@playwright/test';
+import { setupTestUser, cleanupTestUser } from './setup-test-user';
 
 test.describe('Password Change Feature', () => {
+  // テストスイート開始前にテストユーザーを作成
+  test.beforeAll(async () => {
+    await setupTestUser();
+  });
+  
+  // テストスイート終了後にクリーンアップ
+  test.afterAll(async () => {
+    await cleanupTestUser();
+  });
+  
   test.beforeEach(async ({ page }) => {
     // ログインページへ移動
     await page.goto('/auth/login');
