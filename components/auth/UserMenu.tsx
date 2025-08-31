@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   User, 
-  Settings, 
   Heart, 
   History, 
   LogOut, 
@@ -106,12 +105,6 @@ export function UserMenu() {
           <Link href="/history" className="cursor-pointer">
             <History className="mr-2 h-4 w-4" />
             閲覧履歴
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/settings" className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
-            設定
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
