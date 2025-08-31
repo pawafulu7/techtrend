@@ -49,14 +49,17 @@ export default function DigestPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchDigest = async (date?: Date) => {
+    setLoading(true);
+    setError(null);
     try {
       const targetDate = date || new Date();
-      const response = await fetch(`/api/digest/${targetDate.toISOString()}`);
+      const response = await fetch(`/api/digest/${encodeURIComponent(targetDate.toISOString())}`);
       
       if (response.ok) {
         const data = await response.json();
         setDigest(data);
       } else if (response.status === 404) {
+        setDigest(null);
         setError('週刊ダイジェストがまだ生成されていません');
       } else {
         setError('ダイジェストの取得に失敗しました');
@@ -69,6 +72,7 @@ export default function DigestPage() {
   };
 
   const generateDigest = async () => {
+    setError(null);
     setGenerating(true);
     try {
       const response = await fetch('/api/digest/generate', {
