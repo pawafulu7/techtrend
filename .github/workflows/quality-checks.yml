@@ -219,13 +219,17 @@ jobs:
       
       - name: Check build size
         run: |
-          BUILD_SIZE=$(du -sb .next | cut -f1)
+          # Measure deployable artifact size (standalone + static), ignore cache
+          SIZE_STANDALONE=$(du -sb .next/standalone 2>/dev/null | cut -f1 || echo 0)
+          SIZE_STATIC=$(du -sb .next/static 2>/dev/null | cut -f1 || echo 0)
+          BUILD_SIZE=$((SIZE_STANDALONE + SIZE_STATIC))
           MAX_SIZE=$((100 * 1024 * 1024)) # 100MB
+          echo "Standalone: $(($SIZE_STANDALONE / 1024 / 1024))MB, Static: $(($SIZE_STATIC / 1024 / 1024))MB"
           if [ $BUILD_SIZE -gt $MAX_SIZE ]; then
             echo "❌ Build size too large: $(($BUILD_SIZE / 1024 / 1024))MB (max: 100MB)"
             exit 1
           else
-            echo "✅ Build size: $(($BUILD_SIZE / 1024 / 1024))MB"
+            echo "✅ Build size: $(($BUILD_SIZE / 1024 / 1024))MB (<= 100MB)"
           fi
 
   # E2E tests (optional, runs only on main branch)

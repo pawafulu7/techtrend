@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   // ビルド最適化設定
   compress: true,
   productionBrowserSourceMaps: false,
+  // デプロイ成果物を最小化（standalone 出力）
+  output: 'standalone',
   
   // 実験的機能で最適化
   experimental: {
