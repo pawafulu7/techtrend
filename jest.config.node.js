@@ -6,6 +6,7 @@ const createJestConfig = nextJest({
 });
 
 const customJestConfig = {
+  setupFiles: ['<rootDir>/jest.polyfills.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.node.js'],
   testEnvironment: 'node',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
@@ -14,8 +15,6 @@ const customJestConfig = {
     'node_modules/(?!(node-fetch)/)',
   ],
   moduleNameMapper: {
-    // Direct mapping for relative helper import used in some tests
-    '^\.\.\/\.\.\/helpers\/test-utils$': '<rootDir>/__tests__/helpers/test-utils.ts',
     // Manual mocks for Prisma and Redis (must come before generic alias)
     '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
     '^@/lib/prisma/(.*)$': '<rootDir>/__mocks__/lib/prisma.ts',
@@ -34,6 +33,7 @@ const customJestConfig = {
     // Handle module aliases (must be last due to wildcard)
     '^@/(.*)$': '<rootDir>/$1',
   },
+  moduleDirectories: ['node_modules', '<rootDir>', '<rootDir>/__tests__'],
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
