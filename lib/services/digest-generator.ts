@@ -67,7 +67,7 @@ export class DigestGenerator {
       where: {
         publishedAt: {
           gte: adjustedStart,
-          lt: adjustedEnd
+          lte: adjustedEnd
         }
       },
       include: {
