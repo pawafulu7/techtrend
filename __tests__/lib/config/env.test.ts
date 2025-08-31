@@ -70,8 +70,13 @@ describe('Environment Configuration', () => {
     });
 
     it('handles development mode with warnings', () => {
+      // モジュールキャッシュをクリア
+      jest.resetModules();
+      resetEnvCache();
+      
       process.env.NODE_ENV = 'development';
       // Missing NEXTAUTH_SECRET
+      delete process.env.NEXTAUTH_SECRET;
       
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
       const result = getEnv();
@@ -181,23 +186,40 @@ describe('Environment Configuration', () => {
     });
 
     it('correctly identifies environment', () => {
+      // production環境
+      jest.resetModules();
+      resetEnvCache();
       process.env.NODE_ENV = 'production';
-      expect(config.app.isProduction()).toBe(true);
-      expect(config.app.isDevelopment()).toBe(false);
-      expect(config.app.isTest()).toBe(false);
+      const { config: prodConfig } = require('@/lib/config/env');
+      expect(prodConfig.app.isProduction()).toBe(true);
+      expect(prodConfig.app.isDevelopment()).toBe(false);
+      expect(prodConfig.app.isTest()).toBe(false);
       
+      // development環境
+      jest.resetModules();
+      resetEnvCache();
       process.env.NODE_ENV = 'development';
-      expect(config.app.isProduction()).toBe(false);
-      expect(config.app.isDevelopment()).toBe(true);
-      expect(config.app.isTest()).toBe(false);
+      const { config: devConfig } = require('@/lib/config/env');
+      expect(devConfig.app.isProduction()).toBe(false);
+      expect(devConfig.app.isDevelopment()).toBe(true);
+      expect(devConfig.app.isTest()).toBe(false);
     });
 
     it('constructs app URL correctly', () => {
+      // デフォルトURL
+      jest.resetModules();
+      resetEnvCache();
       process.env.PORT = '3000';
-      expect(config.app.url()).toBe('http://localhost:3000');
+      delete process.env.NEXT_PUBLIC_APP_URL;
+      const { config: defaultConfig } = require('@/lib/config/env');
+      expect(defaultConfig.app.url()).toBe('http://localhost:3000');
       
+      // カスタムURL
+      jest.resetModules();
+      resetEnvCache();
       process.env.NEXT_PUBLIC_APP_URL = 'https://example.com';
-      expect(config.app.url()).toBe('https://example.com');
+      const { config: customConfig } = require('@/lib/config/env');
+      expect(customConfig.app.url()).toBe('https://example.com');
     });
   });
 });

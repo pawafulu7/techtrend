@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { 
   TEST_USER,
+  TEST_USERS,
+  TEST_USER_FOR_PASSWORD_CHANGE,
   createTestUser, 
   deleteTestUser, 
   loginTestUser,
@@ -49,9 +51,12 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await expect(page.getByRole('button', { name: 'パスワードを変更' })).toBeVisible();
   });
 
-  test('3. 短いパスワードでバリデーションエラーが表示される', async ({ page }) => {
+  test('3. 短いパスワードでバリデーションエラーが表示される', async ({ page, browserName }) => {
     // まずログインする
     await loginTestUser(page);
+    
+    // ブラウザ固有のテストユーザーを使用
+    const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
     
     // プロフィールページへ移動
     await page.goto('/profile');
@@ -63,7 +68,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     
     // 短いパスワードを入力
     await fillPasswordChangeForm(page, {
-      current: TEST_USER.password,
+      current: testUser.password,
       new: 'short',
       confirm: 'short'
     });
@@ -76,9 +81,12 @@ test.describe.serial('Password Change Feature - Improved', () => {
     expect(errorFound).toBe(true);
   });
 
-  test('4. パスワードが一致しない場合エラーが表示される', async ({ page }) => {
+  test('4. パスワードが一致しない場合エラーが表示される', async ({ page, browserName }) => {
     // まずログインする
     await loginTestUser(page);
+    
+    // ブラウザ固有のテストユーザーを使用
+    const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
     
     // プロフィールページへ移動
     await page.goto('/profile');
@@ -90,7 +98,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     
     // 一致しないパスワードを入力
     await fillPasswordChangeForm(page, {
-      current: TEST_USER.password,
+      current: testUser.password,
       new: 'NewPassword123',
       confirm: 'DifferentPassword123'
     });
@@ -130,9 +138,12 @@ test.describe.serial('Password Change Feature - Improved', () => {
     expect(errorFound).toBe(true);
   });
 
-  test('6. 大文字・小文字・数字が含まれていない場合エラーが表示される', async ({ page }) => {
+  test('6. 大文字・小文字・数字が含まれていない場合エラーが表示される', async ({ page, browserName }) => {
     // まずログインする
     await loginTestUser(page);
+    
+    // ブラウザ固有のテストユーザーを使用
+    const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
     
     // プロフィールページへ移動
     await page.goto('/profile');
@@ -144,7 +155,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     
     // 要件を満たさないパスワードを入力
     await fillPasswordChangeForm(page, {
-      current: TEST_USER.password,
+      current: testUser.password,
       new: 'password123',  // 大文字なし
       confirm: 'password123'
     });
@@ -157,9 +168,12 @@ test.describe.serial('Password Change Feature - Improved', () => {
     expect(errorFound).toBe(true);
   });
 
-  test('7. ローディング状態が表示される', async ({ page }) => {
+  test('7. ローディング状態が表示される', async ({ page, browserName }) => {
     // まずログインする
     await loginTestUser(page);
+    
+    // ブラウザ固有のテストユーザーを使用
+    const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
     
     // プロフィールページへ移動
     await page.goto('/profile');
@@ -171,7 +185,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     
     // 正しいパスワード情報を入力
     await fillPasswordChangeForm(page, {
-      current: TEST_USER.password,
+      current: testUser.password,
       new: 'NewPassword123',
       confirm: 'NewPassword123'
     });
@@ -190,20 +204,30 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('8. 有効な入力でパスワードが正常に変更される', async ({ page }) => {
-    // まずログインする  
-    await loginTestUser(page);
+    // パスワード変更専用ユーザーでログイン
+    await page.goto('/auth/login');
+    await page.fill('input[id="email"]', TEST_USER_FOR_PASSWORD_CHANGE.email);
+    await page.fill('input[id="password"]', TEST_USER_FOR_PASSWORD_CHANGE.password);
+    await page.click('button[type="submit"]:has-text("ログイン")');
+    
+    // ログイン完了を待つ
+    await page.waitForURL('http://localhost:3000/', { timeout: 10000 });
     
     // プロフィールページへ移動
     await page.goto('/profile');
     
+    // ページが読み込まれるまで待機
+    await page.waitForSelector('h1:has-text("プロフィール設定")', { timeout: 10000 });
+    
     // アカウントタブを開く
     const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
+    await accountTab.waitFor({ state: 'visible', timeout: 5000 });
     await accountTab.click();
     await page.waitForTimeout(500);
     
     // 正しいパスワード情報を入力
     await fillPasswordChangeForm(page, {
-      current: TEST_USER.password,
+      current: TEST_USER_FOR_PASSWORD_CHANGE.password,
       new: 'NewSecurePassword456',
       confirm: 'NewSecurePassword456'
     });
@@ -219,5 +243,8 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await expect(page.locator('input[name="currentPassword"]')).toHaveValue('');
     await expect(page.locator('input[name="newPassword"]')).toHaveValue('');
     await expect(page.locator('input[name="confirmPassword"]')).toHaveValue('');
+    
+    // パスワード変更専用ユーザーなので、元に戻す必要はない
+    console.log(`✅ パスワード変更テスト完了: ${TEST_USER_FOR_PASSWORD_CHANGE.email}`);
   });
 });

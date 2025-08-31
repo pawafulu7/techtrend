@@ -314,11 +314,11 @@ test.describe('検索機能', () => {
     await page.waitForSelector('main', { state: 'visible', timeout: 10000 });
   });
 
-  test.skip('高度な検索オプション（機能削除済み）', async ({ _page }) => {
+  test.skip('高度な検索オプション（機能削除済み）', async () => {
     // この機能は削除されました
   });
 
-  test.skip('検索履歴・候補の表示（SearchBar削除により無効）', async ({ _page }) => {
+  test.skip('検索履歴・候補の表示（SearchBar削除により無効）', async () => {
     // SearchBarコンポーネントが削除されたため、この機能は現在利用不可
   });
 });

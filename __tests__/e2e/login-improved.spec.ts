@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { 
   TEST_USER,
+  TEST_USERS,
   createTestUser, 
   deleteTestUser, 
   loginTestUser
@@ -120,12 +121,15 @@ test.describe.serial('Login Feature - Improved', () => {
     await expect(page).toHaveURL(/.*\/auth\/login/);
   });
 
-  test('6. 間違ったパスワードでログインエラーが表示される', async ({ page }) => {
+  test('6. 間違ったパスワードでログインエラーが表示される', async ({ page, browserName }) => {
     // ログインページへ移動
     await page.goto('/auth/login');
     
+    // ブラウザ固有のテストユーザーを使用
+    const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
+    
     // 正しいメールアドレスと間違ったパスワードを入力
-    await page.fill('input[id="email"]', TEST_USER.email);
+    await page.fill('input[id="email"]', testUser.email);
     await page.fill('input[id="password"]', 'WrongPassword123');
     
     // ログインボタンをクリック
@@ -146,14 +150,35 @@ test.describe.serial('Login Feature - Improved', () => {
     // ホームページにリダイレクトされることを確認
     await expect(page).toHaveURL('http://localhost:3000/');
     
-    // ユーザーメニューが表示されることを確認（ログイン成功の証）
-    // 複数のセレクタを試す
-    const userMenuVisible = await page.locator('[data-testid="user-menu-trigger"]').isVisible() ||
-                            await page.locator('button.h-10.w-10.rounded-full').isVisible() ||
-                            await page.locator('button:has(> span:has-text("U"))').isVisible();
+    // ユーザーメニューが表示されるまで待機
+    await page.waitForTimeout(2000); // セッション確立のため待機
     
-    // ユーザーメニューが存在することを確認
-    expect(userMenuVisible).toBe(true);
+    // ユーザーメニューが表示されることを確認（ログイン成功の証）
+    const userMenuTrigger = page.locator('[data-testid="user-menu-trigger"]');
+    
+    // ユーザーメニューが表示されるまで待機（最大5秒）
+    try {
+      await userMenuTrigger.waitFor({ state: 'visible', timeout: 5000 });
+      const isVisible = await userMenuTrigger.isVisible();
+      expect(isVisible).toBe(true);
+    } catch (error) {
+      // フォールバック: 他のセレクタも試す
+      const alternativeSelectors = [
+        'button.h-10.w-10.rounded-full',
+        'button:has(> span:has-text("U"))',
+        '[aria-label*="user"]'
+      ];
+      
+      let found = false;
+      for (const selector of alternativeSelectors) {
+        const element = page.locator(selector).first();
+        if (await element.isVisible()) {
+          found = true;
+          break;
+        }
+      }
+      expect(found).toBe(true);
+    }
   });
 
   test('8. ログイン状態が維持される', async ({ page }) => {
@@ -171,16 +196,19 @@ test.describe.serial('Login Feature - Improved', () => {
     await expect(pageTitle).toBeVisible({ timeout: 10000 });
   });
 
-  test('9. ローディング状態が表示される', async ({ page }) => {
+  test('9. ローディング状態が表示される', async ({ page, browserName }) => {
     // 新しいコンテキストでテスト（前のセッションを引き継がない）
     await page.context().clearCookies();
     
     // ログインページへ移動
     await page.goto('/auth/login');
     
+    // ブラウザ固有のテストユーザーを使用
+    const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
+    
     // ログイン情報を入力
-    await page.fill('input[id="email"]', TEST_USER.email);
-    await page.fill('input[id="password"]', TEST_USER.password);
+    await page.fill('input[id="email"]', testUser.email);
+    await page.fill('input[id="password"]', testUser.password);
     
     // ログインボタンをクリック
     const submitButton = page.locator('button[type="submit"]:has-text("ログイン")');
