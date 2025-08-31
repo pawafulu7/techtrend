@@ -66,11 +66,11 @@ test.describe.serial('Login Feature - Improved', () => {
     await page.click('button[type="submit"]:has-text("ログイン")');
     
     // バリデーションエラーが表示されるまで少し待つ
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
     
     // バリデーションエラーが表示されることを確認
-    // React Hook Formのエラーは <p class="text-sm text-destructive"> 内に表示される
-    const errorMessage = page.locator('p.text-destructive:has-text("有効なメールアドレスを入力してください")');
+    // より柔軟なセレクターを使用
+    const errorMessage = page.locator('p.text-sm.text-destructive').filter({ hasText: '有効なメールアドレスを入力してください' });
     await expect(errorMessage).toBeVisible({ timeout: 5000 });
   });
 
@@ -87,11 +87,11 @@ test.describe.serial('Login Feature - Improved', () => {
     await page.click('button[type="submit"]:has-text("ログイン")');
     
     // バリデーションエラーが表示されるまで少し待つ
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
     
     // バリデーションエラーが表示されることを確認
-    // React Hook Formのエラーは <p class="text-sm text-destructive"> 内に表示される
-    const errorMessage = page.locator('p.text-destructive:has-text("パスワードは6文字以上である必要があります")');
+    // より柔軟なセレクターを使用
+    const errorMessage = page.locator('p.text-sm.text-destructive').filter({ hasText: 'パスワードは6文字以上である必要があります' });
     await expect(errorMessage).toBeVisible({ timeout: 5000 });
   });
 

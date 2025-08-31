@@ -5,12 +5,14 @@
 import { getEnv, env, features, config, resetEnvCache } from '@/lib/config/env';
 
 // TODO: Fix environment variable validation tests - module caching issues
-describe.skip('Environment Configuration', () => {
+describe('Environment Configuration', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
     // Reset module cache
     jest.resetModules();
+    // Reset env cache for clean test state
+    resetEnvCache();
     // Clear environment
     process.env = { ...originalEnv };
   });
@@ -20,6 +22,10 @@ describe.skip('Environment Configuration', () => {
   });
 
   describe('getEnv', () => {
+    beforeEach(() => {
+      resetEnvCache();
+    });
+
     it('validates required environment variables', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
       process.env.NODE_ENV = 'test';
@@ -80,6 +86,7 @@ describe.skip('Environment Configuration', () => {
     beforeEach(() => {
       // モジュールキャッシュをクリア
       jest.resetModules();
+      resetEnvCache();
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
       process.env.REDIS_HOST = 'redis.example.com';
       process.env.ENABLE_CACHE = 'false';
@@ -105,6 +112,10 @@ describe.skip('Environment Configuration', () => {
   });
 
   describe('features', () => {
+    beforeEach(() => {
+      resetEnvCache();
+    });
+
     it('correctly interprets feature flags', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
       process.env.ENABLE_CACHE = 'true';
@@ -127,6 +138,7 @@ describe.skip('Environment Configuration', () => {
 
   describe('config helpers', () => {
     beforeEach(() => {
+      resetEnvCache();
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
     });
 
