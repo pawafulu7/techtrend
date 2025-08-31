@@ -34,7 +34,7 @@ const customJestConfig = {
     '!**/__tests__/**',
     '!**/__mocks__/**',
   ],
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.integration.js'],
   testTimeout: 30000, // 統合テストは時間がかかるため30秒に設定
   maxWorkers: 1, // 統合テストは順次実行
   bail: false, // エラーがあっても全テスト実行

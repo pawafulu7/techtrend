@@ -292,7 +292,7 @@ jobs:
   # Quality gate summary
   quality-gate:
     name: Quality Gate
-    needs: [type-check, lint, test, security, build]
+    needs: [type-check, lint, test, security, build, integration]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -318,6 +318,12 @@ jobs:
             echo "❌ Tests: Failed"
           fi
           
+          if [ "${{ needs.integration.result }}" == "success" ]; then
+            echo "✅ Integration: Passed"
+          else
+            echo "❌ Integration: Failed"
+          fi
+          
           if [ "${{ needs.security.result }}" == "success" ]; then
             echo "✅ Security: Passed"
           else
@@ -335,7 +341,8 @@ jobs:
              [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
              [ "${{ needs.security.result }}" != "success" ] || \
-             [ "${{ needs.build.result }}" != "success" ]; then
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.integration.result }}" != "success" ]; then
             echo ""
             echo "❌ Quality gate failed!"
             exit 1
@@ -343,3 +350,69 @@ jobs:
             echo ""
             echo "✅ Quality gate passed!"
           fi
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: techtrend_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Setup database schema and seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+        run: |
+          npx prisma generate
+          npx prisma db push
+          npx tsx prisma/seed-test.ts
+      - name: Build app
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
+        run: npm run build
+      - name: Start server
+        env:
+          PORT: 3000
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
+          NODE_ENV: production
+        run: |
+          nohup npm start </dev/null &
+          for i in {1..60}; do
+            if curl -sf http://localhost:3000/ >/dev/null; then echo 'Server is up'; break; fi
+            sleep 2
+          done
+          curl -sf http://localhost:3000/ >/dev/null || { echo 'Server failed to start'; exit 1; }
+      - name: Run integration tests
+        env:
+          BASE_URL: http://localhost:3000
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+        run: npm run test:integration
