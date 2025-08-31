@@ -156,7 +156,10 @@ test.describe.serial('Login Feature - Improved', () => {
   });
 
   test('8. ログイン状態が維持される', async ({ page }) => {
-    // 前のテストでログイン済みなので、直接プロフィールページにアクセス
+    // まずログインする
+    await loginTestUser(page);
+    
+    // プロフィールページにアクセス
     await page.goto('/profile');
     
     // ログインページにリダイレクトされないことを確認

@@ -50,7 +50,10 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('3. 短いパスワードでバリデーションエラーが表示される', async ({ page }) => {
-    // プロフィールページへ直接移動（既にログイン済み）
+    // まずログインする
+    await loginTestUser(page);
+    
+    // プロフィールページへ移動
     await page.goto('/profile');
     
     // アカウントタブを開く
@@ -74,7 +77,10 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('4. パスワードが一致しない場合エラーが表示される', async ({ page }) => {
-    // プロフィールページへ直接移動
+    // まずログインする
+    await loginTestUser(page);
+    
+    // プロフィールページへ移動
     await page.goto('/profile');
     
     // アカウントタブを開く
@@ -98,7 +104,10 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('5. 現在のパスワードが間違っている場合エラーが表示される', async ({ page }) => {
-    // プロフィールページへ直接移動
+    // まずログインする
+    await loginTestUser(page);
+    
+    // プロフィールページへ移動
     await page.goto('/profile');
     
     // アカウントタブを開く
@@ -122,7 +131,10 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('6. 大文字・小文字・数字が含まれていない場合エラーが表示される', async ({ page }) => {
-    // プロフィールページへ直接移動
+    // まずログインする
+    await loginTestUser(page);
+    
+    // プロフィールページへ移動
     await page.goto('/profile');
     
     // アカウントタブを開く
@@ -146,7 +158,10 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('7. ローディング状態が表示される', async ({ page }) => {
-    // プロフィールページへ直接移動
+    // まずログインする
+    await loginTestUser(page);
+    
+    // プロフィールページへ移動
     await page.goto('/profile');
     
     // アカウントタブを開く
@@ -175,7 +190,10 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('8. 有効な入力でパスワードが正常に変更される', async ({ page }) => {
-    // プロフィールページへ直接移動
+    // まずログインする  
+    await loginTestUser(page);
+    
+    // プロフィールページへ移動
     await page.goto('/profile');
     
     // アカウントタブを開く

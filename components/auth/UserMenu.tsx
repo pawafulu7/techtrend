@@ -64,7 +64,11 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+        <Button 
+          variant="ghost" 
+          className="relative h-10 w-10 rounded-full"
+          data-testid="user-menu-trigger"
+        >
           <Avatar className="h-10 w-10">
             <AvatarImage 
               src={session.user?.image || ''} 
