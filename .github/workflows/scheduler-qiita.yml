@@ -2,8 +2,7 @@ name: Scheduler - Qiita Popular Twice Daily
 
 on:
   schedule:
-    - cron: '5 20 * * *' # JST 05:05
-    - cron: '5 8 * * *'  # JST 17:05
+    - cron: '0 23 * * *' # JST 8:00 (UTC 23:00) - Reduced from twice daily to save DB operations
   workflow_dispatch:
 
 concurrency:
