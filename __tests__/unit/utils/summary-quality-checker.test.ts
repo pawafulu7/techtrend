@@ -8,6 +8,8 @@ import {
   getMaxRegenerationAttempts,
 } from '@/lib/utils/summary-quality-checker';
 
+import { ContentAnalysis } from '@/lib/utils/content-analyzer';
+
 describe('summary-quality-checker', () => {
   describe('checkSummaryQuality', () => {
     describe('valid summaries', () => {
@@ -482,6 +484,151 @@ describe('summary-quality-checker', () => {
         process.env.MAX_REGENERATION_ATTEMPTS = 'invalid';
         expect(getMaxRegenerationAttempts()).toBe(3);
       });
+    });
+  });
+
+  describe('Thin Content Quality Criteria', () => {
+    it('should accept 60-100 character summaries for thin content', () => {
+      const analysis: ContentAnalysis = {
+        isThinContent: true,
+        contentLength: 50,
+        sourceName: 'Speaker Deck',
+        recommendedMinLength: 60,
+        recommendedMaxLength: 100
+      };
+
+      // 適切な長さの要約（60文字以上）
+      const goodSummary = 'WebAssemblyの実装方法について詳しく解説したプレゼンテーション資料。技術的な詳細と具体的な実装例を豊富に含む。';
+      const detailedSummary = '利用可能な情報が限定的なため、詳細な要約は作成できません。元記事を参照してください。';
+      
+      const result = checkSummaryQuality(goodSummary, detailedSummary, analysis);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.score).toBeGreaterThanOrEqual(60);
+      expect(result.requiresRegeneration).toBe(false);
+    });
+
+    it('should reject summaries shorter than 60 characters for thin content', () => {
+      const analysis: ContentAnalysis = {
+        isThinContent: true,
+        contentLength: 50,
+        sourceName: 'Speaker Deck',
+        recommendedMinLength: 60,
+        recommendedMaxLength: 100
+      };
+
+      // 短すぎる要約（30文字）
+      const shortSummary = 'プレゼンテーション資料です。';
+      const detailedSummary = '利用可能な情報が限定的なため、詳細な要約は作成できません。元記事を参照してください。';
+      
+      const result = checkSummaryQuality(shortSummary, detailedSummary, analysis);
+      
+      expect(result.isValid).toBe(false);
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          type: 'length',
+          severity: 'major',
+          message: expect.stringContaining('短すぎる')
+        })
+      );
+    });
+
+    it('should warn about summaries longer than 100 characters for thin content', () => {
+      const analysis: ContentAnalysis = {
+        isThinContent: true,
+        contentLength: 50,
+        sourceName: 'Speaker Deck',
+        recommendedMinLength: 60,
+        recommendedMaxLength: 100
+      };
+
+      // 長すぎる要約（150文字）
+      const longSummary = 'このプレゼンテーション資料では、WebAssemblyの基本的な概念から始まり、実装方法、パフォーマンス最適化、実際のユースケースまで幅広く解説されています。特にブラウザでの動作原理について詳しく説明されており、開発者にとって有益な情報が含まれています。';
+      const detailedSummary = '利用可能な情報が限定的なため、詳細な要約は作成できません。元記事を参照してください。';
+      
+      const result = checkSummaryQuality(longSummary, detailedSummary, analysis);
+      
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          type: 'length',
+          severity: 'major',  // 薄いコンテンツで100文字超はmajor
+          message: expect.stringContaining('長すぎる')
+        })
+      );
+    });
+
+    it('should strictly reject speculation in thin content', () => {
+      const analysis: ContentAnalysis = {
+        isThinContent: true,
+        contentLength: 50,
+        sourceName: 'Speaker Deck',
+        recommendedMinLength: 60,
+        recommendedMaxLength: 100
+      };
+
+      // 推測表現を含む要約
+      const speculativeSummary = 'WebAssemblyについて説明していると思われるプレゼンテーション。おそらく実装方法を解説。';
+      const detailedSummary = '利用可能な情報が限定的なため、詳細な要約は作成できません。元記事を参照してください。';
+      
+      const result = checkSummaryQuality(speculativeSummary, detailedSummary, analysis);
+      
+      expect(result.requiresRegeneration).toBe(true);
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          type: 'speculative',
+          severity: 'critical',
+          message: expect.stringContaining('推測表現は厳禁')
+        })
+      );
+    });
+
+    it('should apply thin content criteria for Speaker Deck', () => {
+      // 60文字以上の適切な長さの要約を用意
+      const thinSummary = 'WebAssemblyインタプリタの実装について詳しく解説したプレゼンテーション資料。技術的な詳細と実装方法を豊富に説明。';
+      const detailedSummary = '利用可能な情報が限定的なため、詳細な要約は作成できません。元記事を参照してください。';
+      
+      const analysis: ContentAnalysis = {
+        isThinContent: true,
+        contentLength: 45,
+        sourceName: 'Speaker Deck',
+        recommendedMinLength: 60,
+        recommendedMaxLength: 100
+      };
+      
+      const qualityCheck = checkSummaryQuality(thinSummary, detailedSummary, analysis);
+      
+      // 薄いコンテンツ用の基準が適用されることを確認
+      expect(qualityCheck.isValid).toBe(true);
+      expect(qualityCheck.score).toBeGreaterThanOrEqual(60);
+      
+      // 60-100文字の範囲内なら問題なし
+      const summaryLength = thinSummary.length;
+      expect(summaryLength).toBeGreaterThanOrEqual(60);
+      expect(summaryLength).toBeLessThanOrEqual(100);
+    });
+
+    it('should reject speculation in thin content', () => {
+      const speculativeSummary = 'このプレゼンテーションでは、おそらくWebAssemblyの最新機能について説明していると思われます。';
+      const detailedSummary = '利用可能な情報が限定的なため、詳細な要約は作成できません。元記事を参照してください。';
+      
+      const analysis: ContentAnalysis = {
+        isThinContent: true,
+        contentLength: 3,
+        sourceName: 'Speaker Deck',
+        recommendedMinLength: 60,
+        recommendedMaxLength: 100
+      };
+      
+      const qualityCheck = checkSummaryQuality(speculativeSummary, detailedSummary, analysis);
+      
+      // 推測表現があると厳しく評価される
+      expect(qualityCheck.issues).toContainEqual(
+        expect.objectContaining({
+          type: 'speculative',
+          severity: 'critical'
+        })
+      );
+      expect(qualityCheck.requiresRegeneration).toBe(true);
     });
   });
 });
