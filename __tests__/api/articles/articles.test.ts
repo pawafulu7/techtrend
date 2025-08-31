@@ -7,8 +7,8 @@
 jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
-// Use local bridge to avoid resolver differences in CI
-import { testApiHandler, assertSuccessResponse, assertErrorResponse } from '../helpers/test-utils';
+// Use alias mapped path to avoid resolver differences in CI
+import { testApiHandler, assertSuccessResponse, assertErrorResponse } from '@/__tests__/api/helpers/test-utils';
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { getRedisClient } from '@/lib/redis/client';
