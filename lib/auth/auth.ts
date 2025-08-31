@@ -16,7 +16,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     // Email provider for magic link authentication
     EmailProvider({
-      server: process.env.EMAIL_SERVER,
       from: process.env.EMAIL_FROM || 'noreply@techtrend.example.com',
       sendVerificationRequest,
       maxAge: 24 * 60 * 60, // 24 hours
