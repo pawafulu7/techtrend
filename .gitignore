@@ -79,6 +79,8 @@ reports/
 scripts/test-*.ts
 scripts/*-test.ts
 scripts/debug-*.ts
+test-email*.js
+**/test-email*.js
 
 # batch scripts
 *.bat
