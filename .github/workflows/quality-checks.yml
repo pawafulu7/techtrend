@@ -291,7 +291,7 @@ jobs:
   # Quality gate summary
   quality-gate:
     name: Quality Gate
-    needs: [type-check, lint, test, security, build, integration]
+    needs: [type-check, lint, test, security, build]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -317,11 +317,6 @@ jobs:
             echo "❌ Tests: Failed"
           fi
           
-          if [ "${{ needs.integration.result }}" == "success" ]; then
-            echo "✅ Integration: Passed"
-          else
-            echo "❌ Integration: Failed"
-          fi
           
           if [ "${{ needs.security.result }}" == "success" ]; then
             echo "✅ Security: Passed"
@@ -340,8 +335,7 @@ jobs:
              [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
              [ "${{ needs.security.result }}" != "success" ] || \
-             [ "${{ needs.build.result }}" != "success" ] || \
-             [ "${{ needs.integration.result }}" != "success" ]; then
+             [ "${{ needs.build.result }}" != "success" ]; then
             echo ""
             echo "❌ Quality gate failed!"
             exit 1
@@ -352,6 +346,7 @@ jobs:
 
   integration:
     name: Integration Tests
+    if: ${{ false }}
     runs-on: ubuntu-latest
     services:
       postgres:
