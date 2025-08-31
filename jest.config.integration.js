@@ -18,9 +18,15 @@ const customJestConfig = {
     '^@/app/(.*)$': '<rootDir>/app/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/components/(.*)$': '<rootDir>/components/$1',
+    // Force Prisma/Redis to mocks to avoid real DB connections in integration
+    '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
+    '^@/lib/database/index$': '<rootDir>/__mocks__/lib/database.ts',
+    '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
+    '^@/lib/cache/redis-cache$': '<rootDir>/__mocks__/lib/cache/redis-cache.ts',
     '^next/navigation$': '<rootDir>/__mocks__/next/navigation.ts',
     '^ioredis$': '<rootDir>/__mocks__/ioredis.ts',
   },
+  modulePathIgnorePatterns: ['<rootDir>/.next/standalone'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   coverageDirectory: '<rootDir>/coverage/integration',
   collectCoverageFrom: [

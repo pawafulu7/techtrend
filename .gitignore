@@ -64,8 +64,16 @@ logs/
 *.log
 
 # backup files
+backup/
 backups/
 *.backup
+
+# documentation files
+docs/
+
+# data and reports
+data/
+reports/
 
 # test and temporary files
 scripts/test-*.ts
@@ -125,3 +133,12 @@ __tests__/e2e/**/*-actual/
 *.txt
 
 toolbox
+.mcp.json
+
+# Claude Code related files
+.claude/
+CLAUDE.md
+claudedocs/
+*.claude.*
+*claude-*.ts
+.serena/

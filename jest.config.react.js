@@ -22,8 +22,7 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
   },
   testMatch: [
-    '**/tests/unit/**/*.test.{js,jsx,ts,tsx}',
-    '**/__tests__/components/**/*.test.{js,jsx,ts,tsx}',
+    '**/__tests__/**/*.test.{js,jsx,ts,tsx}',
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',

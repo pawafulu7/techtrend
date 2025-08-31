@@ -20,12 +20,22 @@ describe('Articles API Simple Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // デフォルトのモック値を設定
-    prismaMock.article.findMany.mockResolvedValue([]);
-    prismaMock.article.count.mockResolvedValue(0);
-    prismaMock.article.findUnique.mockResolvedValue(null);
-    prismaMock.article.findFirst.mockResolvedValue(null);
-    prismaMock.article.create.mockResolvedValue({
+    // prismaがundefinedの場合はスキップ
+    if (!prismaMock) {
+      console.warn('prismaMock is undefined, skipping mock setup');
+      return;
+    }
+    
+    // デフォルトのモック値を設定（Articleは大文字）
+    if (!prismaMock.Article) {
+      prismaMock.Article = {};
+    }
+    
+    prismaMock.Article.findMany = jest.fn().mockResolvedValue([]);
+    prismaMock.Article.count = jest.fn().mockResolvedValue(0);
+    prismaMock.Article.findUnique = jest.fn().mockResolvedValue(null);
+    prismaMock.Article.findFirst = jest.fn().mockResolvedValue(null);
+    prismaMock.Article.create = jest.fn().mockResolvedValue({
       id: 'test-id',
       title: 'Test Article',
       url: 'https://test.com',
@@ -44,6 +54,19 @@ describe('Articles API Simple Tests', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+    
+    // Source モックも追加
+    if (!prismaMock.Source) {
+      prismaMock.Source = {};
+    }
+    prismaMock.Source.findMany = jest.fn().mockResolvedValue([]);
+    prismaMock.Source.findUnique = jest.fn().mockResolvedValue(null);
+    
+    // Tag モックも追加
+    if (!prismaMock.Tag) {
+      prismaMock.Tag = {};
+    }
+    prismaMock.Tag.findMany = jest.fn().mockResolvedValue([]);
     
     redisMock.get.mockResolvedValue(null);
     redisMock.set.mockResolvedValue('OK');
@@ -76,8 +99,8 @@ describe('Articles API Simple Tests', () => {
         },
       ];
       
-      prismaMock.article.findMany.mockResolvedValue(mockArticles);
-      prismaMock.article.count.mockResolvedValue(1);
+      prismaMock.Article.findMany.mockResolvedValue(mockArticles);
+      prismaMock.Article.count.mockResolvedValue(1);
       
       // GETハンドラーは既にインポート済み
       
@@ -97,8 +120,8 @@ describe('Articles API Simple Tests', () => {
       expect(body.data.total).toBe(1);
       
       // モックの呼び出し確認
-      expect(prismaMock.article.findMany).toHaveBeenCalled();
-      expect(prismaMock.article.count).toHaveBeenCalled();
+      expect(prismaMock.Article.findMany).toHaveBeenCalled();
+      expect(prismaMock.Article.count).toHaveBeenCalled();
     });
 
     it('キャッシュが機能する', async () => {
@@ -150,7 +173,7 @@ describe('Articles API Simple Tests', () => {
       // Redisキャッシュが使用されたことを確認
       expect(redisMock.get).toHaveBeenCalled();
       // データベースが呼ばれないことを確認
-      expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+      expect(prismaMock.Article.findMany).not.toHaveBeenCalled();
     });
   });
 
@@ -166,10 +189,10 @@ describe('Articles API Simple Tests', () => {
       };
       
       // 重複チェック用のモック（findUniqueを使用）
-      prismaMock.article.findUnique.mockResolvedValueOnce(null);
+      prismaMock.Article.findUnique.mockResolvedValueOnce(null);
       
       // 作成時のモックを正しい構造で設定
-      prismaMock.article.create.mockResolvedValueOnce({
+      prismaMock.Article.create.mockResolvedValueOnce({
         id: 'test-id',
         title: 'New Article',
         url: 'https://example.com/new',
@@ -224,7 +247,7 @@ describe('Articles API Simple Tests', () => {
       expect(body.data.title).toBe('New Article');
       
       // モックの呼び出し確認
-      expect(prismaMock.article.create).toHaveBeenCalled();
+      expect(prismaMock.Article.create).toHaveBeenCalled();
       expect(redisMock.keys).toHaveBeenCalled(); // キャッシュパターン検索
       expect(redisMock.del).toHaveBeenCalled(); // キャッシュクリア
     });
@@ -238,7 +261,7 @@ describe('Articles API Simple Tests', () => {
       };
       
       // 重複する記事が存在する
-      prismaMock.article.findUnique.mockResolvedValue({
+      prismaMock.Article.findUnique.mockResolvedValue({
         id: 'existing',
         title: 'Existing Article',
         url: duplicateArticle.url,
@@ -276,7 +299,7 @@ describe('Articles API Simple Tests', () => {
       expect(body.error).toContain('already exists');
       
       // 記事が作成されないことを確認
-      expect(prismaMock.article.create).not.toHaveBeenCalled();
+      expect(prismaMock.Article.create).not.toHaveBeenCalled();
     });
   });
 });
