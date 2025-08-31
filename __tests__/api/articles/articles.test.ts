@@ -9,7 +9,7 @@ jest.mock('@/lib/database');
 
 // Use a direct static import to avoid CI resolution quirks
 // Use sibling helpers to avoid any per-folder resolver quirks in CI
-import { testApiHandler, assertSuccessResponse, assertErrorResponse } from '../helpers/test-utils';
+import { testApiHandler, assertSuccessResponse, assertErrorResponse } from '../helpers/test-utils.ts';
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { getRedisClient } from '@/lib/redis/client';
