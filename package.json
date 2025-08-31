@@ -15,7 +15,7 @@
     "test:node": "jest --config jest.config.node.js",
     "test:dom": "jest --config jest.config.dom.js",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test:coverage": "jest --coverage --config jest.config.node.js",
     "test:unit": "jest --testPathPattern=unit",
     "test:react": "jest -c jest.config.dom.js",
     "test:integration": "jest --config jest.config.integration.js",

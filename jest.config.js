@@ -72,8 +72,8 @@ const customJestConfig = {
     '/scripts/',
   ],
   testMatch: [
-    '**/__tests__/**/*.test.{js,jsx,ts,tsx}',
-    '**/?(*.)+(spec|test).{js,jsx,ts,tsx}',
+    '**/__tests__/**/*.test.{js,jsx,ts}',
+    '**/?(*.)+(spec|test).{js,jsx,ts}',
   ],
 };;
 
