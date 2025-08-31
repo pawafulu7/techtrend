@@ -2,8 +2,7 @@ name: Scheduler - Scraping Twice Daily
 
 on:
   schedule:
-    - cron: '0 15 * * *' # JST 00:00
-    - cron: '0 3 * * *'  # JST 12:00
+    - cron: '0 3 * * *'  # JST 12:00 (UTC 03:00) - Reduced from twice daily to save DB operations
   workflow_dispatch:
 
 concurrency:
