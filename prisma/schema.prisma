@@ -137,7 +137,7 @@ model WeeklyDigest {
   weekStartDate DateTime
   weekEndDate   DateTime
   articleCount  Int
-  topArticles   Json     // 記事IDの配列
+  topArticles   Json     // トップ記事の配列（{ id, title, url, score }）
   categories    Json     // カテゴリ別集計
   createdAt     DateTime @default(now())
   

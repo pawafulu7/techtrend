@@ -1,5 +1,21 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 
+// カテゴリタグ定義（大文字小文字を区別しない比較用）
+const CATEGORY_TAGS = {
+  'Frontend': ['React', 'Vue', 'Angular', 'CSS', 'JavaScript', 'TypeScript', 'Next.js'],
+  'Backend': ['Node.js', 'Python', 'Ruby', 'Go', 'Java', 'PHP', 'Rails', 'Django'],
+  'AI/ML': ['AI', 'LLM', 'Claude', 'GPT', 'Gemini', '機械学習', 'ChatGPT'],
+  'Security': ['セキュリティ', 'Security', '脆弱性', 'CVE', 'XSS', 'CSRF'],
+  'DevOps': ['Docker', 'Kubernetes', 'CI/CD', 'AWS', 'GCP', 'Azure', 'Jenkins'],
+  'Database': ['PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQL', 'NoSQL'],
+  'Mobile': ['iOS', 'Android', 'Flutter', 'React Native', 'Swift', 'Kotlin']
+} as const;
+
+// 型定義
+type ArticleWithRelations = Prisma.ArticleGetPayload<{
+  include: { tags: true; articleViews: true; favorites: true; source: true }
+}>;
+
 interface TopArticle {
   id: string;
   title: string;
@@ -15,7 +31,7 @@ interface CategorySummary {
   topArticle: {
     id: string;
     title: string;
-  };
+  } | null;
 }
 
 export class DigestGenerator {
@@ -37,15 +53,12 @@ export class DigestGenerator {
     const adjustedStart = this.getWeekStart(weekStart);
     const adjustedEnd = this.getWeekEnd(adjustedStart);
 
-    // Digest generation for week
-
     // 既存のダイジェストをチェック
     const existing = await this.prisma.weeklyDigest.findUnique({
       where: { weekStartDate: adjustedStart }
     });
 
     if (existing) {
-      // Digest already exists
       return existing.id;
     }
 
@@ -65,8 +78,6 @@ export class DigestGenerator {
       }
     });
 
-    // Found articles for the week
-
     // トップ記事を計算
     const topArticles = this.calculateTopArticles(articles);
     
@@ -79,17 +90,16 @@ export class DigestGenerator {
         weekStartDate: adjustedStart,
         weekEndDate: adjustedEnd,
         articleCount: articles.length,
-        topArticles: topArticles.slice(0, 10).map(a => ({
+        topArticles: JSON.parse(JSON.stringify(topArticles.slice(0, 10).map(a => ({
           id: a.id,
           title: a.title,
           url: a.url,
           score: a.score
-        })) as Prisma.InputJsonValue,
-        categories: categories as Prisma.InputJsonValue
+        })))),
+        categories: JSON.parse(JSON.stringify(categories))
       }
     });
 
-    // Weekly digest created
     return digest.id;
   }
 
@@ -128,7 +138,7 @@ export class DigestGenerator {
   /**
    * トップ記事を計算
    */
-  private calculateTopArticles(articles: Array<{id: string; title: string; url: string; articleViews: Array<unknown>; favorites: Array<unknown>}>): TopArticle[] {
+  private calculateTopArticles(articles: ArticleWithRelations[]): TopArticle[] {
     return articles.map(article => {
       const viewCount = article.articleViews.length;
       const favoriteCount = article.favorites.length;
@@ -148,25 +158,15 @@ export class DigestGenerator {
   /**
    * カテゴリ別集計
    */
-  private calculateCategories(articles: Array<{id: string; title: string; url: string; tags: Array<{name: string}>; articleViews: Array<unknown>; favorites: Array<unknown>}>): CategorySummary[] {
-    const categoryMap = new Map<string, typeof articles>();
-    
-    // タグからカテゴリを推定
-    const categoryTags = {
-      'Frontend': ['React', 'Vue', 'Angular', 'CSS', 'JavaScript', 'TypeScript', 'Next.js'],
-      'Backend': ['Node.js', 'Python', 'Ruby', 'Go', 'Java', 'PHP', 'Rails', 'Django'],
-      'AI/ML': ['AI', 'LLM', 'Claude', 'GPT', 'Gemini', '機械学習', 'ChatGPT'],
-      'Security': ['セキュリティ', 'Security', '脆弱性', 'CVE', 'XSS', 'CSRF'],
-      'DevOps': ['Docker', 'Kubernetes', 'CI/CD', 'AWS', 'GCP', 'Azure', 'Jenkins'],
-      'Database': ['PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQL', 'NoSQL'],
-      'Mobile': ['iOS', 'Android', 'Flutter', 'React Native', 'Swift', 'Kotlin']
-    };
+  private calculateCategories(articles: ArticleWithRelations[]): CategorySummary[] {
+    const categoryMap = new Map<string, ArticleWithRelations[]>();
 
     articles.forEach(article => {
-      const articleTags = article.tags.map((t) => t.name);
+      const articleTags = article.tags.map((t) => t.name.toLowerCase());
       
-      for (const [category, tags] of Object.entries(categoryTags)) {
-        if (articleTags.some((tag: string) => tags.includes(tag))) {
+      for (const [category, tags] of Object.entries(CATEGORY_TAGS)) {
+        const lowerTags = tags.map(t => t.toLowerCase());
+        if (articleTags.some((tag) => lowerTags.includes(tag))) {
           if (!categoryMap.has(category)) {
             categoryMap.set(category, []);
           }
@@ -185,7 +185,7 @@ export class DigestGenerator {
         topArticle: topArticle ? {
           id: topArticle.id,
           title: topArticle.title
-        } : { id: '', title: '' }
+        } : null
       });
     }
 
@@ -193,24 +193,24 @@ export class DigestGenerator {
   }
 
   /**
-   * 週の開始日（日曜日）を取得
+   * 週の開始日（日曜日）を取得（UTC基準）
    */
   private getWeekStart(date: Date): Date {
     const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day;
-    d.setDate(diff);
-    d.setHours(0, 0, 0, 0);
+    const day = d.getUTCDay(); // 0=Sunday
+    const diff = d.getUTCDate() - day;
+    d.setUTCDate(diff);
+    d.setUTCHours(0, 0, 0, 0);
     return d;
   }
 
   /**
-   * 週の終了日（土曜日の23:59:59）を取得
+   * 週の終了日（土曜日の23:59:59）を取得（UTC基準）
    */
   private getWeekEnd(weekStart: Date): Date {
     const d = new Date(weekStart);
-    d.setDate(d.getDate() + 6);
-    d.setHours(23, 59, 59, 999);
+    d.setUTCDate(d.getUTCDate() + 6);
+    d.setUTCHours(23, 59, 59, 999);
     return d;
   }
 }
