@@ -7,32 +7,37 @@
 jest.mock('@/lib/database');
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
-// Helper import with robust multi-path resolution for CI differences
+// Helper import with robust multi-path resolution for CI differences (no alias fallback)
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const _helpers = (() => {
   try {
-    // Prefer sibling helpers folder
+    // Prefer local bridge in same folder
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('../helpers/test-utils.ts');
+    return require('./test-utils.ts');
   } catch (_e1) {
     try {
-      // Without extension (some resolvers handle this)
+      // Extensionless local bridge
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      return require('../helpers/test-utils');
+      return require('./test-utils');
     } catch (_e2) {
       try {
-        // Local bridge in same folder
+        // Sibling helpers folder
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        return require('./test-utils.ts');
+        return require('../helpers/test-utils.ts');
       } catch (_e3) {
         try {
-          // Extensionless local bridge
+          // Sibling helpers without extension
           // eslint-disable-next-line @typescript-eslint/no-var-requires
-          return require('./test-utils');
+          return require('../helpers/test-utils');
         } catch (_e4) {
-          // Fallback to top-level alias
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          return require('@/__tests__/helpers/test-utils');
+          // Top-level helpers (two levels up from articles/)
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            return require('../../helpers/test-utils.ts');
+          } catch (_e5) {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            return require('../../helpers/test-utils');
+          }
         }
       }
     }
