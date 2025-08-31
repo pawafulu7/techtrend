@@ -54,8 +54,8 @@ describe('Articles API Tests', () => {
       const result = await parseResponse(response);
       
       expectApiSuccess(result);
-      expect(result.body.articles).toHaveLength(2);
-      expect(result.body.total).toBe(2);
+      expect(result.body.data.items).toHaveLength(2);
+      expect(result.body.data.total).toBe(2);
       expectDatabaseQuery(prismaMock, 'article', 'findMany');
     });
 
@@ -87,7 +87,7 @@ describe('Articles API Tests', () => {
       prismaMock.article.count.mockResolvedValue(0);
 
       const request = createMockRequest('http://localhost:3000/api/articles', {
-        searchParams: { source: 'dev.to' },
+        searchParams: { sourceId: 'dev.to' },
       });
       const context = createMockContext();
       
@@ -109,7 +109,7 @@ describe('Articles API Tests', () => {
       prismaMock.article.count.mockResolvedValue(0);
 
       const request = createMockRequest('http://localhost:3000/api/articles', {
-        searchParams: { q: 'JavaScript' },
+        searchParams: { search: 'JavaScript' },
       });
       const context = createMockContext();
       
@@ -134,8 +134,14 @@ describe('Articles API Tests', () => {
 
     it('キャッシュが機能する', async () => {
       const cachedData = JSON.stringify({
-        articles: [generateSampleArticle()],
-        total: 1,
+        success: true,
+        data: {
+          items: [generateSampleArticle()],
+          total: 1,
+          page: 1,
+          limit: 20,
+          totalPages: 1,
+        },
       });
       
       redisMock.get.mockResolvedValue(cachedData);
@@ -186,8 +192,8 @@ describe('Articles API Tests', () => {
       const result = await parseResponse(response);
       
       expectApiSuccess(result, 201);
-      expect(result.body.id).toBeDefined();
-      expect(result.body.title).toBe(newArticle.title);
+      expect(result.body.data.id).toBeDefined();
+      expect(result.body.data.title).toBe(newArticle.title);
     });
 
     it('必須フィールドが欠けている場合エラーを返す', async () => {
