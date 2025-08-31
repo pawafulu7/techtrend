@@ -126,7 +126,6 @@ jobs:
       - name: Run tests with coverage
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
-          REDIS_URL: redis://localhost:6379
           NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
           NODE_ENV: test
         run: npm run test:coverage
