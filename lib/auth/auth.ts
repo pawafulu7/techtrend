@@ -6,7 +6,9 @@ import GoogleProvider from 'next-auth/providers/google';
 import GitHubProvider from 'next-auth/providers/github';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+// Use Nodemailer if Gmail is configured, otherwise use Resend
 import { sendVerificationRequest } from './email-provider';
+import { sendVerificationRequestNodemailer } from './email-provider-nodemailer';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Ensure secret is picked up in all environments
@@ -26,7 +28,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       },
       from: process.env.EMAIL_FROM || 'noreply@techtrend.example.com',
-      sendVerificationRequest,
+      // Use Nodemailer if Gmail is configured
+      sendVerificationRequest: process.env.GMAIL_USER 
+        ? sendVerificationRequestNodemailer 
+        : sendVerificationRequest,
       maxAge: 24 * 60 * 60, // 24 hours
     }),
     
@@ -35,9 +40,59 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        loginToken: { label: 'Login Token', type: 'text' }, // 一時トークンでのログイン用
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        if (!credentials?.email) {
+          return null;
+        }
+
+        // 一時トークンでのログイン（メール認証後の自動ログイン用）
+        if (credentials.loginToken) {
+          // トークンの検証
+          const tempToken = await prisma.verificationToken.findFirst({
+            where: {
+              identifier: `login:${credentials.email}`,
+              token: credentials.loginToken,
+              expires: {
+                gt: new Date(),
+              },
+            },
+          });
+
+          if (!tempToken) {
+            return null;
+          }
+
+          // ユーザー情報取得
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+          });
+
+          if (!user || !user.emailVerified) {
+            return null;
+          }
+
+          // 使用済みトークンを削除
+          await prisma.verificationToken.delete({
+            where: {
+              identifier_token: {
+                identifier: `login:${credentials.email}`,
+                token: credentials.loginToken,
+              },
+            },
+          });
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+          };
+        }
+
+        // 通常のパスワードログイン
+        if (!credentials.password) {
           return null;
         }
 

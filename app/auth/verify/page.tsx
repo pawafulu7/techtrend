@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useSession, signIn } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -10,45 +11,92 @@ import Link from 'next/link';
 
 export default function VerifyPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [verificationState, setVerificationState] = useState<'verifying' | 'success' | 'error' | 'expired'>('verifying');
   const [message, setMessage] = useState('');
+  const [isAutoLogin, setIsAutoLogin] = useState(false);
+  
+  // 自動ログイン処理
+  const performAutoLogin = async (email: string, loginToken: string) => {
+    try {
+      // まず一時トークンを検証
+      const validateResponse = await fetch('/api/auth/auto-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, loginToken }),
+      });
+
+      if (validateResponse.ok) {
+        // NextAuthのsignInを使用してログイン
+        const result = await signIn('credentials', {
+          email,
+          loginToken, // パスワードの代わりに一時トークンを使用
+          redirect: false, // 手動でリダイレクトを制御
+        });
+
+        if (result?.ok) {
+          console.log('✅ Auto-login successful');
+          // 3秒後にホームへリダイレクト
+          setTimeout(() => {
+            router.push('/');
+            router.refresh();
+          }, 3000);
+        } else {
+          console.error('Auto-login failed:', result?.error);
+        }
+      } else {
+        console.error('Token validation failed');
+      }
+    } catch (error) {
+      console.error('Auto-login error:', error);
+    }
+  };
 
   useEffect(() => {
-    const verifyEmail = async () => {
-      const token = searchParams.get('token');
-      const email = searchParams.get('email');
+    // URLパラメータから成功・エラー状態を判定
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    const email = searchParams.get('email');
+    const loginToken = searchParams.get('loginToken');
 
-      if (!token || !email) {
-        setVerificationState('error');
-        setMessage('認証リンクが無効です。もう一度お試しください。');
-        return;
-      }
-
-      // In production, this would verify the token through an API endpoint
-      // For now, we'll simulate the verification process
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // In real implementation, check token validity
-        // For demo purposes, we'll randomly succeed or fail
-        const isValid = Math.random() > 0.2; // 80% success rate for demo
-        
-        if (isValid) {
-          setVerificationState('success');
-          setMessage('メールアドレスの確認が完了しました！');
-        } else {
-          setVerificationState('expired');
-          setMessage('認証リンクの有効期限が切れています。');
-        }
-      } catch (error) {
-        setVerificationState('error');
-        setMessage('認証処理中にエラーが発生しました。');
-      }
-    };
-
-    verifyEmail();
+    if (success === 'true' && email && loginToken) {
+      setVerificationState('success');
+      setMessage('メールアドレスの確認が完了しました！');
+      setIsAutoLogin(true);
+      
+      // 自動ログイン処理
+      performAutoLogin(email, loginToken);
+    } else if (success === 'true') {
+      setVerificationState('success');
+      setMessage('メールアドレスの確認が完了しました！');
+    } else if (error === 'token_expired') {
+      setVerificationState('expired');
+      setMessage('認証リンクの有効期限が切れています。');
+    } else if (error === 'invalid_token') {
+      setVerificationState('error');
+      setMessage('認証リンクが無効です。もう一度お試しください。');
+    } else if (error === 'verification_failed') {
+      setVerificationState('error');
+      setMessage('認証処理中にエラーが発生しました。');
+    } else {
+      // パラメータがない場合は通常のメール送信完了メッセージ
+      setVerificationState('success');
+      setMessage('確認メールを送信しました。メールをご確認ください。');
+    }
   }, [searchParams]);
+
+  // 自動ログイン後のリダイレクト処理
+  useEffect(() => {
+    if (isAutoLogin && status === 'authenticated') {
+      // 3秒後にホームへリダイレクト
+      const timer = setTimeout(() => {
+        router.push('/');
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAutoLogin, status, router]);
 
   const getIcon = () => {
     switch (verificationState) {
@@ -93,21 +141,40 @@ export default function VerifyPage() {
               <Alert className="bg-green-50 border-green-200">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <AlertDescription className="text-green-800">
-                  アカウントが有効化されました。ログインしてTechTrendをお楽しみください。
+                  {isAutoLogin && status === 'authenticated' 
+                    ? '自動ログインしました。まもなくホームページへ移動します...'
+                    : 'アカウントが有効化されました。ログインしてTechTrendをお楽しみください。'}
                 </AlertDescription>
               </Alert>
-              <div className="flex flex-col gap-2">
-                <Button asChild className="w-full">
-                  <Link href="/auth/login">
-                    ログインページへ
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="w-full">
-                  <Link href="/">
-                    ホームへ戻る
-                  </Link>
-                </Button>
-              </div>
+              
+              {isAutoLogin && status === 'authenticated' ? (
+                <div className="space-y-4">
+                  <div className="flex justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                  </div>
+                  <p className="text-center text-sm text-muted-foreground">
+                    リダイレクト中...
+                  </p>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="/">
+                      今すぐホームへ移動
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Button asChild className="w-full">
+                    <Link href="/auth/login">
+                      ログインページへ
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="/">
+                      ホームへ戻る
+                    </Link>
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

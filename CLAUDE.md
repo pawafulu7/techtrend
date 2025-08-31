@@ -1014,36 +1014,84 @@ npm run regenerate:all-unified -- --continue --limit=50
 - Rate Limitエラー時: 60秒待機して再試行
 - 継続オプション: `--continue`で中断箇所から再開
 
-## データベースマイグレーション管理（2025年8月30日更新）
+## 🔴 データベースマイグレーション管理（2025年8月31日更新 - 最重要）
 
-### 重要: 本番環境対応のマイグレーション管理を導入済み
+### 絶対的ルール：DBスキーマ変更時は必ずマイグレーションファイルを作成
 
-**これまでの問題:**
-- `prisma db push`で直接DB変更（マイグレーション履歴なし）
-- 本番環境デプロイ時に再現性がない
+**これまでの失敗事例（2025年8月31日）:**
+- `prisma db push`で開発DBを直接変更
+- マイグレーションファイルを作成せず
+- 結果：本番環境で新機能が動作しない危険な状態に
+- 教訓：「開発で動く≠本番で動く」を痛感
 
-**現在の正しい運用:**
+### 必須の手順（例外なし）
 
-#### 開発時のスキーマ変更
+#### 1. スキーマ変更時（prisma/schema.prisma編集後）
 ```bash
-# 必ずmigrate devを使用（db pushは禁止）
+# 絶対にこのコマンドを実行（db pushは使用禁止）
 npx prisma migrate dev --name 変更内容の説明
 
 # 例
-npx prisma migrate dev --name add_user_profile_fields
+npx prisma migrate dev --name add_email_verification_fields
+npx prisma migrate dev --name add_user_profile
 ```
 
-#### 本番環境へのデプロイ
+#### 2. マイグレーションファイル確認
 ```bash
-# migrate deployで安全に適用
-DATABASE_URL=$PRODUCTION_DATABASE_URL npx prisma migrate deploy
+# 作成されたファイルを必ず確認
+ls -la prisma/migrations/
+cat prisma/migrations/[最新のディレクトリ]/migration.sql
+
+# 空のマイグレーションの場合は要注意
+# → 既にdb pushで変更済みの可能性あり
 ```
 
-#### マイグレーション管理のルール
-1. **必ず`migrate dev`使用**: `db push`は使わない
-2. **Gitで管理**: `prisma/migrations`をコミット
-3. **本番は`migrate deploy`のみ**: 新規作成は開発環境で
-4. **マイグレーションファイルは編集しない**: 一度作成したら変更禁止
+#### 3. 本番環境へのデプロイ
+```bash
+# 本番では絶対にこのコマンドのみ使用
+DATABASE_URL=$PRODUCTION_DATABASE_URL npx prisma migrate deploy
+
+# 事前確認（推奨）
+DATABASE_URL=$PRODUCTION_DATABASE_URL npx prisma migrate status
+```
+
+### チェックリスト（DB変更時は必ず確認）
+
+- [ ] `prisma/schema.prisma`を変更したか？
+- [ ] `npx prisma migrate dev`を実行したか？
+- [ ] `prisma/migrations/`に新しいファイルが作成されたか？
+- [ ] マイグレーションファイルの中身は適切か？
+- [ ] Gitにコミットしたか？
+- [ ] 本番デプロイ時に`migrate deploy`を実行する準備はできているか？
+
+### 禁止事項
+
+❌ **絶対に使用しないコマンド:**
+- `npx prisma db push` - 開発環境でも使用禁止
+- `npx prisma migrate reset` - データが消える
+- 本番環境での`prisma migrate dev` - 本番では`deploy`のみ
+
+### トラブルシューティング
+
+#### 既にdb pushしてしまった場合の修復方法
+```bash
+# 1. 現在のDBスキーマを取得
+npx prisma db pull
+
+# 2. 手動でマイグレーションファイル作成
+mkdir -p prisma/migrations/YYYYMMDD_fix_manual_changes
+# migration.sqlに必要なALTER TABLE文を記述
+
+# 3. マイグレーション履歴に追加
+npx prisma migrate resolve --applied YYYYMMDD_fix_manual_changes
+```
+
+### 重要性の理由
+
+- **本番環境での動作保証**: マイグレーションファイルがないと本番で再現不可
+- **チーム開発**: 他の開発者の環境でも同じDB構造を保証
+- **ロールバック可能性**: 問題発生時に以前の状態に戻せる
+- **監査証跡**: いつ、何を、なぜ変更したかの記録
 
 詳細: Serenaメモリ `database_migration_management_202508`
 
