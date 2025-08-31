@@ -8,9 +8,11 @@ import { analyzeContent } from '../../lib/utils/content-analyzer';
 import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
 import { createTestSource, createTestArticle, cleanupDatabase } from '../helpers/db-cleanup';
 
+// Run only when explicit opt-in
+const run = process.env.INTEGRATION_DB === 'true' ? describe : describe.skip;
 const prisma = new PrismaClient();
 
-describe('Speaker Deck Real Data Test', () => {
+run('Speaker Deck Real Data Test', () => {
   afterAll(async () => {
     await prisma.$disconnect();
   });

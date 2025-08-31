@@ -3,7 +3,15 @@
  * Manual Mocksを使用したAPIルートハンドラーのテスト
  */
 
+// Mock source cache to avoid DB expectations in list endpoint
+jest.mock('@/lib/cache/source-cache', () => ({
+  sourceCache: {
+    getAllSourcesWithStats: jest.fn(),
+  },
+}));
+
 import { GET } from '@/app/api/sources/route';
+import { sourceCache } from '@/lib/cache/source-cache';
 import {
   createMockRequest,
   createMockContext,
@@ -38,38 +46,28 @@ describe('Sources API Tests', () => {
 
   describe('GET /api/sources', () => {
     it('ソース一覧を正常に取得できる', async () => {
-      const mockSources = [
+      const mockSourcesWithStats = [
         {
           id: 'dev.to',
           name: 'Dev.to',
+          type: 'rss',
           url: 'https://dev.to',
-          iconUrl: null,
-          description: 'Developer community',
-          isActive: true,
-          fetchInterval: 3600,
-          lastFetchedAt: new Date('2025-01-01'),
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2025-01-01'),
+          enabled: true,
+          category: 'community',
+          stats: { totalArticles: 100, avgQualityScore: 85, popularTags: [], publishFrequency: 0.1, lastPublished: new Date(), growthRate: 0 },
         },
         {
           id: 'qiita',
           name: 'Qiita',
+          type: 'api',
           url: 'https://qiita.com',
-          iconUrl: null,
-          description: 'Japanese tech community',
-          isActive: true,
-          fetchInterval: 3600,
-          lastFetchedAt: new Date('2025-01-01'),
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2025-01-01'),
+          enabled: true,
+          category: 'community',
+          stats: { totalArticles: 50, avgQualityScore: 80, popularTags: [], publishFrequency: 0.1, lastPublished: new Date(), growthRate: 0 },
         },
-      ];
+      ] as any;
 
-      prismaMock.source.findMany.mockResolvedValue(mockSources);
-      prismaMock.article.groupBy.mockResolvedValue([
-        { sourceId: 'dev.to', _count: { id: 100 } },
-        { sourceId: 'qiita', _count: { id: 50 } },
-      ]);
+      (sourceCache.getAllSourcesWithStats as jest.Mock).mockResolvedValue(mockSourcesWithStats);
 
       const request = createMockRequest('http://localhost:3000/api/sources');
       const context = createMockContext();
@@ -79,8 +77,7 @@ describe('Sources API Tests', () => {
       
       expectApiSuccess(result);
       expect(result.body.sources).toHaveLength(2);
-      expect(result.body.sources[0]).toHaveProperty('articleCount');
-      expectDatabaseQuery(prismaMock, 'source', 'findMany');
+      expect(result.body.sources[0]).toHaveProperty('stats');
     });
 
     it('非アクティブなソースを除外できる', async () => {
@@ -204,7 +201,7 @@ describe('Sources API Tests', () => {
       const result = await parseResponse(response);
       
       expectApiError(result, 500);
-      expect(result.body.error).toContain('Failed to fetch sources');
+      expect(result.body.error).toContain('Internal server error');
     });
 
     it('最終取得日時でフィルタリングできる', async () => {

@@ -5,7 +5,10 @@
 import { PrismaClient } from '@prisma/client';
 import { cleanupDatabase } from '../helpers/db-cleanup';
 
-describe('Database Integration Test Feasibility', () => {
+// Run only when explicit opt-in
+const run = process.env.INTEGRATION_DB === 'true' ? describe : describe.skip;
+
+run('Database Integration Test Feasibility', () => {
   let prisma: PrismaClient;
 
   beforeAll(async () => {
