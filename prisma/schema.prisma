@@ -131,6 +131,19 @@ model ArticleView {
   @@index([userId, isRead])
 }
 
+// 週刊ダイジェスト機能
+model WeeklyDigest {
+  id            String   @id @default(cuid())
+  weekStartDate DateTime
+  weekEndDate   DateTime
+  articleCount  Int
+  topArticles   Json     // 記事IDの配列
+  categories    Json     // カテゴリ別集計
+  createdAt     DateTime @default(now())
+  
+  @@unique([weekStartDate])
+}
+
 // PostgreSQL全文検索用の設定（マイグレーション後に手動で実行）
 // CREATE EXTENSION IF NOT EXISTS pg_trgm;
 // CREATE EXTENSION IF NOT EXISTS unaccent;
