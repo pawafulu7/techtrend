@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// セキュリティ: パスワードハッシュの生成状況をログに出力しない
+
 async function createTestUser() {
   try {
     // ブラウザ別のテストユーザー情報

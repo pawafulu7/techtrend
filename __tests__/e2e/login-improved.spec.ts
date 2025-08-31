@@ -65,8 +65,11 @@ test.describe.serial('Login Feature - Improved', () => {
     // 送信ボタンをクリックしてバリデーションをトリガー
     await page.click('button[type="submit"]:has-text("ログイン")');
     
-    // 少し待つ
-    await page.waitForTimeout(500);
+    // バリデーションエラーが表示されるまで待機
+    await page.waitForFunction(() => {
+      const input = document.querySelector('input[id="email"]') as HTMLInputElement;
+      return input?.validationMessage !== '';
+    }, { timeout: 5000 }).catch(() => {});
     
     // フォームが送信されていないことを確認（URLが変わらない）
     // ブラウザのネイティブバリデーションによりフォーム送信がブロックされる
@@ -89,8 +92,11 @@ test.describe.serial('Login Feature - Improved', () => {
     // 送信ボタンをクリックしてバリデーションをトリガー
     await page.click('button[type="submit"]:has-text("ログイン")');
     
-    // サーバー側バリデーションエラーを待つ
-    await page.waitForTimeout(1000);
+    // サーバー側バリデーションエラーを待つ（エラーアラートまたはURLの変化を待機）
+    await Promise.race([
+      page.waitForSelector('[role="alert"]', { state: 'visible', timeout: 3000 }),
+      page.waitForURL((url) => !url.toString().includes('/auth/login'), { timeout: 3000 })
+    ]).catch(() => {});
     
     // サーバーからのエラーメッセージを確認
     // 短いパスワードの場合、サーバー側でエラーになる可能性
