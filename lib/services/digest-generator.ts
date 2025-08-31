@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 interface TopArticle {
   id: string;
@@ -84,8 +84,8 @@ export class DigestGenerator {
           title: a.title,
           url: a.url,
           score: a.score
-        })) as any,
-        categories: categories as any
+        })) as Prisma.InputJsonValue,
+        categories: categories as Prisma.InputJsonValue
       }
     });
 
