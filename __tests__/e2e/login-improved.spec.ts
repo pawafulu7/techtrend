@@ -14,18 +14,8 @@ import {
  */
 test.describe.serial('Login Feature - Improved', () => {
   
-  // テストスイート開始前にテストユーザーを作成
-  test.beforeAll(async () => {
-    const created = await createTestUser();
-    if (!created) {
-      throw new Error('Failed to create test user');
-    }
-  });
-  
-  // テストスイート終了後にクリーンアップ
-  test.afterAll(async () => {
-    await deleteTestUser();
-  });
+  // グローバルセットアップでテストユーザーが作成されているため、
+  // ここでの作成は不要
 
   test('1. ログインページが正しく表示される', async ({ page }) => {
     // ログインページへ移動

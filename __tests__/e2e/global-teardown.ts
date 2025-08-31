@@ -1,28 +1,23 @@
-import { teardownTestDatabase } from './utils/test-database';
+import { FullConfig } from '@playwright/test';
+import { deleteTestUser } from './test-helpers';
 
 /**
- * Playwright グローバルティアダウン
- * 全テスト終了後に一度だけ実行される
+ * Playwrightのグローバルティアダウン
+ * すべてのテスト実行後に一度だけ実行される
  */
-async function globalTeardown() {
-  console.error('\n========================================');
-  console.error('Playwright Global Teardown Starting...');
-  console.error('========================================\n');
+async function globalTeardown(config: FullConfig) {
+  console.log('🧹 Starting global teardown...');
   
-  try {
-    // Cleanup test database
-    await teardownTestDatabase();
-    
-    console.error('\n========================================');
-    console.error('Global Teardown Completed!');
-    console.error('========================================\n');
-  } catch (error) {
-    console.error('\n========================================');
-    console.error('Global Teardown Failed!');
-    console.error('========================================\n');
-    console.error(error);
-    // Don't exit with error to avoid masking test failures
+  // テストユーザーを削除
+  console.log('🗑️ Deleting test user...');
+  const userDeleted = await deleteTestUser();
+  if (!userDeleted) {
+    console.error('⚠️ Failed to delete test user in global teardown');
+  } else {
+    console.log('✅ Test user deleted successfully');
   }
+  
+  console.log('✅ Global teardown completed');
 }
 
 export default globalTeardown;

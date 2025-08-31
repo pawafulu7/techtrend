@@ -20,8 +20,8 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: 1,  // 並列実行時の競合を避けるため1ワーカーに制限
   /* Global setup and teardown */
-  // globalSetup: './__tests__/e2e/global-setup.ts',
-  // globalTeardown: './__tests__/e2e/global-teardown.ts',
+  globalSetup: './__tests__/e2e/global-setup.ts',
+  globalTeardown: './__tests__/e2e/global-teardown.ts',
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html'],

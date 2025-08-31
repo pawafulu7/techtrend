@@ -18,18 +18,8 @@ import {
  */
 test.describe.serial('Password Change Feature - Improved', () => {
   
-  // テストスイート開始前にテストユーザーを一度だけ作成
-  test.beforeAll(async () => {
-    const created = await createTestUser();
-    if (!created) {
-      throw new Error('Failed to create test user');
-    }
-  });
-  
-  // テストスイート終了後にクリーンアップ
-  test.afterAll(async () => {
-    await deleteTestUser();
-  });
+  // グローバルセットアップでテストユーザーが作成されているため、
+  // ここでの作成は不要
 
   test('1. 未認証時はログインページにリダイレクトされる', async ({ page }) => {
     // 直接プロフィールページにアクセス
