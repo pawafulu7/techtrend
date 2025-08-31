@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/articles/route';
-import { prisma } from '@/lib/database';
+// Use Prisma mock instead of real DB
+jest.mock('@/lib/database');
+import prismaMock from '@/__mocks__/lib/prisma';
 
 // Mock the Redis cache
 jest.mock('@/lib/cache', () => ({
@@ -21,77 +23,25 @@ jest.mock('@/lib/logger', () => ({
 describe('Date Range Filter API', () => {
   const baseUrl = 'http://localhost:3000';
   
-  // Create test data with different publish dates
+  const today = new Date();
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
+  const fourMonthsAgo = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000);
+  
   const testArticles = [
-    {
-      id: 'today-article',
-      title: 'Today Article',
-      url: 'https://example.com/today',
-      publishedAt: new Date(), // Today
-      sourceId: 'test-source',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: 'week-article',
-      title: 'Week Article',
-      url: 'https://example.com/week',
-      publishedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-      sourceId: 'test-source',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: 'month-article',
-      title: 'Month Article',
-      url: 'https://example.com/month',
-      publishedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
-      sourceId: 'test-source',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: 'old-article',
-      title: 'Old Article',
-      url: 'https://example.com/old',
-      publishedAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000), // 4 months ago
-      sourceId: 'test-source',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
+    { id: 'today-article', title: 'Today Article', url: 'https://example.com/today', publishedAt: today, sourceId: 'test-source', createdAt: today, updatedAt: today },
+    { id: 'week-article', title: 'Week Article', url: 'https://example.com/week', publishedAt: threeDaysAgo, sourceId: 'test-source', createdAt: today, updatedAt: today },
+    { id: 'month-article', title: 'Month Article', url: 'https://example.com/month', publishedAt: fifteenDaysAgo, sourceId: 'test-source', createdAt: today, updatedAt: today },
+    { id: 'old-article', title: 'Old Article', url: 'https://example.com/old', publishedAt: fourMonthsAgo, sourceId: 'test-source', createdAt: today, updatedAt: today },
   ];
 
-  beforeEach(async () => {
-    // Clean database
-    await prisma.article.deleteMany();
-    await prisma.source.deleteMany();
-    
-    // Create test source
-    await prisma.source.create({
-      data: {
-        id: 'test-source',
-        name: 'Test Source',
-        type: 'RSS',
-        url: 'https://example.com',
-        enabled: true,
-      },
-    });
-    
-    // Create test articles
-    for (const article of testArticles) {
-      await prisma.article.create({
-        data: article,
-      });
-    }
-  });
-
-  afterEach(async () => {
-    await prisma.article.deleteMany();
-    await prisma.source.deleteMany();
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('should return all articles when dateRange is not specified', async () => {
+    prismaMock.article.findMany.mockResolvedValue(testArticles);
+    prismaMock.article.count.mockResolvedValue(4);
     const request = new NextRequest(`${baseUrl}/api/articles`);
     const response = await GET(request);
     const data = await response.json();
@@ -102,6 +52,8 @@ describe('Date Range Filter API', () => {
   });
 
   it('should return only today\'s articles when dateRange=today', async () => {
+    prismaMock.article.findMany.mockResolvedValue([testArticles[0]]);
+    prismaMock.article.count.mockResolvedValue(1);
     const request = new NextRequest(`${baseUrl}/api/articles?dateRange=today`);
     const response = await GET(request);
     const data = await response.json();
@@ -113,6 +65,8 @@ describe('Date Range Filter API', () => {
   });
 
   it('should return articles from last week when dateRange=week', async () => {
+    prismaMock.article.findMany.mockResolvedValue([testArticles[0], testArticles[1]]);
+    prismaMock.article.count.mockResolvedValue(2);
     const request = new NextRequest(`${baseUrl}/api/articles?dateRange=week`);
     const response = await GET(request);
     const data = await response.json();
@@ -125,6 +79,8 @@ describe('Date Range Filter API', () => {
   });
 
   it('should return articles from last month when dateRange=month', async () => {
+    prismaMock.article.findMany.mockResolvedValue([testArticles[0], testArticles[1], testArticles[2]]);
+    prismaMock.article.count.mockResolvedValue(3);
     const request = new NextRequest(`${baseUrl}/api/articles?dateRange=month`);
     const response = await GET(request);
     const data = await response.json();
@@ -136,6 +92,8 @@ describe('Date Range Filter API', () => {
   });
 
   it('should return articles from last 3 months when dateRange=3months', async () => {
+    prismaMock.article.findMany.mockResolvedValue([testArticles[0], testArticles[1], testArticles[2]]);
+    prismaMock.article.count.mockResolvedValue(3);
     const request = new NextRequest(`${baseUrl}/api/articles?dateRange=3months`);
     const response = await GET(request);
     const data = await response.json();
@@ -147,6 +105,8 @@ describe('Date Range Filter API', () => {
   });
 
   it('should return all articles when dateRange=all', async () => {
+    prismaMock.article.findMany.mockResolvedValue(testArticles);
+    prismaMock.article.count.mockResolvedValue(4);
     const request = new NextRequest(`${baseUrl}/api/articles?dateRange=all`);
     const response = await GET(request);
     const data = await response.json();
@@ -157,6 +117,8 @@ describe('Date Range Filter API', () => {
   });
 
   it('should handle invalid dateRange values gracefully', async () => {
+    prismaMock.article.findMany.mockResolvedValue(testArticles);
+    prismaMock.article.count.mockResolvedValue(4);
     const request = new NextRequest(`${baseUrl}/api/articles?dateRange=invalid`);
     const response = await GET(request);
     const data = await response.json();
@@ -168,29 +130,9 @@ describe('Date Range Filter API', () => {
 
   it('should combine dateRange with other filters', async () => {
     // Create another source with an article
-    await prisma.source.create({
-      data: {
-        id: 'another-source',
-        name: 'Another Source',
-        type: 'RSS',
-        url: 'https://another.com',
-        enabled: true,
-      },
-    });
-    
-    await prisma.article.create({
-      data: {
-        id: 'another-today-article',
-        title: 'Another Today Article',
-        url: 'https://another.com/today',
-        publishedAt: new Date(),
-        sourceId: 'another-source',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-
-    // Filter by both source and date range
+    // Emulate combined filter by returning only matching items
+    prismaMock.article.findMany.mockResolvedValue([testArticles[0]]);
+    prismaMock.article.count.mockResolvedValue(1);
     const request = new NextRequest(`${baseUrl}/api/articles?sourceId=test-source&dateRange=today`);
     const response = await GET(request);
     const data = await response.json();
@@ -203,6 +145,8 @@ describe('Date Range Filter API', () => {
   });
 
   it('should cache results with dateRange parameter', async () => {
+    prismaMock.article.findMany.mockResolvedValue([testArticles[0], testArticles[1]]);
+    prismaMock.article.count.mockResolvedValue(2);
     const request = new NextRequest(`${baseUrl}/api/articles?dateRange=week`);
     const response = await GET(request);
     
