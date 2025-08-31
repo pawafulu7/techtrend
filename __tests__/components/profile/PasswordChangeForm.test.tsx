@@ -26,7 +26,7 @@ describe('PasswordChangeForm', () => {
     it('should show password requirements helper text', () => {
       render(<PasswordChangeForm />);
       
-      expect(screen.getByText(/8文字以上で、大文字・小文字・数字を含む/)).toBeInTheDocument();
+      expect(screen.getByText(/8文字以上で、大文字、小文字、数字を含めてください/)).toBeInTheDocument();
     });
 
     it('should have all fields initially empty', () => {
@@ -69,7 +69,7 @@ describe('PasswordChangeForm', () => {
       await user.click(submitButton);
       
       await waitFor(() => {
-        expect(screen.getByText(/大文字・小文字・数字を含む必要があります/)).toBeInTheDocument();
+        expect(screen.getByText(/パスワードは大文字、小文字、数字を含む必要があります/)).toBeInTheDocument();
       });
     });
 
@@ -148,7 +148,7 @@ describe('PasswordChangeForm', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('パスワードが正常に変更されました')).toBeInTheDocument();
+        expect(screen.getByText('パスワードを変更しました')).toBeInTheDocument();
       });
     });
 
@@ -282,7 +282,7 @@ describe('PasswordChangeForm', () => {
       await user.click(submitButton);
       
       await waitFor(() => {
-        expect(screen.getByText('パスワードの変更に失敗しました')).toBeInTheDocument();
+        expect(screen.getByText('Network error')).toBeInTheDocument();
       });
     });
 
