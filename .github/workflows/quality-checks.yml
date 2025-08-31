@@ -119,7 +119,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
         run: |
-          npx prisma migrate deploy
+          npx prisma generate
+          npx prisma db push
           npx prisma db seed
       
       - name: Run tests with coverage
@@ -170,15 +171,28 @@ jobs:
       
       - name: Check for sensitive data
         run: |
-          # Check for API keys or secrets in code
-          if grep -r "GEMINI_API_KEY\|OPENAI_API_KEY\|NEXTAUTH_SECRET" \
+          # Fail only on hardcoded secrets, not on env var access
+          # 1) Direct assignment of env vars to string literals (excluding test setup)
+          MATCH_ASSIGN=$(grep -RnE "process\.env\.(GEMINI_API_KEY|OPENAI_API_KEY|NEXTAUTH_SECRET)\s*=\s*['\"][^'\"]+['\"]" \
             --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
-            --exclude-dir=node_modules --exclude-dir=.next \
-            --exclude="*.test.*" --exclude="*.spec.*" --exclude=".env*"; then
-            echo "❌ Potential secrets found in code!"
+            --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=__tests__ \
+            --exclude="*.test.*" --exclude="*.spec.*" --exclude="jest.setup.*" \
+            --exclude-dir=scripts || true)
+
+          # 2) Any variable named like a secret assigned a string literal (outside tests/scripts)
+          MATCH_SECRET_VAR=$(grep -RnE "(GEMINI_API_KEY|OPENAI_API_KEY|NEXTAUTH_SECRET)[^\n]*=\s*['\"][^'\"]+['\"]" \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=__tests__ \
+            --exclude="*.test.*" --exclude="*.spec.*" --exclude="jest.setup.*" \
+            --exclude-dir=scripts || true)
+
+          if [ -n "$MATCH_ASSIGN$MATCH_SECRET_VAR" ]; then
+            echo "❌ Potential hardcoded secrets detected:"
+            echo "$MATCH_ASSIGN"
+            echo "$MATCH_SECRET_VAR"
             exit 1
           else
-            echo "✅ No secrets found in code"
+            echo "✅ No hardcoded secrets found (env var references are allowed)"
           fi
 
   # Build check
