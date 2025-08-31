@@ -67,6 +67,7 @@ export function UserMenu() {
           variant="ghost" 
           className="relative h-10 w-10 rounded-full"
           data-testid="user-menu-trigger"
+          aria-label="ユーザーメニュー"
         >
           <Avatar className="h-10 w-10">
             <AvatarImage 

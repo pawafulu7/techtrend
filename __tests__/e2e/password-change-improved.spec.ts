@@ -62,7 +62,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.click();
     // タブの内容が表示されるまで待機
     await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
@@ -74,8 +74,8 @@ test.describe.serial('Password Change Feature - Improved', () => {
       confirm: 'short'
     });
     
-    // 送信ボタンをクリック
-    await page.click('button:has-text("パスワードを変更")');
+    // 送信ボタンをクリック（type="submit"を使用）
+    await page.click('button[type="submit"]:has-text("パスワードを変更")');
     
     // バリデーションエラーが表示されることを確認
     const errorFound = await waitForErrorMessage(page, 'パスワードは8文字以上');
@@ -93,7 +93,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.click();
     // タブの内容が表示されるまで待機
     await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
@@ -105,8 +105,8 @@ test.describe.serial('Password Change Feature - Improved', () => {
       confirm: 'DifferentPassword123'
     });
     
-    // 送信ボタンをクリック
-    await page.click('button:has-text("パスワードを変更")');
+    // 送信ボタンをクリック（type="submit"を使用）
+    await page.click('button[type="submit"]:has-text("パスワードを変更")');
     
     // エラーメッセージが表示されることを確認
     const errorFound = await waitForErrorMessage(page, 'パスワードが一致しません');
@@ -121,7 +121,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.click();
     // タブの内容が表示されるまで待機
     await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
@@ -133,8 +133,8 @@ test.describe.serial('Password Change Feature - Improved', () => {
       confirm: 'NewPassword123'
     });
     
-    // 送信ボタンをクリック
-    await page.click('button:has-text("パスワードを変更")');
+    // 送信ボタンをクリック（type="submit"を使用）
+    await page.click('button[type="submit"]:has-text("パスワードを変更")');
     
     // エラーメッセージが表示されることを確認
     const errorFound = await waitForErrorMessage(page, 'Current password is incorrect');
@@ -152,7 +152,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.click();
     // タブの内容が表示されるまで待機
     await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
@@ -164,8 +164,8 @@ test.describe.serial('Password Change Feature - Improved', () => {
       confirm: 'password123'
     });
     
-    // 送信ボタンをクリック
-    await page.click('button:has-text("パスワードを変更")');
+    // 送信ボタンをクリック（type="submit"を使用）
+    await page.click('button[type="submit"]:has-text("パスワードを変更")');
     
     // エラーメッセージが表示されることを確認
     const errorFound = await waitForErrorMessage(page, '大文字、小文字、数字を含む必要があります');
@@ -183,7 +183,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // アカウントタブを開く
-    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.click();
     // タブの内容が表示されるまで待機
     await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
@@ -228,7 +228,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.waitForSelector('h1:has-text("プロフィール設定")', { timeout: 10000 });
     
     // アカウントタブを開く
-    const accountTab = page.locator('button[role="tab"]').filter({ hasText: 'アカウント' });
+    const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.waitFor({ state: 'visible', timeout: 5000 });
     await accountTab.click();
     // タブの内容が表示されるまで待機
@@ -241,8 +241,8 @@ test.describe.serial('Password Change Feature - Improved', () => {
       confirm: 'NewSecurePassword456'
     });
     
-    // 送信ボタンをクリック
-    await page.click('button:has-text("パスワードを変更")');
+    // 送信ボタンをクリック（type="submit"を使用）
+    await page.click('button[type="submit"]:has-text("パスワードを変更")');
     
     // 成功メッセージが表示されることを確認（タイムアウトを長めに設定）
     const successFound = await waitForSuccessMessage(page, 'パスワードを変更しました', 10000);

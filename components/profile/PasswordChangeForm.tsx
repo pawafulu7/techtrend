@@ -82,6 +82,7 @@ export function PasswordChangeForm() {
         <Input
           id="currentPassword"
           type="password"
+          autoComplete="current-password"
           {...register('currentPassword', {
             required: '現在のパスワードを入力してください',
           })}
@@ -98,11 +99,16 @@ export function PasswordChangeForm() {
         <Input
           id="newPassword"
           type="password"
+          autoComplete="new-password"
           {...register('newPassword', {
             required: '新しいパスワードを入力してください',
             minLength: {
               value: 8,
               message: 'パスワードは8文字以上である必要があります',
+            },
+            maxLength: {
+              value: 72,
+              message: 'パスワードは72文字以下である必要があります',
             },
             pattern: {
               value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
@@ -125,6 +131,7 @@ export function PasswordChangeForm() {
         <Input
           id="confirmPassword"
           type="password"
+          autoComplete="new-password"
           {...register('confirmPassword', {
             required: 'パスワード確認を入力してください',
             validate: (value) =>

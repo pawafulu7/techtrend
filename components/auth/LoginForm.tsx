@@ -68,6 +68,7 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
         <Input
           id="email"
           type="email"
+          autoComplete="email"
           placeholder="name@example.com"
           {...register('email', {
             required: 'メールアドレスを入力してください',
@@ -88,6 +89,7 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
         <Input
           id="password"
           type="password"
+          autoComplete="current-password"
           placeholder="********"
           {...register('password', {
             required: 'パスワードを入力してください',
