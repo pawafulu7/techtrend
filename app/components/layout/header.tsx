@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Rss, TrendingUp, Menu, X, BarChart3, LineChart, Hash, Database, Star, Home } from 'lucide-react';
+import { Rss, TrendingUp, Menu, X, BarChart3, LineChart, Hash, Database, Star, Home, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -19,6 +19,7 @@ export function Header() {
   const primaryNav = [
     { href: '/', label: 'ホーム', icon: Home },
     { href: '/popular', label: '人気', icon: TrendingUp },
+    { href: '/digest', label: 'ダイジェスト', icon: Calendar },
     { href: '/sources', label: 'ソース', icon: Database },
     { href: '/trends', label: 'トレンド', icon: TrendingUp },
     { href: '/stats', label: '統計', icon: BarChart3 },
