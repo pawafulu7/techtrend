@@ -177,7 +177,12 @@ export async function GET(request: NextRequest) {
       
       // Category filter
       if (category && category !== 'all') {
-        where.category = category as ArticleCategory;
+        // Handle 'uncategorized' as null
+        if (category === 'uncategorized') {
+          where.category = null;
+        } else {
+          where.category = category as ArticleCategory;
+        }
       }
       
       if (search) {

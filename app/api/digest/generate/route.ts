@@ -11,8 +11,29 @@ const cache = new RedisCache({
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { date } = body;
+    // Parse request body with error handling
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    const { date } = body || {};
+
+    // Validate date if provided
+    if (date) {
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        return NextResponse.json(
+          { error: 'Invalid date format' },
+          { status: 400 }
+        );
+      }
+    }
 
     const generator = new DigestGenerator(prisma);
     const digestId = await generator.generateWeeklyDigest(
