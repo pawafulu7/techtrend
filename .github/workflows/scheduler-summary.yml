@@ -35,6 +35,7 @@ jobs:
           REDIS_URL: ${{ secrets.REDIS_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          npx tsx scripts/scheduled/manage-summaries.ts generate
+          # Summary generation is now handled by scheduler-rss-hourly to consolidate DB operations
+          # npx tsx scripts/scheduled/manage-summaries.ts generate
           npx tsx scripts/scheduled/manage-quality-scores.ts calculate
           npx tsx scripts/scheduled/calculate-difficulty-levels.ts

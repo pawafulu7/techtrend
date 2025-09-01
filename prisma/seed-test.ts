@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient({
   datasources: {
@@ -132,15 +133,26 @@ async function createTags() {
 }
 
 async function createUsers() {
+  // Hash password for test users
+  const hashedPassword = await bcrypt.hash('TestPassword123', 10);
+  
   const usersData = [
+    {
+      email: 'test@example.com',  // Main test user for E2E tests
+      name: 'Test User',
+      password: hashedPassword,
+      emailVerified: new Date(),
+    },
     {
       email: 'test1@example.com',
       name: 'Test User 1',
+      password: hashedPassword,
       emailVerified: new Date(),
     },
     {
       email: 'test2@example.com',
       name: 'Test User 2',
+      password: hashedPassword,
       emailVerified: new Date(),
     },
     {
