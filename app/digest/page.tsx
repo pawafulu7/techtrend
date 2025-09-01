@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, TrendingUpIcon, TagIcon, RefreshCwIcon } from 'lucide-react';
+import { CalendarIcon, TrendingUpIcon, TagIcon, RefreshCwIcon, ExternalLinkIcon, ChevronRightIcon } from 'lucide-react';
 
 interface DigestArticle {
   id: string;
@@ -205,16 +205,17 @@ export default function DigestPage() {
         <CardContent>
           <div className="space-y-4">
             {digest.articles?.slice(0, 10).map((article, index) => (
-              <div key={article.id} className="flex items-start gap-4">
+              <div key={article.id} className="group flex items-start gap-4 p-3 -mx-3 rounded-lg hover:bg-accent/30 transition-colors">
                 <span className="text-2xl font-bold text-muted-foreground">
                   {index + 1}
                 </span>
                 <div className="flex-1">
                   <Link
                     href={`/articles/${article.id}?from=digest`}
-                    className="text-blue-600 hover:underline font-medium"
+                    className="font-medium text-foreground hover:text-blue-600 group-hover:text-blue-600 transition-colors inline-flex items-center gap-1"
                   >
                     {article.title}
+                    <ExternalLinkIcon className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="outline" className="text-xs">
@@ -253,13 +254,22 @@ export default function DigestPage() {
                 </CardHeader>
                 <CardContent>
                   {category.topArticle && (
-                    <div className="text-sm text-muted-foreground">
-                      <p className="mb-1">最も読まれた記事:</p>
+                    <div className="text-sm">
+                      <p className="text-muted-foreground mb-2">最も読まれた記事:</p>
                       <Link
                         href={`/articles/${category.topArticle.id}?from=digest`}
-                        className="font-medium text-foreground hover:text-blue-600 hover:underline block"
+                        className="group block p-3 -mx-3 rounded-lg hover:bg-accent/50 transition-colors"
                       >
-                        {category.topArticle.title}
+                        <div className="flex items-start gap-2">
+                          <ChevronRightIcon className="h-4 w-4 mt-0.5 text-blue-600 flex-shrink-0 group-hover:translate-x-1 transition-transform" />
+                          <span className="font-medium text-foreground group-hover:text-blue-600 line-clamp-2 flex-1">
+                            {category.topArticle.title}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center gap-1 text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity pl-6">
+                          <span>記事を読む</span>
+                          <ExternalLinkIcon className="h-3 w-3" />
+                        </div>
                       </Link>
                     </div>
                   )}
