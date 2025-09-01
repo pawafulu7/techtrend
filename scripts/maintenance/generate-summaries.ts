@@ -636,8 +636,8 @@ async function generateSummaries(): Promise<GenerateResult> {
                   })
                 );
 
-                // カテゴリを自動分類
-                const category = CategoryClassifier.classifyByTags(tagRecords);
+                // カテゴリを自動分類（classify メソッドを使用してより良い分類）
+                const category = CategoryClassifier.classify(tagRecords, article.title, content);
 
                 // 記事にタグとカテゴリを関連付ける
                 await prisma.article.update({
@@ -646,12 +646,17 @@ async function generateSummaries(): Promise<GenerateResult> {
                     tags: {
                       connect: tagRecords.map(tag => ({ id: tag.id }))
                     },
-                    category: category  // カテゴリも設定
+                    ...(category && { category })  // カテゴリが判定できた場合のみ更新
                   }
                 });
+                
+                // ログでは計算されたカテゴリ値を表示（article.categoryではなくcategory変数を使用）
+                console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')}, カテゴリ: ${category || '未分類'})`);
+              } else {
+                // タグがない場合のログ
+                console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}...`);
               }
               
-              console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')}, カテゴリ: ${article.category || '未分類'})`);
               generatedCount++;
               apiStats.successes++;
               break; // 成功したらループを抜ける
