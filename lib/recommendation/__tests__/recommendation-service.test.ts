@@ -1,7 +1,6 @@
-import { RecommendationService } from '../recommendation-service';
-import { prisma } from '@/lib/prisma';
 import * as utils from '../utils';
 
+// Mock Prisma
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     articleView: {
@@ -17,7 +16,15 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
-jest.mock('@/lib/redis/factory');
+// Mock Redis factory
+jest.mock('@/lib/redis/factory', () => ({
+  getRedisService: jest.fn(),
+}));
+
+// Import after mocks
+import { RecommendationService } from '../recommendation-service';
+import { prisma } from '@/lib/prisma';
+import { getRedisService } from '@/lib/redis/factory';
 
 describe('RecommendationService', () => {
   let service: RecommendationService;
@@ -42,8 +49,7 @@ describe('RecommendationService', () => {
       exists: jest.fn(),
     };
     
-    const redisFactory = require('@/lib/redis/factory');
-    redisFactory.getRedisService = jest.fn().mockReturnValue(mockRedisService);
+    (getRedisService as jest.Mock).mockReturnValue(mockRedisService);
     service = new RecommendationService();
   });
 

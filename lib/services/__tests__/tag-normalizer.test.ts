@@ -1,108 +1,108 @@
 import { TagNormalizer } from '../tag-normalizer';
 
 describe('TagNormalizer', () => {
-  describe('normalizeTag', () => {
+  describe('normalize', () => {
     describe('AI/LLM関連タグの正規化', () => {
       it('should normalize Claude variations', () => {
-        expect(TagNormalizer.normalizeTag('claude')).toBe('Claude');
-        expect(TagNormalizer.normalizeTag('Claude Code')).toBe('Claude');
-        expect(TagNormalizer.normalizeTag('claude-sonnet')).toBe('Claude');
-        expect(TagNormalizer.normalizeTag('claudecode')).toBe('Claude');
-        expect(TagNormalizer.normalizeTag('claude-4')).toBe('Claude');
-        expect(TagNormalizer.normalizeTag('claude 3.5 sonnet')).toBe('Claude');
+        expect(TagNormalizer.normalize('claude').name).toBe('Claude');
+        expect(TagNormalizer.normalize('Claude Code').name).toBe('Claude');
+        expect(TagNormalizer.normalize('claude-sonnet').name).toBe('Claude');
+        expect(TagNormalizer.normalize('claudecode').name).toBe('Claude');
+        expect(TagNormalizer.normalize('claude-4').name).toBe('Claude');
+        expect(TagNormalizer.normalize('claude 3.5 sonnet').name).toBe('Claude');
       });
 
       it('should normalize GPT variations', () => {
-        expect(TagNormalizer.normalizeTag('GPT-4')).toBe('GPT');
-        expect(TagNormalizer.normalizeTag('gpt4')).toBe('GPT');
-        expect(TagNormalizer.normalizeTag('GPT-5')).toBe('GPT');
-        expect(TagNormalizer.normalizeTag('ChatGPT')).toBe('GPT');
-        expect(TagNormalizer.normalizeTag('chat-gpt')).toBe('GPT');
-        expect(TagNormalizer.normalizeTag('gpt-5-thinking')).toBe('GPT');
+        expect(TagNormalizer.normalize('GPT-4').name).toBe('GPT');
+        expect(TagNormalizer.normalize('gpt4').name).toBe('GPT');
+        expect(TagNormalizer.normalize('GPT-5').name).toBe('GPT');
+        expect(TagNormalizer.normalize('ChatGPT').name).toBe('GPT');
+        expect(TagNormalizer.normalize('chat-gpt').name).toBe('GPT');
+        expect(TagNormalizer.normalize('gpt-5-thinking').name).toBe('GPT');
       });
 
       it('should normalize OpenAI variations', () => {
-        expect(TagNormalizer.normalizeTag('openai')).toBe('OpenAI');
-        expect(TagNormalizer.normalizeTag('OpenAI')).toBe('OpenAI');
-        expect(TagNormalizer.normalizeTag('open-ai')).toBe('OpenAI');
-        expect(TagNormalizer.normalizeTag('openai-api')).toBe('OpenAI');
+        expect(TagNormalizer.normalize('openai').name).toBe('OpenAI');
+        expect(TagNormalizer.normalize('OpenAI').name).toBe('OpenAI');
+        expect(TagNormalizer.normalize('open-ai').name).toBe('OpenAI');
+        expect(TagNormalizer.normalize('openai-api').name).toBe('OpenAI');
       });
 
       it('should normalize Gemini variations', () => {
-        expect(TagNormalizer.normalizeTag('gemini')).toBe('Gemini');
-        expect(TagNormalizer.normalizeTag('Gemini API')).toBe('Gemini');
-        expect(TagNormalizer.normalizeTag('Google Gemini')).toBe('Gemini');
-        expect(TagNormalizer.normalizeTag('gemini 1.5 pro')).toBe('Gemini');
+        expect(TagNormalizer.normalize('gemini').name).toBe('Gemini');
+        expect(TagNormalizer.normalize('Gemini API').name).toBe('Gemini');
+        expect(TagNormalizer.normalize('Google Gemini').name).toBe('Gemini');
+        expect(TagNormalizer.normalize('gemini 1.5 pro').name).toBe('Gemini');
       });
 
       it('should normalize LLM variations', () => {
-        expect(TagNormalizer.normalizeTag('llm')).toBe('LLM');
-        expect(TagNormalizer.normalizeTag('LLMs')).toBe('LLM');
-        expect(TagNormalizer.normalizeTag('Large Language Model')).toBe('LLM');
+        expect(TagNormalizer.normalize('llm').name).toBe('LLM');
+        expect(TagNormalizer.normalize('LLMs').name).toBe('LLM');
+        expect(TagNormalizer.normalize('Large Language Model').name).toBe('LLM');
       });
     });
 
     describe('プログラミング言語の正規化', () => {
       it('should normalize JavaScript variations', () => {
-        expect(TagNormalizer.normalizeTag('javascript')).toBe('JavaScript');
-        expect(TagNormalizer.normalizeTag('JS')).toBe('JavaScript');
-        expect(TagNormalizer.normalizeTag('js')).toBe('JavaScript');
-        expect(TagNormalizer.normalizeTag('Javascript')).toBe('JavaScript');
+        expect(TagNormalizer.normalize('javascript').name).toBe('JavaScript');
+        expect(TagNormalizer.normalize('JS').name).toBe('JavaScript');
+        expect(TagNormalizer.normalize('js').name).toBe('JavaScript');
+        expect(TagNormalizer.normalize('Javascript').name).toBe('JavaScript');
       });
 
       it('should normalize TypeScript variations', () => {
-        expect(TagNormalizer.normalizeTag('typescript')).toBe('TypeScript');
-        expect(TagNormalizer.normalizeTag('TS')).toBe('TypeScript');
-        expect(TagNormalizer.normalizeTag('ts')).toBe('TypeScript');
-        expect(TagNormalizer.normalizeTag('Typescript')).toBe('TypeScript');
+        expect(TagNormalizer.normalize('typescript').name).toBe('TypeScript');
+        expect(TagNormalizer.normalize('TS').name).toBe('TypeScript');
+        expect(TagNormalizer.normalize('ts').name).toBe('TypeScript');
+        expect(TagNormalizer.normalize('Typescript').name).toBe('TypeScript');
       });
 
       it('should normalize Python variations', () => {
-        expect(TagNormalizer.normalizeTag('python')).toBe('Python');
-        expect(TagNormalizer.normalizeTag('Python3')).toBe('Python');
-        expect(TagNormalizer.normalizeTag('python-3')).toBe('Python');
-        expect(TagNormalizer.normalizeTag('py')).toBe('Python');
+        expect(TagNormalizer.normalize('python').name).toBe('Python');
+        expect(TagNormalizer.normalize('Python3').name).toBe('Python');
+        expect(TagNormalizer.normalize('python-3').name).toBe('Python');
+        expect(TagNormalizer.normalize('py').name).toBe('Python');
       });
     });
 
     describe('フレームワークの正規化', () => {
       it('should normalize React variations', () => {
-        expect(TagNormalizer.normalizeTag('react')).toBe('React');
-        expect(TagNormalizer.normalizeTag('React.js')).toBe('React');
-        expect(TagNormalizer.normalizeTag('reactjs')).toBe('React');
-        expect(TagNormalizer.normalizeTag('React18')).toBe('React');
+        expect(TagNormalizer.normalize('react').name).toBe('React');
+        expect(TagNormalizer.normalize('React.js').name).toBe('React');
+        expect(TagNormalizer.normalize('reactjs').name).toBe('React');
+        expect(TagNormalizer.normalize('React18').name).toBe('React');
       });
 
       it('should normalize Next.js variations', () => {
-        expect(TagNormalizer.normalizeTag('nextjs')).toBe('Next.js');
-        expect(TagNormalizer.normalizeTag('Next.js')).toBe('Next.js');
-        expect(TagNormalizer.normalizeTag('next-js')).toBe('Next.js');
-        expect(TagNormalizer.normalizeTag('Next13')).toBe('Next.js');
+        expect(TagNormalizer.normalize('nextjs').name).toBe('Next.js');
+        expect(TagNormalizer.normalize('Next.js').name).toBe('Next.js');
+        expect(TagNormalizer.normalize('next-js').name).toBe('Next.js');
+        expect(TagNormalizer.normalize('Next13').name).toBe('Next.js');
       });
 
       it('should normalize Vue variations', () => {
-        expect(TagNormalizer.normalizeTag('vue')).toBe('Vue.js');
-        expect(TagNormalizer.normalizeTag('Vue.js')).toBe('Vue.js');
-        expect(TagNormalizer.normalizeTag('vuejs')).toBe('Vue.js');
-        expect(TagNormalizer.normalizeTag('Vue3')).toBe('Vue.js');
+        expect(TagNormalizer.normalize('vue').name).toBe('Vue.js');
+        expect(TagNormalizer.normalize('Vue.js').name).toBe('Vue.js');
+        expect(TagNormalizer.normalize('vuejs').name).toBe('Vue.js');
+        expect(TagNormalizer.normalize('Vue3').name).toBe('Vue.js');
       });
     });
 
     describe('特殊文字の処理', () => {
       it('should handle tags with special characters', () => {
-        expect(TagNormalizer.normalizeTag('C++')).toBe('C++');
-        expect(TagNormalizer.normalizeTag('C#')).toBe('C#');
-        expect(TagNormalizer.normalizeTag('F#')).toBe('F#');
+        expect(TagNormalizer.normalize('C++').name).toBe('C++');
+        expect(TagNormalizer.normalize('C#').name).toBe('C#');
+        expect(TagNormalizer.normalize('F#').name).toBe('F#');
       });
 
       it('should trim whitespace', () => {
-        expect(TagNormalizer.normalizeTag('  React  ')).toBe('React');
-        expect(TagNormalizer.normalizeTag('\tPython\n')).toBe('Python');
+        expect(TagNormalizer.normalize('  React  ').name).toBe('React');
+        expect(TagNormalizer.normalize('\tPython\n').name).toBe('Python');
       });
 
       it('should handle empty or invalid input', () => {
-        expect(TagNormalizer.normalizeTag('')).toBe('');
-        expect(TagNormalizer.normalizeTag('   ')).toBe('');
+        expect(TagNormalizer.normalize('').name).toBe('');
+        expect(TagNormalizer.normalize('   ').name).toBe('');
       });
     });
   });
@@ -110,23 +110,30 @@ describe('TagNormalizer', () => {
   describe('normalizeTags', () => {
     it('should normalize array of tags', () => {
       const input = ['react', 'typescript', 'nextjs', 'gpt-4'];
-      const expected = ['React', 'TypeScript', 'Next.js', 'GPT'];
+      const result = TagNormalizer.normalizeTags(input);
       
-      expect(TagNormalizer.normalizeTags(input)).toEqual(expected);
+      expect(result).toHaveLength(4);
+      expect(result[0].name).toBe('React');
+      expect(result[1].name).toBe('TypeScript');
+      expect(result[2].name).toBe('Next.js');
+      expect(result[3].name).toBe('GPT');
     });
 
     it('should remove duplicates after normalization', () => {
       const input = ['react', 'React', 'React.js', 'reactjs'];
-      const expected = ['React'];
+      const result = TagNormalizer.normalizeTags(input);
       
-      expect(TagNormalizer.normalizeTags(input)).toEqual(expected);
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('React');
     });
 
     it('should filter out empty strings', () => {
       const input = ['react', '', '  ', 'typescript'];
-      const expected = ['React', 'TypeScript'];
+      const result = TagNormalizer.normalizeTags(input);
       
-      expect(TagNormalizer.normalizeTags(input)).toEqual(expected);
+      expect(result).toHaveLength(2);
+      expect(result[0].name).toBe('React');
+      expect(result[1].name).toBe('TypeScript');
     });
 
     it('should handle empty array', () => {
@@ -135,34 +142,46 @@ describe('TagNormalizer', () => {
 
     it('should maintain order while removing duplicates', () => {
       const input = ['typescript', 'react', 'TypeScript', 'vue'];
-      const expected = ['TypeScript', 'React', 'Vue.js'];
+      const result = TagNormalizer.normalizeTags(input);
       
-      expect(TagNormalizer.normalizeTags(input)).toEqual(expected);
+      expect(result).toHaveLength(3);
+      expect(result[0].name).toBe('TypeScript');
+      expect(result[1].name).toBe('React');
+      expect(result[2].name).toBe('Vue.js');
     });
   });
 
-  describe('getCategory', () => {
+  describe('inferCategory', () => {
     it('should return correct category for AI/ML tags', () => {
-      expect(TagNormalizer.getCategory('Claude')).toBe('ai-ml');
-      expect(TagNormalizer.getCategory('GPT')).toBe('ai-ml');
-      expect(TagNormalizer.getCategory('LLM')).toBe('ai-ml');
+      const tags = [
+        { name: 'Claude', category: 'ai-ml' },
+        { name: 'React', category: 'framework' }
+      ];
+      expect(TagNormalizer.inferCategory(tags)).toBe('ai-ml');
     });
 
     it('should return correct category for programming languages', () => {
-      expect(TagNormalizer.getCategory('JavaScript')).toBe('programming-language');
-      expect(TagNormalizer.getCategory('Python')).toBe('programming-language');
-      expect(TagNormalizer.getCategory('TypeScript')).toBe('programming-language');
+      const tags = [
+        { name: 'JavaScript', category: 'language' },
+        { name: 'React', category: 'framework' }
+      ];
+      expect(TagNormalizer.inferCategory(tags)).toBe('language');
     });
 
     it('should return correct category for frameworks', () => {
-      expect(TagNormalizer.getCategory('React')).toBe('framework');
-      expect(TagNormalizer.getCategory('Next.js')).toBe('framework');
-      expect(TagNormalizer.getCategory('Vue.js')).toBe('framework');
+      const tags = [
+        { name: 'React', category: 'framework' },
+        { name: 'Next.js', category: 'framework' }
+      ];
+      expect(TagNormalizer.inferCategory(tags)).toBe('framework');
     });
 
     it('should return undefined for uncategorized tags', () => {
-      expect(TagNormalizer.getCategory('random-tag')).toBeUndefined();
-      expect(TagNormalizer.getCategory('unknown')).toBeUndefined();
+      const tags = [
+        { name: 'random-tag' },
+        { name: 'unknown' }
+      ];
+      expect(TagNormalizer.inferCategory(tags)).toBeUndefined();
     });
   });
 });

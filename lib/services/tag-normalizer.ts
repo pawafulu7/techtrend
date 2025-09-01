@@ -675,6 +675,8 @@ export class TagNormalizer {
     
     for (const tag of tags) {
       const normalized = this.normalize(tag);
+      // 空文字はスキップ
+      if (!normalized.name) continue;
       // 重複を避けるため、正規化後の名前をキーとして使用
       if (!normalizedMap.has(normalized.name)) {
         normalizedMap.set(normalized.name, normalized);

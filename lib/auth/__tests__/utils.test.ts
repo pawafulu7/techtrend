@@ -1,6 +1,4 @@
 import bcrypt from 'bcryptjs';
-import { prisma } from '@/lib/prisma';
-import { hashPassword, verifyPassword, createUser } from '../utils';
 
 jest.mock('@/lib/prisma', () => ({
   prisma: {
@@ -12,6 +10,9 @@ jest.mock('@/lib/prisma', () => ({
 }));
 
 jest.mock('bcryptjs');
+
+import { prisma } from '@/lib/prisma';
+import { hashPassword, verifyPassword, createUser } from '../utils';
 
 describe('Auth Utils', () => {
   beforeEach(() => {
