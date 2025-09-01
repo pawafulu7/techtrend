@@ -300,7 +300,8 @@ describe('SearchBar', () => {
       await user.click(searchButton);
       
       // ローディングアイコンが一時的に表示される
-      const loadingIcon = screen.queryByRole('button', { name: '' });
+      // Loader2アイコンはanimateクラスを持つ要素として検索
+      const loadingIcon = document.querySelector('.animate-spin');
       expect(loadingIcon).toBeInTheDocument();
       
       // 500ms後にローディング状態が解除される

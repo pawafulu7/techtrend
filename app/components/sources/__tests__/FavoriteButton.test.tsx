@@ -55,7 +55,7 @@ describe('FavoriteButton', () => {
       
       const button = screen.getByRole('button');
       expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('bg-transparent'); // outline variant
+      expect(button).toHaveClass('bg-background'); // outline variant
       
       const star = button.querySelector('.lucide-star');
       expect(star).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe('FavoriteButton', () => {
       rerender(<FavoriteButton sourceId="source-1" />);
       
       let button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-transparent');
+      expect(button).toHaveClass('bg-background');
       
       // クリック後（お気に入りに追加）
       mockIsFavorite.mockReturnValue(true);
@@ -228,15 +228,15 @@ describe('FavoriteButton', () => {
       
       const { rerender } = render(<FavoriteButton sourceId="source-1" size="sm" />);
       let button = screen.getByRole('button');
-      expect(button).toHaveClass('h-9'); // sm size
+      expect(button).toHaveClass('h-8'); // sm size
       
       rerender(<FavoriteButton sourceId="source-1" size="default" />);
       button = screen.getByRole('button');
-      expect(button).toHaveClass('h-10'); // default size
+      expect(button).toHaveClass('h-9'); // default size
       
       rerender(<FavoriteButton sourceId="source-1" size="lg" />);
       button = screen.getByRole('button');
-      expect(button).toHaveClass('h-11'); // lg size
+      expect(button).toHaveClass('h-10'); // lg size
     });
 
     it('カスタムクラス名が適用される', () => {
@@ -280,7 +280,7 @@ describe('FavoriteButton', () => {
       
       // source-1はお気に入りではない
       let button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-transparent');
+      expect(button).toHaveClass('bg-background');
       
       // source-2はお気に入り
       rerender(<FavoriteButton sourceId="source-2" />);

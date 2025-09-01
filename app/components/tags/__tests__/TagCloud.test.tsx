@@ -79,15 +79,16 @@ describe('TagCloud', () => {
     });
 
     it('初期状態でローディングが表示される', () => {
+      // 初期状態を確認するため、actなしでレンダリング
       render(<TagCloud />);
       
-      // Skeletonローディングが表示される
-      const skeletons = document.querySelectorAll('.skeleton');
+      // Skeletonローディングが表示される（animate-pulseクラスを探す）
+      const skeletons = document.querySelectorAll('.animate-pulse');
       expect(skeletons.length).toBeGreaterThan(0);
     });
 
-    it('デフォルトで月間（30d）が選択されている', () => {
-      render(<TagCloud />);
+    it('デフォルトで月間（30d）が選択されている', async () => {
+      await renderTagCloud();
       
       const monthlyButton = screen.getByRole('button', { name: '月間' });
       expect(monthlyButton).toHaveClass('bg-primary'); // variant="default"のスタイル
@@ -96,7 +97,7 @@ describe('TagCloud', () => {
 
   describe('API通信', () => {
     it('正しいパラメータでAPIを呼び出す', async () => {
-      render(<TagCloud limit={30} />);
+      await renderTagCloud({ limit: 30 });
       
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith('/api/tags/cloud?period=30d&limit=30');
@@ -105,7 +106,7 @@ describe('TagCloud', () => {
 
     it('期間を変更するとAPIを再呼び出しする', async () => {
       const user = userEvent.setup();
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith('/api/tags/cloud?period=30d&limit=50');
@@ -130,7 +131,7 @@ describe('TagCloud', () => {
 
     it('リフレッシュボタンでデータを再取得する', async () => {
       const user = userEvent.setup();
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -152,7 +153,7 @@ describe('TagCloud', () => {
         ok: false,
       });
       
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         expect(screen.getByText('Failed to load tags')).toBeInTheDocument();
@@ -165,7 +166,7 @@ describe('TagCloud', () => {
     it('ネットワークエラー時にエラーメッセージを表示する', async () => {
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
       
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         expect(screen.getByText('Network error')).toBeInTheDocument();
@@ -178,7 +179,7 @@ describe('TagCloud', () => {
       // 最初はエラー
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
       
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         expect(screen.getByText('Network error')).toBeInTheDocument();
@@ -206,7 +207,7 @@ describe('TagCloud', () => {
         json: async () => ({ tags: [] }),
       });
       
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         expect(screen.getByText('タグが見つかりませんでした')).toBeInTheDocument();
@@ -214,7 +215,7 @@ describe('TagCloud', () => {
     });
 
     it('タグのツールチップに件数が表示される', async () => {
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         const reactTag = screen.getByText('React');
@@ -223,7 +224,7 @@ describe('TagCloud', () => {
     });
 
     it('トレンドアイコンが表示される（全期間以外）', async () => {
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         // Rising trend icon for React
@@ -240,7 +241,7 @@ describe('TagCloud', () => {
 
     it('全期間選択時はトレンドアイコンが表示されない', async () => {
       const user = userEvent.setup();
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         expect(screen.getByText('React')).toBeInTheDocument();
@@ -260,7 +261,7 @@ describe('TagCloud', () => {
 
   describe('タグのスタイリング', () => {
     it('使用頻度に応じてフォントサイズが変わる', async () => {
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         const reactTag = screen.getByText('React');
@@ -275,7 +276,7 @@ describe('TagCloud', () => {
     });
 
     it('トレンドに応じて色が変わる', async () => {
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         const reactTag = screen.getByText('React');
@@ -293,7 +294,7 @@ describe('TagCloud', () => {
   describe('タグクリックイベント', () => {
     it('タグクリックでデフォルトのナビゲーションが実行される', async () => {
       const user = userEvent.setup();
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         expect(screen.getByText('React')).toBeInTheDocument();
@@ -309,7 +310,7 @@ describe('TagCloud', () => {
       const user = userEvent.setup();
       const handleTagClick = jest.fn();
       
-      render(<TagCloud onTagClick={handleTagClick} />);
+      await renderTagCloud({ onTagClick: handleTagClick });
       
       await waitFor(() => {
         expect(screen.getByText('React')).toBeInTheDocument();
@@ -325,7 +326,7 @@ describe('TagCloud', () => {
 
   describe('凡例', () => {
     it('トレンド凡例が表示される', async () => {
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         expect(screen.getByText('React')).toBeInTheDocument();
@@ -343,7 +344,7 @@ describe('TagCloud', () => {
         json: async () => ({ tags: [] }),
       });
       
-      render(<TagCloud />);
+      await renderTagCloud();
       
       await waitFor(() => {
         expect(screen.getByText('タグが見つかりませんでした')).toBeInTheDocument();
@@ -355,6 +356,7 @@ describe('TagCloud', () => {
 
   describe('ローディング状態', () => {
     it('リフレッシュ中はボタンがdisabledになる', async () => {
+      // 初期状態を確認
       render(<TagCloud />);
       
       // 初期ローディング中
@@ -368,6 +370,7 @@ describe('TagCloud', () => {
     });
 
     it('リフレッシュ中はアイコンが回転する', async () => {
+      // 初期状態を確認
       render(<TagCloud />);
       
       const refreshIcon = document.querySelector('.lucide-refresh-cw');
@@ -381,7 +384,7 @@ describe('TagCloud', () => {
 
   describe('Props', () => {
     it('limitプロパティが適用される', async () => {
-      render(<TagCloud limit={10} />);
+      await renderTagCloud({ limit: 10 });
       
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith('/api/tags/cloud?period=30d&limit=10');
@@ -389,7 +392,7 @@ describe('TagCloud', () => {
     });
 
     it('初期periodプロパティが適用される', async () => {
-      render(<TagCloud period="7d" />);
+      await renderTagCloud({ period: "7d" });
       
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith('/api/tags/cloud?period=7d&limit=50');
@@ -400,8 +403,8 @@ describe('TagCloud', () => {
       expect(weeklyButton).toHaveClass('bg-primary');
     });
 
-    it('classNameプロパティが適用される', () => {
-      const { container } = render(<TagCloud className="custom-class" />);
+    it('classNameプロパティが適用される', async () => {
+      const { container } = await renderTagCloud({ className: "custom-class" });
       
       const card = container.querySelector('.custom-class');
       expect(card).toBeInTheDocument();
