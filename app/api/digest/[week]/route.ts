@@ -47,7 +47,7 @@ export async function GET(
     await cache.set(cacheKey, digest, 3600);
 
     return NextResponse.json(digest);
-  } catch (error) {
+  } catch (_error) {
     // エラーログはサーバー側で記録される
     return NextResponse.json(
       { error: 'Failed to get digest' },

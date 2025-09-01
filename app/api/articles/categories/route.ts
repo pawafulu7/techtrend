@@ -64,7 +64,7 @@ export async function GET(_request: NextRequest) {
     await cache.set(cacheKey, result);
 
     return NextResponse.json(result);
-  } catch (error) {
+  } catch (_error) {
     // エラーログはサーバー側で記録されるため、クライアントには簡潔なメッセージのみ返す
     return NextResponse.json(
       { error: 'Failed to get category stats' },

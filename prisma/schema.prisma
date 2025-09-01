@@ -149,4 +149,6 @@ model WeeklyDigest {
   topArticles   Json
   categories    Json
   createdAt     DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)], map: "idx_weekly_digest_created_at")
 }
