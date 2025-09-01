@@ -47,8 +47,8 @@ export default function CategoryFilter() {
         const data: CategoryStats = await response.json();
         setCategories(data.categories);
       }
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
+    } catch (_error) {
+      // エラーは無視（UIは空のカテゴリリストを表示）
     } finally {
       setLoading(false);
     }

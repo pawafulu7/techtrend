@@ -66,17 +66,23 @@ export default function DigestPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDigest = async (date?: Date) => {
+  const fetchDigest = async (date?: Date, retryCount = 0) => {
     setLoading(true);
     setError(null);
     try {
       const targetDate = date || new Date();
-      const response = await fetch(`/api/digest/${encodeURIComponent(targetDate.toISOString())}`);
+      const response = await fetch(`/api/digest/${encodeURIComponent(targetDate.toISOString())}`, {
+        signal: AbortSignal.timeout(10000) // 10秒のタイムアウトを設定
+      });
       
       if (!response.ok) {
         if (response.status === 404) {
           setDigest(null);
           setError('週刊ダイジェストがまだ生成されていません');
+        } else if (response.status >= 500 && retryCount < 2) {
+          // サーバーエラーの場合、最大2回リトライ
+          setTimeout(() => fetchDigest(date, retryCount + 1), 1000 * (retryCount + 1));
+          return;
         } else {
           const errorText = await response.text().catch(() => '');
           setError(`ダイジェストの取得に失敗しました${errorText ? ': ' + errorText : ''}`);
@@ -92,7 +98,11 @@ export default function DigestPage() {
       
       setDigest(data);
     } catch (err) {
-      console.error('Failed to fetch digest:', err);
+      // タイムアウトまたはネットワークエラーの場合、リトライ
+      if ((err instanceof Error && err.name === 'AbortError') && retryCount < 2) {
+        setTimeout(() => fetchDigest(date, retryCount + 1), 1000 * (retryCount + 1));
+        return;
+      }
       setError(`エラーが発生しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
     } finally {
       setLoading(false);
@@ -120,7 +130,7 @@ export default function DigestPage() {
       // 生成成功後、ダイジェストを取得
       await fetchDigest();
     } catch (err) {
-      console.error('Failed to generate digest:', err);
+      // エラーは既にUIで表示しているので、ログは不要
       setError(`エラーが発生しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
     } finally {
       setGenerating(false);
@@ -129,7 +139,7 @@ export default function DigestPage() {
 
   useEffect(() => {
     fetchDigest();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatDate = (dateString: string) => {
     try {
