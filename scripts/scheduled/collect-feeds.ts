@@ -3,6 +3,7 @@ import { CreateArticleInput } from '@/types/models';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { adjustTimezoneForArticle } from '@/lib/utils/date';
+import { CategoryClassifier } from '@/lib/services/category-classifier';
 
 const prisma = new PrismaClient();
 
@@ -150,6 +151,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
 
             // タグの処理
             const tagConnections = [];
+            const tags = [];
             if (article.tagNames && article.tagNames.length > 0) {
               for (const tagName of article.tagNames) {
                 const tag = await prisma.tag.upsert({
@@ -158,8 +160,12 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                   create: { name: tagName }
                 });
                 tagConnections.push({ id: tag.id });
+                tags.push({ name: tagName });
               }
             }
+
+            // カテゴリを自動分類
+            const category = CategoryClassifier.classifyByTags(tags);
 
             // 新規記事を保存（タイムゾーン調整を適用）
             const savedArticle = await prisma.article.create({
@@ -172,6 +178,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                 publishedAt: adjustTimezoneForArticle(article.publishedAt, source.name),
                 bookmarks: article.bookmarks || 0,
                 sourceId: source.id,
+                category: category,  // カテゴリを設定
                 ...(tagConnections.length > 0 && {
                   tags: {
                     connect: tagConnections
