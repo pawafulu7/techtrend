@@ -138,25 +138,25 @@ export class DigestGenerator {
         update: {
           weekEndDate: weekEnd,
           articleCount: articles.length,
-          topArticles: topArticles.slice(0, 10).map(a => ({
+          topArticles: JSON.parse(JSON.stringify(topArticles.slice(0, 10).map(a => ({
             id: a.id,
             title: a.title,
             url: a.url,
             score: a.score
-          })) as Prisma.JsonValue,
-          categories: categories as Prisma.JsonValue
+          })))),
+          categories: JSON.parse(JSON.stringify(categories))
         },
         create: {
           weekStartDate: weekStart,
           weekEndDate: weekEnd,
           articleCount: articles.length,
-          topArticles: topArticles.slice(0, 10).map(a => ({
+          topArticles: JSON.parse(JSON.stringify(topArticles.slice(0, 10).map(a => ({
             id: a.id,
             title: a.title,
             url: a.url,
             score: a.score
-          })) as Prisma.JsonValue,
-          categories: categories as Prisma.JsonValue
+          })))),
+          categories: JSON.parse(JSON.stringify(categories))
         }
       });
 
