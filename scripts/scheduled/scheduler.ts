@@ -80,10 +80,21 @@ async function executeUpdatePipeline(
     if (sources.includes('AWS')) {
       console.error('🔧 AWS記事のコンテンツをエンリッチ中...');
       try {
-        const { stdout: enrichOutput }: ExecutionResult = await execAsync(
-          'npx tsx scripts/maintenance/enrich-aws-content.ts'
+        const { stdout: enrichOutput, stderr: enrichError }: ExecutionResult = await execAsync(
+          'npx tsx scripts/maintenance/enrich-aws-content.ts',
+          {
+            maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+            timeout: 300000, // 5分のタイムアウト
+          }
         );
-        console.error(enrichOutput);
+        
+        // stdoutとstderrの両方をログ出力
+        if (enrichOutput) {
+          console.error(enrichOutput);
+        }
+        if (enrichError) {
+          console.error('⚠️ AWS enrichment stderr:', enrichError);
+        }
       } catch (error) {
         console.error('⚠️ AWSエンリッチメントでエラー（続行）:', error instanceof Error ? error.message : String(error));
         // エラーが発生しても他の処理は続行

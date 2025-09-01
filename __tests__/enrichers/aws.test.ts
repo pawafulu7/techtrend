@@ -16,6 +16,7 @@ describe('AWSEnricher', () => {
       expect(enricher.canHandle('https://aws.amazon.com/blogs/compute/new-feature')).toBe(true);
       expect(enricher.canHandle('https://aws.amazon.com/jp/blogs/news/article')).toBe(true);
       expect(enricher.canHandle('https://aws.amazon.com/about-aws/whats-new/2025/01/feature')).toBe(true);
+      expect(enricher.canHandle('https://www.aws.amazon.com/blogs/article')).toBe(true);
     });
 
     it('AWS以外のURLを拒否すること', () => {
@@ -23,9 +24,33 @@ describe('AWSEnricher', () => {
       expect(enricher.canHandle('https://azure.microsoft.com/blog')).toBe(false);
       expect(enricher.canHandle('https://example.com/article')).toBe(false);
     });
+
+    it('ホスト名のサブストリング攻撃を防ぐこと', () => {
+      // aws.amazon.comを含むが異なるホスト
+      expect(enricher.canHandle('https://fake-aws.amazon.com.evil.com/blog')).toBe(false);
+      expect(enricher.canHandle('https://aws.amazon.com.phishing.site/article')).toBe(false);
+      expect(enricher.canHandle('https://notaws.amazon.com/blog')).toBe(false);
+      expect(enricher.canHandle('http://aws.amazon.com.localhost:8080/article')).toBe(false);
+    });
+
+    it('不正なURLを安全に処理すること', () => {
+      expect(enricher.canHandle('not-a-url')).toBe(false);
+      expect(enricher.canHandle('')).toBe(false);
+      expect(enricher.canHandle('javascript:alert(1)')).toBe(false);
+      expect(enricher.canHandle('file:///etc/passwd')).toBe(false);
+    });
   });
 
   describe('enrich', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
+
     // fetchをモック化するためのヘルパー
     const mockFetch = (html: string, status = 200) => {
       global.fetch = jest.fn().mockResolvedValue({
@@ -204,6 +229,51 @@ describe('AWSEnricher', () => {
         expect(result).not.toBeNull();
         expect(result!.thumbnail).toBe('https://aws.amazon.com/static/images/blog-image.jpg');
       });
+    });
+
+    it('タイムアウト時はnullを返すこと', () => {
+      // AbortErrorをシミュレート
+      const abortError = new Error('The operation was aborted');
+      abortError.name = 'AbortError';
+      global.fetch = jest.fn().mockRejectedValue(abortError);
+
+      return enricher.enrich('https://aws.amazon.com/blogs/timeout-test').then(result => {
+        expect(result).toBeNull();
+      });
+    });
+
+    it('fetchがタイムアウト設定を含むことを確認', async () => {
+      const mockHtml = `
+        <html>
+          <body>
+            <div class="blog-post-content">
+              <p>${'A'.repeat(600)}</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      // fetchのモックを作成してsignalパラメータを検証
+      global.fetch = jest.fn().mockImplementation((url, options) => {
+        // AbortSignalが渡されていることを確認
+        expect(options.signal).toBeDefined();
+        expect(options.signal).toBeInstanceOf(AbortSignal);
+        
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve(mockHtml),
+        });
+      });
+
+      await enricher.enrich('https://aws.amazon.com/blogs/signal-test');
+      
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://aws.amazon.com/blogs/signal-test',
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+        })
+      );
     });
   });
 

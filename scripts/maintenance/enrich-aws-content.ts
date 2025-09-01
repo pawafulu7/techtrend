@@ -90,7 +90,11 @@ async function enrichAWSContent() {
               }
             });
             
-            console.error(`✅ Enriched: ${currentLength} -> ${newLength} chars (+${Math.round((newLength - currentLength) / currentLength * 100)}%)`);
+            // ゼロ除算防止
+            const percentImprovement = currentLength > 0 
+              ? Math.round((newLength - currentLength) / currentLength * 100)
+              : 100;
+            console.error(`✅ Enriched: ${currentLength} -> ${newLength} chars (+${percentImprovement}%)`);
             enrichedCount++;
           } else {
             console.error(`[SKIP] Minimal improvement (${currentLength} -> ${newLength} chars)`);
@@ -121,8 +125,8 @@ async function enrichAWSContent() {
       console.error('\n📊 AWS Articles Statistics:');
       console.error(`Total articles: ${await prisma.article.count({ where: { source: { name: 'AWS' } } })}`);
       
-      // コンテンツ長の分布
-      const lengthDistribution = await prisma.$queryRaw<Array<{ range: string, count: bigint }>>`
+      // コンテンツ長の分布（数値バケットでソート）
+      const lengthDistribution = await prisma.$queryRaw<Array<{ range: string, count: bigint, sort_order: number }>>`
         SELECT 
           CASE 
             WHEN LENGTH(content) < 1000 THEN '< 1K'
@@ -131,11 +135,18 @@ async function enrichAWSContent() {
             WHEN LENGTH(content) < 10000 THEN '5K-10K'
             ELSE '10K+'
           END as range,
+          CASE 
+            WHEN LENGTH(content) < 1000 THEN 1
+            WHEN LENGTH(content) < 2000 THEN 2
+            WHEN LENGTH(content) < 5000 THEN 3
+            WHEN LENGTH(content) < 10000 THEN 4
+            ELSE 5
+          END as sort_order,
           COUNT(*) as count
         FROM "Article"
         WHERE "sourceId" = (SELECT id FROM "Source" WHERE name = 'AWS')
-        GROUP BY range
-        ORDER BY range
+        GROUP BY range, sort_order
+        ORDER BY sort_order
       `;
       
       console.error('Content length distribution:');

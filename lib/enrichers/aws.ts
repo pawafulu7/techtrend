@@ -8,9 +8,21 @@ import * as cheerio from 'cheerio';
 export class AWSEnricher extends BaseContentEnricher {
   /**
    * AWSブログのURLかどうかを判定
+   * セキュリティ強化: URLパースによる厳密なホスト検証
    */
   canHandle(url: string): boolean {
-    return url.includes('aws.amazon.com');
+    try {
+      const parsedUrl = new URL(url);
+      // 許可されたAWSドメインのリスト
+      const allowedHosts = [
+        'aws.amazon.com',
+        'www.aws.amazon.com',
+      ];
+      return allowedHosts.includes(parsedUrl.hostname);
+    } catch {
+      // 不正なURLの場合はfalseを返す
+      return false;
+    }
   }
 
   /**
@@ -20,13 +32,20 @@ export class AWSEnricher extends BaseContentEnricher {
     try {
       // console.log(`[AWS Enricher] Fetching content from: ${url}`);
       
+      // タイムアウト設定（15秒）
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
       const response = await fetch(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0)',
           'Accept': 'text/html,application/xhtml+xml',
           'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
         },
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         console.error(`[AWS Enricher] Failed to fetch: ${response.status}`);
@@ -70,8 +89,8 @@ export class AWSEnricher extends BaseContentEnricher {
           
           content = element.text().trim();
           
-          // コンテンツが十分な長さがあるかチェック（500文字以上）
-          if (content.length > 500) {
+          // コンテンツが十分な長さがあるかチェック
+          if (content.length > this.getMinContentLength()) {
             // console.log(`[AWS Enricher] Found content with selector: ${selector} (${content.length} chars)`);
             break;
           }
@@ -79,7 +98,7 @@ export class AWSEnricher extends BaseContentEnricher {
       }
       
       // コンテンツが短すぎる場合は、段落を個別に収集
-      if (content.length < 500) {
+      if (content.length < this.getMinContentLength()) {
         const paragraphs: string[] = [];
         $('p').each((_, elem) => {
           const text = $(elem).text().trim();
@@ -120,8 +139,9 @@ export class AWSEnricher extends BaseContentEnricher {
       }
       
       // コンテンツが取得できなかった場合
-      if (!content || content.length < 200) {
-        console.error(`[AWS Enricher] Insufficient content found (${content.length} chars)`);
+      const minLength = Math.min(200, this.getMinContentLength());
+      if (!content || content.length < minLength) {
+        console.error(`[AWS Enricher] Insufficient content found (${content.length} chars, minimum: ${minLength})`);
         return null;
       }
       
@@ -132,7 +152,15 @@ export class AWSEnricher extends BaseContentEnricher {
         thumbnail: thumbnail || null 
       };
     } catch (error) {
-      console.error('[AWS Enricher] Error during enrichment:', error);
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.error('[AWS Enricher] Request timeout after 15 seconds');
+        } else {
+          console.error('[AWS Enricher] Error during enrichment:', error.message);
+        }
+      } else {
+        console.error('[AWS Enricher] Unknown error during enrichment');
+      }
       return null;
     }
   }
