@@ -36,6 +36,7 @@ describe('FavoriteButton', () => {
 
   describe('未認証状態', () => {
     beforeEach(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { useSession } = require('next-auth/react');
       useSession.mockReturnValue({
         data: null,
@@ -54,6 +55,7 @@ describe('FavoriteButton', () => {
 
     it('クリックするとログインを促すトーストが表示される', async () => {
       const user = userEvent.setup();
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { useRouter } = require('next/navigation');
       const mockPush = jest.fn();
       useRouter.mockReturnValue({ push: mockPush });
@@ -78,6 +80,7 @@ describe('FavoriteButton', () => {
   describe('認証済み状態', () => {
     beforeEach(() => {
       // useSessionモックを認証済み状態に設定
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { useSession } = require('next-auth/react');
       useSession.mockReturnValue({
         data: {
@@ -235,6 +238,7 @@ describe('FavoriteButton', () => {
 
   describe('カスタムスタイル', () => {
     it('カスタムクラス名を適用できる', () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { useSession } = require('next-auth/react');
       useSession.mockReturnValue({
         data: null,
@@ -256,6 +260,7 @@ describe('FavoriteButton', () => {
   describe('ローディング状態', () => {
     it('処理中はボタンが無効化される', async () => {
       const user = userEvent.setup();
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { useSession } = require('next-auth/react');
       useSession.mockReturnValue({
         data: { user: mockUser },

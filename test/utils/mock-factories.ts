@@ -13,7 +13,8 @@ let userIdCounter = 1;
 /**
  * 記事のモックデータを生成
  */
-export function createMockArticle(overrides?: Partial<Article>): Article {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createMockArticle(overrides?: any): any {
   const id = articleIdCounter++;
   const now = new Date();
   
@@ -43,13 +44,13 @@ export function createMockArticle(overrides?: Partial<Article>): Article {
 /**
  * タグのモックデータを生成
  */
-export function createMockTag(overrides?: Partial<Tag>): Tag {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createMockTag(overrides?: any): any {
   const id = tagIdCounter++;
   
   return {
     id: `tag-${id}`,
     name: `tag${id}`,
-    displayName: `Tag ${id}`,
     category: 'technology',
     ...overrides,
   };
@@ -58,18 +59,16 @@ export function createMockTag(overrides?: Partial<Tag>): Tag {
 /**
  * ソースのモックデータを生成
  */
-export function createMockSource(overrides?: Partial<Source>): Source {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createMockSource(overrides?: any): any {
   const id = sourceIdCounter++;
   
   return {
     id: `source-${id}`,
     name: `Test Source ${id}`,
+    type: 'rss',
     url: `https://source${id}.com`,
-    feedUrl: `https://source${id}.com/feed`,
-    isActive: true,
-    lastFetchedAt: new Date(),
-    description: `Description for test source ${id}`,
-    category: 'tech',
+    enabled: true,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -79,7 +78,8 @@ export function createMockSource(overrides?: Partial<Source>): Source {
 /**
  * ユーザーのモックデータを生成
  */
-export function createMockUser(overrides?: Partial<User>): User {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createMockUser(overrides?: any): any {
   const id = userIdCounter++;
   const now = new Date();
   
@@ -99,11 +99,12 @@ export function createMockUser(overrides?: Partial<User>): User {
 /**
  * 記事ビューのモックデータを生成
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createMockArticleView(
   userId: string,
   articleId: string,
-  overrides?: Partial<ArticleView>
-): ArticleView {
+  overrides?: any
+): any {
   const now = new Date();
   
   return {
@@ -113,8 +114,6 @@ export function createMockArticleView(
     viewedAt: now,
     isRead: false,
     readAt: null,
-    createdAt: now,
-    updatedAt: now,
     ...overrides,
   };
 }
@@ -122,11 +121,12 @@ export function createMockArticleView(
 /**
  * お気に入りのモックデータを生成
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createMockFavorite(
   userId: string,
   articleId: string,
-  overrides?: Partial<Favorite>
-): Favorite {
+  overrides?: any
+): any {
   const now = new Date();
   
   return {
@@ -141,19 +141,16 @@ export function createMockFavorite(
 /**
  * リレーションを含む記事のモックデータを生成
  */
-export function createMockArticleWithRelations(overrides?: {
-  article?: Partial<Article>;
-  tags?: Partial<Tag>[];
-  source?: Partial<Source>;
-}) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createMockArticleWithRelations(overrides?: any) {
   const article = createMockArticle(overrides?.article);
   const source = createMockSource({ 
     id: article.sourceId,
     ...overrides?.source 
   });
   const tags = overrides?.tags?.map((tagOverride) => createMockTag(tagOverride)) || [
-    createMockTag({ name: 'javascript', displayName: 'JavaScript' }),
-    createMockTag({ name: 'react', displayName: 'React' }),
+    createMockTag({ name: 'javascript' }),
+    createMockTag({ name: 'react' }),
   ];
   
   return {

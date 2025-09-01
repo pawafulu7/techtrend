@@ -24,6 +24,7 @@ jest.mock('@/lib/auth/auth');
 jest.mock('@/lib/logger');
 
 describe('API /api/articles Integration Tests', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { prisma } = require('@/lib/database');
   
   beforeEach(() => {
@@ -95,7 +96,7 @@ describe('API /api/articles Integration Tests', () => {
     it('should filter by tag', async () => {
       const mockArticles = [
         createMockArticleWithRelations({
-          tags: [{ name: 'javascript', displayName: 'JavaScript' }],
+          tags: [{ name: 'javascript' }],
         }),
       ];
       
@@ -210,8 +211,8 @@ describe('API /api/articles Integration Tests', () => {
 
       try {
         await prisma.article.findMany();
-      } catch (error: any) {
-        expect(error.message).toBe('Database connection failed');
+      } catch (error) {
+        expect((error as Error).message).toBe('Database connection failed');
       }
     });
 
