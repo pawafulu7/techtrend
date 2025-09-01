@@ -76,6 +76,20 @@ async function executeUpdatePipeline(
       }
     }
     
+    // 2.5. AWSのコンテンツエンリッチメント
+    if (sources.includes('AWS')) {
+      console.error('🔧 AWS記事のコンテンツをエンリッチ中...');
+      try {
+        const { stdout: enrichOutput }: ExecutionResult = await execAsync(
+          'npx tsx scripts/maintenance/enrich-aws-content.ts'
+        );
+        console.error(enrichOutput);
+      } catch (error) {
+        console.error('⚠️ AWSエンリッチメントでエラー（続行）:', error instanceof Error ? error.message : String(error));
+        // エラーが発生しても他の処理は続行
+      }
+    }
+    
     // 3. 要約生成（オプション）
     if (!options?.skipSummaries) {
       console.error('📝 要約・タグ生成中...');
