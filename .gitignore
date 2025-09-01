@@ -144,3 +144,6 @@ claudedocs/
 *.claude.*
 *claude-*.ts
 .serena/
+
+# regeneration logs
+regenerate.log

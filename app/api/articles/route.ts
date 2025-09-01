@@ -4,7 +4,7 @@ import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
 import { RedisCache } from '@/lib/cache';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, ArticleCategory } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const dateRange = searchParams.get('dateRange'); // Date range filter
     const readFilter = searchParams.get('readFilter'); // Read status filter
+    const category = searchParams.get('category'); // Category filter
 
     // Generate cache key based on query parameters
     // Normalize search keywords for consistent cache key
@@ -74,7 +75,8 @@ export async function GET(request: NextRequest) {
         search: normalizedSearch,
         dateRange: dateRange || 'all',
         readFilter: readFilter || 'all',
-        userId: userId || 'anonymous'
+        userId: userId || 'anonymous',
+        category: category || 'all'
       }
     });
 
@@ -172,6 +174,17 @@ export async function GET(request: NextRequest) {
           }
         }
       }
+      
+      // Category filter
+      if (category && category !== 'all') {
+        // Handle 'uncategorized' as null
+        if (category === 'uncategorized') {
+          where.category = null;
+        } else {
+          where.category = category as ArticleCategory;
+        }
+      }
+      
       if (search) {
         // Split search string by spaces (both half-width and full-width)
         const keywords = search.trim()
@@ -228,6 +241,7 @@ export async function GET(request: NextRequest) {
           sourceId: true,
           summaryVersion: true,  // summaryVersionを追加
           articleType: true,     // articleTypeを追加
+          category: true,        // categoryを追加
           // Exclude: content, detailedSummary
           source: {
             select: {

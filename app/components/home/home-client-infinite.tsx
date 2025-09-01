@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useRef } from 'react';
+import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
@@ -11,6 +11,7 @@ import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { RecommendationSectionInline } from '@/components/recommendation/recommendation-section-inline';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
+import { Loader2 } from 'lucide-react';
 
 interface HomeClientInfiniteProps {
   viewMode: 'card' | 'list';
@@ -31,9 +32,26 @@ export function HomeClientInfinite({
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [previousCategory, setPreviousCategory] = useState<string | null>(null);
+  const [isCategoryChanging, setIsCategoryChanging] = useState(false);
   
   // 記事詳細から戻ってきたかどうかをチェック
   const isReturningFromArticle = searchParams.has('returning');
+  
+  // カテゴリの変更を検出
+  const currentCategory = searchParams.get('category') || 'all';
+  
+  useEffect(() => {
+    if (previousCategory !== null && previousCategory !== currentCategory) {
+      setIsCategoryChanging(true);
+      // 短い遅延後にローディング状態を解除
+      const timer = setTimeout(() => {
+        setIsCategoryChanging(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+    setPreviousCategory(currentCategory);
+  }, [currentCategory, previousCategory]);
   
   // URLパラメータからフィルターを構築
   const filters = useMemo(() => {
@@ -140,8 +158,18 @@ export function HomeClientInfinite({
         {/* 推薦セクション（インライン） */}
         <RecommendationSectionInline />
         
-        {isLoading ? (
-          <ArticleSkeleton />
+        {(isLoading || isCategoryChanging) ? (
+          <div className="relative">
+            {isCategoryChanging && (
+              <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                <div className="bg-background rounded-lg p-4 shadow-lg flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">カテゴリを切り替え中...</span>
+                </div>
+              </div>
+            )}
+            <ArticleSkeleton />
+          </div>
         ) : allArticles.length > 0 ? (
           <>
             <ArticleList 
