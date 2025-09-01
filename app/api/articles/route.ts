@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const dateRange = searchParams.get('dateRange'); // Date range filter
     const readFilter = searchParams.get('readFilter'); // Read status filter
+    const category = searchParams.get('category'); // Category filter
 
     // Generate cache key based on query parameters
     // Normalize search keywords for consistent cache key
@@ -74,7 +75,8 @@ export async function GET(request: NextRequest) {
         search: normalizedSearch,
         dateRange: dateRange || 'all',
         readFilter: readFilter || 'all',
-        userId: userId || 'anonymous'
+        userId: userId || 'anonymous',
+        category: category || 'all'
       }
     });
 
@@ -172,6 +174,12 @@ export async function GET(request: NextRequest) {
           }
         }
       }
+      
+      // Category filter
+      if (category && category !== 'all') {
+        where.category = category;
+      }
+      
       if (search) {
         // Split search string by spaces (both half-width and full-width)
         const keywords = search.trim()
@@ -228,6 +236,7 @@ export async function GET(request: NextRequest) {
           sourceId: true,
           summaryVersion: true,  // summaryVersionを追加
           articleType: true,     // articleTypeを追加
+          category: true,        // categoryを追加
           // Exclude: content, detailedSummary
           source: {
             select: {

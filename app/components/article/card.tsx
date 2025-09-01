@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/components/article/favorite-button';
 import { ShareButton } from '@/app/components/article/share-button';
 import { ArticleThumbnail } from '@/app/components/common/optimized-image';
+import { CategoryClassifier } from '@/lib/services/category-classifier';
 
 export function ArticleCard({ article, onArticleClick, isRead = false }: ArticleCardProps & { isRead?: boolean }) {
   const [votes, setVotes] = useState(article.userVotes || 0);
@@ -154,6 +155,18 @@ export function ArticleCard({ article, onArticleClick, isRead = false }: Article
           >
             {article.source.name}
           </Badge>
+          {article.category && (
+            <Badge 
+              variant="outline" 
+              className="text-xs font-medium cursor-pointer hover:bg-secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.location.href = `/?category=${encodeURIComponent(article.category)}`;
+              }}
+            >
+              {CategoryClassifier.getCategoryLabel(article.category)}
+            </Badge>
+          )}
           <div className="flex items-center gap-1.5 text-[11px]">
             <span>📅 {formatDateWithTime(article.publishedAt)}</span>
             <span>📥 {formatDateWithTime(article.createdAt)}</span>
