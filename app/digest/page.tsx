@@ -211,9 +211,7 @@ export default function DigestPage() {
                 </span>
                 <div className="flex-1">
                   <Link
-                    href={article.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`/articles/${article.id}?from=digest`}
                     className="text-blue-600 hover:underline font-medium"
                   >
                     {article.title}
@@ -255,13 +253,15 @@ export default function DigestPage() {
                 </CardHeader>
                 <CardContent>
                   {category.topArticle && (
-                    <p className="text-sm text-muted-foreground">
-                      最も読まれた記事:
-                      <br />
-                      <span className="font-medium text-foreground">
+                    <div className="text-sm text-muted-foreground">
+                      <p className="mb-1">最も読まれた記事:</p>
+                      <Link
+                        href={`/articles/${category.topArticle.id}?from=digest`}
+                        className="font-medium text-foreground hover:text-blue-600 hover:underline block"
+                      >
                         {category.topArticle.title}
-                      </span>
-                    </p>
+                      </Link>
+                    </div>
                   )}
                 </CardContent>
               </Card>
