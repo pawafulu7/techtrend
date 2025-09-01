@@ -131,11 +131,11 @@ describe('API /api/articles Integration Tests', () => {
       const keyword = 'React';
       const where = {
         OR: [
-          { title: { contains: keyword, mode: 'insensitive' } },
-          { summary: { contains: keyword, mode: 'insensitive' } },
+          { title: { contains: keyword, mode: 'insensitive' as const } },
+          { summary: { contains: keyword, mode: 'insensitive' as const } },
         ],
-      };
-      expect(where.OR[0].title.contains).toBe('React');
+      } as const;
+      expect(where.OR[0].title?.contains).toBe('React');
     });
 
     it('should handle multiple keywords with AND logic', async () => {
@@ -156,14 +156,14 @@ describe('API /api/articles Integration Tests', () => {
       const where = {
         AND: keywords.map(keyword => ({
           OR: [
-            { title: { contains: keyword, mode: 'insensitive' } },
-            { summary: { contains: keyword, mode: 'insensitive' } },
+            { title: { contains: keyword, mode: 'insensitive' as const } },
+            { summary: { contains: keyword, mode: 'insensitive' as const } },
           ],
         })),
-      };
+      } as const;
       expect(where.AND).toHaveLength(2);
-      expect(where.AND[0].OR[0].title.contains).toBe('React');
-      expect(where.AND[1].OR[0].title.contains).toBe('TypeScript');
+      expect(where.AND[0]?.OR[0]?.title?.contains).toBe('React');
+      expect(where.AND[1]?.OR[0]?.title?.contains).toBe('TypeScript');
     });
   });
 

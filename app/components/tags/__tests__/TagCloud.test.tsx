@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { TagCloud } from '@/app/components/tags/TagCloud';
@@ -22,8 +22,15 @@ const mockTags = [
 ];
 
 // Custom render function that wraps in act
-const renderTagCloud = async (props?: any) => {
-  let result: any;
+interface TagCloudTestProps {
+  className?: string;
+  limit?: number;
+  period?: '7d' | '30d' | 'all';
+  onTagClick?: (tag: string) => void;
+}
+
+const renderTagCloud = async (props?: TagCloudTestProps) => {
+  let result: ReturnType<typeof render>;
   await act(async () => {
     result = render(<TagCloud {...props} />);
   });
@@ -31,7 +38,7 @@ const renderTagCloud = async (props?: any) => {
   await act(async () => {
     await new Promise(resolve => setTimeout(resolve, 0));
   });
-  return result;
+  return result!;
 };
 
 describe('TagCloud', () => {
