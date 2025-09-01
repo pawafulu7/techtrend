@@ -161,7 +161,7 @@ export function ArticleCard({ article, onArticleClick, isRead = false }: Article
               className="text-xs font-medium cursor-pointer hover:bg-secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                window.location.href = `/?category=${encodeURIComponent(article.category)}`;
+                window.location.href = `/?category=${encodeURIComponent(article.category!)}`;
               }}
             >
               {CategoryClassifier.getCategoryLabel(article.category)}

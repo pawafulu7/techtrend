@@ -66,7 +66,6 @@ export class CategoryClassifier {
    * タイトルとコンテンツからカテゴリを推定（補助的）
    */
   static classifyByContent(title: string, content?: string | null): Category | null {
-    const text = `${title} ${content || ''}`.toLowerCase();
     const categoryScores: Record<string, number> = {};
 
     for (const [category, categoryTags] of Object.entries(CATEGORY_MAPPINGS)) {
