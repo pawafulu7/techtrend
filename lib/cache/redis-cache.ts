@@ -102,6 +102,18 @@ export class RedisCache {
   }
 
   /**
+   * Delete a specific cache key
+   */
+  async del(key: string): Promise<void> {
+    try {
+      const fullKey = this.generateKey(key);
+      await this.redis.del(fullKey);
+    } catch (_error) {
+      this.stats.errors++;
+    }
+  }
+
+  /**
    * Invalidate cache keys matching a pattern
    */
   async invalidatePattern(pattern: string): Promise<void> {

@@ -45,6 +45,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   const getReturnUrl = (from: string | undefined): string => {
     if (!from) return '/';
     
+    // 特定のキーワードから適切なURLへマッピング
+    if (from === 'digest') return '/digest';
+    
     try {
       const decodedUrl = decodeURIComponent(from);
       // 相対パスまたは同一オリジンのみ許可
@@ -58,6 +61,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   };
   
   const returnUrl = getReturnUrl(from);
+  const returnLabel = from === 'digest' ? 'ダイジェストに戻る' : '記事一覧に戻る';
   const article = await getArticle(id);
 
   if (!article) {
@@ -85,7 +89,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
         <Button variant="ghost" asChild>
           <Link href={returnUrl} className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
-            記事一覧に戻る
+            {returnLabel}
           </Link>
         </Button>
       </div>

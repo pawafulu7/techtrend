@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation } from 'lucide-react';
 import { DateRangeFilter } from './date-range-filter';
 import { groupSourcesByCategory, SourceCategory } from '@/lib/constants/source-categories';
+import CategoryFilter from '@/components/filters/CategoryFilter';
 
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;
@@ -316,6 +317,11 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
       {/* Date Range Filter */}
       <div className="mt-4">
         <DateRangeFilter />
+      </div>
+      
+      {/* Category Filter */}
+      <div className="mt-4">
+        <CategoryFilter />
       </div>
     </div>
   );

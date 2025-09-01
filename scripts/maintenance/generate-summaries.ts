@@ -14,6 +14,7 @@ import {
   expandSummaryIfNeeded
 } from '@/lib/utils/summary-quality-checker';
 import { generateSummaryWithRetry } from '@/lib/ai/summary-generator';
+import { CategoryClassifier } from '@/lib/services/category-classifier';
 
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 const prisma = new PrismaClient();
@@ -635,18 +636,27 @@ async function generateSummaries(): Promise<GenerateResult> {
                   })
                 );
 
-                // 記事にタグを関連付ける
+                // カテゴリを自動分類（classify メソッドを使用してより良い分類）
+                const category = CategoryClassifier.classify(tagRecords, article.title, content);
+
+                // 記事にタグとカテゴリを関連付ける
                 await prisma.article.update({
                   where: { id: article.id },
                   data: {
                     tags: {
                       connect: tagRecords.map(tag => ({ id: tag.id }))
-                    }
+                    },
+                    ...(category && { category })  // カテゴリが判定できた場合のみ更新
                   }
                 });
+                
+                // ログでは計算されたカテゴリ値を表示（article.categoryではなくcategory変数を使用）
+                console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')}, カテゴリ: ${category || '未分類'})`);
+              } else {
+                // タグがない場合のログ
+                console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}...`);
               }
               
-              console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
               generatedCount++;
               apiStats.successes++;
               break; // 成功したらループを抜ける
