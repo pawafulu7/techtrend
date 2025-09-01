@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Select,
@@ -10,7 +10,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Layers } from 'lucide-react';
+import { Layers, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Category {
   value: string | null;
@@ -28,7 +29,12 @@ export default function CategoryFilter() {
   const searchParams = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
+  const [optimisticCategory, setOptimisticCategory] = useState<string>('all');
   const currentCategory = searchParams.get('category') || 'all';
+  
+  // 楽観的更新のための値
+  const displayCategory = isPending ? optimisticCategory : currentCategory;
 
   useEffect(() => {
     fetchCategories();
@@ -49,18 +55,24 @@ export default function CategoryFilter() {
   };
 
   const handleCategoryChange = (value: string) => {
-    const params = new URLSearchParams(searchParams);
+    // 即座に楽観的更新
+    setOptimisticCategory(value);
     
-    if (value === 'all') {
-      params.delete('category');
-    } else {
-      params.set('category', value);
-    }
-    
-    // Reset to page 1 when changing category
-    params.delete('page');
-    
-    router.push(`/?${params.toString()}`);
+    // ルーティングをトランジション内で実行
+    startTransition(() => {
+      const params = new URLSearchParams(searchParams);
+      
+      if (value === 'all') {
+        params.delete('category');
+      } else {
+        params.set('category', value);
+      }
+      
+      // Reset to page 1 when changing category
+      params.delete('page');
+      
+      router.push(`/?${params.toString()}`);
+    });
   };
 
   if (loading) {
@@ -78,9 +90,17 @@ export default function CategoryFilter() {
         <span>カテゴリ</span>
       </div>
       
-      <Select value={currentCategory} onValueChange={handleCategoryChange}>
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder="カテゴリを選択" />
+      <Select value={displayCategory} onValueChange={handleCategoryChange} disabled={isPending}>
+        <SelectTrigger className={cn(
+          "w-full transition-all",
+          isPending && "opacity-70"
+        )}>
+          <div className="flex items-center justify-between w-full">
+            <SelectValue placeholder="カテゴリを選択" />
+            {isPending && (
+              <Loader2 className="h-3 w-3 animate-spin ml-2" />
+            )}
+          </div>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">
