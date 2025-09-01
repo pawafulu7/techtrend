@@ -1,4 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
+import logger from '@/lib/logger/index';
 
 // カテゴリタグ定義（大文字小文字を区別しない比較用）
 const CATEGORY_TAGS = {
@@ -50,6 +51,25 @@ interface DigestTopArticle {
   score: number;
 }
 
+// Prisma JSON型のための型ガード
+function isDigestTopArticleArray(value: unknown): value is DigestTopArticle[] {
+  return Array.isArray(value) && value.every(item => 
+    typeof item === 'object' && item !== null &&
+    'id' in item && typeof item.id === 'string' &&
+    'title' in item && typeof item.title === 'string' &&
+    'url' in item && typeof item.url === 'string' &&
+    'score' in item && typeof item.score === 'number'
+  );
+}
+
+function isCategorySummaryArray(value: unknown): value is CategorySummary[] {
+  return Array.isArray(value) && value.every(item => 
+    typeof item === 'object' && item !== null &&
+    'name' in item && typeof item.name === 'string' &&
+    'count' in item && typeof item.count === 'number'
+  );
+}
+
 export class DigestGenerator {
   private prisma: PrismaClient;
 
@@ -61,101 +81,141 @@ export class DigestGenerator {
    * 週刊ダイジェストを生成
    */
   async generateWeeklyDigest(startDate?: Date): Promise<string> {
-    // JSTタイムゾーンで現在日時を取得
-    const jstDate = startDate ? this.toJST(startDate) : this.getCurrentJST();
-    const weekEnd = new Date(jstDate);
-    const weekStart = new Date(weekEnd);
-    weekStart.setDate(weekStart.getDate() - 7);
-    
-    // 週の開始と終了を日曜日基準に調整（JST）
-    const adjustedStart = this.getWeekStartJST(weekStart);
-    const adjustedEnd = this.getWeekEndJST(adjustedStart);
+    try {
+      // UTC基準で計算し、日付の一貫性を保つ
+      const now = startDate || new Date();
+      const weekStart = this.getWeekStartUTC(now);
+      const weekEnd = this.getWeekEndUTC(weekStart);
 
-    // 既存のダイジェストをチェック
-    const existing = await this.prisma.weeklyDigest.findUnique({
-      where: { weekStartDate: adjustedStart }
-    });
+      // upsertを使用してレースコンディションを防ぐ
+      const existing = await this.prisma.weeklyDigest.findUnique({
+        where: { weekStartDate: weekStart }
+      });
 
-    if (existing) {
-      return existing.id;
-    }
+      if (existing) {
+        logger.info(`Weekly digest already exists for week starting ${weekStart.toISOString()}`);
+        return existing.id;
+      }
 
-    // 週間の記事を取得（_countを使用して最適化）
-    const articles = await this.prisma.article.findMany({
-      where: {
-        publishedAt: {
-          gte: adjustedStart,
-          lte: adjustedEnd
-        }
-      },
-      include: {
-        tags: true,
-        source: true,
-        _count: {
-          select: {
-            articleViews: true,
-            favorites: true
+      // 週間の記事を取得（_countを使用して最適化）
+      const articles = await this.prisma.article.findMany({
+        where: {
+          publishedAt: {
+            gte: weekStart,
+            lte: weekEnd
           }
+        },
+        include: {
+          tags: true,
+          source: true,
+          _count: {
+            select: {
+              articleViews: true,
+              favorites: true
+            }
+          }
+        },
+        orderBy: {
+          publishedAt: 'desc'
         }
+      });
+
+      if (articles.length === 0) {
+        logger.warn(`No articles found for week starting ${weekStart.toISOString()}`);
       }
-    });
 
-    // トップ記事を計算
-    const topArticles = this.calculateTopArticles(articles);
-    
-    // カテゴリ別集計
-    const categories = this.calculateCategories(articles);
+      // トップ記事を計算
+      const topArticles = this.calculateTopArticles(articles);
+      
+      // カテゴリ別集計
+      const categories = this.calculateCategories(articles);
 
-    // ダイジェストを保存
-    const digest = await this.prisma.weeklyDigest.create({
-      data: {
-        weekStartDate: adjustedStart,
-        weekEndDate: adjustedEnd,
-        articleCount: articles.length,
-        topArticles: JSON.parse(JSON.stringify(topArticles.slice(0, 10).map(a => ({
-          id: a.id,
-          title: a.title,
-          url: a.url,
-          score: a.score
-        })))),
-        categories: JSON.parse(JSON.stringify(categories))
-      }
-    });
+      // ダイジェストを保存（upsertで二重作成を防ぐ）
+      const digest = await this.prisma.weeklyDigest.upsert({
+        where: {
+          weekStartDate: weekStart
+        },
+        update: {
+          weekEndDate: weekEnd,
+          articleCount: articles.length,
+          topArticles: topArticles.slice(0, 10).map(a => ({
+            id: a.id,
+            title: a.title,
+            url: a.url,
+            score: a.score
+          })) as Prisma.JsonValue,
+          categories: categories as Prisma.JsonValue
+        },
+        create: {
+          weekStartDate: weekStart,
+          weekEndDate: weekEnd,
+          articleCount: articles.length,
+          topArticles: topArticles.slice(0, 10).map(a => ({
+            id: a.id,
+            title: a.title,
+            url: a.url,
+            score: a.score
+          })) as Prisma.JsonValue,
+          categories: categories as Prisma.JsonValue
+        }
+      });
 
-    return digest.id;
+      logger.info(`Weekly digest created/updated: ${digest.id} with ${articles.length} articles`);
+      return digest.id;
+    } catch (error) {
+      logger.error('Failed to generate weekly digest', error);
+      throw new Error('Failed to generate weekly digest');
+    }
   }
 
   /**
    * 特定週のダイジェストを取得
    */
   async getWeeklyDigest(weekStartDate: Date) {
-    const jstDate = this.toJST(weekStartDate);
-    const adjustedStart = this.getWeekStartJST(jstDate);
-    
-    const digest = await this.prisma.weeklyDigest.findUnique({
-      where: { weekStartDate: adjustedStart }
-    });
+    try {
+      const weekStart = this.getWeekStartUTC(weekStartDate);
+      
+      const digest = await this.prisma.weeklyDigest.findUnique({
+        where: { weekStartDate: weekStart }
+      });
 
-    if (!digest) {
+      if (!digest) {
+        logger.info(`No digest found for week starting ${weekStart.toISOString()}`);
+        return null;
+      }
+
+      // 型安全なJSON処理
+      const topArticlesData = digest.topArticles;
+      if (!isDigestTopArticleArray(topArticlesData)) {
+        logger.error('Invalid topArticles data format');
+        return null;
+      }
+
+      // 記事の詳細情報を取得
+      const topArticleIds = topArticlesData.map(a => a.id);
+      const articles = await this.prisma.article.findMany({
+        where: { id: { in: topArticleIds } },
+        include: {
+          source: true,
+          tags: true
+        }
+      });
+
+      // 順序を保持しながらマッピング
+      const orderedArticles = topArticleIds
+        .map(id => articles.find(a => a.id === id))
+        .filter((article): article is typeof articles[0] => article !== undefined);
+
+      return {
+        ...digest,
+        topArticles: topArticlesData,
+        categories: isCategorySummaryArray(digest.categories) ? digest.categories : [],
+        articles: orderedArticles
+      };
+    } catch (error) {
+      logger.error('Failed to get weekly digest', error);
       return null;
     }
-
-    // 記事の詳細情報を取得
-    const topArticleIds = (digest.topArticles as unknown as DigestTopArticle[]).map(a => a.id);
-    const articles = await this.prisma.article.findMany({
-      where: { id: { in: topArticleIds } },
-      include: {
-        source: true,
-        tags: true
-      }
-    });
-
-    return {
-      ...digest,
-      articles: topArticleIds.map(id => 
-        articles.find(a => a.id === id)
-      ).filter(Boolean)
-    };
   }
 
   /**
@@ -179,32 +239,42 @@ export class DigestGenerator {
   }
 
   /**
-   * カテゴリ別集計
+   * カテゴリ別集計（大文字小文字を区別しない完全一致）
    */
   private calculateCategories(articles: ArticleWithRelations[]): CategorySummary[] {
-    const categoryMap = new Map<string, ArticleWithRelations[]>();
+    const categoryMap = new Map<string, Set<string>>();
+    const categoryArticles = new Map<string, ArticleWithRelations[]>();
 
+    // 重複を防ぐためSetを使用
     articles.forEach(article => {
       const articleTags = article.tags.map((t) => t.name.toLowerCase());
       
       for (const [category, tags] of Object.entries(CATEGORY_TAGS)) {
         const lowerTags = tags.map(t => t.toLowerCase());
-        if (articleTags.some((tag) => lowerTags.includes(tag))) {
-          if (!categoryMap.has(category)) {
-            categoryMap.set(category, []);
+        // 完全一致のみを対象とし、部分一致を防ぐ
+        const hasExactMatch = articleTags.some((tag) => lowerTags.includes(tag));
+        
+        if (hasExactMatch) {
+          if (!categoryArticles.has(category)) {
+            categoryArticles.set(category, []);
+            categoryMap.set(category, new Set());
           }
-          categoryMap.get(category)!.push(article);
+          // 記事IDで重複チェック
+          if (!categoryMap.get(category)!.has(article.id)) {
+            categoryMap.get(category)!.add(article.id);
+            categoryArticles.get(category)!.push(article);
+          }
           break; // 1つのカテゴリにのみ分類
         }
       }
     });
 
     const categories: CategorySummary[] = [];
-    for (const [name, categoryArticles] of categoryMap.entries()) {
-      const topArticle = this.calculateTopArticles(categoryArticles)[0];
+    for (const [name, articles] of categoryArticles.entries()) {
+      const topArticle = this.calculateTopArticles(articles)[0];
       categories.push({
         name,
-        count: categoryArticles.length,
+        count: articles.length,
         topArticle: topArticle ? {
           id: topArticle.id,
           title: topArticle.title
@@ -216,9 +286,9 @@ export class DigestGenerator {
   }
 
   /**
-   * 週の開始日（日曜日）を取得（UTC基準）- レガシー用
+   * 週の開始日（日曜日）を取得（UTC基準）
    */
-  private getWeekStart(date: Date): Date {
+  private getWeekStartUTC(date: Date): Date {
     const d = new Date(date);
     const day = d.getUTCDay(); // 0=Sunday
     const diff = d.getUTCDate() - day;
@@ -228,52 +298,13 @@ export class DigestGenerator {
   }
 
   /**
-   * 週の終了日（土曜日の23:59:59）を取得（UTC基準）- レガシー用
+   * 週の終了日（土曜日の23:59:59）を取得（UTC基準）
    */
-  private getWeekEnd(weekStart: Date): Date {
+  private getWeekEndUTC(weekStart: Date): Date {
     const d = new Date(weekStart);
     d.setUTCDate(d.getUTCDate() + 6);
     d.setUTCHours(23, 59, 59, 999);
     return d;
   }
 
-  /**
-   * 現在のJST日時を取得
-   */
-  private getCurrentJST(): Date {
-    const now = new Date();
-    // UTCからJSTへの変換（+9時間）
-    return new Date(now.getTime() + (9 * 60 * 60 * 1000));
-  }
-
-  /**
-   * DateをJSTとして扱う
-   */
-  private toJST(date: Date): Date {
-    // すでにJSTとして扱われている場合はそのまま返す
-    return new Date(date.getTime());
-  }
-
-  /**
-   * 週の開始日（日曜日）を取得（JST基準）
-   */
-  private getWeekStartJST(date: Date): Date {
-    const d = new Date(date);
-    const day = d.getDay(); // 0=Sunday（ローカル時間として扱う）
-    const diff = d.getDate() - day;
-    d.setDate(diff);
-    d.setHours(0, 0, 0, 0);
-    // UTC時間に変換（JSTの0時 = UTC前日15時）
-    return new Date(d.getTime() - (9 * 60 * 60 * 1000));
-  }
-
-  /**
-   * 週の終了日（土曜日の23:59:59）を取得（JST基準）
-   */
-  private getWeekEndJST(weekStart: Date): Date {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + 6);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  }
 }

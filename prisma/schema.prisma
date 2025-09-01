@@ -39,7 +39,7 @@ model Article {
   difficulty      String?
   detailedSummary String?
   articleType     String?
-  summaryVersion  Int           @default(1)
+  summaryVersion  Int           @default(7)
   category        ArticleCategory?
   source          Source        @relation(fields: [sourceId], references: [id])
   articleViews    ArticleView[]

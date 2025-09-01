@@ -20,26 +20,44 @@ interface DigestArticle {
   }>;
 }
 
+interface TopArticle {
+  id: string;
+  title: string;
+  url: string;
+  score: number;
+}
+
+interface Category {
+  name: string;
+  count: number;
+  topArticle: {
+    id: string;
+    title: string;
+  } | null;
+}
+
 interface WeeklyDigest {
   id: string;
   weekStartDate: string;
   weekEndDate: string;
   articleCount: number;
-  topArticles: Array<{
-    id: string;
-    title: string;
-    url: string;
-    score: number;
-  }>;
-  categories: Array<{
-    name: string;
-    count: number;
-    topArticle: {
-      id: string;
-      title: string;
-    };
-  }>;
+  topArticles: TopArticle[];
+  categories: Category[];
   articles: DigestArticle[];
+}
+
+// 型ガード関数
+function isWeeklyDigest(data: unknown): data is WeeklyDigest {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  
+  return (
+    typeof obj.id === 'string' &&
+    typeof obj.weekStartDate === 'string' &&
+    typeof obj.weekEndDate === 'string' &&
+    typeof obj.articleCount === 'number' &&
+    Array.isArray(obj.articles)
+  );
 }
 
 export default function DigestPage() {
@@ -55,17 +73,27 @@ export default function DigestPage() {
       const targetDate = date || new Date();
       const response = await fetch(`/api/digest/${encodeURIComponent(targetDate.toISOString())}`);
       
-      if (response.ok) {
-        const data = await response.json();
-        setDigest(data);
-      } else if (response.status === 404) {
-        setDigest(null);
-        setError('週刊ダイジェストがまだ生成されていません');
-      } else {
-        setError('ダイジェストの取得に失敗しました');
+      if (!response.ok) {
+        if (response.status === 404) {
+          setDigest(null);
+          setError('週刊ダイジェストがまだ生成されていません');
+        } else {
+          const errorText = await response.text().catch(() => '');
+          setError(`ダイジェストの取得に失敗しました${errorText ? ': ' + errorText : ''}`);
+        }
+        return;
       }
-    } catch (_err) {
-      setError('エラーが発生しました');
+      
+      const data = await response.json();
+      if (!isWeeklyDigest(data)) {
+        setError('不正なデータ形式です');
+        return;
+      }
+      
+      setDigest(data);
+    } catch (err) {
+      console.error('Failed to fetch digest:', err);
+      setError(`エラーが発生しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
     } finally {
       setLoading(false);
     }
@@ -80,16 +108,20 @@ export default function DigestPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ date: new Date().toISOString() }),
       });
 
-      if (response.ok) {
-        await fetchDigest();
-      } else {
-        setError('ダイジェストの生成に失敗しました');
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        setError(`ダイジェストの生成に失敗しました${errorText ? ': ' + errorText : ''}`);
+        return;
       }
-    } catch (_err) {
-      setError('エラーが発生しました');
+      
+      // 生成成功後、ダイジェストを取得
+      await fetchDigest();
+    } catch (err) {
+      console.error('Failed to generate digest:', err);
+      setError(`エラーが発生しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
     } finally {
       setGenerating(false);
     }
@@ -100,12 +132,19 @@ export default function DigestPage() {
   }, []);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-    });
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return '日付不明';
+      }
+      return date.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+      });
+    } catch {
+      return '日付不明';
+    }
   };
 
   if (loading) {

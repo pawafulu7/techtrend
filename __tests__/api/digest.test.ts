@@ -2,11 +2,22 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { DigestGenerator } from '@/lib/services/digest-generator';
 import { PrismaClient } from '@prisma/client';
 
+// loggerのモック
+jest.mock('@/lib/logger/index', () => ({
+  default: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 // Prismaクライアントのモック
 const mockPrisma = {
   weeklyDigest: {
     findUnique: jest.fn(),
     create: jest.fn(),
+    upsert: jest.fn(),
   },
   article: {
     findMany: jest.fn(),
@@ -31,7 +42,7 @@ describe('DigestGenerator', () => {
       const result = await digestGenerator.generateWeeklyDigest();
 
       expect(result).toBe(existingDigestId);
-      expect(mockPrisma.weeklyDigest.create).not.toHaveBeenCalled();
+      expect(mockPrisma.weeklyDigest.upsert).not.toHaveBeenCalled();
     });
 
     it('新規ダイジェストを作成して返す', async () => {
@@ -61,16 +72,16 @@ describe('DigestGenerator', () => {
 
       (mockPrisma.weeklyDigest.findUnique as jest.Mock).mockResolvedValue(null);
       (mockPrisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
-      (mockPrisma.weeklyDigest.create as jest.Mock).mockResolvedValue({
+      (mockPrisma.weeklyDigest.upsert as jest.Mock).mockResolvedValue({
         id: newDigestId,
       });
 
       const result = await digestGenerator.generateWeeklyDigest();
 
       expect(result).toBe(newDigestId);
-      expect(mockPrisma.weeklyDigest.create).toHaveBeenCalledWith(
+      expect(mockPrisma.weeklyDigest.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
+          create: expect.objectContaining({
             articleCount: 2,
           }),
         })
