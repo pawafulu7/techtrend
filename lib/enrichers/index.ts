@@ -26,6 +26,7 @@ import { CloudflareBlogEnricher } from './cloudflare-blog';
 import { MozillaHacksEnricher } from './mozilla-hacks';
 import { HackerNewsEnricher } from './hacker-news';
 import { MediumEngineeringEnricher } from './medium-engineering';
+import { AWSEnricher } from './aws';
 
 export { BaseContentEnricher } from './base';
 export type { IContentEnricher, EnrichedContent, EnrichmentResult } from './base';
@@ -51,6 +52,7 @@ export { CloudflareBlogEnricher } from './cloudflare-blog';
 export { MozillaHacksEnricher } from './mozilla-hacks';
 export { HackerNewsEnricher } from './hacker-news';
 export { MediumEngineeringEnricher } from './medium-engineering';
+export { AWSEnricher } from './aws';
 
 /**
  * エンリッチャーファクトリークラス
@@ -86,6 +88,8 @@ export class ContentEnricherFactory {
       new MozillaHacksEnricher(),
       new HackerNewsEnricher(),
       new MediumEngineeringEnricher(),
+      // 新規追加（2025年9月2日）AWSソース
+      new AWSEnricher(),
       new HatenaContentEnricher(),  // 最後（すべてのURLに対応するため）
       // 将来的に他の企業のエンリッチャーを追加
       // new CookpadContentEnricher(),
