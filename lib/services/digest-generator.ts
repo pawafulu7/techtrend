@@ -13,7 +13,16 @@ const CATEGORY_TAGS = {
 
 // 型定義
 type ArticleWithRelations = Prisma.ArticleGetPayload<{
-  include: { tags: true; articleViews: true; favorites: true; source: true }
+  include: { 
+    tags: true; 
+    source: true;
+    _count: {
+      select: {
+        articleViews: true;
+        favorites: true;
+      }
+    }
+  }
 }>;
 
 interface TopArticle {
@@ -34,6 +43,13 @@ interface CategorySummary {
   } | null;
 }
 
+interface DigestTopArticle {
+  id: string;
+  title: string;
+  url: string;
+  score: number;
+}
+
 export class DigestGenerator {
   private prisma: PrismaClient;
 
@@ -45,13 +61,15 @@ export class DigestGenerator {
    * 週刊ダイジェストを生成
    */
   async generateWeeklyDigest(startDate?: Date): Promise<string> {
-    const weekEnd = startDate || new Date();
+    // JSTタイムゾーンで現在日時を取得
+    const jstDate = startDate ? this.toJST(startDate) : this.getCurrentJST();
+    const weekEnd = new Date(jstDate);
     const weekStart = new Date(weekEnd);
     weekStart.setDate(weekStart.getDate() - 7);
     
-    // 週の開始と終了を日曜日基準に調整
-    const adjustedStart = this.getWeekStart(weekStart);
-    const adjustedEnd = this.getWeekEnd(adjustedStart);
+    // 週の開始と終了を日曜日基準に調整（JST）
+    const adjustedStart = this.getWeekStartJST(weekStart);
+    const adjustedEnd = this.getWeekEndJST(adjustedStart);
 
     // 既存のダイジェストをチェック
     const existing = await this.prisma.weeklyDigest.findUnique({
@@ -62,7 +80,7 @@ export class DigestGenerator {
       return existing.id;
     }
 
-    // 週間の記事を取得
+    // 週間の記事を取得（_countを使用して最適化）
     const articles = await this.prisma.article.findMany({
       where: {
         publishedAt: {
@@ -72,9 +90,13 @@ export class DigestGenerator {
       },
       include: {
         tags: true,
-        articleViews: true,
-        favorites: true,
-        source: true
+        source: true,
+        _count: {
+          select: {
+            articleViews: true,
+            favorites: true
+          }
+        }
       }
     });
 
@@ -107,7 +129,8 @@ export class DigestGenerator {
    * 特定週のダイジェストを取得
    */
   async getWeeklyDigest(weekStartDate: Date) {
-    const adjustedStart = this.getWeekStart(weekStartDate);
+    const jstDate = this.toJST(weekStartDate);
+    const adjustedStart = this.getWeekStartJST(jstDate);
     
     const digest = await this.prisma.weeklyDigest.findUnique({
       where: { weekStartDate: adjustedStart }
@@ -118,7 +141,7 @@ export class DigestGenerator {
     }
 
     // 記事の詳細情報を取得
-    const topArticleIds = (digest.topArticles as Array<{id: string; title: string; url: string; score: number}>).map(a => a.id);
+    const topArticleIds = (digest.topArticles as unknown as DigestTopArticle[]).map(a => a.id);
     const articles = await this.prisma.article.findMany({
       where: { id: { in: topArticleIds } },
       include: {
@@ -140,8 +163,8 @@ export class DigestGenerator {
    */
   private calculateTopArticles(articles: ArticleWithRelations[]): TopArticle[] {
     return articles.map(article => {
-      const viewCount = article.articleViews.length;
-      const favoriteCount = article.favorites.length;
+      const viewCount = article._count.articleViews;
+      const favoriteCount = article._count.favorites;
       const score = viewCount * 1 + favoriteCount * 3; // お気に入りに重み付け
 
       return {
@@ -193,7 +216,7 @@ export class DigestGenerator {
   }
 
   /**
-   * 週の開始日（日曜日）を取得（UTC基準）
+   * 週の開始日（日曜日）を取得（UTC基準）- レガシー用
    */
   private getWeekStart(date: Date): Date {
     const d = new Date(date);
@@ -205,12 +228,52 @@ export class DigestGenerator {
   }
 
   /**
-   * 週の終了日（土曜日の23:59:59）を取得（UTC基準）
+   * 週の終了日（土曜日の23:59:59）を取得（UTC基準）- レガシー用
    */
   private getWeekEnd(weekStart: Date): Date {
     const d = new Date(weekStart);
     d.setUTCDate(d.getUTCDate() + 6);
     d.setUTCHours(23, 59, 59, 999);
+    return d;
+  }
+
+  /**
+   * 現在のJST日時を取得
+   */
+  private getCurrentJST(): Date {
+    const now = new Date();
+    // UTCからJSTへの変換（+9時間）
+    return new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  }
+
+  /**
+   * DateをJSTとして扱う
+   */
+  private toJST(date: Date): Date {
+    // すでにJSTとして扱われている場合はそのまま返す
+    return new Date(date.getTime());
+  }
+
+  /**
+   * 週の開始日（日曜日）を取得（JST基準）
+   */
+  private getWeekStartJST(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay(); // 0=Sunday（ローカル時間として扱う）
+    const diff = d.getDate() - day;
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    // UTC時間に変換（JSTの0時 = UTC前日15時）
+    return new Date(d.getTime() - (9 * 60 * 60 * 1000));
+  }
+
+  /**
+   * 週の終了日（土曜日の23:59:59）を取得（JST基準）
+   */
+  private getWeekEndJST(weekStart: Date): Date {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 6);
+    d.setHours(23, 59, 59, 999);
     return d;
   }
 }

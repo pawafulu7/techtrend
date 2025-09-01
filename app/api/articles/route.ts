@@ -4,7 +4,7 @@ import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
 import { RedisCache } from '@/lib/cache';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, ArticleCategory } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
       
       // Category filter
       if (category && category !== 'all') {
-        where.category = category;
+        where.category = category as ArticleCategory;
       }
       
       if (search) {
