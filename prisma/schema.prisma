@@ -46,17 +46,12 @@ model Article {
   favorites       Favorite[]
   tags            Tag[]         @relation("ArticleToTag")
 
-  @@index([publishedAt(sort: Desc)])
-  @@index([sourceId])
-  @@index([sourceId, publishedAt(sort: Desc)])
-  @@index([createdAt(sort: Desc)])
-  @@index([qualityScore(sort: Desc)])
-  @@index([bookmarks(sort: Desc)])
-  @@index([createdAt(sort: Desc)], map: "idx_article_created_at")
   @@index([publishedAt(sort: Desc)], map: "idx_article_published_at")
-  @@index([qualityScore(sort: Desc)], map: "idx_article_quality_score")
   @@index([sourceId], map: "idx_article_source_id")
   @@index([sourceId, publishedAt(sort: Desc)], map: "idx_article_source_published")
+  @@index([createdAt(sort: Desc)], map: "idx_article_created_at")
+  @@index([qualityScore(sort: Desc)], map: "idx_article_quality_score")
+  @@index([bookmarks(sort: Desc)])
 }
 
 model Source {
@@ -76,7 +71,6 @@ model Tag {
   category String?
   articles Article[] @relation("ArticleToTag")
 
-  @@index([name])
   @@index([name], map: "idx_tag_name")
 }
 

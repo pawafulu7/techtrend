@@ -65,7 +65,7 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Failed to get category stats:', error);
+    // エラーログはサーバー側で記録されるため、クライアントには簡潔なメッセージのみ返す
     return NextResponse.json(
       { error: 'Failed to get category stats' },
       { status: 500 }

@@ -48,7 +48,7 @@ export async function GET(
 
     return NextResponse.json(digest);
   } catch (error) {
-    console.error('Failed to get digest:', error);
+    // エラーログはサーバー側で記録される
     return NextResponse.json(
       { error: 'Failed to get digest' },
       { status: 500 }
