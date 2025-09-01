@@ -27,12 +27,17 @@ export function createMockArticle(overrides?: Partial<Article>): Article {
     publishedAt: now,
     sourceId: `source-1`,
     ogImage: `https://example.com/images/article-${id}.jpg`,
+    thumbnail: null,
     summaryVersion: 7,
     articleType: 'unified',
+    qualityScore: null,
+    bookmarks: null,
+    userVotes: null,
+    difficulty: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  };
+  } as Article;
 }
 
 /**
