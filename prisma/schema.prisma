@@ -8,27 +8,28 @@ datasource db {
 }
 
 model Article {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   title           String
-  url             String   @unique
-  summary         String?  @db.Text
+  url             String        @unique
+  summary         String?
   thumbnail       String?
-  content         String?  @db.Text
+  content         String?
   publishedAt     DateTime
   sourceId        String
-  bookmarks       Int      @default(0)
-  qualityScore    Float    @default(0)
-  userVotes       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  bookmarks       Int           @default(0)
+  qualityScore    Float         @default(0)
+  userVotes       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   difficulty      String?
-  detailedSummary String?  @db.Text
+  detailedSummary String?
   articleType     String?
-  summaryVersion  Int      @default(1)
-  source          Source   @relation(fields: [sourceId], references: [id])
-  tags            Tag[]    @relation("ArticleToTag")
-  favorites       Favorite[]
+  summaryVersion  Int           @default(1)
+  category        String?
+  source          Source        @relation(fields: [sourceId], references: [id])
   articleViews    ArticleView[]
+  favorites       Favorite[]
+  tags            Tag[]         @relation("ArticleToTag")
 
   @@index([publishedAt(sort: Desc)])
   @@index([sourceId])
@@ -36,6 +37,11 @@ model Article {
   @@index([createdAt(sort: Desc)])
   @@index([qualityScore(sort: Desc)])
   @@index([bookmarks(sort: Desc)])
+  @@index([createdAt(sort: Desc)], map: "idx_article_created_at")
+  @@index([publishedAt(sort: Desc)], map: "idx_article_published_at")
+  @@index([qualityScore(sort: Desc)], map: "idx_article_quality_score")
+  @@index([sourceId], map: "idx_article_source_id")
+  @@index([sourceId, publishedAt(sort: Desc)], map: "idx_article_source_published")
 }
 
 model Source {
@@ -54,24 +60,23 @@ model Tag {
   name     String    @unique
   category String?
   articles Article[] @relation("ArticleToTag")
-  
+
   @@index([name])
+  @@index([name], map: "idx_tag_name")
 }
 
-// ユーザー認証用モデル
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            String        @id @default(cuid())
+  email         String        @unique
   emailVerified DateTime?
   name          String?
   image         String?
-  password      String?   // メール/パスワード認証用
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  password      String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   accounts      Account[]
-  favorites     Favorite[]
   articleViews  ArticleView[]
+  favorites     Favorite[]
 }
 
 model Account {
@@ -80,16 +85,15 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
 }
 
@@ -97,54 +101,43 @@ model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
-  
+
   @@unique([identifier, token])
 }
 
-// 拡張機能用モデル
 model Favorite {
   id        String   @id @default(cuid())
   userId    String
   articleId String
   createdAt DateTime @default(now())
-  
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, articleId])
 }
 
 model ArticleView {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   articleId String
-  viewedAt  DateTime?  // nullable、デフォルト値削除
-  isRead    Boolean  @default(false)
+  viewedAt  DateTime?
+  isRead    Boolean   @default(false)
   readAt    DateTime?
-  
-  user    User    @relation(fields: [userId], references: [id])
-  article Article @relation(fields: [articleId], references: [id])
-  
+  article   Article   @relation(fields: [articleId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
   @@unique([userId, articleId])
   @@index([userId, viewedAt])
   @@index([articleId])
   @@index([userId, isRead])
 }
 
-// 週刊ダイジェスト機能
 model WeeklyDigest {
   id            String   @id @default(cuid())
-  weekStartDate DateTime
+  weekStartDate DateTime @unique
   weekEndDate   DateTime
   articleCount  Int
-  topArticles   Json     // トップ記事の配列（{ id, title, url, score }）
-  categories    Json     // カテゴリ別集計
+  topArticles   Json
+  categories    Json
   createdAt     DateTime @default(now())
-  
-  @@unique([weekStartDate])
 }
-
-// PostgreSQL全文検索用の設定（マイグレーション後に手動で実行）
-// CREATE EXTENSION IF NOT EXISTS pg_trgm;
-// CREATE EXTENSION IF NOT EXISTS unaccent;
-// ALTER DATABASE techtrend_dev SET default_text_search_config = 'pg_catalog.japanese';
