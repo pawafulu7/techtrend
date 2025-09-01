@@ -1,28 +1,39 @@
-import { setupTestDatabase } from './utils/test-database';
+import { chromium, FullConfig } from '@playwright/test';
+import { createTestUser } from './test-helpers';
 
 /**
- * Playwright グローバルセットアップ
+ * Playwrightのグローバルセットアップ
  * テスト実行前に一度だけ実行される
  */
-async function globalSetup() {
-  console.error('\n========================================');
-  console.error('Playwright Global Setup Starting...');
-  console.error('========================================\n');
+async function globalSetup(config: FullConfig) {
+  console.log('🚀 Starting global setup...');
+  
+  // テストユーザーを作成
+  console.log('📦 Creating test user...');
+  const userCreated = await createTestUser();
+  if (!userCreated) {
+    throw new Error('Failed to create test user in global setup');
+  }
+  console.log('✅ Test user created successfully');
+  
+  // サーバーが起動しているか確認
+  console.log('🔍 Checking if server is running...');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
   
   try {
-    // Setup test database with test data
-    await setupTestDatabase();
-    
-    console.error('\n========================================');
-    console.error('Global Setup Completed Successfully!');
-    console.error('========================================\n');
+    await page.goto(config.projects[0].use?.baseURL || 'http://localhost:3000', {
+      timeout: 10000
+    });
+    console.log('✅ Server is running');
   } catch (error) {
-    console.error('\n========================================');
-    console.error('Global Setup Failed!');
-    console.error('========================================\n');
-    console.error(error);
-    process.exit(1);
+    console.error('❌ Server is not running. Please start the development server.');
+    throw new Error('Server is not running');
+  } finally {
+    await browser.close();
   }
+  
+  console.log('✅ Global setup completed');
 }
 
 export default globalSetup;

@@ -78,11 +78,11 @@ export class RedisCache {
       const fullKey = this.generateKey(key);
       const finalTTL = ttl || this.defaultTTL;
       
-      await (this.redis as any).set(
+      // Use setex method for setting with expiration
+      await this.redis.setex(
         fullKey,
-        JSON.stringify(value),
-        'EX',
-        finalTTL
+        finalTTL,
+        JSON.stringify(value)
       );
     } catch (_error) {
       this.stats.errors++;

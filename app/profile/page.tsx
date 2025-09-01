@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { ProfileForm } from '@/components/profile/ProfileForm';
+import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
@@ -57,9 +58,9 @@ export default function ProfilePage() {
         <TabsContent value="account" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>アカウント設定</CardTitle>
+              <CardTitle>アカウント情報</CardTitle>
               <CardDescription>
-                メールアドレスとパスワードを管理します
+                アカウントの基本情報を確認します
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -85,6 +86,18 @@ export default function ProfilePage() {
                     : '不明'}
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>パスワード変更</CardTitle>
+              <CardDescription>
+                アカウントのパスワードを変更します
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PasswordChangeForm />
             </CardContent>
           </Card>
 

@@ -83,7 +83,7 @@ test.describe('テーマ切り替え機能', () => {
     expect(theme).toBe('dark');
   });
 
-  test('リロード後もテーマが維持される', async ({ context, _page }) => {
+  test('リロード後もテーマが維持される', async ({ context }) => {
     // このテストだけはLocalStorageをクリアしない新しいページを作成
     const newPage = await context.newPage();
     
