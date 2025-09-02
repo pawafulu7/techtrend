@@ -17,21 +17,29 @@ jest.mock('next-auth/react', () => ({
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: any) => {
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
     // eslint-disable-next-line jsx-a11y/alt-text
     return <img {...props} />;
   },
 }));
 
 // ArticleCardコンポーネントのモック
+interface ArticleCardProps {
+  article: { id: string; title: string; summary: string | null };
+  onArticleClick?: (article: unknown) => void;
+}
+
 jest.mock('@/app/components/article/card', () => ({
-  ArticleCard: ({ article, onArticleClick }: any) => (
+  ArticleCard: ({ article, onArticleClick }: ArticleCardProps) => (
     <article data-testid={`article-${article.id}`} onClick={() => onArticleClick?.(article)}>
       <h3>{article.title}</h3>
       <p>{article.summary}</p>
     </article>
   ),
 }));
+
+const mockedUseRouter = jest.mocked(useRouter);
+const mockedUseSession = jest.mocked(useSession);
 
 describe('ArticleList', () => {
   const mockRouter = {
@@ -72,8 +80,8 @@ describe('ArticleList', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
+    mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
+    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
   });
 
   it('renders a list of articles', () => {

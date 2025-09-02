@@ -18,7 +18,7 @@ jest.mock('next-auth/react', () => ({
 }));
 
 jest.mock('next/link', () => {
-  return ({ children, href }: any) => {
+  return ({ children, href }: { children: React.ReactNode; href: string }) => {
     return <a href={href}>{children}</a>;
   };
 });
@@ -27,6 +27,10 @@ jest.mock('next/link', () => {
 jest.mock('@/components/auth/UserMenu', () => ({
   UserMenu: () => <div data-testid="user-menu">User Menu</div>,
 }));
+
+const mockedUseRouter = jest.mocked(useRouter);
+const mockedUsePathname = jest.mocked(usePathname);
+const mockedUseSession = jest.mocked(useSession);
 
 describe('Header', () => {
   const mockRouter = {
@@ -37,9 +41,9 @@ describe('Header', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (usePathname as jest.Mock).mockReturnValue('/');
-    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
+    mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
+    mockedUsePathname.mockReturnValue('/');
+    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
   });
 
   it('renders the header with logo and navigation', () => {

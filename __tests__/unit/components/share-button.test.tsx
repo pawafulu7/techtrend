@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, _waitFor } from '@testing-library/react';
+import { render, screen, _waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ShareButton } from '@/app/components/article/share-button';
 
 // Mockウィンドウオープン
@@ -36,14 +37,15 @@ describe('ShareButton', () => {
     expect(button).toBeInTheDocument();
   });
 
-  it('Twitter共有が正しいURLで開く', () => {
+  it('Twitter共有が正しいURLで開く', async () => {
+    const user = userEvent.setup();
     render(<ShareButton {...defaultProps} />);
     
     // Twitterで共有をクリック
     const twitterItems = screen.getAllByTestId('dropdown-item');
     const twitterItem = twitterItems.find(item => item.textContent?.includes('Twitterで共有'));
     expect(twitterItem).toBeDefined();
-    fireEvent.click(twitterItem!);
+    await user.click(twitterItem!);
     
     expect(mockOpen).toHaveBeenCalledWith(
       expect.stringContaining('https://twitter.com/intent/tweet'),
@@ -56,14 +58,15 @@ describe('ShareButton', () => {
     expect(calledUrl).toContain(encodeURIComponent(defaultProps.url));
   });
 
-  it('はてなブックマーク共有が正しいURLで開く', () => {
+  it('はてなブックマーク共有が正しいURLで開く', async () => {
+    const user = userEvent.setup();
     render(<ShareButton {...defaultProps} />);
     
     // はてなブックマークをクリック
     const hatenaItems = screen.getAllByTestId('dropdown-item');
     const hatenaItem = hatenaItems.find(item => item.textContent?.includes('はてなブックマーク'));
     expect(hatenaItem).toBeDefined();
-    fireEvent.click(hatenaItem!);
+    await user.click(hatenaItem!);
     
     expect(mockOpen).toHaveBeenCalledWith(
       expect.stringContaining('https://b.hatena.ne.jp/entry/'),
@@ -75,7 +78,8 @@ describe('ShareButton', () => {
     expect(calledUrl).toContain(encodeURIComponent(defaultProps.url));
   });
 
-  it('特殊文字を含むタイトルとURLが正しくエンコードされる', () => {
+  it('特殊文字を含むタイトルとURLが正しくエンコードされる', async () => {
+    const user = userEvent.setup();
     const specialProps = {
       title: 'テスト記事 & タイトル #タグ',
       url: 'https://example.com/article?id=123&category=test',
@@ -86,14 +90,15 @@ describe('ShareButton', () => {
     // Twitterで共有をクリック
     const twitterItems = screen.getAllByTestId('dropdown-item');
     const twitterItem = twitterItems.find(item => item.textContent?.includes('Twitterで共有'));
-    fireEvent.click(twitterItem!);
+    await user.click(twitterItem!);
     
     const calledUrl = mockOpen.mock.calls[0][0];
     expect(calledUrl).toContain(encodeURIComponent(specialProps.title));
     expect(calledUrl).toContain(encodeURIComponent(specialProps.url));
   });
 
-  it('stopPropagationが正しく動作する', () => {
+  it('stopPropagationが正しく動作する', async () => {
+    const user = userEvent.setup();
     const mockParentClick = jest.fn();
     
     render(
@@ -103,7 +108,7 @@ describe('ShareButton', () => {
     );
     
     const button = screen.getByTitle('記事を共有');
-    fireEvent.click(button);
+    await user.click(button);
     
     // 親要素のクリックイベントが発火しないことを確認
     expect(mockParentClick).not.toHaveBeenCalled();

@@ -27,11 +27,14 @@ jest.mock('next-auth/react', () => ({
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: any) => {
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
     // eslint-disable-next-line jsx-a11y/alt-text
     return <img {...props} />;
   },
 }));
+
+const mockedUseRouter = jest.mocked(useRouter);
+const mockedUseSession = jest.mocked(useSession);
 
 describe('ArticleCard', () => {
   const mockRouter = {
@@ -56,8 +59,8 @@ describe('ArticleCard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
+    mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
+    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
   });
 
   it('renders article information correctly', () => {
@@ -101,7 +104,7 @@ describe('ArticleCard', () => {
 
 
   it('displays favorite button for authenticated users', () => {
-    (useSession as jest.Mock).mockReturnValue({
+    mockedUseSession.mockReturnValue({
       data: { user: { id: 'user1', email: 'test@example.com' } },
       status: 'authenticated',
     });
