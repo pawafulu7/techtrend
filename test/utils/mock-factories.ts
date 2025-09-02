@@ -193,7 +193,7 @@ export function mockArticle(overrides: Partial<Article> = {}): Article {
     detailedSummary: `${faker.lorem.paragraph()}\n\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}`,
     content: faker.lorem.paragraphs({ min: 3, max: 5 }),
     publishedAt,
-    sourceId: overrides.sourceId || `source-${faker.number.int({ min: 1, max: 10 })}`,
+    sourceId: (overrides as any).sourceId || `source-${faker.number.int({ min: 1, max: 10 })}`,
     ogImage: faker.image.url(),
     thumbnail: faker.datatype.boolean() ? faker.image.url() : null,
     summaryVersion: 7,
@@ -291,7 +291,7 @@ export function mockArticleWithRelations(overrides: Partial<{
   tags?: Partial<Tag>[];
 }> = {}) {
   const source = mockSource(overrides.source || {});
-  const article = mockArticle({ ...overrides.article, sourceId: source.id });
+  const article = mockArticle({ ...overrides.article, sourceId: source.id } as any);
   const tags = overrides.tags?.map(t => mockTag(t)) || [
     mockTag(),
     mockTag(),
