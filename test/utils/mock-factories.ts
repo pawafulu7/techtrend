@@ -19,7 +19,7 @@ faker.seed(123);
  */
 export function createMockArticle(overrides?: Partial<Article>): Article {
   const id = articleIdCounter++;
-  const now = new Date();
+  const now = new Date(Date.now());
   
   return {
     id: `article-${id}`,
@@ -30,14 +30,14 @@ export function createMockArticle(overrides?: Partial<Article>): Article {
     content: `Full content of test article ${id}`,
     publishedAt: now,
     sourceId: `source-1`,
-    ogImage: `https://example.com/images/article-${id}.jpg`,
     thumbnail: null,
     summaryVersion: 7,
-    articleType: 'unified' as const,
-    qualityScore: null,
-    bookmarks: null,
-    userVotes: null,
+    articleType: 'unified',
+    qualityScore: 0,
+    bookmarks: 0,
+    userVotes: 0,
     difficulty: null,
+    category: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -63,6 +63,7 @@ export function createMockTag(overrides?: Partial<Tag>): Tag {
  */
 export function createMockSource(overrides?: Partial<Source>): Source {
   const id = sourceIdCounter++;
+  const now = new Date(Date.now());
   
   return {
     id: `source-${id}`,
@@ -70,8 +71,8 @@ export function createMockSource(overrides?: Partial<Source>): Source {
     type: 'rss' as const,
     url: `https://source${id}.com`,
     enabled: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now,
+    updatedAt: now,
     ...overrides,
   } as Source;
 }
@@ -81,7 +82,7 @@ export function createMockSource(overrides?: Partial<Source>): Source {
  */
 export function createMockUser(overrides?: Partial<User>): User {
   const id = userIdCounter++;
-  const now = new Date();
+  const now = new Date(Date.now());
   
   return {
     id: `user-${id}`,
@@ -104,7 +105,7 @@ export function createMockArticleView(
   articleId: string,
   overrides?: Partial<ArticleView>
 ): ArticleView {
-  const now = new Date();
+  const now = new Date(Date.now());
   
   return {
     id: `${userId}_${articleId}`,
@@ -125,7 +126,7 @@ export function createMockFavorite(
   articleId: string,
   overrides?: Partial<Favorite>
 ): Favorite {
-  const now = new Date();
+  const now = new Date(Date.now());
   
   return {
     id: `${userId}_${articleId}`,
@@ -145,15 +146,20 @@ interface ArticleWithRelationsOverrides {
   tags?: Partial<Tag>[];
 }
 
-export function createMockArticleWithRelations(overrides?: ArticleWithRelationsOverrides) {
+interface ArticleWithRelations extends Article {
+  source: Source;
+  tags: Tag[];
+}
+
+export function createMockArticleWithRelations(overrides?: ArticleWithRelationsOverrides): ArticleWithRelations {
   const article = createMockArticle(overrides?.article);
   const source = createMockSource({ 
-    id: article.sourceId,
+    id: (article as any).sourceId || 'source-1',
     ...overrides?.source 
   });
   const tags = overrides?.tags?.map((tagOverride) => createMockTag(tagOverride)) || [
-    createMockTag({ name: 'javascript' }),
-    createMockTag({ name: 'react' }),
+    createMockTag({ name: 'javascript' } as any),
+    createMockTag({ name: 'react' } as any),
   ];
   
   return {
@@ -181,7 +187,7 @@ export function resetMockCounters() {
  * リアルな記事データを生成
  */
 export function mockArticle(overrides: Partial<Article> = {}): Article {
-  const now = new Date();
+  const now = new Date(Date.now());
   const publishedAt = faker.date.recent({ days: 30 });
   
   return {
@@ -192,15 +198,15 @@ export function mockArticle(overrides: Partial<Article> = {}): Article {
     detailedSummary: `${faker.lorem.paragraph()}\n\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}`,
     content: faker.lorem.paragraphs({ min: 3, max: 5 }),
     publishedAt,
-    sourceId: overrides.sourceId || `source-${faker.number.int({ min: 1, max: 10 })}`,
-    ogImage: faker.image.url(),
+    sourceId: (overrides as any)?.sourceId || `source-${faker.number.int({ min: 1, max: 10 })}`,
     thumbnail: faker.datatype.boolean() ? faker.image.url() : null,
     summaryVersion: 7,
-    articleType: 'unified' as const,
-    qualityScore: faker.number.int({ min: 60, max: 100 }),
+    articleType: 'unified',
+    qualityScore: faker.number.float({ min: 60, max: 100 }),
     bookmarks: faker.number.int({ min: 0, max: 100 }),
     userVotes: faker.number.int({ min: 0, max: 50 }),
-    difficulty: faker.helpers.arrayElement(['beginner', 'intermediate', 'advanced'] as const),
+    difficulty: faker.helpers.arrayElement(['beginner', 'intermediate', 'advanced']),
+    category: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -220,6 +226,7 @@ export function mockSource(overrides: Partial<Source> = {}): Source {
   ];
   
   const selectedSource = faker.helpers.arrayElement(sources);
+  const now = new Date(Date.now());
   
   return {
     id: faker.string.uuid(),
@@ -228,7 +235,7 @@ export function mockSource(overrides: Partial<Source> = {}): Source {
     url: selectedSource.url,
     enabled: true,
     createdAt: faker.date.past(),
-    updatedAt: new Date(),
+    updatedAt: now,
     ...overrides,
   } as Source;
 }
@@ -256,7 +263,7 @@ export function mockTag(overrides: Partial<Tag> = {}): Tag {
  * リアルなユーザーデータを生成
  */
 export function mockUser(overrides: Partial<User> = {}): User {
-  const now = new Date();
+  const now = new Date(Date.now());
   
   return {
     id: faker.string.uuid(),
@@ -288,9 +295,9 @@ export function mockArticleWithRelations(overrides: Partial<{
   article?: Partial<Article>;
   source?: Partial<Source>;
   tags?: Partial<Tag>[];
-}> = {}) {
+}> = {}): ArticleWithRelations {
   const source = mockSource(overrides.source || {});
-  const article = mockArticle({ ...overrides.article, sourceId: source.id });
+  const article = mockArticle({ ...overrides.article, sourceId: source.id } as any);
   const tags = overrides.tags?.map(t => mockTag(t)) || [
     mockTag(),
     mockTag(),

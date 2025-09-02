@@ -176,10 +176,8 @@ describe('ArticleList', () => {
       expect(article3).toHaveAttribute('data-is-read', 'false');
       
       // 未読記事のUIには未読バッジが表示される
-      const badge2 = article2.querySelector('[data-testid="article-card-2"] .bg-blue-500');
-      const badge3 = article3.querySelector('[data-testid="article-card-3"] .bg-blue-500');
-      // バッジの存在確認（ArticleCardの実装に依存）
-      // 未読バッジが表示されることを確認（実装がある場合）
+      // ArticleCardの実装に依存するため、詳細な確認はスキップ
+      // 未読バッジは.bg-blue-500クラスで識別される
     });
 
     it('未認証ユーザーの場合はすべて既読として扱う', () => {
