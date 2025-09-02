@@ -31,4 +31,7 @@ export class RedisCache {
   resetStats = () => this.mockInstance.resetStats();
 }
 
+// デフォルトのインスタンスをエクスポート
+export const redisCache = cache;
+
 // Note: モックのリセットは各テストファイルのbeforeEachで行う
