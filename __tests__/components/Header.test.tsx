@@ -1,5 +1,6 @@
 import React from 'react';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { Header } from '@/app/components/layout/header';
 import { useSession } from 'next-auth/react';
@@ -72,7 +73,8 @@ describe('Header', () => {
   });
 
 
-  it('handles mobile menu toggle', () => {
+  it('handles mobile menu toggle', async () => {
+    const user = userEvent.setup();
     renderWithProviders(<Header />);
     
     // モバイルメニューボタンを探す
@@ -83,14 +85,14 @@ describe('Header', () => {
       expect(screen.queryByTestId('mobile-menu')).not.toBeInTheDocument();
       
       // メニューボタンをクリック
-      fireEvent.click(mobileMenuButton);
+      await user.click(mobileMenuButton);
       
       // メニューが開く
       const mobileMenu = screen.getByTestId('mobile-menu');
       expect(mobileMenu).toBeInTheDocument();
       
       // 再度クリックで閉じる
-      fireEvent.click(mobileMenuButton);
+      await user.click(mobileMenuButton);
       expect(screen.queryByTestId('mobile-menu')).not.toBeInTheDocument();
     }
   });
@@ -187,7 +189,8 @@ describe('Header', () => {
     document.documentElement.classList.remove('dark');
   });
 
-  it('handles keyboard navigation', () => {
+  it('handles keyboard navigation', async () => {
+    const user = userEvent.setup();
     renderWithProviders(<Header />);
     
     const firstLink = screen.getAllByRole('link')[0];
@@ -198,7 +201,7 @@ describe('Header', () => {
       expect(document.activeElement).toBe(firstLink);
       
       // Enter キーでリンクが動作する
-      fireEvent.keyDown(firstLink, { key: 'Enter', code: 'Enter' });
+      await user.keyboard('{Enter}');
     }
   });
 });

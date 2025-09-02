@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleList } from '@/app/components/article/list';
 import { useSession } from 'next-auth/react';
@@ -100,12 +101,13 @@ describe('ArticleList', () => {
     expect(emptyMessage).toBeInTheDocument();
   });
 
-  it('handles article click events', () => {
+  it('handles article click events', async () => {
+    const user = userEvent.setup();
     const handleArticleClick = jest.fn();
     render(<ArticleList articles={mockArticles} onArticleClick={handleArticleClick} />);
     
     const firstArticle = screen.getByTestId('article-1');
-    fireEvent.click(firstArticle);
+    await user.click(firstArticle);
     
     expect(handleArticleClick).toHaveBeenCalledWith(mockArticles[0]);
   });
@@ -121,6 +123,7 @@ describe('ArticleList', () => {
   });
 
   it('handles load more functionality', async () => {
+    const user = userEvent.setup();
     const handleLoadMore = jest.fn();
     render(
       <ArticleList 
@@ -133,7 +136,7 @@ describe('ArticleList', () => {
     // Load Moreボタンが表示される
     const loadMoreButton = screen.queryByRole('button', { name: /もっと見る|Load more/i });
     if (loadMoreButton) {
-      fireEvent.click(loadMoreButton);
+      await user.click(loadMoreButton);
       expect(handleLoadMore).toHaveBeenCalled();
     }
   });

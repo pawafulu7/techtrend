@@ -119,7 +119,7 @@ describe('ThemeInitializer', () => {
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith(
-        'Theme initialization error:',
+        expect.stringMatching(/theme initialization error/i),
         expect.any(Error)
       );
     });

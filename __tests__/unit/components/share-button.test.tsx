@@ -21,6 +21,9 @@ jest.mock('@/components/ui/dropdown-menu', () => ({
 }));
 
 describe('ShareButton', () => {
+  const TWITTER_POPUP_WIDTH = 550;
+  const TWITTER_POPUP_HEIGHT = 400;
+  
   const defaultProps = {
     title: 'テスト記事タイトル',
     url: 'https://example.com/article/123',
@@ -33,7 +36,7 @@ describe('ShareButton', () => {
   it('共有ボタンが正しくレンダリングされる', () => {
     render(<ShareButton {...defaultProps} />);
     
-    const button = screen.getByTitle('記事を共有');
+    const button = screen.getByRole('button', { name: /共有/i }) || screen.getByTitle('記事を共有');
     expect(button).toBeInTheDocument();
   });
 
@@ -50,7 +53,7 @@ describe('ShareButton', () => {
     expect(mockOpen).toHaveBeenCalledWith(
       expect.stringContaining('https://twitter.com/intent/tweet'),
       '_blank',
-      'noopener,noreferrer,width=550,height=400'
+      `noopener,noreferrer,width=${TWITTER_POPUP_WIDTH},height=${TWITTER_POPUP_HEIGHT}`
     );
     
     const calledUrl = mockOpen.mock.calls[0][0];
@@ -107,7 +110,7 @@ describe('ShareButton', () => {
       </div>
     );
     
-    const button = screen.getByTitle('記事を共有');
+    const button = screen.getByRole('button', { name: /共有/i }) || screen.getByTitle('記事を共有');
     await user.click(button);
     
     // 親要素のクリックイベントが発火しないことを確認

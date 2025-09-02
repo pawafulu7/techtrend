@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleCard } from '@/app/components/article/card';
 import { useSession } from 'next-auth/react';
@@ -80,22 +81,24 @@ describe('ArticleCard', () => {
     expect(screen.getByText('Testing')).toBeInTheDocument();
   });
 
-  it('handles click events when onArticleClick is provided', () => {
+  it('handles click events when onArticleClick is provided', async () => {
+    const user = userEvent.setup();
     const handleClick = jest.fn();
     render(<ArticleCard article={mockArticle} onArticleClick={handleClick} />);
     
     const card = screen.getByTestId('article-card');
-    fireEvent.click(card);
+    await user.click(card);
     
     // 実装では引数なしで呼ばれる
     expect(handleClick).toHaveBeenCalled();
   });
 
-  it('navigates to article detail page when clicked without onArticleClick', () => {
+  it('navigates to article detail page when clicked without onArticleClick', async () => {
+    const user = userEvent.setup();
     render(<ArticleCard article={mockArticle} />);
     
     const card = screen.getByTestId('article-card');
-    fireEvent.click(card);
+    await user.click(card);
     
     // クリック時のナビゲーションがonArticleClickプロパティに依存
     // onArticleClickが提供されていない場合、デフォルト動作は定義されていない可能性
