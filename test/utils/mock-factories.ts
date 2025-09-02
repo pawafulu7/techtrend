@@ -91,6 +91,22 @@ faker.seed(123);
 // 固定の基準日（テストの決定論的実行のため）
 const REFERENCE_DATE = new Date('2025-01-01T00:00:00Z');
 
+// 共通定数
+const MOCK_SOURCES = [
+  { name: 'Dev.to', url: 'https://dev.to' },
+  { name: 'Qiita', url: 'https://qiita.com' },
+  { name: 'Zenn', url: 'https://zenn.dev' },
+  { name: 'GitHub Blog', url: 'https://github.blog' },
+  { name: 'Medium', url: 'https://medium.com' },
+] as const;
+
+const TECH_TAGS = [
+  'JavaScript', 'TypeScript', 'React', 'Vue', 'Angular',
+  'Node.js', 'Python', 'Go', 'Rust', 'Java',
+  'Docker', 'Kubernetes', 'AWS', 'GCP', 'Azure',
+  'GraphQL', 'REST API', 'MongoDB', 'PostgreSQL', 'Redis',
+] as const;
+
 /**
  * 記事のモックデータを生成
  */
@@ -289,15 +305,7 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
  * リアルなソースデータを生成
  */
 export function mockSource(overrides: Partial<MockSource> = {}): MockSource {
-  const sources = [
-    { name: 'Dev.to', url: 'https://dev.to' },
-    { name: 'Qiita', url: 'https://qiita.com' },
-    { name: 'Zenn', url: 'https://zenn.dev' },
-    { name: 'GitHub Blog', url: 'https://github.blog' },
-    { name: 'Medium', url: 'https://medium.com' },
-  ];
-  
-  const selectedSource = faker.helpers.arrayElement(sources);
+  const selectedSource = faker.helpers.arrayElement(MOCK_SOURCES);
   const now = new Date(REFERENCE_DATE);
   
   return {
@@ -316,16 +324,9 @@ export function mockSource(overrides: Partial<MockSource> = {}): MockSource {
  * リアルなタグデータを生成
  */
 export function mockTag(overrides: Partial<MockTag> = {}): MockTag {
-  const techTags = [
-    'JavaScript', 'TypeScript', 'React', 'Vue', 'Angular',
-    'Node.js', 'Python', 'Go', 'Rust', 'Java',
-    'Docker', 'Kubernetes', 'AWS', 'GCP', 'Azure',
-    'GraphQL', 'REST API', 'MongoDB', 'PostgreSQL', 'Redis',
-  ];
-  
   return {
     id: overrides.id ?? faker.string.uuid(),
-    name: faker.helpers.arrayElement(techTags).toLowerCase(),
+    name: faker.helpers.arrayElement(TECH_TAGS).toLowerCase(),
     category: faker.helpers.arrayElement<TagCategory>(['language', 'framework', 'tool', 'platform', 'database']),
     ...overrides,
   };
