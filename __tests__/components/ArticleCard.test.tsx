@@ -302,14 +302,11 @@ describe('ArticleCard', () => {
     render(<ArticleCard article={dateArticle} />);
     
     // 日付が表示される（formatDateWithTime関数でフォーマット）
-    // 実際のフォーマットは実装に依存するため、複数のパターンをチェック
-    const dateElement = screen.queryByText(/2025/i) || 
-                       screen.queryByText(/01-01/i) || 
-                       screen.queryByText(/Jan/i) ||
-                       screen.queryByText(/1月/i);
+    // 複数の日付要素が存在する可能性があるため、最初の要素を取得
+    const dateElements = screen.queryAllByText(/2025/i);
     
-    if (dateElement) {
-      expect(dateElement).toBeInTheDocument();
+    if (dateElements.length > 0) {
+      expect(dateElements[0]).toBeInTheDocument();
     } else {
       // 日付が別の形式で表示されている可能性を考慮
       const allText = screen.getByTestId('article-card').textContent;
