@@ -177,7 +177,6 @@ describe('ArticleList', () => {
       
       // 未読記事には未読バッジが表示される
       const unreadBadges = article2.querySelectorAll('[data-testid="unread-badge"]');
-      // 未読バッジが表示されるかは実装依存のため、存在チェックのみ
       if (unreadBadges.length > 0) {
         expect(unreadBadges.length).toBeGreaterThan(0);
       }

@@ -5,10 +5,9 @@ import { faker } from '@faker-js/faker';
  * 一貫性のあるテストデータを生成するためのユーティリティ
  */
 
-// テスト用の型定義（@prisma/clientの型問題を回避）
 // 厳密な型定義
 type ArticleCategory = 'frontend' | 'backend' | 'ai_ml' | 'security' | 'devops' | 'database' | 'mobile' | 'web3' | 'design' | 'testing';
-type SourceType = 'rss' | 'api' | 'scraper';
+type SourceType = 'rss' | 'api' | 'scraping';
 type ArticleDifficulty = 'beginner' | 'intermediate' | 'advanced';
 type TagCategory = 'language' | 'framework' | 'tool' | 'platform' | 'database';
 
@@ -304,7 +303,7 @@ export function mockSource(overrides: Partial<MockSource> = {}): MockSource {
   return {
     id: overrides.id ?? faker.string.uuid(),
     name: selectedSource.name,
-    type: faker.helpers.arrayElement<SourceType>(['rss', 'api', 'scraper']),
+    type: faker.helpers.arrayElement<SourceType>(['rss', 'api', 'scraping']),
     url: selectedSource.url,
     enabled: true,
     createdAt: faker.date.past({ refDate: REFERENCE_DATE }),
