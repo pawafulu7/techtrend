@@ -1,7 +1,6 @@
 import { BaseContentEnricher } from '../base';
 
-// Don't mock fetch globally
-// jest.mock('node-fetch');
+// NOTE: fetchの「グローバルモック」は行わない。必要なテスト（例: リトライ）ではケース単位で局所的にstubする。
 
 // Test implementation of BaseContentEnricher
 class TestContentEnricher extends BaseContentEnricher {
@@ -67,6 +66,10 @@ describe('BaseContentEnricher', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     enricher = new TestContentEnricher();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('enrich', () => {
@@ -179,6 +182,13 @@ describe('BaseContentEnricher', () => {
       expect(enricher.canHandle('https://test.com/article')).toBe(true);
       expect(enricher.canHandle('https://example.test.com/page')).toBe(true);
       expect(enricher.canHandle('https://other.com/article')).toBe(false);
+      
+      // 追加の境界ケーステスト（セキュリティ検証）
+      expect(enricher.canHandle('https://evil-test.com/article')).toBe(false);
+      expect(enricher.canHandle('https://test.com.evil.tld')).toBe(false);
+      expect(enricher.canHandle('not a url')).toBe(false);
+      expect(enricher.canHandle('http://test.com?redirect=evil.com')).toBe(true);
+      expect(enricher.canHandle('https://sub.test.com/path')).toBe(true);
     });
   });
 

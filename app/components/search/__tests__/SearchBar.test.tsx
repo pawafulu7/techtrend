@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { SearchBar } from '@/app/components/search/SearchBar';
@@ -22,12 +22,10 @@ describe('SearchBar', () => {
     prefetch: jest.fn(),
   };
 
-  const mockSearchParams = new URLSearchParams();
-
   beforeEach(() => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useSearchParams as jest.Mock).mockReturnValue(mockSearchParams);
+    (useSearchParams as jest.Mock).mockImplementation(() => new URLSearchParams());
     
     // localStorageのモック (jest.spyOn使用)
     jest.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
@@ -179,23 +177,16 @@ describe('SearchBar', () => {
   });
 
   describe('クリア機能', () => {
-    it.skip('検索クエリをクリアできる', async () => {
+    it('検索クエリをクリアできる', async () => {
       const user = userEvent.setup();
       render(<SearchBar />);
       
       const input = screen.getByPlaceholderText(/記事を検索/) as HTMLInputElement;
       await user.type(input, 'Test Query');
       
-      // クリアボタンが表示される（Xアイコンのボタン）
-      // 検索ボタン以外のボタンを探す
-      const buttons = screen.getAllByRole('button');
-      const clearButton = buttons.find(btn => 
-        btn.querySelector('.lucide-x') || 
-        btn.textContent === '' && btn !== screen.getByRole('button', { name: '検索' })
-      );
-      
-      expect(clearButton).toBeDefined();
-      await user.click(clearButton!);
+      // クリアボタンが表示される
+      const clearButton = await screen.findByRole('button', { name: 'クリア' });
+      await user.click(clearButton);
       
       expect(input.value).toBe('');
       expect(mockRouter.push).toHaveBeenCalledWith('/?');
@@ -224,40 +215,22 @@ describe('SearchBar', () => {
   });
 
   describe('キーボードショートカット', () => {
-    it.skip('Cmd+K (Mac) でフォーカスする', () => {
+    it('Cmd+K (Mac) でフォーカスする', async () => {
+      const user = userEvent.setup();
       render(<SearchBar />);
-      
       const input = screen.getByPlaceholderText(/記事を検索/);
       
-      // documentに対してキーダウンイベントを発火
-      act(() => {
-        const event = new KeyboardEvent('keydown', { 
-          key: 'k', 
-          metaKey: true,
-          bubbles: true
-        });
-        document.dispatchEvent(event);
-      });
-      
-      expect(document.activeElement).toBe(input);
+      await user.keyboard('{Meta>}k{/Meta}');
+      await waitFor(() => expect(document.activeElement).toBe(input));
     });
 
-    it.skip('Ctrl+K (Windows/Linux) でフォーカスする', () => {
+    it('Ctrl+K (Windows/Linux) でフォーカスする', async () => {
+      const user = userEvent.setup();
       render(<SearchBar />);
-      
       const input = screen.getByPlaceholderText(/記事を検索/);
       
-      // documentに対してキーダウンイベントを発火
-      act(() => {
-        const event = new KeyboardEvent('keydown', { 
-          key: 'k', 
-          ctrlKey: true,
-          bubbles: true
-        });
-        document.dispatchEvent(event);
-      });
-      
-      expect(document.activeElement).toBe(input);
+      await user.keyboard('{Control>}k{/Control}');
+      await waitFor(() => expect(document.activeElement).toBe(input));
     });
   });
 
@@ -318,7 +291,7 @@ describe('SearchBar', () => {
       jest.useRealTimers();
     });
     
-    it.skip('検索実行中にローディング状態を表示する', async () => {
+    it('検索実行中にローディング状態を表示する', async () => {
       const user = userEvent.setup({ delay: null }); // fake timersと互換性のため
       render(<SearchBar />);
       
@@ -329,19 +302,21 @@ describe('SearchBar', () => {
       await user.click(searchButton);
       
       // ローディングアイコンが一時的に表示される
-      // Loader2アイコンはanimateクラスを持つ要素として検索
       const loadingIcon = document.querySelector('.animate-spin');
       expect(loadingIcon).toBeInTheDocument();
       
-      // fake timersで500ms進める
+      // fake timersで500ms超過まで進める（境界値問題回避）
       await act(async () => {
-        jest.advanceTimersByTime(500);
+        jest.advanceTimersByTime(501);
       });
       
-      // ローディング状態が解除される
+      // スピナーが消えることを待つ
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: '検索' })).toBeInTheDocument();
+        expect(document.querySelector('.animate-spin')).not.toBeInTheDocument();
       });
+      
+      // 検索ボタンが再び有効になることを確認
+      expect(await screen.findByRole('button', { name: '検索' })).toBeEnabled();
     });
   });
 
@@ -369,7 +344,7 @@ describe('SearchBar', () => {
       const input = screen.getByPlaceholderText(/記事を検索/);
       await user.type(input, 'New Query');
       
-      fireEvent.keyDown(input, { key: 'Enter' });
+      await user.keyboard('{Enter}');
       
       // 新しい履歴が追加され、10件に制限される
       const savedHistory = JSON.parse(
@@ -389,7 +364,7 @@ describe('SearchBar', () => {
       const input = screen.getByPlaceholderText(/記事を検索/);
       await user.type(input, 'React'); // 既存の履歴と重複
       
-      fireEvent.keyDown(input, { key: 'Enter' });
+      await user.keyboard('{Enter}');
       
       // 重複が削除され、最新が先頭に来る
       const savedHistory = JSON.parse(
