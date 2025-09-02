@@ -17,8 +17,7 @@ faker.seed(123);
 /**
  * 記事のモックデータを生成
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createMockArticle(overrides?: any): any {
+export function createMockArticle(overrides?: Partial<Article>): Article {
   const id = articleIdCounter++;
   const now = new Date();
   
@@ -34,7 +33,7 @@ export function createMockArticle(overrides?: any): any {
     ogImage: `https://example.com/images/article-${id}.jpg`,
     thumbnail: null,
     summaryVersion: 7,
-    articleType: 'unified',
+    articleType: 'unified' as const,
     qualityScore: null,
     bookmarks: null,
     userVotes: null,
@@ -48,8 +47,7 @@ export function createMockArticle(overrides?: any): any {
 /**
  * タグのモックデータを生成
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createMockTag(overrides?: any): any {
+export function createMockTag(overrides?: Partial<Tag>): Tag {
   const id = tagIdCounter++;
   
   return {
@@ -57,33 +55,31 @@ export function createMockTag(overrides?: any): any {
     name: `tag${id}`,
     category: 'technology',
     ...overrides,
-  };
+  } as Tag;
 }
 
 /**
  * ソースのモックデータを生成
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createMockSource(overrides?: any): any {
+export function createMockSource(overrides?: Partial<Source>): Source {
   const id = sourceIdCounter++;
   
   return {
     id: `source-${id}`,
     name: `Test Source ${id}`,
-    type: 'rss',
+    type: 'rss' as const,
     url: `https://source${id}.com`,
     enabled: true,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
-  };
+  } as Source;
 }
 
 /**
  * ユーザーのモックデータを生成
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createMockUser(overrides?: any): any {
+export function createMockUser(overrides?: Partial<User>): User {
   const id = userIdCounter++;
   const now = new Date();
   
@@ -97,18 +93,17 @@ export function createMockUser(overrides?: any): any {
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  };
+  } as User;
 }
 
 /**
  * 記事ビューのモックデータを生成
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createMockArticleView(
   userId: string,
   articleId: string,
-  overrides?: any
-): any {
+  overrides?: Partial<ArticleView>
+): ArticleView {
   const now = new Date();
   
   return {
@@ -119,18 +114,17 @@ export function createMockArticleView(
     isRead: false,
     readAt: null,
     ...overrides,
-  };
+  } as ArticleView;
 }
 
 /**
  * お気に入りのモックデータを生成
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createMockFavorite(
   userId: string,
   articleId: string,
-  overrides?: any
-): any {
+  overrides?: Partial<Favorite>
+): Favorite {
   const now = new Date();
   
   return {
@@ -139,14 +133,19 @@ export function createMockFavorite(
     articleId,
     createdAt: now,
     ...overrides,
-  };
+  } as Favorite;
 }
 
 /**
  * リレーションを含む記事のモックデータを生成
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createMockArticleWithRelations(overrides?: any) {
+interface ArticleWithRelationsOverrides {
+  article?: Partial<Article>;
+  source?: Partial<Source>;
+  tags?: Partial<Tag>[];
+}
+
+export function createMockArticleWithRelations(overrides?: ArticleWithRelationsOverrides) {
   const article = createMockArticle(overrides?.article);
   const source = createMockSource({ 
     id: article.sourceId,
@@ -193,11 +192,11 @@ export function mockArticle(overrides: Partial<Article> = {}): Article {
     detailedSummary: `${faker.lorem.paragraph()}\n\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}`,
     content: faker.lorem.paragraphs({ min: 3, max: 5 }),
     publishedAt,
-    sourceId: (overrides as any).sourceId || `source-${faker.number.int({ min: 1, max: 10 })}`,
+    sourceId: overrides.sourceId || `source-${faker.number.int({ min: 1, max: 10 })}`,
     ogImage: faker.image.url(),
     thumbnail: faker.datatype.boolean() ? faker.image.url() : null,
     summaryVersion: 7,
-    articleType: 'unified',
+    articleType: 'unified' as const,
     qualityScore: faker.number.int({ min: 60, max: 100 }),
     bookmarks: faker.number.int({ min: 0, max: 100 }),
     userVotes: faker.number.int({ min: 0, max: 50 }),
@@ -225,7 +224,7 @@ export function mockSource(overrides: Partial<Source> = {}): Source {
   return {
     id: faker.string.uuid(),
     name: selectedSource.name,
-    type: faker.helpers.arrayElement(['rss', 'api', 'scraper']),
+    type: faker.helpers.arrayElement(['rss', 'api', 'scraper'] as const),
     url: selectedSource.url,
     enabled: true,
     createdAt: faker.date.past(),
@@ -291,7 +290,7 @@ export function mockArticleWithRelations(overrides: Partial<{
   tags?: Partial<Tag>[];
 }> = {}) {
   const source = mockSource(overrides.source || {});
-  const article = mockArticle({ ...overrides.article, sourceId: source.id } as any);
+  const article = mockArticle({ ...overrides.article, sourceId: source.id });
   const tags = overrides.tags?.map(t => mockTag(t)) || [
     mockTag(),
     mockTag(),

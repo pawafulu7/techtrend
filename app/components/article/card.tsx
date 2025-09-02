@@ -243,6 +243,7 @@ export function ArticleCard({ article, onArticleClick, isRead = false }: Article
               size="sm"
               onClick={handleVote}
               disabled={hasVoted}
+              data-testid="vote-button"
               className={cn(
                 "h-5 px-1.5 text-xs",
                 hasVoted && "bg-green-600 hover:bg-green-600"

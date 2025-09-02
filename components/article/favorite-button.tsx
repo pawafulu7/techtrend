@@ -126,6 +126,7 @@ export function FavoriteButton({
       )}
       onClick={handleToggleFavorite}
       disabled={isLoading}
+      data-testid="favorite-button"
     >
       <Heart
         className={cn(

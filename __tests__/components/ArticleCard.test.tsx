@@ -233,26 +233,22 @@ describe('ArticleCard', () => {
     
     render(<ArticleCard article={mockArticle} />);
     
-    // 投票ボタンをクリック（aria-labelが存在しない場合はtestidやテキストで探す）
-    const voteButton = screen.queryByTestId('vote-button') || 
-                       screen.queryByRole('button', { name: /vote/i }) ||
-                       screen.queryByText(/👍/);
+    // data-testidで投票ボタンを取得
+    const voteButton = screen.getByTestId('vote-button');
     
-    if (voteButton) {
-      await user.click(voteButton);
-      
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          `/api/articles/${mockArticle.id}/vote`,
-          expect.objectContaining({
-            method: 'POST',
-          })
-        );
-      });
-    } else {
-      // 投票ボタンが実装されていない場合はスキップ
-      expect(voteButton).toBeNull();
-    }
+    await user.click(voteButton);
+    
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        `/api/articles/${mockArticle.id}/vote`,
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+    });
+    
+    // ボタンが無効化されていることを確認
+    expect(voteButton).toBeDisabled();
   });
 
   it('displays quality score when available', () => {
