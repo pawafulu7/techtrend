@@ -1,10 +1,82 @@
-import type { Article, Tag, Source, User, ArticleView, Favorite } from '@prisma/client';
 import { faker } from '@faker-js/faker';
 
 /**
  * テスト用のモックデータファクトリー
  * 一貫性のあるテストデータを生成するためのユーティリティ
  */
+
+// テスト用の型定義（@prisma/clientの型問題を回避）
+// ArticleCategoryの型定義
+type ArticleCategory = 'frontend' | 'backend' | 'ai_ml' | 'security' | 'devops' | 'database' | 'mobile' | 'web3' | 'design' | 'testing';
+
+interface MockArticle {
+  id: string;
+  title: string;
+  url: string;
+  summary: string | null;
+  detailedSummary: string | null;
+  content: string | null;
+  publishedAt: Date;
+  sourceId: string;
+  thumbnail: string | null;
+  summaryVersion: number;
+  articleType: string | null;
+  qualityScore: number;
+  bookmarks: number;
+  userVotes: number;
+  difficulty: string | null;
+  category: ArticleCategory | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface MockTag {
+  id: string;
+  name: string;
+  category: string | null;
+}
+
+interface MockSource {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface MockUser {
+  id: string;
+  email: string;
+  name: string | null;
+  password: string;
+  emailVerified: Date | null;
+  image: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface MockArticleView {
+  id: string;
+  userId: string;
+  articleId: string;
+  viewedAt: Date | null;
+  isRead: boolean;
+  readAt: Date | null;
+}
+
+interface MockFavorite {
+  id: string;
+  userId: string;
+  articleId: string;
+  createdAt: Date;
+}
+
+interface MockArticleWithRelations extends MockArticle {
+  source: MockSource;
+  tags: MockTag[];
+}
 
 let articleIdCounter = 1;
 let tagIdCounter = 1;
@@ -17,7 +89,7 @@ faker.seed(123);
 /**
  * 記事のモックデータを生成
  */
-export function createMockArticle(overrides?: any): any {
+export function createMockArticle(overrides?: Partial<MockArticle>): MockArticle {
   const id = articleIdCounter++;
   const now = new Date(Date.now());
   
@@ -47,7 +119,7 @@ export function createMockArticle(overrides?: any): any {
 /**
  * タグのモックデータを生成
  */
-export function createMockTag(overrides?: any): any {
+export function createMockTag(overrides?: Partial<MockTag>): MockTag {
   const id = tagIdCounter++;
   
   return {
@@ -61,7 +133,7 @@ export function createMockTag(overrides?: any): any {
 /**
  * ソースのモックデータを生成
  */
-export function createMockSource(overrides?: any): any {
+export function createMockSource(overrides?: Partial<MockSource>): MockSource {
   const id = sourceIdCounter++;
   const now = new Date(Date.now());
   
@@ -80,7 +152,7 @@ export function createMockSource(overrides?: any): any {
 /**
  * ユーザーのモックデータを生成
  */
-export function createMockUser(overrides?: any): any {
+export function createMockUser(overrides?: Partial<MockUser>): MockUser {
   const id = userIdCounter++;
   const now = new Date(Date.now());
   
@@ -103,8 +175,8 @@ export function createMockUser(overrides?: any): any {
 export function createMockArticleView(
   userId: string,
   articleId: string,
-  overrides?: any
-): any {
+  overrides?: Partial<MockArticleView>
+): MockArticleView {
   const now = new Date(Date.now());
   
   return {
@@ -124,8 +196,8 @@ export function createMockArticleView(
 export function createMockFavorite(
   userId: string,
   articleId: string,
-  overrides?: any
-): any {
+  overrides?: Partial<MockFavorite>
+): MockFavorite {
   const now = new Date(Date.now());
   
   return {
@@ -141,12 +213,12 @@ export function createMockFavorite(
  * リレーションを含む記事のモックデータを生成
  */
 interface ArticleWithRelationsOverrides {
-  article?: any;
-  source?: any;
-  tags?: any[];
+  article?: Partial<MockArticle>;
+  source?: Partial<MockSource>;
+  tags?: Partial<MockTag>[];
 }
 
-export function createMockArticleWithRelations(overrides?: ArticleWithRelationsOverrides): any {
+export function createMockArticleWithRelations(overrides?: ArticleWithRelationsOverrides): MockArticleWithRelations {
   const article = createMockArticle(overrides?.article);
   const source = createMockSource({ 
     id: (article as any).sourceId || 'source-1',
@@ -181,7 +253,7 @@ export function resetMockCounters() {
 /**
  * リアルな記事データを生成
  */
-export function mockArticle(overrides: Partial<Article> = {}): Article {
+export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
   const now = new Date(Date.now());
   const publishedAt = faker.date.recent({ days: 30 });
   
@@ -205,13 +277,13 @@ export function mockArticle(overrides: Partial<Article> = {}): Article {
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  } as Article;
+  };
 }
 
 /**
  * リアルなソースデータを生成
  */
-export function mockSource(overrides: Partial<Source> = {}): Source {
+export function mockSource(overrides: Partial<MockSource> = {}): MockSource {
   const sources = [
     { name: 'Dev.to', url: 'https://dev.to' },
     { name: 'Qiita', url: 'https://qiita.com' },
@@ -232,13 +304,13 @@ export function mockSource(overrides: Partial<Source> = {}): Source {
     createdAt: faker.date.past(),
     updatedAt: now,
     ...overrides,
-  } as Source;
+  };
 }
 
 /**
  * リアルなタグデータを生成
  */
-export function mockTag(overrides: Partial<Tag> = {}): Tag {
+export function mockTag(overrides: Partial<MockTag> = {}): MockTag {
   const techTags = [
     'JavaScript', 'TypeScript', 'React', 'Vue', 'Angular',
     'Node.js', 'Python', 'Go', 'Rust', 'Java',
@@ -251,13 +323,13 @@ export function mockTag(overrides: Partial<Tag> = {}): Tag {
     name: faker.helpers.arrayElement(techTags).toLowerCase(),
     category: faker.helpers.arrayElement(['language', 'framework', 'tool', 'platform', 'database']),
     ...overrides,
-  } as Tag;
+  };
 }
 
 /**
  * リアルなユーザーデータを生成
  */
-export function mockUser(overrides: Partial<User> = {}): User {
+export function mockUser(overrides: Partial<MockUser> = {}): MockUser {
   const now = new Date(Date.now());
   
   return {
@@ -270,13 +342,13 @@ export function mockUser(overrides: Partial<User> = {}): User {
     createdAt: faker.date.past(),
     updatedAt: now,
     ...overrides,
-  } as User;
+  };
 }
 
 /**
  * セッションのモックデータを生成
  */
-export function mockSession(overrides: Partial<{ user: Partial<User>; expires: string }> = {}) {
+export function mockSession(overrides: Partial<{ user: Partial<MockUser>; expires: string }> = {}) {
   return {
     user: mockUser(overrides.user || {}),
     expires: overrides.expires || faker.date.future().toISOString(),
@@ -287,10 +359,10 @@ export function mockSession(overrides: Partial<{ user: Partial<User>; expires: s
  * リレーション付き記事データを生成
  */
 export function mockArticleWithRelations(overrides: Partial<{
-  article?: Partial<Article>;
-  source?: Partial<Source>;
-  tags?: Partial<Tag>[];
-}> = {}): any {
+  article?: Partial<MockArticle>;
+  source?: Partial<MockSource>;
+  tags?: Partial<MockTag>[];
+}> = {}): MockArticleWithRelations {
   const source = mockSource(overrides.source || {});
   const article = mockArticle({ ...overrides.article, sourceId: source.id } as any);
   const tags = overrides.tags?.map(t => mockTag(t)) || [
@@ -312,8 +384,8 @@ export function mockArticleWithRelations(overrides: Partial<{
 export function mockFavorite(
   userId?: string,
   articleId?: string,
-  overrides: Partial<Favorite> = {}
-): Favorite {
+  overrides: Partial<MockFavorite> = {}
+): MockFavorite {
   const finalUserId = userId || faker.string.uuid();
   const finalArticleId = articleId || faker.string.uuid();
   
@@ -323,7 +395,7 @@ export function mockFavorite(
     articleId: finalArticleId,
     createdAt: faker.date.recent(),
     ...overrides,
-  } as Favorite;
+  };
 }
 
 /**
@@ -332,8 +404,8 @@ export function mockFavorite(
 export function mockArticleView(
   userId?: string,
   articleId?: string,
-  overrides: Partial<ArticleView> = {}
-): ArticleView {
+  overrides: Partial<MockArticleView> = {}
+): MockArticleView {
   const finalUserId = userId || faker.string.uuid();
   const finalArticleId = articleId || faker.string.uuid();
   const viewedAt = faker.date.recent();
@@ -347,5 +419,5 @@ export function mockArticleView(
     isRead,
     readAt: isRead ? faker.date.between({ from: viewedAt, to: new Date() }) : null,
     ...overrides,
-  } as ArticleView;
+  };
 }
