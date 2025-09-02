@@ -1,4 +1,5 @@
 import type { Article, Tag, Source, User, ArticleView, Favorite } from '@prisma/client';
+import { faker } from '@faker-js/faker';
 
 /**
  * テスト用のモックデータファクトリー
@@ -9,6 +10,9 @@ let articleIdCounter = 1;
 let tagIdCounter = 1;
 let sourceIdCounter = 1;
 let userIdCounter = 1;
+
+// Faker シード設定（テストの一貫性のため）
+faker.seed(123);
 
 /**
  * 記事のモックデータを生成
@@ -168,4 +172,179 @@ export function resetMockCounters() {
   tagIdCounter = 1;
   sourceIdCounter = 1;
   userIdCounter = 1;
+}
+
+/**
+ * Fakerを使用したより現実的なモックデータファクトリー
+ */
+
+/**
+ * リアルな記事データを生成
+ */
+export function mockArticle(overrides: Partial<Article> = {}): Article {
+  const now = new Date();
+  const publishedAt = faker.date.recent({ days: 30 });
+  
+  return {
+    id: faker.string.uuid(),
+    title: faker.lorem.sentence({ min: 5, max: 10 }),
+    url: faker.internet.url(),
+    summary: faker.lorem.paragraph({ min: 2, max: 4 }),
+    detailedSummary: `${faker.lorem.paragraph()}\n\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}`,
+    content: faker.lorem.paragraphs({ min: 3, max: 5 }),
+    publishedAt,
+    sourceId: overrides.sourceId || `source-${faker.number.int({ min: 1, max: 10 })}`,
+    ogImage: faker.image.url(),
+    thumbnail: faker.datatype.boolean() ? faker.image.url() : null,
+    summaryVersion: 7,
+    articleType: 'unified',
+    qualityScore: faker.number.int({ min: 60, max: 100 }),
+    bookmarks: faker.number.int({ min: 0, max: 100 }),
+    userVotes: faker.number.int({ min: 0, max: 50 }),
+    difficulty: faker.helpers.arrayElement(['beginner', 'intermediate', 'advanced'] as const),
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  } as Article;
+}
+
+/**
+ * リアルなソースデータを生成
+ */
+export function mockSource(overrides: Partial<Source> = {}): Source {
+  const sources = [
+    { name: 'Dev.to', url: 'https://dev.to' },
+    { name: 'Qiita', url: 'https://qiita.com' },
+    { name: 'Zenn', url: 'https://zenn.dev' },
+    { name: 'GitHub Blog', url: 'https://github.blog' },
+    { name: 'Medium', url: 'https://medium.com' },
+  ];
+  
+  const selectedSource = faker.helpers.arrayElement(sources);
+  
+  return {
+    id: faker.string.uuid(),
+    name: selectedSource.name,
+    type: faker.helpers.arrayElement(['rss', 'api', 'scraper']),
+    url: selectedSource.url,
+    enabled: true,
+    createdAt: faker.date.past(),
+    updatedAt: new Date(),
+    ...overrides,
+  } as Source;
+}
+
+/**
+ * リアルなタグデータを生成
+ */
+export function mockTag(overrides: Partial<Tag> = {}): Tag {
+  const techTags = [
+    'JavaScript', 'TypeScript', 'React', 'Vue', 'Angular',
+    'Node.js', 'Python', 'Go', 'Rust', 'Java',
+    'Docker', 'Kubernetes', 'AWS', 'GCP', 'Azure',
+    'GraphQL', 'REST API', 'MongoDB', 'PostgreSQL', 'Redis',
+  ];
+  
+  return {
+    id: faker.string.uuid(),
+    name: faker.helpers.arrayElement(techTags).toLowerCase(),
+    category: faker.helpers.arrayElement(['language', 'framework', 'tool', 'platform', 'database']),
+    ...overrides,
+  } as Tag;
+}
+
+/**
+ * リアルなユーザーデータを生成
+ */
+export function mockUser(overrides: Partial<User> = {}): User {
+  const now = new Date();
+  
+  return {
+    id: faker.string.uuid(),
+    email: faker.internet.email(),
+    name: faker.person.fullName(),
+    password: 'hashed_password_' + faker.string.alphanumeric(32),
+    emailVerified: faker.datatype.boolean() ? faker.date.past() : null,
+    image: faker.datatype.boolean() ? faker.image.avatar() : null,
+    createdAt: faker.date.past(),
+    updatedAt: now,
+    ...overrides,
+  } as User;
+}
+
+/**
+ * セッションのモックデータを生成
+ */
+export function mockSession(overrides: Partial<{ user: Partial<User>; expires: string }> = {}) {
+  return {
+    user: mockUser(overrides.user || {}),
+    expires: overrides.expires || faker.date.future().toISOString(),
+  };
+}
+
+/**
+ * リレーション付き記事データを生成
+ */
+export function mockArticleWithRelations(overrides: Partial<{
+  article?: Partial<Article>;
+  source?: Partial<Source>;
+  tags?: Partial<Tag>[];
+}> = {}) {
+  const source = mockSource(overrides.source || {});
+  const article = mockArticle({ ...overrides.article, sourceId: source.id });
+  const tags = overrides.tags?.map(t => mockTag(t)) || [
+    mockTag(),
+    mockTag(),
+    mockTag(),
+  ];
+  
+  return {
+    ...article,
+    source,
+    tags,
+  };
+}
+
+/**
+ * お気に入りのリアルなモックデータを生成
+ */
+export function mockFavorite(
+  userId?: string,
+  articleId?: string,
+  overrides: Partial<Favorite> = {}
+): Favorite {
+  const finalUserId = userId || faker.string.uuid();
+  const finalArticleId = articleId || faker.string.uuid();
+  
+  return {
+    id: `${finalUserId}_${finalArticleId}`,
+    userId: finalUserId,
+    articleId: finalArticleId,
+    createdAt: faker.date.recent(),
+    ...overrides,
+  } as Favorite;
+}
+
+/**
+ * 記事ビューのリアルなモックデータを生成
+ */
+export function mockArticleView(
+  userId?: string,
+  articleId?: string,
+  overrides: Partial<ArticleView> = {}
+): ArticleView {
+  const finalUserId = userId || faker.string.uuid();
+  const finalArticleId = articleId || faker.string.uuid();
+  const viewedAt = faker.date.recent();
+  const isRead = faker.datatype.boolean();
+  
+  return {
+    id: `${finalUserId}_${finalArticleId}`,
+    userId: finalUserId,
+    articleId: finalArticleId,
+    viewedAt,
+    isRead,
+    readAt: isRead ? faker.date.between({ from: viewedAt, to: new Date() }) : null,
+    ...overrides,
+  } as ArticleView;
 }

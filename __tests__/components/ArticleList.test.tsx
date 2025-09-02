@@ -1,19 +1,38 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleList } from '@/app/components/article/list';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { TestFixtures } from '@/types/test-fixtures';
+import { useReadStatus } from '@/app/hooks/use-read-status';
+import { 
+  createMockArticleWithRelations,
+  createMockSource,
+  mockArticleWithRelations 
+} from '@/test/utils/mock-factories';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+  useSearchParams: jest.fn(() => ({
+    get: jest.fn(),
+    has: jest.fn(),
+    getAll: jest.fn(),
+    keys: jest.fn(),
+    values: jest.fn(),
+    entries: jest.fn(),
+    forEach: jest.fn(),
+    toString: jest.fn(() => ''),
+  })),
 }));
 
 jest.mock('next-auth/react', () => ({
   useSession: jest.fn(),
+}));
+
+jest.mock('@/app/hooks/use-read-status', () => ({
+  useReadStatus: jest.fn(),
 }));
 
 jest.mock('next/image', () => ({
@@ -25,22 +44,36 @@ jest.mock('next/image', () => ({
 }));
 
 // ArticleCardコンポーネントのモック
-interface ArticleCardProps {
-  article: { id: string; title: string; summary: string | null };
-  onArticleClick?: (article: unknown) => void;
-}
-
 jest.mock('@/app/components/article/card', () => ({
-  ArticleCard: ({ article, onArticleClick }: ArticleCardProps) => (
-    <article data-testid={`article-${article.id}`} onClick={() => onArticleClick?.(article)}>
+  ArticleCard: ({ article, onArticleClick, isRead }: any) => (
+    <article 
+      data-testid="article-card" 
+      onClick={() => onArticleClick?.()}
+    >
       <h3>{article.title}</h3>
       <p>{article.summary}</p>
+      {!isRead && <span>未読</span>}
     </article>
+  ),
+}));
+
+// ArticleListItemコンポーネントのモック
+jest.mock('@/app/components/article/list-item', () => ({
+  ArticleListItem: ({ article, onArticleClick, isRead }: any) => (
+    <div 
+      data-testid="article-list-item" 
+      onClick={() => onArticleClick?.()}
+    >
+      <h3>{article.title}</h3>
+      <p>{article.summary}</p>
+      {!isRead && <span>未読</span>}
+    </div>
   ),
 }));
 
 const mockedUseRouter = jest.mocked(useRouter);
 const mockedUseSession = jest.mocked(useSession);
+const mockedUseReadStatus = jest.mocked(useReadStatus);
 
 describe('ArticleList', () => {
   const mockRouter = {
@@ -49,205 +82,231 @@ describe('ArticleList', () => {
   };
 
   const mockArticles = [
-    TestFixtures.createArticleWithRelations({
-      id: '1',
-      title: 'First Article',
-      summary: 'First article summary',
-      url: 'https://example.com/1',
-      publishedAt: new Date('2025-01-01'),
-      qualityScore: 90,
-      sourceId: 'source1',
-      source: TestFixtures.createSource({
+    createMockArticleWithRelations({
+      article: {
+        id: '1',
+        title: 'First Article',
+        summary: 'First article summary',
+        url: 'https://example.com/1',
+        publishedAt: new Date('2025-01-01'),
+        qualityScore: 90,
+      },
+      source: {
         id: 'source1',
         name: 'Source 1',
         type: 'rss',
-      }),
+      },
     }),
-    TestFixtures.createArticleWithRelations({
-      id: '2',
-      title: 'Second Article',
-      summary: 'Second article summary',
-      url: 'https://example.com/2',
-      publishedAt: new Date('2025-01-02'),
-      qualityScore: 85,
-      sourceId: 'source2',
-      source: TestFixtures.createSource({
+    createMockArticleWithRelations({
+      article: {
+        id: '2',
+        title: 'Second Article',
+        summary: 'Second article summary',
+        url: 'https://example.com/2',
+        publishedAt: new Date('2025-01-02'),
+        qualityScore: 85,
+      },
+      source: {
         id: 'source2',
         name: 'Source 2',
         type: 'api',
-      }),
+      },
+    }),
+    createMockArticleWithRelations({
+      article: {
+        id: '3',
+        title: 'Third Article',
+        summary: 'Third article summary',
+        url: 'https://example.com/3',
+        publishedAt: new Date('2025-01-03'),
+        qualityScore: 80,
+      },
+      source: {
+        id: 'source3',
+        name: 'Source 3',
+        type: 'scraper',
+      },
     }),
   ];
+
+  const mockReadStatus = {
+    isRead: jest.fn((id: string) => id === '1'),
+    isLoading: false,
+    refetch: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
-    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
-  });
-
-  it('renders a list of articles', () => {
-    render(<ArticleList articles={mockArticles} />);
-    
-    expect(screen.getByText('First Article')).toBeInTheDocument();
-    expect(screen.getByText('Second Article')).toBeInTheDocument();
-    expect(screen.getByTestId('article-1')).toBeInTheDocument();
-    expect(screen.getByTestId('article-2')).toBeInTheDocument();
-  });
-
-  it('renders empty state when no articles', () => {
-    render(<ArticleList articles={[]} />);
-    
-    const emptyMessage = screen.getByText(/記事が見つかりませんでした|No articles found/i);
-    expect(emptyMessage).toBeInTheDocument();
-  });
-
-  it('handles article click events', async () => {
-    const user = userEvent.setup();
-    const handleArticleClick = jest.fn();
-    render(<ArticleList articles={mockArticles} onArticleClick={handleArticleClick} />);
-    
-    const firstArticle = screen.getByTestId('article-1');
-    await user.click(firstArticle);
-    
-    expect(handleArticleClick).toHaveBeenCalledWith(mockArticles[0]);
-  });
-
-  it('displays loading state when loading is true', () => {
-    render(<ArticleList articles={[]} loading={true} />);
-    
-    // ローディングスケルトンまたはスピナーが表示される
-    const loadingElements = screen.queryAllByTestId(/skeleton|loading|spinner/i);
-    if (loadingElements.length > 0) {
-      expect(loadingElements[0]).toBeInTheDocument();
-    }
-  });
-
-  it('handles load more functionality', async () => {
-    const user = userEvent.setup();
-    const handleLoadMore = jest.fn();
-    render(
-      <ArticleList 
-        articles={mockArticles} 
-        hasMore={true}
-        onLoadMore={handleLoadMore}
-      />
-    );
-    
-    // Load Moreボタンが表示される
-    const loadMoreButton = screen.queryByRole('button', { name: /もっと見る|Load more/i });
-    if (loadMoreButton) {
-      await user.click(loadMoreButton);
-      expect(handleLoadMore).toHaveBeenCalled();
-    }
-  });
-
-  it('renders articles in grid layout', () => {
-    const { container } = render(<ArticleList articles={mockArticles} />);
-    
-    // グリッドレイアウトのクラスが適用されている
-    const gridContainer = container.querySelector('.grid');
-    if (gridContainer) {
-      expect(gridContainer).toBeInTheDocument();
-    }
-  });
-
-  it.skip('filters articles by source when sourceFilter is provided', () => {
-    // 注: sourceFilterは現在のArticleListコンポーネントで実装されていません
-    render(
-      <ArticleList 
-        articles={mockArticles} 
-        sourceFilter="source1"
-      />
-    );
-    
-    // source1の記事のみ表示される
-    expect(screen.getByText('First Article')).toBeInTheDocument();
-    expect(screen.queryByText('Second Article')).not.toBeInTheDocument();
-  });
-
-  it.skip('sorts articles by date in descending order by default', () => {
-    // 注: ソート機能は呼び出し側で実装する必要があります
-    const unsortedArticles = [
-      { ...mockArticles[1], publishedAt: new Date('2025-01-10') },
-      { ...mockArticles[0], publishedAt: new Date('2025-01-05') },
-    ];
-    
-    render(<ArticleList articles={unsortedArticles} />);
-    
-    const articles = screen.getAllByTestId(/article-/);
-    // 新しい記事が先に表示される
-    expect(articles[0]).toHaveAttribute('data-testid', 'article-2');
-    expect(articles[1]).toHaveAttribute('data-testid', 'article-1');
-  });
-
-  it.skip('applies custom className when provided', () => {
-    // 注: classNameプロパティは現在のArticleListコンポーネントで実装されていません
-    const { container } = render(
-      <ArticleList 
-        articles={mockArticles} 
-        className="custom-list-class"
-      />
-    );
-    
-    const listContainer = container.firstChild;
-    expect(listContainer).toHaveClass('custom-list-class');
-  });
-
-  it.skip('handles error state gracefully', () => {
-    // 注: errorプロパティは現在のArticleListコンポーネントで実装されていません
-    render(
-      <ArticleList 
-        articles={[]} 
-        error="Failed to load articles"
-      />
-    );
-    
-    const errorMessage = screen.getByText(/Failed to load articles/i);
-    expect(errorMessage).toBeInTheDocument();
-  });
-
-  it('supports infinite scroll when enabled', async () => {
-    const handleLoadMore = jest.fn();
-    const { container } = render(
-      <ArticleList 
-        articles={mockArticles}
-        hasMore={true}
-        onLoadMore={handleLoadMore}
-        infiniteScroll={true}
-      />
-    );
-    
-    // IntersectionObserverのモック
-    const observerCallback = jest.fn();
-    const mockObserver = {
-      observe: jest.fn(),
-      unobserve: jest.fn(),
-      disconnect: jest.fn(),
-    };
-    
-    window.IntersectionObserver = jest.fn().mockImplementation((callback) => {
-      observerCallback.mockImplementation(callback);
-      return mockObserver;
+    mockedUseSession.mockReturnValue({ 
+      data: { user: { id: 'user1', email: 'test@example.com' } }, 
+      status: 'authenticated' 
     });
-    
-    // スクロールトリガー要素が存在する
-    const scrollTrigger = container.querySelector('[data-testid="scroll-trigger"]');
-    if (scrollTrigger) {
-      expect(scrollTrigger).toBeInTheDocument();
-    }
+    mockedUseReadStatus.mockReturnValue(mockReadStatus);
   });
 
-  it('displays article count when showCount is true', () => {
-    render(
-      <ArticleList 
-        articles={mockArticles}
-        showCount={true}
-      />
-    );
-    
-    const countText = screen.queryByText(/2.*記事|2.*articles/i);
-    if (countText) {
-      expect(countText).toBeInTheDocument();
-    }
+  describe('Rendering', () => {
+    it('renders articles in card view by default', () => {
+      render(<ArticleList articles={mockArticles} />);
+      
+      const container = screen.getByTestId('article-list');
+      expect(container).toBeInTheDocument();
+      expect(container).toHaveClass('grid');
+      
+      const cards = screen.getAllByTestId('article-card');
+      expect(cards).toHaveLength(3);
+      expect(screen.getByText('First Article')).toBeInTheDocument();
+      expect(screen.getByText('Second Article')).toBeInTheDocument();
+      expect(screen.getByText('Third Article')).toBeInTheDocument();
+    });
+
+    it('renders articles in list view when viewMode is list', () => {
+      render(<ArticleList articles={mockArticles} viewMode="list" />);
+      
+      const container = screen.getByTestId('article-list');
+      expect(container).toBeInTheDocument();
+      expect(container).toHaveClass('space-y-2');
+      expect(container).not.toHaveClass('grid');
+      
+      const listItems = screen.getAllByTestId('article-list-item');
+      expect(listItems).toHaveLength(3);
+    });
+
+    it('renders empty state when no articles', () => {
+      render(<ArticleList articles={[]} />);
+      
+      expect(screen.getByText('記事が見つかりませんでした')).toBeInTheDocument();
+      expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
+    });
   });
+
+  describe('Interactions', () => {
+    it('handles article click events in card view', async () => {
+      const user = userEvent.setup();
+      const handleArticleClick = jest.fn();
+      render(<ArticleList articles={mockArticles} onArticleClick={handleArticleClick} />);
+      
+      const firstCard = screen.getAllByTestId('article-card')[0];
+      await user.click(firstCard);
+      
+      expect(handleArticleClick).toHaveBeenCalled();
+    });
+
+    it('handles article click events in list view', async () => {
+      const user = userEvent.setup();
+      const handleArticleClick = jest.fn();
+      render(
+        <ArticleList 
+          articles={mockArticles} 
+          viewMode="list" 
+          onArticleClick={handleArticleClick} 
+        />
+      );
+      
+      const firstItem = screen.getAllByTestId('article-list-item')[0];
+      await user.click(firstItem);
+      
+      expect(handleArticleClick).toHaveBeenCalled();
+    });
+  });
+
+  describe('Read Status', () => {
+    it('shows correct read status for authenticated users', () => {
+      render(<ArticleList articles={mockArticles} />);
+      
+      // mockReadStatusは記事ID '1' のみを既読として返す
+      expect(mockReadStatus.isRead).toHaveBeenCalledWith('1');
+      expect(mockReadStatus.isRead).toHaveBeenCalledWith('2');
+      expect(mockReadStatus.isRead).toHaveBeenCalledWith('3');
+    });
+
+    it('treats all articles as read for unauthenticated users', () => {
+      mockedUseSession.mockReturnValue({ 
+        data: null, 
+        status: 'unauthenticated' 
+      });
+      
+      render(<ArticleList articles={mockArticles} />);
+      
+      // 未認証時は全て既読扱い（未読マークが表示されない）
+      const unreadMarks = screen.queryAllByText('未読');
+      expect(unreadMarks).toHaveLength(0);
+    });
+
+    it('shows loading state correctly', () => {
+      mockedUseReadStatus.mockReturnValue({
+        ...mockReadStatus,
+        isLoading: true,
+      });
+      
+      render(<ArticleList articles={mockArticles} />);
+      
+      // ローディング中は全て既読扱い
+      const unreadMarks = screen.queryAllByText('未読');
+      expect(unreadMarks).toHaveLength(0);
+    });
+
+    it('refetches read status on custom event', async () => {
+      render(<ArticleList articles={mockArticles} />);
+      
+      // カスタムイベントを発火
+      const event = new Event('articles-read-status-changed');
+      window.dispatchEvent(event);
+      
+      await waitFor(() => {
+        expect(mockReadStatus.refetch).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Event Handling', () => {
+    it('adds event listener on mount', () => {
+      const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
+      
+      render(<ArticleList articles={mockArticles} />);
+      
+      expect(addEventListenerSpy).toHaveBeenCalledWith(
+        'articles-read-status-changed',
+        expect.any(Function)
+      );
+      
+      addEventListenerSpy.mockRestore();
+    });
+
+    it('removes event listener on unmount', () => {
+      const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
+      
+      const { unmount } = render(<ArticleList articles={mockArticles} />);
+      unmount();
+      
+      expect(removeEventListenerSpy).toHaveBeenCalledWith(
+        'articles-read-status-changed',
+        expect.any(Function)
+      );
+      
+      removeEventListenerSpy.mockRestore();
+    });
+  });
+
+  describe('Grid Layout', () => {
+    it('applies correct grid classes for card view', () => {
+      render(<ArticleList articles={mockArticles} viewMode="card" />);
+      
+      const container = screen.getByTestId('article-list');
+      expect(container).toHaveClass('grid');
+      expect(container).toHaveClass('grid-cols-1');
+      expect(container).toHaveClass('sm:grid-cols-2');
+      expect(container).toHaveClass('md:grid-cols-2');
+      expect(container).toHaveClass('lg:grid-cols-3');
+      expect(container).toHaveClass('xl:grid-cols-4');
+    });
+
+    it('applies correct spacing classes for list view', () => {
+      render(<ArticleList articles={mockArticles} viewMode="list" />);
+      
+      const container = screen.getByTestId('article-list');
+      expect(container).toHaveClass('space-y-2');
+    });
+  });
+
 });
