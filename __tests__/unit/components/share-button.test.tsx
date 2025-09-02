@@ -1,9 +1,6 @@
-import { render, screen, fireEvent, _waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ShareButton } from '@/app/components/article/share-button';
-
-// Mockウィンドウオープン
-const mockOpen = jest.fn();
-global.open = mockOpen;
 
 // Radix UIコンポーネントのモック
 jest.mock('@/components/ui/dropdown-menu', () => ({
@@ -20,35 +17,54 @@ jest.mock('@/components/ui/dropdown-menu', () => ({
 }));
 
 describe('ShareButton', () => {
+  const TWITTER_POPUP_WIDTH = 550;
+  const TWITTER_POPUP_HEIGHT = 400;
+  
   const defaultProps = {
     title: 'テスト記事タイトル',
     url: 'https://example.com/article/123',
   };
 
+  let originalOpen: typeof window.open;
+  const mockOpen = jest.fn();
+
+  beforeAll(() => {
+    // Backup original window.open
+    originalOpen = window.open;
+  });
+
   beforeEach(() => {
+    // Setup mock
+    window.open = mockOpen;
     mockOpen.mockClear();
+  });
+
+  afterAll(() => {
+    // Restore original window.open
+    window.open = originalOpen;
   });
 
   it('共有ボタンが正しくレンダリングされる', () => {
     render(<ShareButton {...defaultProps} />);
     
-    const button = screen.getByTitle('記事を共有');
+    const button = screen.getByRole('button', { name: /共有/i }) || screen.getByTitle('記事を共有');
     expect(button).toBeInTheDocument();
   });
 
-  it('Twitter共有が正しいURLで開く', () => {
+  it('Twitter共有が正しいURLで開く', async () => {
+    const user = userEvent.setup();
     render(<ShareButton {...defaultProps} />);
     
     // Twitterで共有をクリック
     const twitterItems = screen.getAllByTestId('dropdown-item');
     const twitterItem = twitterItems.find(item => item.textContent?.includes('Twitterで共有'));
     expect(twitterItem).toBeDefined();
-    fireEvent.click(twitterItem!);
+    await user.click(twitterItem!);
     
     expect(mockOpen).toHaveBeenCalledWith(
       expect.stringContaining('https://twitter.com/intent/tweet'),
       '_blank',
-      'noopener,noreferrer,width=550,height=400'
+      `noopener,noreferrer,width=${TWITTER_POPUP_WIDTH},height=${TWITTER_POPUP_HEIGHT}`
     );
     
     const calledUrl = mockOpen.mock.calls[0][0];
@@ -56,14 +72,15 @@ describe('ShareButton', () => {
     expect(calledUrl).toContain(encodeURIComponent(defaultProps.url));
   });
 
-  it('はてなブックマーク共有が正しいURLで開く', () => {
+  it('はてなブックマーク共有が正しいURLで開く', async () => {
+    const user = userEvent.setup();
     render(<ShareButton {...defaultProps} />);
     
     // はてなブックマークをクリック
     const hatenaItems = screen.getAllByTestId('dropdown-item');
     const hatenaItem = hatenaItems.find(item => item.textContent?.includes('はてなブックマーク'));
     expect(hatenaItem).toBeDefined();
-    fireEvent.click(hatenaItem!);
+    await user.click(hatenaItem!);
     
     expect(mockOpen).toHaveBeenCalledWith(
       expect.stringContaining('https://b.hatena.ne.jp/entry/'),
@@ -75,7 +92,8 @@ describe('ShareButton', () => {
     expect(calledUrl).toContain(encodeURIComponent(defaultProps.url));
   });
 
-  it('特殊文字を含むタイトルとURLが正しくエンコードされる', () => {
+  it('特殊文字を含むタイトルとURLが正しくエンコードされる', async () => {
+    const user = userEvent.setup();
     const specialProps = {
       title: 'テスト記事 & タイトル #タグ',
       url: 'https://example.com/article?id=123&category=test',
@@ -86,14 +104,15 @@ describe('ShareButton', () => {
     // Twitterで共有をクリック
     const twitterItems = screen.getAllByTestId('dropdown-item');
     const twitterItem = twitterItems.find(item => item.textContent?.includes('Twitterで共有'));
-    fireEvent.click(twitterItem!);
+    await user.click(twitterItem!);
     
     const calledUrl = mockOpen.mock.calls[0][0];
     expect(calledUrl).toContain(encodeURIComponent(specialProps.title));
     expect(calledUrl).toContain(encodeURIComponent(specialProps.url));
   });
 
-  it('stopPropagationが正しく動作する', () => {
+  it('stopPropagationが正しく動作する', async () => {
+    const user = userEvent.setup();
     const mockParentClick = jest.fn();
     
     render(
@@ -102,8 +121,8 @@ describe('ShareButton', () => {
       </div>
     );
     
-    const button = screen.getByTitle('記事を共有');
-    fireEvent.click(button);
+    const button = screen.getByRole('button', { name: /共有/i }) || screen.getByTitle('記事を共有');
+    await user.click(button);
     
     // 親要素のクリックイベントが発火しないことを確認
     expect(mockParentClick).not.toHaveBeenCalled();

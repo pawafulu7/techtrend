@@ -1,5 +1,6 @@
 import React from 'react';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { Header } from '@/app/components/layout/header';
 import { useSession } from 'next-auth/react';
@@ -18,7 +19,7 @@ jest.mock('next-auth/react', () => ({
 }));
 
 jest.mock('next/link', () => {
-  return ({ children, href }: any) => {
+  return ({ children, href }: { children: React.ReactNode; href: string }) => {
     return <a href={href}>{children}</a>;
   };
 });
@@ -27,6 +28,10 @@ jest.mock('next/link', () => {
 jest.mock('@/components/auth/UserMenu', () => ({
   UserMenu: () => <div data-testid="user-menu">User Menu</div>,
 }));
+
+const mockedUseRouter = jest.mocked(useRouter);
+const mockedUsePathname = jest.mocked(usePathname);
+const mockedUseSession = jest.mocked(useSession);
 
 describe('Header', () => {
   const mockRouter = {
@@ -37,9 +42,9 @@ describe('Header', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (usePathname as jest.Mock).mockReturnValue('/');
-    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
+    mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
+    mockedUsePathname.mockReturnValue('/');
+    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
   });
 
   it('renders the header with logo and navigation', () => {
@@ -68,7 +73,8 @@ describe('Header', () => {
   });
 
 
-  it('handles mobile menu toggle', () => {
+  it('handles mobile menu toggle', async () => {
+    const user = userEvent.setup();
     renderWithProviders(<Header />);
     
     // モバイルメニューボタンを探す
@@ -79,14 +85,14 @@ describe('Header', () => {
       expect(screen.queryByTestId('mobile-menu')).not.toBeInTheDocument();
       
       // メニューボタンをクリック
-      fireEvent.click(mobileMenuButton);
+      await user.click(mobileMenuButton);
       
       // メニューが開く
       const mobileMenu = screen.getByTestId('mobile-menu');
       expect(mobileMenu).toBeInTheDocument();
       
       // 再度クリックで閉じる
-      fireEvent.click(mobileMenuButton);
+      await user.click(mobileMenuButton);
       expect(screen.queryByTestId('mobile-menu')).not.toBeInTheDocument();
     }
   });
@@ -183,7 +189,8 @@ describe('Header', () => {
     document.documentElement.classList.remove('dark');
   });
 
-  it('handles keyboard navigation', () => {
+  it('handles keyboard navigation', async () => {
+    const user = userEvent.setup();
     renderWithProviders(<Header />);
     
     const firstLink = screen.getAllByRole('link')[0];
@@ -194,7 +201,7 @@ describe('Header', () => {
       expect(document.activeElement).toBe(firstLink);
       
       // Enter キーでリンクが動作する
-      fireEvent.keyDown(firstLink, { key: 'Enter', code: 'Enter' });
+      await user.keyboard('{Enter}');
     }
   });
 });

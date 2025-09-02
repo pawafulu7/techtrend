@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleCard } from '@/app/components/article/card';
 import { useSession } from 'next-auth/react';
@@ -27,11 +28,14 @@ jest.mock('next-auth/react', () => ({
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: any) => {
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
     // eslint-disable-next-line jsx-a11y/alt-text
     return <img {...props} />;
   },
 }));
+
+const mockedUseRouter = jest.mocked(useRouter);
+const mockedUseSession = jest.mocked(useSession);
 
 describe('ArticleCard', () => {
   const mockRouter = {
@@ -56,8 +60,8 @@ describe('ArticleCard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
+    mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
+    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
   });
 
   it('renders article information correctly', () => {
@@ -77,22 +81,24 @@ describe('ArticleCard', () => {
     expect(screen.getByText('Testing')).toBeInTheDocument();
   });
 
-  it('handles click events when onArticleClick is provided', () => {
+  it('handles click events when onArticleClick is provided', async () => {
+    const user = userEvent.setup();
     const handleClick = jest.fn();
     render(<ArticleCard article={mockArticle} onArticleClick={handleClick} />);
     
     const card = screen.getByTestId('article-card');
-    fireEvent.click(card);
+    await user.click(card);
     
     // 実装では引数なしで呼ばれる
     expect(handleClick).toHaveBeenCalled();
   });
 
-  it('navigates to article detail page when clicked without onArticleClick', () => {
+  it('navigates to article detail page when clicked without onArticleClick', async () => {
+    const user = userEvent.setup();
     render(<ArticleCard article={mockArticle} />);
     
     const card = screen.getByTestId('article-card');
-    fireEvent.click(card);
+    await user.click(card);
     
     // クリック時のナビゲーションがonArticleClickプロパティに依存
     // onArticleClickが提供されていない場合、デフォルト動作は定義されていない可能性
@@ -101,7 +107,7 @@ describe('ArticleCard', () => {
 
 
   it('displays favorite button for authenticated users', () => {
-    (useSession as jest.Mock).mockReturnValue({
+    mockedUseSession.mockReturnValue({
       data: { user: { id: 'user1', email: 'test@example.com' } },
       status: 'authenticated',
     });

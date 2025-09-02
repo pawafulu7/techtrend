@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleList } from '@/app/components/article/list';
 import { useSession } from 'next-auth/react';
@@ -17,21 +18,29 @@ jest.mock('next-auth/react', () => ({
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: any) => {
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
     // eslint-disable-next-line jsx-a11y/alt-text
     return <img {...props} />;
   },
 }));
 
 // ArticleCardコンポーネントのモック
+interface ArticleCardProps {
+  article: { id: string; title: string; summary: string | null };
+  onArticleClick?: (article: unknown) => void;
+}
+
 jest.mock('@/app/components/article/card', () => ({
-  ArticleCard: ({ article, onArticleClick }: any) => (
+  ArticleCard: ({ article, onArticleClick }: ArticleCardProps) => (
     <article data-testid={`article-${article.id}`} onClick={() => onArticleClick?.(article)}>
       <h3>{article.title}</h3>
       <p>{article.summary}</p>
     </article>
   ),
 }));
+
+const mockedUseRouter = jest.mocked(useRouter);
+const mockedUseSession = jest.mocked(useSession);
 
 describe('ArticleList', () => {
   const mockRouter = {
@@ -72,8 +81,8 @@ describe('ArticleList', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
+    mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
+    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
   });
 
   it('renders a list of articles', () => {
@@ -92,12 +101,13 @@ describe('ArticleList', () => {
     expect(emptyMessage).toBeInTheDocument();
   });
 
-  it('handles article click events', () => {
+  it('handles article click events', async () => {
+    const user = userEvent.setup();
     const handleArticleClick = jest.fn();
     render(<ArticleList articles={mockArticles} onArticleClick={handleArticleClick} />);
     
     const firstArticle = screen.getByTestId('article-1');
-    fireEvent.click(firstArticle);
+    await user.click(firstArticle);
     
     expect(handleArticleClick).toHaveBeenCalledWith(mockArticles[0]);
   });
@@ -113,6 +123,7 @@ describe('ArticleList', () => {
   });
 
   it('handles load more functionality', async () => {
+    const user = userEvent.setup();
     const handleLoadMore = jest.fn();
     render(
       <ArticleList 
@@ -125,7 +136,7 @@ describe('ArticleList', () => {
     // Load Moreボタンが表示される
     const loadMoreButton = screen.queryByRole('button', { name: /もっと見る|Load more/i });
     if (loadMoreButton) {
-      fireEvent.click(loadMoreButton);
+      await user.click(loadMoreButton);
       expect(handleLoadMore).toHaveBeenCalled();
     }
   });

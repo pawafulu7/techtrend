@@ -6,7 +6,12 @@ import { getEnv, env, features, config, resetEnvCache } from '@/lib/config/env';
 
 // TODO: Fix environment variable validation tests - module caching issues
 describe('Environment Configuration', () => {
-  const originalEnv = process.env;
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeAll(() => {
+    // Backup original environment
+    originalEnv = { ...process.env };
+  });
 
   beforeEach(() => {
     // Reset module cache
@@ -18,6 +23,7 @@ describe('Environment Configuration', () => {
   });
 
   afterAll(() => {
+    // Restore original environment
     process.env = originalEnv;
   });
 

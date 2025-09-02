@@ -169,6 +169,7 @@ export function SearchBar() {
               size="sm"
               onClick={handleClear}
               className="h-7 w-7 p-0"
+              aria-label="クリア"
             >
               <X className="h-4 w-4" />
             </Button>
