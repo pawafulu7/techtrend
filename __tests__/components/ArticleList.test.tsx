@@ -124,7 +124,7 @@ describe('ArticleList', () => {
       source: {
         id: 'source3',
         name: 'Source 3',
-        type: 'scraper',
+        type: 'scraping',
       },
     }),
   ];
