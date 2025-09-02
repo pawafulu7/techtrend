@@ -8,8 +8,21 @@ jest.mock('@/lib/auth/auth');
 
 import { GET, POST, DELETE } from '@/app/api/favorites/route';
 import { prisma } from '@/lib/prisma';
-import { auth, setMockSession, setUnauthenticated, resetMockSession } from '../../../__mocks__/lib/auth/auth';
+// モック関数は jest.mock によって自動的に __mocks__ から読み込まれる
+import { auth } from '@/lib/auth/auth';
 import { NextRequest } from 'next/server';
+
+// モック関数のヘルパーを取得
+const authMock = auth as jest.MockedFunction<typeof auth>;
+const setUnauthenticated = () => authMock.mockResolvedValue(null);
+const resetMockSession = () => authMock.mockResolvedValue({
+  user: {
+    id: 'test-user-id',
+    email: 'test@example.com',
+    name: 'Test User'
+  },
+  expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+});
 
 const prismaMock = prisma as any;
 
