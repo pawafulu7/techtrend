@@ -17,7 +17,7 @@ faker.seed(123);
 /**
  * 記事のモックデータを生成
  */
-export function createMockArticle(overrides?: Partial<Article>): Article {
+export function createMockArticle(overrides?: any): any {
   const id = articleIdCounter++;
   const now = new Date(Date.now());
   
@@ -41,13 +41,13 @@ export function createMockArticle(overrides?: Partial<Article>): Article {
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  } as Article;
+  };
 }
 
 /**
  * タグのモックデータを生成
  */
-export function createMockTag(overrides?: Partial<Tag>): Tag {
+export function createMockTag(overrides?: any): any {
   const id = tagIdCounter++;
   
   return {
@@ -55,32 +55,32 @@ export function createMockTag(overrides?: Partial<Tag>): Tag {
     name: `tag${id}`,
     category: 'technology',
     ...overrides,
-  } as Tag;
+  };
 }
 
 /**
  * ソースのモックデータを生成
  */
-export function createMockSource(overrides?: Partial<Source>): Source {
+export function createMockSource(overrides?: any): any {
   const id = sourceIdCounter++;
   const now = new Date(Date.now());
   
   return {
     id: `source-${id}`,
     name: `Test Source ${id}`,
-    type: 'rss' as const,
+    type: 'rss',
     url: `https://source${id}.com`,
     enabled: true,
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  } as Source;
+  };
 }
 
 /**
  * ユーザーのモックデータを生成
  */
-export function createMockUser(overrides?: Partial<User>): User {
+export function createMockUser(overrides?: any): any {
   const id = userIdCounter++;
   const now = new Date(Date.now());
   
@@ -94,7 +94,7 @@ export function createMockUser(overrides?: Partial<User>): User {
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  } as User;
+  };
 }
 
 /**
@@ -103,8 +103,8 @@ export function createMockUser(overrides?: Partial<User>): User {
 export function createMockArticleView(
   userId: string,
   articleId: string,
-  overrides?: Partial<ArticleView>
-): ArticleView {
+  overrides?: any
+): any {
   const now = new Date(Date.now());
   
   return {
@@ -115,7 +115,7 @@ export function createMockArticleView(
     isRead: false,
     readAt: null,
     ...overrides,
-  } as ArticleView;
+  };
 }
 
 /**
@@ -124,8 +124,8 @@ export function createMockArticleView(
 export function createMockFavorite(
   userId: string,
   articleId: string,
-  overrides?: Partial<Favorite>
-): Favorite {
+  overrides?: any
+): any {
   const now = new Date(Date.now());
   
   return {
@@ -134,32 +134,27 @@ export function createMockFavorite(
     articleId,
     createdAt: now,
     ...overrides,
-  } as Favorite;
+  };
 }
 
 /**
  * リレーションを含む記事のモックデータを生成
  */
 interface ArticleWithRelationsOverrides {
-  article?: Partial<Article>;
-  source?: Partial<Source>;
-  tags?: Partial<Tag>[];
+  article?: any;
+  source?: any;
+  tags?: any[];
 }
 
-interface ArticleWithRelations extends Article {
-  source: Source;
-  tags: Tag[];
-}
-
-export function createMockArticleWithRelations(overrides?: ArticleWithRelationsOverrides): ArticleWithRelations {
+export function createMockArticleWithRelations(overrides?: ArticleWithRelationsOverrides): any {
   const article = createMockArticle(overrides?.article);
   const source = createMockSource({ 
     id: (article as any).sourceId || 'source-1',
     ...overrides?.source 
   });
   const tags = overrides?.tags?.map((tagOverride) => createMockTag(tagOverride)) || [
-    createMockTag({ name: 'javascript' } as any),
-    createMockTag({ name: 'react' } as any),
+    createMockTag({ name: 'javascript' }),
+    createMockTag({ name: 'react' }),
   ];
   
   return {
@@ -295,7 +290,7 @@ export function mockArticleWithRelations(overrides: Partial<{
   article?: Partial<Article>;
   source?: Partial<Source>;
   tags?: Partial<Tag>[];
-}> = {}): ArticleWithRelations {
+}> = {}): any {
   const source = mockSource(overrides.source || {});
   const article = mockArticle({ ...overrides.article, sourceId: source.id } as any);
   const tags = overrides.tags?.map(t => mockTag(t)) || [
