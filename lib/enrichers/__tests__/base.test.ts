@@ -11,7 +11,16 @@ class TestContentEnricher extends BaseContentEnricher {
   private maxFailCount: number = 0;
 
   canHandle(url: string): boolean {
-    return url.includes('test.com');
+    // Properly validate URL to prevent security issues
+    try {
+      const parsedUrl = new URL(url);
+      // Check if the hostname is exactly test.com or a subdomain of test.com
+      return parsedUrl.hostname === 'test.com' || 
+             parsedUrl.hostname.endsWith('.test.com');
+    } catch {
+      // Invalid URL
+      return false;
+    }
   }
 
   setMockHtml(html: string) {
