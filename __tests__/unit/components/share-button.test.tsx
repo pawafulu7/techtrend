@@ -1,10 +1,6 @@
-import { render, screen, _waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ShareButton } from '@/app/components/article/share-button';
-
-// Mockウィンドウオープン
-const mockOpen = jest.fn();
-global.open = mockOpen;
 
 // Radix UIコンポーネントのモック
 jest.mock('@/components/ui/dropdown-menu', () => ({
@@ -29,8 +25,23 @@ describe('ShareButton', () => {
     url: 'https://example.com/article/123',
   };
 
+  let originalOpen: typeof window.open;
+  const mockOpen = jest.fn();
+
+  beforeAll(() => {
+    // Backup original window.open
+    originalOpen = window.open;
+  });
+
   beforeEach(() => {
+    // Setup mock
+    window.open = mockOpen;
     mockOpen.mockClear();
+  });
+
+  afterAll(() => {
+    // Restore original window.open
+    window.open = originalOpen;
   });
 
   it('共有ボタンが正しくレンダリングされる', () => {

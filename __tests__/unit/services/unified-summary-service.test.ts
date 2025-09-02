@@ -26,7 +26,12 @@ const defaultMockResponse = {
 describe('UnifiedSummaryService', () => {
   let service: UnifiedSummaryService;
   let mockFetch: jest.Mock;
-  const originalEnv = process.env;
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeAll(() => {
+    // Backup original environment
+    originalEnv = { ...process.env };
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -43,6 +48,12 @@ describe('UnifiedSummaryService', () => {
   });
 
   afterEach(() => {
+    // Clear environment for next test
+    process.env = { ...originalEnv };
+  });
+
+  afterAll(() => {
+    // Restore original environment
     process.env = originalEnv;
   });
 

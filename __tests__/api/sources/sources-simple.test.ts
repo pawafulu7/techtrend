@@ -5,10 +5,22 @@
 describe('Sources API (Simplified)', () => {
   // Mock fetch directly
   const mockFetch = jest.fn();
-  global.fetch = mockFetch;
+  let originalFetch: typeof global.fetch;
+
+  beforeAll(() => {
+    // Backup original fetch
+    originalFetch = global.fetch;
+  });
 
   beforeEach(() => {
+    // Setup mock
+    global.fetch = mockFetch;
     mockFetch.mockClear();
+  });
+
+  afterAll(() => {
+    // Restore original fetch
+    global.fetch = originalFetch;
   });
 
   describe('GET /api/sources', () => {
