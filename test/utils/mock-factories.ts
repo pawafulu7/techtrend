@@ -11,6 +11,16 @@ type SourceType = 'rss' | 'api' | 'scraping';
 type ArticleDifficulty = 'beginner' | 'intermediate' | 'advanced';
 type TagCategory = 'language' | 'framework' | 'tool' | 'platform' | 'database';
 
+// セッションの型定義
+interface MockSession {
+  user: {
+    id: string;
+    email: string;
+    name?: string | null;
+  };
+  expires?: string;
+}
+
 interface MockArticle {
   id: string;
   title: string;
@@ -26,7 +36,7 @@ interface MockArticle {
   qualityScore: number;
   bookmarks: number;
   userVotes: number;
-  difficulty: string | null;
+  difficulty: ArticleDifficulty | null;
   category: ArticleCategory | null;
   createdAt: Date;
   updatedAt: Date;
@@ -268,6 +278,14 @@ export function resetMockCounters() {
 }
 
 /**
+ * モックの状態を完全にリセット（Fakerシード含む）
+ */
+export function resetMockState() {
+  resetMockCounters();
+  faker.seed(123);  // Fakerシードを再初期化
+}
+
+/**
  * Fakerを使用したより現実的なモックデータファクトリー
  */
 
@@ -286,14 +304,14 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
     detailedSummary: `${faker.lorem.paragraph()}\n\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}`,
     content: faker.lorem.paragraphs({ min: 3, max: 5 }),
     publishedAt,
-    sourceId: `source-${faker.number.int({ min: 1, max: 10 })}`,
+    sourceId: overrides.sourceId ?? `source-${faker.number.int({ min: 1, max: 10 })}`,  // mockArticleWithRelationsで上書きされる
     thumbnail: faker.datatype.boolean() ? faker.image.url() : null,
     summaryVersion: 7,
     articleType: 'unified',
     qualityScore: faker.number.float({ min: 60, max: 100, fractionDigits: 2 }),
     bookmarks: faker.number.int({ min: 0, max: 100 }),
     userVotes: faker.number.int({ min: 0, max: 50 }),
-    difficulty: faker.helpers.arrayElement<ArticleDifficulty>(['beginner', 'intermediate', 'advanced']),
+    difficulty: faker.helpers.arrayElement<ArticleDifficulty | null>([null, 'beginner', 'intermediate', 'advanced']),
     category: faker.helpers.arrayElement<ArticleCategory | null>([null, 'frontend', 'backend', 'ai_ml']),
     createdAt: now,
     updatedAt: now,
@@ -354,10 +372,16 @@ export function mockUser(overrides: Partial<MockUser> = {}): MockUser {
 /**
  * セッションのモックデータを生成
  */
-export function mockSession(overrides: Partial<{ user: Partial<MockUser>; expires: string }> = {}) {
+export function mockSession(overrides: Partial<MockSession> = {}): MockSession {
+  const user = overrides.user ?? {
+    id: faker.string.uuid(),
+    email: faker.internet.email(),
+    name: faker.person.fullName(),
+  };
+  
   return {
-    user: mockUser(overrides.user || {}),
-    expires: overrides.expires || faker.date.future().toISOString(),
+    user,
+    expires: overrides.expires ?? faker.date.future({ refDate: REFERENCE_DATE }).toISOString(),
   };
 }
 
@@ -372,7 +396,7 @@ export function mockArticleWithRelations(overrides: Partial<{
   const source = mockSource(overrides.source ?? {});
   const article = mockArticle({ 
     ...overrides.article, 
-    sourceId: source.id 
+    sourceId: source.id  // ここでsourceIdを設定（一元化）
   });
   const tags = overrides.tags?.map(t => mockTag(t)) ?? [
     mockTag(),
