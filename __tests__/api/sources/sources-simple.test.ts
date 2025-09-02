@@ -107,7 +107,7 @@ describe('Sources API (Simplified)', () => {
       // Check data types
       expect(typeof source.id).toBe('string');
       expect(typeof source.name).toBe('string');
-      expect(['rss', 'api', 'scraper']).toContain(source.type);
+      expect(['rss', 'api', 'scraping']).toContain(source.type);
       expect(typeof source.url).toBe('string');
       expect(typeof source.enabled).toBe('boolean');
     });

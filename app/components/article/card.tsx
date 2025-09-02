@@ -131,7 +131,10 @@ export function ArticleCard({ article, onArticleClick, isRead = false }: Article
                 </Badge>
               )}
               {!isRead && (
-                <Badge className="text-xs bg-blue-500 hover:bg-blue-600 text-white">
+                <Badge 
+                  className="text-xs bg-blue-500 hover:bg-blue-600 text-white"
+                  data-testid="unread-badge"
+                >
                   <Eye className="h-3 w-3 mr-0.5" />
                   <span className="hidden sm:inline">未読</span>
                   <span className="sm:hidden">未</span>
@@ -243,6 +246,7 @@ export function ArticleCard({ article, onArticleClick, isRead = false }: Article
               size="sm"
               onClick={handleVote}
               disabled={hasVoted}
+              data-testid="vote-button"
               className={cn(
                 "h-5 px-1.5 text-xs",
                 hasVoted && "bg-green-600 hover:bg-green-600"

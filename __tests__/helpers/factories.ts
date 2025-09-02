@@ -46,7 +46,7 @@ export function createTestSource(overrides: Partial<any> = {}) {
   return {
     id: faker.string.uuid(),
     name: faker.company.name(),
-    type: faker.helpers.arrayElement(['rss', 'api', 'scraper']),
+    type: faker.helpers.arrayElement(['rss', 'api', 'scraping']),
     url: faker.internet.url(),
     enabled: true,
     createdAt: faker.date.past(),

@@ -42,6 +42,7 @@ export function ShareButton({ title, url, size = 'sm', variant = 'ghost' }: Shar
           className="h-6 px-2 text-xs hover:bg-secondary"
           title="記事を共有"
           onClick={(e) => e.stopPropagation()}
+          data-testid="share-button"
         >
           <Share2 className="h-3 w-3" />
         </Button>
