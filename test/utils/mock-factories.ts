@@ -304,7 +304,7 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
     detailedSummary: `${faker.lorem.paragraph()}\n\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}`,
     content: faker.lorem.paragraphs({ min: 3, max: 5 }),
     publishedAt,
-    sourceId: overrides.sourceId ?? `source-${faker.number.int({ min: 1, max: 10 })}`,  // mockArticleWithRelationsで上書きされる
+    sourceId: overrides.sourceId ?? `source-${faker.number.int({ min: 1, max: 10 })}`,  // デフォルト値、mockArticleWithRelationsで的確にsource.idで上書き
     thumbnail: faker.datatype.boolean() ? faker.image.url() : null,
     summaryVersion: 7,
     articleType: 'unified',
@@ -426,7 +426,7 @@ export function mockFavorite(
     id: `${finalUserId}_${finalArticleId}`,
     userId: finalUserId,
     articleId: finalArticleId,
-    createdAt: faker.date.recent(),
+    createdAt: faker.date.recent({ refDate: REFERENCE_DATE }),
     ...overrides,
   };
 }
@@ -441,7 +441,7 @@ export function mockArticleView(
 ): MockArticleView {
   const finalUserId = userId || faker.string.uuid();
   const finalArticleId = articleId || faker.string.uuid();
-  const viewedAt = faker.date.recent();
+  const viewedAt = faker.date.recent({ refDate: REFERENCE_DATE });
   const isRead = faker.datatype.boolean();
   
   return {
@@ -450,7 +450,7 @@ export function mockArticleView(
     articleId: finalArticleId,
     viewedAt,
     isRead,
-    readAt: isRead ? faker.date.between({ from: viewedAt, to: new Date() }) : null,
+    readAt: isRead ? faker.date.between({ from: viewedAt, to: REFERENCE_DATE }) : null,
     ...overrides,
   };
 }
