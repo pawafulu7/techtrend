@@ -40,7 +40,9 @@ describe('FavoriteButton', () => {
   });
 
   afterEach(() => {
+    // Clear all timers to prevent test leaks
     act(() => {
+      jest.clearAllTimers();
       jest.runOnlyPendingTimers();
     });
     jest.useRealTimers();
@@ -62,7 +64,7 @@ describe('FavoriteButton', () => {
       expect(star).not.toHaveClass('fill-current');
     });
 
-    it('お気に入りの場合、defaultボタンが表示される', () => {
+    it('お気に入りの場合、押された状態のボタンが表示される', () => {
       mockIsFavorite.mockReturnValue(true);
       
       render(<FavoriteButton sourceId="source-1" />);
@@ -126,18 +128,20 @@ describe('FavoriteButton', () => {
 
     it('お気に入り状態が切り替わる', async () => {
       const user = userEvent.setup({ delay: null });
-      const { rerender } = render(<FavoriteButton sourceId="source-1" />);
       
       // 初期状態（お気に入りではない）
       mockIsFavorite.mockReturnValue(false);
-      rerender(<FavoriteButton sourceId="source-1" />);
+      const { rerender } = render(<FavoriteButton sourceId="source-1" />);
       
       let button = screen.getByRole('button');
       expect(button).toHaveClass('bg-background');
       
-      // クリック後（お気に入りに追加）
-      mockIsFavorite.mockReturnValue(true);
+      // クリックしてトグルを呼び出す
       await user.click(button);
+      expect(mockToggleFavorite).toHaveBeenCalledWith('source-1');
+      
+      // 状態を更新して再レンダリング（お気に入りに追加）
+      mockIsFavorite.mockReturnValue(true);
       rerender(<FavoriteButton sourceId="source-1" />);
       
       button = screen.getByRole('button');

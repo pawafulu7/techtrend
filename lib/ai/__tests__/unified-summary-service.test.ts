@@ -4,19 +4,26 @@ import * as articleTypePrompts from '../../utils/article-type-prompts';
 import * as unifiedSummaryParser from '../unified-summary-parser';
 import * as summaryQualityChecker from '../../utils/summary-quality-checker';
 
-jest.mock('node-fetch');
+// ESM compatible mock
+jest.mock('node-fetch', () => jest.fn());
 jest.mock('../../utils/article-type-prompts');
 jest.mock('../unified-summary-parser');
 jest.mock('../../utils/summary-quality-checker');
 
 describe('UnifiedSummaryService', () => {
   let service: UnifiedSummaryService;
+  let originalEnv: NodeJS.ProcessEnv;
   const mockApiKey = 'test-api-key';
-  const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
-  const mockGeneratePrompt = articleTypePrompts.generateEnhancedUnifiedPrompt as jest.Mock;
-  const mockParseResponse = unifiedSummaryParser.parseUnifiedResponse as jest.Mock;
-  const mockValidateResult = unifiedSummaryParser.validateParsedResult as jest.Mock;
-  const mockCheckQuality = summaryQualityChecker.checkSummaryQuality as jest.Mock;
+  const mockFetch = jest.mocked(fetch);
+  const mockGeneratePrompt = jest.mocked(articleTypePrompts.generateEnhancedUnifiedPrompt);
+  const mockParseResponse = jest.mocked(unifiedSummaryParser.parseUnifiedResponse);
+  const mockValidateResult = jest.mocked(unifiedSummaryParser.validateParsedResult);
+  const mockCheckQuality = jest.mocked(summaryQualityChecker.checkSummaryQuality);
+
+  beforeAll(() => {
+    // Backup environment variables
+    originalEnv = { ...process.env };
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -26,6 +33,11 @@ describe('UnifiedSummaryService', () => {
 
   afterEach(() => {
     delete process.env.GEMINI_API_KEY;
+  });
+
+  afterAll(() => {
+    // Restore environment variables
+    process.env = originalEnv;
   });
 
   describe('constructor', () => {
@@ -135,13 +147,11 @@ describe('UnifiedSummaryService', () => {
     });
 
     it.skip('should throw error after max retries', async () => {
-      // Clear the previous mock setup and set up rejection
-      mockFetch.mockReset();
       mockFetch.mockRejectedValue(new Error('API Error'));
       
       await expect(
         service.generate(mockTitle, mockContent, { maxRetries: 2 })
-      ).rejects.toThrow('Failed to generate summary after 2 attempts');
+      ).rejects.toThrow(/Failed to generate summary after \d+ attempts/);
       
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
@@ -211,18 +221,17 @@ describe('UnifiedSummaryService', () => {
 
     it('should truncate content when too long', async () => {
       const longContent = 'a'.repeat(200000);
+      const { contentMaxLength = 100000 } = { contentMaxLength: 100000 };
       
       await service.generate(mockTitle, longContent, { 
-        contentMaxLength: 100000 
+        contentMaxLength 
       });
       
-      const promptCall = mockGeneratePrompt.mock.calls[0];
-      expect(promptCall[1].length).toBeLessThanOrEqual(100000);
+      const [, truncatedContent] = mockGeneratePrompt.mock.calls[0];
+      expect(truncatedContent.length).toBeLessThanOrEqual(contentMaxLength);
     });
 
-    it.skip('should handle API response without candidates', async () => {
-      // Clear the previous mock setup
-      mockFetch.mockReset();
+    it.skip('should handle empty candidates in API response', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ candidates: [] })
@@ -230,11 +239,11 @@ describe('UnifiedSummaryService', () => {
       
       await expect(
         service.generate(mockTitle, mockContent, { maxRetries: 1 })
-      ).rejects.toThrow('Failed to generate summary after 1 attempts');
+      ).rejects.toThrow(/Failed to generate summary after \d+ attempts/);
     });
   });
 
-  describe('preprocessContent', () => {
+  describe('Content preprocessing', () => {
     it('should handle content with metadata properly', async () => {
       const contentWithMetadata = `
         Title: Test Article
