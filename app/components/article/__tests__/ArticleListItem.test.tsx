@@ -233,7 +233,7 @@ describe('ArticleListItem', () => {
       
       // タグが表示される（hidden sm:flex クラス）
       const tagContainer = screen.getByText('React').closest('div');
-      expect(tagContainer).toHaveClass('hidden', 'sm:flex');
+      expect(tagContainer).toHaveClass('hidden sm:flex');
       
       // 配信・取込時刻が両方表示される（hidden sm:flex クラス）
       expect(screen.getByText('📅')).toBeInTheDocument();

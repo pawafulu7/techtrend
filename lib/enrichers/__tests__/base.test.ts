@@ -150,14 +150,18 @@ describe('BaseContentEnricher', () => {
       const result = await enricher.enrich(testUrl);
 
       expect(result).not.toBeNull();
+      // Type assertion for safety
+      if (!result) {
+        throw new Error('Result should not be null');
+      }
       // script, style, noscript, iframe要素は削除される
-      expect(result?.content).not.toContain('console.log');
-      expect(result?.content).not.toContain('body { color: red; }');
-      expect(result?.content).not.toContain('No JavaScript');
-      expect(result?.content).not.toContain('iframe');
+      expect(result.content).not.toContain('console.log');
+      expect(result.content).not.toContain('body { color: red; }');
+      expect(result.content).not.toContain('No JavaScript');
+      expect(result.content).not.toContain('iframe');
       // 通常のコンテンツは保持される
-      expect(result?.content).toContain('Main content');
-      expect(result?.content).toContain('Test Article');
+      expect(result.content).toContain('Main content');
+      expect(result.content).toContain('Test Article');
     });
   });
 

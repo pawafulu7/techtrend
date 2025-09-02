@@ -1,44 +1,54 @@
 import { TagNormalizer } from '../tag-normalizer';
 
 describe('TagNormalizer', () => {
-  describe('normalize', () => {
+  describe('normalize()', () => {
     describe('AI/LLM関連タグの正規化', () => {
-      it('should normalize Claude variations', () => {
-        expect(TagNormalizer.normalize('claude').name).toBe('Claude');
-        expect(TagNormalizer.normalize('Claude Code').name).toBe('Claude');
-        expect(TagNormalizer.normalize('claude-sonnet').name).toBe('Claude');
-        expect(TagNormalizer.normalize('claudecode').name).toBe('Claude');
-        expect(TagNormalizer.normalize('claude-4').name).toBe('Claude');
-        // expect(TagNormalizer.normalize('claude 3.5 sonnet').name).toBe('Claude'); // TODO: Fix pattern
+      it.each([
+        ['claude', 'Claude'],
+        ['Claude Code', 'Claude'],
+        ['claude-sonnet', 'Claude'],
+        ['claudecode', 'Claude'],
+        ['claude-4', 'Claude'],
+        // ['claude 3.5 sonnet', 'Claude'], // TODO: Fix pattern
+      ])('should normalize "%s" to "%s"', (input, expected) => {
+        expect(TagNormalizer.normalize(input).name).toBe(expected);
       });
 
-      it('should normalize GPT variations', () => {
-        expect(TagNormalizer.normalize('GPT-4').name).toBe('GPT');
-        expect(TagNormalizer.normalize('gpt4').name).toBe('GPT');
-        expect(TagNormalizer.normalize('GPT-5').name).toBe('GPT');
-        expect(TagNormalizer.normalize('ChatGPT').name).toBe('GPT');
-        expect(TagNormalizer.normalize('chat-gpt').name).toBe('GPT');
-        expect(TagNormalizer.normalize('gpt-5-thinking').name).toBe('GPT');
+      it.each([
+        ['GPT-4', 'GPT'],
+        ['gpt4', 'GPT'],
+        ['GPT-5', 'GPT'],
+        ['ChatGPT', 'GPT'],
+        ['chat-gpt', 'GPT'],
+        ['gpt-5-thinking', 'GPT'],
+      ])('should normalize GPT variation "%s" to "%s"', (input, expected) => {
+        expect(TagNormalizer.normalize(input).name).toBe(expected);
       });
 
-      it('should normalize OpenAI variations', () => {
-        expect(TagNormalizer.normalize('openai').name).toBe('OpenAI');
-        expect(TagNormalizer.normalize('OpenAI').name).toBe('OpenAI');
-        expect(TagNormalizer.normalize('open-ai').name).toBe('OpenAI');
-        expect(TagNormalizer.normalize('openai-api').name).toBe('OpenAI');
+      it.each([
+        ['openai', 'OpenAI'],
+        ['OpenAI', 'OpenAI'],
+        ['open-ai', 'OpenAI'],
+        ['openai-api', 'OpenAI'],
+      ])('should normalize OpenAI variation "%s" to "%s"', (input, expected) => {
+        expect(TagNormalizer.normalize(input).name).toBe(expected);
       });
 
-      it('should normalize Gemini variations', () => {
-        expect(TagNormalizer.normalize('gemini').name).toBe('Gemini');
-        expect(TagNormalizer.normalize('Gemini API').name).toBe('Gemini');
-        expect(TagNormalizer.normalize('Google Gemini').name).toBe('Gemini');
-        expect(TagNormalizer.normalize('gemini 1.5 pro').name).toBe('Gemini');
+      it.each([
+        ['gemini', 'Gemini'],
+        ['Gemini API', 'Gemini'],
+        ['Google Gemini', 'Gemini'],
+        ['gemini 1.5 pro', 'Gemini'],
+      ])('should normalize Gemini variation "%s" to "%s"', (input, expected) => {
+        expect(TagNormalizer.normalize(input).name).toBe(expected);
       });
 
-      it('should normalize LLM variations', () => {
-        expect(TagNormalizer.normalize('llm').name).toBe('LLM');
-        expect(TagNormalizer.normalize('LLMs').name).toBe('LLM');
-        expect(TagNormalizer.normalize('Large Language Model').name).toBe('LLM');
+      it.each([
+        ['llm', 'LLM'],
+        ['LLMs', 'LLM'],
+        ['Large Language Model', 'LLM'],
+      ])('should normalize LLM variation "%s" to "%s"', (input, expected) => {
+        expect(TagNormalizer.normalize(input).name).toBe(expected);
       });
     });
 

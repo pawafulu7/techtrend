@@ -75,7 +75,7 @@ describe('Header', () => {
       
       const popularLink = screen.getByTestId('nav-link-人気');
       expect(popularLink).toHaveAttribute('aria-current', 'page');
-      expect(popularLink).toHaveClass('bg-primary', 'text-primary-foreground');
+      expect(popularLink).toHaveClass('bg-primary text-primary-foreground');
     });
 
     it('非アクティブなリンクは通常のスタイルで表示される', () => {
@@ -162,7 +162,7 @@ describe('Header', () => {
       
       const tagsLink = screen.getByTestId('mobile-secondary-nav-link-タグ');
       expect(tagsLink).toHaveAttribute('aria-current', 'page');
-      expect(tagsLink).toHaveClass('bg-primary', 'text-primary-foreground');
+      expect(tagsLink).toHaveClass('bg-primary text-primary-foreground');
     });
   });
 
@@ -209,7 +209,7 @@ describe('Header', () => {
       render(<Header />);
       
       const desktopNav = screen.getByTestId('desktop-nav');
-      expect(desktopNav).toHaveClass('hidden', 'md:flex');
+      expect(desktopNav).toHaveClass('hidden md:flex');
     });
 
     it('モバイルメニューボタンはmd未満で表示される', () => {
@@ -236,7 +236,7 @@ describe('Header', () => {
       const { container } = render(<Header />);
       
       const header = container.querySelector('header');
-      expect(header).toHaveClass('sticky', 'top-0', 'z-50');
+      expect(header).toHaveClass('sticky top-0 z-50');
     });
 
     it('背景ぼかし効果が適用されている', () => {
@@ -264,7 +264,7 @@ describe('Header', () => {
       render(<Header />);
       
       const homeLink = screen.getByTestId('nav-link-ホーム');
-      expect(homeLink).toHaveClass('focus-visible:ring-2', 'focus-visible:ring-primary');
+      expect(homeLink).toHaveClass('focus-visible:ring-2 focus-visible:ring-primary');
     });
   });
 
@@ -275,7 +275,7 @@ describe('Header', () => {
       render(<Header />);
       
       const popularLink = screen.getByTestId('nav-link-人気');
-      expect(popularLink).toHaveClass('hover:bg-secondary/60', 'hover:scale-105');
+      expect(popularLink).toHaveClass('hover:bg-secondary/60 hover:scale-105');
     });
 
     it('モバイルナビのリンクにホバー効果がある', async () => {

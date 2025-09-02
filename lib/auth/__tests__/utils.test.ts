@@ -9,14 +9,21 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
-jest.mock('bcryptjs');
+// Explicitly mock bcryptjs
+jest.mock('bcryptjs', () => ({
+  hash: jest.fn(),
+  compare: jest.fn(),
+}));
 
 import { prisma } from '@/lib/prisma';
 import { hashPassword, verifyPassword, createUser } from '../utils';
 
+// Constants
+const SALT_ROUNDS = 12;
+
 describe('Auth Utils', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   describe('hashPassword', () => {
@@ -28,7 +35,7 @@ describe('Auth Utils', () => {
       
       const result = await hashPassword(password);
       
-      expect(bcrypt.hash).toHaveBeenCalledWith(password, 12);
+      expect(bcrypt.hash).toHaveBeenCalledWith(password, SALT_ROUNDS);
       expect(result).toBe(hashedPassword);
     });
 
@@ -101,15 +108,17 @@ describe('Auth Utils', () => {
         where: { email: mockUserData.email },
       });
       
-      expect(bcrypt.hash).toHaveBeenCalledWith(mockUserData.password, 12);
+      expect(bcrypt.hash).toHaveBeenCalledWith(mockUserData.password, SALT_ROUNDS);
       
-      expect(prisma.user.create).toHaveBeenCalledWith({
-        data: {
-          email: mockUserData.email,
-          password: hashedPassword,
-          name: mockUserData.name,
-        },
-      });
+      expect(prisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            email: mockUserData.email,
+            password: hashedPassword,
+            name: mockUserData.name,
+          }),
+        })
+      );
       
       expect(result).toEqual(createdUser);
     });

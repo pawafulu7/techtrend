@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { SearchBar } from '@/app/components/search/SearchBar';
@@ -155,7 +155,7 @@ describe('SearchBar', () => {
       const input = screen.getByPlaceholderText(/記事を検索/);
       await user.click(input);
       
-      const clearButton = await screen.findByText('検索履歴をクリア');
+      const clearButton = await screen.findByRole('button', { name: '検索履歴をクリア' });
       await user.click(clearButton);
       
       expect(Storage.prototype.removeItem).toHaveBeenCalledWith('searchHistory');

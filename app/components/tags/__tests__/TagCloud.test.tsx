@@ -21,7 +21,7 @@ const mockTags = [
   { id: '5', name: 'Node.js', count: 20, trend: 'rising' },
 ];
 
-// Custom render function that wraps in act
+// Custom render function with improved async handling
 interface TagCloudTestProps {
   className?: string;
   limit?: number;
@@ -30,15 +30,13 @@ interface TagCloudTestProps {
 }
 
 const renderTagCloud = async (props?: TagCloudTestProps) => {
-  let result: ReturnType<typeof render>;
-  await act(async () => {
-    result = render(<TagCloud {...props} />);
-  });
-  // Wait for initial loading to complete
-  await act(async () => {
-    await new Promise(resolve => setTimeout(resolve, 0));
-  });
-  return result!;
+  const result = render(<TagCloud {...props} />);
+  // Wait for initial loading to complete using waitFor
+  await waitFor(() => {
+    // Check that loading state has resolved
+    expect(result.container.querySelector('.animate-pulse')).not.toBeInTheDocument();
+  }, { timeout: 1000 });
+  return result;
 };
 
 describe('TagCloud', () => {
@@ -55,11 +53,7 @@ describe('TagCloud', () => {
     });
   });
 
-  afterEach(async () => {
-    // Allow any pending updates to complete
-    await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 0));
-    });
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 
