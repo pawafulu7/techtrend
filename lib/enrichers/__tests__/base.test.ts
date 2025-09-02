@@ -24,6 +24,7 @@ class TestContentEnricher extends BaseContentEnricher {
     this.failCount = 0;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected async fetchWithRetry(_url: string): Promise<string> {
     if (this.shouldFail) {
       if (this.maxFailCount > 0 && this.failCount < this.maxFailCount) {
@@ -39,6 +40,7 @@ class TestContentEnricher extends BaseContentEnricher {
     return this.mockHtml;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected delay(_ms: number): Promise<void> {
     // Mock delay - don't actually wait
     return Promise.resolve();
