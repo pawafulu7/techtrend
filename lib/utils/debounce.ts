@@ -112,54 +112,52 @@ export function debounceAsync<Args extends unknown[], R>(
   wait: number
 ): ((...args: Args) => Promise<R>) & { cancel: () => void } {
   let timeout: ReturnType<typeof setTimeout> | null = null;
-  let resolvePromise: ((value: R) => void) | null = null;
-  let rejectPromise: ((reason?: unknown) => void) | null = null;
+  let pendingReject: ((reason?: unknown) => void) | null = null;
+  let lastCallId = 0;
 
-  const debounced = function (...args: Args): Promise<R> {
+  const debounced: ((...args: Args) => Promise<R>) & { cancel: () => void } = ((...args: Args): Promise<R> => {
     return new Promise((resolve, reject) => {
+      const callId = ++lastCallId;
+      const localResolve = resolve;
+      const localReject = reject;
+      
       // Clear existing timeout
       if (timeout) {
         clearTimeout(timeout);
-        // Reject previous promise if exists
-        if (rejectPromise) {
-          rejectPromise(new DebouncedError());
-        }
+        // Reject previous pending promise if exists
+        if (pendingReject) pendingReject(new DebouncedError());
       }
-
-      // Store resolve and reject for this promise
-      resolvePromise = resolve;
-      rejectPromise = reject;
+      
+      // Store reject for potential supersession
+      pendingReject = localReject;
 
       // Set new timeout
       timeout = setTimeout(async () => {
         try {
           const result = await func(...args);
-          if (resolvePromise) {
-            resolvePromise(result);
-          }
+          if (callId === lastCallId) localResolve(result);
+          else localReject(new DebouncedError());
         } catch (error) {
-          if (rejectPromise) {
-            rejectPromise(error);
-          }
+          if (callId === lastCallId) localReject(error);
         } finally {
           timeout = null;
-          resolvePromise = null;
-          rejectPromise = null;
+          if (callId === lastCallId) pendingReject = null;
         }
       }, wait);
     });
-  };
+  }) as ((...args: Args) => Promise<R>) & { cancel: () => void };
 
   debounced.cancel = () => {
     if (timeout) {
       clearTimeout(timeout);
       timeout = null;
-      if (rejectPromise) {
-        rejectPromise(new DebouncedError());
-      }
-      resolvePromise = null;
-      rejectPromise = null;
     }
+    if (pendingReject) {
+      pendingReject(new DebouncedError());
+      pendingReject = null;
+    }
+    // invalidate any in-flight resolver
+    lastCallId++;
   };
 
   return debounced;
