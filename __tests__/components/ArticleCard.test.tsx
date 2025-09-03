@@ -388,15 +388,13 @@ describe('ArticleCard', () => {
       { name: 'Speaker Deck', title: 'Speaker Deck Presentation' },
       { name: 'Docswell', title: 'Docswell Presentation' },
     ])('handles $name articles with source correctly', ({ name, title }) => {
+      const thumbnailUrl = 'https://example.com/thumb.jpg';
       const article = createMockArticleWithRelations({
         article: {
           title,
-          thumbnail: 'https://example.com/thumb.jpg'
+          thumbnail: thumbnailUrl
         },
-        source: createMockSource({ 
-          name,
-          type: 'PRESENTATION'
-        })
+        source: createMockSource({ name })
       });
       
       render(<ArticleCard article={article} />);
@@ -406,6 +404,8 @@ describe('ArticleCard', () => {
       // サムネイルが表示される（shouldShowThumbnail関数の動作確認）
       const thumbnail = screen.getByRole('img', { name: title });
       expect(thumbnail).toBeInTheDocument();
+      // 正しいサムネイルURLが使用されている
+      expect(thumbnail).toHaveAttribute('src', expect.stringContaining('thumb.jpg'));
     });
 
     it('displays source name when available', () => {
@@ -420,6 +420,28 @@ describe('ArticleCard', () => {
       
       // ソース名が表示される（実装によってはBadgeやテキストで表示）
       expect(screen.getByText('Custom Source')).toBeInTheDocument();
+    });
+
+    it.each([
+      { name: 'Speaker Deck' },
+      { name: 'Docswell' },
+    ])('does not render thumbnail when $name article has no thumbnail', ({ name }) => {
+      const article = createMockArticleWithRelations({
+        article: {
+          title: `${name} without thumbnail`,
+          thumbnail: null,
+          summary: 'This is a test article summary that should be displayed on the card.'
+        },
+        source: createMockSource({ name })
+      });
+      
+      render(<ArticleCard article={article} />);
+      
+      // サムネイルが表示されないことを確認
+      const thumbnail = screen.queryByRole('img', { name: `${name} without thumbnail` });
+      expect(thumbnail).not.toBeInTheDocument();
+      // 代わりに要約が表示されることを確認
+      expect(screen.getByText(/This is a test article summary/)).toBeInTheDocument();
     });
   });
 });
