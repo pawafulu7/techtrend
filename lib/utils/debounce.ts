@@ -6,14 +6,13 @@
  * @param wait - The number of milliseconds to delay
  * @returns The debounced function
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
+export function debounce<Args extends unknown[], R>(
+  func: (...args: Args) => R,
   wait: number
-): (...args: Parameters<T>) => void {
+): (...args: Args) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null;
 
-  return function debounced(...args: Parameters<T>) {
+  return function debounced(...args: Args) {
     // Clear existing timeout if any
     if (timeout) {
       clearTimeout(timeout);
@@ -36,17 +35,15 @@ export function debounce<T extends (...args: any[]) => any>(
  * @param immediate - Whether to execute on the leading edge
  * @returns The debounced function with cancel method
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function debounceWithImmediate<T extends (...args: any[]) => any>(
-  func: T,
+export function debounceWithImmediate<Args extends unknown[], R>(
+  func: (...args: Args) => R,
   wait: number,
   immediate = false
-): ((...args: Parameters<T>) => void) & { cancel: () => void } {
+): ((...args: Args) => R | undefined) & { cancel: () => void } {
   let timeout: ReturnType<typeof setTimeout> | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let result: any;
+  let result: R | undefined;
 
-  const debounced = function (...args: Parameters<T>) {
+  const debounced = function (...args: Args): R | undefined {
     const later = () => {
       timeout = null;
       if (!immediate) {
@@ -88,18 +85,15 @@ export function debounceWithImmediate<T extends (...args: any[]) => any>(
  * @param wait - The number of milliseconds to delay
  * @returns The debounced async function
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function debounceAsync<T extends (...args: any[]) => Promise<any>>(
-  func: T,
+export function debounceAsync<Args extends unknown[], R>(
+  func: (...args: Args) => Promise<R>,
   wait: number
-): (...args: Parameters<T>) => Promise<ReturnType<T>> {
+): (...args: Args) => Promise<R> {
   let timeout: ReturnType<typeof setTimeout> | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let resolvePromise: ((value: any) => void) | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let rejectPromise: ((reason?: any) => void) | null = null;
+  let resolvePromise: ((value: R) => void) | null = null;
+  let rejectPromise: ((reason?: unknown) => void) | null = null;
 
-  return function (...args: Parameters<T>): Promise<ReturnType<T>> {
+  return function (...args: Args): Promise<R> {
     return new Promise((resolve, reject) => {
       // Clear existing timeout
       if (timeout) {

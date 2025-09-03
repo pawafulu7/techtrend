@@ -8,6 +8,7 @@ interface ArticleFilters {
   sourceId?: string;
   tags?: string;
   dateRange?: string;
+  readFilter?: string;
   [key: string]: string | undefined;
 }
 
@@ -21,7 +22,7 @@ interface ArticlesResponse {
   };
 }
 
-type InfiniteArticlesData = InfiniteData<ArticlesResponse>;
+type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
 
 export function useInfiniteArticles(filters: ArticleFilters) {
   const queryClient = useQueryClient();
@@ -85,7 +86,9 @@ export function useInfiniteArticles(filters: ArticleFilters) {
                 ...page.data,
                 items: page.data.items.map((item: ArticleWithRelations) => ({
                   ...item,
-                  // 既読状態を更新（実際のAPIレスポンスで上書きされる）
+                  // 既読状態を更新（楽観的更新）
+                  isRead: true,
+                  readAt: new Date().toISOString()
                 }))
               }
             }))
