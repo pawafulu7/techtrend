@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { sourceCache } from '@/lib/cache/source-cache';
+import logger from '@/lib/logger';
 
 type SourceCategory = 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
 
@@ -34,8 +35,8 @@ export async function GET(request: NextRequest) {
       // すでに統計情報とカテゴリが含まれているのでそのまま使用
       const sourcesWithStats = filteredSources;
 
-      // カテゴリーフィルタリング
-      let result = sourcesWithStats;
+      // キャッシュ配列のコピーを作成して破壊を防ぐ
+      let result = [...sourcesWithStats];
       if (category) {
         result = result.filter(s => s.category === category);
       }
@@ -47,6 +48,14 @@ export async function GET(request: NextRequest) {
           case 'articles':
             aValue = a.stats.totalArticles;
             bValue = b.stats.totalArticles;
+            break;
+          case 'quality':
+            aValue = a.stats.avgQualityScore;
+            bValue = b.stats.avgQualityScore;
+            break;
+          case 'frequency':
+            aValue = a.stats.publishFrequency;
+            bValue = b.stats.publishFrequency;
             break;
           case 'name':
             aValue = a.name;
@@ -255,7 +264,7 @@ export async function GET(request: NextRequest) {
       
       return response;
   } catch (error) {
-    console.error('API Error in /api/sources:', error);
+    logger.error('API Error in /api/sources:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

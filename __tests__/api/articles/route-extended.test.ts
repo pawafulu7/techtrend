@@ -173,21 +173,25 @@ describe('/api/articles - Extended Tests', () => {
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: [
+            AND: [
               {
-                articleViews: {
-                  none: {
-                    userId: 'test-user-id'
+                OR: [
+                  {
+                    articleViews: {
+                      none: {
+                        userId: 'test-user-id'
+                      }
+                    }
+                  },
+                  {
+                    articleViews: {
+                      some: {
+                        userId: 'test-user-id',
+                        isRead: false
+                      }
+                    }
                   }
-                }
-              },
-              {
-                articleViews: {
-                  some: {
-                    userId: 'test-user-id',
-                    isRead: false
-                  }
-                }
+                ]
               }
             ]
           })
@@ -427,8 +431,7 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             category: 'TECH',
-            AND: expect.any(Array),
-            OR: expect.any(Array)
+            AND: expect.any(Array)
           })
         })
       );

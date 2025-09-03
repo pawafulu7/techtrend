@@ -1,3 +1,6 @@
+// next/serverのモックを明示化
+jest.mock('next/server');
+
 import { GET } from '@/app/api/recommendations/route';
 import { auth } from '@/lib/auth/auth';
 import { recommendationService } from '@/lib/recommendation/recommendation-service';
@@ -5,7 +8,7 @@ import { NextRequest } from 'next/server';
 
 // モック
 jest.mock('next/headers', () => ({
-  headers: jest.fn(() => Promise.resolve(new Headers())),
+  headers: jest.fn(() => new Headers()),
 }));
 
 jest.mock('@/lib/auth/auth', () => ({

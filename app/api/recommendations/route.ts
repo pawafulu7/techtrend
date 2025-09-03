@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { recommendationService } from '@/lib/recommendation/recommendation-service';
 import { getRedisService } from '@/lib/redis/factory';
+import logger from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     const session = await auth();
     
     if (!session?.user?.id) {
-      console.error('[API/recommendations] No authenticated user');
+      logger.error('[API/recommendations] No authenticated user');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     try {
       cached = await redisService.getJSON(cacheKey);
     } catch (cacheError) {
-      console.warn('[API/recommendations] Cache read error:', cacheError);
+      logger.warn('[API/recommendations] Cache read error:', cacheError);
     }
     
     if (cached) {
@@ -44,12 +45,12 @@ export async function GET(request: NextRequest) {
     try {
       await redisService.setJSON(cacheKey, recommendations, 300);
     } catch (cacheError) {
-      console.warn('[API/recommendations] Cache write error:', cacheError);
+      logger.warn('[API/recommendations] Cache write error:', cacheError);
     }
 
     return NextResponse.json(recommendations);
   } catch (error) {
-    console.error('[API/recommendations] Error:', error);
+    logger.error('[API/recommendations] Error:', error);
     return NextResponse.json(
       { error: 'Failed to get recommendations' },
       { status: 500 }

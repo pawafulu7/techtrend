@@ -182,3 +182,8 @@ export const sourceCache = {
   invalidate: () => getSourceCache().invalidate(),
   invalidateSource: (sourceId: string) => getSourceCache().invalidateSource(sourceId)
 };
+
+// test-only: インスタンスをリセット
+export const __resetSourceCacheForTests = () => {
+  sourceCacheInstance = null;
+};

@@ -10,19 +10,19 @@ export interface MockSession {
   expires?: string;
 }
 
-// Default mock session
-const defaultMockSession: MockSession = {
+// Default mock session factory to avoid time-dependent issues
+const createDefaultMockSession = (): MockSession => ({
   user: {
     id: 'test-user-id',
     email: 'test@example.com',
     name: 'Test User'
   },
   expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-};
+});
 
-// Mock auth function
+// Mock auth function with fresh session each call
 export const auth = jest.fn<() => Promise<MockSession | null>>()
-  .mockResolvedValue(defaultMockSession);
+  .mockImplementation(() => Promise.resolve(createDefaultMockSession()));
 
 // Helper function to set custom session
 export const setMockSession = (session: MockSession | null) => {
@@ -36,7 +36,7 @@ export const setUnauthenticated = () => {
 
 // Helper function to reset to default session
 export const resetMockSession = () => {
-  auth.mockResolvedValue(defaultMockSession);
+  auth.mockImplementation(() => Promise.resolve(createDefaultMockSession()));
 };
 
 // Export mock for signIn and signOut

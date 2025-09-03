@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
         count: currentCount,
         trend
       };
-    });
+    }).sort((a, b) => b.count - a.count); // 期間フィルタのカウントでソート
 
     const response = {
       tags: tagCloudData,
