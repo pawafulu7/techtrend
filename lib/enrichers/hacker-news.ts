@@ -1,7 +1,15 @@
 import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
+import { GenericContentEnricher } from './generic';
 
 export class HackerNewsEnricher extends BaseContentEnricher {
+  private genericEnricher: GenericContentEnricher;
+  
+  constructor() {
+    super();
+    this.genericEnricher = new GenericContentEnricher();
+  }
+  
   canHandle(url: string): boolean {
     // Hacker Newsが参照する様々なサイトをエンリッチメント
     // 主要な技術系サイトのみ対象
@@ -134,6 +142,17 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       
     } catch (_error) {
       console.error(`[HackerNewsEnricher] Error enriching ${url}:`, _error);
+      
+      // フォールバック: GenericEnricherを試す
+      try {
+        const genericResult = await this.genericEnricher.enrich(url);
+        if (genericResult) {
+          return genericResult;
+        }
+      } catch (fallbackError) {
+        console.error(`[HackerNewsEnricher] GenericEnricher also failed for ${url}:`, fallbackError);
+      }
+      
       return null;
     }
   }

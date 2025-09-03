@@ -27,9 +27,11 @@ import { MozillaHacksEnricher } from './mozilla-hacks';
 import { HackerNewsEnricher } from './hacker-news';
 import { MediumEngineeringEnricher } from './medium-engineering';
 import { AWSEnricher } from './aws';
+import { GenericContentEnricher } from './generic';
 
 export { BaseContentEnricher } from './base';
 export type { IContentEnricher, EnrichedContent, EnrichmentResult } from './base';
+export { GenericContentEnricher } from './generic';
 export { GMOContentEnricher } from './gmo';
 export { FreeeContentEnricher } from './freee';
 export { HatenaContentEnricher } from './hatena';
@@ -90,7 +92,8 @@ export class ContentEnricherFactory {
       new MediumEngineeringEnricher(),
       // 新規追加（2025年9月2日）AWSソース
       new AWSEnricher(),
-      new HatenaContentEnricher(),  // 最後（すべてのURLに対応するため）
+      new HatenaContentEnricher(),  // 汎用HTMLパーサー
+      new GenericContentEnricher(),  // 最後のフォールバック（すべてのURLに対応）
       // 将来的に他の企業のエンリッチャーを追加
       // new CookpadContentEnricher(),
       // new SmartHRContentEnricher(),
