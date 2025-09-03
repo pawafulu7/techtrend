@@ -4,7 +4,6 @@
 
 // モックインスタンスを保持
 let mockRedisClient: any;
-let mockCircuitBreaker: any;
 
 jest.mock('@/lib/redis/client', () => ({
   getRedisClient: jest.fn(() => {
@@ -16,15 +15,12 @@ jest.mock('@/lib/redis/client', () => ({
   })
 }));
 
-jest.mock('@/lib/cache/circuit-breaker', () => ({
-  redisCircuitBreaker: (() => {
-    const { createCircuitBreakerMock } = require('../../../helpers/cache-mock-helpers');
-    if (!mockCircuitBreaker) {
-      mockCircuitBreaker = createCircuitBreakerMock();
-    }
-    return mockCircuitBreaker;
-  })()
-}));
+jest.mock('@/lib/cache/circuit-breaker', () => {
+  const { createCircuitBreakerMock } = require('../../../helpers/cache-mock-helpers');
+  return {
+    redisCircuitBreaker: createCircuitBreakerMock()
+  };
+});
 
 import { GET } from '@/app/api/cache/health/route';
 import { getRedisClient } from '@/lib/redis/client';
@@ -39,19 +35,16 @@ describe('/api/cache/health', () => {
     jest.clearAllMocks();
     
     // モックの初期化を確実にする
-    const { createRedisClientMock, createCircuitBreakerMock } = require('../../../helpers/cache-mock-helpers');
+    const { createRedisClientMock } = require('../../../helpers/cache-mock-helpers');
     if (!mockRedisClient) {
       mockRedisClient = createRedisClientMock();
-    }
-    if (!mockCircuitBreaker) {
-      mockCircuitBreaker = createCircuitBreakerMock();
     }
     
     // Redisクライアントのモックをリセット
     mockRedisClient.ping.mockResolvedValue('PONG');
     
     // サーキットブレーカーのモックをリセット
-    mockCircuitBreaker.getStats.mockReturnValue({
+    redisCircuitBreakerMock.getStats.mockReturnValue({
       state: 'CLOSED',
       failures: 0,
       successes: 100,

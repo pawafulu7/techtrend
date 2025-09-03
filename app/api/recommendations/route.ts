@@ -24,9 +24,14 @@ export async function GET(request: NextRequest) {
     const searchParams = url.searchParams;
     const limit = Math.min(30, Math.max(1, parseInt(searchParams.get('limit') || '10')));
 
-    // キャッシュ確認
+    // キャッシュ確認（エラーは無視）
     const cacheKey = `recommendations:${userId}:${limit}`;
-    const cached = await redisService.getJSON(cacheKey);
+    let cached = null;
+    try {
+      cached = await redisService.getJSON(cacheKey);
+    } catch (cacheError) {
+      console.warn('[API/recommendations] Cache read error:', cacheError);
+    }
     
     if (cached) {
       return NextResponse.json(cached);
@@ -35,8 +40,12 @@ export async function GET(request: NextRequest) {
     // 推薦記事を取得
     const recommendations = await recommendationService.getRecommendations(userId, limit);
 
-    // キャッシュに保存（5分間）
-    await redisService.setJSON(cacheKey, recommendations, 300);
+    // キャッシュに保存（5分間）- エラーは無視
+    try {
+      await redisService.setJSON(cacheKey, recommendations, 300);
+    } catch (cacheError) {
+      console.warn('[API/recommendations] Cache write error:', cacheError);
+    }
 
     return NextResponse.json(recommendations);
   } catch (error) {

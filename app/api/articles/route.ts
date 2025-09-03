@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
         };
       } else if (tags) {
         // Multiple tags support
-        const tagList = tags.split(',').filter(t => t.trim());
+        const tagList = tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
         if (tagList.length > 0) {
           if (tagMode === 'AND') {
             // AND search: articles with all specified tags
