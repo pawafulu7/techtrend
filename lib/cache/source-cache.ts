@@ -178,5 +178,7 @@ export const getSourceCache = (): SourceCache => {
 // 既存のコードとの互換性のため、sourceCacheもエクスポート
 // ただし、遅延初期化を使う
 export const sourceCache = {
-  getAllSourcesWithStats: () => getSourceCache().getAllSourcesWithStats()
+  getAllSourcesWithStats: () => getSourceCache().getAllSourcesWithStats(),
+  invalidate: () => getSourceCache().invalidate(),
+  invalidateSource: (sourceId: string) => getSourceCache().invalidateSource(sourceId)
 };
