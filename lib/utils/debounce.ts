@@ -188,3 +188,6 @@ export function debounceAsync<This, Args extends unknown[], R>(
 
   return debounced;
 }
+
+// Default export for common usage pattern
+export default debounce;
