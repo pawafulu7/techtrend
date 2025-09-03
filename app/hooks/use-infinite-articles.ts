@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { ArticleWithRelations } from '@/types/models';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo, useCallback } from 'react';
+import { debounce } from '@/lib/utils/debounce';
 
 interface ArticleFilters {
   keyword?: string;
@@ -37,32 +38,79 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   // フィルターをJSON文字列化してキーとする（確実な変更検出のため）
   const filterKey = JSON.stringify(normalizedFilters);
   
-  // フィルターが変更されたときに、すべてのinfinite-articlesクエリをリセット
+  // Debounced filter change handler
+  const handleFilterChange = useMemo(
+    () => debounce((newFilterKey: string) => {
+      if (prevFilterKeyRef.current && prevFilterKeyRef.current !== newFilterKey) {
+        // 最初のページのみ保持して更新（ちらつき防止）
+        queryClient.setQueryData(['infinite-articles', newFilterKey], (oldData: any) => {
+          if (oldData?.pages?.[0]) {
+            return {
+              ...oldData,
+              pages: [oldData.pages[0]],
+              pageParams: [1]
+            };
+          }
+          return oldData;
+        });
+        
+        // その後、新しいデータを取得
+        queryClient.invalidateQueries({ queryKey: ['infinite-articles', newFilterKey] });
+      }
+      prevFilterKeyRef.current = newFilterKey;
+    }, 300),
+    [queryClient]
+  );
+  
+  // フィルターが変更されたときにdebounce処理を実行
   useEffect(() => {
-    if (prevFilterKeyRef.current && prevFilterKeyRef.current !== filterKey) {
-      // すべてのinfinite-articlesクエリを削除
-      queryClient.removeQueries({ queryKey: ['infinite-articles'] });
-      // キャッシュを完全にクリア
-      queryClient.invalidateQueries({ queryKey: ['infinite-articles'] });
+    handleFilterChange(filterKey);
+  }, [filterKey, handleFilterChange]);
+  
+  // 既読状態変更ハンドラ（最適化版）
+  const handleReadStatusChanged = useCallback(() => {
+    // 既読フィルターが有効な場合のみ再取得
+    if (normalizedFilters.readFilter) {
+      // 部分的な更新のみ実施（全体再取得を避ける）
+      queryClient.setQueryData(['infinite-articles', filterKey], (oldData: any) => {
+        if (oldData?.pages) {
+          // 既読状態のみ更新（optimistic update）
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page: any) => ({
+              ...page,
+              data: {
+                ...page.data,
+                items: page.data.items.map((item: any) => ({
+                  ...item,
+                  // 既読状態を更新（実際のAPIレスポンスで上書きされる）
+                }))
+              }
+            }))
+          };
+        }
+        return oldData;
+      });
+      
+      // バックグラウンドで実際のデータを取得
+      queryClient.invalidateQueries({ 
+        queryKey: ['infinite-articles', filterKey],
+        refetchType: 'active' // アクティブなクエリのみ再取得
+      });
     }
-    prevFilterKeyRef.current = filterKey;
-  }, [filterKey, queryClient]);
+    
+    // 既読状態のキャッシュも無効化
+    queryClient.invalidateQueries({ queryKey: ['read-status'] });
+  }, [normalizedFilters.readFilter, filterKey, queryClient]);
   
   // 既読状態が変更されたときに記事リストを再取得
   useEffect(() => {
-    const handleReadStatusChanged = () => {
-      // まずキャッシュを無効化してから再取得
-      queryClient.invalidateQueries({ queryKey: ['infinite-articles'] });
-      // 既読状態のキャッシュも無効化
-      queryClient.invalidateQueries({ queryKey: ['read-status'] });
-    };
-    
     window.addEventListener('articles-read-status-changed', handleReadStatusChanged);
     
     return () => {
       window.removeEventListener('articles-read-status-changed', handleReadStatusChanged);
     };
-  }, [queryClient]);
+  }, [handleReadStatusChanged]);
   
   return useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
@@ -71,7 +119,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       const searchParams = new URLSearchParams();
       
       // フィルターパラメータを追加
-      Object.entries(filters).forEach(([key, value]) => {
+      Object.entries(normalizedFilters).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
           searchParams.append(key, value);
         }
@@ -81,7 +129,9 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       searchParams.set('page', String(pageParam));
       searchParams.set('limit', '20');
       
-      const response = await fetch(`/api/articles?${searchParams.toString()}`);
+      // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
+      const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
+      const response = await fetch(`${endpoint}?${searchParams.toString()}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch articles');

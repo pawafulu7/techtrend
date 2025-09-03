@@ -1,0 +1,122 @@
+# Production Deployment Workflow (Example)
+# 
+# To enable automatic migration deployment:
+# 1. Rename this file to deploy-production.yml (remove .example)
+# 2. Add PRODUCTION_DATABASE_URL to GitHub Secrets
+# 3. Uncomment and customize the workflow below
+# 4. Test thoroughly in a staging environment first
+
+name: Deploy to Production
+
+# Trigger on push to main branch
+# Only when migration files or schema changes
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prisma/migrations/**'
+      - 'prisma/schema.prisma'
+  # Allow manual trigger for emergency deployments
+  workflow_dispatch:
+
+jobs:
+  # Job 1: Safety checks
+  safety-checks:
+    name: Pre-deployment Safety Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for destructive migrations
+        run: |
+          # Check for DROP, DELETE, TRUNCATE commands in migration files
+          if grep -r "DROP\|DELETE\|TRUNCATE" prisma/migrations/*/migration.sql; then
+            echo "⚠️  WARNING: Destructive operations detected in migrations"
+            echo "Manual review required before deployment"
+            exit 1
+          fi
+      
+      - name: Validate schema
+        run: |
+          npm ci
+          npx prisma validate
+
+  # Job 2: Apply migrations
+  migrate:
+    name: Apply Database Migrations
+    runs-on: ubuntu-latest
+    needs: safety-checks
+    # Only run on main branch to prevent accidental deployments
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      # Check current status before applying
+      - name: Check migration status
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          echo "Current migration status:"
+          npx prisma migrate status
+      
+      # Apply migrations with error handling
+      - name: Deploy migrations
+        id: deploy
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          echo "Applying migrations to production..."
+          npx prisma migrate deploy
+      
+      # Verify deployment
+      - name: Verify deployment
+        if: success()
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          echo "Verifying migration deployment..."
+          npx prisma migrate status
+          echo "✅ Migrations deployed successfully"
+      
+      # Notify on failure
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "❌ Migration deployment failed!"
+          echo "Check the logs above for details"
+          # Add Slack/Discord notification here if needed
+          exit 1
+
+  # Job 3: Post-deployment verification
+  verify:
+    name: Post-deployment Verification
+    runs-on: ubuntu-latest
+    needs: migrate
+    
+    steps:
+      - name: Health check
+        run: |
+          # Replace with your actual health check endpoint
+          # curl -f https://your-app-url/api/health || exit 1
+          echo "Health check would run here"
+      
+      - name: Create deployment record
+        run: |
+          echo "Deployment completed at $(date)"
+          # Log deployment to monitoring service
+
+# Notifications (optional)
+# Add Slack, Discord, or email notifications here
