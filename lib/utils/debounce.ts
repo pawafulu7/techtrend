@@ -10,7 +10,7 @@ export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
 
   return function debounced(...args: Parameters<T>) {
     // Clear existing timeout if any
@@ -40,7 +40,7 @@ export function debounceWithImmediate<T extends (...args: any[]) => any>(
   wait: number,
   immediate = false
 ): ((...args: Parameters<T>) => void) & { cancel: () => void } {
-  let timeout: NodeJS.Timeout | null = null;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
   let result: any;
 
   const debounced = function (...args: Parameters<T>) {
@@ -89,7 +89,7 @@ export function debounceAsync<T extends (...args: any[]) => Promise<any>>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => Promise<ReturnType<T>> {
-  let timeout: NodeJS.Timeout | null = null;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
   let resolvePromise: ((value: any) => void) | null = null;
   let rejectPromise: ((reason?: any) => void) | null = null;
 

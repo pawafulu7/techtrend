@@ -142,7 +142,12 @@ export async function GET(request: NextRequest) {
       
       // Apply category filter
       if (category && category !== 'all') {
-        where.category = category as ArticleCategory;
+        // Handle 'uncategorized' as null
+        if (category === 'uncategorized') {
+          where.category = null;
+        } else {
+          where.category = category as ArticleCategory;
+        }
       }
       
       // Apply tag filter with optimized approach (no JOIN)
@@ -168,13 +173,14 @@ export async function GET(request: NextRequest) {
           if (tagIds.length > 0) {
             if (tagMode === 'AND') {
               // AND mode: Articles must have all specified tags
-              where.tags = {
-                every: {
-                  id: {
-                    in: tagIds
+              // Use AND array to check for each tag individually
+              where.AND = tagIds.map(tagId => ({
+                tags: {
+                  some: {
+                    id: tagId
                   }
                 }
-              };
+              }));
             } else {
               // OR mode: Articles must have at least one of the specified tags
               where.tags = {
