@@ -3,7 +3,7 @@ import { prisma } from '@/lib/database';
 import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
 import { RedisCache } from '@/lib/cache';
-import type { Prisma, ArticleCategory, SourceType } from '@prisma/client';
+import type { Prisma, ArticleCategory } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { auth } from '@/lib/auth/auth';
 
@@ -21,7 +21,7 @@ interface LightweightArticle {
   source: {
     id: string;
     name: string;
-    type: SourceType;
+    type: string;
     url: string;
   };
   category: ArticleCategory | null;
@@ -272,9 +272,17 @@ export async function GET(request: NextRequest) {
         take: limit,
       });
 
+      // Normalize dates to ISO strings for consistency
+      const normalizedArticles = articles.map(article => ({
+        ...article,
+        publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
+        createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
+        updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
+      }));
+
       // Return the data to be cached
       result = {
-        items: articles as LightweightArticle[],
+        items: normalizedArticles as LightweightArticle[],
         total,
         page,
         limit,

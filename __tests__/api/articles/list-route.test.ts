@@ -42,7 +42,7 @@ describe('/api/articles/list', () => {
       source: {
         id: 'source1',
         name: 'Speaker Deck',
-        type: 'presentation',
+        type: 'PRESENTATION',
         url: 'https://speakerdeck.com',
       },
       category: null,
@@ -63,7 +63,7 @@ describe('/api/articles/list', () => {
       source: {
         id: 'source2',
         name: 'Docswell',
-        type: 'presentation',
+        type: 'PRESENTATION',
         url: 'https://docswell.com',
       },
       category: null,
@@ -154,7 +154,7 @@ describe('/api/articles/list', () => {
     );
   });
 
-  it('should not include tags relation for performance', async () => {
+  it('should not include heavy fields for performance optimization', async () => {
     // Arrange
     mockPrisma.article.count = jest.fn().mockResolvedValue(1);
     mockPrisma.article.findMany = jest.fn().mockResolvedValue([mockArticles[0]]);
@@ -179,7 +179,7 @@ describe('/api/articles/list', () => {
       source: {
         id: 'speaker-deck',
         name: 'Speaker Deck',
-        type: 'presentation',
+        type: 'PRESENTATION',
         url: 'https://speakerdeck.com',
       }
     };

@@ -394,7 +394,7 @@ describe('ArticleCard', () => {
         },
         source: createMockSource({ 
           name,
-          type: 'presentation'
+          type: 'PRESENTATION'
         })
       });
       
