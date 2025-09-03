@@ -112,7 +112,9 @@ deleted_scripts_list.txt
 
 # Additional backup and test files
 *.tar.gz
+# SQLファイル（マイグレーションは除く）
 *.sql
+!prisma/migrations/**/*.sql
 test-*.ts
 test-*.md
 

@@ -31,6 +31,8 @@
     "prisma:seed": "prisma db seed",
     "prisma:seed:full": "tsx prisma/seed-full.ts",
     "prisma:export": "tsx scripts/export-db-to-seed.ts",
+    "migrate:production": "bash scripts/deploy-migrations.sh",
+    "migrate:production:check": "DATABASE_URL=\"$PRODUCTION_DATABASE_URL\" npx prisma migrate status",
     "scheduler:start": "pm2 start ecosystem.config.js",
     "scheduler:stop": "pm2 stop techtrend-scheduler",
     "scheduler:restart": "pm2 restart techtrend-scheduler",

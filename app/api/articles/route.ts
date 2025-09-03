@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
     const dateRange = searchParams.get('dateRange'); // Date range filter
     const readFilter = searchParams.get('readFilter'); // Read status filter
     const category = searchParams.get('category'); // Category filter
+    const includeRelations = searchParams.get('includeRelations') !== 'false'; // Include source and tags by default for backward compatibility
 
     // Generate cache key based on query parameters
     // Normalize search keywords for consistent cache key
@@ -76,7 +77,8 @@ export async function GET(request: NextRequest) {
         dateRange: dateRange || 'all',
         readFilter: readFilter || 'all',
         userId: userId || 'anonymous',
-        category: category || 'all'
+        category: category || 'all',
+        includeRelations: includeRelations.toString() // Add to cache key
       }
     });
 
@@ -222,45 +224,52 @@ export async function GET(request: NextRequest) {
       // Get total count
       const total = await prisma.article.count({ where });
 
+      // Build select object based on includeRelations parameter
+      const selectFields: Prisma.ArticleSelect = {
+        id: true,
+        title: true,
+        url: true,
+        summary: true,
+        thumbnail: true,
+        publishedAt: true,
+        qualityScore: true,
+        bookmarks: true,
+        userVotes: true,
+        difficulty: true,
+        createdAt: true,
+        updatedAt: true,
+        sourceId: true,
+        summaryVersion: true,
+        articleType: true,
+        category: true,
+        // Exclude: content, detailedSummary for performance
+      };
+
+      // Only include relations if requested (default: true for backward compatibility)
+      if (includeRelations) {
+        selectFields.source = {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            url: true,
+            enabled: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        };
+        selectFields.tags = {
+          select: {
+            id: true,
+            name: true,
+          },
+        };
+      }
+
       // Get articles
       const articles = await prisma.article.findMany({
         where,
-        select: {
-          id: true,
-          title: true,
-          url: true,
-          summary: true,
-          thumbnail: true,  // thumbnailを追加
-          publishedAt: true,
-          qualityScore: true,
-          bookmarks: true,
-          userVotes: true,
-          difficulty: true,
-          createdAt: true,
-          updatedAt: true,
-          sourceId: true,
-          summaryVersion: true,  // summaryVersionを追加
-          articleType: true,     // articleTypeを追加
-          category: true,        // categoryを追加
-          // Exclude: content, detailedSummary
-          source: {
-            select: {
-              id: true,
-              name: true,
-              type: true,
-              url: true,
-              enabled: true,
-              createdAt: true,
-              updatedAt: true,
-            },
-          },
-          tags: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
+        select: selectFields,
         orderBy: {
           [finalSortBy]: sortOrder,
         },
