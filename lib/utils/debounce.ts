@@ -51,13 +51,15 @@ export function debounceWithImmediate<Args extends unknown[], R>(
   immediate = false
 ): ((...args: Args) => R | undefined) & { cancel: () => void } {
   let timeout: ReturnType<typeof setTimeout> | null = null;
-  let result: R | undefined;
 
   const debounced = function (...args: Args): R | undefined {
+    let result: R | undefined;
+    
     const later = () => {
       timeout = null;
       if (!immediate) {
-        result = func(...args);
+        // 遅延実行時の戻り値は呼び出し側には返さない
+        func(...args);
       }
     };
 
@@ -88,29 +90,39 @@ export function debounceWithImmediate<Args extends unknown[], R>(
 }
 
 /**
+ * Custom error class for debounced operations
+ */
+export class DebouncedError extends Error {
+  constructor() {
+    super('Debounced');
+    this.name = 'DebouncedError';
+  }
+}
+
+/**
  * Async debounce for Promise-returning functions
  * Ensures only the last call's promise is resolved
  * 
  * @param func - The async function to debounce
  * @param wait - The number of milliseconds to delay
- * @returns The debounced async function
+ * @returns The debounced async function with cancel method
  */
 export function debounceAsync<Args extends unknown[], R>(
   func: (...args: Args) => Promise<R>,
   wait: number
-): (...args: Args) => Promise<R> {
+): ((...args: Args) => Promise<R>) & { cancel: () => void } {
   let timeout: ReturnType<typeof setTimeout> | null = null;
   let resolvePromise: ((value: R) => void) | null = null;
   let rejectPromise: ((reason?: unknown) => void) | null = null;
 
-  return function (...args: Args): Promise<R> {
+  const debounced = function (...args: Args): Promise<R> {
     return new Promise((resolve, reject) => {
       // Clear existing timeout
       if (timeout) {
         clearTimeout(timeout);
         // Reject previous promise if exists
         if (rejectPromise) {
-          rejectPromise(new Error('Debounced'));
+          rejectPromise(new DebouncedError());
         }
       }
 
@@ -137,4 +149,18 @@ export function debounceAsync<Args extends unknown[], R>(
       }, wait);
     });
   };
+
+  debounced.cancel = () => {
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+      if (rejectPromise) {
+        rejectPromise(new DebouncedError());
+      }
+      resolvePromise = null;
+      rejectPromise = null;
+    }
+  };
+
+  return debounced;
 }

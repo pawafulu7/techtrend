@@ -29,17 +29,19 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   const prevFilterKeyRef = useRef<string>('');
   
   // フィルタを正規化（undefined値を削除、キーをソート）
-  const normalizedFilters = Object.keys(filters)
-    .sort()
-    .reduce((acc, key) => {
-      if (filters[key] !== undefined && filters[key] !== '') {
-        acc[key] = filters[key];
-      }
-      return acc;
-    }, {} as ArticleFilters);
+  const normalizedFilters = useMemo(() => {
+    return Object.keys(filters)
+      .sort()
+      .reduce((acc, key) => {
+        if (filters[key] !== undefined && filters[key] !== '') {
+          acc[key] = filters[key]!;
+        }
+        return acc;
+      }, {} as ArticleFilters);
+  }, [filters]);
   
   // フィルターをJSON文字列化してキーとする（確実な変更検出のため）
-  const filterKey = JSON.stringify(normalizedFilters);
+  const filterKey = useMemo(() => JSON.stringify(normalizedFilters), [normalizedFilters]);
   
   // Debounced filter change handler
   const handleFilterChange = useMemo(
@@ -51,11 +53,11 @@ export function useInfiniteArticles(filters: ArticleFilters) {
         
         // 新しいフィルターキーに最初のページのみ転送（ちらつき防止）
         if (currentData?.pages?.[0]) {
-          queryClient.setQueryData(['infinite-articles', newFilterKey], {
+          queryClient.setQueryData<InfiniteArticlesData>(['infinite-articles', newFilterKey], {
             ...currentData,
             pages: [currentData.pages[0]],
             pageParams: [1]
-          });
+          } as InfiniteArticlesData);
         }
         
         // その後、新しいデータを取得
@@ -81,7 +83,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     // 既読フィルターが有効な場合のみ再取得
     if (normalizedFilters.readFilter) {
       // 部分的な更新のみ実施（全体再取得を避ける）
-      queryClient.setQueryData(['infinite-articles', filterKey], (oldData: InfiniteArticlesData | undefined) => {
+      queryClient.setQueryData<InfiniteArticlesData>(['infinite-articles', filterKey], (oldData) => {
         if (oldData?.pages) {
           // 既読状態のみ更新（optimistic update）
           return {
@@ -125,7 +127,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   
   return useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
-    queryFn: async ({ pageParam = 1 }) => {
+    queryFn: async ({ pageParam = 1, signal }) => {
       // 毎回新しいURLSearchParamsを作成
       const searchParams = new URLSearchParams();
       
@@ -142,10 +144,10 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
-      const response = await fetch(`${endpoint}?${searchParams.toString()}`);
+      const response = await fetch(`${endpoint}?${searchParams.toString()}`, { signal });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch articles');
+        throw new Error(`Failed to fetch articles: ${response.status} ${response.statusText}`);
       }
       
       return response.json();
