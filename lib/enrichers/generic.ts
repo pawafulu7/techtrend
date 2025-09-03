@@ -201,15 +201,13 @@ export class GenericContentEnricher extends BaseContentEnricher {
         };
 
       } catch (error) {
-        // タイムアウトエラーの特別処理
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.error(`[GenericEnricher] Request timeout for ${url} (attempt ${attempt}/${maxRetries})`);
-        } else {
-          console.error(`[GenericEnricher] Error on attempt ${attempt}/${maxRetries} for ${url}:`, error);
-        }
+        const errorMessage = error instanceof Error && error.name === 'AbortError' 
+          ? 'Request timeout'
+          : 'Request failed';
+        
+        console.error(`[GenericEnricher] ${errorMessage} for ${url} (attempt ${attempt}/${maxRetries})`);
         
         if (attempt === maxRetries) {
-          console.error(`[GenericEnricher] All attempts failed for ${url}`);
           return null;
         }
       }

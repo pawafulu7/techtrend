@@ -170,8 +170,10 @@ async function main() {
   
   console.log('\n========================================');
   console.log('処理完了:');
-  console.log(`  修正成功: ${fixed}件 (${articles.length > 0 ? ((fixed / articles.length) * 100).toFixed(1) : 0}%)`);
-  console.log(`  修正失敗: ${failed}件 (${articles.length > 0 ? ((failed / articles.length) * 100).toFixed(1) : 0}%)`);
+  const successRate = articles.length > 0 ? ((fixed / articles.length) * 100).toFixed(1) : '0';
+  const failureRate = articles.length > 0 ? ((failed / articles.length) * 100).toFixed(1) : '0';
+  console.log(`  修正成功: ${fixed}件 (${successRate}%)`);
+  console.log(`  修正失敗: ${failed}件 (${failureRate}%)`);
   console.log(`  要約再生成: ${regenerated}件`);
 }
 

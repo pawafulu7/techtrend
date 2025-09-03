@@ -68,9 +68,17 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       let content = '';
       let thumbnail = '';
       
+      // Parse URL for domain-specific extraction
+      let urlObj: URL;
+      try {
+        urlObj = new URL(url);
+      } catch {
+        // Invalid URL, fallback to generic extraction
+        urlObj = null!;
+      }
+      
       // GitHub specific extraction
-      const urlObj = new URL(url);
-      if (urlObj.hostname === 'github.com' || urlObj.hostname === 'www.github.com') {
+      if (urlObj && (urlObj.hostname === 'github.com' || urlObj.hostname === 'www.github.com')) {
         // README content
         const readme = $('.markdown-body, .readme, article[itemprop="text"]').first();
         if (readme.length) {
@@ -88,7 +96,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       }
       
       // arXiv specific extraction
-      else if (urlObj.hostname === 'arxiv.org' || urlObj.hostname === 'www.arxiv.org') {
+      else if (urlObj && (urlObj.hostname === 'arxiv.org' || urlObj.hostname === 'www.arxiv.org')) {
         // Abstract
         const abstract = $('.abstract, blockquote.abstract').first();
         if (abstract.length) {
