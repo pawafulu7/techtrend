@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { sourceCache } from '@/lib/cache/source-cache';
+import logger from '@/lib/logger';
 
 type SourceCategory = 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
 
@@ -8,7 +9,9 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    const searchParams = request.nextUrl.searchParams;
+    // Next.js 15.xでのNextRequest対応
+    const url = new URL(request.url);
+    const searchParams = url.searchParams;
     const category = searchParams.get('category') as SourceCategory | null;
     const sortBy = searchParams.get('sortBy') || 'articles';
     const order = searchParams.get('order') || 'desc';
@@ -32,8 +35,8 @@ export async function GET(request: NextRequest) {
       // すでに統計情報とカテゴリが含まれているのでそのまま使用
       const sourcesWithStats = filteredSources;
 
-      // カテゴリーフィルタリング
-      let result = sourcesWithStats;
+      // キャッシュ配列のコピーを作成して破壊を防ぐ
+      let result = [...sourcesWithStats];
       if (category) {
         result = result.filter(s => s.category === category);
       }
@@ -45,6 +48,14 @@ export async function GET(request: NextRequest) {
           case 'articles':
             aValue = a.stats.totalArticles;
             bValue = b.stats.totalArticles;
+            break;
+          case 'quality':
+            aValue = a.stats.avgQualityScore;
+            bValue = b.stats.avgQualityScore;
+            break;
+          case 'frequency':
+            aValue = a.stats.publishFrequency;
+            bValue = b.stats.publishFrequency;
             break;
           case 'name':
             aValue = a.name;
@@ -252,7 +263,8 @@ export async function GET(request: NextRequest) {
       response.headers.set('X-Response-Time', `${responseTime}ms`);
       
       return response;
-  } catch {
+  } catch (error) {
+    logger.error('API Error in /api/sources:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

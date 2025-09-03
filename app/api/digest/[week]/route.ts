@@ -3,10 +3,18 @@ import { prisma } from '@/lib/prisma';
 import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
 
-const cache = new RedisCache({
-  ttl: 3600,
-  namespace: '@techtrend/cache:digest'
-});
+// キャッシュインスタンスを遅延初期化
+let cache: RedisCache | null = null;
+
+const getCache = () => {
+  if (!cache) {
+    cache = new RedisCache({
+      ttl: 3600,
+      namespace: '@techtrend/cache:digest'
+    });
+  }
+  return cache;
+};
 
 export async function GET(
   request: NextRequest,
@@ -23,14 +31,20 @@ export async function GET(
     }
 
     // Generate cache key based on week start date
-    const cacheKey = cache.generateCacheKey('weekly-digest', {
+    const cacheInstance = getCache();
+    const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
       params: { week: params.week }
     });
 
     // Check cache first
-    const cachedDigest = await cache.get(cacheKey);
-    if (cachedDigest) {
-      return NextResponse.json(cachedDigest);
+    try {
+      const cachedDigest = await cacheInstance.get(cacheKey);
+      if (cachedDigest) {
+        return NextResponse.json(cachedDigest);
+      }
+    } catch (cacheError) {
+      // キャッシュエラーは無視して処理を続行
+      console.warn('Cache error, continuing without cache:', cacheError);
     }
 
     const generator = new DigestGenerator(prisma);
@@ -44,7 +58,12 @@ export async function GET(
     }
 
     // Cache the digest for 1 hour
-    await cache.set(cacheKey, digest, 3600);
+    try {
+      await cacheInstance.set(cacheKey, digest, 3600);
+    } catch (cacheError) {
+      // キャッシュ保存エラーは無視
+      console.warn('Cache set error, continuing without caching:', cacheError);
+    }
 
     return NextResponse.json(digest);
   } catch (_error) {

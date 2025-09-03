@@ -4,7 +4,7 @@ import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
 import { RedisCache } from '@/lib/cache';
-import type { Prisma, ArticleCategory } from '@prisma/client';
+import { Prisma, type ArticleCategory } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
     // Validate sortBy parameter
     const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
     const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
-    const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
+    const rawSortOrder = (searchParams.get('sortOrder') || 'desc').toLowerCase();
+    const sortOrder = (rawSortOrder === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc';
     
     // Parse filters
     const sources = searchParams.get('sources'); // Multiple sources support
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
       if (readFilter && userId) {
         if (readFilter === 'unread') {
           // 未読記事のみ: ArticleViewが存在しないか、isReadがfalse
-          where.OR = [
+          const unreadOr = [
             {
               articleViews: {
                 none: {
@@ -118,6 +119,9 @@ export async function GET(request: NextRequest) {
               }
             }
           ];
+          where.AND = Array.isArray(where.AND)
+            ? [...where.AND, { OR: unreadOr }]
+            : [{ OR: unreadOr }];
         } else if (readFilter === 'read') {
           // 既読記事のみ
           where.articleViews = {
@@ -153,17 +157,20 @@ export async function GET(request: NextRequest) {
         };
       } else if (tags) {
         // Multiple tags support
-        const tagList = tags.split(',').filter(t => t.trim());
+        const tagList = tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
         if (tagList.length > 0) {
           if (tagMode === 'AND') {
             // AND search: articles with all specified tags
-            where.AND = tagList.map(tagName => ({
+            const tagAnd = tagList.map(tagName => ({
               tags: {
                 some: {
                   name: tagName
                 }
               }
             }));
+            where.AND = Array.isArray(where.AND)
+              ? [...where.AND, ...tagAnd]
+              : tagAnd;
           } else {
             // OR search: articles with any of the specified tags
             where.tags = {
@@ -195,17 +202,20 @@ export async function GET(request: NextRequest) {
         
         if (keywords.length === 1) {
           // Single keyword - maintain existing behavior
-          where.OR = [
-            { title: { contains: keywords[0], mode: 'insensitive' } },
-            { summary: { contains: keywords[0], mode: 'insensitive' } }
+          const searchOr: Prisma.ArticleWhereInput[] = [
+            { title: { contains: keywords[0], mode: Prisma.QueryMode.insensitive } },
+            { summary: { contains: keywords[0], mode: Prisma.QueryMode.insensitive } }
           ];
+          where.AND = Array.isArray(where.AND)
+            ? [...where.AND, { OR: searchOr }]
+            : [{ OR: searchOr }];
         } else if (keywords.length > 1) {
           // Multiple keywords - AND search
           where.AND = keywords.map(keyword => ({
             OR: [
-              { title: { contains: keyword, mode: 'insensitive' } },
-              { summary: { contains: keyword, mode: 'insensitive' } }
-            ]
+              { title: { contains: keyword, mode: Prisma.QueryMode.insensitive } },
+              { summary: { contains: keyword, mode: Prisma.QueryMode.insensitive } }
+            ] as Prisma.ArticleWhereInput[]
           }));
         }
       }
@@ -344,11 +354,7 @@ export async function POST(request: NextRequest) {
     // タグを正規化してバリデーション
     const normalizedTags = normalizeTagInput(tagNames);
     
-    // 不正なタグが含まれていた場合は警告（開発環境のみ）
-    if (process.env.NODE_ENV !== 'production' && tagNames) {
-      if (typeof tagNames === 'string') {
-      }
-    }
+    // タグバリデーションのデッドコードを削除
 
     // Create article with tags
     const article = await prisma.article.create({

@@ -102,7 +102,7 @@ describe('Sources API', () => {
       prismaMock.source.findMany.mockResolvedValue(mockSources);
 
       const request = {
-        nextUrl: new URL('http://localhost:3000/api/sources'),
+        url: 'http://localhost:3000/api/sources',
         method: 'GET',
         headers: new Headers(),
       } as NextRequest;

@@ -1,3 +1,6 @@
+// next/serverのモックを明示化
+jest.mock('next/server');
+
 import { GET } from '@/app/api/recommendations/route';
 import { auth } from '@/lib/auth/auth';
 import { recommendationService } from '@/lib/recommendation/recommendation-service';
@@ -5,7 +8,7 @@ import { NextRequest } from 'next/server';
 
 // モック
 jest.mock('next/headers', () => ({
-  headers: jest.fn(() => Promise.resolve(new Headers())),
+  headers: jest.fn(() => new Headers()),
 }));
 
 jest.mock('@/lib/auth/auth', () => ({
@@ -39,11 +42,7 @@ describe('GET /api/recommendations', () => {
   it('should return 401 if user is not authenticated', async () => {
     (auth as jest.Mock).mockResolvedValue(null);
 
-    const request = {
-      nextUrl: new URL('http://localhost:3000/api/recommendations'),
-      method: 'GET',
-      headers: new Headers(),
-    } as NextRequest;
+    const request = new NextRequest(new URL('http://localhost/api/recommendations'));
     const response = await GET(request);
     const data = await response.json();
 
@@ -66,11 +65,7 @@ describe('GET /api/recommendations', () => {
     (redisService.get as jest.Mock).mockResolvedValue(null);
     (recommendationService.getRecommendations as jest.Mock).mockResolvedValue([]);
 
-    const request = {
-      nextUrl: new URL('http://localhost:3000/api/recommendations?limit=20'),
-      method: 'GET',
-      headers: new Headers(),
-    } as NextRequest;
+    const request = new NextRequest(new URL('http://localhost/api/recommendations?limit=20'));
     await GET(request);
 
     expect(recommendationService.getRecommendations).toHaveBeenCalledWith('user123', 20);
@@ -90,11 +85,7 @@ describe('GET /api/recommendations', () => {
     (redisService.get as jest.Mock).mockResolvedValue(null);
     (recommendationService.getRecommendations as jest.Mock).mockResolvedValue([]);
 
-    const request = {
-      nextUrl: new URL('http://localhost:3000/api/recommendations?limit=50'),
-      method: 'GET',
-      headers: new Headers(),
-    } as NextRequest;
+    const request = new NextRequest(new URL('http://localhost/api/recommendations?limit=50'));
     await GET(request);
 
     expect(recommendationService.getRecommendations).toHaveBeenCalledWith('user123', 30);
@@ -116,11 +107,7 @@ describe('GET /api/recommendations', () => {
       new Error('Database error')
     );
 
-    const request = {
-      nextUrl: new URL('http://localhost:3000/api/recommendations'),
-      method: 'GET',
-      headers: new Headers(),
-    } as NextRequest;
+    const request = new NextRequest(new URL('http://localhost/api/recommendations'));
     const response = await GET(request);
     const data = await response.json();
 

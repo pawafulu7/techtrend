@@ -39,7 +39,13 @@ export class RedisCache {
     if (options?.params) {
       const sortedParams = Object.entries(options.params)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([k, v]) => `${k}=${v}`)
+        .map(([k, v]) => {
+          // Handle nested objects and arrays properly
+          const value = typeof v === 'object' && v !== null
+            ? JSON.stringify(v)
+            : String(v);
+          return `${k}=${value}`;
+        })
         .join(':');
       if (sortedParams) {
         key = `${key}:${sortedParams}`;

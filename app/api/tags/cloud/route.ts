@@ -2,27 +2,42 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { RedisCache } from '@/lib/cache';
 
-// タグクラウド用のキャッシュ
-const tagCloudCache = new RedisCache({
-  ttl: 1800, // 30分
-  namespace: '@techtrend/cache:tagcloud'
-});
+// タグクラウド用のキャッシュを遅延初期化
+let tagCloudCache: RedisCache | null = null;
+
+const getTagCloudCache = () => {
+  if (!tagCloudCache) {
+    tagCloudCache = new RedisCache({
+      ttl: 1800, // 30分
+      namespace: '@techtrend/cache:tagcloud'
+    });
+  }
+  return tagCloudCache;
+};
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
+    // Next.js 15.xでのNextRequest対応
+    const url = new URL(request.url);
+    const searchParams = url.searchParams;
     const period = searchParams.get('period') || '30d';
     const limit = parseInt(searchParams.get('limit') || '50');
 
     // キャッシュキーを生成
-    const cacheKey = tagCloudCache.generateCacheKey('tagcloud', {
+    const cache = getTagCloudCache();
+    const cacheKey = cache.generateCacheKey('tagcloud', {
       params: { period, limit }
     });
 
     // キャッシュから取得を試みる
-    const cachedResult = await tagCloudCache.get(cacheKey);
-    if (cachedResult) {
-      return NextResponse.json(cachedResult);
+    try {
+      const cachedResult = await cache.get(cacheKey);
+      if (cachedResult) {
+        return NextResponse.json(cachedResult);
+      }
+    } catch (cacheError) {
+      // キャッシュエラーは無視して処理を続行
+      console.warn('Cache error, continuing without cache:', cacheError);
     }
 
     // 期間に基づいてフィルタリング
@@ -115,7 +130,7 @@ export async function GET(request: NextRequest) {
       const previousCount = previousPeriodCounts[tag.id] || 0;
       
       let trend: 'rising' | 'stable' | 'falling' = 'stable';
-      if (period !== 'all') {
+      if (period !== 'all' && previousCount > 0) {
         if (currentCount > previousCount * 1.2) {
           trend = 'rising';
         } else if (currentCount < previousCount * 0.8) {
@@ -129,7 +144,7 @@ export async function GET(request: NextRequest) {
         count: currentCount,
         trend
       };
-    });
+    }).sort((a, b) => b.count - a.count); // 期間フィルタのカウントでソート
 
     const response = {
       tags: tagCloudData,
@@ -137,10 +152,16 @@ export async function GET(request: NextRequest) {
     };
 
     // キャッシュに保存
-    await tagCloudCache.set(cacheKey, response);
+    try {
+      await cache.set(cacheKey, response);
+    } catch (cacheError) {
+      // キャッシュ保存エラーは無視
+      console.warn('Cache set error, continuing without caching:', cacheError);
+    }
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
+    console.error('API Error in /api/tags/cloud:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

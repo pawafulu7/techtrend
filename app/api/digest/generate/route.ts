@@ -4,10 +4,18 @@ import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger/index';
 
-const cache = new RedisCache({
-  ttl: 3600,
-  namespace: '@techtrend/cache:digest'
-});
+// キャッシュインスタンスを遅延初期化
+let cache: RedisCache | null = null;
+
+const getCache = () => {
+  if (!cache) {
+    cache = new RedisCache({
+      ttl: 3600,
+      namespace: '@techtrend/cache:digest'
+    });
+  }
+  return cache;
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,20 +49,27 @@ export async function POST(request: NextRequest) {
     );
 
     // Invalidate cache for this week's digest
-    if (date) {
-      const cacheKey = cache.generateCacheKey('weekly-digest', {
-        params: { week: date }
-      });
-      await cache.del(cacheKey);
-    }
+    try {
+      if (date) {
+        const cacheInstance = getCache();
+        const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
+          params: { week: date }
+        });
+        await cacheInstance.del(cacheKey);
+      }
 
-    // Also invalidate cache for current week if no date specified
-    if (!date) {
-      const currentWeek = new Date().toISOString();
-      const cacheKey = cache.generateCacheKey('weekly-digest', {
-        params: { week: currentWeek }
-      });
-      await cache.del(cacheKey);
+      // Also invalidate cache for current week if no date specified
+      if (!date) {
+        const currentWeek = new Date().toISOString();
+        const cacheInstance = getCache();
+        const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
+          params: { week: currentWeek }
+        });
+        await cacheInstance.del(cacheKey);
+      }
+    } catch (cacheError) {
+      // キャッシュ削除エラーは無視して処理を続行
+      logger.warn('Cache deletion error, continuing:', cacheError);
     }
 
     logger.info(`Weekly digest generated: ${digestId}`);
