@@ -7,19 +7,8 @@
  * - パフォーマンス（tagsを含まない軽量化）
  */
 
-import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/articles/list/route';
-import { prisma } from '@/lib/database';
-import { RedisCache } from '@/lib/cache';
-
-jest.mock('@/lib/database', () => ({
-  prisma: {
-    article: {
-      count: jest.fn(),
-      findMany: jest.fn(),
-    },
-  },
-}));
+// モックを先に設定
+jest.mock('@/lib/database');
 
 jest.mock('@/lib/cache', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
@@ -32,6 +21,13 @@ jest.mock('@/lib/cache', () => ({
 jest.mock('@/lib/auth/auth', () => ({
   auth: jest.fn().mockResolvedValue(null),
 }));
+
+import { NextRequest } from 'next/server';
+import { GET } from '@/app/api/articles/list/route';
+import { prisma } from '@/lib/database';
+import { RedisCache } from '@/lib/cache';
+
+const mockPrisma = prisma as jest.Mocked<typeof prisma>;
 
 describe('/api/articles/list', () => {
   const mockArticles = [
@@ -85,8 +81,8 @@ describe('/api/articles/list', () => {
 
   it('should include source relation in response', async () => {
     // Arrange
-    (prisma.article.count as jest.Mock).mockResolvedValue(2);
-    (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+    mockPrisma.article.count = jest.fn().mockResolvedValue(2);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue(mockArticles);
 
     const request = new NextRequest('http://localhost:3000/api/articles/list?page=1&limit=20');
 
@@ -108,8 +104,8 @@ describe('/api/articles/list', () => {
 
   it('should have correct source object structure', async () => {
     // Arrange
-    (prisma.article.count as jest.Mock).mockResolvedValue(1);
-    (prisma.article.findMany as jest.Mock).mockResolvedValue([mockArticles[0]]);
+    mockPrisma.article.count = jest.fn().mockResolvedValue(1);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([mockArticles[0]]);
 
     const request = new NextRequest('http://localhost:3000/api/articles/list');
 
@@ -133,8 +129,8 @@ describe('/api/articles/list', () => {
 
   it('should call prisma.findMany with source select', async () => {
     // Arrange
-    (prisma.article.count as jest.Mock).mockResolvedValue(0);
-    (prisma.article.findMany as jest.Mock).mockResolvedValue([]);
+    mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
 
     const request = new NextRequest('http://localhost:3000/api/articles/list');
 
@@ -142,7 +138,7 @@ describe('/api/articles/list', () => {
     await GET(request);
 
     // Assert
-    expect(prisma.article.findMany).toHaveBeenCalledWith(
+    expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         select: expect.objectContaining({
           source: {
@@ -160,8 +156,8 @@ describe('/api/articles/list', () => {
 
   it('should not include tags relation for performance', async () => {
     // Arrange
-    (prisma.article.count as jest.Mock).mockResolvedValue(1);
-    (prisma.article.findMany as jest.Mock).mockResolvedValue([mockArticles[0]]);
+    mockPrisma.article.count = jest.fn().mockResolvedValue(1);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([mockArticles[0]]);
 
     const request = new NextRequest('http://localhost:3000/api/articles/list');
 
@@ -186,8 +182,8 @@ describe('/api/articles/list', () => {
       }
     };
 
-    (prisma.article.count as jest.Mock).mockResolvedValue(1);
-    (prisma.article.findMany as jest.Mock).mockResolvedValue([speakerDeckArticle]);
+    mockPrisma.article.count = jest.fn().mockResolvedValue(1);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([speakerDeckArticle]);
 
     const request = new NextRequest('http://localhost:3000/api/articles/list');
 
