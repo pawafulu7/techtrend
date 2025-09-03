@@ -9,21 +9,27 @@ import { auth } from '@/lib/auth/auth';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
-// Lightweight article type without relations
+// Lightweight article type with minimal source relation included for UI rendering
 interface LightweightArticle {
   id: string;
   title: string;
   url: string;
   summary: string | null;
   thumbnail: string | null;
-  publishedAt: Date;
+  publishedAt: Date | string;
   sourceId: string;
+  source: {
+    id: string;
+    name: string;
+    type: string;
+    url: string;
+  };
   category: ArticleCategory | null;
   qualityScore: number;
   bookmarks: number;
   userVotes: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 // Initialize Redis cache with 5 minutes TTL for lightweight articles
@@ -34,7 +40,8 @@ const cache = new RedisCache({
 
 /**
  * Lightweight articles API endpoint
- * Optimized for performance by excluding JOINs and heavy fields
+ * Optimized for performance by excluding heavy fields (tags, content, detailedSummary)
+ * while including minimal source relation for UI display requirements
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -230,7 +237,7 @@ export async function GET(request: NextRequest) {
       // Get total count
       const total = await prisma.article.count({ where });
 
-      // Get articles - Optimized query without JOINs
+      // Get articles - Optimized query with minimal source relation
       const articles = await prisma.article.findMany({
         where,
         select: {
@@ -241,16 +248,23 @@ export async function GET(request: NextRequest) {
           thumbnail: true,
           publishedAt: true,
           sourceId: true,
+          source: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              url: true,
+            }
+          },
           category: true,
           qualityScore: true,
           bookmarks: true,
           userVotes: true,
           createdAt: true,
           updatedAt: true,
-          // NO source relation
-          // NO tags relation
-          // NO content field
-          // NO detailedSummary field
+          // No tags relation selected (performance optimization)
+          // No content field selected (reduces data transfer)
+          // No detailedSummary field selected (reduces data transfer)
         },
         orderBy: {
           [finalSortBy]: sortOrder,
@@ -259,9 +273,17 @@ export async function GET(request: NextRequest) {
         take: limit,
       });
 
+      // Normalize dates to ISO strings for consistency
+      const normalizedArticles = articles.map(article => ({
+        ...article,
+        publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
+        createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
+        updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
+      }));
+
       // Return the data to be cached
       result = {
-        items: articles as LightweightArticle[],
+        items: normalizedArticles as LightweightArticle[],
         total,
         page,
         limit,
