@@ -4,7 +4,7 @@ import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
 import { RedisCache } from '@/lib/cache';
-import type { Prisma, ArticleCategory } from '@prisma/client';
+import { Prisma, type ArticleCategory } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
@@ -202,9 +202,9 @@ export async function GET(request: NextRequest) {
         
         if (keywords.length === 1) {
           // Single keyword - maintain existing behavior
-          const searchOr = [
-            { title: { contains: keywords[0], mode: 'insensitive' } },
-            { summary: { contains: keywords[0], mode: 'insensitive' } }
+          const searchOr: Prisma.ArticleWhereInput[] = [
+            { title: { contains: keywords[0], mode: Prisma.QueryMode.insensitive } },
+            { summary: { contains: keywords[0], mode: Prisma.QueryMode.insensitive } }
           ];
           where.AND = Array.isArray(where.AND)
             ? [...where.AND, { OR: searchOr }]
@@ -213,9 +213,9 @@ export async function GET(request: NextRequest) {
           // Multiple keywords - AND search
           where.AND = keywords.map(keyword => ({
             OR: [
-              { title: { contains: keyword, mode: 'insensitive' } },
-              { summary: { contains: keyword, mode: 'insensitive' } }
-            ]
+              { title: { contains: keyword, mode: Prisma.QueryMode.insensitive } },
+              { summary: { contains: keyword, mode: Prisma.QueryMode.insensitive } }
+            ] as Prisma.ArticleWhereInput[]
           }));
         }
       }
