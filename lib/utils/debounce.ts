@@ -23,7 +23,7 @@ export function debounce<Args extends unknown[], R>(
       func(...args);
       timeout = null;
     }, wait);
-  };
+  } as ((...args: Args) => void) & { cancel: () => void };
 
   // Add cancel method to clear pending execution
   debounced.cancel = () => {
@@ -76,7 +76,7 @@ export function debounceWithImmediate<Args extends unknown[], R>(
     }
     
     return result;
-  };
+  } as ((...args: Args) => R | undefined) & { cancel: () => void };
 
   // Add cancel method
   debounced.cancel = () => {
@@ -138,7 +138,12 @@ export function debounceAsync<Args extends unknown[], R>(
           if (callId === lastCallId) localResolve(result);
           else localReject(new DebouncedError());
         } catch (error) {
-          if (callId === lastCallId) localReject(error);
+          if (callId === lastCallId) {
+            localReject(error);
+          } else {
+            // Ensure Promise is resolved for overtaken calls
+            localReject(new DebouncedError());
+          }
         } finally {
           timeout = null;
           if (callId === lastCallId) pendingReject = null;
