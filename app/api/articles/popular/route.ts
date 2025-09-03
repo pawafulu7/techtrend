@@ -116,7 +116,8 @@ export async function GET(request: NextRequest) {
           where: {
             ...dateFilter,
             ...categoryFilter,
-            qualityScore: { gte: 30 } // 品質フィルター
+            qualityScore: { gte: 30 }, // 品質フィルター
+            content: { not: null } // コンテンツがnullの記事を除外
           },
           include: {
             source: true,

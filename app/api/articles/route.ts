@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
     const readFilter = searchParams.get('readFilter'); // Read status filter
     const category = searchParams.get('category'); // Category filter
     const includeRelations = searchParams.get('includeRelations') !== 'false'; // Include source and tags by default for backward compatibility
+    const includeEmptyContent = searchParams.get('includeEmptyContent') === 'true'; // Filter out empty content by default
 
     // Generate cache key based on query parameters
     // Normalize search keywords for consistent cache key
@@ -79,7 +80,8 @@ export async function GET(request: NextRequest) {
         readFilter: readFilter || 'all',
         userId: userId || 'anonymous',
         category: category || 'all',
-        includeRelations: includeRelations.toString() // Add to cache key
+        includeRelations: includeRelations.toString(), // Add to cache key
+        includeEmptyContent: includeEmptyContent.toString() // Add new parameter to cache key
       }
     });
 
@@ -97,6 +99,13 @@ export async function GET(request: NextRequest) {
       result = await (async () => {
         // Build where clause
       const where: ArticleWhereInput = {};
+      
+      // Filter out articles with empty content by default
+      if (!includeEmptyContent) {
+        where.content = {
+          not: null
+        };
+      }
       
       // Apply read filter if user is authenticated
       if (readFilter && userId) {
