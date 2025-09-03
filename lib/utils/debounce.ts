@@ -4,30 +4,30 @@
  * 
  * @param func - The function to debounce
  * @param wait - The number of milliseconds to delay
- * @returns The debounced function
+ * @returns The debounced function with cancel method
  */
-export function debounce<Args extends unknown[], R>(
-  func: (...args: Args) => R,
+export function debounce<This, Args extends unknown[], R>(
+  func: (this: This, ...args: Args) => R,
   wait: number
-): ((...args: Args) => void) & { cancel: () => void } {
+): ((this: This, ...args: Args) => void) & { cancel: () => void } {
   let timeout: ReturnType<typeof setTimeout> | null = null;
 
-  const debounced = function (...args: Args) {
+  const debounced = function (this: This, ...args: Args) {
     // Clear existing timeout if any
-    if (timeout) {
+    if (timeout !== null) {
       clearTimeout(timeout);
     }
 
     // Set new timeout
     timeout = setTimeout(() => {
-      func(...args);
+      func.apply(this, args);
       timeout = null;
     }, wait);
-  } as ((...args: Args) => void) & { cancel: () => void };
+  } as ((this: This, ...args: Args) => void) & { cancel: () => void };
 
   // Add cancel method to clear pending execution
   debounced.cancel = () => {
-    if (timeout) {
+    if (timeout !== null) {
       clearTimeout(timeout);
       timeout = null;
     }
@@ -45,42 +45,42 @@ export function debounce<Args extends unknown[], R>(
  * @param immediate - Whether to execute on the leading edge
  * @returns The debounced function with cancel method
  */
-export function debounceWithImmediate<Args extends unknown[], R>(
-  func: (...args: Args) => R,
+export function debounceWithImmediate<This, Args extends unknown[], R>(
+  func: (this: This, ...args: Args) => R,
   wait: number,
   immediate = false
-): ((...args: Args) => R | undefined) & { cancel: () => void } {
+): ((this: This, ...args: Args) => R | undefined) & { cancel: () => void } {
   let timeout: ReturnType<typeof setTimeout> | null = null;
 
-  const debounced = function (...args: Args): R | undefined {
+  const debounced = function (this: This, ...args: Args): R | undefined {
     let result: R | undefined;
     
     const later = () => {
       timeout = null;
       if (!immediate) {
         // 遅延実行時の戻り値は呼び出し側には返さない
-        func(...args);
+        func.apply(this, args);
       }
     };
 
-    const callNow = immediate && !timeout;
+    const callNow = immediate && timeout === null;
     
-    if (timeout) {
+    if (timeout !== null) {
       clearTimeout(timeout);
     }
     
     timeout = setTimeout(later, wait);
     
     if (callNow) {
-      result = func(...args);
+      result = func.apply(this, args);
     }
     
     return result;
-  } as ((...args: Args) => R | undefined) & { cancel: () => void };
+  } as ((this: This, ...args: Args) => R | undefined) & { cancel: () => void };
 
   // Add cancel method
   debounced.cancel = () => {
-    if (timeout) {
+    if (timeout !== null) {
       clearTimeout(timeout);
       timeout = null;
     }
@@ -93,6 +93,8 @@ export function debounceWithImmediate<Args extends unknown[], R>(
  * Custom error class for debounced operations
  */
 export class DebouncedError extends Error {
+  readonly code = 'DEBOUNCED' as const;
+  
   constructor() {
     super('Debounced');
     this.name = 'DebouncedError';
@@ -107,25 +109,30 @@ export class DebouncedError extends Error {
  * @param wait - The number of milliseconds to delay
  * @returns The debounced async function with cancel method
  */
-export function debounceAsync<Args extends unknown[], R>(
-  func: (...args: Args) => Promise<R>,
+export function debounceAsync<This, Args extends unknown[], R>(
+  func: (this: This, ...args: Args) => Promise<R>,
   wait: number
-): ((...args: Args) => Promise<R>) & { cancel: () => void } {
+): ((this: This, ...args: Args) => Promise<R>) & { cancel: () => void } {
   let timeout: ReturnType<typeof setTimeout> | null = null;
   let pendingReject: ((reason?: unknown) => void) | null = null;
   let lastCallId = 0;
 
-  const debounced: ((...args: Args) => Promise<R>) & { cancel: () => void } = ((...args: Args): Promise<R> => {
+  const debounced: ((this: This, ...args: Args) => Promise<R>) & { cancel: () => void } = (function (this: This, ...args: Args): Promise<R> {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const capturedThis = this;
     return new Promise((resolve, reject) => {
       const callId = ++lastCallId;
       const localResolve = resolve;
       const localReject = reject;
       
       // Clear existing timeout
-      if (timeout) {
+      if (timeout !== null) {
         clearTimeout(timeout);
         // Reject previous pending promise if exists
-        if (pendingReject) pendingReject(new DebouncedError());
+        if (pendingReject) {
+          pendingReject(new DebouncedError());
+          pendingReject = null;
+        }
       }
       
       // Store reject for potential supersession
@@ -134,26 +141,26 @@ export function debounceAsync<Args extends unknown[], R>(
       // Set new timeout
       timeout = setTimeout(async () => {
         try {
-          const result = await func(...args);
-          if (callId === lastCallId) localResolve(result);
-          else localReject(new DebouncedError());
+          const result = await func.apply(capturedThis, args);
+          if (callId === lastCallId) {
+            localResolve(result);
+          }
+          // superseded calls were already rejected, no need to reject again
         } catch (error) {
           if (callId === lastCallId) {
             localReject(error);
-          } else {
-            // Ensure Promise is resolved for overtaken calls
-            localReject(new DebouncedError());
           }
+          // superseded calls were already rejected, no need to reject again
         } finally {
           timeout = null;
           if (callId === lastCallId) pendingReject = null;
         }
       }, wait);
     });
-  }) as ((...args: Args) => Promise<R>) & { cancel: () => void };
+  }) as ((this: This, ...args: Args) => Promise<R>) & { cancel: () => void };
 
   debounced.cancel = () => {
-    if (timeout) {
+    if (timeout !== null) {
       clearTimeout(timeout);
       timeout = null;
     }
