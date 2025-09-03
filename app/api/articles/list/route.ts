@@ -9,7 +9,7 @@ import { auth } from '@/lib/auth/auth';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
-// Lightweight article type without relations
+// Lightweight article type with minimal source relation
 interface LightweightArticle {
   id: string;
   title: string;
@@ -18,6 +18,12 @@ interface LightweightArticle {
   thumbnail: string | null;
   publishedAt: Date;
   sourceId: string;
+  source: {
+    id: string;
+    name: string;
+    type: string;
+    url: string;
+  };
   category: ArticleCategory | null;
   qualityScore: number;
   bookmarks: number;
@@ -241,16 +247,23 @@ export async function GET(request: NextRequest) {
           thumbnail: true,
           publishedAt: true,
           sourceId: true,
+          source: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              url: true,
+            }
+          },
           category: true,
           qualityScore: true,
           bookmarks: true,
           userVotes: true,
           createdAt: true,
           updatedAt: true,
-          // NO source relation
-          // NO tags relation
-          // NO content field
-          // NO detailedSummary field
+          // NO tags relation (performance optimization)
+          // NO content field (reduces data transfer)
+          // NO detailedSummary field (reduces data transfer)
         },
         orderBy: {
           [finalSortBy]: sortOrder,

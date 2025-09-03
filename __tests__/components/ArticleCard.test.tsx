@@ -366,4 +366,77 @@ describe('ArticleCard', () => {
     // カードは正常にレンダリングされる
     expect(screen.getByTestId('article-card')).toBeInTheDocument();
   });
+
+  describe('source property validation', () => {
+    it('requires source property to be present', () => {
+      const articleWithSource = createMockArticleWithRelations({
+        article: {
+          title: 'Article with Source',
+        },
+        source: createMockSource({ name: 'Test Source' })
+      });
+      
+      render(<ArticleCard article={articleWithSource} />);
+      
+      // sourceが存在することを確認（暗黙的にshouldShowThumbnail関数が正常動作）
+      expect(screen.getByTestId('article-card')).toBeInTheDocument();
+      expect(screen.getByText('Article with Source')).toBeInTheDocument();
+    });
+
+    it('handles Speaker Deck articles with source correctly', () => {
+      const speakerDeckArticle = createMockArticleWithRelations({
+        article: {
+          title: 'Speaker Deck Presentation',
+          thumbnail: 'https://example.com/deck-thumb.jpg'
+        },
+        source: createMockSource({ 
+          name: 'Speaker Deck',
+          type: 'presentation'
+        })
+      });
+      
+      render(<ArticleCard article={speakerDeckArticle} />);
+      
+      // Speaker Deckの記事が正しくレンダリングされる
+      expect(screen.getByTestId('article-card')).toBeInTheDocument();
+      // サムネイルが表示される（shouldShowThumbnail関数の動作確認）
+      const thumbnail = screen.getByRole('img', { name: 'Speaker Deck Presentation' });
+      expect(thumbnail).toBeInTheDocument();
+    });
+
+    it('handles Docswell articles with source correctly', () => {
+      const docswellArticle = createMockArticleWithRelations({
+        article: {
+          title: 'Docswell Presentation',
+          thumbnail: 'https://example.com/docs-thumb.jpg'
+        },
+        source: createMockSource({ 
+          name: 'Docswell',
+          type: 'presentation'
+        })
+      });
+      
+      render(<ArticleCard article={docswellArticle} />);
+      
+      // Docswellの記事が正しくレンダリングされる
+      expect(screen.getByTestId('article-card')).toBeInTheDocument();
+      // サムネイルが表示される（shouldShowThumbnail関数の動作確認）
+      const thumbnail = screen.getByRole('img', { name: 'Docswell Presentation' });
+      expect(thumbnail).toBeInTheDocument();
+    });
+
+    it('displays source name when available', () => {
+      const articleWithSource = createMockArticleWithRelations({
+        article: {
+          title: 'Article with Source Name'
+        },
+        source: createMockSource({ name: 'Custom Source' })
+      });
+      
+      render(<ArticleCard article={articleWithSource} />);
+      
+      // ソース名が表示される（実装によってはBadgeやテキストで表示）
+      expect(screen.getByText('Custom Source')).toBeInTheDocument();
+    });
+  });
 });
