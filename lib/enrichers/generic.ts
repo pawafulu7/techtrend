@@ -51,7 +51,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
         const html = await response.text();
         const $ = cheerio.load(html);
 
-        // スクリプトやスタイルを削除（JSON-LDは保持）
+        // 不要な要素を削除（JSON-LD構造化データは保持）
         $('script:not([type="application/ld+json"]), style, noscript, iframe').remove();
 
         // Open Graphメタデータの取得

@@ -62,7 +62,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       const html = await response.text();
       const $ = cheerio.load(html);
       
-      // Remove script, style, iframe elements
+      // 不要な要素を削除
       $('script, style, noscript, iframe').remove();
       
       let content = '';
