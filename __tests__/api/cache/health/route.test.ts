@@ -2,7 +2,7 @@
  * /api/cache/health エンドポイントのテスト
  */
 
-import { createRedisClientMock, createCircuitBreakerMock } from '../../helpers/cache-mock-helpers';
+import { createRedisClientMock, createCircuitBreakerMock } from '../../../helpers/cache-mock-helpers';
 
 // モックの設定
 const mockRedisClient = createRedisClientMock();

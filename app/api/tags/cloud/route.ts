@@ -17,7 +17,9 @@ const getTagCloudCache = () => {
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
+    // Next.js 15.xでのNextRequest対応
+    const url = new URL(request.url);
+    const searchParams = url.searchParams;
     const period = searchParams.get('period') || '30d';
     const limit = parseInt(searchParams.get('limit') || '50');
 
@@ -148,7 +150,8 @@ export async function GET(request: NextRequest) {
     await cache.set(cacheKey, response);
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
+    console.error('API Error in /api/tags/cloud:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

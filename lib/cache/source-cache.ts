@@ -165,4 +165,18 @@ export class SourceCache {
 }
 
 // シングルトンインスタンスをエクスポート
-export const sourceCache = new SourceCache();
+// 遅延初期化パターンでグローバル初期化を回避
+let sourceCacheInstance: SourceCache | null = null;
+
+export const getSourceCache = (): SourceCache => {
+  if (!sourceCacheInstance) {
+    sourceCacheInstance = new SourceCache();
+  }
+  return sourceCacheInstance;
+};
+
+// 既存のコードとの互換性のため、sourceCacheもエクスポート
+// ただし、遅延初期化を使う
+export const sourceCache = {
+  getAllSourcesWithStats: () => getSourceCache().getAllSourcesWithStats()
+};

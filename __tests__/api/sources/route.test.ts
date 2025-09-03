@@ -7,9 +7,10 @@ import { createSourceCacheMock } from '../../helpers/cache-mock-helpers';
 // モックの設定
 jest.mock('@/lib/database');
 
-const mockSourceCache = createSourceCacheMock();
 jest.mock('@/lib/cache/source-cache', () => ({
-  sourceCache: mockSourceCache
+  sourceCache: {
+    getAllSourcesWithStats: jest.fn()
+  }
 }));
 
 import { GET } from '@/app/api/sources/route';
@@ -21,7 +22,8 @@ const prismaMock = prisma as any;
 const sourceCacheMock = sourceCache as any;
 
 describe('/api/sources', () => {
-  const mockSources = [
+  // sourceCacheに返すデータ（stats付き）
+  const mockSourcesWithStats = [
     {
       id: 'qiita',
       name: 'Qiita',
@@ -65,29 +67,39 @@ describe('/api/sources', () => {
       },
     },
   ];
+  
+  // Prismaから返すデータ（_countとarticles付き）
+  const mockPrismaSourcesWithCount = mockSourcesWithStats.map(source => ({
+    ...source,
+    _count: { articles: source.stats.totalArticles },
+    articles: [] // 空配列でOK
+  }));
 
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // デフォルトのPrismaモック設定
+    // デフォルトのPrismaモック設定（_countとarticles付き）
     prismaMock.source = {
-      findMany: jest.fn().mockResolvedValue(mockSources),
+      findMany: jest.fn().mockResolvedValue(mockPrismaSourcesWithCount),
     };
     
-    // sourceCacheのモック設定
-    mockSourceCache.getAllSourcesWithStats.mockResolvedValue(mockSources);
-    mockSourceCache.setAllSourcesWithStats.mockResolvedValue(undefined);
+    // sourceCacheのモック設定（stats付き）
+    sourceCacheMock.getAllSourcesWithStats.mockResolvedValue(mockSourcesWithStats);
   });
 
   describe('GET', () => {
     it('全ソースと統計情報を返す（キャッシュ使用）', async () => {
-      const request = new NextRequest('http://localhost/api/sources');
+      const url = new URL('http://localhost/api/sources');
+      const request = new NextRequest(url);
       const response = await GET(request);
 
       // Debug: エラーの内容を確認
       if (response.status !== 200) {
         const errorData = await response.json();
         console.error('Response error:', errorData);
+        console.error('Response status:', response.status);
+        // モックの呼び出し状況を確認
+        console.error('sourceCacheMock.getAllSourcesWithStats called:', sourceCacheMock.getAllSourcesWithStats.mock.calls.length);
       }
 
       expect(response.status).toBe(200);
@@ -95,18 +107,21 @@ describe('/api/sources', () => {
       
       expect(data.sources).toHaveLength(3);
       expect(data.totalCount).toBe(3);
-      expect(data.sources[0].name).toBe('Qiita');
+      // デフォルトは記事数降順
+      expect(data.sources[0].name).toBe('Dev.to'); // 200記事
+      expect(data.sources[1].name).toBe('Qiita');  // 150記事
+      expect(data.sources[2].name).toBe('Zenn');   // 100記事
       
       // キャッシュヒットヘッダーの確認
       expect(response.headers.get('X-Cache-Status')).toBe('HIT');
       expect(response.headers.get('X-Response-Time')).toMatch(/\d+ms/);
       
-      expect(mockSourceCache.getAllSourcesWithStats).toHaveBeenCalled();
+      expect(sourceCacheMock.getAllSourcesWithStats).toHaveBeenCalled();
       expect(prismaMock.source.findMany).not.toHaveBeenCalled();
     });
 
     it('カテゴリーでフィルタリングする', async () => {
-      const request = new NextRequest('http://localhost/api/sources?category=tech_blog');
+      const request = new NextRequest(new URL('http://localhost/api/sources?category=tech_blog'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -117,7 +132,7 @@ describe('/api/sources', () => {
     });
 
     it('検索クエリでフィルタリングする', async () => {
-      const request = new NextRequest('http://localhost/api/sources?search=zenn');
+      const request = new NextRequest(new URL('http://localhost/api/sources?search=zenn'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -128,7 +143,7 @@ describe('/api/sources', () => {
     });
 
     it('記事数でソート（降順）', async () => {
-      const request = new NextRequest('http://localhost/api/sources?sortBy=articles&order=desc');
+      const request = new NextRequest(new URL('http://localhost/api/sources?sortBy=articles&order=desc'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -140,7 +155,7 @@ describe('/api/sources', () => {
     });
 
     it('記事数でソート（昇順）', async () => {
-      const request = new NextRequest('http://localhost/api/sources?sortBy=articles&order=asc');
+      const request = new NextRequest(new URL('http://localhost/api/sources?sortBy=articles&order=asc'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -152,7 +167,7 @@ describe('/api/sources', () => {
     });
 
     it('名前でソート（昇順）', async () => {
-      const request = new NextRequest('http://localhost/api/sources?sortBy=name&order=asc');
+      const request = new NextRequest(new URL('http://localhost/api/sources?sortBy=name&order=asc'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -164,7 +179,7 @@ describe('/api/sources', () => {
     });
 
     it('名前でソート（降順）', async () => {
-      const request = new NextRequest('http://localhost/api/sources?sortBy=name&order=desc');
+      const request = new NextRequest(new URL('http://localhost/api/sources?sortBy=name&order=desc'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -176,21 +191,38 @@ describe('/api/sources', () => {
     });
 
     it('特定のIDsでソースを取得（キャッシュ未使用）', async () => {
-      const filteredSources = [mockSources[0], mockSources[2]];
+      // Prismaクエリが期待する構造でモックデータを作成
+      // qiitaとdevtoのみを取得する
+      const qiitaData = mockSourcesWithStats.find(s => s.id === 'qiita');
+      const devtoData = mockSourcesWithStats.find(s => s.id === 'devto');
+      
+      const filteredSources = [
+        {
+          ...qiitaData,
+          _count: { articles: qiitaData.stats.totalArticles },
+          articles: []
+        },
+        {
+          ...devtoData,
+          _count: { articles: devtoData.stats.totalArticles },
+          articles: []
+        }
+      ];
       prismaMock.source.findMany.mockResolvedValue(filteredSources);
 
-      const request = new NextRequest('http://localhost/api/sources?ids=qiita,devto');
+      const request = new NextRequest(new URL('http://localhost/api/sources?ids=qiita,devto'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
       
       expect(data.sources).toHaveLength(2);
-      expect(data.sources[0].id).toBe('qiita');
-      expect(data.sources[1].id).toBe('devto');
+      // デフォルトは記事数降順なので、Dev.to (200) > Qiita (150)
+      expect(data.sources[0].id).toBe('devto');
+      expect(data.sources[1].id).toBe('qiita');
       
       // IDsパラメータありの場合はキャッシュを使わない
-      expect(mockSourceCache.getAllSourcesWithStats).not.toHaveBeenCalled();
+      expect(sourceCacheMock.getAllSourcesWithStats).not.toHaveBeenCalled();
       expect(prismaMock.source.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -204,7 +236,7 @@ describe('/api/sources', () => {
     });
 
     it('複数のフィルタを組み合わせる', async () => {
-      const request = new NextRequest('http://localhost/api/sources?category=tech_blog&search=qi&sortBy=name&order=asc');
+      const request = new NextRequest(new URL('http://localhost/api/sources?category=tech_blog&search=qi&sortBy=name&order=asc'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -215,9 +247,9 @@ describe('/api/sources', () => {
     });
 
     it('空の結果を正しく処理する', async () => {
-      mockSourceCache.getAllSourcesWithStats.mockResolvedValue([]);
+      sourceCacheMock.getAllSourcesWithStats.mockResolvedValue([]);
 
-      const request = new NextRequest('http://localhost/api/sources');
+      const request = new NextRequest(new URL('http://localhost/api/sources'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -228,7 +260,7 @@ describe('/api/sources', () => {
     });
 
     it('大文字小文字を区別しない検索', async () => {
-      const request = new NextRequest('http://localhost/api/sources?search=ZENN');
+      const request = new NextRequest(new URL('http://localhost/api/sources?search=ZENN'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -239,7 +271,7 @@ describe('/api/sources', () => {
     });
 
     it('無効なカテゴリーで空の結果を返す', async () => {
-      const request = new NextRequest('http://localhost/api/sources?category=invalid_category');
+      const request = new NextRequest(new URL('http://localhost/api/sources?category=invalid_category'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -250,7 +282,7 @@ describe('/api/sources', () => {
     });
 
     it('デフォルトのソート順を使用', async () => {
-      const request = new NextRequest('http://localhost/api/sources');
+      const request = new NextRequest(new URL('http://localhost/api/sources'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);

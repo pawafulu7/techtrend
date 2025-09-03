@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    const searchParams = request.nextUrl.searchParams;
+    // Next.js 15.xでのNextRequest対応
+    const url = new URL(request.url);
+    const searchParams = url.searchParams;
     const category = searchParams.get('category') as SourceCategory | null;
     const sortBy = searchParams.get('sortBy') || 'articles';
     const order = searchParams.get('order') || 'desc';
@@ -252,7 +254,8 @@ export async function GET(request: NextRequest) {
       response.headers.set('X-Response-Time', `${responseTime}ms`);
       
       return response;
-  } catch {
+  } catch (error) {
+    console.error('API Error in /api/sources:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
