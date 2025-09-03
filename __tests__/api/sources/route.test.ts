@@ -2,9 +2,15 @@
  * /api/sources エンドポイントのテスト
  */
 
+import { createSourceCacheMock } from '../../helpers/cache-mock-helpers';
+
 // モックの設定
 jest.mock('@/lib/database');
-jest.mock('@/lib/cache/source-cache');
+
+const mockSourceCache = createSourceCacheMock();
+jest.mock('@/lib/cache/source-cache', () => ({
+  sourceCache: mockSourceCache
+}));
 
 import { GET } from '@/app/api/sources/route';
 import { prisma } from '@/lib/database';
@@ -69,8 +75,8 @@ describe('/api/sources', () => {
     };
     
     // sourceCacheのモック設定
-    sourceCacheMock.getAllSourcesWithStats = jest.fn().mockResolvedValue(mockSources);
-    sourceCacheMock.setAllSourcesWithStats = jest.fn().mockResolvedValue(undefined);
+    mockSourceCache.getAllSourcesWithStats.mockResolvedValue(mockSources);
+    mockSourceCache.setAllSourcesWithStats.mockResolvedValue(undefined);
   });
 
   describe('GET', () => {
@@ -95,7 +101,7 @@ describe('/api/sources', () => {
       expect(response.headers.get('X-Cache-Status')).toBe('HIT');
       expect(response.headers.get('X-Response-Time')).toMatch(/\d+ms/);
       
-      expect(sourceCacheMock.getAllSourcesWithStats).toHaveBeenCalled();
+      expect(mockSourceCache.getAllSourcesWithStats).toHaveBeenCalled();
       expect(prismaMock.source.findMany).not.toHaveBeenCalled();
     });
 
@@ -184,7 +190,7 @@ describe('/api/sources', () => {
       expect(data.sources[1].id).toBe('devto');
       
       // IDsパラメータありの場合はキャッシュを使わない
-      expect(sourceCacheMock.getAllSourcesWithStats).not.toHaveBeenCalled();
+      expect(mockSourceCache.getAllSourcesWithStats).not.toHaveBeenCalled();
       expect(prismaMock.source.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -209,7 +215,7 @@ describe('/api/sources', () => {
     });
 
     it('空の結果を正しく処理する', async () => {
-      sourceCacheMock.getAllSourcesWithStats.mockResolvedValue([]);
+      mockSourceCache.getAllSourcesWithStats.mockResolvedValue([]);
 
       const request = new NextRequest('http://localhost/api/sources');
       const response = await GET(request);

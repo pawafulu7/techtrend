@@ -2,10 +2,18 @@
  * /api/recommendations エンドポイントのテスト
  */
 
+import { createRedisServiceMock } from '../../helpers/cache-mock-helpers';
+
 // モックの設定
 jest.mock('@/lib/database');
 jest.mock('@/lib/auth/auth');
-jest.mock('@/lib/redis/factory');
+
+// getRedisServiceのモック関数を事前定義
+const getRedisServiceMock = jest.fn();
+jest.mock('@/lib/redis/factory', () => ({
+  getRedisService: getRedisServiceMock
+}));
+
 jest.mock('@/lib/recommendation/recommendation-service');
 
 import { GET } from '@/app/api/recommendations/route';
@@ -16,7 +24,6 @@ import { NextRequest } from 'next/server';
 
 const authMock = auth as jest.MockedFunction<typeof auth>;
 const recommendationServiceMock = recommendationService as any;
-const getRedisServiceMock = getRedisService as jest.Mock;
 
 // モック関数のヘルパー
 const setUnauthenticated = () => authMock.mockResolvedValue(null);
@@ -37,15 +44,10 @@ describe('/api/recommendations', () => {
     resetMockSession();
     
     // Redisサービスモックを作成
-    redisServiceMock = {
-      getJSON: jest.fn().mockResolvedValue(null),
-      setJSON: jest.fn().mockResolvedValue(undefined),
-      clearPattern: jest.fn().mockResolvedValue(undefined),
-      disconnect: jest.fn().mockResolvedValue(undefined),
-    };
+    redisServiceMock = createRedisServiceMock();
     
     // getRedisServiceがモックを返すよう設定
-    (getRedisService as jest.Mock).mockReturnValue(redisServiceMock);
+    getRedisServiceMock.mockReturnValue(redisServiceMock);
     
     // recommendationServiceのモック設定
     recommendationServiceMock.getRecommendations = jest.fn();

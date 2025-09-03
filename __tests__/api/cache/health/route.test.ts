@@ -2,16 +2,19 @@
  * /api/cache/health エンドポイントのテスト
  */
 
+import { createRedisClientMock, createCircuitBreakerMock } from '../../helpers/cache-mock-helpers';
+
 // モックの設定
-let mockRedisClient: any = {
-  ping: jest.fn(),
-};
+const mockRedisClient = createRedisClientMock();
+const mockCircuitBreaker = createCircuitBreakerMock();
 
 jest.mock('@/lib/redis/client', () => ({
   getRedisClient: jest.fn(() => mockRedisClient)
 }));
 
-jest.mock('@/lib/cache/circuit-breaker');
+jest.mock('@/lib/cache/circuit-breaker', () => ({
+  redisCircuitBreaker: mockCircuitBreaker
+}));
 
 import { GET } from '@/app/api/cache/health/route';
 import { getRedisClient } from '@/lib/redis/client';
@@ -26,12 +29,10 @@ describe('/api/cache/health', () => {
     jest.clearAllMocks();
     
     // Redisクライアントのモックをリセット
-    if (mockRedisClient) {
-      mockRedisClient.ping.mockResolvedValue('PONG');
-    }
+    mockRedisClient.ping.mockResolvedValue('PONG');
     
-    // サーキットブレーカーのモック
-    redisCircuitBreakerMock.getStats = jest.fn().mockReturnValue({
+    // サーキットブレーカーのモックをリセット
+    mockCircuitBreaker.getStats.mockReturnValue({
       state: 'CLOSED',
       failures: 0,
       successes: 100,

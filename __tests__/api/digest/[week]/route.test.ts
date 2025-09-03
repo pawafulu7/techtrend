@@ -2,25 +2,23 @@
  * /api/digest/[week] エンドポイントのテスト
  */
 
+import { createRedisCacheMock } from '../../../helpers/cache-mock-helpers';
+
 // モックの設定
 jest.mock('@/lib/prisma');
 jest.mock('@/lib/services/digest-generator');
 
-// RedisCacheのモックインスタンスをグローバルに定義
-const mockCacheInstance = {
-  generateCacheKey: jest.fn((base: string, options: any) => {
-    if (options?.params) {
-      return `${base}:${options.params.week}`;
-    }
-    return base;
-  }),
-  get: jest.fn(),
-  set: jest.fn(),
-  del: jest.fn(),
-};
+// モックインスタンスを保持する変数
+let mockCacheInstance: ReturnType<typeof createRedisCacheMock>;
 
 jest.mock('@/lib/cache', () => ({
-  RedisCache: jest.fn().mockImplementation(() => mockCacheInstance)
+  RedisCache: jest.fn().mockImplementation(() => {
+    const { createRedisCacheMock } = require('../../../helpers/cache-mock-helpers');
+    if (!mockCacheInstance) {
+      mockCacheInstance = createRedisCacheMock();
+    }
+    return mockCacheInstance;
+  })
 }));
 
 import { GET } from '@/app/api/digest/[week]/route';
@@ -75,11 +73,20 @@ describe('/api/digest/[week]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // キャッシュモックのリセット
+    // キャッシュモックのリセット（mockCacheInstanceが初期化されていることを確認）
+    if (!mockCacheInstance) {
+      mockCacheInstance = createRedisCacheMock();
+    }
     mockCacheInstance.get.mockResolvedValue(null);
     mockCacheInstance.set.mockResolvedValue(undefined);
     mockCacheInstance.del.mockResolvedValue(undefined);
     mockCacheInstance.generateCacheKey.mockClear();
+    mockCacheInstance.generateCacheKey.mockImplementation((base: string, options: any) => {
+      if (options?.params) {
+        return `${base}:${options.params.week}`;
+      }
+      return base;
+    });
     
     // DigestGenerator インスタンスのモック
     mockGeneratorInstance = {

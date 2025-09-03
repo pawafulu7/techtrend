@@ -2,16 +2,22 @@
  * /api/tags/cloud エンドポイントのテスト
  */
 
-import { createRedisCacheMock } from '../../helpers/cache-mock-helpers';
+import { createRedisCacheMock } from '../../../helpers/cache-mock-helpers';
 
 // モックの設定
 jest.mock('@/lib/database');
 
-// RedisCacheのモックインスタンスをグローバルに定義
-const mockCacheInstance = createRedisCacheMock();
+// モックインスタンスを保持する変数
+let mockCacheInstance: ReturnType<typeof createRedisCacheMock>;
 
 jest.mock('@/lib/cache', () => ({
-  RedisCache: jest.fn().mockImplementation(() => mockCacheInstance)
+  RedisCache: jest.fn().mockImplementation(() => {
+    const { createRedisCacheMock } = require('../../../helpers/cache-mock-helpers');
+    if (!mockCacheInstance) {
+      mockCacheInstance = createRedisCacheMock();
+    }
+    return mockCacheInstance;
+  })
 }));
 
 import { GET } from '@/app/api/tags/cloud/route';
@@ -86,7 +92,10 @@ describe('/api/tags/cloud', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // キャッシュモックのリセット
+    // キャッシュモックのリセット（mockCacheInstanceが初期化されていることを確認）
+    if (!mockCacheInstance) {
+      mockCacheInstance = createRedisCacheMock();
+    }
     mockCacheInstance.get.mockResolvedValue(null);
     mockCacheInstance.set.mockResolvedValue(undefined);
     mockCacheInstance.generateCacheKey.mockClear();
