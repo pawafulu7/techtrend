@@ -160,10 +160,8 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       
       // フォールバック: GenericEnricherを試す
       try {
-        console.log(`[HackerNewsEnricher] Attempting GenericEnricher fallback for ${url}`);
         const genericResult = await this.genericEnricher.enrich(url);
         if (genericResult) {
-          console.log(`[HackerNewsEnricher] GenericEnricher succeeded for ${url}`);
           return genericResult;
         }
       } catch (fallbackError) {
