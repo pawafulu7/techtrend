@@ -49,7 +49,10 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       if (prevFilterKeyRef.current && prevFilterKeyRef.current !== newFilterKey) {
         // フィルター変更時は単純にキャッシュを無効化して新しいデータを取得
         // データ転送を削除することで重複キーエラーを防ぐ
-        queryClient.invalidateQueries({ queryKey: ['infinite-articles', newFilterKey] });
+        queryClient.invalidateQueries({ 
+          queryKey: ['infinite-articles', newFilterKey],
+          refetchType: 'active' // アクティブなクエリのみ再取得
+        });
       }
       prevFilterKeyRef.current = newFilterKey;
     }, 300),
