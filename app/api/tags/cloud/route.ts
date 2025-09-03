@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { RedisCache } from '@/lib/cache';
 
-// タグクラウド用のキャッシュ
-const tagCloudCache = new RedisCache({
-  ttl: 1800, // 30分
-  namespace: '@techtrend/cache:tagcloud'
-});
+// タグクラウド用のキャッシュを遅延初期化
+let tagCloudCache: RedisCache | null = null;
+
+const getTagCloudCache = () => {
+  if (!tagCloudCache) {
+    tagCloudCache = new RedisCache({
+      ttl: 1800, // 30分
+      namespace: '@techtrend/cache:tagcloud'
+    });
+  }
+  return tagCloudCache;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,12 +22,13 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
 
     // キャッシュキーを生成
-    const cacheKey = tagCloudCache.generateCacheKey('tagcloud', {
+    const cache = getTagCloudCache();
+    const cacheKey = cache.generateCacheKey('tagcloud', {
       params: { period, limit }
     });
 
     // キャッシュから取得を試みる
-    const cachedResult = await tagCloudCache.get(cacheKey);
+    const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
       return NextResponse.json(cachedResult);
     }
@@ -137,7 +145,7 @@ export async function GET(request: NextRequest) {
     };
 
     // キャッシュに保存
-    await tagCloudCache.set(cacheKey, response);
+    await cache.set(cacheKey, response);
 
     return NextResponse.json(response);
   } catch {

@@ -4,10 +4,18 @@ import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger/index';
 
-const cache = new RedisCache({
-  ttl: 3600,
-  namespace: '@techtrend/cache:digest'
-});
+// キャッシュインスタンスを遅延初期化
+let cache: RedisCache | null = null;
+
+const getCache = () => {
+  if (!cache) {
+    cache = new RedisCache({
+      ttl: 3600,
+      namespace: '@techtrend/cache:digest'
+    });
+  }
+  return cache;
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,19 +50,21 @@ export async function POST(request: NextRequest) {
 
     // Invalidate cache for this week's digest
     if (date) {
-      const cacheKey = cache.generateCacheKey('weekly-digest', {
+      const cacheInstance = getCache();
+      const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
         params: { week: date }
       });
-      await cache.del(cacheKey);
+      await cacheInstance.del(cacheKey);
     }
 
     // Also invalidate cache for current week if no date specified
     if (!date) {
       const currentWeek = new Date().toISOString();
-      const cacheKey = cache.generateCacheKey('weekly-digest', {
+      const cacheInstance = getCache();
+      const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
         params: { week: currentWeek }
       });
-      await cache.del(cacheKey);
+      await cacheInstance.del(cacheKey);
     }
 
     logger.info(`Weekly digest generated: ${digestId}`);

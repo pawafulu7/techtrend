@@ -3,10 +3,18 @@ import { prisma } from '@/lib/prisma';
 import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
 
-const cache = new RedisCache({
-  ttl: 3600,
-  namespace: '@techtrend/cache:digest'
-});
+// キャッシュインスタンスを遅延初期化
+let cache: RedisCache | null = null;
+
+const getCache = () => {
+  if (!cache) {
+    cache = new RedisCache({
+      ttl: 3600,
+      namespace: '@techtrend/cache:digest'
+    });
+  }
+  return cache;
+};
 
 export async function GET(
   request: NextRequest,
@@ -23,12 +31,13 @@ export async function GET(
     }
 
     // Generate cache key based on week start date
-    const cacheKey = cache.generateCacheKey('weekly-digest', {
+    const cacheInstance = getCache();
+    const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
       params: { week: params.week }
     });
 
     // Check cache first
-    const cachedDigest = await cache.get(cacheKey);
+    const cachedDigest = await cacheInstance.get(cacheKey);
     if (cachedDigest) {
       return NextResponse.json(cachedDigest);
     }
@@ -44,7 +53,7 @@ export async function GET(
     }
 
     // Cache the digest for 1 hour
-    await cache.set(cacheKey, digest, 3600);
+    await cacheInstance.set(cacheKey, digest, 3600);
 
     return NextResponse.json(digest);
   } catch (_error) {

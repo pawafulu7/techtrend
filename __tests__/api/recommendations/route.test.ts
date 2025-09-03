@@ -16,6 +16,7 @@ import { NextRequest } from 'next/server';
 
 const authMock = auth as jest.MockedFunction<typeof auth>;
 const recommendationServiceMock = recommendationService as any;
+const getRedisServiceMock = getRedisService as jest.Mock;
 
 // モック関数のヘルパー
 const setUnauthenticated = () => authMock.mockResolvedValue(null);
@@ -28,27 +29,23 @@ const resetMockSession = () => authMock.mockResolvedValue({
   expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 });
 
-// getRedisServiceが返すモックオブジェクトへの参照を取得
-// モックファイルから直接エクスポートされたオブジェクトを使用
-let redisServiceMock: any;
-
 describe('/api/recommendations', () => {
+  let redisServiceMock: any;
+  
   beforeEach(() => {
     jest.clearAllMocks();
     resetMockSession();
     
-    // getRedisServiceから返されるモックオブジェクトを取得
-    redisServiceMock = (getRedisService as jest.MockedFunction<typeof getRedisService>)();
+    // Redisサービスモックを作成
+    redisServiceMock = {
+      getJSON: jest.fn().mockResolvedValue(null),
+      setJSON: jest.fn().mockResolvedValue(undefined),
+      clearPattern: jest.fn().mockResolvedValue(undefined),
+      disconnect: jest.fn().mockResolvedValue(undefined),
+    };
     
-    // Redisサービスのモックをリセット（既にjest.fn()になっている）
-    if (redisServiceMock.getJSON) {
-      redisServiceMock.getJSON.mockClear();
-      redisServiceMock.getJSON.mockResolvedValue(null);
-    }
-    if (redisServiceMock.setJSON) {
-      redisServiceMock.setJSON.mockClear();
-      redisServiceMock.setJSON.mockResolvedValue(undefined);
-    }
+    // getRedisServiceがモックを返すよう設定
+    (getRedisService as jest.Mock).mockReturnValue(redisServiceMock);
     
     // recommendationServiceのモック設定
     recommendationServiceMock.getRecommendations = jest.fn();

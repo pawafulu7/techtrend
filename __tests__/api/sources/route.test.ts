@@ -69,16 +69,8 @@ describe('/api/sources', () => {
     };
     
     // sourceCacheのモック設定
-    if (!sourceCacheMock.getAllSourcesWithStats || typeof sourceCacheMock.getAllSourcesWithStats.mockClear !== 'function') {
-      sourceCacheMock.getAllSourcesWithStats = jest.fn();
-    }
-    if (!sourceCacheMock.setAllSourcesWithStats || typeof sourceCacheMock.setAllSourcesWithStats.mockClear !== 'function') {
-      sourceCacheMock.setAllSourcesWithStats = jest.fn();
-    }
-    sourceCacheMock.getAllSourcesWithStats.mockClear();
-    sourceCacheMock.getAllSourcesWithStats.mockResolvedValue(mockSources);
-    sourceCacheMock.setAllSourcesWithStats.mockClear();
-    sourceCacheMock.setAllSourcesWithStats.mockResolvedValue(undefined);
+    sourceCacheMock.getAllSourcesWithStats = jest.fn().mockResolvedValue(mockSources);
+    sourceCacheMock.setAllSourcesWithStats = jest.fn().mockResolvedValue(undefined);
   });
 
   describe('GET', () => {

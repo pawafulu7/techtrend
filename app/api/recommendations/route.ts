@@ -3,10 +3,9 @@ import { auth } from '@/lib/auth/auth';
 import { recommendationService } from '@/lib/recommendation/recommendation-service';
 import { getRedisService } from '@/lib/redis/factory';
 
-const redisService = getRedisService();
-
 export async function GET(request: NextRequest) {
   try {
+    const redisService = getRedisService();
     
     // 認証チェック
     const session = await auth();

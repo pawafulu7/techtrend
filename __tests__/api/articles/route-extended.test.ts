@@ -6,7 +6,19 @@
 // モックの設定
 jest.mock('@/lib/database');
 jest.mock('@/lib/auth/auth');
-jest.mock('@/lib/cache');
+
+// RedisCacheのモックインスタンスをグローバルに定義
+const mockCacheInstance = {
+  generateCacheKey: jest.fn((base: string, options: any) => {
+    return `${base}:${JSON.stringify(options)}`;
+  }),
+  get: jest.fn(),
+  set: jest.fn(),
+};
+
+jest.mock('@/lib/cache', () => ({
+  RedisCache: jest.fn().mockImplementation(() => mockCacheInstance)
+}));
 
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
@@ -16,6 +28,7 @@ import { NextRequest } from 'next/server';
 
 const prismaMock = prisma as any;
 const authMock = auth as jest.MockedFunction<typeof auth>;
+const RedisCacheMock = RedisCache as jest.MockedClass<typeof RedisCache>;
 
 // モック関数のヘルパー
 const setUnauthenticated = () => authMock.mockResolvedValue(null);
@@ -110,6 +123,11 @@ describe('/api/articles - Extended Tests', () => {
     jest.clearAllMocks();
     resetMockSession();
     
+    // キャッシュモックのリセット
+    mockCacheInstance.get.mockResolvedValue(null);
+    mockCacheInstance.set.mockResolvedValue(undefined);
+    mockCacheInstance.generateCacheKey.mockClear();
+    
     // デフォルトのPrismaモック設定
     prismaMock.article = {
       findMany: jest.fn().mockResolvedValue(mockArticles),
@@ -126,10 +144,16 @@ describe('/api/articles - Extended Tests', () => {
       const request = new NextRequest('http://localhost/api/articles?readFilter=unread');
       const response = await GET(request);
 
+      // デバッグ用
+      if (response.status !== 200) {
+        const errorData = await response.json();
+        console.error('Response error:', errorData);
+      }
+
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const json = await response.json();
       
-      expect(data.articles).toHaveLength(2);
+      expect(json.data.items).toHaveLength(2);
       
       // 未読フィルタの条件を確認
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -166,9 +190,9 @@ describe('/api/articles - Extended Tests', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const json = await response.json();
       
-      expect(data.articles).toHaveLength(1);
+      expect(json.data.items).toHaveLength(1);
       
       // 既読フィルタの条件を確認
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -214,9 +238,9 @@ describe('/api/articles - Extended Tests', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const json = await response.json();
       
-      expect(data.articles).toHaveLength(1);
+      expect(json.data.items).toHaveLength(1);
       
       // AND条件の確認
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -251,9 +275,9 @@ describe('/api/articles - Extended Tests', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const json = await response.json();
       
-      expect(data.articles).toHaveLength(3);
+      expect(json.data.items).toHaveLength(3);
       
       // OR条件の確認（ANDフィールドが存在しない）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -316,10 +340,10 @@ describe('/api/articles - Extended Tests', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const json = await response.json();
       
-      expect(data.articles).toHaveLength(1);
-      expect(data.articles[0].category).toBe(null);
+      expect(json.data.items).toHaveLength(1);
+      expect(json.data.items[0].category).toBe(null);
       
       // categoryがnullでフィルタリングされることを確認
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -340,9 +364,9 @@ describe('/api/articles - Extended Tests', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const json = await response.json();
       
-      expect(data.articles).toHaveLength(2);
+      expect(json.data.items).toHaveLength(2);
       
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -380,9 +404,9 @@ describe('/api/articles - Extended Tests', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const json = await response.json();
       
-      expect(data.articles).toHaveLength(1);
+      expect(json.data.items).toHaveLength(1);
       
       // 複数の条件が同時に適用されることを確認
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
@@ -405,9 +429,9 @@ describe('/api/articles - Extended Tests', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const json = await response.json();
       
-      expect(data.articles).toHaveLength(0);
+      expect(json.data.items).toHaveLength(0);
       
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
