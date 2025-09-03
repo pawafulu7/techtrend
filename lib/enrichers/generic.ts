@@ -28,9 +28,8 @@ export class GenericContentEnricher extends BaseContentEnricher {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
             'Accept-Encoding': 'gzip, deflate, br',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1'
+            'DNT': '1'
+            // Connection, Upgrade-Insecure-Requests are forbidden headers
           },
           redirect: 'follow',
           signal: AbortSignal.timeout(30000) // 30秒タイムアウト
@@ -52,8 +51,8 @@ export class GenericContentEnricher extends BaseContentEnricher {
         const html = await response.text();
         const $ = cheerio.load(html);
 
-        // スクリプトやスタイルを削除
-        $('script, style, noscript, iframe').remove();
+        // スクリプトやスタイルを削除（JSON-LDは保持）
+        $('script:not([type="application/ld+json"]), style, noscript, iframe').remove();
 
         // Open Graphメタデータの取得
         const ogTitle = $('meta[property="og:title"]').attr('content');
@@ -68,8 +67,17 @@ export class GenericContentEnricher extends BaseContentEnricher {
         const metaDescription = $('meta[name="description"]').attr('content');
         const title = $('title').text().trim();
 
-        // サムネイル画像の優先順位
-        const thumbnail = ogImage || twitterImage || this.findFirstImage($) || undefined;
+        // サムネイル画像の優先順位（絶対URLに正規化）
+        let thumbnail = ogImage || twitterImage;
+        if (thumbnail) {
+          try {
+            thumbnail = new URL(thumbnail, url).toString();
+          } catch {
+            // 変換に失敗した場合はそのまま使用
+          }
+        } else {
+          thumbnail = this.findFirstImage($, url) || undefined;
+        }
 
         // コンテンツ抽出戦略
         let content = '';
@@ -78,11 +86,17 @@ export class GenericContentEnricher extends BaseContentEnricher {
         const jsonLdScripts = $('script[type="application/ld+json"]');
         jsonLdScripts.each((_, element) => {
           try {
-            const jsonData = JSON.parse($(element).html() || '{}');
-            if (jsonData.articleBody) {
-              content = jsonData.articleBody;
-            } else if (jsonData.description) {
-              content = jsonData.description;
+            const data = JSON.parse($(element).text() || '{}');
+            // JSON-LDは配列や@graphに格納されることがある
+            const nodes = Array.isArray(data) ? data : (Array.isArray(data?.['@graph']) ? data['@graph'] : [data]);
+            for (const node of nodes) {
+              if (node && typeof node === 'object') {
+                const body = (node as any).articleBody ?? (node as any).description;
+                if (typeof body === 'string' && body.trim().length > 0) {
+                  content = body;
+                  return false; // break .each
+                }
+              }
             }
           } catch {
             // JSON解析エラーは無視
@@ -114,10 +128,13 @@ export class GenericContentEnricher extends BaseContentEnricher {
 
           for (const selector of contentSelectors) {
             const element = $(selector).first();
-            if (element.length && element.text().trim().length > 200) {
-              // ナビゲーションやサイドバーを除外
-              element.find('nav, aside, .sidebar, .navigation, .menu, .toc').remove();
-              content = element.text().trim();
+            if (!element.length) continue;
+            // ノイズを除去してから長さチェック
+            const cleaned = element.clone();
+            cleaned.find('nav, aside, .sidebar, .navigation, .menu, .toc').remove();
+            const text = cleaned.text().trim();
+            if (text.length > 200) {
+              content = text;
               break;
             }
           }
@@ -152,7 +169,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
             parts.push(twitterDescription);
           }
 
-          // body全体から最初の500文字を抽出
+          // body全体から最初の1000文字を抽出
           const bodyText = $('body').text().trim();
           if (bodyText.length > 100) {
             const cleanBody = bodyText
@@ -199,7 +216,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
   /**
    * 最初の画像を探す
    */
-  private findFirstImage($: cheerio.CheerioAPI): string | undefined {
+  private findFirstImage($: cheerio.CheerioAPI, baseUrl: string): string | undefined {
     const imageSelectors = [
       'meta[property="og:image"]',
       'meta[name="twitter:image"]',
@@ -214,10 +231,14 @@ export class GenericContentEnricher extends BaseContentEnricher {
     for (const selector of imageSelectors) {
       const img = $(selector).first();
       if (img.length) {
-        const src = img.attr('src') || img.attr('data-src');
+        const src = img.attr('src') || img.attr('data-src') || img.attr('content');
         if (src && !src.includes('logo') && !src.includes('icon') && !src.includes('avatar')) {
-          // 相対URLを絶対URLに変換する必要がある場合は、ここで処理
-          return src;
+          // 相対URLを絶対URLに変換
+          try {
+            return new URL(src, baseUrl).toString();
+          } catch {
+            return src; // 変換に失敗した場合は元のURLを返す
+          }
         }
       }
     }

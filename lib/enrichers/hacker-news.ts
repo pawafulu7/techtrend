@@ -29,27 +29,41 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       'apple.com'
     ];
     
-    return supportedDomains.some(domain => url.includes(domain));
+    // URLからドメインを抽出して比較
+    try {
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname.toLowerCase();
+      return supportedDomains.some(domain => 
+        hostname === domain || hostname.endsWith(`.${domain}`)
+      );
+    } catch {
+      return false;
+    }
   }
   
   async enrich(url: string): Promise<EnrichmentResult | null> {
     try {
+      // 30秒タイムアウトを設定
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)'
-        }
+          'User-Agent': 'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8'
+        },
+        signal: AbortSignal.timeout(30000) // 30秒タイムアウト
       });
       
+      // ステータスコードが200以外の場合はGenericEnricherにフォールバック
       if (!response.ok) {
-        console.warn(`[HackerNewsEnricher] Failed to fetch ${url}: ${response.status}`);
-        return null;
+        console.warn(`[HackerNewsEnricher] HTTP ${response.status} for ${url}, falling back to GenericEnricher`);
+        return await this.genericEnricher.enrich(url);
       }
       
       const html = await response.text();
       const $ = cheerio.load(html);
       
-      // Remove script and style elements
-      $('script, style, noscript').remove();
+      // Remove script, style, iframe elements
+      $('script, style, noscript, iframe').remove();
       
       let content = '';
       let thumbnail = '';
@@ -130,9 +144,10 @@ export class HackerNewsEnricher extends BaseContentEnricher {
         content = content.substring(0, 50000) + '...';
       }
       
+      // コンテンツが短すぎる場合（100文字未満）はGenericEnricherにフォールバック
       if (content.length < 100) {
-        console.warn(`[HackerNewsEnricher] Content too short for ${url}: ${content.length} chars`);
-        return null;
+        console.warn(`[HackerNewsEnricher] Content too short for ${url}: ${content.length} chars, falling back to GenericEnricher`);
+        return await this.genericEnricher.enrich(url);
       }
       
       return {
@@ -140,13 +155,15 @@ export class HackerNewsEnricher extends BaseContentEnricher {
         thumbnail: thumbnail || undefined
       };
       
-    } catch (_error) {
-      console.error(`[HackerNewsEnricher] Error enriching ${url}:`, _error);
+    } catch (error) {
+      console.error(`[HackerNewsEnricher] Error enriching ${url}:`, error);
       
       // フォールバック: GenericEnricherを試す
       try {
+        console.log(`[HackerNewsEnricher] Attempting GenericEnricher fallback for ${url}`);
         const genericResult = await this.genericEnricher.enrich(url);
         if (genericResult) {
+          console.log(`[HackerNewsEnricher] GenericEnricher succeeded for ${url}`);
           return genericResult;
         }
       } catch (fallbackError) {

@@ -102,9 +102,16 @@ export async function GET(request: NextRequest) {
       
       // Filter out articles with empty content by default
       if (!includeEmptyContent) {
-        where.content = {
-          not: null
-        };
+        // Exclude both null and empty string content
+        where.AND = Array.isArray(where.AND)
+          ? [...where.AND, 
+             { content: { not: null } },
+             { content: { not: '' } }
+            ]
+          : [
+             { content: { not: null } },
+             { content: { not: '' } }
+            ];
       }
       
       // Apply read filter if user is authenticated

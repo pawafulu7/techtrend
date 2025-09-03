@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env node
 /**
  * Hacker News記事の空のコンテンツを修正するスクリプト
  * 問題: エンリッチャーが対応していないドメインの記事でcontentがnullになる
@@ -67,7 +67,8 @@ async function fetchContent(url: string): Promise<string | null> {
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; TechTrendBot/1.0)'
-      }
+      },
+      signal: AbortSignal.timeout(30000) // 30秒タイムアウト
     });
     
     if (!response.ok) {

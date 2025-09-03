@@ -117,7 +117,11 @@ export async function GET(request: NextRequest) {
             ...dateFilter,
             ...categoryFilter,
             qualityScore: { gte: 30 }, // 品質フィルター
-            content: { not: null } // コンテンツがnullの記事を除外
+            // コンテンツがnullまたは空文字列の記事を除外
+            AND: [
+              { content: { not: null } },
+              { content: { not: '' } }
+            ]
           },
           include: {
             source: true,

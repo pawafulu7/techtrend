@@ -217,14 +217,16 @@ describe('Articles API', () => {
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            AND: [
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } },
               {
                 OR: [
                   { title: { contains: 'TypeScript', mode: 'insensitive' } },
                   { summary: { contains: 'TypeScript', mode: 'insensitive' } }
                 ]
               }
-            ]
+            ])
           })
         })
       );

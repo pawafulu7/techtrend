@@ -169,11 +169,13 @@ describe('/api/articles - Extended Tests', () => {
       
       expect(json.data.items).toHaveLength(2);
       
-      // 未読フィルタの条件を確認
+      // 未読フィルタの条件を確認（コンテンツフィルタリングも含む）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            AND: [
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } },
               {
                 OR: [
                   {
@@ -193,7 +195,7 @@ describe('/api/articles - Extended Tests', () => {
                   }
                 ]
               }
-            ]
+            ])
           })
         })
       );
@@ -212,10 +214,14 @@ describe('/api/articles - Extended Tests', () => {
       
       expect(json.data.items).toHaveLength(1);
       
-      // 既読フィルタの条件を確認
+      // 既読フィルタの条件を確認（コンテンツフィルタリングも含む）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } }
+            ]),
             articleViews: {
               some: {
                 userId: 'test-user-id',
@@ -235,11 +241,14 @@ describe('/api/articles - Extended Tests', () => {
 
       expect(response.status).toBe(200);
       
-      // 未認証の場合、readFilterの条件が適用されないことを確認
+      // 未認証の場合、readFilterの条件が適用されないことを確認（コンテンツフィルタリングは含まれる）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.not.objectContaining({
-            OR: expect.anything()
+          where: expect.objectContaining({
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } }
+            ])
           })
         })
       );
@@ -260,11 +269,13 @@ describe('/api/articles - Extended Tests', () => {
       
       expect(json.data.items).toHaveLength(1);
       
-      // AND条件の確認
+      // AND条件の確認（コンテンツフィルタリングも含む）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            AND: [
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } },
               {
                 tags: {
                   some: {
@@ -279,7 +290,7 @@ describe('/api/articles - Extended Tests', () => {
                   }
                 }
               }
-            ]
+            ])
           })
         })
       );
@@ -297,10 +308,14 @@ describe('/api/articles - Extended Tests', () => {
       
       expect(json.data.items).toHaveLength(3);
       
-      // OR条件の確認（ANDフィールドが存在しない）
+      // OR条件の確認（コンテンツフィルタリングも含む）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } }
+            ]),
             tags: {
               some: {
                 name: {
@@ -322,11 +337,13 @@ describe('/api/articles - Extended Tests', () => {
 
       expect(response.status).toBe(200);
       
-      // 空白がフィルタリングされることを確認
+      // 空白がフィルタリングされることを確認（コンテンツフィルタリングも含む）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            AND: [
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } },
               {
                 tags: {
                   some: {
@@ -341,7 +358,7 @@ describe('/api/articles - Extended Tests', () => {
                   }
                 }
               }
-            ]
+            ])
           })
         })
       );
@@ -363,10 +380,14 @@ describe('/api/articles - Extended Tests', () => {
       expect(json.data.items).toHaveLength(1);
       expect(json.data.items[0].category).toBe(null);
       
-      // categoryがnullでフィルタリングされることを確認
+      // categoryがnullでフィルタリングされることを確認（コンテンツフィルタリングも含む）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } }
+            ]),
             category: null
           })
         })
@@ -469,11 +490,14 @@ describe('/api/articles - Extended Tests', () => {
 
       expect(response.status).toBe(200);
       
-      // 無効なreadFilterは条件に含まれない
+      // 無効なreadFilterは条件に含まれない（コンテンツフィルタリングは含まれる）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.not.objectContaining({
-            OR: expect.anything()
+          where: expect.objectContaining({
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } }
+            ])
           })
         })
       );
@@ -485,11 +509,14 @@ describe('/api/articles - Extended Tests', () => {
 
       expect(response.status).toBe(200);
       
-      // 空のタグリストは条件に含まれない
+      // 空のタグリストは条件に含まれない（コンテンツフィルタリングは含まれる）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.not.objectContaining({
-            AND: expect.anything()
+          where: expect.objectContaining({
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } }
+            ])
           })
         })
       );
@@ -505,7 +532,10 @@ describe('/api/articles - Extended Tests', () => {
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
-            content: { not: null }
+            AND: [
+              { content: { not: null } },
+              { content: { not: '' } }
+            ]
           }
         })
       );
