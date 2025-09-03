@@ -1,4 +1,12 @@
 /**
+ * Common interface for debounced functions with cancel method
+ */
+export interface DebouncedFunction<This, Args extends unknown[], R> {
+  (this: This, ...args: Args): R;
+  cancel: () => void;
+}
+
+/**
  * Debounce utility function
  * Delays function execution until after wait milliseconds have elapsed since the last time it was invoked
  * 
@@ -9,7 +17,7 @@
 export function debounce<This, Args extends unknown[], R>(
   func: (this: This, ...args: Args) => R,
   wait: number
-): ((this: This, ...args: Args) => void) & { cancel: () => void } {
+): DebouncedFunction<This, Args, void> {
   let timeout: ReturnType<typeof setTimeout> | null = null;
 
   const debounced = function (this: This, ...args: Args) {
@@ -23,7 +31,7 @@ export function debounce<This, Args extends unknown[], R>(
       func.apply(this, args);
       timeout = null;
     }, wait);
-  } as ((this: This, ...args: Args) => void) & { cancel: () => void };
+  } as DebouncedFunction<This, Args, void>;
 
   // Add cancel method to clear pending execution
   debounced.cancel = () => {
@@ -49,7 +57,7 @@ export function debounceWithImmediate<This, Args extends unknown[], R>(
   func: (this: This, ...args: Args) => R,
   wait: number,
   immediate = false
-): ((this: This, ...args: Args) => R | undefined) & { cancel: () => void } {
+): DebouncedFunction<This, Args, R | undefined> {
   let timeout: ReturnType<typeof setTimeout> | null = null;
 
   const debounced = function (this: This, ...args: Args): R | undefined {
@@ -76,7 +84,7 @@ export function debounceWithImmediate<This, Args extends unknown[], R>(
     }
     
     return result;
-  } as ((this: This, ...args: Args) => R | undefined) & { cancel: () => void };
+  } as DebouncedFunction<This, Args, R | undefined>;
 
   // Add cancel method
   debounced.cancel = () => {
@@ -122,7 +130,7 @@ export function isDebouncedError(error: unknown): error is DebouncedError {
 export function debounceAsync<This, Args extends unknown[], R>(
   func: (this: This, ...args: Args) => Promise<R>,
   wait: number
-): ((this: This, ...args: Args) => Promise<R>) & { cancel: () => void } {
+): DebouncedFunction<This, Args, Promise<R>> {
   let timeout: ReturnType<typeof setTimeout> | null = null;
   let pendingReject: ((reason?: unknown) => void) | null = null;
   let lastCallId = 0;
@@ -171,7 +179,7 @@ export function debounceAsync<This, Args extends unknown[], R>(
         void executeAsync();
       }, wait);
     });
-  } as ((this: This, ...args: Args) => Promise<R>) & { cancel: () => void };
+  } as DebouncedFunction<This, Args, Promise<R>>;
 
   debounced.cancel = () => {
     if (timeout !== null) {
