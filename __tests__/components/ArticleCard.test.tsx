@@ -368,7 +368,7 @@ describe('ArticleCard', () => {
   });
 
   describe('source property validation', () => {
-    it('requires source property to be present', () => {
+    it('renders article card with source property correctly', () => {
       const articleWithSource = createMockArticleWithRelations({
         article: {
           title: 'Article with Source',
@@ -378,9 +378,10 @@ describe('ArticleCard', () => {
       
       render(<ArticleCard article={articleWithSource} />);
       
-      // sourceが存在することを確認（暗黙的にshouldShowThumbnail関数が正常動作）
+      // ArticleCardが正常にレンダリングされることを確認
       expect(screen.getByTestId('article-card')).toBeInTheDocument();
       expect(screen.getByText('Article with Source')).toBeInTheDocument();
+      expect(screen.getByText('Test Source')).toBeInTheDocument();
     });
 
     it.each([

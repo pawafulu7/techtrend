@@ -9,7 +9,7 @@ import { auth } from '@/lib/auth/auth';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
-// Lightweight article type with minimal source relation included
+// Lightweight article type with minimal source relation included for UI rendering
 interface LightweightArticle {
   id: string;
   title: string;
@@ -40,7 +40,8 @@ const cache = new RedisCache({
 
 /**
  * Lightweight articles API endpoint
- * Optimized for performance by excluding JOINs and heavy fields
+ * Optimized for performance by excluding heavy fields (tags, content, detailedSummary)
+ * while including minimal source relation for UI display requirements
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -236,7 +237,7 @@ export async function GET(request: NextRequest) {
       // Get total count
       const total = await prisma.article.count({ where });
 
-      // Get articles - Optimized query without JOINs
+      // Get articles - Optimized query with minimal source relation
       const articles = await prisma.article.findMany({
         where,
         select: {
