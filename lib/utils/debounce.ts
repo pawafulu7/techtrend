@@ -14,8 +14,8 @@ export interface DebouncedFunction<This, Args extends unknown[], R> {
  * @param wait - The number of milliseconds to delay
  * @returns The debounced function with cancel method
  */
-export function debounce<This, Args extends unknown[], R>(
-  func: (this: This, ...args: Args) => R,
+export function debounce<This, Args extends unknown[]>(
+  func: (this: This, ...args: Args) => unknown,
   wait: number
 ): DebouncedFunction<This, Args, void> {
   let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -43,6 +43,33 @@ export function debounce<This, Args extends unknown[], R>(
 
   return debounced;
 }
+
+/**
+ * Debounce with immediate option - overload for immediate=true
+ */
+export function debounceWithImmediate<This, Args extends unknown[], R>(
+  func: (this: This, ...args: Args) => R,
+  wait: number,
+  immediate: true
+): DebouncedFunction<This, Args, R | undefined>;
+
+/**
+ * Debounce with immediate option - overload for immediate=false
+ */
+export function debounceWithImmediate<This, Args extends unknown[], R>(
+  func: (this: This, ...args: Args) => R,
+  wait: number,
+  immediate: false
+): DebouncedFunction<This, Args, undefined>;
+
+/**
+ * Debounce with immediate option - overload for optional immediate
+ */
+export function debounceWithImmediate<This, Args extends unknown[], R>(
+  func: (this: This, ...args: Args) => R,
+  wait: number,
+  immediate?: boolean
+): DebouncedFunction<This, Args, R | undefined>;
 
 /**
  * Debounce with immediate option
@@ -111,12 +138,17 @@ export class DebouncedError extends Error {
 
 /**
  * Type guard to check if an error is a DebouncedError
+ * Handles cross-realm instances (e.g., iframes, workers)
  * 
  * @param error - The error to check
  * @returns True if the error is a DebouncedError
  */
 export function isDebouncedError(error: unknown): error is DebouncedError {
-  return error instanceof DebouncedError;
+  return error instanceof DebouncedError || 
+    (typeof error === 'object' && 
+     error !== null && 
+     'code' in error && 
+     (error as Record<string, unknown>).code === 'DEBOUNCED');
 }
 
 /**
