@@ -47,21 +47,12 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   const handleFilterChange = useMemo(
     () => debounce((newFilterKey: string) => {
       if (prevFilterKeyRef.current && prevFilterKeyRef.current !== newFilterKey) {
-        // 古いフィルターキーから現在のデータを取得
-        const oldFilterKey = prevFilterKeyRef.current;
-        const currentData = queryClient.getQueryData<InfiniteArticlesData>(['infinite-articles', oldFilterKey]);
-        
-        // 新しいフィルターキーに最初のページのみ転送（ちらつき防止）
-        if (currentData?.pages?.[0]) {
-          queryClient.setQueryData<InfiniteArticlesData>(['infinite-articles', newFilterKey], {
-            ...currentData,
-            pages: [currentData.pages[0]],
-            pageParams: [1]
-          } as InfiniteArticlesData);
-        }
-        
-        // その後、新しいデータを取得
-        queryClient.invalidateQueries({ queryKey: ['infinite-articles', newFilterKey] });
+        // フィルター変更時は単純にキャッシュを無効化して新しいデータを取得
+        // データ転送を削除することで重複キーエラーを防ぐ
+        queryClient.invalidateQueries({ 
+          queryKey: ['infinite-articles', newFilterKey],
+          refetchType: 'active' // アクティブなクエリのみ再取得
+        });
       }
       prevFilterKeyRef.current = newFilterKey;
     }, 300),
