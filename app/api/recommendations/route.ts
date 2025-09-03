@@ -19,7 +19,9 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = session.user.id;
-    const searchParams = request.nextUrl.searchParams;
+    // Next.js 15.xでのNextRequest対応
+    const url = new URL(request.url);
+    const searchParams = url.searchParams;
     const limit = Math.min(30, Math.max(1, parseInt(searchParams.get('limit') || '10')));
 
     // キャッシュ確認

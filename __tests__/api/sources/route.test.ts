@@ -2,14 +2,15 @@
  * /api/sources エンドポイントのテスト
  */
 
-import { createSourceCacheMock } from '../../helpers/cache-mock-helpers';
-
 // モックの設定
 jest.mock('@/lib/database');
 
+// sourceCacheのモックを手動で設定
+let mockGetAllSourcesWithStats = jest.fn();
+
 jest.mock('@/lib/cache/source-cache', () => ({
   sourceCache: {
-    getAllSourcesWithStats: jest.fn()
+    getAllSourcesWithStats: () => mockGetAllSourcesWithStats()
   }
 }));
 
@@ -19,7 +20,6 @@ import { sourceCache } from '@/lib/cache/source-cache';
 import { NextRequest } from 'next/server';
 
 const prismaMock = prisma as any;
-const sourceCacheMock = sourceCache as any;
 
 describe('/api/sources', () => {
   // sourceCacheに返すデータ（stats付き）
@@ -84,7 +84,7 @@ describe('/api/sources', () => {
     };
     
     // sourceCacheのモック設定（stats付き）
-    sourceCacheMock.getAllSourcesWithStats.mockResolvedValue(mockSourcesWithStats);
+    mockGetAllSourcesWithStats.mockResolvedValue(mockSourcesWithStats);
   });
 
   describe('GET', () => {
@@ -99,7 +99,7 @@ describe('/api/sources', () => {
         console.error('Response error:', errorData);
         console.error('Response status:', response.status);
         // モックの呼び出し状況を確認
-        console.error('sourceCacheMock.getAllSourcesWithStats called:', sourceCacheMock.getAllSourcesWithStats.mock.calls.length);
+        console.error('mockGetAllSourcesWithStats called:', mockGetAllSourcesWithStats.mock.calls.length);
       }
 
       expect(response.status).toBe(200);
@@ -116,7 +116,7 @@ describe('/api/sources', () => {
       expect(response.headers.get('X-Cache-Status')).toBe('HIT');
       expect(response.headers.get('X-Response-Time')).toMatch(/\d+ms/);
       
-      expect(sourceCacheMock.getAllSourcesWithStats).toHaveBeenCalled();
+      expect(mockGetAllSourcesWithStats).toHaveBeenCalled();
       expect(prismaMock.source.findMany).not.toHaveBeenCalled();
     });
 
@@ -222,7 +222,7 @@ describe('/api/sources', () => {
       expect(data.sources[1].id).toBe('qiita');
       
       // IDsパラメータありの場合はキャッシュを使わない
-      expect(sourceCacheMock.getAllSourcesWithStats).not.toHaveBeenCalled();
+      expect(mockGetAllSourcesWithStats).not.toHaveBeenCalled();
       expect(prismaMock.source.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -247,7 +247,7 @@ describe('/api/sources', () => {
     });
 
     it('空の結果を正しく処理する', async () => {
-      sourceCacheMock.getAllSourcesWithStats.mockResolvedValue([]);
+      mockGetAllSourcesWithStats.mockResolvedValue([]);
 
       const request = new NextRequest(new URL('http://localhost/api/sources'));
       const response = await GET(request);

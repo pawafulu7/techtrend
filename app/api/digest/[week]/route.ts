@@ -37,9 +37,14 @@ export async function GET(
     });
 
     // Check cache first
-    const cachedDigest = await cacheInstance.get(cacheKey);
-    if (cachedDigest) {
-      return NextResponse.json(cachedDigest);
+    try {
+      const cachedDigest = await cacheInstance.get(cacheKey);
+      if (cachedDigest) {
+        return NextResponse.json(cachedDigest);
+      }
+    } catch (cacheError) {
+      // キャッシュエラーは無視して処理を続行
+      console.warn('Cache error, continuing without cache:', cacheError);
     }
 
     const generator = new DigestGenerator(prisma);
@@ -53,7 +58,12 @@ export async function GET(
     }
 
     // Cache the digest for 1 hour
-    await cacheInstance.set(cacheKey, digest, 3600);
+    try {
+      await cacheInstance.set(cacheKey, digest, 3600);
+    } catch (cacheError) {
+      // キャッシュ保存エラーは無視
+      console.warn('Cache set error, continuing without caching:', cacheError);
+    }
 
     return NextResponse.json(digest);
   } catch (_error) {

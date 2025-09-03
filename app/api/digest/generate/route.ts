@@ -49,22 +49,27 @@ export async function POST(request: NextRequest) {
     );
 
     // Invalidate cache for this week's digest
-    if (date) {
-      const cacheInstance = getCache();
-      const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
-        params: { week: date }
-      });
-      await cacheInstance.del(cacheKey);
-    }
+    try {
+      if (date) {
+        const cacheInstance = getCache();
+        const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
+          params: { week: date }
+        });
+        await cacheInstance.del(cacheKey);
+      }
 
-    // Also invalidate cache for current week if no date specified
-    if (!date) {
-      const currentWeek = new Date().toISOString();
-      const cacheInstance = getCache();
-      const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
-        params: { week: currentWeek }
-      });
-      await cacheInstance.del(cacheKey);
+      // Also invalidate cache for current week if no date specified
+      if (!date) {
+        const currentWeek = new Date().toISOString();
+        const cacheInstance = getCache();
+        const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
+          params: { week: currentWeek }
+        });
+        await cacheInstance.del(cacheKey);
+      }
+    } catch (cacheError) {
+      // キャッシュ削除エラーは無視して処理を続行
+      logger.warn('Cache deletion error, continuing:', cacheError);
     }
 
     logger.info(`Weekly digest generated: ${digestId}`);

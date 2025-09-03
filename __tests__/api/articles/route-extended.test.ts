@@ -3,24 +3,31 @@
  * カバレッジ改善のため、既存テストでカバーされていない部分をテスト
  */
 
-import { createRedisCacheMock } from '../../helpers/cache-mock-helpers';
+// グローバル型宣言
+declare global {
+  var __mockCacheInstance: any;
+}
 
 // モックの設定
 jest.mock('@/lib/database');
 jest.mock('@/lib/auth/auth');
 
 // モックインスタンスを保持する変数
-let mockCacheInstance: ReturnType<typeof createRedisCacheMock>;
+let mockCacheInstance: any;
 
-jest.mock('@/lib/cache', () => ({
-  RedisCache: jest.fn().mockImplementation(() => {
-    const { createRedisCacheMock } = require('../../helpers/cache-mock-helpers');
-    if (!mockCacheInstance) {
-      mockCacheInstance = createRedisCacheMock();
-    }
-    return mockCacheInstance;
-  })
-}));
+jest.mock('@/lib/cache', () => {
+  const { createRedisCacheMock } = require('../../helpers/cache-mock-helpers');
+  // グローバルスコープでのmockCacheInstance参照を避ける
+  return {
+    RedisCache: jest.fn().mockImplementation(function() {
+      // thisを使って、インスタンスごとにモックを管理
+      if (!global.__mockCacheInstance) {
+        global.__mockCacheInstance = createRedisCacheMock();
+      }
+      return global.__mockCacheInstance;
+    })
+  };
+});
 
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
@@ -125,10 +132,12 @@ describe('/api/articles - Extended Tests', () => {
     jest.clearAllMocks();
     resetMockSession();
     
-    // キャッシュモックのリセット（mockCacheInstanceが初期化されていることを確認）
-    if (!mockCacheInstance) {
-      mockCacheInstance = createRedisCacheMock();
+    // キャッシュモックのリセット（globalインスタンスを使用）
+    const { createRedisCacheMock } = require('../../helpers/cache-mock-helpers');
+    if (!global.__mockCacheInstance) {
+      global.__mockCacheInstance = createRedisCacheMock();
     }
+    mockCacheInstance = global.__mockCacheInstance;
     mockCacheInstance.get.mockResolvedValue(null);
     mockCacheInstance.set.mockResolvedValue(undefined);
     mockCacheInstance.generateCacheKey.mockClear();

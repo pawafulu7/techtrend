@@ -30,9 +30,14 @@ export async function GET(request: NextRequest) {
     });
 
     // キャッシュから取得を試みる
-    const cachedResult = await cache.get(cacheKey);
-    if (cachedResult) {
-      return NextResponse.json(cachedResult);
+    try {
+      const cachedResult = await cache.get(cacheKey);
+      if (cachedResult) {
+        return NextResponse.json(cachedResult);
+      }
+    } catch (cacheError) {
+      // キャッシュエラーは無視して処理を続行
+      console.warn('Cache error, continuing without cache:', cacheError);
     }
 
     // 期間に基づいてフィルタリング
@@ -125,7 +130,7 @@ export async function GET(request: NextRequest) {
       const previousCount = previousPeriodCounts[tag.id] || 0;
       
       let trend: 'rising' | 'stable' | 'falling' = 'stable';
-      if (period !== 'all') {
+      if (period !== 'all' && previousCount > 0) {
         if (currentCount > previousCount * 1.2) {
           trend = 'rising';
         } else if (currentCount < previousCount * 0.8) {
@@ -147,7 +152,12 @@ export async function GET(request: NextRequest) {
     };
 
     // キャッシュに保存
-    await cache.set(cacheKey, response);
+    try {
+      await cache.set(cacheKey, response);
+    } catch (cacheError) {
+      // キャッシュ保存エラーは無視
+      console.warn('Cache set error, continuing without caching:', cacheError);
+    }
 
     return NextResponse.json(response);
   } catch (error) {

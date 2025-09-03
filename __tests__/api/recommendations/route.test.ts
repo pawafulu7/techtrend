@@ -2,16 +2,21 @@
  * /api/recommendations エンドポイントのテスト
  */
 
-import { createRedisServiceMock } from '../../helpers/cache-mock-helpers';
-
 // モックの設定
 jest.mock('@/lib/database');
 jest.mock('@/lib/auth/auth');
 
-// getRedisServiceのモック関数を事前定義
-const getRedisServiceMock = jest.fn();
+// モックインスタンスを保持
+let mockRedisService: any;
+
 jest.mock('@/lib/redis/factory', () => ({
-  getRedisService: getRedisServiceMock
+  getRedisService: jest.fn(() => {
+    const { createRedisServiceMock } = require('../../helpers/cache-mock-helpers');
+    if (!mockRedisService) {
+      mockRedisService = createRedisServiceMock();
+    }
+    return mockRedisService;
+  })
 }));
 
 jest.mock('@/lib/recommendation/recommendation-service');
@@ -37,17 +42,17 @@ const resetMockSession = () => authMock.mockResolvedValue({
 });
 
 describe('/api/recommendations', () => {
-  let redisServiceMock: any;
-  
   beforeEach(() => {
     jest.clearAllMocks();
     resetMockSession();
     
-    // Redisサービスモックを作成
-    redisServiceMock = createRedisServiceMock();
-    
-    // getRedisServiceがモックを返すよう設定
-    getRedisServiceMock.mockReturnValue(redisServiceMock);
+    // Redisサービスモックを確実に初期化
+    const { createRedisServiceMock } = require('../../helpers/cache-mock-helpers');
+    if (!mockRedisService) {
+      mockRedisService = createRedisServiceMock();
+    }
+    mockRedisService.getJSON.mockResolvedValue(null);
+    mockRedisService.setJSON.mockResolvedValue(undefined);
     
     // recommendationServiceのモック設定
     recommendationServiceMock.getRecommendations = jest.fn();
@@ -88,10 +93,10 @@ describe('/api/recommendations', () => {
     ];
 
     it('認証済みユーザーの推薦記事を返す（キャッシュなし）', async () => {
-      redisServiceMock.getJSON.mockResolvedValue(null);
+      mockRedisService.getJSON.mockResolvedValue(null);
       recommendationServiceMock.getRecommendations.mockResolvedValue(mockRecommendations);
 
-      const request = new NextRequest('http://localhost/api/recommendations');
+      const request = new NextRequest(new URL('http://localhost/api/recommendations'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -99,7 +104,7 @@ describe('/api/recommendations', () => {
       
       expect(data).toEqual(mockRecommendations);
       expect(recommendationServiceMock.getRecommendations).toHaveBeenCalledWith('test-user-id', 10);
-      expect(redisServiceMock.setJSON).toHaveBeenCalledWith(
+      expect(mockRedisService.setJSON).toHaveBeenCalledWith(
         'recommendations:test-user-id:10',
         mockRecommendations,
         300
@@ -107,9 +112,9 @@ describe('/api/recommendations', () => {
     });
 
     it('キャッシュから推薦記事を返す', async () => {
-      redisServiceMock.getJSON.mockResolvedValue(mockRecommendations);
+      mockRedisService.getJSON.mockResolvedValue(mockRecommendations);
 
-      const request = new NextRequest('http://localhost/api/recommendations');
+      const request = new NextRequest(new URL('http://localhost/api/recommendations'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -117,20 +122,20 @@ describe('/api/recommendations', () => {
       
       expect(data).toEqual(mockRecommendations);
       expect(recommendationServiceMock.getRecommendations).not.toHaveBeenCalled();
-      expect(redisServiceMock.getJSON).toHaveBeenCalledWith('recommendations:test-user-id:10');
+      expect(mockRedisService.getJSON).toHaveBeenCalledWith('recommendations:test-user-id:10');
     });
 
     it('カスタムlimitパラメータを処理する', async () => {
-      redisServiceMock.getJSON.mockResolvedValue(null);
+      mockRedisService.getJSON.mockResolvedValue(null);
       recommendationServiceMock.getRecommendations.mockResolvedValue(mockRecommendations);
 
-      const request = new NextRequest('http://localhost/api/recommendations?limit=20');
+      const request = new NextRequest(new URL('http://localhost/api/recommendations?limit=20'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       
       expect(recommendationServiceMock.getRecommendations).toHaveBeenCalledWith('test-user-id', 20);
-      expect(redisServiceMock.setJSON).toHaveBeenCalledWith(
+      expect(mockRedisService.setJSON).toHaveBeenCalledWith(
         'recommendations:test-user-id:20',
         mockRecommendations,
         300
@@ -138,10 +143,10 @@ describe('/api/recommendations', () => {
     });
 
     it('limitパラメータを最大30に制限する', async () => {
-      redisServiceMock.getJSON.mockResolvedValue(null);
+      mockRedisService.getJSON.mockResolvedValue(null);
       recommendationServiceMock.getRecommendations.mockResolvedValue(mockRecommendations);
 
-      const request = new NextRequest('http://localhost/api/recommendations?limit=50');
+      const request = new NextRequest(new URL('http://localhost/api/recommendations?limit=50'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -150,10 +155,10 @@ describe('/api/recommendations', () => {
     });
 
     it('limitパラメータを最小1に制限する', async () => {
-      redisServiceMock.getJSON.mockResolvedValue(null);
+      mockRedisService.getJSON.mockResolvedValue(null);
       recommendationServiceMock.getRecommendations.mockResolvedValue([]);
 
-      const request = new NextRequest('http://localhost/api/recommendations?limit=0');
+      const request = new NextRequest(new URL('http://localhost/api/recommendations?limit=0'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -164,7 +169,7 @@ describe('/api/recommendations', () => {
     it('未認証の場合401を返す', async () => {
       setUnauthenticated();
 
-      const request = new NextRequest('http://localhost/api/recommendations');
+      const request = new NextRequest(new URL('http://localhost/api/recommendations'));
       const response = await GET(request);
 
       expect(response.status).toBe(401);
@@ -174,10 +179,10 @@ describe('/api/recommendations', () => {
     });
 
     it('推薦サービスエラーの場合500を返す', async () => {
-      redisServiceMock.getJSON.mockResolvedValue(null);
+      mockRedisService.getJSON.mockResolvedValue(null);
       recommendationServiceMock.getRecommendations.mockRejectedValue(new Error('Service error'));
 
-      const request = new NextRequest('http://localhost/api/recommendations');
+      const request = new NextRequest(new URL('http://localhost/api/recommendations'));
       const response = await GET(request);
 
       expect(response.status).toBe(500);
@@ -186,10 +191,10 @@ describe('/api/recommendations', () => {
     });
 
     it('Redisエラーでも処理を続行する', async () => {
-      redisServiceMock.getJSON.mockRejectedValue(new Error('Redis error'));
+      mockRedisService.getJSON.mockRejectedValue(new Error('Redis error'));
       recommendationServiceMock.getRecommendations.mockResolvedValue(mockRecommendations);
 
-      const request = new NextRequest('http://localhost/api/recommendations');
+      const request = new NextRequest(new URL('http://localhost/api/recommendations'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -200,17 +205,17 @@ describe('/api/recommendations', () => {
     });
 
     it('空の推薦リストを正しく処理する', async () => {
-      redisServiceMock.getJSON.mockResolvedValue(null);
+      mockRedisService.getJSON.mockResolvedValue(null);
       recommendationServiceMock.getRecommendations.mockResolvedValue([]);
 
-      const request = new NextRequest('http://localhost/api/recommendations');
+      const request = new NextRequest(new URL('http://localhost/api/recommendations'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
       
       expect(data).toEqual([]);
-      expect(redisServiceMock.setJSON).toHaveBeenCalledWith(
+      expect(mockRedisService.setJSON).toHaveBeenCalledWith(
         'recommendations:test-user-id:10',
         [],
         300

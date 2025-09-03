@@ -116,7 +116,7 @@ describe('/api/tags/cloud', () => {
         .mockResolvedValueOnce(mockTags)  // 現在期間のタグ
         .mockResolvedValueOnce(mockPreviousTags);  // 前期間のタグ
 
-      const request = new NextRequest('http://localhost/api/tags/cloud');
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -145,7 +145,7 @@ describe('/api/tags/cloud', () => {
         .mockResolvedValueOnce(mockTags.slice(0, 3))
         .mockResolvedValueOnce([]);
 
-      const request = new NextRequest('http://localhost/api/tags/cloud?period=7d&limit=10');
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=7d&limit=10'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -176,7 +176,7 @@ describe('/api/tags/cloud', () => {
         .mockResolvedValueOnce(mockTags)
         .mockResolvedValueOnce(mockPreviousTags);
 
-      const request = new NextRequest('http://localhost/api/tags/cloud?period=365d');
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=365d'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -188,7 +188,7 @@ describe('/api/tags/cloud', () => {
     it('全期間のタグクラウドを取得する', async () => {
       prismaMock.tag.findMany.mockResolvedValueOnce(mockTags);
 
-      const request = new NextRequest('http://localhost/api/tags/cloud?period=all');
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=all'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -219,7 +219,7 @@ describe('/api/tags/cloud', () => {
       
       mockCacheInstance.get.mockResolvedValue(cachedData);
 
-      const request = new NextRequest('http://localhost/api/tags/cloud');
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -247,7 +247,7 @@ describe('/api/tags/cloud', () => {
         .mockResolvedValueOnce(currentTags)
         .mockResolvedValueOnce(previousTags);
 
-      const request = new NextRequest('http://localhost/api/tags/cloud?period=30d');
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=30d'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -263,7 +263,7 @@ describe('/api/tags/cloud', () => {
         .mockResolvedValueOnce(mockTags.slice(0, 2))
         .mockResolvedValueOnce([]);
 
-      const request = new NextRequest('http://localhost/api/tags/cloud?limit=2');
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud?limit=2'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -281,7 +281,7 @@ describe('/api/tags/cloud', () => {
     it('データベースエラーの場合500を返す', async () => {
       prismaMock.tag.findMany.mockRejectedValue(new Error('Database error'));
 
-      const request = new NextRequest('http://localhost/api/tags/cloud');
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud'));
       const response = await GET(request);
 
       expect(response.status).toBe(500);
@@ -298,7 +298,7 @@ describe('/api/tags/cloud', () => {
         .mockResolvedValueOnce(mockTags)
         .mockResolvedValueOnce([]);
 
-      const request = new NextRequest('http://localhost/api/tags/cloud');
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -312,7 +312,7 @@ describe('/api/tags/cloud', () => {
         .mockResolvedValueOnce(mockTags)
         .mockResolvedValueOnce([]);  // 前期間のタグなし
 
-      const request = new NextRequest('http://localhost/api/tags/cloud?period=7d');
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=7d'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);

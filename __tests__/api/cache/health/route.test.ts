@@ -2,18 +2,28 @@
  * /api/cache/health エンドポイントのテスト
  */
 
-import { createRedisClientMock, createCircuitBreakerMock } from '../../../helpers/cache-mock-helpers';
-
-// モックの設定
-const mockRedisClient = createRedisClientMock();
-const mockCircuitBreaker = createCircuitBreakerMock();
+// モックインスタンスを保持
+let mockRedisClient: any;
+let mockCircuitBreaker: any;
 
 jest.mock('@/lib/redis/client', () => ({
-  getRedisClient: jest.fn(() => mockRedisClient)
+  getRedisClient: jest.fn(() => {
+    const { createRedisClientMock } = require('../../../helpers/cache-mock-helpers');
+    if (!mockRedisClient) {
+      mockRedisClient = createRedisClientMock();
+    }
+    return mockRedisClient;
+  })
 }));
 
 jest.mock('@/lib/cache/circuit-breaker', () => ({
-  redisCircuitBreaker: mockCircuitBreaker
+  redisCircuitBreaker: (() => {
+    const { createCircuitBreakerMock } = require('../../../helpers/cache-mock-helpers');
+    if (!mockCircuitBreaker) {
+      mockCircuitBreaker = createCircuitBreakerMock();
+    }
+    return mockCircuitBreaker;
+  })()
 }));
 
 import { GET } from '@/app/api/cache/health/route';
@@ -27,6 +37,15 @@ const redisCircuitBreakerMock = redisCircuitBreaker as any;
 describe('/api/cache/health', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // モックの初期化を確実にする
+    const { createRedisClientMock, createCircuitBreakerMock } = require('../../../helpers/cache-mock-helpers');
+    if (!mockRedisClient) {
+      mockRedisClient = createRedisClientMock();
+    }
+    if (!mockCircuitBreaker) {
+      mockCircuitBreaker = createCircuitBreakerMock();
+    }
     
     // Redisクライアントのモックをリセット
     mockRedisClient.ping.mockResolvedValue('PONG');
