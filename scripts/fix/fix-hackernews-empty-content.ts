@@ -116,8 +116,9 @@ async function main() {
   let failed = 0;
   let regenerated = 0;
   
-  for (const article of articles) {
-    console.log(`\n処理中: ${article.title}`);
+  for (const [index, article] of articles.entries()) {
+    const progress = `[${index + 1}/${articles.length}]`;
+    console.log(`\n${progress} 処理中: ${article.title}`);
     console.log(`  ID: ${article.id}`);
     console.log(`  URL: ${article.url}`);
     
@@ -169,8 +170,8 @@ async function main() {
   
   console.log('\n========================================');
   console.log('処理完了:');
-  console.log(`  修正成功: ${fixed}件`);
-  console.log(`  修正失敗: ${failed}件`);
+  console.log(`  修正成功: ${fixed}件 (${articles.length > 0 ? ((fixed / articles.length) * 100).toFixed(1) : 0}%)`);
+  console.log(`  修正失敗: ${failed}件 (${articles.length > 0 ? ((failed / articles.length) * 100).toFixed(1) : 0}%)`);
   console.log(`  要約再生成: ${regenerated}件`);
 }
 

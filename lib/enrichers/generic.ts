@@ -36,7 +36,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
         });
 
         if (!response.ok) {
-          console.warn(`[GenericEnricher] HTTP ${response.status} for ${url} (attempt ${attempt}/${maxRetries})`);
+          // HTTP エラーステータスのログ（warningレベルは使用しない）
           if (response.status === 429) {
             // Rate limit - より長く待機
             await new Promise(resolve => setTimeout(resolve, 10000));
@@ -187,7 +187,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
 
         // 最小長チェック
         if (content.length < 50) {
-          console.warn(`[GenericEnricher] Content too short for ${url}: ${content.length} chars`);
+          // コンテンツが短すぎる場合は再試行
           if (attempt === maxRetries) {
             return null;
           }
@@ -201,7 +201,12 @@ export class GenericContentEnricher extends BaseContentEnricher {
         };
 
       } catch (error) {
-        console.error(`[GenericEnricher] Error on attempt ${attempt}/${maxRetries} for ${url}:`, error);
+        // タイムアウトエラーの特別処理
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error(`[GenericEnricher] Request timeout for ${url} (attempt ${attempt}/${maxRetries})`);
+        } else {
+          console.error(`[GenericEnricher] Error on attempt ${attempt}/${maxRetries} for ${url}:`, error);
+        }
         
         if (attempt === maxRetries) {
           console.error(`[GenericEnricher] All attempts failed for ${url}`);

@@ -30,8 +30,7 @@ export async function GET(
     if (!article.content || article.content.trim() === '') {
       return NextResponse.json({
         success: false,
-        error: 'Article content is not available',
-        details: 'This article has no content and cannot be displayed',
+        error: 'Article content not available',
       } as ApiResponse<never>, { status: 404 });
     }
 

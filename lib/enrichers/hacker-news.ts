@@ -69,7 +69,8 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       let thumbnail = '';
       
       // GitHub specific extraction
-      if (url.includes('github.com')) {
+      const urlObj = new URL(url);
+      if (urlObj.hostname === 'github.com' || urlObj.hostname === 'www.github.com') {
         // README content
         const readme = $('.markdown-body, .readme, article[itemprop="text"]').first();
         if (readme.length) {
@@ -87,7 +88,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       }
       
       // arXiv specific extraction
-      else if (url.includes('arxiv.org')) {
+      else if (urlObj.hostname === 'arxiv.org' || urlObj.hostname === 'www.arxiv.org') {
         // Abstract
         const abstract = $('.abstract, blockquote.abstract').first();
         if (abstract.length) {
