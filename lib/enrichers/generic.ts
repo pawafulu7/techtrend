@@ -68,15 +68,17 @@ export class GenericContentEnricher extends BaseContentEnricher {
         const title = $('title').text().trim();
 
         // サムネイル画像の優先順位（絶対URLに正規化）
+        // リダイレクト後のURLをベースURLとして使用
+        const baseUrl = response.url || url;
         let thumbnail = ogImage || twitterImage;
         if (thumbnail) {
           try {
-            thumbnail = new URL(thumbnail, url).toString();
+            thumbnail = new URL(thumbnail, baseUrl).toString();
           } catch {
             // 変換に失敗した場合はそのまま使用
           }
         } else {
-          thumbnail = this.findFirstImage($, url) || undefined;
+          thumbnail = this.findFirstImage($, baseUrl) || undefined;
         }
 
         // コンテンツ抽出戦略

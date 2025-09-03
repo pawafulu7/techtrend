@@ -62,8 +62,8 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       const html = await response.text();
       const $ = cheerio.load(html);
       
-      // 不要な要素を削除
-      $('script, style, noscript, iframe').remove();
+      // 不要な要素を削除（JSON-LDは保持）
+      $('script:not([type="application/ld+json"]), style, noscript, iframe').remove();
       
       let content = '';
       let thumbnail = '';

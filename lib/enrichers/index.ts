@@ -136,4 +136,30 @@ export class ContentEnricherFactory {
       // 'tech.smarthr.jp',
     ];
   }
+
+  /**
+   * 各エンリッチャーを順番に試して最初の成功結果を返す
+   * @param url 処理対象のURL
+   * @returns エンリッチメント結果、またはnull
+   */
+  async trySequential(url: string): Promise<import('./base').EnrichmentResult | null> {
+    // すべてのエンリッチャーを順番に試す
+    for (const enricher of this.enrichers) {
+      try {
+        if (enricher.canHandle(url)) {
+          const result = await enricher.enrich(url);
+          if (result && result.content) {
+            // 有効な結果が得られたら即座に返す
+            return result;
+          }
+        }
+      } catch (error) {
+        // エラーは無視して次のエンリッチャーを試す
+        console.error(`[ContentEnricherFactory] Error with ${enricher.constructor.name}:`, error);
+      }
+    }
+    
+    // すべてのエンリッチャーが失敗した場合
+    return null;
+  }
 }

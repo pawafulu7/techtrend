@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S node --loader tsx
 /**
  * Hacker News記事の空のコンテンツを修正するスクリプト
  * 問題: エンリッチャーが対応していないドメインの記事でcontentがnullになる
@@ -64,12 +64,20 @@ function extractTextContent(html: string): string {
 async function fetchContent(url: string): Promise<string | null> {
   try {
     console.log(`  Fetching content from: ${url}`);
+    
+    // AbortControllerでタイムアウト制御
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15秒タイムアウト
+    
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; TechTrendBot/1.0)'
       },
-      signal: AbortSignal.timeout(30000) // 30秒タイムアウト
+      signal: controller.signal,
+      redirect: 'follow' // リダイレクト明示的に追従
     });
+    
+    clearTimeout(timeout);
     
     if (!response.ok) {
       console.error(`  Failed to fetch: ${response.status}`);
@@ -98,7 +106,9 @@ async function main() {
   // contentがnullのHacker News記事を取得
   const articles = await prisma.article.findMany({
     where: {
-      source: { name: 'Hacker News' },
+      source: { 
+        is: { name: 'Hacker News' } // より正確なリレーションフィルタリング
+      },
       content: null
     },
     include: { source: true },
@@ -177,15 +187,16 @@ async function main() {
   console.log(`  要約再生成: ${regenerated}件`);
 }
 
-main()
-  .then(() => {
+// IIFEでラップして適切な終了処理
+(async () => {
+  try {
+    await main();
     console.log('\n完了しました。');
-    process.exit(0);
-  })
-  .catch((error) => {
+    process.exitCode = 0;
+  } catch (error) {
     console.error('\nエラーが発生しました:', error);
-    process.exit(1);
-  })
-  .finally(() => {
-    prisma.$disconnect();
-  });
+    process.exitCode = 1;
+  } finally {
+    await prisma.$disconnect();
+  }
+})();
