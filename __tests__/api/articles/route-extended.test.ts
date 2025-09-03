@@ -501,10 +501,12 @@ describe('/api/articles - Extended Tests', () => {
 
       expect(response.status).toBe(200);
       
-      // 空白のみのタグリストは条件に含まれない
+      // 空白のみのタグリストは条件に含まれない（コンテンツフィルタリングは含まれる）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {}
+          where: {
+            content: { not: null }
+          }
         })
       );
     });
