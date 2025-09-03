@@ -69,12 +69,11 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       let thumbnail = '';
       
       // Parse URL for domain-specific extraction
-      let urlObj: URL;
+      let urlObj: URL | null = null;
       try {
         urlObj = new URL(url);
       } catch {
         // Invalid URL, fallback to generic extraction
-        urlObj = null!;
       }
       
       // GitHub specific extraction

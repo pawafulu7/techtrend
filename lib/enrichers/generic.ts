@@ -265,6 +265,6 @@ export class GenericContentEnricher extends BaseContentEnricher {
       // 全体のトリム
       .trim()
       // 最大長制限
-      .substring(0, 100000);
+      .substring(0, 50000);
   }
 }

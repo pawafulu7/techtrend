@@ -27,7 +27,7 @@ export async function GET(
     }
 
     // Check if article has content (exclude null and empty strings)
-    if (!article.content || article.content.trim() === '') {
+    if (!article.content?.trim()) {
       return NextResponse.json({
         success: false,
         error: 'Article content not available',
