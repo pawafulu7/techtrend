@@ -45,17 +45,18 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   const handleFilterChange = useMemo(
     () => debounce((newFilterKey: string) => {
       if (prevFilterKeyRef.current && prevFilterKeyRef.current !== newFilterKey) {
-        // 最初のページのみ保持して更新（ちらつき防止）
-        queryClient.setQueryData(['infinite-articles', newFilterKey], (oldData: InfiniteArticlesData | undefined) => {
-          if (oldData?.pages?.[0]) {
-            return {
-              ...oldData,
-              pages: [oldData.pages[0]],
-              pageParams: [1]
-            };
-          }
-          return oldData;
-        });
+        // 古いフィルターキーから現在のデータを取得
+        const oldFilterKey = prevFilterKeyRef.current;
+        const currentData = queryClient.getQueryData<InfiniteArticlesData>(['infinite-articles', oldFilterKey]);
+        
+        // 新しいフィルターキーに最初のページのみ転送（ちらつき防止）
+        if (currentData?.pages?.[0]) {
+          queryClient.setQueryData(['infinite-articles', newFilterKey], {
+            ...currentData,
+            pages: [currentData.pages[0]],
+            pageParams: [1]
+          });
+        }
         
         // その後、新しいデータを取得
         queryClient.invalidateQueries({ queryKey: ['infinite-articles', newFilterKey] });
@@ -68,6 +69,11 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   // フィルターが変更されたときにdebounce処理を実行
   useEffect(() => {
     handleFilterChange(filterKey);
+    
+    // クリーンアップ: コンポーネントのアンマウント時にpendingな実行をキャンセル
+    return () => {
+      handleFilterChange.cancel();
+    };
   }, [filterKey, handleFilterChange]);
   
   // 既読状態変更ハンドラ（最適化版）
