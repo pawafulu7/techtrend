@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient, InfiniteData } from '@tanstack/react-query';
 import { ArticleWithRelations } from '@/types/models';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { debounce } from '@/lib/utils/debounce';
@@ -20,6 +20,8 @@ interface ArticlesResponse {
     limit: number;
   };
 }
+
+type InfiniteArticlesData = InfiniteData<ArticlesResponse>;
 
 export function useInfiniteArticles(filters: ArticleFilters) {
   const queryClient = useQueryClient();
@@ -43,7 +45,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     () => debounce((newFilterKey: string) => {
       if (prevFilterKeyRef.current && prevFilterKeyRef.current !== newFilterKey) {
         // 最初のページのみ保持して更新（ちらつき防止）
-        queryClient.setQueryData(['infinite-articles', newFilterKey], (oldData: any) => {
+        queryClient.setQueryData(['infinite-articles', newFilterKey], (oldData: InfiniteArticlesData | undefined) => {
           if (oldData?.pages?.[0]) {
             return {
               ...oldData,
@@ -72,16 +74,16 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     // 既読フィルターが有効な場合のみ再取得
     if (normalizedFilters.readFilter) {
       // 部分的な更新のみ実施（全体再取得を避ける）
-      queryClient.setQueryData(['infinite-articles', filterKey], (oldData: any) => {
+      queryClient.setQueryData(['infinite-articles', filterKey], (oldData: InfiniteArticlesData | undefined) => {
         if (oldData?.pages) {
           // 既読状態のみ更新（optimistic update）
           return {
             ...oldData,
-            pages: oldData.pages.map((page: any) => ({
+            pages: oldData.pages.map((page: ArticlesResponse) => ({
               ...page,
               data: {
                 ...page.data,
-                items: page.data.items.map((item: any) => ({
+                items: page.data.items.map((item: ArticleWithRelations) => ({
                   ...item,
                   // 既読状態を更新（実際のAPIレスポンスで上書きされる）
                 }))

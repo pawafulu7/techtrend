@@ -6,6 +6,7 @@
  * @param wait - The number of milliseconds to delay
  * @returns The debounced function
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
@@ -35,12 +36,14 @@ export function debounce<T extends (...args: any[]) => any>(
  * @param immediate - Whether to execute on the leading edge
  * @returns The debounced function with cancel method
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function debounceWithImmediate<T extends (...args: any[]) => any>(
   func: T,
   wait: number,
   immediate = false
 ): ((...args: Parameters<T>) => void) & { cancel: () => void } {
   let timeout: ReturnType<typeof setTimeout> | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let result: any;
 
   const debounced = function (...args: Parameters<T>) {
@@ -85,12 +88,15 @@ export function debounceWithImmediate<T extends (...args: any[]) => any>(
  * @param wait - The number of milliseconds to delay
  * @returns The debounced async function
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function debounceAsync<T extends (...args: any[]) => Promise<any>>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => Promise<ReturnType<T>> {
   let timeout: ReturnType<typeof setTimeout> | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let resolvePromise: ((value: any) => void) | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let rejectPromise: ((reason?: any) => void) | null = null;
 
   return function (...args: Parameters<T>): Promise<ReturnType<T>> {
