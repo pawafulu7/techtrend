@@ -383,45 +383,27 @@ describe('ArticleCard', () => {
       expect(screen.getByText('Article with Source')).toBeInTheDocument();
     });
 
-    it('handles Speaker Deck articles with source correctly', () => {
-      const speakerDeckArticle = createMockArticleWithRelations({
+    it.each([
+      { name: 'Speaker Deck', title: 'Speaker Deck Presentation' },
+      { name: 'Docswell', title: 'Docswell Presentation' },
+    ])('handles $name articles with source correctly', ({ name, title }) => {
+      const article = createMockArticleWithRelations({
         article: {
-          title: 'Speaker Deck Presentation',
-          thumbnail: 'https://example.com/deck-thumb.jpg'
+          title,
+          thumbnail: 'https://example.com/thumb.jpg'
         },
         source: createMockSource({ 
-          name: 'Speaker Deck',
+          name,
           type: 'presentation'
         })
       });
       
-      render(<ArticleCard article={speakerDeckArticle} />);
+      render(<ArticleCard article={article} />);
       
-      // Speaker Deckの記事が正しくレンダリングされる
+      // 記事が正しくレンダリングされる
       expect(screen.getByTestId('article-card')).toBeInTheDocument();
       // サムネイルが表示される（shouldShowThumbnail関数の動作確認）
-      const thumbnail = screen.getByRole('img', { name: 'Speaker Deck Presentation' });
-      expect(thumbnail).toBeInTheDocument();
-    });
-
-    it('handles Docswell articles with source correctly', () => {
-      const docswellArticle = createMockArticleWithRelations({
-        article: {
-          title: 'Docswell Presentation',
-          thumbnail: 'https://example.com/docs-thumb.jpg'
-        },
-        source: createMockSource({ 
-          name: 'Docswell',
-          type: 'presentation'
-        })
-      });
-      
-      render(<ArticleCard article={docswellArticle} />);
-      
-      // Docswellの記事が正しくレンダリングされる
-      expect(screen.getByTestId('article-card')).toBeInTheDocument();
-      // サムネイルが表示される（shouldShowThumbnail関数の動作確認）
-      const thumbnail = screen.getByRole('img', { name: 'Docswell Presentation' });
+      const thumbnail = screen.getByRole('img', { name: title });
       expect(thumbnail).toBeInTheDocument();
     });
 

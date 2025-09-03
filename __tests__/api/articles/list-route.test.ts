@@ -166,8 +166,10 @@ describe('/api/articles/list', () => {
     const data = await response.json();
 
     // Assert
-    // tagsリレーションが含まれていないことを確認（パフォーマンス最適化）
+    // 重いフィールドが含まれていないことを確認（パフォーマンス最適化）
     expect(data.data.items[0].tags).toBeUndefined();
+    expect(data.data.items[0].content).toBeUndefined();
+    expect(data.data.items[0].detailedSummary).toBeUndefined();
   });
 
   it('should handle articles from specific sources correctly', async () => {

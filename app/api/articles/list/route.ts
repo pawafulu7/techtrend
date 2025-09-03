@@ -3,33 +3,33 @@ import { prisma } from '@/lib/database';
 import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
 import { RedisCache } from '@/lib/cache';
-import type { Prisma, ArticleCategory } from '@prisma/client';
+import type { Prisma, ArticleCategory, SourceType } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { auth } from '@/lib/auth/auth';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
-// Lightweight article type with minimal source relation
+// Lightweight article type with minimal source relation included
 interface LightweightArticle {
   id: string;
   title: string;
   url: string;
   summary: string | null;
   thumbnail: string | null;
-  publishedAt: Date;
+  publishedAt: Date | string;
   sourceId: string;
   source: {
     id: string;
     name: string;
-    type: string;
+    type: SourceType;
     url: string;
   };
   category: ArticleCategory | null;
   qualityScore: number;
   bookmarks: number;
   userVotes: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 // Initialize Redis cache with 5 minutes TTL for lightweight articles
@@ -261,9 +261,9 @@ export async function GET(request: NextRequest) {
           userVotes: true,
           createdAt: true,
           updatedAt: true,
-          // NO tags relation (performance optimization)
-          // NO content field (reduces data transfer)
-          // NO detailedSummary field (reduces data transfer)
+          // No tags relation selected (performance optimization)
+          // No content field selected (reduces data transfer)
+          // No detailedSummary field selected (reduces data transfer)
         },
         orderBy: {
           [finalSortBy]: sortOrder,
