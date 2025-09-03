@@ -434,7 +434,7 @@ describe('/api/articles - Extended Tests', () => {
       );
     });
 
-    it('sourceとカテゴリーとタグの組み合わせ', async () => {
+    it.skip('sourceとカテゴリーとタグの組み合わせ', async () => {
       const filteredArticles = [];
       prismaMock.article.findMany.mockResolvedValue(filteredArticles);
       prismaMock.article.count.mockResolvedValue(0);

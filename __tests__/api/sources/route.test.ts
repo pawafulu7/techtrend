@@ -6,11 +6,7 @@
 jest.mock('@/lib/database');
 
 // sourceCacheのモックを手動で設定
-jest.mock('@/lib/cache/source-cache', () => ({
-  sourceCache: {
-    getAllSourcesWithStats: jest.fn()
-  }
-}));
+jest.mock('@/lib/cache/source-cache');
 
 import { GET } from '@/app/api/sources/route';
 import { prisma } from '@/lib/database';
@@ -77,13 +73,15 @@ describe('/api/sources', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
+    // sourceCacheのモック関数を明示的に設定
+    sourceCacheMock.getAllSourcesWithStats = jest.fn().mockResolvedValue(mockSourcesWithStats);
+    sourceCacheMock.invalidate = jest.fn();
+    sourceCacheMock.invalidateSource = jest.fn();
+    
     // デフォルトのPrismaモック設定（_countとarticles付き）
     prismaMock.source = {
       findMany: jest.fn().mockResolvedValue(mockPrismaSourcesWithCount),
     };
-    
-    // sourceCacheのモック設定（stats付き）
-    sourceCacheMock.getAllSourcesWithStats.mockResolvedValue(mockSourcesWithStats);
   });
 
   describe('GET', () => {
