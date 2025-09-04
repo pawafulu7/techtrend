@@ -279,6 +279,100 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
 }
 
 /**
+ * パスワード変更テスト用のユーザー設定
+ */
+export const TEST_USER_FOR_PASSWORD_CHANGE = {
+  ...TEST_USER,
+  newPassword: 'NewTestPassword456',
+};
+
+/**
+ * テストユーザーを作成
+ * @param email - ユーザーのメールアドレス
+ * @param password - パスワード
+ */
+export async function createTestUser(email: string, password: string) {
+  // Implementation would depend on your API or database setup
+  // This is a placeholder for test user creation logic
+  console.log(`Creating test user: ${email}`);
+}
+
+/**
+ * テストユーザーを削除
+ * @param email - 削除するユーザーのメールアドレス
+ */
+export async function deleteTestUser(email: string) {
+  // Implementation would depend on your API or database setup
+  // This is a placeholder for test user deletion logic
+  console.log(`Deleting test user: ${email}`);
+}
+
+/**
+ * アカウントタブを開く
+ * @param page - Playwright page object
+ */
+export async function openAccountTab(page: Page) {
+  await page.click('[data-testid="account-tab"], a[href*="account"], button:has-text("アカウント")');
+  await page.waitForTimeout(500);
+}
+
+/**
+ * パスワード変更フォームを入力
+ * @param page - Playwright page object
+ * @param currentPassword - 現在のパスワード
+ * @param newPassword - 新しいパスワード
+ */
+export async function fillPasswordChangeForm(
+  page: Page, 
+  currentPassword: string, 
+  newPassword: string
+) {
+  await page.fill('input[name="currentPassword"], input[type="password"]:first', currentPassword);
+  await page.fill('input[name="newPassword"], input[placeholder*="新しいパスワード"]', newPassword);
+  await page.fill('input[name="confirmPassword"], input[placeholder*="確認"]', newPassword);
+}
+
+/**
+ * エラーメッセージが表示されるまで待つ
+ * @param page - Playwright page object
+ * @param message - 期待するエラーメッセージ（部分一致）
+ * @param timeout - タイムアウト時間（ミリ秒）
+ */
+export async function waitForErrorMessage(
+  page: Page, 
+  message: string, 
+  timeout = 5000
+) {
+  await page.waitForSelector(`[class*="error"]:has-text("${message}")`, { timeout });
+}
+
+/**
+ * 成功メッセージが表示されるまで待つ
+ * @param page - Playwright page object
+ * @param message - 期待する成功メッセージ（部分一致）
+ * @param timeout - タイムアウト時間（ミリ秒）
+ */
+export async function waitForSuccessMessage(
+  page: Page, 
+  message: string, 
+  timeout = 5000
+) {
+  await page.waitForSelector(`[class*="success"]:has-text("${message}")`, { timeout });
+}
+
+/**
+ * データ読み込み完了を待つ（エイリアス）
+ * @deprecated Use waitForDataLoad instead
+ */
+export const _waitForDataLoad = waitForDataLoad;
+
+/**
+ * ページタイトルを検証（エイリアス）
+ * @deprecated Use expectPageTitle instead
+ */
+export const _expectPageTitle = expectPageTitle;
+
+/**
  * Test user login helper
  * @param page - Playwright page object
  * @param options - Login options
