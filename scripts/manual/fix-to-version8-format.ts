@@ -2,20 +2,12 @@
 // 記事をVersion 8形式の詳細要約に手動修正するスクリプト
 
 import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-/**
- * Version 8形式の検証
- * Version 8の詳細要約は「・項目名：内容」の形式に従う必要がある
- */
-function validateVersion8Format(detailedSummary: string): boolean {
-  if (!detailedSummary) return false;
-  
-  const lines = detailedSummary.split('\n');
-  // すべての行が「・」で始まるかチェック
-  return lines.every(line => line.trim().startsWith('・') && line.includes('：'));
-}
+import { 
+  validateVersion8Format, 
+  safeSubstring, 
+  normalizeLineBreaks,
+  validateQualityScore 
+} from '../utils/version8-validation';
 
 async function fixToVersion8Format(articleId: string): Promise<number> {
   try {
@@ -30,9 +22,19 @@ async function fixToVersion8Format(articleId: string): Promise<number> {
 ・実装方法と検証結果：記事内では短縮版プロンプト（1500字制限対応）とChatGPT用の具体的な適用方法が詳しく説明されている。さらに、実際にカスタムプロンプトを用いた会話例（昼食選択の意思決定支援）や、GPT-5による推論過程の分析結果も示され、プロンプトの有効性が検証されている。
 ・LLM活用への示唆：このカスタムプロンプトの成功は、ユーザーの指示設計次第でLLMの出力品質を大幅に向上させられることを示している。特に、前提条件の明確化という基本的だが見逃されやすい要素に着目することで、AI支援の効果を最大化できる点が重要な示唆となっている。`;
     
+    // 改行を正規化
+    const normalizedSummary = normalizeLineBreaks(version8DetailedSummary);
+    
     // Version 8形式の検証
-    if (!validateVersion8Format(version8DetailedSummary)) {
+    if (!validateVersion8Format(normalizedSummary)) {
       console.error('エラー: 詳細要約がVersion 8形式に準拠していません');
+      return 1;
+    }
+    
+    // 品質スコアの検証
+    const qualityScore = 85;
+    if (!validateQualityScore(qualityScore)) {
+      console.error(`エラー: 品質スコアが範囲外です: ${qualityScore}`);
       return 1;
     }
 
@@ -40,10 +42,10 @@ async function fixToVersion8Format(articleId: string): Promise<number> {
     const updated = await prisma.article.update({
       where: { id: articleId },
       data: {
-        detailedSummary: version8DetailedSummary,
+        detailedSummary: normalizedSummary,
         summaryVersion: 8,
         articleType: 'unified',
-        qualityScore: 85
+        qualityScore: qualityScore
       }
     });
 
@@ -55,14 +57,10 @@ async function fixToVersion8Format(articleId: string): Promise<number> {
     console.log(`  品質スコア: ${updated.qualityScore}`);
     console.log('\n新しい詳細要約（Version 8形式）:');
     
-    // 最初の2項目を表示（Unicode安全なプレビュー出力）
+    // 最初の2項目を表示（共通関数を使用）
     const lines = updated.detailedSummary?.split('\n').slice(0, 2);
     lines?.forEach(line => {
-      // Unicode安全な文字列切り出し
-      const lineArray = Array.from(line);
-      const displayText = lineArray.length > 100 
-        ? lineArray.slice(0, 100).join('') + '...' 
-        : line;
+      const displayText = safeSubstring(line, 100);
       console.log(displayText);
     });
     

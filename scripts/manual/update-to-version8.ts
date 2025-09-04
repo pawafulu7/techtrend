@@ -3,6 +3,11 @@
 
 import { PrismaClient } from '@prisma/client';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { 
+  validateGenerationResult, 
+  safeSubstring, 
+  normalizeLineBreaks 
+} from '../utils/version8-validation';
 
 const prisma = new PrismaClient();
 
@@ -32,12 +37,9 @@ async function updateToVersion8(articleId: string): Promise<number> {
     }
 
     console.log('現在の詳細要約（旧形式）:');
-    // Unicode安全な文字列切り出し（絵文字や多バイト文字対応）
+    // 共通関数を使用したUnicode安全な文字列処理
     if (article.detailedSummary) {
-      const dsArray = Array.from(article.detailedSummary);
-      const currentPreview = dsArray.length > 200
-        ? dsArray.slice(0, 200).join('') + '...'
-        : article.detailedSummary;
+      const currentPreview = safeSubstring(article.detailedSummary, 200);
       console.log(currentPreview);
     } else {
       console.log('（なし）');
@@ -64,9 +66,11 @@ async function updateToVersion8(articleId: string): Promise<number> {
       { sourceName: article.source?.name ?? '不明', url: article.url }
     );
 
-    // resultは直接UnifiedSummaryResultを返すため、successプロパティはない
-    if (!result.summary) {
-      console.error('要約生成に失敗しました');
+    // 生成結果の総合的な検証
+    const validation = validateGenerationResult(result);
+    if (!validation.isValid) {
+      console.error('要約生成結果に問題があります:');
+      validation.errors.forEach(error => console.error(`  - ${error}`));
       return 1;
     }
 
@@ -81,28 +85,25 @@ async function updateToVersion8(articleId: string): Promise<number> {
     console.log('');
 
     console.log('新しい詳細要約（Version 8形式）:');
-    // 詳細要約の最初の3項目を表示
-    const lines = result.detailedSummary?.split('\n').slice(0, 3);
-    lines?.forEach(line => {
-      // Unicode安全な文字列切り出し
-      const lineArray = Array.from(line);
-      const displayText = lineArray.length > 100
-        ? lineArray.slice(0, 100).join('') + '...'
-        : line;
+    // 詳細要約の最初の3項目を表示（共通関数使用）
+    const normalizedDetail = normalizeLineBreaks(result.detailedSummary || '');
+    const lines = normalizedDetail.split('\n').slice(0, 3);
+    lines.forEach(line => {
+      const displayText = safeSubstring(line, 100);
       console.log(displayText);
     });
     // 4項目以上ある場合のみ省略記号を表示
-    if (result.detailedSummary && result.detailedSummary.split('\n').length > 3) {
+    if (normalizedDetail.split('\n').length > 3) {
       console.log('...');
     }
     console.log('');
 
-    // データベース更新
+    // データベース更新（正規化後のデータを保存）
     const updated = await prisma.article.update({
       where: { id: articleId },
       data: {
         summary: result.summary,
-        detailedSummary: result.detailedSummary,
+        detailedSummary: normalizeLineBreaks(result.detailedSummary || ''),
         summaryVersion: result.summaryVersion,
         articleType: result.articleType,
         qualityScore: result.qualityScore
