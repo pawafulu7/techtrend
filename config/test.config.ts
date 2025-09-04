@@ -5,7 +5,9 @@
 
 export const testConfig = {
   // アプリケーションのポート設定（環境変数 > デフォルト）
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: Number.isNaN(Number.parseInt(process.env.PORT ?? '', 10))
+    ? 3000
+    : Number.parseInt(process.env.PORT ?? '', 10),
   
   // ベースURL（環境に応じて自動設定）
   get baseUrl() {

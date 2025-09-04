@@ -2,8 +2,6 @@ import { test, expect } from '@playwright/test';
 import { 
   TEST_USER,
   TEST_USERS,
-  createTestUser, 
-  deleteTestUser, 
   loginTestUser
 } from './utils/test-helpers';
 
@@ -154,7 +152,7 @@ test.describe.serial('Login Feature - Improved', () => {
     expect(loginSuccess).toBe(true);
     
     // ホームページにリダイレクトされることを確認
-    await expect(page).toHaveURL('http://localhost:3000/');
+    await expect(page).toHaveURL(/^https?:\/\/localhost:\d+\/$/);
     
     // ユーザーメニューが表示されるまで待機
     await page.waitForTimeout(2000); // セッション確立のため待機
