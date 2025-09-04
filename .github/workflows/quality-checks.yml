@@ -286,6 +286,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
           NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
+          NEXTAUTH_URL: http://localhost:3000  # CI環境用に追加
+          AUTH_TRUST_HOST: true  # テスト環境専用、本番では使用しない
           PORT: 3000
         run: npm run test:e2e:chromium
 
