@@ -60,17 +60,19 @@ async function testDeleteArticles() {
     });
     
     // ArticleViewレコードを作成（削除対象記事に対して）
-    for (const article of testArticles.slice(0, 2)) { // 最初の2つの記事にViewを作成
-      await prisma.articleView.create({
-        data: {
-          userId: testUser.id,
-          articleId: article.id,
-          viewedAt: new Date(),
-          isRead: true,
-          readAt: new Date()
-        }
-      });
-    }
+    await Promise.all(
+      testArticles.slice(0, 2).map((article) =>
+        prisma.articleView.create({
+          data: {
+            userId: testUser.id,
+            articleId: article.id,
+            viewedAt: new Date(),
+            isRead: true,
+            readAt: new Date()
+          }
+        })
+      )
+    );
     
     console.log(`  作成した削除対象記事: ${testArticles.length}件`);
     console.log(`  作成した保持対象記事: 1件`);

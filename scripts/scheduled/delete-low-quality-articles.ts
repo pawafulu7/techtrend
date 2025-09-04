@@ -97,20 +97,22 @@ async function deleteLowQualityArticles(dryRun = false) {
     console.error('キャッシュ無効化完了');
   }
 
-  // 削除後の統計
-  console.error('\n=== 削除後の統計 ===');
-  const sources = await prisma.source.findMany({
-    where: { enabled: true },
-    include: {
-      _count: {
-        select: { articles: true }
+  // 削除後の統計（ドライランモードでは表示しない）
+  if (!dryRun) {
+    console.error('\n=== 削除後の統計 ===');
+    const sources = await prisma.source.findMany({
+      where: { enabled: true },
+      include: {
+        _count: {
+          select: { articles: true }
+        }
       }
-    }
-  });
+    });
 
-  sources.forEach(source => {
-    console.error(`${source.name}: ${source._count.articles}件`);
-  });
+    sources.forEach(source => {
+      console.error(`${source.name}: ${source._count.articles}件`);
+    });
+  }
 
   await prisma.$disconnect();
 }
