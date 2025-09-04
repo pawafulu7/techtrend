@@ -70,7 +70,9 @@ export async function testApiHandler(
 
   return {
     status: response.status,
-    headers: Object.fromEntries(response.headers.entries()),
+    headers: Object.fromEntries(
+      Array.from(response.headers.entries()).map(([k, v]) => [k.toLowerCase(), v])
+    ),
     body: jsonBody,
     response,
   };
@@ -136,6 +138,9 @@ export function createMockRedisClient() {
     expire: jest.fn(async () => 1),
     ttl: jest.fn(async () => 3600),
     keys: jest.fn(async (pattern: string) => {
+      // Guard against excessively long patterns
+      if (pattern.length > 256) return [];
+      
       // Convert Redis glob pattern to regex safely
       // First escape all regex special chars, then handle Redis wildcards
       const regexPattern = '^' + pattern

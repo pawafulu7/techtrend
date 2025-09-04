@@ -176,20 +176,24 @@ export async function waitForTextChange(
   timeout = 5000
 ) {
   await page.waitForFunction(
-    ({ selector, expectedText }) => {
+    ({ selector, expected }) => {
       const element = document.querySelector(selector);
       if (!element) return false;
       const text = element.textContent || '';
       
-      if (typeof expectedText === 'string') {
-        return text.includes(expectedText);
+      if (expected.kind === 'string') {
+        return text.includes(expected.value);
       } else {
-        // RegExpオブジェクトは直接渡せないため、文字列として処理
-        const pattern = new RegExp(expectedText.toString().slice(1, -1));
-        return pattern.test(text);
+        const re = new RegExp(expected.source, expected.flags || '');
+        return re.test(text);
       }
     },
-    { selector, expectedText: expectedText instanceof RegExp ? expectedText.toString() : expectedText },
+    {
+      selector,
+      expected: expectedText instanceof RegExp
+        ? { kind: 'regex', source: expectedText.source, flags: expectedText.flags || '' }
+        : { kind: 'string', value: expectedText }
+    },
     { timeout }
   );
 }
