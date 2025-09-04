@@ -3,7 +3,7 @@
  * テストデータを簡単に作成するためのヘルパー
  */
 
-import { Article, Source, Tag, User } from '@prisma/client';
+import type { Article, Source, Tag, User } from '@prisma/client';
 
 /**
  * 記事ビルダー
@@ -90,12 +90,13 @@ export class ArticleBuilder {
   }
 
   withTags(tags: Array<Partial<Tag>>): ArticleBuilder {
+    const baseId = this.article.id ?? 'article';
     this.article.tags = tags.map((tag, index) => ({
-      id: tag.id || `tag-${index}`,
-      name: tag.name || `Tag ${index}`,
-      category: tag.category || null,
-      createdAt: tag.createdAt || new Date(),
-      updatedAt: tag.updatedAt || new Date(),
+      id: tag.id ?? `${baseId}-tag-${index + 1}`,
+      name: tag.name ?? `Tag ${index + 1}`,
+      category: tag.category ?? null,
+      createdAt: tag.createdAt ?? new Date(),
+      updatedAt: tag.updatedAt ?? new Date(),
     }));
     return this;
   }
@@ -117,10 +118,20 @@ export class ArticleBuilder {
 
   build(): Article & { source: Source; tags: Tag[] } {
     // Return a deep copy to prevent unintended state sharing
+    const source = this.article.source!;
+    const tags = this.article.tags ?? [];
     return {
       ...this.article,
-      source: { ...this.article.source },
-      tags: this.article.tags?.map(tag => ({ ...tag })) || [],
+      source: {
+        ...source,
+        createdAt: new Date(source.createdAt!),
+        updatedAt: new Date(source.updatedAt!),
+      },
+      tags: tags.map(t => ({
+        ...t,
+        createdAt: new Date(t.createdAt!),
+        updatedAt: new Date(t.updatedAt!),
+      })),
       publishedAt: new Date(this.article.publishedAt!),
       createdAt: new Date(this.article.createdAt!),
       updatedAt: new Date(this.article.updatedAt!),
@@ -202,7 +213,7 @@ export class SourceBuilder {
     return this;
   }
 
-  withType(type: 'rss' | 'api' | 'scraper'): SourceBuilder {
+  withType(type: Source['type']): SourceBuilder {
     this.source.type = type;
     return this;
   }

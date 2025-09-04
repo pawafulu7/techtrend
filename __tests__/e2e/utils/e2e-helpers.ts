@@ -17,25 +17,26 @@ export const TEST_USER: { id: string; email: string; name: string; password: str
 };
 
 // Browser-specific test users (for parallel testing)
-// Use worker index from environment to ensure uniqueness
+// Prefer PLAYWRIGHT_WORKER_INDEX, fallback to TEST_PARALLEL_INDEX
+const WORKER_INDEX = process.env.PLAYWRIGHT_WORKER_INDEX ?? process.env.TEST_PARALLEL_INDEX;
 export const TEST_USERS = {
   chromium: { 
     ...TEST_USER, 
-    email: process.env.TEST_PARALLEL_INDEX 
-      ? `test-chromium-${process.env.TEST_PARALLEL_INDEX}@example.com`
+    email: WORKER_INDEX != null
+      ? `test-chromium-${WORKER_INDEX}@example.com`
       : TEST_USER.email
   },
   firefox: { 
     ...TEST_USER, 
-    email: process.env.TEST_PARALLEL_INDEX 
-      ? `test-firefox-${process.env.TEST_PARALLEL_INDEX}@example.com`
-      : 'test-firefox@example.com' 
+    email: WORKER_INDEX != null
+      ? `test-firefox-${WORKER_INDEX}@example.com`
+      : TEST_USER.email
   },
   webkit: { 
     ...TEST_USER, 
-    email: process.env.TEST_PARALLEL_INDEX 
-      ? `test-webkit-${process.env.TEST_PARALLEL_INDEX}@example.com`
-      : 'test-webkit@example.com' 
+    email: WORKER_INDEX != null
+      ? `test-webkit-${WORKER_INDEX}@example.com`
+      : TEST_USER.email
   },
 };
 
@@ -46,8 +47,13 @@ export const TEST_USERS = {
 export async function waitForPageLoad(page: Page, options: { timeout?: number } = {}) {
   const { timeout = 30000 } = options;
   
-  // Wait for network idle and main content to be visible
-  await page.waitForLoadState('networkidle', { timeout });
+  // Prefer DOM ready; try networkidle best-effort
+  await page.waitForLoadState('domcontentloaded', { timeout });
+  try {
+    await page.waitForLoadState('networkidle', { timeout: Math.min(5000, Math.floor(timeout / 2)) });
+  } catch {
+    // ignore - networkidle might not be reached with WebSocket/SSE
+  }
   
   // Wait for main content area to be visible
   const mainContent = page.locator('main, [role="main"], #__next, #root').first();
@@ -115,7 +121,8 @@ export async function expectUrlPath(page: Page, expectedPath: string | RegExp) {
     const currentUrl = new URL(page.url());
     expect(currentUrl.pathname).toBe(expectedPath);
   } else {
-    await expect(page).toHaveURL(expectedPath);
+    const currentUrl = new URL(page.url());
+    expect(currentUrl.pathname).toMatch(expectedPath);
   }
 }
 
@@ -198,8 +205,13 @@ export async function waitForTextChange(
       if (expected.kind === 'string') {
         return text.includes(expected.value);
       } else {
-        const re = new RegExp(expected.source, expected.flags || '');
-        return re.test(text);
+        try {
+          const flags = (expected.flags || '').replace(/[^gimsuy]/g, '');
+          const re = new RegExp(expected.source, flags);
+          return re.test(text);
+        } catch {
+          return false;
+        }
       }
     },
     {
@@ -298,8 +310,10 @@ export const TEST_USER_FOR_PASSWORD_CHANGE = {
  * @param password - パスワード
  */
 export async function createTestUser(email: string, password: string) {
-  // Implementation would depend on your API or database setup
-  // This is a placeholder for test user creation logic
+  // TODO: Implement actual user creation via API or database
+  // Example implementation with Playwright request context:
+  // const context = await request.newContext();
+  // await context.post('/api/test/users', { data: { email, password } });
   console.log(`Creating test user: ${email}`);
 }
 
@@ -308,8 +322,10 @@ export async function createTestUser(email: string, password: string) {
  * @param email - 削除するユーザーのメールアドレス
  */
 export async function deleteTestUser(email: string) {
-  // Implementation would depend on your API or database setup
-  // This is a placeholder for test user deletion logic
+  // TODO: Implement actual user deletion via API or database
+  // Example implementation with Playwright request context:
+  // const context = await request.newContext();
+  // await context.delete(`/api/test/users/${email}`);
   console.log(`Deleting test user: ${email}`);
 }
 
@@ -318,8 +334,11 @@ export async function deleteTestUser(email: string) {
  * @param page - Playwright page object
  */
 export async function openAccountTab(page: Page) {
-  await page.click('[data-testid="account-tab"], a[href*="account"], button:has-text("アカウント")');
-  await page.waitForTimeout(500);
+  const tab = page
+    .locator('[data-testid="account-tab"], a[href*="account"], button:has-text("アカウント")')
+    .first();
+  await tab.waitFor({ state: 'visible', timeout: 5000 });
+  await tab.click();
 }
 
 /**
@@ -414,35 +433,31 @@ export async function loginTestUser(
     await page.goto('/auth/login', { waitUntil: 'domcontentloaded', timeout });
     await waitForPageLoad(page, { timeout });
     
-    // Wait for form elements to be ready
-    await page.waitForSelector('input[id="email"]', { state: 'visible', timeout: 5000 });
-    await page.waitForSelector('input[id="password"]', { state: 'visible', timeout: 5000 });
-    await page.waitForSelector('button[type="submit"]', { state: 'visible', timeout: 5000 });
-    
-    // Fill in credentials with explicit wait
-    await page.fill('input[id="email"]', email);
-    await page.fill('input[id="password"]', password);
+    // Wait for form elements (fallback selectors)
+    const emailInput = page.locator('input#email, input[name="email"], input[type="email"]').first();
+    const passwordInput = page.locator('input#password, input[name="password"], input[type="password"]').first();
+    await emailInput.waitFor({ state: 'visible', timeout: 5000 });
+    await passwordInput.waitFor({ state: 'visible', timeout: 5000 });
+    await emailInput.fill(email);
+    await passwordInput.fill(password);
     
     if (debug) console.log('Submitting login form...');
     
-    // Submit login with explicit button wait
-    const submitButton = page.locator('button[type="submit"]:has-text("ログイン")');
+    // Submit login with broader selector
+    const submitButton = page
+      .locator('button[type="submit"], [data-testid="login-submit"], button:has-text("ログイン"), button:has-text("Login")')
+      .first();
     await submitButton.waitFor({ state: 'visible', timeout: 5000 });
     await submitButton.click();
     
-    // Wait for navigation with flexible URL matching
-    await Promise.race([
-      page.waitForURL('/', { timeout }),
-      page.waitForURL('/dashboard', { timeout }),
-      page.waitForURL('/home', { timeout })
-    ]).catch(() => {
-      // Fallback: check if we're on any authenticated page
-      const currentUrl = page.url();
-      if (!currentUrl.includes('/auth/login') && !currentUrl.includes('/login')) {
-        return; // Consider it successful if we navigated away from login
-      }
-      throw new Error('Login navigation failed');
-    });
+    // Wait for navigation (pathname-based)
+    const okPaths = new Set(['/', '/dashboard', '/home']);
+    await page.waitForURL(
+      (u) => {
+        try { return okPaths.has(new URL(u).pathname); } catch { return false; }
+      },
+      { timeout }
+    );
     
     if (debug) console.log('Login successful!');
     
