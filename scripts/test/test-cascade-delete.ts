@@ -28,8 +28,7 @@ async function testCascadeDelete() {
       update: {},
       create: {
         email: 'test-cascade@example.com',
-        name: 'Test User for Cascade Delete',
-        password: 'dummy-password'
+        name: 'Test User for Cascade Delete'
       }
     });
     
@@ -90,10 +89,12 @@ async function testCascadeDelete() {
     });
     
     // Favoriteが自動削除されたか確認
-    const remainingFavorite = await prisma.favorite.findFirst({
+    const remainingFavorite = await prisma.favorite.findUnique({
       where: {
-        userId: testUser.id,
-        articleId: testArticle.id
+        userId_articleId: {
+          userId: testUser.id,
+          articleId: testArticle.id
+        }
       }
     });
     
@@ -116,8 +117,7 @@ async function testCascadeDelete() {
     const testUser2 = await prisma.user.create({
       data: {
         email: `test-cascade2-${Date.now()}@example.com`,
-        name: 'Test User 2',
-        password: 'dummy-password'
+        name: 'Test User 2'
       }
     });
     
