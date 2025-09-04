@@ -23,7 +23,7 @@ test.describe('Simple Login Test', () => {
     expect(currentUrl).not.toContain('/auth/login');
     
     // We should be redirected to the home page
-    expect(currentUrl).toBe('http://localhost:3000/');
+    expect(currentUrl).toMatch(/^https?:\/\/localhost:\d+\/$/);
   });
   
   test('Should show error for invalid credentials', async ({ page }) => {

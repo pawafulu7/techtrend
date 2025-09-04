@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import * as dotenv from 'dotenv';
+import { testConfig } from './config/test.config';
 
 // テスト環境変数読み込み
 dotenv.config({ path: '.env.test' });
@@ -22,6 +23,8 @@ export default defineConfig({
   /* Global setup and teardown */
   globalSetup: './__tests__/e2e/global-setup.ts',
   globalTeardown: './__tests__/e2e/global-teardown.ts',
+  /* CI環境でサーバーを自動起動 */
+  webServer: testConfig.webServer || undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html'],
@@ -31,7 +34,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: testConfig.baseUrl,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
     /* Take screenshot on failure */
@@ -96,18 +99,4 @@ export default defineConfig({
     //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
     // },
   ],
-
-  /* 開発サーバー設定 - E2Eテスト時に自動起動 */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true, // 既存サーバーを再利用
-    timeout: 120000,
-    env: {
-      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/techtrend_test',
-      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'test-secret-key-for-testing-purposes-only-32chars',
-      REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
-      NODE_ENV: 'test',
-    },
-  },
 });
