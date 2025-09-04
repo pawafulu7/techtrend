@@ -3,14 +3,14 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 const prisma = new PrismaClient();
 
-async function deleteLowQualityArticles(dryRun = false) {
-  console.error('=== 低品質記事の削除 ===\n');
+async function deleteLowQualityArticles(dryRun: boolean = false): Promise<void> {
+  console.log('=== 低品質記事の削除 ===\n');
 
   // Dev.to: 反応数0の記事を削除
-  console.error('Dev.toの反応数0の記事を削除中...');
+  console.log('Dev.toの反応数0の記事を削除中...');
   
   if (dryRun) {
-    console.error('[DRY RUN モード - 実際の削除は行いません]\n');
+    console.log('[DRY RUN モード - 実際の削除は行いません]\n');
   }
   
   // トランザクション内で処理して外部キー制約エラーを回避
@@ -32,14 +32,12 @@ async function deleteLowQualityArticles(dryRun = false) {
     
     if (dryRun) {
       // ドライランモードでは対象記事のタイトルを表示
-      console.error('  削除対象記事:');
-      targetArticles.forEach((article, index) => {
-        if (index < 5) {
-          console.error(`    - ${article.title}`);
-        }
+      console.log('  削除対象記事:');
+      targetArticles.slice(0, 5).forEach((article) => {
+        console.log(`    - ${article.title}`);
       });
       if (targetArticles.length > 5) {
-        console.error(`    ... 他 ${targetArticles.length - 5}件`);
+        console.log(`    ... 他 ${targetArticles.length - 5}件`);
       }
       
       // 関連ArticleViewの数を確認
@@ -47,8 +45,8 @@ async function deleteLowQualityArticles(dryRun = false) {
         where: { articleId: { in: articleIds } }
       });
       
-      console.error(`\n  削除予定の記事数: ${targetArticles.length}件`);
-      console.error(`  削除予定のArticleView数: ${viewsCount}件\n`);
+      console.log(`\n  削除予定の記事数: ${targetArticles.length}件`);
+      console.log(`  削除予定のArticleView数: ${viewsCount}件\n`);
       
       return { count: targetArticles.length, viewsCount };
     }
@@ -58,7 +56,7 @@ async function deleteLowQualityArticles(dryRun = false) {
       where: { articleId: { in: articleIds } }
     });
     
-    console.error(`  関連ArticleView削除: ${viewsDeleted.count}件`);
+    console.log(`  関連ArticleView削除: ${viewsDeleted.count}件`);
     
     // その後記事を削除
     const articlesDeleted = await tx.article.deleteMany({
@@ -68,7 +66,7 @@ async function deleteLowQualityArticles(dryRun = false) {
     return { count: articlesDeleted.count, viewsCount: viewsDeleted.count };
   });
   
-  console.error(`${dryRun ? '削除予定' : '削除完了'}: ${devtoDeleted.count}件`);
+  console.log(`${dryRun ? '削除予定' : '削除完了'}: ${devtoDeleted.count}件`);
 
   // 古い記事を削除（3ヶ月以上前）
   // 2025年8月: 古い記事も価値があるため、自動削除を無効化
@@ -92,14 +90,14 @@ async function deleteLowQualityArticles(dryRun = false) {
   // 削除件数が0より大きい場合はキャッシュを無効化（ドライランモードでは実行しない）
   const totalDeleted = devtoDeleted.count + oldDeleted.count;
   if (!dryRun && totalDeleted > 0) {
-    console.error('\n🔄 キャッシュを無効化中...');
+    console.log('\n🔄 キャッシュを無効化中...');
     await cacheInvalidator.onBulkImport();
-    console.error('キャッシュ無効化完了');
+    console.log('キャッシュ無効化完了');
   }
 
   // 削除後の統計（ドライランモードでは表示しない）
   if (!dryRun) {
-    console.error('\n=== 削除後の統計 ===');
+    console.log('\n=== 削除後の統計 ===');
     const sources = await prisma.source.findMany({
       where: { enabled: true },
       include: {
@@ -110,7 +108,7 @@ async function deleteLowQualityArticles(dryRun = false) {
     });
 
     sources.forEach(source => {
-      console.error(`${source.name}: ${source._count.articles}件`);
+      console.log(`${source.name}: ${source._count.articles}件`);
     });
   }
 
