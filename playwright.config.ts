@@ -24,7 +24,7 @@ export default defineConfig({
   globalSetup: './__tests__/e2e/global-setup.ts',
   globalTeardown: './__tests__/e2e/global-teardown.ts',
   /* CI環境でサーバーを自動起動 */
-  webServer: process.env.CI ? testConfig.webServer : undefined,
+  webServer: testConfig.webServer || undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html'],
@@ -99,18 +99,4 @@ export default defineConfig({
     //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
     // },
   ],
-
-  /* 開発サーバー設定 - E2Eテスト時に自動起動 */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3005',
-    reuseExistingServer: true, // 既存サーバーを再利用
-    timeout: 120000,
-    env: {
-      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/techtrend_test',
-      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'test-secret-key-for-testing-purposes-only-32chars',
-      REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
-      NODE_ENV: 'test',
-    },
-  },
 });

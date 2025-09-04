@@ -5,7 +5,7 @@ import {
   createTestUser, 
   deleteTestUser, 
   loginTestUser
-} from './test-helpers';
+} from './utils/test-helpers';
 
 /**
  * ログイン機能の改善版E2Eテスト

@@ -17,11 +17,15 @@ export const testConfig = {
   
   // CI環境でのサーバー起動設定
   get webServer() {
+    // CI環境でのみ有効、ローカルではnull
+    if (!process.env.CI) {
+      return null;
+    }
     return {
       command: 'npm run build && npm run start',
       port: this.port,
       timeout: 180 * 1000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
     };
   },
   
