@@ -1,13 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-
-// Test user configuration
-const TEST_USER = {
-  id: 'test-user-id',
-  email: 'test@example.com',
-  name: 'Test User',
-  password: 'TestPassword123',
-};
+import { TEST_USER } from './utils/test-helpers';
 
 /**
  * E2Eテスト用のユーザーをセットアップする
@@ -19,8 +12,8 @@ export async function setupTestUser() {
   });
 
   try {
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(TEST_USER.password, 10);
+    // Hash the password (use hashSync for bcryptjs)
+    const hashedPassword = bcrypt.hashSync(TEST_USER.password, 10);
 
     // Upsert test user (create or update)
     await prisma.user.upsert({

@@ -31,7 +31,7 @@ export const testConfig = {
     };
   },
   
-  // テストユーザー情報
+  // テストユーザー情報（test-helpersからインポートして使用）
   testUser: {
     email: 'test@example.com',
     password: 'TestPassword123',
