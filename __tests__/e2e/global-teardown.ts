@@ -1,5 +1,5 @@
 import { FullConfig } from '@playwright/test';
-import { deleteTestUser } from './test-helpers';
+import { cleanupTestUser } from './setup-test-user';
 
 /**
  * Playwrightのグローバルティアダウン
@@ -10,7 +10,7 @@ async function globalTeardown(config: FullConfig) {
   
   // テストユーザーを削除
   console.log('🗑️ Deleting test user...');
-  const userDeleted = await deleteTestUser();
+  const userDeleted = await cleanupTestUser();
   if (!userDeleted) {
     console.error('⚠️ Failed to delete test user in global teardown');
   } else {

@@ -22,6 +22,13 @@ export default defineConfig({
   /* Global setup and teardown */
   globalSetup: './__tests__/e2e/global-setup.ts',
   globalTeardown: './__tests__/e2e/global-teardown.ts',
+  /* CI環境でサーバーを自動起動 */
+  webServer: process.env.CI ? {
+    command: 'npm run build && npm run start',
+    port: 3005,
+    timeout: 180 * 1000,
+    reuseExistingServer: !process.env.CI,
+  } : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html'],
@@ -31,7 +38,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.BASE_URL || 'http://localhost:3005',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
     /* Take screenshot on failure */
@@ -100,7 +107,7 @@ export default defineConfig({
   /* 開発サーバー設定 - E2Eテスト時に自動起動 */
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:3000',
+    url: 'http://localhost:3005',
     reuseExistingServer: true, // 既存サーバーを再利用
     timeout: 120000,
     env: {
