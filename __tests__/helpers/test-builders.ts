@@ -116,8 +116,15 @@ export class ArticleBuilder {
   }
 
   build(): Article & { source: Source; tags: Tag[] } {
-    // Return a shallow copy to prevent unintended state sharing
-    return { ...this.article } as Article & { source: Source; tags: Tag[] };
+    // Return a deep copy to prevent unintended state sharing
+    return {
+      ...this.article,
+      source: { ...this.article.source },
+      tags: this.article.tags?.map(tag => ({ ...tag })) || [],
+      publishedAt: new Date(this.article.publishedAt!),
+      createdAt: new Date(this.article.createdAt!),
+      updatedAt: new Date(this.article.updatedAt!),
+    } as Article & { source: Source; tags: Tag[] };
   }
 }
 
@@ -161,8 +168,13 @@ export class UserBuilder {
   }
 
   build(): User {
-    // Return a shallow copy to prevent unintended state sharing
-    return { ...this.user } as User;
+    // Return a deep copy to prevent unintended state sharing
+    return {
+      ...this.user,
+      createdAt: new Date(this.user.createdAt!),
+      updatedAt: new Date(this.user.updatedAt!),
+      emailVerified: this.user.emailVerified ? new Date(this.user.emailVerified) : null,
+    } as User;
   }
 }
 
@@ -206,8 +218,12 @@ export class SourceBuilder {
   }
 
   build(): Source {
-    // Return a shallow copy to prevent unintended state sharing
-    return { ...this.source } as Source;
+    // Return a deep copy to prevent unintended state sharing
+    return {
+      ...this.source,
+      createdAt: new Date(this.source.createdAt!),
+      updatedAt: new Date(this.source.updatedAt!),
+    } as Source;
   }
 }
 
@@ -234,8 +250,12 @@ export class TagBuilder {
   }
 
   build(): Tag {
-    // Return a shallow copy to prevent unintended state sharing
-    return { ...this.tag } as Tag;
+    // Return a deep copy to prevent unintended state sharing
+    return {
+      ...this.tag,
+      createdAt: new Date(this.tag.createdAt!),
+      updatedAt: new Date(this.tag.updatedAt!),
+    } as Tag;
   }
 }
 

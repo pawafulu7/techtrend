@@ -157,8 +157,13 @@ export async function waitForDataLoad(page: Page, timeout = 10000) {
 export async function waitForApiResponse(
   page: Page, 
   urlPattern: string | RegExp,
-  timeout = 10000
+  options: {
+    timeout?: number;
+    acceptedStatuses?: number[];
+  } = {}
 ) {
+  const { timeout = 10000, acceptedStatuses = [200, 201, 202, 204, 206, 304] } = options;
+  
   return page.waitForResponse(
     response => {
       const url = response.url();
@@ -167,7 +172,8 @@ export async function waitForApiResponse(
         : urlPattern.test(url);
       if (!isMatch) return false;
       const status = response.status();
-      return status >= 200 && status < 300;
+      // Accept either specific statuses or 2xx range as default
+      return acceptedStatuses.includes(status) || (status >= 200 && status < 300);
     },
     { timeout }
   );
