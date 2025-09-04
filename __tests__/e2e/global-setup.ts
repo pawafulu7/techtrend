@@ -18,13 +18,15 @@ async function globalSetup(_config: FullConfig) {
     userCreated = await setupTestUser();
     if (userCreated) break;
     
-    const delay = baseDelayMs * 2 ** i;
+    // Add jitter to prevent collision in parallel CI runs
+    const jitter = Math.floor(Math.random() * 100);
+    const delay = baseDelayMs * 2 ** i + jitter;
     console.warn(`⚠️ setupTestUser failed; retrying in ${delay}ms (${i + 1}/${attempts})`);
     await new Promise((r) => setTimeout(r, delay));
   }
   
   if (!userCreated) {
-    throw new Error('Failed to create test user in global setup after retries');
+    throw new Error(`Failed to create test user after ${attempts} retries`);
   }
   console.log('✅ Test user created successfully');
   

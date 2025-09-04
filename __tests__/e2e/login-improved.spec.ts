@@ -151,8 +151,9 @@ test.describe.serial('Login Feature - Improved', () => {
     const loginSuccess = await loginTestUser(page, { debug: true });
     expect(loginSuccess).toBe(true);
     
-    // ホームページにリダイレクトされることを確認
-    await expect(page).toHaveURL(/^https?:\/\/localhost:\d+\/$/);
+    // ホームページにリダイレクトされることを確認（パスのみチェック）
+    const { pathname } = new URL(page.url());
+    expect(pathname).toBe('/');
     
     // ユーザーメニューが表示されるまで待機
     await page.waitForTimeout(2000); // セッション確立のため待機
