@@ -19,7 +19,8 @@ export const TEST_USER: { id: string; email: string; name: string; password: str
 // Browser-specific test users (for parallel testing)
 // Prefer PLAYWRIGHT_WORKER_INDEX, fallback to TEST_PARALLEL_INDEX
 const WORKER_INDEX = process.env.PLAYWRIGHT_WORKER_INDEX ?? process.env.TEST_PARALLEL_INDEX;
-export const TEST_USERS = {
+type BrowserName = 'chromium' | 'firefox' | 'webkit';
+export const TEST_USERS: Record<BrowserName, typeof TEST_USER> = {
   chromium: { 
     ...TEST_USER, 
     email: WORKER_INDEX != null
@@ -56,7 +57,7 @@ export async function waitForPageLoad(page: Page, options: { timeout?: number } 
   }
   
   // Wait for main content area to be visible
-  const mainContent = page.locator('main, [role="main"], #__next, #root').first();
+  const mainContent = page.locator(`${SELECTORS.MAIN_CONTENT}, [role="main"], #__next, #root`).first();
   if (await mainContent.count() > 0) {
     await mainContent.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
       // Fallback if main content selector doesn't exist
@@ -75,8 +76,8 @@ export async function waitForElement(page: Page, selector: string, timeout = 100
  * 記事カードが存在することを確認
  */
 export async function expectArticleCards(page: Page, minCount = 1) {
-  // 記事要素を探す（data-testidを最優先、ない場合は代替セレクタを使用）
-  const articles = page.locator('[data-testid="article-card"], article, [class*="article"], [class*="card"]');
+  // 記事要素を探す（data-testidを最優先、共通セレクタをフォールバック）
+  const articles = page.locator(`[data-testid="article-card"], ${SELECTORS.ARTICLE_CARD}`);
   const count = await articles.count();
   expect(count).toBeGreaterThanOrEqual(minCount);
 }
@@ -85,8 +86,8 @@ export async function expectArticleCards(page: Page, minCount = 1) {
  * ナビゲーションメニューが存在することを確認
  */
 export async function expectNavigationMenu(page: Page) {
-  // ナビゲーションメニューを特定（複数のnav要素があるため最初のものを選択）
-  const nav = page.locator('nav').first();
+  // ナビゲーションメニューを特定（共通セレクタ優先、navをフォールバック）
+  const nav = page.locator(`${SELECTORS.NAV_MENU}, nav`).first();
   await expect(nav).toBeVisible();
   
   // ナビゲーションリンクの存在確認（リンクが存在する場合のみ）
@@ -116,13 +117,11 @@ export async function expectPageTitle(page: Page, expectedTitle: string | RegExp
  * URLパスを検証（パス部分のみを厳密に比較）
  */
 export async function expectUrlPath(page: Page, expectedPath: string | RegExp) {
+  const pathname = new URL(page.url()).pathname;
   if (typeof expectedPath === 'string') {
-    // Extract pathname for strict matching
-    const currentUrl = new URL(page.url());
-    expect(currentUrl.pathname).toBe(expectedPath);
+    expect(pathname).toBe(expectedPath);
   } else {
-    const currentUrl = new URL(page.url());
-    expect(currentUrl.pathname).toMatch(expectedPath);
+    expect(pathname).toMatch(expectedPath);
   }
 }
 
@@ -130,8 +129,8 @@ export async function expectUrlPath(page: Page, expectedPath: string | RegExp) {
  * エラーメッセージが表示されていないことを確認
  */
 export async function expectNoErrors(page: Page) {
-  const errorMessages = page.locator('[data-testid="error-message"]');
-  await expect(errorMessages).toHaveCount(0);
+  const errors = page.locator(`[data-testid="error-message"], ${SELECTORS.ERROR_MESSAGE}`);
+  await expect(errors).toHaveCount(0);
 }
 
 /**
@@ -280,14 +279,15 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
       );
       
       // 記事カードの存在も確認（共通セレクタ使用）
-      const articleCards = document.querySelectorAll('[data-testid="article-card"]');
+      const articleCards = document.querySelectorAll(selectors.articleCard);
       
       // いずれかの条件を満たせばOK
       return hasResultText || articleCards.length > 0;
     },
     {
       loadingIndicator: SELECTORS.LOADING_INDICATOR,
-      searchResultText: SELECTORS.SEARCH_RESULT_TEXT
+      searchResultText: SELECTORS.SEARCH_RESULT_TEXT,
+      articleCard: SELECTORS.ARTICLE_CARD
     },
     { timeout }
   );
