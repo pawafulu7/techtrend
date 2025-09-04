@@ -5,7 +5,8 @@ import { MoneyForwardContentEnricher } from '../../lib/enrichers/moneyforward';
 async function testEnrichSpecific() {
   console.log('🔍 特定記事のエンリッチメントテスト\n');
   
-  const url = 'https://moneyforward-dev.jp/entry/2025/07/31/130000';
+  // URLをCLI引数または環境変数から取得可能に
+  const url = process.argv[2] ?? process.env.MF_URL ?? 'https://moneyforward-dev.jp/entry/2025/07/31/130000';
   const enricher = new MoneyForwardContentEnricher();
   
   try {
