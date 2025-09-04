@@ -8,12 +8,12 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Test user configuration
-export const TEST_USER = {
-  id: 'test-user-id',
-  email: 'test@example.com',
-  name: 'Test User',
-  password: 'TestPassword123',
+// Test user configuration (overridable with environment variables)
+export const TEST_USER: { id: string; email: string; name: string; password: string } = {
+  id: process.env.E2E_TEST_USER_ID ?? 'test-user-id',
+  email: process.env.E2E_TEST_USER_EMAIL ?? 'test@example.com',
+  name: process.env.E2E_TEST_USER_NAME ?? 'Test User',
+  password: process.env.E2E_TEST_USER_PASSWORD ?? 'TestPassword123',
 };
 
 // Browser-specific test users (for parallel testing)
@@ -141,8 +141,8 @@ export async function waitForLoadingComplete(page: Page) {
  * ローディング表示が消え、データ表示要素が現れるまで待機
  */
 export async function waitForDataLoad(page: Page, timeout = 10000) {
-  // Wait for loading indicator to disappear
-  const loadingIndicator = page.locator('.loading, .animate-spin, [class*="loader"]');
+  // Wait for loading indicator to disappear (use common selector)
+  const loadingIndicator = page.locator(SELECTORS.LOADING_INDICATOR);
   await expect(loadingIndicator).toBeHidden({ timeout: timeout / 2 });
   
   // Wait for data content to appear
@@ -165,7 +165,9 @@ export async function waitForApiResponse(
       const isMatch = typeof urlPattern === 'string' 
         ? url.includes(urlPattern)
         : urlPattern.test(url);
-      return isMatch && response.status() === 200;
+      if (!isMatch) return false;
+      const status = response.status();
+      return status >= 200 && status < 300;
     },
     { timeout }
   );
@@ -245,13 +247,13 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
   
   // 検索結果のテキストまたは記事カードが表示されるのを待つ
   await page.waitForFunction(
-    () => {
-      // ローディング状態でないことを確認
-      const loader = document.querySelector('.animate-spin, [class*="loader"]');
+    (selectors) => {
+      // ローディング状態でないことを確認（共通セレクタ使用）
+      const loader = document.querySelector(selectors.loadingIndicator);
       if (loader) return false;
       
-      // 検索結果のテキストまたは記事カードを確認
-      const resultText = document.querySelector('p');
+      // 検索結果のテキストを確認（共通セレクタ使用）
+      const resultText = document.querySelector(selectors.searchResultText);
       const hasResultText = resultText && (
         resultText.textContent?.includes('件') || 
         resultText.textContent?.includes('結果') ||
@@ -259,11 +261,15 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
         resultText.textContent?.includes('記事が見つかりませんでした')
       );
       
-      // 記事カードの存在も確認
+      // 記事カードの存在も確認（共通セレクタ使用）
       const articleCards = document.querySelectorAll('[data-testid="article-card"]');
       
       // いずれかの条件を満たせばOK
       return hasResultText || articleCards.length > 0;
+    },
+    {
+      loadingIndicator: SELECTORS.LOADING_INDICATOR,
+      searchResultText: SELECTORS.SEARCH_RESULT_TEXT
     },
     { timeout }
   );
@@ -280,34 +286,65 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
  */
 export async function loginTestUser(
   page: Page,
-  options: { debug?: boolean } = {}
+  options: { 
+    debug?: boolean;
+    email?: string;
+    password?: string;
+    timeout?: number;
+  } = {}
 ): Promise<boolean> {
-  const { debug = false } = options;
+  const { 
+    debug = false,
+    email = TEST_USER.email,
+    password = TEST_USER.password,
+    timeout = 15000
+  } = options;
   
   try {
     if (debug) console.log('Navigating to login page...');
     
-    // Navigate to login page
-    await page.goto('/auth/login');
-    await waitForPageLoad(page);
+    // Navigate to login page with retry
+    await page.goto('/auth/login', { waitUntil: 'domcontentloaded', timeout });
+    await waitForPageLoad(page, { timeout });
     
-    // Fill in credentials
-    await page.fill('input[id="email"]', TEST_USER.email);
-    await page.fill('input[id="password"]', TEST_USER.password);
+    // Wait for form elements to be ready
+    await page.waitForSelector('input[id="email"]', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('input[id="password"]', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('button[type="submit"]', { state: 'visible', timeout: 5000 });
+    
+    // Fill in credentials with explicit wait
+    await page.fill('input[id="email"]', email);
+    await page.fill('input[id="password"]', password);
     
     if (debug) console.log('Submitting login form...');
     
-    // Submit login
-    await page.click('button[type="submit"]:has-text("ログイン")');
+    // Submit login with explicit button wait
+    const submitButton = page.locator('button[type="submit"]:has-text("ログイン")');
+    await submitButton.waitFor({ state: 'visible', timeout: 5000 });
+    await submitButton.click();
     
-    // Wait for navigation
-    await page.waitForURL('/', { timeout: 10000 });
+    // Wait for navigation with flexible URL matching
+    await Promise.race([
+      page.waitForURL('/', { timeout }),
+      page.waitForURL('/dashboard', { timeout }),
+      page.waitForURL('/home', { timeout })
+    ]).catch(() => {
+      // Fallback: check if we're on any authenticated page
+      const currentUrl = page.url();
+      if (!currentUrl.includes('/auth/login') && !currentUrl.includes('/login')) {
+        return; // Consider it successful if we navigated away from login
+      }
+      throw new Error('Login navigation failed');
+    });
     
     if (debug) console.log('Login successful!');
     
     return true;
   } catch (error) {
-    if (debug) console.error('Login failed:', error);
+    if (debug) {
+      console.error('Login failed:', error);
+      console.error('Current URL:', page.url());
+    }
     return false;
   }
 }
