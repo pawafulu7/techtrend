@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env -S npx tsx
 
 import { PrismaClient } from '@prisma/client';
 import { MoneyForwardContentEnricher } from '../../lib/enrichers/moneyforward';

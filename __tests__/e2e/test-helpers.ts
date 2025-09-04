@@ -52,13 +52,14 @@ export async function createTestUser(): Promise<boolean> {
   try {
     // TypeScriptスクリプトを使用して正しいハッシュでユーザーを作成
     // DATABASE_URL環境変数を設定して実行
+    const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev';
     execSync(
       'npx tsx scripts/create-test-user.ts',
       { 
         stdio: 'pipe',
         env: {
           ...process.env,
-          DATABASE_URL: 'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev'
+          DATABASE_URL: dbUrl
         }
       }
     );
@@ -77,13 +78,14 @@ export async function createTestUser(): Promise<boolean> {
 export async function deleteTestUser(): Promise<boolean> {
   try {
     // パラメータ化されたスクリプトを使用してユーザーを削除
+    const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev';
     execSync(
       'npx tsx scripts/delete-test-user.ts',
       { 
         stdio: 'pipe',
         env: {
           ...process.env,
-          DATABASE_URL: 'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev',
+          DATABASE_URL: dbUrl,
           TEST_USER_EMAIL: TEST_USER.email
         }
       }
@@ -119,9 +121,10 @@ export async function loginTestUser(
     waitForRedirect?: boolean;
     redirectUrl?: string;
     debug?: boolean;
+    timeout?: number;
   } = {}
 ): Promise<boolean> {
-  const { waitForRedirect = true, redirectUrl = '/', debug = false } = options;
+  const { waitForRedirect = true, redirectUrl = '/', debug = false, timeout = 30000 } = options;
   
   // ブラウザごとに異なるテストユーザーを使用
   const browserName = getBrowserName(page);
@@ -135,7 +138,7 @@ export async function loginTestUser(
     if (debug) console.log('🔍 Debug: Navigated to login page');
     
     // フォームが表示されるまで待機
-    await page.waitForSelector('input[id="email"]', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector('input[id="email"]', { state: 'visible', timeout });
     if (debug) console.log('🔍 Debug: Login form is visible');
     
     // ログイン情報を入力（ブラウザ固有のユーザー）
@@ -150,8 +153,9 @@ export async function loginTestUser(
     
     // リダイレクトを待つ場合
     if (waitForRedirect) {
-      // フォーム送信処理のため少し待機
-      await page.waitForTimeout(2000);
+      // フォーム送信処理を待つ（waitForTimeoutの代わりにより適切な待機方法を使用）
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500); // 最小限の待機のみ
       
       // エラーメッセージの確認
       const hasError = await page.locator('text=メールアドレスまたはパスワードが正しくありません').isVisible();

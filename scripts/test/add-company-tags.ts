@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env -S npx tsx
 
 /**
  * Corporate Tech Blog記事に企業名タグを追加するスクリプト

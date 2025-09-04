@@ -20,14 +20,13 @@ export class TestFixtures {
 
   static createArticle(overrides?: Partial<Article>): Article {
     const now = new Date();
-    const id = this.generateId('article');
-    const currentId = this.idCounter;
+    const id = overrides?.id || this.generateId('article');
     return {
       id,
       title: 'Test Article Title',
       summary: 'This is a test article summary.',
       detailedSummary: 'This is a detailed test article summary with more information.',
-      url: `https://example.com/article-${currentId}`,
+      url: `https://example.com/${id}`,
       thumbnail: null,
       content: null,
       publishedAt: now,
@@ -89,13 +88,12 @@ export class TestFixtures {
 
   static createSource(overrides?: Partial<Source>): Source {
     const now = new Date();
-    const id = this.generateId('source');
-    const currentId = this.idCounter;
+    const id = overrides?.id || this.generateId('source');
     return {
       id,
       name: 'Test Source',
       type: 'rss',
-      url: `https://test-source-${currentId}.com`,
+      url: `https://${id}.com`,
       enabled: true,
       createdAt: now,
       updatedAt: now,
@@ -104,11 +102,10 @@ export class TestFixtures {
   }
 
   static createTag(overrides?: Partial<Tag>): Tag {
-    const id = this.generateId('tag');
-    const currentId = this.idCounter;
+    const id = overrides?.id || this.generateId('tag');
     return {
       id,
-      name: `TestTag${currentId}`,
+      name: overrides?.name || `TestTag-${id}`,
       category: null,
       ...overrides,
     };
@@ -116,12 +113,11 @@ export class TestFixtures {
 
   static createUser(overrides?: Partial<User>): User {
     const now = new Date();
-    const id = this.generateId('user');
-    const currentId = this.idCounter;
+    const id = overrides?.id || this.generateId('user');
     return {
       id,
-      email: `test${currentId}@example.com`,
-      name: `Test User ${currentId}`,
+      email: overrides?.email || `${id}@example.com`,
+      name: overrides?.name || `Test User ${id}`,
       emailVerified: null,
       image: null,
       createdAt: now,

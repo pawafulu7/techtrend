@@ -151,17 +151,24 @@ function getExpectedMinItems(contentLength: number): number {
 
 async function runTest(): Promise<void> {
   console.error('🧪 統一要約生成システムのテストを開始します...\n');
+  // 環境変数のデフォルト値を設定（一度のみ）
+  const config = {
+    QUALITY_CHECK_ENABLED: process.env.QUALITY_CHECK_ENABLED ?? 'true',
+    QUALITY_MIN_SCORE: process.env.QUALITY_MIN_SCORE ?? '70',
+    MAX_REGENERATION_ATTEMPTS: process.env.MAX_REGENERATION_ATTEMPTS ?? '3'
+  };
+  
+  // 環境変数を設定
+  process.env.QUALITY_CHECK_ENABLED = config.QUALITY_CHECK_ENABLED;
+  process.env.QUALITY_MIN_SCORE = config.QUALITY_MIN_SCORE;
+  process.env.MAX_REGENERATION_ATTEMPTS = config.MAX_REGENERATION_ATTEMPTS;
+  
   console.error('=====================================');
   console.error('環境設定:');
-  console.error(`  QUALITY_CHECK_ENABLED: ${process.env.QUALITY_CHECK_ENABLED || 'true'}`);
-  console.error(`  QUALITY_MIN_SCORE: ${process.env.QUALITY_MIN_SCORE || '70'}`);
-  console.error(`  MAX_REGENERATION_ATTEMPTS: ${process.env.MAX_REGENERATION_ATTEMPTS || '3'}`);
+  console.error(`  QUALITY_CHECK_ENABLED: ${config.QUALITY_CHECK_ENABLED}`);
+  console.error(`  QUALITY_MIN_SCORE: ${config.QUALITY_MIN_SCORE}`);
+  console.error(`  MAX_REGENERATION_ATTEMPTS: ${config.MAX_REGENERATION_ATTEMPTS}`);
   console.error('=====================================\n');
-
-  // QA関連の環境変数は一度だけ設定（未設定時のみ上書き）
-  process.env.QUALITY_CHECK_ENABLED = process.env.QUALITY_CHECK_ENABLED ?? 'true';
-  process.env.QUALITY_MIN_SCORE = process.env.QUALITY_MIN_SCORE ?? '70';
-  process.env.MAX_REGENERATION_ATTEMPTS = process.env.MAX_REGENERATION_ATTEMPTS ?? '3';
   
   const results: TestResult[] = [];
   let testIndex = 0;
