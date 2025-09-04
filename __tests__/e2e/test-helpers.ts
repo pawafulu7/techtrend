@@ -200,6 +200,13 @@ export async function loginTestUser(
       
       if (debug) console.log(`🔍 Debug: Successfully redirected to: ${currentUrl}`);
       
+      // redirectUrlが指定されていれば、そのURLに到達するまで待機
+      if (redirectUrl && redirectUrl !== '/') {
+        await page.waitForURL(`**${redirectUrl}**`, { timeout: 5000 }).catch(() => {
+          if (debug) console.log(`🔍 Debug: Redirect to ${redirectUrl} not completed within timeout`);
+        });
+      }
+      
       // ネットワークが安定するまで待機
       await page.waitForLoadState('networkidle');
       if (debug) console.log('🔍 Debug: Network is idle');

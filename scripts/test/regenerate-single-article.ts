@@ -106,5 +106,13 @@ async function regenerateArticle(articleId: string) {
 }
 
 // 実行
-const articleId = process.argv[2] || 'cmdq3y8fd0001te564aqst93r';
+const articleId = process.argv[2];
+
+if (!articleId) {
+  console.error('❌ エラー: 記事IDを指定してください');
+  console.error('使用方法: npx tsx scripts/test/regenerate-single-article.ts <article-id>');
+  console.error('例: npx tsx scripts/test/regenerate-single-article.ts cmdq3y8fd0001te564aqst93r');
+  process.exit(1);
+}
+
 regenerateArticle(articleId);
