@@ -327,7 +327,10 @@ export async function fillPasswordChangeForm(
   currentPassword: string, 
   newPassword: string
 ) {
-  await page.fill('input[name="currentPassword"], input[type="password"]:first', currentPassword);
+  // Use .first() instead of :first pseudo-class for better compatibility
+  const currentPasswordInput = page.locator('input[name="currentPassword"], input[type="password"]').first();
+  await currentPasswordInput.fill(currentPassword);
+  
   await page.fill('input[name="newPassword"], input[placeholder*="新しいパスワード"]', newPassword);
   await page.fill('input[name="confirmPassword"], input[placeholder*="確認"]', newPassword);
 }

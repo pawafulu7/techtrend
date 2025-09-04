@@ -258,16 +258,38 @@ export function expectApiError(response: any, statusCode: number, errorMessage?:
  */
 export async function waitForCondition(
   condition: () => boolean | Promise<boolean>,
-  timeout = 5000,
-  interval = 100
+  options: {
+    timeout?: number;
+    interval?: number;
+    signal?: AbortSignal;
+    onTimeout?: () => void;
+  } = {}
 ): Promise<void> {
+  const { 
+    timeout = 5000, 
+    interval = 100, 
+    signal, 
+    onTimeout 
+  } = options;
+  
   const startTime = Date.now();
   
   while (Date.now() - startTime < timeout) {
+    // Check for abort signal
+    if (signal?.aborted) {
+      throw new Error('Operation aborted');
+    }
+    
     if (await condition()) {
       return;
     }
+    
     await new Promise(resolve => setTimeout(resolve, interval));
+  }
+  
+  // Call onTimeout hook if provided
+  if (onTimeout) {
+    onTimeout();
   }
   
   throw new Error(`Condition not met within ${timeout}ms`);
