@@ -5,7 +5,7 @@
  * 「Rails」が「AI」として誤検出されないか確認
  */
 
-import { extractSearchKeywords, getFixedResponse } from '@/lib/chat/utils';
+import { extractSearchKeywords, getFixedResponse } from '../../lib/chat/utils';
 
 console.error('🧪 チャットキーワード検出テスト\n');
 

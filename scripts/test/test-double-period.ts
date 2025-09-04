@@ -24,4 +24,4 @@ testCases.forEach((summary, index) => {
   console.error(`修正後: "${fixed}"`);
   console.error(`二重句点チェック: ${fixed.includes('。。') ? '❌ 二重句点あり' : '✅ 正常'}`);
   console.error('');
-
+});

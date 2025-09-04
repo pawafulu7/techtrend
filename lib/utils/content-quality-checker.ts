@@ -350,7 +350,7 @@ export function fixSummary(summary: string, issues: QualityIssue[]): string {
   // 途切れの修正（句点の追加前に処理）
   if (issues.some(i => i.type === 'truncation')) {
     // 助詞や接続詞で終わっている場合は削除
-    fixed = fixed.replace(/(?:が|して|により|では|の|を|に|へ|で|と|から|について|、|,)\s*$/, '');
+    fixed = fixed.replace(/(?:について|において|における|として|により|では|して|から|が|の|を|に|へ|で|と|、|,)\s*$/, '');
     // 句点がなければ追加
     if (!fixed.endsWith('。')) {
       fixed = fixed + '。';

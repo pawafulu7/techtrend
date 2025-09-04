@@ -4,8 +4,8 @@
  * 推薦機能のテストスクリプト
  */
 
-import { prisma } from '@/lib/prisma';
-import { recommendationService } from '@/lib/recommendation/recommendation-service';
+import { prisma } from '../../lib/prisma';
+import { recommendationService } from '../../lib/recommendation/recommendation-service';
 
 async function testRecommendations() {
   try {
