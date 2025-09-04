@@ -346,7 +346,9 @@ export async function waitForErrorMessage(
   message: string, 
   timeout = 5000
 ) {
-  await page.waitForSelector(`[class*="error"]:has-text("${message}")`, { timeout });
+  // Use locator with hasText filter to handle messages with quotes safely
+  const errorLocator = page.locator('[class*="error"]').filter({ hasText: message });
+  await errorLocator.waitFor({ state: 'visible', timeout });
 }
 
 /**
@@ -360,7 +362,9 @@ export async function waitForSuccessMessage(
   message: string, 
   timeout = 5000
 ) {
-  await page.waitForSelector(`[class*="success"]:has-text("${message}")`, { timeout });
+  // Use locator with hasText filter to handle messages with quotes safely
+  const successLocator = page.locator('[class*="success"]').filter({ hasText: message });
+  await successLocator.waitFor({ state: 'visible', timeout });
 }
 
 /**
