@@ -27,9 +27,11 @@ import { MozillaHacksEnricher } from './mozilla-hacks';
 import { HackerNewsEnricher } from './hacker-news';
 import { MediumEngineeringEnricher } from './medium-engineering';
 import { AWSEnricher } from './aws';
+import { GenericContentEnricher } from './generic';
 
 export { BaseContentEnricher } from './base';
 export type { IContentEnricher, EnrichedContent, EnrichmentResult } from './base';
+export { GenericContentEnricher } from './generic';
 export { GMOContentEnricher } from './gmo';
 export { FreeeContentEnricher } from './freee';
 export { HatenaContentEnricher } from './hatena';
@@ -90,7 +92,8 @@ export class ContentEnricherFactory {
       new MediumEngineeringEnricher(),
       // 新規追加（2025年9月2日）AWSソース
       new AWSEnricher(),
-      new HatenaContentEnricher(),  // 最後（すべてのURLに対応するため）
+      new HatenaContentEnricher(),  // 汎用HTMLパーサー
+      new GenericContentEnricher(),  // 最後のフォールバック（すべてのURLに対応）
       // 将来的に他の企業のエンリッチャーを追加
       // new CookpadContentEnricher(),
       // new SmartHRContentEnricher(),
@@ -132,5 +135,31 @@ export class ContentEnricherFactory {
       // 'techlife.cookpad.com',
       // 'tech.smarthr.jp',
     ];
+  }
+
+  /**
+   * 各エンリッチャーを順番に試して最初の成功結果を返す
+   * @param url 処理対象のURL
+   * @returns エンリッチメント結果、またはnull
+   */
+  async trySequential(url: string): Promise<import('./base').EnrichmentResult | null> {
+    // すべてのエンリッチャーを順番に試す
+    for (const enricher of this.enrichers) {
+      try {
+        if (enricher.canHandle(url)) {
+          const result = await enricher.enrich(url);
+          if (result && result.content) {
+            // 有効な結果が得られたら即座に返す
+            return result;
+          }
+        }
+      } catch (error) {
+        // エラーは無視して次のエンリッチャーを試す
+        console.error(`[ContentEnricherFactory] Error with ${enricher.constructor.name}:`, error);
+      }
+    }
+    
+    // すべてのエンリッチャーが失敗した場合
+    return null;
   }
 }

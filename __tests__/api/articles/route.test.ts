@@ -236,14 +236,16 @@ describe('/api/articles', () => {
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            AND: [
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } },
               {
                 OR: [
                   { title: { contains: 'React', mode: 'insensitive' } },
                   { summary: { contains: 'React', mode: 'insensitive' } },
                 ]
               }
-            ]
+            ])
           }),
         })
       );

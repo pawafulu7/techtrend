@@ -26,6 +26,14 @@ export async function GET(
       } as ApiResponse<never>, { status: 404 });
     }
 
+    // Check if article has content (exclude null and empty strings)
+    if (!article.content?.trim()) {
+      return NextResponse.json({
+        success: false,
+        error: 'Article content not available',
+      } as ApiResponse<never>, { status: 404 });
+    }
+
     return NextResponse.json({
       success: true,
       data: article,
