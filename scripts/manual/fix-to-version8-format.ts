@@ -17,7 +17,7 @@ function validateVersion8Format(detailedSummary: string): boolean {
   return lines.every(line => line.trim().startsWith('・') && line.includes('：'));
 }
 
-async function fixToVersion8Format(articleId: string) {
+async function fixToVersion8Format(articleId: string): Promise<number> {
   try {
     // Version 8形式の詳細要約
     // Note: この要約は手動で作成されたものです。
@@ -33,7 +33,7 @@ async function fixToVersion8Format(articleId: string) {
     // Version 8形式の検証
     if (!validateVersion8Format(version8DetailedSummary)) {
       console.error('エラー: 詳細要約がVersion 8形式に準拠していません');
-      process.exit(1);
+      return 1;
     }
 
     // データベースを更新
@@ -55,21 +55,24 @@ async function fixToVersion8Format(articleId: string) {
     console.log(`  品質スコア: ${updated.qualityScore}`);
     console.log('\n新しい詳細要約（Version 8形式）:');
     
-    // 最初の2項目を表示（改善されたプレビュー出力）
+    // 最初の2項目を表示（Unicode安全なプレビュー出力）
     const lines = updated.detailedSummary?.split('\n').slice(0, 2);
     lines?.forEach(line => {
-      // 100文字を超える場合のみ省略記号を追加
-      const displayText = line.length > 100 
-        ? line.substring(0, 100) + '...' 
+      // Unicode安全な文字列切り出し
+      const lineArray = Array.from(line);
+      const displayText = lineArray.length > 100 
+        ? lineArray.slice(0, 100).join('') + '...' 
         : line;
       console.log(displayText);
     });
     
     console.log('\n✅ 修正完了');
+    
+    return 0; // 成功
 
   } catch (error) {
     console.error('エラーが発生しました:', error);
-    process.exit(1);
+    return 1;
   } finally {
     await prisma.$disconnect();
   }
@@ -84,4 +87,7 @@ if (!articleId) {
   process.exit(1);
 }
 
-fixToVersion8Format(articleId);
+// 実行とexit codeの設定
+fixToVersion8Format(articleId).then(exitCode => {
+  process.exit(exitCode);
+});

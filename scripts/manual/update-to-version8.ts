@@ -6,7 +6,7 @@ import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 
 const prisma = new PrismaClient();
 
-async function updateToVersion8(articleId: string) {
+async function updateToVersion8(articleId: string): Promise<number> {
   try {
     // 記事を取得
     const article = await prisma.article.findUnique({
@@ -16,33 +16,38 @@ async function updateToVersion8(articleId: string) {
 
     if (!article) {
       console.error(`記事が見つかりません: ${articleId}`);
-      process.exit(1);
+      return 1;
     }
 
     console.log('記事情報:');
     console.log(`  タイトル: ${article.title}`);
-    console.log(`  ソース: ${article.source.name}`);
+    console.log(`  ソース: ${article.source?.name ?? '（不明）'}`);
     console.log(`  現在のsummaryVersion: ${article.summaryVersion}`);
     console.log(`  articleType: ${article.articleType}`);
     console.log('');
 
     if (article.summaryVersion === 8) {
       console.log('すでにVersion 8形式です。');
-      return;
+      return 0;
     }
 
     console.log('現在の詳細要約（旧形式）:');
-    // 200文字を超える場合のみ省略記号を追加
-    const currentPreview = article.detailedSummary && article.detailedSummary.length > 200
-      ? article.detailedSummary.substring(0, 200) + '...'
-      : article.detailedSummary || '';
-    console.log(currentPreview);
+    // Unicode安全な文字列切り出し（絵文字や多バイト文字対応）
+    if (article.detailedSummary) {
+      const dsArray = Array.from(article.detailedSummary);
+      const currentPreview = dsArray.length > 200
+        ? dsArray.slice(0, 200).join('') + '...'
+        : article.detailedSummary;
+      console.log(currentPreview);
+    } else {
+      console.log('（なし）');
+    }
     console.log('');
 
     // コンテンツ確認
     if (!article.content) {
       console.error('コンテンツがありません。要約を生成できません。');
-      process.exit(1);
+      return 1;
     }
 
     console.log(`コンテンツ長: ${article.content.length}文字`);
@@ -56,13 +61,13 @@ async function updateToVersion8(articleId: string) {
       article.title,
       article.content,
       undefined,
-      { sourceName: article.source.name, url: article.url }
+      { sourceName: article.source?.name ?? '不明', url: article.url }
     );
 
     // resultは直接UnifiedSummaryResultを返すため、successプロパティはない
     if (!result.summary) {
       console.error('要約生成に失敗しました');
-      process.exit(1);
+      return 1;
     }
 
     console.log('\n生成完了:');
@@ -79,9 +84,10 @@ async function updateToVersion8(articleId: string) {
     // 詳細要約の最初の3項目を表示
     const lines = result.detailedSummary?.split('\n').slice(0, 3);
     lines?.forEach(line => {
-      // 長い行は100文字で切って省略記号を追加
-      const displayText = line.length > 100
-        ? line.substring(0, 100) + '...'
+      // Unicode安全な文字列切り出し
+      const lineArray = Array.from(line);
+      const displayText = lineArray.length > 100
+        ? lineArray.slice(0, 100).join('') + '...'
         : line;
       console.log(displayText);
     });
@@ -107,10 +113,12 @@ async function updateToVersion8(articleId: string) {
     console.log(`  新しいsummaryVersion: ${updated.summaryVersion}`);
     console.log(`  新しいarticleType: ${updated.articleType}`);
     console.log(`  新しい品質スコア: ${updated.qualityScore}`);
+    
+    return 0; // 成功
 
   } catch (error) {
     console.error('エラーが発生しました:', error);
-    process.exit(1);
+    return 1;
   } finally {
     await prisma.$disconnect();
   }
@@ -125,4 +133,7 @@ if (!articleId) {
   process.exit(1);
 }
 
-updateToVersion8(articleId);
+// 実行とexit codeの設定
+updateToVersion8(articleId).then(exitCode => {
+  process.exit(exitCode);
+});
