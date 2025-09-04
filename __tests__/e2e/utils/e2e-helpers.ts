@@ -132,7 +132,7 @@ export async function expectNoErrors(page: Page) {
  */
 export async function waitForLoadingComplete(page: Page) {
   // ローディングインジケーターが消えるまで待機
-  const loading = page.locator('[data-testid="loading"]');
+  const loading = page.locator(SELECTORS.LOADING_INDICATOR);
   await expect(loading).toBeHidden({ timeout: 10000 });
 }
 

@@ -3,6 +3,9 @@
  * MSW v2の互換性問題を回避するため、簡易fetchモック方式を使用
  */
 
+// Ensure the mock is used instead of the real module
+jest.mock('next/server');
+
 import { NextRequest } from 'next/server';
 
 /**
@@ -148,13 +151,14 @@ export function createMockRedisClient() {
       
       try {
         // Convert Redis glob pattern to regex safely
-        // First escape all regex special chars, then handle Redis wildcards
         const regexPattern = '^' + pattern
-          .replace(/[.+?^${}()|[\]\\]/g, '\\$&')  // Escape regex special chars
-          .replace(/\\\*/g, '.*')  // Replace escaped * with .*
-          .replace(/\\\?/g, '.')   // Replace escaped ? with .
+          // First escape all regex special chars including * and ?
+          .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          // Then convert Redis wildcards to regex equivalents
+          .replace(/\\\*/g, '.*')   // * -> .*
+          .replace(/\\\?/g, '.')    // ? -> .
           + '$';
-        const regex = new RegExp(regexPattern);
+        const regex = new RegExp(regexPattern, 'u');
         return Array.from(store.keys()).filter(key => regex.test(key));
       } catch (error) {
         // If regex creation fails, return empty array
