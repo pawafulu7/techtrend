@@ -132,8 +132,8 @@ model ArticleView {
   viewedAt  DateTime?
   isRead    Boolean   @default(false)
   readAt    DateTime?
-  article   Article   @relation(fields: [articleId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
+  article   Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, articleId])
   @@index([userId, viewedAt])
