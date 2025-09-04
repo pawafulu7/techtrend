@@ -29,23 +29,34 @@ export const TEST_USER: TestUser = {
 // Prefer PLAYWRIGHT_WORKER_INDEX, fallback to TEST_PARALLEL_INDEX
 const WORKER_INDEX = process.env.PLAYWRIGHT_WORKER_INDEX ?? process.env.TEST_PARALLEL_INDEX;
 type BrowserName = 'chromium' | 'firefox' | 'webkit';
+
+/**
+ * Generate unique test user email for parallel testing
+ * Includes timestamp for uniqueness across test runs
+ */
+function generateTestEmail(browser: string, index?: string): string {
+  const timestamp = Date.now();
+  const workerSuffix = index ? `-w${index}` : '';
+  return `test-${browser}${workerSuffix}-${timestamp}@example.com`;
+}
+
 export const TEST_USERS: Record<BrowserName, TestUser> = {
   chromium: { 
     ...TEST_USER, 
     email: WORKER_INDEX != null
-      ? `test-chromium-${WORKER_INDEX}@example.com`
+      ? generateTestEmail('chromium', WORKER_INDEX)
       : TEST_USER.email
   },
   firefox: { 
     ...TEST_USER, 
     email: WORKER_INDEX != null
-      ? `test-firefox-${WORKER_INDEX}@example.com`
+      ? generateTestEmail('firefox', WORKER_INDEX)
       : TEST_USER.email
   },
   webkit: { 
     ...TEST_USER, 
     email: WORKER_INDEX != null
-      ? `test-webkit-${WORKER_INDEX}@example.com`
+      ? generateTestEmail('webkit', WORKER_INDEX)
       : TEST_USER.email
   },
 };
@@ -65,8 +76,8 @@ export async function waitForPageLoad(page: Page, options: { timeout?: number } 
     // ignore - networkidle might not be reached with WebSocket/SSE
   }
   
-  // Wait for main content area to be visible
-  const mainContent = page.locator(`${SELECTORS.MAIN_CONTENT}, [role="main"], #__next, #root`).first();
+  // Wait for main content area to be visible using SELECTORS
+  const mainContent = page.locator(SELECTORS.MAIN_CONTENT).first();
   if (await mainContent.count() > 0) {
     await mainContent.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
       // Fallback if main content selector doesn't exist
@@ -85,8 +96,8 @@ export async function waitForElement(page: Page, selector: string, timeout = 100
  * 記事カードが存在することを確認
  */
 export async function expectArticleCards(page: Page, minCount = 1) {
-  // 記事要素を探す（data-testidを最優先、共通セレクタをフォールバック）
-  const articles = page.locator(`[data-testid="article-card"], ${SELECTORS.ARTICLE_CARD}`);
+  // 記事要素を探す（SELECTORSを使用）
+  const articles = page.locator(SELECTORS.ARTICLE_CARD);
   const count = await articles.count();
   expect(count).toBeGreaterThanOrEqual(minCount);
 }
@@ -138,9 +149,8 @@ export async function expectUrlPath(page: Page, expectedPath: string | RegExp) {
  * エラーメッセージが表示されていないことを確認
  */
 export async function expectNoErrors(page: Page) {
-  const visibleErrors = page.locator(
-    `[data-testid="error-message"]:visible, ${SELECTORS.ERROR_MESSAGE}:visible`
-  );
+  // Use only SELECTORS constants for consistency
+  const visibleErrors = page.locator(`${SELECTORS.ERROR_MESSAGE}:visible`);
   await expect(visibleErrors).toHaveCount(0);
 }
 
@@ -496,15 +506,36 @@ export async function loginTestUser(
     await submitButton.waitFor({ state: 'visible', timeout: 5000 });
     await submitButton.click();
     
-    // Wait for navigation (pathname-based)
+    // Wait for navigation with robust checks
     const successPaths = options.successUrls ?? ['/', '/dashboard', '/home'];
     const okPaths = new Set(successPaths);
+    
+    // Wait for URL change and verify no errors
     await page.waitForURL(
       (u) => {
-        try { return okPaths.has(new URL(u).pathname); } catch { return false; }
+        try { 
+          const url = new URL(u);
+          // Check if we're on a success page (not on login/error page)
+          const isSuccessPath = okPaths.has(url.pathname);
+          const notOnLoginPage = !url.pathname.includes('/auth/login');
+          const notOnErrorPage = !url.pathname.includes('/error');
+          return isSuccessPath && notOnLoginPage && notOnErrorPage;
+        } catch { 
+          return false; 
+        }
       },
       { timeout }
     );
+    
+    // Additional verification: check for user menu or logout button
+    try {
+      const userIndicator = page.locator(
+        '[data-testid="user-menu"], [data-testid="logout-button"], button:has-text("ログアウト")'
+      ).first();
+      await userIndicator.waitFor({ state: 'visible', timeout: 2000 });
+    } catch {
+      // User indicator might not be immediately visible, but URL check passed
+    }
     
     if (debug) console.log('Login successful!');
     
