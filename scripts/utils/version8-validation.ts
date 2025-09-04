@@ -3,33 +3,53 @@
  */
 
 /**
- * Version 8形式の詳細要約を検証
+ * Version 8形式の詳細要約を検証（厳密版）
  * @param detailedSummary 検証する詳細要約
  * @returns Version 8形式に準拠している場合はtrue
  */
 export function validateVersion8Format(detailedSummary: string | null | undefined): boolean {
   if (!detailedSummary) return false;
   
-  // CRLF を LF に正規化
-  const normalizedSummary = detailedSummary.replace(/\r\n/g, '\n');
+  // CR, CRLF, LF すべてに対応した改行正規化
+  const normalizedSummary = detailedSummary.replace(/\r\n|\r|\n/g, '\n');
   const lines = normalizedSummary.split('\n').filter(line => line.trim().length > 0);
   
   // 空の場合は無効
   if (lines.length === 0) return false;
   
-  // すべての行が「・項目名：内容」の形式に従うかチェック
+  // すべての行が「・項目名：内容」の形式に従うかチェック（厳密版）
   return lines.every(line => {
     const trimmed = line.trim();
-    return trimmed.startsWith('・') && trimmed.includes('：');
+    
+    // 「・」で始まる必要がある
+    if (!trimmed.startsWith('・')) return false;
+    
+    // 「：」が含まれる必要がある
+    const colonIndex = trimmed.indexOf('：');
+    if (colonIndex === -1) return false;
+    
+    // 項目名（「・」と「：」の間）が空でないことを確認
+    const itemName = trimmed.substring(1, colonIndex).trim();
+    if (itemName.length === 0) return false;
+    
+    // 内容（「：」の後）が空でないことを確認
+    const content = trimmed.substring(colonIndex + 1).trim();
+    if (content.length === 0) return false;
+    
+    return true;
   });
 }
 
 /**
  * 品質スコアの妥当性を検証
  * @param qualityScore 検証する品質スコア
- * @returns 有効な範囲（0-100）の場合はtrue
+ * @returns 有効な範囲（0-100）かつ有限数の場合はtrue
  */
 export function validateQualityScore(qualityScore: number): boolean {
+  // 有限数チェック（NaN, Infinity, -Infinityを除外）
+  if (!Number.isFinite(qualityScore)) return false;
+  
+  // 範囲チェック
   return qualityScore >= 0 && qualityScore <= 100;
 }
 
@@ -39,8 +59,12 @@ export function validateQualityScore(qualityScore: number): boolean {
  * @returns 有効な値の場合はtrue
  */
 export function validateArticleType(articleType: string | null | undefined): boolean {
+  if (!articleType) return false;
+  
+  // トリムして小文字化してから比較（大文字小文字を許容）
+  const normalized = articleType.trim().toLowerCase();
   const validTypes = ['unified', 'legacy', 'simple'];
-  return articleType ? validTypes.includes(articleType) : false;
+  return validTypes.includes(normalized);
 }
 
 /**
@@ -67,13 +91,14 @@ export function safeSubstring(
 }
 
 /**
- * 改行を正規化（CRLF → LF）
+ * 改行を正規化（CR, CRLF → LF）
  * @param text 正規化する文字列
  * @returns 正規化された文字列
  */
 export function normalizeLineBreaks(text: string | null | undefined): string {
   if (!text) return '';
-  return text.replace(/\r\n/g, '\n');
+  // CR, CRLF, LF すべてに対応
+  return text.replace(/\r\n|\r|\n/g, '\n');
 }
 
 /**
@@ -128,4 +153,46 @@ export function validateGenerationResult(result: {
     isValid: errors.length === 0,
     errors
   };
+}
+
+/**
+ * Prisma更新用のデータを準備（undefinedを除外）
+ * @param data 更新データ
+ * @returns undefinedを除外した更新データ
+ */
+export function preparePrismaUpdateData(data: {
+  summary?: string | null | undefined;
+  detailedSummary?: string | null | undefined;
+  summaryVersion?: number | undefined;
+  articleType?: string | null | undefined;
+  qualityScore?: number | undefined;
+}): {
+  summary?: string | null;
+  detailedSummary?: string | null;
+  summaryVersion: number;
+  articleType: string;
+  qualityScore?: number;
+} {
+  const result: any = {};
+  
+  // summaryVersionとarticleTypeは固定値
+  result.summaryVersion = 8;
+  result.articleType = 'unified';
+  
+  // undefinedでない場合のみ設定
+  if (data.summary !== undefined) {
+    result.summary = data.summary || null;
+  }
+  
+  if (data.detailedSummary !== undefined) {
+    // 改行を正規化してから設定
+    result.detailedSummary = normalizeLineBreaks(data.detailedSummary);
+  }
+  
+  if (data.qualityScore !== undefined && Number.isFinite(data.qualityScore)) {
+    // 範囲内に収める
+    result.qualityScore = Math.max(0, Math.min(100, data.qualityScore));
+  }
+  
+  return result;
 }

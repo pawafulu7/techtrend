@@ -6,7 +6,8 @@ import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { 
   validateGenerationResult, 
   safeSubstring, 
-  normalizeLineBreaks 
+  normalizeLineBreaks,
+  preparePrismaUpdateData 
 } from '../utils/version8-validation';
 
 const prisma = new PrismaClient();
@@ -98,16 +99,18 @@ async function updateToVersion8(articleId: string): Promise<number> {
     }
     console.log('');
 
-    // データベース更新（正規化後のデータを保存）
+    // データベース更新（安全な更新データを準備）
+    const updateData = preparePrismaUpdateData({
+      summary: result.summary,
+      detailedSummary: result.detailedSummary,
+      summaryVersion: result.summaryVersion,
+      articleType: result.articleType,
+      qualityScore: result.qualityScore
+    });
+    
     const updated = await prisma.article.update({
       where: { id: articleId },
-      data: {
-        summary: result.summary,
-        detailedSummary: normalizeLineBreaks(result.detailedSummary || ''),
-        summaryVersion: result.summaryVersion,
-        articleType: result.articleType,
-        qualityScore: result.qualityScore
-      }
+      data: updateData
     });
 
     console.log('データベースを更新しました。');
