@@ -4,7 +4,7 @@ import {
   waitForPageLoad,
   _expectPageTitle,
   expectNoErrors,
-} from '../utils/test-helpers';
+} from '../utils/e2e-helpers';
 
 test.describe('記事詳細ページ', () => {
   test('記事詳細が正常に表示される', async ({ page }) => {

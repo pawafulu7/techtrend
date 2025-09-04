@@ -7,7 +7,7 @@ import {
   expectNavigationMenu,
   waitForLoadingToDisappear,
   _waitForDataLoad,
-} from '../utils/test-helpers';
+} from '../utils/e2e-helpers';
 import { _SELECTORS } from '../constants/selectors';
 
 test.describe('分析ページ', () => {

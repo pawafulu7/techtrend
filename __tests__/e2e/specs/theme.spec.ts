@@ -3,7 +3,7 @@ import {
   waitForPageLoad,
   _expectNoErrors,
   _waitForLoadingToDisappear,
-} from '../utils/test-helpers';
+} from '../utils/e2e-helpers';
 import { SELECTORS } from '../constants/selectors';
 
 test.describe('テーマ切り替え機能', () => {

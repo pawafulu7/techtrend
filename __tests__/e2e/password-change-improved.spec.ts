@@ -10,7 +10,7 @@ import {
   fillPasswordChangeForm,
   waitForErrorMessage,
   waitForSuccessMessage
-} from './utils/test-helpers';
+} from './utils/e2e-helpers';
 
 /**
  * パスワード変更機能の改善版E2Eテスト

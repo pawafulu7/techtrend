@@ -3,7 +3,7 @@ import {
   TEST_USER,
   TEST_USERS,
   loginTestUser
-} from './utils/test-helpers';
+} from './utils/e2e-helpers';
 
 /**
  * ログイン機能の改善版E2Eテスト

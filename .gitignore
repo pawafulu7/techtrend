@@ -115,11 +115,16 @@ deleted_scripts_list.txt
 # SQLファイル（マイグレーションは除く）
 *.sql
 !prisma/migrations/**/*.sql
-test-*.ts
+
+# Temporary test files only - be more specific to avoid ignoring important test helpers
+test-temp-*.ts
+test-debug-*.ts
 test-*.md
 
-# Keep the in-repo test Redis client used by runtime factory
+# Keep important test files
 !lib/redis/test-redis-client.ts
+!__tests__/**/test-*.ts
+!__tests__/**/test-*.tsx
 
 # Serena MCP cache and memories
 .serena/cache/
