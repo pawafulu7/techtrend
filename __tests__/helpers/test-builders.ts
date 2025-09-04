@@ -246,7 +246,7 @@ export class TestFixtures {
         .withTitle(`Test Article ${i + 1}`)
         .withSummary(`Summary for article ${i + 1}`)
         .withPublishedAt(new Date(Date.now() - i * 86400000)) // 1日ずつ過去の日付
-        .withQualityScore(70 + Math.random() * 30) // 70-100のランダムスコア
+        .withQualityScore(70 + (i % 31)) // 70-100の決定的なスコア
         .withSource({
           id: `source-${(i % 3) + 1}`,
           name: ['Qiita', 'Zenn', 'Dev.to'][i % 3],

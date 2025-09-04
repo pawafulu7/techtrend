@@ -159,7 +159,7 @@ export function createMockRedisClient() {
  */
 export function generateSampleArticle(overrides = {}) {
   return {
-    id: Math.random().toString(36).substr(2, 9),
+    id: Math.random().toString(36).slice(2, 11),
     title: 'Sample Article Title',
     url: 'https://example.com/article',
     content: 'Sample article content for testing purposes.',
@@ -200,7 +200,7 @@ export function generateSampleArticle(overrides = {}) {
 
 export function generateSampleSource(overrides = {}) {
   return {
-    id: Math.random().toString(36).substr(2, 9),
+    id: Math.random().toString(36).slice(2, 11),
     name: 'Sample Source',
     url: 'https://example.com',
     category: 'Technology',

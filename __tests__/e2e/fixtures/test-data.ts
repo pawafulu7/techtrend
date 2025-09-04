@@ -24,11 +24,11 @@ export const testData = {
     maxPages: 5,
   },
 
-  // タイムアウト設定
+  // タイムアウト設定（環境変数で上書き可能）
   timeouts: {
-    short: 5000,
-    medium: 10000,
-    long: 30000,
+    short: Number(process.env.TEST_TIMEOUT_SHORT) || 5000,
+    medium: Number(process.env.TEST_TIMEOUT_MEDIUM) || 10000,
+    long: Number(process.env.TEST_TIMEOUT_LONG) || 30000,
   },
 
   // URLパス

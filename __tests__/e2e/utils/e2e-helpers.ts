@@ -221,11 +221,8 @@ export async function waitForLoadingToDisappear(page: Page, timeout = 10000) {
   // SELECTORSから定義されたローディングインジケーターを使用
   const loadingIndicator = page.locator(SELECTORS.LOADING_INDICATOR);
   
-  // ローディングインジケーターが存在する場合、消えるまで待つ
-  const count = await loadingIndicator.count();
-  if (count > 0) {
-    await loadingIndicator.first().waitFor({ state: 'hidden', timeout });
-  }
+  // すべてのローディングインジケーターが非表示になるまで待つ
+  await expect(loadingIndicator).toBeHidden({ timeout });
 }
 
 /**
