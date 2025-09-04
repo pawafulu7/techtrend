@@ -1,6 +1,13 @@
 import { Page, expect } from '@playwright/test';
 import { SELECTORS } from '../constants/selectors';
 
+/**
+ * Escape special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Test user configuration
 export const TEST_USER = {
   id: 'test-user-id',
@@ -11,7 +18,7 @@ export const TEST_USER = {
 
 // Browser-specific test users (for parallel testing)
 export const TEST_USERS = {
-  chromium: TEST_USER,
+  chromium: { ...TEST_USER },  // Create an independent copy
   firefox: { ...TEST_USER, email: 'test-firefox@example.com' },
   webkit: { ...TEST_USER, email: 'test-webkit@example.com' },
 };
@@ -86,15 +93,23 @@ export async function expectNavigationMenu(page: Page) {
 /**
  * ページタイトルを検証
  */
-export async function expectPageTitle(page: Page, expectedTitle: string) {
-  await expect(page).toHaveTitle(new RegExp(expectedTitle, 'i'));
+export async function expectPageTitle(page: Page, expectedTitle: string | RegExp) {
+  if (typeof expectedTitle === 'string') {
+    await expect(page).toHaveTitle(new RegExp(escapeRegex(expectedTitle), 'i'));
+  } else {
+    await expect(page).toHaveTitle(expectedTitle);
+  }
 }
 
 /**
  * URLパスを検証
  */
-export async function expectUrlPath(page: Page, expectedPath: string) {
-  await expect(page).toHaveURL(new RegExp(expectedPath));
+export async function expectUrlPath(page: Page, expectedPath: string | RegExp) {
+  if (typeof expectedPath === 'string') {
+    await expect(page).toHaveURL(new RegExp(escapeRegex(expectedPath)));
+  } else {
+    await expect(page).toHaveURL(expectedPath);
+  }
 }
 
 /**

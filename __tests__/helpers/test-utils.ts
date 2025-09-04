@@ -3,7 +3,7 @@
  * MSW依存を排除し、純粋なJestモックを使用
  */
 
-import { NextRequest, _NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * APIハンドラーをテストするためのヘルパー関数

@@ -1,10 +1,10 @@
 import { execSync } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
 import * as dotenv from 'dotenv';
-import * as _path from '_path';
+import * as path from 'node:path';
 
 // Load test environment variables
-dotenv.config({ path: '.env.test' });
+dotenv.config({ path: path.resolve(process.cwd(), '.env.test') });
 
 /**
  * テストデータベースをセットアップする
