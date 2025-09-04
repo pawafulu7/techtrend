@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import * as dotenv from 'dotenv';
+import { testConfig } from './config/test.config';
 
 // テスト環境変数読み込み
 dotenv.config({ path: '.env.test' });
@@ -23,12 +24,7 @@ export default defineConfig({
   globalSetup: './__tests__/e2e/global-setup.ts',
   globalTeardown: './__tests__/e2e/global-teardown.ts',
   /* CI環境でサーバーを自動起動 */
-  webServer: process.env.CI ? {
-    command: 'npm run build && npm run start',
-    port: 3005,
-    timeout: 180 * 1000,
-    reuseExistingServer: !process.env.CI,
-  } : undefined,
+  webServer: process.env.CI ? testConfig.webServer : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html'],
@@ -38,7 +34,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'http://localhost:3005',
+    baseURL: testConfig.baseUrl,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
     /* Take screenshot on failure */
