@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S npx tsx
 // 特定記事を最新のVersion 8形式で再生成するスクリプト
 
 import { PrismaClient } from '@prisma/client';
@@ -16,7 +16,7 @@ async function updateToVersion8(articleId: string) {
 
     if (!article) {
       console.error(`記事が見つかりません: ${articleId}`);
-      return;
+      process.exit(1);
     }
 
     console.log('記事情報:');
@@ -32,13 +32,17 @@ async function updateToVersion8(articleId: string) {
     }
 
     console.log('現在の詳細要約（旧形式）:');
-    console.log(article.detailedSummary?.substring(0, 200) + '...');
+    // 200文字を超える場合のみ省略記号を追加
+    const currentPreview = article.detailedSummary && article.detailedSummary.length > 200
+      ? article.detailedSummary.substring(0, 200) + '...'
+      : article.detailedSummary || '';
+    console.log(currentPreview);
     console.log('');
 
     // コンテンツ確認
     if (!article.content) {
       console.error('コンテンツがありません。要約を生成できません。');
-      return;
+      process.exit(1);
     }
 
     console.log(`コンテンツ長: ${article.content.length}文字`);
@@ -58,7 +62,7 @@ async function updateToVersion8(articleId: string) {
     // resultは直接UnifiedSummaryResultを返すため、successプロパティはない
     if (!result.summary) {
       console.error('要約生成に失敗しました');
-      return;
+      process.exit(1);
     }
 
     console.log('\n生成完了:');
@@ -74,8 +78,17 @@ async function updateToVersion8(articleId: string) {
     console.log('新しい詳細要約（Version 8形式）:');
     // 詳細要約の最初の3項目を表示
     const lines = result.detailedSummary?.split('\n').slice(0, 3);
-    lines?.forEach(line => console.log(line));
-    console.log('...');
+    lines?.forEach(line => {
+      // 長い行は100文字で切って省略記号を追加
+      const displayText = line.length > 100
+        ? line.substring(0, 100) + '...'
+        : line;
+      console.log(displayText);
+    });
+    // 4項目以上ある場合のみ省略記号を表示
+    if (result.detailedSummary && result.detailedSummary.split('\n').length > 3) {
+      console.log('...');
+    }
     console.log('');
 
     // データベース更新
@@ -97,6 +110,7 @@ async function updateToVersion8(articleId: string) {
 
   } catch (error) {
     console.error('エラーが発生しました:', error);
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }
