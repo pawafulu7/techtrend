@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * 統合テスト: generate-summaries.tsのMarkdown削除機能
  * 実際の要約生成プロセスをシミュレートして検証

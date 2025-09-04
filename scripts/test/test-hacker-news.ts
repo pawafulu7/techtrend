@@ -36,7 +36,7 @@ async function testHackerNews() {
       console.log(`\n[${i + 1}] ${article.title}`);
       console.log(`    URL: ${article.url}`);
       console.log(`    Date: ${article.publishedAt}`);
-      console.log(`    Tags: ${article.tagNames.join(', ')}`);
+      console.log(`    Tags: ${(article.tagNames ?? []).join(', ')}`);
       console.log(`    Content Length: ${article.content ? article.content.length : 0} chars`);
       if (article.metadata) {
         console.log(`    HN Score: ${article.metadata.hnScore}`);

@@ -110,6 +110,7 @@ export async function waitForDataLoad(page: Page, timeout = 10000) {
       const hasData = document.querySelector('[data-loaded="true"], main [class*="card"], main article');
       return !loader && hasData;
     },
+    undefined,
     { timeout }
   );
 }
@@ -153,13 +154,19 @@ export async function waitForTextChange(
       
       if (typeof expectedText === 'string') {
         return text.includes(expectedText);
-      } else {
-        // RegExpオブジェクトは直接渡せないため、文字列として処理
-        const pattern = new RegExp(expectedText.toString().slice(1, -1));
+      } else if (expectedText && typeof expectedText === 'object' && expectedText.type === 'regexp') {
+        // RegExpをsourceとflagsから再構築
+        const pattern = new RegExp(expectedText.source, expectedText.flags);
         return pattern.test(text);
       }
+      return false;
     },
-    { selector, expectedText: expectedText instanceof RegExp ? expectedText.toString() : expectedText },
+    { 
+      selector, 
+      expectedText: expectedText instanceof RegExp 
+        ? { type: 'regexp', source: expectedText.source, flags: expectedText.flags }
+        : expectedText 
+    },
     { timeout }
   );
 }
@@ -228,6 +235,7 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
       // いずれかの条件を満たせばOK
       return hasResultText || articleCards.length > 0;
     },
+    undefined,
     { timeout }
   );
   

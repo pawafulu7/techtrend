@@ -20,12 +20,14 @@ export class TestFixtures {
 
   static createArticle(overrides?: Partial<Article>): Article {
     const now = new Date();
+    const id = this.generateId('article');
+    const currentId = this.idCounter;
     return {
-      id: this.generateId('article'),
+      id,
       title: 'Test Article Title',
       summary: 'This is a test article summary.',
       detailedSummary: 'This is a detailed test article summary with more information.',
-      url: `https://example.com/article-${this.idCounter}`,
+      url: `https://example.com/article-${currentId}`,
       thumbnail: null,
       content: null,
       publishedAt: now,
@@ -67,7 +69,15 @@ export class TestFixtures {
   }): ArticleWithRelations {
     const { source: sourceOverride, tags: tagsOverride, ...articleOverrides } = overrides || {};
     const article = this.createArticle(articleOverrides as Partial<Article>);
-    const source = sourceOverride || this.createSource({ id: article.sourceId });
+    // sourceが指定されていない場合は、記事ごとにユニークなsource IDを生成
+    const source = sourceOverride || this.createSource({ 
+      id: `${article.id}-source`,
+      name: `Source for ${article.id}`
+    });
+    // sourceIdが未設定の場合はsourceのidを設定
+    if (!article.sourceId || article.sourceId === 'test-source') {
+      article.sourceId = source.id;
+    }
     const tags = tagsOverride || [];
     
     return {
@@ -79,11 +89,13 @@ export class TestFixtures {
 
   static createSource(overrides?: Partial<Source>): Source {
     const now = new Date();
+    const id = this.generateId('source');
+    const currentId = this.idCounter;
     return {
-      id: this.generateId('source'),
+      id,
       name: 'Test Source',
       type: 'rss',
-      url: `https://test-source-${this.idCounter}.com`,
+      url: `https://test-source-${currentId}.com`,
       enabled: true,
       createdAt: now,
       updatedAt: now,
@@ -92,9 +104,11 @@ export class TestFixtures {
   }
 
   static createTag(overrides?: Partial<Tag>): Tag {
+    const id = this.generateId('tag');
+    const currentId = this.idCounter;
     return {
-      id: this.generateId('tag'),
-      name: `TestTag${this.idCounter}`,
+      id,
+      name: `TestTag${currentId}`,
       category: null,
       ...overrides,
     };
@@ -102,10 +116,12 @@ export class TestFixtures {
 
   static createUser(overrides?: Partial<User>): User {
     const now = new Date();
+    const id = this.generateId('user');
+    const currentId = this.idCounter;
     return {
-      id: this.generateId('user'),
-      email: `test${this.idCounter}@example.com`,
-      name: `Test User ${this.idCounter}`,
+      id,
+      email: `test${currentId}@example.com`,
+      name: `Test User ${currentId}`,
       emailVerified: null,
       image: null,
       createdAt: now,

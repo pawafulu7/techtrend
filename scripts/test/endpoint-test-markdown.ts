@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * エンドポイントテスト: 記事APIから実際に修正された記事を取得して検証
  */

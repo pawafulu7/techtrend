@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 
 import { PrismaClient } from '@prisma/client';
 import { generateSummaryAndTags } from '../../lib/ai/gemini-handler';

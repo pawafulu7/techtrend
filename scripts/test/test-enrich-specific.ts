@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 
 import { MoneyForwardContentEnricher } from '../../lib/enrichers/moneyforward';
 

@@ -40,6 +40,7 @@ async function testEndpoint(
       headers: {
         'Content-Type': 'application/json'
       },
+      timeout: 10000, // 10秒のタイムアウト
       validateStatus: () => true // すべてのステータスコードを受け入れる
     });
 
@@ -54,7 +55,11 @@ async function testEndpoint(
     }
   } catch (error: any) {
     result.status = 'FAIL';
-    result.error = error.message;
+    if (error.code === 'ECONNABORTED') {
+      result.error = `Request timeout after 10 seconds`;
+    } else {
+      result.error = error.message;
+    }
   }
 
   return result;

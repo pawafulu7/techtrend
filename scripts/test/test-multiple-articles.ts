@@ -23,9 +23,10 @@ async function testArticles() {
 
   const results = [];
 
-  for (const articleId of TEST_ARTICLES) {
-    try {
-      const article = await prisma.article.findUnique({
+  try {
+    for (const articleId of TEST_ARTICLES) {
+      try {
+        const article = await prisma.article.findUnique({
         where: { id: articleId },
         select: {
           id: true,
@@ -89,45 +90,46 @@ async function testArticles() {
       // Rate limit対策
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-    } catch (error) {
-      console.error(`❌ エラー: ${error}`);
+      } catch (error) {
+        console.error(`❌ エラー: ${error}`);
+      }
     }
+
+    // 結果サマリー
+    console.error('\n========================================');
+    console.error('結果サマリー');
+    console.error('========================================\n');
+
+    console.error('【記事ごとの結果】');
+    results.forEach(r => {
+      console.error(`${r.contentLength}文字 → 詳細${r.detailedSummaryLength}文字（${r.itemCount}項目、平均${r.avgItemLength}文字/項目）`);
+    });
+
+    // 目標との比較
+    console.error('\n【目標との比較】');
+    results.forEach(r => {
+      let targetDetailedLength = 0;
+      let targetItemCount = 0;
+      let targetItemLength = 0;
+
+      if (r.contentLength >= 5000) {
+        targetDetailedLength = 1000; // 800-1200の中間
+        targetItemCount = 5;
+        targetItemLength = 200; // 150-250の中間
+      } else if (r.contentLength >= 3000) {
+        targetDetailedLength = 750; // 600-900の中間
+        targetItemCount = 4;
+        targetItemLength = 160; // 120-200の中間
+      }
+
+      console.error(`${r.contentLength}文字の記事:`);
+      console.error(`  詳細要約: ${r.detailedSummaryLength}文字 / 目標${targetDetailedLength}文字 (${Math.round(r.detailedSummaryLength/targetDetailedLength*100)}%)`);
+      console.error(`  項目数: ${r.itemCount}個 / 目標${targetItemCount}個以上`);
+      console.error(`  項目平均: ${r.avgItemLength}文字 / 目標${targetItemLength}文字 (${Math.round(r.avgItemLength/targetItemLength*100)}%)`);
+    });
+  } finally {
+    await prisma.$disconnect();
   }
-
-  // 結果サマリー
-  console.error('\n========================================');
-  console.error('結果サマリー');
-  console.error('========================================\n');
-
-  console.error('【記事ごとの結果】');
-  results.forEach(r => {
-    console.error(`${r.contentLength}文字 → 詳細${r.detailedSummaryLength}文字（${r.itemCount}項目、平均${r.avgItemLength}文字/項目）`);
-  });
-
-  // 目標との比較
-  console.error('\n【目標との比較】');
-  results.forEach(r => {
-    let targetDetailedLength = 0;
-    let targetItemCount = 0;
-    let targetItemLength = 0;
-
-    if (r.contentLength >= 5000) {
-      targetDetailedLength = 1000; // 800-1200の中間
-      targetItemCount = 5;
-      targetItemLength = 200; // 150-250の中間
-    } else if (r.contentLength >= 3000) {
-      targetDetailedLength = 750; // 600-900の中間
-      targetItemCount = 4;
-      targetItemLength = 160; // 120-200の中間
-    }
-
-    console.error(`${r.contentLength}文字の記事:`);
-    console.error(`  詳細要約: ${r.detailedSummaryLength}文字 / 目標${targetDetailedLength}文字 (${Math.round(r.detailedSummaryLength/targetDetailedLength*100)}%)`);
-    console.error(`  項目数: ${r.itemCount}個 / 目標${targetItemCount}個以上`);
-    console.error(`  項目平均: ${r.avgItemLength}文字 / 目標${targetItemLength}文字 (${Math.round(r.avgItemLength/targetItemLength*100)}%)`);
-  });
-
-  await prisma.$disconnect();
 }
 
 // 実行

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 
 /**
  * 企業技術ブログ記事取得テスト
@@ -40,14 +40,23 @@ async function testCorporateBlogs() {
     
     // タイムアウト設定付きで記事取得
     const fetchPromise = fetcher.fetch();
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout')), 10000)
-    );
+    let timeoutId: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('Timeout')), 10000);
+    });
     
     let articles;
     try {
       articles = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+      // 成功した場合はタイマーをクリア
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     } catch (error) {
+      // エラーの場合もタイマーをクリア
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       if (error instanceof Error && error.message === 'Timeout') {
         console.error('⏱️ タイムアウト（10秒）しましたが、部分的な結果を確認します\n');
         articles = [];

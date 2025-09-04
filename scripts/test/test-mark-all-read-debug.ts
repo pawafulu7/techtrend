@@ -1,9 +1,30 @@
 import { prisma } from '../../lib/database';
 
 async function testMarkAllRead() {
-  const userId = 'cmegdo3dv0000te6hh4cdhykx';
+  // 本番環境での実行を防ぐ
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ エラー: 本番環境でのテストスクリプト実行は禁止されています');
+    process.exit(1);
+  }
+  
+  // DATABASE_URLが本番を指していないかチェック
+  const dbUrl = process.env.DATABASE_URL || '';
+  if (dbUrl.includes('prod') || dbUrl.includes('production')) {
+    console.error('❌ エラー: 本番データベースへの接続が検出されました');
+    process.exit(1);
+  }
+  
+  // userIdをコマンドライン引数または環境変数から取得
+  const userId = process.argv[2] || process.env.TEST_USER_ID || 'cmegdo3dv0000te6hh4cdhykx';
   
   console.log('=== 全て既読機能のデバッグテスト ===');
+  console.log(`環境: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`対象ユーザーID: ${userId}`);
+  
+  // 警告表示
+  console.log('\n⚠️  警告: このスクリプトは大量のデータを変更します');
+  console.log('実行を続けるには5秒待ちます...\n');
+  await new Promise(resolve => setTimeout(resolve, 5000));
   
   // 現在の状態を確認
   const beforeCount = await prisma.articleView.count({

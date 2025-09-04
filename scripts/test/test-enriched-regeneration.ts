@@ -99,7 +99,7 @@ async function testEnrichedArticles() {
         `${stat.source_name.padEnd(29)} | ${String(stat.total).padStart(6)} | ` +
         `${String(stat.enriched).padStart(11)} | ${String(stat.need_regeneration).padStart(8)} |`
       );
-      totalNeedRegeneration += parseInt(stat.need_regeneration);
+      totalNeedRegeneration += Number(stat.need_regeneration) || 0;
     }
     
     console.log('------------------------------|--------|-------------|----------|');

@@ -53,8 +53,14 @@ export async function createTestUser(): Promise<boolean> {
     // TypeScriptスクリプトを使用して正しいハッシュでユーザーを作成
     // DATABASE_URL環境変数を設定して実行
     execSync(
-      'DATABASE_URL="postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev" npx tsx scripts/create-test-user.ts',
-      { stdio: 'pipe' }
+      'npx tsx scripts/create-test-user.ts',
+      { 
+        stdio: 'pipe',
+        env: {
+          ...process.env,
+          DATABASE_URL: 'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev'
+        }
+      }
     );
     
     console.log('Test user created successfully');
@@ -70,12 +76,17 @@ export async function createTestUser(): Promise<boolean> {
  */
 export async function deleteTestUser(): Promise<boolean> {
   try {
-    const sql = `DELETE FROM "User" WHERE email = '${TEST_USER.email}';`;
-    
-    // 開発データベース（techtrend_dev）から削除
+    // パラメータ化されたスクリプトを使用してユーザーを削除
     execSync(
-      `echo '${sql}' | docker exec -i techtrend-postgres psql -U postgres -d techtrend_dev`,
-      { stdio: 'pipe' }
+      'npx tsx scripts/delete-test-user.ts',
+      { 
+        stdio: 'pipe',
+        env: {
+          ...process.env,
+          DATABASE_URL: 'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev',
+          TEST_USER_EMAIL: TEST_USER.email
+        }
+      }
     );
     
     console.log('Test user deleted successfully');

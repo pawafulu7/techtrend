@@ -71,9 +71,11 @@ async function testFlexibleSummary(articleId?: string) {
     
     const oldLength = article.detailedSummary?.length || 0;
     const newLength = result.detailedSummary.length;
-    const improvement = ((newLength - oldLength) / oldLength * 100).toFixed(1);
+    const improvement = oldLength === 0 
+      ? 'N/A' 
+      : ((newLength - oldLength) / oldLength * 100).toFixed(1) + '%';
     
-    console.error(`詳細要約の文字数変化: ${oldLength}文字 → ${newLength}文字 (${improvement}%)`);
+    console.error(`詳細要約の文字数変化: ${oldLength}文字 → ${newLength}文字 (${improvement})`);
     
     // 項目形式の確認
     const lines = result.detailedSummary.split('\n').filter(line => line.trim());
