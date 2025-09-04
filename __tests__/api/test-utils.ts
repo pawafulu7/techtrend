@@ -136,7 +136,11 @@ export function createMockRedisClient() {
     expire: jest.fn(async () => 1),
     ttl: jest.fn(async () => 3600),
     keys: jest.fn(async (pattern: string) => {
-      const regex = new RegExp(pattern.replace('*', '.*'));
+      // Properly escape special regex characters before replacing wildcards
+      const escapedPattern = pattern
+        .replace(/[.+?^${}()|[\]\\]/g, '\\$&')  // Escape regex special chars
+        .replace(/\\\*/g, '.*');  // Replace escaped * with .*
+      const regex = new RegExp(escapedPattern);
       return Array.from(store.keys()).filter(key => regex.test(key));
     }),
     flushdb: jest.fn(async () => {
