@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-import { TEST_USER } from './utils/test-helpers';
+import { TEST_USER } from './utils/e2e-helpers';
 
 /**
  * E2Eテスト用のユーザーをセットアップする

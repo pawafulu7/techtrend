@@ -8,7 +8,7 @@ import {
   waitForLoadingToDisappear,
   waitForSearchResults,
   _waitForApiResponse,
-} from '../utils/test-helpers';
+} from '../utils/e2e-helpers';
 import { SELECTORS } from '../constants/selectors';
 
 test.describe('検索機能', () => {

@@ -4,7 +4,7 @@ import {
   _expectNoErrors,
   waitForLoadingToDisappear,
   expectArticleCards,
-} from '../utils/test-helpers';
+} from '../utils/e2e-helpers';
 import { SELECTORS } from '../constants/selectors';
 
 test.describe('リーディングリスト機能', () => {

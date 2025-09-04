@@ -6,7 +6,7 @@ import {
   expectNavigationMenu,
   expectPageTitle,
   expectNoErrors,
-} from '../utils/test-helpers';
+} from '../utils/e2e-helpers';
 import { SELECTORS } from '../constants/selectors';
 
 test.describe('ホームページ', () => {

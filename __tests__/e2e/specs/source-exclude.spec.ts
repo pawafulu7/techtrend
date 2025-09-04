@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForPageLoad } from '../utils/test-helpers';
+import { waitForPageLoad } from '../utils/e2e-helpers';
 
 test.describe('ソースフィルタリング機能', () => {
   test.beforeEach(async ({ page }) => {

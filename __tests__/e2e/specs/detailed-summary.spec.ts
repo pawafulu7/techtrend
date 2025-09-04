@@ -4,7 +4,7 @@ import {
   _expectNoErrors,
   waitForLoadingToDisappear,
   _waitForElementTextContent,
-} from '../utils/test-helpers';
+} from '../utils/e2e-helpers';
 import { SELECTORS } from '../constants/selectors';
 
 test.describe('詳細要約表示', () => {
