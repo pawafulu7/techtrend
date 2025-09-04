@@ -1,11 +1,15 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * APIレスポンス修正後の確認テスト
  */
 
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:3000/api';
+// Create axios instance with timeout and environment-based URL
+const http = axios.create({
+  baseURL: process.env.API_BASE_URL || 'http://localhost:3000/api',
+  timeout: 10000 // 10 seconds
+});
 
 interface TestResult {
   name: string;
@@ -18,7 +22,7 @@ const tests: TestResult[] = [];
 async function testSummaryVersionInList() {
   const testName = 'APIレスポンスにsummaryVersionが含まれる（一覧）';
   try {
-    const response = await axios.get(`${BASE_URL}/articles?limit=5`);
+    const response = await http.get(`/articles?limit=5`);
     
     if (response.data.success && response.data.data?.items) {
       const items = response.data.data.items;
@@ -63,7 +67,7 @@ async function testSummaryVersionInList() {
 async function testArticleTypeInList() {
   const testName = 'APIレスポンスにarticleTypeが含まれる（一覧）';
   try {
-    const response = await axios.get(`${BASE_URL}/articles?limit=5`);
+    const response = await http.get(`/articles?limit=5`);
     
     if (response.data.success && response.data.data?.items) {
       const items = response.data.data.items;
@@ -109,13 +113,13 @@ async function testSummaryVersionInDetail() {
   const testName = 'APIレスポンスにsummaryVersionが含まれる（個別）';
   try {
     // まず記事IDを取得
-    const listResponse = await axios.get(`${BASE_URL}/articles?limit=1`);
+    const listResponse = await http.get(`/articles?limit=1`);
     
     if (listResponse.data.success && listResponse.data.data?.items?.length > 0) {
       const articleId = listResponse.data.data.items[0].id;
       
       // 個別記事を取得
-      const detailResponse = await axios.get(`${BASE_URL}/articles/${articleId}`);
+      const detailResponse = await http.get(`/articles/${articleId}`);
       
       if (detailResponse.data.success && detailResponse.data.data) {
         const article = detailResponse.data.data;
@@ -159,7 +163,7 @@ async function testSummaryVersionInDetail() {
 async function testVersion7Distribution() {
   const testName = 'Version 7移行状況の確認';
   try {
-    const response = await axios.get(`${BASE_URL}/articles?limit=100`);
+    const response = await http.get(`/articles?limit=100`);
     
     if (response.data.success && response.data.data?.items) {
       const items = response.data.data.items;
@@ -197,7 +201,7 @@ async function testVersion7Distribution() {
 async function testSearchWithVersion() {
   const testName = '検索結果にもsummaryVersionが含まれる';
   try {
-    const response = await axios.get(`${BASE_URL}/articles?search=AI&limit=5`);
+    const response = await http.get(`/articles?search=AI&limit=5`);
     
     if (response.data.success && response.data.data?.items) {
       const items = response.data.data.items;
@@ -240,7 +244,7 @@ async function runTests() {
   console.error('APIレスポンス修正 確認テスト');
   console.error('========================================\n');
   console.error(`開始時刻: ${new Date().toISOString()}`);
-  console.error(`ベースURL: ${BASE_URL}\n`);
+  console.error(`ベースURL: ${http.defaults.baseURL}\n`);
 
   // テスト実行
   console.error('▶ summaryVersionフィールドのテスト...');

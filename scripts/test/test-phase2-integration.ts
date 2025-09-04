@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * Phase 2 統合テスト - 実際のAPI呼び出しテスト
  * 

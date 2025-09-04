@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * summaryVersion 7のE2Eテスト
  * 新規記事の取得から要約生成、表示までの一連の流れをテスト

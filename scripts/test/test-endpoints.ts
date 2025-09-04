@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * エンドポイントテスト
  * summaryVersion 7対応とその他の変更を検証

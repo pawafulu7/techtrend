@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * Markdown太字記法削除の正規表現テストスクリプト
  */

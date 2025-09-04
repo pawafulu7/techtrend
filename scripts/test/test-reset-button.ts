@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * リセットボタンの動作確認スクリプト
  * 全てのフィルター関連cookieが削除されることを確認

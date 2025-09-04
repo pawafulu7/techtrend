@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * 9000文字の記事でsummaryVersion 7のテスト
  * 改善されたプロンプトで5項目生成されるか確認

@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * ArticleView既読データ保持機能のテスト
  * 100件を超える閲覧履歴の処理で既読状態が保持されることを確認

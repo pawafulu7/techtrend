@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * Version 7移行の小規模テスト
  * コンテンツが更新された記事から数件だけテスト

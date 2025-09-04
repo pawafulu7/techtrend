@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * 柔軟な項目設定による要約生成のテストスクリプト
  * Usage: npx tsx scripts/test/test-flexible-summary.ts [articleId]

@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * 並び順Cookie永続化のテスト
  * 取込順を選択してページリロードしても状態が保持されることを確認

@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * 500文字以下の記事で詳細要約スキップ機能をテスト
  */

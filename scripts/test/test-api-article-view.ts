@@ -1,10 +1,10 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * /api/article-views エンドポイントの統合テスト
  * 実際のHTTPリクエストで動作確認
  */
 
-import fetch from 'node-fetch';
+// Node.js 18+ のグローバル fetch を使用
 
 const BASE_URL = 'http://localhost:3000';
 

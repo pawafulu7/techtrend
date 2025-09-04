@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * Phase 2 テストスクリプト - 一覧要約の文字数拡張機能
  * 

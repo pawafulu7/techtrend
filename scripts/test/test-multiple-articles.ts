@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * 複数の記事でプロンプトをテスト
  */
@@ -33,6 +33,9 @@ async function testArticles() {
           content: true,
           url: true,
           sourceId: true,
+          source: {
+            select: { name: true }
+          }
         }
       });
 
@@ -51,7 +54,7 @@ async function testArticles() {
         article.title,
         article.content || '',
         undefined,
-        { sourceName: article.sourceId, url: article.url }
+        { sourceName: article.source?.name ?? article.sourceId, url: article.url }
       );
 
       const sections = parseSummary(result.detailedSummary, { 

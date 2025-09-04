@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 
 /**
  * APIエンドポイントの変更を検証するテストスクリプト
@@ -24,32 +24,97 @@ async function testReadStatusAPI() {
     });
     console.log(`  - ArticleViewレコード数: ${beforeCount}`);
     
-    // 既読マークをシミュレート（実際のAPIと同じロジック）
+    // 実DBの振る舞いを確認（更新前後比較）
     const now = new Date();
-    console.log('\n2. 既読マーク処理（修正後のロジック）');
-    console.log('  - isRead: true を設定');
-    console.log('  - readAt: ' + now.toISOString() + ' を設定');
-    console.log('  - viewedAt: 更新しない（修正ポイント）');
+    console.log('\n2. 既読マーク処理（実DBテスト）');
     
-    // 修正後のロジックを確認
+    // テスト用記事を作成（実際の記事があるか確認）
+    let testArticle = await prisma.article.findFirst({
+      where: { id: testArticleId }
+    });
+    
+    if (!testArticle) {
+      // テスト用記事を作成
+      const source = await prisma.source.findFirst();
+      if (!source) {
+        throw new Error('ソースが見つかりません');
+      }
+      
+      testArticle = await prisma.article.create({
+        data: {
+          id: testArticleId,
+          title: 'Test Article',
+          url: `https://example.com/test-${Date.now()}`,
+          publishedAt: new Date(),
+          sourceId: source.id
+        }
+      });
+    }
+    
+    // レコードの準備（存在しない場合は作成）
+    let beforeView = await prisma.articleView.findFirst({
+      where: { userId: testUserId, articleId: testArticleId }
+    });
+    
+    if (!beforeView) {
+      beforeView = await prisma.articleView.create({
+        data: {
+          userId: testUserId,
+          articleId: testArticleId,
+          viewedAt: now,
+          isRead: false
+        }
+      });
+      console.log('  - ArticleViewレコードを作成しました');
+    }
+    
+    const beforeViewedAt = beforeView.viewedAt;
+    console.log(`  - 更新前のviewedAt: ${beforeViewedAt?.toISOString()}`);
+    console.log(`  - 更新前のisRead: ${beforeView.isRead}`);
+    
+    // APIと同じ更新処理を実行
     const updateData = {
       isRead: true,
       readAt: now,
-      // viewedAt は含まれていない（これが修正内容）
+      // viewedAt は含めない（これが修正内容）
     };
     
-    console.log('\n3. 更新データの確認');
-    console.log('  更新フィールド:');
-    Object.keys(updateData).forEach(key => {
-      console.log(`    - ${key}: ${updateData[key as keyof typeof updateData]}`);
+    await prisma.articleView.updateMany({
+      where: { userId: testUserId, articleId: testArticleId },
+      data: updateData
     });
     
-    if ('viewedAt' in updateData) {
-      console.log('  ❌ エラー: viewedAtが含まれています（修正が反映されていない）');
+    // 更新後の取得・検証
+    const afterView = await prisma.articleView.findFirst({
+      where: { userId: testUserId, articleId: testArticleId }
+    });
+    
+    if (!afterView) {
+      console.log('  ❌ 更新後のレコードが取得できません');
       return false;
-    } else {
-      console.log('  ✅ 正常: viewedAtは含まれていません（修正が反映されている）');
     }
+    
+    console.log(`  - 更新後のviewedAt: ${afterView.viewedAt?.toISOString()}`);
+    console.log(`  - 更新後のisRead: ${afterView.isRead}`);
+    console.log(`  - 更新後のreadAt: ${afterView.readAt?.toISOString()}`);
+    
+    // アサーション
+    if (beforeViewedAt?.getTime() !== afterView.viewedAt?.getTime()) {
+      console.log('  ❌ viewedAt が更新されています（期待: 変更なし）');
+      return false;
+    }
+    
+    if (!afterView.isRead) {
+      console.log('  ❌ isRead が更新されていません（期待: true）');
+      return false;
+    }
+    
+    if (!afterView.readAt) {
+      console.log('  ❌ readAt が設定されていません');
+      return false;
+    }
+    
+    console.log('  ✅ 正常: viewedAtは更新されず、isRead/readAtのみ更新されました');
     
     return true;
   } catch (error) {

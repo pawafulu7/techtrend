@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * フィルター永続化機能のエンドポイントテスト
  * Docker環境での実行を前提とする

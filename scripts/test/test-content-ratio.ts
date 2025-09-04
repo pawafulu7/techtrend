@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 /**
  * 様々な文字数の記事で詳細要約の比率をテスト
  */
