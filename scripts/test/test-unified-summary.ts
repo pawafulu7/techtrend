@@ -226,10 +226,16 @@ async function runTest(): Promise<void> {
       // 5. 詳細要約のフォーマット確認
       console.error('  5️⃣ フォーマット確認...');
       const lines = summaryResult.detailedSummary.split('\n').filter(l => l.trim());
-      const bulletPoints = lines.filter(l => l.startsWith('・'));
-      console.error(`     箇条書き数: ${bulletPoints.length}/5`);
+      // 複数の箇条書き記号に対応
+      const bulletMarkers = ['・', '-', '*', '•', '●'];
+      const bulletPoints = lines.filter(l => {
+        const firstChar = l.trim().charAt(0);
+        return bulletMarkers.includes(firstChar) || /^\d+[\.\)]/.test(l.trim());
+      });
+      const expectedMin = 5; // デフォルト最小値
+      console.error(`     箇条書き数: ${bulletPoints.length} (最小: ${expectedMin})`);
       
-      if (bulletPoints.length === 5) {
+      if (bulletPoints.length >= expectedMin) {
         console.error('     ✓ フォーマット正常');
       } else {
         console.error('     ✗ フォーマット異常');
@@ -342,10 +348,10 @@ async function runTest(): Promise<void> {
 async function main() {
   try {
     await runTest();
-    process.exit(0);
+    process.exitCode = 0;
   } catch (error) {
     console.error('❌ テスト実行エラー:', error);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
   }

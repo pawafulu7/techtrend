@@ -1,6 +1,7 @@
-import { prisma } from '@/lib/prisma';
-import { HackerNewsFetcher } from '@/lib/fetchers/hacker-news';
-import { MediumEngineeringFetcher } from '@/lib/fetchers/medium-engineering';
+#!/usr/bin/env -S tsx
+import { prisma } from '../../lib/prisma';
+import { HackerNewsFetcher } from '../../lib/fetchers/hacker-news';
+import { MediumEngineeringFetcher } from '../../lib/fetchers/medium-engineering';
 
 /**
  * Phase 2 英語記事ソース統合テスト
@@ -67,14 +68,34 @@ async function testPhase2Integration() {
   
   for (const { name, id, Fetcher } of fetchers) {
     try {
-      const source = await prisma.source.findUnique({
+      let source = await prisma.source.findUnique({
         where: { id }
       });
       
       if (!source) {
-        console.log(`❌ ${name}: ソースが見つかりません`);
-        testResults.failed++;
-        continue;
+        console.log(`⚠️ ${name}: ソースが見つかりません。作成中...`);
+        // Create test source if missing
+        const sourceData: any = {
+          id,
+          name,
+          type: name === 'Hacker News' ? 'API' : 'RSS',
+          enabled: true,
+        };
+        
+        if (name === 'Hacker News') {
+          sourceData.url = 'https://hacker-news.firebaseio.com/v0';
+        } else if (name === 'Medium Engineering') {
+          sourceData.url = 'https://medium.com/feed';
+        }
+        
+        try {
+          source = await prisma.source.create({ data: sourceData });
+          console.log(`   ✅ ${name}: テストソースを作成`);
+        } catch (err) {
+          console.error(`   ❌ ${name}: ソース作成失敗`, err);
+          testResults.failed++;
+          continue;
+        }
       }
       
       const fetcher = new Fetcher(source);
@@ -234,4 +255,12 @@ async function testPhase2Integration() {
   process.exit(testResults.failed > 0 ? 1 : 0);
 }
 
-testPhase2Integration().catch(console.error);
+testPhase2Integration()
+  .catch(async (error) => {
+    console.error('テストエラー:', error);
+    await prisma.$disconnect();
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

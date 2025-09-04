@@ -72,6 +72,8 @@ async function testMarkAllAsRead() {
     const startTime = performance.now();
     
     // SQL直接実行による高速化された処理
+    // Note: gen_random_uuid() requires pgcrypto extension in PostgreSQL
+    // Alternatively, could use uuid-ossp extension with uuid_generate_v4()
     const result = await prisma.$executeRaw`
       INSERT INTO "ArticleView" ("id", "userId", "articleId", "isRead", "readAt", "viewedAt")
       SELECT 

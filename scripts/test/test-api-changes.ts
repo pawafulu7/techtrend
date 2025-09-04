@@ -99,19 +99,25 @@ async function testReadStatusAPI() {
     console.log(`  - 更新後のreadAt: ${afterView.readAt?.toISOString()}`);
     
     // アサーション
+    let hasError = false;
+    
     if (beforeViewedAt?.getTime() !== afterView.viewedAt?.getTime()) {
       console.log('  ❌ viewedAt が更新されています（期待: 変更なし）');
-      return false;
+      hasError = true;
     }
     
     if (!afterView.isRead) {
       console.log('  ❌ isRead が更新されていません（期待: true）');
-      return false;
+      hasError = true;
     }
     
     if (!afterView.readAt) {
       console.log('  ❌ readAt が設定されていません');
-      return false;
+      hasError = true;
+    }
+    
+    if (hasError) {
+      throw new Error('テストアサーションが失敗しました');
     }
     
     console.log('  ✅ 正常: viewedAtは更新されず、isRead/readAtのみ更新されました');

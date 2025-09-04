@@ -62,8 +62,9 @@ async function testImplementation() {
   console.error('【テスト2】再処理スクリプトの確認');
   console.error('-----------------------------------');
   
-  const fs = require('fs');
-  const scriptPath = './scripts/fix/regenerate-skipped-summaries.ts';
+  const fs = await import('fs');
+  const path = await import('path');
+  const scriptPath = path.resolve('./scripts/fix/regenerate-skipped-summaries.ts');
   
   if (fs.existsSync(scriptPath)) {
     console.error('✅ 再処理スクリプトが存在します');
@@ -88,7 +89,7 @@ async function testImplementation() {
   console.error('【テスト3】UnifiedSummaryServiceの変更確認');
   console.error('-----------------------------------');
   
-  const servicePath = './lib/ai/unified-summary-service.ts';
+  const servicePath = path.resolve('./lib/ai/unified-summary-service.ts');
   
   if (fs.existsSync(servicePath)) {
     const serviceContent = fs.readFileSync(servicePath, 'utf-8');

@@ -18,6 +18,13 @@ const log = {
 };
 
 async function cleanup() {
+  // テスト環境のチェック
+  if (process.env.NODE_ENV !== 'test' && process.env.FORCE_TEST_CLEANUP !== 'true') {
+    log.error('テスト環境以外でのクリーンアップは禁止されています');
+    log.error('NODE_ENV=test または FORCE_TEST_CLEANUP=true を設定してください');
+    throw new Error('Cleanup not allowed outside test environment');
+  }
+  
   log.info('テストデータのクリーンアップ中...');
   
   // テストユーザーのArticleViewを全て削除
@@ -25,9 +32,15 @@ async function cleanup() {
     where: { userId: TEST_USER_ID }
   });
   
-  // テストユーザーを削除
+  // テストユーザーを削除（IDまたはメールで一致）
+  const TEST_USER_EMAIL = `${TEST_USER_ID}@test.example.com`;
   await prisma.user.deleteMany({
-    where: { id: TEST_USER_ID }
+    where: {
+      OR: [
+        { id: TEST_USER_ID },
+        { email: TEST_USER_EMAIL }
+      ]
+    }
   });
 }
 
@@ -260,19 +273,19 @@ async function main() {
       
       if (passed) {
         log.success('\n===== すべてのテストが成功しました =====');
-        process.exit(0);
+        return 0;
       } else {
         log.error('\n===== テストに失敗しました =====');
-        process.exit(1);
+        return 1;
       }
     } else {
       log.warning('テストデータが不足しているため、テストをスキップします');
-      process.exit(0);
+      return 0;
     }
     
   } catch (error) {
     log.error(`テスト実行中にエラーが発生: ${error}`);
-    process.exit(1);
+    return 1;
   } finally {
     // クリーンアップ
     await cleanup();
@@ -280,4 +293,4 @@ async function main() {
   }
 }
 
-main();
+main().then(code => process.exit(code));

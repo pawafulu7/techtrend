@@ -26,7 +26,12 @@ async function test9kArticle() {
         url: true,
         sourceId: true,
         summaryVersion: true,
-        detailedSummary: true
+        detailedSummary: true,
+        source: {
+          select: {
+            name: true
+          }
+        }
       }
     });
 
@@ -63,7 +68,7 @@ async function test9kArticle() {
       article.title,
       article.content || '',
       undefined,
-      { sourceName: article.sourceId, url: article.url }
+      { sourceName: article.source.name, url: article.url }
     );
 
     console.error(`✅ 生成完了`);
@@ -106,10 +111,14 @@ async function test9kArticle() {
 
   } catch (error) {
     console.error('❌ エラー:', error);
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }
 }
 
 // 実行
-test9kArticle();
+test9kArticle().catch((err) => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});

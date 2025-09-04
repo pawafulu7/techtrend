@@ -77,4 +77,7 @@ async function testRecommendations() {
 }
 
 // 実行
-
+testRecommendations().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

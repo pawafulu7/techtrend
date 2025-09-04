@@ -55,9 +55,12 @@ async function testResetButton() {
       c.name.includes('filter') || c.name.includes('source') || c.name.includes('view')
     );
     
+    let hasError = false;
+    
     if (remainingFilterCookies.length === 0) {
       console.error('  ✅ 全てのフィルター関連cookieが削除されました');
     } else {
+      hasError = true;
       console.error('  ⚠️ 以下のcookieが残っています:');
       remainingFilterCookies.forEach(c => {
         console.error(`    - ${c.name}: ${c.value.substring(0, 50)}...`);
@@ -69,14 +72,25 @@ async function testResetButton() {
     
     // 検索ボックスが空か
     const searchValue = await page.inputValue('[data-testid="search-box-input"]');
+    if (searchValue !== '') {
+      hasError = true;
+    }
     console.error(`  - 検索ボックス: "${searchValue}" ${searchValue === '' ? '✅' : '❌'}`);
     
     // URLがクリーンか
     const url = page.url();
     const hasParams = url.includes('?');
+    if (hasParams) {
+      hasError = true;
+    }
     console.error(`  - URL: ${url} ${!hasParams ? '✅' : '❌'}`);
     
-    console.error('\n✨ テスト完了');
+    if (hasError) {
+      console.error('\n❌ テストに失敗しました');
+      process.exit(1);
+    } else {
+      console.error('\n✨ テスト完了');
+    }
     
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);

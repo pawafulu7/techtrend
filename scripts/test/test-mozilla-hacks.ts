@@ -1,5 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import { MozillaHacksFetcher } from '@/lib/fetchers/mozilla-hacks';
+#!/usr/bin/env -S tsx
+import { prisma } from '../../lib/prisma';
+import { MozillaHacksFetcher } from '../../lib/fetchers/mozilla-hacks';
 
 async function testMozillaHacks() {
   try {
@@ -10,15 +11,27 @@ async function testMozillaHacks() {
       where: { id: 'mozilla_hacks_202508' }
     });
     
+    let sourceToUse = source;
+    
     if (!source) {
-      console.error('Source not found in database');
-      return;
+      console.error('Source not found in database. Creating test source...');
+      // Create a test source if it doesn't exist
+      sourceToUse = await prisma.source.create({
+        data: {
+          id: 'mozilla_hacks_202508',
+          name: 'Mozilla Hacks',
+          type: 'RSS',
+          url: 'https://hacks.mozilla.org/feed/',
+          enabled: true
+        }
+      });
+      console.log('Test source created:', sourceToUse.name);
+    } else {
+      console.log('Source found:', sourceToUse.name);
     }
     
-    console.log('Source found:', source.name);
-    
     // Create fetcher instance
-    const fetcher = new MozillaHacksFetcher(source);
+    const fetcher = new MozillaHacksFetcher(sourceToUse);
     
     // Fetch articles
     console.log('Fetching articles...');
@@ -42,9 +55,13 @@ async function testMozillaHacks() {
     
   } catch (error) {
     console.error('Test failed:', error);
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-testMozillaHacks();
+testMozillaHacks().catch((err) => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});

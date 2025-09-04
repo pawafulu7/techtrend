@@ -187,4 +187,12 @@ async function testEnglishSourcesIntegration() {
   process.exit(testResults.failed > 0 ? 1 : 0);
 }
 
-testEnglishSourcesIntegration().catch(console.error);
+testEnglishSourcesIntegration()
+  .catch(async (error) => {
+    console.error('テストエラー:', error);
+    await prisma.$disconnect();
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

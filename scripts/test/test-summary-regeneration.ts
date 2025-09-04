@@ -1,3 +1,4 @@
+#!/usr/bin/env -S tsx
 import { PrismaClient } from '@prisma/client';
 import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
 import * as dotenv from 'dotenv';
@@ -46,6 +47,11 @@ async function testSummaryGeneration() {
     // Gemini APIで新しい要約を生成
     try {
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      
+      // Timeout wrapper for fetch
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,8 +63,11 @@ async function testSummaryGeneration() {
             temperature: 0.3,
             maxOutputTokens: 2500,
           }
-        })
+        }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json() as any;
@@ -85,9 +94,15 @@ async function testSummaryGeneration() {
           console.error(`詳細要約の項目数: ${detailLines.length}項目`);
           console.error(`詳細要約の文字数: ${detailSummary.length}文字`);
         }
+      } else {
+        console.error(`APIエラー: ${response.status} ${response.statusText}`);
       }
-    } catch (error) {
-      console.error('API呼び出しエラー:', error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.error('APIタイムアウト: 30秒以内にレスポンスが返されませんでした');
+      } else {
+        console.error('API呼び出しエラー:', error.message);
+      }
     }
 
     // レート制限対策
@@ -95,4 +110,11 @@ async function testSummaryGeneration() {
   }
 }
 
-testSummaryGeneration().catch(console.error).finally(() => prisma.$disconnect());
+testSummaryGeneration()
+  .catch((error) => {
+    console.error('テストエラー:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

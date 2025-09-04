@@ -12,6 +12,7 @@ async function testSourceDeselect() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
+  let hasError = false;
   
   try {
     // 1. トップページにアクセス
@@ -29,6 +30,7 @@ async function testSourceDeselect() {
     console.error(`3. URL: ${urlAfterDeselect}`);
     const hasNoneParam = urlAfterDeselect.includes('sources=none');
     console.error(`   - sources=noneパラメータ: ${hasNoneParam ? '✅' : '❌'}`);
+    if (!hasNoneParam) hasError = true;
     
     // 4. 選択状態の確認
     const checkboxes = await page.locator('[data-testid^="source-checkbox-"] input[type="checkbox"]').all();
@@ -40,6 +42,7 @@ async function testSourceDeselect() {
       }
     }
     console.error(`4. 全ソース未選択: ${allUnchecked ? '✅' : '❌'}`);
+    if (!allUnchecked) hasError = true;
     
     // 5. ページをリロード
     console.error('\n5. ページをリロード');
@@ -51,6 +54,7 @@ async function testSourceDeselect() {
     console.error(`6. リロード後URL: ${urlAfterReload}`);
     const stillHasNoneParam = urlAfterReload.includes('sources=none');
     console.error(`   - sources=noneパラメータ維持: ${stillHasNoneParam ? '✅' : '❌'}`);
+    if (!stillHasNoneParam) hasError = true;
     
     // 7. リロード後の選択状態確認
     const checkboxesAfterReload = await page.locator('[data-testid^="source-checkbox-"] input[type="checkbox"]').all();
@@ -65,6 +69,7 @@ async function testSourceDeselect() {
     console.error(`7. リロード後も全ソース未選択: ${stillAllUnchecked ? '✅' : '❌'}`);
     if (!stillAllUnchecked) {
       console.error(`   ⚠️ ${checkedCount}個のソースが選択されています`);
+      hasError = true;
     }
     
     // 8. Cookie確認
@@ -90,15 +95,25 @@ async function testSourceDeselect() {
     const articleCount = await page.locator('[data-testid="article-card"]').count();
     console.error(`\n9. 表示されている記事数: ${articleCount}`);
     console.error(`   ${articleCount === 0 ? '✅ 正しく0件' : '❌ 記事が表示されている'}`);
+    if (articleCount !== 0) hasError = true;
     
-    console.error('\n✨ テスト完了');
+    if (hasError) {
+      console.error('\n❌ テストに失敗しました');
+      process.exit(1);
+    } else {
+      console.error('\n✨ テスト完了');
+    }
     
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
+    process.exit(1);
   } finally {
     await browser.close();
   }
 }
 
 // 実行
-testSourceDeselect().catch(console.error);
+testSourceDeselect().catch((err) => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});

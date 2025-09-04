@@ -117,8 +117,8 @@ async function runTests() {
 
   // 6. 検索（複数キーワード対応の確認）
   console.error('▶ 検索機能のテスト...');
-  tests.push(await testEndpoint('GET', '/articles?search=TypeScript React'));
-  tests.push(await testEndpoint('GET', '/articles?search=AI 機械学習'));
+  tests.push(await testEndpoint('GET', `/articles?search=${encodeURIComponent('TypeScript React')}`));
+  tests.push(await testEndpoint('GET', `/articles?search=${encodeURIComponent('AI 機械学習')}`));
 
   // テスト結果の集計
   console.error('\n========================================');
