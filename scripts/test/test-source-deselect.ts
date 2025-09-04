@@ -99,21 +99,23 @@ async function testSourceDeselect() {
     
     if (hasError) {
       console.error('\n❌ テストに失敗しました');
-      process.exit(1);
-    } else {
-      console.error('\n✨ テスト完了');
+      return 1;
     }
+    console.error('\n✨ テスト完了');
+    return 0;
     
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
-    process.exit(1);
+    return 1;
   } finally {
     await browser.close();
   }
 }
 
 // 実行
-testSourceDeselect().catch((err) => {
-  console.error('Fatal error:', err);
-  process.exit(1);
-});
+testSourceDeselect()
+  .then((code) => process.exit(code))
+  .catch((err) => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });

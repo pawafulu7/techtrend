@@ -95,7 +95,16 @@ async function testSummaryGeneration() {
           console.error(`詳細要約の文字数: ${detailSummary.length}文字`);
         }
       } else {
+        let body = '';
+        try {
+          const ct = response.headers.get('content-type') || '';
+          body = ct.includes('application/json')
+            ? JSON.stringify(await response.json(), null, 2)
+            : await response.text();
+        } catch {}
+        const snippet = body.slice(0, 1000);
         console.error(`APIエラー: ${response.status} ${response.statusText}`);
+        if (snippet) console.error(`レスポンス: ${snippet}${body.length > 1000 ? '…' : ''}`);
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
@@ -113,7 +122,7 @@ async function testSummaryGeneration() {
 testSummaryGeneration()
   .catch((error) => {
     console.error('テストエラー:', error);
-    process.exit(1);
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();

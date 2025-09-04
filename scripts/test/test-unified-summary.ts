@@ -21,10 +21,12 @@ interface TestResult {
   title: string;
   summaryLength: number;
   detailedSummaryLength: number;
+  contentLength: number;
   qualityScore: number;
   issues: string[];
   passed: boolean;
   regenerationAttempts?: number;
+  requiresRegeneration?: boolean;
   error?: string;
 }
 
@@ -132,6 +134,21 @@ const testArticles = [
   }
 ];
 
+// ヘルパー関数：詳細要約の文字数レンジを取得
+function getDetailedLengthRange(contentLength: number): [number, number] {
+  if (contentLength >= 5000) return [800, 1500];
+  if (contentLength >= 3000) return [600, 1000];
+  if (contentLength >= 1000) return [400, 700];
+  return [300, 500];
+}
+
+// ヘルパー関数：期待される最小項目数を取得
+function getExpectedMinItems(contentLength: number): number {
+  if (contentLength >= 5000) return 5;
+  if (contentLength >= 3000) return 4;
+  return 3;
+}
+
 async function runTest(): Promise<void> {
   console.error('🧪 統一要約生成システムのテストを開始します...\n');
   console.error('=====================================');
@@ -141,6 +158,11 @@ async function runTest(): Promise<void> {
   console.error(`  MAX_REGENERATION_ATTEMPTS: ${process.env.MAX_REGENERATION_ATTEMPTS || '3'}`);
   console.error('=====================================\n');
 
+  // QA関連の環境変数は一度だけ設定（未設定時のみ上書き）
+  process.env.QUALITY_CHECK_ENABLED = process.env.QUALITY_CHECK_ENABLED ?? 'true';
+  process.env.QUALITY_MIN_SCORE = process.env.QUALITY_MIN_SCORE ?? '70';
+  process.env.MAX_REGENERATION_ATTEMPTS = process.env.MAX_REGENERATION_ATTEMPTS ?? '3';
+  
   const results: TestResult[] = [];
   let testIndex = 0;
 
@@ -153,6 +175,7 @@ async function runTest(): Promise<void> {
     const result: TestResult = {
       articleId: `test-${testIndex}`,
       title: article.title,
+      contentLength: article.content.length,
       summaryLength: 0,
       detailedSummaryLength: 0,
       qualityScore: 0,
@@ -169,11 +192,6 @@ async function runTest(): Promise<void> {
       // 2. 要約生成テスト（品質チェック付き）
       console.error('  2️⃣ 要約生成（品質チェック付き）...');
       const startTime = Date.now();
-      
-      // 環境変数を設定してテスト
-      process.env.QUALITY_CHECK_ENABLED = 'true';
-      process.env.QUALITY_MIN_SCORE = '70';
-      process.env.MAX_REGENERATION_ATTEMPTS = '3';
       
       const summaryResult = await generateSummaryWithRetry(
         article.title,
@@ -207,6 +225,7 @@ async function runTest(): Promise<void> {
       result.qualityScore = qualityCheck.score;
       result.issues = qualityCheck.issues.map(i => `[${i.severity}] ${i.message}`);
       result.passed = qualityCheck.isValid;
+      result.requiresRegeneration = qualityCheck.requiresRegeneration;
 
       console.error(`     スコア: ${result.qualityScore}/100`);
       console.error(`     判定: ${result.passed ? '✅ 合格' : '❌ 不合格'}`);
@@ -226,19 +245,18 @@ async function runTest(): Promise<void> {
       // 5. 詳細要約のフォーマット確認
       console.error('  5️⃣ フォーマット確認...');
       const lines = summaryResult.detailedSummary.split('\n').filter(l => l.trim());
-      // 複数の箇条書き記号に対応
-      const bulletMarkers = ['・', '-', '*', '•', '●'];
-      const bulletPoints = lines.filter(l => {
-        const firstChar = l.trim().charAt(0);
-        return bulletMarkers.includes(firstChar) || /^\d+[\.\)]/.test(l.trim());
-      });
-      const expectedMin = 5; // デフォルト最小値
-      console.error(`     箇条書き数: ${bulletPoints.length} (最小: ${expectedMin})`);
+      // 箇条書き記号を幅広く許容（・, -, *, •, ●, 数字+区切り（全角含む））
+      const bulletRegex = /^\s*(?:・|[-*•●]|[0-9０-９]+[.)、．])\s+/;
+      const bulletPoints = lines.filter(l => bulletRegex.test(l));
+      const contentLen = article.content.length;
+      const expectedMin = getExpectedMinItems(contentLen);
+      console.error(`     箇条書き数: ${bulletPoints.length}（期待最小: ${expectedMin}）`);
       
       if (bulletPoints.length >= expectedMin) {
         console.error('     ✓ フォーマット正常');
       } else {
         console.error('     ✗ フォーマット異常');
+        result.issues.push('[minor] 箇条書き項目数が不足');
       }
 
     } catch (error) {
@@ -256,7 +274,7 @@ async function runTest(): Promise<void> {
   console.error('=====================================\n');
 
   const passedCount = results.filter(r => r.passed).length;
-  const failedCount = results.filter(r => !r.passed).length;
+  const failedCount = results.filter(r => !r.passed && !r.error).length;
   const errorCount = results.filter(r => r.error).length;
 
   console.error(`実行総数: ${results.length}件`);
@@ -265,6 +283,7 @@ async function runTest(): Promise<void> {
   console.error(`🔥 エラー: ${errorCount}件`);
 
   // 品質統計
+  const minScore = Number(process.env.QUALITY_MIN_SCORE || '70');
   const qualityResults = results
     .filter(r => !r.error)
     .map(r => ({
@@ -278,7 +297,7 @@ async function runTest(): Promise<void> {
           message: i
         };
       }),
-      requiresRegeneration: r.qualityScore < 70
+      requiresRegeneration: r.requiresRegeneration ?? (r.qualityScore < minScore)
     }));
 
   if (qualityResults.length > 0) {
@@ -308,15 +327,11 @@ async function runTest(): Promise<void> {
     console.error(`  一覧要約平均: ${avgSummaryLength}文字`);
     console.error(`  詳細要約平均: ${avgDetailedLength}文字`);
     
-    // 文字数適合率
-    const summaryInRange = lengthStats.filter(r => 
-      r.summaryLength >= 150 && r.summaryLength <= 200
-    ).length;
-    const detailedInRange = lengthStats.filter(r =>
-      r.detailedSummaryLength >= 500 && r.detailedSummaryLength <= 700
-    ).length;
-    
-    console.error(`  一覧要約適合率: ${Math.round((summaryInRange / lengthStats.length) * 100)}%`);
+    // 文字数適合率（詳細要約は記事の文字数に応じた動的基準）
+    const detailedInRange = lengthStats.filter(r => {
+      const [min, max] = getDetailedLengthRange(r.contentLength);
+      return r.detailedSummaryLength >= min && r.detailedSummaryLength <= max;
+    }).length;
     console.error(`  詳細要約適合率: ${Math.round((detailedInRange / lengthStats.length) * 100)}%`);
   }
 

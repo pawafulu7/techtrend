@@ -12,10 +12,16 @@ const prisma = new PrismaClient();
 async function testReadStatusAPI() {
   console.log('=== read-status API検証 ===\n');
   
+  // クリーンアップ用フラグ
+  let createdArticle = false;
+  let createdView = false;
+  
+  // テスト用データの作成
+  const ts = Date.now();
+  const testUserId = `test-user-${ts}`;
+  const testArticleId = `test-article-${ts}`;
+  
   try {
-    // テスト用データの作成
-    const testUserId = 'test-user-' + Date.now();
-    const testArticleId = 'test-article-' + Date.now();
     
     // 既読マーク前の状態を確認
     console.log('1. 既読マーク前の状態');
@@ -29,26 +35,34 @@ async function testReadStatusAPI() {
     console.log('\n2. 既読マーク処理（実DBテスト）');
     
     // テスト用記事を作成（実際の記事があるか確認）
-    let testArticle = await prisma.article.findFirst({
+    let testArticle = await prisma.article.findUnique({
       where: { id: testArticleId }
     });
     
     if (!testArticle) {
       // テスト用記事を作成
-      const source = await prisma.source.findFirst();
+      let source = await prisma.source.findFirst();
       if (!source) {
-        throw new Error('ソースが見つかりません');
+        // ソースが無い場合は最小限のテストソースを作成
+        source = await prisma.source.create({
+          data: {
+            name: 'Test Source',
+            type: 'unknown',
+            url: 'https://example.test',
+          },
+        });
       }
       
       testArticle = await prisma.article.create({
         data: {
           id: testArticleId,
           title: 'Test Article',
-          url: `https://example.com/test-${Date.now()}`,
+          url: `https://example.com/test-${ts}`,
           publishedAt: new Date(),
           sourceId: source.id
         }
       });
+      createdArticle = true;
     }
     
     // レコードの準備（存在しない場合は作成）
@@ -66,27 +80,34 @@ async function testReadStatusAPI() {
         }
       });
       console.log('  - ArticleViewレコードを作成しました');
+      createdView = true;
     }
     
     const beforeViewedAt = beforeView.viewedAt;
     console.log(`  - 更新前のviewedAt: ${beforeViewedAt?.toISOString()}`);
     console.log(`  - 更新前のisRead: ${beforeView.isRead}`);
     
-    // APIと同じ更新処理を実行
+    // APIと同じ更新凨理を実行
     const updateData = {
       isRead: true,
       readAt: now,
       // viewedAt は含めない（これが修正内容）
     };
     
-    await prisma.articleView.updateMany({
+    const { count } = await prisma.articleView.updateMany({
       where: { userId: testUserId, articleId: testArticleId },
       data: updateData
     });
     
+    if (count !== 1) {
+      console.log(`  ❌ 更新件数が想定外です（count=${count}, 期待=1）`);
+      return false;
+    }
+    
     // 更新後の取得・検証
     const afterView = await prisma.articleView.findFirst({
-      where: { userId: testUserId, articleId: testArticleId }
+      where: { userId: testUserId, articleId: testArticleId },
+      orderBy: { viewedAt: 'desc' }
     });
     
     if (!afterView) {
@@ -126,6 +147,20 @@ async function testReadStatusAPI() {
   } catch (error) {
     console.error('テストエラー:', error);
     return false;
+  } finally {
+    // クリーンアップ
+    try {
+      if (createdView) {
+        await prisma.articleView.deleteMany({
+          where: { userId: testUserId, articleId: testArticleId }
+        });
+      }
+      if (createdArticle) {
+        await prisma.article.delete({ where: { id: testArticleId } });
+      }
+    } catch (e) {
+      console.warn('クリーンアップでエラーが発生しました:', e);
+    }
   }
 }
 
@@ -164,6 +199,13 @@ async function testArticleViewsAPI() {
 async function main() {
   console.log('APIエンドポイント変更検証テスト');
   console.log('='.repeat(50));
+  
+  // 本番DBでの誤実行防止ガード
+  if (process.env.NODE_ENV === 'production' ||
+      /prod|production/i.test(process.env.DATABASE_URL ?? '')) {
+    console.error('本番DBに対しては実行しません。DATABASE_URL/NODE_ENV を確認してください。');
+    process.exit(2);
+  }
   
   const results = {
     readStatus: false,

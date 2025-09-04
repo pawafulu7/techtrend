@@ -17,8 +17,7 @@ async function testRecommendations() {
     });
 
     if (!user) {
-      console.error('テストユーザーが見つかりません');
-      return;
+      throw new Error('テストユーザーが見つかりません');
     }
 
     console.error(`ユーザー: ${user.email} (ID: ${user.id})`);
@@ -70,14 +69,16 @@ async function testRecommendations() {
     console.error('\n✅ テスト完了');
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
+    throw error;
   } finally {
     await prisma.$disconnect();
-    process.exit(0);
   }
 }
 
 // 実行
-testRecommendations().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+testRecommendations()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('❌ 異常終了:', err);
+    process.exit(1);
+  });

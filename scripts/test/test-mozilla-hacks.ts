@@ -55,7 +55,7 @@ async function testMozillaHacks() {
     
   } catch (error) {
     console.error('Test failed:', error);
-    process.exit(1);
+    throw error;
   } finally {
     await prisma.$disconnect();
   }
