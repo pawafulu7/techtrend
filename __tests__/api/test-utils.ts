@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
  * APIルートハンドラーを直接テストするためのヘルパー関数
  */
 export async function testApiHandler(
-  handler: (req: NextRequest) => Promise<Response>,
+  handler: ((req: NextRequest) => Promise<Response>) | ((req: NextRequest, context: { params: Record<string, string> }) => Promise<Response>),
   options: {
     method?: string;
     url?: string;
@@ -56,8 +56,10 @@ export async function testApiHandler(
   // paramsを追加（Next.jsのルーティングパラメータ）
   (request as any).params = params;
 
-  // ハンドラーを実行
-  const response = await handler(request);
+  // ハンドラーを実行（引数の数を確認して適切に呼び出し）
+  const response = await (handler.length === 2 
+    ? (handler as any)(request, { params })
+    : handler(request));
 
   // レスポンスを解析
   const responseBody = await response.text();
@@ -115,6 +117,9 @@ export function createMockPrismaClient() {
     },
     $transaction: jest.fn(),
     $disconnect: jest.fn(),
+    $connect: jest.fn().mockResolvedValue(undefined),
+    $executeRaw: jest.fn().mockResolvedValue(0),
+    $queryRaw: jest.fn().mockResolvedValue([]),
   };
 }
 

@@ -116,7 +116,8 @@ export class ArticleBuilder {
   }
 
   build(): Article & { source: Source; tags: Tag[] } {
-    return this.article as Article & { source: Source; tags: Tag[] };
+    // Return a shallow copy to prevent unintended state sharing
+    return { ...this.article } as Article & { source: Source; tags: Tag[] };
   }
 }
 
@@ -160,7 +161,8 @@ export class UserBuilder {
   }
 
   build(): User {
-    return this.user as User;
+    // Return a shallow copy to prevent unintended state sharing
+    return { ...this.user } as User;
   }
 }
 
@@ -204,7 +206,8 @@ export class SourceBuilder {
   }
 
   build(): Source {
-    return this.source as Source;
+    // Return a shallow copy to prevent unintended state sharing
+    return { ...this.source } as Source;
   }
 }
 
@@ -231,7 +234,8 @@ export class TagBuilder {
   }
 
   build(): Tag {
-    return this.tag as Tag;
+    // Return a shallow copy to prevent unintended state sharing
+    return { ...this.tag } as Tag;
   }
 }
 

@@ -17,39 +17,44 @@ export const TEST_USER = {
 };
 
 // Browser-specific test users (for parallel testing)
+// Use worker index from environment to ensure uniqueness
 export const TEST_USERS = {
-  chromium: { ...TEST_USER },  // Create an independent copy
-  firefox: { ...TEST_USER, email: 'test-firefox@example.com' },
-  webkit: { ...TEST_USER, email: 'test-webkit@example.com' },
+  chromium: { 
+    ...TEST_USER, 
+    email: process.env.TEST_PARALLEL_INDEX 
+      ? `test-chromium-${process.env.TEST_PARALLEL_INDEX}@example.com`
+      : TEST_USER.email
+  },
+  firefox: { 
+    ...TEST_USER, 
+    email: process.env.TEST_PARALLEL_INDEX 
+      ? `test-firefox-${process.env.TEST_PARALLEL_INDEX}@example.com`
+      : 'test-firefox@example.com' 
+  },
+  webkit: { 
+    ...TEST_USER, 
+    email: process.env.TEST_PARALLEL_INDEX 
+      ? `test-webkit-${process.env.TEST_PARALLEL_INDEX}@example.com`
+      : 'test-webkit@example.com' 
+  },
 };
 
 /**
  * ページの読み込みが完了するまで待機
  * 注: 開発サーバーは常時起動（http://localhost:3000）
  */
-export async function waitForPageLoad(page: Page) {
-  // ブラウザ判定を追加
-  const browserName = page.context().browser()?.browserType().name();
+export async function waitForPageLoad(page: Page, options: { timeout?: number } = {}) {
+  const { timeout = 30000 } = options;
   
-  if (browserName === 'firefox') {
-    // Firefoxはより慎重な待機
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(1000); // 500ms → 1000ms
-    
-    // 追加で初期レンダリング完了を確認
-    await page.evaluate(() => {
-      return new Promise(resolve => {
-        if (document.readyState === 'complete') {
-          resolve(true);
-        } else {
-          window.addEventListener('load', () => resolve(true));
-        }
-      });
+  // Wait for network idle and main content to be visible
+  await page.waitForLoadState('networkidle', { timeout });
+  
+  // Wait for main content area to be visible
+  const mainContent = page.locator('main, [role="main"], #__next, #root').first();
+  if (await mainContent.count() > 0) {
+    await mainContent.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
+      // Fallback if main content selector doesn't exist
     });
-  } else {
-    // その他のブラウザは現行通り
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(500);
   }
 }
 
@@ -102,11 +107,13 @@ export async function expectPageTitle(page: Page, expectedTitle: string | RegExp
 }
 
 /**
- * URLパスを検証
+ * URLパスを検証（パス部分のみを厳密に比較）
  */
 export async function expectUrlPath(page: Page, expectedPath: string | RegExp) {
   if (typeof expectedPath === 'string') {
-    await expect(page).toHaveURL(new RegExp(escapeRegex(expectedPath)));
+    // Extract pathname for strict matching
+    const currentUrl = new URL(page.url());
+    expect(currentUrl.pathname).toBe(expectedPath);
   } else {
     await expect(page).toHaveURL(expectedPath);
   }
@@ -134,14 +141,13 @@ export async function waitForLoadingComplete(page: Page) {
  * ローディング表示が消え、データ表示要素が現れるまで待機
  */
 export async function waitForDataLoad(page: Page, timeout = 10000) {
-  await page.waitForFunction(
-    () => {
-      const loader = document.querySelector('.loading, .animate-spin, [class*="loader"]');
-      const hasData = document.querySelector('[data-loaded="true"], main [class*="card"], main article');
-      return !loader && hasData;
-    },
-    { timeout }
-  );
+  // Wait for loading indicator to disappear
+  const loadingIndicator = page.locator('.loading, .animate-spin, [class*="loader"]');
+  await expect(loadingIndicator).toBeHidden({ timeout: timeout / 2 });
+  
+  // Wait for data content to appear
+  const dataContent = page.locator('[data-loaded="true"], main [class*="card"], main article').first();
+  await expect(dataContent).toBeVisible({ timeout: timeout / 2 });
 }
 
 /**
