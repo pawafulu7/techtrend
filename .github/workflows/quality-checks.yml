@@ -17,19 +17,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run TypeScript compiler
         run: npx tsc --noEmit
-      
+
       - name: Count TypeScript errors
         id: ts-errors
         run: |
@@ -48,19 +48,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run ESLint
         run: npm run lint -- --max-warnings 495
-      
+
       - name: Check for console statements
         env:
           CONSOLE_THRESHOLD: '200'
@@ -92,7 +92,7 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      
+
       redis:
         image: redis:7
         options: >-
@@ -102,19 +102,19 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Setup test database
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
@@ -122,14 +122,14 @@ jobs:
           npx prisma generate
           npx prisma db push
           npx prisma db seed
-      
+
       - name: Run tests with coverage
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
           NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
           NODE_ENV: test
         run: npm run test:coverage
-      
+
       - name: Check test coverage
         id: coverage
         run: |
@@ -141,7 +141,7 @@ jobs:
           else
             echo "✅ Test coverage: $COVERAGE% (minimum: 20.4%)"
           fi
-      
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
         with:
@@ -155,19 +155,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run npm audit
         run: npm audit --audit-level=high
-      
+
       - name: Check for sensitive data
         run: |
           # Fail only on hardcoded secrets, not on env var access
@@ -200,22 +200,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build application
         env:
           DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
           NEXTAUTH_SECRET: build-secret-key-for-testing-purposes-only-32chars
         run: npm run build
-      
+
       - name: Check build size
         run: |
           # Measure deployable artifact size (standalone + static), ignore cache
@@ -261,16 +261,16 @@ jobs:
           - 6379:6379
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
 
@@ -281,7 +281,7 @@ jobs:
           npx prisma generate
           npx prisma db push
           npx tsx prisma/seed-test.ts
-      
+
       - name: Run E2E tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
@@ -298,12 +298,12 @@ jobs:
             cat build.log
             exit 1
           fi
-          
+
           # サーバー起動
           echo "Starting server..."
           npm run start 2>&1 | tee server.log &
           SERVER_PID=$!
-          
+
           # サーバー起動待機（最大60秒）
           echo "Waiting for server to be ready..."
           MAX_ATTEMPTS=60
@@ -317,7 +317,7 @@ jobs:
             echo "Waiting... ($ATTEMPT/$MAX_ATTEMPTS)"
             sleep 1
           done
-          
+
           if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
             echo "Server failed to start within $MAX_ATTEMPTS seconds"
             echo "Last 50 lines of server log:"
@@ -325,23 +325,23 @@ jobs:
             kill $SERVER_PID 2>/dev/null
             exit 1
           fi
-          
+
           # E2Eテスト実行
           echo "Running E2E tests..."
           npm run test:e2e:chromium
           TEST_RESULT=$?
-          
+
           # クリーンアップ
           echo "Stopping server..."
           kill $SERVER_PID 2>/dev/null
-          
+
           # 失敗時のログ出力
           if [ $TEST_RESULT -ne 0 ]; then
             echo "E2E tests failed!"
             echo "Last 100 lines of server log:"
             tail -n 100 server.log
           fi
-          
+
           exit $TEST_RESULT
 
   # Quality gate summary
@@ -360,32 +360,32 @@ jobs:
           else
             echo "❌ TypeScript: Failed"
           fi
-          
+
           if [ "${{ needs.lint.result }}" == "success" ]; then
             echo "✅ ESLint: Passed"
           else
             echo "❌ ESLint: Failed"
           fi
-          
+
           if [ "${{ needs.test.result }}" == "success" ]; then
             echo "✅ Tests: Passed"
           else
             echo "❌ Tests: Failed"
           fi
-          
-          
+
+
           if [ "${{ needs.security.result }}" == "success" ]; then
             echo "✅ Security: Passed"
           else
             echo "❌ Security: Failed"
           fi
-          
+
           if [ "${{ needs.build.result }}" == "success" ]; then
             echo "✅ Build: Passed"
           else
             echo "❌ Build: Failed"
           fi
-          
+
           # Fail if any check failed
           if [ "${{ needs.type-check.result }}" != "success" ] || \
              [ "${{ needs.lint.result }}" != "success" ] || \
