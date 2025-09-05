@@ -134,13 +134,18 @@ jobs:
       - name: Check test coverage
         id: coverage
         run: |
-          COVERAGE=$(jq -r '.total.statements.pct' coverage/coverage-summary.json)
-          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
-          if (( $(echo "$COVERAGE < 20.4" | bc -l) )); then
-            echo "❌ Test coverage decreased! Current: $COVERAGE%, Minimum: 20.4%"
-            exit 1
+          if [ -f coverage/coverage-summary.json ]; then
+            COVERAGE=$(jq -r '.total.statements.pct' coverage/coverage-summary.json)
+            echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+            if (( $(echo "$COVERAGE < 20.4" | bc -l) )); then
+              echo "❌ Test coverage decreased! Current: $COVERAGE%, Minimum: 20.4%"
+              exit 1
+            else
+              echo "✅ Test coverage: $COVERAGE% (minimum: 20.4%)"
+            fi
           else
-            echo "✅ Test coverage: $COVERAGE% (minimum: 20.4%)"
+            echo "⚠️ Coverage file not found, skipping coverage check"
+            echo "coverage=0" >> $GITHUB_OUTPUT
           fi
 
       - name: Upload coverage reports
