@@ -1,17 +1,26 @@
 name: Scheduler - Tags Twice Daily
 
 on:
-  schedule:
-    - cron: '30 11 * * *' # JST 20:30 (UTC 11:30) - Reduced from twice daily to save DB operations
+  # TEMPORARILY DISABLED DUE TO PRISMA QUOTA LIMIT (90% reached)
+  # schedule:
+  #   - cron: '30 11 * * *' # JST 20:30 (UTC 11:30) - Reduced from twice daily to save DB operations
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'YES' to confirm manual execution (DB quota risk)"
+        required: true
+        type: string
+        default: "NO"
 
 concurrency:
   group: techtrend-scheduler-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   tags:
+    if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
