@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   quality-auto:
-    if: github.event_name != 'workflow_dispatch' || inputs.confirm == 'YES'
+    if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
