@@ -2,11 +2,11 @@ name: Scheduler - Weekly Cleanup
 
 on:
   schedule:
-    - cron: '0 16 * * 1' # Monday 01:00 JST (UTC 16:00 Sunday)
+    - cron: '0 16 * * 0' # Monday 01:00 JST (UTC Sunday 16:00)
   workflow_dispatch:
     inputs:
       confirm:
-        description: "Type 'YES' to confirm manual execution (DB quota risk)"
+        description: "Type 'YES' to confirm manual execution"
         required: true
         type: string
         default: "NO"
