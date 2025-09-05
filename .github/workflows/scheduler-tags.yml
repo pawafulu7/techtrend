@@ -1,13 +1,13 @@
 name: Scheduler - Tags Twice Daily
 
 on:
-  # TEMPORARILY DISABLED DUE TO PRISMA QUOTA LIMIT (90% reached)
-  # schedule:
-  #   - cron: '30 11 * * *' # JST 20:30 (UTC 11:30) - Reduced from twice daily to save DB operations
+  schedule:
+    - cron: '30 23 * * *' # JST 08:30 (previous day 23:30 UTC)
+    - cron: '30 11 * * *' # JST 20:30
   workflow_dispatch:
     inputs:
       confirm:
-        description: "Type 'YES' to confirm manual execution (DB quota risk)"
+        description: "Type 'YES' to confirm manual execution"
         required: true
         type: string
         default: "NO"

@@ -1,13 +1,12 @@
-name: Scheduler - Daily Cleanup
+name: Scheduler - Weekly Cleanup
 
 on:
-  # TEMPORARILY DISABLED DUE TO PRISMA QUOTA LIMIT (90% reached)
-  # schedule:
-  #   - cron: '0 13 * * *' # JST 22:00
+  schedule:
+    - cron: '0 17 * * 5' # Saturday 02:00 JST (UTC Friday 17:00)
   workflow_dispatch:
     inputs:
       confirm:
-        description: "Type 'YES' to confirm manual execution (DB quota risk)"
+        description: "Type 'YES' to confirm manual execution"
         required: true
         type: string
         default: "NO"

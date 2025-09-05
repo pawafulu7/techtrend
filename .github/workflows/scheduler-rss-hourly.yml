@@ -1,13 +1,12 @@
 name: Scheduler - RSS Hourly
 
 on:
-  # TEMPORARILY DISABLED DUE TO PRISMA QUOTA LIMIT (90% reached)
-  # schedule:
-  #   - cron: '0 21 * * *' # Daily at JST 6:00 (UTC 21:00) - Reduced from hourly to save DB operations
+  schedule:
+    - cron: '0 * * * *' # Every hour (UTC)
   workflow_dispatch:
     inputs:
       confirm:
-        description: "Type 'YES' to confirm manual execution (DB quota risk)"
+        description: "Type 'YES' to confirm manual execution"
         required: true
         type: string
         default: "NO"
