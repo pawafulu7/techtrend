@@ -1,9 +1,9 @@
 name: Scheduler - Scraping Twice Daily
 
 on:
-  # TEMPORARILY DISABLED DUE TO PRISMA QUOTA LIMIT (90% reached)
-  # schedule:
-  #   - cron: '0 3 * * *'  # JST 12:00 (UTC 03:00) - Reduced from twice daily to save DB operations
+  schedule:
+    - cron: '0 15 * * *'  # JST 00:00 (UTC 15:00)
+    - cron: '0 3 * * *'   # JST 12:00 (UTC 03:00)
   workflow_dispatch:
     inputs:
       confirm:

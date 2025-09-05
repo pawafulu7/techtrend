@@ -1,9 +1,8 @@
 name: Scheduler - Quality Check & Auto Regenerate
 
 on:
-  # TEMPORARILY DISABLED DUE TO PRISMA QUOTA LIMIT (90% reached)
-  # schedule:
-  #   - cron: '30 6 * * *' # JST 15:30
+  schedule:
+    - cron: '30 6 * * *' # JST 15:30
   workflow_dispatch:
     inputs:
       confirm:

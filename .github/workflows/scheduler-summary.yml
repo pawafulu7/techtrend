@@ -1,9 +1,8 @@
 name: Scheduler - Daily Summaries
 
 on:
-  # TEMPORARILY DISABLED DUE TO PRISMA QUOTA LIMIT (90% reached)
-  # schedule:
-  #   - cron: '30 1 * * *' # JST 10:30
+  schedule:
+    - cron: '30 1 * * *' # JST 10:30
   workflow_dispatch:
     inputs:
       confirm:
