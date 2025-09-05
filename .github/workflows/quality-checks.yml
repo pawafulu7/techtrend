@@ -27,13 +27,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run TypeScript compiler (non-blocking)
-        run: npx tsc --noEmit || true
-        continue-on-error: true
-
-      - name: Count TypeScript errors
+      - name: Check TypeScript errors threshold
         id: ts-errors
         run: |
+          # Run TypeScript compiler and count errors
           ERROR_COUNT=$(npx tsc --noEmit 2>&1 | grep "error TS" | wc -l || true)
           echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
           if [ $ERROR_COUNT -gt 566 ]; then
@@ -118,7 +115,7 @@ jobs:
 
       - name: Setup test database
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test  # CI環境のローカルサービス用
         run: |
           npx prisma generate
           npx prisma db push
@@ -126,7 +123,7 @@ jobs:
 
       - name: Run tests with coverage
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test  # CI環境のローカルサービス用
           NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
           NODE_ENV: test
         run: npm run test:coverage
@@ -149,7 +146,7 @@ jobs:
           fi
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./coverage/lcov.info
           flags: unittests
@@ -218,7 +215,7 @@ jobs:
 
       - name: Build application
         env:
-          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy  # ビルド時のみ使用するダミーURL
           NEXTAUTH_SECRET: build-secret-key-for-testing-purposes-only-32chars
         run: npm run build
 
@@ -285,7 +282,7 @@ jobs:
 
       - name: Setup test database (E2E)
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test  # CI環境のローカルサービス用
         run: |
           npx prisma generate
           npx prisma db push
@@ -293,7 +290,7 @@ jobs:
 
       - name: Run E2E tests
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test  # CI環境のローカルサービス用
           NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
           NEXTAUTH_URL: http://localhost:3000  # CI環境用に追加
           AUTH_TRUST_HOST: 'true'  # テスト環境専用、本番では使用しない
