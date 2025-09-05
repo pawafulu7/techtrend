@@ -199,6 +199,9 @@ async function main() {
         content: true,
         url: true,
         sourceId: true,
+        source: {
+          select: { name: true }
+        },
         summary: true,
         detailedSummary: true,
         summaryVersion: true
@@ -221,7 +224,7 @@ async function main() {
             article.title,
             article.content || '',
             undefined,
-            { sourceName: article.sourceId, url: article.url }
+            { sourceName: article.source?.name ?? article.sourceId, url: article.url }
           );
 
           // データベース更新

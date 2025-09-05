@@ -76,11 +76,17 @@ data/
 reports/
 
 # test and temporary files
-scripts/test-*.ts
-scripts/*-test.ts
+# More specific patterns to avoid excluding legitimate test files
+scripts/test-temp-*.ts
+scripts/temp-test-*.ts
 scripts/debug-*.ts
 test-email*.js
 **/test-email*.js
+
+# Explicitly include legitimate test directories
+!scripts/test/**/*.ts
+!__tests__/**/*.ts
+!types/test-*.ts
 
 # batch scripts
 *.bat
@@ -99,9 +105,7 @@ scripts/fix-*.ts
 scripts/check-*.ts
 scripts/find-*.ts
 scripts/regenerate-*.ts
-scripts/test-*.ts
-scripts/*-test.ts
-scripts/debug-*.ts
+# Removed duplicate patterns - now handled above with more specific rules
 
 # Temporary files and directories
 temp/

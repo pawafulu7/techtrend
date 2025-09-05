@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S npx tsx
 
 import { PrismaClient } from '@prisma/client';
 import { GeminiClient } from '../../lib/ai/gemini';
@@ -8,6 +8,15 @@ const prisma = new PrismaClient();
 
 async function regenerateWithNewFormat() {
   console.error('🔄 マネーフォワード記事の要約を新形式で再生成\n');
+
+  // 本番DBでの誤実行防止ガード
+  const dbUrl = process.env.DATABASE_URL ?? '';
+  if (process.env.NODE_ENV === 'production' || 
+      /prod|production/i.test(dbUrl)) {
+    console.error('❌ 本番環境では実行できません');
+    console.error('DATABASE_URL/NODE_ENV を確認してください');
+    process.exit(2);
+  }
 
   const articleId = 'cmebj56760006texkokzz8exg';
   const apiKey = process.env.GEMINI_API_KEY;
