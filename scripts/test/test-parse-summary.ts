@@ -1,4 +1,4 @@
-import { parseSummary } from '../lib/utils/summary-parser';
+import { parseSummary } from '../../lib/utils/summary-parser';
 
 const detailedSummary = `・コメントの基本方針：「What」より「Why」：優れたコメントは、コードから読み取れる「何をしているか(What)」ではなく、「なぜそうしているか(Why)」を説明する必要がある。ビジネス上の背景や技術的な意図を記述することで、コードの理解度を高め、保守性を向上させる。例として、新規ユーザーの強制リダイレクト処理における背景説明が挙げられている。
 ・コードの価値を高める「良いコメント」の具体例：

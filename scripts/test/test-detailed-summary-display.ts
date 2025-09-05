@@ -3,7 +3,7 @@
  * サブ項目が改行されて表示されることを確認
  */
 
-import { parseSummary } from '../lib/utils/summary-parser';
+import { parseSummary } from '../../lib/utils/summary-parser';
 
 // テストデータ（実際の問題があったパターン）
 const testData = `・コメントの基本方針：「What」より「Why」：優れたコメントは、コードから読み取れる「何をしているか(What)」ではなく、「なぜそうしているか(Why)」を説明する必要がある。

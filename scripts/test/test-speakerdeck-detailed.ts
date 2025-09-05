@@ -1,5 +1,5 @@
-import { SpeakerDeckFetcher } from '../lib/fetchers/speakerdeck';
-import { speakerDeckConfig } from '../lib/config/speakerdeck';
+import { SpeakerDeckFetcher } from '../../lib/fetchers/speakerdeck';
+import { speakerDeckConfig } from '../../lib/config/speakerdeck';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();

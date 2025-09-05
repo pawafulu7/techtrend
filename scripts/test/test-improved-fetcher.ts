@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-import { CorporateTechBlogFetcher } from '../lib/fetchers/corporate-tech-blog';
+import { CorporateTechBlogFetcher } from '../../lib/fetchers/corporate-tech-blog';
 import { PrismaClient } from '@prisma/client';
 
 async function testImprovedFetcher() {

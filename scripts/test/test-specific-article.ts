@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-import { CorporateTechBlogFetcher } from '../lib/fetchers/corporate-tech-blog';
+import { CorporateTechBlogFetcher } from '../../lib/fetchers/corporate-tech-blog';
 
 async function testSpecificArticle() {
   const fetcher = new CorporateTechBlogFetcher();

@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 
-import { DevToFetcher } from '../lib/fetchers/devto';
-import { prisma } from '../lib/database';
+import { DevToFetcher } from '../../lib/fetchers/devto';
+import { prisma } from '../../lib/database';
 import { Source } from '@prisma/client';
 
 async function testDevToFetchAndSave() {

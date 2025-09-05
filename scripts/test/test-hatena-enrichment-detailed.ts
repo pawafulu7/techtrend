@@ -4,7 +4,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { HatenaExtendedFetcher } from '../lib/fetchers/hatena-extended';
+import { HatenaExtendedFetcher } from '../../lib/fetchers/hatena-extended';
 
 const prisma = new PrismaClient();
 

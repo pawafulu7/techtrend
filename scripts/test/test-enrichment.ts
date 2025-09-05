@@ -4,7 +4,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { GoogleDevEnricher } from '../lib/enrichers/google-dev';
+import { GoogleDevEnricher } from '../../lib/enrichers/google-dev';
 
 const prisma = new PrismaClient();
 const enricher = new GoogleDevEnricher();

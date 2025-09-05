@@ -2,7 +2,7 @@
  * イベント記事フィルタリング機能のテストスクリプト
  */
 
-import { CorporateTechBlogFetcher } from '../lib/fetchers/corporate-tech-blog';
+import { CorporateTechBlogFetcher } from '../../lib/fetchers/corporate-tech-blog';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();

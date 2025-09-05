@@ -6,7 +6,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { DevToFetcher } from '../lib/fetchers/devto';
+import { DevToFetcher } from '../../lib/fetchers/devto';
 
 const prisma = new PrismaClient();
 

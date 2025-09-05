@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 
-import { normalizeTagInput } from '../lib/utils/tag-normalizer';
+import { normalizeTagInput } from '../../lib/utils/tag-normalizer';
 
 async function testTagNormalization() {
   console.error('=== Dev.to タグ正規化テスト ===\n');

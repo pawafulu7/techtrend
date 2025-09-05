@@ -5,7 +5,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { ContentEnricherFactory } from '../lib/enrichers';
+import { ContentEnricherFactory } from '../../lib/enrichers';
 
 const prisma = new PrismaClient();
 
