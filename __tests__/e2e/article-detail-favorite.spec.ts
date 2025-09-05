@@ -2,18 +2,28 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Article Detail Favorite Button', () => {
   test.beforeEach(async ({ page }) => {
-    // 最初の記事詳細ページに遷移
-    await page.goto('/');
-    await page.waitForSelector('article');
+    // サーバーの準備完了を確認
+    await page.goto('/', { 
+      waitUntil: 'networkidle',
+      timeout: 30000 
+    });
+    
+    // 記事が存在することを確認
+    await page.waitForSelector('article', { timeout: 10000 });
+    const articleCount = await page.locator('article').count();
+    if (articleCount === 0) {
+      throw new Error('No articles found. Test data may not be loaded.');
+    }
     
     // 最初の記事をクリック
     const firstArticle = page.locator('article').first();
     const articleLink = firstArticle.locator('a[href^="/articles/"]').first();
     await articleLink.click();
     
-    // 詳細ページが読み込まれるまで待機
-    await page.waitForURL(/\/articles\/.+/);
-    await page.waitForSelector('h1');
+    // 詳細ページが完全に読み込まれるまで待機
+    await page.waitForURL(/\/articles\/.+/, { timeout: 10000 });
+    await page.waitForSelector('h1', { timeout: 10000 });
+    await page.waitForLoadState('networkidle');
   });
 
   test('should display favorite button in header area', async ({ page }) => {

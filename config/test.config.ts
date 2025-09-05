@@ -26,8 +26,10 @@ export const testConfig = {
     return {
       command: 'npm run build && npm run start',
       port: this.port,
-      timeout: 180 * 1000,
+      timeout: 300 * 1000,  // 5分に延長
       reuseExistingServer: false,
+      stdout: 'pipe',  // ログ出力を有効化
+      stderr: 'pipe',  // エラーログ出力を有効化
     };
   },
   
