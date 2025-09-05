@@ -10,6 +10,13 @@ dotenv.config({ path: '.env.test' });
  */
 export default defineConfig({
   testDir: './__tests__/e2e',
+  /* Sharding support for CI */
+  ...(process.env.SHARD && {
+    shard: {
+      current: parseInt(process.env.SHARD),
+      total: parseInt(process.env.TOTAL_SHARDS || '3')
+    }
+  }),
   /* Global timeout for each test */
   timeout: 120000,  // 120秒に延長
   /* Run tests in files in parallel */
@@ -19,18 +26,24 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: 1,  // 並列実行時の競合を避けるため1ワーカーに制限
+  workers: process.env.CI ? 3 : 1,  // CI環境で3並列、ローカルは1ワーカー
   /* Global setup and teardown */
   globalSetup: './__tests__/e2e/global-setup.ts',
   globalTeardown: './__tests__/e2e/global-teardown.ts',
   /* CI環境でサーバーを自動起動 */
   webServer: testConfig.webServer || undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: [
-    ['html'],
-    ['list'],
-    ['json', { outputFile: 'test-results/results.json' }]
-  ],
+  reporter: process.env.CI 
+    ? [
+        ['github'],
+        ['json', { outputFile: 'test-results/results.json' }],
+        ['html']
+      ]
+    : [
+        ['list'],
+        ['html'],
+        ['json', { outputFile: 'test-results/results.json' }]
+      ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
