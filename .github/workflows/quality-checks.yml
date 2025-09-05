@@ -30,8 +30,10 @@ jobs:
       - name: Check TypeScript errors threshold
         id: ts-errors
         run: |
-          # Run TypeScript compiler and count errors
-          ERROR_COUNT=$(npx tsc --noEmit 2>&1 | grep "error TS" | wc -l || true)
+          # Run TypeScript compiler once and save output
+          npx tsc --noEmit --pretty false > tsc.out 2>&1 || true
+          # Count errors from saved output
+          ERROR_COUNT=$(grep -c "error TS" tsc.out || true)
           echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
           if [ $ERROR_COUNT -gt 566 ]; then
             echo "❌ TypeScript errors increased! Current: $ERROR_COUNT, Threshold: 566"
@@ -134,7 +136,8 @@ jobs:
           if [ -f coverage/coverage-summary.json ]; then
             COVERAGE=$(jq -r '.total.statements.pct' coverage/coverage-summary.json)
             echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
-            if (( $(echo "$COVERAGE < 20.4" | bc -l) )); then
+            # Use awk for float comparison instead of bc
+            if awk -v cov="$COVERAGE" 'BEGIN {exit !(cov < 20.4)}'; then
               echo "❌ Test coverage decreased! Current: $COVERAGE%, Minimum: 20.4%"
               exit 1
             else
@@ -238,9 +241,9 @@ jobs:
   e2e:
     name: E2E Tests
     if: |
-      github.ref == 'refs/heads/main' || 
-      contains(github.event.pull_request.labels.*.name, 'run-e2e') ||
-      contains(github.event.head_commit.message, '[e2e]')
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-e2e')) ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[e2e]'))
     runs-on: ubuntu-latest
     services:
       postgres:
