@@ -1,8 +1,9 @@
 name: Scheduler - Tags Twice Daily
 
 on:
-  schedule:
-    - cron: '30 11 * * *' # JST 20:30 (UTC 11:30) - Reduced from twice daily to save DB operations
+  # TEMPORARILY DISABLED DUE TO PRISMA QUOTA LIMIT (90% reached)
+  # schedule:
+  #   - cron: '30 11 * * *' # JST 20:30 (UTC 11:30) - Reduced from twice daily to save DB operations
   workflow_dispatch:
 
 concurrency:

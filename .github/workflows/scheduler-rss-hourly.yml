@@ -1,8 +1,9 @@
 name: Scheduler - RSS Hourly
 
 on:
-  schedule:
-    - cron: '0 21 * * *' # Daily at JST 6:00 (UTC 21:00) - Reduced from hourly to save DB operations
+  # TEMPORARILY DISABLED DUE TO PRISMA QUOTA LIMIT (90% reached)
+  # schedule:
+  #   - cron: '0 21 * * *' # Daily at JST 6:00 (UTC 21:00) - Reduced from hourly to save DB operations
   workflow_dispatch:
 
 concurrency:

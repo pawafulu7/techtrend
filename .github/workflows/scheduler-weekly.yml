@@ -1,8 +1,9 @@
 name: Scheduler - Weekly Cleanup
 
 on:
-  schedule:
-    - cron: '0 17 * * 6' # Sunday 02:00 JST
+  # TEMPORARILY DISABLED DUE TO PRISMA QUOTA LIMIT (90% reached)
+  # schedule:
+  #   - cron: '0 17 * * 6' # Sunday 02:00 JST
   workflow_dispatch:
 
 concurrency:
