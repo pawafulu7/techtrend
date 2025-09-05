@@ -7,8 +7,12 @@ import { TEST_USER } from './utils/e2e-helpers';
  * PrismaClientを使用してデータベースに直接接続
  */
 export async function setupTestUser() {
+  // テスト用データベースURLを明示的に指定
+  const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 
+    'postgresql://postgres@localhost:5433/techtrend_test';
+  
   const prisma = new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL,
+    datasourceUrl: TEST_DATABASE_URL,
   });
 
   try {
@@ -48,8 +52,12 @@ export async function setupTestUser() {
  * テストユーザーのクリーンアップ
  */
 export async function cleanupTestUser() {
+  // テスト用データベースURLを明示的に指定
+  const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 
+    'postgresql://postgres@localhost:5433/techtrend_test';
+  
   const prisma = new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL,
+    datasourceUrl: TEST_DATABASE_URL,
   });
 
   try {
