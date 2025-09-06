@@ -54,6 +54,7 @@ export function RecommendationToggle({ onToggle }: RecommendationToggleProps) {
       className="flex items-center gap-2 transition-all hover:scale-105"
       aria-label={isHidden ? 'おすすめを表示' : 'おすすめを非表示'}
       title={isHidden ? 'クリックしておすすめを表示' : 'クリックしておすすめを非表示'}
+      data-testid="recommendation-toggle"
     >
       {isHidden ? (
         <>

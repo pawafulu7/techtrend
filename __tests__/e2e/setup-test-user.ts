@@ -1,6 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import { TEST_USER } from './utils/e2e-helpers';
+
+// .env.testを強制的に読み込む
+dotenv.config({ path: path.resolve(process.cwd(), '.env.test'), override: true });
 
 /**
  * E2Eテスト用のユーザーをセットアップする
@@ -9,7 +14,13 @@ import { TEST_USER } from './utils/e2e-helpers';
 export async function setupTestUser() {
   // テスト用データベースURLを明示的に指定
   const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 
-    'postgresql://postgres@localhost:5433/techtrend_test';
+    'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_test';
+  
+  // デバッグ出力
+  console.log('🔍 Database connection info:');
+  console.log('  TEST_DATABASE_URL from env:', process.env.TEST_DATABASE_URL);
+  console.log('  Using connection string:', TEST_DATABASE_URL);
+  console.log('  DATABASE_URL from env:', process.env.DATABASE_URL);
   
   const prisma = new PrismaClient({
     datasourceUrl: TEST_DATABASE_URL,
@@ -54,7 +65,7 @@ export async function setupTestUser() {
 export async function cleanupTestUser() {
   // テスト用データベースURLを明示的に指定
   const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 
-    'postgresql://postgres@localhost:5433/techtrend_test';
+    'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_test';
   
   const prisma = new PrismaClient({
     datasourceUrl: TEST_DATABASE_URL,

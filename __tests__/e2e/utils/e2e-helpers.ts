@@ -382,15 +382,34 @@ export async function deleteTestUser(email: string): Promise<boolean> {
 }
 
 /**
- * アカウントタブを開く
+ * アカウントタブを開く（ユーザーメニュー → プロフィール → アカウントタブ）
  * @param page - Playwright page object
  */
-export async function openAccountTab(page: Page) {
-  const tab = page
-    .locator('[data-testid="account-tab"], a[href*="account"], button:has-text("アカウント")')
-    .first();
-  await tab.waitFor({ state: 'visible', timeout: 5000 });
-  await tab.click();
+export async function openAccountTab(page: Page): Promise<boolean> {
+  try {
+    // ユーザーメニューのドロップダウンを開く（デスクトップ版を優先）
+    const userMenuTrigger = page.locator('[data-testid="user-menu-trigger"]').first();
+    await userMenuTrigger.waitFor({ state: 'visible', timeout: 5000 });
+    await userMenuTrigger.click();
+    
+    // プロフィールリンクをクリック
+    const profileLink = page.locator('a[href="/profile"]');
+    await profileLink.waitFor({ state: 'visible', timeout: 5000 });
+    await profileLink.click();
+    
+    // ページが読み込まれるまで待機
+    await page.waitForLoadState('networkidle');
+    
+    // アカウントタブをクリック
+    const accountTab = page.locator('[role="tab"][data-value="account"], button:has-text("アカウント")').first();
+    await accountTab.waitFor({ state: 'visible', timeout: 5000 });
+    await accountTab.click();
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to open account tab:', error);
+    return false;
+  }
 }
 
 /**
@@ -401,15 +420,14 @@ export async function openAccountTab(page: Page) {
  */
 export async function fillPasswordChangeForm(
   page: Page, 
-  currentPassword: string, 
-  newPassword: string
+  passwords: { current: string; new: string; confirm: string }
 ) {
   // Use .first() instead of :first pseudo-class for better compatibility
   const currentPasswordInput = page.locator('input[name="currentPassword"], input[type="password"]').first();
-  await currentPasswordInput.fill(currentPassword);
+  await currentPasswordInput.fill(passwords.current);
   
-  await page.fill('input[name="newPassword"], input[placeholder*="新しいパスワード"]', newPassword);
-  await page.fill('input[name="confirmPassword"], input[placeholder*="確認"]', newPassword);
+  await page.fill('input[name="newPassword"], input[placeholder*="新しいパスワード"]', passwords.new);
+  await page.fill('input[name="confirmPassword"], input[placeholder*="確認"]', passwords.confirm);
 }
 
 /**
@@ -422,10 +440,15 @@ export async function waitForErrorMessage(
   page: Page, 
   message: string, 
   timeout = 5000
-) {
-  // Use locator with hasText filter to handle messages with quotes safely
-  const errorLocator = page.locator('[class*="error"]').filter({ hasText: message });
-  await errorLocator.waitFor({ state: 'visible', timeout });
+): Promise<boolean> {
+  try {
+    // Use locator for text-destructive class which is used for validation errors
+    const errorLocator = page.locator('.text-destructive').filter({ hasText: message });
+    await errorLocator.waitFor({ state: 'visible', timeout });
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 /**

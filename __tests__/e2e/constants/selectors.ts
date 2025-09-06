@@ -36,7 +36,7 @@ export const SELECTORS = {
   // ===== 検索 =====
   SEARCH_INPUT: '[data-testid="search-box-input"]',
   SEARCH_RESULTS: '[data-testid="search-results"]',
-  SEARCH_RESULT_COUNT: '[data-testid="search-result-count"], p:has-text("件"), .search-count, .result-count',
+  SEARCH_RESULT_COUNT: '[data-testid="search-result-count"], div:has-text("件の記事"), .search-count, .result-count, div.text-sm:has-text("件")',
   SEARCH_RESULT_TEXT: '[data-testid="search-result-text"], .search-result-text, main p',  // より具体的なセレクタ
   SOURCE_FILTER: 'select[name*="source"], select[data-testid="source-filter"], [data-testid="source-dropdown"]',
   DATE_FILTER: 'select[name*="date"], input[type="date"], [data-testid="date-filter"]',

@@ -18,26 +18,32 @@ test.describe('ソースフィルタリング機能', () => {
     await selectAllButton.click();
     await page.waitForTimeout(500);
 
-    // 最初のソースのチェックボックスを探す
-    const firstSourceCheckbox = page.locator('[data-testid^="source-checkbox-"]').first();
-    await expect(firstSourceCheckbox).toBeVisible();
+    // 海外ソースカテゴリを展開
+    const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
+    await expect(foreignCategoryHeader).toBeVisible();
+    await foreignCategoryHeader.click();
+    await page.waitForTimeout(300);
+
+    // Dev.toのチェックボックスを探す（海外ソース内）
+    const devtoCheckbox = page.locator('[data-testid="source-checkbox-cmdq3nww70003tegxm78oydnb"]');
+    await expect(devtoCheckbox).toBeVisible();
     
     // ソース名を取得
-    const _sourceName = await firstSourceCheckbox.locator('label').textContent();
+    const _sourceName = await devtoCheckbox.locator('label').textContent();
     
     // チェックボックスが選択されていることを確認
-    const checkbox = firstSourceCheckbox.locator('button[role="checkbox"]');
+    const checkbox = devtoCheckbox.locator('button[role="checkbox"]');
     await expect(checkbox).toHaveAttribute('data-state', 'checked');
     
     // チェックボックスをクリックして選択を解除
-    await firstSourceCheckbox.click();
+    await devtoCheckbox.click();
     await page.waitForTimeout(500);
     
     // チェックが外れたことを確認
     await expect(checkbox).toHaveAttribute('data-state', 'unchecked');
     
     // 再度クリックして選択
-    await firstSourceCheckbox.click();
+    await devtoCheckbox.click();
     await page.waitForTimeout(500);
     
     // チェックが戻ったことを確認
@@ -118,6 +124,20 @@ test.describe('ソースフィルタリング機能', () => {
     
     // すべてのチェックボックスが解除されたことを確認
     await page.waitForTimeout(500);
+    
+    // まずカテゴリを展開する必要がある
+    const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
+    if (await foreignCategoryHeader.isVisible()) {
+      await foreignCategoryHeader.click();
+      await page.waitForTimeout(300);
+    }
+    
+    const domesticCategoryHeader = page.locator('[data-testid="category-domestic-header"]');
+    if (await domesticCategoryHeader.isVisible()) {
+      await domesticCategoryHeader.click();
+      await page.waitForTimeout(300);
+    }
+    
     const allCheckboxes = page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]');
     const checkboxCount = await allCheckboxes.count();
     
@@ -170,7 +190,19 @@ test.describe('ソースフィルタリング機能', () => {
       state: 'visible' 
     });
     
-    // 複数のソースチェックボックスを取得
+    // 海外ソースカテゴリを展開
+    const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
+    await expect(foreignCategoryHeader).toBeVisible();
+    await foreignCategoryHeader.click();
+    await page.waitForTimeout(300);
+    
+    // 国内情報サイトカテゴリも展開
+    const domesticCategoryHeader = page.locator('[data-testid="category-domestic-header"]');
+    await expect(domesticCategoryHeader).toBeVisible();
+    await domesticCategoryHeader.click();
+    await page.waitForTimeout(300);
+    
+    // 複数のソースチェックボックスを取得（展開後）
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
     const checkboxCount = await sourceCheckboxes.count();
     
