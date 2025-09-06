@@ -8,11 +8,12 @@ import { Prisma } from '@prisma/client';
 /**
  * Get optimized database URL with connection pool parameters
  */
-export function getOptimizedDatabaseUrl(): string {
-  const baseUrl = process.env.DATABASE_URL || '';
+export function getOptimizedDatabaseUrl(): string | undefined {
+  const baseUrl = process.env.DATABASE_URL;
   
+  // Return undefined if DATABASE_URL is not set (for build time)
   if (!baseUrl) {
-    throw new Error('DATABASE_URL environment variable is not set');
+    return undefined;
   }
   
   // Parse the URL to add connection pool parameters
@@ -48,8 +49,14 @@ export function getOptimizedDatabaseUrl(): string {
 /**
  * Get Prisma client configuration optimized for production
  */
-export function getPrismaConfig(): Prisma.PrismaClientOptions {
+export function getPrismaConfig(): Prisma.PrismaClientOptions | undefined {
   const isProduction = process.env.NODE_ENV === 'production';
+  const databaseUrl = getOptimizedDatabaseUrl();
+  
+  // Return undefined if no DATABASE_URL (for build time)
+  if (!databaseUrl) {
+    return undefined;
+  }
   
   return {
     log: isProduction 
@@ -57,7 +64,7 @@ export function getPrismaConfig(): Prisma.PrismaClientOptions {
       : ['query', 'error', 'warn'],
     datasources: {
       db: {
-        url: getOptimizedDatabaseUrl(),
+        url: databaseUrl,
       },
     },
     // Error formatting for production

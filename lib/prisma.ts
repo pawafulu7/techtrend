@@ -5,7 +5,11 @@ const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
 // Singleton pattern to prevent multiple instances
 const prismaClientSingleton = () => {
-  return new PrismaClient(getPrismaConfig());
+  const config = getPrismaConfig();
+  // Use default config if DATABASE_URL is not set (for build time)
+  return new PrismaClient(config || {
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  });
 };
 
 // Use existing instance or create new one
