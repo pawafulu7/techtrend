@@ -67,17 +67,20 @@ test.describe('推薦機能', () => {
     const toggleButton = page.locator('[data-testid="recommendation-toggle"]');
     await expect(toggleButton).toBeVisible({ timeout: 10000 });
     
-    // 初期状態を確認（EyeOffアイコンまたはEyeアイコン）
-    const initialIcon = await toggleButton.locator('svg').first();
-    await expect(initialIcon).toBeVisible();
+    // 初期状態のaria-labelを確認（アクセシビリティ向上）
+    const initialAriaLabel = await toggleButton.getAttribute('aria-label');
+    expect(initialAriaLabel).toBeTruthy();
+    expect(['おすすめを表示', 'おすすめを非表示']).toContain(initialAriaLabel);
     
     // ボタンをクリックして状態を切り替え
     await toggleButton.click();
     
-    // アイコンが変更されることを確認
+    // aria-labelが適切に変更されることを確認
     await page.waitForTimeout(500); // 状態変更を待つ
-    const newIcon = await toggleButton.locator('svg').first();
-    await expect(newIcon).toBeVisible();
+    const newAriaLabel = await toggleButton.getAttribute('aria-label');
+    expect(newAriaLabel).toBeTruthy();
+    expect(['おすすめを表示', 'おすすめを非表示']).toContain(newAriaLabel);
+    expect(newAriaLabel).not.toBe(initialAriaLabel);
   });
 
   test('localStorage永続化の確認', async ({ page, context }) => {

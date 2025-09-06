@@ -434,31 +434,34 @@ export async function fillPasswordChangeForm(
   page: Page, 
   passwords: { current: string; new: string; confirm: string }
 ) {
-  // Strict priority chain: data-testid > name > autocomplete/label > placeholder
+  // Enhanced priority chain for password inputs with precise targeting
   const currentPasswordInput = page.locator([
-    '[data-testid*="current"][data-testid*="password"]',
-    'input[name="currentPassword"]',
-    'input[autocomplete="current-password"]',
-    'label:has-text("現在のパスワード") + input',
-    'input[placeholder*="現在"]'
+    '[data-testid="current-password-input"]',
+    'input[name="currentPassword"][type="password"]',
+    'input[autocomplete="current-password"][type="password"]',
+    'form:has-text("パスワード変更") input[type="password"]:first-of-type',
+    'label:has-text("現在のパスワード") + input[type="password"]',
+    'input[placeholder*="現在"][type="password"]'
   ].join(', ')).first();
   await currentPasswordInput.fill(passwords.current);
   
   const newPasswordInput = page.locator([
-    '[data-testid*="new"][data-testid*="password"]:not([data-testid*="confirm"])',
-    'input[name="newPassword"]',
-    'input[autocomplete="new-password"]',
-    'label:has-text("新しいパスワード") + input',
-    'input[placeholder*="新しいパスワード"]'
+    '[data-testid="new-password-input"]',
+    'input[name="newPassword"][type="password"]',
+    'input[autocomplete="new-password"][type="password"]:first-of-type',
+    'form:has-text("パスワード変更") input[type="password"]:nth-of-type(2)',
+    'label:has-text("新しいパスワード") + input[type="password"]',
+    'input[placeholder*="新しいパスワード"][type="password"]'
   ].join(', ')).first();
   await newPasswordInput.fill(passwords.new);
   
   const confirmPasswordInput = page.locator([
-    '[data-testid*="confirm"][data-testid*="password"]',
-    'input[name="confirmPassword"]',
-    'input[autocomplete="new-password"]:nth-of-type(2)',
-    'label:has-text("確認") + input',
-    'input[placeholder*="確認"]'
+    '[data-testid="confirm-password-input"]',
+    'input[name="confirmPassword"][type="password"]',
+    'input[autocomplete="new-password"][type="password"]:nth-of-type(2)',
+    'form:has-text("パスワード変更") input[type="password"]:nth-of-type(3)',
+    'label:has-text("確認") + input[type="password"]',
+    'input[placeholder*="確認"][type="password"]'
   ].join(', ')).first();
   await confirmPasswordInput.fill(passwords.confirm);
 }

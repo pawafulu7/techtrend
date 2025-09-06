@@ -14,6 +14,17 @@ const resolveTestDbUrl = () =>
   process.env.TEST_DATABASE_URL ||
   'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
 
+// 接続文字列をマスクしてセキュアにログ出力するヘルパー
+const maskConnectionString = (url: string): string => {
+  try {
+    const parsed = new URL(url);
+    const maskedPassword = parsed.password ? '***' : '';
+    return `${parsed.protocol}//${parsed.username}:${maskedPassword}@${parsed.hostname}:${parsed.port}${parsed.pathname}`;
+  } catch {
+    return 'Invalid URL format';
+  }
+};
+
 /**
  * E2Eテスト用のユーザーをセットアップする
  * PrismaClientを使用してデータベースに直接接続
@@ -22,14 +33,20 @@ export async function setupTestUser() {
   // テスト用データベースURLを明示的に指定
   const TEST_DATABASE_URL = resolveTestDbUrl();
   
-  // デバッグ出力
-  console.log('🔍 Database connection info:');
-  console.log('  TEST_DATABASE_URL from env:', process.env.TEST_DATABASE_URL);
-  console.log('  Using connection string:', TEST_DATABASE_URL);
-  console.log('  DATABASE_URL from env:', process.env.DATABASE_URL);
+  // セキュアなデバッグ出力（パスワードをマスク）
+  if (process.env.DEBUG_E2E) {
+    console.log('🔍 Database connection info (DEBUG mode):');
+    console.log('  TEST_DATABASE_URL from env:', process.env.TEST_DATABASE_URL ? maskConnectionString(process.env.TEST_DATABASE_URL) : 'Not set');
+    console.log('  Using connection string:', maskConnectionString(TEST_DATABASE_URL));
+    console.log('  DATABASE_URL from env:', process.env.DATABASE_URL ? maskConnectionString(process.env.DATABASE_URL) : 'Not set');
+  }
   
   const prisma = new PrismaClient({
-    datasourceUrl: TEST_DATABASE_URL,
+    datasources: {
+      db: {
+        url: TEST_DATABASE_URL,
+      },
+    },
   });
 
   try {
@@ -73,7 +90,11 @@ export async function cleanupTestUser() {
   const TEST_DATABASE_URL = resolveTestDbUrl();
   
   const prisma = new PrismaClient({
-    datasourceUrl: TEST_DATABASE_URL,
+    datasources: {
+      db: {
+        url: TEST_DATABASE_URL,
+      },
+    },
   });
 
   try {

@@ -24,8 +24,8 @@ test.describe('ソースフィルタリング機能', () => {
     await foreignCategoryHeader.click();
     await page.waitForTimeout(300);
 
-    // Dev.toのチェックボックスを探す（海外ソース内）
-    const devtoCheckbox = page.locator('[data-testid="source-checkbox-cmdq3nww70003tegxm78oydnb"]');
+    // Dev.toのチェックボックスを探す（海外ソース内）- より安定したセレクター使用
+    const devtoCheckbox = page.locator('[data-testid^="source-checkbox-"]:has-text("Dev.to")');
     await expect(devtoCheckbox).toBeVisible();
     
     // 任意: 表示名を検証する場合は有効化
