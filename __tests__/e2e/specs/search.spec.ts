@@ -51,11 +51,7 @@ test.describe('検索機能', () => {
     const countExists = await resultCountLocator.count();
     
     if (countExists > 0) {
-      await expect(resultCountLocator).toBeVisible({ timeout: 5000 });
-      const countText = await resultCountLocator.textContent();
-      if (countText) {
-        expect(countText).toMatch(/\d+件の記事/);
-      }
+      await expect(resultCountLocator).toHaveText(/\d+件の記事/, { timeout: 5000 });
     } else {
       // 件数表示がない場合は、少なくとも記事が表示されていることを確認
       console.log('検索結果カウント表示が見つかりませんでした。記事の表示を確認します。');

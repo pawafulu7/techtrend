@@ -4,8 +4,15 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { TEST_USER } from './utils/e2e-helpers';
 
-// .env.testを強制的に読み込む
-dotenv.config({ path: path.resolve(process.cwd(), '.env.test'), override: true });
+// TEST_DATABASE_URL が未設定のときのみ .env.test を読み込む
+if (!process.env.TEST_DATABASE_URL) {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.test') });
+}
+
+// テスト用DB URL解決ヘルパー
+const resolveTestDbUrl = () =>
+  process.env.TEST_DATABASE_URL ||
+  'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
 
 /**
  * E2Eテスト用のユーザーをセットアップする
@@ -13,8 +20,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.test'), override: true }
  */
 export async function setupTestUser() {
   // テスト用データベースURLを明示的に指定
-  const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 
-    'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_test';
+  const TEST_DATABASE_URL = resolveTestDbUrl();
   
   // デバッグ出力
   console.log('🔍 Database connection info:');
@@ -64,8 +70,7 @@ export async function setupTestUser() {
  */
 export async function cleanupTestUser() {
   // テスト用データベースURLを明示的に指定
-  const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 
-    'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_test';
+  const TEST_DATABASE_URL = resolveTestDbUrl();
   
   const prisma = new PrismaClient({
     datasourceUrl: TEST_DATABASE_URL,

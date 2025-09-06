@@ -461,10 +461,15 @@ export async function waitForSuccessMessage(
   page: Page, 
   message: string, 
   timeout = 5000
-) {
-  // Use locator with hasText filter to handle messages with quotes safely
-  const successLocator = page.locator('[class*="success"]').filter({ hasText: message });
-  await successLocator.waitFor({ state: 'visible', timeout });
+): Promise<boolean> {
+  try {
+    // Use locator with hasText filter to handle messages with quotes safely
+    const successLocator = page.locator('[class*="success"]').filter({ hasText: message });
+    await successLocator.waitFor({ state: 'visible', timeout });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

@@ -20,6 +20,9 @@ export function ThemeToggle() {
         size="icon"
         className="h-9 w-9"
         aria-label="テーマ切り替え"
+        disabled
+        aria-busy="true"
+        data-state="pre-mount"
         data-testid="theme-toggle-button"
       >
         <Sun className="h-4 w-4" />
@@ -34,6 +37,7 @@ export function ThemeToggle() {
       className="h-9 w-9"
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
       aria-label={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+      aria-pressed={theme === 'dark'}
       data-testid="theme-toggle-button"
     >
       {theme === 'dark' ? (

@@ -28,23 +28,21 @@ test.describe('ソースフィルタリング機能', () => {
     const devtoCheckbox = page.locator('[data-testid="source-checkbox-cmdq3nww70003tegxm78oydnb"]');
     await expect(devtoCheckbox).toBeVisible();
     
-    // ソース名を取得
-    const _sourceName = await devtoCheckbox.locator('label').textContent();
+    // 任意: 表示名を検証する場合は有効化
+    // await expect(devtoCheckbox.locator('label')).toHaveText(/Dev\.to/i);
     
     // チェックボックスが選択されていることを確認
-    const checkbox = devtoCheckbox.locator('button[role="checkbox"]');
+    const checkbox = devtoCheckbox.getByRole('checkbox');
     await expect(checkbox).toHaveAttribute('data-state', 'checked');
     
     // チェックボックスをクリックして選択を解除
-    await devtoCheckbox.click();
-    await page.waitForTimeout(500);
+    await checkbox.click();
     
     // チェックが外れたことを確認
     await expect(checkbox).toHaveAttribute('data-state', 'unchecked');
     
     // 再度クリックして選択
-    await devtoCheckbox.click();
-    await page.waitForTimeout(500);
+    await checkbox.click();
     
     // チェックが戻ったことを確認
     await expect(checkbox).toHaveAttribute('data-state', 'checked');
