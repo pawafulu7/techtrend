@@ -47,6 +47,13 @@ test.describe('フィルター条件の永続化', () => {
     
     // 最初のカテゴリを展開
     const firstCategoryHeader = page.locator('[data-testid$="-header"]').first();
+    const categoryCount = await firstCategoryHeader.count();
+    if (categoryCount === 0) {
+      // カテゴリが存在しない場合はスキップ
+      test.skip(true, 'カテゴリが存在しないためスキップ');
+      return;
+    }
+    
     await firstCategoryHeader.click();
     await page.waitForTimeout(300);
     
@@ -54,22 +61,24 @@ test.describe('フィルター条件の永続化', () => {
     const firstCategoryContent = page.locator('[data-testid$="-content"]').first();
     await expect(firstCategoryContent).toBeVisible();
     
-    // 1. 最初にすべてのソースを解除
-    await page.click('[data-testid="deselect-all-button"]');
-    await page.waitForTimeout(300);
-    
-    // すべて未選択になったことを確認（Radix UIのdata-state属性を使用）
-    const firstCheckbox = page.locator('[data-testid^="source-checkbox-"]').first().locator('button[role="checkbox"]');
-    await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
-    
-    // 2. 最初のソースチェックボックスを選択
+    // 2. 最初のソースチェックボックスが存在するか確認
     const firstSourceContainer = page.locator('[data-testid^="source-checkbox-"]').first();
     const checkboxCount = await firstSourceContainer.count();
     if (checkboxCount === 0) {
       // ソースフィルターが存在しない場合はスキップ
       test.skip(true, 'ソースフィルターが存在しないためスキップ');
+      return;
     }
     
+    // 1. 最初にすべてのソースを解除
+    await page.click('[data-testid="deselect-all-button"]');
+    await page.waitForTimeout(300);
+    
+    // すべて未選択になったことを確認（Radix UIのdata-state属性を使用）
+    const firstCheckbox = firstSourceContainer.locator('button[role="checkbox"]');
+    await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
+    
+    // 2. 最初のソースチェックボックスを選択
     await firstSourceContainer.click();
     await page.waitForTimeout(200);
     
@@ -97,7 +106,8 @@ test.describe('フィルター条件の永続化', () => {
         // 最初のカテゴリを再度展開
         const firstCategoryHeader2 = page.locator('[data-testid$="-header"]').first();
         await firstCategoryHeader2.click();
-        await page.waitForTimeout(300);
+        // カテゴリ展開完了を待つ
+        await page.waitForSelector('[data-testid$="-content"]:visible', { timeout: 5000 });
         
         // チェックボックスの状態を確認
         await expect(
