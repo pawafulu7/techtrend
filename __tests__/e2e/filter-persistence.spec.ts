@@ -79,17 +79,9 @@ test.describe('フィルター条件の永続化', () => {
       // 5. フィルターが保持されていることを確認
       if (selectedSourceId) {
         // チェックボックス自体を確認
-        const checkbox = page.locator(`[data-testid="${selectedSourceId}"]`);
-        // aria-checkedまたはdata-stateを確認
-        const isChecked = await checkbox.evaluate((el) => {
-          const button = el.querySelector('button[role="checkbox"]');
-          if (button) {
-            return button.getAttribute('aria-checked') === 'true' || 
-                   button.getAttribute('data-state') === 'checked';
-          }
-          return false;
-        });
-        expect(isChecked).toBe(true);
+        await expect(
+          page.locator(`[data-testid="${selectedSourceId}"] button[role="checkbox"]`)
+        ).toHaveAttribute('aria-checked', 'true');
       }
     } else {
       // 記事がない場合でもソースフィルター自体の永続化は確認できる
@@ -97,17 +89,9 @@ test.describe('フィルター条件の永続化', () => {
       
       // フィルターの状態だけ確認
       if (selectedSourceId) {
-        const checkbox = page.locator(`[data-testid="${selectedSourceId}"]`);
-        const isChecked = await checkbox.evaluate((el) => {
-          const button = el.querySelector('button[role="checkbox"]');
-          if (button) {
-            return button.getAttribute('aria-checked') === 'true' || 
-                   button.getAttribute('data-state') === 'checked';
-          }
-          return false;
-        });
-        // フィルターが適用されていることを確認（記事がなくても）
-        expect(isChecked).toBe(true);
+        await expect(
+          page.locator(`[data-testid="${selectedSourceId}"] button[role="checkbox"]`)
+        ).toHaveAttribute('aria-checked', 'true');
       }
     }
   });
@@ -164,7 +148,7 @@ test.describe('フィルター条件の永続化', () => {
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
     // 1. 複数のフィルターを設定
     await page.fill('[data-testid="search-box-input"]', 'React');
-    await page.waitForTimeout(1000);
+    await page.waitForFunction(() => window.location.search.includes('search=React'), { timeout: 10000 });
     
     // ソースフィルターが存在する場合のみ設定
     const sourceFilter = page.locator('[data-testid="source-filter"]');
@@ -183,7 +167,7 @@ test.describe('フィルター条件の永続化', () => {
     }
     
     await page.getByRole('button', { name: '人気' }).click();
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => window.location.search.includes('sortBy='), { timeout: 10000 });
 
     // 2. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();

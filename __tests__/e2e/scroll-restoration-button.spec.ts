@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 
+const SCROLL_CONTAINER_SELECTORS = [
+  '#main-scroll-container',
+  'main.overflow-y-auto',
+  '.flex-1.overflow-y-auto',
+  '.overflow-y-auto',
+] as const;
+
 test.describe('スクロール復元時のトップボタン表示', () => {
   test('記事詳細から戻った際にトップボタンが表示される', async ({ page }) => {
     // 1. トップページにアクセス
@@ -116,7 +123,7 @@ test.describe('スクロール復元時のトップボタン表示', () => {
 
   test('スクロール復元をキャンセルした場合の動作', async ({ page }) => {
     // 1. トップページにアクセス
-    await page.goto('http://localhost:3000');
+    await page.goto('/');
     
     // 記事リストが表示されるまで待機
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });

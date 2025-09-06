@@ -47,5 +47,17 @@ await page.waitForFunction(() => {
 - `8fa8377`: 初期改善実装
 - `dd23a5f`: 最終修正（100%達成）
 
+## 🚀 実行例
+```bash
+# 全体実行
+npx playwright test --project=chromium
+
+# 本改善対象のみ
+npx playwright test --grep "(scroll-restoration|filter-persistence|date-range-filter|category-error|visual-regression)" --project=chromium
+
+# 単体実行例
+npx playwright test __tests__/e2e/date-range-filter-fixed.spec.ts --project=chromium
+```
+
 ## ✨ 学び
 ユーザーの指摘通り、問題の根本原因はタイムアウト時間ではなくセレクターの不一致でした。
