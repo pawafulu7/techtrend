@@ -25,17 +25,14 @@ test.describe('ソースフィルタリング機能', () => {
     // 展開アニメーションを待つ
     await page.waitForTimeout(500);
 
-    // Dev.toのチェックボックスを探す（海外ソース内）- ラベルテキストベースのセレクター使用
-    const devtoCheckbox = page.locator('[data-testid^="source-checkbox-"]')
-      .filter({ has: page.locator('label:has-text("Dev.to")') })
+    // Dev.toのチェックボックスを探す（海外ソース内）- 厳密マッチとbutton[role="checkbox"]使用
+    const devtoContainer = page.locator('[data-testid^="source-checkbox-"]')
+      .filter({ has: page.locator('label').filter({ hasText: /^Dev\.to$/ }) })
       .first();
-    await expect(devtoCheckbox).toBeVisible();
+    await expect(devtoContainer).toBeVisible();
     
-    // 任意: 表示名を検証する場合は有効化
-    // await expect(devtoCheckbox.locator('label')).toHaveText(/Dev\.to/i);
-    
-    // チェックボックスが選択されていることを確認
-    const checkbox = devtoCheckbox.getByRole('checkbox');
+    // Radix UIのcheckbox要素を直接取得
+    const checkbox = devtoContainer.locator('button[role="checkbox"]');
     await expect(checkbox).toHaveAttribute('data-state', 'checked');
     
     // チェックボックスをクリックして選択を解除
@@ -61,14 +58,15 @@ test.describe('ソースフィルタリング機能', () => {
     // フィルターエリアを取得
     const _filterArea = page.locator('[data-testid="filter-area"]');
     
-    // Dev.toのチェックボックスを探す（通常存在するソース）- ラベルテキストベースのセレクター使用
-    const devtoCheckbox = page.locator('[data-testid^="source-checkbox-"]')
-      .filter({ has: page.locator('label:has-text("Dev.to")') })
+    // Dev.toのチェックボックスを探す（通常存在するソース）- 厳密マッチとbutton[role="checkbox"]使用
+    const devtoContainer = page.locator('[data-testid^="source-checkbox-"]')
+      .filter({ has: page.locator('label').filter({ hasText: /^Dev\.to$/ }) })
       .first();
     
-    if (await devtoCheckbox.isVisible()) {
-      // Dev.toの選択を解除
-      await devtoCheckbox.click();
+    if (await devtoContainer.isVisible()) {
+      // Radix UIのcheckbox要素をクリック
+      const checkbox = devtoContainer.locator('button[role="checkbox"]');
+      await checkbox.click();
       
       // 記事リストの更新完了を待つ
       await page.waitForSelector('[data-testid="article-card"]', { state: 'attached' });
@@ -92,7 +90,7 @@ test.describe('ソースフィルタリング機能', () => {
       }
       
       // Dev.toを再度選択して元に戻す
-      await devtoCheckbox.click();
+      await checkbox.click();
     }
   });
 

@@ -97,7 +97,9 @@ test.describe('ソースカテゴリフィルター機能', () => {
     // 可能なら選択したIDが含まれることを確認
     if (firstRowTestId) {
       const selectedId = firstRowTestId.replace('source-checkbox-', '');
-      await expect(page).toHaveURL(new RegExp(selectedId));
+      // RegExp特殊文字をエスケープ
+      const escapedId = selectedId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(page).toHaveURL(new RegExp(escapedId));
     }
   });
 
@@ -110,7 +112,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
     // 全解除 → 0/Y
     await page.getByTestId('deselect-all-button').click();
-    await expect(sourceCount).toHaveText(new RegExp(`^0\/${total}$`));
+    await expect(sourceCount).toHaveText(`0/${total}`);
 
     // 海外カテゴリのみ選択 → N/Y（NはDOMから計算）
     // 海外ソースカテゴリを展開
@@ -118,7 +120,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
     const foreignSection = page.getByTestId('category-foreign');
     await page.getByTestId('category-foreign-select-all').click();
     const n = await foreignSection.getByTestId('category-foreign-content').locator('button[role="checkbox"]').count();
-    await expect(sourceCount).toHaveText(new RegExp(`^${n}\/${total}$`));
+    await expect(sourceCount).toHaveText(`${n}/${total}`);
   });
 
   test('カテゴリごとの選択数が表示される', async ({ page }) => {
