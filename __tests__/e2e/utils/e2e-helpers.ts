@@ -387,6 +387,14 @@ export async function deleteTestUser(email: string): Promise<boolean> {
  */
 export async function openAccountTab(page: Page): Promise<boolean> {
   try {
+    // Early return if already on profile page
+    if (page.url().includes('/profile')) {
+      const accountTab = page.locator('[role="tab"][data-value="account"], [data-testid="account-tab"], button:has-text("アカウント")').first();
+      await accountTab.waitFor({ state: 'visible', timeout: 5000 });
+      await accountTab.click();
+      return true;
+    }
+
     // ユーザーメニューのドロップダウンを開く（複数のセレクタでフォールバック）
     const userMenuTrigger = page.locator('[data-testid="user-menu-trigger"], [data-testid="user-menu"], button[aria-haspopup="menu"]').first();
     await userMenuTrigger.waitFor({ state: 'visible', timeout: 5000 });
@@ -395,10 +403,13 @@ export async function openAccountTab(page: Page): Promise<boolean> {
     // プロフィールリンクをクリック（共通セレクタ追加）
     const profileLink = page.locator('a[href="/profile"], [data-testid="profile-link"], a:has-text("プロフィール")').first();
     await profileLink.waitFor({ state: 'visible', timeout: 5000 });
-    await profileLink.click();
     
-    // URL遷移確認を追加
-    await page.waitForURL('**/profile', { timeout: 5000 });
+    // Combine click and URL wait for efficiency
+    await Promise.all([
+      profileLink.click(),
+      page.waitForURL('**/profile', { timeout: 5000 })
+    ]);
+    
     await waitForPageLoad(page);
     
     // アカウントタブをクリック（共通セレクタ追加）
@@ -423,14 +434,32 @@ export async function fillPasswordChangeForm(
   page: Page, 
   passwords: { current: string; new: string; confirm: string }
 ) {
-  // Use prioritized specific selectors to avoid mis-targeting
-  const currentPasswordInput = page.locator('input[name="currentPassword"]:not([name*="new"]):not([name*="confirm"]), input[id*="current"][type="password"], input[type="password"]:first-child').first();
+  // Strict priority chain: data-testid > name > autocomplete/label > placeholder
+  const currentPasswordInput = page.locator([
+    '[data-testid*="current"][data-testid*="password"]',
+    'input[name="currentPassword"]',
+    'input[autocomplete="current-password"]',
+    'label:has-text("現在のパスワード") + input',
+    'input[placeholder*="現在"]'
+  ].join(', ')).first();
   await currentPasswordInput.fill(passwords.current);
   
-  const newPasswordInput = page.locator('input[name="newPassword"], input[id*="new"][type="password"], input[placeholder*="新しいパスワード"]').first();
+  const newPasswordInput = page.locator([
+    '[data-testid*="new"][data-testid*="password"]:not([data-testid*="confirm"])',
+    'input[name="newPassword"]',
+    'input[autocomplete="new-password"]',
+    'label:has-text("新しいパスワード") + input',
+    'input[placeholder*="新しいパスワード"]'
+  ].join(', ')).first();
   await newPasswordInput.fill(passwords.new);
   
-  const confirmPasswordInput = page.locator('input[name="confirmPassword"], input[id*="confirm"][type="password"], input[placeholder*="確認"]').first();
+  const confirmPasswordInput = page.locator([
+    '[data-testid*="confirm"][data-testid*="password"]',
+    'input[name="confirmPassword"]',
+    'input[autocomplete="new-password"]:nth-of-type(2)',
+    'label:has-text("確認") + input',
+    'input[placeholder*="確認"]'
+  ].join(', ')).first();
   await confirmPasswordInput.fill(passwords.confirm);
 }
 
@@ -447,7 +476,10 @@ export async function waitForErrorMessage(
 ): Promise<boolean> {
   try {
     // Use common error message selectors with prioritized fallback
-    const errorLocator = page.locator('[role="alert"], [data-testid="error-message"], .text-destructive, .error').filter({ hasText: message });
+    const escapedMessage = escapeRegex(message);
+    const errorLocator = page.locator('[role="alert"], [data-testid="error-message"], .text-destructive, .error').filter({ 
+      hasText: new RegExp(escapedMessage, 'i') // Case-insensitive regex for text variations
+    });
     await errorLocator.waitFor({ state: 'visible', timeout });
     return true;
   } catch (error) {
