@@ -4,11 +4,12 @@ import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
 import { EnhancedRedisCache } from '@/lib/cache/enhanced-redis-cache';
-import { Prisma, type ArticleCategory } from '@prisma/client';
+import { Prisma, ArticleCategory } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
 import { MetricsCollector, withDbTiming, withCacheTiming } from '@/lib/metrics/performance';
+import { getDateRangeFilter } from '@/app/lib/date-utils';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -67,9 +68,13 @@ export async function GET(request: NextRequest) {
       sources.split(',').filter(id => id.trim()).sort().join(',') : 
       sourceId || 'all';
     
-    // Get session for read filter
-    const session = await auth();
+    // Get session only when readFilter requires user context
+    const shouldUseUserContext = readFilter === 'read' || readFilter === 'unread';
+    const session = shouldUseUserContext ? await auth() : null;
     const userId = session?.user?.id;
+    
+    // Include userId in cache key only when user context is needed
+    const userCtxForKey = shouldUseUserContext ? (userId ?? 'anonymous') : 'n/a';
     
     const cacheKey = cache.generateCacheKey('articles', {
       params: {
@@ -84,7 +89,7 @@ export async function GET(request: NextRequest) {
         search: normalizedSearch,
         dateRange: dateRange || 'all',
         readFilter: readFilter || 'all',
-        userId: userId || 'anonymous',
+        userId: userCtxForKey,
         category: category || 'all',
         includeRelations: includeRelations.toString(), // Add to cache key
         includeEmptyContent: includeEmptyContent.toString() // Add new parameter to cache key
@@ -122,6 +127,7 @@ export async function GET(request: NextRequest) {
       }
       
       // Apply read filter if user is authenticated
+      // Note: userId is only available when shouldUseUserContext is true
       if (readFilter && userId) {
         if (readFilter === 'unread') {
           // 未読記事のみ: ArticleViewが存在しないか、isReadがfalse
@@ -208,12 +214,8 @@ export async function GET(request: NextRequest) {
         if (category === 'uncategorized') {
           where.category = null;
         } else {
-          // Validate category against known enum values
-          const validCategories: ArticleCategory[] = [
-            'frontend', 'backend', 'ai_ml', 'security', 'devops',
-            'database', 'mobile', 'web3', 'design', 'testing',
-            'performance', 'architecture'
-          ] as ArticleCategory[];
+          // Validate category against Prisma enum values dynamically
+          const validCategories = Object.values(ArticleCategory);
           
           if (validCategories.includes(category as ArticleCategory)) {
             where.category = category as ArticleCategory;
@@ -255,7 +257,6 @@ export async function GET(request: NextRequest) {
       
       // Apply date range filter with validation
       if (dateRange && dateRange !== 'all') {
-        const { getDateRangeFilter } = await import('@/app/lib/date-utils');
         const startDate = getDateRangeFilter(dateRange);
         if (startDate) {
           // Validate date is not in the future
@@ -352,10 +353,10 @@ export async function GET(request: NextRequest) {
       })
     );
     
-    // Set cache status based on the result
-    // Note: Currently we can't distinguish between STALE and HIT
-    // This would require an API change to return metadata from getOrFetch
-    metrics.setCacheStatus(result ? 'HIT' : 'MISS');
+    // Note: getOrFetch always returns data (either from cache or freshly fetched)
+    // We can't distinguish between HIT/MISS/STALE without API changes
+    // Temporarily removing misleading cache status to avoid metrics confusion
+    // TODO: Enhance getOrFetch to return { data, status } for accurate tracking
     
     // Create response with performance headers
     const response = NextResponse.json({

@@ -10,6 +10,7 @@ import { searchCache } from './search-cache';
 export class MemoryOptimizer {
   private redis = getRedisClient();
   private monitoringInterval: NodeJS.Timeout | null = null;
+  private isChecking = false; // Guard against concurrent checks
   private readonly maxMemoryUsagePercent = 80; // 最大使用率80%
   private readonly checkInterval = 60000; // 1分ごとにチェック
 
@@ -67,20 +68,24 @@ export class MemoryOptimizer {
    * メモリ使用状況をチェック
    */
   private async checkMemoryUsage(): Promise<void> {
+    // Prevent concurrent checks
+    if (this.isChecking) return;
+    this.isChecking = true;
+    
     try {
       const info = await this.getMemoryInfo();
       const usagePercent = (info.used / info.maxMemory) * 100;
       
       
-      // アラートレベルチェック
+      // アラートレベルチェック (simplified condition)
       if (usagePercent >= this.optimizationConfig.monitoring.criticalThreshold) {
         await this.performEmergencyOptimization();
       } else if (usagePercent >= this.optimizationConfig.monitoring.alertThreshold) {
         await this.performOptimization();
-      } else if (usagePercent >= this.maxMemoryUsagePercent) {
-        await this.performOptimization();
       }
     } catch (_error) {
+    } finally {
+      this.isChecking = false;
     }
   }
 

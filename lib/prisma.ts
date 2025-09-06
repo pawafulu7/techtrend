@@ -1,7 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 import { getPrismaConfig } from './database-config';
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+// Type-safe global declaration
+declare global {
+  // eslint-disable-next-line no-var
+  var prisma: PrismaClient | undefined;
+}
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 // Singleton pattern to prevent multiple instances
 const prismaClientSingleton = (): PrismaClient => {
@@ -17,7 +23,7 @@ export const prisma: PrismaClient = globalForPrisma.prisma ?? prismaClientSingle
 
 // Preserve instance in development for hot reloading
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma ??= prisma;
+  globalForPrisma.prisma = globalForPrisma.prisma ?? prisma;
 }
 
 // Graceful shutdown handling (skip in serverless environments)
