@@ -210,14 +210,20 @@ export class MemoryOptimizer {
         cursor = result[0];
         const keys = result[1];
         
-        // 各キーのTTLをチェックし、必要に応じて有効期限を設定
-        for (const key of keys) {
-          const ttl = await this.redis.ttl(key);
-          // TTLが-1の場合は有効期限が設定されていないので設定
-          if (ttl === -1) {
-            await this.redis.expire(key, DEFAULT_TTL);
+        // 1) TTLをまとめて取得
+        const ttlPipe = this.redis.pipeline();
+        for (const key of keys) ttlPipe.ttl(key);
+        const ttlResults = await ttlPipe.exec();
+
+        // 2) TTLが -1 のキーだけ EXPIRE をまとめて設定
+        const expirePipe = this.redis.pipeline();
+        ttlResults?.forEach((res, idx) => {
+          const [err, ttl] = res as [Error | null, number];
+          if (!err && ttl === -1) {
+            expirePipe.expire(keys[idx], DEFAULT_TTL);
           }
-        }
+        });
+        await expirePipe.exec();
       } while (cursor !== '0');
       
     } catch (_error) {
@@ -272,10 +278,11 @@ export class MemoryOptimizer {
     try {
       // 検索キャッシュをクリア（優先度が低い）
       const searchKeys: string[] = [];
+      const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
       
-      // Use SCAN instead of KEYS to avoid blocking
+      // Use SCAN instead of KEYS to avoid blocking (with namespace)
       const stream = this.redis.scanStream({
-        match: '@techtrend/cache:search:*',
+        match: `@techtrend/cache:${envName}:search:*`,
         count: 100, // Process 100 keys at a time
       });
       
@@ -289,11 +296,16 @@ export class MemoryOptimizer {
       });
       
       if (searchKeys.length > 0) {
-        // Delete keys in batches to avoid command too long
+        // Delete keys in batches using UNLINK to avoid blocking
         const batchSize = 1000;
         for (let i = 0; i < searchKeys.length; i += batchSize) {
           const batch = searchKeys.slice(i, i + batchSize);
-          await this.redis.del(...batch);
+          // Prefer UNLINK to avoid blocking the server thread
+          if (typeof (this.redis as any).unlink === 'function') {
+            await (this.redis as any).unlink(...batch);
+          } else {
+            await this.redis.del(...batch);
+          }
         }
       }
     } catch (_error) {

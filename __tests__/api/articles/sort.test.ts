@@ -10,6 +10,10 @@ jest.mock('@/lib/cache/enhanced-redis-cache', () => ({
     generateCacheKey: jest.fn().mockReturnValue('test-cache-key'),
     get: jest.fn().mockResolvedValue(null),
     set: jest.fn().mockResolvedValue(undefined),
+    getOrFetch: jest.fn().mockImplementation(async (_key, fetcher) => {
+      // Always call the fetcher for tests to verify DB calls
+      return await fetcher();
+    }),
     invalidatePattern: jest.fn().mockResolvedValue(undefined),
   })),
 }));

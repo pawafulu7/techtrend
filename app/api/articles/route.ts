@@ -91,40 +91,19 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Check cache first
-    const cachedResult = await withCacheTiming(
-      metrics,
-      () => cache.get(cacheKey)
-    );
-    
-    let result;
-    if (cachedResult) {
-      metrics.setCacheStatus('HIT');
-      result = cachedResult;
-    } else {
-      metrics.setCacheStatus('MISS');
-      
+    // Build data fetcher function for SWR
+    const buildResult = async () => {
       // Check for early return case (sources=none)
       if (sources === 'none') {
         // DBアクセスをスキップして空レスポンスを返す
-        const emptyResult = {
-          success: true,
-          data: {
-            items: [],
-            total: 0,
-            page,
-            limit,
-            totalPages: 0,
-          }
+        return {
+          items: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
         };
-        // Add metrics to headers
-        const headers = new Headers();
-        metrics.addMetricsToHeaders(headers);
-        return NextResponse.json(emptyResult, { headers });
       }
-      
-      // Fetch fresh data
-      result = await (async () => {
         // Build where clause
       const where: ArticleWhereInput = {};
       
@@ -177,10 +156,7 @@ export async function GET(request: NextRequest) {
         }
       }
       // Support multiple sources selection
-      if (sources === 'none') {
-        // 明示的に「何も選択しない」状態 - 存在しないIDを使用
-        where.sourceId = '__none__';
-      } else if (sources) {
+      if (sources) {
         const sourceIds = sources.split(',').filter(id => id.trim());
         if (sourceIds.length > 0) {
           where.sourceId = { in: sourceIds };
@@ -365,11 +341,21 @@ export async function GET(request: NextRequest) {
         limit,
         totalPages: Math.ceil(total / limit),
       };
-      })();
-      
-      // Save to cache
-      await cache.set(cacheKey, result);
-    }
+    };
+
+    // Use getOrFetch with SWR support
+    const result = await withCacheTiming(
+      metrics,
+      () => cache.getOrFetch(cacheKey, buildResult, { 
+        ttl: 900, // 15 minutes
+        useSWR: true 
+      })
+    );
+    
+    // Set cache status based on the result
+    // Note: Currently we can't distinguish between STALE and HIT
+    // This would require an API change to return metadata from getOrFetch
+    metrics.setCacheStatus(result ? 'HIT' : 'MISS');
     
     // Create response with performance headers
     const response = NextResponse.json({

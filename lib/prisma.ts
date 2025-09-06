@@ -4,7 +4,7 @@ import { getPrismaConfig } from './database-config';
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 // Singleton pattern to prevent multiple instances
-const prismaClientSingleton = () => {
+const prismaClientSingleton = (): PrismaClient => {
   const config = getPrismaConfig();
   // Use default config if DATABASE_URL is not set (for build time)
   return new PrismaClient(config || {
@@ -20,8 +20,11 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma ??= prisma;
 }
 
-// Graceful shutdown handling with multiple signal handlers
-if (process.env.NODE_ENV === 'production') {
+// Graceful shutdown handling (skip in serverless environments)
+if (process.env.NODE_ENV === 'production' && 
+    !process.env.VERCEL && 
+    !process.env.AWS_EXECUTION_ENV &&
+    !process.env.NETLIFY) {
   const cleanup = async () => {
     try { 
       await prisma.$disconnect(); 
