@@ -49,8 +49,10 @@ test.describe('フィルター条件の永続化', () => {
     const deselectButton = page.locator('[data-testid="deselect-all-button"]');
     if (await deselectButton.count() > 0) {
       await deselectButton.click();
-      // 少し待機（UIの更新を待つ）
-      await page.waitForTimeout(500);
+      // すべて未選択になるまで待機
+      await expect(
+        page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]').first()
+      ).toHaveAttribute('aria-checked', 'false');
     }
     
     // 2. 最初のソースチェックボックスを選択（IDに依存しない方法）
@@ -113,9 +115,14 @@ test.describe('フィルター条件の永続化', () => {
     }, { timeout: 10000, polling: 100 });
 
     // 2. 記事詳細ページへ遷移
+    await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
     const firstArticle = page.locator('[data-testid="article-card"]').first();
-    await firstArticle.click();
-    await page.waitForURL(/\/articles\/.+/);
+    if (await firstArticle.count() > 0) {
+      await firstArticle.click();
+      await page.waitForURL(/\/articles\/.+/, { timeout: 10000 });
+    } else {
+      test.skip(true, '記事が存在しないためスキップ');
+    }
 
     // 3. トップページに戻る
     await page.goto('/');
@@ -162,11 +169,16 @@ test.describe('フィルター条件の永続化', () => {
       const deselectButton = page.locator('[data-testid="deselect-all-button"]');
       if (await deselectButton.count() > 0) {
         await deselectButton.click();
-        await page.waitForTimeout(500);
+        await expect(
+          page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]').first()
+        ).toHaveAttribute('aria-checked', 'false');
         const firstSource = page.locator('[data-testid^="source-checkbox-"]').first();
         if (await firstSource.count() > 0) {
           await firstSource.click();
-          await page.waitForTimeout(500);
+          const sourceId = await firstSource.getAttribute('data-testid');
+          await expect(
+            page.locator(`[data-testid="${sourceId}"] button[role="checkbox"]`)
+          ).toHaveAttribute('aria-checked', 'true');
         }
       }
     }
@@ -221,11 +233,18 @@ test.describe('フィルター条件の永続化', () => {
     if (await sourceFilter.count() > 0) {
       // すべてのソースを解除してから最初のソースを選択
       await page.click('[data-testid="deselect-all-button"]');
-      await page.waitForTimeout(500);
+      // すべて未選択になるまで待機
+      await expect(
+        page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]').first()
+      ).toHaveAttribute('aria-checked', 'false');
+      
       const firstSource = page.locator('[data-testid^="source-checkbox-"]').first();
       if (await firstSource.count() > 0) {
         await firstSource.click();
-        await page.waitForTimeout(500);
+        // 選択状態になるまで待機
+        await expect(
+          page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]').first()
+        ).toHaveAttribute('aria-checked', 'true');
       }
     }
 
