@@ -1,0 +1,46 @@
+import { useState, useEffect } from 'react';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string | null;
+  image: string | null;
+  createdAt: string;
+  hasPassword: boolean;
+  providers: string[];
+}
+
+export function useUserProfile() {
+  const [data, setData] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await fetch('/api/user/profile');
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('認証が必要です');
+          }
+          throw new Error('プロフィール情報の取得に失敗しました');
+        }
+        
+        const profileData = await response.json();
+        setData(profileData);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Unknown error'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  return { data, loading, error };
+}

@@ -6,12 +6,15 @@ import { ProfileForm } from '@/components/profile/ProfileForm';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, ShieldCheck, Github, Mail } from 'lucide-react';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
+  const { data: userProfile, loading: profileLoading, error: profileError } = useUserProfile();
 
-  if (status === 'loading') {
+  if (status === 'loading' || profileLoading) {
     return (
       <div className="container max-w-4xl mx-auto py-10">
         <div className="flex items-center justify-center h-64">
@@ -24,6 +27,31 @@ export default function ProfilePage() {
   if (status === 'unauthenticated') {
     redirect('/auth/login?callbackUrl=/profile');
   }
+
+  // 認証方法のラベルを取得
+  const getAuthMethodLabel = (providers: string[] | undefined) => {
+    if (!providers || providers.length === 0) {
+      return 'メール/パスワード認証';
+    }
+    const labels: Record<string, string> = {
+      google: 'Google',
+      github: 'GitHub',
+      email: 'メール/パスワード'
+    };
+    return providers.map(p => labels[p] || p).join(', ');
+  };
+
+  // プロバイダーアイコンを取得
+  const getProviderIcon = (provider: string) => {
+    switch (provider) {
+      case 'google':
+        return <ShieldCheck className="h-4 w-4" />;
+      case 'github':
+        return <Github className="h-4 w-4" />;
+      default:
+        return <Mail className="h-4 w-4" />;
+    }
+  };
 
   return (
     <div className="container max-w-4xl mx-auto py-10">
@@ -74,32 +102,42 @@ export default function ProfilePage() {
               <div>
                 <h3 className="text-sm font-medium mb-2">認証方法</h3>
                 <p className="text-sm text-muted-foreground">
-                  メール/パスワード認証
+                  {getAuthMethodLabel(userProfile?.providers)}
                 </p>
               </div>
 
               <div>
                 <h3 className="text-sm font-medium mb-2">アカウント作成日</h3>
                 <p className="text-sm text-muted-foreground">
-                  {session?.user?.createdAt
-                    ? new Date(session.user.createdAt).toLocaleDateString('ja-JP')
+                  {userProfile?.createdAt
+                    ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP')
                     : '不明'}
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>パスワード変更</CardTitle>
-              <CardDescription>
-                アカウントのパスワードを変更します
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PasswordChangeForm />
-            </CardContent>
-          </Card>
+          {userProfile?.hasPassword ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>パスワード変更</CardTitle>
+                <CardDescription>
+                  アカウントのパスワードを変更します
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PasswordChangeForm />
+              </CardContent>
+            </Card>
+          ) : (
+            <Alert>
+              <ShieldCheck className="h-4 w-4" />
+              <AlertDescription>
+                {getAuthMethodLabel(userProfile?.providers)}でログインしているため、パスワード変更は不要です。
+                認証は外部プロバイダーによって安全に管理されています。
+              </AlertDescription>
+            </Alert>
+          )}
 
           <Card>
             <CardHeader>
@@ -109,9 +147,21 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                連携されているアカウントはありません
-              </p>
+              {userProfile?.providers && userProfile.providers.length > 0 ? (
+                <div className="space-y-3">
+                  {userProfile.providers.map((provider) => (
+                    <div key={provider} className="flex items-center gap-3">
+                      {getProviderIcon(provider)}
+                      <span className="text-sm font-medium capitalize">{provider}</span>
+                      <span className="text-sm text-muted-foreground">（連携済み）</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  連携されているアカウントはありません
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
