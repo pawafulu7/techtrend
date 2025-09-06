@@ -434,8 +434,11 @@ export async function fillPasswordChangeForm(
   page: Page, 
   passwords: { current: string; new: string; confirm: string }
 ) {
+  // パスワード変更セクションをスコープにして誤入力を防止
+  const passwordSection = page.locator('form:has-text("パスワード変更"), section:has-text("パスワード変更")').first();
+  
   // Enhanced priority chain for password inputs with precise targeting
-  const currentPasswordInput = page.locator([
+  const currentPasswordInput = passwordSection.locator([
     '[data-testid="current-password-input"]',
     'input[name="currentPassword"][type="password"]',
     'input[autocomplete="current-password"][type="password"]',
