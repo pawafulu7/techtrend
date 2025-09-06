@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { findArticleElement, findScrollableElement, waitForPageReady } from '@/types/playwright-helpers';
 
 test.describe('スクロール機能のテスト', () => {
   test('トップページの3ペインレイアウトでスクロールが正常に動作する', async ({ page }) => {
