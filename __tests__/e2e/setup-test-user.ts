@@ -114,3 +114,15 @@ export async function cleanupTestUser() {
     await prisma.$disconnect();
   }
 }
+
+// CLIから直接実行された場合の処理
+if (require.main === module) {
+  setupTestUser()
+    .then((success) => {
+      process.exit(success ? 0 : 1);
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      process.exit(1);
+    });
+}

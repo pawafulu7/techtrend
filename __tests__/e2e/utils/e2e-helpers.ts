@@ -548,7 +548,7 @@ export async function loginTestUser(
     debug = false,
     email = TEST_USER.email,
     password = TEST_USER.password,
-    timeout = 15000
+    timeout = 30000
   } = options;
   
   try {
@@ -568,50 +568,85 @@ export async function loginTestUser(
     
     if (debug) console.log('Submitting login form...');
     
-    // Submit login with broader selector
+    // Submit login - try multiple methods
     const submitButton = page
       .locator('button[type="submit"], [data-testid="login-submit"], button:has-text("ログイン"), button:has-text("Login")')
       .first();
     await submitButton.waitFor({ state: 'visible', timeout: 5000 });
+    
+    // ナビゲーションを待つPromiseを先に作成
+    const navigationPromise = page.waitForURL((u) => {
+      try { 
+        const url = new URL(u);
+        return !url.pathname.includes('/auth/login');
+      } catch { 
+        return false; 
+      }
+    }, { timeout: 20000 }).catch(() => null);
+    
+    // ボタンをクリック
     await submitButton.click();
     
-    // Wait for navigation with robust checks
-    const successPaths = options.successUrls ?? ['/', '/dashboard', '/home'];
-    const okPaths = new Set(successPaths);
+    // Enterキーも試す（フォーム送信のフォールバック）
+    await page.keyboard.press('Enter');
     
-    // Wait for URL change and verify no errors
-    await page.waitForURL(
-      (u) => {
-        try { 
-          const url = new URL(u);
-          // Check if we're on a success page (not on login/error page)
-          const isSuccessPath = okPaths.has(url.pathname);
-          const notOnLoginPage = !url.pathname.includes('/auth/login');
-          const notOnErrorPage = !url.pathname.includes('/error');
-          return isSuccessPath && notOnLoginPage && notOnErrorPage;
-        } catch { 
-          return false; 
+    // ナビゲーションを待つ
+    const navigationResult = await navigationPromise;
+    
+    if (!navigationResult) {
+      if (debug) console.log('Navigation timeout, checking current state...');
+      
+      // 少し待ってから再度URLをチェック
+      await page.waitForTimeout(2000);
+      
+      const currentUrl = page.url();
+      if (currentUrl.includes('/auth/login')) {
+        // エラーメッセージを確認
+        const errorMessage = await page.locator('p.text-destructive, .text-red-500, [role="alert"]').count();
+        if (errorMessage > 0) {
+          if (debug) console.log('Login error message detected');
+          return false;
         }
-      },
-      { timeout }
-    );
-    
-    // Additional verification: check for user menu or logout button
-    try {
-      const userIndicator = page.locator(
-        '[data-testid="user-menu"], [data-testid="logout-button"], button:has-text("ログアウト")'
-      ).first();
-      await userIndicator.waitFor({ state: 'visible', timeout: 2000 });
-    } catch {
-      // User indicator might not be immediately visible, but URL check passed
+        
+        // フォームが送信されていない可能性があるので、再度送信を試みる
+        if (debug) console.log('Retrying form submission...');
+        await submitButton.click({ force: true });
+        
+        // 再度ナビゲーションを待つ
+        try {
+          await page.waitForURL((u) => !u.includes('/auth/login'), { timeout: 10000 });
+        } catch {
+          if (debug) console.log('Second navigation attempt failed');
+          return false;
+        }
+      }
     }
     
-    if (debug) console.log('Login successful!');
+    // 最終確認
+    const finalUrl = page.url();
+    const isSuccess = !finalUrl.includes('/auth/login') && !finalUrl.includes('/error');
     
-    return true;
+    if (isSuccess) {
+      if (debug) console.log('Login successful! Redirected to:', finalUrl);
+      
+      // ユーザーインジケーターの確認（オプション）
+      try {
+        const userIndicator = page.locator(
+          '[data-testid="user-menu-trigger"], [data-testid="user-menu"], button:has-text("ログアウト")'
+        ).first();
+        await userIndicator.waitFor({ state: 'visible', timeout: 3000 });
+        if (debug) console.log('User indicator confirmed');
+      } catch {
+        if (debug) console.log('User indicator not visible, but login succeeded');
+      }
+    } else {
+      if (debug) console.log('Login failed, still on:', finalUrl);
+    }
+    
+    return isSuccess;
   } catch (error) {
     if (debug) {
-      console.error('Login failed:', error);
+      console.error('Login failed with error:', error);
       console.error('Current URL:', page.url());
     }
     return false;

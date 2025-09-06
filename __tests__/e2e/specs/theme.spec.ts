@@ -31,11 +31,8 @@ test.describe('テーマ切り替え機能', () => {
     // ボタンをクリックしてダークモードに切り替え
     await themeToggle.click();
     
-    // 少し待機してからHTMLクラスを確認
-    await page.waitForTimeout(500);
-    
-    // HTMLにdarkクラスが追加されていることを確認
-    await expect(page.locator('html')).toHaveClass(/dark/);
+    // HTMLにdarkクラスが追加されるまで待機（自動的に待機する）
+    await expect(page.locator('html')).toHaveClass(/dark/, { timeout: 5000 });
     
     // LocalStorageにテーマが保存されていることを確認
     const theme = await page.evaluate(() => localStorage.getItem('theme'));
@@ -51,10 +48,9 @@ test.describe('テーマ切り替え機能', () => {
     
     // ダークモードに切り替え
     await themeToggle.click();
-    await page.waitForTimeout(1000);
     
-    // ダークモードが適用されることを確認
-    await expect(page.locator('html')).toHaveClass(/dark/);
+    // ダークモードが適用されるまで待機（自動的に待機する）
+    await expect(page.locator('html')).toHaveClass(/dark/, { timeout: 5000 });
     
     // LocalStorageにdarkテーマが保存されていることを確認
     const darkTheme = await page.evaluate(() => localStorage.getItem('theme'));
@@ -63,16 +59,8 @@ test.describe('テーマ切り替え機能', () => {
     // テーマトグルボタンをクリックしてライトモードに戻す
     await themeToggle.click();
     
-    // next-themesによるテーマ変更を待機
-    await page.waitForTimeout(1000);
-    
-    // HTMLからdarkクラスが削除されることを明示的に待機
-    await page.waitForFunction(() => {
-      return !document.documentElement.classList.contains('dark');
-    }, { timeout: 5000 });
-    
-    // HTMLからdarkクラスが削除されていることを確認
-    await expect(page.locator('html')).not.toHaveClass(/dark/);
+    // HTMLからdarkクラスが削除されていることを確認（自動的に待機する）
+    await expect(page.locator('html')).not.toHaveClass(/dark/, { timeout: 5000 });
     
     // LocalStorageにライトテーマが保存されていることを確認
     const lightTheme = await page.evaluate(() => localStorage.getItem('theme'));
@@ -85,8 +73,8 @@ test.describe('テーマ切り替え機能', () => {
     await expect(themeToggle).toBeVisible();
     await themeToggle.click();
     
-    // 少し待機
-    await page.waitForTimeout(500);
+    // ダークモードが適用されるまで待機
+    await expect(page.locator('html')).toHaveClass(/dark/, { timeout: 5000 });
     
     // LocalStorageにダークテーマが保存されていることを確認
     const darkTheme = await page.evaluate(() => localStorage.getItem('theme'));
@@ -94,7 +82,9 @@ test.describe('テーマ切り替え機能', () => {
     
     // 再度クリックしてライトモードに戻す
     await themeToggle.click();
-    await page.waitForTimeout(500);
+    
+    // ライトモードが適用されるまで待機
+    await expect(page.locator('html')).not.toHaveClass(/dark/, { timeout: 5000 });
     
     // LocalStorageにライトテーマが保存されていることを確認
     const lightTheme = await page.evaluate(() => localStorage.getItem('theme'));
@@ -114,11 +104,8 @@ test.describe('テーマ切り替え機能', () => {
     await expect(themeToggle).toBeVisible();
     await themeToggle.click();
     
-    // 少し待機してからdarkクラスを確認
-    await newPage.waitForTimeout(500);
-    
-    // darkクラスが適用されていることを確認
-    await expect(newPage.locator('html')).toHaveClass(/dark/);
+    // darkクラスが適用されるまで待機（自動的に待機する）
+    await expect(newPage.locator('html')).toHaveClass(/dark/, { timeout: 5000 });
     
     // LocalStorageに値が保存されていることを確認
     const themeBeforeReload = await newPage.evaluate(() => localStorage.getItem('theme'));
