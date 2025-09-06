@@ -14,7 +14,7 @@ const prismaClientSingleton = (): PrismaClient => {
   const config = getPrismaConfig();
   // Use default config if DATABASE_URL is not set (for build time)
   return new PrismaClient(config || {
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error', 'warn'],
   });
 };
 
@@ -23,7 +23,7 @@ export const prisma: PrismaClient = globalForPrisma.prisma ?? prismaClientSingle
 
 // Preserve instance in development for hot reloading
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = globalForPrisma.prisma ?? prisma;
+  globalForPrisma.prisma ??= prisma;
 }
 
 // Graceful shutdown handling (skip in serverless environments)

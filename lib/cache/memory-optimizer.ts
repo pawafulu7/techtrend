@@ -11,7 +11,6 @@ export class MemoryOptimizer {
   private redis = getRedisClient();
   private monitoringInterval: NodeJS.Timeout | null = null;
   private isChecking = false; // Guard against concurrent checks
-  private readonly maxMemoryUsagePercent = 80; // 最大使用率80%
   private readonly checkInterval = 60000; // 1分ごとにチェック
 
   /**
@@ -83,7 +82,9 @@ export class MemoryOptimizer {
       } else if (usagePercent >= this.optimizationConfig.monitoring.alertThreshold) {
         await this.performOptimization();
       }
-    } catch (_error) {
+    } catch (error) {
+      // 最小限の可観測性を確保
+      console.debug('[MemoryOptimizer] checkMemoryUsage failed', { error });
     } finally {
       this.isChecking = false;
     }
@@ -210,7 +211,7 @@ export class MemoryOptimizer {
         const result = await this.redis.scan(
           cursor,
           'MATCH', `@techtrend/cache:${envName}:*`,
-          'COUNT', '100'
+          'COUNT', 100  // 数値型で渡す
         );
         cursor = result[0];
         const keys = result[1];
@@ -221,6 +222,7 @@ export class MemoryOptimizer {
         const ttlResults = await ttlPipe.exec();
 
         // 2) TTLが -1 のキーだけ EXPIRE をまとめて設定
+        // -2: key does not exist, -1: no expire set
         const expirePipe = this.redis.pipeline();
         ttlResults?.forEach((res, idx) => {
           const [err, ttl] = res as [Error | null, number];
@@ -231,7 +233,8 @@ export class MemoryOptimizer {
         await expirePipe.exec();
       } while (cursor !== '0');
       
-    } catch (_error) {
+    } catch (error) {
+      console.debug('[MemoryOptimizer] cleanupExpiredKeys failed', { error });
     }
   }
 
@@ -264,15 +267,20 @@ export class MemoryOptimizer {
         }
       } while (cursor !== '0' && deletedCount < count);
       
-      // バッチで削除（UNLINKを使用してノンブロッキング削除）
+      // バッチで削除（UNLINK優先、大量キー対応）
       if (keysToDelete.length > 0) {
-        if (typeof (this.redis as any).unlink === 'function') {
-          await (this.redis as any).unlink(...keysToDelete);
-        } else {
-          await this.redis.del(...keysToDelete);
+        const batchSize = 1000;
+        for (let i = 0; i < keysToDelete.length; i += batchSize) {
+          const batch = keysToDelete.slice(i, i + batchSize);
+          if (typeof (this.redis as any).unlink === 'function') {
+            await (this.redis as any).unlink(...batch);
+          } else {
+            await this.redis.del(...batch);
+          }
         }
       }
-    } catch (_error) {
+    } catch (error) {
+      console.debug('[MemoryOptimizer] evictOldestKeys failed', { error });
     }
   }
 
@@ -282,38 +290,35 @@ export class MemoryOptimizer {
   private async clearLowPriorityCaches(): Promise<void> {
     try {
       // 検索キャッシュをクリア（優先度が低い）
-      const searchKeys: string[] = [];
       const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
+      let cursor = '0';
       
-      // Use SCAN instead of KEYS to avoid blocking (with namespace)
-      const stream = this.redis.scanStream({
-        match: `@techtrend/cache:${envName}:search:*`,
-        count: 100, // Process 100 keys at a time
-      });
-      
-      stream.on('data', (resultKeys: string[]) => {
-        searchKeys.push(...resultKeys);
-      });
-      
-      await new Promise<void>((resolve, reject) => {
-        stream.on('end', resolve);
-        stream.on('error', reject);
-      });
-      
-      if (searchKeys.length > 0) {
-        // Delete keys in batches using UNLINK to avoid blocking
-        const batchSize = 1000;
-        for (let i = 0; i < searchKeys.length; i += batchSize) {
-          const batch = searchKeys.slice(i, i + batchSize);
-          // Prefer UNLINK to avoid blocking the server thread
-          if (typeof (this.redis as any).unlink === 'function') {
-            await (this.redis as any).unlink(...batch);
-          } else {
-            await this.redis.del(...batch);
+      // Use SCAN with immediate deletion to avoid memory buildup
+      do {
+        const result = await this.redis.scan(
+          cursor,
+          'MATCH', `@techtrend/cache:${envName}:search:*`,
+          'COUNT', 500  // Process in larger chunks for efficiency
+        );
+        cursor = result[0];
+        const keys = result[1] as string[];
+        
+        // Delete keys in batches immediately
+        if (keys.length > 0) {
+          const batchSize = 1000;
+          for (let i = 0; i < keys.length; i += batchSize) {
+            const batch = keys.slice(i, i + batchSize);
+            // Prefer UNLINK to avoid blocking the server thread
+            if (typeof (this.redis as any).unlink === 'function') {
+              await (this.redis as any).unlink(...batch);
+            } else {
+              await this.redis.del(...batch);
+            }
           }
         }
-      }
-    } catch (_error) {
+      } while (cursor !== '0');
+    } catch (error) {
+      console.debug('[MemoryOptimizer] clearLowPriorityCaches failed', { error });
     }
   }
 
