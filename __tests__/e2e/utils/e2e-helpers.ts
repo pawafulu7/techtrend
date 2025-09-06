@@ -387,8 +387,8 @@ export async function deleteTestUser(email: string): Promise<boolean> {
  */
 export async function openAccountTab(page: Page): Promise<boolean> {
   try {
-    // ユーザーメニューのドロップダウンを開く（デスクトップ版を優先）
-    const userMenuTrigger = page.locator('[data-testid="user-menu-trigger"]').first();
+    // ユーザーメニューのドロップダウンを開く（複数のセレクタでフォールバック）
+    const userMenuTrigger = page.locator('[data-testid="user-menu-trigger"], [data-testid="user-menu"], button[aria-haspopup="menu"]').first();
     await userMenuTrigger.waitFor({ state: 'visible', timeout: 5000 });
     await userMenuTrigger.click();
     
@@ -398,7 +398,7 @@ export async function openAccountTab(page: Page): Promise<boolean> {
     await profileLink.click();
     
     // ページが読み込まれるまで待機
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page);
     
     // アカウントタブをクリック
     const accountTab = page.locator('[role="tab"][data-value="account"], button:has-text("アカウント")').first();
