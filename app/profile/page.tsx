@@ -8,12 +8,14 @@ import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ShieldCheck, Github, Mail } from 'lucide-react';
+import { Loader2, Globe, Github, Mail } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
-  const { data: userProfile, loading: profileLoading } = useUserProfile();
+  const { data: userProfile, loading: profileLoading } = useUserProfile({
+    enabled: status === 'authenticated'
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -37,25 +39,35 @@ export default function ProfilePage() {
   }
 
   // 認証方法のラベルを取得
-  const getAuthMethodLabel = (providers: string[] | undefined) => {
-    if (!providers || providers.length === 0) {
-      return 'メール/パスワード認証';
-    }
+  const getAuthMethodLabel = (providers: string[] | undefined, hasPassword?: boolean) => {
     const labels: Record<string, string> = {
       google: 'Google',
       github: 'GitHub',
-      email: 'メール/パスワード'
+      email: 'メールリンク',
+      credentials: 'メール/パスワード'
     };
-    return providers.map(p => labels[p] || p).join(', ');
+    
+    if (!providers || providers.length === 0) {
+      return hasPassword ? labels.credentials : 'なし';
+    }
+    
+    const providerLabels = providers.map(p => labels[p] || p);
+    if (hasPassword && !providers.includes('credentials')) {
+      providerLabels.push(labels.credentials);
+    }
+    
+    return providerLabels.join(', ');
   };
 
   // プロバイダーアイコンを取得
   const getProviderIcon = (provider: string) => {
     switch (provider) {
       case 'google':
-        return <ShieldCheck className="h-4 w-4" />;
+        return <Globe className="h-4 w-4" />;
       case 'github':
         return <Github className="h-4 w-4" />;
+      case 'credentials':
+        return <Mail className="h-4 w-4" />;
       default:
         return <Mail className="h-4 w-4" />;
     }
@@ -103,14 +115,14 @@ export default function ProfilePage() {
               <div>
                 <h3 className="text-sm font-medium mb-2">メールアドレス</h3>
                 <p className="text-sm text-muted-foreground">
-                  {session?.user?.email}
+                  {userProfile?.email || session?.user?.email}
                 </p>
               </div>
               
               <div>
                 <h3 className="text-sm font-medium mb-2">認証方法</h3>
                 <p className="text-sm text-muted-foreground">
-                  {getAuthMethodLabel(userProfile?.providers)}
+                  {getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}
                 </p>
               </div>
 
@@ -139,9 +151,9 @@ export default function ProfilePage() {
             </Card>
           ) : (
             <Alert>
-              <ShieldCheck className="h-4 w-4" />
+              <Globe className="h-4 w-4" />
               <AlertDescription>
-                {getAuthMethodLabel(userProfile?.providers)}でログインしているため、パスワード変更は不要です。
+                {getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}でログインしているため、パスワード変更は不要です。
                 認証は外部プロバイダーによって安全に管理されています。
               </AlertDescription>
             </Alert>
@@ -160,7 +172,7 @@ export default function ProfilePage() {
                   {userProfile.providers.map((provider) => (
                     <div key={provider} className="flex items-center gap-3">
                       {getProviderIcon(provider)}
-                      <span className="text-sm font-medium capitalize">{provider}</span>
+                      <span className="text-sm font-medium">{getAuthMethodLabel([provider])}</span>
                       <span className="text-sm text-muted-foreground">（連携済み）</span>
                     </div>
                   ))}

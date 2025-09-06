@@ -10,12 +10,22 @@ export interface UserProfile {
   providers: string[];
 }
 
-export function useUserProfile() {
+interface UseUserProfileOptions {
+  enabled?: boolean;
+}
+
+export function useUserProfile(options?: UseUserProfileOptions) {
   const [data, setData] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const enabled = options?.enabled ?? true;
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     const fetchUserProfile = async () => {
       try {
         setLoading(true);
@@ -40,7 +50,7 @@ export function useUserProfile() {
     };
 
     fetchUserProfile();
-  }, []);
+  }, [enabled]);
 
   return { data, loading, error };
 }
