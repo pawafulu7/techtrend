@@ -4,7 +4,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // フィルターエリアの描画完了
-    await page.waitForSelector('[data-testid="source-filter"]', { timeout: 30000 });
+    await expect(page.getByTestId('source-filter')).toBeVisible({ timeout: 30000 });
   });
 
   test('カテゴリが表示される', async ({ page }) => {
@@ -25,7 +25,8 @@ test.describe('ソースカテゴリフィルター機能', () => {
     // 展開
     await page.getByTestId('category-foreign-header').click();
     await expect(foreignSection.getByTestId('category-foreign-content')).toBeVisible();
-    const expandedCount = await foreignSection.getByTestId('category-foreign-content').locator('button[role="checkbox"]').count();
+    const checkboxes = foreignSection.getByTestId('category-foreign-content').locator('button[role="checkbox"]');
+    const expandedCount = await checkboxes.count();
     expect(expandedCount).toBeGreaterThan(0);
 
     // 折りたたみ
@@ -87,8 +88,9 @@ test.describe('ソースカテゴリフィルター機能', () => {
     const firstRow = foreignSection.locator('[data-testid^="source-checkbox-"]').first();
     const firstRowTestId = await firstRow.getAttribute('data-testid');
 
-    await firstRow.click();
+    // チェックボックスを直接クリック
     const checkbox = firstRow.locator('button[role="checkbox"]');
+    await checkbox.click();
     await expect(checkbox).toHaveAttribute('data-state', 'checked');
 
     // URLにsourcesパラメータが付与される（デバウンス済み）
@@ -101,12 +103,24 @@ test.describe('ソースカテゴリフィルター機能', () => {
       const urlParams = new URLSearchParams(new URL(currentUrl).search);
       const sourcesParam = urlParams.get('sources');
       
-      // 全解除から1つ選択した場合、sources=noneになることがある
-      // この場合、選択状態は正しいがURLパラメータの挙動が異なる
+      // sources=noneは一時的な状態のため、正しいURLパラメータを待つ
       if (sourcesParam === 'none') {
-        // sources=noneは全解除状態を示すが、チェックボックスは選択されている
-        // これは一時的な状態で、実際には正しく動作している
-        await expect(checkbox).toHaveAttribute('data-state', 'checked');
+        // URLパラメータが更新されるまで待機
+        await page.waitForFunction(
+          (id) => {
+            const url = new URL(window.location.href);
+            const sources = url.searchParams.get('sources');
+            return sources && sources !== 'none' && sources.includes(id);
+          },
+          selectedId,
+          { timeout: 5000 }
+        );
+        // 再度URLパラメータを確認
+        const updatedUrl = page.url();
+        const updatedParams = new URLSearchParams(new URL(updatedUrl).search);
+        const updatedSourcesParam = updatedParams.get('sources');
+        const sources = updatedSourcesParam?.split(',') || [];
+        expect(sources).toContain(selectedId);
       } else {
         const sources = sourcesParam?.split(',') || [];
         // 選択したIDがURLパラメータに含まれることを確認
@@ -120,7 +134,12 @@ test.describe('ソースカテゴリフィルター機能', () => {
     // 初期の合計値 Y を取得
     const initial = await sourceCount.textContent();
     const [, initSelected, total] = initial?.match(/(\d+)\/(\d+)/) || [];
-    expect(Number(initSelected)).toBeGreaterThan(0);
+    const selectedCount = Number(initSelected);
+    const totalCount = Number(total);
+    // NaNチェック
+    expect(selectedCount).not.toBeNaN();
+    expect(totalCount).not.toBeNaN();
+    expect(selectedCount).toBeGreaterThan(0);
 
     // 全解除 → 0/Y
     await page.getByTestId('deselect-all-button').click();
@@ -131,7 +150,11 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await page.getByTestId('category-foreign-header').click();
     const foreignSection = page.getByTestId('category-foreign');
     await page.getByTestId('category-foreign-select-all').click();
-    const n = await foreignSection.getByTestId('category-foreign-content').locator('button[role="checkbox"]').count();
+    const checkboxes = foreignSection.getByTestId('category-foreign-content').locator('button[role="checkbox"]');
+    const n = await checkboxes.count();
+    // 選択されたチェックボックスの数を確認
+    const checkedCount = await checkboxes.filter({ hasNot: page.locator('[data-state="unchecked"]') }).count();
+    expect(checkedCount).toBe(n); // 全て選択されていることを確認
     await expect(sourceCount).toHaveText(`${n}/${total}`);
   });
 
