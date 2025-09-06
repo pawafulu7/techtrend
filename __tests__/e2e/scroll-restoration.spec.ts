@@ -7,20 +7,53 @@ test.describe('スクロール位置復元機能', () => {
     await page.waitForSelector('[data-testid="article-card"]');
     
     // 2. 記事を20件以上読み込むためにスクロール
+    // 実際のスクロール対象要素を特定（main要素またはhome-client内のdiv）
     for (let i = 0; i < 3; i++) {
       await page.evaluate(() => {
-        const container = document.querySelector('.overflow-y-auto');
+        // 複数のセレクターを試す
+        const selectors = [
+          '#main-scroll-container', // home-client-infinite.tsx
+          'main.overflow-y-auto', // layout.tsx
+          '.flex-1.overflow-y-auto', // home-client.tsx
+          '.overflow-y-auto'
+        ];
+        
+        let container = null;
+        for (const selector of selectors) {
+          container = document.querySelector(selector);
+          if (container && container.scrollHeight > container.clientHeight) {
+            break;
+          }
+        }
+        
         if (container) {
           container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        } else {
+          // フォールバック: window全体をスクロール
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }
       });
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(1500);
     }
     
     // 3. スクロール位置を記録
     const scrollPositionBefore = await page.evaluate(() => {
-      const container = document.querySelector('.overflow-y-auto');
-      return container ? container.scrollTop : 0;
+      const selectors = [
+        '#main-scroll-container',
+        'main.overflow-y-auto',
+        '.flex-1.overflow-y-auto',
+        '.overflow-y-auto'
+      ];
+      
+      for (const selector of selectors) {
+        const container = document.querySelector(selector);
+        if (container && container.scrollTop > 0) {
+          return container.scrollTop;
+        }
+      }
+      
+      // フォールバック: windowのスクロール位置
+      return window.pageYOffset || document.documentElement.scrollTop;
     });
     
     // スクロール位置が0より大きいことを確認
@@ -49,8 +82,21 @@ test.describe('スクロール位置復元機能', () => {
     
     // 9. スクロール位置が復元されたか確認
     const scrollPositionAfter = await page.evaluate(() => {
-      const container = document.querySelector('.overflow-y-auto');
-      return container ? container.scrollTop : 0;
+      const selectors = [
+        '#main-scroll-container',
+        'main.overflow-y-auto',
+        '.flex-1.overflow-y-auto',
+        '.overflow-y-auto'
+      ];
+      
+      for (const selector of selectors) {
+        const container = document.querySelector(selector);
+        if (container && container.scrollTop >= 0) {
+          return container.scrollTop;
+        }
+      }
+      
+      return window.pageYOffset || document.documentElement.scrollTop;
     });
     
     // ブラウザのデフォルト動作により、位置が復元される可能性がある
@@ -66,9 +112,25 @@ test.describe('スクロール位置復元機能', () => {
     
     // 2. スクロールして位置を変更
     await page.evaluate(() => {
-      const container = document.querySelector('.overflow-y-auto');
-      if (container) {
-        container.scrollTo({ top: 500, behavior: 'instant' });
+      const selectors = [
+        '#main-scroll-container',
+        'main.overflow-y-auto',
+        '.flex-1.overflow-y-auto',
+        '.overflow-y-auto'
+      ];
+      
+      let scrolled = false;
+      for (const selector of selectors) {
+        const container = document.querySelector(selector);
+        if (container && container.scrollHeight > container.clientHeight) {
+          container.scrollTo({ top: 500, behavior: 'instant' });
+          scrolled = true;
+          break;
+        }
+      }
+      
+      if (!scrolled) {
+        window.scrollTo({ top: 500, behavior: 'instant' });
       }
     });
     
@@ -80,8 +142,21 @@ test.describe('スクロール位置復元機能', () => {
     
     // 4. スクロール位置が0に戻っていることを確認
     const scrollPosition = await page.evaluate(() => {
-      const container = document.querySelector('.overflow-y-auto');
-      return container ? container.scrollTop : 0;
+      const selectors = [
+        '#main-scroll-container',
+        'main.overflow-y-auto',
+        '.flex-1.overflow-y-auto',
+        '.overflow-y-auto'
+      ];
+      
+      for (const selector of selectors) {
+        const container = document.querySelector(selector);
+        if (container) {
+          return container.scrollTop;
+        }
+      }
+      
+      return window.pageYOffset || document.documentElement.scrollTop;
     });
     
     expect(scrollPosition).toBe(0);
@@ -93,9 +168,25 @@ test.describe('スクロール位置復元機能', () => {
     await page.waitForSelector('[data-testid="article-card"]');
     
     await page.evaluate(() => {
-      const container = document.querySelector('.overflow-y-auto');
-      if (container) {
-        container.scrollTo({ top: 1000, behavior: 'instant' });
+      const selectors = [
+        '#main-scroll-container',
+        'main.overflow-y-auto',
+        '.flex-1.overflow-y-auto',
+        '.overflow-y-auto'
+      ];
+      
+      let scrolled = false;
+      for (const selector of selectors) {
+        const container = document.querySelector(selector);
+        if (container && container.scrollHeight > container.clientHeight) {
+          container.scrollTo({ top: 1000, behavior: 'instant' });
+          scrolled = true;
+          break;
+        }
+      }
+      
+      if (!scrolled) {
+        window.scrollTo({ top: 1000, behavior: 'instant' });
       }
     });
     

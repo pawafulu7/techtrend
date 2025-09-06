@@ -104,11 +104,10 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     await page.waitForURL(/\/articles\/[a-z0-9]+/, { timeout: 10000 });
     await page.waitForSelector('h1', { timeout: 10000 });
     
-    // 4. 戻るリンクをクリック
-    const backLink = page.locator('a:has-text("記事一覧に戻る")');
-    await backLink.click();
+    // 4. ブラウザの戻るボタンを使用（記事一覧に戻るリンクが存在しないため）
+    await page.goBack();
     
-    await page.waitForURL(/returning=1/, { timeout: 10000 });
+    await page.waitForURL('**/');
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. 復元ローディングが表示されたらキャンセルボタンをクリック
@@ -119,7 +118,23 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     
     // 6. スクロール位置が0のままか確認
     await page.waitForTimeout(1000);
-    const scrollPositionAfterCancel = await scrollContainer.evaluate((el) => el.scrollTop);
+    const scrollPositionAfterCancel = await page.evaluate(() => {
+      const selectors = [
+        '#main-scroll-container',
+        'main.overflow-y-auto',
+        '.flex-1.overflow-y-auto',
+        '.overflow-y-auto'
+      ];
+      
+      for (const selector of selectors) {
+        const container = document.querySelector(selector);
+        if (container) {
+          return container.scrollTop;
+        }
+      }
+      
+      return window.pageYOffset || document.documentElement.scrollTop;
+    });
     expect(scrollPositionAfterCancel).toBeLessThan(100);
     
     // 7. トップボタンが非表示か確認
