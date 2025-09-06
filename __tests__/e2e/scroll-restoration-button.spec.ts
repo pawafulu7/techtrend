@@ -25,13 +25,23 @@ test.describe('スクロール復元時のトップボタン表示', () => {
         '.overflow-y-auto'
       ];
       
+      let scrolled = false;
       for (const selector of selectors) {
         const container = document.querySelector(selector);
         if (container && container.scrollHeight > container.clientHeight) {
           for (let i = 0; i < 3; i++) {
             container.scrollTop = container.scrollHeight;
           }
+          scrolled = true;
           break;
+        }
+      }
+      
+      // フォールバック: どのセレクターも見つからない場合はwindowをスクロール
+      if (!scrolled) {
+        const el = document.scrollingElement || document.documentElement;
+        for (let i = 0; i < 3; i++) {
+          el.scrollTop = el.scrollHeight;
         }
       }
     });
@@ -52,7 +62,8 @@ test.describe('スクロール復元時のトップボタン表示', () => {
           return container.scrollTop;
         }
       }
-      return 0;
+      // フォールバック: windowのスクロール位置を返す
+      return window.pageYOffset || document.documentElement.scrollTop || 0;
     });
     expect(scrollPositionBefore).toBeGreaterThan(300);
     
@@ -93,7 +104,8 @@ test.describe('スクロール復元時のトップボタン表示', () => {
           return container.scrollTop;
         }
       }
-      return 0;
+      // フォールバック: windowのスクロール位置を返す
+      return window.pageYOffset || document.documentElement.scrollTop || 0;
     });
     // ブラウザの戻るボタンによる復元のため、位置は異なる可能性がある
     expect(scrollPositionAfter).toBeGreaterThanOrEqual(0);
@@ -129,14 +141,23 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 2. スクロールして複数ページを読み込む
-    const scrollContainer = page.locator('#main-scroll-container');
-    
-    for (let i = 0; i < 2; i++) {
-      await scrollContainer.evaluate((el) => {
-        el.scrollTop = el.scrollHeight;
-      });
-      await page.waitForTimeout(1000);
-    }
+    await page.evaluate((selectors) => {
+      let scrolled = false;
+      for (const s of selectors) {
+        const el = document.querySelector(s) as HTMLElement | null;
+        if (el && el.scrollHeight > el.clientHeight) {
+          for (let i = 0; i < 2; i++) el.scrollTop = el.scrollHeight;
+          scrolled = true;
+          break;
+        }
+      }
+      if (!scrolled) {
+        const win = document.scrollingElement || document.documentElement;
+        for (let i = 0; i < 2; i++) win.scrollTop = win.scrollHeight;
+      }
+    }, SCROLL_CONTAINER_SELECTORS);
+    // 読み込み安定待ち
+    await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible();
     
     // 3. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -173,8 +194,8 @@ test.describe('スクロール復元時のトップボタン表示', () => {
           return container.scrollTop;
         }
       }
-      
-      return window.pageYOffset || document.documentElement.scrollTop;
+      // フォールバック: windowのスクロール位置を返す
+      return window.pageYOffset || document.documentElement.scrollTop || 0;
     });
     expect(scrollPositionAfterCancel).toBeLessThan(100);
     

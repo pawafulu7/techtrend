@@ -136,7 +136,7 @@ test.describe('Date Range Filter - Fixed', () => {
     if (await filterButton.count() > 0) {
       await filterButton.click();
       // Wait for sheet to open
-      await page.waitForTimeout(500); // モバイルシートのアニメーション待ち
+      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
     } else {
       // フィルターボタンが存在しない場合はスキップ
       console.log('Mobile filter button not found - feature may not be implemented');

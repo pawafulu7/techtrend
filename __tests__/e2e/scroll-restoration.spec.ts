@@ -68,7 +68,7 @@ test.describe('スクロール位置復元機能', () => {
     await tenthArticle.click();
     
     // 5. 記事詳細ページに遷移したことを確認
-    await page.waitForURL(`**/articles/${articleId}**`);
+    await page.waitForURL((url) => new URL(url).pathname === `/articles/${articleId}`, { timeout: 10000 });
     
     // 6. ブラウザの戻るボタンを使用（記事一覧に戻るリンクが存在しないため）
     await page.goBack();

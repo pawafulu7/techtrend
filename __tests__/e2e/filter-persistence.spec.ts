@@ -243,11 +243,16 @@ test.describe('フィルター条件の永続化', () => {
   });
 
   test('URLパラメータがCookieより優先される', async ({ page }) => {
-    // 1. Cookieに条件を保存
-    await page.fill('[data-testid="search-box-input"]', 'Python');
-    await page.waitForTimeout(500);
-
-    // 2. URLパラメータ付きでアクセス
+    // 1. Cookieに「Python」を明示保存（前提を保証）
+    await page.goto('/');
+    await page.evaluate(() => {
+      document.cookie =
+        'filter-preferences=' +
+        encodeURIComponent(JSON.stringify({ search: 'Python' })) +
+        '; Path=/; Max-Age=2592000';
+    });
+    
+    // 2. URLでは別の値を指定（URLがCookieより優先されるはず）
     await page.goto('/?search=JavaScript');
 
     // 3. URLパラメータの値が表示されることを確認
