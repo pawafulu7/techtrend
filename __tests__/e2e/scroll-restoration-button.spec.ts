@@ -83,11 +83,26 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     await page.goBack();
     
     // 一覧ページが表示されるまで待機
-    await page.waitForURL('**/');
+    await page.waitForURL((url) => new URL(url).pathname === '/');
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. スクロール復元の完了を待つ
-    await page.waitForTimeout(2000);
+    await page.waitForFunction(() => {
+      const getScrollPosition = () => {
+        const selectors = ['#main-scroll-container','main.overflow-y-auto','.flex-1.overflow-y-auto','.overflow-y-auto'];
+        for (const s of selectors) {
+          const el = document.querySelector(s);
+          if (el && el.scrollTop > 0) return el.scrollTop;
+        }
+        return window.pageYOffset || document.documentElement.scrollTop || 0;
+      };
+      const current = getScrollPosition();
+      // @ts-ignore
+      const previous = window.__lastScrollPosition ?? current;
+      // @ts-ignore
+      window.__lastScrollPosition = current;
+      return current === previous;
+    }, { polling: 200, timeout: 5000 });
     
     // 6. スクロール位置が復元されているか確認
     const scrollPositionAfter = await page.evaluate(() => {
@@ -123,8 +138,20 @@ test.describe('スクロール復元時のトップボタン表示', () => {
       
       // 9. スクロール位置が0になっているか確認
       const scrollPositionTop = await page.evaluate(() => {
-        const container = document.querySelector('.overflow-y-auto');
-        return container ? container.scrollTop : 0;
+        const selectors = [
+          '#main-scroll-container',
+          'main.overflow-y-auto',
+          '.flex-1.overflow-y-auto',
+          '.overflow-y-auto'
+        ];
+        
+        for (const selector of selectors) {
+          const container = document.querySelector(selector);
+          if (container && container.scrollTop >= 0) {
+            return container.scrollTop;
+          }
+        }
+        return window.pageYOffset || document.documentElement.scrollTop || 0;
       });
       expect(scrollPositionTop).toBeLessThan(100); // 完全に0でなくても許容
       
@@ -169,7 +196,7 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     // 4. ブラウザの戻るボタンを使用（記事一覧に戻るリンクが存在しないため）
     await page.goBack();
     
-    await page.waitForURL('**/');
+    await page.waitForURL((url) => new URL(url).pathname === '/');
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. 復元ローディングが表示されたらキャンセルボタンをクリック

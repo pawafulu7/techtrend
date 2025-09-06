@@ -151,7 +151,7 @@ test.describe('スクロール位置復元機能', () => {
       
       for (const selector of selectors) {
         const container = document.querySelector(selector);
-        if (container) {
+        if (container && container.scrollHeight > container.clientHeight) {
           return container.scrollTop;
         }
       }
