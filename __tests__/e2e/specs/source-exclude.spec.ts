@@ -79,18 +79,29 @@ test.describe('ソースフィルタリング機能', () => {
         // 各記事のソース名を確認（最大5件）
         for (let i = 0; i < Math.min(articleCount, 5); i++) {
           const article = articles.nth(i);
-          const sourceElement = article.locator('[class*="text-xs"]').filter({ hasText: /Dev\.to|Qiita|Zenn|AWS|Google/ }).first();
+          // ソースバッジをより確実に取得（data-testidまたはaria-labelを使用）
+          const sourceBadge = article.locator('[data-testid*="source-badge"], [aria-label*="source:"]').first();
           
-          if (await sourceElement.isVisible()) {
-            const sourceText = await sourceElement.textContent();
-            // Dev.toの記事が含まれていないことを確認
-            expect(sourceText).not.toContain('Dev.to');
+          if (await sourceBadge.count() > 0) {
+            const sourceText = await sourceBadge.textContent();
+            // Dev.toの完全一致で確認（偽陽性防止）
+            if (sourceText) {
+              expect(sourceText.trim()).not.toBe('Dev.to');
+            }
+          } else {
+            // バッジがない場合はクラス名で探す
+            const sourceElement = article.locator('.text-xs').filter({ hasText: /^Dev\.to$/ }).first();
+            const elementCount = await sourceElement.count();
+            // Dev.toの完全一致要素が存在しないことを確認
+            expect(elementCount).toBe(0);
           }
         }
       }
       
       // Dev.toを再度選択して元に戻す
       await checkbox.click();
+      // 再選択後の状態を確認
+      await expect(checkbox).toHaveAttribute('data-state', 'checked');
     }
   });
 
@@ -152,11 +163,12 @@ test.describe('ソースフィルタリング機能', () => {
       await expect(checkbox).toHaveAttribute('data-state', 'unchecked');
     }
     
-    // 記事フィルタリングの完了を待つ
+    // 記事フィルタリングの完了を待つ（状態ベースの待機）
     await page.waitForFunction(() => {
-      const cards = document.querySelectorAll('[data-testid="article-card"]');
-      return cards.length >= 0; // 記事数が確定するまで待つ
-    });
+      // ネットワークリクエストが完了したか、またはローディング表示が消えたかを確認
+      const loadingElement = document.querySelector('[data-testid="loading"], .loading, .spinner');
+      return !loadingElement || loadingElement.style.display === 'none';
+    }, { timeout: 5000 });
     
     // 記事数が変化したことを確認（0件または減少）
     const articlesAfterDeselect = await page.locator('[data-testid="article-card"]').count();
@@ -173,11 +185,8 @@ test.describe('ソースフィルタリング機能', () => {
       await expect(checkbox).toHaveAttribute('data-state', 'checked');
     }
     
-    // 記事が再度表示されることを確認
-    await page.waitForFunction(() => {
-      const cards = document.querySelectorAll('[data-testid="article-card"]');
-      return cards.length > 0; // 記事が表示されるまで待つ
-    });
+    // 記事が再度表示されることを確認（状態ベースの待機）
+    await page.waitForSelector('[data-testid="article-card"]', { state: 'visible', timeout: 5000 });
     const articlesAfterSelect = await page.locator('[data-testid="article-card"]').count();
     expect(articlesAfterSelect).toBeGreaterThan(0);
   });
@@ -240,11 +249,14 @@ test.describe('ソースフィルタリング機能', () => {
     const currentUrl = page.url();
     expect(currentUrl).toContain('sources=');
     
-    // 選択解除したソースがURLに含まれないことを確認
+    // URLパラメータを解析して選択解除したソースが含まれないことを確認
+    const urlParams = new URLSearchParams(new URL(currentUrl).search);
+    const selectedSources = urlParams.get('sources')?.split(',') || [];
+    
     for (const source of sourcesToDeselect) {
       if (source) {
-        const encodedSource = encodeURIComponent(source);
-        expect(currentUrl).not.toContain(encodedSource);
+        // ソース名ではなくIDで確認する方が確実
+        expect(selectedSources).not.toContain(source.trim());
       }
     }
     
