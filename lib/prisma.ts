@@ -18,13 +18,15 @@ const prismaClientSingleton = (): PrismaClient => {
   });
 };
 
-// Use existing instance or create new one
-export const prisma: PrismaClient = globalForPrisma.__prisma ?? prismaClientSingleton();
-
-// Preserve instance in development for hot reloading
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.__prisma ??= prisma;
+// Use existing instance or create new one with lazy initialization
+function getPrismaClient(): PrismaClient {
+  if (!globalForPrisma.__prisma) {
+    globalForPrisma.__prisma = prismaClientSingleton();
+  }
+  return globalForPrisma.__prisma;
 }
+
+export const prisma: PrismaClient = getPrismaClient();
 
 // Graceful shutdown handling (skip in serverless environments)
 if (process.env.NODE_ENV === 'production' && 

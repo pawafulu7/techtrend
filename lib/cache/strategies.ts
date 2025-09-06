@@ -25,7 +25,7 @@ export interface CachedData<T> {
 export class AggressiveCacheStrategy {
   private redis: Redis;
   private defaultOptions: CacheOptions;
-  private pendingRevalidations: Map<string, Promise<any>>;
+  private pendingRevalidations: Map<string, Promise<void>>;
 
   constructor(redis: Redis, defaultOptions: Partial<CacheOptions> = {}) {
     this.redis = redis;
@@ -119,9 +119,9 @@ export class AggressiveCacheStrategy {
   /**
    * Background revalidation to update stale cache
    */
-  private revalidateInBackground(
+  private revalidateInBackground<T>(
     cacheKey: string,
-    fetcher: () => Promise<any>,
+    fetcher: () => Promise<T>,
     options: CacheOptions
   ): void {
     // Check if revalidation is already in progress for this key
@@ -219,7 +219,12 @@ export class AggressiveCacheStrategy {
     const cacheKeys = keysArray.map(key => this.buildKey(key, ns));
     
     if (cacheKeys.length > 0) {
-      await this.redis.del(...cacheKeys);
+      // Use UNLINK for non-blocking deletion
+      if (typeof (this.redis as any).unlink === 'function') {
+        await (this.redis as any).unlink(...cacheKeys);
+      } else {
+        await this.redis.del(...cacheKeys);
+      }
       log.debug(`Cache invalidated for ${cacheKeys.length} keys`);
     }
   }
@@ -248,7 +253,21 @@ export class AggressiveCacheStrategy {
     });
     
     if (keys.length > 0) {
-      await this.redis.del(...keys);
+      // Use pipeline with UNLINK for non-blocking deletion
+      const pipeline = this.redis.pipeline();
+      const batchSize = 1000;
+      
+      for (let i = 0; i < keys.length; i += batchSize) {
+        const batch = keys.slice(i, i + batchSize);
+        // Prefer UNLINK for non-blocking operation
+        if (typeof (this.redis as any).unlink === 'function') {
+          pipeline.unlink(...batch);
+        } else {
+          pipeline.del(...batch);
+        }
+      }
+      
+      await pipeline.exec();
       log.info(`Cleared ${keys.length} keys from namespace: ${ns}`);
     }
   }
@@ -264,7 +283,7 @@ export class AggressiveCacheStrategy {
   /**
    * Generate simple etag for cache validation
    */
-  private generateEtag(data: any): string {
+  private generateEtag<T>(data: T): string {
     const str = JSON.stringify(data);
     let hash = 0;
     for (let i = 0; i < str.length; i++) {

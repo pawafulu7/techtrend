@@ -6,6 +6,21 @@
 import { Prisma } from '@prisma/client';
 
 /**
+ * Parse numeric environment variable with fallback
+ */
+function parseNumericEnv(value: string | undefined, defaultValue: number): string {
+  if (!value) return String(defaultValue);
+  
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed) || parsed <= 0) {
+    console.warn(`Invalid numeric environment variable: ${value}, using default: ${defaultValue}`);
+    return String(defaultValue);
+  }
+  
+  return String(parsed);
+}
+
+/**
  * Get optimized database URL with connection pool parameters
  */
 export function getOptimizedDatabaseUrl(): string | undefined {
@@ -19,17 +34,17 @@ export function getOptimizedDatabaseUrl(): string | undefined {
   // Parse the URL to add connection pool parameters
   const url = new URL(baseUrl);
   
-  // Add connection pool parameters for PostgreSQL
+  // Add connection pool parameters for PostgreSQL with validation
   // These parameters optimize connection handling in production
   const poolParams = {
     // Maximum number of connections in the pool
-    connection_limit: process.env.DB_CONNECTION_LIMIT || '20',
+    connection_limit: parseNumericEnv(process.env.DB_CONNECTION_LIMIT, 20),
     // Maximum time to wait for a connection from the pool (in seconds)
-    pool_timeout: process.env.DB_POOL_TIMEOUT || '10',
+    pool_timeout: parseNumericEnv(process.env.DB_POOL_TIMEOUT, 10),
     // Statement cache size for prepared statements
-    statement_cache_size: process.env.DB_STATEMENT_CACHE_SIZE || '200',
+    statement_cache_size: parseNumericEnv(process.env.DB_STATEMENT_CACHE_SIZE, 200),
     // Connection timeout in seconds
-    connect_timeout: process.env.DB_CONNECT_TIMEOUT || '10',
+    connect_timeout: parseNumericEnv(process.env.DB_CONNECT_TIMEOUT, 10),
   };
   
   // Add parameters to the URL

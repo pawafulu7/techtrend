@@ -143,12 +143,21 @@ export class RedisCache {
       });
       
       if (keys.length > 0) {
-        // Delete keys in batches to avoid command too long
+        // Delete keys in batches using UNLINK for non-blocking operation
         const batchSize = 1000;
+        const pipeline = this.redis.pipeline();
+        
         for (let i = 0; i < keys.length; i += batchSize) {
           const batch = keys.slice(i, i + batchSize);
-          await this.redis.del(...batch);
+          // Use UNLINK if available for non-blocking deletion
+          if (typeof (this.redis as any).unlink === 'function') {
+            pipeline.unlink(...batch);
+          } else {
+            pipeline.del(...batch);
+          }
         }
+        
+        await pipeline.exec();
       }
     } catch (_error) {
       this.stats.errors++;
