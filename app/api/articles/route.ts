@@ -205,13 +205,25 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      // Category filter
+      // Category filter with validation
       if (category && category !== 'all') {
         // Handle 'uncategorized' as null
         if (category === 'uncategorized') {
           where.category = null;
         } else {
-          where.category = category as ArticleCategory;
+          // Validate category against enum values
+          const validCategories: ArticleCategory[] = [
+            'frontend', 'backend', 'ai_ml', 'security', 'devops',
+            'database', 'mobile', 'web3', 'design', 'testing',
+            'performance', 'architecture'
+          ] as ArticleCategory[];
+          
+          if (validCategories.includes(category as ArticleCategory)) {
+            where.category = category as ArticleCategory;
+          } else {
+            log.warn(`Invalid category provided: ${category}`);
+            // Ignore invalid category filter
+          }
         }
       }
       
@@ -232,22 +244,30 @@ export async function GET(request: NextRequest) {
             : [{ OR: searchOr }];
         } else if (keywords.length > 1) {
           // Multiple keywords - AND search
-          where.AND = keywords.map(keyword => ({
+          const keywordConditions = keywords.map(keyword => ({
             OR: [
               { title: { contains: keyword, mode: Prisma.QueryMode.insensitive } },
               { summary: { contains: keyword, mode: Prisma.QueryMode.insensitive } }
             ] as Prisma.ArticleWhereInput[]
           }));
+          where.AND = Array.isArray(where.AND) 
+            ? [...where.AND, ...keywordConditions] 
+            : keywordConditions;
         }
       }
       
-      // Apply date range filter
+      // Apply date range filter with validation
       if (dateRange && dateRange !== 'all') {
         const { getDateRangeFilter } = await import('@/app/lib/date-utils');
         const startDate = getDateRangeFilter(dateRange);
         if (startDate) {
+          // Validate date is not in the future
+          const now = new Date();
+          const validStartDate = startDate > now ? now : startDate;
+          
           where.publishedAt = {
-            gte: startDate
+            gte: validStartDate,
+            lte: now // Ensure we don't get future dates
           };
         }
       }

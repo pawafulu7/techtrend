@@ -256,14 +256,35 @@ export class MemoryOptimizer {
   }
 
   /**
-   * 低優先度キャッシュをクリア
+   * 低優先度キャッシュをクリア using SCAN (non-blocking)
    */
   private async clearLowPriorityCaches(): Promise<void> {
     try {
       // 検索キャッシュをクリア（優先度が低い）
-      const searchKeys = await this.redis.keys('@techtrend/cache:search:*');
+      const searchKeys: string[] = [];
+      
+      // Use SCAN instead of KEYS to avoid blocking
+      const stream = this.redis.scanStream({
+        match: '@techtrend/cache:search:*',
+        count: 100, // Process 100 keys at a time
+      });
+      
+      stream.on('data', (resultKeys: string[]) => {
+        searchKeys.push(...resultKeys);
+      });
+      
+      await new Promise<void>((resolve, reject) => {
+        stream.on('end', resolve);
+        stream.on('error', reject);
+      });
+      
       if (searchKeys.length > 0) {
-        await this.redis.del(...searchKeys);
+        // Delete keys in batches to avoid command too long
+        const batchSize = 1000;
+        for (let i = 0; i < searchKeys.length; i += batchSize) {
+          const batch = searchKeys.slice(i, i + batchSize);
+          await this.redis.del(...batch);
+        }
       }
     } catch (_error) {
     }

@@ -166,18 +166,42 @@ export class EnhancedRedisCache extends RedisCache {
   }
 
   /**
-   * Invalidate cache with pattern matching
+   * Invalidate cache with pattern matching using SCAN (non-blocking)
    */
   async invalidatePattern(pattern: string): Promise<void> {
     const fullPattern = this.generateKey(pattern);
-    const keys = await this.redis.keys(fullPattern);
+    const keys: string[] = [];
+    
+    // Use SCAN instead of KEYS to avoid blocking
+    const stream = this.redis.scanStream({
+      match: fullPattern,
+      count: 100, // Process 100 keys at a time
+    });
+    
+    stream.on('data', (resultKeys: string[]) => {
+      keys.push(...resultKeys);
+    });
+    
+    await new Promise<void>((resolve, reject) => {
+      stream.on('end', resolve);
+      stream.on('error', reject);
+    });
     
     if (keys.length === 0) {
       return;
     }
     
-    await this.redis.del(...keys);
-    log.info(`Invalidated ${keys.length} cache keys matching pattern: ${pattern}`);
+    // Delete keys in batches to avoid command too long
+    const batchSize = 1000;
+    let deleted = 0;
+    
+    for (let i = 0; i < keys.length; i += batchSize) {
+      const batch = keys.slice(i, i + batchSize);
+      const result = await this.redis.del(...batch);
+      deleted += result;
+    }
+    
+    log.info(`Invalidated ${deleted} cache keys matching pattern: ${pattern}`);
   }
 
   /**
