@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(_request: NextRequest) {
   try {
     // 1. セッション確認
@@ -14,12 +17,18 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    // 2. ユーザー情報取得（User + Account）
+    // 2. ユーザー情報取得（必要なフィールドのみ選択）
     const user = await prisma.user.findUnique({
       where: {
         id: session.user.id,
       },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        createdAt: true,
+        password: true, // hasPasswordの判定に必要
         accounts: {
           select: {
             provider: true,
@@ -43,7 +52,7 @@ export async function GET(_request: NextRequest) {
       image: user.image,
       createdAt: user.createdAt.toISOString(), // ISO 8601形式
       hasPassword: !!user.password,
-      providers: user.accounts.map(account => account.provider), // ["google", "github"]など
+      providers: Array.from(new Set(user.accounts.map(a => a.provider))), // 重複排除
     };
 
     return NextResponse.json(userProfile);

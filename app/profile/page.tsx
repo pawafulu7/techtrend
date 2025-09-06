@@ -1,7 +1,8 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +14,13 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const { data: userProfile, loading: profileLoading } = useUserProfile();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.replace('/auth/login?callbackUrl=/profile');
+    }
+  }, [status, router]);
 
   if (status === 'loading' || profileLoading) {
     return (
@@ -25,7 +33,7 @@ export default function ProfilePage() {
   }
 
   if (status === 'unauthenticated') {
-    redirect('/auth/login?callbackUrl=/profile');
+    return null; // リダイレクト中は何も表示しない
   }
 
   // 認証方法のラベルを取得

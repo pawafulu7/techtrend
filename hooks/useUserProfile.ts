@@ -21,7 +21,7 @@ export function useUserProfile() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch('/api/user/profile');
+        const response = await fetch('/api/user/profile', { cache: 'no-store' });
         
         if (!response.ok) {
           if (response.status === 401) {
@@ -30,7 +30,7 @@ export function useUserProfile() {
           throw new Error('プロフィール情報の取得に失敗しました');
         }
         
-        const profileData = await response.json();
+        const profileData = (await response.json()) as UserProfile;
         setData(profileData);
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Unknown error'));

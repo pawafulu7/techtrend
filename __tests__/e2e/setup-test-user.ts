@@ -10,10 +10,13 @@ if (!process.env.TEST_DATABASE_URL) {
 }
 
 // テスト用DB URL解決ヘルパー
-// 開発DBを使用（ポート5432）- テストユーザーは開発DBに作成
-const resolveTestDbUrl = () =>
-  process.env.TEST_DATABASE_URL ||
-  'postgresql://postgres:postgres_dev_password@localhost:5432/techtrend_dev';
+const resolveTestDbUrl = () => {
+  const url = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error('TEST_DATABASE_URL か DATABASE_URL を設定してください（ハードコード禁止）');
+  }
+  return url;
+};
 
 // 接続文字列をマスクしてセキュアにログ出力するヘルパー
 const maskConnectionString = (url: string): string => {
