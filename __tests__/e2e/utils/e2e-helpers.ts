@@ -392,16 +392,17 @@ export async function openAccountTab(page: Page): Promise<boolean> {
     await userMenuTrigger.waitFor({ state: 'visible', timeout: 5000 });
     await userMenuTrigger.click();
     
-    // プロフィールリンクをクリック
-    const profileLink = page.locator('a[href="/profile"]');
+    // プロフィールリンクをクリック（共通セレクタ追加）
+    const profileLink = page.locator('a[href="/profile"], [data-testid="profile-link"], a:has-text("プロフィール")').first();
     await profileLink.waitFor({ state: 'visible', timeout: 5000 });
     await profileLink.click();
     
-    // ページが読み込まれるまで待機
+    // URL遷移確認を追加
+    await page.waitForURL('**/profile', { timeout: 5000 });
     await waitForPageLoad(page);
     
-    // アカウントタブをクリック
-    const accountTab = page.locator('[role="tab"][data-value="account"], button:has-text("アカウント")').first();
+    // アカウントタブをクリック（共通セレクタ追加）
+    const accountTab = page.locator('[role="tab"][data-value="account"], [data-testid="account-tab"], button:has-text("アカウント")').first();
     await accountTab.waitFor({ state: 'visible', timeout: 5000 });
     await accountTab.click();
     
@@ -422,12 +423,15 @@ export async function fillPasswordChangeForm(
   page: Page, 
   passwords: { current: string; new: string; confirm: string }
 ) {
-  // Use .first() instead of :first pseudo-class for better compatibility
-  const currentPasswordInput = page.locator('input[name="currentPassword"], input[type="password"]').first();
+  // Use prioritized specific selectors to avoid mis-targeting
+  const currentPasswordInput = page.locator('input[name="currentPassword"]:not([name*="new"]):not([name*="confirm"]), input[id*="current"][type="password"], input[type="password"]:first-child').first();
   await currentPasswordInput.fill(passwords.current);
   
-  await page.fill('input[name="newPassword"], input[placeholder*="新しいパスワード"]', passwords.new);
-  await page.fill('input[name="confirmPassword"], input[placeholder*="確認"]', passwords.confirm);
+  const newPasswordInput = page.locator('input[name="newPassword"], input[id*="new"][type="password"], input[placeholder*="新しいパスワード"]').first();
+  await newPasswordInput.fill(passwords.new);
+  
+  const confirmPasswordInput = page.locator('input[name="confirmPassword"], input[id*="confirm"][type="password"], input[placeholder*="確認"]').first();
+  await confirmPasswordInput.fill(passwords.confirm);
 }
 
 /**
@@ -442,11 +446,13 @@ export async function waitForErrorMessage(
   timeout = 5000
 ): Promise<boolean> {
   try {
-    // Use locator for text-destructive class which is used for validation errors
-    const errorLocator = page.locator('.text-destructive').filter({ hasText: message });
+    // Use common error message selectors with prioritized fallback
+    const errorLocator = page.locator('[role="alert"], [data-testid="error-message"], .text-destructive, .error').filter({ hasText: message });
     await errorLocator.waitFor({ state: 'visible', timeout });
     return true;
   } catch (error) {
+    // Minimal debug logging
+    console.debug(`Error message not found: "${message}"`);
     return false;
   }
 }
@@ -463,8 +469,8 @@ export async function waitForSuccessMessage(
   timeout = 5000
 ): Promise<boolean> {
   try {
-    // Use locator with hasText filter to handle messages with quotes safely
-    const successLocator = page.locator('[class*="success"]').filter({ hasText: message });
+    // Prioritize common success message selectors over class-name dependency
+    const successLocator = page.locator('[role="status"], [data-testid="success-message"], [aria-live="polite"], [class*="success"]').filter({ hasText: message });
     await successLocator.waitFor({ state: 'visible', timeout });
     return true;
   } catch {
