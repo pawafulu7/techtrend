@@ -13,14 +13,14 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
-  const { data: userProfile, loading: profileLoading } = useUserProfile({
+  const { data: userProfile, loading: profileLoading, error: profileError } = useUserProfile({
     enabled: status === 'authenticated'
   });
   const router = useRouter();
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.replace('/auth/login?callbackUrl=/profile');
+      router.replace(`/auth/login?callbackUrl=${encodeURIComponent('/profile')}`);
     }
   }, [status, router]);
 
@@ -36,6 +36,18 @@ export default function ProfilePage() {
 
   if (status === 'unauthenticated') {
     return null; // リダイレクト中は何も表示しない
+  }
+
+  if (profileError) {
+    return (
+      <div className="container max-w-4xl mx-auto py-10">
+        <Alert variant="destructive">
+          <AlertDescription>
+            プロフィール情報の取得に失敗しました：{profileError.message}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   // 認証方法のラベルを取得
@@ -66,6 +78,8 @@ export default function ProfilePage() {
         return <Globe className="h-4 w-4" />;
       case 'github':
         return <Github className="h-4 w-4" />;
+      case 'email':
+        return <Mail className="h-4 w-4" />;
       case 'credentials':
         return <Mail className="h-4 w-4" />;
       default:
@@ -137,27 +151,29 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {userProfile?.hasPassword ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>パスワード変更</CardTitle>
-                <CardDescription>
-                  アカウントのパスワードを変更します
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PasswordChangeForm />
-              </CardContent>
-            </Card>
-          ) : (
-            <Alert>
-              <Globe className="h-4 w-4" />
-              <AlertDescription>
-                {getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}でログインしているため、パスワード変更は不要です。
-                認証は外部プロバイダーによって安全に管理されています。
-              </AlertDescription>
-            </Alert>
-          )}
+          {userProfile ? (
+            userProfile.hasPassword ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>パスワード変更</CardTitle>
+                  <CardDescription>
+                    アカウントのパスワードを変更します
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PasswordChangeForm />
+                </CardContent>
+              </Card>
+            ) : (
+              <Alert>
+                <Globe className="h-4 w-4" />
+                <AlertDescription>
+                  {getAuthMethodLabel(userProfile.providers, userProfile.hasPassword)}でログインしているため、パスワード変更は不要です。
+                  認証は外部プロバイダーによって安全に管理されています。
+                </AlertDescription>
+              </Alert>
+            )
+          ) : null}
 
           <Card>
             <CardHeader>
