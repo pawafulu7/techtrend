@@ -36,6 +36,14 @@ export class MemoryOptimizer {
   };
 
   /**
+   * ネームスペースパターンを生成
+   */
+  private ns(pattern: string): string {
+    const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
+    return `@techtrend/cache:${envName}:${pattern}`;
+  }
+
+  /**
    * メモリ監視を開始
    */
   startMonitoring(): void {
@@ -204,13 +212,12 @@ export class MemoryOptimizer {
       // SCANコマンドを使用してTTLが設定されていないキーを検出し、有効期限を設定
       let cursor = '0';
       const DEFAULT_TTL = 3600; // 1時間
-      const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
       
       do {
         // SCANコマンドで100件ずつキーを取得（ネームスペース限定）
         const result = await this.redis.scan(
           cursor,
-          'MATCH', `@techtrend/cache:${envName}:*`,
+          'MATCH', this.ns('*'),
           'COUNT', 100  // 数値型で渡す
         );
         cursor = result[0];
@@ -247,13 +254,12 @@ export class MemoryOptimizer {
       let cursor = '0';
       let deletedCount = 0;
       const keysToDelete: string[] = [];
-      const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
       
       // SCAN を使用して安全にキーを取得（ネームスペース限定）
       do {
         const result = await this.redis.scan(
           cursor,
-          'MATCH', `@techtrend/cache:${envName}:*`,
+          'MATCH', this.ns('*'),
           'COUNT', String(Math.min(200, Math.max(50, count - deletedCount)))
         );
         cursor = result[0];
@@ -290,14 +296,13 @@ export class MemoryOptimizer {
   private async clearLowPriorityCaches(): Promise<void> {
     try {
       // 検索キャッシュをクリア（優先度が低い）
-      const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
       let cursor = '0';
       
       // Use SCAN with immediate deletion to avoid memory buildup
       do {
         const result = await this.redis.scan(
           cursor,
-          'MATCH', `@techtrend/cache:${envName}:search:*`,
+          'MATCH', this.ns('search:*'),
           'COUNT', 500  // Process in larger chunks for efficiency
         );
         cursor = result[0];
