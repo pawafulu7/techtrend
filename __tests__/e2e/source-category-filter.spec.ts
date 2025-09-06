@@ -72,7 +72,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
     // 全解除で0件
     await page.getByTestId('category-foreign-deselect-all').click();
-    await expect(content.locator('[role="checkbox"][data-state="checked"]')).toHaveCount(0);
+    await expect(content.locator('button[role="checkbox"][data-state="checked"]')).toHaveCount(0);
   });
 
   test('個別ソースの選択が動作する', async ({ page }) => {
