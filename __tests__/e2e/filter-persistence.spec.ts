@@ -49,7 +49,8 @@ test.describe('フィルター条件の永続化', () => {
     const deselectButton = page.locator('[data-testid="deselect-all-button"]');
     if (await deselectButton.count() > 0) {
       await deselectButton.click();
-      await page.waitForTimeout(1000);
+      // 少し待機（UIの更新を待つ）
+      await page.waitForTimeout(500);
     }
     
     // 2. 最初のソースチェックボックスを選択（IDに依存しない方法）
@@ -57,12 +58,14 @@ test.describe('フィルター条件の永続化', () => {
     const checkboxCount = await firstSourceCheckbox.count();
     if (checkboxCount === 0) {
       // ソースフィルターが存在しない場合はスキップ
-      test.skip();
-      return;
+      test.skip(true, 'ソースフィルターが存在しないためスキップ');
     }
     
     await firstSourceCheckbox.click();
-    await page.waitForTimeout(1000);
+    const checkboxId = await firstSourceCheckbox.getAttribute('data-testid');
+    await expect(
+      page.locator(`[data-testid="${checkboxId}"] button[role="checkbox"]`)
+    ).toHaveAttribute('aria-checked', 'true');
     
     // どのソースが選択されたか記録
     const selectedSourceId = await firstSourceCheckbox.getAttribute('data-testid');
@@ -103,7 +106,6 @@ test.describe('フィルター条件の永続化', () => {
     // 1. 日付範囲フィルターを設定
     await page.click('[data-testid="date-range-trigger"]');
     await page.click('[data-testid="date-range-option-week"]');
-    await page.waitForTimeout(500);
     
     // URLパラメータが設定されることを確認
     await page.waitForFunction(() => {
@@ -160,11 +162,11 @@ test.describe('フィルター条件の永続化', () => {
       const deselectButton = page.locator('[data-testid="deselect-all-button"]');
       if (await deselectButton.count() > 0) {
         await deselectButton.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
         const firstSource = page.locator('[data-testid^="source-checkbox-"]').first();
         if (await firstSource.count() > 0) {
           await firstSource.click();
-          await page.waitForTimeout(1000);
+          await page.waitForTimeout(500);
         }
       }
     }
@@ -212,7 +214,7 @@ test.describe('フィルター条件の永続化', () => {
   test('フィルターリセットボタンですべての条件がクリアされる', async ({ page }) => {
     // 1. 複数のフィルターを設定
     await page.fill('[data-testid="search-box-input"]', 'Vue');
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => window.location.search.includes('search=Vue'), { timeout: 5000, polling: 100 });
     
     // ソースフィルターが存在する場合のみ設定
     const sourceFilter = page.locator('[data-testid="source-filter"]');
@@ -231,7 +233,6 @@ test.describe('フィルター条件の永続化', () => {
     await page.click('[data-testid="filter-reset-button"]');
     // ページがリロードされるのを待つ
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
 
     // 3. すべての条件がクリアされたことを確認
     await expect(page.locator('[data-testid="search-box-input"]')).toHaveValue('');
@@ -268,8 +269,7 @@ test.describe('フィルター条件の永続化', () => {
   test('Cookie有効期限内で条件が保持される', async ({ page, context }) => {
     // 1. フィルター条件を設定
     await page.fill('[data-testid="search-box-input"]', 'Rust');
-    // デバウンス待機とURL更新を待つ
-    await page.waitForTimeout(1000);
+    // URL更新を待つ
     await page.waitForFunction(() => {
       return window.location.search.includes('search=Rust');
     }, { timeout: 5000, polling: 100 });
@@ -321,8 +321,11 @@ test.describe('ブラウザ間での動作確認', () => {
       await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
       
       // 条件が保持されていることを確認
-      // Cookieからの復元を待つ
-      await page.waitForTimeout(1000);
+      // Cookieからの復元を待つ（未実装環境では空も許容）
+      await page.waitForFunction((expected) => {
+        const input = document.querySelector('[data-testid="search-box-input"]') as HTMLInputElement | null;
+        return !!input && (input.value === expected || input.value === '');
+      }, `Test-${browserName}`, { timeout: 5000, polling: 100 });
       
       const searchInput = page.locator('[data-testid="search-box-input"]');
       const currentValue = await searchInput.inputValue();
