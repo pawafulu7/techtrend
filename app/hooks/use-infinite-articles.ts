@@ -116,7 +116,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     };
   }, [handleReadStatusChanged]);
   
-  return useInfiniteQuery<ArticlesResponse, Error>({
+  const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
     queryFn: async ({ pageParam = 1, signal }) => {
       // 毎回新しいURLSearchParamsを作成
@@ -150,6 +150,28 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     initialPageParam: 1,
     staleTime: 1000 * 60 * 5, // 5分間キャッシュ（Firefox互換性改善）
     refetchOnWindowFocus: false,
-    refetchInterval: 1000 * 60 * 30, // 30分ごとのバックグラウンド更新
   });
+  
+  // 30分ごとに1ページ目のみを再取得（負荷最適化）
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      // 1ページ目のデータのみを更新（全ページ再取得を避ける）
+      queryClient.setQueryData<InfiniteArticlesData>(['infinite-articles', filterKey], (data) => {
+        if (data?.pages && data.pages.length > 0) {
+          // 1ページ目のみ保持、他のページは削除
+          return {
+            pages: data.pages.slice(0, 1),
+            pageParams: data.pageParams.slice(0, 1),
+          };
+        }
+        return data;
+      });
+      // 1ページ目を再フェッチ
+      infiniteQuery.refetch();
+    }, 1000 * 60 * 30);
+    
+    return () => clearInterval(intervalId);
+  }, [infiniteQuery, queryClient, filterKey]);
+  
+  return infiniteQuery;
 }
