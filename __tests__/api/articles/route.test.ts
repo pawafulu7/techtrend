@@ -366,16 +366,16 @@ describe('/api/articles', () => {
 
       const request = createMockNextRequest('http://localhost:3000/api/articles?sources=none');
       const response = await GET(request);
-      const _data = await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            sourceId: '__none__',
-          }),
-        })
-      );
+      // With early return optimization, DB is not called
+      expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+      expect(prismaMock.article.count).not.toHaveBeenCalled();
+      // Should get empty result 
+      expect(data.success).toBe(true);
+      expect(data.data.items).toEqual([]);
+      expect(data.data.total).toBe(0);
     });
 
     it('includes performance headers', async () => {

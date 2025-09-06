@@ -26,9 +26,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
-    // Parse pagination params
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
+    // Parse pagination params with NaN protection
+    const pageParam = searchParams.get('page');
+    const limitParam = searchParams.get('limit');
+    const parsedPage = Number.parseInt(pageParam ?? '1', 10);
+    const parsedLimit = Number.parseInt(limitParam ?? '20', 10);
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const limit = Number.isFinite(parsedLimit) ? Math.min(100, Math.max(1, parsedLimit)) : 20;
     // Support both publishedAt and createdAt for sorting
     const sortBy = searchParams.get('sortBy') || 'publishedAt';
     // Validate sortBy parameter
@@ -42,7 +46,7 @@ export async function GET(request: NextRequest) {
     const sourceId = searchParams.get('sourceId'); // Backward compatibility
     const tag = searchParams.get('tag'); // Single tag (backward compatibility)
     const tags = searchParams.get('tags'); // Multiple tags support
-    const tagMode = searchParams.get('tagMode') || 'OR'; // Tag filter mode (OR/AND)
+    const tagMode = (searchParams.get('tagMode') || 'OR').toUpperCase(); // Tag filter mode (OR/AND), normalized to uppercase
     const search = searchParams.get('search');
     const dateRange = searchParams.get('dateRange'); // Date range filter
     const readFilter = searchParams.get('readFilter'); // Read status filter
@@ -100,6 +104,25 @@ export async function GET(request: NextRequest) {
     } else {
       metrics.setCacheStatus('MISS');
       
+      // Check for early return case (sources=none)
+      if (sources === 'none') {
+        // DBアクセスをスキップして空レスポンスを返す
+        const emptyResult = {
+          success: true,
+          data: {
+            items: [],
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          }
+        };
+        // Add metrics to headers
+        const headers = new Headers();
+        metrics.addMetricsToHeaders(headers);
+        return NextResponse.json(emptyResult, { headers });
+      }
+      
       // Fetch fresh data
       result = await (async () => {
         // Build where clause
@@ -155,9 +178,7 @@ export async function GET(request: NextRequest) {
       }
       // Support multiple sources selection
       if (sources === 'none') {
-        // 明示的に「何も選択しない」状態 - 常にfalseになる条件を設定
-        // Prismaでは空配列のIN句は正しく動作しない場合があるため、
-        // 存在しないIDを使用
+        // 明示的に「何も選択しない」状態 - 存在しないIDを使用
         where.sourceId = '__none__';
       } else if (sources) {
         const sourceIds = sources.split(',').filter(id => id.trim());
@@ -205,13 +226,13 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      // Category filter with validation
+      // Category filter with proper validation
       if (category && category !== 'all') {
         // Handle 'uncategorized' as null
         if (category === 'uncategorized') {
           where.category = null;
         } else {
-          // Validate category against enum values
+          // Validate category against known enum values
           const validCategories: ArticleCategory[] = [
             'frontend', 'backend', 'ai_ml', 'security', 'devops',
             'database', 'mobile', 'web3', 'design', 'testing',
@@ -400,7 +421,13 @@ export async function POST(request: NextRequest) {
     // タグを正規化してバリデーション
     const normalizedTags = normalizeTagInput(tagNames);
     
-    // タグバリデーションのデッドコードを削除
+    // Validate publishedAt
+    const parsedPublishedAt = publishedAt ? new Date(publishedAt) : new Date();
+    if (Number.isNaN(parsedPublishedAt.getTime())) {
+      const validationError = new ValidationError('Invalid publishedAt date format', 'publishedAt');
+      const errorResponse = formatErrorResponse(validationError);
+      return NextResponse.json(errorResponse, { status: validationError.statusCode });
+    }
 
     // Create article with tags
     const article = await prisma.article.create({
@@ -410,7 +437,7 @@ export async function POST(request: NextRequest) {
         summary,
         thumbnail,
         content,
-        publishedAt: new Date(publishedAt),
+        publishedAt: parsedPublishedAt,
         sourceId,
         tags: {
           connectOrCreate: normalizedTags.map((name: string) => ({

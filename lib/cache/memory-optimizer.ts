@@ -198,10 +198,15 @@ export class MemoryOptimizer {
       // SCANコマンドを使用してTTLが設定されていないキーを検出し、有効期限を設定
       let cursor = '0';
       const DEFAULT_TTL = 3600; // 1時間
+      const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
       
       do {
-        // SCANコマンドで100件ずつキーを取得
-        const result = await this.redis.scan(cursor, 'COUNT', '100');
+        // SCANコマンドで100件ずつキーを取得（ネームスペース限定）
+        const result = await this.redis.scan(
+          cursor,
+          'MATCH', `@techtrend/cache:${envName}:*`,
+          'COUNT', '100'
+        );
         cursor = result[0];
         const keys = result[1];
         
@@ -228,13 +233,14 @@ export class MemoryOptimizer {
       let cursor = '0';
       let deletedCount = 0;
       const keysToDelete: string[] = [];
+      const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
       
-      // SCAN を使用して安全にキーを取得
+      // SCAN を使用して安全にキーを取得（ネームスペース限定）
       do {
         const result = await this.redis.scan(
           cursor,
-          'COUNT',
-          Math.min(100, count - deletedCount)
+          'MATCH', `@techtrend/cache:${envName}:*`,
+          'COUNT', String(Math.min(200, Math.max(50, count - deletedCount)))
         );
         cursor = result[0];
         const keys = result[1];
@@ -247,9 +253,13 @@ export class MemoryOptimizer {
         }
       } while (cursor !== '0' && deletedCount < count);
       
-      // バッチで削除
+      // バッチで削除（UNLINKを使用してノンブロッキング削除）
       if (keysToDelete.length > 0) {
-        await this.redis.del(...keysToDelete);
+        if (typeof (this.redis as any).unlink === 'function') {
+          await (this.redis as any).unlink(...keysToDelete);
+        } else {
+          await this.redis.del(...keysToDelete);
+        }
       }
     } catch (_error) {
     }
