@@ -47,15 +47,12 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   const handleFilterChange = useMemo(
     () => debounce((newFilterKey: string) => {
       if (prevFilterKeyRef.current && prevFilterKeyRef.current !== newFilterKey) {
-        // フィルター変更時は単純にキャッシュを無効化して新しいデータを取得
-        // データ転送を削除することで重複キーエラーを防ぐ
-        queryClient.invalidateQueries({ 
-          queryKey: ['infinite-articles', newFilterKey],
-          refetchType: 'active' // アクティブなクエリのみ再取得
-        });
+        // 旧フィルターのクエリを停止・破棄（新フィルターはキー変更で自動フェッチ）
+        queryClient.cancelQueries({ queryKey: ['infinite-articles', prevFilterKeyRef.current] });
+        queryClient.removeQueries({ queryKey: ['infinite-articles', prevFilterKeyRef.current] });
       }
       prevFilterKeyRef.current = newFilterKey;
-    }, 300),
+    }, 200),
     [queryClient]
   );
   
@@ -116,7 +113,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     };
   }, [handleReadStatusChanged]);
   
-  return useInfiniteQuery<ArticlesResponse, Error>({
+  const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
     queryFn: async ({ pageParam = 1, signal }) => {
       // 毎回新しいURLSearchParamsを作成
@@ -148,7 +145,9 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       return page < totalPages ? page + 1 : undefined;
     },
     initialPageParam: 1,
-    staleTime: 1000 * 60 * 5, // 5分間キャッシュ
+    staleTime: 1000 * 60 * 5, // 5分間キャッシュ（Firefox互換性改善）
     refetchOnWindowFocus: false,
   });
+  
+  return infiniteQuery;
 }
