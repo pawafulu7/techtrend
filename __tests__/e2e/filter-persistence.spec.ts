@@ -45,32 +45,40 @@ test.describe('フィルター条件の永続化', () => {
     // フィルターエリアが表示されるまで待機
     await page.waitForSelector('[data-testid="source-filter"]', { timeout: 10000 });
     
-    // 1. 最初にすべてのソースを解除
-    const deselectButton = page.locator('[data-testid="deselect-all-button"]');
-    if (await deselectButton.count() > 0) {
-      await deselectButton.click();
-      // すべて未選択になるまで待機
-      await expect(
-        page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]').first()
-      ).toHaveAttribute('aria-checked', 'false');
-    }
+    // 最初のカテゴリを展開
+    const firstCategoryHeader = page.locator('[data-testid$="-header"]').first();
+    await firstCategoryHeader.click();
+    await page.waitForTimeout(300);
     
-    // 2. 最初のソースチェックボックスを選択（IDに依存しない方法）
-    const firstSourceCheckbox = page.locator('[data-testid^="source-checkbox-"]').first();
-    const checkboxCount = await firstSourceCheckbox.count();
+    // カテゴリ内のコンテンツが表示されることを確認
+    const firstCategoryContent = page.locator('[data-testid$="-content"]').first();
+    await expect(firstCategoryContent).toBeVisible();
+    
+    // 1. 最初にすべてのソースを解除
+    await page.click('[data-testid="deselect-all-button"]');
+    await page.waitForTimeout(300);
+    
+    // すべて未選択になったことを確認（Radix UIのdata-state属性を使用）
+    const firstCheckbox = page.locator('[data-testid^="source-checkbox-"]').first().locator('button[role="checkbox"]');
+    await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
+    
+    // 2. 最初のソースチェックボックスを選択
+    const firstSourceContainer = page.locator('[data-testid^="source-checkbox-"]').first();
+    const checkboxCount = await firstSourceContainer.count();
     if (checkboxCount === 0) {
       // ソースフィルターが存在しない場合はスキップ
       test.skip(true, 'ソースフィルターが存在しないためスキップ');
     }
     
-    await firstSourceCheckbox.click();
-    const checkboxId = await firstSourceCheckbox.getAttribute('data-testid');
-    await expect(
-      page.locator(`[data-testid="${checkboxId}"] button[role="checkbox"]`)
-    ).toHaveAttribute('aria-checked', 'true');
+    await firstSourceContainer.click();
+    await page.waitForTimeout(200);
+    
+    // 選択されたことを確認
+    const checkbox = firstSourceContainer.locator('button[role="checkbox"]');
+    await expect(checkbox).toHaveAttribute('data-state', 'checked');
     
     // どのソースが選択されたか記録
-    const selectedSourceId = await firstSourceCheckbox.getAttribute('data-testid');
+    const selectedSourceId = await firstSourceContainer.getAttribute('data-testid');
 
     // 3. 記事詳細ページへ遷移
     await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
@@ -86,10 +94,15 @@ test.describe('フィルター条件の永続化', () => {
 
       // 5. フィルターが保持されていることを確認
       if (selectedSourceId) {
-        // チェックボックス自体を確認
+        // 最初のカテゴリを再度展開
+        const firstCategoryHeader2 = page.locator('[data-testid$="-header"]').first();
+        await firstCategoryHeader2.click();
+        await page.waitForTimeout(300);
+        
+        // チェックボックスの状態を確認
         await expect(
           page.locator(`[data-testid="${selectedSourceId}"] button[role="checkbox"]`)
-        ).toHaveAttribute('aria-checked', 'true');
+        ).toHaveAttribute('data-state', 'checked');
       }
     } else {
       // 記事がない場合でもソースフィルター自体の永続化は確認できる
@@ -97,9 +110,14 @@ test.describe('フィルター条件の永続化', () => {
       
       // フィルターの状態だけ確認
       if (selectedSourceId) {
+        // カテゴリを展開してから確認
+        const firstCategoryHeader3 = page.locator('[data-testid$="-header"]').first();
+        await firstCategoryHeader3.click();
+        await page.waitForTimeout(300);
+        
         await expect(
           page.locator(`[data-testid="${selectedSourceId}"] button[role="checkbox"]`)
-        ).toHaveAttribute('aria-checked', 'true');
+        ).toHaveAttribute('data-state', 'checked');
       }
     }
   });
@@ -163,22 +181,39 @@ test.describe('フィルター条件の永続化', () => {
     await page.waitForFunction(() => window.location.search.includes('search=React'), { timeout: 10000, polling: 100 });
     
     // ソースフィルターが存在する場合のみ設定
-    const sourceFilter = page.locator('[data-testid="source-filter"]');
-    if (await sourceFilter.count() > 0) {
+    const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
+    if (await sourceCheckboxes.count() > 0) {
+      // カテゴリを展開
+      const categoryHeaders = page.locator('[data-testid$="-header"]');
+      const categoryCount = await categoryHeaders.count();
+      for (let i = 0; i < categoryCount; i++) {
+        const header = categoryHeaders.nth(i);
+        // カテゴリIDを取得してコンテンツの存在を確認
+        const categoryTestId = await header.getAttribute('data-testid');
+        if (categoryTestId) {
+          const categoryId = categoryTestId.replace('-header', '');
+          const contentSelector = `[data-testid="${categoryId}-content"]`;
+          const isExpanded = await page.locator(contentSelector).count() > 0;
+          if (!isExpanded) {
+            await header.click();
+            await page.waitForTimeout(200);
+          }
+        }
+      }
+      
       // すべてのソースを解除してから最初のソースを選択
       const deselectButton = page.locator('[data-testid="deselect-all-button"]');
       if (await deselectButton.count() > 0) {
         await deselectButton.click();
-        await expect(
-          page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]').first()
-        ).toHaveAttribute('aria-checked', 'false');
+        await page.waitForTimeout(500);
+        const firstCheckbox = page.locator('[data-testid^="source-checkbox-"]').first().locator('button[role="checkbox"]');
+        await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
         const firstSource = page.locator('[data-testid^="source-checkbox-"]').first();
         if (await firstSource.count() > 0) {
           await firstSource.click();
-          const sourceId = await firstSource.getAttribute('data-testid');
-          await expect(
-            page.locator(`[data-testid="${sourceId}"] button[role="checkbox"]`)
-          ).toHaveAttribute('aria-checked', 'true');
+          await page.waitForTimeout(500);
+          const sourceCheckbox = firstSource.locator('button[role="checkbox"]');
+          await expect(sourceCheckbox).toHaveAttribute('data-state', 'checked');
         }
       }
     }
@@ -229,22 +264,42 @@ test.describe('フィルター条件の永続化', () => {
     await page.waitForFunction(() => window.location.search.includes('search=Vue'), { timeout: 5000, polling: 100 });
     
     // ソースフィルターが存在する場合のみ設定
-    const sourceFilter = page.locator('[data-testid="source-filter"]');
-    if (await sourceFilter.count() > 0) {
-      // すべてのソースを解除してから最初のソースを選択
-      await page.click('[data-testid="deselect-all-button"]');
-      // すべて未選択になるまで待機
-      await expect(
-        page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]').first()
-      ).toHaveAttribute('aria-checked', 'false');
+    const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
+    if (await sourceCheckboxes.count() > 0) {
+      // カテゴリを展開
+      const categoryHeaders = page.locator('[data-testid$="-header"]');
+      const categoryCount = await categoryHeaders.count();
+      for (let i = 0; i < categoryCount; i++) {
+        const header = categoryHeaders.nth(i);
+        // カテゴリIDを取得してコンテンツの存在を確認
+        const categoryTestId = await header.getAttribute('data-testid');
+        if (categoryTestId) {
+          const categoryId = categoryTestId.replace('-header', '');
+          const contentSelector = `[data-testid="${categoryId}-content"]`;
+          const isExpanded = await page.locator(contentSelector).count() > 0;
+          if (!isExpanded) {
+            await header.click();
+            await page.waitForTimeout(200);
+          }
+        }
+      }
       
-      const firstSource = page.locator('[data-testid^="source-checkbox-"]').first();
-      if (await firstSource.count() > 0) {
-        await firstSource.click();
-        // 選択状態になるまで待機
-        await expect(
-          page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]').first()
-        ).toHaveAttribute('aria-checked', 'true');
+      // すべてのソースを解除してから最初のソースを選択
+      const deselectButton = page.locator('[data-testid="deselect-all-button"]');
+      if (await deselectButton.count() > 0) {
+        await deselectButton.click();
+        await page.waitForTimeout(500);
+        // すべて未選択になるまで待機
+        const firstCheckbox = page.locator('[data-testid^="source-checkbox-"]').first().locator('button[role="checkbox"]');
+        await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
+        
+        const firstSource = page.locator('[data-testid^="source-checkbox-"]').first();
+        if (await firstSource.count() > 0) {
+          await firstSource.click();
+          await page.waitForTimeout(500);
+          // 選択状態になるまで待機
+          await expect(firstCheckbox).toHaveAttribute('data-state', 'checked');
+        }
       }
     }
 
@@ -257,10 +312,19 @@ test.describe('フィルター条件の永続化', () => {
     await expect(page.locator('[data-testid="search-box-input"]')).toHaveValue('');
     
     // ソースフィルターが存在する場合、すべてのソースが選択されていることを確認
-    if (await sourceFilter.count() > 0) {
-      const sourceCheckboxes = await page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]').all();
-      for (const checkbox of sourceCheckboxes) {
-        await expect(checkbox).toHaveAttribute('aria-checked', 'true');
+    if (await sourceCheckboxes.count() > 0) {
+      // カテゴリを展開してチェックボックスを確認
+      const categoryHeaders = page.locator('[data-testid$="-header"]');
+      const categoryCount = await categoryHeaders.count();
+      for (let i = 0; i < categoryCount; i++) {
+        const header = categoryHeaders.nth(i);
+        await header.click();
+        await page.waitForTimeout(200);
+      }
+      
+      const checkboxes = await page.locator('[data-testid^="source-checkbox-"]').locator('button[role="checkbox"]').all();
+      for (const checkbox of checkboxes) {
+        await expect(checkbox).toHaveAttribute('data-state', 'checked');
       }
     }
   });
