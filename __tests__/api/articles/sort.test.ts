@@ -5,12 +5,24 @@ import { prisma } from '@/lib/database';
 // Mock dependencies
 jest.mock('@/lib/database');
 
-jest.mock('@/lib/cache', () => ({
-  RedisCache: jest.fn().mockImplementation(() => ({
+jest.mock('@/lib/cache/enhanced-redis-cache', () => ({
+  EnhancedRedisCache: jest.fn().mockImplementation(() => ({
     generateCacheKey: jest.fn().mockReturnValue('test-cache-key'),
     get: jest.fn().mockResolvedValue(null),
     set: jest.fn().mockResolvedValue(undefined),
+    invalidatePattern: jest.fn().mockResolvedValue(undefined),
   })),
+}));
+
+jest.mock('@/lib/metrics/performance', () => ({
+  MetricsCollector: jest.fn().mockImplementation(() => ({
+    startTimer: jest.fn(),
+    endTimer: jest.fn().mockReturnValue(10),
+    setCacheStatus: jest.fn(),
+    addMetricsToHeaders: jest.fn(),
+  })),
+  withDbTiming: jest.fn((metrics, fn) => fn()),
+  withCacheTiming: jest.fn((metrics, fn) => fn()),
 }));
 
 const prismaMock = prisma as any;
