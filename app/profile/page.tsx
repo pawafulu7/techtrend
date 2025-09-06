@@ -11,6 +11,22 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Globe, Github, Mail } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
+// プロバイダーラベル定数
+const PROVIDER_LABELS: Record<string, string> = {
+  google: 'Google',
+  github: 'GitHub',
+  email: 'メールリンク',
+  credentials: 'メール/パスワード'
+};
+
+// プロバイダーアイコンマップ
+const PROVIDER_ICONS: Record<string, React.ReactElement> = {
+  google: <Globe className="h-4 w-4" />,
+  github: <Github className="h-4 w-4" />,
+  email: <Mail className="h-4 w-4" />,
+  credentials: <Mail className="h-4 w-4" />,
+};
+
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const { data: userProfile, loading: profileLoading, error: profileError } = useUserProfile({
@@ -39,6 +55,12 @@ export default function ProfilePage() {
   }
 
   if (profileError) {
+    // 401エラーの場合は自動リダイレクト
+    if (profileError.message.includes('認証が必要')) {
+      router.replace(`/auth/login?callbackUrl=${encodeURIComponent('/profile')}`);
+      return null;
+    }
+    
     return (
       <div className="container max-w-4xl mx-auto py-10">
         <Alert variant="destructive">
@@ -52,20 +74,13 @@ export default function ProfilePage() {
 
   // 認証方法のラベルを取得
   const getAuthMethodLabel = (providers: string[] | undefined, hasPassword?: boolean) => {
-    const labels: Record<string, string> = {
-      google: 'Google',
-      github: 'GitHub',
-      email: 'メールリンク',
-      credentials: 'メール/パスワード'
-    };
-    
     if (!providers || providers.length === 0) {
-      return hasPassword ? labels.credentials : 'なし';
+      return hasPassword ? PROVIDER_LABELS.credentials : 'なし';
     }
     
-    const providerLabels = providers.map(p => labels[p] || p);
+    const providerLabels = providers.map(p => PROVIDER_LABELS[p] || p);
     if (hasPassword && !providers.includes('credentials')) {
-      providerLabels.push(labels.credentials);
+      providerLabels.push(PROVIDER_LABELS.credentials);
     }
     
     return providerLabels.join(', ');
@@ -73,18 +88,7 @@ export default function ProfilePage() {
 
   // プロバイダーアイコンを取得
   const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case 'google':
-        return <Globe className="h-4 w-4" />;
-      case 'github':
-        return <Github className="h-4 w-4" />;
-      case 'email':
-        return <Mail className="h-4 w-4" />;
-      case 'credentials':
-        return <Mail className="h-4 w-4" />;
-      default:
-        return <Mail className="h-4 w-4" />;
-    }
+    return PROVIDER_ICONS[provider] ?? <Mail className="h-4 w-4" />;
   };
 
   return (
@@ -144,7 +148,11 @@ export default function ProfilePage() {
                 <h3 className="text-sm font-medium mb-2">アカウント作成日</h3>
                 <p className="text-sm text-muted-foreground">
                   {userProfile?.createdAt
-                    ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP')
+                    ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                      })
                     : '不明'}
                 </p>
               </div>
@@ -184,15 +192,15 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent>
               {userProfile?.providers && userProfile.providers.length > 0 ? (
-                <div className="space-y-3">
+                <ul className="space-y-3" role="list">
                   {userProfile.providers.map((provider) => (
-                    <div key={provider} className="flex items-center gap-3">
+                    <li key={provider} className="flex items-center gap-3">
                       {getProviderIcon(provider)}
                       <span className="text-sm font-medium">{getAuthMethodLabel([provider])}</span>
                       <span className="text-sm text-muted-foreground">（連携済み）</span>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               ) : (
                 <p className="text-sm text-muted-foreground">
                   連携されているアカウントはありません
