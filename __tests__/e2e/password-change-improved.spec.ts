@@ -65,7 +65,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.click();
     // タブの内容が表示されるまで待機
-    await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
     // 短いパスワードを入力
     await fillPasswordChangeForm(page, {
@@ -78,7 +78,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.click('button[type="submit"]:has-text("パスワードを変更")');
     
     // バリデーションエラーが表示されることを確認
-    const errorFound = await waitForErrorMessage(page, 'パスワードは8文字以上');
+    const errorFound = await waitForErrorMessage(page, 'パスワードは8文字以上である必要があります');
     expect(errorFound).toBe(true);
   });
 
@@ -96,7 +96,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.click();
     // タブの内容が表示されるまで待機
-    await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
     // 一致しないパスワードを入力
     await fillPasswordChangeForm(page, {
@@ -124,7 +124,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.click();
     // タブの内容が表示されるまで待機
-    await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
     // 間違った現在のパスワードを入力
     await fillPasswordChangeForm(page, {
@@ -155,7 +155,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.click();
     // タブの内容が表示されるまで待機
-    await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
     // 要件を満たさないパスワードを入力
     await fillPasswordChangeForm(page, {
@@ -186,7 +186,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     const accountTab = page.locator('[role="tab"]:has-text("アカウント")');
     await accountTab.click();
     // タブの内容が表示されるまで待機
-    await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
     // 正しいパスワード情報を入力
     await fillPasswordChangeForm(page, {
@@ -201,25 +201,31 @@ test.describe.serial('Password Change Feature - Improved', () => {
     
     // ローディング状態を確認（すぐに確認する必要がある）
     const loadingButton = page.locator('button:has-text("変更中...")');
-    const isLoading = await loadingButton.isVisible();
-    
-    // ローディング状態が一瞬でも表示されることを確認
-    // （処理が速い場合は見逃す可能性があるため、エラーでも成功でも良い）
-    expect(isLoading || true).toBe(true);
+    let seen = false;
+    try {
+      await loadingButton.waitFor({ state: 'visible', timeout: 800 });
+      seen = true;
+    } catch {
+      // ローディングが短すぎて見えなかった場合
+    }
+    expect.soft(seen).toBe(true);
   });
 
   test('8. 有効な入力でパスワードが正常に変更される', async ({ page }) => {
     // パスワード変更専用ユーザーでログイン
+    const customUser = {
+      email: TEST_USER_FOR_PASSWORD_CHANGE.email,
+      password: TEST_USER_FOR_PASSWORD_CHANGE.password
+    };
+    
+    // カスタムユーザー情報を使って loginTestUser を呼び出し
     await page.goto('/auth/login');
-    await page.fill('input[id="email"]', TEST_USER_FOR_PASSWORD_CHANGE.email);
-    await page.fill('input[id="password"]', TEST_USER_FOR_PASSWORD_CHANGE.password);
+    await page.fill('input[id="email"]', customUser.email);
+    await page.fill('input[id="password"]', customUser.password);
     await page.click('button[type="submit"]:has-text("ログイン")');
     
-    // ログイン完了を待つ（URLまたは要素の出現を待機）
-    await Promise.race([
-      page.waitForURL('/', { timeout: 10000 }),
-      page.waitForSelector('[data-testid="user-menu-trigger"]', { state: 'visible', timeout: 10000 })
-    ]);
+    // ログイン成功の確認（ホームページへのリダイレクト）
+    await page.waitForURL('/', { timeout: 15000 });
     
     // プロフィールページへ移動
     await page.goto('/profile');
@@ -232,7 +238,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await accountTab.waitFor({ state: 'visible', timeout: 5000 });
     await accountTab.click();
     // タブの内容が表示されるまで待機
-    await page.waitForSelector('h2:has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
     // 正しいパスワード情報を入力
     await fillPasswordChangeForm(page, {

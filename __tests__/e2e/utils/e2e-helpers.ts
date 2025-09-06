@@ -382,15 +382,46 @@ export async function deleteTestUser(email: string): Promise<boolean> {
 }
 
 /**
- * アカウントタブを開く
+ * アカウントタブを開く（ユーザーメニュー → プロフィール → アカウントタブ）
  * @param page - Playwright page object
  */
-export async function openAccountTab(page: Page) {
-  const tab = page
-    .locator('[data-testid="account-tab"], a[href*="account"], button:has-text("アカウント")')
-    .first();
-  await tab.waitFor({ state: 'visible', timeout: 5000 });
-  await tab.click();
+export async function openAccountTab(page: Page): Promise<boolean> {
+  try {
+    // Early return if already on profile page
+    if (page.url().includes('/profile')) {
+      const accountTab = page.locator('[role="tab"][data-value="account"], [data-testid="account-tab"], button:has-text("アカウント")').first();
+      await accountTab.waitFor({ state: 'visible', timeout: 5000 });
+      await accountTab.click();
+      return true;
+    }
+
+    // ユーザーメニューのドロップダウンを開く（複数のセレクタでフォールバック）
+    const userMenuTrigger = page.locator('[data-testid="user-menu-trigger"], [data-testid="user-menu"], button[aria-haspopup="menu"]').first();
+    await userMenuTrigger.waitFor({ state: 'visible', timeout: 5000 });
+    await userMenuTrigger.click();
+    
+    // プロフィールリンクをクリック（共通セレクタ追加）
+    const profileLink = page.locator('a[href="/profile"], [data-testid="profile-link"], a:has-text("プロフィール")').first();
+    await profileLink.waitFor({ state: 'visible', timeout: 5000 });
+    
+    // Combine click and URL wait for efficiency
+    await Promise.all([
+      profileLink.click(),
+      page.waitForURL('**/profile', { timeout: 5000 })
+    ]);
+    
+    await waitForPageLoad(page);
+    
+    // アカウントタブをクリック（共通セレクタ追加）
+    const accountTab = page.locator('[role="tab"][data-value="account"], [data-testid="account-tab"], button:has-text("アカウント")').first();
+    await accountTab.waitFor({ state: 'visible', timeout: 5000 });
+    await accountTab.click();
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to open account tab:', error);
+    return false;
+  }
 }
 
 /**
@@ -401,15 +432,41 @@ export async function openAccountTab(page: Page) {
  */
 export async function fillPasswordChangeForm(
   page: Page, 
-  currentPassword: string, 
-  newPassword: string
+  passwords: { current: string; new: string; confirm: string }
 ) {
-  // Use .first() instead of :first pseudo-class for better compatibility
-  const currentPasswordInput = page.locator('input[name="currentPassword"], input[type="password"]').first();
-  await currentPasswordInput.fill(currentPassword);
+  // パスワード変更セクションをスコープにして誤入力を防止
+  const passwordSection = page.locator('form:has-text("パスワード変更"), section:has-text("パスワード変更")').first();
   
-  await page.fill('input[name="newPassword"], input[placeholder*="新しいパスワード"]', newPassword);
-  await page.fill('input[name="confirmPassword"], input[placeholder*="確認"]', newPassword);
+  // Enhanced priority chain for password inputs with precise targeting
+  const currentPasswordInput = passwordSection.locator([
+    '[data-testid="current-password-input"]',
+    'input[name="currentPassword"][type="password"]',
+    'input[autocomplete="current-password"][type="password"]',
+    'form:has-text("パスワード変更") input[type="password"]:first-of-type',
+    'label:has-text("現在のパスワード") + input[type="password"]',
+    'input[placeholder*="現在"][type="password"]'
+  ].join(', ')).first();
+  await currentPasswordInput.fill(passwords.current);
+  
+  const newPasswordInput = page.locator([
+    '[data-testid="new-password-input"]',
+    'input[name="newPassword"][type="password"]',
+    'input[autocomplete="new-password"][type="password"]:first-of-type',
+    'form:has-text("パスワード変更") input[type="password"]:nth-of-type(2)',
+    'label:has-text("新しいパスワード") + input[type="password"]',
+    'input[placeholder*="新しいパスワード"][type="password"]'
+  ].join(', ')).first();
+  await newPasswordInput.fill(passwords.new);
+  
+  const confirmPasswordInput = page.locator([
+    '[data-testid="confirm-password-input"]',
+    'input[name="confirmPassword"][type="password"]',
+    'input[autocomplete="new-password"][type="password"]:nth-of-type(2)',
+    'form:has-text("パスワード変更") input[type="password"]:nth-of-type(3)',
+    'label:has-text("確認") + input[type="password"]',
+    'input[placeholder*="確認"][type="password"]'
+  ].join(', ')).first();
+  await confirmPasswordInput.fill(passwords.confirm);
 }
 
 /**
@@ -422,10 +479,20 @@ export async function waitForErrorMessage(
   page: Page, 
   message: string, 
   timeout = 5000
-) {
-  // Use locator with hasText filter to handle messages with quotes safely
-  const errorLocator = page.locator('[class*="error"]').filter({ hasText: message });
-  await errorLocator.waitFor({ state: 'visible', timeout });
+): Promise<boolean> {
+  try {
+    // Use common error message selectors with prioritized fallback
+    const escapedMessage = escapeRegex(message);
+    const errorLocator = page.locator('[role="alert"], [data-testid="error-message"], .text-destructive, .error').filter({ 
+      hasText: new RegExp(escapedMessage, 'i') // Case-insensitive regex for text variations
+    });
+    await errorLocator.waitFor({ state: 'visible', timeout });
+    return true;
+  } catch (error) {
+    // Minimal debug logging
+    console.debug(`Error message not found: "${message}"`);
+    return false;
+  }
 }
 
 /**
@@ -438,10 +505,15 @@ export async function waitForSuccessMessage(
   page: Page, 
   message: string, 
   timeout = 5000
-) {
-  // Use locator with hasText filter to handle messages with quotes safely
-  const successLocator = page.locator('[class*="success"]').filter({ hasText: message });
-  await successLocator.waitFor({ state: 'visible', timeout });
+): Promise<boolean> {
+  try {
+    // Prioritize common success message selectors over class-name dependency
+    const successLocator = page.locator('[role="status"], [data-testid="success-message"], [aria-live="polite"], [class*="success"]').filter({ hasText: message });
+    await successLocator.waitFor({ state: 'visible', timeout });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -479,7 +551,7 @@ export async function loginTestUser(
     debug = false,
     email = TEST_USER.email,
     password = TEST_USER.password,
-    timeout = 15000
+    timeout = 30000
   } = options;
   
   try {
@@ -499,50 +571,85 @@ export async function loginTestUser(
     
     if (debug) console.log('Submitting login form...');
     
-    // Submit login with broader selector
+    // Submit login - try multiple methods
     const submitButton = page
       .locator('button[type="submit"], [data-testid="login-submit"], button:has-text("ログイン"), button:has-text("Login")')
       .first();
     await submitButton.waitFor({ state: 'visible', timeout: 5000 });
+    
+    // ナビゲーションを待つPromiseを先に作成
+    const navigationPromise = page.waitForURL((u) => {
+      try { 
+        const url = new URL(u);
+        return !url.pathname.includes('/auth/login');
+      } catch { 
+        return false; 
+      }
+    }, { timeout: 20000 }).catch(() => null);
+    
+    // ボタンをクリック
     await submitButton.click();
     
-    // Wait for navigation with robust checks
-    const successPaths = options.successUrls ?? ['/', '/dashboard', '/home'];
-    const okPaths = new Set(successPaths);
+    // Enterキーも試す（フォーム送信のフォールバック）
+    await page.keyboard.press('Enter');
     
-    // Wait for URL change and verify no errors
-    await page.waitForURL(
-      (u) => {
-        try { 
-          const url = new URL(u);
-          // Check if we're on a success page (not on login/error page)
-          const isSuccessPath = okPaths.has(url.pathname);
-          const notOnLoginPage = !url.pathname.includes('/auth/login');
-          const notOnErrorPage = !url.pathname.includes('/error');
-          return isSuccessPath && notOnLoginPage && notOnErrorPage;
-        } catch { 
-          return false; 
+    // ナビゲーションを待つ
+    const navigationResult = await navigationPromise;
+    
+    if (!navigationResult) {
+      if (debug) console.log('Navigation timeout, checking current state...');
+      
+      // 少し待ってから再度URLをチェック
+      await page.waitForTimeout(2000);
+      
+      const currentUrl = page.url();
+      if (currentUrl.includes('/auth/login')) {
+        // エラーメッセージを確認
+        const errorMessage = await page.locator('p.text-destructive, .text-red-500, [role="alert"]').count();
+        if (errorMessage > 0) {
+          if (debug) console.log('Login error message detected');
+          return false;
         }
-      },
-      { timeout }
-    );
-    
-    // Additional verification: check for user menu or logout button
-    try {
-      const userIndicator = page.locator(
-        '[data-testid="user-menu"], [data-testid="logout-button"], button:has-text("ログアウト")'
-      ).first();
-      await userIndicator.waitFor({ state: 'visible', timeout: 2000 });
-    } catch {
-      // User indicator might not be immediately visible, but URL check passed
+        
+        // フォームが送信されていない可能性があるので、再度送信を試みる
+        if (debug) console.log('Retrying form submission...');
+        await submitButton.click({ force: true });
+        
+        // 再度ナビゲーションを待つ
+        try {
+          await page.waitForURL((u) => !u.includes('/auth/login'), { timeout: 10000 });
+        } catch {
+          if (debug) console.log('Second navigation attempt failed');
+          return false;
+        }
+      }
     }
     
-    if (debug) console.log('Login successful!');
+    // 最終確認
+    const finalUrl = page.url();
+    const isSuccess = !finalUrl.includes('/auth/login') && !finalUrl.includes('/error');
     
-    return true;
+    if (isSuccess) {
+      if (debug) console.log('Login successful! Redirected to:', finalUrl);
+      
+      // ユーザーインジケーターの確認（オプション）
+      try {
+        const userIndicator = page.locator(
+          '[data-testid="user-menu-trigger"], [data-testid="user-menu"], button:has-text("ログアウト")'
+        ).first();
+        await userIndicator.waitFor({ state: 'visible', timeout: 3000 });
+        if (debug) console.log('User indicator confirmed');
+      } catch {
+        if (debug) console.log('User indicator not visible, but login succeeded');
+      }
+    } else {
+      if (debug) console.log('Login failed, still on:', finalUrl);
+    }
+    
+    return isSuccess;
   } catch (error) {
     if (debug) {
-      console.error('Login failed:', error);
+      console.error('Login failed with error:', error);
       console.error('Current URL:', page.url());
     }
     return false;

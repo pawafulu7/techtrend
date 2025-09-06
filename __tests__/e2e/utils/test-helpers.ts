@@ -6,29 +6,29 @@ import { SELECTORS } from '../constants/selectors';
  * 注: 開発サーバーは常時起動（http://localhost:3000）
  */
 export async function waitForPageLoad(page: Page) {
-  // ブラウザ判定を追加
-  const browserName = page.context().browser()?.browserType().name();
+  // DOMコンテンツの読み込み完了を待つ
+  await page.waitForLoadState('domcontentloaded');
   
-  if (browserName === 'firefox') {
-    // Firefoxはより慎重な待機
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(1000); // 500ms → 1000ms
-    
-    // 追加で初期レンダリング完了を確認
-    await page.evaluate(() => {
-      return new Promise(resolve => {
-        if (document.readyState === 'complete') {
-          resolve(true);
-        } else {
-          window.addEventListener('load', () => resolve(true));
-        }
-      });
+  // 主要な要素が表示されるまで待機（動的待機）
+  try {
+    // ヘッダーまたはメインコンテンツエリアの存在を確認
+    await page.waitForSelector('[data-testid="header"], header, nav, main', {
+      timeout: 5000,
+      state: 'visible'
     });
-  } else {
-    // その他のブラウザは現行通り
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(500);
+  } catch {
+    // フォールバック: セレクタが見つからない場合は基本的な要素を待つ
+    await page.waitForSelector('body', { state: 'visible' });
   }
+  
+  // JavaScriptの初期化完了を待つ
+  await page.waitForFunction(() => {
+    // React/Next.jsアプリケーションの準備完了を確認
+    return document.readyState === 'complete' && 
+           (document.querySelector('[data-reactroot]') !== null || 
+            document.querySelector('#__next') !== null ||
+            document.querySelector('main') !== null);
+  }, { timeout: 5000 });
 }
 
 /**
@@ -239,6 +239,13 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
     { timeout }
   );
   
-  // 追加の安定化待機
-  await page.waitForTimeout(500);
+  // 検索結果の安定を確認（状態ベースの待機）
+  await page.waitForFunction(
+    () => {
+      const articles = document.querySelectorAll('[data-testid="article-card"], article, [class*="article"]');
+      return articles.length > 0 || document.querySelector('p')?.textContent?.includes('記事が見つかりませんでした');
+    },
+    undefined,
+    { timeout: 2000 }
+  );
 }

@@ -25,62 +25,70 @@ test.describe('テーマ切り替え機能', () => {
     // ボタンが存在することを確認
     await expect(themeToggle).toBeVisible();
     
-    // ボタンをクリックしてドロップダウンを開く
+    // 初期状態（ライトモード）でMoonアイコンが表示されていることを確認
+    await expect(themeToggle.locator('svg')).toBeVisible();
+    
+    // ボタンをクリックしてダークモードに切り替え
     await themeToggle.click();
     
-    // ダークモードオプションをクリック
-    const darkOption = page.locator('[data-testid="theme-option-dark"]');
-    await expect(darkOption).toBeVisible();
-    await darkOption.click();
-    
-    // HTMLにdarkクラスが追加されていることを確認
-    await expect(page.locator('html')).toHaveClass(/dark/);
-    
-    // カードの背景色がダークモード用になっていることを確認
-    const card = page.locator(SELECTORS.ARTICLE_CARD).first();
-    if (await card.isVisible()) {
-      // ダークモード用のクラスが適用されていることを確認
-      const cardClasses = await card.getAttribute('class');
-      expect(cardClasses).toContain('dark:bg-gray-800');
-    }
-  });
-
-  test('ライトモードへの切り替えが機能する', async ({ page }) => {
-    // まずダークモードに切り替え
-    await page.evaluate(() => {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    });
-    
-    // ページをリロード
-    await page.reload();
-    await waitForPageLoad(page);
-    
-    // テーマトグルボタンをクリック
-    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
-    await themeToggle.click();
-    
-    // ライトモードオプションをクリック
-    const lightOption = page.locator('[data-testid="theme-option-light"]');
-    await expect(lightOption).toBeVisible();
-    await lightOption.click();
-    
-    // HTMLからdarkクラスが削除されていることを確認
-    await expect(page.locator('html')).not.toHaveClass(/dark/);
-  });
-
-  test('テーマがLocalStorageに保存される', async ({ page }) => {
-    // テーマトグルボタンをクリック
-    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
-    await themeToggle.click();
-    
-    // ダークモードを選択
-    const darkOption = page.locator('[data-testid="theme-option-dark"]');
-    await darkOption.click();
+    // HTMLにdarkクラスが追加されるまで待機（自動的に待機する）
+    await expect(page.locator('html')).toHaveClass(/dark/, { timeout: 5000 });
     
     // LocalStorageにテーマが保存されていることを確認
     const theme = await page.evaluate(() => localStorage.getItem('theme'));
     expect(theme).toBe('dark');
+  });
+
+  test('ライトモードへの切り替えが機能する', async ({ page }) => {
+    // テーマトグルボタンをクリックしてまずダークモードに切り替え
+    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
+    await expect(themeToggle).toBeVisible();
+    
+    // 現在のクラスを確認（初期はlightまたはクラスなし）
+    
+    // ダークモードに切り替え
+    await themeToggle.click();
+    
+    // ダークモードが適用されるまで待機（自動的に待機する）
+    await expect(page.locator('html')).toHaveClass(/dark/, { timeout: 5000 });
+    
+    // LocalStorageにdarkテーマが保存されていることを確認
+    const darkTheme = await page.evaluate(() => localStorage.getItem('theme'));
+    expect(darkTheme).toBe('dark');
+    
+    // テーマトグルボタンをクリックしてライトモードに戻す
+    await themeToggle.click();
+    
+    // HTMLからdarkクラスが削除されていることを確認（自動的に待機する）
+    await expect(page.locator('html')).not.toHaveClass(/dark/, { timeout: 5000 });
+    
+    // LocalStorageにライトテーマが保存されていることを確認
+    const lightTheme = await page.evaluate(() => localStorage.getItem('theme'));
+    expect(lightTheme).toBe('light');
+  });
+
+  test('テーマがLocalStorageに保存される', async ({ page }) => {
+    // テーマトグルボタンをクリックしてダークモードに切り替え
+    const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
+    await expect(themeToggle).toBeVisible();
+    await themeToggle.click();
+    
+    // ダークモードが適用されるまで待機
+    await expect(page.locator('html')).toHaveClass(/dark/, { timeout: 5000 });
+    
+    // LocalStorageにダークテーマが保存されていることを確認
+    const darkTheme = await page.evaluate(() => localStorage.getItem('theme'));
+    expect(darkTheme).toBe('dark');
+    
+    // 再度クリックしてライトモードに戻す
+    await themeToggle.click();
+    
+    // ライトモードが適用されるまで待機
+    await expect(page.locator('html')).not.toHaveClass(/dark/, { timeout: 5000 });
+    
+    // LocalStorageにライトテーマが保存されていることを確認
+    const lightTheme = await page.evaluate(() => localStorage.getItem('theme'));
+    expect(lightTheme).toBe('light');
   });
 
   test('リロード後もテーマが維持される', async ({ context }) => {
@@ -93,12 +101,11 @@ test.describe('テーマ切り替え機能', () => {
     
     // ダークモードに設定
     const themeToggle = newPage.locator('[data-testid="theme-toggle-button"]').first();
+    await expect(themeToggle).toBeVisible();
     await themeToggle.click();
-    const darkOption = newPage.locator('[data-testid="theme-option-dark"]');
-    await darkOption.click();
     
-    // darkクラスが適用されていることを確認
-    await expect(newPage.locator('html')).toHaveClass(/dark/);
+    // darkクラスが適用されるまで待機（自動的に待機する）
+    await expect(newPage.locator('html')).toHaveClass(/dark/, { timeout: 5000 });
     
     // LocalStorageに値が保存されていることを確認
     const themeBeforeReload = await newPage.evaluate(() => localStorage.getItem('theme'));
@@ -119,7 +126,11 @@ test.describe('テーマ切り替え機能', () => {
     await newPage.close();
   });
 
-  test('システムテーマとの連動が機能する', async ({ page }) => {
+  test.skip('システムテーマとの連動が機能する', async ({ page }) => {
+    // 注意: 現在のThemeToggleコンポーネントは単純なLight/Darkトグルのため
+    // システムテーマ機能は実装されていません
+    // このテストは今後システムテーマ対応時に有効化してください
+    
     // システムテーマオプションを選択
     const themeToggle = page.locator('[data-testid="theme-toggle-button"]').first();
     await themeToggle.click();
@@ -131,18 +142,6 @@ test.describe('テーマ切り替え機能', () => {
     // LocalStorageにsystemが保存されていることを確認
     const theme = await page.evaluate(() => localStorage.getItem('theme'));
     expect(theme).toBe('system');
-    
-    // システムがダークモードの場合をエミュレート
-    await page.emulateMedia({ colorScheme: 'dark' });
-    await page.waitForTimeout(100); // メディアクエリの変更を待つ
-    
-    // darkクラスが適用されることを確認
-    const _htmlClasses = await page.locator('html').getAttribute('class');
-    // システムテーマ設定時の挙動を確認（実装によって異なる可能性あり）
-    
-    // システムがライトモードの場合をエミュレート
-    await page.emulateMedia({ colorScheme: 'light' });
-    await page.waitForTimeout(100);
   });
 
   test('ダークモードでカードが適切に表示される', async ({ page }) => {

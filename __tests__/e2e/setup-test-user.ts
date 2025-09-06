@@ -1,14 +1,52 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import { TEST_USER } from './utils/e2e-helpers';
+
+// TEST_DATABASE_URL が未設定のときのみ .env.test を読み込む
+if (!process.env.TEST_DATABASE_URL) {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.test') });
+}
+
+// テスト用DB URL解決ヘルパー
+const resolveTestDbUrl = () =>
+  process.env.TEST_DATABASE_URL ||
+  'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
+
+// 接続文字列をマスクしてセキュアにログ出力するヘルパー
+const maskConnectionString = (url: string): string => {
+  try {
+    const parsed = new URL(url);
+    const maskedPassword = parsed.password ? '***' : '';
+    return `${parsed.protocol}//${parsed.username}:${maskedPassword}@${parsed.hostname}:${parsed.port}${parsed.pathname}`;
+  } catch {
+    return 'Invalid URL format';
+  }
+};
 
 /**
  * E2Eテスト用のユーザーをセットアップする
  * PrismaClientを使用してデータベースに直接接続
  */
 export async function setupTestUser() {
+  // テスト用データベースURLを明示的に指定
+  const TEST_DATABASE_URL = resolveTestDbUrl();
+  
+  // セキュアなデバッグ出力（パスワードをマスク）
+  if (process.env.DEBUG_E2E) {
+    console.log('🔍 Database connection info (DEBUG mode):');
+    console.log('  TEST_DATABASE_URL from env:', process.env.TEST_DATABASE_URL ? maskConnectionString(process.env.TEST_DATABASE_URL) : 'Not set');
+    console.log('  Using connection string:', maskConnectionString(TEST_DATABASE_URL));
+    console.log('  DATABASE_URL from env:', process.env.DATABASE_URL ? maskConnectionString(process.env.DATABASE_URL) : 'Not set');
+  }
+  
   const prisma = new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL,
+    datasources: {
+      db: {
+        url: TEST_DATABASE_URL,
+      },
+    },
   });
 
   try {
@@ -48,8 +86,15 @@ export async function setupTestUser() {
  * テストユーザーのクリーンアップ
  */
 export async function cleanupTestUser() {
+  // テスト用データベースURLを明示的に指定
+  const TEST_DATABASE_URL = resolveTestDbUrl();
+  
   const prisma = new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL,
+    datasources: {
+      db: {
+        url: TEST_DATABASE_URL,
+      },
+    },
   });
 
   try {
@@ -68,4 +113,16 @@ export async function cleanupTestUser() {
   } finally {
     await prisma.$disconnect();
   }
+}
+
+// CLIから直接実行された場合の処理
+if (require.main === module) {
+  setupTestUser()
+    .then((success) => {
+      process.exit(success ? 0 : 1);
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      process.exit(1);
+    });
 }

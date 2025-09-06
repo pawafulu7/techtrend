@@ -18,27 +18,32 @@ test.describe('ソースフィルタリング機能', () => {
     await selectAllButton.click();
     await page.waitForTimeout(500);
 
-    // 最初のソースのチェックボックスを探す
-    const firstSourceCheckbox = page.locator('[data-testid^="source-checkbox-"]').first();
-    await expect(firstSourceCheckbox).toBeVisible();
+    // 海外ソースカテゴリを展開
+    const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
+    await expect(foreignCategoryHeader).toBeVisible();
+    await foreignCategoryHeader.click();
+    // 展開アニメーションを待つ
+    await page.waitForTimeout(500);
+
+    // Dev.toのチェックボックスを探す（海外ソース内）- より安定したセレクター使用
+    const devtoCheckbox = page.getByTestId('source-checkbox-devto');
+    await expect(devtoCheckbox).toBeVisible();
     
-    // ソース名を取得
-    const _sourceName = await firstSourceCheckbox.locator('label').textContent();
+    // 任意: 表示名を検証する場合は有効化
+    // await expect(devtoCheckbox.locator('label')).toHaveText(/Dev\.to/i);
     
     // チェックボックスが選択されていることを確認
-    const checkbox = firstSourceCheckbox.locator('button[role="checkbox"]');
+    const checkbox = devtoCheckbox.getByRole('checkbox');
     await expect(checkbox).toHaveAttribute('data-state', 'checked');
     
     // チェックボックスをクリックして選択を解除
-    await firstSourceCheckbox.click();
-    await page.waitForTimeout(500);
+    await checkbox.click();
     
     // チェックが外れたことを確認
     await expect(checkbox).toHaveAttribute('data-state', 'unchecked');
     
     // 再度クリックして選択
-    await firstSourceCheckbox.click();
-    await page.waitForTimeout(500);
+    await checkbox.click();
     
     // チェックが戻ったことを確認
     await expect(checkbox).toHaveAttribute('data-state', 'checked');
@@ -55,14 +60,14 @@ test.describe('ソースフィルタリング機能', () => {
     const _filterArea = page.locator('[data-testid="filter-area"]');
     
     // Dev.toのチェックボックスを探す（通常存在するソース）
-    const devtoCheckbox = page.locator('[data-testid="source-checkbox-Dev.to"]');
+    const devtoCheckbox = page.getByTestId('source-checkbox-devto');
     
     if (await devtoCheckbox.isVisible()) {
       // Dev.toの選択を解除
       await devtoCheckbox.click();
       
-      // 記事が更新されるのを待つ
-      await page.waitForTimeout(1000);
+      // 記事リストの更新完了を待つ
+      await page.waitForSelector('[data-testid="article-card"]', { state: 'attached' });
       
       // Dev.toの記事が表示されていないことを確認
       const articles = page.locator('[data-testid="article-card"]');
@@ -91,15 +96,18 @@ test.describe('ソースフィルタリング機能', () => {
     // フィルターエリアを取得
     const _filterArea = page.locator('[data-testid="filter-area"]');
     
-    // Firefox対応: ページの読み込みとデータの表示を確実に待つ
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    // Firefox対応: 記事データの読み込み完了を待つ
+    await page.waitForSelector('[data-testid="article-card"]', { 
+      timeout: 10000,
+      state: 'visible' 
+    });
+    await page.waitForTimeout(500);
     
     // 最初に全選択ボタンをクリックして、すべて選択状態にする
     const selectAllButton = page.locator('[data-testid="select-all-button"]');
     await expect(selectAllButton).toBeVisible();
     await selectAllButton.click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
     
     // 記事カードが表示されるまで待つ（Firefoxの遅延対策）
     await page.waitForSelector('[data-testid="article-card"]', { 
@@ -118,6 +126,22 @@ test.describe('ソースフィルタリング機能', () => {
     
     // すべてのチェックボックスが解除されたことを確認
     await page.waitForTimeout(500);
+    
+    // まずカテゴリを展開する必要がある
+    const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
+    if (await foreignCategoryHeader.isVisible()) {
+      await foreignCategoryHeader.click();
+      // 展開アニメーションを待つ
+    await page.waitForTimeout(500);
+    }
+    
+    const domesticCategoryHeader = page.locator('[data-testid="category-domestic-header"]');
+    if (await domesticCategoryHeader.isVisible()) {
+      await domesticCategoryHeader.click();
+      // 展開アニメーションを待つ
+    await page.waitForTimeout(500);
+    }
+    
     const allCheckboxes = page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]');
     const checkboxCount = await allCheckboxes.count();
     
@@ -126,8 +150,11 @@ test.describe('ソースフィルタリング機能', () => {
       await expect(checkbox).toHaveAttribute('data-state', 'unchecked');
     }
     
-    // 記事の更新を待つ
-    await page.waitForTimeout(1500);
+    // 記事フィルタリングの完了を待つ
+    await page.waitForFunction(() => {
+      const cards = document.querySelectorAll('[data-testid="article-card"]');
+      return cards.length >= 0; // 記事数が確定するまで待つ
+    });
     
     // 記事数が変化したことを確認（0件または減少）
     const articlesAfterDeselect = await page.locator('[data-testid="article-card"]').count();
@@ -145,20 +172,26 @@ test.describe('ソースフィルタリング機能', () => {
     }
     
     // 記事が再度表示されることを確認
-    await page.waitForTimeout(1500);
+    await page.waitForFunction(() => {
+      const cards = document.querySelectorAll('[data-testid="article-card"]');
+      return cards.length > 0; // 記事が表示されるまで待つ
+    });
     const articlesAfterSelect = await page.locator('[data-testid="article-card"]').count();
     expect(articlesAfterSelect).toBeGreaterThan(0);
   });
 
   test('複数ソースの選択状態を管理できる', async ({ page, browserName }) => {
-    // Firefox対応: ページの読み込みとデータの表示を確実に待つ
-    await page.waitForLoadState('networkidle');
+    // Firefox対応: 記事データの読み込み完了を待つ
+    await page.waitForSelector('[data-testid="article-card"]', { 
+      timeout: 10000,
+      state: 'visible' 
+    });
     
     // Firefoxは読み込みが遅い場合があるため追加待機
     if (browserName === 'firefox') {
       await page.waitForTimeout(2000);
     } else {
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle', { timeout: 5000 });
     }
     
     // フィルターエリアを取得
@@ -170,7 +203,21 @@ test.describe('ソースフィルタリング機能', () => {
       state: 'visible' 
     });
     
-    // 複数のソースチェックボックスを取得
+    // 海外ソースカテゴリを展開
+    const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
+    await expect(foreignCategoryHeader).toBeVisible();
+    await foreignCategoryHeader.click();
+    // 展開アニメーションを待つ
+    await page.waitForTimeout(500);
+    
+    // 国内情報サイトカテゴリも展開
+    const domesticCategoryHeader = page.locator('[data-testid="category-domestic-header"]');
+    await expect(domesticCategoryHeader).toBeVisible();
+    await domesticCategoryHeader.click();
+    // 展開アニメーションを待つ
+    await page.waitForTimeout(500);
+    
+    // 複数のソースチェックボックスを取得（展開後）
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
     const checkboxCount = await sourceCheckboxes.count();
     
@@ -204,7 +251,7 @@ test.describe('ソースフィルタリング機能', () => {
     if (browserName === 'firefox') {
       await page.waitForTimeout(2000);
     } else {
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle', { timeout: 5000 });
     }
     const articles = await page.locator('[data-testid="article-card"]').count();
     

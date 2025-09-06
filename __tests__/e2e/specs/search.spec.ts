@@ -46,21 +46,18 @@ test.describe('検索機能', () => {
     // 検索結果の表示を待つ
     await waitForSearchResults(page);
     
-    // 検索結果カウントの表示を確認（「○○件」の形式）
-    // 件数表示が現在実装されていない可能性があるため、オプショナルな確認に変更
-    const resultCountText = page.locator(SELECTORS.SEARCH_RESULT_COUNT);
+    // 検索結果カウントの表示を確認（「○○件の記事」の形式）
+    const resultCountLocator = page.locator('text=/\\d+件の記事/').first();
+    const countExists = await resultCountLocator.count();
     
-    // 件数表示の存在を確認（オプショナル）
-    const countExists = await resultCountText.count();
     if (countExists > 0) {
-      await expect(resultCountText.first()).toBeVisible({ timeout: 5000 });
-      const countText = await resultCountText.first().textContent();
-      if (countText) {
-        expect(countText).toMatch(/\d+件/);
-      }
+      await expect(resultCountLocator).toHaveText(/\d+件の記事/, { timeout: 5000 });
     } else {
       // 件数表示がない場合は、少なくとも記事が表示されていることを確認
-      console.error('検索結果カウント表示が見つかりませんでした。記事の表示を確認します。');
+      console.log('検索結果カウント表示が見つかりませんでした。記事の表示を確認します。');
+      // 記事が1件以上表示されていることを確認
+      const articles = await page.locator(SELECTORS.ARTICLE_CARD).count();
+      expect(articles).toBeGreaterThan(0);
     }
   });
 
