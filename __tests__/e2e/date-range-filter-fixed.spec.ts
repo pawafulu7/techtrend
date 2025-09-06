@@ -44,11 +44,16 @@ test.describe('Date Range Filter - Fixed', () => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await trigger.click();
     
+    // Wait for dropdown to be visible
+    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: 5000 });
+    
     // Select "今日" option
     await page.locator('[data-testid="date-range-option-today"]').click();
     
     // Wait for URL to change
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => {
+      return window.location.search.includes('dateRange=today');
+    }, { timeout: 10000 });
     
     // Check URL has correct parameter
     expect(page.url()).toContain('dateRange=today');
