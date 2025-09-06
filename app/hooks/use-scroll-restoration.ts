@@ -33,7 +33,8 @@ export function useScrollRestoration(
   const [restorationState, setRestorationState] = useState({
     isRestoring: false,
     currentPage: 0,
-    targetPages: 0
+    targetPages: 0,
+    targetArticleCount: 0  // 復元したい記事数
   });
 
   // スクロール位置の保存
@@ -133,7 +134,8 @@ export function useScrollRestoration(
     setRestorationState({
       isRestoring: false,
       currentPage: 0,
-      targetPages: 0
+      targetPages: 0,
+      targetArticleCount: 0
     });
     
     // スクロール復元キャンセルイベントを発火
@@ -207,6 +209,9 @@ export function useScrollRestoration(
       isRestoringRef.current = true;
       targetScrollYRef.current = data.scrollY;
 
+      // 復元したい記事数
+      const targetArticleCount = data.articleCount;
+      
       // 必要なページ数まで自動読み込み
       const targetPageCount = Math.min(
         data.pageCount || Math.ceil(data.articleCount / 20),
@@ -219,7 +224,8 @@ export function useScrollRestoration(
       setRestorationState({
         isRestoring: true,
         currentPage: pageCount,
-        targetPages: targetPageCount
+        targetPages: targetPageCount,
+        targetArticleCount: targetArticleCount
       });
       
       if (targetPageCount > pageCount && hasNextPage && !isFetchingNextPage) {
@@ -252,7 +258,8 @@ export function useScrollRestoration(
             setRestorationState({
               isRestoring: false,
               currentPage: 0,
-              targetPages: 0
+              targetPages: 0,
+              targetArticleCount: 0
             });
             
             // URLから'returning'パラメータを削除
@@ -331,7 +338,8 @@ export function useScrollRestoration(
               setRestorationState({
                 isRestoring: false,
                 currentPage: 0,
-                targetPages: 0
+                targetPages: 0,
+                targetArticleCount: 0
               });
               
               // URLから'returning'パラメータを削除
@@ -365,7 +373,8 @@ export function useScrollRestoration(
               setRestorationState({
                 isRestoring: false,
                 currentPage: 0,
-                targetPages: 0
+                targetPages: 0,
+                targetArticleCount: 0
               });
               
               // URLから'returning'パラメータを削除
@@ -396,6 +405,7 @@ export function useScrollRestoration(
     isRestoring: restorationState.isRestoring,
     currentPage: restorationState.currentPage,
     targetPages: restorationState.targetPages,
+    targetArticleCount: restorationState.targetArticleCount,  // 復元したい記事数を返す
     cancelRestoration
   };
 }

@@ -92,6 +92,9 @@ export function HomeClientInfinite({
     return params;
   }, [searchParams, initialSortBy]);
 
+  // スクロール復元用の記事数を取得（初回のみ）
+  const [restorationLimit, setRestorationLimit] = useState<number | undefined>(undefined);
+  
   const {
     data,
     fetchNextPage,
@@ -100,7 +103,10 @@ export function HomeClientInfinite({
     isLoading,
     isError,
     error,
-  } = useInfiniteArticles(filters);
+  } = useInfiniteArticles(filters, {
+    initialLimit: restorationLimit,
+    restorationMode: isReturningFromArticle && restorationLimit !== undefined
+  });
 
   // ページごとの記事を1つの配列にフラット化
   const allArticles = useMemo(() => {
@@ -117,6 +123,7 @@ export function HomeClientInfinite({
     isRestoring,
     currentPage,
     targetPages,
+    targetArticleCount,
     cancelRestoration
   } = useScrollRestoration(
     allArticles.length,
@@ -128,6 +135,13 @@ export function HomeClientInfinite({
     scrollContainerRef,  // スクロールコンテナの参照を追加
     isReturningFromArticle  // 記事詳細から戻ってきたかのフラグ
   );
+  
+  // 復元が必要な記事数をuseInfiniteArticlesに渡す
+  useEffect(() => {
+    if (isReturningFromArticle && targetArticleCount > 0 && restorationLimit === undefined) {
+      setRestorationLimit(targetArticleCount);
+    }
+  }, [isReturningFromArticle, targetArticleCount, restorationLimit]);
 
   // 記事クリック時のコールバック
   const handleArticleClick = useCallback(() => {
@@ -151,6 +165,8 @@ export function HomeClientInfinite({
           <ScrollRestorationLoading
             currentPage={currentPage}
             targetPages={targetPages}
+            currentArticles={allArticles.length}
+            targetArticles={targetArticleCount}
             onCancel={cancelRestoration}
           />
         )}

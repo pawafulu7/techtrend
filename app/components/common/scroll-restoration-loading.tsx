@@ -7,15 +7,27 @@ import { Progress } from '@/components/ui/progress';
 interface ScrollRestorationLoadingProps {
   currentPage: number;
   targetPages: number;
+  currentArticles?: number;
+  targetArticles?: number;
   onCancel: () => void;
 }
 
 export function ScrollRestorationLoading({
   currentPage,
   targetPages,
+  currentArticles,
+  targetArticles,
   onCancel
 }: ScrollRestorationLoadingProps) {
-  const progress = targetPages > 0 ? (currentPage / targetPages) * 100 : 0;
+  // 記事数ベースで進捗を計算（記事数が提供されている場合）
+  const progress = targetArticles && currentArticles !== undefined
+    ? targetArticles > 0 ? (currentArticles / targetArticles) * 100 : 0
+    : targetPages > 0 ? (currentPage / targetPages) * 100 : 0;
+  
+  // 表示テキストを記事数ベースに切り替え
+  const displayText = targetArticles && currentArticles !== undefined
+    ? `${currentArticles} / ${targetArticles} 件`
+    : `${currentPage} / ${targetPages} ページ`;
   
   return (
     <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 
@@ -32,7 +44,7 @@ export function ScrollRestorationLoading({
           
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-              <span>{currentPage} / {targetPages} ページ</span>
+              <span>{displayText}</span>
               <span>{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="h-2" />

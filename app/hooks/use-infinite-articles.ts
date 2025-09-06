@@ -24,7 +24,15 @@ interface ArticlesResponse {
 
 type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
 
-export function useInfiniteArticles(filters: ArticleFilters) {
+export interface UseInfiniteArticlesOptions {
+  initialLimit?: number;  // 初回読み込み時のlimit
+  restorationMode?: boolean;  // 復元モードフラグ
+}
+
+export function useInfiniteArticles(
+  filters: ArticleFilters,
+  options?: UseInfiniteArticlesOptions
+) {
   const queryClient = useQueryClient();
   const prevFilterKeyRef = useRef<string>('');
   
@@ -113,9 +121,21 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     };
   }, [handleReadStatusChanged]);
   
+  // 復元モード時のlimitを計算
+  const getPageLimit = useCallback((pageNum: number) => {
+    // 初回ページで復元モードの場合
+    if (pageNum === 1 && options?.initialLimit) {
+      // 最大100件まで一括取得
+      return Math.min(options.initialLimit, 100);
+    }
+    // 通常は20件
+    return 20;
+  }, [options?.initialLimit]);
+
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
     queryFn: async ({ pageParam = 1, signal }) => {
+      const currentPage = pageParam as number;
       // 毎回新しいURLSearchParamsを作成
       const searchParams = new URLSearchParams();
       
@@ -127,8 +147,11 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       });
       
       // ページパラメータを追加
-      searchParams.set('page', String(pageParam));
-      searchParams.set('limit', '20');
+      searchParams.set('page', String(currentPage));
+      
+      // limitパラメータを動的に設定
+      const limit = getPageLimit(currentPage);
+      searchParams.set('limit', String(limit));
       
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
