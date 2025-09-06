@@ -3,23 +3,25 @@ import { prisma } from '@/lib/database';
 import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
-import { RedisCache } from '@/lib/cache';
+import { EnhancedRedisCache } from '@/lib/cache/enhanced-redis-cache';
 import { Prisma, type ArticleCategory } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
+import { MetricsCollector, withDbTiming, withCacheTiming } from '@/lib/metrics/performance';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
-// Initialize Redis cache with 5 minutes TTL for articles
-const cache = new RedisCache({
-  ttl: 300, // 5 minutes
-  namespace: '@techtrend/cache:api'
+// Initialize Enhanced Redis cache with 15 minutes TTL for articles
+const cache = new EnhancedRedisCache({
+  ttl: 900, // 15 minutes
+  namespace: '@techtrend/cache:api',
+  staleTime: 300, // 5 minutes before stale
+  enableSWR: true // Enable stale-while-revalidate
 });
 
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  let cacheStatus = 'MISS';
+  const metrics = new MetricsCollector();
   
   try {
     const { searchParams } = new URL(request.url);
@@ -86,14 +88,17 @@ export async function GET(request: NextRequest) {
     });
 
     // Check cache first
-    const cachedResult = await cache.get(cacheKey);
+    const cachedResult = await withCacheTiming(
+      metrics,
+      () => cache.get(cacheKey)
+    );
     
     let result;
     if (cachedResult) {
-      cacheStatus = 'HIT';
+      metrics.setCacheStatus('HIT');
       result = cachedResult;
     } else {
-      cacheStatus = 'MISS';
+      metrics.setCacheStatus('MISS');
       
       // Fetch fresh data
       result = await (async () => {
@@ -248,7 +253,11 @@ export async function GET(request: NextRequest) {
       }
 
       // Get total count
-      const total = await prisma.article.count({ where });
+      const total = await withDbTiming(
+        metrics,
+        () => prisma.article.count({ where }),
+        'db_count'
+      );
 
       // Build select object based on includeRelations parameter
       const selectFields: Prisma.ArticleSelect = {
@@ -293,15 +302,19 @@ export async function GET(request: NextRequest) {
       }
 
       // Get articles
-      const articles = await prisma.article.findMany({
-        where,
-        select: selectFields,
-        orderBy: {
-          [finalSortBy]: sortOrder,
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      const articles = await withDbTiming(
+        metrics,
+        () => prisma.article.findMany({
+          where,
+          select: selectFields,
+          orderBy: {
+            [finalSortBy]: sortOrder,
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        'db_query'
+      );
 
       // Return the data to be cached
       return {
@@ -317,17 +330,14 @@ export async function GET(request: NextRequest) {
       await cache.set(cacheKey, result);
     }
     
-    // Calculate response time
-    const responseTime = Date.now() - startTime;
-    
     // Create response with performance headers
     const response = NextResponse.json({
       success: true,
       data: result,
     } as ApiResponse<PaginatedResponse<ArticleWithRelations>>);
     
-    response.headers.set('X-Cache-Status', cacheStatus);
-    response.headers.set('X-Response-Time', `${responseTime}ms`);
+    // Add performance metrics to headers
+    metrics.addMetricsToHeaders(response.headers);
     
     return response;
   } catch (error) {
