@@ -40,8 +40,8 @@ test.describe('推薦機能', () => {
       return;
     }
     
-    // 3秒待機してクライアントサイドレンダリングを待つ
-    await page.waitForTimeout(3000);
+    // クライアントサイドレンダリング完了を待つ（より安定した方法）
+    await page.waitForFunction(() => window.document.readyState === 'complete');
     
     // トグルボタンが存在することを確認（data-testidを使用）
     const toggleButton = page.locator('[data-testid="recommendation-toggle"]');
@@ -75,8 +75,8 @@ test.describe('推薦機能', () => {
     // ボタンをクリックして状態を切り替え
     await toggleButton.click();
     
-    // aria-labelが適切に変更されることを確認
-    await page.waitForTimeout(500); // 状態変更を待つ
+    // aria-labelが適切に変更されることを確認（状態変更完了を待つ）
+    await toggleButton.waitFor({ state: 'stable', timeout: 2000 });
     const newAriaLabel = await toggleButton.getAttribute('aria-label');
     expect(newAriaLabel).toBeTruthy();
     expect(['おすすめを表示', 'おすすめを非表示']).toContain(newAriaLabel);
@@ -106,9 +106,12 @@ test.describe('推薦機能', () => {
       return localStorage.getItem('hide-recommendations');
     });
     
-    // トグルボタンをクリック
+    // トグルボタンをクリックして状態変更を待つ
     await toggleButton.click();
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => {
+      const item = localStorage.getItem('hide-recommendations');
+      return item !== null;
+    });
     
     // localStorageが更新されることを確認
     const newState = await page.evaluate(() => {

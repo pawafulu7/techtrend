@@ -65,8 +65,8 @@ test.describe('ソースフィルタリング機能', () => {
       // Dev.toの選択を解除
       await devtoCheckbox.click();
       
-      // 記事が更新されるのを待つ
-      await page.waitForTimeout(1000);
+      // 記事リストの更新完了を待つ
+      await page.waitForSelector('[data-testid="article-card"]', { state: 'attached' });
       
       // Dev.toの記事が表示されていないことを確認
       const articles = page.locator('[data-testid="article-card"]');
@@ -147,8 +147,11 @@ test.describe('ソースフィルタリング機能', () => {
       await expect(checkbox).toHaveAttribute('data-state', 'unchecked');
     }
     
-    // 記事の更新を待つ
-    await page.waitForTimeout(1500);
+    // 記事フィルタリングの完了を待つ
+    await page.waitForFunction(() => {
+      const cards = document.querySelectorAll('[data-testid="article-card"]');
+      return cards.length >= 0; // 記事数が確定するまで待つ
+    });
     
     // 記事数が変化したことを確認（0件または減少）
     const articlesAfterDeselect = await page.locator('[data-testid="article-card"]').count();
@@ -166,7 +169,10 @@ test.describe('ソースフィルタリング機能', () => {
     }
     
     // 記事が再度表示されることを確認
-    await page.waitForTimeout(1500);
+    await page.waitForFunction(() => {
+      const cards = document.querySelectorAll('[data-testid="article-card"]');
+      return cards.length > 0; // 記事が表示されるまで待つ
+    });
     const articlesAfterSelect = await page.locator('[data-testid="article-card"]').count();
     expect(articlesAfterSelect).toBeGreaterThan(0);
   });
