@@ -25,8 +25,10 @@ test.describe('ソースフィルタリング機能', () => {
     // 展開アニメーションを待つ
     await page.waitForTimeout(500);
 
-    // Dev.toのチェックボックスを探す（海外ソース内）- より安定したセレクター使用
-    const devtoCheckbox = page.getByTestId('source-checkbox-devto');
+    // Dev.toのチェックボックスを探す（海外ソース内）- ラベルテキストベースのセレクター使用
+    const devtoCheckbox = page.locator('[data-testid^="source-checkbox-"]')
+      .filter({ has: page.locator('label:has-text("Dev.to")') })
+      .first();
     await expect(devtoCheckbox).toBeVisible();
     
     // 任意: 表示名を検証する場合は有効化
@@ -59,8 +61,10 @@ test.describe('ソースフィルタリング機能', () => {
     // フィルターエリアを取得
     const _filterArea = page.locator('[data-testid="filter-area"]');
     
-    // Dev.toのチェックボックスを探す（通常存在するソース）
-    const devtoCheckbox = page.getByTestId('source-checkbox-devto');
+    // Dev.toのチェックボックスを探す（通常存在するソース）- ラベルテキストベースのセレクター使用
+    const devtoCheckbox = page.locator('[data-testid^="source-checkbox-"]')
+      .filter({ has: page.locator('label:has-text("Dev.to")') })
+      .first();
     
     if (await devtoCheckbox.isVisible()) {
       // Dev.toの選択を解除
