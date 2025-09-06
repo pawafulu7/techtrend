@@ -72,7 +72,9 @@ test.describe('Date Range Filter - Fixed', () => {
     await page.locator('[data-testid="date-range-option-week"]').click();
     
     // Wait for URL to change
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => {
+      return window.location.search.includes('dateRange=week');
+    }, { timeout: 10000 });
     
     expect(page.url()).toContain('dateRange=week');
     await expect(trigger).toContainText('今週');

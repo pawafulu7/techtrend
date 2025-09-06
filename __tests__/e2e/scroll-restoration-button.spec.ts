@@ -9,12 +9,22 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 2. スクロールして複数ページを読み込む
-    // .overflow-y-autoクラスを持つコンテナを探す
+    // 複数のセレクターを試してスクロール可能なコンテナを探す
     await page.evaluate(() => {
-      const container = document.querySelector('.overflow-y-auto');
-      if (container) {
-        for (let i = 0; i < 3; i++) {
-          container.scrollTop = container.scrollHeight;
+      const selectors = [
+        '#main-scroll-container',
+        'main.overflow-y-auto',
+        '.flex-1.overflow-y-auto',
+        '.overflow-y-auto'
+      ];
+      
+      for (const selector of selectors) {
+        const container = document.querySelector(selector);
+        if (container && container.scrollHeight > container.clientHeight) {
+          for (let i = 0; i < 3; i++) {
+            container.scrollTop = container.scrollHeight;
+          }
+          break;
         }
       }
     });
@@ -22,8 +32,20 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     
     // 現在のスクロール位置を確認（300px以上のはず）
     const scrollPositionBefore = await page.evaluate(() => {
-      const container = document.querySelector('.overflow-y-auto');
-      return container ? container.scrollTop : 0;
+      const selectors = [
+        '#main-scroll-container',
+        'main.overflow-y-auto',
+        '.flex-1.overflow-y-auto',
+        '.overflow-y-auto'
+      ];
+      
+      for (const selector of selectors) {
+        const container = document.querySelector(selector);
+        if (container && container.scrollTop > 0) {
+          return container.scrollTop;
+        }
+      }
+      return 0;
     });
     expect(scrollPositionBefore).toBeGreaterThan(300);
     
@@ -51,8 +73,20 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     
     // 6. スクロール位置が復元されているか確認
     const scrollPositionAfter = await page.evaluate(() => {
-      const container = document.querySelector('.overflow-y-auto');
-      return container ? container.scrollTop : 0;
+      const selectors = [
+        '#main-scroll-container',
+        'main.overflow-y-auto',
+        '.flex-1.overflow-y-auto',
+        '.overflow-y-auto'
+      ];
+      
+      for (const selector of selectors) {
+        const container = document.querySelector(selector);
+        if (container && container.scrollTop > 0) {
+          return container.scrollTop;
+        }
+      }
+      return 0;
     });
     // ブラウザの戻るボタンによる復元のため、位置は異なる可能性がある
     expect(scrollPositionAfter).toBeGreaterThanOrEqual(0);
