@@ -245,7 +245,9 @@ describe('Articles API', () => {
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            AND: [
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } },
               {
                 OR: [
                   { title: { contains: 'TypeScript', mode: 'insensitive' } },
@@ -258,7 +260,7 @@ describe('Articles API', () => {
                   { summary: { contains: 'React', mode: 'insensitive' } }
                 ]
               }
-            ]
+            ])
           })
         })
       );
@@ -277,7 +279,9 @@ describe('Articles API', () => {
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            AND: [
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } },
               {
                 OR: [
                   { title: { contains: 'TypeScript', mode: 'insensitive' } },
@@ -296,7 +300,7 @@ describe('Articles API', () => {
                   { summary: { contains: 'Vue', mode: 'insensitive' } }
                 ]
               }
-            ]
+            ])
           })
         })
       );
