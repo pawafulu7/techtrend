@@ -55,7 +55,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
         });
       }
       prevFilterKeyRef.current = newFilterKey;
-    }, 300),
+    }, 200),
     [queryClient]
   );
   
@@ -148,7 +148,8 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       return page < totalPages ? page + 1 : undefined;
     },
     initialPageParam: 1,
-    staleTime: 1000 * 60 * 5, // 5分間キャッシュ
+    staleTime: 1000 * 60 * 10, // 10分間キャッシュ
     refetchOnWindowFocus: false,
+    refetchInterval: 1000 * 60 * 30, // 30分ごとのバックグラウンド更新
   });
 }
