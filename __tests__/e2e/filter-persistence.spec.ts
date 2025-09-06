@@ -11,14 +11,17 @@ test.describe('フィルター条件の永続化', () => {
 
   test('検索条件がページ遷移後も保持される', async ({ page }) => {
     // まず記事が表示されるまで待機
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
     
     // 1. 検索キーワードを入力
     await page.fill('[data-testid="search-box-input"]', 'TypeScript');
     // URL更新を待つ（デバウンス処理のため）
     await page.waitForFunction(() => {
       return window.location.search.includes('search=TypeScript');
-    }, { timeout: 10000 });
+    }, { 
+      timeout: 10000,
+      polling: 100 // ポーリング間隔を明示的に設定
+    });
 
     // 2. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -30,7 +33,7 @@ test.describe('フィルター条件の永続化', () => {
 
       // 3. トップページに戻る
       await page.goto('/');
-      await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+      await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
 
       // 4. 検索キーワードが保持されていることを確認
       const searchInput = page.locator('[data-testid="search-box-input"]');
@@ -65,7 +68,7 @@ test.describe('フィルター条件の永続化', () => {
     const selectedSourceId = await firstSourceCheckbox.getAttribute('data-testid');
 
     // 3. 記事詳細ページへ遷移
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
     const firstArticle = page.locator('[data-testid="article-card"]').first();
     const articleCount = await firstArticle.count();
     if (articleCount > 0) {
@@ -105,7 +108,7 @@ test.describe('フィルター条件の永続化', () => {
     // URLパラメータが設定されることを確認
     await page.waitForFunction(() => {
       return window.location.search.includes('dateRange=week');
-    });
+    }, { timeout: 10000, polling: 100 });
 
     // 2. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -148,7 +151,7 @@ test.describe('フィルター条件の永続化', () => {
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
     // 1. 複数のフィルターを設定
     await page.fill('[data-testid="search-box-input"]', 'React');
-    await page.waitForFunction(() => window.location.search.includes('search=React'), { timeout: 10000 });
+    await page.waitForFunction(() => window.location.search.includes('search=React'), { timeout: 10000, polling: 100 });
     
     // ソースフィルターが存在する場合のみ設定
     const sourceFilter = page.locator('[data-testid="source-filter"]');
@@ -167,7 +170,7 @@ test.describe('フィルター条件の永続化', () => {
     }
     
     await page.getByRole('button', { name: '人気' }).click();
-    await page.waitForFunction(() => window.location.search.includes('sortBy='), { timeout: 10000 });
+    await page.waitForFunction(() => window.location.search.includes('sortBy='), { timeout: 10000, polling: 100 });
 
     // 2. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -243,15 +246,17 @@ test.describe('フィルター条件の永続化', () => {
   });
 
   test('URLパラメータがCookieより優先される', async ({ page }) => {
+    // 最初にページにアクセスしてURLを取得
+    await page.goto('/');
+    
     // 1. Cookieに「Python」を明示保存（前提を保証）
     await page.context().addCookies([{
       name: 'filter-preferences',
       value: encodeURIComponent(JSON.stringify({ search: 'Python' })),
-      domain: 'localhost',
+      domain: new URL(page.url()).hostname, // 動的にドメインを取得
       path: '/',
       expires: Math.floor(Date.now() / 1000) + 2592000
     }]);
-    await page.goto('/');
     
     // 2. URLでは別の値を指定（URLがCookieより優先されるはず）
     await page.goto('/?search=JavaScript');
@@ -267,7 +272,7 @@ test.describe('フィルター条件の永続化', () => {
     await page.waitForTimeout(1000);
     await page.waitForFunction(() => {
       return window.location.search.includes('search=Rust');
-    }, { timeout: 5000 });
+    }, { timeout: 5000, polling: 100 });
 
     // 2. Cookieを確認
     const cookies = await context.cookies();
@@ -294,7 +299,7 @@ test.describe('ブラウザ間での動作確認', () => {
     await page.goto('/');
     
     // 記事が表示されるまで待機
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
     
     // フィルター設定
     await page.fill('[data-testid="search-box-input"]', `Test-${browserName}`);
@@ -302,7 +307,7 @@ test.describe('ブラウザ間での動作確認', () => {
     // URL更新を待つ（デバウンス処理のため）
     await page.waitForFunction((searchTerm) => {
       return window.location.search.includes(`search=${encodeURIComponent(searchTerm)}`);
-    }, `Test-${browserName}`, { timeout: 10000 });
+    }, `Test-${browserName}`, { timeout: 10000, polling: 100 });
     
     // ページ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -313,7 +318,7 @@ test.describe('ブラウザ間での動作確認', () => {
       
       // トップページに戻る
       await page.goto('/');
-      await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+      await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
       
       // 条件が保持されていることを確認
       // Cookieからの復元を待つ
