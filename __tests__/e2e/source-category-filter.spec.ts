@@ -94,12 +94,15 @@ test.describe('ソースカテゴリフィルター機能', () => {
     // URLにsourcesパラメータが付与される（デバウンス済み）
     await expect(page).toHaveURL(/sources=/);
 
-    // 可能なら選択したIDが含まれることを確認
+    // URLパラメータを解析して選択したIDが含まれることを確認
     if (firstRowTestId) {
       const selectedId = firstRowTestId.replace('source-checkbox-', '');
-      // RegExp特殊文字をエスケープ
-      const escapedId = selectedId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      await expect(page).toHaveURL(new RegExp(escapedId));
+      const currentUrl = page.url();
+      const urlParams = new URLSearchParams(new URL(currentUrl).search);
+      const sources = urlParams.get('sources')?.split(',') || [];
+      
+      // 選択したIDがURLパラメータに含まれることを確認
+      expect(sources).toContain(selectedId);
     }
   });
 
