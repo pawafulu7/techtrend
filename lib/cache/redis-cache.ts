@@ -120,15 +120,44 @@ export class RedisCache {
   }
 
   /**
-   * Invalidate cache keys matching a pattern
+   * Invalidate cache keys matching a pattern using SCAN (non-blocking)
    */
   async invalidatePattern(pattern: string): Promise<void> {
     try {
       const fullPattern = this.generateKey(pattern);
-      const keys = await this.redis.keys(fullPattern);
+      const keys: string[] = [];
+      
+      // Use SCAN instead of KEYS to avoid blocking
+      const stream = this.redis.scanStream({
+        match: fullPattern,
+        count: 100, // Process 100 keys at a time
+      });
+      
+      stream.on('data', (resultKeys: string[]) => {
+        keys.push(...resultKeys);
+      });
+      
+      await new Promise<void>((resolve, reject) => {
+        stream.on('end', resolve);
+        stream.on('error', reject);
+      });
       
       if (keys.length > 0) {
-        await this.redis.del(...keys);
+        // Delete keys in batches using UNLINK for non-blocking operation
+        const batchSize = 1000;
+        const pipeline = this.redis.pipeline();
+        
+        for (let i = 0; i < keys.length; i += batchSize) {
+          const batch = keys.slice(i, i + batchSize);
+          // Use UNLINK if available for non-blocking deletion
+          if (typeof (this.redis as any).unlink === 'function') {
+            pipeline.unlink(...batch);
+          } else {
+            pipeline.del(...batch);
+          }
+        }
+        
+        await pipeline.exec();
       }
     } catch (_error) {
       this.stats.errors++;

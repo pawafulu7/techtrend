@@ -10,7 +10,7 @@ import { searchCache } from './search-cache';
 export class MemoryOptimizer {
   private redis = getRedisClient();
   private monitoringInterval: NodeJS.Timeout | null = null;
-  private readonly maxMemoryUsagePercent = 80; // 最大使用率80%
+  private isChecking = false; // Guard against concurrent checks
   private readonly checkInterval = 60000; // 1分ごとにチェック
 
   /**
@@ -34,6 +34,14 @@ export class MemoryOptimizer {
       criticalThreshold: 90  // 90%でクリティカル
     }
   };
+
+  /**
+   * ネームスペースパターンを生成
+   */
+  private ns(pattern: string): string {
+    const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
+    return `@techtrend/cache:${envName}:${pattern}`;
+  }
 
   /**
    * メモリ監視を開始
@@ -67,20 +75,26 @@ export class MemoryOptimizer {
    * メモリ使用状況をチェック
    */
   private async checkMemoryUsage(): Promise<void> {
+    // Prevent concurrent checks
+    if (this.isChecking) return;
+    this.isChecking = true;
+    
     try {
       const info = await this.getMemoryInfo();
       const usagePercent = (info.used / info.maxMemory) * 100;
       
       
-      // アラートレベルチェック
+      // アラートレベルチェック (simplified condition)
       if (usagePercent >= this.optimizationConfig.monitoring.criticalThreshold) {
         await this.performEmergencyOptimization();
       } else if (usagePercent >= this.optimizationConfig.monitoring.alertThreshold) {
         await this.performOptimization();
-      } else if (usagePercent >= this.maxMemoryUsagePercent) {
-        await this.performOptimization();
       }
-    } catch (_error) {
+    } catch (error) {
+      // 最小限の可観測性を確保
+      console.debug('[MemoryOptimizer] checkMemoryUsage failed', { error });
+    } finally {
+      this.isChecking = false;
     }
   }
 
@@ -200,22 +214,34 @@ export class MemoryOptimizer {
       const DEFAULT_TTL = 3600; // 1時間
       
       do {
-        // SCANコマンドで100件ずつキーを取得
-        const result = await this.redis.scan(cursor, 'COUNT', '100');
+        // SCANコマンドで100件ずつキーを取得（ネームスペース限定）
+        const result = await this.redis.scan(
+          cursor,
+          'MATCH', this.ns('*'),
+          'COUNT', 100  // 数値型で渡す
+        );
         cursor = result[0];
         const keys = result[1];
         
-        // 各キーのTTLをチェックし、必要に応じて有効期限を設定
-        for (const key of keys) {
-          const ttl = await this.redis.ttl(key);
-          // TTLが-1の場合は有効期限が設定されていないので設定
-          if (ttl === -1) {
-            await this.redis.expire(key, DEFAULT_TTL);
+        // 1) TTLをまとめて取得
+        const ttlPipe = this.redis.pipeline();
+        for (const key of keys) ttlPipe.ttl(key);
+        const ttlResults = await ttlPipe.exec();
+
+        // 2) TTLが -1 のキーだけ EXPIRE をまとめて設定
+        // -2: key does not exist, -1: no expire set
+        const expirePipe = this.redis.pipeline();
+        ttlResults?.forEach((res, idx) => {
+          const [err, ttl] = res as [Error | null, number];
+          if (!err && ttl === -1) {
+            expirePipe.expire(keys[idx], DEFAULT_TTL);
           }
-        }
+        });
+        await expirePipe.exec();
       } while (cursor !== '0');
       
-    } catch (_error) {
+    } catch (error) {
+      console.debug('[MemoryOptimizer] cleanupExpiredKeys failed', { error });
     }
   }
 
@@ -229,12 +255,12 @@ export class MemoryOptimizer {
       let deletedCount = 0;
       const keysToDelete: string[] = [];
       
-      // SCAN を使用して安全にキーを取得
+      // SCAN を使用して安全にキーを取得（ネームスペース限定）
       do {
         const result = await this.redis.scan(
           cursor,
-          'COUNT',
-          Math.min(100, count - deletedCount)
+          'MATCH', this.ns('*'),
+          'COUNT', String(Math.min(200, Math.max(50, count - deletedCount)))
         );
         cursor = result[0];
         const keys = result[1];
@@ -247,25 +273,57 @@ export class MemoryOptimizer {
         }
       } while (cursor !== '0' && deletedCount < count);
       
-      // バッチで削除
+      // バッチで削除（UNLINK優先、大量キー対応）
       if (keysToDelete.length > 0) {
-        await this.redis.del(...keysToDelete);
+        const batchSize = 1000;
+        for (let i = 0; i < keysToDelete.length; i += batchSize) {
+          const batch = keysToDelete.slice(i, i + batchSize);
+          if (typeof (this.redis as any).unlink === 'function') {
+            await (this.redis as any).unlink(...batch);
+          } else {
+            await this.redis.del(...batch);
+          }
+        }
       }
-    } catch (_error) {
+    } catch (error) {
+      console.debug('[MemoryOptimizer] evictOldestKeys failed', { error });
     }
   }
 
   /**
-   * 低優先度キャッシュをクリア
+   * 低優先度キャッシュをクリア using SCAN (non-blocking)
    */
   private async clearLowPriorityCaches(): Promise<void> {
     try {
       // 検索キャッシュをクリア（優先度が低い）
-      const searchKeys = await this.redis.keys('@techtrend/cache:search:*');
-      if (searchKeys.length > 0) {
-        await this.redis.del(...searchKeys);
-      }
-    } catch (_error) {
+      let cursor = '0';
+      
+      // Use SCAN with immediate deletion to avoid memory buildup
+      do {
+        const result = await this.redis.scan(
+          cursor,
+          'MATCH', this.ns('search:*'),
+          'COUNT', 500  // Process in larger chunks for efficiency
+        );
+        cursor = result[0];
+        const keys = result[1] as string[];
+        
+        // Delete keys in batches immediately
+        if (keys.length > 0) {
+          const batchSize = 1000;
+          for (let i = 0; i < keys.length; i += batchSize) {
+            const batch = keys.slice(i, i + batchSize);
+            // Prefer UNLINK to avoid blocking the server thread
+            if (typeof (this.redis as any).unlink === 'function') {
+              await (this.redis as any).unlink(...batch);
+            } else {
+              await this.redis.del(...batch);
+            }
+          }
+        }
+      } while (cursor !== '0');
+    } catch (error) {
+      console.debug('[MemoryOptimizer] clearLowPriorityCaches failed', { error });
     }
   }
 

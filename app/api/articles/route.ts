@@ -3,30 +3,37 @@ import { prisma } from '@/lib/database';
 import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
-import { RedisCache } from '@/lib/cache';
-import { Prisma, type ArticleCategory } from '@prisma/client';
+import { EnhancedRedisCache } from '@/lib/cache/enhanced-redis-cache';
+import { Prisma, ArticleCategory } from '@prisma/client';
 import { log } from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
+import { MetricsCollector, withDbTiming, withCacheTiming } from '@/lib/metrics/performance';
+import { getDateRangeFilter } from '@/app/lib/date-utils';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
-// Initialize Redis cache with 5 minutes TTL for articles
-const cache = new RedisCache({
-  ttl: 300, // 5 minutes
-  namespace: '@techtrend/cache:api'
+// Initialize Enhanced Redis cache with 15 minutes TTL for articles
+const cache = new EnhancedRedisCache({
+  ttl: 900, // 15 minutes
+  namespace: '@techtrend/cache:api',
+  staleTime: 300, // 5 minutes before stale
+  enableSWR: true // Enable stale-while-revalidate
 });
 
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  let cacheStatus = 'MISS';
+  const metrics = new MetricsCollector();
   
   try {
     const { searchParams } = new URL(request.url);
     
-    // Parse pagination params
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
+    // Parse pagination params with NaN protection
+    const pageParam = searchParams.get('page');
+    const limitParam = searchParams.get('limit');
+    const parsedPage = Number.parseInt(pageParam ?? '1', 10);
+    const parsedLimit = Number.parseInt(limitParam ?? '20', 10);
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const limit = Number.isFinite(parsedLimit) ? Math.min(100, Math.max(1, parsedLimit)) : 20;
     // Support both publishedAt and createdAt for sorting
     const sortBy = searchParams.get('sortBy') || 'publishedAt';
     // Validate sortBy parameter
@@ -40,7 +47,7 @@ export async function GET(request: NextRequest) {
     const sourceId = searchParams.get('sourceId'); // Backward compatibility
     const tag = searchParams.get('tag'); // Single tag (backward compatibility)
     const tags = searchParams.get('tags'); // Multiple tags support
-    const tagMode = searchParams.get('tagMode') || 'OR'; // Tag filter mode (OR/AND)
+    const tagMode = (searchParams.get('tagMode') || 'OR').toUpperCase(); // Tag filter mode (OR/AND), normalized to uppercase
     const search = searchParams.get('search');
     const dateRange = searchParams.get('dateRange'); // Date range filter
     const readFilter = searchParams.get('readFilter'); // Read status filter
@@ -61,9 +68,13 @@ export async function GET(request: NextRequest) {
       sources.split(',').filter(id => id.trim()).sort().join(',') : 
       sourceId || 'all';
     
-    // Get session for read filter
-    const session = await auth();
+    // Get session only when readFilter requires user context
+    const shouldUseUserContext = readFilter === 'read' || readFilter === 'unread';
+    const session = shouldUseUserContext ? await auth() : null;
     const userId = session?.user?.id;
+    
+    // Include userId in cache key only when user context is needed
+    const userCtxForKey = shouldUseUserContext ? (userId ?? 'anonymous') : 'n/a';
     
     const cacheKey = cache.generateCacheKey('articles', {
       params: {
@@ -78,25 +89,26 @@ export async function GET(request: NextRequest) {
         search: normalizedSearch,
         dateRange: dateRange || 'all',
         readFilter: readFilter || 'all',
-        userId: userId || 'anonymous',
+        userId: userCtxForKey,
         category: category || 'all',
         includeRelations: includeRelations.toString(), // Add to cache key
         includeEmptyContent: includeEmptyContent.toString() // Add new parameter to cache key
       }
     });
 
-    // Check cache first
-    const cachedResult = await cache.get(cacheKey);
-    
-    let result;
-    if (cachedResult) {
-      cacheStatus = 'HIT';
-      result = cachedResult;
-    } else {
-      cacheStatus = 'MISS';
-      
-      // Fetch fresh data
-      result = await (async () => {
+    // Build data fetcher function for SWR
+    const buildResult = async () => {
+      // Check for early return case (sources=none)
+      if (sources === 'none') {
+        // DBアクセスをスキップして空レスポンスを返す
+        return {
+          items: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
+        };
+      }
         // Build where clause
       const where: ArticleWhereInput = {};
       
@@ -115,6 +127,7 @@ export async function GET(request: NextRequest) {
       }
       
       // Apply read filter if user is authenticated
+      // Note: userId is only available when shouldUseUserContext is true
       if (readFilter && userId) {
         if (readFilter === 'unread') {
           // 未読記事のみ: ArticleViewが存在しないか、isReadがfalse
@@ -149,12 +162,7 @@ export async function GET(request: NextRequest) {
         }
       }
       // Support multiple sources selection
-      if (sources === 'none') {
-        // 明示的に「何も選択しない」状態 - 常にfalseになる条件を設定
-        // Prismaでは空配列のIN句は正しく動作しない場合があるため、
-        // 存在しないIDを使用
-        where.sourceId = '__none__';
-      } else if (sources) {
+      if (sources) {
         const sourceIds = sources.split(',').filter(id => id.trim());
         if (sourceIds.length > 0) {
           where.sourceId = { in: sourceIds };
@@ -200,13 +208,21 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      // Category filter
+      // Category filter with proper validation
       if (category && category !== 'all') {
         // Handle 'uncategorized' as null
         if (category === 'uncategorized') {
           where.category = null;
         } else {
-          where.category = category as ArticleCategory;
+          // Validate category against Prisma enum values dynamically
+          const validCategories = Object.values(ArticleCategory);
+          
+          if (validCategories.includes(category as ArticleCategory)) {
+            where.category = category as ArticleCategory;
+          } else {
+            log.warn(`Invalid category provided: ${category}`);
+            // Ignore invalid category filter
+          }
         }
       }
       
@@ -227,28 +243,39 @@ export async function GET(request: NextRequest) {
             : [{ OR: searchOr }];
         } else if (keywords.length > 1) {
           // Multiple keywords - AND search
-          where.AND = keywords.map(keyword => ({
+          const keywordConditions = keywords.map(keyword => ({
             OR: [
               { title: { contains: keyword, mode: Prisma.QueryMode.insensitive } },
               { summary: { contains: keyword, mode: Prisma.QueryMode.insensitive } }
             ] as Prisma.ArticleWhereInput[]
           }));
+          where.AND = Array.isArray(where.AND) 
+            ? [...where.AND, ...keywordConditions] 
+            : keywordConditions;
         }
       }
       
-      // Apply date range filter
+      // Apply date range filter with validation
       if (dateRange && dateRange !== 'all') {
-        const { getDateRangeFilter } = await import('@/app/lib/date-utils');
         const startDate = getDateRangeFilter(dateRange);
         if (startDate) {
+          // Validate date is not in the future
+          const now = new Date();
+          const validStartDate = startDate > now ? now : startDate;
+          
           where.publishedAt = {
-            gte: startDate
+            gte: validStartDate,
+            lte: now // Ensure we don't get future dates
           };
         }
       }
 
       // Get total count
-      const total = await prisma.article.count({ where });
+      const total = await withDbTiming(
+        metrics,
+        () => prisma.article.count({ where }),
+        'db_count'
+      );
 
       // Build select object based on includeRelations parameter
       const selectFields: Prisma.ArticleSelect = {
@@ -293,15 +320,19 @@ export async function GET(request: NextRequest) {
       }
 
       // Get articles
-      const articles = await prisma.article.findMany({
-        where,
-        select: selectFields,
-        orderBy: {
-          [finalSortBy]: sortOrder,
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      const articles = await withDbTiming(
+        metrics,
+        () => prisma.article.findMany({
+          where,
+          select: selectFields,
+          orderBy: {
+            [finalSortBy]: sortOrder,
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        'db_query'
+      );
 
       // Return the data to be cached
       return {
@@ -311,14 +342,21 @@ export async function GET(request: NextRequest) {
         limit,
         totalPages: Math.ceil(total / limit),
       };
-      })();
-      
-      // Save to cache
-      await cache.set(cacheKey, result);
-    }
+    };
+
+    // Use getOrFetch with SWR support
+    const result = await withCacheTiming(
+      metrics,
+      () => cache.getOrFetch(cacheKey, buildResult, { 
+        ttl: 900, // 15 minutes
+        useSWR: true 
+      })
+    );
     
-    // Calculate response time
-    const responseTime = Date.now() - startTime;
+    // Note: getOrFetch always returns data (either from cache or freshly fetched)
+    // We can't distinguish between HIT/MISS/STALE without API changes
+    // Temporarily removing misleading cache status to avoid metrics confusion
+    // TODO: Enhance getOrFetch to return { data, status } for accurate tracking
     
     // Create response with performance headers
     const response = NextResponse.json({
@@ -326,8 +364,8 @@ export async function GET(request: NextRequest) {
       data: result,
     } as ApiResponse<PaginatedResponse<ArticleWithRelations>>);
     
-    response.headers.set('X-Cache-Status', cacheStatus);
-    response.headers.set('X-Response-Time', `${responseTime}ms`);
+    // Add performance metrics to headers
+    metrics.addMetricsToHeaders(response.headers);
     
     return response;
   } catch (error) {
@@ -370,7 +408,13 @@ export async function POST(request: NextRequest) {
     // タグを正規化してバリデーション
     const normalizedTags = normalizeTagInput(tagNames);
     
-    // タグバリデーションのデッドコードを削除
+    // Validate publishedAt
+    const parsedPublishedAt = publishedAt ? new Date(publishedAt) : new Date();
+    if (Number.isNaN(parsedPublishedAt.getTime())) {
+      const validationError = new ValidationError('Invalid publishedAt date format', 'publishedAt');
+      const errorResponse = formatErrorResponse(validationError);
+      return NextResponse.json(errorResponse, { status: validationError.statusCode });
+    }
 
     // Create article with tags
     const article = await prisma.article.create({
@@ -380,7 +424,7 @@ export async function POST(request: NextRequest) {
         summary,
         thumbnail,
         content,
-        publishedAt: new Date(publishedAt),
+        publishedAt: parsedPublishedAt,
         sourceId,
         tags: {
           connectOrCreate: normalizedTags.map((name: string) => ({

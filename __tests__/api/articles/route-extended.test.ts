@@ -394,12 +394,12 @@ describe('/api/articles - Extended Tests', () => {
       );
     });
 
-    it('特定カテゴリー（TECH）でフィルタリング', async () => {
+    it('特定カテゴリー（frontend）でフィルタリング', async () => {
       const techArticles = [mockArticles[0], mockArticles[2]];
       prismaMock.article.findMany.mockResolvedValue(techArticles);
       prismaMock.article.count.mockResolvedValue(2);
 
-      const request = new NextRequest('http://localhost/api/articles?category=TECH');
+      const request = new NextRequest('http://localhost/api/articles?category=frontend');
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -410,7 +410,11 @@ describe('/api/articles - Extended Tests', () => {
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            category: 'TECH'
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } }
+            ]),
+            category: 'frontend'
           })
         })
       );
@@ -448,11 +452,18 @@ describe('/api/articles - Extended Tests', () => {
       expect(json.data.items).toHaveLength(1);
       
       // 複数の条件が同時に適用されることを確認
+      // contentフィルター、readFilter、tagsが全てAND配列に含まれる
+      // categoryは無効な値のため無視される
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            category: 'TECH',
-            AND: expect.any(Array)
+            AND: expect.arrayContaining([
+              { content: { not: null } },
+              { content: { not: '' } },
+              expect.objectContaining({ OR: expect.any(Array) }), // readFilter
+              expect.objectContaining({ tags: expect.any(Object) }), // React tag
+              expect.objectContaining({ tags: expect.any(Object) })  // TypeScript tag
+            ])
           })
         })
       );
