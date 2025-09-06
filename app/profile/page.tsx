@@ -12,7 +12,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
-  const { data: userProfile, loading: profileLoading, error: profileError } = useUserProfile();
+  const { data: userProfile, loading: profileLoading } = useUserProfile();
 
   if (status === 'loading' || profileLoading) {
     return (
