@@ -1,30 +1,92 @@
 import { Page, Locator } from '@playwright/test';
 
 /**
- * 環境別タイムアウト値を取得
- * CI環境では長めのタイムアウトを設定
+ * CI環境を判定（より柔軟な判定）
  */
-export const getTimeout = (type: 'short' | 'medium' | 'long' = 'medium') => {
-  const isCI = process.env.CI === 'true';
-  
-  const timeouts = {
-    short: isCI ? 10000 : 5000,
-    medium: isCI ? 30000 : 15000,
-    long: isCI ? 60000 : 30000,
-  };
-  
-  return timeouts[type];
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
+/**
+ * 環境に応じたタイムアウト値
+ */
+export const TIMEOUTS = {
+  short: isCI ? 10000 : 5000,
+  medium: isCI ? 30000 : 15000,
+  long: isCI ? 60000 : 30000,
+  extraLong: isCI ? 90000 : 45000,
 };
 
 /**
- * 記事リストの読み込みを待機
+ * ポーリング間隔
  */
-export async function waitForArticles(page: Page) {
-  await page.waitForSelector('[data-testid="article-card"], article', {
-    state: 'visible',
-    timeout: getTimeout('medium'),
-  });
-  await page.waitForLoadState('networkidle');
+export const POLLING_INTERVALS = {
+  fast: 100,
+  normal: 500,
+  slow: 1000,
+};
+
+/**
+ * 環境別タイムアウト値を取得
+ * CI環境では長めのタイムアウトを設定
+ */
+export const getTimeout = (type: 'short' | 'medium' | 'long' | 'extraLong' = 'medium') => {
+  return TIMEOUTS[type];
+};
+
+/**
+ * ポーリング間隔を取得
+ */
+export function getPollingInterval(speed: 'fast' | 'normal' | 'slow' = 'normal'): number {
+  return POLLING_INTERVALS[speed];
+}
+
+/**
+ * CI環境かどうかを判定
+ */
+export function isRunningInCI(): boolean {
+  return isCI;
+}
+
+/**
+ * 記事リストの読み込みを待機（条件ベース）
+ */
+export async function waitForArticles(page: Page, options?: {
+  timeout?: number;
+  minCount?: number;
+  waitForNetworkIdle?: boolean;
+}) {
+  const timeout = options?.timeout ?? getTimeout('medium');
+  const minCount = options?.minCount ?? 1;
+  const waitForNetworkIdle = options?.waitForNetworkIdle ?? true;
+  
+  // data-testidを優先して待機
+  try {
+    await page.waitForSelector('[data-testid="article-card"], [data-testid="article-list"]', {
+      state: 'visible',
+      timeout,
+    });
+    
+    // 最小数の記事が表示されるまで待機
+    if (minCount > 1) {
+      await page.waitForFunction(
+        (min) => {
+          const articles = document.querySelectorAll('[data-testid="article-card"], article, .article-item');
+          return articles.length >= min;
+        },
+        minCount,
+        { timeout, polling: getPollingInterval('normal') }
+      );
+    }
+  } catch (error) {
+    // フォールバック: クラス名ベースのセレクター
+    await page.waitForSelector('article, .article-card, .article-list', {
+      state: 'visible',
+      timeout,
+    });
+  }
+  
+  if (waitForNetworkIdle) {
+    await page.waitForLoadState('networkidle', { timeout: getTimeout('short') });
+  }
 }
 
 /**
@@ -61,25 +123,42 @@ export async function waitForSourceFilter(page: Page) {
  * フィルター適用後の待機
  * ネットワークアイドルと記事の再レンダリングを待つ
  */
-export async function waitForFilterApplication(page: Page) {
-  await page.waitForLoadState('networkidle');
+export async function waitForFilterApplication(page: Page, options?: {
+  timeout?: number;
+  waitForNetworkIdle?: boolean;
+}) {
+  const timeout = options?.timeout ?? getTimeout('medium');
+  const waitForNetworkIdle = options?.waitForNetworkIdle ?? true;
+  
+  if (waitForNetworkIdle) {
+    await page.waitForLoadState('networkidle', { timeout });
+  }
   
   // 記事が存在することを確認（0件の場合もあるので存在チェックのみ）
   await page.waitForFunction(() => {
     const articleList = document.querySelector('[data-testid="article-list"]');
     return articleList !== null;
-  }, { timeout: getTimeout('short') });
+  }, { timeout, polling: getPollingInterval('fast') });
 }
 
 /**
  * ページ遷移の待機
  * URLの変更とネットワークアイドルを待つ
  */
-export async function waitForNavigation(page: Page, urlPattern?: RegExp | string) {
+export async function waitForNavigation(page: Page, urlPattern?: RegExp | string, options?: {
+  timeout?: number;
+  waitForNetworkIdle?: boolean;
+}) {
+  const timeout = options?.timeout ?? getTimeout('medium');
+  const waitForNetworkIdle = options?.waitForNetworkIdle ?? true;
+  
   if (urlPattern) {
-    await page.waitForURL(urlPattern, { timeout: getTimeout('medium') });
+    await page.waitForURL(urlPattern, { timeout });
   }
-  await page.waitForLoadState('networkidle');
+  
+  if (waitForNetworkIdle) {
+    await page.waitForLoadState('networkidle', { timeout: getTimeout('short') });
+  }
 }
 
 /**
@@ -95,21 +174,29 @@ export async function waitForMobileFilterSheet(page: Page) {
 /**
  * 要素のクリック可能状態を待機
  */
-export async function waitForClickable(locator: Locator) {
+export async function waitForClickable(locator: Locator, options?: {
+  timeout?: number;
+  stabilityDelay?: number;
+}) {
+  const timeout = options?.timeout ?? getTimeout('medium');
+  const stabilityDelay = options?.stabilityDelay ?? 100;
+  
   await locator.waitFor({
     state: 'visible',
-    timeout: getTimeout('medium'),
+    timeout,
   });
   
   // 要素が安定するまで少し待つ
-  await locator.page().waitForTimeout(100);
+  if (stabilityDelay > 0) {
+    await locator.page().waitForTimeout(stabilityDelay);
+  }
 }
 
 /**
  * デバッグ用：現在のページ状態をログ出力
  */
 export async function debugPageState(page: Page, label: string) {
-  if (process.env.DEBUG) {
+  if (process.env.DEBUG || process.env.E2E_DEBUG) {
     const url = page.url();
     const title = await page.title();
     const articleCount = await page.locator('[data-testid="article-card"]').count();
@@ -125,20 +212,26 @@ export async function debugPageState(page: Page, label: string) {
  * 安全なクリック処理
  * リトライとエラーハンドリングを含む
  */
-export async function safeClick(locator: Locator, options?: { retries?: number }) {
+export async function safeClick(locator: Locator, options?: {
+  retries?: number;
+  force?: boolean;
+  delay?: number;
+}) {
   const maxRetries = options?.retries ?? 3;
+  const force = options?.force ?? false;
+  const delay = options?.delay ?? 500;
   let lastError: Error | null = null;
   
   for (let i = 0; i < maxRetries; i++) {
     try {
-      await locator.click({ timeout: getTimeout('short') });
+      await locator.click({ timeout: getTimeout('short'), force });
       return; // 成功したら終了
     } catch (error) {
       lastError = error as Error;
       
-      // リトライ前に少し待つ
+      // リトライ前に待つ（指数バックオフ）
       if (i < maxRetries - 1) {
-        await locator.page().waitForTimeout(500 * (i + 1));
+        await locator.page().waitForTimeout(delay * Math.pow(2, i));
       }
     }
   }
@@ -146,5 +239,192 @@ export async function safeClick(locator: Locator, options?: { retries?: number }
   // すべてのリトライが失敗した場合
   if (lastError) {
     throw lastError;
+  }
+}
+
+/**
+ * URLパラメータが特定の値になるまで待機（ポーリング改善）
+ */
+export async function waitForUrlParam(
+  page: Page,
+  paramName: string,
+  paramValue?: string,
+  options?: {
+    timeout?: number;
+    polling?: 'fast' | 'normal' | 'slow';
+  }
+) {
+  const timeout = options?.timeout ?? getTimeout('medium');
+  const polling = getPollingInterval(options?.polling ?? 'normal');
+  
+  await page.waitForFunction(
+    ({ name, value }) => {
+      const url = new URL(window.location.href);
+      const param = url.searchParams.get(name);
+      if (value === undefined) {
+        return param !== null;
+      }
+      return param === value;
+    },
+    { name: paramName, value: paramValue },
+    { timeout, polling }
+  );
+}
+
+/**
+ * セレクターが非表示になるまで待機（detached オプション付き）
+ */
+export async function waitForSelectorToDisappear(
+  page: Page,
+  selector: string,
+  options?: {
+    timeout?: number;
+    waitForDetached?: boolean;
+  }
+) {
+  const timeout = options?.timeout ?? getTimeout('medium');
+  const state = options?.waitForDetached ? 'detached' : 'hidden';
+  
+  await page.waitForSelector(selector, { state, timeout });
+}
+
+/**
+ * 要素のテキストが特定の値になるまで待機
+ */
+export async function waitForElementText(
+  page: Page,
+  selector: string,
+  expectedText: string,
+  options?: {
+    timeout?: number;
+    exact?: boolean;
+    polling?: 'fast' | 'normal' | 'slow';
+  }
+) {
+  const timeout = options?.timeout ?? getTimeout('medium');
+  const exact = options?.exact ?? true;
+  const polling = getPollingInterval(options?.polling ?? 'fast');
+  
+  await page.waitForFunction(
+    ({ sel, text, exactMatch }) => {
+      const element = document.querySelector(sel);
+      if (!element) return false;
+      const elementText = element.textContent?.trim() ?? '';
+      return exactMatch ? elementText === text : elementText.includes(text);
+    },
+    { sel: selector, text: expectedText, exactMatch: exact },
+    { timeout, polling }
+  );
+}
+
+/**
+ * 複数の要素が表示されるまで待機
+ */
+export async function waitForElements(
+  page: Page,
+  selectors: string[],
+  options?: {
+    timeout?: number;
+    waitForAll?: boolean;
+  }
+) {
+  const timeout = options?.timeout ?? getTimeout('medium');
+  const waitForAll = options?.waitForAll ?? true;
+  
+  if (waitForAll) {
+    // 全ての要素を待機
+    await Promise.all(
+      selectors.map(selector =>
+        page.waitForSelector(selector, { state: 'visible', timeout })
+      )
+    );
+  } else {
+    // いずれかの要素を待機
+    await page.waitForSelector(selectors.join(', '), { state: 'visible', timeout });
+  }
+}
+
+/**
+ * エクスポネンシャルバックオフでリトライ
+ */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options?: {
+    maxRetries?: number;
+    initialDelay?: number;
+    maxDelay?: number;
+    factor?: number;
+  }
+): Promise<T> {
+  const maxRetries = options?.maxRetries ?? 3;
+  const initialDelay = options?.initialDelay ?? 1000;
+  const maxDelay = options?.maxDelay ?? 10000;
+  const factor = options?.factor ?? 2;
+  
+  let delay = initialDelay;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay = Math.min(delay * factor, maxDelay);
+    }
+  }
+  
+  throw new Error('Max retries exceeded');
+}
+
+/**
+ * ページロードの完了を待機（networkidle オプション付き）
+ */
+export async function waitForPageLoad(page: Page, options?: {
+  timeout?: number;
+  waitForNetworkIdle?: boolean;
+}) {
+  const timeout = options?.timeout ?? getTimeout('medium');
+  const waitForNetworkIdle = options?.waitForNetworkIdle ?? false;
+  
+  const promises = [
+    page.waitForLoadState('load', { timeout }),
+    page.waitForLoadState('domcontentloaded', { timeout }),
+  ];
+  
+  if (waitForNetworkIdle) {
+    promises.push(page.waitForLoadState('networkidle', { timeout }));
+  }
+  
+  await Promise.all(promises);
+}
+
+/**
+ * 要素が表示されてクリック可能になるまで待機（リトライ付き）
+ */
+export async function waitForElementAndClick(
+  page: Page,
+  selector: string,
+  options?: {
+    timeout?: number;
+    retries?: number;
+    force?: boolean;
+  }
+) {
+  const timeout = options?.timeout ?? getTimeout('medium');
+  const retries = options?.retries ?? 3;
+  const force = options?.force ?? false;
+  
+  const element = page.locator(selector).first();
+  
+  for (let i = 0; i < retries; i++) {
+    try {
+      await element.waitFor({ state: 'visible', timeout });
+      await element.click({ force, timeout });
+      return; // 成功したら終了
+    } catch (error) {
+      if (i === retries - 1) throw error; // 最後の試行で失敗したらエラーを投げる
+      await page.waitForTimeout(getPollingInterval('normal')); // リトライ前に少し待機
+    }
   }
 }

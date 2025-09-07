@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { waitForArticles, getTimeout, waitForNavigation } from '../../e2e/helpers/wait-utils';
+import { 
+  waitForArticles, 
+  getTimeout,
+  waitForUrlParam,
+  safeClick,
+  waitForPageLoad
+} from '../../e2e/helpers/wait-utils';
 
 test.describe('フィルター条件の永続化', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,6 +14,7 @@ test.describe('フィルター条件の永続化', () => {
     // デスクトップビューで開く（サイドバーが表示されるように）
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto('/');
+    await waitForPageLoad(page);
   });
 
   test('検索条件がページ遷移後も保持される', async ({ page }) => {
@@ -17,12 +24,7 @@ test.describe('フィルター条件の永続化', () => {
     // 1. 検索キーワードを入力
     await page.fill('[data-testid="search-box-input"]', 'TypeScript');
     // URL更新を待つ（デバウンス処理のため）
-    await page.waitForFunction(() => {
-      return window.location.search.includes('search=TypeScript');
-    }, { 
-      timeout: getTimeout('medium'),
-      polling: 100 // ポーリング間隔を明示的に設定
-    });
+    await waitForUrlParam(page, 'search', 'TypeScript', { polling: 'fast' });
 
     // 2. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -55,8 +57,7 @@ test.describe('フィルター条件の永続化', () => {
       return;
     }
     
-    await firstCategoryHeader.click();
-    await page.waitForTimeout(300);
+    await safeClick(firstCategoryHeader);
     
     // カテゴリ内のコンテンツが表示されることを確認
     const firstCategoryContent = page.locator('[data-testid$="-content"]').first();
@@ -72,16 +73,14 @@ test.describe('フィルター条件の永続化', () => {
     }
     
     // 1. 最初にすべてのソースを解除
-    await page.click('[data-testid="deselect-all-button"]');
-    await page.waitForTimeout(300);
+    await safeClick(page.locator('[data-testid="deselect-all-button"]'));
     
     // すべて未選択になったことを確認（Radix UIのdata-state属性を使用）
     const firstCheckbox = firstSourceContainer.locator('button[role="checkbox"]');
     await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
     
     // 2. 最初のソースチェックボックスを選択
-    await firstSourceContainer.click();
-    await page.waitForTimeout(200);
+    await safeClick(firstSourceContainer);
     
     // 選択されたことを確認
     const checkbox = firstSourceContainer.locator('button[role="checkbox"]');
@@ -91,7 +90,7 @@ test.describe('フィルター条件の永続化', () => {
     const selectedSourceId = await firstSourceContainer.getAttribute('data-testid');
 
     // 3. 記事詳細ページへ遷移
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
+    await page.waitForSelector('[data-testid="article-card"]', { timeout: getTimeout('long') });
     const firstArticle = page.locator('[data-testid="article-card"]').first();
     const articleCount = await firstArticle.count();
     if (articleCount > 0) {
@@ -112,9 +111,9 @@ test.describe('フィルター条件の永続化', () => {
           return;
         }
         
-        await firstCategoryHeader2.click();
+        await safeClick(firstCategoryHeader2);
         // カテゴリ展開完了を待つ
-        await page.waitForSelector('[data-testid$="-content"]:visible', { timeout: 5000 });
+        await page.waitForSelector('[data-testid$="-content"]:visible', { timeout: getTimeout('short') });
         
         // チェックボックスの存在確認
         const targetCheckbox = page.locator(`[data-testid="${selectedSourceId}"] button[role="checkbox"]`);
@@ -135,8 +134,7 @@ test.describe('フィルター条件の永続化', () => {
       if (selectedSourceId) {
         // カテゴリを展開してから確認
         const firstCategoryHeader3 = page.locator('[data-testid$="-header"]').first();
-        await firstCategoryHeader3.click();
-        await page.waitForTimeout(300);
+        await safeClick(firstCategoryHeader3);
         
         await expect(
           page.locator(`[data-testid="${selectedSourceId}"] button[role="checkbox"]`)
@@ -185,7 +183,6 @@ test.describe('フィルター条件の永続化', () => {
     // 4. 日付範囲が保持されていることを確認（Cookieからの復元）
     // Note: 現在の実装では日付範囲はCookieに保存されていない可能性があるため、
     // URLパラメータなしでアクセスした場合はデフォルトに戻る
-    const dateRangeTrigger = page.locator('[data-testid="date-range-trigger"]');
     const text = await dateRangeTrigger.textContent();
     // 日付範囲の永続化が実装されていない場合は「全期間」に戻る
     expect(['今週', '全期間']).toContain(text?.trim());
