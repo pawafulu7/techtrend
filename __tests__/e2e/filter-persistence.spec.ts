@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForArticles, getTimeout, waitForNavigation } from '../../e2e/helpers/wait-utils';
 
 test.describe('フィルター条件の永続化', () => {
   test.beforeEach(async ({ page }) => {
@@ -11,7 +12,7 @@ test.describe('フィルター条件の永続化', () => {
 
   test('検索条件がページ遷移後も保持される', async ({ page }) => {
     // まず記事が表示されるまで待機
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
+    await waitForArticles(page);
     
     // 1. 検索キーワードを入力
     await page.fill('[data-testid="search-box-input"]', 'TypeScript');
@@ -19,7 +20,7 @@ test.describe('フィルター条件の永続化', () => {
     await page.waitForFunction(() => {
       return window.location.search.includes('search=TypeScript');
     }, { 
-      timeout: 10000,
+      timeout: getTimeout('medium'),
       polling: 100 // ポーリング間隔を明示的に設定
     });
 

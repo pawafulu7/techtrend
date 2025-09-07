@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { waitForSourceFilter, getTimeout, waitForFilterApplication } from '../../e2e/helpers/wait-utils';
 
 test.describe('ソースカテゴリフィルター機能', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // フィルターエリアの描画完了
-    await expect(page.getByTestId('source-filter')).toBeVisible({ timeout: 30000 });
+    await waitForSourceFilter(page);
   });
 
   test('カテゴリが表示される', async ({ page }) => {

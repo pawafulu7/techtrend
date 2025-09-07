@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { waitForArticles, getTimeout } from '../../e2e/helpers/wait-utils';
 
 test.describe('Date Range Filter', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('[data-testid="article-list"]');
+    await waitForArticles(page);
   });
 
   test('should display date range filter', async ({ page }) => {
@@ -20,7 +21,7 @@ test.describe('Date Range Filter', () => {
       const filterCount = await dateRangeFilter.count();
       
       if (filterCount > 0) {
-        await expect(dateRangeFilter).toBeVisible({ timeout: 10000 });
+        await expect(dateRangeFilter).toBeVisible({ timeout: getTimeout('medium') });
         
         // Check default value
         const trigger = page.locator('[data-testid="date-range-trigger"]').first();
