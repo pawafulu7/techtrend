@@ -32,22 +32,50 @@ async function main() {
 }
 
 async function createSources() {
-  const sourcesData = [
-    { name: 'Dev.to', type: 'API', url: 'https://dev.to/api/articles', enabled: true },
+  const sources = [];
+  
+  // 固定IDソース（E2Eテストで使用されるID）
+  sources.push(await prisma.source.upsert({
+    where: { id: 'cmdq3nww70003tegxm78oydnb' },
+    update: {},
+    create: {
+      id: 'cmdq3nww70003tegxm78oydnb',
+      name: 'Dev.to',
+      type: 'API',
+      url: 'https://dev.to/api/articles',
+      enabled: true
+    }
+  }));
+  
+  sources.push(await prisma.source.upsert({
+    where: { id: 'cmdq3nwwk0005tegxdjv21wae' },
+    update: {},
+    create: {
+      id: 'cmdq3nwwk0005tegxdjv21wae',
+      name: 'Think IT',
+      type: 'RSS',
+      url: 'https://thinkit.co.jp/rss.xml',
+      enabled: true
+    }
+  }));
+  
+  // その他のソース（通常のcuid IDで作成）
+  const otherSourcesData = [
     { name: 'Qiita', type: 'API', url: 'https://qiita.com/api/v2/items', enabled: true },
     { name: 'Zenn', type: 'RSS', url: 'https://zenn.dev/feed', enabled: true },
     { name: 'はてなブックマーク', type: 'RSS', url: 'https://b.hatena.ne.jp/hotentry/it.rss', enabled: true },
     { name: 'Publickey', type: 'RSS', url: 'https://www.publickey1.jp/atom.xml', enabled: true },
     { name: 'Stack Overflow Blog', type: 'RSS', url: 'https://stackoverflow.blog/feed/', enabled: true },
     { name: 'InfoQ Japan', type: 'RSS', url: 'https://www.infoq.com/jp/feed/', enabled: true },
-    { name: 'Think IT', type: 'RSS', url: 'https://thinkit.co.jp/rss.xml', enabled: true },
     { name: 'Speaker Deck', type: 'SCRAPING', url: 'https://speakerdeck.com', enabled: true },
     { name: 'Corporate Tech Blog', type: 'RSS', url: 'https://techblog.example.com/feed', enabled: true },
   ];
 
-  return Promise.all(
-    sourcesData.map(data => prisma.source.create({ data }))
-  );
+  for (const data of otherSourcesData) {
+    sources.push(await prisma.source.create({ data }));
+  }
+  
+  return sources;
 }
 
 async function createTags() {
@@ -118,6 +146,13 @@ async function createTags() {
     { name: '初心者向け', category: null },
     { name: 'ベストプラクティス', category: null },
     { name: 'アーキテクチャ', category: null },
+    
+    // AI関連のnullカテゴリータグ（E2Eテスト用）
+    { name: 'Claude Code', category: null },
+    { name: 'GitHub Copilot', category: null },
+    { name: 'AI開発', category: null },
+    { name: 'コード生成', category: null },
+    { name: 'プロンプトエンジニアリング', category: null },
   ];
 
   return Promise.all(
