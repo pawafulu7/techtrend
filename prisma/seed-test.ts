@@ -48,15 +48,19 @@ async function main() {
   const url = new URL(dbUrl);
   const dbName = url.pathname.replace(/^\//, '');
   const hostOk = ['localhost', '127.0.0.1'].includes(url.hostname);
-  const portOk = url.port === '5433';
+  // CI環境（GitHub Actions等）では5432ポート、ローカル開発環境では5433ポートを許可
+  const isCI = process.env.CI === 'true';
+  const portOk = isCI ? url.port === '5432' : url.port === '5433';
   const nameOk = /test/i.test(dbName);
   const override = process.env.E2E_SEED_FORCE === '1';
   
   if (!(hostOk && portOk && nameOk) && !override) {
-    console.error('🚨 ERROR: local test DB only (host=localhost, port=5433, db name contains "test") or set E2E_SEED_FORCE=1.');
+    const expectedPort = isCI ? '5432' : '5433';
+    console.error(`🚨 ERROR: local test DB only (host=localhost, port=${expectedPort}, db name contains "test") or set E2E_SEED_FORCE=1.`);
     const masked = new URL(dbUrl);
     if (masked.password) masked.password = '****';
     console.error('Current URL:', masked.toString());
+    console.error('CI environment:', isCI ? 'Yes' : 'No');
     process.exit(1);
   }
   
