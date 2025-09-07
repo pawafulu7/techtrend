@@ -16,11 +16,8 @@ test.describe('ソースフィルタリング機能', () => {
     // すべて選択ボタンをクリックして、初期状態を統一
     const selectAllButton = page.locator('[data-testid="select-all-button"]');
     await selectAllButton.click();
-    // URLパラメータの更新を待つ
-    await page.waitForFunction(
-      () => window.location.search.includes('sources='),
-      { timeout: 5000 }
-    );
+    // クリック後の処理が完了するまで少し待つ（URLパラメータは更新されない場合もある）
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
 
     // 海外ソースカテゴリを展開
     const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
