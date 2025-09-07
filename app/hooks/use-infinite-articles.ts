@@ -146,13 +146,24 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
-      const response = await fetch(`${endpoint}?${searchParams.toString()}`, { signal });
+      const url = `${endpoint}?${searchParams.toString()}`;
+      
+      // デバッグ: APIリクエストURL確認
+      console.log('[useInfiniteArticles] API Request URL:', url);
+      
+      const response = await fetch(url, { signal });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch articles: ${response.status} ${response.statusText}`);
       }
       
-      return response.json();
+      const data = await response.json();
+      
+      // デバッグ: レスポンスの記事数確認
+      console.log('[useInfiniteArticles] Response items count:', data.data?.items?.length);
+      console.log('[useInfiniteArticles] Response limit:', data.data?.limit);
+      
+      return data;
     },
     getNextPageParam: (lastPage) => {
       const { page, totalPages } = lastPage.data;

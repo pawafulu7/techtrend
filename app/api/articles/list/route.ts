@@ -55,6 +55,11 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
     const sortBy = searchParams.get('sortBy') || 'publishedAt';
     const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
+    
+    // デバッグログ
+    console.log('[API /articles/list] Requested limit:', searchParams.get('limit'));
+    console.log('[API /articles/list] Parsed limit:', limit);
+    console.log('[API /articles/list] Page:', page);
     const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
     const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
     
