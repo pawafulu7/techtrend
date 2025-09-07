@@ -190,7 +190,44 @@ async function createSources() {
     'https://speakerdeck.com'
   ));
 
-  // 他のソースは必要に応じて追加可能
+  sources.push(await ensureSource(
+    'docswell_a4539889f7debebd',
+    'Docswell',
+    'SCRAPER',
+    'https://www.docswell.com'
+  ));
+
+  // カテゴリフィルターテストに必要なソース
+  // 海外ソース
+  sources.push(await ensureSource(
+    'hacker_news_202508',
+    'Hacker News',
+    'API',
+    'https://hacker-news.firebaseio.com/v0/'
+  ));
+
+  // 企業ブログ
+  sources.push(await ensureSource(
+    'freee_tech_blog',
+    'freee Developers Hub',
+    'RSS',
+    'https://developers.freee.co.jp/feed'
+  ));
+
+  sources.push(await ensureSource(
+    'cyberagent_tech_blog',
+    'CyberAgent Developers Blog',
+    'RSS',
+    'https://developers.cyberagent.co.jp/blog/feed/'
+  ));
+
+  // 国内情報サイト
+  sources.push(await ensureSource(
+    'cmdq440c90000tewuti7ng0un',
+    'Qiita Popular',
+    'API',
+    'https://qiita.com/api/v2/items'
+  ));
   
   return sources;
 }
