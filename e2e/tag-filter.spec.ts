@@ -31,8 +31,9 @@ test.describe('タグフィルター機能', () => {
     });
     
     // TypeScriptタグを選択（存在する場合）
-    const typeScriptOption = page.locator('text=/TypeScript/i').first();
-    if (await typeScriptOption.isVisible({ timeout: 5000 })) {
+    // ドロップダウン内のタグアイテムを正確に選択
+    const typeScriptOption = page.locator('[data-testid="tag-dropdown"]').locator('[data-testid*="tag-item"]').filter({ hasText: 'TypeScript' }).first();
+    if (await typeScriptOption.count() > 0) {
       await typeScriptOption.click();
       
       // ネットワークアイドル状態を待機（waitForTimeoutの代わり）
@@ -56,10 +57,11 @@ test.describe('タグフィルター機能', () => {
     });
     
     // 複数タグを選択
-    const reactTag = page.locator('text=/React/i').first();
-    const typeScriptTag = page.locator('text=/TypeScript/i').first();
+    // ドロップダウン内のタグアイテムを正確に選択
+    const reactTag = page.locator('[data-testid="tag-dropdown"]').locator('[data-testid*="tag-item"]').filter({ hasText: 'React' }).first();
+    const typeScriptTag = page.locator('[data-testid="tag-dropdown"]').locator('[data-testid*="tag-item"]').filter({ hasText: 'TypeScript' }).first();
     
-    if (await reactTag.isVisible({ timeout: 5000 }) && await typeScriptTag.isVisible({ timeout: 5000 })) {
+    if ((await reactTag.count() > 0) && (await typeScriptTag.count() > 0)) {
       await reactTag.click();
       await typeScriptTag.click();
       
