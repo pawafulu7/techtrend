@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Source, Tag } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 // シード付き疑似乱数生成器
@@ -20,6 +20,16 @@ class SeededRandom {
   }
 }
 
+// Fisher-Yatesシャッフルアルゴリズム（決定的なシャッフル）
+function shuffle<T>(arr: T[], rng: SeededRandom): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = rng.nextInt(0, i);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 const random = new SeededRandom(12345); // 固定シードで初期化
 
 const prisma = new PrismaClient({
@@ -34,21 +44,31 @@ async function main() {
   // テストデータベースの安全確認
   const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres@localhost:5433/techtrend_test';
   
-  // テストDBであることを確認（本番DBへの誤実行を防ぐ）
-  if (!dbUrl.includes('test') && !dbUrl.includes('5433')) {
-    console.error('🚨 ERROR: This seed script is only for test databases!');
-    console.error('Database URL must contain "test" or use port 5433');
-    console.error('Current URL:', dbUrl.replace(/:[^:@]+@/, ':****@')); // パスワードを隠す
+  // テストDBであることを厳密に確認（本番DB誤実行防止）
+  const url = new URL(dbUrl);
+  const dbName = url.pathname.replace(/^\//, '');
+  const hostOk = ['localhost', '127.0.0.1'].includes(url.hostname);
+  const portOk = url.port === '5433';
+  const nameOk = /test/i.test(dbName);
+  const override = process.env.E2E_SEED_FORCE === '1';
+  
+  if (!(hostOk && portOk && nameOk) && !override) {
+    console.error('🚨 ERROR: local test DB only (host=localhost, port=5433, db name contains "test") or set E2E_SEED_FORCE=1.');
+    const masked = new URL(dbUrl);
+    if (masked.password) masked.password = '****';
+    console.error('Current URL:', masked.toString());
     process.exit(1);
   }
   
-  console.log('✅ Test database confirmed, proceeding with seed...</');
+  console.log('✅ Test database confirmed. Proceeding with seed...');
   
-  // Clear existing data
-  await prisma.article.deleteMany();
-  await prisma.tag.deleteMany();
-  await prisma.source.deleteMany();
-  await prisma.user.deleteMany();
+  // Clear existing data (トランザクションで一括削除)
+  await prisma.$transaction([
+    prisma.article.deleteMany(),
+    prisma.tag.deleteMany(),
+    prisma.source.deleteMany(),
+    prisma.user.deleteMany(),
+  ]);
 
   // Create sources
   const sources = await createSources();
@@ -57,10 +77,10 @@ async function main() {
   const tags = await createTags();
 
   // Create test users
-  const users = await createUsers();
+  await createUsers();
 
   // Create articles with relationships
-  const articles = await createArticles(sources, tags);
+  await createArticles(sources, tags);
 
 }
 
@@ -73,7 +93,7 @@ async function ensureSource(id: string, name: string, type: 'RSS' | 'API' | 'SCR
       type,
       url,
       enabled: true,
-      updatedAt: new Date() // 明示的に更新時刻を設定
+      // updatedAtは自動更新に任せる
     },
     create: {
       id,
@@ -163,7 +183,6 @@ async function createSources() {
 }
 
 async function createTags() {
-  const categories = ['language', 'framework', 'tool', 'corporate', 'concept', null];
   const tagNames = [
     // Language tags
     { name: 'JavaScript', category: 'language' },
@@ -286,27 +305,34 @@ async function createUsers() {
   );
 }
 
-async function createArticles(sources: any[], tags: any[]) {
+async function createArticles(sources: Source[], tags: Tag[]) {
   const articles = [];
   const now = new Date();
   const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const TOTAL_ARTICLES = 50; // E2Eテストのパフォーマンスを考慮して50件に削減
+  // 環境変数で記事数を設定可能に（デフォルトはPR目標値）
+  const TOTAL_ARTICLES = parseInt(process.env.E2E_TOTAL_ARTICLES ?? '200', 10);
+  const TS_ARTICLE_COUNT = parseInt(process.env.E2E_TS_ARTICLES ?? '20', 10);
+  
+  // バリデーション
+  if (!Number.isFinite(TOTAL_ARTICLES) || !Number.isFinite(TS_ARTICLE_COUNT) || TOTAL_ARTICLES < TS_ARTICLE_COUNT) {
+    throw new Error(`Invalid article counts: TOTAL_ARTICLES=${TOTAL_ARTICLES}, TS_ARTICLE_COUNT=${TS_ARTICLE_COUNT}`);
+  }
 
   // Phase 3: TypeScript記事を確実に作成（最初の10件）
   const typeScriptTag = tags.find(t => t.name === 'TypeScript');
   const reactTag = tags.find(t => t.name === 'React');
   const nextjsTag = tags.find(t => t.name === 'Next.js');
   
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < TS_ARTICLE_COUNT; i++) {
     const publishedAt = new Date(
       oneMonthAgo.getTime() + random.next() * (now.getTime() - oneMonthAgo.getTime())
     );
     
     const relatedTags = [typeScriptTag, reactTag, nextjsTag].filter(Boolean);
-    const additionalTags = [...tags]
-      .filter(t => !['TypeScript', 'React', 'Next.js'].includes(t.name))
-      .sort(() => 0.5 - random.next())
-      .slice(0, 2);
+    const additionalTags = shuffle(
+      [...tags].filter(t => !['TypeScript', 'React', 'Next.js'].includes(t.name)),
+      random
+    ).slice(0, 2);
     
     const articleTags = [...relatedTags, ...additionalTags];
     
@@ -340,7 +366,7 @@ async function createArticles(sources: any[], tags: any[]) {
   }
 
   // 残りの記事を各ソースに均等配分（Phase 2）
-  const remainingArticles = TOTAL_ARTICLES - 10;
+  const remainingArticles = TOTAL_ARTICLES - TS_ARTICLE_COUNT;
   const articlesPerSource = Math.floor(remainingArticles / sources.length);
   const extraArticles = remainingArticles % sources.length;
   
@@ -358,9 +384,7 @@ async function createArticles(sources: any[], tags: any[]) {
       );
       
       const randomTagCount = random.nextInt(1, 5);
-      const randomTags = [...tags]
-        .sort(() => 0.5 - random.next())
-        .slice(0, randomTagCount);
+      const randomTags = shuffle([...tags], random).slice(0, randomTagCount);
 
       const article = await prisma.article.create({
         data: {
