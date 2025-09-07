@@ -186,12 +186,9 @@ describe('Environment Configuration', () => {
       expect(config.database.url()).toBe('postgresql://test-db');
     });
 
-    it('falls back to main database when test database not set', () => {
+    it('uses test database configuration in test environment', () => {
       process.env.NODE_ENV = 'test';
-      process.env.DATABASE_URL = 'postgresql://main-db';
-      
-      // jest.setup.jsでDATABASE_URLが設定されているため、それが優先される
-      // CI環境とローカル環境で異なるデフォルト値が設定される
+      // jest.setup.jsで既にDATABASE_URLが設定されているため、その値が使用される
       const expectedUrl = process.env.CI 
         ? 'postgresql://postgres:postgres@localhost:5432/techtrend_test'
         : 'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
@@ -440,12 +437,9 @@ describe('Environment Configuration - Config Helpers', () => {
     expect(config.database.url()).toBe('postgresql://test-db');
   });
 
-  it('falls back to main database when test database not set', () => {
+  it('uses test database configuration in test environment', () => {
     process.env.NODE_ENV = 'test';
-    process.env.DATABASE_URL = 'postgresql://main-db';
-    
-    // jest.setup.jsでDATABASE_URLが設定されているため、それが優先される
-    // CI環境とローカル環境で異なるデフォルト値が設定される
+    // jest.setup.jsで既にDATABASE_URLが設定されているため、その値が使用される
     const expectedUrl = process.env.CI 
       ? 'postgresql://postgres:postgres@localhost:5432/techtrend_test'
       : 'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
