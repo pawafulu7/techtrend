@@ -202,7 +202,8 @@ test.describe('検索機能', () => {
     
     // 検索結果が読み込まれるまで待機
     await waitForLoadingToDisappear(page);
-    await page.waitForTimeout(1000); // 追加の待機時間
+    // 記事一覧が表示されるまで待機（条件ベース）
+    await waitForArticles(page, { minCount: 1 });
     
     // ページネーションコンポーネントを探す
     const pagination = page.locator(SELECTORS.PAGINATION);
@@ -232,7 +233,8 @@ test.describe('検索機能', () => {
         await page.waitForURL(/page=\d+|p=\d+/, { timeout: 5000 });
       } catch {
         // URL変更がない場合は、コンテンツの変更を確認
-        await page.waitForTimeout(1000);
+        await waitForLoadingToDisappear(page);
+        await waitForArticles(page, { minCount: 1 });
       }
       
       // URLが変更されたことを確認
@@ -272,7 +274,6 @@ test.describe('検索機能', () => {
                url.includes('search=JavaScript+React') ||
                url.includes('search=JavaScript React');
       },
-      undefined,
       { timeout: getTimeout('medium'), polling: 100 }
     );
     

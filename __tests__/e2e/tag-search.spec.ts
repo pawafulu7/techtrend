@@ -52,7 +52,6 @@ test.describe('動的タグ検索機能', () => {
         const tagOptions = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"]');
         return tagOptions.length > 0;
       },
-      undefined,
       { timeout: getTimeout('short'), polling: 100 }
     );
 
@@ -69,7 +68,6 @@ test.describe('動的タグ検索機能', () => {
         const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label');
         return Array.from(tags).some(tag => tag.textContent?.includes('freee'));
       },
-      undefined,
       { timeout: getTimeout('short'), polling: 100 }
     );
 
@@ -86,7 +84,6 @@ test.describe('動的タグ検索機能', () => {
         const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label');
         return Array.from(tags).some(tag => tag.textContent?.includes('SmartHR'));
       },
-      undefined,
       { timeout: getTimeout('short'), polling: 100 }
     );
 
@@ -109,7 +106,6 @@ test.describe('動的タグ検索機能', () => {
         const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label, div, button, span');
         return Array.from(tags).some(tag => tag.textContent?.trim() === 'DeNA');
       },
-      undefined,
       { timeout: getTimeout('short'), polling: 100 }
     );
 
@@ -125,7 +121,6 @@ test.describe('動的タグ検索機能', () => {
         }
         return false;
       },
-      undefined,
       { timeout: getTimeout('medium'), polling: 100 }
     );
     
