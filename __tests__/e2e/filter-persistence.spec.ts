@@ -212,8 +212,8 @@ test.describe('フィルター条件の永続化', () => {
 
     // 4. 並び替え順が保持されていることを確認
     // Note: 品質ボタンがアクティブな状態かチェック
-    const qualityButton = page.getByRole('button', { name: '品質' });
-    const className = await qualityButton.getAttribute('class');
+    const qualityButtonAfterNav = page.getByRole('button', { name: '品質' });
+    const className = await qualityButtonAfterNav.getAttribute('class');
     // ボタンのvariantがdefaultの場合、特定のクラスが含まれる
     expect(className).toContain('bg-primary');
   });
