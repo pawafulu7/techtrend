@@ -25,14 +25,27 @@ global.FormData = FormData;
 
 // Mock environment variables
 // CI環境とローカル環境で異なるデータベース設定を使用
+// IPv6の問題を回避するため、localhostの代わりに127.0.0.1を使用
 if (!process.env.DATABASE_URL) {
   if (process.env.CI) {
     // GitHub Actions などのCI環境（ポート5432）
-    process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/techtrend_test';
+    process.env.DATABASE_URL = 'postgresql://postgres:postgres@127.0.0.1:5432/techtrend_test';
   } else {
     // ローカル環境（ポート5433）
-    process.env.DATABASE_URL = 'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
+    process.env.DATABASE_URL = 'postgresql://postgres:postgres_dev_password@127.0.0.1:5433/techtrend_test';
   }
+}
+
+// TEST_DATABASE_URLも設定（互換性のため）
+if (!process.env.TEST_DATABASE_URL) {
+  process.env.TEST_DATABASE_URL = process.env.CI
+    ? 'postgresql://postgres:postgres@127.0.0.1:5432/techtrend_test'
+    : 'postgresql://postgres:postgres_dev_password@127.0.0.1:5433/techtrend_test';
+}
+
+// Redisホストも明示的に設定
+if (!process.env.REDIS_HOST) {
+  process.env.REDIS_HOST = '127.0.0.1';
 }
 
 // Redisポートも環境に応じて設定

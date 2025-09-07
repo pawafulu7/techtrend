@@ -45,7 +45,8 @@ describe('Environment Configuration', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
       
       const result = getEnv();
-      expect(result.REDIS_HOST).toBe('localhost');
+      // IPv6の問題を回避するため127.0.0.1を使用
+      expect(result.REDIS_HOST).toBe('127.0.0.1');
       // CI環境とローカル環境で異なるデフォルトポートが設定される
       const expectedRedisPort = process.env.CI ? '6379' : '6380';
       expect(result.REDIS_PORT).toBe(expectedRedisPort);
@@ -189,9 +190,10 @@ describe('Environment Configuration', () => {
     it('uses test database configuration in test environment', () => {
       process.env.NODE_ENV = 'test';
       // jest.setup.jsで既にDATABASE_URLが設定されているため、その値が使用される
+      // IPv6の問題を回避するため127.0.0.1を使用
       const expectedUrl = process.env.CI 
-        ? 'postgresql://postgres:postgres@localhost:5432/techtrend_test'
-        : 'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
+        ? 'postgresql://postgres:postgres@127.0.0.1:5432/techtrend_test'
+        : 'postgresql://postgres:postgres_dev_password@127.0.0.1:5433/techtrend_test';
       expect(config.database.url()).toBe(expectedUrl);
     });
 
@@ -236,7 +238,7 @@ describe('Environment Configuration', () => {
 
 // Phase 2 Stage 2: getEnv tests (enabled)
 describe('Environment Configuration - getEnv', () => {
-  const originalEnv = process.env;
+  const originalEnv = { ...process.env };
 
   beforeEach(() => {
     // Reset module cache and environment
@@ -264,7 +266,8 @@ describe('Environment Configuration - getEnv', () => {
     resetEnvCache();
     
     const result = getEnv();
-    expect(result.REDIS_HOST).toBe('localhost');
+    // IPv6の問題を回避するため127.0.0.1を使用
+    expect(result.REDIS_HOST).toBe('127.0.0.1');
     // CI環境とローカル環境で異なるデフォルトポートが設定される
     const expectedRedisPort = process.env.CI ? '6379' : '6380';
     expect(result.REDIS_PORT).toBe(expectedRedisPort);
@@ -313,7 +316,7 @@ describe('Environment Configuration - getEnv', () => {
 
 // Phase 2 Stage 2: features tests (enabled)
 describe('Environment Configuration - features', () => {
-  const originalEnv = process.env;
+  const originalEnv = { ...process.env };
 
   beforeEach(() => {
     // Reset module cache and environment
@@ -350,7 +353,7 @@ describe('Environment Configuration - features', () => {
 
 // Phase 2 Stage 3: env proxy tests (enabled with isolation)
 describe('Environment Configuration - env proxy', () => {
-  const originalEnv = process.env;
+  const originalEnv = { ...process.env };
 
   beforeEach(() => {
     // Deep clean of environment and module cache
@@ -392,7 +395,7 @@ describe('Environment Configuration - env proxy', () => {
 
 // Phase 2 Stage 1: Config helpers tests (enabled)
 describe('Environment Configuration - Config Helpers', () => {
-  const originalEnv = process.env;
+  const originalEnv = { ...process.env };
 
   beforeEach(() => {
     // Reset module cache and environment
@@ -440,9 +443,10 @@ describe('Environment Configuration - Config Helpers', () => {
   it('uses test database configuration in test environment', () => {
     process.env.NODE_ENV = 'test';
     // jest.setup.jsで既にDATABASE_URLが設定されているため、その値が使用される
+    // IPv6の問題を回避するため127.0.0.1を使用
     const expectedUrl = process.env.CI 
-      ? 'postgresql://postgres:postgres@localhost:5432/techtrend_test'
-      : 'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
+      ? 'postgresql://postgres:postgres@127.0.0.1:5432/techtrend_test'
+      : 'postgresql://postgres:postgres_dev_password@127.0.0.1:5433/techtrend_test';
     expect(config.database.url()).toBe(expectedUrl);
   });
 
