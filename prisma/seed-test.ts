@@ -333,9 +333,16 @@ async function createArticles(sources: any[], tags: any[]) {
   // 残りの記事を各ソースに均等配分（Phase 2）
   const remainingArticles = TOTAL_ARTICLES - 10;
   const articlesPerSource = Math.floor(remainingArticles / sources.length);
+  const extraArticles = remainingArticles % sources.length;
   
-  for (const source of sources) {
-    for (let j = 0; j < articlesPerSource; j++) {
+  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex++) {
+    const source = sources[sourceIndex];
+    // 最初のソースに余りの記事を追加
+    const articlesToCreate = sourceIndex === 0 
+      ? articlesPerSource + extraArticles 
+      : articlesPerSource;
+    
+    for (let j = 0; j < articlesToCreate; j++) {
       const i = articles.length;
       const publishedAt = new Date(
         oneMonthAgo.getTime() + Math.random() * (now.getTime() - oneMonthAgo.getTime())
