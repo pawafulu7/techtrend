@@ -206,36 +206,44 @@ async function createArticles(sources: any[], tags: any[]) {
   const articles = [];
   const now = new Date();
   const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const TOTAL_ARTICLES = 200; // Phase 2: 記事数を200件に増加
 
-  for (let i = 0; i < 100; i++) {
+  // Phase 3: TypeScript記事を確実に作成（最初の20件）
+  const typeScriptTag = tags.find(t => t.name === 'TypeScript');
+  const reactTag = tags.find(t => t.name === 'React');
+  const nextjsTag = tags.find(t => t.name === 'Next.js');
+  
+  for (let i = 0; i < 20; i++) {
     const publishedAt = new Date(
       oneMonthAgo.getTime() + Math.random() * (now.getTime() - oneMonthAgo.getTime())
     );
     
-    const randomSource = sources[Math.floor(Math.random() * sources.length)];
-    const randomTagCount = Math.floor(Math.random() * 5) + 1;
-    const randomTags = [...tags]
+    const relatedTags = [typeScriptTag, reactTag, nextjsTag].filter(Boolean);
+    const additionalTags = [...tags]
+      .filter(t => !['TypeScript', 'React', 'Next.js'].includes(t.name))
       .sort(() => 0.5 - Math.random())
-      .slice(0, randomTagCount);
-
+      .slice(0, 2);
+    
+    const articleTags = [...relatedTags, ...additionalTags];
+    
     const article = await prisma.article.create({
       data: {
-        title: `テスト記事 ${i + 1}: ${randomTags[0]?.name || 'Tech'}の最新動向`,
-        url: `https://example.com/articles/test-${i + 1}`,
-        summary: `これはテスト記事${i + 1}の要約です。${randomTags.map(t => t.name).join('、')}に関する内容を含んでいます。最新の技術トレンドや実装方法について詳しく解説しています。`,
-        detailedSummary: `## テスト記事${i + 1}の詳細要約\n\n### 主要なポイント\n- ${randomTags[0]?.name || 'Tech'}の基本概念\n- 実装方法とベストプラクティス\n- パフォーマンス最適化のテクニック\n\n### 技術スタック\n${randomTags.map(t => `- ${t.name}`).join('\n')}\n\n### まとめ\nこの記事では、最新の技術動向について包括的に解説しました。`,
-        thumbnail: `https://picsum.photos/seed/${i}/800/400`,
-        content: `# テスト記事${i + 1}の本文\n\nこれはテスト用の記事本文です。実際のコンテンツがここに入ります。`,
+        title: `TypeScript ${i + 1}: 最新機能と実装パターン`,
+        url: `https://example.com/articles/typescript-${i + 1}`,
+        summary: `TypeScriptの新機能について詳しく解説。型システムの改善点と実装パターンを紹介。TypeScriptを使った開発の効率化について説明します。`,
+        detailedSummary: `## TypeScript最新機能\n\n### 主要な改善点\n- 型推論の強化\n- パフォーマンスの向上\n- 新しい構文の追加\n\n### TypeScriptの実装パターン\n- ジェネリクス活用法\n- 型ガード実装\n- ユーティリティ型の使い方`,
+        thumbnail: `https://picsum.photos/seed/typescript-${i}/800/400`,
+        content: `# TypeScript記事${i + 1}の本文\n\nTypeScriptの詳細な技術解説。TypeScriptを使用した実装例とベストプラクティス。`,
         publishedAt,
-        sourceId: randomSource.id,
+        sourceId: sources[i % sources.length].id, // ソース別に均等配分
         bookmarks: Math.floor(Math.random() * 100),
-        qualityScore: Math.random() * 100,
+        qualityScore: 70 + Math.random() * 30, // 高品質スコア
         userVotes: Math.floor(Math.random() * 50),
-        difficulty: ['beginner', 'intermediate', 'advanced'][Math.floor(Math.random() * 3)],
+        difficulty: 'intermediate',
         articleType: 'unified',
         summaryVersion: 7,
         tags: {
-          connect: randomTags.map(tag => ({ id: tag.id })),
+          connect: articleTags.map(tag => ({ id: tag.id })),
         },
       },
       include: {
@@ -243,8 +251,54 @@ async function createArticles(sources: any[], tags: any[]) {
         tags: true,
       },
     });
-
+    
     articles.push(article);
+  }
+
+  // 残りの記事を各ソースに均等配分（Phase 2）
+  const remainingArticles = TOTAL_ARTICLES - 20;
+  const articlesPerSource = Math.floor(remainingArticles / sources.length);
+  
+  for (const source of sources) {
+    for (let j = 0; j < articlesPerSource; j++) {
+      const i = articles.length;
+      const publishedAt = new Date(
+        oneMonthAgo.getTime() + Math.random() * (now.getTime() - oneMonthAgo.getTime())
+      );
+      
+      const randomTagCount = Math.floor(Math.random() * 5) + 1;
+      const randomTags = [...tags]
+        .sort(() => 0.5 - Math.random())
+        .slice(0, randomTagCount);
+
+      const article = await prisma.article.create({
+        data: {
+          title: `テスト記事 ${i + 1}: ${randomTags[0]?.name || 'Tech'}の最新動向`,
+          url: `https://example.com/articles/test-${i + 1}`,
+          summary: `これはテスト記事${i + 1}の要約です。${randomTags.map(t => t.name).join('、')}に関する内容を含んでいます。最新の技術トレンドや実装方法について詳しく解説しています。`,
+          detailedSummary: `## テスト記事${i + 1}の詳細要約\n\n### 主要なポイント\n- ${randomTags[0]?.name || 'Tech'}の基本概念\n- 実装方法とベストプラクティス\n- パフォーマンス最適化のテクニック\n\n### 技術スタック\n${randomTags.map(t => `- ${t.name}`).join('\n')}\n\n### まとめ\nこの記事では、最新の技術動向について包括的に解説しました。`,
+          thumbnail: `https://picsum.photos/seed/${i}/800/400`,
+          content: `# テスト記事${i + 1}の本文\n\nこれはテスト用の記事本文です。実際のコンテンツがここに入ります。`,
+          publishedAt,
+          sourceId: source.id, // ソース別に均等配分
+          bookmarks: Math.floor(Math.random() * 100),
+          qualityScore: Math.random() * 100,
+          userVotes: Math.floor(Math.random() * 50),
+          difficulty: ['beginner', 'intermediate', 'advanced'][Math.floor(Math.random() * 3)],
+          articleType: 'unified',
+          summaryVersion: 7,
+          tags: {
+            connect: randomTags.map(tag => ({ id: tag.id })),
+          },
+        },
+        include: {
+          source: true,
+          tags: true,
+        },
+      });
+
+      articles.push(article);
+    }
   }
 
   return articles;
