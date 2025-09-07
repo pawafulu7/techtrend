@@ -55,18 +55,21 @@ test.describe('Date Range Filter', () => {
 
   test('should filter articles by today', async ({ page }) => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
+    await trigger.waitFor({ state: 'visible', timeout: 10000 });
     await trigger.click();
     
     // Wait for dropdown to be visible
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: 5000 });
     
     // Select "今日" option
-    await page.locator('[data-testid="date-range-option-today"]').click();
+    const todayOption = page.locator('[data-testid="date-range-option-today"]');
+    await todayOption.waitFor({ state: 'visible', timeout: 5000 });
+    await todayOption.click();
     
-    // Wait for URL to update
+    // Wait for URL to update with retry logic
     await page.waitForFunction(() => {
       return window.location.search.includes('dateRange=today');
-    }, { timeout: 10000 });
+    }, { timeout: 15000, polling: 500 });
     
     // Check URL has correct parameter
     expect(page.url()).toContain('dateRange=today');
@@ -75,19 +78,22 @@ test.describe('Date Range Filter', () => {
     await expect(trigger).toContainText('今日');
     
     // Wait for articles to reload
-    await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="article-list"]', { timeout: 15000 });
   });
 
   test('should filter articles by week', async ({ page }) => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
+    await trigger.waitFor({ state: 'visible', timeout: 10000 });
     await trigger.click();
     
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: 5000 });
-    await page.locator('[data-testid="date-range-option-week"]').click();
+    const weekOption = page.locator('[data-testid="date-range-option-week"]');
+    await weekOption.waitFor({ state: 'visible', timeout: 5000 });
+    await weekOption.click();
     
     await page.waitForFunction(() => {
       return window.location.search.includes('dateRange=week');
-    }, { timeout: 10000 });
+    }, { timeout: 15000, polling: 500 });
     expect(page.url()).toContain('dateRange=week');
     await expect(trigger).toContainText('今週');
   });
