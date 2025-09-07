@@ -133,6 +133,15 @@ export function useInfiniteArticles(filters: ArticleFilters) {
         new URLSearchParams(window.location.search).has('returning');
       // 復元モード時は100件、通常時は20件のページサイズを設定
       const pageLimit = isRestorationMode ? 100 : 20;
+      
+      // デバッグログ
+      if (typeof window !== 'undefined') {
+        console.log('[useInfiniteArticles] URL:', window.location.href);
+        console.log('[useInfiniteArticles] has returning:', new URLSearchParams(window.location.search).has('returning'));
+        console.log('[useInfiniteArticles] isRestorationMode:', isRestorationMode);
+        console.log('[useInfiniteArticles] pageLimit:', pageLimit);
+      }
+      
       searchParams.set('limit', String(pageLimit));
       
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）

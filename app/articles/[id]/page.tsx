@@ -50,6 +50,10 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
     
     try {
       const decodedUrl = decodeURIComponent(from);
+      // デバッグログ
+      console.log('[ArticlePage] from parameter:', from);
+      console.log('[ArticlePage] decoded URL:', decodedUrl);
+      
       // 相対パスまたは同一オリジンのみ許可
       if (decodedUrl.startsWith('/') && !decodedUrl.startsWith('//')) {
         return decodedUrl;
