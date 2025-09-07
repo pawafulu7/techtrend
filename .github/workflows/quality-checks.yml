@@ -244,7 +244,7 @@ jobs:
       github.ref == 'refs/heads/main' ||
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-e2e')) ||
       (github.event_name == 'push' && contains(github.event.head_commit.message, '[e2e]')) ||
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.head.sha, github.sha) && contains(github.event.pull_request.title, '[e2e]'))
+      contains(github.event.pull_request.title, '[e2e]')
     runs-on: ubuntu-latest
     services:
       postgres:
