@@ -24,7 +24,27 @@ global.fetch = fetch;
 global.FormData = FormData;
 
 // Mock environment variables
-process.env.DATABASE_URL = 'file:./prisma/test.db';
+// CI環境とローカル環境で異なるデータベース設定を使用
+if (!process.env.DATABASE_URL) {
+  if (process.env.CI) {
+    // GitHub Actions などのCI環境（ポート5432）
+    process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/techtrend_test';
+  } else {
+    // ローカル環境（ポート5433）
+    process.env.DATABASE_URL = 'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
+  }
+}
+
+// TEST_DATABASE_URLも設定（互換性のため）
+if (!process.env.TEST_DATABASE_URL) {
+  process.env.TEST_DATABASE_URL = process.env.DATABASE_URL;
+}
+
+// Redisポートも環境に応じて設定
+if (!process.env.REDIS_PORT) {
+  process.env.REDIS_PORT = process.env.CI ? '6379' : '6380';
+}
+
 process.env.GEMINI_API_KEY = 'test-api-key';
 process.env.NODE_ENV = 'test';
 
