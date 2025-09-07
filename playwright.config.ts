@@ -9,7 +9,7 @@ dotenv.config({ path: '.env.test' });
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './__tests__/e2e',
+  testDir: './e2e',
   /* Global timeout for each test */
   timeout: 120000,  // 120秒に延長
   /* Run tests in files in parallel */
@@ -21,8 +21,8 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: 1,  // 並列実行時の競合を避けるため1ワーカーに制限
   /* Global setup and teardown */
-  globalSetup: './__tests__/e2e/global-setup.ts',
-  globalTeardown: './__tests__/e2e/global-teardown.ts',
+  globalSetup: './e2e/global-setup.ts',
+  globalTeardown: './e2e/global-teardown.ts',
   /* CI環境でサーバーを自動起動 */
   webServer: testConfig.webServer || undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
