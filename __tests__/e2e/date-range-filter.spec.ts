@@ -143,7 +143,11 @@ test.describe('Date Range Filter', () => {
     await safeClick(page.locator('[data-testid="date-range-option-all"]'));
     
     // Check URL doesn't have dateRange parameter
-    await page.waitForFunction(() => !window.location.href.includes('dateRange'), { timeout: getTimeout('medium') });
+    await page.waitForFunction(
+      () => !window.location.href.includes('dateRange'),
+      undefined,
+      { timeout: getTimeout('medium') }
+    );
     expect(page.url()).not.toContain('dateRange');
     await expect(trigger).toContainText('全期間');
   });
@@ -175,6 +179,7 @@ test.describe('Date Range Filter', () => {
         const url = window.location.href;
         return url.includes('dateRange=week') && url.includes('sources=');
       },
+      undefined,
       { timeout: getTimeout('medium') }
     );
     
@@ -199,6 +204,7 @@ test.describe('Date Range Filter', () => {
         const url = window.location.href;
         return !url.includes('page=2');
       },
+      undefined,
       { timeout: getTimeout('medium') }
     );
     

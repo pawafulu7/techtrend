@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForArticles, getTimeout } from '../../e2e/helpers/wait-utils';
 
 test.describe('動的タグ検索機能', () => {
   test.beforeEach(async ({ page }) => {
@@ -44,8 +45,16 @@ test.describe('動的タグ検索機能', () => {
     const searchInput = page.locator('[data-testid="tag-search-input"]');
     await searchInput.fill('GMO');
 
-    // デバウンス待機とAPI応答を待つ
-    await page.waitForTimeout(500);
+    // デバウンス待機とAPI応答を待つ（条件ベースの待機）
+    await page.waitForFunction(
+      () => {
+        // タグオプションが表示されるまで待つ
+        const tagOptions = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"]');
+        return tagOptions.length > 0;
+      },
+      undefined,
+      { timeout: getTimeout('short'), polling: 100 }
+    );
 
     // GMOタグが表示されることを確認
     const gmoTag = page.locator('text=GMO').first();
@@ -54,7 +63,15 @@ test.describe('動的タグ検索機能', () => {
     // 検索をクリアしてfreeeを検索
     await searchInput.clear();
     await searchInput.fill('freee');
-    await page.waitForTimeout(500);
+    // 検索結果の更新を待つ
+    await page.waitForFunction(
+      () => {
+        const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label');
+        return Array.from(tags).some(tag => tag.textContent?.includes('freee'));
+      },
+      undefined,
+      { timeout: getTimeout('short'), polling: 100 }
+    );
 
     // freeeタグが表示されることを確認
     const freeeTag = page.locator('text=freee').first();
@@ -63,7 +80,15 @@ test.describe('動的タグ検索機能', () => {
     // SmartHRを検索
     await searchInput.clear();
     await searchInput.fill('SmartHR');
-    await page.waitForTimeout(500);
+    // 検索結果の更新を待つ
+    await page.waitForFunction(
+      () => {
+        const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label');
+        return Array.from(tags).some(tag => tag.textContent?.includes('SmartHR'));
+      },
+      undefined,
+      { timeout: getTimeout('short'), polling: 100 }
+    );
 
     // SmartHRタグが表示されることを確認
     const smarthrTag = page.locator('text=SmartHR').first();
@@ -78,11 +103,31 @@ test.describe('動的タグ検索機能', () => {
     // 検索フォームにDeNAと入力
     const searchInput = page.locator('[data-testid="tag-search-input"]');
     await searchInput.fill('DeNA');
-    await page.waitForTimeout(500);
+    // 検索結果の更新を待つ
+    await page.waitForFunction(
+      () => {
+        const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label, div, button, span');
+        return Array.from(tags).some(tag => tag.textContent?.trim() === 'DeNA');
+      },
+      undefined,
+      { timeout: getTimeout('short'), polling: 100 }
+    );
 
     // DeNAタグをクリック
-    // 要素の表示を待機してから操作
-    await page.waitForTimeout(1000); // 検索結果の表示待ち
+    // 要素がクリック可能になるまで待機
+    await page.waitForFunction(
+      () => {
+        const tags = document.querySelectorAll('div, button, span');
+        const denaTag = Array.from(tags).find(tag => tag.textContent?.trim() === 'DeNA');
+        if (denaTag) {
+          const rect = denaTag.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }
+        return false;
+      },
+      undefined,
+      { timeout: getTimeout('medium'), polling: 100 }
+    );
     
     // より具体的なセレクタを使用
     const tagElements = await page.locator('div, button, span').filter({ hasText: 'DeNA' }).all();
@@ -113,7 +158,7 @@ test.describe('動的タグ検索機能', () => {
     await page.waitForLoadState('networkidle');
     
     // 記事の表示を待機
-    await page.waitForTimeout(2000);
+    await waitForArticles(page);
     
     // 記事カードを取得（data-testid属性を使用）
     const articles = page.locator('[data-testid="article-card"]');

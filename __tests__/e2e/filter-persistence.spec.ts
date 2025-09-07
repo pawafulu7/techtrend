@@ -239,7 +239,15 @@ test.describe('フィルター条件の永続化', () => {
           const isExpanded = await page.locator(contentSelector).count() > 0;
           if (!isExpanded) {
             await header.click();
-            await page.waitForTimeout(200);
+            // アコーディオンの展開を待つ
+            await page.waitForFunction(
+              () => {
+                const content = document.querySelector('[data-testid="source-filter-content"]');
+                return content && content.clientHeight > 0;
+              },
+              undefined,
+              { timeout: getTimeout('short'), polling: 50 }
+            );
           }
         }
       }
@@ -248,13 +256,13 @@ test.describe('フィルター条件の永続化', () => {
       const deselectButton = page.locator('[data-testid="deselect-all-button"]');
       if (await deselectButton.count() > 0) {
         await deselectButton.click();
-        await page.waitForTimeout(500);
+        // すべてのチェックボックスが解除されるまで待つ
         const firstCheckbox = page.locator('[data-testid^="source-checkbox-"]').first().locator('button[role="checkbox"]');
         await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
         const firstSource = page.locator('[data-testid^="source-checkbox-"]').first();
         if (await firstSource.count() > 0) {
           await firstSource.click();
-          await page.waitForTimeout(500);
+          // チェックボックスがチェックされるまで待つ
           const sourceCheckbox = firstSource.locator('button[role="checkbox"]');
           await expect(sourceCheckbox).toHaveAttribute('data-state', 'checked');
         }
@@ -322,7 +330,15 @@ test.describe('フィルター条件の永続化', () => {
           const isExpanded = await page.locator(contentSelector).count() > 0;
           if (!isExpanded) {
             await header.click();
-            await page.waitForTimeout(200);
+            // アコーディオンの展開を待つ
+            await page.waitForFunction(
+              () => {
+                const content = document.querySelector('[data-testid="source-filter-content"]');
+                return content && content.clientHeight > 0;
+              },
+              undefined,
+              { timeout: getTimeout('short'), polling: 50 }
+            );
           }
         }
       }
@@ -331,7 +347,7 @@ test.describe('フィルター条件の永続化', () => {
       const deselectButton = page.locator('[data-testid="deselect-all-button"]');
       if (await deselectButton.count() > 0) {
         await deselectButton.click();
-        await page.waitForTimeout(500);
+        // すべてのチェックボックスが解除されるまで待つ
         // すべて未選択になるまで待機
         const firstCheckbox = page.locator('[data-testid^="source-checkbox-"]').first().locator('button[role="checkbox"]');
         await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
@@ -339,7 +355,7 @@ test.describe('フィルター条件の永続化', () => {
         const firstSource = page.locator('[data-testid^="source-checkbox-"]').first();
         if (await firstSource.count() > 0) {
           await firstSource.click();
-          await page.waitForTimeout(500);
+          // チェックボックスがチェックされるまで待つ
           // 選択状態になるまで待機
           await expect(firstCheckbox).toHaveAttribute('data-state', 'checked');
         }
@@ -439,8 +455,7 @@ test.describe('ブラウザ間での動作確認', () => {
     await searchInput.clear();
     await searchInput.fill(`Test-${browserName}`);
     
-    // URL更新を待つ（デバウンス処理のため）
-    await page.waitForTimeout(500); // デバウンス待機
+    // URL更新を待つ（デバウンス処理を含む）
     await page.waitForFunction((searchTerm) => {
       return window.location.search.includes(`search=${encodeURIComponent(searchTerm)}`);
     }, `Test-${browserName}`, { timeout: 10000, polling: 100 });
@@ -458,10 +473,14 @@ test.describe('ブラウザ間での動作確認', () => {
       
       // 条件が保持されていることを確認
       // Cookieからの復元を待つ（未実装環境では空も許容）
-      await page.waitForFunction((expected) => {
-        const input = document.querySelector('[data-testid="search-box-input"]') as HTMLInputElement | null;
-        return !!input && (input.value === expected || input.value === '');
-      }, `Test-${browserName}`, { timeout: 5000, polling: 100 });
+      await page.waitForFunction(
+        (expected) => {
+          const input = document.querySelector('[data-testid="search-box-input"]') as HTMLInputElement | null;
+          return !!input && (input.value === expected || input.value === '');
+        },
+        `Test-${browserName}`,
+        { timeout: 5000, polling: 100 }
+      );
       
       const searchInput = page.locator('[data-testid="search-box-input"]');
       const currentValue = await searchInput.inputValue();
