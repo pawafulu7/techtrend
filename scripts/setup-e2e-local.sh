@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 echo "E2Eテスト環境セットアップ開始..."
 

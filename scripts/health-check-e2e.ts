@@ -66,6 +66,11 @@ async function healthCheck() {
   return allChecksPass;
 }
 
-healthCheck().then(success => {
-  process.exit(success ? 0 : 1);
-});
+healthCheck()
+  .then(success => {
+    process.exit(success ? 0 : 1);
+  })
+  .catch(error => {
+    console.error('Unexpected error during health check:', error);
+    process.exit(1);
+  });

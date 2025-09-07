@@ -1,6 +1,27 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
+// シード付き疑似乱数生成器
+class SeededRandom {
+  private seed: number;
+  
+  constructor(seed: number = 12345) {
+    this.seed = seed;
+  }
+  
+  next(): number {
+    // Park-Miller PRNG
+    this.seed = (this.seed * 16807) % 2147483647;
+    return (this.seed - 1) / 2147483646;
+  }
+  
+  nextInt(min: number, max: number): number {
+    return Math.floor(this.next() * (max - min + 1)) + min;
+  }
+}
+
+const random = new SeededRandom(12345); // 固定シードで初期化
+
 const prisma = new PrismaClient({
   datasources: {
     db: {
@@ -10,6 +31,18 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
+  // テストデータベースの安全確認
+  const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres@localhost:5433/techtrend_test';
+  
+  // テストDBであることを確認（本番DBへの誤実行を防ぐ）
+  if (!dbUrl.includes('test') && !dbUrl.includes('5433')) {
+    console.error('🚨 ERROR: This seed script is only for test databases!');
+    console.error('Database URL must contain "test" or use port 5433');
+    console.error('Current URL:', dbUrl.replace(/:[^:@]+@/, ':****@')); // パスワードを隠す
+    process.exit(1);
+  }
+  
+  console.log('✅ Test database confirmed, proceeding with seed...</');
   
   // Clear existing data
   await prisma.article.deleteMany();
@@ -37,7 +70,12 @@ async function createSources() {
   // 固定IDソース（E2Eテストで使用されるID）
   sources.push(await prisma.source.upsert({
     where: { id: 'cmdq3nww70003tegxm78oydnb' },
-    update: {},
+    update: {
+      name: 'Dev.to',
+      type: 'API',
+      url: 'https://dev.to/api/articles',
+      enabled: true
+    },
     create: {
       id: 'cmdq3nww70003tegxm78oydnb',
       name: 'Dev.to',
@@ -49,7 +87,12 @@ async function createSources() {
   
   sources.push(await prisma.source.upsert({
     where: { id: 'cmdq3nwwk0005tegxdjv21wae' },
-    update: {},
+    update: {
+      name: 'Think IT',
+      type: 'RSS',
+      url: 'https://thinkit.co.jp/rss.xml',
+      enabled: true
+    },
     create: {
       id: 'cmdq3nwwk0005tegxdjv21wae',
       name: 'Think IT',
@@ -63,7 +106,12 @@ async function createSources() {
   // 海外ソース
   sources.push(await prisma.source.upsert({
     where: { id: 'cmdq3nwwz0008tegx2eu8cozq' },
-    update: {},
+    update: {
+      name: 'Stack Overflow Blog',
+      type: 'RSS',
+      url: 'https://stackoverflow.blog/feed/',
+      enabled: true
+    },
     create: {
       id: 'cmdq3nwwz0008tegx2eu8cozq',
       name: 'Stack Overflow Blog',
@@ -76,7 +124,12 @@ async function createSources() {
   // 国内情報サイト
   sources.push(await prisma.source.upsert({
     where: { id: 'cmdq3nwwp0006tegxz53w9zva' },
-    update: {},
+    update: {
+      name: 'Zenn',
+      type: 'RSS',
+      url: 'https://zenn.dev/feed',
+      enabled: true
+    },
     create: {
       id: 'cmdq3nwwp0006tegxz53w9zva',
       name: 'Zenn',
@@ -88,7 +141,12 @@ async function createSources() {
 
   sources.push(await prisma.source.upsert({
     where: { id: 'cmdq3nww60000tegxi8ruki95' },
-    update: {},
+    update: {
+      name: 'はてなブックマーク',
+      type: 'RSS',
+      url: 'https://b.hatena.ne.jp/hotentry/it.rss',
+      enabled: true
+    },
     create: {
       id: 'cmdq3nww60000tegxi8ruki95',
       name: 'はてなブックマーク',
@@ -100,7 +158,12 @@ async function createSources() {
 
   sources.push(await prisma.source.upsert({
     where: { id: 'cmdq3nwwf0004tegxuxj97z1k' },
-    update: {},
+    update: {
+      name: 'InfoQ Japan',
+      type: 'RSS',
+      url: 'https://www.infoq.com/jp/feed/',
+      enabled: true
+    },
     create: {
       id: 'cmdq3nwwf0004tegxuxj97z1k',
       name: 'InfoQ Japan',
@@ -112,7 +175,12 @@ async function createSources() {
 
   sources.push(await prisma.source.upsert({
     where: { id: 'cmdq3nwwu0007tegxcstlc8zt' },
-    update: {},
+    update: {
+      name: 'Publickey',
+      type: 'RSS',
+      url: 'https://www.publickey1.jp/atom.xml',
+      enabled: true
+    },
     create: {
       id: 'cmdq3nwwu0007tegxcstlc8zt',
       name: 'Publickey',
@@ -125,7 +193,12 @@ async function createSources() {
   // 企業ブログ
   sources.push(await prisma.source.upsert({
     where: { id: 'mercari_tech_blog' },
-    update: {},
+    update: {
+      name: 'Mercari Engineering',
+      type: 'RSS',
+      url: 'https://engineering.mercari.com/blog/feed.xml/',
+      enabled: true
+    },
     create: {
       id: 'mercari_tech_blog',
       name: 'Mercari Engineering',
@@ -138,7 +211,12 @@ async function createSources() {
   // プレゼンテーション
   sources.push(await prisma.source.upsert({
     where: { id: 'speakerdeck_8a450c43f9418ff6' },
-    update: {},
+    update: {
+      name: 'Speaker Deck',
+      type: 'SCRAPER',
+      url: 'https://speakerdeck.com',
+      enabled: true
+    },
     create: {
       id: 'speakerdeck_8a450c43f9418ff6',
       name: 'Speaker Deck',
@@ -290,13 +368,13 @@ async function createArticles(sources: any[], tags: any[]) {
   
   for (let i = 0; i < 10; i++) {
     const publishedAt = new Date(
-      oneMonthAgo.getTime() + Math.random() * (now.getTime() - oneMonthAgo.getTime())
+      oneMonthAgo.getTime() + random.next() * (now.getTime() - oneMonthAgo.getTime())
     );
     
     const relatedTags = [typeScriptTag, reactTag, nextjsTag].filter(Boolean);
     const additionalTags = [...tags]
       .filter(t => !['TypeScript', 'React', 'Next.js'].includes(t.name))
-      .sort(() => 0.5 - Math.random())
+      .sort(() => 0.5 - random.next())
       .slice(0, 2);
     
     const articleTags = [...relatedTags, ...additionalTags];
@@ -311,9 +389,9 @@ async function createArticles(sources: any[], tags: any[]) {
         content: `# TypeScript記事${i + 1}の本文\n\nTypeScriptの詳細な技術解説。TypeScriptを使用した実装例とベストプラクティス。`,
         publishedAt,
         sourceId: sources[i % sources.length].id, // ソース別に均等配分
-        bookmarks: Math.floor(Math.random() * 100),
-        qualityScore: 70 + Math.random() * 30, // 高品質スコア
-        userVotes: Math.floor(Math.random() * 50),
+        bookmarks: random.nextInt(0, 99),
+        qualityScore: 70 + random.next() * 30, // 高品質スコア
+        userVotes: random.nextInt(0, 49),
         difficulty: 'intermediate',
         articleType: 'unified',
         summaryVersion: 7,
@@ -345,12 +423,12 @@ async function createArticles(sources: any[], tags: any[]) {
     for (let j = 0; j < articlesToCreate; j++) {
       const i = articles.length;
       const publishedAt = new Date(
-        oneMonthAgo.getTime() + Math.random() * (now.getTime() - oneMonthAgo.getTime())
+        oneMonthAgo.getTime() + random.next() * (now.getTime() - oneMonthAgo.getTime())
       );
       
-      const randomTagCount = Math.floor(Math.random() * 5) + 1;
+      const randomTagCount = random.nextInt(1, 5);
       const randomTags = [...tags]
-        .sort(() => 0.5 - Math.random())
+        .sort(() => 0.5 - random.next())
         .slice(0, randomTagCount);
 
       const article = await prisma.article.create({
@@ -363,10 +441,10 @@ async function createArticles(sources: any[], tags: any[]) {
           content: `# テスト記事${i + 1}の本文\n\nこれはテスト用の記事本文です。実際のコンテンツがここに入ります。`,
           publishedAt,
           sourceId: source.id, // ソース別に均等配分
-          bookmarks: Math.floor(Math.random() * 100),
-          qualityScore: Math.random() * 100,
-          userVotes: Math.floor(Math.random() * 50),
-          difficulty: ['beginner', 'intermediate', 'advanced'][Math.floor(Math.random() * 3)],
+          bookmarks: random.nextInt(0, 99),
+          qualityScore: random.next() * 100,
+          userVotes: random.nextInt(0, 49),
+          difficulty: ['beginner', 'intermediate', 'advanced'][random.nextInt(0, 2)],
           articleType: 'unified',
           summaryVersion: 7,
           tags: {
