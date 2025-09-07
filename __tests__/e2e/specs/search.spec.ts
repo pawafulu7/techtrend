@@ -2,12 +2,10 @@ import { test, expect } from '@playwright/test';
 import { testData } from '../fixtures/test-data';
 import {
   waitForPageLoad,
-  _expectPageTitle,
   expectNoErrors,
   expectArticleCards,
   waitForLoadingToDisappear,
   waitForSearchResults,
-  _waitForApiResponse,
 } from '../utils/e2e-helpers';
 import { SELECTORS } from '../constants/selectors';
 
@@ -80,7 +78,7 @@ test.describe('検索機能', () => {
   });
 
   test('特殊文字を含む検索クエリの処理', async ({ page }) => {
-    const searchInput = page.locator('[data-testid="search-box-input"]');
+    const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
     
     await expect(searchInput).toBeVisible();
     
@@ -250,7 +248,7 @@ test.describe('検索機能', () => {
   });
 
   test('複数キーワードのAND検索が機能する', async ({ page }) => {
-    const searchInput = page.locator('[data-testid="search-box-input"]');
+    const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
     
     await expect(searchInput).toBeVisible({ timeout: 10000 });
     
@@ -292,7 +290,7 @@ test.describe('検索機能', () => {
   });
 
   test('全角スペース区切りの複数キーワード検索', async ({ page }) => {
-    const searchInput = page.locator('[data-testid="search-box-input"]');
+    const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
     
     await expect(searchInput).toBeVisible({ timeout: 10000 });
     
@@ -308,7 +306,7 @@ test.describe('検索機能', () => {
     await expectNoErrors(page);
     
     // 検索結果が表示されることを確認
-    await page.waitForSelector('main', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 10000 });
   });
 
   test.skip('高度な検索オプション（機能削除済み）', async () => {

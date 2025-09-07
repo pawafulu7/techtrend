@@ -30,11 +30,11 @@ test.describe('フィルター条件の永続化', () => {
     const articleCount = await firstArticle.count();
     if (articleCount > 0) {
       await firstArticle.click();
-      await page.waitForURL(/\/articles\/.+/, { timeout: 10000 });
+      await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
 
       // 3. トップページに戻る
       await page.goto('/');
-      await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
+      await waitForArticles(page);
 
       // 4. 検索キーワードが保持されていることを確認
       const searchInput = page.locator('[data-testid="search-box-input"]');
@@ -44,7 +44,7 @@ test.describe('フィルター条件の永続化', () => {
 
   test('ソースフィルターがページ遷移後も保持される', async ({ page }) => {
     // フィルターエリアが表示されるまで待機
-    await page.waitForSelector('[data-testid="source-filter"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
     
     // 最初のカテゴリを展開
     const firstCategoryHeader = page.locator('[data-testid$="-header"]').first();
@@ -96,11 +96,11 @@ test.describe('フィルター条件の永続化', () => {
     const articleCount = await firstArticle.count();
     if (articleCount > 0) {
       await firstArticle.click();
-      await page.waitForURL(/\/articles\/.+/, { timeout: 10000 });
+      await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
 
       // 4. トップページに戻る
       await page.goto('/');
-      await page.waitForSelector('[data-testid="source-filter"]', { timeout: 10000 });
+      await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
 
       // 5. フィルターが保持されていることを確認
       if (selectedSourceId) {
@@ -153,14 +153,14 @@ test.describe('フィルター条件の永続化', () => {
     // URLパラメータが設定されることを確認
     await page.waitForFunction(() => {
       return window.location.search.includes('dateRange=week');
-    }, { timeout: 10000, polling: 100 });
+    }, { timeout: getTimeout('medium'), polling: 100 });
 
     // 2. 記事詳細ページへ遷移
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
+    await waitForArticles(page);
     const firstArticle = page.locator('[data-testid="article-card"]').first();
     if (await firstArticle.count() > 0) {
       await firstArticle.click();
-      await page.waitForURL(/\/articles\/.+/, { timeout: 10000 });
+      await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
     } else {
       test.skip(true, '記事が存在しないためスキップ');
     }
@@ -420,11 +420,11 @@ test.describe('ブラウザ間での動作確認', () => {
     const articleCount = await firstArticle.count();
     if (articleCount > 0) {
       await firstArticle.click();
-      await page.waitForURL(/\/articles\/.+/, { timeout: 10000 });
+      await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
       
       // トップページに戻る
       await page.goto('/');
-      await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
+      await waitForArticles(page);
       
       // 条件が保持されていることを確認
       // Cookieからの復元を待つ（未実装環境では空も許容）

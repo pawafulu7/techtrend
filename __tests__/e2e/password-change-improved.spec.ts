@@ -93,15 +93,19 @@ test.describe.serial('Password Change Feature - Improved', () => {
     // ブラウザ固有のテストユーザーを使用
     const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
     
-    // プロフィールページへ移動
+    // プロフィールページへ移動してアカウントタブを開く
     await page.goto('/profile');
+    await page.waitForLoadState('networkidle');
     
-    // ページが完全に読み込まれるまで待機
-    await page.waitForSelector('button:has-text("アカウント")', { state: 'visible', timeout: 10000 });
+    // アカウントタブを開く
+    const tabOpened = await openAccountTab(page);
+    if (!tabOpened) {
+      // 代替方法で試す
+      const accountTab = page.locator('[role="tab"]:has-text("アカウント"), button:has-text("アカウント")').first();
+      await accountTab.waitFor({ state: 'visible', timeout: 10000 });
+      await accountTab.click();
+    }
     
-    // アカウントタブを開く - TabsTriggerを使用
-    const accountTab = page.locator('button:has-text("アカウント")').first();
-    await accountTab.click();
     // タブの内容が表示されるまで待機
     await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
@@ -124,15 +128,19 @@ test.describe.serial('Password Change Feature - Improved', () => {
     // まずログインする
     await loginTestUser(page);
     
-    // プロフィールページへ移動
+    // プロフィールページへ移動してアカウントタブを開く
     await page.goto('/profile');
+    await page.waitForLoadState('networkidle');
     
-    // ページが完全に読み込まれるまで待機
-    await page.waitForSelector('button:has-text("アカウント")', { state: 'visible', timeout: 10000 });
+    // アカウントタブを開く
+    const tabOpened = await openAccountTab(page);
+    if (!tabOpened) {
+      // 代替方法で試す
+      const accountTab = page.locator('[role="tab"]:has-text("アカウント"), button:has-text("アカウント")').first();
+      await accountTab.waitFor({ state: 'visible', timeout: 10000 });
+      await accountTab.click();
+    }
     
-    // アカウントタブを開く - TabsTriggerを使用
-    const accountTab = page.locator('button:has-text("アカウント")').first();
-    await accountTab.click();
     // タブの内容が表示されるまで待機
     await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
