@@ -12,7 +12,8 @@ interface ScrollRestoreData {
 
 const STORAGE_KEY = 'articleListScroll';
 const EXPIRY_TIME = 5 * 60 * 1000; // 5分
-const MAX_RESTORE_PAGES = 100; // 最大復元ページ数（2000記事程度まで対応）
+const MAX_RESTORE_PAGES = 10; // 最大復元ページ数（1000記事まで対応）
+const ITEMS_PER_PAGE = 100; // 復元時のページサイズ
 
 export function useScrollRestoration(
   articleCount: number,
@@ -209,7 +210,7 @@ export function useScrollRestoration(
 
       // 必要なページ数まで自動読み込み
       const targetPageCount = Math.min(
-        data.pageCount || Math.ceil(data.articleCount / 20),
+        data.pageCount || Math.ceil(data.articleCount / ITEMS_PER_PAGE),
         MAX_RESTORE_PAGES
       );
       
@@ -226,23 +227,25 @@ export function useScrollRestoration(
         fetchNextPage();
       } else if (pageCount >= targetPageCount) {
         // すでに必要なページ数に到達している場合は即座にスクロール
-        setTimeout(() => {
-          const scrollTarget = targetScrollYRef.current!;
-          
-          if (scrollContainerRef?.current) {
-            scrollContainerRef.current.scrollTo({
-              top: scrollTarget,
-              behavior: 'smooth'
-            });
-          } else {
-            window.scrollTo({
-              top: scrollTarget,
-              behavior: 'smooth'
-            });
-          }
-          
-          // スムーススクロール完了後にクリーンアップとイベント発火
-          setTimeout(() => {
+        // requestAnimationFrameを二重化してDOMの描画完了を確実に待つ
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const scrollTarget = targetScrollYRef.current!;
+            
+            if (scrollContainerRef?.current) {
+              scrollContainerRef.current.scrollTo({
+                top: scrollTarget,
+                behavior: 'smooth'
+              });
+            } else {
+              window.scrollTo({
+                top: scrollTarget,
+                behavior: 'smooth'
+              });
+            }
+            
+            // スムーススクロール完了後にクリーンアップとイベント発火
+            setTimeout(() => {
             sessionStorage.removeItem(STORAGE_KEY);
             isRestoringRef.current = false;
             restorationCompleteRef.current = true;
@@ -266,8 +269,9 @@ export function useScrollRestoration(
                 cancelled: false
               }
             }));
-          }, 1000); // スムーススクロール完了待ち
-        }, 200); // 待機時間を短縮
+            }, 1000); // スムーススクロール完了待ち
+          });
+        });
       }
     } catch (_error) {
       sessionStorage.removeItem(STORAGE_KEY);
@@ -295,7 +299,7 @@ export function useScrollRestoration(
     try {
       const data = JSON.parse(stored) as ScrollRestoreData;
       const targetPageCount = Math.min(
-        data.pageCount || Math.ceil(data.articleCount / 20),
+        data.pageCount || Math.ceil(data.articleCount / ITEMS_PER_PAGE),
         MAX_RESTORE_PAGES
       );
       
@@ -303,24 +307,26 @@ export function useScrollRestoration(
       if (pageCount >= targetPageCount) {
         
         // スクロール実行
-        setTimeout(() => {
-          // ユーザーが操作していたらキャンセル
-          if (userInteractedRef.current) {
-            return;
-          }
-          
-          const scrollTarget = targetScrollYRef.current!;
-          
-          if (scrollContainerRef?.current) {
+        // requestAnimationFrameを二重化してDOMの描画完了を確実に待つ
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // ユーザーが操作していたらキャンセル
+            if (userInteractedRef.current) {
+              return;
+            }
             
-            // コンテナをスムーズスクロール
-            scrollContainerRef.current.scrollTo({
-              top: scrollTarget,
-              behavior: 'smooth'
-            });
+            const scrollTarget = targetScrollYRef.current!;
             
-            // スムーズスクロール完了後にイベント発火
-            setTimeout(() => {
+            if (scrollContainerRef?.current) {
+              
+              // コンテナをスムーズスクロール
+              scrollContainerRef.current.scrollTo({
+                top: scrollTarget,
+                behavior: 'smooth'
+              });
+              
+              // スムーズスクロール完了後にイベント発火
+              setTimeout(() => {
               // クリーンアップ
               sessionStorage.removeItem(STORAGE_KEY);
               isRestoringRef.current = false;
@@ -381,7 +387,8 @@ export function useScrollRestoration(
               }));
             }, 500); // windowスクロール完了待ち
           }
-        }, 200); // 待機時間を短縮 // レンダリング完了を確実に待つ
+          });
+        });
       } else if (hasNextPage && !isFetchingNextPage) {
         // まだページが不足している場合は追加読み込み
         fetchNextPage();

@@ -28,6 +28,10 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   const queryClient = useQueryClient();
   const prevFilterKeyRef = useRef<string>('');
   
+  // 復元モードかどうかを判定（URLに'returning'パラメータがあるか）
+  const isRestorationMode = typeof window !== 'undefined' && 
+    new URLSearchParams(window.location.search).has('returning');
+  
   // フィルタを正規化（undefined値を削除、キーをソート）
   const normalizedFilters = useMemo(() => {
     return Object.keys(filters)
@@ -128,7 +132,9 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       
       // ページパラメータを追加
       searchParams.set('page', String(pageParam));
-      searchParams.set('limit', '20');
+      // 復元モード時は100件、通常時は20件のページサイズを設定
+      const pageLimit = isRestorationMode ? 100 : 20;
+      searchParams.set('limit', String(pageLimit));
       
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
