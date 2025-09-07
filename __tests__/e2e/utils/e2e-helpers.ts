@@ -74,7 +74,7 @@ export async function waitForPageLoad(page: Page, options: { timeout?: number, w
   // Try to wait for network idle if requested
   if (waitForNetworkIdle) {
     try {
-      await page.waitForLoadState('networkidle', { timeout: Math.min(10000, Math.floor(timeout / 2)) });
+      await page.waitForLoadState('networkidle', { timeout: Math.min(3000, Math.floor(timeout / 3)) });
     } catch {
       // ignore - networkidle might not be reached with WebSocket/SSE
     }
@@ -96,9 +96,6 @@ export async function waitForPageLoad(page: Page, options: { timeout?: number, w
       // Fallback if main content selector doesn't exist
     });
   }
-  
-  // Additional wait for React hydration
-  await page.waitForTimeout(500);
 }
 
 /**
