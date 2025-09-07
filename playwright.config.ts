@@ -9,7 +9,8 @@ dotenv.config({ path: '.env.test' });
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './',
+  testMatch: ['**/e2e/**/*.spec.ts'],
   /* Global timeout for each test */
   timeout: 120000,  // 120秒に延長
   /* Run tests in files in parallel */
