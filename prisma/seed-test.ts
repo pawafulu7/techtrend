@@ -64,167 +64,98 @@ async function main() {
 
 }
 
+// ヘルパー関数：ソースを作成または更新
+async function ensureSource(id: string, name: string, type: 'RSS' | 'API' | 'SCRAPER', url: string) {
+  return await prisma.source.upsert({
+    where: { id },
+    update: {
+      name,
+      type,
+      url,
+      enabled: true,
+      updatedAt: new Date() // 明示的に更新時刻を設定
+    },
+    create: {
+      id,
+      name,
+      type,
+      url,
+      enabled: true
+    }
+  });
+}
+
 async function createSources() {
   const sources = [];
   
   // 固定IDソース（E2Eテストで使用されるID）
-  sources.push(await prisma.source.upsert({
-    where: { id: 'cmdq3nww70003tegxm78oydnb' },
-    update: {
-      name: 'Dev.to',
-      type: 'API',
-      url: 'https://dev.to/api/articles',
-      enabled: true
-    },
-    create: {
-      id: 'cmdq3nww70003tegxm78oydnb',
-      name: 'Dev.to',
-      type: 'API',
-      url: 'https://dev.to/api/articles',
-      enabled: true
-    }
-  }));
+  sources.push(await ensureSource(
+    'cmdq3nww70003tegxm78oydnb',
+    'Dev.to',
+    'API',
+    'https://dev.to/api/articles'
+  ));
   
-  sources.push(await prisma.source.upsert({
-    where: { id: 'cmdq3nwwk0005tegxdjv21wae' },
-    update: {
-      name: 'Think IT',
-      type: 'RSS',
-      url: 'https://thinkit.co.jp/rss.xml',
-      enabled: true
-    },
-    create: {
-      id: 'cmdq3nwwk0005tegxdjv21wae',
-      name: 'Think IT',
-      type: 'RSS',
-      url: 'https://thinkit.co.jp/rss.xml',
-      enabled: true
-    }
-  }));
+  sources.push(await ensureSource(
+    'cmdq3nwwk0005tegxdjv21wae',
+    'Think IT',
+    'RSS',
+    'https://thinkit.co.jp/rss.xml'
+  ));
   
   // その他のソース（カテゴリ定義と一致するIDで作成）
   // 海外ソース
-  sources.push(await prisma.source.upsert({
-    where: { id: 'cmdq3nwwz0008tegx2eu8cozq' },
-    update: {
-      name: 'Stack Overflow Blog',
-      type: 'RSS',
-      url: 'https://stackoverflow.blog/feed/',
-      enabled: true
-    },
-    create: {
-      id: 'cmdq3nwwz0008tegx2eu8cozq',
-      name: 'Stack Overflow Blog',
-      type: 'RSS',
-      url: 'https://stackoverflow.blog/feed/',
-      enabled: true
-    }
-  }));
+  sources.push(await ensureSource(
+    'cmdq3nwwz0008tegx2eu8cozq',
+    'Stack Overflow Blog',
+    'RSS',
+    'https://stackoverflow.blog/feed/'
+  ));
 
   // 国内情報サイト
-  sources.push(await prisma.source.upsert({
-    where: { id: 'cmdq3nwwp0006tegxz53w9zva' },
-    update: {
-      name: 'Zenn',
-      type: 'RSS',
-      url: 'https://zenn.dev/feed',
-      enabled: true
-    },
-    create: {
-      id: 'cmdq3nwwp0006tegxz53w9zva',
-      name: 'Zenn',
-      type: 'RSS',
-      url: 'https://zenn.dev/feed',
-      enabled: true
-    }
-  }));
+  sources.push(await ensureSource(
+    'cmdq3nwwp0006tegxz53w9zva',
+    'Zenn',
+    'RSS',
+    'https://zenn.dev/feed'
+  ));
 
-  sources.push(await prisma.source.upsert({
-    where: { id: 'cmdq3nww60000tegxi8ruki95' },
-    update: {
-      name: 'はてなブックマーク',
-      type: 'RSS',
-      url: 'https://b.hatena.ne.jp/hotentry/it.rss',
-      enabled: true
-    },
-    create: {
-      id: 'cmdq3nww60000tegxi8ruki95',
-      name: 'はてなブックマーク',
-      type: 'RSS',
-      url: 'https://b.hatena.ne.jp/hotentry/it.rss',
-      enabled: true
-    }
-  }));
+  sources.push(await ensureSource(
+    'cmdq3nww60000tegxi8ruki95',
+    'はてなブックマーク',
+    'RSS',
+    'https://b.hatena.ne.jp/hotentry/it.rss'
+  ));
 
-  sources.push(await prisma.source.upsert({
-    where: { id: 'cmdq3nwwf0004tegxuxj97z1k' },
-    update: {
-      name: 'InfoQ Japan',
-      type: 'RSS',
-      url: 'https://www.infoq.com/jp/feed/',
-      enabled: true
-    },
-    create: {
-      id: 'cmdq3nwwf0004tegxuxj97z1k',
-      name: 'InfoQ Japan',
-      type: 'RSS',
-      url: 'https://www.infoq.com/jp/feed/',
-      enabled: true
-    }
-  }));
+  sources.push(await ensureSource(
+    'cmdq3nwwf0004tegxuxj97z1k',
+    'InfoQ Japan',
+    'RSS',
+    'https://www.infoq.com/jp/feed/'
+  ));
 
-  sources.push(await prisma.source.upsert({
-    where: { id: 'cmdq3nwwu0007tegxcstlc8zt' },
-    update: {
-      name: 'Publickey',
-      type: 'RSS',
-      url: 'https://www.publickey1.jp/atom.xml',
-      enabled: true
-    },
-    create: {
-      id: 'cmdq3nwwu0007tegxcstlc8zt',
-      name: 'Publickey',
-      type: 'RSS',
-      url: 'https://www.publickey1.jp/atom.xml',
-      enabled: true
-    }
-  }));
+  sources.push(await ensureSource(
+    'cmdq3nwwu0007tegxcstlc8zt',
+    'Publickey',
+    'RSS',
+    'https://www.publickey1.jp/atom.xml'
+  ));
 
   // 企業ブログ
-  sources.push(await prisma.source.upsert({
-    where: { id: 'mercari_tech_blog' },
-    update: {
-      name: 'Mercari Engineering',
-      type: 'RSS',
-      url: 'https://engineering.mercari.com/blog/feed.xml/',
-      enabled: true
-    },
-    create: {
-      id: 'mercari_tech_blog',
-      name: 'Mercari Engineering',
-      type: 'RSS',
-      url: 'https://engineering.mercari.com/blog/feed.xml/',
-      enabled: true
-    }
-  }));
+  sources.push(await ensureSource(
+    'mercari_tech_blog',
+    'Mercari Engineering',
+    'RSS',
+    'https://engineering.mercari.com/blog/feed.xml/'
+  ));
 
   // プレゼンテーション
-  sources.push(await prisma.source.upsert({
-    where: { id: 'speakerdeck_8a450c43f9418ff6' },
-    update: {
-      name: 'Speaker Deck',
-      type: 'SCRAPER',
-      url: 'https://speakerdeck.com',
-      enabled: true
-    },
-    create: {
-      id: 'speakerdeck_8a450c43f9418ff6',
-      name: 'Speaker Deck',
-      type: 'SCRAPER',
-      url: 'https://speakerdeck.com',
-      enabled: true
-    }
-  }));
+  sources.push(await ensureSource(
+    'speakerdeck_8a450c43f9418ff6',
+    'Speaker Deck',
+    'SCRAPER',
+    'https://speakerdeck.com'
+  ));
 
   // 他のソースは必要に応じて追加可能
   
