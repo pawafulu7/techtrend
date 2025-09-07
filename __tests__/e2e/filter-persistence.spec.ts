@@ -458,7 +458,11 @@ test.describe('フィルター条件の永続化', () => {
       for (let i = 0; i < categoryCount; i++) {
         const header = categoryHeaders.nth(i);
         await header.click();
-        await page.waitForTimeout(200);
+        // カテゴリ内のチェックボックスが表示されるまで待機
+        await page.waitForSelector(`[data-testid^="source-checkbox-"]:nth-of-type(1)`, {
+          state: 'visible',
+          timeout: 5000
+        });
       }
       
       const checkboxes = await page.locator('[data-testid^="source-checkbox-"]').locator('button[role="checkbox"]').all();
