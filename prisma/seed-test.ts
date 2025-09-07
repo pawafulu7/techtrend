@@ -206,7 +206,7 @@ async function createArticles(sources: any[], tags: any[]) {
   const articles = [];
   const now = new Date();
   const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const TOTAL_ARTICLES = 200; // Phase 2: 記事数を200件に増加
+  const TOTAL_ARTICLES = 100; // E2Eテストのパフォーマンスを考慮して100件に戻す
 
   // Phase 3: TypeScript記事を確実に作成（最初の20件）
   const typeScriptTag = tags.find(t => t.name === 'TypeScript');
