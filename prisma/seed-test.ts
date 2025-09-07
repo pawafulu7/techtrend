@@ -6,7 +6,10 @@ class SeededRandom {
   private seed: number;
   
   constructor(seed: number = 12345) {
-    this.seed = seed;
+    // Park-Millerの定義域（1..2147483646）に正規化
+    const m = 2147483647;
+    this.seed = Math.trunc(seed) % m;
+    if (this.seed <= 0) this.seed += (m - 1);
   }
   
   next(): number {
@@ -30,7 +33,12 @@ function shuffle<T>(arr: T[], rng: SeededRandom): T[] {
   return a;
 }
 
-const random = new SeededRandom(12345); // 固定シードで初期化
+// 環境変数E2E_SEEDがあれば使用、なければデフォルト値12345
+const random = new SeededRandom(
+  Number.isFinite(Number(process.env.E2E_SEED))
+    ? Number(process.env.E2E_SEED)
+    : 12345
+);
 
 const prisma = new PrismaClient({
   datasources: {
@@ -327,6 +335,11 @@ async function createArticles(sources: Source[], tags: Tag[]) {
   const reactTag = tags.find(t => t.name === 'React');
   const nextjsTag = tags.find(t => t.name === 'Next.js');
   
+  // 必須タグの存在チェック
+  if (!typeScriptTag || !reactTag || !nextjsTag) {
+    throw new Error('Required tags missing: TypeScript/React/Next.js');
+  }
+  
   for (let i = 0; i < TS_ARTICLE_COUNT; i++) {
     const publishedAt = new Date(
       oneMonthAgo.getTime() + random.next() * (now.getTime() - oneMonthAgo.getTime())
@@ -351,7 +364,7 @@ async function createArticles(sources: Source[], tags: Tag[]) {
         publishedAt,
         sourceId: sources[i % sources.length].id, // ソース別に均等配分
         bookmarks: random.nextInt(0, 99),
-        qualityScore: 70 + random.next() * 30, // 高品質スコア
+        qualityScore: random.nextInt(70, 100), // 高品質スコア（整数・100含む）
         userVotes: random.nextInt(0, 49),
         difficulty: 'intermediate',
         articleType: 'unified',
@@ -401,7 +414,7 @@ async function createArticles(sources: Source[], tags: Tag[]) {
           publishedAt,
           sourceId: source.id, // ソース別に均等配分
           bookmarks: random.nextInt(0, 99),
-          qualityScore: random.next() * 100,
+          qualityScore: random.nextInt(0, 100), // 品質スコア（0-100の整数）
           userVotes: random.nextInt(0, 49),
           difficulty: ['beginner', 'intermediate', 'advanced'][random.nextInt(0, 2)],
           articleType: 'unified',
