@@ -59,21 +59,96 @@ async function createSources() {
     }
   }));
   
-  // その他のソース（通常のcuid IDで作成）
-  const otherSourcesData = [
-    { name: 'Qiita', type: 'API', url: 'https://qiita.com/api/v2/items', enabled: true },
-    { name: 'Zenn', type: 'RSS', url: 'https://zenn.dev/feed', enabled: true },
-    { name: 'はてなブックマーク', type: 'RSS', url: 'https://b.hatena.ne.jp/hotentry/it.rss', enabled: true },
-    { name: 'Publickey', type: 'RSS', url: 'https://www.publickey1.jp/atom.xml', enabled: true },
-    { name: 'Stack Overflow Blog', type: 'RSS', url: 'https://stackoverflow.blog/feed/', enabled: true },
-    { name: 'InfoQ Japan', type: 'RSS', url: 'https://www.infoq.com/jp/feed/', enabled: true },
-    { name: 'Speaker Deck', type: 'SCRAPING', url: 'https://speakerdeck.com', enabled: true },
-    { name: 'Corporate Tech Blog', type: 'RSS', url: 'https://techblog.example.com/feed', enabled: true },
-  ];
+  // その他のソース（カテゴリ定義と一致するIDで作成）
+  // 海外ソース
+  sources.push(await prisma.source.upsert({
+    where: { id: 'cmdq3nwwz0008tegx2eu8cozq' },
+    update: {},
+    create: {
+      id: 'cmdq3nwwz0008tegx2eu8cozq',
+      name: 'Stack Overflow Blog',
+      type: 'RSS',
+      url: 'https://stackoverflow.blog/feed/',
+      enabled: true
+    }
+  }));
 
-  for (const data of otherSourcesData) {
-    sources.push(await prisma.source.create({ data }));
-  }
+  // 国内情報サイト
+  sources.push(await prisma.source.upsert({
+    where: { id: 'cmdq3nwwp0006tegxz53w9zva' },
+    update: {},
+    create: {
+      id: 'cmdq3nwwp0006tegxz53w9zva',
+      name: 'Zenn',
+      type: 'RSS',
+      url: 'https://zenn.dev/feed',
+      enabled: true
+    }
+  }));
+
+  sources.push(await prisma.source.upsert({
+    where: { id: 'cmdq3nww60000tegxi8ruki95' },
+    update: {},
+    create: {
+      id: 'cmdq3nww60000tegxi8ruki95',
+      name: 'はてなブックマーク',
+      type: 'RSS',
+      url: 'https://b.hatena.ne.jp/hotentry/it.rss',
+      enabled: true
+    }
+  }));
+
+  sources.push(await prisma.source.upsert({
+    where: { id: 'cmdq3nwwf0004tegxuxj97z1k' },
+    update: {},
+    create: {
+      id: 'cmdq3nwwf0004tegxuxj97z1k',
+      name: 'InfoQ Japan',
+      type: 'RSS',
+      url: 'https://www.infoq.com/jp/feed/',
+      enabled: true
+    }
+  }));
+
+  sources.push(await prisma.source.upsert({
+    where: { id: 'cmdq3nwwu0007tegxcstlc8zt' },
+    update: {},
+    create: {
+      id: 'cmdq3nwwu0007tegxcstlc8zt',
+      name: 'Publickey',
+      type: 'RSS',
+      url: 'https://www.publickey1.jp/atom.xml',
+      enabled: true
+    }
+  }));
+
+  // 企業ブログ
+  sources.push(await prisma.source.upsert({
+    where: { id: 'mercari_tech_blog' },
+    update: {},
+    create: {
+      id: 'mercari_tech_blog',
+      name: 'Mercari Engineering',
+      type: 'RSS',
+      url: 'https://engineering.mercari.com/blog/feed.xml/',
+      enabled: true
+    }
+  }));
+
+  // プレゼンテーション
+  sources.push(await prisma.source.upsert({
+    where: { id: 'speakerdeck_8a450c43f9418ff6' },
+    update: {},
+    create: {
+      id: 'speakerdeck_8a450c43f9418ff6',
+      name: 'Speaker Deck',
+      type: 'SCRAPER',
+      url: 'https://speakerdeck.com',
+      enabled: true
+    }
+  }));
+
+  // 他のソースは必要に応じて追加可能
   
   return sources;
 }
