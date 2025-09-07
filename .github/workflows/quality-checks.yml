@@ -121,7 +121,7 @@ jobs:
         run: |
           npx prisma generate
           npx prisma db push
-          npx prisma db seed
+          npx tsx prisma/seed-test.ts
 
       - name: Run tests with coverage
         env:
