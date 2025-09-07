@@ -59,7 +59,8 @@ async function main() {
   // CI環境（GitHub Actions等）では5432ポート、ローカル開発環境では5433ポートを許可
   const isCI = process.env.CI === 'true';
   const portOk = isCI ? url.port === '5432' : url.port === '5433';
-  const nameOk = /test/i.test(dbName);
+  // より厳密なテストDB名チェック（_testで終わる、またはtechtrend_testという名前）
+  const nameOk = /(\_test\b|techtrend\_test)/i.test(dbName);
   const override = process.env.E2E_SEED_FORCE === '1';
   
   if (!(hostOk && portOk && nameOk) && !override) {
