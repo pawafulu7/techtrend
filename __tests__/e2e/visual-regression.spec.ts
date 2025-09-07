@@ -53,7 +53,15 @@ test.describe.skip(isRunningInCI(), 'Visual Regression Tests', () => {
       }
       
       // CSS transitionの完了を待つ
-      await page.waitForTimeout(1000);
+      await page.waitForFunction(
+        () => {
+          const html = document.documentElement;
+          const style = window.getComputedStyle(html);
+          // transitionが完了しているか確認
+          return style.transition === 'none' || style.transition === '';
+        },
+        { timeout: 5000 }
+      );
     }
     
     // スクリーンショットを撮影
@@ -85,7 +93,7 @@ test.describe.skip(isRunningInCI(), 'Visual Regression Tests', () => {
     await page.waitForLoadState('networkidle');
     
     // ページコンテンツが読み込まれるまで待機
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
     
     // 統計ページの主要要素を確認（複数のセレクタを試行）
     const chartSelectors = [
@@ -136,8 +144,8 @@ test.describe.skip(isRunningInCI(), 'Visual Regression Tests', () => {
       
       // Firefoxの場合は特別な処理
       if (browserName === 'firefox') {
-        // Firefoxでは遷移に時間がかかることがあるため、より長い待機時間を設定
-        await page.waitForTimeout(2000);
+        // Firefoxでは遷移に時間がかかることがあるため、ネットワーク完了を待機
+        await page.waitForLoadState('networkidle', { timeout: 10000 });
         
         // URLが変更されたことを確認（正規表現を緩和）
         try {
@@ -180,8 +188,8 @@ test.describe.skip(isRunningInCI(), 'Visual Regression Tests', () => {
         await page.waitForSelector('main', { timeout: 5000 });
       }
       
-      // ページコンテンツが完全に読み込まれるまで少し待機
-      await page.waitForTimeout(1000);
+      // ページコンテンツが完全に読み込まれるまで待機
+      await page.waitForLoadState('networkidle');
       
       await expect(page).toHaveScreenshot('article-detail.png', {
         fullPage: true,
