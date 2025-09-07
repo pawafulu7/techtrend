@@ -281,14 +281,14 @@ async function createArticles(sources: any[], tags: any[]) {
   const articles = [];
   const now = new Date();
   const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const TOTAL_ARTICLES = 100; // E2Eテストのパフォーマンスを考慮して100件に戻す
+  const TOTAL_ARTICLES = 50; // E2Eテストのパフォーマンスを考慮して50件に削減
 
-  // Phase 3: TypeScript記事を確実に作成（最初の20件）
+  // Phase 3: TypeScript記事を確実に作成（最初の10件）
   const typeScriptTag = tags.find(t => t.name === 'TypeScript');
   const reactTag = tags.find(t => t.name === 'React');
   const nextjsTag = tags.find(t => t.name === 'Next.js');
   
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 10; i++) {
     const publishedAt = new Date(
       oneMonthAgo.getTime() + Math.random() * (now.getTime() - oneMonthAgo.getTime())
     );
@@ -331,7 +331,7 @@ async function createArticles(sources: any[], tags: any[]) {
   }
 
   // 残りの記事を各ソースに均等配分（Phase 2）
-  const remainingArticles = TOTAL_ARTICLES - 20;
+  const remainingArticles = TOTAL_ARTICLES - 10;
   const articlesPerSource = Math.floor(remainingArticles / sources.length);
   
   for (const source of sources) {
