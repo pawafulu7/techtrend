@@ -132,6 +132,11 @@ const nextConfig: NextConfig = {
         hostname: 'video.docswell.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+        pathname: '/**',
+      },
     ],
   },
 };
