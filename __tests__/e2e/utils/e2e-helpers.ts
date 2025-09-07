@@ -65,16 +65,29 @@ export const TEST_USERS: Record<BrowserName, TestUser> = {
  * ページの読み込みが完了するまで待機
  * 注: 開発サーバーは常時起動（http://localhost:3000）
  */
-export async function waitForPageLoad(page: Page, options: { timeout?: number } = {}) {
-  const { timeout = 30000 } = options;
+export async function waitForPageLoad(page: Page, options: { timeout?: number, waitForNetworkIdle?: boolean } = {}) {
+  const { timeout = 30000, waitForNetworkIdle = true } = options;
   
-  // Prefer DOM ready; try networkidle best-effort
+  // Wait for DOM content loaded first
   await page.waitForLoadState('domcontentloaded', { timeout });
-  try {
-    await page.waitForLoadState('networkidle', { timeout: Math.min(5000, Math.floor(timeout / 2)) });
-  } catch {
-    // ignore - networkidle might not be reached with WebSocket/SSE
+  
+  // Try to wait for network idle if requested
+  if (waitForNetworkIdle) {
+    try {
+      await page.waitForLoadState('networkidle', { timeout: Math.min(10000, Math.floor(timeout / 2)) });
+    } catch {
+      // ignore - networkidle might not be reached with WebSocket/SSE
+    }
   }
+  
+  // Wait for the page to have a title (ensures React app is mounted)
+  await page.waitForFunction(
+    () => document.title && document.title.length > 0,
+    undefined,
+    { timeout: 10000, polling: 100 }
+  ).catch(() => {
+    // If title doesn't appear, continue anyway
+  });
   
   // Wait for main content area to be visible using SELECTORS
   const mainContent = page.locator(SELECTORS.MAIN_CONTENT).first();
@@ -83,6 +96,9 @@ export async function waitForPageLoad(page: Page, options: { timeout?: number } 
       // Fallback if main content selector doesn't exist
     });
   }
+  
+  // Additional wait for React hydration
+  await page.waitForTimeout(500);
 }
 
 /**
