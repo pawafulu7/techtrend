@@ -7,6 +7,7 @@ import {
   waitForLoadingToDisappear,
   waitForSearchResults,
 } from '../utils/e2e-helpers';
+import { waitForArticles, getTimeout } from '../../../e2e/helpers/wait-utils';
 import { SELECTORS } from '../constants/selectors';
 
 test.describe('検索機能', () => {
@@ -35,14 +36,20 @@ test.describe('検索機能', () => {
     // エラーがないことを確認
     await expectNoErrors(page);
     
-    // 検索結果のローディングが完了するまで待機（タイムアウト延長）
-    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 45000 });
+    // 検索結果のローディングが完了するまで待機
+    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { 
+      state: 'visible', 
+      timeout: getTimeout('long') 
+    });
     
     // ローディングスピナーが消えるまで待機
     await waitForLoadingToDisappear(page);
     
     // 検索結果の表示を待つ
     await waitForSearchResults(page);
+    
+    // 記事が表示されるまで待つ
+    await waitForArticles(page);
     
     // 検索結果カウントの表示を確認（「○○件の記事」の形式）
     const resultCountLocator = page.locator('text=/\\d+件の記事/').first();
@@ -256,21 +263,38 @@ test.describe('検索機能', () => {
     await searchInput.fill('JavaScript React');
     await searchInput.press('Enter');
     
-    // URLに検索パラメータが追加されることを確認（+または%20でエンコード）
-    await expect(page).toHaveURL(/\?.*search=(JavaScript(%20|\+)React|JavaScript\+React)/, { timeout: 15000 });
+    // URLに検索パラメータが追加されるを待つ
+    await page.waitForFunction(
+      () => {
+        const url = window.location.search;
+        // JavaScript React または JavaScript+React のどちらかでエンコードされる
+        return url.includes('search=JavaScript%20React') || 
+               url.includes('search=JavaScript+React') ||
+               url.includes('search=JavaScript React');
+      },
+      undefined,
+      { timeout: getTimeout('medium'), polling: 100 }
+    );
+    
     await waitForPageLoad(page);
     
     // エラーがないことを確認
     await expectNoErrors(page);
     
-    // 検索結果のローディングが完了するまで待機（タイムアウト延長）
-    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 45000 });
+    // 検索結果のローディングが完了するまで待機
+    await page.waitForSelector(SELECTORS.MAIN_CONTENT, { 
+      state: 'visible', 
+      timeout: getTimeout('long') 
+    });
     
     // ローディングスピナーが消えるまで待機
     await waitForLoadingToDisappear(page);
     
     // 検索結果の表示を待つ
     await waitForSearchResults(page);
+    
+    // 記事が表示されるまで待つ
+    await waitForArticles(page);
     
     // 検索結果カウントの表示を確認
     // より具体的なセレクタを使用して、数字+件のパターンのみを対象にする

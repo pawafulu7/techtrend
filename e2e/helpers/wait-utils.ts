@@ -243,6 +243,75 @@ export async function safeClick(locator: Locator, options?: {
 }
 
 /**
+ * タブパネルの切り替えを待つ
+ */
+export async function waitForTabSwitch(
+  page: Page,
+  tabSelector: string,
+  options?: {
+    timeout?: number;
+  }
+) {
+  const timeout = options?.timeout ?? getTimeout('short');
+  
+  try {
+    // タブのアニメーションが完了するのを待つ
+    await page.waitForFunction(
+      (selector) => {
+        const tab = document.querySelector(selector);
+        if (!tab) return false;
+        
+        // aria-selected属性をチェック
+        const isSelected = tab.getAttribute('aria-selected') === 'true';
+        // data-state属性をチェック（Radix UIの場合）
+        const isActive = tab.getAttribute('data-state') === 'active';
+        
+        return isSelected || isActive;
+      },
+      tabSelector,
+      { timeout, polling: 100 }
+    );
+    
+    // タブコンテンツが表示されるまで待つ
+    await page.waitForTimeout(300); // アニメーション用の短い待機
+  } catch (error) {
+    console.error(`Failed to wait for tab switch: ${error}`);
+    throw error;
+  }
+}
+
+/**
+ * 入力フィールドの値が変更されるまで待つ
+ */
+export async function waitForInputValue(
+  page: Page,
+  selector: string,
+  expectedValue: string,
+  options?: {
+    timeout?: number;
+    partial?: boolean;
+  }
+) {
+  const timeout = options?.timeout ?? getTimeout('short');
+  const partial = options?.partial ?? false;
+  
+  await page.waitForFunction(
+    ({ selector, expectedValue, partial }) => {
+      const input = document.querySelector(selector) as HTMLInputElement;
+      if (!input) return false;
+      
+      const actualValue = input.value;
+      if (partial) {
+        return actualValue.includes(expectedValue);
+      }
+      return actualValue === expectedValue;
+    },
+    { selector, expectedValue, partial },
+    { timeout, polling: 100 }
+  );
+}
+
+/**
  * URLパラメータが特定の値になるまで待機（ポーリング改善）
  */
 export async function waitForUrlParam(

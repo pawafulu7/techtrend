@@ -7,6 +7,7 @@ import {
   expectPageTitle,
   expectNoErrors,
 } from '../utils/e2e-helpers';
+import { getTimeout } from '../../../e2e/helpers/wait-utils';
 import { SELECTORS } from '../constants/selectors';
 
 test.describe('ホームページ', () => {
@@ -53,8 +54,19 @@ test.describe('ホームページ', () => {
       // Enterキーで検索実行
       await searchInput.press('Enter');
       
-      // URLに検索パラメータが追加されることを確認
-      await expect(page).toHaveURL(/\?.*search=/);
+      // URLに検索パラメータが追加されることを確認（動的待機）
+      await page.waitForFunction(
+        () => {
+          const url = window.location.search;
+          return url.includes('search=');
+        },
+        undefined,
+        { timeout: getTimeout('medium'), polling: 100 }
+      );
+      
+      // URLが正しく更新されたことを確認
+      const currentUrl = page.url();
+      expect(currentUrl).toContain('search=');
     }
   });
 

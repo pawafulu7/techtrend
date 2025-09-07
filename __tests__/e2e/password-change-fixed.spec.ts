@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForTabSwitch, getTimeout } from '../../e2e/helpers/wait-utils';
 
 // Force sequential execution
 test.describe.serial('Password Change Feature', () => {
@@ -102,8 +103,14 @@ test.describe.serial('Password Change Feature', () => {
     const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
     await accountTab.click();
     
-    // Wait for tab animation
-    await page.waitForTimeout(1000);
+    // タブの切り替えを待つ
+    await waitForTabSwitch(page, 'button:has-text("アカウント")');
+    
+    // タブコンテンツが表示されるを待つ
+    await page.waitForSelector('input[name="currentPassword"]', { 
+      state: 'visible', 
+      timeout: getTimeout('short') 
+    });
     
     // 短いパスワードを入力
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
@@ -125,8 +132,14 @@ test.describe.serial('Password Change Feature', () => {
     const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
     await accountTab.click();
     
-    // Wait for tab animation
-    await page.waitForTimeout(1000);
+    // タブの切り替えを待つ
+    await waitForTabSwitch(page, 'button:has-text("アカウント")');
+    
+    // タブコンテンツが表示されるを待つ
+    await page.waitForSelector('input[name="currentPassword"]', { 
+      state: 'visible', 
+      timeout: getTimeout('short') 
+    });
     
     // 一致しないパスワードを入力
     await page.fill('input[name="currentPassword"]', 'TestPassword123');
@@ -148,8 +161,14 @@ test.describe.serial('Password Change Feature', () => {
     const accountTab = page.locator('button').filter({ hasText: 'アカウント' });
     await accountTab.click();
     
-    // Wait for tab animation
-    await page.waitForTimeout(1000);
+    // タブの切り替えを待つ
+    await waitForTabSwitch(page, 'button:has-text("アカウント")');
+    
+    // タブコンテンツが表示されるを待つ
+    await page.waitForSelector('input[name="currentPassword"]', { 
+      state: 'visible', 
+      timeout: getTimeout('short') 
+    });
     
     // 間違った現在のパスワードを入力
     await page.fill('input[name="currentPassword"]', 'WrongPassword123');
