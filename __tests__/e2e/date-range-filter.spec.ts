@@ -145,7 +145,6 @@ test.describe('Date Range Filter', () => {
     // Check URL doesn't have dateRange parameter
     await page.waitForFunction(
       () => !window.location.href.includes('dateRange'),
-      undefined,
       { timeout: getTimeout('medium') }
     );
     expect(page.url()).not.toContain('dateRange');
@@ -179,7 +178,6 @@ test.describe('Date Range Filter', () => {
         const url = window.location.href;
         return url.includes('dateRange=week') && url.includes('sources=');
       },
-      undefined,
       { timeout: getTimeout('medium') }
     );
     
@@ -204,7 +202,6 @@ test.describe('Date Range Filter', () => {
         const url = window.location.href;
         return !url.includes('page=2');
       },
-      undefined,
       { timeout: getTimeout('medium') }
     );
     
@@ -232,7 +229,13 @@ test.describe('Date Range Filter', () => {
       if (await button.count() > 0) {
         filterButtonFound = true;
         await button.click();
-        await page.waitForTimeout(1000);
+        // フィルターメニューが開くのを待つ
+        await page.waitForSelector('[role="dialog"], .sheet-content, .modal', {
+          state: 'visible',
+          timeout: 3000
+        }).catch(() => {
+          // フィルターメニューが表示されない場合は続行
+        });
         break;
       }
     }
