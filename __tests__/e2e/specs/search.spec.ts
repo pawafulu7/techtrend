@@ -7,7 +7,7 @@ import {
   waitForLoadingToDisappear,
   waitForSearchResults,
 } from '../utils/e2e-helpers';
-import { waitForArticles, getTimeout } from '../../../e2e/helpers/wait-utils';
+import { waitForArticles, getTimeout, waitForUrlParam } from '../../../e2e/helpers/wait-utils';
 import { SELECTORS } from '../constants/selectors';
 
 test.describe('検索機能', () => {
