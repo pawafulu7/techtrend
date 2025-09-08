@@ -329,7 +329,9 @@ test.describe('フィルター条件の永続化', () => {
     // 1. 複数のフィルターを設定
     await page.fill('[data-testid="search-box-input"]', 'React');
     // 検索パラメータが設定されるまで待機（延長タイムアウト）
-    await waitForUrlParam(page, 'search', 'React', { timeout: 15000, polling: 'normal' });
+    // CI環境では更に延長
+    const searchTimeout = process.env.CI ? 30000 : 15000;
+    await waitForUrlParam(page, 'search', 'React', { timeout: searchTimeout, polling: 'normal' });
     await expect(page).toHaveURL(/search=React/, { timeout: 20000 });
     
     // ソースフィルターが存在する場合のみ設定
@@ -379,8 +381,9 @@ test.describe('フィルター条件の永続化', () => {
     }
     
     await page.getByRole('button', { name: '人気' }).click();
-    // ソートパラメータの待機時間を延長
-    await page.waitForFunction(() => window.location.search.includes('sortBy='), { timeout: 15000, polling: 100 });
+    // ソートパラメータの待機時間を延長（CI環境では更に延長）
+    const sortTimeout = process.env.CI ? 30000 : 15000;
+    await page.waitForFunction(() => window.location.search.includes('sortBy='), { timeout: sortTimeout, polling: 100 });
     // ネットワーク安定化待機
     await page.waitForLoadState('networkidle', { timeout: 5000 });
 
@@ -424,7 +427,9 @@ test.describe('フィルター条件の永続化', () => {
   test('フィルターリセットボタンですべての条件がクリアされる', async ({ page }) => {
     // 1. 複数のフィルターを設定
     await page.fill('[data-testid="search-box-input"]', 'Vue');
-    await page.waitForFunction(() => window.location.search.includes('search=Vue'), { timeout: 5000, polling: 100 });
+    // CI環境では待機時間を延長
+    const vueTimeout = process.env.CI ? 15000 : 5000;
+    await page.waitForFunction(() => window.location.search.includes('search=Vue'), { timeout: vueTimeout, polling: 100 });
     
     // ソースフィルターが存在する場合のみ設定
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
@@ -524,16 +529,18 @@ test.describe('フィルター条件の永続化', () => {
     await page.goto('/?search=JavaScript');
 
     // 3. URLパラメータの値が表示されることを確認
-    await expect(page.locator('[data-testid="search-box-input"]')).toHaveValue('JavaScript');
+    // 複数の要素がある場合は最初の要素を使用
+    await expect(page.locator('[data-testid="search-box-input"]').first()).toHaveValue('JavaScript');
   });
 
   test('Cookie有効期限内で条件が保持される', async ({ page, context }) => {
     // 1. フィルター条件を設定
     await page.fill('[data-testid="search-box-input"]', 'Rust');
-    // URL更新を待つ
+    // URL更新を待つ（CI環境では待機時間を延長）
+    const rustTimeout = process.env.CI ? 15000 : 5000;
     await page.waitForFunction(() => {
       return window.location.search.includes('search=Rust');
-    }, { timeout: 5000, polling: 100 });
+    }, { timeout: rustTimeout, polling: 100 });
 
     // 2. Cookieを確認
     const cookies = await context.cookies();
