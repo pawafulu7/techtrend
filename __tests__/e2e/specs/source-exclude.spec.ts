@@ -16,18 +16,14 @@ test.describe('ソースフィルタリング機能', () => {
     // すべて選択ボタンをクリックして、初期状態を統一
     const selectAllButton = page.locator('[data-testid="select-all-button"]');
     await selectAllButton.click();
-    // クリック後の処理が完了するまで少し待つ（URLパラメータは更新されない場合もある）
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    await page.waitForTimeout(500);
 
     // 海外ソースカテゴリを展開
     const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
     await expect(foreignCategoryHeader).toBeVisible();
     await foreignCategoryHeader.click();
-    // カテゴリ内のソースチェックボックスが表示されるまで待つ
-    await page.waitForSelector('[data-testid^="source-checkbox-"]', {
-      state: 'visible',
-      timeout: 5000
-    });
+    // 展開アニメーションを待つ
+    await page.waitForTimeout(500);
 
     // Dev.toのチェックボックスを探す（海外ソース内）- 厳密マッチとbutton[role="checkbox"]使用
     const devtoContainer = page.locator('[data-testid^="source-checkbox-"]')
@@ -118,7 +114,7 @@ test.describe('ソースフィルタリング機能', () => {
       timeout: 10000,
       state: 'visible' 
     });
-    await page.waitForLoadState('domcontentloaded', { timeout: 5000 });
+    await page.waitForTimeout(500);
     
     // 最初に全選択ボタンをクリックして、すべて選択状態にする
     const selectAllButton = page.locator('[data-testid="select-all-button"]');
@@ -142,25 +138,21 @@ test.describe('ソースフィルタリング機能', () => {
     await deselectAllButton.click();
     
     // すべてのチェックボックスが解除されたことを確認
-    await page.waitForFunction(
-      () => {
-        const checkboxes = document.querySelectorAll('[data-testid^="source-checkbox-"] button[role="checkbox"]');
-        return Array.from(checkboxes).every(cb => cb.getAttribute('data-state') === 'unchecked');
-      },
-      { timeout: 5000 }
-    );
+    await page.waitForTimeout(500);
     
     // まずカテゴリを展開する必要がある
     const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
     if (await foreignCategoryHeader.isVisible()) {
       await foreignCategoryHeader.click();
-      // 展開完了を待つ
+      // 展開アニメーションを待つ
+      await page.waitForTimeout(500);
     }
     
     const domesticCategoryHeader = page.locator('[data-testid="category-domestic-header"]');
     if (await domesticCategoryHeader.isVisible()) {
       await domesticCategoryHeader.click();
-      // 展開完了を待つ
+      // 展開アニメーションを待つ
+      await page.waitForTimeout(500);
     }
     
     const allCheckboxes = page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]');
@@ -187,13 +179,7 @@ test.describe('ソースフィルタリング機能', () => {
     await selectAllButton.click();
     
     // すべてのチェックボックスが選択されたことを確認
-    await page.waitForFunction(
-      () => {
-        const checkboxes = document.querySelectorAll('[data-testid^="source-checkbox-"] button[role="checkbox"]');
-        return Array.from(checkboxes).every(cb => cb.getAttribute('data-state') === 'checked');
-      },
-      { timeout: 5000 }
-    );
+    await page.waitForTimeout(500);
     for (let i = 0; i < checkboxCount; i++) {
       const checkbox = allCheckboxes.nth(i);
       await expect(checkbox).toHaveAttribute('data-state', 'checked');
@@ -214,8 +200,7 @@ test.describe('ソースフィルタリング機能', () => {
     
     // Firefoxは読み込みが遅い場合があるため追加待機
     if (browserName === 'firefox') {
-      await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
-      await page.waitForSelector('[data-testid="filter-area"]', { state: 'visible', timeout: 5000 });
+      await page.waitForTimeout(2000);
     } else {
       await page.waitForLoadState('networkidle', { timeout: 5000 });
     }
@@ -233,11 +218,8 @@ test.describe('ソースフィルタリング機能', () => {
     const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
     await expect(foreignCategoryHeader).toBeVisible();
     await foreignCategoryHeader.click();
-    // カテゴリ内のソースチェックボックスが表示されるまで待つ
-    await page.waitForSelector('[data-testid^="source-checkbox-"]', {
-      state: 'visible',
-      timeout: 5000
-    });
+    // 展開アニメーションを待つ
+    await page.waitForTimeout(500);
     
     // 国内情報サイトカテゴリも展開
     const domesticCategoryHeader = page.locator('[data-testid="category-domestic-header"]');
