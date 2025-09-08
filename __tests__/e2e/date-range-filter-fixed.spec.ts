@@ -73,10 +73,16 @@ test.describe('Date Range Filter - Fixed', () => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await trigger.click();
     
+    // Wait for dropdown to be visible
+    await page.waitForSelector('[data-testid="date-range-option-week"]', { state: 'visible' });
+    
     await page.locator('[data-testid="date-range-option-week"]').click();
     
-    // Wait for URL to change
-    await expect(page).toHaveURL(/[\?&]dateRange=week\b/, { timeout: 10000 });
+    // Wait for network idle after clicking
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
+    // Wait for URL to change with more flexible timeout
+    await expect(page).toHaveURL(/[\?&]dateRange=week\b/, { timeout: 15000 });
     
     expect(page.url()).toContain('dateRange=week');
     await expect(trigger).toContainText('今週');

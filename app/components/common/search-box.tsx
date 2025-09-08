@@ -85,6 +85,12 @@ export function SearchBox() {
         placeholder="キーワードで記事を検索..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !isComposing) {
+            e.preventDefault();
+            handleSearch(query);
+          }
+        }}
         onCompositionStart={() => setIsComposing(true)}
         onCompositionEnd={() => setIsComposing(false)}
         className="pl-9 pr-9 h-8 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600"

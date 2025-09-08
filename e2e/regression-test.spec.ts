@@ -42,8 +42,8 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
         timeout: 5000
       });
       
-      // タイトルが表示されていることを確認（正規化処理を追加）
-      const detailTitle = await page.locator('h1').textContent();
+      // タイトルが表示されていることを確認（正規化処理を追加、最初の要素を取得）
+      const detailTitle = await page.locator('h1').first().textContent();
       expect(detailTitle?.trim()).toBe(firstCardTitle?.trim());
     });
   });
