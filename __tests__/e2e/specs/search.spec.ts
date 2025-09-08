@@ -282,6 +282,7 @@ test.describe('検索機能', () => {
       test.skip();
       return;
     }
+    // スキップされない場合のみexpectを実行
     await expect(page).toHaveURL(/search=/, { timeout: 5000 });
     
     await waitForPageLoad(page);
