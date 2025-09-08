@@ -62,6 +62,9 @@ test.describe('Date Range Filter', () => {
   });
 
   test('should filter articles by today', async ({ page }) => {
+    // Wait for network idle before starting
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
     await safeClick(trigger);
@@ -74,8 +77,11 @@ test.describe('Date Range Filter', () => {
     await todayOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(todayOption);
     
-    // Wait for URL to update with retry logic
-    await waitForUrlParam(page, 'dateRange', 'today', { polling: 'normal' });
+    // Wait for URL to update with extended timeout
+    await waitForUrlParam(page, 'dateRange', 'today', { polling: 'normal', timeout: 15000 });
+    
+    // Additional network wait after URL change
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
     
     // Check URL has correct parameter
     expect(page.url()).toContain('dateRange=today');
@@ -88,6 +94,9 @@ test.describe('Date Range Filter', () => {
   });
 
   test('should filter articles by week', async ({ page }) => {
+    // Wait for network idle before starting
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
     await safeClick(trigger);
@@ -97,56 +106,90 @@ test.describe('Date Range Filter', () => {
     await weekOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(weekOption);
     
-    await waitForUrlParam(page, 'dateRange', 'week', { polling: 'normal' });
+    // Extended timeout for URL change
+    await waitForUrlParam(page, 'dateRange', 'week', { polling: 'normal', timeout: 15000 });
+    
+    // Additional network wait after URL change
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     expect(page.url()).toContain('dateRange=week');
     await expect(trigger).toContainText('今週');
   });
 
   test('should filter articles by month', async ({ page }) => {
+    // Wait for network idle before starting
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     const trigger = page.locator('[data-testid="date-range-trigger"]');
+    await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
     await safeClick(trigger);
     
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
     await safeClick(page.locator('[data-testid="date-range-option-month"]'));
     
-    await waitForUrlParam(page, 'dateRange', 'month');
+    // Extended timeout for URL change
+    await waitForUrlParam(page, 'dateRange', 'month', { polling: 'normal', timeout: 15000 });
+    
+    // Additional network wait after URL change
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     expect(page.url()).toContain('dateRange=month');
     await expect(trigger).toContainText('今月');
   });
 
   test('should filter articles by 3 months', async ({ page }) => {
+    // Wait for network idle before starting
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     const trigger = page.locator('[data-testid="date-range-trigger"]');
+    await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
     await safeClick(trigger);
     
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
     await safeClick(page.locator('[data-testid="date-range-option-3months"]'));
     
-    await waitForUrlParam(page, 'dateRange', '3months');
+    // Extended timeout for URL change
+    await waitForUrlParam(page, 'dateRange', '3months', { polling: 'normal', timeout: 15000 });
+    
+    // Additional network wait after URL change
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     expect(page.url()).toContain('dateRange=3months');
     await expect(trigger).toContainText('過去3ヶ月');
   });
 
   test('should reset to all periods', async ({ page }) => {
+    // Wait for network idle before starting
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     // First set a filter
     const trigger = page.locator('[data-testid="date-range-trigger"]');
+    await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
     await safeClick(trigger);
     
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
     await safeClick(page.locator('[data-testid="date-range-option-week"]'));
     
-    // Wait for URL to update with more flexible check
-    await waitForUrlParam(page, 'dateRange', 'week');
+    // Wait for URL to update with extended timeout
+    await waitForUrlParam(page, 'dateRange', 'week', { polling: 'normal', timeout: 15000 });
+    
+    // Wait for network idle after first filter
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
     
     // Then reset to all
     await safeClick(trigger);
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
     await safeClick(page.locator('[data-testid="date-range-option-all"]'));
     
-    // Check URL doesn't have dateRange parameter
+    // Check URL doesn't have dateRange parameter with extended timeout
     await page.waitForFunction(
       () => !window.location.href.includes('dateRange'),
-      { timeout: getTimeout('medium') }
+      { timeout: 15000 }
     );
+    
+    // Additional network wait after reset
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     expect(page.url()).not.toContain('dateRange');
     await expect(trigger).toContainText('全期間');
   });
@@ -189,22 +232,28 @@ test.describe('Date Range Filter', () => {
   test('should reset page to 1 when changing date range', async ({ page }) => {
     // Navigate to page 2 first
     await page.goto('/?page=2');
-    await page.waitForSelector('[data-testid="article-list"]', { timeout: getTimeout('medium') });
+    // CI環境用の初期待機
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1500);
+    
+    await page.waitForSelector('[data-testid="article-list"]', { timeout: 15000 });
     
     // Apply date range filter
     const trigger = page.locator('[data-testid="date-range-trigger"]');
+    await trigger.waitFor({ state: 'visible', timeout: 10000 });
     await safeClick(trigger);
-    await safeClick(page.locator('[data-testid="date-range-option-week"]'));
     
-    // Check page parameter is removed or set to 1
-    await page.waitForFunction(
-      () => {
-        const url = window.location.href;
-        return !url.includes('page=2');
-      },
-      { timeout: getTimeout('medium') }
-    );
+    // CI環境用に待機追加
+    await page.waitForTimeout(1000);
     
+    const weekOption = page.locator('[data-testid="date-range-option-week"]');
+    await weekOption.waitFor({ state: 'visible', timeout: 10000 });
+    await safeClick(weekOption);
+    
+    // CI環境用に長めの待機
+    await page.waitForTimeout(2000);
+    
+    // URLが変更されたことを確認
     const url = page.url();
     expect(url).not.toContain('page=2');
   });

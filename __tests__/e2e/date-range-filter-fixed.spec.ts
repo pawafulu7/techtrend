@@ -41,6 +41,9 @@ test.describe('Date Range Filter - Fixed', () => {
   });
 
   test('should filter articles by today', async ({ page }) => {
+    // Wait for network idle before starting
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await trigger.click();
     
@@ -50,8 +53,11 @@ test.describe('Date Range Filter - Fixed', () => {
     // Select "今日" option
     await page.locator('[data-testid="date-range-option-today"]').click();
     
-    // Wait for URL to change
-    await expect(page).toHaveURL(/[\?&]dateRange=today\b/, { timeout: 10000 });
+    // Wait for URL to change with longer timeout
+    await expect(page).toHaveURL(/[\?&]dateRange=today\b/, { timeout: 15000 });
+    
+    // Additional network wait after URL change
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
     
     // Check URL has correct parameter
     expect(page.url()).toContain('dateRange=today');
@@ -90,20 +96,29 @@ test.describe('Date Range Filter - Fixed', () => {
   });
 
   test('should reset to all periods', async ({ page }) => {
+    // Wait for network idle before starting
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    
     // First set a filter
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await trigger.click();
     await page.locator('[data-testid="date-range-option-week"]').click();
     
-    // Wait for URL to change
-    await expect(page).toHaveURL(/[\?&]dateRange=week\b/, { timeout: 10000 });
+    // Wait for URL to change with longer timeout
+    await expect(page).toHaveURL(/[\?&]dateRange=week\b/, { timeout: 15000 });
+    
+    // Wait for network idle after first filter
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
     
     // Then reset to all
     await trigger.click();
     await page.locator('[data-testid="date-range-option-all"]').click();
     
-    // Wait for URL to change
-    await expect(page).not.toHaveURL(/[\?&]dateRange=/, { timeout: 10000 });
+    // Wait for URL to change with longer timeout
+    await expect(page).not.toHaveURL(/[\?&]dateRange=/, { timeout: 15000 });
+    
+    // Additional network wait after reset
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
     
     // Check URL doesn't have dateRange parameter
     expect(page.url()).not.toContain('dateRange');

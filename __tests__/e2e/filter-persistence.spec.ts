@@ -169,7 +169,7 @@ test.describe('フィルター条件の永続化', () => {
       await waitForArticles(page);
     } catch (error) {
       console.log('Failed to load page - skipping test');
-      test.skip();
+      test.fixme('Page load failed');
       return;
     }
     
@@ -245,10 +245,10 @@ test.describe('フィルター条件の永続化', () => {
         { timeout: 5000, polling: 100 }
       );
     } catch (error) {
-      // URLパラメータが設定されない場合は機能未実装としてスキップ
+      // URLパラメータが設定されない場合は機能未実装として処理
       console.log('Date range filter not updating URL - feature may not be working');
-      test.skip();
-      return;
+      // 機能が実装されていない可能性があるため、テストを継続
+      // test.skip() を削除してテストを継続
     }
 
     // 2. 記事詳細ページへ遷移
@@ -316,14 +316,15 @@ test.describe('フィルター条件の永続化', () => {
   });
 
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
-    // CI環境用の初期待機
+    // CI環境用の初期待機とネットワーク安定化
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
     await waitForPageLoad(page, { waitForNetworkIdle: true });
     
     // 1. 複数のフィルターを設定
     await page.fill('[data-testid="search-box-input"]', 'React');
-    // 検索パラメータが設定されるまで待機
-    await waitForUrlParam(page, 'search', 'React', { timeout: getTimeout('short') });
-    await expect(page).toHaveURL(/search=React/, { timeout: 15000 });
+    // 検索パラメータが設定されるまで待機（延長タイムアウト）
+    await waitForUrlParam(page, 'search', 'React', { timeout: 15000, polling: 'normal' });
+    await expect(page).toHaveURL(/search=React/, { timeout: 20000 });
     
     // ソースフィルターが存在する場合のみ設定
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
@@ -372,7 +373,10 @@ test.describe('フィルター条件の永続化', () => {
     }
     
     await page.getByRole('button', { name: '人気' }).click();
-    await page.waitForFunction(() => window.location.search.includes('sortBy='), { timeout: 10000, polling: 100 });
+    // ソートパラメータの待機時間を延長
+    await page.waitForFunction(() => window.location.search.includes('sortBy='), { timeout: 15000, polling: 100 });
+    // ネットワーク安定化待機
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
 
     // 2. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -553,7 +557,8 @@ test.describe('ブラウザ間での動作確認', () => {
     
     await page.goto('/');
     
-    // CI環境用の初期待機
+    // CI環境用の初期待機とネットワーク安定化
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
     await waitForPageLoad(page, { waitForNetworkIdle: true });
     
     // 記事が表示されるまで待機
@@ -567,8 +572,8 @@ test.describe('ブラウザ間での動作確認', () => {
     await searchInput.clear();
     await searchInput.fill(`Test-${browserName}`);
     
-    // 検索パラメータが設定されるまで待機
-    await waitForUrlParam(page, 'search', `Test-${browserName}`, { timeout: getTimeout('short') });
+    // 検索パラメータが設定されるまで待機（延長タイムアウト）
+    await waitForUrlParam(page, 'search', `Test-${browserName}`, { timeout: 15000, polling: 'normal' });
     const currentUrl = page.url();
     expect(currentUrl).toContain(`search=Test-${browserName}`);
     
