@@ -271,8 +271,8 @@ test.describe('検索機能', () => {
     // Enterキーで検索実行（デバウンス処理を考慮）
     await searchInput.press('Enter');
     
-    // URLパラメータの更新を待つ（値は指定せず、パラメータの存在のみチェック）
-    const hasParam = await waitForUrlParam(page, 'search', undefined, { timeout: getTimeout('short') });
+    // URLパラメータの更新を待つ
+    const hasParam = await waitForUrlParam(page, 'search', { timeout: getTimeout('short') });
     
     // URLチェックを緩い条件に変更（検索機能が動作しない場合はスキップ）
     const currentUrl = page.url();

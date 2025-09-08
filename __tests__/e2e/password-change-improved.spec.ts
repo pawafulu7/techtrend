@@ -329,18 +329,15 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await submitButton.click();
     
     // ローディング状態を確認（すぐに確認する必要がある）
-    // 注: ローディング状態は非常に短時間なので、見えない場合もある
     const loadingButton = page.locator('button:has-text("変更中...")');
+    let seen = false;
     try {
-      // ローディング状態が見えるかチェック（タイムアウトは短く）
-      await loadingButton.waitFor({ state: 'visible', timeout: 100 });
-      // 見えた場合は成功
-      console.log('Loading state was visible');
+      await loadingButton.waitFor({ state: 'visible', timeout: 800 });
+      seen = true;
     } catch {
-      // ローディング状態が短すぎて見えなかった場合も成功とする
-      console.log('Loading state was too fast to see - this is acceptable');
+      // ローディングが短すぎて見えなかった場合
     }
-    // テストは常にパスする（ローディング状態の表示は必須ではない）
+    expect.soft(seen).toBe(true);
   });
 
   test('8. 有効な入力でパスワードが正常に変更される', async ({ page }) => {
