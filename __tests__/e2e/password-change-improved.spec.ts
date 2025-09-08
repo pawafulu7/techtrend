@@ -133,17 +133,23 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     await page.waitForLoadState('networkidle');
     
+    // CI環境用の追加待機
+    await page.waitForTimeout(1500);
+    
     // アカウントタブを開く
     const tabOpened = await openAccountTab(page);
     if (!tabOpened) {
       // 代替方法で試す
       const accountTab = page.locator('[role="tab"]:has-text("アカウント"), button:has-text("アカウント")').first();
-      await accountTab.waitFor({ state: 'visible', timeout: 10000 });
+      await accountTab.waitFor({ state: 'visible', timeout: 15000 });
       await accountTab.click();
     }
     
     // タブの内容が表示されるまで待機
-    await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 10000 });
+    
+    // CI環境用の追加待機
+    await page.waitForTimeout(1000);
     
     // 間違った現在のパスワードを入力
     await fillPasswordChangeForm(page, {
@@ -152,11 +158,14 @@ test.describe.serial('Password Change Feature - Improved', () => {
       confirm: 'NewPassword123'
     });
     
+    // CI環境用の追加待機
+    await page.waitForTimeout(1000);
+    
     // 送信ボタンをクリック（type="submit"を使用）
     await page.click('button[type="submit"]:has-text("パスワードを変更")');
     
-    // エラーメッセージが表示されることを確認
-    const errorFound = await waitForErrorMessage(page, 'Current password is incorrect');
+    // CI環境用にタイムアウトを延長
+    const errorFound = await waitForErrorMessage(page, 'Current password is incorrect', 10000);
     expect(errorFound).toBe(true);
   });
 

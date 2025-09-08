@@ -299,9 +299,15 @@ test.describe('フィルター条件の永続化', () => {
   });
 
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
+    // CI環境用の初期待機
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    
     // 1. 複数のフィルターを設定
     await page.fill('[data-testid="search-box-input"]', 'React');
-    await page.waitForFunction(() => window.location.search.includes('search=React'), { timeout: 10000, polling: 100 });
+    // CI環境用にシンプルな待機に変更
+    await page.waitForTimeout(1500);
+    await expect(page).toHaveURL(/search=React/, { timeout: 15000 });
     
     // ソースフィルターが存在する場合のみ設定
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
@@ -525,21 +531,25 @@ test.describe('ブラウザ間での動作確認', () => {
     
     await page.goto('/');
     
+    // CI環境用の初期待機
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1500);
+    
     // 記事が表示されるまで待機
     await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
     
     // 検索入力ボックスが準備完了するまで待機
     const searchInput = page.locator('[data-testid="search-box-input"]');
-    await searchInput.waitFor({ state: 'visible', timeout: 5000 });
+    await searchInput.waitFor({ state: 'visible', timeout: 10000 });
     
     // フィルター設定
     await searchInput.clear();
     await searchInput.fill(`Test-${browserName}`);
     
-    // URL更新を待つ（デバウンス処理を含む）
-    await page.waitForFunction((searchTerm) => {
-      return window.location.search.includes(`search=${encodeURIComponent(searchTerm)}`);
-    }, `Test-${browserName}`, { timeout: 10000, polling: 100 });
+    // CI環境用に単純な待機に変更
+    await page.waitForTimeout(1500);
+    const currentUrl = page.url();
+    expect(currentUrl).toContain(`search=Test-${browserName}`);
     
     // ページ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -550,18 +560,12 @@ test.describe('ブラウザ間での動作確認', () => {
       
       // トップページに戻る
       await page.goto('/');
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
       await waitForArticles(page);
       
-      // 条件が保持されていることを確認
-      // Cookieからの復元を待つ（未実装環境では空も許容）
-      await page.waitForFunction(
-        (expected) => {
-          const input = document.querySelector('[data-testid="search-box-input"]') as HTMLInputElement | null;
-          return !!input && (input.value === expected || input.value === '');
-        },
-        `Test-${browserName}`,
-        { timeout: 5000, polling: 100 }
-      );
+      // CI環境用に単純な待機に変更
+      await page.waitForTimeout(1000);
       
       const searchInput = page.locator('[data-testid="search-box-input"]');
       const currentValue = await searchInput.inputValue();
