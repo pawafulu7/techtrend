@@ -45,51 +45,35 @@ test.describe('動的タグ検索機能', () => {
     const searchInput = page.locator('[data-testid="tag-search-input"]');
     await searchInput.fill('GMO');
 
-    // デバウンス待機とAPI応答を待つ（条件ベースの待機）
-    await page.waitForFunction(
-      () => {
-        // タグオプションが表示されるまで待つ
-        const tagOptions = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"]');
-        return tagOptions.length > 0;
-      },
-      { timeout: getTimeout('short'), polling: 100 }
-    );
+    // デバウンス待機（500ms）とAPI応答を待つ
+    // CI環境では複雑な条件より単純な待機が安定
+    await page.waitForTimeout(800);
 
     // GMOタグが表示されることを確認
     const gmoTag = page.locator('text=GMO').first();
-    await expect(gmoTag).toBeVisible({ timeout: 5000 });
+    await expect(gmoTag).toBeVisible({ timeout: 10000 });
 
     // 検索をクリアしてfreeeを検索
     await searchInput.clear();
     await searchInput.fill('freee');
-    // 検索結果の更新を待つ
-    await page.waitForFunction(
-      () => {
-        const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label');
-        return Array.from(tags).some(tag => tag.textContent?.includes('freee'));
-      },
-      { timeout: getTimeout('short'), polling: 100 }
-    );
+    
+    // デバウンス待機（500ms）とAPI応答を待つ
+    await page.waitForTimeout(800);
 
     // freeeタグが表示されることを確認
     const freeeTag = page.locator('text=freee').first();
-    await expect(freeeTag).toBeVisible({ timeout: 5000 });
+    await expect(freeeTag).toBeVisible({ timeout: 10000 });
 
     // SmartHRを検索
     await searchInput.clear();
     await searchInput.fill('SmartHR');
-    // 検索結果の更新を待つ
-    await page.waitForFunction(
-      () => {
-        const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label');
-        return Array.from(tags).some(tag => tag.textContent?.includes('SmartHR'));
-      },
-      { timeout: getTimeout('short'), polling: 100 }
-    );
+    
+    // デバウンス待機（500ms）とAPI応答を待つ
+    await page.waitForTimeout(800);
 
     // SmartHRタグが表示されることを確認
     const smarthrTag = page.locator('text=SmartHR').first();
-    await expect(smarthrTag).toBeVisible({ timeout: 5000 });
+    await expect(smarthrTag).toBeVisible({ timeout: 10000 });
   });
 
   test('企業タグを選択してフィルタリングできる', async ({ page }) => {

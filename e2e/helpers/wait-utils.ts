@@ -1,6 +1,24 @@
 import { Page, Locator } from '@playwright/test';
 
 /**
+ * E2E テストヘルパーユーティリティ
+ * 
+ * このファイルは、CI環境（GitHub Actions）での安定性を最優先に設計されています。
+ * 
+ * 重要な設計方針：
+ * 1. CI環境では長めのタイムアウトを設定
+ * 2. シンプルな待機条件を優先（複雑な条件はタイムアウトしやすい）
+ * 3. 段階的な改善を前提とした実装
+ * 
+ * 注意事項：
+ * - waitForTimeout() の使用は意図的です（CI環境での安定性のため）
+ * - 複雑な waitForFunction は CI環境で不安定になる傾向があります
+ * - 理想的な実装より、安定して動作することを優先しています
+ * 
+ * 参考：__tests__/e2e/IMPROVEMENT-STRATEGY.md
+ */
+
+/**
  * CI環境を判定（より柔軟な判定）
  */
 const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
