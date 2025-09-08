@@ -137,8 +137,7 @@ test.describe('動的タグ検索機能', () => {
     await searchInput.fill('freee');
     
     // CI環境用に長めの待機
-    const tagOptions = page.locator('[data-testid*="tag-option"], [data-testid="tag-checkbox"]').first();
-    await expect(tagOptions).toBeVisible({ timeout: getTimeout('short') });
+    await expect(tagOptions.first()).toBeVisible({ timeout: getTimeout('short') });
 
     // freeeタグが表示されることを確認
     const freeeTag = page.locator('text=freee').first();
@@ -158,8 +157,7 @@ test.describe('動的タグ検索機能', () => {
     await searchInput.fill('SmartHR');
     
     // CI環境用に長めの待機
-    const tagOptions = page.locator('[data-testid*="tag-option"], [data-testid="tag-checkbox"]').first();
-    await expect(tagOptions).toBeVisible({ timeout: getTimeout('short') });
+    await expect(tagOptions.first()).toBeVisible({ timeout: getTimeout('short') });
 
     // SmartHRタグが表示されることを確認
     const smarthrTag = page.locator('text=SmartHR').first();
