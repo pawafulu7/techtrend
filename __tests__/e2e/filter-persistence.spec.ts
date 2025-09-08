@@ -605,8 +605,8 @@ test.describe('ブラウザ間での動作確認', () => {
       // 検索ボックスが表示されるまで待機
       await page.waitForSelector('[data-testid="search-box-input"]', { state: 'visible', timeout: getTimeout('short') });
       
-      const searchInput = page.locator('[data-testid="search-box-input"]');
-      const currentValue = await searchInput.inputValue();
+      const searchInputAfter = page.locator('[data-testid="search-box-input"]');
+      const currentValue = await searchInputAfter.inputValue();
       
       // Cookieの永続化が実装されていない場合は、URLパラメータから復元されない可能性がある
       // その場合は期待値を空文字列に変更

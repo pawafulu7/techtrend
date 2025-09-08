@@ -126,11 +126,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('5. 現在のパスワードが間違っている場合エラーが表示される', async ({ page }) => {
-    // CI環境では認証が不安定なためスキップ
-    if (process.env.CI) {
-      test.skip();
-      return;
-    }
+    test.skip(!!process.env.CI, 'CI環境では認証が不安定なためスキップ');
     
     // まずログインする
     try {
@@ -156,13 +152,9 @@ test.describe.serial('Password Change Feature - Improved', () => {
     }
     
     // アカウントタブが表示されるまで待機
-    await page.waitForFunction(
-      () => {
-        const tab = document.querySelector('[role="tab"]:has-text("アカウント"), button:has-text("アカウント")');
-        return tab && getComputedStyle(tab).visibility === 'visible';
-      },
-      { timeout: 2000 }
-    ).catch(() => {});
+    await page.getByRole('tab', { name: 'アカウント' }).first()
+      .waitFor({ state: 'visible', timeout: 2000 })
+      .catch(() => {});
     
     // アカウントタブを開く
     let tabOpened = false;
@@ -305,11 +297,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('7. ローディング状態が表示される', async ({ page, browserName }) => {
-    // CI環境では認証が不安定なためスキップ
-    if (process.env.CI) {
-      test.skip();
-      return;
-    }
+    test.skip(!!process.env.CI, 'CI環境では認証が不安定なためスキップ');
     
     // まずログインする
     await loginTestUser(page);
@@ -356,11 +344,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('8. 有効な入力でパスワードが正常に変更される', async ({ page }) => {
-    // CI環境では認証が不安定なためスキップ
-    if (process.env.CI) {
-      test.skip();
-      return;
-    }
+    test.skip(!!process.env.CI, 'CI環境では認証が不安定なためスキップ');
     // パスワード変更専用ユーザーでログイン
     const customUser = {
       email: TEST_USER_FOR_PASSWORD_CHANGE.email,

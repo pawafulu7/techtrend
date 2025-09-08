@@ -316,8 +316,7 @@ test.describe('動的タグ検索機能', () => {
     
     // ローディングインジケーター（animate-spin）が一時的に表示されることを確認
     const spinner = page.locator('.animate-spin');
-    // 一瞬でも表示されれば成功とする
-    const spinnerCount = await spinner.count();
-    expect(spinnerCount).toBeGreaterThanOrEqual(0); // 存在する可能性がある
+    // 一瞬でも表示されれば成功（0以外のカウントになるまで待機）
+    await expect(spinner).not.toHaveCount(0, { timeout: getTimeout('short') });
   });
 });
