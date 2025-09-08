@@ -332,8 +332,8 @@ test.describe.serial('Password Change Feature - Improved', () => {
     // 注: ローディング状態は非常に短時間なので、見えない場合もある
     const loadingButton = page.locator('button:has-text("変更中...")');
     try {
-      // ローディング状態が見えるかチェック（タイムアウトは短く）
-      await loadingButton.waitFor({ state: 'visible', timeout: 100 });
+      // ローディング状態が見えるかチェック（タイムアウトを延長）
+      await loadingButton.waitFor({ state: 'visible', timeout: 1000 });
       // 見えた場合は成功
       console.log('Loading state was visible');
     } catch {

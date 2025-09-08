@@ -198,17 +198,13 @@ test.describe('ソースフィルタリング機能', () => {
       state: 'visible' 
     });
     
-    // Firefoxは読み込みが遅い場合があるため追加待機
-    if (browserName === 'firefox') {
-      await page.waitForTimeout(2000);
-    } else {
-      await page.waitForLoadState('networkidle', { timeout: 5000 });
-    }
+    // ネットワーク待機（Firefoxも含めて統一）
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
     
     // フィルターエリアを取得
     const _filterArea = page.locator('[data-testid="filter-area"]');
     
-    // 記事カードが表示されるまで待つ（Firefoxの遅延対策）
+    // 記事カードが表示されるまで待つ
     await page.waitForSelector('[data-testid="article-card"]', { 
       timeout: 10000,
       state: 'visible' 
@@ -218,15 +214,25 @@ test.describe('ソースフィルタリング機能', () => {
     const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
     await expect(foreignCategoryHeader).toBeVisible();
     await foreignCategoryHeader.click();
-    // 展開アニメーションを待つ
-    await page.waitForTimeout(500);
+    // 展開完了を待つ（aria-expanded属性で確認）
+    await page.waitForSelector('[data-testid="category-foreign-header"][aria-expanded="true"]', {
+      timeout: 2000
+    }).catch(() => {
+      // aria-expanded属性がない場合は少し待機
+      return page.waitForTimeout(300);
+    });
     
     // 国内情報サイトカテゴリも展開
     const domesticCategoryHeader = page.locator('[data-testid="category-domestic-header"]');
     await expect(domesticCategoryHeader).toBeVisible();
     await domesticCategoryHeader.click();
-    // 展開アニメーションを待つ
-    await page.waitForTimeout(500);
+    // 展開完了を待つ（aria-expanded属性で確認）
+    await page.waitForSelector('[data-testid="category-domestic-header"][aria-expanded="true"]', {
+      timeout: 2000
+    }).catch(() => {
+      // aria-expanded属性がない場合は少し待機
+      return page.waitForTimeout(300);
+    });
     
     // 複数のソースチェックボックスを取得（展開後）
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
