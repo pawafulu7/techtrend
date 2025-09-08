@@ -4,7 +4,8 @@ import {
   getTimeout,
   waitForUrlParam,
   safeClick,
-  waitForPageLoad
+  waitForPageLoad,
+  waitForFilterApplication
 } from '../../e2e/helpers/wait-utils';
 
 test.describe('フィルター条件の永続化', () => {
@@ -230,8 +231,8 @@ test.describe('フィルター条件の永続化', () => {
     
     await weekOption.click();
     
-    // CI環境用に待機時間を追加
-    await page.waitForTimeout(2000);
+    // フィルターが適用されるまで待機
+    await waitForFilterApplication(page, { waitForNetworkIdle: true });
     
     // URLパラメータが設定されることを確認（タイムアウトエラーをキャッチ）
     try {
@@ -316,13 +317,12 @@ test.describe('フィルター条件の永続化', () => {
 
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
     // CI環境用の初期待機
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await waitForPageLoad(page, { waitForNetworkIdle: true });
     
     // 1. 複数のフィルターを設定
     await page.fill('[data-testid="search-box-input"]', 'React');
-    // CI環境用にシンプルな待機に変更
-    await page.waitForTimeout(1500);
+    // 検索パラメータが設定されるまで待機
+    await waitForUrlParam(page, 'search', 'React', { timeout: getTimeout('short') });
     await expect(page).toHaveURL(/search=React/, { timeout: 15000 });
     
     // ソースフィルターが存在する場合のみ設定
@@ -480,8 +480,14 @@ test.describe('フィルター条件の永続化', () => {
       for (let i = 0; i < categoryCount; i++) {
         const header = categoryHeaders.nth(i);
         await header.click();
-        // カテゴリ内のコンテンツが展開されるまで短い待機
-        await page.waitForTimeout(300);
+        // カテゴリ内のコンテンツが展開されるまで待機
+        await page.waitForFunction(
+          () => {
+            const elements = document.querySelectorAll('[data-testid^="source-checkbox-"]');
+            return elements.length > 0;
+          },
+          { timeout: 500 }
+        ).catch(() => {});
       }
       
       const checkboxes = await page.locator('[data-testid^="source-checkbox-"]').locator('button[role="checkbox"]').all();
@@ -548,8 +554,7 @@ test.describe('ブラウザ間での動作確認', () => {
     await page.goto('/');
     
     // CI環境用の初期待機
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await waitForPageLoad(page, { waitForNetworkIdle: true });
     
     // 記事が表示されるまで待機
     await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
@@ -562,8 +567,8 @@ test.describe('ブラウザ間での動作確認', () => {
     await searchInput.clear();
     await searchInput.fill(`Test-${browserName}`);
     
-    // CI環境用に単純な待機に変更
-    await page.waitForTimeout(1500);
+    // 検索パラメータが設定されるまで待機
+    await waitForUrlParam(page, 'search', `Test-${browserName}`, { timeout: getTimeout('short') });
     const currentUrl = page.url();
     expect(currentUrl).toContain(`search=Test-${browserName}`);
     
@@ -576,12 +581,11 @@ test.describe('ブラウザ間での動作確認', () => {
       
       // トップページに戻る
       await page.goto('/');
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(1000);
+      await waitForPageLoad(page, { waitForNetworkIdle: true });
       await waitForArticles(page);
       
-      // CI環境用に単純な待機に変更
-      await page.waitForTimeout(1000);
+      // 検索ボックスが表示されるまで待機
+      await page.waitForSelector('[data-testid="search-box-input"]', { state: 'visible', timeout: getTimeout('short') });
       
       const searchInput = page.locator('[data-testid="search-box-input"]');
       const currentValue = await searchInput.inputValue();

@@ -258,22 +258,21 @@ test.describe('検索機能', () => {
 
   test('複数キーワードのAND検索が機能する', async ({ page }) => {
     // 初期読み込み待機
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000); // 初期待機を延長
+    await waitForPageLoad(page);
+    await waitForArticles(page);
     
     const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
     
-    await expect(searchInput).toBeVisible({ timeout: 15000 });
+    await expect(searchInput).toBeVisible({ timeout: getTimeout('medium') });
     
     // 複数キーワードを半角スペース区切りで入力
     await searchInput.fill('JavaScript React');
     
-    // デバウンス処理のために長めに待機
-    await page.waitForTimeout(3000);
+    // Enterキーで検索実行（デバウンス処理を考慮）
     await searchInput.press('Enter');
     
-    // URLに検索パラメータが追加されるを待つ
-    await page.waitForTimeout(2000); // 追加の待機
+    // URLパラメータの更新を待つ
+    const hasParam = await waitForUrlParam(page, 'search', { timeout: getTimeout('short') });
     
     // URLチェックを緩い条件に変更（検索機能が動作しない場合はスキップ）
     const currentUrl = page.url();

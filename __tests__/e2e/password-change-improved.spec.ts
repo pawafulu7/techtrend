@@ -149,8 +149,14 @@ test.describe.serial('Password Change Feature - Improved', () => {
       return;
     }
     
-    // CI環境用の追加待機
-    await page.waitForTimeout(1500);
+    // アカウントタブが表示されるまで待機
+    await page.waitForFunction(
+      () => {
+        const tab = document.querySelector('[role="tab"]:has-text("アカウント"), button:has-text("アカウント")');
+        return tab && getComputedStyle(tab).visibility === 'visible';
+      },
+      { timeout: 2000 }
+    ).catch(() => {});
     
     // アカウントタブを開く
     let tabOpened = false;
@@ -182,8 +188,14 @@ test.describe.serial('Password Change Feature - Improved', () => {
     // タブの内容が表示されるまで待機
     await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 10000 });
     
-    // CI環境用の追加待機
-    await page.waitForTimeout(1000);
+    // フォームが完全に表示されるまで待機
+    await page.waitForFunction(
+      () => {
+        const form = document.querySelector('input[name="currentPassword"]');
+        return form && getComputedStyle(form).opacity === '1';
+      },
+      { timeout: 1500 }
+    ).catch(() => {});
     
     // 間違った現在のパスワードを入力
     await fillPasswordChangeForm(page, {
@@ -192,8 +204,14 @@ test.describe.serial('Password Change Feature - Improved', () => {
       confirm: 'NewPassword123'
     });
     
-    // CI環境用の追加待機
-    await page.waitForTimeout(1000);
+    // フォーム入力が反映されるまで待機
+    await page.waitForFunction(
+      () => {
+        const input = document.querySelector('input[name="confirmPassword"]') as HTMLInputElement;
+        return input && input.value === 'NewPassword123';
+      },
+      { timeout: 1500 }
+    );
     
     // 送信ボタンをクリック（type="submit"を使用）
     await page.click('button[type="submit"]:has-text("パスワードを変更")');

@@ -11,14 +11,16 @@ test.describe('動的タグ検索機能', () => {
     // CI環境での安定性のため、ページを先に読み込む
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000); // データベース初期化待機
+    // データベース準備を待つ（記事が表示されるまで待機）
+    await waitForArticles(page, { minCount: 1, timeout: getTimeout('short') });
     
     // 空クエリでのテスト（リトライ付き）
     let emptyResponse;
     for (let i = 0; i < 3; i++) {
       emptyResponse = await request.get('/api/tags/search?q=', { timeout: 15000 });
       if (emptyResponse.ok()) break;
-      await page.waitForTimeout(2000);
+      // リトライ前に少し待機（ネットワークアイドル待機）
+      await page.waitForLoadState('networkidle', { timeout: 2000 });
     }
     expect(emptyResponse.ok()).toBeTruthy();
     const emptyData = await emptyResponse.json();
@@ -30,7 +32,8 @@ test.describe('動的タグ検索機能', () => {
     for (let i = 0; i < 3; i++) {
       reactResponse = await request.get('/api/tags/search?q=React', { timeout: 15000 });
       if (reactResponse.ok()) break;
-      await page.waitForTimeout(2000);
+      // リトライ前に少し待機（ネットワークアイドル待機）
+      await page.waitForLoadState('networkidle', { timeout: 2000 });
     }
     expect(reactResponse.ok()).toBeTruthy();
     const reactData = await reactResponse.json();
@@ -45,7 +48,8 @@ test.describe('動的タグ検索機能', () => {
     for (let i = 0; i < 3; i++) {
       gmoResponse = await request.get('/api/tags/search?q=GMO', { timeout: 15000 });
       if (gmoResponse.ok()) break;
-      await page.waitForTimeout(2000);
+      // リトライ前に少し待機（ネットワークアイドル待機）
+      await page.waitForLoadState('networkidle', { timeout: 2000 });
     }
     expect(gmoResponse.ok()).toBeTruthy();
     const gmoData = await gmoResponse.json();
@@ -62,7 +66,8 @@ test.describe('動的タグ検索機能', () => {
   test('タグフィルターで企業タグを検索できる', async ({ page }) => {
     // 初期読み込み待機
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    // ページ完全読み込みを待機
+    await waitForArticles(page, { timeout: getTimeout('short') });
     
     // タグフィルターボタンの存在確認
     const tagButton = page.locator('[data-testid="tag-filter-button"]');
@@ -88,14 +93,27 @@ test.describe('動的タグ検索機能', () => {
       test.skip();
       return;
     }
-    await page.waitForTimeout(500); // アニメーション待機
+    // ドロップダウンが完全に開くまで待機
+    await page.waitForFunction(
+      () => {
+        const dropdown = document.querySelector('[data-testid="tag-dropdown"], [role="listbox"], [role="dialog"]');
+        return dropdown && getComputedStyle(dropdown).opacity === '1';
+      },
+      { timeout: 1000 }
+    ).catch(() => {});
 
     // 検索フォームにGMOと入力
     const searchInput = page.locator('[data-testid="tag-search-input"]');
     await searchInput.fill('GMO');
 
     // CI環境用に長めの待機
-    await page.waitForTimeout(1500);
+    await page.waitForFunction(
+      () => {
+        const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label, div, button, span');
+        return tags.length > 0;
+      },
+      { timeout: getTimeout('short'), polling: 100 }
+    );
 
     // GMOタグが表示されることを確認（セレクタを緩める）
     const gmoTag = page.locator('text=GMO').first();
@@ -103,11 +121,25 @@ test.describe('動的タグ検索機能', () => {
 
     // 検索をクリアしてfreeeを検索
     await searchInput.clear();
-    await page.waitForTimeout(300);
+    // 入力フィールドがクリアされたことを確認
+    await page.waitForFunction(
+      (selector) => {
+        const input = document.querySelector(selector) as HTMLInputElement;
+        return input && input.value === '';
+      },
+      '[data-testid="tag-search-input"]',
+      { timeout: 500, polling: 50 }
+    );
     await searchInput.fill('freee');
     
     // CI環境用に長めの待機
-    await page.waitForTimeout(1500);
+    await page.waitForFunction(
+      () => {
+        const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label, div, button, span');
+        return tags.length > 0;
+      },
+      { timeout: getTimeout('short'), polling: 100 }
+    );
 
     // freeeタグが表示されることを確認
     const freeeTag = page.locator('text=freee').first();
@@ -115,11 +147,25 @@ test.describe('動的タグ検索機能', () => {
 
     // SmartHRを検索
     await searchInput.clear();
-    await page.waitForTimeout(300);
+    // 入力フィールドがクリアされたことを確認
+    await page.waitForFunction(
+      (selector) => {
+        const input = document.querySelector(selector) as HTMLInputElement;
+        return input && input.value === '';
+      },
+      '[data-testid="tag-search-input"]',
+      { timeout: 500, polling: 50 }
+    );
     await searchInput.fill('SmartHR');
     
     // CI環境用に長めの待機
-    await page.waitForTimeout(1500);
+    await page.waitForFunction(
+      () => {
+        const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label, div, button, span');
+        return tags.length > 0;
+      },
+      { timeout: getTimeout('short'), polling: 100 }
+    );
 
     // SmartHRタグが表示されることを確認
     const smarthrTag = page.locator('text=SmartHR').first();
