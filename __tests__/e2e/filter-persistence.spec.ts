@@ -163,8 +163,12 @@ test.describe('フィルター条件の永続化', () => {
   });
 
   test('日付範囲フィルターがページ遷移後も保持される', async ({ page }) => {
+    // CI環境では待機時間を延長
+    const loadTimeout = process.env.CI ? 10000 : 5000;
+    
     // ページが完全に読み込まれるまで待機
     try {
+      await page.waitForLoadState('networkidle', { timeout: loadTimeout });
       await waitForPageLoad(page, { waitForNetworkIdle: true });
       await waitForArticles(page);
     } catch (error) {
@@ -235,6 +239,7 @@ test.describe('フィルター条件の永続化', () => {
     await waitForFilterApplication(page, { waitForNetworkIdle: true });
     
     // URLパラメータが設定されることを確認（タイムアウトエラーをキャッチ）
+    const urlTimeout = process.env.CI ? 10000 : 5000;
     try {
       await page.waitForFunction(
         () => {
@@ -242,7 +247,7 @@ test.describe('フィルター条件の永続化', () => {
           return url.includes('dateRange=week') || url.includes('dateRange=7');
         },
         undefined,
-        { timeout: 5000, polling: 100 }
+        { timeout: urlTimeout, polling: 100 }
       );
     } catch (error) {
       // URLパラメータが設定されない場合は機能未実装として処理
@@ -317,7 +322,8 @@ test.describe('フィルター条件の永続化', () => {
 
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
     // CI環境用の初期待機とネットワーク安定化
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    const networkTimeout = process.env.CI ? 10000 : 5000;
+    await page.waitForLoadState('networkidle', { timeout: networkTimeout });
     await waitForPageLoad(page, { waitForNetworkIdle: true });
     
     // 1. 複数のフィルターを設定

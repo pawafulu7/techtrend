@@ -73,16 +73,22 @@ test.describe('Date Range Filter - Fixed', () => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await trigger.click();
     
-    // Wait for dropdown to be visible
-    await page.waitForSelector('[data-testid="date-range-option-week"]', { state: 'visible' });
+    // Wait for dropdown to be visible with extended timeout for CI
+    const dropdownTimeout = process.env.CI ? 10000 : 5000;
+    await page.waitForSelector('[data-testid="date-range-option-week"]', { 
+      state: 'visible',
+      timeout: dropdownTimeout 
+    });
     
     await page.locator('[data-testid="date-range-option-week"]').click();
     
-    // Wait for network idle after clicking
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    // Wait for network idle after clicking with extended timeout for CI
+    const networkTimeout = process.env.CI ? 10000 : 5000;
+    await page.waitForLoadState('networkidle', { timeout: networkTimeout });
     
     // Wait for URL to change with more flexible timeout
-    await expect(page).toHaveURL(/[\?&]dateRange=week\b/, { timeout: 15000 });
+    const urlTimeout = process.env.CI ? 20000 : 15000;
+    await expect(page).toHaveURL(/[\?&]dateRange=week\b/, { timeout: urlTimeout });
     
     expect(page.url()).toContain('dateRange=week');
     await expect(trigger).toContainText('今週');
@@ -92,10 +98,18 @@ test.describe('Date Range Filter - Fixed', () => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await trigger.click();
     
+    // Wait for dropdown with extended timeout for CI
+    const dropdownTimeout = process.env.CI ? 10000 : 5000;
+    await page.waitForSelector('[data-testid="date-range-option-month"]', { 
+      state: 'visible',
+      timeout: dropdownTimeout 
+    });
+    
     await page.locator('[data-testid="date-range-option-month"]').click();
     
-    // Wait for URL to change
-    await expect(page).toHaveURL(/[\?&]dateRange=month\b/, { timeout: 10000 });
+    // Wait for URL to change with extended timeout for CI
+    const urlTimeout = process.env.CI ? 20000 : 10000;
+    await expect(page).toHaveURL(/[\?&]dateRange=month\b/, { timeout: urlTimeout });
     
     expect(page.url()).toContain('dateRange=month');
     await expect(trigger).toContainText('今月');

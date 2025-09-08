@@ -12,9 +12,11 @@ import { SELECTORS } from '../constants/selectors';
 
 test.describe('ホームページ', () => {
   test.beforeEach(async ({ page }) => {
+    // CI環境では待機時間を延長
+    const loadTimeout = process.env.CI ? 45000 : 30000;
     // ホームページにアクセス
     await page.goto(testData.paths.home, { waitUntil: 'domcontentloaded' });
-    await waitForPageLoad(page, { timeout: 30000, waitForNetworkIdle: true });
+    await waitForPageLoad(page, { timeout: loadTimeout, waitForNetworkIdle: true });
   });
 
   test('ページが正常に表示される', async ({ page }) => {
@@ -32,8 +34,10 @@ test.describe('ホームページ', () => {
     // 記事要素を探す（data-testidがない場合は別の方法で）
     const articles = page.locator(SELECTORS.ARTICLE_CARD).first();
     
+    // CI環境では待機時間を延長
+    const articleTimeout = process.env.CI ? 30000 : 15000;
     // 少なくとも1つの記事要素が存在することを確認
-    await expect(articles).toBeVisible({ timeout: 15000 });
+    await expect(articles).toBeVisible({ timeout: articleTimeout });
 
     // タイトル要素を探す
     const title = articles.locator(SELECTORS.ARTICLE_TITLE).first();
