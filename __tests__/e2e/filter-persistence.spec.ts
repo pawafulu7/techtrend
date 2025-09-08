@@ -174,7 +174,7 @@ test.describe('フィルター条件の永続化', () => {
       await waitForArticles(page);
     } catch (error) {
       console.log('Failed to load page - skipping test');
-      test.fixme('Page load failed');
+      test.fixme(true, 'Page load failed');
       return;
     }
     

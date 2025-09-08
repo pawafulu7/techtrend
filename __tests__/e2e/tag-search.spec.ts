@@ -67,10 +67,7 @@ test.describe('動的タグ検索機能', () => {
 
   test('タグフィルターで企業タグを検索できる', async ({ page }) => {
     // CI環境では企業タグデータが不足しているためスキップ
-    if (process.env.CI) {
-      test.skip();
-      return;
-    }
+    test.skip(Boolean(process.env.CI), 'CI環境では企業タグデータが不足');
     
     // 初期読み込み待機
     await page.waitForLoadState('networkidle');
@@ -86,7 +83,7 @@ test.describe('動的タグ検索機能', () => {
     if (buttonCount === 0) {
       console.log('Tag filter button not found - feature may not be implemented');
       // test.fixme()を使用して、動的スキップを避ける
-      test.fixme();
+      test.fixme(true, 'Tag filter button not found - feature may not be implemented');
       return;
     }
     
@@ -102,26 +99,18 @@ test.describe('動的タグ検索機能', () => {
     } catch (error) {
       console.log('Tag search input not found - feature may not be implemented');
       // test.fixme()を使用
-      test.fixme();
+      test.fixme(true, 'Tag search input not found - feature may not be implemented');
       return;
     }
     
     // ドロップダウンが完全に開くまで待機（Playwright locator APIを使用）
     const dropdown = page.locator('[data-testid="tag-dropdown"], [role="listbox"], [role="dialog"]').first();
     try {
-      await dropdown.waitFor({ state: 'visible', timeout: 2000 });
-      // opacity確認が必要な場合
-      await page.waitForFunction(
-        (selector) => {
-          const el = document.querySelector(selector);
-          return el && getComputedStyle(el).opacity === '1';
-        },
-        '[data-testid="tag-dropdown"], [role="listbox"], [role="dialog"]',
-        { timeout: 2000 }
-      );
+      await expect(dropdown).toBeVisible({ timeout: 2000 });
+      // Playwrightの標準的な可視性チェックで十分
     } catch {
       // エラーが発生しても続行
-      console.log('Dropdown opacity check failed - continuing anyway');
+      console.log('Dropdown visibility check failed - continuing anyway');
     }
 
     // 検索フォームにGMOと入力
@@ -144,24 +133,12 @@ test.describe('動的タグ検索機能', () => {
     // 検索をクリアしてfreeeを検索
     await searchInput.clear();
     // 入力フィールドがクリアされたことを確認
-    await page.waitForFunction(
-      (selector) => {
-        const input = document.querySelector(selector) as HTMLInputElement;
-        return input && input.value === '';
-      },
-      '[data-testid="tag-search-input"]',
-      { timeout: 500, polling: 50 }
-    );
+    await expect(searchInput).toHaveValue('');
     await searchInput.fill('freee');
     
     // CI環境用に長めの待機
-    await page.waitForFunction(
-      () => {
-        const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label, div, button, span');
-        return tags.length > 0;
-      },
-      { timeout: getTimeout('short'), polling: 100 }
-    );
+    const tagOptions = page.locator('[data-testid*="tag-option"], [data-testid="tag-checkbox"]').first();
+    await expect(tagOptions).toBeVisible({ timeout: getTimeout('short') });
 
     // freeeタグが表示されることを確認
     const freeeTag = page.locator('text=freee').first();
@@ -181,13 +158,8 @@ test.describe('動的タグ検索機能', () => {
     await searchInput.fill('SmartHR');
     
     // CI環境用に長めの待機
-    await page.waitForFunction(
-      () => {
-        const tags = document.querySelectorAll('[data-testid*="tag-option"], [data-testid="tag-checkbox"], label, div, button, span');
-        return tags.length > 0;
-      },
-      { timeout: getTimeout('short'), polling: 100 }
-    );
+    const tagOptions = page.locator('[data-testid*="tag-option"], [data-testid="tag-checkbox"]').first();
+    await expect(tagOptions).toBeVisible({ timeout: getTimeout('short') });
 
     // SmartHRタグが表示されることを確認
     const smarthrTag = page.locator('text=SmartHR').first();
@@ -196,10 +168,7 @@ test.describe('動的タグ検索機能', () => {
 
   test('企業タグを選択してフィルタリングできる', async ({ page }) => {
     // CI環境では企業タグデータが不安定なためスキップ
-    if (process.env.CI) {
-      test.skip();
-      return;
-    }
+    test.skip(Boolean(process.env.CI), 'CI環境では企業タグデータが不安定');
     
     // 初期読み込み待機
     await page.waitForLoadState('networkidle', { timeout: 5000 });
@@ -210,7 +179,7 @@ test.describe('動的タグ検索機能', () => {
     
     if (buttonCount === 0) {
       console.log('Tag filter button not found - feature may not be implemented');
-      test.fixme();
+      test.fixme(true, 'Tag filter button not found - feature may not be implemented');
       return;
     }
     
@@ -294,7 +263,7 @@ test.describe('動的タグ検索機能', () => {
     
     if (buttonCount === 0) {
       console.log('Tag filter button not found - feature may not be implemented');
-      test.fixme();
+      test.fixme(true, 'Tag filter button not found - feature may not be implemented');
       return;
     }
     
@@ -307,7 +276,7 @@ test.describe('動的タグ検索機能', () => {
     
     if (inputCount === 0) {
       console.log('Search input not found - feature may not be implemented');
-      test.fixme();
+      test.fixme(true, 'Search input not found - feature may not be implemented');
       return;
     }
     
@@ -326,7 +295,7 @@ test.describe('動的タグ検索機能', () => {
     if (!spinnerVisible) {
       console.log('Warning: Loading spinner was not detected - search may be too fast or cached');
       // CI環境では検索が高速なため、スピナーが表示されないことを許容
-      test.skip(process.env.CI === 'true', 'CI環境では検索が高速すぎてスピナーが表示されない');
+      test.skip(Boolean(process.env.CI), 'CI環境では検索が高速すぎてスピナーが表示されない');
     } else {
       expect(spinnerVisible).toBe(true);
     }
