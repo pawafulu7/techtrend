@@ -108,7 +108,11 @@ test.describe('詳細要約表示', () => {
         await secondTab.click();
         
         // タブコンテンツが切り替わることを確認
-        await page.waitForTimeout(300); // アニメーション待機
+        // アクティブタブパネルの表示を待機
+        await page.waitForSelector('[role="tabpanel"]:visible, [class*="tab-content"]:visible', {
+          state: 'visible',
+          timeout: 5000
+        });
         
         // アクティブなタブパネルを確認
         const activePanel = modernSummary.locator('[role="tabpanel"]:visible, [class*="tab-content"]:visible').first();
@@ -167,7 +171,15 @@ test.describe('詳細要約表示', () => {
         
         // トグルボタンをクリック
         await toggleButton.click();
-        await page.waitForTimeout(300); // アニメーション待機
+        // アニメーション完了を待機
+        await page.waitForFunction(
+          (oldHeight) => {
+            const section = document.querySelector('[data-testid="expandable-section"], [class*="expandable"]');
+            return section && section.scrollHeight !== oldHeight;
+          },
+          initialHeight,
+          { timeout: 5000 }
+        );
         
         // 高さが変化したことを確認
         const newHeight = await expandableSection.evaluate(el => el.scrollHeight);
@@ -175,7 +187,15 @@ test.describe('詳細要約表示', () => {
         
         // もう一度クリックして元に戻す
         await toggleButton.click();
-        await page.waitForTimeout(300);
+        // アニメーション完了を待機
+        await page.waitForFunction(
+          (oldHeight) => {
+            const section = document.querySelector('[data-testid="expandable-section"], [class*="expandable"]');
+            return section && section.scrollHeight !== oldHeight;
+          },
+          newHeight,
+          { timeout: 5000 }
+        );
         
         // 元の状態に戻ったことを確認（おおよその高さ）
         const finalHeight = await expandableSection.evaluate(el => el.scrollHeight);
@@ -264,7 +284,15 @@ test.describe('詳細要約表示', () => {
       
       // スタイル切り替えボタンをクリック
       await styleToggle.click();
-      await page.waitForTimeout(300); // アニメーション待機
+      // スタイルの変更を待機
+      await page.waitForFunction(
+        (oldClass) => {
+          const element = document.querySelector('[class*="detailed-summary"]');
+          return element && element.className !== oldClass;
+        },
+        initialStyle,
+        { timeout: 5000 }
+      );
       
       // スタイルが変更されたことを確認
       const newStyle = await page.locator('[class*="detailed-summary"]').first().getAttribute('class');

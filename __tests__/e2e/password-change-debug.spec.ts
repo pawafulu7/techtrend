@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { execSync } from 'child_process';
-import bcrypt from 'bcryptjs';
+import { setupTestUser, cleanupTestUser } from './setup-test-user';
 
 // テスト用のパスワード
 const TEST_PASSWORD = 'TestPassword123';
@@ -8,62 +7,16 @@ const TEST_PASSWORD = 'TestPassword123';
 test.describe.serial('Password Change Feature (Debug)', () => {
   
   test.beforeAll(async () => {
-    // 新しいパスワードハッシュを生成
-    const hash = await bcrypt.hash(TEST_PASSWORD, 10);
-    console.log('Generated hash:', hash);
-    
-    // テストユーザーを作成（生成したハッシュを使用）
-    const sql = `
-      DELETE FROM "User" WHERE email = 'test@example.com';
-      INSERT INTO "User" (id, email, name, password, "emailVerified", "createdAt", "updatedAt")
-      VALUES (
-        'test-user-' || gen_random_uuid(),
-        'test@example.com',
-        'Test User',
-        '${hash}',
-        NOW(),
-        NOW(),
-        NOW()
-      );
-    `;
-    
-    try {
-      execSync(
-        `echo "${sql}" | docker exec -i techtrend-postgres-test psql -U postgres -d techtrend_test`,
-        { stdio: 'pipe' }
-      );
-      console.log('Test user created successfully');
-      
-      // 作成されたユーザーを確認
-      const checkSql = `SELECT email, password FROM "User" WHERE email = 'test@example.com';`;
-      const result = execSync(
-        `echo "${checkSql}" | docker exec -i techtrend-postgres-test psql -U postgres -d techtrend_test -t`,
-        { encoding: 'utf8' }
-      );
-      console.log('Created user:', result.trim());
-      
-      // ハッシュの検証
-      const dbHash = result.trim().split('|')[1]?.trim();
-      if (dbHash) {
-        const isValid = await bcrypt.compare(TEST_PASSWORD, dbHash);
-        console.log('Password verification in DB:', isValid ? 'SUCCESS' : 'FAILED');
-      }
-    } catch (error) {
-      console.error('Failed to create test user:', error);
+    // PrismaClientを使用してテストユーザーを作成
+    const success = await setupTestUser();
+    if (!success) {
+      throw new Error('Failed to create test user');
     }
   });
   
   test.afterAll(async () => {
-    try {
-      const sql = `DELETE FROM "User" WHERE email = 'test@example.com';`;
-      execSync(
-        `echo '${sql}' | docker exec -i techtrend-postgres-test psql -U postgres -d techtrend_test`,
-        { stdio: 'pipe' }
-      );
-      console.log('Test user cleaned up successfully');
-    } catch (error) {
-      console.error('Failed to cleanup test user:', error);
-    }
+    // PrismaClientを使用してテストユーザーを削除
+    await cleanupTestUser();
   });
 
   test.skip('Debug: Check login page and attempt login', async ({ page }) => {

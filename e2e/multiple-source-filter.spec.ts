@@ -1,16 +1,19 @@
 import { test, expect } from '@playwright/test';
 
+// 環境別タイムアウト値
+const timeout = process.env.CI ? 30000 : 15000;
+
 test.describe('Multiple Source Filter', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    // Wait for the page to load
-    await page.waitForSelector('[data-testid="article-list"], article', { timeout: 10000 });
+    // Wait for the page to load（タイムアウトを延長）
+    await page.waitForSelector('[data-testid="article-list"], article', { timeout });
   });
 
   test('should display checkboxes for source selection', async ({ page }) => {
     // Wait for source filter to load
     const sourceFilter = page.locator('[data-testid="source-filter"]');
-    await expect(sourceFilter).toBeVisible({ timeout: 10000 });
+    await expect(sourceFilter).toBeVisible({ timeout });
     
     // Check for checkboxes - use more flexible approach
     const checkboxes = page.locator('input[type="checkbox"]');
@@ -159,8 +162,8 @@ test.describe('Multiple Source Filter', () => {
       if (checkboxCount >= 1) {
         await checkboxes.nth(0).check();
         
-        // Wait for count to update
-        await page.waitForTimeout(500);
+        // Wait for network idle instead of fixed timeout
+        await page.waitForLoadState('networkidle');
         
         // Check if count is displayed
         const countPattern = filtersSection.locator('text=/\\d+/');
@@ -254,7 +257,7 @@ test.describe('Multiple Source Filter', () => {
       }
       
       // Wait for sheet to close and URL to update
-      await page.waitForTimeout(500);
+      await page.waitForLoadState('networkidle');
       
       // Verify URL contains sources
       const url = page.url();

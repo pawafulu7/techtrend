@@ -145,14 +145,14 @@ test.describe('ソースフィルタリング機能', () => {
     if (await foreignCategoryHeader.isVisible()) {
       await foreignCategoryHeader.click();
       // 展開アニメーションを待つ
-    await page.waitForTimeout(500);
+      await page.waitForTimeout(500);
     }
     
     const domesticCategoryHeader = page.locator('[data-testid="category-domestic-header"]');
     if (await domesticCategoryHeader.isVisible()) {
       await domesticCategoryHeader.click();
       // 展開アニメーションを待つ
-    await page.waitForTimeout(500);
+      await page.waitForTimeout(500);
     }
     
     const allCheckboxes = page.locator('[data-testid^="source-checkbox-"] button[role="checkbox"]');
@@ -245,7 +245,10 @@ test.describe('ソースフィルタリング機能', () => {
     }
     
     // URLパラメータが更新されることを確認
-    await page.waitForTimeout(500);
+    await page.waitForFunction(
+      () => window.location.search.includes('sources='),
+      { timeout: 5000 }
+    );
     const currentUrl = page.url();
     expect(currentUrl).toContain('sources=');
     
@@ -275,7 +278,13 @@ test.describe('ソースフィルタリング機能', () => {
     }
     
     // すべてのソースが再度選択されたことを確認
-    await page.waitForTimeout(500);
+    await page.waitForFunction(
+      () => {
+        const checkboxes = document.querySelectorAll('[data-testid^="source-checkbox-"] button[role="checkbox"]');
+        return checkboxes.length > 0;
+      },
+      { timeout: 5000 }
+    );
     const articlesAfter = await page.locator('[data-testid="article-card"]').count();
     expect(articlesAfter).toBeGreaterThanOrEqual(articles);
   });

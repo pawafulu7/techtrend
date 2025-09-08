@@ -113,7 +113,8 @@ test.describe('Infinite Scroll E2E Tests', () => {
       
       if (await trigger.isVisible()) {
         await trigger.scrollIntoViewIfNeeded();
-        await page.waitForTimeout(1500);
+        // 新しいコンテンツがロードされるまで待機
+        await page.waitForLoadState('networkidle', { timeout: 5000 });
       }
     }
     

@@ -1,9 +1,18 @@
 import { test, expect } from '@playwright/test';
+import { 
+  waitForArticles, 
+  getTimeout,
+  waitForUrlParam,
+  safeClick,
+  waitForPageLoad,
+  waitForElementText
+} from '../../e2e/helpers/wait-utils';
 
 test.describe('Date Range Filter', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('[data-testid="article-list"]');
+    await waitForPageLoad(page);
+    await waitForArticles(page);
   });
 
   test('should display date range filter', async ({ page }) => {
@@ -20,7 +29,7 @@ test.describe('Date Range Filter', () => {
       const filterCount = await dateRangeFilter.count();
       
       if (filterCount > 0) {
-        await expect(dateRangeFilter).toBeVisible({ timeout: 10000 });
+        await expect(dateRangeFilter).toBeVisible({ timeout: getTimeout('medium') });
         
         // Check default value
         const trigger = page.locator('[data-testid="date-range-trigger"]').first();
@@ -38,7 +47,7 @@ test.describe('Date Range Filter', () => {
 
   test('should open date range dropdown on click', async ({ page }) => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.click();
+    await safeClick(trigger);
     
     // Check if dropdown content is visible
     const content = page.locator('[data-testid="date-range-content"]');
@@ -54,18 +63,19 @@ test.describe('Date Range Filter', () => {
 
   test('should filter articles by today', async ({ page }) => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.click();
+    await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
+    await safeClick(trigger);
     
     // Wait for dropdown to be visible
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
     
     // Select "今日" option
-    await page.locator('[data-testid="date-range-option-today"]').click();
+    const todayOption = page.locator('[data-testid="date-range-option-today"]');
+    await todayOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
+    await safeClick(todayOption);
     
-    // Wait for URL to update
-    await page.waitForFunction(() => {
-      return window.location.search.includes('dateRange=today');
-    }, { timeout: 10000 });
+    // Wait for URL to update with retry logic
+    await waitForUrlParam(page, 'dateRange', 'today', { polling: 'normal' });
     
     // Check URL has correct parameter
     expect(page.url()).toContain('dateRange=today');
@@ -74,47 +84,44 @@ test.describe('Date Range Filter', () => {
     await expect(trigger).toContainText('今日');
     
     // Wait for articles to reload
-    await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="article-list"]', { timeout: getTimeout('long') });
   });
 
   test('should filter articles by week', async ({ page }) => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.click();
+    await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
+    await safeClick(trigger);
     
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: 5000 });
-    await page.locator('[data-testid="date-range-option-week"]').click();
+    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
+    const weekOption = page.locator('[data-testid="date-range-option-week"]');
+    await weekOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
+    await safeClick(weekOption);
     
-    await page.waitForFunction(() => {
-      return window.location.search.includes('dateRange=week');
-    }, { timeout: 10000 });
+    await waitForUrlParam(page, 'dateRange', 'week', { polling: 'normal' });
     expect(page.url()).toContain('dateRange=week');
     await expect(trigger).toContainText('今週');
   });
 
   test('should filter articles by month', async ({ page }) => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.click();
+    await safeClick(trigger);
     
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: 5000 });
-    await page.locator('[data-testid="date-range-option-month"]').click();
+    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
+    await safeClick(page.locator('[data-testid="date-range-option-month"]'));
     
-    await page.waitForFunction(() => {
-      return window.location.search.includes('dateRange=month');
-    }, { timeout: 10000 });
+    await waitForUrlParam(page, 'dateRange', 'month');
     expect(page.url()).toContain('dateRange=month');
     await expect(trigger).toContainText('今月');
   });
 
   test('should filter articles by 3 months', async ({ page }) => {
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.click();
+    await safeClick(trigger);
     
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: 5000 });
-    await page.locator('[data-testid="date-range-option-3months"]').click();
+    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
+    await safeClick(page.locator('[data-testid="date-range-option-3months"]'));
     
-    await page.waitForFunction(() => {
-      return window.location.search.includes('dateRange=3months');
-    }, { timeout: 10000 });
+    await waitForUrlParam(page, 'dateRange', '3months');
     expect(page.url()).toContain('dateRange=3months');
     await expect(trigger).toContainText('過去3ヶ月');
   });
@@ -122,23 +129,24 @@ test.describe('Date Range Filter', () => {
   test('should reset to all periods', async ({ page }) => {
     // First set a filter
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.click();
+    await safeClick(trigger);
     
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: 5000 });
-    await page.locator('[data-testid="date-range-option-week"]').click();
+    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
+    await safeClick(page.locator('[data-testid="date-range-option-week"]'));
     
     // Wait for URL to update with more flexible check
-    await page.waitForFunction(() => {
-      return window.location.search.includes('dateRange=week');
-    }, { timeout: 10000 });
+    await waitForUrlParam(page, 'dateRange', 'week');
     
     // Then reset to all
-    await trigger.click();
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: 5000 });
-    await page.locator('[data-testid="date-range-option-all"]').click();
+    await safeClick(trigger);
+    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
+    await safeClick(page.locator('[data-testid="date-range-option-all"]'));
     
     // Check URL doesn't have dateRange parameter
-    await page.waitForFunction(() => !window.location.href.includes('dateRange'), { timeout: 10000 });
+    await page.waitForFunction(
+      () => !window.location.href.includes('dateRange'),
+      { timeout: getTimeout('medium') }
+    );
     expect(page.url()).not.toContain('dateRange');
     await expect(trigger).toContainText('全期間');
   });
@@ -146,19 +154,17 @@ test.describe('Date Range Filter', () => {
   test('should combine with source filter', async ({ page }) => {
     // Apply date range filter
     const dateRangeTrigger = page.locator('[data-testid="date-range-trigger"]');
-    await dateRangeTrigger.click();
+    await safeClick(dateRangeTrigger);
     
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: 5000 });
-    await page.locator('[data-testid="date-range-option-week"]').click();
+    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
+    await safeClick(page.locator('[data-testid="date-range-option-week"]'));
     
-    await page.waitForFunction(() => {
-      return window.location.search.includes('dateRange=week');
-    }, { timeout: 10000 });
+    await waitForUrlParam(page, 'dateRange', 'week');
     
     // Apply source filter - use more flexible selector
     const sourceCheckbox = page.locator('[data-testid^="source-checkbox-"]').first();
     if (await sourceCheckbox.count() > 0) {
-      await sourceCheckbox.click();
+      await safeClick(sourceCheckbox);
     } else {
       // No source filter available, skip this part
       console.log('Source filter not available');
@@ -167,10 +173,13 @@ test.describe('Date Range Filter', () => {
     }
     
     // Check both filters are in URL
-    await page.waitForFunction(() => {
-      const url = window.location.href;
-      return url.includes('dateRange=week') && url.includes('sources=');
-    });
+    await page.waitForFunction(
+      () => {
+        const url = window.location.href;
+        return url.includes('dateRange=week') && url.includes('sources=');
+      },
+      { timeout: getTimeout('medium') }
+    );
     
     const url = page.url();
     expect(url).toContain('dateRange=week');
@@ -180,18 +189,21 @@ test.describe('Date Range Filter', () => {
   test('should reset page to 1 when changing date range', async ({ page }) => {
     // Navigate to page 2 first
     await page.goto('/?page=2');
-    await page.waitForSelector('[data-testid="article-list"]');
+    await page.waitForSelector('[data-testid="article-list"]', { timeout: getTimeout('medium') });
     
     // Apply date range filter
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.click();
-    await page.locator('[data-testid="date-range-option-week"]').click();
+    await safeClick(trigger);
+    await safeClick(page.locator('[data-testid="date-range-option-week"]'));
     
     // Check page parameter is removed or set to 1
-    await page.waitForFunction(() => {
-      const url = window.location.href;
-      return !url.includes('page=2');
-    });
+    await page.waitForFunction(
+      () => {
+        const url = window.location.href;
+        return !url.includes('page=2');
+      },
+      { timeout: getTimeout('medium') }
+    );
     
     const url = page.url();
     expect(url).not.toContain('page=2');
@@ -217,7 +229,13 @@ test.describe('Date Range Filter', () => {
       if (await button.count() > 0) {
         filterButtonFound = true;
         await button.click();
-        await page.waitForTimeout(1000);
+        // フィルターメニューが開くのを待つ
+        await page.waitForSelector('[role="dialog"], .sheet-content, .modal', {
+          state: 'visible',
+          timeout: 3000
+        }).catch(() => {
+          // フィルターメニューが表示されない場合は続行
+        });
         break;
       }
     }
@@ -242,16 +260,13 @@ test.describe('Date Range Filter', () => {
         // 可視の場合は通常のテストを実行
         const trigger = page.locator('[data-testid="date-range-trigger"]').first();
         if (await trigger.count() > 0) {
-          await trigger.click();
-          await page.waitForTimeout(500);
+          await safeClick(trigger);
           
           const weekOption = page.locator('[data-testid="date-range-option-week"]');
           if (await weekOption.count() > 0) {
-            await weekOption.click();
+            await safeClick(weekOption);
             
-            await page.waitForFunction(() => {
-              return window.location.search.includes('dateRange=week');
-            }, { timeout: 10000 });
+            await waitForUrlParam(page, 'dateRange', 'week');
             expect(page.url()).toContain('dateRange=week');
           }
         }

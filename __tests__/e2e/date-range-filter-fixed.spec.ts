@@ -113,16 +113,28 @@ test.describe('Date Range Filter - Fixed', () => {
   test('should reset page to 1 when changing date range', async ({ page }) => {
     // Navigate to page 2 first
     await page.goto('/?page=2');
-    await page.waitForSelector('[data-testid="article-list"]');
+    // CI環境用の初期待機
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1500);
+    
+    await page.waitForSelector('[data-testid="article-list"]', { timeout: 15000 });
     
     // Apply date range filter
     const trigger = page.locator('[data-testid="date-range-trigger"]');
+    await trigger.waitFor({ state: 'visible', timeout: 10000 });
     await trigger.click();
-    await page.locator('[data-testid="date-range-option-week"]').click();
     
-    // Wait for URL to change
-    await expect(page).not.toHaveURL(/[\?&]page=2\b/, { timeout: 10000 });
+    // CI環境用に待機追加
+    await page.waitForTimeout(1000);
     
+    const weekOption = page.locator('[data-testid="date-range-option-week"]');
+    await weekOption.waitFor({ state: 'visible', timeout: 10000 });
+    await weekOption.click();
+    
+    // CI環境用に長めの待機
+    await page.waitForTimeout(2000);
+    
+    // URLが変更されたことを確認
     const url = page.url();
     expect(url).not.toContain('page=2');
   });

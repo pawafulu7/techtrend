@@ -86,11 +86,18 @@ test.describe('Source Filter Cookie', () => {
   });
 
   test('should work with select all and deselect all buttons', async ({ page, context }) => {
-    await page.waitForSelector('[data-testid="source-filter"]');
+    // CI環境用の初期待機
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
     
-    // Look for select/deselect buttons
+    await page.waitForSelector('[data-testid="source-filter"]', { timeout: 10000 });
+    
+    // Look for select/deselect buttons with longer timeout
     const deselectAllButton = page.locator('button:has-text("すべて解除")');
     const selectAllButton = page.locator('button:has-text("すべて選択")');
+    
+    // CI環境用に待機時間を延長
+    await page.waitForTimeout(1000);
     
     // Check if buttons exist
     if (await deselectAllButton.count() === 0 || await selectAllButton.count() === 0) {
@@ -101,20 +108,23 @@ test.describe('Source Filter Cookie', () => {
     // Click deselect all
     await deselectAllButton.click();
     
-    // Wait for navigation
-    await page.waitForTimeout(500);
-    await expect(page).toHaveURL(/sources=/);
+    // CI環境用に長めの待機
+    await page.waitForTimeout(1500);
+    await expect(page).toHaveURL(/sources=/, { timeout: 10000 });
     
     // Check cookie is set to empty
     const cookies1 = await context.cookies();
     const cookie1 = cookies1.find(c => c.name === 'source-filter');
     // Cookie behavior may vary - it might be undefined or have a specific value
     
+    // CI環境用に待機を追加
+    await page.waitForTimeout(1000);
+    
     // Click select all
     await selectAllButton.click();
     
-    // Wait for navigation
-    await page.waitForTimeout(500);
+    // CI環境用に長めの待機
+    await page.waitForTimeout(1500);
     
     // When all selected, URL should not have sources parameter
     const url = page.url();

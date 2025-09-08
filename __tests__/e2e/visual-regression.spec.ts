@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { isRunningInCI, getTimeout, waitForArticles } from '../../e2e/helpers/wait-utils';
 
-test.describe('Visual Regression Tests', () => {
+// CI環境ではVRTテストをスキップ（環境依存のため）
+test.describe.skip(isRunningInCI(), 'Visual Regression Tests', () => {
   test.beforeEach(async ({ page }) => {
     // アニメーションを無効化
     await page.addStyleTag({
@@ -20,7 +22,7 @@ test.describe('Visual Regression Tests', () => {
     await page.waitForLoadState('networkidle');
     
     // 記事カードが表示されるまで待機
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+    await waitForArticles(page);
     
     // スクリーンショットを撮影し、ベースラインと比較
     await expect(page).toHaveScreenshot('home-light.png', {
@@ -34,7 +36,7 @@ test.describe('Visual Regression Tests', () => {
     await page.waitForLoadState('networkidle');
     
     // 記事カードが表示されるまで待機
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+    await waitForArticles(page);
     
     // ダークモードに切り替え
     // テーマトグルボタンを探す（複数ある場合は最初の1つを使用）
@@ -45,13 +47,21 @@ test.describe('Visual Regression Tests', () => {
       
       // ダークモードクラスが適用されるまで待機
       try {
-        await page.waitForSelector('html.dark', { timeout: 2000 });
+        await page.waitForSelector('html.dark', { timeout: getTimeout('short') });
       } catch {
         console.warn('Dark mode class not applied, continuing anyway');
       }
       
       // CSS transitionの完了を待つ
-      await page.waitForTimeout(1000);
+      await page.waitForFunction(
+        () => {
+          const html = document.documentElement;
+          const style = window.getComputedStyle(html);
+          // transitionが完了しているか確認
+          return style.transition === 'none' || style.transition === '';
+        },
+        { timeout: 5000 }
+      );
     }
     
     // スクリーンショットを撮影
@@ -69,7 +79,7 @@ test.describe('Visual Regression Tests', () => {
     await page.waitForLoadState('networkidle');
     
     // 記事カードが表示されるまで待機
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+    await waitForArticles(page);
     
     // モバイルビューのスクリーンショット
     await expect(page).toHaveScreenshot('home-mobile.png', {
@@ -83,7 +93,7 @@ test.describe('Visual Regression Tests', () => {
     await page.waitForLoadState('networkidle');
     
     // ページコンテンツが読み込まれるまで待機
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
     
     // 統計ページの主要要素を確認（複数のセレクタを試行）
     const chartSelectors = [
@@ -134,8 +144,8 @@ test.describe('Visual Regression Tests', () => {
       
       // Firefoxの場合は特別な処理
       if (browserName === 'firefox') {
-        // Firefoxでは遷移に時間がかかることがあるため、より長い待機時間を設定
-        await page.waitForTimeout(2000);
+        // Firefoxでは遷移に時間がかかることがあるため、ネットワーク完了を待機
+        await page.waitForLoadState('networkidle', { timeout: 10000 });
         
         // URLが変更されたことを確認（正規表現を緩和）
         try {
@@ -178,8 +188,8 @@ test.describe('Visual Regression Tests', () => {
         await page.waitForSelector('main', { timeout: 5000 });
       }
       
-      // ページコンテンツが完全に読み込まれるまで少し待機
-      await page.waitForTimeout(1000);
+      // ページコンテンツが完全に読み込まれるまで待機
+      await page.waitForLoadState('networkidle');
       
       await expect(page).toHaveScreenshot('article-detail.png', {
         fullPage: true,
@@ -192,7 +202,8 @@ test.describe('Visual Regression Tests', () => {
   });
 });
 
-test.describe('レスポンシブデザインのVRT', () => {
+// CI環境ではVRTテストをスキップ（環境依存のため）
+test.describe.skip(process.env.CI === 'true', 'レスポンシブデザインのVRT', () => {
   const viewports = [
     { name: 'desktop', width: 1920, height: 1080 },
     { name: 'tablet', width: 768, height: 1024 },
@@ -205,7 +216,7 @@ test.describe('レスポンシブデザインのVRT', () => {
       
       await page.goto('/');
       await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+      await waitForArticles(page);
       
       await expect(page).toHaveScreenshot(`home-${viewport.name}.png`, {
         fullPage: true,
