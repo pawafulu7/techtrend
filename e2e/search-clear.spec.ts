@@ -15,8 +15,22 @@ test.describe('検索クリア機能', () => {
     // 検索ワードを入力
     await searchBox.fill('TypeScript');
     
-    // デバウンス処理を待つ（URLパラメータ更新まで）
-    await waitForUrlParam(page, 'search', 'TypeScript', { timeout: getTimeout('short') });
+    // デバウンス処理とURL更新を待つ（検索処理は非同期で実行される）
+    await page.waitForTimeout(500); // デバウンス処理の待機
+    
+    try {
+      // URLパラメータ更新を待機（タイムアウトを延長）
+      await waitForUrlParam(page, 'search', 'TypeScript', { 
+        timeout: getTimeout('medium'), 
+        polling: 'fast' 
+      });
+    } catch (error) {
+      // waitForUrlParamが失敗した場合、手動でURL確認
+      await page.waitForFunction(
+        () => window.location.href.includes('search=TypeScript'),
+        { timeout: getTimeout('medium') }
+      );
+    }
     
     // URLに検索パラメータが含まれることを確認
     await expect(page).toHaveURL(/search=TypeScript/);

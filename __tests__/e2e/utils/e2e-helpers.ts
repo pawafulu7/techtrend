@@ -447,8 +447,9 @@ export async function fillPasswordChangeForm(
   page: Page, 
   passwords: { current: string; new: string; confirm: string }
 ) {
-  // パスワード変更セクションをスコープにして誤入力を防止
+  // パスワード変更セクションが表示されるまで待機
   const passwordSection = page.locator('form:has-text("パスワード変更"), section:has-text("パスワード変更")').first();
+  await passwordSection.waitFor({ state: 'visible', timeout: 10000 });
   
   // Enhanced priority chain for password inputs with precise targeting
   const currentPasswordInput = passwordSection.locator([
@@ -459,6 +460,9 @@ export async function fillPasswordChangeForm(
     'label:has-text("現在のパスワード") + input[type="password"]',
     'input[placeholder*="現在"][type="password"]'
   ].join(', ')).first();
+  
+  // 要素が見つかるまで待機
+  await currentPasswordInput.waitFor({ state: 'visible', timeout: 5000 });
   await currentPasswordInput.fill(passwords.current);
   
   const newPasswordInput = page.locator([
@@ -469,6 +473,7 @@ export async function fillPasswordChangeForm(
     'label:has-text("新しいパスワード") + input[type="password"]',
     'input[placeholder*="新しいパスワード"][type="password"]'
   ].join(', ')).first();
+  await newPasswordInput.waitFor({ state: 'visible', timeout: 5000 });
   await newPasswordInput.fill(passwords.new);
   
   const confirmPasswordInput = page.locator([
@@ -479,6 +484,7 @@ export async function fillPasswordChangeForm(
     'label:has-text("確認") + input[type="password"]',
     'input[placeholder*="確認"][type="password"]'
   ].join(', ')).first();
+  await confirmPasswordInput.waitFor({ state: 'visible', timeout: 5000 });
   await confirmPasswordInput.fill(passwords.confirm);
 }
 

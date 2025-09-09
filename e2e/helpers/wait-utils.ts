@@ -344,18 +344,28 @@ export async function waitForUrlParam(
   const timeout = options?.timeout ?? getTimeout('medium');
   const polling = getPollingInterval(options?.polling ?? 'normal');
   
-  await page.waitForFunction(
-    ({ name, value }) => {
-      const url = new URL(window.location.href);
-      const param = url.searchParams.get(name);
-      if (value === undefined) {
-        return param !== null;
-      }
-      return param === value;
-    },
-    { name: paramName, value: paramValue },
-    { timeout, polling }
-  );
+  // Next.jsのrouter.pushは非同期なので、最初に少し待機
+  await page.waitForTimeout(300);
+  
+  try {
+    await page.waitForFunction(
+      ({ name, value }) => {
+        const url = new URL(window.location.href);
+        const param = url.searchParams.get(name);
+        if (value === undefined) {
+          return param !== null;
+        }
+        return param === value;
+      },
+      { name: paramName, value: paramValue },
+      { timeout, polling }
+    );
+  } catch (error) {
+    // タイムアウトエラーの場合、現在のURLをログに出力してデバッグを支援
+    const currentUrl = page.url();
+    console.error(`waitForUrlParam timeout: Expected ${paramName}=${paramValue}, but current URL is ${currentUrl}`);
+    throw error;
+  }
 }
 
 /**

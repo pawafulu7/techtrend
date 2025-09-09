@@ -61,13 +61,40 @@ test.describe.serial('Password Change Feature - Improved', () => {
     
     // プロフィールページへ移動
     await page.goto('/profile');
+    await page.waitForLoadState('networkidle');
     
-    // ページが完全に読み込まれるまで待機
-    await page.waitForSelector('button:has-text("アカウント")', { state: 'visible', timeout: 10000 });
+    // アカウントタブを探す（複数のセレクター）
+    const accountTabSelectors = [
+      'button:has-text("アカウント")',
+      '[role="tab"]:has-text("アカウント")',
+      '[data-testid="account-tab"]',
+      'button[data-value="account"]',
+      '[role="tab"][data-value="account"]'
+    ];
     
-    // アカウントタブを開く - TabsTriggerを使用
-    const accountTab = page.locator('button:has-text("アカウント")').first();
-    await accountTab.click();
+    let accountTabFound = false;
+    for (const selector of accountTabSelectors) {
+      try {
+        const tab = page.locator(selector).first();
+        if (await tab.count() > 0) {
+          await tab.waitFor({ state: 'visible', timeout: 2000 });
+          await tab.click();
+          accountTabFound = true;
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    
+    if (!accountTabFound) {
+      // アカウントタブが見つからない場合、パスワード変更セクションが既に表示されているか確認
+      const passwordSection = page.locator(':has-text("パスワード変更")');
+      if (await passwordSection.count() === 0) {
+        throw new Error('Account tab not found and password change section not visible');
+      }
+    }
+    
     // タブの内容が表示されるまで待機
     await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
@@ -307,13 +334,40 @@ test.describe.serial('Password Change Feature - Improved', () => {
     
     // プロフィールページへ移動
     await page.goto('/profile');
+    await page.waitForLoadState('networkidle');
     
-    // ページが完全に読み込まれるまで待機
-    await page.waitForSelector('button:has-text("アカウント")', { state: 'visible', timeout: 10000 });
+    // アカウントタブを探す（複数のセレクター）
+    const accountTabSelectors = [
+      'button:has-text("アカウント")',
+      '[role="tab"]:has-text("アカウント")',
+      '[data-testid="account-tab"]',
+      'button[data-value="account"]',
+      '[role="tab"][data-value="account"]'
+    ];
     
-    // アカウントタブを開く - TabsTriggerを使用
-    const accountTab = page.locator('button:has-text("アカウント")').first();
-    await accountTab.click();
+    let accountTabFound = false;
+    for (const selector of accountTabSelectors) {
+      try {
+        const tab = page.locator(selector).first();
+        if (await tab.count() > 0) {
+          await tab.waitFor({ state: 'visible', timeout: 2000 });
+          await tab.click();
+          accountTabFound = true;
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    
+    if (!accountTabFound) {
+      // アカウントタブが見つからない場合、パスワード変更セクションが既に表示されているか確認
+      const passwordSection = page.locator(':has-text("パスワード変更")');
+      if (await passwordSection.count() === 0) {
+        throw new Error('Account tab not found and password change section not visible');
+      }
+    }
+    
     // タブの内容が表示されるまで待機
     await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
