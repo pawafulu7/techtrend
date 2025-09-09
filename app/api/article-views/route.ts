@@ -69,7 +69,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    logger.error({ error, userId: session?.user?.id }, '[POST /api/article-views] Error');
+    logger.error({ error }, '[POST /api/article-views] Error');
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -102,7 +102,7 @@ export async function DELETE(_request: Request) {
       clearedCount: result.count
     });
   } catch (error) {
-    logger.error({ error, userId: session?.user?.id }, '[DELETE /api/article-views] Error');
+    logger.error({ error }, '[DELETE /api/article-views] Error');
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -232,7 +232,7 @@ export async function POST(request: Request) {
       viewId: view.id,
     });
   } catch (error) {
-    logger.error({ error, userId: session?.user?.id }, '[POST /api/article-views] Error');
+    logger.error({ error }, '[POST /api/article-views] Error');
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

@@ -58,7 +58,7 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json(userProfile);
   } catch (error) {
-    logger.error({ error, userId: session?.user?.id }, 'Error fetching user profile');
+    logger.error({ error }, 'Error fetching user profile');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

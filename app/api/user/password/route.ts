@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       throw error; // その他のエラーは再スロー
     }
   } catch (error) {
-    logger.error({ error, userId: session?.user?.id }, 'Password change error');
+    logger.error({ error }, 'Password change error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
