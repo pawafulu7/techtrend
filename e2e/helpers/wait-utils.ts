@@ -219,10 +219,11 @@ export async function debugPageState(page: Page, label: string) {
     const title = await page.title();
     const articleCount = await page.locator('[data-testid="article-card"]').count();
     
-    console.log(`[DEBUG] ${label}`);
-    console.log(`  URL: ${url}`);
-    console.log(`  Title: ${title}`);
-    console.log(`  Articles: ${articleCount}`);
+    // デバッグ環境でのみ出力（通常はコメントアウト）
+    // console.log(`[DEBUG] ${label}`);
+    // console.log(`  URL: ${url}`);
+    // console.log(`  Title: ${title}`);
+    // console.log(`  Articles: ${articleCount}`);
   }
 }
 
@@ -293,7 +294,8 @@ export async function waitForTabSwitch(
     // タブコンテンツが表示されるまで待つ
     await page.waitForTimeout(300); // アニメーション用の短い待機
   } catch (error) {
-    console.error(`Failed to wait for tab switch: ${error}`);
+    // エラーログは開発時のみ（本番ではコメントアウト）
+    // console.error(`Failed to wait for tab switch: ${error}`);
     throw error;
   }
 }
@@ -349,9 +351,12 @@ export async function waitForUrlParam(
   const initialWait = process.env.CI ? 1000 : 500;
   await page.waitForTimeout(initialWait);
   
-  // デバッグ用: 初期URL確認
+  // デバッグ用: 初期URL確認（CI環境のみ）
   const initialUrl = page.url();
-  console.log(`[waitForUrlParam] Initial URL: ${initialUrl}, waiting for ${paramName}=${paramValue}`);
+  if (process.env.CI) {
+    // CI環境でのみデバッグログ出力
+    // console.log(`[waitForUrlParam] Initial URL: ${initialUrl}, waiting for ${paramName}=${paramValue}`);
+  }
   
   try {
     await page.waitForFunction(
@@ -367,18 +372,21 @@ export async function waitForUrlParam(
       { timeout, polling }
     );
     
-    // 成功時のデバッグログ
+    // 成功時のデバッグログ（CI環境のみ）
     const finalUrl = page.url();
-    console.log(`[waitForUrlParam] Success! Final URL: ${finalUrl}`);
+    if (process.env.CI) {
+      // CI環境でのみ成功ログ出力
+      // console.log(`[waitForUrlParam] Success! Final URL: ${finalUrl}`);
+    }
   } catch (error) {
     // タイムアウトエラーの場合、現在のURLをログに出力してデバッグを支援
     const currentUrl = page.url();
-    console.error(`waitForUrlParam timeout: Expected ${paramName}=${paramValue}, but current URL is ${currentUrl}`);
-    
-    // CI環境の場合、追加のデバッグ情報を出力
+    // エラー時のみログ出力（CI環境の場合は詳細情報も）
     if (process.env.CI) {
-      console.error(`[CI Debug] Page title: ${await page.title()}`);
-      console.error(`[CI Debug] Page state: ${await page.evaluate(() => document.readyState)}`);
+      // CI環境でのみエラーログ出力（コメントアウトして削減）
+      // console.error(`waitForUrlParam timeout: Expected ${paramName}=${paramValue}, but current URL is ${currentUrl}`);
+      // console.error(`[CI Debug] Page title: ${await page.title()}`);
+      // console.error(`[CI Debug] Page state: ${await page.evaluate(() => document.readyState)}`);
     }
     
     throw error;
