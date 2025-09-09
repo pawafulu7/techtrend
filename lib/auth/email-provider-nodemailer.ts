@@ -1,3 +1,5 @@
+import logger from '@/lib/logger';
+
 // Theme type for email template
 interface Theme {
   colorScheme?: string;
@@ -99,7 +101,7 @@ function createTransporter() {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     nodemailer = require('nodemailer');
   } catch (_error) {
-    console.warn('Nodemailer not installed. Email sending will be disabled.');
+    logger.warn('Nodemailer not installed. Email sending will be disabled.');
     return null;
   }
   
@@ -164,7 +166,7 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
   const transporter = createTransporter();
   
   if (!transporter) {
-    console.error('❌ Email configuration missing. Please set Gmail or SMTP settings.');
+    logger.error('Email configuration missing. Please set Gmail or SMTP settings.');
     // console.log('Required environment variables:');
     // console.log('  For Gmail: GMAIL_USER and GMAIL_APP_PASSWORD');
     // console.log('  For SMTP: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD');
@@ -195,7 +197,7 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
       }
     }
   } catch (error) {
-    console.error('📧 Failed to send email:', error);
+    logger.error({ error }, 'Failed to send email');
     throw new Error('Failed to send verification email');
   }
 }

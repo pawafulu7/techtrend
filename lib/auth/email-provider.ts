@@ -1,3 +1,5 @@
+import logger from '@/lib/logger';
+
 // Theme type for email template
 interface Theme {
   colorScheme?: string;
@@ -14,7 +16,7 @@ if (process.env.RESEND_API_KEY) {
     const { Resend } = require('resend');
     resend = new Resend(process.env.RESEND_API_KEY);
   } catch (_error) {
-    console.warn('Resend module not installed. Email sending via Resend will be disabled.');
+    logger.warn('Resend module not installed. Email sending via Resend will be disabled.');
   }
 }
 
@@ -140,7 +142,7 @@ export async function sendVerificationRequest(params: SendVerificationRequestPar
 
     // console.log('📧 Email sent successfully:', data);
   } catch (error) {
-    console.error('📧 Failed to send email:', error);
+    logger.error({ error }, 'Failed to send email');
     throw new Error('Failed to send verification email');
   }
 }
