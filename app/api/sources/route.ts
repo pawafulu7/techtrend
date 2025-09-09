@@ -264,7 +264,7 @@ export async function GET(request: NextRequest) {
       
       return response;
   } catch (error) {
-    logger.error('API Error in /api/sources:', error);
+    logger.error({ error }, 'API Error in /api/sources');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

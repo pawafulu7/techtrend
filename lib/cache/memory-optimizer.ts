@@ -2,6 +2,7 @@ import { getRedisClient } from '@/lib/redis/client';
 import { statsCache } from './stats-cache';
 import { trendsCache } from './trends-cache';
 import { searchCache } from './search-cache';
+import logger from '@/lib/logger';
 
 /**
  * メモリ最適化戦略実装
@@ -92,7 +93,7 @@ export class MemoryOptimizer {
       }
     } catch (error) {
       // 最小限の可観測性を確保
-      console.debug('[MemoryOptimizer] checkMemoryUsage failed', { error });
+      logger.debug({ error }, '[MemoryOptimizer] checkMemoryUsage failed');
     } finally {
       this.isChecking = false;
     }
@@ -241,7 +242,7 @@ export class MemoryOptimizer {
       } while (cursor !== '0');
       
     } catch (error) {
-      console.debug('[MemoryOptimizer] cleanupExpiredKeys failed', { error });
+      logger.debug({ error }, '[MemoryOptimizer] cleanupExpiredKeys failed');
     }
   }
 
@@ -286,7 +287,7 @@ export class MemoryOptimizer {
         }
       }
     } catch (error) {
-      console.debug('[MemoryOptimizer] evictOldestKeys failed', { error });
+      logger.debug({ error }, '[MemoryOptimizer] evictOldestKeys failed');
     }
   }
 
@@ -323,7 +324,7 @@ export class MemoryOptimizer {
         }
       } while (cursor !== '0');
     } catch (error) {
-      console.debug('[MemoryOptimizer] clearLowPriorityCaches failed', { error });
+      logger.debug({ error }, '[MemoryOptimizer] clearLowPriorityCaches failed');
     }
   }
 

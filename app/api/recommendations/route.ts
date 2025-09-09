@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     try {
       cached = await redisService.getJSON(cacheKey);
     } catch (cacheError) {
-      logger.warn('[API/recommendations] Cache read error:', cacheError);
+      logger.warn({ error: cacheError }, '[API/recommendations] Cache read error');
     }
     
     if (cached) {
@@ -45,12 +45,12 @@ export async function GET(request: NextRequest) {
     try {
       await redisService.setJSON(cacheKey, recommendations, 300);
     } catch (cacheError) {
-      logger.warn('[API/recommendations] Cache write error:', cacheError);
+      logger.warn({ error: cacheError }, '[API/recommendations] Cache write error');
     }
 
     return NextResponse.json(recommendations);
   } catch (error) {
-    logger.error('[API/recommendations] Error:', error);
+    logger.error({ error }, '[API/recommendations] Error');
     return NextResponse.json(
       { error: 'Failed to get recommendations' },
       { status: 500 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
-import logger from '@/lib/logger/index';
+import logger from '@/lib/logger';
 
 // キャッシュインスタンスを遅延初期化
 let cache: RedisCache | null = null;
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (cacheError) {
       // キャッシュ削除エラーは無視して処理を続行
-      logger.warn('Cache deletion error, continuing:', cacheError);
+      logger.warn({ error: cacheError }, 'Cache deletion error, continuing');
     }
 
     logger.info(`Weekly digest generated: ${digestId}`);
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       digestId 
     });
   } catch (error) {
-    logger.error('Failed to generate digest:', error);
+    logger.error({ error }, 'Failed to generate digest');
     return NextResponse.json(
       { error: 'Failed to generate digest' },
       { status: 500 }

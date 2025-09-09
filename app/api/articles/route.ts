@@ -5,7 +5,7 @@ import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
 import { EnhancedRedisCache } from '@/lib/cache/enhanced-redis-cache';
 import { Prisma, ArticleCategory } from '@prisma/client';
-import { log } from '@/lib/logger';
+import logger from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
 import { MetricsCollector, withDbTiming, withCacheTiming } from '@/lib/metrics/performance';
@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
           if (validCategories.includes(category as ArticleCategory)) {
             where.category = category as ArticleCategory;
           } else {
-            log.warn(`Invalid category provided: ${category}`);
+            logger.warn(`Invalid category provided: ${category}`);
             // Ignore invalid category filter
           }
         }
@@ -369,7 +369,7 @@ export async function GET(request: NextRequest) {
     
     return response;
   } catch (error) {
-    log.error('Error fetching articles:', error);
+    logger.error({ error }, 'Error fetching articles');
     const dbError = error instanceof Error 
       ? new DatabaseError(`Failed to fetch articles: ${error.message}`, 'select')
       : new DatabaseError('Failed to fetch articles', 'select');
@@ -447,7 +447,7 @@ export async function POST(request: NextRequest) {
       data: article,
     } as ApiResponse<ArticleWithRelations>, { status: 201 });
   } catch (error) {
-    log.error('Error creating article:', error);
+    logger.error({ error }, 'Error creating article');
     return NextResponse.json({
       success: false,
       error: 'Failed to create article',
