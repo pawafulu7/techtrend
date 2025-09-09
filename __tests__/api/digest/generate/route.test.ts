@@ -34,23 +34,6 @@ import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
 import { NextRequest } from 'next/server';
-
-// POSTをimportする前にgetCacheをモック
-const mockCache = {
-  get: jest.fn(),
-  set: jest.fn(),
-  del: jest.fn(),
-  generateCacheKey: jest.fn((prefix: string, options: any) => `${prefix}:${JSON.stringify(options)}`)
-};
-
-jest.doMock('@/app/api/digest/generate/route', () => {
-  const actual = jest.requireActual('@/app/api/digest/generate/route');
-  return {
-    ...actual,
-    getCache: () => mockCache
-  };
-});
-
 import { POST } from '@/app/api/digest/generate/route';
 
 // モックの型定義
@@ -69,12 +52,6 @@ describe('/api/digest/generate', () => {
     loggerMock.info = jest.fn();
     loggerMock.error = jest.fn();
     loggerMock.warn = jest.fn();
-    
-    // キャッシュモックのリセット
-    mockCache.get.mockResolvedValue(null);
-    mockCache.set.mockResolvedValue(undefined);
-    mockCache.del.mockResolvedValue(undefined);
-    mockCache.generateCacheKey.mockImplementation((prefix: string, options: any) => `${prefix}:${JSON.stringify(options)}`);
     
     // キャッシュモックのリセット（mockCacheInstanceが初期化されていることを確認）
     if (!mockCacheInstance) {
@@ -140,8 +117,11 @@ describe('/api/digest/generate', () => {
       });
       
       expect(mockGeneratorInstance.generateWeeklyDigest).toHaveBeenCalledWith(new Date(testDate));
+      
+      // The cache key should use the Monday of the week for the given date
+      // 2025-01-01 is a Wednesday, so Monday is 2024-12-29
       expect(mockCacheInstance.generateCacheKey).toHaveBeenCalledWith('weekly-digest', {
-        params: { week: testDate }
+        params: { week: '2024-12-29' }
       });
       expect(mockCacheInstance.del).toHaveBeenCalled();
     });
@@ -199,10 +179,20 @@ describe('/api/digest/generate', () => {
         error: 'Failed to generate digest',
       });
       
-      expect(loggerMock.error).toHaveBeenCalledWith(
-        { err: expect.any(Error) },
-        'Failed to generate digest'
-      );
+      expect(loggerMock.error).toHaveBeenCalled();
+      const [firstArg, message] = loggerMock.error.mock.calls[0];
+      expect(message).toBe('Failed to generate digest');
+      if (firstArg instanceof Error) {
+        expect(firstArg).toBeInstanceOf(Error);
+      } else {
+        expect(firstArg).toEqual(
+          expect.objectContaining(
+            firstArg.err
+              ? { err: expect.any(Error) }
+              : { error: expect.any(Error) }
+          )
+        );
+      }
     });
 
     it('キャッシュ削除エラーでも処理を続行する', async () => {

@@ -45,7 +45,7 @@ export async function GET(
       }
     } catch (cacheError) {
       // キャッシュエラーは無視して処理を続行
-      logger.warn({ error: cacheError }, 'Cache error, continuing without cache');
+      logger.warn({ err: cacheError }, 'Cache error, continuing without cache');
     }
 
     const generator = new DigestGenerator(prisma);
@@ -63,7 +63,7 @@ export async function GET(
       await cacheInstance.set(cacheKey, digest, 3600);
     } catch (cacheError) {
       // キャッシュ保存エラーは無視
-      logger.warn({ error: cacheError }, 'Cache set error, continuing without caching');
+      logger.warn({ err: cacheError }, 'Cache set error, continuing without caching');
     }
 
     return NextResponse.json(digest);

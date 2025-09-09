@@ -101,7 +101,10 @@ function createTransporter() {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     nodemailer = require('nodemailer');
   } catch (_error) {
-    logger.warn('Nodemailer not installed. Email sending will be disabled.');
+    logger.warn(
+      { event: 'email_transport_init', nodemailerInstalled: false },
+      'Nodemailer not installed; email sending disabled'
+    );
     return null;
   }
   
@@ -201,7 +204,10 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
       }
     }
   } catch (error) {
-    logger.error({ error }, 'Failed to send email');
-    throw new Error('Failed to send verification email');
+    logger.error(
+      { err: error as Error, event: 'send_verification_failed', toDomain: to?.split('@')[1] ?? null, host },
+      'Failed to send verification email'
+    );
+    throw new Error('Failed to send verification email', { cause: error as Error });
   }
 }

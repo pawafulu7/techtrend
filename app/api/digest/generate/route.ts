@@ -50,23 +50,22 @@ export async function POST(request: NextRequest) {
 
     // Invalidate cache for this week's digest
     try {
-      if (date) {
-        const cacheInstance = getCache();
-        const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
-          params: { week: date }
-        });
-        await cacheInstance.del(cacheKey);
-      }
-
-      // Also invalidate cache for current week if no date specified
-      if (!date) {
-        const currentWeek = new Date().toISOString();
-        const cacheInstance = getCache();
-        const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
-          params: { week: currentWeek }
-        });
-        await cacheInstance.del(cacheKey);
-      }
+      const cacheInstance = getCache();
+      // Get the Monday of the week as YYYY-MM-DD format
+      const targetDate = date ? new Date(date) : new Date();
+      const monday = new Date(targetDate);
+      const day = monday.getDay();
+      const diff = monday.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+      monday.setDate(diff);
+      monday.setHours(0, 0, 0, 0);
+      
+      // Format as YYYY-MM-DD to match the format used in digest/[week]/route.ts
+      const weekKey = monday.toISOString().split('T')[0];
+      
+      const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
+        params: { week: weekKey }
+      });
+      await cacheInstance.del(cacheKey);
     } catch (cacheError) {
       // キャッシュ削除エラーは無視して処理を続行
       logger.warn({ err: cacheError }, 'Cache deletion error, continuing');
