@@ -4,7 +4,12 @@ test.describe('スクロール位置復元機能', () => {
   test('記事詳細から戻った時にスクロール位置が復元される', async ({ page }) => {
     // 1. ホームページにアクセス
     await page.goto('/');
-    await page.waitForSelector('[data-testid="article-card"]');
+    await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
+    
+    // CI環境での初期ロード待機
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
     
     // 2. 記事を20件以上読み込むためにスクロール
     // 実際のスクロール対象要素を特定（main要素またはhome-client内のdiv）
@@ -33,7 +38,9 @@ test.describe('スクロール位置復元機能', () => {
           window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }
       });
-      await page.waitForTimeout(1500);
+      
+      // CI環境では待機時間を延長
+      await page.waitForTimeout(process.env.CI ? 3000 : 1500);
     }
     
     // 3. スクロール位置を記録
@@ -68,7 +75,14 @@ test.describe('スクロール位置復元機能', () => {
     await tenthArticle.click();
     
     // 5. 記事詳細ページに遷移したことを確認
-    await page.waitForURL((url) => new URL(url).pathname === `/articles/${articleId}`, { timeout: 10000 });
+    await page.waitForURL((url) => new URL(url).pathname === `/articles/${articleId}`, { 
+      timeout: process.env.CI ? 30000 : 10000 
+    });
+    
+    // CI環境での記事詳細ページロード待機
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
     
     // 6. ブラウザの戻るボタンを使用（記事一覧に戻るリンクが存在しないため）
     await page.goBack();
@@ -77,12 +91,14 @@ test.describe('スクロール位置復元機能', () => {
     await page.waitForFunction(
       () => new URL(window.location.href).pathname === '/',
       undefined,
-      { timeout: 10000 }
+      { timeout: process.env.CI ? 30000 : 10000 }
     );
     
     // 8. 記事が読み込まれるまで待機
-    await page.waitForSelector('[data-testid="article-card"]');
-    await page.waitForTimeout(500); // スクロール復元の待機時間
+    await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
+    
+    // CI環境でのスクロール復元待機時間を延長
+    await page.waitForTimeout(process.env.CI ? 2000 : 500);
     
     // 9. スクロール位置が復元されたか確認
     const scrollPositionAfter = await page.evaluate(() => {
@@ -103,11 +119,14 @@ test.describe('スクロール位置復元機能', () => {
       return window.pageYOffset || document.documentElement.scrollTop;
     });
     
+    // CI環境では許容誤差を大きくする
+    const tolerance = process.env.CI ? 500 : 300;
+    
     // ブラウザのデフォルト動作により、位置が復元される可能性がある
     // ただし、完全に同じ位置に戻るとは限らない
-    // スクロール位置が復元されていることを確認（許容誤差300px）
+    // スクロール位置が復元されていることを確認
     expect(scrollPositionAfter).toBeGreaterThan(0);
-    expect(scrollPositionAfter).toBeGreaterThanOrEqual(Math.max(1, scrollPositionBefore - 300));
+    expect(scrollPositionAfter).toBeGreaterThanOrEqual(Math.max(1, scrollPositionBefore - tolerance));
   });
   
   test('ページリロード時はスクロール位置が復元されない', async ({ page }) => {

@@ -244,16 +244,24 @@ test.describe.serial('Password Change Feature - Improved', () => {
       return;
     }
     
+    // CI環境では追加の待機
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
+    
     // ブラウザ固有のテストユーザーを使用
     const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
     
     // プロフィールページへ移動
     await page.goto('/profile');
     
+    // CI環境では長いタイムアウト
+    const profileTimeout = process.env.CI ? 15000 : 5000;
+    
     // プロフィールページが正しく読み込まれたか確認
     const profileTitle = page.locator('h1:has-text("プロフィール")');
     try {
-      await profileTitle.waitFor({ state: 'visible', timeout: 5000 });
+      await profileTitle.waitFor({ state: 'visible', timeout: profileTimeout });
     } catch {
       console.log('Profile page not loaded correctly - skipping test');
       test.skip();

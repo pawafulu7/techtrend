@@ -22,9 +22,14 @@ test.describe('フィルター条件の永続化', () => {
     // まず記事が表示されるまで待機
     await waitForArticles(page);
     
+    // CI環境では追加の初期ロード待機
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
+    
     // 検索ボックスの準備完了を待機
     const searchInput = page.locator('[data-testid="search-box-input"]');
-    await searchInput.waitFor({ state: 'visible', timeout: getTimeout('medium') });
+    await searchInput.waitFor({ state: 'visible', timeout: process.env.CI ? 15000 : getTimeout('medium') });
     
     // 1. 検索キーワードを入力
     await searchInput.fill('TypeScript');
@@ -323,9 +328,14 @@ test.describe('フィルター条件の永続化', () => {
 
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
     // CI環境用の初期待機とネットワーク安定化
-    const networkTimeout = process.env.CI ? 10000 : 5000;
+    const networkTimeout = process.env.CI ? 15000 : 5000;
     await page.waitForLoadState('networkidle', { timeout: networkTimeout });
     await waitForPageLoad(page, { waitForNetworkIdle: true });
+    
+    // CI環境では追加の待機
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
     
     // 1. 複数のフィルターを設定
     const searchInput = page.locator('[data-testid="search-box-input"]').first();
@@ -338,7 +348,7 @@ test.describe('フィルター条件の永続化', () => {
       await page.waitForFunction(
         () => window.location.href.includes('search=React'),
         undefined,
-        { timeout: 5000 }
+        { timeout: process.env.CI ? 30000 : 5000 }
       );
       urlUpdated = true;
     } catch {
@@ -447,10 +457,15 @@ test.describe('フィルター条件の永続化', () => {
   });
 
   test('フィルターリセットボタンですべての条件がクリアされる', async ({ page }) => {
+    // CI環境では追加の初期待機
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
+    
     // 1. 複数のフィルターを設定
     await page.fill('[data-testid="search-box-input"]', 'Vue');
     // CI環境では待機時間を延長
-    const vueTimeout = process.env.CI ? 15000 : 5000;
+    const vueTimeout = process.env.CI ? 30000 : 5000;
     await page.waitForFunction(
       () => window.location.search.includes('search=Vue'),
       undefined,

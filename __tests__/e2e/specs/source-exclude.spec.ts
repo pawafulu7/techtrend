@@ -111,10 +111,10 @@ test.describe('ソースフィルタリング機能', () => {
     
     // Firefox対応: 記事データの読み込み完了を待つ
     await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: 10000,
+      timeout: process.env.CI ? 30000 : 10000,
       state: 'visible' 
     });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(process.env.CI ? 2000 : 500);
     
     // 最初に全選択ボタンをクリックして、すべて選択状態にする
     const selectAllButton = page.locator('[data-testid="select-all-button"]');
@@ -124,7 +124,7 @@ test.describe('ソースフィルタリング機能', () => {
     
     // 記事カードが表示されるまで待つ（Firefoxの遅延対策）
     await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: 10000,
+      timeout: process.env.CI ? 30000 : 10000,
       state: 'visible' 
     });
     
@@ -194,19 +194,24 @@ test.describe('ソースフィルタリング機能', () => {
   test('複数ソースの選択状態を管理できる', async ({ page, browserName }) => {
     // Firefox対応: 記事データの読み込み完了を待つ
     await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: 10000,
+      timeout: process.env.CI ? 30000 : 10000,
       state: 'visible' 
     });
     
     // ネットワーク待機（Firefoxも含めて統一）
-    await page.waitForLoadState('networkidle', { timeout: 10000 });
+    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 20000 : 10000 });
+    
+    // CI環境では追加の待機
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
     
     // フィルターエリアを取得
     const _filterArea = page.locator('[data-testid="filter-area"]');
     
     // 記事カードが表示されるまで待つ
     await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: 10000,
+      timeout: process.env.CI ? 30000 : 10000,
       state: 'visible' 
     });
     

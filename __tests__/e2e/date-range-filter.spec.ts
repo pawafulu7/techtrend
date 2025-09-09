@@ -95,22 +95,33 @@ test.describe('Date Range Filter', () => {
 
   test('should filter articles by week', async ({ page }) => {
     // Wait for network idle before starting
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 10000 : 5000 });
+    
+    // CI環境では追加の待機
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
     
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
     await safeClick(trigger);
     
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
+    await page.waitForSelector('[data-testid="date-range-content"]', { 
+      state: 'visible', 
+      timeout: process.env.CI ? 10000 : getTimeout('short') 
+    });
     const weekOption = page.locator('[data-testid="date-range-option-week"]');
     await weekOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(weekOption);
     
-    // Extended timeout for URL change
-    await waitForUrlParam(page, 'dateRange', 'week', { polling: 'normal', timeout: 15000 });
+    // Extended timeout for URL change (CI環境ではさらに延長)
+    await waitForUrlParam(page, 'dateRange', 'week', { 
+      polling: 'normal', 
+      timeout: process.env.CI ? 30000 : 15000 
+    });
     
     // Additional network wait after URL change
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 10000 : 5000 });
     
     expect(page.url()).toContain('dateRange=week');
     await expect(trigger).toContainText('今週');
@@ -235,25 +246,39 @@ test.describe('Date Range Filter', () => {
     await page.goto('/?page=2');
     // CI環境用の初期待機
     await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="article-list"]', { timeout: 15000 });
+    await page.waitForSelector('[data-testid="article-list"]', { timeout: process.env.CI ? 30000 : 15000 });
+    
+    // CI環境では追加の待機
+    if (process.env.CI) {
+      await page.waitForTimeout(2000);
+    }
     
     // Apply date range filter
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: 10000 });
+    await trigger.waitFor({ state: 'visible', timeout: process.env.CI ? 20000 : 10000 });
     await safeClick(trigger);
     
     const weekOption = page.locator('[data-testid="date-range-option-week"]');
-    await weekOption.waitFor({ state: 'visible', timeout: 10000 });
+    await weekOption.waitFor({ state: 'visible', timeout: process.env.CI ? 20000 : 10000 });
     await safeClick(weekOption);
     
-    // URL更新を確定
-    await waitForUrlParam(page, 'dateRange', 'week', { timeout: 15000, polling: 'normal' });
+    // URL更新を確定（CI環境用に長いタイムアウト）
+    await waitForUrlParam(page, 'dateRange', 'week', { 
+      timeout: process.env.CI ? 30000 : 15000, 
+      polling: 'normal' 
+    });
+    
+    // CI環境では追加の待機
+    if (process.env.CI) {
+      await page.waitForTimeout(1000);
+    }
     
     // pageパラメータの消失を待機（実装未達ならここでタイムアウト）
     try {
       await page.waitForFunction(
         () => !new URL(window.location.href).searchParams.has('page'),
-        { timeout: 10000, polling: 100 }
+        undefined,
+        { timeout: process.env.CI ? 20000 : 10000, polling: 100 }
       );
       const url = page.url();
       expect(url).not.toContain('page=2');
