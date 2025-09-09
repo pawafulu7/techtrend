@@ -399,7 +399,11 @@ test.describe('フィルター条件の永続化', () => {
     await page.getByRole('button', { name: '人気' }).click();
     // ソートパラメータの待機時間を延長（CI環境では更に延長）
     const sortTimeout = process.env.CI ? 30000 : 15000;
-    await page.waitForFunction(() => window.location.search.includes('sortBy='), { timeout: sortTimeout, polling: 100 });
+    await page.waitForFunction(
+      () => window.location.search.includes('sortBy='),
+      undefined,
+      { timeout: sortTimeout, polling: 100 }
+    );
     // ネットワーク安定化待機
     await page.waitForLoadState('networkidle', { timeout: 5000 });
 
@@ -446,7 +450,11 @@ test.describe('フィルター条件の永続化', () => {
     await page.fill('[data-testid="search-box-input"]', 'Vue');
     // CI環境では待機時間を延長
     const vueTimeout = process.env.CI ? 15000 : 5000;
-    await page.waitForFunction(() => window.location.search.includes('search=Vue'), { timeout: vueTimeout, polling: 100 });
+    await page.waitForFunction(
+      () => window.location.search.includes('search=Vue'),
+      undefined,
+      { timeout: vueTimeout, polling: 100 }
+    );
     
     // ソースフィルターが存在する場合のみ設定
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
@@ -518,6 +526,7 @@ test.describe('フィルター条件の永続化', () => {
             const elements = document.querySelectorAll('[data-testid^="source-checkbox-"]');
             return elements.length > 0;
           },
+          undefined,
           { timeout: 500 }
         ).catch(() => {});
       }

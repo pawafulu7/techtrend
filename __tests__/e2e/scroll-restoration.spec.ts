@@ -74,7 +74,11 @@ test.describe('スクロール位置復元機能', () => {
     await page.goBack();
     
     // 7. ホームページに戻ったことを確認
-    await page.waitForFunction(() => new URL(window.location.href).pathname === '/', { timeout: 10000 });
+    await page.waitForFunction(
+      () => new URL(window.location.href).pathname === '/',
+      undefined,
+      { timeout: 10000 }
+    );
     
     // 8. 記事が読み込まれるまで待機
     await page.waitForSelector('[data-testid="article-card"]');
