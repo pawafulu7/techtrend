@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
+import logger from '@/lib/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,7 +58,7 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json(userProfile);
   } catch (error) {
-    console.error('Error fetching user profile:', error);
+    logger.error({ error, userId: session?.user?.id }, 'Error fetching user profile');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

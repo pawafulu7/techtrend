@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import logger from '@/lib/logger';
 
 interface ReadTrackerProps {
   articleId: string;
@@ -22,7 +23,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
           body: JSON.stringify({ articleId })
         });
       } catch (error) {
-        console.error('Error marking article as read:', error);
+        logger.error({ error, articleId }, 'Error marking article as read');
       }
     };
 
