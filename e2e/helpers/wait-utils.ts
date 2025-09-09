@@ -345,7 +345,13 @@ export async function waitForUrlParam(
   const polling = getPollingInterval(options?.polling ?? 'normal');
   
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
-  await page.waitForTimeout(300);
+  // CI環境では更に長く待機
+  const initialWait = process.env.CI ? 1000 : 500;
+  await page.waitForTimeout(initialWait);
+  
+  // デバッグ用: 初期URL確認
+  const initialUrl = page.url();
+  console.log(`[waitForUrlParam] Initial URL: ${initialUrl}, waiting for ${paramName}=${paramValue}`);
   
   try {
     await page.waitForFunction(
@@ -360,10 +366,21 @@ export async function waitForUrlParam(
       { name: paramName, value: paramValue },
       { timeout, polling }
     );
+    
+    // 成功時のデバッグログ
+    const finalUrl = page.url();
+    console.log(`[waitForUrlParam] Success! Final URL: ${finalUrl}`);
   } catch (error) {
     // タイムアウトエラーの場合、現在のURLをログに出力してデバッグを支援
     const currentUrl = page.url();
     console.error(`waitForUrlParam timeout: Expected ${paramName}=${paramValue}, but current URL is ${currentUrl}`);
+    
+    // CI環境の場合、追加のデバッグ情報を出力
+    if (process.env.CI) {
+      console.error(`[CI Debug] Page title: ${await page.title()}`);
+      console.error(`[CI Debug] Page state: ${await page.evaluate(() => document.readyState)}`);
+    }
+    
     throw error;
   }
 }

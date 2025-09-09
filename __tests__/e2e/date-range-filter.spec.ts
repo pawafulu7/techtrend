@@ -46,6 +46,9 @@ test.describe('Date Range Filter', () => {
   });
 
   test('should open date range dropdown on click', async ({ page }) => {
+    // Wait for filter to be ready
+    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
+    
     const trigger = page.locator('[data-testid="date-range-trigger"]');
     await safeClick(trigger);
     
@@ -65,8 +68,11 @@ test.describe('Date Range Filter', () => {
     // Wait for network idle before starting
     await page.waitForLoadState('networkidle', { timeout: 5000 });
     
+    // Ensure filter is ready
+    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
+    
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
+    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(trigger);
     
     // Wait for dropdown to be visible
@@ -77,8 +83,11 @@ test.describe('Date Range Filter', () => {
     await todayOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(todayOption);
     
+    // ドロップダウンが閉じるのを待つ
+    await page.waitForTimeout(500);
+    
     // Wait for URL to update with extended timeout
-    await waitForUrlParam(page, 'dateRange', 'today', { polling: 'normal', timeout: 15000 });
+    await waitForUrlParam(page, 'dateRange', 'today', { polling: 'normal', timeout: 20000 });
     
     // Additional network wait after URL change
     await page.waitForLoadState('networkidle', { timeout: 5000 });
@@ -102,8 +111,11 @@ test.describe('Date Range Filter', () => {
       await page.waitForTimeout(2000);
     }
     
+    // Ensure filter is ready
+    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
+    
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
+    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(trigger);
     
     await page.waitForSelector('[data-testid="date-range-content"]', { 
@@ -131,8 +143,11 @@ test.describe('Date Range Filter', () => {
     // Wait for network idle before starting
     await page.waitForLoadState('networkidle', { timeout: 5000 });
     
+    // Ensure filter is ready
+    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
+    
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
+    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(trigger);
     
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
@@ -152,15 +167,21 @@ test.describe('Date Range Filter', () => {
     // Wait for network idle before starting
     await page.waitForLoadState('networkidle', { timeout: 5000 });
     
+    // Ensure filter is ready
+    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
+    
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
+    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(trigger);
     
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
     await safeClick(page.locator('[data-testid="date-range-option-3months"]'));
     
+    // ドロップダウンが閉じるのを待つ
+    await page.waitForTimeout(500);
+    
     // Extended timeout for URL change
-    await waitForUrlParam(page, 'dateRange', '3months', { polling: 'normal', timeout: 15000 });
+    await waitForUrlParam(page, 'dateRange', '3months', { polling: 'normal', timeout: 20000 });
     
     // Additional network wait after URL change
     await page.waitForLoadState('networkidle', { timeout: 5000 });
@@ -173,9 +194,12 @@ test.describe('Date Range Filter', () => {
     // Wait for network idle before starting
     await page.waitForLoadState('networkidle', { timeout: 5000 });
     
+    // Ensure filter is ready
+    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
+    
     // First set a filter
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('medium') });
+    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(trigger);
     
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
@@ -207,6 +231,9 @@ test.describe('Date Range Filter', () => {
   });
 
   test('should combine with source filter', async ({ page }) => {
+    // Ensure filter is ready
+    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
+    
     // Apply date range filter
     const dateRangeTrigger = page.locator('[data-testid="date-range-trigger"]');
     await safeClick(dateRangeTrigger);

@@ -639,8 +639,11 @@ test.describe('ブラウザ間での動作確認', () => {
     await searchInput.clear();
     await searchInput.fill(`Test-${browserName}`);
     
+    // 検索処理の完了を待つ
+    await page.waitForTimeout(500);
+    
     // 検索パラメータが設定されるまで待機（延長タイムアウト）
-    await waitForUrlParam(page, 'search', `Test-${browserName}`, { timeout: 15000, polling: 'normal' });
+    await waitForUrlParam(page, 'search', `Test-${browserName}`, { timeout: 20000, polling: 'normal' });
     const currentUrl = page.url();
     expect(currentUrl).toContain(`search=Test-${browserName}`);
     
