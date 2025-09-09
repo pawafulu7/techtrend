@@ -22,13 +22,9 @@ test.describe('フィルター条件の永続化', () => {
     // まず記事が表示されるまで待機
     await waitForArticles(page);
     
-    // CI環境では追加の初期ロード待機
-    if (process.env.CI) {
-      await page.waitForTimeout(2000);
-    }
     
     // 検索ボックスの準備完了を待機
-    const searchInput = page.locator('[data-testid="search-box-input"]');
+    const searchInput = page.locator('[data-testid="search-box-input"]').first();
     await searchInput.waitFor({ state: 'visible', timeout: process.env.CI ? 15000 : getTimeout('medium') });
     
     // 1. 検索キーワードを入力
@@ -632,15 +628,11 @@ test.describe('ブラウザ間での動作確認', () => {
     await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
     
     // 検索入力ボックスが準備完了するまで待機
-    const searchInput = page.locator('[data-testid="search-box-input"]');
+    const searchInput = page.locator('[data-testid="search-box-input"]').first();
     await searchInput.waitFor({ state: 'visible', timeout: 10000 });
     
-    // フィルター設定
-    await searchInput.clear();
+    // フィルター設定（fillは既存値をクリアしてから入力）
     await searchInput.fill(`Test-${browserName}`);
-    
-    // 検索処理の完了を待つ
-    await page.waitForTimeout(500);
     
     // 検索パラメータが設定されるまで待機（CI環境では延長 + リトライ）
     await waitForUrlParam(page, 'search', `Test-${browserName}`, { 
