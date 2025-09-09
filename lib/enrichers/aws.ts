@@ -1,5 +1,6 @@
 import { BaseContentEnricher } from './base';
 import * as cheerio from 'cheerio';
+import logger from '@/lib/logger';
 
 /**
  * AWS Blog Content Enricher
@@ -48,7 +49,7 @@ export class AWSEnricher extends BaseContentEnricher {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        console.error(`[AWS Enricher] Failed to fetch: ${response.status}`);
+        logger.error({ status: response.status, url }, '[AWS Enricher] Failed to fetch');
         return null;
       }
 
@@ -141,7 +142,7 @@ export class AWSEnricher extends BaseContentEnricher {
       // コンテンツが取得できなかった場合
       const minLength = Math.min(200, this.getMinContentLength());
       if (!content || content.length < minLength) {
-        console.error(`[AWS Enricher] Insufficient content found (${content.length} chars, minimum: ${minLength})`);
+        logger.error({ url, contentLength: content.length, minLength }, '[AWS Enricher] Insufficient content found');
         return null;
       }
       
@@ -154,12 +155,12 @@ export class AWSEnricher extends BaseContentEnricher {
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          console.error('[AWS Enricher] Request timeout after 15 seconds');
+          logger.error({ url }, '[AWS Enricher] Request timeout after 15 seconds');
         } else {
-          console.error('[AWS Enricher] Error during enrichment:', error.message);
+          logger.error({ error, url }, '[AWS Enricher] Error during enrichment');
         }
       } else {
-        console.error('[AWS Enricher] Unknown error during enrichment');
+        logger.error({ error, url }, '[AWS Enricher] Unknown error during enrichment');
       }
       return null;
     }

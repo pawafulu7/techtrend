@@ -1,5 +1,6 @@
 import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
+import logger from '@/lib/logger';
 
 export class MediumEngineeringEnricher extends BaseContentEnricher {
   canHandle(url: string): boolean {
@@ -20,7 +21,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
       });
       
       if (!response.ok) {
-        console.warn(`[MediumEngineeringEnricher] Failed to fetch ${url}: ${response.status}`);
+        logger.warn({ status: response.status, url }, '[MediumEngineeringEnricher] Failed to fetch URL');
         return null;
       }
       
@@ -112,7 +113,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
       }
       
       if (content.length < 100) {
-        console.warn(`[MediumEngineeringEnricher] Content too short for ${url}: ${content.length} chars`);
+        logger.warn({ url, contentLength: content.length }, '[MediumEngineeringEnricher] Content too short');
         return null;
       }
       
@@ -122,7 +123,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[MediumEngineeringEnricher] Error enriching ${url}:`, _error);
+      logger.error({ error: _error, url }, '[MediumEngineeringEnricher] Error enriching URL');
       return null;
     }
   }
