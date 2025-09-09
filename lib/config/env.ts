@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import logger from '@/lib/logger';
 
 // Environment variable schema
 const envSchema = z.object({
@@ -95,7 +96,7 @@ Please check your .env file and ensure all required variables are set correctly.
         
         // In development, log the error but continue with defaults
         if (process.env.NODE_ENV === 'development') {
-          console.warn(errorMessage);
+          logger.warn(errorMessage);
           // Use safe defaults for development
           _env = envSchema.parse({
             ...process.env,

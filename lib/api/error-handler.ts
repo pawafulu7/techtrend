@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { ZodError, z } from 'zod';
 import { Prisma } from '@prisma/client';
 import type { Session } from 'next-auth';
+import logger from '@/lib/logger';
 
 // Error types
 export class ApiError extends Error {
@@ -103,11 +104,11 @@ export function handleApiError(
   path?: string
 ): NextResponse<ErrorResponse> {
   // Log error for monitoring
-  console.error('[API Error]', {
+  logger.error({
     error,
     path,
     timestamp: new Date().toISOString(),
-  });
+  }, '[API Error]');
 
   // Handle known error types
   if (error instanceof ApiError) {

@@ -4,6 +4,7 @@
  */
 
 import { Prisma } from '@prisma/client';
+import logger from '@/lib/logger';
 
 /**
  * Parse numeric environment variable with fallback
@@ -13,7 +14,7 @@ function parseNumericEnv(value: string | undefined, defaultValue: number): strin
   
   const parsed = parseInt(value, 10);
   if (isNaN(parsed) || parsed <= 0) {
-    console.warn(`Invalid numeric environment variable: ${value}, using default: ${defaultValue}`);
+    logger.warn(`Invalid numeric environment variable: ${value}, using default: ${defaultValue}`);
     return String(defaultValue);
   }
   
