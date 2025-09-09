@@ -2,6 +2,7 @@
 import Parser from 'rss-parser';
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
+import logger from '@/lib/logger';
 
 interface RSSItem {
   title?: string;
@@ -68,13 +69,13 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
           
           results.push(result);
         } catch (_error) {
-          console.error(`❌ 記事の処理中にエラー: ${item.title}`, _error);
+          logger.error({ error: _error }, `記事の処理中にエラー: ${item.title}`);
         }
       }
       
       return results;
     } catch (_error) {
-      console.error(`❌ ${this.sourceName}のフィード取得エラー:`, _error);
+      logger.error({ error: _error }, `${this.sourceName}のフィード取得エラー`);
       return [];
     }
   }

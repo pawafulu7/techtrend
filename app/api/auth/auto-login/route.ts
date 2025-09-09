@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import logger from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
       message: 'Token is valid',
     });
   } catch (error) {
-    console.error('Auto-login validation error:', error);
+    logger.error({ error }, 'Auto-login validation error');
     return NextResponse.json(
       { error: 'Token validation failed' },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/database';
 import { getRedisService } from '@/lib/redis/factory';
+import logger from '@/lib/logger';
 
 // GET: 記事の既読状態を取得
 export async function GET(req: NextRequest) {
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
       unreadCount
     });
   } catch (error) {
-    console.error('Error fetching read status:', error);
+    logger.error({ error }, 'Error fetching read status');
     return NextResponse.json(
       { error: 'Failed to fetch read status' },
       { status: 500 }
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, articleView });
   } catch (error) {
-    console.error('Error marking article as read:', error);
+    logger.error({ error }, 'Error marking article as read');
     return NextResponse.json(
       { error: 'Failed to mark article as read' },
       { status: 500 }
@@ -175,7 +176,7 @@ export async function PUT(_req: NextRequest) {
         await redisService.clearPattern(`unread:${session.user.id}*`);
         await redisService.clearPattern(`read:${session.user.id}*`);
       } catch (redisError) {
-        console.error('Redis cache clear error:', redisError);
+        logger.error({ error: redisError }, 'Redis cache clear error');
         // Redisエラーは無視して処理を続行
       }
     }
@@ -186,7 +187,7 @@ export async function PUT(_req: NextRequest) {
       remainingUnreadCount: 0
     });
   } catch (error) {
-    console.error('Error marking all articles as read:', error);
+    logger.error({ error }, 'Error marking all articles as read');
     return NextResponse.json(
       { error: 'Failed to mark all articles as read' },
       { status: 500 }
@@ -229,7 +230,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error marking article as unread:', error);
+    logger.error({ error }, 'Error marking article as unread');
     return NextResponse.json(
       { error: 'Failed to mark article as unread' },
       { status: 500 }
