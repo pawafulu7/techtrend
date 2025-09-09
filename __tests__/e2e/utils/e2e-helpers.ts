@@ -402,10 +402,36 @@ export async function openAccountTab(page: Page): Promise<boolean> {
   try {
     // Early return if already on profile page
     if (page.url().includes('/profile')) {
-      const accountTab = page.locator('[role="tab"][data-value="account"], [data-testid="account-tab"], button:has-text("アカウント")').first();
-      await accountTab.waitFor({ state: 'visible', timeout: 5000 });
-      await accountTab.click();
-      return true;
+      // Radix UI TabsTrigger specific selectors
+      const accountTabSelectors = [
+        'button[value="account"]',  // Radix UI TabsTrigger with value
+        '[role="tab"][value="account"]',  // TabsTrigger with role
+        'button[role="tab"][value="account"]',  // Full TabsTrigger selector
+        'button:has-text("アカウント")',  // Text-based fallback
+        '[role="tab"]:has-text("アカウント")',  // Role with text
+        '[data-testid="account-tab"]'  // data-testid if added
+      ];
+      
+      for (const selector of accountTabSelectors) {
+        try {
+          const tab = page.locator(selector).first();
+          const count = await tab.count();
+          if (count > 0) {
+            await tab.scrollIntoViewIfNeeded();
+            await tab.waitFor({ state: 'visible', timeout: 2000 });
+            await tab.click();
+            // Wait for tab content to be active
+            await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
+            return true;
+          }
+        } catch {
+          continue;
+        }
+      }
+      
+      // If no selector worked, log error
+      console.error('Could not find account tab with any selector');
+      return false;
     }
 
     // ユーザーメニューのドロップダウンを開く（複数のセレクタでフォールバック）
@@ -425,12 +451,33 @@ export async function openAccountTab(page: Page): Promise<boolean> {
     
     await waitForPageLoad(page);
     
-    // アカウントタブをクリック（共通セレクタ追加）
-    const accountTab = page.locator('[role="tab"][data-value="account"], [data-testid="account-tab"], button:has-text("アカウント")').first();
-    await accountTab.waitFor({ state: 'visible', timeout: 5000 });
-    await accountTab.click();
+    // アカウントタブをクリック（Radix UI TabsTrigger specific）
+    const accountTabSelectors = [
+      'button[value="account"]',
+      '[role="tab"][value="account"]',
+      'button[role="tab"][value="account"]',
+      'button:has-text("アカウント")',
+      '[role="tab"]:has-text("アカウント")',
+      '[data-testid="account-tab"]'
+    ];
     
-    return true;
+    for (const selector of accountTabSelectors) {
+      try {
+        const tab = page.locator(selector).first();
+        const count = await tab.count();
+        if (count > 0) {
+          await tab.scrollIntoViewIfNeeded();
+          await tab.waitFor({ state: 'visible', timeout: 2000 });
+          await tab.click();
+          await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
+          return true;
+        }
+      } catch {
+        continue;
+      }
+    }
+    
+    return false;
   } catch (error) {
     console.error('Failed to open account tab:', error);
     return false;
@@ -447,8 +494,9 @@ export async function fillPasswordChangeForm(
   page: Page, 
   passwords: { current: string; new: string; confirm: string }
 ) {
-  // パスワード変更セクションをスコープにして誤入力を防止
+  // パスワード変更セクションが表示されるまで待機
   const passwordSection = page.locator('form:has-text("パスワード変更"), section:has-text("パスワード変更")').first();
+  await passwordSection.waitFor({ state: 'visible', timeout: 10000 });
   
   // Enhanced priority chain for password inputs with precise targeting
   const currentPasswordInput = passwordSection.locator([
@@ -459,9 +507,12 @@ export async function fillPasswordChangeForm(
     'label:has-text("現在のパスワード") + input[type="password"]',
     'input[placeholder*="現在"][type="password"]'
   ].join(', ')).first();
+  
+  // 要素が見つかるまで待機
+  await currentPasswordInput.waitFor({ state: 'visible', timeout: 5000 });
   await currentPasswordInput.fill(passwords.current);
   
-  const newPasswordInput = page.locator([
+  const newPasswordInput = passwordSection.locator([
     '[data-testid="new-password-input"]',
     'input[name="newPassword"][type="password"]',
     'input[autocomplete="new-password"][type="password"]:first-of-type',
@@ -469,9 +520,10 @@ export async function fillPasswordChangeForm(
     'label:has-text("新しいパスワード") + input[type="password"]',
     'input[placeholder*="新しいパスワード"][type="password"]'
   ].join(', ')).first();
+  await newPasswordInput.waitFor({ state: 'visible', timeout: 5000 });
   await newPasswordInput.fill(passwords.new);
   
-  const confirmPasswordInput = page.locator([
+  const confirmPasswordInput = passwordSection.locator([
     '[data-testid="confirm-password-input"]',
     'input[name="confirmPassword"][type="password"]',
     'input[autocomplete="new-password"][type="password"]:nth-of-type(2)',
@@ -479,6 +531,7 @@ export async function fillPasswordChangeForm(
     'label:has-text("確認") + input[type="password"]',
     'input[placeholder*="確認"][type="password"]'
   ].join(', ')).first();
+  await confirmPasswordInput.waitFor({ state: 'visible', timeout: 5000 });
   await confirmPasswordInput.fill(passwords.confirm);
 }
 

@@ -37,12 +37,14 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
       // 記事カードをクリック
       await page.locator('[data-testid="article-card"]').first().click();
       
-      // 詳細ページに遷移したことを確認
-      await page.waitForURL(/\/articles\/[^/]+/);
+      // 詳細ページに遷移したことを確認（より具体的な条件）
+      await page.waitForURL((url) => url.pathname.startsWith('/articles/'), {
+        timeout: 5000
+      });
       
-      // タイトルが表示されていることを確認
-      const detailTitle = await page.locator('h1').textContent();
-      expect(detailTitle).toBe(firstCardTitle);
+      // タイトルが表示されていることを確認（正規化処理を追加、最初の要素を取得）
+      const detailTitle = await page.locator('h1').first().textContent();
+      expect(detailTitle?.trim()).toBe(firstCardTitle?.trim());
     });
   });
 

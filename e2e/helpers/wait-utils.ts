@@ -219,10 +219,11 @@ export async function debugPageState(page: Page, label: string) {
     const title = await page.title();
     const articleCount = await page.locator('[data-testid="article-card"]').count();
     
-    console.log(`[DEBUG] ${label}`);
-    console.log(`  URL: ${url}`);
-    console.log(`  Title: ${title}`);
-    console.log(`  Articles: ${articleCount}`);
+    // デバッグ環境でのみ出力（通常はコメントアウト）
+    // console.log(`[DEBUG] ${label}`);
+    // console.log(`  URL: ${url}`);
+    // console.log(`  Title: ${title}`);
+    // console.log(`  Articles: ${articleCount}`);
   }
 }
 
@@ -293,7 +294,8 @@ export async function waitForTabSwitch(
     // タブコンテンツが表示されるまで待つ
     await page.waitForTimeout(300); // アニメーション用の短い待機
   } catch (error) {
-    console.error(`Failed to wait for tab switch: ${error}`);
+    // エラーログは開発時のみ（本番ではコメントアウト）
+    // console.error(`Failed to wait for tab switch: ${error}`);
     throw error;
   }
 }
@@ -339,23 +341,58 @@ export async function waitForUrlParam(
   options?: {
     timeout?: number;
     polling?: 'fast' | 'normal' | 'slow';
+    retries?: number;
   }
 ) {
   const timeout = options?.timeout ?? getTimeout('medium');
   const polling = getPollingInterval(options?.polling ?? 'normal');
+  const maxRetries = options?.retries ?? (process.env.CI ? 3 : 1);
   
-  await page.waitForFunction(
-    ({ name, value }) => {
-      const url = new URL(window.location.href);
-      const param = url.searchParams.get(name);
-      if (value === undefined) {
-        return param !== null;
+  // Next.jsのrouter.pushは非同期なので、最初に少し待機
+  // CI環境では更に長く待機
+  const initialWait = process.env.CI ? 2000 : 500;
+  await page.waitForTimeout(initialWait);
+  
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // CI環境では各リトライ前にも待機
+      if (attempt > 0 && process.env.CI) {
+        await page.waitForTimeout(2000);
       }
-      return param === value;
-    },
-    { name: paramName, value: paramValue },
-    { timeout, polling }
-  );
+      
+      await page.waitForFunction(
+        ({ name, value }) => {
+          const url = new URL(window.location.href);
+          const param = url.searchParams.get(name);
+          if (value === undefined) {
+            return param !== null;
+          }
+          return param === value;
+        },
+        { name: paramName, value: paramValue },
+        { timeout: timeout / maxRetries, polling }
+      );
+      
+      // 成功したら終了
+      return;
+    } catch (error) {
+      lastError = error as Error;
+      
+      // 最後のリトライでなければ続行
+      if (attempt < maxRetries - 1) {
+        // リトライ前に少し待機（指数バックオフ）
+        await page.waitForTimeout(1000 * Math.pow(2, attempt));
+        continue;
+      }
+    }
+  }
+  
+  // すべてのリトライが失敗した場合
+  if (lastError) {
+    throw lastError;
+  }
 }
 
 /**

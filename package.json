@@ -67,6 +67,8 @@
     "test:db:setup": "DATABASE_URL=postgresql://postgres@localhost:5433/techtrend_test npx prisma migrate deploy && DATABASE_URL=postgresql://postgres@localhost:5433/techtrend_test npx tsx prisma/seed-test.ts",
     "test:db:reset": "DATABASE_URL=postgresql://postgres@localhost:5433/techtrend_test npx prisma migrate reset --force",
     "test:e2e": "playwright test",
+    "test:e2e:parallel": "playwright test --workers=3",
+    "test:e2e:fast": "playwright test --project=chromium --workers=3",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",

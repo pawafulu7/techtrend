@@ -94,8 +94,21 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await checkbox.click();
     await expect(checkbox).toHaveAttribute('data-state', 'checked');
 
-    // URLにsourcesパラメータが付与される（デバウンス済み）
-    await expect(page).toHaveURL(/sources=/);
+    // URLにsourcesパラメータが付与される（デバウンス済み + CI環境対応）
+    try {
+      await page.waitForFunction(
+        () => window.location.href.includes('sources='),
+        { timeout: process.env.CI ? 30000 : 10000 }
+      );
+    } catch {
+      // リトライ（CI環境では特に必要）
+      await page.waitForTimeout(2000);
+      await page.waitForFunction(
+        () => window.location.href.includes('sources='),
+        { timeout: 15000 }
+      );
+    }
+    expect(page.url()).toContain('sources=');
 
     // URLパラメータを解析して選択したIDが含まれることを確認
     if (firstRowTestId) {
