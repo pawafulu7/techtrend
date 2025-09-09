@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (cacheError) {
       // キャッシュ削除エラーは無視して処理を続行
-      logger.warn({ error: cacheError }, 'Cache deletion error, continuing');
+      logger.warn({ err: cacheError }, 'Cache deletion error, continuing');
     }
 
     logger.info({ digestId }, 'Weekly digest generated');
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       digestId 
     });
   } catch (error) {
-    logger.error({ error }, 'Failed to generate digest');
+    logger.error({ err: error }, 'Failed to generate digest');
     return NextResponse.json(
       { error: 'Failed to generate digest' },
       { status: 500 }

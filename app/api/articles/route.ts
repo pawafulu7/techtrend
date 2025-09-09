@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
           if (validCategories.includes(category as ArticleCategory)) {
             where.category = category as ArticleCategory;
           } else {
-            logger.warn(`Invalid category provided: ${category}`);
+            logger.warn({ category }, 'Invalid category provided');
             // Ignore invalid category filter
           }
         }
@@ -369,7 +369,7 @@ export async function GET(request: NextRequest) {
     
     return response;
   } catch (error) {
-    logger.error({ error }, 'Error fetching articles');
+    logger.error({ err: error }, 'Error fetching articles');
     const dbError = error instanceof Error 
       ? new DatabaseError(`Failed to fetch articles: ${error.message}`, 'select')
       : new DatabaseError('Failed to fetch articles', 'select');
@@ -447,7 +447,7 @@ export async function POST(request: NextRequest) {
       data: article,
     } as ApiResponse<ArticleWithRelations>, { status: 201 });
   } catch (error) {
-    logger.error({ error }, 'Error creating article');
+    logger.error({ err: error }, 'Error creating article');
     return NextResponse.json({
       success: false,
       error: 'Failed to create article',

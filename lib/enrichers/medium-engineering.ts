@@ -15,6 +15,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
   async enrich(url: string): Promise<EnrichmentResult | null> {
     try {
       const response = await fetch(url, {
+        signal: AbortSignal.timeout(30000),
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)'
         }
@@ -123,7 +124,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      logger.error({ error: _error, url }, '[MediumEngineeringEnricher] Error enriching URL');
+      logger.error({ err: _error, url }, '[MediumEngineeringEnricher] Error enriching URL');
       return null;
     }
   }

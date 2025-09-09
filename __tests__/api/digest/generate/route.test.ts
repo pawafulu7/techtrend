@@ -7,7 +7,7 @@ import { createRedisCacheMock } from '../../../helpers/cache-mock-helpers';
 // モックの設定
 jest.mock('@/lib/prisma');
 jest.mock('@/lib/services/digest-generator');
-jest.mock('@/lib/logger/index');
+jest.mock('@/lib/logger');
 
 // モックインスタンスを保持する変数
 let mockCacheInstance: ReturnType<typeof createRedisCacheMock>;
@@ -32,7 +32,7 @@ jest.mock('@/lib/cache', () => ({
 import { prisma } from '@/lib/prisma';
 import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
-import logger from '@/lib/logger/index';
+import logger from '@/lib/logger';
 import { NextRequest } from 'next/server';
 
 // POSTをimportする前にgetCacheをモック
@@ -118,7 +118,7 @@ describe('/api/digest/generate', () => {
       });
       
       expect(mockGeneratorInstance.generateWeeklyDigest).toHaveBeenCalledWith(undefined);
-      expect(mockCache.del).toHaveBeenCalled();
+      expect(mockCacheInstance.del).toHaveBeenCalled();
       expect(loggerMock.info).toHaveBeenCalledWith({ digestId: 'digest-id-123' }, 'Weekly digest generated');
     });
 
@@ -200,7 +200,7 @@ describe('/api/digest/generate', () => {
       });
       
       expect(loggerMock.error).toHaveBeenCalledWith(
-        { error: expect.any(Error) },
+        { err: expect.any(Error) },
         'Failed to generate digest'
       );
     });

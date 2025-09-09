@@ -166,10 +166,14 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
   const transporter = createTransporter();
   
   if (!transporter) {
-    logger.error('Email configuration missing. Please set Gmail or SMTP settings.');
-    // console.log('Required environment variables:');
-    // console.log('  For Gmail: GMAIL_USER and GMAIL_APP_PASSWORD');
-    // console.log('  For SMTP: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD');
+    logger.error(
+      {
+        event: 'email_config_missing',
+        gmailConfigured: Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD),
+        smtpConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_PORT),
+      },
+      'Email configuration missing. Please set Gmail or SMTP settings.'
+    );
     throw new Error('Email configuration is missing');
   }
 
