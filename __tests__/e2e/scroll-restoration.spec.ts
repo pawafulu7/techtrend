@@ -105,8 +105,9 @@ test.describe('スクロール位置復元機能', () => {
     
     // ブラウザのデフォルト動作により、位置が復元される可能性がある
     // ただし、完全に同じ位置に戻るとは限らない
-    // スクロール位置が0より大きければ成功とする
-    expect(scrollPositionAfter).toBeGreaterThanOrEqual(0);
+    // スクロール位置が復元されていることを確認（許容誤差300px）
+    expect(scrollPositionAfter).toBeGreaterThan(0);
+    expect(scrollPositionAfter).toBeGreaterThanOrEqual(Math.max(1, scrollPositionBefore - 300));
   });
   
   test('ページリロード時はスクロール位置が復元されない', async ({ page }) => {

@@ -337,6 +337,7 @@ test.describe('フィルター条件の永続化', () => {
     try {
       await page.waitForFunction(
         () => window.location.href.includes('search=React'),
+        undefined,
         { timeout: 5000 }
       );
       urlUpdated = true;
@@ -635,7 +636,7 @@ test.describe('ブラウザ間での動作確認', () => {
       // 検索ボックスが表示されるまで待機
       await page.waitForSelector('[data-testid="search-box-input"]', { state: 'visible', timeout: getTimeout('short') });
       
-      const searchInputAfter = page.locator('[data-testid="search-box-input"]');
+      const searchInputAfter = page.locator('[data-testid="search-box-input"]').first();
       const currentValue = await searchInputAfter.inputValue();
       
       // Cookieの永続化が実装されていない場合は、URLパラメータから復元されない可能性がある
