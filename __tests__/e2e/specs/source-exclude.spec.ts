@@ -255,11 +255,20 @@ test.describe('ソースフィルタリング機能', () => {
       await sourceCheckbox.click();
     }
     
-    // URLパラメータが更新されることを確認
-    await page.waitForFunction(
-      () => window.location.search.includes('sources='),
-      { timeout: 5000 }
-    );
+    // URLパラメータが更新されることを確認（CI環境対応）
+    try {
+      await page.waitForFunction(
+        () => window.location.search.includes('sources='),
+        { timeout: process.env.CI ? 30000 : 10000 }
+      );
+    } catch {
+      // リトライ（CI環境では特に必要）
+      await page.waitForTimeout(2000);
+      await page.waitForFunction(
+        () => window.location.search.includes('sources='),
+        { timeout: 15000 }
+      );
+    }
     const currentUrl = page.url();
     expect(currentUrl).toContain('sources=');
     

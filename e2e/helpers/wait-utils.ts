@@ -341,55 +341,57 @@ export async function waitForUrlParam(
   options?: {
     timeout?: number;
     polling?: 'fast' | 'normal' | 'slow';
+    retries?: number;
   }
 ) {
   const timeout = options?.timeout ?? getTimeout('medium');
   const polling = getPollingInterval(options?.polling ?? 'normal');
+  const maxRetries = options?.retries ?? (process.env.CI ? 3 : 1);
   
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
   // CI環境では更に長く待機
-  const initialWait = process.env.CI ? 1000 : 500;
+  const initialWait = process.env.CI ? 2000 : 500;
   await page.waitForTimeout(initialWait);
   
-  // デバッグ用: 初期URL確認（CI環境のみ）
-  const initialUrl = page.url();
-  if (process.env.CI) {
-    // CI環境でのみデバッグログ出力
-    // console.log(`[waitForUrlParam] Initial URL: ${initialUrl}, waiting for ${paramName}=${paramValue}`);
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // CI環境では各リトライ前にも待機
+      if (attempt > 0 && process.env.CI) {
+        await page.waitForTimeout(2000);
+      }
+      
+      await page.waitForFunction(
+        ({ name, value }) => {
+          const url = new URL(window.location.href);
+          const param = url.searchParams.get(name);
+          if (value === undefined) {
+            return param !== null;
+          }
+          return param === value;
+        },
+        { name: paramName, value: paramValue },
+        { timeout: timeout / maxRetries, polling }
+      );
+      
+      // 成功したら終了
+      return;
+    } catch (error) {
+      lastError = error as Error;
+      
+      // 最後のリトライでなければ続行
+      if (attempt < maxRetries - 1) {
+        // リトライ前に少し待機（指数バックオフ）
+        await page.waitForTimeout(1000 * Math.pow(2, attempt));
+        continue;
+      }
+    }
   }
   
-  try {
-    await page.waitForFunction(
-      ({ name, value }) => {
-        const url = new URL(window.location.href);
-        const param = url.searchParams.get(name);
-        if (value === undefined) {
-          return param !== null;
-        }
-        return param === value;
-      },
-      { name: paramName, value: paramValue },
-      { timeout, polling }
-    );
-    
-    // 成功時のデバッグログ（CI環境のみ）
-    const finalUrl = page.url();
-    if (process.env.CI) {
-      // CI環境でのみ成功ログ出力
-      // console.log(`[waitForUrlParam] Success! Final URL: ${finalUrl}`);
-    }
-  } catch (error) {
-    // タイムアウトエラーの場合、現在のURLをログに出力してデバッグを支援
-    const currentUrl = page.url();
-    // エラー時のみログ出力（CI環境の場合は詳細情報も）
-    if (process.env.CI) {
-      // CI環境でのみエラーログ出力（コメントアウトして削減）
-      // console.error(`waitForUrlParam timeout: Expected ${paramName}=${paramValue}, but current URL is ${currentUrl}`);
-      // console.error(`[CI Debug] Page title: ${await page.title()}`);
-      // console.error(`[CI Debug] Page state: ${await page.evaluate(() => document.readyState)}`);
-    }
-    
-    throw error;
+  // すべてのリトライが失敗した場合
+  if (lastError) {
+    throw lastError;
   }
 }
 

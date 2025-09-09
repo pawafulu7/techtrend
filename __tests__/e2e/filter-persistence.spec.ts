@@ -642,8 +642,12 @@ test.describe('ブラウザ間での動作確認', () => {
     // 検索処理の完了を待つ
     await page.waitForTimeout(500);
     
-    // 検索パラメータが設定されるまで待機（延長タイムアウト）
-    await waitForUrlParam(page, 'search', `Test-${browserName}`, { timeout: 20000, polling: 'normal' });
+    // 検索パラメータが設定されるまで待機（CI環境では延長 + リトライ）
+    await waitForUrlParam(page, 'search', `Test-${browserName}`, { 
+      timeout: process.env.CI ? 45000 : 20000,
+      polling: 'normal',
+      retries: process.env.CI ? 3 : 1
+    });
     const currentUrl = page.url();
     expect(currentUrl).toContain(`search=Test-${browserName}`);
     

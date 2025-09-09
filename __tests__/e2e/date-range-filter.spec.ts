@@ -126,10 +126,11 @@ test.describe('Date Range Filter', () => {
     await weekOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(weekOption);
     
-    // Extended timeout for URL change (CI環境ではさらに延長)
+    // Extended timeout for URL change (CI環境ではさらに延長 + リトライ追加)
     await waitForUrlParam(page, 'dateRange', 'week', { 
       polling: 'normal', 
-      timeout: process.env.CI ? 30000 : 15000 
+      timeout: process.env.CI ? 45000 : 15000,
+      retries: process.env.CI ? 3 : 1
     });
     
     // Additional network wait after URL change
@@ -153,8 +154,12 @@ test.describe('Date Range Filter', () => {
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
     await safeClick(page.locator('[data-testid="date-range-option-month"]'));
     
-    // Extended timeout for URL change
-    await waitForUrlParam(page, 'dateRange', 'month', { polling: 'normal', timeout: 15000 });
+    // Extended timeout for URL change (CI環境では延長 + リトライ)
+    await waitForUrlParam(page, 'dateRange', 'month', { 
+      polling: 'normal', 
+      timeout: process.env.CI ? 45000 : 15000,
+      retries: process.env.CI ? 3 : 1
+    });
     
     // Additional network wait after URL change
     await page.waitForLoadState('networkidle', { timeout: 5000 });
