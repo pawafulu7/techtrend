@@ -425,8 +425,16 @@ test.describe('フィルター条件の永続化', () => {
       await firstArticle.click();
       await page.waitForURL(/\/articles\/.+/);
 
-      // 3. トップページに戻る
-      await page.goto('/');
+      // 3. 記事一覧に戻るリンクをクリック
+      await page.click('a:has-text("記事一覧に戻る")');
+      await page.waitForFunction(
+        () => {
+          const url = new URL(window.location.href);
+          return url.pathname === '/' && url.searchParams.has('returning');
+        },
+        undefined,
+        { timeout: process.env.CI ? 30000 : 10000 }
+      );
 
       // 4. 検索条件が保持されていることを確認
       // 複数の検索ボックスがある場合は最初の要素を使用
