@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       logger.warn({ error: cacheError }, 'Cache deletion error, continuing');
     }
 
-    logger.info(`Weekly digest generated: ${digestId}`);
+    logger.info({ digestId }, 'Weekly digest generated');
 
     return NextResponse.json({ 
       success: true, 

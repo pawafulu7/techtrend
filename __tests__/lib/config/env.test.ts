@@ -3,6 +3,7 @@
  */
 
 import { getEnv, env, features, config, resetEnvCache } from '@/lib/config/env';
+import logger from '@/lib/logger';
 
 // TODO: Fix environment variable validation tests - module caching issues
 describe('Environment Configuration', () => {
@@ -86,12 +87,12 @@ describe('Environment Configuration', () => {
       // Missing NEXTAUTH_SECRET
       delete process.env.NEXTAUTH_SECRET;
       
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const loggerSpy = jest.spyOn(logger, 'warn').mockImplementation();
       const result = getEnv();
       
       expect(result).toBeDefined();
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      expect(loggerSpy).toHaveBeenCalled();
+      loggerSpy.mockRestore();
     });
   });
 
@@ -302,12 +303,12 @@ describe('Environment Configuration - getEnv', () => {
     delete process.env.NEXTAUTH_SECRET;
     resetEnvCache();
     
-    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+    const loggerSpy = jest.spyOn(logger, 'warn').mockImplementation();
     const result = getEnv();
     
     expect(result).toBeDefined();
-    expect(consoleSpy).toHaveBeenCalled();
-    consoleSpy.mockRestore();
+    expect(loggerSpy).toHaveBeenCalled();
+    loggerSpy.mockRestore();
   });
 });
 

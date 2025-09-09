@@ -19,15 +19,39 @@ jest.mock('@/lib/cache', () => ({
       mockCacheInstance = createRedisCacheMock();
     }
     return mockCacheInstance;
+  }),
+  getCache: jest.fn(() => {
+    const { createRedisCacheMock } = require('../../../helpers/cache-mock-helpers');
+    if (!mockCacheInstance) {
+      mockCacheInstance = createRedisCacheMock();
+    }
+    return mockCacheInstance;
   })
 }));
 
-import { POST } from '@/app/api/digest/generate/route';
 import { prisma } from '@/lib/prisma';
 import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger/index';
 import { NextRequest } from 'next/server';
+
+// POSTをimportする前にgetCacheをモック
+const mockCache = {
+  get: jest.fn(),
+  set: jest.fn(),
+  del: jest.fn(),
+  generateCacheKey: jest.fn((prefix: string, options: any) => `${prefix}:${JSON.stringify(options)}`)
+};
+
+jest.doMock('@/app/api/digest/generate/route', () => {
+  const actual = jest.requireActual('@/app/api/digest/generate/route');
+  return {
+    ...actual,
+    getCache: () => mockCache
+  };
+});
+
+import { POST } from '@/app/api/digest/generate/route';
 
 // モックの型定義
 const prismaMock = prisma as any;
@@ -44,6 +68,13 @@ describe('/api/digest/generate', () => {
     // Logger モック設定
     loggerMock.info = jest.fn();
     loggerMock.error = jest.fn();
+    loggerMock.warn = jest.fn();
+    
+    // キャッシュモックのリセット
+    mockCache.get.mockResolvedValue(null);
+    mockCache.set.mockResolvedValue(undefined);
+    mockCache.del.mockResolvedValue(undefined);
+    mockCache.generateCacheKey.mockImplementation((prefix: string, options: any) => `${prefix}:${JSON.stringify(options)}`);
     
     // キャッシュモックのリセット（mockCacheInstanceが初期化されていることを確認）
     if (!mockCacheInstance) {
@@ -87,8 +118,8 @@ describe('/api/digest/generate', () => {
       });
       
       expect(mockGeneratorInstance.generateWeeklyDigest).toHaveBeenCalledWith(undefined);
-      expect(mockCacheInstance.del).toHaveBeenCalled();
-      expect(loggerMock.info).toHaveBeenCalledWith('Weekly digest generated: digest-id-123');
+      expect(mockCache.del).toHaveBeenCalled();
+      expect(loggerMock.info).toHaveBeenCalledWith({ digestId: 'digest-id-123' }, 'Weekly digest generated');
     });
 
     it('特定の日付で週次ダイジェストを生成する', async () => {
@@ -169,8 +200,8 @@ describe('/api/digest/generate', () => {
       });
       
       expect(loggerMock.error).toHaveBeenCalledWith(
-        'Failed to generate digest:',
-        expect.any(Error)
+        { error: expect.any(Error) },
+        'Failed to generate digest'
       );
     });
 
