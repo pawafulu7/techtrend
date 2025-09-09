@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
+import logger from '@/lib/logger';
 
 // GET: ユーザーの閲覧履歴を取得
 export async function GET(request: Request) {
@@ -68,7 +69,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error('[POST /api/article-views] Error:', error);
+    logger.error({ error, userId: session?.user?.id }, '[POST /api/article-views] Error');
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -101,7 +102,7 @@ export async function DELETE(_request: Request) {
       clearedCount: result.count
     });
   } catch (error) {
-    console.error('[DELETE /api/article-views] Error:', error);
+    logger.error({ error, userId: session?.user?.id }, '[DELETE /api/article-views] Error');
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -231,7 +232,7 @@ export async function POST(request: Request) {
       viewId: view.id,
     });
   } catch (error) {
-    console.error('[POST /api/article-views] Error:', error);
+    logger.error({ error, userId: session?.user?.id }, '[POST /api/article-views] Error');
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
