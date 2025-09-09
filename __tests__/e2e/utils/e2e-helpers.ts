@@ -512,7 +512,7 @@ export async function fillPasswordChangeForm(
   await currentPasswordInput.waitFor({ state: 'visible', timeout: 5000 });
   await currentPasswordInput.fill(passwords.current);
   
-  const newPasswordInput = page.locator([
+  const newPasswordInput = passwordSection.locator([
     '[data-testid="new-password-input"]',
     'input[name="newPassword"][type="password"]',
     'input[autocomplete="new-password"][type="password"]:first-of-type',
@@ -523,7 +523,7 @@ export async function fillPasswordChangeForm(
   await newPasswordInput.waitFor({ state: 'visible', timeout: 5000 });
   await newPasswordInput.fill(passwords.new);
   
-  const confirmPasswordInput = page.locator([
+  const confirmPasswordInput = passwordSection.locator([
     '[data-testid="confirm-password-input"]',
     'input[name="confirmPassword"][type="password"]',
     'input[autocomplete="new-password"][type="password"]:nth-of-type(2)',
