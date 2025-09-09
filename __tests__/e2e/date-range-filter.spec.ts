@@ -184,6 +184,7 @@ test.describe('Date Range Filter', () => {
     // Check URL doesn't have dateRange parameter with extended timeout
     await page.waitForFunction(
       () => !window.location.href.includes('dateRange'),
+      {},
       { timeout: 15000 }
     );
     

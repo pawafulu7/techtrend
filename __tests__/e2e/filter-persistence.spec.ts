@@ -555,9 +555,13 @@ test.describe('フィルター条件の永続化', () => {
     await page.fill('[data-testid="search-box-input"]', 'Rust');
     // URL更新を待つ（CI環境では待機時間を延長）
     const rustTimeout = process.env.CI ? 15000 : 5000;
-    await page.waitForFunction(() => {
-      return window.location.search.includes('search=Rust');
-    }, { timeout: rustTimeout, polling: 100 });
+    await page.waitForFunction(
+      () => {
+        return window.location.search.includes('search=Rust');
+      },
+      {},
+      { timeout: rustTimeout, polling: 100 }
+    );
 
     // 2. Cookieを確認
     const cookies = await context.cookies();
