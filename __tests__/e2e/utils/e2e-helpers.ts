@@ -402,10 +402,36 @@ export async function openAccountTab(page: Page): Promise<boolean> {
   try {
     // Early return if already on profile page
     if (page.url().includes('/profile')) {
-      const accountTab = page.locator('[role="tab"][data-value="account"], [data-testid="account-tab"], button:has-text("アカウント")').first();
-      await accountTab.waitFor({ state: 'visible', timeout: 5000 });
-      await accountTab.click();
-      return true;
+      // Radix UI TabsTrigger specific selectors
+      const accountTabSelectors = [
+        'button[value="account"]',  // Radix UI TabsTrigger with value
+        '[role="tab"][value="account"]',  // TabsTrigger with role
+        'button[role="tab"][value="account"]',  // Full TabsTrigger selector
+        'button:has-text("アカウント")',  // Text-based fallback
+        '[role="tab"]:has-text("アカウント")',  // Role with text
+        '[data-testid="account-tab"]'  // data-testid if added
+      ];
+      
+      for (const selector of accountTabSelectors) {
+        try {
+          const tab = page.locator(selector).first();
+          const count = await tab.count();
+          if (count > 0) {
+            await tab.scrollIntoViewIfNeeded();
+            await tab.waitFor({ state: 'visible', timeout: 2000 });
+            await tab.click();
+            // Wait for tab content to be active
+            await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
+            return true;
+          }
+        } catch {
+          continue;
+        }
+      }
+      
+      // If no selector worked, log error
+      console.error('Could not find account tab with any selector');
+      return false;
     }
 
     // ユーザーメニューのドロップダウンを開く（複数のセレクタでフォールバック）
@@ -425,12 +451,33 @@ export async function openAccountTab(page: Page): Promise<boolean> {
     
     await waitForPageLoad(page);
     
-    // アカウントタブをクリック（共通セレクタ追加）
-    const accountTab = page.locator('[role="tab"][data-value="account"], [data-testid="account-tab"], button:has-text("アカウント")').first();
-    await accountTab.waitFor({ state: 'visible', timeout: 5000 });
-    await accountTab.click();
+    // アカウントタブをクリック（Radix UI TabsTrigger specific）
+    const accountTabSelectors = [
+      'button[value="account"]',
+      '[role="tab"][value="account"]',
+      'button[role="tab"][value="account"]',
+      'button:has-text("アカウント")',
+      '[role="tab"]:has-text("アカウント")',
+      '[data-testid="account-tab"]'
+    ];
     
-    return true;
+    for (const selector of accountTabSelectors) {
+      try {
+        const tab = page.locator(selector).first();
+        const count = await tab.count();
+        if (count > 0) {
+          await tab.scrollIntoViewIfNeeded();
+          await tab.waitFor({ state: 'visible', timeout: 2000 });
+          await tab.click();
+          await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
+          return true;
+        }
+      } catch {
+        continue;
+      }
+    }
+    
+    return false;
   } catch (error) {
     console.error('Failed to open account tab:', error);
     return false;

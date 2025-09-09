@@ -63,13 +63,14 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     await page.waitForLoadState('networkidle');
     
-    // アカウントタブを探す（複数のセレクター）
+    // アカウントタブを探す（Radix UI TabsTrigger対応）
     const accountTabSelectors = [
+      'button[value="account"]',  // Radix UI TabsTrigger
+      '[role="tab"][value="account"]',
+      'button[role="tab"][value="account"]',
       'button:has-text("アカウント")',
       '[role="tab"]:has-text("アカウント")',
-      '[data-testid="account-tab"]',
-      'button[data-value="account"]',
-      '[role="tab"][data-value="account"]'
+      '[data-testid="account-tab"]'
     ];
     
     let accountTabFound = false;
@@ -336,13 +337,14 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     await page.waitForLoadState('networkidle');
     
-    // アカウントタブを探す（複数のセレクター）
+    // アカウントタブを探す（Radix UI TabsTrigger対応）
     const accountTabSelectors = [
+      'button[value="account"]',  // Radix UI TabsTrigger
+      '[role="tab"][value="account"]',
+      'button[role="tab"][value="account"]',
       'button:has-text("アカウント")',
       '[role="tab"]:has-text("アカウント")',
-      '[data-testid="account-tab"]',
-      'button[data-value="account"]',
-      '[role="tab"][data-value="account"]'
+      '[data-testid="account-tab"]'
     ];
     
     let accountTabFound = false;
