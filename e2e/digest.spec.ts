@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('週刊ダイジェスト機能', () => {
   test('ダイジェストページが表示される', async ({ page }) => {
     // ダイジェストページの存在を確認（404エラーチェック）
-    const response = await page.goto('/digest', { waitUntil: 'domcontentloaded', timeout: 5000 });
+    // CI環境では時間がかかることがあるため、適切なタイムアウトを設定
+    const response = await page.goto('/digest', { waitUntil: 'domcontentloaded', timeout: 10000 });
     
     // 404の場合はスキップ
     if (response?.status() === 404) {

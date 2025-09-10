@@ -344,7 +344,7 @@ test.describe('フィルター条件の永続化', () => {
       await page.waitForFunction(
         () => window.location.href.includes('search=React'),
         undefined,
-        { timeout: 5000 }
+        { timeout: getTimeout('medium') }
       );
       urlUpdated = true;
     } catch {
@@ -429,7 +429,7 @@ test.describe('フィルター条件の永続化', () => {
           return url.pathname === '/' && url.searchParams.has('returning');
         },
         undefined,
-        { timeout: 5000 }
+        { timeout: getTimeout('medium') }
       );
 
       // 4. 検索条件が保持されていることを確認
@@ -625,7 +625,7 @@ test.describe('ブラウザ間での動作確認', () => {
     await waitForPageLoad(page, { waitForNetworkIdle: true });
     
     // 記事が表示されるまで待機
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 5000 });
+    await page.waitForSelector('[data-testid="article-card"]', { timeout: getTimeout('short') });
     
     // 検索入力ボックスが準備完了するまで待機
     const searchInput = page.locator('[data-testid="search-box-input"]').first();
@@ -636,7 +636,7 @@ test.describe('ブラウザ間での動作確認', () => {
     
     // 検索パラメータが設定されるまで待機（CI環境では延長 + リトライ）
     await waitForUrlParam(page, 'search', `Test-${browserName}`, { 
-      timeout: 5000,
+      timeout: getTimeout('medium'),
       polling: 'normal',
       retries: process.env.CI ? 3 : 1
     });

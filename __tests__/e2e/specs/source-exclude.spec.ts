@@ -113,7 +113,7 @@ test.describe('ソースフィルタリング機能', () => {
     
     // Firefox対応: 記事データの読み込み完了を待つ
     await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: 5000,
+      timeout: process.env.CI ? 20000 : 10000,
       state: 'visible' 
     });
     await page.waitForTimeout(process.env.CI ? 2000 : 500);
@@ -196,12 +196,12 @@ test.describe('ソースフィルタリング機能', () => {
   test('複数ソースの選択状態を管理できる', async ({ page, browserName }) => {
     // Firefox対応: 記事データの読み込み完了を待つ
     await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: 5000,
+      timeout: process.env.CI ? 20000 : 10000,
       state: 'visible' 
     });
     
     // ネットワーク待機（Firefoxも含めて統一）
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 15000 : 10000 });
     
     // CI環境でも待機は不要（適切なセレクタ待機で対応）
     
@@ -210,7 +210,7 @@ test.describe('ソースフィルタリング機能', () => {
     
     // 記事カードが表示されるまで待つ
     await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: 5000,
+      timeout: process.env.CI ? 20000 : 10000,
       state: 'visible' 
     });
     
@@ -254,10 +254,10 @@ test.describe('ソースフィルタリング機能', () => {
       await sourceCheckbox.click();
     }
     
-    // URLパラメータが更新されることを確認（最大3秒で十分）
+    // URLパラメータが更新されることを確認（CI環境対応）
     await page.waitForFunction(
       () => window.location.search.includes('sources='),
-      { timeout: 3000 }
+      { timeout: process.env.CI ? 15000 : 5000 }
     );
     const currentUrl = page.url();
     expect(currentUrl).toContain('sources=');
@@ -274,8 +274,8 @@ test.describe('ソースフィルタリング機能', () => {
     }
     
     // 記事が更新されたことを確認（記事数が減少）
-    // networkidleで統一（ブラウザ問わず）
-    await page.waitForLoadState('networkidle', { timeout: 3000 });
+    // networkidleで統一（ブラウザ問わず、CI環境対応）
+    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 10000 : 5000 });
     const articles = await page.locator('[data-testid="article-card"]').count();
     
     // 選択を元に戻す
