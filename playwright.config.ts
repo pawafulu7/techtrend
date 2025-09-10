@@ -17,8 +17,8 @@ export default defineConfig({
   fullyParallel: true,  // ファイル単位での並列実行を有効化
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  /* Retry on CI only - Phase 2で強化 */
+  retries: process.env.CI ? 3 : 1,  // CI: 3回、ローカル: 1回
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 2 : 3,  // ローカル環境では3並列、CI環境では2並列
   /* Global setup and teardown */

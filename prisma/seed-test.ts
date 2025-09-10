@@ -359,9 +359,9 @@ async function createArticles(sources: Source[], tags: Tag[]) {
   const articles = [];
   const now = new Date();
   const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  // 環境変数で記事数を設定可能に（デフォルトはPR目標値）
-  const TOTAL_ARTICLES = parseInt(process.env.E2E_TOTAL_ARTICLES ?? '200', 10);
-  const TS_ARTICLE_COUNT = parseInt(process.env.E2E_TS_ARTICLES ?? '20', 10);
+  // 環境変数で記事数を設定可能に（Phase 2で増量）
+  const TOTAL_ARTICLES = parseInt(process.env.E2E_TOTAL_ARTICLES ?? '50', 10);
+  const TS_ARTICLE_COUNT = parseInt(process.env.E2E_TS_ARTICLES ?? '10', 10);
   
   // バリデーション
   if (!Number.isFinite(TOTAL_ARTICLES) || !Number.isFinite(TS_ARTICLE_COUNT) || TOTAL_ARTICLES < TS_ARTICLE_COUNT) {

@@ -353,6 +353,17 @@ jobs:
 
           exit $TEST_RESULT
 
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            test-results/
+            playwright-report/
+            server.log
+          retention-days: 7
+
   # Quality gate summary
   quality-gate:
     name: Quality Gate
