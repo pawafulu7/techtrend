@@ -313,27 +313,27 @@ jobs:
           npm run start 2>&1 | tee server.log &
           SERVER_PID=$!
 
-          # サーバー起動待機（最大120秒）
+          # サーバー起動待機（最大120秒・実時間）
           echo "Waiting for server to be ready..."
-          MAX_ATTEMPTS=120
-          ATTEMPT=0
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            if curl -s -f --max-time 5 -o /dev/null http://localhost:3000 2>/dev/null; then
-              echo "Server is ready after $ATTEMPT seconds"
+          TIMEOUT=120
+          START=$(date +%s)
+          while :; do
+            if curl -s -f -m 2 -o /dev/null http://localhost:3000; then
+              ELAPSED=$(( $(date +%s) - START ))
+              echo "Server is ready after ${ELAPSED}s"
               break
             fi
-            ATTEMPT=$((ATTEMPT + 1))
-            echo "Waiting... ($ATTEMPT/$MAX_ATTEMPTS)"
+            ELAPSED=$(( $(date +%s) - START ))
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+              echo "Server failed to start within ${TIMEOUT}s"
+              echo "Last 50 lines of server log:"
+              tail -n 50 server.log
+              kill $SERVER_PID 2>/dev/null
+              exit 1
+            fi
+            echo "Waiting... (${ELAPSED}/${TIMEOUT}s)"
             sleep 1
           done
-
-          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-            echo "Server failed to start within $MAX_ATTEMPTS seconds"
-            echo "Last 50 lines of server log:"
-            tail -n 50 server.log
-            kill $SERVER_PID 2>/dev/null
-            exit 1
-          fi
 
           # E2Eテスト実行
           echo "Running E2E tests..."
