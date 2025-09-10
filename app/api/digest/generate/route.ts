@@ -59,8 +59,11 @@ export async function POST(request: NextRequest) {
       monday.setDate(diff);
       monday.setHours(0, 0, 0, 0);
       
-      // Format as YYYY-MM-DD to match the format used in digest/[week]/route.ts
-      const weekKey = monday.toISOString().split('T')[0];
+      // Format as YYYY-MM-DD using local date to match the format used in digest/[week]/route.ts
+      const year = monday.getFullYear();
+      const month = String(monday.getMonth() + 1).padStart(2, '0');
+      const dateStr = String(monday.getDate()).padStart(2, '0');
+      const weekKey = `${year}-${month}-${dateStr}`;
       
       const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
         params: { week: weekKey }

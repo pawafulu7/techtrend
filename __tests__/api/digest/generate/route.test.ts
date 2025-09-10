@@ -119,9 +119,9 @@ describe('/api/digest/generate', () => {
       expect(mockGeneratorInstance.generateWeeklyDigest).toHaveBeenCalledWith(new Date(testDate));
       
       // The cache key should use the Monday of the week for the given date
-      // 2025-01-01 is a Wednesday, so Monday is 2024-12-29
+      // 2025-01-01 is a Wednesday, so Monday is 2024-12-30 in local time (JST)
       expect(mockCacheInstance.generateCacheKey).toHaveBeenCalledWith('weekly-digest', {
-        params: { week: '2024-12-29' }
+        params: { week: '2024-12-30' }
       });
       expect(mockCacheInstance.del).toHaveBeenCalled();
     });
