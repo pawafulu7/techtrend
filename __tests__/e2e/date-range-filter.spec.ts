@@ -86,8 +86,8 @@ test.describe('Date Range Filter', () => {
     // ドロップダウンが閉じるのを待つ
     await expect(page.locator('[data-testid="date-range-content"]')).toBeHidden({ timeout: getTimeout('short') });
     
-    // Wait for URL to update with extended timeout
-    await waitForUrlParam(page, 'dateRange', 'today', { polling: 'normal', timeout: 20000 });
+    // Wait for URL to update
+    await waitForUrlParam(page, 'dateRange', 'today', { polling: 'normal', timeout: 5000 });
     
     // Additional network wait after URL change
     await waitForPageLoad(page, { waitForNetworkIdle: true });
@@ -181,8 +181,8 @@ test.describe('Date Range Filter', () => {
     // ドロップダウンが閉じるのを待つ
     await expect(page.locator('[data-testid="date-range-content"]')).toBeHidden({ timeout: getTimeout('short') });
     
-    // Extended timeout for URL change
-    await waitForUrlParam(page, 'dateRange', '3months', { polling: 'normal', timeout: 20000 });
+    // Wait for URL change
+    await waitForUrlParam(page, 'dateRange', '3months', { polling: 'normal', timeout: 5000 });
     
     // Additional network wait after URL change
     await waitForPageLoad(page, { waitForNetworkIdle: true });
