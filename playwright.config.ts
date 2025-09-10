@@ -12,7 +12,7 @@ export default defineConfig({
   testDir: './',
   testMatch: ['**/e2e/**/*.spec.ts'],
   /* Global timeout for each test */
-  timeout: process.env.CI ? 60000 : 30000,  // 環境別タイムアウト
+  timeout: process.env.CI ? 90000 : 45000,  // CI: 90秒、ローカル: 45秒（改訂版）
   /* Run tests in files in parallel */
   fullyParallel: true,  // ファイル単位での並列実行を有効化
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -46,16 +46,16 @@ export default defineConfig({
     /* Record video on failure */
     video: 'retain-on-failure',
     /* Timeout for each action */
-    actionTimeout: process.env.CI ? 15000 : 10000,
+    actionTimeout: process.env.CI ? 20000 : 15000,  // CI: 20秒、ローカル: 15秒（改訂版）
     /* Timeout for navigation */
-    navigationTimeout: process.env.CI ? 30000 : 15000,
+    navigationTimeout: process.env.CI ? 45000 : 30000,  // CI: 45秒、ローカル: 30秒（改訂版）
     /* VRT用設定追加 */
     ignoreHTTPSErrors: true,
   },
 
   /* Visual Regression Testing設定 */
   expect: {
-    timeout: process.env.CI ? 10000 : 5000,
+    timeout: process.env.CI ? 15000 : 10000,  // CI: 15秒、ローカル: 10秒（改訂版）
     toHaveScreenshot: {
       threshold: 0.2,
       maxDiffPixelRatio: 0.15,

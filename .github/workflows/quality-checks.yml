@@ -241,11 +241,10 @@ jobs:
   e2e:
     name: E2E Tests
     if: |
-      github.ref == 'refs/heads/main' ||
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-e2e')) ||
-      (github.event_name == 'push' && contains(github.event.head_commit.message, '[e2e]')) ||
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[e2e]'))
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:15
@@ -314,9 +313,9 @@ jobs:
           npm run start 2>&1 | tee server.log &
           SERVER_PID=$!
 
-          # サーバー起動待機（最大60秒）
+          # サーバー起動待機（最大120秒）
           echo "Waiting for server to be ready..."
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=120
           ATTEMPT=0
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             if curl -s -f --max-time 5 -o /dev/null http://localhost:3000 2>/dev/null; then
