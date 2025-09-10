@@ -4,7 +4,7 @@
  */
 
 import { Redis } from 'ioredis';
-import { log } from '@/lib/logger';
+import logger from '@/lib/logger';
 
 export interface CacheOptions {
   ttl: number;          // Time to live in seconds
@@ -61,7 +61,7 @@ export class AggressiveCacheStrategy {
         
         // Fresh cache - return immediately
         if (age < opts.staleTime * 1000) {
-          log.debug(`Cache hit (fresh): ${key}`);
+          logger.debug(`Cache hit (fresh): ${key}`);
           return {
             data: parsedCache.data,
             status: 'fresh',
@@ -70,7 +70,7 @@ export class AggressiveCacheStrategy {
         
         // Stale but still within TTL - return and revalidate in background
         if (age < opts.ttl * 1000) {
-          log.debug(`Cache hit (stale): ${key}, revalidating in background`);
+          logger.debug(`Cache hit (stale): ${key}, revalidating in background`);
           
           // Trigger background revalidation if not already in progress
           this.revalidateInBackground(cacheKey, fetcher, opts);
@@ -82,11 +82,11 @@ export class AggressiveCacheStrategy {
         }
         
         // Expired - fall through to fetch fresh
-        log.debug(`Cache expired: ${key}`);
+        logger.debug(`Cache expired: ${key}`);
       }
       
       // Cache miss or expired - fetch fresh data
-      log.debug(`Cache miss: ${key}, fetching fresh data`);
+      logger.debug(`Cache miss: ${key}, fetching fresh data`);
       const freshData = await fetcher();
       
       // Save to cache
@@ -98,7 +98,7 @@ export class AggressiveCacheStrategy {
       };
       
     } catch (error) {
-      log.error('Cache error:', error);
+      logger.error({ error }, 'Cache error');
       // On cache error, fallback to fetcher
       const data = await fetcher();
       
@@ -106,7 +106,7 @@ export class AggressiveCacheStrategy {
       try {
         await this.set(cacheKey, data, opts.ttl);
       } catch (saveError) {
-        log.error('Failed to save to cache:', saveError);
+        logger.error({ error: saveError }, 'Failed to save to cache');
       }
       
       return {
@@ -126,19 +126,19 @@ export class AggressiveCacheStrategy {
   ): void {
     // Check if revalidation is already in progress for this key
     if (this.pendingRevalidations.has(cacheKey)) {
-      log.debug(`Revalidation already in progress for: ${cacheKey}`);
+      logger.debug(`Revalidation already in progress for: ${cacheKey}`);
       return;
     }
     
     // Create revalidation promise
     const revalidationPromise = (async () => {
       try {
-        log.debug(`Starting background revalidation for: ${cacheKey}`);
+        logger.debug(`Starting background revalidation for: ${cacheKey}`);
         const freshData = await fetcher();
         await this.set(cacheKey, freshData, options.ttl);
-        log.debug(`Background revalidation completed for: ${cacheKey}`);
+        logger.debug(`Background revalidation completed for: ${cacheKey}`);
       } catch (error) {
-        log.error(`Background revalidation failed for ${cacheKey}:`, error);
+        logger.error({ error }, `Background revalidation failed for ${cacheKey}`);
       } finally {
         // Clean up pending revalidation
         this.pendingRevalidations.delete(cacheKey);
@@ -180,7 +180,7 @@ export class AggressiveCacheStrategy {
   ): Promise<void> {
     const opts = { ...this.defaultOptions, ...options };
     
-    log.info(`Warming up cache for ${keys.length} keys`);
+    logger.info(`Warming up cache for ${keys.length} keys`);
     
     // Process in batches to avoid overwhelming the system
     const batchSize = 5;
@@ -193,9 +193,9 @@ export class AggressiveCacheStrategy {
             const cacheKey = this.buildKey(key, opts.namespace);
             const data = await fetcher();
             await this.set(cacheKey, data, opts.ttl);
-            log.debug(`Cache warmed for: ${key}`);
+            logger.debug(`Cache warmed for: ${key}`);
           } catch (error) {
-            log.error(`Failed to warm cache for ${key}:`, error);
+            logger.error({ error }, `Failed to warm cache for ${key}`);
           }
         })
       );
@@ -206,7 +206,7 @@ export class AggressiveCacheStrategy {
       }
     }
     
-    log.info('Cache warm-up completed');
+    logger.info('Cache warm-up completed');
   }
 
   /**
@@ -225,7 +225,7 @@ export class AggressiveCacheStrategy {
       } else {
         await this.redis.del(...cacheKeys);
       }
-      log.debug(`Cache invalidated for ${cacheKeys.length} keys`);
+      logger.debug(`Cache invalidated for ${cacheKeys.length} keys`);
     }
   }
 
@@ -268,7 +268,7 @@ export class AggressiveCacheStrategy {
       }
       
       await pipeline.exec();
-      log.info(`Cleared ${keys.length} keys from namespace: ${ns}`);
+      logger.info(`Cleared ${keys.length} keys from namespace: ${ns}`);
     }
   }
 

@@ -15,6 +15,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, SortAsc } from 'lucide-react';
 import type { SourceCategory, SourceCategoryWithAll, SourceWithStats } from '@/types/source';
+import logger from '@/lib/logger';
 
 type SortBy = 'articles' | 'quality' | 'frequency' | 'name';
 
@@ -31,10 +32,16 @@ export default function SourcesContent() {
     setLoading(true);
     try {
       const response = await fetch('/api/sources');
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        logger.error({ status: response.status, body }, 'Failed to load sources');
+        setAllSources([]);
+        return;
+      }
       const data = await response.json();
-      setAllSources(data.sources);
+      setAllSources(Array.isArray(data.sources) ? data.sources : []);
     } catch (error) {
-      console.error('Failed to load sources:', error);
+      logger.error({ error }, 'Failed to load sources');
     } finally {
       setLoading(false);
     }

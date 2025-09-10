@@ -2,6 +2,7 @@ import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types';
 import Parser from 'rss-parser';
 import type { ContentEnricherFactory } from '../enrichers';
+import logger from '@/lib/logger';
 
 interface StackOverflowBlogItem {
   title?: string;
@@ -81,7 +82,7 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
           } else {
           }
         } catch (_error) {
-          console.error(`[StackOverflow Blog] Enrichment failed for ${item.link}:`, _error);
+          logger.error({ error: _error }, `[StackOverflow Blog] Enrichment failed for ${item.link}`);
           // エラー時は元のコンテンツを使用
         }
       } else {

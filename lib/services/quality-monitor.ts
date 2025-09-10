@@ -4,6 +4,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import logger from '@/lib/logger';
 
 const prisma = new PrismaClient();
 
@@ -361,38 +362,40 @@ if (require.main === module) {
 
   (async () => {
     if (process.env.NODE_ENV !== 'production') {
-      console.warn('=== 品質モニタリングレポート ===\n');
+      logger.info('=== 品質モニタリングレポート ===\n');
 
       // 全体統計
       const stats = await monitor.getQualityStats(30);
-      console.warn('📊 全体統計（過去30日）:');
-      console.warn(`  総記事数: ${stats.totalArticles}件`);
-      console.warn(`  平均スコア: ${stats.averageScore}点`);
-      console.warn(`  高品質記事: ${stats.highQualityCount}件`);
-      console.warn(`  低品質記事: ${stats.lowQualityCount}件`);
-      console.warn(`  再生成必要: ${stats.needsRegenerationCount}件`);
-      console.warn('\n  品質分布:');
-      console.warn(`    優秀 (90点以上): ${stats.distribution.excellent}件`);
-      console.warn(`    良好 (70-89点): ${stats.distribution.good}件`);
-      console.warn(`    普通 (50-69点): ${stats.distribution.fair}件`);
-      console.warn(`    不良 (50点未満): ${stats.distribution.poor}件`);
+      logger.info('全体統計（過去30日）:');
+      logger.info(`  総記事数: ${stats.totalArticles}件`);
+      logger.info(`  平均スコア: ${stats.averageScore}点`);
+      logger.info(`  高品質記事: ${stats.highQualityCount}件`);
+      logger.info(`  低品質記事: ${stats.lowQualityCount}件`);
+      logger.info(`  再生成必要: ${stats.needsRegenerationCount}件`);
+      logger.info('\n  品質分布:');
+      logger.info(`    優秀 (90点以上): ${stats.distribution.excellent}件`);
+      logger.info(`    良好 (70-89点): ${stats.distribution.good}件`);
+      logger.info(`    普通 (50-69点): ${stats.distribution.fair}件`);
+      logger.info(`    不良 (50点未満): ${stats.distribution.poor}件`);
 
       // トレンド
-      console.warn('\n📈 品質トレンド（過去7日）:');
+      logger.info('\n品質トレンド（過去7日）:');
       const trends = await monitor.getQualityTrend(7);
       for (const trend of trends) {
-        console.warn(`  ${trend.date.toLocaleDateString('ja-JP')}: 平均${trend.averageScore}点 (高品質${trend.highQualityCount}件/低品質${trend.lowQualityCount}件)`);
+        logger.info(`  ${trend.date.toLocaleDateString('ja-JP')}: 平均${trend.averageScore}点 (高品質${trend.highQualityCount}件/低品質${trend.lowQualityCount}件)`);
       }
 
       // 推薦
-      console.warn('\n🎯 再生成推薦（上位10件）:');
+      logger.info('\n再生成推薦（上位10件）:');
       const recommendations = await monitor.getRegenerationRecommendations(10);
       for (const rec of recommendations) {
-        console.warn(`  [${rec.priority.toUpperCase()}] ${rec.title.substring(0, 50)}...`);
-        console.warn(`    現在スコア: ${rec.currentScore}点 | 理由: ${rec.reason}`);
+        logger.info(`  [${rec.priority.toUpperCase()}] ${rec.title.substring(0, 50)}...`);
+        logger.info(`    現在スコア: ${rec.currentScore}点 | 理由: ${rec.reason}`);
       }
     }
 
     await monitor.disconnect();
-  })().catch(console.error);
+  })().catch((error) => {
+    logger.error({ error }, 'Quality monitor execution failed');
+  });
 }

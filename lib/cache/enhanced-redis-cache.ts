@@ -7,7 +7,7 @@ import { RedisCache } from './redis-cache';
 import { AggressiveCacheStrategy } from './strategies';
 import { CacheOptions, CacheStats } from './types';
 import { getRedisClient } from '@/lib/redis/client';
-import { log } from '@/lib/logger';
+import logger from '@/lib/logger';
 
 export interface EnhancedCacheOptions extends CacheOptions {
   staleTime?: number;      // Time before cache is considered stale (seconds)
@@ -83,7 +83,7 @@ export class EnhancedRedisCache extends RedisCache {
         break;
       case 'stale':
         this.stats.hits++; // Still a hit, just stale
-        log.debug(`Serving stale content for key: ${key}`);
+        logger.debug(`Serving stale content for key: ${key}`);
         break;
       case 'miss':
         this.stats.misses++;
@@ -201,7 +201,7 @@ export class EnhancedRedisCache extends RedisCache {
       deleted += result;
     }
     
-    log.info(`Invalidated ${deleted} cache keys matching pattern: ${pattern}`);
+    logger.info(`Invalidated ${deleted} cache keys matching pattern: ${pattern}`);
   }
 
   /**
@@ -212,12 +212,12 @@ export class EnhancedRedisCache extends RedisCache {
       return;
     }
     
-    log.info(`Starting cache warmup for ${this.options.warmupKeys.length} keys`);
+    logger.info(`Starting cache warmup for ${this.options.warmupKeys.length} keys`);
     
     // This would need to be implemented based on specific warmup logic
     // For now, just log the intent
     for (const key of this.options.warmupKeys) {
-      log.debug(`Would warm up key: ${key}`);
+      logger.debug(`Would warm up key: ${key}`);
     }
   }
 

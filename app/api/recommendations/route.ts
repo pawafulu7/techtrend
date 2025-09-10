@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const session = await auth();
     
     if (!session?.user?.id) {
-      logger.error('[API/recommendations] No authenticated user');
+      logger.warn({ route: 'API/recommendations' }, 'No authenticated user');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     try {
       cached = await redisService.getJSON(cacheKey);
     } catch (cacheError) {
-      logger.warn('[API/recommendations] Cache read error:', cacheError);
+      logger.warn({ err: cacheError, route: 'API/recommendations', limit }, 'Cache read error');
     }
     
     if (cached) {
@@ -45,12 +45,12 @@ export async function GET(request: NextRequest) {
     try {
       await redisService.setJSON(cacheKey, recommendations, 300);
     } catch (cacheError) {
-      logger.warn('[API/recommendations] Cache write error:', cacheError);
+      logger.warn({ err: cacheError, route: 'API/recommendations', limit }, 'Cache write error');
     }
 
     return NextResponse.json(recommendations);
   } catch (error) {
-    logger.error('[API/recommendations] Error:', error);
+    logger.error({ err: error, route: 'API/recommendations' }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Failed to get recommendations' },
       { status: 500 }

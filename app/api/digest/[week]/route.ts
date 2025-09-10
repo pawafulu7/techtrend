@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
+import logger from '@/lib/logger';
 
 // キャッシュインスタンスを遅延初期化
 let cache: RedisCache | null = null;
@@ -44,7 +45,7 @@ export async function GET(
       }
     } catch (cacheError) {
       // キャッシュエラーは無視して処理を続行
-      console.warn('Cache error, continuing without cache:', cacheError);
+      logger.warn({ err: cacheError }, 'Cache error, continuing without cache');
     }
 
     const generator = new DigestGenerator(prisma);
@@ -62,7 +63,7 @@ export async function GET(
       await cacheInstance.set(cacheKey, digest, 3600);
     } catch (cacheError) {
       // キャッシュ保存エラーは無視
-      console.warn('Cache set error, continuing without caching:', cacheError);
+      logger.warn({ err: cacheError }, 'Cache set error, continuing without caching');
     }
 
     return NextResponse.json(digest);

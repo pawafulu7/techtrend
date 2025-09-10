@@ -3,6 +3,7 @@ import { prisma } from '@/lib/database';
 import { Prisma } from '@prisma/client';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { parseIntParam, VALIDATION_RANGES } from '@/lib/utils/validation';
+import logger from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -178,7 +179,7 @@ export async function GET(request: NextRequest) {
     
     return response;
   } catch (error) {
-    console.error('Trend analysis error:', error);
+    logger.error({ error }, 'Trend analysis error');
     return NextResponse.json(
       { error: 'Failed to fetch trend analysis' },
       { status: 500 }

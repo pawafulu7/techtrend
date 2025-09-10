@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
-import logger from '@/lib/logger/index';
+import logger from '@/lib/logger';
 
 // キャッシュインスタンスを遅延初期化
 let cache: RedisCache | null = null;
@@ -50,36 +50,38 @@ export async function POST(request: NextRequest) {
 
     // Invalidate cache for this week's digest
     try {
-      if (date) {
-        const cacheInstance = getCache();
-        const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
-          params: { week: date }
-        });
-        await cacheInstance.del(cacheKey);
-      }
-
-      // Also invalidate cache for current week if no date specified
-      if (!date) {
-        const currentWeek = new Date().toISOString();
-        const cacheInstance = getCache();
-        const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
-          params: { week: currentWeek }
-        });
-        await cacheInstance.del(cacheKey);
-      }
+      const cacheInstance = getCache();
+      // Get the Monday of the week as YYYY-MM-DD format
+      const targetDate = date ? new Date(date) : new Date();
+      const monday = new Date(targetDate);
+      const day = monday.getDay();
+      const diff = monday.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+      monday.setDate(diff);
+      monday.setHours(0, 0, 0, 0);
+      
+      // Format as YYYY-MM-DD using local date to match the format used in digest/[week]/route.ts
+      const year = monday.getFullYear();
+      const month = String(monday.getMonth() + 1).padStart(2, '0');
+      const dateStr = String(monday.getDate()).padStart(2, '0');
+      const weekKey = `${year}-${month}-${dateStr}`;
+      
+      const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
+        params: { week: weekKey }
+      });
+      await cacheInstance.del(cacheKey);
     } catch (cacheError) {
       // キャッシュ削除エラーは無視して処理を続行
-      logger.warn('Cache deletion error, continuing:', cacheError);
+      logger.warn({ err: cacheError }, 'Cache deletion error, continuing');
     }
 
-    logger.info(`Weekly digest generated: ${digestId}`);
+    logger.info({ digestId }, 'Weekly digest generated');
 
     return NextResponse.json({ 
       success: true, 
       digestId 
     });
   } catch (error) {
-    logger.error('Failed to generate digest:', error);
+    logger.error({ err: error }, 'Failed to generate digest');
     return NextResponse.json(
       { error: 'Failed to generate digest' },
       { status: 500 }

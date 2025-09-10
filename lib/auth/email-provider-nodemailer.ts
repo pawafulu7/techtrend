@@ -1,3 +1,5 @@
+import logger from '@/lib/logger';
+
 // Theme type for email template
 interface Theme {
   colorScheme?: string;
@@ -99,7 +101,10 @@ function createTransporter() {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     nodemailer = require('nodemailer');
   } catch (_error) {
-    console.warn('Nodemailer not installed. Email sending will be disabled.');
+    logger.warn(
+      { event: 'email_transport_init', nodemailerInstalled: false },
+      'Nodemailer not installed; email sending disabled'
+    );
     return null;
   }
   
@@ -164,10 +169,14 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
   const transporter = createTransporter();
   
   if (!transporter) {
-    console.error('❌ Email configuration missing. Please set Gmail or SMTP settings.');
-    // console.log('Required environment variables:');
-    // console.log('  For Gmail: GMAIL_USER and GMAIL_APP_PASSWORD');
-    // console.log('  For SMTP: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD');
+    logger.error(
+      {
+        event: 'email_config_missing',
+        gmailConfigured: Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD),
+        smtpConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_PORT),
+      },
+      'Email configuration missing. Please set Gmail or SMTP settings.'
+    );
     throw new Error('Email configuration is missing');
   }
 
@@ -195,7 +204,10 @@ export async function sendVerificationRequestNodemailer(params: SendVerification
       }
     }
   } catch (error) {
-    console.error('📧 Failed to send email:', error);
-    throw new Error('Failed to send verification email');
+    logger.error(
+      { err: error as Error, event: 'send_verification_failed', toDomain: to?.split('@')[1] ?? null, host },
+      'Failed to send verification email'
+    );
+    throw new Error('Failed to send verification email', { cause: error as Error });
   }
 }

@@ -6,6 +6,7 @@ import { parseRSSDate } from '@/lib/utils/date';
 import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
+import logger from '@/lib/logger';
 
 interface MediumItem {
   title?: string;
@@ -129,7 +130,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
                     thumbnail = enrichedData.thumbnail || undefined;
                   }
                 } catch (_error) {
-                  console.error(`[Medium Engineering] Enrichment failed for ${cleanUrl}:`, _error);
+                  logger.error({ error: _error }, `[Medium Engineering] Enrichment failed for ${cleanUrl}`);
                 }
               }
             }

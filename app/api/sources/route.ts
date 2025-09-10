@@ -264,7 +264,11 @@ export async function GET(request: NextRequest) {
       
       return response;
   } catch (error) {
-    logger.error('API Error in /api/sources:', error);
+    const durationMs = Date.now() - startTime;
+    logger.error(
+      { err: error as Error, route: '/api/sources', durationMs },
+      'API error'
+    );
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

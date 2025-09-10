@@ -1,6 +1,7 @@
 import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
 import { GenericContentEnricher } from './generic';
+import logger from '@/lib/logger';
 
 export class HackerNewsEnricher extends BaseContentEnricher {
   private genericEnricher: GenericContentEnricher;
@@ -55,7 +56,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       
       // ステータスコードが200以外の場合はGenericEnricherにフォールバック
       if (!response.ok) {
-        console.warn(`[HackerNewsEnricher] HTTP ${response.status} for ${url}, falling back to GenericEnricher`);
+        logger.warn({ status: response.status, url }, '[HackerNewsEnricher] HTTP error, falling back to GenericEnricher');
         return await this.genericEnricher.enrich(url);
       }
       
@@ -154,7 +155,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       
       // コンテンツが短すぎる場合（100文字未満）はGenericEnricherにフォールバック
       if (content.length < 100) {
-        console.warn(`[HackerNewsEnricher] Content too short for ${url}: ${content.length} chars, falling back to GenericEnricher`);
+        logger.warn({ url, contentLength: content.length }, '[HackerNewsEnricher] Content too short, falling back to GenericEnricher');
         return await this.genericEnricher.enrich(url);
       }
       
@@ -164,7 +165,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       };
       
     } catch (error) {
-      console.error(`[HackerNewsEnricher] Error enriching ${url}:`, error);
+      logger.error({ error, url }, '[HackerNewsEnricher] Error enriching URL');
       
       // フォールバック: GenericEnricherを試す
       try {
@@ -173,7 +174,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
           return genericResult;
         }
       } catch (fallbackError) {
-        console.error(`[HackerNewsEnricher] GenericEnricher also failed for ${url}:`, fallbackError);
+        logger.error({ error: fallbackError, url }, '[HackerNewsEnricher] GenericEnricher also failed');
       }
       
       return null;

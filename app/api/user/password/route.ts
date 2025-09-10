@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { changePassword } from '@/lib/auth/utils';
 import { z } from 'zod';
+import logger from '@/lib/logger';
 
 // パスワード変更リクエストのスキーマ
 const changePasswordSchema = z.object({
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       throw error; // その他のエラーは再スロー
     }
   } catch (error) {
-    console.error('Password change error:', error);
+    logger.error({ error }, 'Password change error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

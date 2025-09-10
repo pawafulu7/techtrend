@@ -4,6 +4,7 @@
  */
 
 import { IContentEnricher } from './base';
+import logger from '@/lib/logger';
 import { GMOContentEnricher } from './gmo';
 import { FreeeContentEnricher } from './freee';
 import { HatenaContentEnricher } from './hatena';
@@ -155,7 +156,7 @@ export class ContentEnricherFactory {
         }
       } catch (error) {
         // エラーは無視して次のエンリッチャーを試す
-        console.error(`[ContentEnricherFactory] Error with ${enricher.constructor.name}:`, error);
+        logger.error({ error }, `[ContentEnricherFactory] Error with ${enricher.constructor.name}`);
       }
     }
     

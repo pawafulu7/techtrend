@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+import logger from '@/lib/logger';
 
 // 確認メール送信用の関数をインポート
 async function sendVerificationEmail(email: string, token: string) {
@@ -11,7 +12,7 @@ async function sendVerificationEmail(email: string, token: string) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     nodemailer = require('nodemailer');
   } catch (_error) {
-    console.warn('Nodemailer not installed. Email sending disabled.');
+    logger.warn({ event: 'nodemailer_check', installed: false }, 'Nodemailer not installed. Email sending disabled.');
     return;
   }
   
@@ -180,7 +181,7 @@ export async function POST(request: Request) {
     try {
       await sendVerificationEmail(email, token);
     } catch (emailError) {
-      console.error('📧 Failed to send verification email:', emailError);
+      logger.error({ err: emailError }, 'Failed to send verification email');
       // メール送信に失敗してもユーザー作成は成功扱い（後で再送信できるように）
     }
 
@@ -189,7 +190,7 @@ export async function POST(request: Request) {
       message: 'アカウントを作成しました。確認メールをご確認ください。',
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error({ err: error }, 'Registration error');
     return NextResponse.json(
       { error: 'アカウント作成中にエラーが発生しました' },
       { status: 500 }

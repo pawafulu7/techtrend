@@ -1,5 +1,6 @@
 import { BaseContentEnricher } from './base';
 import * as cheerio from 'cheerio';
+import logger from '@/lib/logger';
 
 export class MozillaHacksEnricher extends BaseContentEnricher {
   /**
@@ -24,7 +25,7 @@ export class MozillaHacksEnricher extends BaseContentEnricher {
       });
 
       if (!response.ok) {
-        console.error(`[Mozilla Hacks Enricher] Failed to fetch: ${response.status}`);
+        logger.error({ status: response.status, url }, '[Mozilla Hacks Enricher] Failed to fetch');
         return null;
       }
 
@@ -126,7 +127,7 @@ export class MozillaHacksEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[Mozilla Hacks Enricher] Error enriching ${url}:`, _error);
+      logger.error({ error: _error, url }, '[Mozilla Hacks Enricher] Error enriching URL');
       return null;
     }
   }

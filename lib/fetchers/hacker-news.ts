@@ -2,6 +2,7 @@ import { BaseFetcher } from './base';
 import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
 import { ContentEnricherFactory } from '@/lib/enrichers';
+import logger from '@/lib/logger';
 
 interface HackerNewsStory {
   id: number;
@@ -86,7 +87,7 @@ export class HackerNewsFetcher extends BaseFetcher {
                 thumbnail = enrichedData.thumbnail || undefined;
               }
             } catch (_error) {
-              console.error(`[Hacker News] Enrichment failed for ${story.url}:`, _error);
+              logger.error({ error: _error }, `[Hacker News] Enrichment failed for ${story.url}`);
             }
           }
           

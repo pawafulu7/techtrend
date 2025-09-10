@@ -7,7 +7,7 @@ import { createRedisCacheMock } from '../../../helpers/cache-mock-helpers';
 // モックの設定
 jest.mock('@/lib/prisma');
 jest.mock('@/lib/services/digest-generator');
-jest.mock('@/lib/logger/index');
+jest.mock('@/lib/logger');
 
 // モックインスタンスを保持する変数
 let mockCacheInstance: ReturnType<typeof createRedisCacheMock>;
@@ -19,15 +19,22 @@ jest.mock('@/lib/cache', () => ({
       mockCacheInstance = createRedisCacheMock();
     }
     return mockCacheInstance;
+  }),
+  getCache: jest.fn(() => {
+    const { createRedisCacheMock } = require('../../../helpers/cache-mock-helpers');
+    if (!mockCacheInstance) {
+      mockCacheInstance = createRedisCacheMock();
+    }
+    return mockCacheInstance;
   })
 }));
 
-import { POST } from '@/app/api/digest/generate/route';
 import { prisma } from '@/lib/prisma';
 import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
-import logger from '@/lib/logger/index';
+import logger from '@/lib/logger';
 import { NextRequest } from 'next/server';
+import { POST } from '@/app/api/digest/generate/route';
 
 // モックの型定義
 const prismaMock = prisma as any;
@@ -44,6 +51,7 @@ describe('/api/digest/generate', () => {
     // Logger モック設定
     loggerMock.info = jest.fn();
     loggerMock.error = jest.fn();
+    loggerMock.warn = jest.fn();
     
     // キャッシュモックのリセット（mockCacheInstanceが初期化されていることを確認）
     if (!mockCacheInstance) {
@@ -88,7 +96,7 @@ describe('/api/digest/generate', () => {
       
       expect(mockGeneratorInstance.generateWeeklyDigest).toHaveBeenCalledWith(undefined);
       expect(mockCacheInstance.del).toHaveBeenCalled();
-      expect(loggerMock.info).toHaveBeenCalledWith('Weekly digest generated: digest-id-123');
+      expect(loggerMock.info).toHaveBeenCalledWith({ digestId: 'digest-id-123' }, 'Weekly digest generated');
     });
 
     it('特定の日付で週次ダイジェストを生成する', async () => {
@@ -109,8 +117,11 @@ describe('/api/digest/generate', () => {
       });
       
       expect(mockGeneratorInstance.generateWeeklyDigest).toHaveBeenCalledWith(new Date(testDate));
+      
+      // The cache key should use the Monday of the week for the given date
+      // 2025-01-01 is a Wednesday, so Monday is 2024-12-30 in local time (JST)
       expect(mockCacheInstance.generateCacheKey).toHaveBeenCalledWith('weekly-digest', {
-        params: { week: testDate }
+        params: { week: '2024-12-30' }
       });
       expect(mockCacheInstance.del).toHaveBeenCalled();
     });
@@ -168,10 +179,20 @@ describe('/api/digest/generate', () => {
         error: 'Failed to generate digest',
       });
       
-      expect(loggerMock.error).toHaveBeenCalledWith(
-        'Failed to generate digest:',
-        expect.any(Error)
-      );
+      expect(loggerMock.error).toHaveBeenCalled();
+      const [firstArg, message] = loggerMock.error.mock.calls[0];
+      expect(message).toBe('Failed to generate digest');
+      if (firstArg instanceof Error) {
+        expect(firstArg).toBeInstanceOf(Error);
+      } else {
+        expect(firstArg).toEqual(
+          expect.objectContaining(
+            firstArg.err
+              ? { err: expect.any(Error) }
+              : { error: expect.any(Error) }
+          )
+        );
+      }
     });
 
     it('キャッシュ削除エラーでも処理を続行する', async () => {

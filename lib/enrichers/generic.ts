@@ -1,5 +1,6 @@
 import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
+import logger from '@/lib/logger';
 
 /**
  * 汎用コンテンツエンリッチャー
@@ -207,7 +208,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
           ? 'Request timeout'
           : 'Request failed';
         
-        console.error(`[GenericEnricher] ${errorMessage} for ${url} (attempt ${attempt}/${maxRetries})`);
+        logger.error({ error, url, attempt, maxRetries }, `[GenericEnricher] ${errorMessage}`);
         
         if (attempt === maxRetries) {
           return null;

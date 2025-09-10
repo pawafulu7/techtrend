@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+import logger from '@/lib/logger';
 
 export async function GET(request: Request) {
   try {
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
       new URL(`/auth/verify?success=true&email=${encodeURIComponent(email)}&loginToken=${tempLoginToken}`, request.url)
     );
   } catch (error) {
-    console.error('Email verification error:', error);
+    logger.error({ error }, 'Email verification error');
     return NextResponse.redirect(
       new URL('/auth/verify?error=verification_failed', request.url)
     );

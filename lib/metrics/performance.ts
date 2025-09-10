@@ -3,6 +3,8 @@
  * Tracks API response times, database query times, and cache performance
  */
 
+import logger from '@/lib/logger';
+
 export interface PerformanceMetrics {
   startTime: number;
   endTime?: number;
@@ -44,7 +46,7 @@ export class MetricsCollector {
   endTimer(name: string): number {
     const startTime = this.timers.get(name);
     if (!startTime) {
-      console.warn(`Timer '${name}' was not started`);
+      logger.warn(`Timer '${name}' was not started`);
       return 0;
     }
     

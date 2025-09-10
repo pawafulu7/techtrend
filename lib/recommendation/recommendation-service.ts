@@ -14,6 +14,7 @@ import {
   normalizeScore
 } from './utils';
 import { getRedisService } from '@/lib/redis/factory';
+import logger from '@/lib/logger';
 
 const redisService = getRedisService();
 
@@ -37,7 +38,7 @@ export class RecommendationService {
         };
       }
     } catch (_error) {
-      console.error('[RecommendationService] Failed to restore cache:', _error);
+      logger.error({ error: _error }, '[RecommendationService] Failed to restore cache');
       // キャッシュを無視して処理を継続
     }
 

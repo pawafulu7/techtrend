@@ -1,5 +1,6 @@
 import { BaseContentEnricher } from './base';
 import * as cheerio from 'cheerio';
+import logger from '@/lib/logger';
 
 export class GitHubBlogEnricher extends BaseContentEnricher {
   /**
@@ -24,7 +25,7 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
       });
 
       if (!response.ok) {
-        console.error(`[GitHub Blog Enricher] Failed to fetch: ${response.status}`);
+        logger.error({ status: response.status, url }, '[GitHub Blog Enricher] Failed to fetch');
         return null;
       }
 
@@ -106,7 +107,7 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[GitHub Blog Enricher] Error enriching ${url}:`, _error);
+      logger.error({ error: _error, url }, '[GitHub Blog Enricher] Error enriching URL');
       return null;
     }
   }

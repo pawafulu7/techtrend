@@ -6,6 +6,7 @@ import { parseRSSDate } from '@/lib/utils/date';
 import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
+import logger from '@/lib/logger';
 
 interface CloudflareBlogItem {
   title?: string;
@@ -84,7 +85,7 @@ export class CloudflareBlogFetcher extends BaseFetcher {
                 } else {
                 }
               } catch (_error) {
-          console.error(`[Cloudflare Blog] Enrichment failed for ${item.link}:`, _error);
+          logger.error({ error: _error }, `[Cloudflare Blog] Enrichment failed for ${item.link}`);
                 // エラー時は元のコンテンツを使用
               }
             }

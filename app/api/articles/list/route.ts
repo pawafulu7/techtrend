@@ -4,7 +4,7 @@ import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
 import { RedisCache } from '@/lib/cache';
 import type { Prisma, ArticleCategory } from '@prisma/client';
-import { log } from '@/lib/logger';
+import logger from '@/lib/logger';
 import { auth } from '@/lib/auth/auth';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
@@ -313,7 +313,7 @@ export async function GET(request: NextRequest) {
     
     return response;
   } catch (error) {
-    log.error('Error fetching lightweight articles:', error);
+    logger.error({ error }, 'Error fetching lightweight articles');
     
     const dbError = error instanceof Error 
       ? new DatabaseError(`Failed to fetch lightweight articles: ${error.message}`, 'select')

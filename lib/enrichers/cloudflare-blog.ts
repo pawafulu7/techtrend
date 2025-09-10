@@ -1,5 +1,6 @@
 import { BaseContentEnricher } from './base';
 import * as cheerio from 'cheerio';
+import logger from '@/lib/logger';
 
 export class CloudflareBlogEnricher extends BaseContentEnricher {
   /**
@@ -24,7 +25,7 @@ export class CloudflareBlogEnricher extends BaseContentEnricher {
       });
 
       if (!response.ok) {
-        console.error(`[Cloudflare Blog Enricher] Failed to fetch: ${response.status}`);
+        logger.error({ status: response.status, url }, '[Cloudflare Blog Enricher] Failed to fetch');
         return null;
       }
 
@@ -109,7 +110,7 @@ export class CloudflareBlogEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      console.error(`[Cloudflare Blog Enricher] Error enriching ${url}:`, _error);
+      logger.error({ error: _error, url }, '[Cloudflare Blog Enricher] Error enriching URL');
       return null;
     }
   }

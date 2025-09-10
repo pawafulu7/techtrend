@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { RedisCache } from '@/lib/cache';
+import logger from '@/lib/logger';
 
 // タグクラウド用のキャッシュを遅延初期化
 let tagCloudCache: RedisCache | null = null;
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
       }
     } catch (cacheError) {
       // キャッシュエラーは無視して処理を続行
-      console.warn('Cache error, continuing without cache:', cacheError);
+      logger.warn({ error: cacheError }, 'Cache error, continuing without cache');
     }
 
     // 期間に基づいてフィルタリング
@@ -156,12 +157,12 @@ export async function GET(request: NextRequest) {
       await cache.set(cacheKey, response);
     } catch (cacheError) {
       // キャッシュ保存エラーは無視
-      console.warn('Cache set error, continuing without caching:', cacheError);
+      logger.warn({ error: cacheError }, 'Cache set error, continuing without caching');
     }
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('API Error in /api/tags/cloud:', error);
+    logger.error({ error }, 'API Error in /api/tags/cloud');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
