@@ -1,6 +1,8 @@
 import { test, expect, Page } from '@playwright/test';
 
+// Phase 3: CI最適化 - 長時間テストにマーク
 test.describe('Infinite Scroll E2E Tests', () => {
+  test.slow(); // このテストスイート全体を遅いテストとしてマーク（タイムアウト3倍）
   let page: Page;
 
   test.beforeEach(async ({ page: testPage }) => {

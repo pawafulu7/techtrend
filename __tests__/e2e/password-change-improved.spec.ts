@@ -19,7 +19,9 @@ import {
  * - 共通ヘルパー関数を使用
  * - 待機処理を改善
  */
+// Phase 3: CI最適化 - 長時間テストにマーク
 test.describe.serial('Password Change Feature - Improved', () => {
+  test.slow(); // このテストスイート全体を遅いテストとしてマーク（タイムアウト3倍）
   
   // グローバルセットアップでテストユーザーが作成されているため、
   // ここでの作成は不要

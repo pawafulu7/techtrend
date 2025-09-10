@@ -7,7 +7,9 @@ const SCROLL_CONTAINER_SELECTORS = [
   '.overflow-y-auto',
 ] as const;
 
+// Phase 3: CI最適化 - 長時間テストにマーク
 test.describe('スクロール復元時のトップボタン表示', () => {
+  test.slow(); // このテストスイート全体を遅いテストとしてマーク（タイムアウト3倍）
   test('記事詳細から戻った際にトップボタンが表示される', async ({ page }) => {
     // 1. トップページにアクセス
     await page.goto('/');

@@ -11,16 +11,16 @@ dotenv.config({ path: '.env.test' });
 export default defineConfig({
   testDir: './',
   testMatch: ['**/e2e/**/*.spec.ts'],
-  /* Global timeout for each test */
-  timeout: process.env.CI ? 90000 : 45000,  // CI: 90秒、ローカル: 45秒（改訂版）
+  /* Global timeout for each test - Phase 3: CI最適化 */
+  timeout: process.env.CI ? 30000 : 45000,  // CI: 30秒（短縮）、ローカル: 45秒
   /* Run tests in files in parallel */
   fullyParallel: true,  // ファイル単位での並列実行を有効化
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only - Phase 2で強化 */
-  retries: process.env.CI ? 3 : 1,  // CI: 3回、ローカル: 1回
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 2 : 3,  // ローカル環境では3並列、CI環境では2並列
+  /* Retry on CI only - Phase 3: 削減 */
+  retries: process.env.CI ? 1 : 1,  // CI: 1回（削減）、ローカル: 1回
+  /* Opt out of parallel tests on CI. - Phase 3: 並列度増加 */
+  workers: process.env.CI ? 4 : 3,  // CI環境では4並列（増加）、ローカル環境では3並列
   /* Global setup and teardown */
   globalSetup: './e2e/global-setup.ts',
   globalTeardown: './e2e/global-teardown.ts',
@@ -45,17 +45,17 @@ export default defineConfig({
     },
     /* Record video on failure */
     video: 'retain-on-failure',
-    /* Timeout for each action */
-    actionTimeout: process.env.CI ? 20000 : 15000,  // CI: 20秒、ローカル: 15秒（改訂版）
-    /* Timeout for navigation */
-    navigationTimeout: process.env.CI ? 45000 : 30000,  // CI: 45秒、ローカル: 30秒（改訂版）
+    /* Timeout for each action - Phase 3: CI最適化 */
+    actionTimeout: process.env.CI ? 10000 : 15000,  // CI: 10秒（短縮）、ローカル: 15秒
+    /* Timeout for navigation - Phase 3: CI最適化 */
+    navigationTimeout: process.env.CI ? 20000 : 30000,  // CI: 20秒（短縮）、ローカル: 30秒
     /* VRT用設定追加 */
     ignoreHTTPSErrors: true,
   },
 
-  /* Visual Regression Testing設定 */
+  /* Visual Regression Testing設定 - Phase 3: CI最適化 */
   expect: {
-    timeout: process.env.CI ? 15000 : 10000,  // CI: 15秒、ローカル: 10秒（改訂版）
+    timeout: process.env.CI ? 5000 : 10000,  // CI: 5秒（短縮）、ローカル: 10秒
     toHaveScreenshot: {
       threshold: 0.2,
       maxDiffPixelRatio: 0.15,
