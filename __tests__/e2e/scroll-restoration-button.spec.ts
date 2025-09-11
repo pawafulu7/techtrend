@@ -85,7 +85,7 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     await page.goBack();
     
     // 一覧ページが表示されるまで待機
-    await page.waitForURL((url) => new URL(url).pathname === '/');
+    await page.waitForURL(url => url.pathname === '/');
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. スクロール復元の完了を待つ
@@ -198,7 +198,7 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     // 4. ブラウザの戻るボタンを使用（記事一覧に戻るリンクが存在しないため）
     await page.goBack();
     
-    await page.waitForURL((url) => new URL(url).pathname === '/');
+    await page.waitForURL(url => url.pathname === '/');
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. 復元ローディングが表示されたらキャンセルボタンをクリック
