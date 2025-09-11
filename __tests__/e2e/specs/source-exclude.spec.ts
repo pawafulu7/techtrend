@@ -112,10 +112,7 @@ test.describe('ソースフィルタリング機能', () => {
     const _filterArea = page.locator('[data-testid="filter-area"]');
     
     // Firefox対応: 記事データの読み込み完了を待つ
-    await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: process.env.CI ? 20000 : 10000,
-      state: 'visible' 
-    });
+    await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible();
     await page.waitForTimeout(process.env.CI ? 2000 : 500);
     
     // 最初に全選択ボタンをクリックして、すべて選択状態にする
@@ -125,10 +122,7 @@ test.describe('ソースフィルタリング機能', () => {
     await page.waitForLoadState('networkidle', { timeout: 5000 });
     
     // 記事カードが表示されるまで待つ（Firefoxの遅延対策）
-    await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: 5000,
-      state: 'visible' 
-    });
+    await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible();
     
     // 初期の記事数を取得
     const initialArticles = await page.locator('[data-testid="article-card"]').count();
@@ -192,11 +186,9 @@ test.describe('ソースフィルタリング機能', () => {
     
     // 記事が再度表示されることを確認（状態ベースの待機）
     // タイムアウトを延長し、CI環境では更に長く待機
-    const articleTimeout = process.env.CI ? 15000 : 8000;
     try {
-      await page.waitForSelector('[data-testid="article-card"]', { 
-        state: 'visible', 
-        timeout: articleTimeout 
+      await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
+        timeout: process.env.CI ? 15000 : 8000
       });
     } catch (error) {
       // タイムアウトした場合は、ローディング状態を確認
@@ -206,9 +198,8 @@ test.describe('ソースフィルタリング機能', () => {
       
       // 追加の待機後に再試行
       await page.waitForTimeout(2000);
-      await page.waitForSelector('[data-testid="article-card"]', { 
-        state: 'visible', 
-        timeout: 5000 
+      await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
+        timeout: 5000
       });
     }
     
@@ -218,9 +209,8 @@ test.describe('ソースフィルタリング機能', () => {
 
   test('複数ソースの選択状態を管理できる', async ({ page, browserName }) => {
     // Firefox対応: 記事データの読み込み完了を待つ
-    await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: process.env.CI ? 20000 : 10000,
-      state: 'visible' 
+    await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
+      timeout: process.env.CI ? 20000 : 10000
     });
     
     // ネットワーク待機（Firefoxも含めて統一）
@@ -232,9 +222,8 @@ test.describe('ソースフィルタリング機能', () => {
     const _filterArea = page.locator('[data-testid="filter-area"]');
     
     // 記事カードが表示されるまで待つ
-    await page.waitForSelector('[data-testid="article-card"]', { 
-      timeout: process.env.CI ? 20000 : 10000,
-      state: 'visible' 
+    await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
+      timeout: process.env.CI ? 20000 : 10000
     });
     
     // 海外ソースカテゴリを展開
@@ -269,50 +258,28 @@ test.describe('ソースフィルタリング機能', () => {
     expect(checkboxCount).toBeGreaterThanOrEqual(3);
     
     // 最初の3つのソースの選択を解除
+    // 注: data-testidのIDと実際のURLパラメータのIDが異なるため、URL差分から実IDを取得する必要がある
     const sourcesToDeselect: string[] = [];
     for (let i = 0; i < 3; i++) {
       const sourceCheckbox = sourceCheckboxes.nth(i);
-      // チェックボックスのvalue属性から実際のソースIDを取得
       const checkbox = sourceCheckbox.locator('button[role="checkbox"]');
-      // チェックボックスの親要素やinput要素からvalue属性を探す
-      // 多くの場合、実際のIDはinput要素のvalue属性かdata属性に格納されている
-      const inputElement = sourceCheckbox.locator('input[type="checkbox"]').first();
-      let sourceId = '';
       
-      // まずinput要素のvalue属性を試す
-      const inputCount = await inputElement.count();
-      if (inputCount > 0) {
-        sourceId = await inputElement.getAttribute('value') || '';
-      }
+      // 現在選択されているソースを事前に記録
+      const urlBefore = page.url();
+      const urlParamsBefore = new URLSearchParams(new URL(urlBefore).search);
+      const sourcesBefore = urlParamsBefore.get('sources')?.split(',') || [];
       
-      // value属性が取得できない場合は、data-value属性を試す
-      if (!sourceId) {
-        sourceId = await sourceCheckbox.getAttribute('data-value') || '';
-      }
+      // チェックボックスをクリック
+      await checkbox.click();
+      await page.waitForTimeout(500);
       
-      // それでも取得できない場合は、現在のチェック状態を確認してからクリック
-      if (!sourceId) {
-        // 現在選択されているソースを事前に記録
-        const urlBefore = page.url();
-        const urlParamsBefore = new URLSearchParams(new URL(urlBefore).search);
-        const sourcesBefore = urlParamsBefore.get('sources')?.split(',') || [];
-        
-        // チェックボックスをクリック
-        await checkbox.click();
-        await page.waitForTimeout(500);
-        
-        // URL変更後のソースを取得
-        const urlAfter = page.url();
-        const urlParamsAfter = new URLSearchParams(new URL(urlAfter).search);
-        const sourcesAfter = urlParamsAfter.get('sources')?.split(',') || [];
-        
-        // 差分からソースIDを特定
-        sourceId = sourcesBefore.find(id => !sourcesAfter.includes(id)) || '';
-      } else {
-        // ソースIDが取得できた場合は通常通りクリック
-        await checkbox.click();
-        await page.waitForTimeout(500);
-      }
+      // URL変更後のソースを取得
+      const urlAfter = page.url();
+      const urlParamsAfter = new URLSearchParams(new URL(urlAfter).search);
+      const sourcesAfter = urlParamsAfter.get('sources')?.split(',') || [];
+      
+      // 差分からソースIDを特定
+      const sourceId = sourcesBefore.find(id => !sourcesAfter.includes(id)) || '';
       
       if (sourceId) {
         sourcesToDeselect.push(sourceId);
