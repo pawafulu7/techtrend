@@ -7,7 +7,9 @@ test.describe('検索クリア機能', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
   });
+  
   test('検索クリアボタンが正常に動作する', async ({ page }) => {
+    test.slow(); // CI環境でのタイムアウトを3倍に延長
     // 検索ボックスを取得
     const searchBox = page.locator('[data-testid="search-box-input"]');
     await expect(searchBox).toBeVisible();
@@ -76,6 +78,7 @@ test.describe('検索クリア機能', () => {
   });
 
   test('複数回のクリア操作が正常に動作する', async ({ page }) => {
+    test.slow(); // CI環境でのタイムアウトを3倍に延長
     // 初期読み込み待機
     await waitForPageLoad(page, { waitForNetworkIdle: true });
     

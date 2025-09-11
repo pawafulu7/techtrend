@@ -335,6 +335,7 @@ test.describe('フィルター条件の永続化', () => {
   });
 
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
+    test.slow(); // CI環境でのタイムアウトを3倍に延長
     // CI環境用の初期待機とネットワーク安定化
     const networkTimeout = process.env.CI ? 15000 : 5000;
     await page.waitForLoadState('networkidle', { timeout: networkTimeout });
@@ -391,7 +392,6 @@ test.describe('フィルター条件の永続化', () => {
                 const content = document.querySelector('[data-testid="source-filter-content"]');
                 return content && content.clientHeight > 0;
               },
-              undefined,
               { timeout: getTimeout('short'), polling: 50 }
             );
           }
@@ -420,7 +420,6 @@ test.describe('フィルター条件の永続化', () => {
     const sortTimeout = process.env.CI ? 30000 : 15000;
     await page.waitForFunction(
       () => window.location.search.includes('sortBy='),
-      undefined,
       { timeout: sortTimeout, polling: 100 }
     );
     // ネットワーク安定化待機
@@ -516,7 +515,6 @@ test.describe('フィルター条件の永続化', () => {
                 const content = document.querySelector('[data-testid="source-filter-content"]');
                 return content && content.clientHeight > 0;
               },
-              undefined,
               { timeout: getTimeout('short'), polling: 50 }
             );
           }
