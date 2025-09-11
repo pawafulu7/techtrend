@@ -129,8 +129,7 @@ test.describe('カテゴリーエラー修正のテスト', () => {
     const categoryTriggers = page.locator('[role="button"]:has(.text-sm.font-medium), .collapsible-trigger:has(.text-sm.font-medium)');
     const triggerCount = await categoryTriggers.count();
     
-    // カテゴリーが少なくとも1つ以上あることを確認
-    expect(triggerCount).toBeGreaterThanOrEqual(0);
+    // 期待値による固定待機は行わず、直後の if/else で両ケースを検証
 
     // カテゴリーセクションがある場合のみテスト
     if (triggerCount > 0) {
