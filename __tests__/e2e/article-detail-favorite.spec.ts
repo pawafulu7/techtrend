@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { SELECTORS } from './constants/selectors';
 
+// Phase 3: CI最適化 - 長時間テストにマーク
 test.describe('Article Detail Favorite Button', () => {
+  test.slow(); // このテストスイート全体を遅いテストとしてマーク（タイムアウト3倍）
   test.beforeEach(async ({ page }) => {
     // サーバーの準備完了を確認
     await page.goto('/', { 

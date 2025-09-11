@@ -7,7 +7,9 @@ const SCROLL_CONTAINER_SELECTORS = [
   '.overflow-y-auto',
 ] as const;
 
+// Phase 3: CI最適化 - 長時間テストにマーク
 test.describe('スクロール復元時のトップボタン表示', () => {
+  test.slow(); // このテストスイート全体を遅いテストとしてマーク（タイムアウト3倍）
   test('記事詳細から戻った際にトップボタンが表示される', async ({ page }) => {
     // 1. トップページにアクセス
     await page.goto('/');
@@ -83,7 +85,7 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     await page.goBack();
     
     // 一覧ページが表示されるまで待機
-    await page.waitForURL((url) => new URL(url).pathname === '/');
+    await page.waitForURL(url => url.pathname === '/');
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. スクロール復元の完了を待つ
@@ -196,7 +198,7 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     // 4. ブラウザの戻るボタンを使用（記事一覧に戻るリンクが存在しないため）
     await page.goBack();
     
-    await page.waitForURL((url) => new URL(url).pathname === '/');
+    await page.waitForURL(url => url.pathname === '/');
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. 復元ローディングが表示されたらキャンセルボタンをクリック

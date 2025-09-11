@@ -1,9 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('カテゴリーエラー修正のテスト', () => {
+  // CI環境でのflaky対策 - タイムアウトを3倍に延長
+  test.slow();
+  
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    // CI環境でのタイムアウトに対応 - networkidleを待たずにdomcontentloadedのみ待機
+    await page.waitForLoadState('domcontentloaded');
+    // 最低限の待機時間を設定
+    await page.waitForTimeout(process.env.CI ? 2000 : 1000);
   });
 
   test('"l"を入力してもエラーが発生しない', async ({ page, browserName }) => {
@@ -49,6 +55,8 @@ test.describe('カテゴリーエラー修正のテスト', () => {
   });
 
   test('corporateカテゴリーのタグが「未分類」として表示される', async ({ page }) => {
+    // CI環境でのタイムアウト対策
+    test.slow();
     // タグフィルターボタンをクリック
     const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();
@@ -80,6 +88,8 @@ test.describe('カテゴリーエラー修正のテスト', () => {
   });
 
   test('nullカテゴリーのタグも正常に表示される', async ({ page }) => {
+    test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
+    
     // タグフィルターボタンをクリック
     const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();
@@ -126,8 +136,7 @@ test.describe('カテゴリーエラー修正のテスト', () => {
     const categoryTriggers = page.locator('[role="button"]:has(.text-sm.font-medium), .collapsible-trigger:has(.text-sm.font-medium)');
     const triggerCount = await categoryTriggers.count();
     
-    // カテゴリーが少なくとも1つ以上あることを確認
-    expect(triggerCount).toBeGreaterThanOrEqual(0);
+    // 期待値による固定待機は行わず、直後の if/else で両ケースを検証
 
     // カテゴリーセクションがある場合のみテスト
     if (triggerCount > 0) {

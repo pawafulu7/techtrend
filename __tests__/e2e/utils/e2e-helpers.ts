@@ -494,8 +494,45 @@ export async function fillPasswordChangeForm(
   page: Page, 
   passwords: { current: string; new: string; confirm: string }
 ) {
-  // パスワード変更セクションが表示されるまで待機
-  const passwordSection = page.locator('form:has-text("パスワード変更"), section:has-text("パスワード変更")').first();
+  // パスワード変更セクションが表示されるまで待機（より広範なセレクタを使用）
+  const passwordSectionSelectors = [
+    'form:has-text("パスワード変更")',
+    'section:has-text("パスワード変更")',
+    'div:has-text("パスワード変更"):has(input[type="password"])',
+    '[data-testid="password-change-form"]',
+    'form[id*="password"]',
+    'form[name*="password"]'
+  ];
+  
+  let passwordSection = null;
+  for (const selector of passwordSectionSelectors) {
+    try {
+      const element = page.locator(selector).first();
+      const count = await element.count();
+      if (count > 0) {
+        passwordSection = element;
+        break;
+      }
+    } catch {
+      // セレクタが無効な場合は次を試す
+      continue;
+    }
+  }
+  
+  if (!passwordSection) {
+    // フォームが見つからない場合は、パスワード入力欄を含む最も近い親要素を探す
+    const passwordInput = page.locator('input[type="password"]').first();
+    const inputCount = await passwordInput.count();
+    if (inputCount > 0) {
+      // パスワード入力欄を含む親フォームまたはセクションを取得
+      passwordSection = page.locator('form:has(input[type="password"]), section:has(input[type="password"])').first();
+    }
+  }
+  
+  if (!passwordSection) {
+    throw new Error('Password change section not found');
+  }
+  
   await passwordSection.waitFor({ state: 'visible', timeout: 10000 });
   
   // Enhanced priority chain for password inputs with precise targeting

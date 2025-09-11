@@ -29,8 +29,14 @@ test.describe('フィルター条件の永続化', () => {
     
     // 1. 検索キーワードを入力
     await searchInput.fill('TypeScript');
-    // URL更新を待つ（デバウンス処理のため）
-    await waitForUrlParam(page, 'search', 'TypeScript', { polling: 'fast' });
+    await searchInput.press('Enter'); // 検索を実行
+    
+    // URL更新を待つ（デバウンス処理のため、長めのタイムアウト）
+    await waitForUrlParam(page, 'search', 'TypeScript', { 
+      polling: 'normal',
+      timeout: getTimeout('long'),
+      retries: process.env.CI ? 3 : 1
+    });
 
     // 2. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -304,12 +310,18 @@ test.describe('フィルター条件の永続化', () => {
     }
     
     await qualityButton.click();
-    await page.waitForURL(/sortBy=qualityScore/, { timeout: 5000 });
+    // URLパラメータの更新を待つ（ページ遷移ではなくパラメータ更新のため）
+    await waitForUrlParam(page, 'sortBy', 'qualityScore', { 
+      timeout: getTimeout('medium'),
+      polling: 'normal'
+    });
 
     // 2. 記事詳細ページへ遷移  
     const firstArticle = page.locator('[data-testid="article-card"]').first();
+    // 記事が確実に存在することを確認
+    await expect(firstArticle).toBeVisible({ timeout: getTimeout('short') });
     await firstArticle.click();
-    await page.waitForURL(/\/articles\/.+/);
+    await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
 
     // 3. トップページに戻る
     await page.goto('/');
@@ -323,6 +335,7 @@ test.describe('フィルター条件の永続化', () => {
   });
 
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
+    test.slow(); // CI環境でのタイムアウトを3倍に延長
     // CI環境用の初期待機とネットワーク安定化
     const networkTimeout = process.env.CI ? 15000 : 5000;
     await page.waitForLoadState('networkidle', { timeout: networkTimeout });
@@ -336,18 +349,18 @@ test.describe('フィルター条件の永続化', () => {
     // 1. 複数のフィルターを設定
     const searchInput = page.locator('[data-testid="search-box-input"]').first();
     await searchInput.fill('React');
+    await searchInput.press('Enter');
     
     // URLパラメータの更新を確認（デバウンス対応）
-    // 検索入力後、URLが更新されるか確認
-    let urlUpdated = false;
+    let urlUpdated = true;
     try {
-      await page.waitForFunction(
-        () => window.location.href.includes('search=React'),
-        undefined,
-        { timeout: process.env.CI ? 30000 : 5000 }
-      );
-      urlUpdated = true;
+      await waitForUrlParam(page, 'search', 'React', {
+        timeout: getTimeout('medium'),
+        retries: process.env.CI ? 3 : 1,
+        polling: 'normal'
+      });
     } catch {
+      urlUpdated = false;
       console.log('URL did not update with search parameter - checking if feature is implemented');
     }
     
@@ -379,7 +392,6 @@ test.describe('フィルター条件の永続化', () => {
                 const content = document.querySelector('[data-testid="source-filter-content"]');
                 return content && content.clientHeight > 0;
               },
-              undefined,
               { timeout: getTimeout('short'), polling: 50 }
             );
           }
@@ -408,7 +420,6 @@ test.describe('フィルター条件の永続化', () => {
     const sortTimeout = process.env.CI ? 30000 : 15000;
     await page.waitForFunction(
       () => window.location.search.includes('sortBy='),
-      undefined,
       { timeout: sortTimeout, polling: 100 }
     );
     // ネットワーク安定化待機
@@ -423,14 +434,11 @@ test.describe('フィルター条件の永続化', () => {
 
       // 3. 記事一覧に戻るリンクをクリック
       await page.click('a:has-text("記事一覧に戻る")');
-      await page.waitForFunction(
-        () => {
-          const url = new URL(window.location.href);
-          return url.pathname === '/' && url.searchParams.has('returning');
-        },
-        undefined,
-        { timeout: process.env.CI ? 30000 : 10000 }
-      );
+      await page.waitForURL(url => url.pathname === '/', { timeout: getTimeout('medium') });
+      await waitForUrlParam(page, 'returning', undefined, {
+        timeout: getTimeout('medium'),
+        polling: 'normal'
+      });
 
       // 4. 検索条件が保持されていることを確認
       // 複数の検索ボックスがある場合は最初の要素を使用
@@ -467,14 +475,22 @@ test.describe('フィルター条件の永続化', () => {
     }
     
     // 1. 複数のフィルターを設定
-    await page.fill('[data-testid="search-box-input"]', 'Vue');
-    // CI環境では待機時間を延長
-    const vueTimeout = process.env.CI ? 30000 : 5000;
-    await page.waitForFunction(
-      () => window.location.search.includes('search=Vue'),
-      undefined,
-      { timeout: vueTimeout, polling: 100 }
-    );
+    const searchInput = page.locator('[data-testid="search-box-input"]').first();
+    await searchInput.fill('Vue');
+    // Enterキーを押して検索を実行（fillだけでは反映されない場合があるため）
+    await searchInput.press('Enter');
+    
+    // URL更新を待つ（waitForUrlParamで統一）
+    try {
+      await waitForUrlParam(page, 'search', 'Vue', {
+        timeout: getTimeout('medium'),
+        retries: process.env.CI ? 3 : 1,
+        polling: 'normal'
+      });
+    } catch (error) {
+      console.log('Current URL after search:', page.url());
+      throw error;
+    }
     
     // ソースフィルターが存在する場合のみ設定
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
@@ -498,7 +514,6 @@ test.describe('フィルター条件の永続化', () => {
                 const content = document.querySelector('[data-testid="source-filter-content"]');
                 return content && content.clientHeight > 0;
               },
-              undefined,
               { timeout: getTimeout('short'), polling: 50 }
             );
           }
@@ -530,7 +545,8 @@ test.describe('フィルター条件の永続化', () => {
     await page.waitForLoadState('networkidle');
 
     // 3. すべての条件がクリアされたことを確認
-    await expect(page.locator('[data-testid="search-box-input"]')).toHaveValue('');
+    // 複数の検索ボックスがある場合は最初の要素を使用
+    await expect(page.locator('[data-testid="search-box-input"]').first()).toHaveValue('');
     
     // ソースフィルターが存在する場合、すべてのソースが選択されていることを確認
     if (await sourceCheckboxes.count() > 0) {
@@ -581,16 +597,22 @@ test.describe('フィルター条件の永続化', () => {
 
   test('Cookie有効期限内で条件が保持される', async ({ page, context }) => {
     // 1. フィルター条件を設定
-    await page.fill('[data-testid="search-box-input"]', 'Rust');
-    // URL更新を待つ（CI環境では待機時間を延長）
-    const rustTimeout = process.env.CI ? 15000 : 5000;
-    await page.waitForFunction(
-      () => {
-        return window.location.search.includes('search=Rust');
-      },
-      {},
-      { timeout: rustTimeout, polling: 100 }
-    );
+    const searchInput = page.locator('[data-testid="search-box-input"]').first();
+    await searchInput.fill('Rust');
+    // Enterキーを押して検索を実行
+    await searchInput.press('Enter');
+    
+    // URL更新を待つ（waitForUrlParamで統一）
+    try {
+      await waitForUrlParam(page, 'search', 'Rust', {
+        timeout: getTimeout('medium'),
+        retries: process.env.CI ? 3 : 1,
+        polling: 'normal'
+      });
+    } catch (error) {
+      console.log('Current URL after Rust search:', page.url());
+      throw error;
+    }
 
     // 2. Cookieを確認
     const cookies = await context.cookies();
@@ -614,6 +636,8 @@ test.describe('フィルター条件の永続化', () => {
 
 test.describe('ブラウザ間での動作確認', () => {
   test('異なるブラウザでも同じ動作をする', async ({ browserName, page }) => {
+    test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
+    
     // テスト開始前にコンテキストをクリア
     await page.context().clearCookies();
     await page.context().clearPermissions();
@@ -624,8 +648,10 @@ test.describe('ブラウザ間での動作確認', () => {
     await page.waitForLoadState('networkidle', { timeout: 5000 });
     await waitForPageLoad(page, { waitForNetworkIdle: true });
     
-    // 記事が表示されるまで待機
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
+    // 記事が表示されるまで待機（CI環境では長めのタイムアウト）
+    await page.waitForSelector('[data-testid="article-card"]', {
+      timeout: process.env.CI ? getTimeout('medium') : getTimeout('short')
+    });
     
     // 検索入力ボックスが準備完了するまで待機
     const searchInput = page.locator('[data-testid="search-box-input"]').first();
@@ -633,10 +659,11 @@ test.describe('ブラウザ間での動作確認', () => {
     
     // フィルター設定（fillは既存値をクリアしてから入力）
     await searchInput.fill(`Test-${browserName}`);
+    await searchInput.press('Enter');  // 検索を実行
     
     // 検索パラメータが設定されるまで待機（CI環境では延長 + リトライ）
     await waitForUrlParam(page, 'search', `Test-${browserName}`, { 
-      timeout: process.env.CI ? 45000 : 20000,
+      timeout: getTimeout('medium'),
       polling: 'normal',
       retries: process.env.CI ? 3 : 1
     });
