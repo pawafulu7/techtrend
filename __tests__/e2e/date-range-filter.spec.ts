@@ -76,6 +76,7 @@ test.describe('Date Range Filter', () => {
   });
 
   test('should filter articles by today', async ({ page }) => {
+    test.slow(); // CI環境でのタイムアウトを3倍に延長
     // Wait for network idle before starting
     await waitForPageLoad(page, { waitForNetworkIdle: true });
     

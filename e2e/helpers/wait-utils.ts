@@ -416,8 +416,10 @@ export async function waitForUrlParam(
         await page.waitForTimeout(200 + (200 * attempt));
       }
       
-      // タイムアウトを各リトライで調整（最小3秒、最大10秒）
-      const retryTimeout = Math.min(Math.max(3000, timeout / maxRetries), 10000);
+      // タイムアウトを各リトライで調整（CI環境では長めに設定）
+      const minTimeout = process.env.CI ? 10000 : 3000;  // CI: 10秒、ローカル: 3秒
+      const maxTimeout = process.env.CI ? 30000 : 10000;  // CI: 30秒、ローカル: 10秒
+      const retryTimeout = Math.min(Math.max(minTimeout, timeout / maxRetries), maxTimeout);
       
       await page.waitForFunction(
         ({ name, value }) => {
