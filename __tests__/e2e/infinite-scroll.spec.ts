@@ -25,9 +25,8 @@ test.describe('Infinite Scroll E2E Tests', () => {
     
     // どちらかが表示されていることを確認
     const triggerOrEnd = await Promise.race([
-      trigger.isVisible().then(() => 'trigger'),
-      endMessage.isVisible().then(() => 'end'),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Neither element found')), 5000))
+      trigger.waitFor({ state: 'visible', timeout: 5000 }).then(() => 'trigger'),
+      endMessage.waitFor({ state: 'visible', timeout: 5000 }).then(() => 'end'),
     ]).catch(() => null);
     
     expect(triggerOrEnd).toBeTruthy();
@@ -43,7 +42,8 @@ test.describe('Infinite Scroll E2E Tests', () => {
     const endMessage = page.getByText('すべての記事を読み込みました');
     
     // トリガーが存在するか確認
-    const hasTrigger = await trigger.isVisible().catch(() => false);
+    const hasTrigger = await trigger.waitFor({ state: 'visible', timeout: 3000 })
+      .then(() => true).catch(() => false);
     
     if (hasTrigger) {
       // トリガーが見えるまでスクロール
@@ -59,7 +59,8 @@ test.describe('Infinite Scroll E2E Tests', () => {
       // 記事数が増加したことを確認
       const updatedArticles = await page.locator('[data-testid="article-card"]').all();
       expect(updatedArticles.length).toBeGreaterThan(initialCount);
-    } else if (await endMessage.isVisible().catch(() => false)) {
+    } else if (await endMessage.waitFor({ state: 'visible', timeout: 3000 })
+      .then(() => true).catch(() => false)) {
       // すべての記事が既に読み込まれている場合はスキップ
       console.log('All articles already loaded, skipping scroll test');
       expect(true).toBe(true); // テストをパスとする
@@ -74,7 +75,8 @@ test.describe('Infinite Scroll E2E Tests', () => {
     const endMessage = page.getByText('すべての記事を読み込みました');
     
     // トリガーが存在する場合のみテスト実行
-    const hasTrigger = await trigger.isVisible().catch(() => false);
+    const hasTrigger = await trigger.waitFor({ state: 'visible', timeout: 3000 })
+      .then(() => true).catch(() => false);
     
     if (hasTrigger) {
       // 高速でトリガーまでスクロールして、ローディング状態をキャッチ
@@ -92,7 +94,8 @@ test.describe('Infinite Scroll E2E Tests', () => {
       
       // ローディングまたは新記事読み込みのいずれかが成功していればOK
       expect(['loading', 'loaded']).toContain(result);
-    } else if (await endMessage.isVisible().catch(() => false)) {
+    } else if (await endMessage.waitFor({ state: 'visible', timeout: 3000 })
+      .then(() => true).catch(() => false)) {
       // すべての記事が読み込み済みの場合はスキップ
       console.log('All articles already loaded, skipping loading indicator test');
       expect(true).toBe(true);
@@ -118,8 +121,10 @@ test.describe('Infinite Scroll E2E Tests', () => {
     const endMessage = page.getByText('すべての記事を読み込みました');
     
     // どちらかが存在するか確認
-    const hasTrigger = await trigger.isVisible().catch(() => false);
-    const hasEndMessage = await endMessage.isVisible().catch(() => false);
+    const hasTrigger = await trigger.waitFor({ state: 'visible', timeout: 3000 })
+      .then(() => true).catch(() => false);
+    const hasEndMessage = await endMessage.waitFor({ state: 'visible', timeout: 3000 })
+      .then(() => true).catch(() => false);
     
     if (hasTrigger) {
       // トリガーが存在する場合、スクロールして追加記事を読み込む
@@ -156,12 +161,14 @@ test.describe('Infinite Scroll E2E Tests', () => {
       const trigger = page.locator('[data-testid="infinite-scroll-trigger"]');
       const endMessage = page.getByText('すべての記事を読み込みました');
       
-      if (await endMessage.isVisible()) {
+      if (await endMessage.waitFor({ state: 'visible', timeout: 1000 })
+        .then(() => true).catch(() => false)) {
         endMessageFound = true;
         break;
       }
       
-      if (await trigger.isVisible()) {
+      if (await trigger.waitFor({ state: 'visible', timeout: 1000 })
+        .then(() => true).catch(() => false)) {
         await trigger.scrollIntoViewIfNeeded();
         // 新しいコンテンツがロードされるまで待機（CI環境対応）
         await page.waitForLoadState('networkidle', { timeout: 10000 });
@@ -183,10 +190,9 @@ test.describe('Infinite Scroll E2E Tests', () => {
     const endMessage = page.getByText('すべての記事を読み込みました');
     
     const triggerOrEnd = await Promise.race([
-      trigger.isVisible().then(() => true),
-      endMessage.isVisible().then(() => true),
-      new Promise((resolve) => setTimeout(() => resolve(false), 5000))
-    ]);
+      trigger.waitFor({ state: 'visible', timeout: 5000 }).then(() => true),
+      endMessage.waitFor({ state: 'visible', timeout: 5000 }).then(() => true),
+    ]).catch(() => false);
     
     expect(triggerOrEnd).toBe(true);
   });

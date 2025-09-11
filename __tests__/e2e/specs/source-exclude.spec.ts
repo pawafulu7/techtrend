@@ -246,30 +246,28 @@ test.describe('ソースフィルタリング機能', () => {
     expect(checkboxCount).toBeGreaterThanOrEqual(3);
     
     // 最初の3つのソースの選択を解除
-    const sourcesToDeselect = [];
+    const sourcesToDeselect: string[] = [];
     for (let i = 0; i < 3; i++) {
       const sourceCheckbox = sourceCheckboxes.nth(i);
-      const sourceName = await sourceCheckbox.locator('label').textContent();
-      sourcesToDeselect.push(sourceName);
-      await sourceCheckbox.click();
+      // testidからIDを抽出
+      const testId = await sourceCheckbox.getAttribute('data-testid'); // e.g. "source-checkbox-devto"
+      const sourceId = testId?.replace(/^source-checkbox-/, '') ?? '';
+      sourcesToDeselect.push(sourceId);
+      // 直接 checkbox role をクリック
+      await sourceCheckbox.locator('button[role="checkbox"]').click();
     }
     
-    // URLパラメータが更新されることを確認（CI環境対応）
-    await page.waitForFunction(
-      () => window.location.search.includes('sources='),
-      { timeout: process.env.CI ? 15000 : 5000 }
-    );
+    // URLに sources= の非空値が入るまで待機（変更が反映されたことを保証）
+    await expect(page).toHaveURL(/[\?&]sources=[^&]+/, { timeout: process.env.CI ? 15000 : 5000 });
     const currentUrl = page.url();
-    expect(currentUrl).toContain('sources=');
     
     // URLパラメータを解析して選択解除したソースが含まれないことを確認
     const urlParams = new URLSearchParams(new URL(currentUrl).search);
     const selectedSources = urlParams.get('sources')?.split(',') || [];
     
-    for (const source of sourcesToDeselect) {
-      if (source) {
-        // ソース名ではなくIDで確認する方が確実
-        expect(selectedSources).not.toContain(source.trim());
+    for (const sourceId of sourcesToDeselect) {
+      if (sourceId) {
+        expect(selectedSources).not.toContain(sourceId);
       }
     }
     
@@ -280,7 +278,7 @@ test.describe('ソースフィルタリング機能', () => {
     
     // 選択を元に戻す
     for (let i = 0; i < 3; i++) {
-      await sourceCheckboxes.nth(i).click();
+      await sourceCheckboxes.nth(i).locator('button[role="checkbox"]').click();
     }
     
     // すべてのソースが再度選択されたことを確認
