@@ -66,8 +66,33 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     await waitForPageLoad(page);
     
-    // アカウントタブを開く
-    const accountTabOpened = await openAccountTab(page);
+    // アカウントタブを直接クリック（既にプロフィールページにいるため）
+    let accountTabOpened = false;
+    const accountTabSelectors = [
+      'button[value="account"]',
+      '[role="tab"][value="account"]',
+      'button[role="tab"][value="account"]',
+      'button:has-text("アカウント")',
+      '[role="tab"]:has-text("アカウント")',
+      '[data-testid="account-tab"]'
+    ];
+    
+    for (const selector of accountTabSelectors) {
+      try {
+        const tab = page.locator(selector).first();
+        if (await tab.count() > 0) {
+          await tab.scrollIntoViewIfNeeded();
+          await tab.waitFor({ state: 'visible', timeout: 2000 });
+          await tab.click();
+          await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
+          accountTabOpened = true;
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    
     if (!accountTabOpened) {
       // アカウントタブが見つからない場合、パスワード変更セクションが既に表示されているか確認
       const passwordSection = page.locator(':has-text("パスワード変更")');
@@ -326,8 +351,33 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     await waitForPageLoad(page);
     
-    // アカウントタブを開く
-    const accountTabOpened = await openAccountTab(page);
+    // アカウントタブを直接クリック（既にプロフィールページにいるため）
+    let accountTabOpened = false;
+    const accountTabSelectors = [
+      'button[value="account"]',
+      '[role="tab"][value="account"]',
+      'button[role="tab"][value="account"]',
+      'button:has-text("アカウント")',
+      '[role="tab"]:has-text("アカウント")',
+      '[data-testid="account-tab"]'
+    ];
+    
+    for (const selector of accountTabSelectors) {
+      try {
+        const tab = page.locator(selector).first();
+        if (await tab.count() > 0) {
+          await tab.scrollIntoViewIfNeeded();
+          await tab.waitFor({ state: 'visible', timeout: 2000 });
+          await tab.click();
+          await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
+          accountTabOpened = true;
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    
     if (!accountTabOpened) {
       // アカウントタブが見つからない場合、パスワード変更セクションが既に表示されているか確認
       const passwordSection = page.locator(':has-text("パスワード変更")');
@@ -388,8 +438,33 @@ test.describe.serial('Password Change Feature - Improved', () => {
     // ページが読み込まれるまで待機
     await page.waitForSelector('h1:has-text("プロフィール設定")', { timeout: 10000 });
     
-    // アカウントタブを開く
-    const accountTabOpened = await openAccountTab(page);
+    // アカウントタブを直接クリック（既にプロフィールページにいるため）
+    let accountTabOpened = false;
+    const accountTabSelectors = [
+      'button[value="account"]',
+      '[role="tab"][value="account"]',
+      'button[role="tab"][value="account"]',
+      'button:has-text("アカウント")',
+      '[role="tab"]:has-text("アカウント")',
+      '[data-testid="account-tab"]'
+    ];
+    
+    for (const selector of accountTabSelectors) {
+      try {
+        const tab = page.locator(selector).first();
+        if (await tab.count() > 0) {
+          await tab.scrollIntoViewIfNeeded();
+          await tab.waitFor({ state: 'visible', timeout: 2000 });
+          await tab.click();
+          await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
+          accountTabOpened = true;
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    
     if (!accountTabOpened) {
       throw new Error('Could not open account tab');
     }
