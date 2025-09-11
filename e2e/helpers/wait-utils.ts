@@ -405,11 +405,19 @@ export async function waitForUrlParam(
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
+      // ページが閉じられていないかチェック
+      if (page.isClosed()) {
+        throw new Error('Page has been closed');
+      }
+      
       // CI環境でもリトライ前の待機を短縮
       if (attempt > 0) {
-        // 線形バックオフ（500ms, 1000ms, 1500ms...）に変更
-        await page.waitForTimeout(500 + (500 * attempt));
+        // 線形バックオフを更に短縮（200ms, 400ms, 600ms...）
+        await page.waitForTimeout(200 + (200 * attempt));
       }
+      
+      // タイムアウトを各リトライで調整（最小3秒、最大10秒）
+      const retryTimeout = Math.min(Math.max(3000, timeout / maxRetries), 10000);
       
       await page.waitForFunction(
         ({ name, value }) => {
@@ -421,7 +429,7 @@ export async function waitForUrlParam(
           return param === value;
         },
         { name: paramName, value: paramValue },
-        { timeout: Math.max(5000, timeout / maxRetries), polling }
+        { timeout: retryTimeout, polling }
       );
       
       // 成功したら終了
@@ -429,11 +437,19 @@ export async function waitForUrlParam(
     } catch (error) {
       lastError = error as Error;
       
+      // ページが閉じられた場合は即座に終了
+      if (page.isClosed() || (error as Error).message.includes('closed')) {
+        throw error;
+      }
+      
       // 最後のリトライでなければ続行
       if (attempt < maxRetries - 1) {
-        // 追加の待機時間も短縮（最大2秒）
-        const backoffTime = Math.min(500 * (attempt + 1), 2000);
-        await page.waitForTimeout(backoffTime);
+        // 追加の待機時間も短縮（最大1秒）
+        const backoffTime = Math.min(200 * (attempt + 1), 1000);
+        // ページが閉じられていないかチェックしてから待機
+        if (!page.isClosed()) {
+          await page.waitForTimeout(backoffTime);
+        }
         continue;
       }
     }

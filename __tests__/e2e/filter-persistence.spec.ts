@@ -467,14 +467,25 @@ test.describe('フィルター条件の永続化', () => {
     }
     
     // 1. 複数のフィルターを設定
-    await page.fill('[data-testid="search-box-input"]', 'Vue');
+    const searchInput = page.locator('[data-testid="search-box-input"]').first();
+    await searchInput.fill('Vue');
+    // Enterキーを押して検索を実行（fillだけでは反映されない場合があるため）
+    await searchInput.press('Enter');
+    
     // CI環境では待機時間を延長
-    const vueTimeout = process.env.CI ? 30000 : 5000;
-    await page.waitForFunction(
-      () => window.location.search.includes('search=Vue'),
-      undefined,
-      { timeout: vueTimeout, polling: 100 }
-    );
+    const vueTimeout = process.env.CI ? 20000 : 5000;
+    try {
+      await page.waitForFunction(
+        () => window.location.search.includes('search=Vue'),
+        undefined,
+        { timeout: vueTimeout, polling: 100 }
+      );
+    } catch (error) {
+      // タイムアウトした場合はURLを確認
+      const currentUrl = page.url();
+      console.log('Current URL after search:', currentUrl);
+      throw error;
+    }
     
     // ソースフィルターが存在する場合のみ設定
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
@@ -582,16 +593,27 @@ test.describe('フィルター条件の永続化', () => {
 
   test('Cookie有効期限内で条件が保持される', async ({ page, context }) => {
     // 1. フィルター条件を設定
-    await page.fill('[data-testid="search-box-input"]', 'Rust');
+    const searchInput = page.locator('[data-testid="search-box-input"]').first();
+    await searchInput.fill('Rust');
+    // Enterキーを押して検索を実行
+    await searchInput.press('Enter');
+    
     // URL更新を待つ（CI環境では待機時間を延長）
     const rustTimeout = process.env.CI ? 15000 : 5000;
-    await page.waitForFunction(
-      () => {
-        return window.location.search.includes('search=Rust');
-      },
-      {},
-      { timeout: rustTimeout, polling: 100 }
-    );
+    try {
+      await page.waitForFunction(
+        () => {
+          return window.location.search.includes('search=Rust');
+        },
+        {},
+        { timeout: rustTimeout, polling: 100 }
+      );
+    } catch (error) {
+      // タイムアウトした場合はURLを確認
+      const currentUrl = page.url();
+      console.log('Current URL after Rust search:', currentUrl);
+      throw error;
+    }
 
     // 2. Cookieを確認
     const cookies = await context.cookies();
