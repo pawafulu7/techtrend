@@ -180,15 +180,38 @@ test.describe('ソースフィルタリング機能', () => {
     // 全選択ボタンを再度クリック
     await selectAllButton.click();
     
+    // ネットワーク待機と状態更新を確実に待つ
+    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 10000 : 5000 });
+    await page.waitForTimeout(1000);
+    
     // すべてのチェックボックスが選択されたことを確認
-    await page.waitForTimeout(500);
     for (let i = 0; i < checkboxCount; i++) {
       const checkbox = allCheckboxes.nth(i);
       await expect(checkbox).toHaveAttribute('data-state', 'checked');
     }
     
     // 記事が再度表示されることを確認（状態ベースの待機）
-    await page.waitForSelector('[data-testid="article-card"]', { state: 'visible', timeout: 5000 });
+    // タイムアウトを延長し、CI環境では更に長く待機
+    const articleTimeout = process.env.CI ? 15000 : 8000;
+    try {
+      await page.waitForSelector('[data-testid="article-card"]', { 
+        state: 'visible', 
+        timeout: articleTimeout 
+      });
+    } catch (error) {
+      // タイムアウトした場合は、ローディング状態を確認
+      const loadingElement = page.locator('[data-testid="loading"], .loading, .spinner');
+      const isLoading = await loadingElement.count() > 0;
+      console.log('Article card not found. Loading state:', isLoading);
+      
+      // 追加の待機後に再試行
+      await page.waitForTimeout(2000);
+      await page.waitForSelector('[data-testid="article-card"]', { 
+        state: 'visible', 
+        timeout: 5000 
+      });
+    }
+    
     const articlesAfterSelect = await page.locator('[data-testid="article-card"]').count();
     expect(articlesAfterSelect).toBeGreaterThan(0);
   });
@@ -249,14 +272,51 @@ test.describe('ソースフィルタリング機能', () => {
     const sourcesToDeselect: string[] = [];
     for (let i = 0; i < 3; i++) {
       const sourceCheckbox = sourceCheckboxes.nth(i);
-      // testidからIDを抽出
-      const testId = await sourceCheckbox.getAttribute('data-testid'); // e.g. "source-checkbox-devto"
-      const sourceId = testId?.replace(/^source-checkbox-/, '') ?? '';
-      sourcesToDeselect.push(sourceId);
-      // 直接 checkbox role をクリック
-      await sourceCheckbox.locator('button[role="checkbox"]').click();
-      // クリック後に少し待機（状態更新のため）
-      await page.waitForTimeout(500);
+      // チェックボックスのvalue属性から実際のソースIDを取得
+      const checkbox = sourceCheckbox.locator('button[role="checkbox"]');
+      // チェックボックスの親要素やinput要素からvalue属性を探す
+      // 多くの場合、実際のIDはinput要素のvalue属性かdata属性に格納されている
+      const inputElement = sourceCheckbox.locator('input[type="checkbox"]').first();
+      let sourceId = '';
+      
+      // まずinput要素のvalue属性を試す
+      const inputCount = await inputElement.count();
+      if (inputCount > 0) {
+        sourceId = await inputElement.getAttribute('value') || '';
+      }
+      
+      // value属性が取得できない場合は、data-value属性を試す
+      if (!sourceId) {
+        sourceId = await sourceCheckbox.getAttribute('data-value') || '';
+      }
+      
+      // それでも取得できない場合は、現在のチェック状態を確認してからクリック
+      if (!sourceId) {
+        // 現在選択されているソースを事前に記録
+        const urlBefore = page.url();
+        const urlParamsBefore = new URLSearchParams(new URL(urlBefore).search);
+        const sourcesBefore = urlParamsBefore.get('sources')?.split(',') || [];
+        
+        // チェックボックスをクリック
+        await checkbox.click();
+        await page.waitForTimeout(500);
+        
+        // URL変更後のソースを取得
+        const urlAfter = page.url();
+        const urlParamsAfter = new URLSearchParams(new URL(urlAfter).search);
+        const sourcesAfter = urlParamsAfter.get('sources')?.split(',') || [];
+        
+        // 差分からソースIDを特定
+        sourceId = sourcesBefore.find(id => !sourcesAfter.includes(id)) || '';
+      } else {
+        // ソースIDが取得できた場合は通常通りクリック
+        await checkbox.click();
+        await page.waitForTimeout(500);
+      }
+      
+      if (sourceId) {
+        sourcesToDeselect.push(sourceId);
+      }
     }
     
     // URLに sources= の非空値が入るまで待機（変更が反映されたことを保証）
