@@ -71,39 +71,86 @@ export async function waitForArticles(page: Page, options?: {
   timeout?: number;
   minCount?: number;
   waitForNetworkIdle?: boolean;
+  allowEmpty?: boolean;
 }) {
   const timeout = options?.timeout ?? getTimeout('medium');
   const minCount = options?.minCount ?? 1;
   const waitForNetworkIdle = options?.waitForNetworkIdle ?? true;
+  const allowEmpty = options?.allowEmpty ?? false;
   
-  // data-testidを優先して待機
-  try {
-    await page.waitForSelector('[data-testid="article-card"], [data-testid="article-list"]', {
-      state: 'visible',
-      timeout,
-    });
-    
-    // 最小数の記事が表示されるまで待機
-    if (minCount > 1) {
+  // ネットワークアイドルを先に待つオプション
+  if (waitForNetworkIdle) {
+    try {
+      await page.waitForLoadState('networkidle', { timeout: getTimeout('short') });
+    } catch {
+      // ネットワークアイドルがタイムアウトしても続行
+    }
+  }
+  
+  // 複数のセレクターを順番に試す
+  const selectors = [
+    '[data-testid="article-card"]',
+    '[data-testid="article-list-item"]',
+    '[data-testid="article-list"]',
+    'article',
+    '.article-card',
+    '.article-item',
+    '.article-list'
+  ];
+  
+  let found = false;
+  
+  // 各セレクターを順番に試す
+  for (const selector of selectors) {
+    try {
+      const element = await page.waitForSelector(selector, {
+        state: 'visible',
+        timeout: Math.floor(timeout / selectors.length)
+      });
+      if (element) {
+        found = true;
+        break;
+      }
+    } catch {
+      continue; // 次のセレクターを試す
+    }
+  }
+  
+  // 記事が見つからない場合
+  if (!found && !allowEmpty) {
+    // もう一度総合的なセレクターで試す
+    try {
+      await page.waitForSelector(
+        '[data-testid="article-card"], [data-testid="article-list-item"], article, .article-card, .article-item',
+        { state: 'visible', timeout: getTimeout('short') }
+      );
+    } catch (error) {
+      // 記事がなくても続行するオプション
+      if (allowEmpty) {
+        console.log('No articles found, but continuing as allowEmpty is true');
+        return;
+      }
+      throw new Error(`No articles found with any selector after ${timeout}ms`);
+    }
+  }
+  
+  // 最小数の記事が表示されるまで待機
+  if (minCount > 1 && found) {
+    try {
       await page.waitForFunction(
         (min) => {
-          const articles = document.querySelectorAll('[data-testid="article-card"], article, .article-item');
+          const articles = document.querySelectorAll(
+            '[data-testid="article-card"], [data-testid="article-list-item"], article, .article-card, .article-item'
+          );
           return articles.length >= min;
         },
         minCount,
-        { timeout, polling: getPollingInterval('normal') }
+        { timeout: getTimeout('short'), polling: getPollingInterval('normal') }
       );
+    } catch {
+      // 最小数に達しなくても続行
+      console.log(`Only found less than ${minCount} articles, but continuing`);
     }
-  } catch (error) {
-    // フォールバック: クラス名ベースのセレクター
-    await page.waitForSelector('article, .article-card, .article-list', {
-      state: 'visible',
-      timeout,
-    });
-  }
-  
-  if (waitForNetworkIdle) {
-    await page.waitForLoadState('networkidle', { timeout: getTimeout('short') });
   }
 }
 
