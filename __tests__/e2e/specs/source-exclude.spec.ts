@@ -255,18 +255,28 @@ test.describe('ソースフィルタリング機能', () => {
       sourcesToDeselect.push(sourceId);
       // 直接 checkbox role をクリック
       await sourceCheckbox.locator('button[role="checkbox"]').click();
+      // クリック後に少し待機（状態更新のため）
+      await page.waitForTimeout(500);
     }
     
     // URLに sources= の非空値が入るまで待機（変更が反映されたことを保証）
+    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 10000 : 5000 });
     await expect(page).toHaveURL(/[\?&]sources=[^&]+/, { timeout: process.env.CI ? 15000 : 5000 });
+    
+    // URLが更新されたら再度取得
     const currentUrl = page.url();
     
     // URLパラメータを解析して選択解除したソースが含まれないことを確認
     const urlParams = new URLSearchParams(new URL(currentUrl).search);
     const selectedSources = urlParams.get('sources')?.split(',') || [];
     
+    // デバッグ用ログ
+    console.log('Deselected sources:', sourcesToDeselect);
+    console.log('Selected sources in URL:', selectedSources);
+    
     for (const sourceId of sourcesToDeselect) {
       if (sourceId) {
+        // ソースIDが正しく解除されているか確認
         expect(selectedSources).not.toContain(sourceId);
       }
     }

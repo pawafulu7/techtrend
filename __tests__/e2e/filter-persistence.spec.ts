@@ -530,7 +530,8 @@ test.describe('フィルター条件の永続化', () => {
     await page.waitForLoadState('networkidle');
 
     // 3. すべての条件がクリアされたことを確認
-    await expect(page.locator('[data-testid="search-box-input"]')).toHaveValue('');
+    // 複数の検索ボックスがある場合は最初の要素を使用
+    await expect(page.locator('[data-testid="search-box-input"]').first()).toHaveValue('');
     
     // ソースフィルターが存在する場合、すべてのソースが選択されていることを確認
     if (await sourceCheckboxes.count() > 0) {

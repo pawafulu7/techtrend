@@ -421,7 +421,7 @@ export async function waitForUrlParam(
           return param === value;
         },
         { name: paramName, value: paramValue },
-        { timeout: timeout / maxRetries, polling }
+        { timeout: Math.max(5000, timeout / maxRetries), polling }
       );
       
       // 成功したら終了
