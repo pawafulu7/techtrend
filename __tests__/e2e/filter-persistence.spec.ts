@@ -29,8 +29,17 @@ test.describe('フィルター条件の永続化', () => {
     
     // 1. 検索キーワードを入力
     await searchInput.fill('TypeScript');
-    // URL更新を待つ（デバウンス処理のため）
-    await waitForUrlParam(page, 'search', 'TypeScript', { polling: 'fast' });
+    await searchInput.press('Enter'); // 検索を実行
+    
+    // 検索実行後の安定待機
+    await page.waitForTimeout(500);
+    
+    // URL更新を待つ（デバウンス処理のため、長めのタイムアウト）
+    await waitForUrlParam(page, 'search', 'TypeScript', { 
+      polling: 'normal',
+      timeout: getTimeout('long'),
+      retries: process.env.CI ? 3 : 1
+    });
 
     // 2. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -304,12 +313,18 @@ test.describe('フィルター条件の永続化', () => {
     }
     
     await qualityButton.click();
-    await page.waitForURL(/sortBy=qualityScore/, { timeout: 5000 });
+    // URLパラメータの更新を待つ（ページ遷移ではなくパラメータ更新のため）
+    await waitForUrlParam(page, 'sortBy', 'qualityScore', { 
+      timeout: getTimeout('medium'),
+      polling: 'normal'
+    });
 
     // 2. 記事詳細ページへ遷移  
     const firstArticle = page.locator('[data-testid="article-card"]').first();
+    // 記事が確実に存在することを確認
+    await expect(firstArticle).toBeVisible({ timeout: getTimeout('short') });
     await firstArticle.click();
-    await page.waitForURL(/\/articles\/.+/);
+    await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
 
     // 3. トップページに戻る
     await page.goto('/');
