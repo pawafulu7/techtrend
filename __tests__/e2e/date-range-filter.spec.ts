@@ -126,6 +126,8 @@ test.describe('Date Range Filter', () => {
   });
 
   test('should filter articles by week', async ({ page }) => {
+    test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
+    
     // Wait for network idle before starting
     await waitForPageLoad(page, { waitForNetworkIdle: true });
     

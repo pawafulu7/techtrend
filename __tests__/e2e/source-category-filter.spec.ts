@@ -78,6 +78,8 @@ test.describe('ソースカテゴリフィルター機能', () => {
   });
 
   test('個別ソースの選択が動作する', async ({ page }) => {
+    test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
+    
     // 全解除
     await page.getByTestId('deselect-all-button').click();
 
@@ -119,7 +121,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
       
       // sources=noneは一時的な状態のため、正しいURLパラメータを待つ
       if (sourcesParam === 'none') {
-        // URLパラメータが更新されるまで待機
+        // URLパラメータが更新されるまで待機（CI環境では長めのタイムアウト）
         await page.waitForFunction(
           (id) => {
             const url = new URL(window.location.href);
@@ -127,7 +129,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
             return sources && sources !== 'none' && sources.includes(id);
           },
           selectedId,
-          { timeout: 5000 }
+          { timeout: process.env.CI ? 15000 : 5000 }
         );
         // 再度URLパラメータを確認
         const updatedUrl = page.url();

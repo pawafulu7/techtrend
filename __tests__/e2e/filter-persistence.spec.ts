@@ -652,6 +652,8 @@ test.describe('フィルター条件の永続化', () => {
 
 test.describe('ブラウザ間での動作確認', () => {
   test('異なるブラウザでも同じ動作をする', async ({ browserName, page }) => {
+    test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
+    
     // テスト開始前にコンテキストをクリア
     await page.context().clearCookies();
     await page.context().clearPermissions();

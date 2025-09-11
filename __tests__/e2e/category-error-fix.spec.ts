@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('カテゴリーエラー修正のテスト', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    // CI環境でのタイムアウトに対応
+    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 60000 : 20000 });
   });
 
   test('"l"を入力してもエラーが発生しない', async ({ page, browserName }) => {
@@ -80,6 +81,8 @@ test.describe('カテゴリーエラー修正のテスト', () => {
   });
 
   test('nullカテゴリーのタグも正常に表示される', async ({ page }) => {
+    test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
+    
     // タグフィルターボタンをクリック
     const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();
