@@ -316,6 +316,7 @@ test.describe('ソースフィルタリング機能', () => {
     // 選択を元に戻す
     for (let i = 0; i < 3; i++) {
       await sourceCheckboxes.nth(i).locator('button[role="checkbox"]').click();
+      await page.waitForTimeout(200); // 各クリックの間に少し待機
     }
     
     // すべてのソースが再度選択されたことを確認
@@ -326,6 +327,16 @@ test.describe('ソースフィルタリング機能', () => {
       },
       { timeout: 5000 }
     );
+    
+    // 記事が再表示されるまで待機（状態ベースの待機）
+    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 10000 : 5000 });
+    await page.waitForTimeout(1000); // 追加の安定待機
+    
+    // 記事が表示されることを確認
+    await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
+      timeout: process.env.CI ? 10000 : 5000
+    });
+    
     const articlesAfter = await page.locator('[data-testid="article-card"]').count();
     expect(articlesAfter).toBeGreaterThanOrEqual(articles);
   });

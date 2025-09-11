@@ -656,6 +656,7 @@ test.describe('ブラウザ間での動作確認', () => {
     
     // フィルター設定（fillは既存値をクリアしてから入力）
     await searchInput.fill(`Test-${browserName}`);
+    await searchInput.press('Enter');  // 検索を実行
     
     // 検索パラメータが設定されるまで待機（CI環境では延長 + リトライ）
     await waitForUrlParam(page, 'search', `Test-${browserName}`, { 
