@@ -34,9 +34,18 @@ test.describe('推薦機能', () => {
     // ログインしていない場合はテストをスキップ
     if (!loginSuccess || userMenuExists === 0) {
       console.log('Login failed or user menu not found, skipping recommendation toggle test');
-      // RecommendationToggleは未認証時は表示されないため、これは期待される動作
+      // RecommendationToggleは未認証時は表示されないことを確認
       const toggleButton = page.locator('[data-testid="recommendation-toggle"]');
-      await expect(toggleButton).toBeHidden();
+      const toggleCount = await toggleButton.count();
+      
+      // トグルボタンが存在しない、または非表示であることを確認
+      if (toggleCount === 0) {
+        // 要素が存在しない場合は成功
+        expect(toggleCount).toBe(0);
+      } else {
+        // 要素が存在する場合は非表示であることを確認
+        await expect(toggleButton).toBeHidden();
+      }
       return;
     }
     
@@ -59,7 +68,16 @@ test.describe('推薦機能', () => {
     if (!loginSuccess || userMenuExists === 0) {
       console.log('Login failed, testing that recommendation toggle is hidden');
       const toggleButton = page.locator('[data-testid="recommendation-toggle"]');
-      await expect(toggleButton).toBeHidden();
+      const toggleCount = await toggleButton.count();
+      
+      // トグルボタンが存在しない、または非表示であることを確認
+      if (toggleCount === 0) {
+        // 要素が存在しない場合は成功
+        expect(toggleCount).toBe(0);
+      } else {
+        // 要素が存在する場合は非表示であることを確認
+        await expect(toggleButton).toBeHidden();
+      }
       return;
     }
     

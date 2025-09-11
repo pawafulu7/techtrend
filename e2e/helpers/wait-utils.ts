@@ -397,16 +397,18 @@ export async function waitForUrlParam(
   
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
   // CI環境では更に長く待機
-  const initialWait = process.env.CI ? 2000 : 500;
+  // 初期待機時間を短縮（CI環境でも500ms）
+  const initialWait = 500;
   await page.waitForTimeout(initialWait);
   
   let lastError: Error | null = null;
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      // CI環境では各リトライ前にも待機
-      if (attempt > 0 && process.env.CI) {
-        await page.waitForTimeout(2000);
+      // CI環境でもリトライ前の待機を短縮
+      if (attempt > 0) {
+        // 線形バックオフ（500ms, 1000ms, 1500ms...）に変更
+        await page.waitForTimeout(500 + (500 * attempt));
       }
       
       await page.waitForFunction(
@@ -429,8 +431,9 @@ export async function waitForUrlParam(
       
       // 最後のリトライでなければ続行
       if (attempt < maxRetries - 1) {
-        // リトライ前に少し待機（指数バックオフ）
-        await page.waitForTimeout(1000 * Math.pow(2, attempt));
+        // 追加の待機時間も短縮（最大2秒）
+        const backoffTime = Math.min(500 * (attempt + 1), 2000);
+        await page.waitForTimeout(backoffTime);
         continue;
       }
     }
