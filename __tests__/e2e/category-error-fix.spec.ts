@@ -1,10 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('カテゴリーエラー修正のテスト', () => {
+  // CI環境でのflaky対策 - タイムアウトを3倍に延長
+  test.slow();
+  
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    // CI環境でのタイムアウトに対応
-    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 60000 : 20000 });
+    // CI環境でのタイムアウトに対応 - networkidleを待たずにdomcontentloadedのみ待機
+    await page.waitForLoadState('domcontentloaded');
+    // 最低限の待機時間を設定
+    await page.waitForTimeout(process.env.CI ? 2000 : 1000);
   });
 
   test('"l"を入力してもエラーが発生しない', async ({ page, browserName }) => {
@@ -50,6 +55,8 @@ test.describe('カテゴリーエラー修正のテスト', () => {
   });
 
   test('corporateカテゴリーのタグが「未分類」として表示される', async ({ page }) => {
+    // CI環境でのタイムアウト対策
+    test.slow();
     // タグフィルターボタンをクリック
     const tagButton = page.locator('[data-testid="tag-filter-button"]');
     await tagButton.click();

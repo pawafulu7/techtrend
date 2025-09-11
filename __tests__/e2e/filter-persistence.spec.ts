@@ -31,9 +31,6 @@ test.describe('フィルター条件の永続化', () => {
     await searchInput.fill('TypeScript');
     await searchInput.press('Enter'); // 検索を実行
     
-    // 検索実行後の安定待機
-    await page.waitForTimeout(500);
-    
     // URL更新を待つ（デバウンス処理のため、長めのタイムアウト）
     await waitForUrlParam(page, 'search', 'TypeScript', { 
       polling: 'normal',
@@ -351,18 +348,18 @@ test.describe('フィルター条件の永続化', () => {
     // 1. 複数のフィルターを設定
     const searchInput = page.locator('[data-testid="search-box-input"]').first();
     await searchInput.fill('React');
+    await searchInput.press('Enter');
     
     // URLパラメータの更新を確認（デバウンス対応）
-    // 検索入力後、URLが更新されるか確認
-    let urlUpdated = false;
+    let urlUpdated = true;
     try {
-      await page.waitForFunction(
-        () => window.location.href.includes('search=React'),
-        undefined,
-        { timeout: getTimeout('medium') }
-      );
-      urlUpdated = true;
+      await waitForUrlParam(page, 'search', 'React', {
+        timeout: getTimeout('medium'),
+        retries: process.env.CI ? 3 : 1,
+        polling: 'normal'
+      });
     } catch {
+      urlUpdated = false;
       console.log('URL did not update with search parameter - checking if feature is implemented');
     }
     
@@ -438,11 +435,9 @@ test.describe('フィルター条件の永続化', () => {
 
       // 3. 記事一覧に戻るリンクをクリック
       await page.click('a:has-text("記事一覧に戻る")');
+      await page.waitForURL((url) => new URL(url).pathname === '/', { timeout: getTimeout('medium') });
       await page.waitForFunction(
-        () => {
-          const url = new URL(window.location.href);
-          return url.pathname === '/' && url.searchParams.has('returning');
-        },
+        () => new URL(window.location.href).searchParams.has('returning'),
         undefined,
         { timeout: getTimeout('medium') }
       );
@@ -487,18 +482,15 @@ test.describe('フィルター条件の永続化', () => {
     // Enterキーを押して検索を実行（fillだけでは反映されない場合があるため）
     await searchInput.press('Enter');
     
-    // CI環境では待機時間を延長
-    const vueTimeout = process.env.CI ? 20000 : 5000;
+    // URL更新を待つ（waitForUrlParamで統一）
     try {
-      await page.waitForFunction(
-        () => window.location.search.includes('search=Vue'),
-        undefined,
-        { timeout: vueTimeout, polling: 100 }
-      );
+      await waitForUrlParam(page, 'search', 'Vue', {
+        timeout: getTimeout('medium'),
+        retries: process.env.CI ? 3 : 1,
+        polling: 'normal'
+      });
     } catch (error) {
-      // タイムアウトした場合はURLを確認
-      const currentUrl = page.url();
-      console.log('Current URL after search:', currentUrl);
+      console.log('Current URL after search:', page.url());
       throw error;
     }
     
@@ -613,20 +605,15 @@ test.describe('フィルター条件の永続化', () => {
     // Enterキーを押して検索を実行
     await searchInput.press('Enter');
     
-    // URL更新を待つ（CI環境では待機時間を延長）
-    const rustTimeout = process.env.CI ? 15000 : 5000;
+    // URL更新を待つ（waitForUrlParamで統一）
     try {
-      await page.waitForFunction(
-        () => {
-          return window.location.search.includes('search=Rust');
-        },
-        {},
-        { timeout: rustTimeout, polling: 100 }
-      );
+      await waitForUrlParam(page, 'search', 'Rust', {
+        timeout: getTimeout('medium'),
+        retries: process.env.CI ? 3 : 1,
+        polling: 'normal'
+      });
     } catch (error) {
-      // タイムアウトした場合はURLを確認
-      const currentUrl = page.url();
-      console.log('Current URL after Rust search:', currentUrl);
+      console.log('Current URL after Rust search:', page.url());
       throw error;
     }
 
@@ -664,8 +651,10 @@ test.describe('ブラウザ間での動作確認', () => {
     await page.waitForLoadState('networkidle', { timeout: 5000 });
     await waitForPageLoad(page, { waitForNetworkIdle: true });
     
-    // 記事が表示されるまで待機
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: getTimeout('short') });
+    // 記事が表示されるまで待機（CI環境では長めのタイムアウト）
+    await page.waitForSelector('[data-testid="article-card"]', {
+      timeout: process.env.CI ? getTimeout('medium') : getTimeout('short')
+    });
     
     // 検索入力ボックスが準備完了するまで待機
     const searchInput = page.locator('[data-testid="search-box-input"]').first();

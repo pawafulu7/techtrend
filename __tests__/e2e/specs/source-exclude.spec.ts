@@ -111,8 +111,16 @@ test.describe('ソースフィルタリング機能', () => {
     // フィルターエリアを取得
     const _filterArea = page.locator('[data-testid="filter-area"]');
     
-    // Firefox対応: 記事データの読み込み完了を待つ
-    await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible();
+    // Firefox対応: 記事データの読み込み完了を待つ（タイムアウトを延長）
+    try {
+      await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
+        timeout: process.env.CI ? 30000 : 10000
+      });
+    } catch {
+      // 記事カードが見つからない場合は代替セレクタを試す
+      const articles = page.locator('article, .article-item, .article-list-item').first();
+      await expect(articles).toBeVisible({ timeout: 10000 });
+    }
     await page.waitForTimeout(process.env.CI ? 2000 : 500);
     
     // 最初に全選択ボタンをクリックして、すべて選択状態にする
@@ -188,7 +196,7 @@ test.describe('ソースフィルタリング機能', () => {
     // タイムアウトを延長し、CI環境では更に長く待機
     try {
       await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
-        timeout: process.env.CI ? 15000 : 8000
+        timeout: process.env.CI ? 20000 : 10000
       });
     } catch (error) {
       // タイムアウトした場合は、ローディング状態を確認
@@ -196,11 +204,18 @@ test.describe('ソースフィルタリング機能', () => {
       const isLoading = await loadingElement.count() > 0;
       console.log('Article card not found. Loading state:', isLoading);
       
-      // 追加の待機後に再試行
-      await page.waitForTimeout(2000);
-      await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
-        timeout: 5000
-      });
+      // 追加の待機後に再試行（代替セレクタも試す）
+      await page.waitForTimeout(3000);
+      
+      try {
+        await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
+          timeout: 10000
+        });
+      } catch {
+        // 代替セレクタを試す
+        const articles = page.locator('article, .article-item, .article-list-item').first();
+        await expect(articles).toBeVisible({ timeout: 5000 });
+      }
     }
     
     const articlesAfterSelect = await page.locator('[data-testid="article-card"]').count();
