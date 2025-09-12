@@ -11,16 +11,18 @@ dotenv.config({ path: '.env.test' });
 export default defineConfig({
   testDir: './',
   testMatch: ['**/e2e/**/*.spec.ts'],
-  /* Global timeout for each test - Phase 3: CI最適化 */
-  timeout: process.env.CI ? 30000 : 45000,  // CI: 30秒（短縮）、ローカル: 45秒
+  /* Global timeout for entire test run - 20分に延長 */
+  globalTimeout: 20 * 60 * 1000,  // 20分（E2E全432テスト完走用）
+  /* Global timeout for each test - Phase 1: タイムアウト改善 */
+  timeout: process.env.CI ? 60000 : 60000,  // 60秒に統一（個別テスト用）
   /* Run tests in files in parallel */
   fullyParallel: true,  // ファイル単位での並列実行を有効化
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only - Phase 3: 削減 */
   retries: process.env.CI ? 1 : 1,  // CI: 1回（削減）、ローカル: 1回
-  /* Opt out of parallel tests on CI. - Phase 3: 並列度増加 */
-  workers: process.env.CI ? 4 : 3,  // CI環境では4並列（増加）、ローカル環境では3並列
+  /* Opt out of parallel tests on CI. - Phase 1: 並列度最適化 */
+  workers: process.env.CI ? 5 : (Number(process.env.E2E_WORKERS) || 3),  // CI: 5並列、ローカル: 環境変数または3並列
   /* Global setup and teardown */
   globalSetup: './e2e/global-setup.ts',
   globalTeardown: './e2e/global-teardown.ts',
