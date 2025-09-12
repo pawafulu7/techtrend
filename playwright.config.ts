@@ -10,7 +10,7 @@ dotenv.config({ path: '.env.test' });
  */
 export default defineConfig({
   testDir: './',
-  testMatch: ['**/e2e/**/*.spec.ts'],
+  testMatch: ['**/e2e/**/*.spec.ts', '**/__tests__/e2e/**/*.spec.ts'],
   /* Global timeout for entire test run - 20分に延長 */
   globalTimeout: 20 * 60 * 1000,  // 20分（E2E全432テスト完走用）
   /* Global timeout for each test - Phase 1: タイムアウト改善 */
