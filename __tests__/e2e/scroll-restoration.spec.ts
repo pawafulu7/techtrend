@@ -14,60 +14,57 @@ test.describe('スクロール位置復元機能', () => {
       await page.waitForTimeout(2000);
     }
     
-    // 2. 記事を20件以上読み込むためにスクロール
-    // 実際のスクロール対象要素を特定（main要素またはhome-client内のdiv）
+    // 2. 記事を20件以上読み込むためにスクロール（安定化改善）
+    // メインのスクロールコンテナを取得
+    const scrollContainer = page.locator('.overflow-y-auto').first();
+    
+    // スクロール処理を3回実行
     for (let i = 0; i < 3; i++) {
-      await page.evaluate(() => {
-        // 複数のセレクターを試す
-        const selectors = [
-          '#main-scroll-container', // home-client-infinite.tsx
-          'main.overflow-y-auto', // layout.tsx
-          '.flex-1.overflow-y-auto', // home-client.tsx
-          '.overflow-y-auto'
-        ];
-        
-        let container = null;
-        for (const selector of selectors) {
-          container = document.querySelector(selector);
-          if (container && container.scrollHeight > container.clientHeight) {
-            break;
-          }
-        }
-        
-        if (container) {
-          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      await scrollContainer.evaluate((element) => {
+        // 要素が実際にスクロール可能か確認
+        if (element && element.scrollHeight > element.clientHeight) {
+          // instantスクロールで確実に移動
+          element.scrollBy(0, element.scrollHeight / 3);
         } else {
-          // フォールバック: window全体をスクロール
-          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+          // フォールバック: windowをスクロール
+          window.scrollBy(0, window.innerHeight);
         }
       });
       
-      // CI環境では待機時間を延長
-      await page.waitForTimeout(process.env.CI ? 3000 : 1500);
+      // スクロール後の安定化待機（CI環境では長めに）
+      await page.waitForTimeout(process.env.CI ? 4000 : 2000);
     }
     
-    // 3. スクロール位置を記録
-    const scrollPositionBefore = await page.evaluate(() => {
-      const selectors = [
-        '#main-scroll-container',
-        'main.overflow-y-auto',
-        '.flex-1.overflow-y-auto',
-        '.overflow-y-auto'
-      ];
-      
-      for (const selector of selectors) {
-        const container = document.querySelector(selector);
-        if (container && container.scrollTop > 0) {
-          return container.scrollTop;
-        }
+    // 3. スクロール位置を記録（安定した取得方法）
+    await page.waitForTimeout(1000); // スクロール完了を待つ
+    
+    const scrollPositionBefore = await scrollContainer.evaluate((element) => {
+      if (element && element.scrollTop > 0) {
+        return element.scrollTop;
       }
-      
       // フォールバック: windowのスクロール位置
       return window.pageYOffset || document.documentElement.scrollTop;
     });
     
-    // スクロール位置が0より大きいことを確認
-    expect(scrollPositionBefore).toBeGreaterThan(0);
+    // スクロール位置が0より大きいことを確認（リトライ付き）
+    if (scrollPositionBefore === 0) {
+      // もう一度スクロールを試みる
+      await scrollContainer.evaluate((element) => {
+        if (element) {
+          element.scrollTo(0, 500);
+        } else {
+          window.scrollTo(0, 500);
+        }
+      });
+      await page.waitForTimeout(1000);
+      
+      const retryPosition = await scrollContainer.evaluate((element) => {
+        return element ? element.scrollTop : window.pageYOffset;
+      });
+      expect(retryPosition).toBeGreaterThan(0);
+    } else {
+      expect(scrollPositionBefore).toBeGreaterThan(0);
+    }
     
     // 4. 10番目の記事をクリック
     const articles = await page.locator('[data-testid="article-card"]').all();

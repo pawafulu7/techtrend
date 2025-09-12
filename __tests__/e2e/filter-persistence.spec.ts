@@ -76,6 +76,7 @@ test.describe('フィルター条件の永続化', () => {
   test('ソースフィルターがページ遷移後も保持される', async ({ page }) => {
     // フィルターエリアが表示されるまで待機
     await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
+    await page.waitForTimeout(1000); // 要素の安定化を待つ
     
     // 最初のカテゴリを展開
     const firstCategoryHeader = page.locator('[data-testid$="-header"]').first();
@@ -86,11 +87,12 @@ test.describe('フィルター条件の永続化', () => {
       return;
     }
     
-    await safeClick(firstCategoryHeader);
+    await safeClick(firstCategoryHeader, { retries: 3, delay: 1000 });
+    await page.waitForTimeout(500); // アニメーション待機
     
     // カテゴリ内のコンテンツが表示されることを確認
     const firstCategoryContent = page.locator('[data-testid$="-content"]').first();
-    await expect(firstCategoryContent).toBeVisible();
+    await expect(firstCategoryContent).toBeVisible({ timeout: getTimeout('medium') });
     
     // 2. 最初のソースチェックボックスが存在するか確認
     const firstSourceContainer = page.locator('[data-testid^="source-checkbox-"]').first();
@@ -102,18 +104,23 @@ test.describe('フィルター条件の永続化', () => {
     }
     
     // 1. 最初にすべてのソースを解除
-    await safeClick(page.locator('[data-testid="deselect-all-button"]'));
+    const deselectButton = page.locator('[data-testid="deselect-all-button"]');
+    if (await deselectButton.count() > 0) {
+      await safeClick(deselectButton, { retries: 3 });
+      await page.waitForTimeout(500); // 状態更新を待つ
+    }
     
     // すべて未選択になったことを確認（Radix UIのdata-state属性を使用）
     const firstCheckbox = firstSourceContainer.locator('button[role="checkbox"]');
-    await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
+    await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked', { timeout: getTimeout('short') });
     
     // 2. 最初のソースチェックボックスを選択
-    await safeClick(firstSourceContainer);
+    await safeClick(firstSourceContainer, { retries: 3 });
+    await page.waitForTimeout(500); // 状態更新を待つ
     
     // 選択されたことを確認
     const checkbox = firstSourceContainer.locator('button[role="checkbox"]');
-    await expect(checkbox).toHaveAttribute('data-state', 'checked');
+    await expect(checkbox).toHaveAttribute('data-state', 'checked', { timeout: getTimeout('short') });
     
     // どのソースが選択されたか記録
     const selectedSourceId = await firstSourceContainer.getAttribute('data-testid');

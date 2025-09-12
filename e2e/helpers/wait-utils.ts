@@ -87,69 +87,63 @@ export async function waitForArticles(page: Page, options?: {
     }
   }
   
-  // 複数のセレクターを順番に試す
-  const selectors = [
-    '[data-testid="article-card"]',
+  // 主要なセレクターに絞る（優先順位順）
+  const primarySelector = '[data-testid="article-card"]';
+  const fallbackSelectors = [
     '[data-testid="article-list-item"]',
-    '[data-testid="article-list"]',
     'article',
-    '.article-card',
-    '.article-item',
-    '.article-list'
+    '.article-card'
   ];
   
   let found = false;
   
-  // 各セレクターを順番に試す
-  for (const selector of selectors) {
-    try {
-      const element = await page.waitForSelector(selector, {
-        state: 'visible',
-        timeout: Math.floor(timeout / selectors.length)
-      });
-      if (element) {
+  // まず主要なセレクターで待機
+  try {
+    await page.waitForSelector(primarySelector, {
+      state: 'visible',
+      timeout: timeout * 0.7 // タイムアウトの70%を使用
+    });
+    found = true;
+  } catch {
+    // フォールバックセレクターを試す
+    for (const selector of fallbackSelectors) {
+      try {
+        await page.waitForSelector(selector, {
+          state: 'visible',
+          timeout: Math.floor(timeout * 0.1) // 各フォールバックに10%ずつ
+        });
         found = true;
         break;
+      } catch {
+        continue;
       }
-    } catch {
-      continue; // 次のセレクターを試す
     }
   }
   
   // 記事が見つからない場合
   if (!found && !allowEmpty) {
-    // もう一度総合的なセレクターで試す
-    try {
-      await page.waitForSelector(
-        '[data-testid="article-card"], [data-testid="article-list-item"], article, .article-card, .article-item',
-        { state: 'visible', timeout: getTimeout('short') }
-      );
-    } catch (error) {
-      // 記事がなくても続行するオプション
-      if (allowEmpty) {
-        console.log('No articles found, but continuing as allowEmpty is true');
-        return;
-      }
-      throw new Error(`No articles found with any selector after ${timeout}ms`);
-    }
+    throw new Error(`No articles found after ${timeout}ms`);
   }
   
-  // 最小数の記事が表示されるまで待機
-  if (minCount > 1 && found) {
-    try {
-      await page.waitForFunction(
-        (min) => {
-          const articles = document.querySelectorAll(
-            '[data-testid="article-card"], [data-testid="article-list-item"], article, .article-card, .article-item'
-          );
-          return articles.length >= min;
-        },
-        minCount,
-        { timeout: getTimeout('short'), polling: getPollingInterval('normal') }
-      );
-    } catch {
-      // 最小数に達しなくても続行
-      console.log(`Only found less than ${minCount} articles, but continuing`);
+  // 要素が安定するまで少し待機
+  if (found) {
+    await page.waitForTimeout(500);
+    
+    // 最小数の記事が表示されるまで待機
+    if (minCount > 1) {
+      try {
+        await page.waitForFunction(
+          (min, selector) => {
+            const articles = document.querySelectorAll(selector);
+            return articles.length >= min;
+          },
+          { min: minCount, selector: primarySelector },
+          { timeout: getTimeout('short'), polling: getPollingInterval('fast') }
+        );
+      } catch {
+        // 最小数に達しなくても続行
+        console.log(`Only found less than ${minCount} articles, but continuing`);
+      }
     }
   }
 }
@@ -290,6 +284,9 @@ export async function safeClick(locator: Locator, options?: {
   
   for (let i = 0; i < maxRetries; i++) {
     try {
+      // クリック前に要素が安定するまで待機
+      await locator.waitFor({ state: 'visible', timeout: getTimeout('short') });
+      await locator.page().waitForTimeout(200); // 短い安定化待機
       await locator.click({ timeout: getTimeout('short'), force });
       return; // 成功したら終了
     } catch (error) {
@@ -306,6 +303,40 @@ export async function safeClick(locator: Locator, options?: {
   if (lastError) {
     throw lastError;
   }
+}
+
+/**
+ * 汎用的なリトライ関数
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  options?: {
+    retries?: number;
+    delay?: number;
+    onRetry?: (attempt: number, error: Error) => void;
+  }
+): Promise<T> {
+  const maxRetries = options?.retries ?? 3;
+  const delay = options?.delay ?? 1000;
+  let lastError: Error | null = null;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      
+      if (options?.onRetry) {
+        options.onRetry(i + 1, lastError);
+      }
+      
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(1.5, i)));
+      }
+    }
+  }
+  
+  throw lastError || new Error('All retries failed');
 }
 
 /**
