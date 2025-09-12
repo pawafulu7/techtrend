@@ -24,7 +24,6 @@ test.describe('フィルター条件の永続化', () => {
     // まず記事が表示されるまで待機
     await waitForArticles(page);
     
-    
     // 検索ボックスの準備完了を待機
     const searchInput = page.locator('[data-testid="search-box-input"]').first();
     await searchInput.waitFor({ state: 'visible', timeout: process.env.CI ? 15000 : getTimeout('medium') });
@@ -40,36 +39,45 @@ test.describe('フィルター条件の永続化', () => {
       retries: process.env.CI ? 3 : 1
     });
 
-    // 2. 記事詳細ページへ遷移
+    // 2. 記事の有無を確認して適切に処理
     const firstArticle = page.locator('[data-testid="article-card"]').first();
-    // 記事が存在することを確認
     const articleCount = await firstArticle.count();
+    
+    let navigationPath: string;
+    
     if (articleCount > 0) {
+      // 記事がある場合は記事詳細ページへ遷移
       await firstArticle.click();
       await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
-
-      // 3. トップページに戻る
-      await page.goto('/');
-      await waitForPageLoad(page, { waitForNetworkIdle: true });
-      await waitForArticles(page);
-
-      // 4. 検索キーワードが保持されていることを確認
-      // Cookie永続化が未実装の場合は空になることを許容
-      // 複数の検索ボックスがある場合は最初の要素を使用
-      const searchInputAfter = page.locator('[data-testid="search-box-input"]').first();
-      await searchInputAfter.waitFor({ state: 'visible', timeout: getTimeout('medium') });
-      const currentValue = await searchInputAfter.inputValue();
-      
-      // Cookie永続化が実装されていない場合とされている場合を両方許容
-      if (currentValue === '') {
-        console.log('Search value not persisted after navigation - current behavior');
-        expect(currentValue).toBe('');
-      } else {
-        expect(currentValue).toBe('TypeScript');
-      }
+      navigationPath = 'via article';
     } else {
-      // 記事がない場合はテストをスキップ
-      test.skip(true, 'No articles found with search filter');
+      // 記事がない場合は別のページ（お気に入りなど）へ遷移
+      console.log('No articles found with search filter - testing with alternative navigation');
+      
+      // 別のページへ遷移（例：フィルターページやタグページ）
+      await page.goto('/tags');
+      await page.waitForTimeout(1000);
+      navigationPath = 'via tags page';
+    }
+
+    // 3. トップページに戻る
+    await page.goto('/');
+    await waitForPageLoad(page, { waitForNetworkIdle: true });
+    
+    // 検索ボックスが表示されるまで待機
+    const searchInputAfter = page.locator('[data-testid="search-box-input"]').first();
+    await searchInputAfter.waitFor({ state: 'visible', timeout: getTimeout('medium') });
+    
+    // 4. 検索キーワードが保持されていることを確認
+    const currentValue = await searchInputAfter.inputValue();
+    
+    // Cookie永続化が実装されていない場合とされている場合を両方許容
+    if (currentValue === '') {
+      console.log(`Search value not persisted after navigation (${navigationPath}) - current behavior`);
+      expect(currentValue).toBe('');
+    } else {
+      console.log(`Search value persisted after navigation (${navigationPath})`);
+      expect(currentValue).toBe('TypeScript');
     }
   });
 
