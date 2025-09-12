@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('無限スクロール機能', () => {
+  // このテストスイートは大量のスクロールとAPIリクエストを含むため、タイムアウトを3倍に延長
+  test.slow();
+  
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // 初期読み込みを待つ

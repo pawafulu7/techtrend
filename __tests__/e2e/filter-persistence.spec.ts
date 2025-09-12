@@ -9,6 +9,8 @@ import {
 } from '../../e2e/helpers/wait-utils';
 
 test.describe('フィルター条件の永続化', () => {
+  // このテストスイートは多くのページ遷移と待機処理を含むため、タイムアウトを3倍に延長
+  test.slow();
   test.beforeEach(async ({ page }) => {
     // Clear cookies before each test
     await page.context().clearCookies();

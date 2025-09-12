@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('スクロール位置復元機能', () => {
+  // このテストスイートはスクロールとページ遷移を多用するため、タイムアウトを3倍に延長
+  test.slow();
+  
   test('記事詳細から戻った時にスクロール位置が復元される', async ({ page }) => {
     // 1. ホームページにアクセス
     await page.goto('/');
