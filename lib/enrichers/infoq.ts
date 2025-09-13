@@ -4,14 +4,15 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class InfoQEnricher extends BaseContentEnricher {
   /**
    * InfoQ JapanのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return url.includes('infoq.com/jp') || 
-           url.includes('infoq.jp');
+    return (isUrlFromDomain(url, 'infoq.com') && url.includes('/jp')) ||
+           isUrlFromDomain(url, 'infoq.jp');
   }
 
   /**

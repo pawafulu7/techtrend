@@ -4,15 +4,16 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class GoogleDevEnricher extends BaseContentEnricher {
   /**
    * Google Developers BlogのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return url.includes('developers.googleblog.com') || 
-           url.includes('developer.chrome.com') ||
-           url.includes('web.dev');
+    return isUrlFromDomain(url, 'developers.googleblog.com') ||
+           isUrlFromDomain(url, 'developer.chrome.com') ||
+           isUrlFromDomain(url, 'web.dev');
   }
 
   /**

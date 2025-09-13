@@ -79,27 +79,27 @@ export function checkContentQuality(
  * HTMLタグやスクリプトを除去
  */
 export function extractPlainText(htmlContent: string): string {
-  // スクリプトタグとその内容を削除
+  // スクリプトタグとその内容を削除（より安全な正規表現）
   let text = htmlContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  
-  // スタイルタグとその内容を削除
+
+  // スタイルタグとその内容を削除（より安全な正規表現）
   text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-  
+
   // HTMLタグを削除
   text = text.replace(/<[^>]+>/g, ' ');
-  
-  // HTMLエンティティをデコード
+
+  // HTMLエンティティをデコード（&amp;を最後に処理）
   text = text
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ');
-  
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&');  // 最後に処理して二重デコードを防ぐ
+
   // 連続する空白を1つに
   text = text.replace(/\s+/g, ' ');
-  
+
   // 前後の空白を削除
   return text.trim();
 }

@@ -4,6 +4,7 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class GoogleAIEnricher extends BaseContentEnricher {
   /**
@@ -11,8 +12,8 @@ export class GoogleAIEnricher extends BaseContentEnricher {
    */
   canHandle(url: string): boolean {
     // Google AI BlogのURLパターン（新旧両方に対応）
-    return url.includes('blog.google') && 
-           (url.includes('/technology/ai/') || 
+    return isUrlFromDomain(url, 'blog.google') &&
+           (url.includes('/technology/ai/') ||
             url.includes('/technology/google-deepmind/') ||
             url.includes('/technology/developers/') ||
             url.includes('/products/') ||  // 新しいパターン: /products/search/, /products/pixel/など

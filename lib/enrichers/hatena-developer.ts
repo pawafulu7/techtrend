@@ -1,4 +1,5 @@
 import { BaseContentEnricher } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 /**
  * はてなDeveloper Blogのコンテンツエンリッチャー
@@ -8,7 +9,7 @@ export class HatenaDeveloperContentEnricher extends BaseContentEnricher {
    * このエンリッチャーが処理可能なURLかどうかを判定
    */
   canHandle(url: string): boolean {
-    return url.includes('developer.hatenastaff.com');
+    return isUrlFromDomain(url, 'developer.hatenastaff.com');
   }
 
   /**

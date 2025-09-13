@@ -5,6 +5,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { AWSEnricher } from '../../lib/enrichers/aws';
+import { isUrlFromDomain } from '../../lib/utils/url-validator';
 
 const prisma = new PrismaClient();
 const enricher = new AWSEnricher();
@@ -60,7 +61,8 @@ async function enrichAWSContent() {
         }
         
         // What's Newなど短い記事は元々短いことが想定される
-        const isWhatsNew = article.url.includes('/whats-new/');
+        // AWS URLのパス部分をチェック（ドメイン検証も含む）
+        const isWhatsNew = isUrlFromDomain(article.url, 'aws.amazon.com') && article.url.includes('/whats-new/');
         const minContentLength = isWhatsNew ? 1000 : 2000;
         
         // 既に最小限のコンテンツがある場合

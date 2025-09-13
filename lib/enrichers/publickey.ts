@@ -4,14 +4,15 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class PublickeyEnricher extends BaseContentEnricher {
   /**
    * PublickeyのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return url.includes('publickey1.jp') || 
-           url.includes('publickey2.jp');
+    return isUrlFromDomain(url, 'publickey1.jp') ||
+           isUrlFromDomain(url, 'publickey2.jp');
   }
 
   /**

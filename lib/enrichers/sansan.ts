@@ -1,4 +1,5 @@
 import { BaseContentEnricher } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 /**
  * Sansan Builders Boxのコンテンツエンリッチャー
@@ -8,7 +9,7 @@ export class SansanContentEnricher extends BaseContentEnricher {
    * このエンリッチャーが処理可能なURLかどうかを判定
    */
   canHandle(url: string): boolean {
-    return url.includes('buildersbox.corp-sansan.com');
+    return isUrlFromDomain(url, 'buildersbox.corp-sansan.com');
   }
 
   /**

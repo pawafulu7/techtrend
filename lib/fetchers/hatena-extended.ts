@@ -5,6 +5,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
 import { ContentEnricherFactory } from '../enrichers';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 interface HatenaItem {
   title?: string;
@@ -74,7 +75,7 @@ export class HatenaExtendedFetcher extends BaseFetcher {
 
   // Qiita記事かどうかを判定
   private isQiitaArticle(url: string): boolean {
-    return url.includes('qiita.com');
+    return isUrlFromDomain(url, 'qiita.com');
   }
 
   // コンテンツが削除メッセージかどうかを検証

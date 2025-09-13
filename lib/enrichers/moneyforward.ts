@@ -1,4 +1,5 @@
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 /**
  * マネーフォワード技術ブログのコンテンツエンリッチャー
@@ -8,7 +9,7 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
    * このエンリッチャーが処理可能なURLかどうかを判定
    */
   canHandle(url: string): boolean {
-    return url.includes('moneyforward-dev.jp');
+    return isUrlFromDomain(url, 'moneyforward-dev.jp');
   }
 
   /**

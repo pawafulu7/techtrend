@@ -5,6 +5,7 @@
 
 import { BaseContentEnricher, EnrichedContent } from './base';
 import * as cheerio from 'cheerio';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class HatenaContentEnricher extends BaseContentEnricher {
   /**
@@ -24,7 +25,7 @@ export class HatenaContentEnricher extends BaseContentEnricher {
     try {
       
       // はてなブックマークのURLの場合はスキップ
-      if (url.includes('b.hatena.ne.jp')) {
+      if (isUrlFromDomain(url, 'b.hatena.ne.jp')) {
         return null;
       }
       
