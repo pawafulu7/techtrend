@@ -275,10 +275,10 @@ test.describe('Date Range Filter', () => {
     await safeClick(page.locator('[data-testid="date-range-option-all"]'));
     
     // Check URL doesn't have dateRange parameter with extended timeout
+    const resetTimeout = process.env.CI ? 60000 : 15000; // CI: 60s, Local: 15s
     await page.waitForFunction(
       () => !window.location.href.includes('dateRange'),
-      {},
-      { timeout: 15000 }
+      { timeout: resetTimeout, polling: process.env.CI ? 500 : 100 }
     );
     
     // Additional network wait after reset

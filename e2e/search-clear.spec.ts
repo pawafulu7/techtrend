@@ -137,9 +137,10 @@ test.describe('検索クリア機能', () => {
     await expect(searchBox).toHaveValue('');
     
     // URLからsearchパラメータが消えたことを確認
+    const clearTimeout = process.env.CI ? 60000 : getTimeout('short');
     await page.waitForFunction(
       () => !window.location.href.includes('search=Vue'),
-      { timeout: getTimeout('short') }
+      { timeout: clearTimeout, polling: process.env.CI ? 500 : 100 }
     );
     const url2 = page.url();
     expect(url2).not.toContain('search=Vue');

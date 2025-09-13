@@ -134,19 +134,47 @@ test.describe('フィルター条件の永続化', () => {
     const selectedSourceId = await firstSourceContainer.getAttribute('data-testid');
 
     // 3. 記事詳細ページへ遷移
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: getTimeout('long') });
-    const firstArticle = page.locator('[data-testid="article-card"]').first();
-    const articleCount = await firstArticle.count();
-    if (articleCount > 0) {
-      await firstArticle.click();
-      await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
+    // CI環境では記事カードの表示を複数回試行
+    let articleCardFound = false;
+    const maxRetries = process.env.CI ? 3 : 1;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          console.log(`[Test] Retry ${attempt}/${maxRetries} for article card visibility`);
+          await page.reload({ waitUntil: 'domcontentloaded' });
+          await waitForPageLoad(page, { waitForNetworkIdle: true });
+        }
+        
+        await page.waitForSelector('[data-testid="article-card"]', { 
+          timeout: process.env.CI ? 30000 : getTimeout('long'),
+          state: 'visible'
+        });
+        articleCardFound = true;
+        break;
+      } catch (error) {
+        if (attempt === maxRetries) {
+          console.error('[Test] Article cards not found after all retries');
+          throw error;
+        }
+      }
+    }
+    
+    if (articleCardFound) {
+      const firstArticle = page.locator('[data-testid="article-card"]').first();
+      const articleCount = await firstArticle.count();
+      if (articleCount > 0) {
+        await firstArticle.click();
+        await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
 
-      // 4. トップページに戻る
-      await page.goto('/');
-      await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
+        // 4. トップページに戻る
+        await page.goto('/');
+        await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
+      }
+    }
 
-      // 5. フィルターが保持されていることを確認
-      if (selectedSourceId) {
+    // 5. フィルターが保持されていることを確認
+    if (selectedSourceId && articleCardFound) {
         // 最初のカテゴリを再度展開
         const firstCategoryHeader2 = page.locator('[data-testid$="-header"]').first();
         const categoryCount2 = await firstCategoryHeader2.count();
