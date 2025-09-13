@@ -432,11 +432,11 @@ test.describe('フィルター条件の永続化', () => {
             await header.click();
             // アコーディオンの展開を待つ
             await page.waitForFunction(
-              () => {
-                const content = document.querySelector('[data-testid="source-filter-content"]');
-                return content && content.clientHeight > 0;
+              (selector) => {
+                const content = document.querySelector(selector) as HTMLElement | null;
+                return !!content && content.clientHeight > 0;
               },
-              undefined,
+              contentSelector,
               { timeout: getTimeout('short'), polling: 50 }
             );
           }
@@ -576,11 +576,11 @@ test.describe('フィルター条件の永続化', () => {
             await header.click();
             // アコーディオンの展開を待つ
             await page.waitForFunction(
-              () => {
-                const content = document.querySelector('[data-testid="source-filter-content"]');
-                return content && content.clientHeight > 0;
+              (selector) => {
+                const content = document.querySelector(selector) as HTMLElement | null;
+                return !!content && content.clientHeight > 0;
               },
-              undefined,
+              contentSelector,
               { timeout: getTimeout('short'), polling: 50 }
             );
           }
