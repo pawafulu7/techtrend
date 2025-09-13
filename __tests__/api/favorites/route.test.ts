@@ -30,16 +30,16 @@ describe('/api/favorites', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetMockSession();
-    
+
     // デフォルトのPrismaモック設定
     prismaMock.favorite = {
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
       findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn(),
-      delete: jest.fn(),
+      create: jest.fn().mockResolvedValue({} as any),
+      delete: jest.fn().mockResolvedValue({} as any),
     };
-    
+
     prismaMock.article = {
       findUnique: jest.fn().mockResolvedValue(null),
     };
@@ -127,12 +127,7 @@ describe('/api/favorites', () => {
       expect(prismaMock.favorite.findMany).toHaveBeenCalledWith({
         where: { userId: 'test-user-id' },
         include: {
-          article: {
-            include: {
-              source: true,
-              tags: true,
-            },
-          },
+          article: true, // デフォルトではrelationsは含まれない
         },
         orderBy: { createdAt: 'desc' },
         skip: 0,
@@ -253,9 +248,13 @@ describe('/api/favorites', () => {
         },
         include: {
           article: {
-            include: {
-              source: true,
-              tags: true,
+            select: {
+              id: true,
+              title: true,
+              url: true,
+              summary: true,
+              thumbnail: true,
+              publishedAt: true,
             },
           },
         },
