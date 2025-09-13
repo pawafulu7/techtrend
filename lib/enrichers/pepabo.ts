@@ -1,4 +1,5 @@
 import { BaseContentEnricher } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 /**
  * GMOペパボ技術ブログのコンテンツエンリッチャー
@@ -8,7 +9,7 @@ export class PepaboContentEnricher extends BaseContentEnricher {
    * このエンリッチャーが処理可能なURLかどうかを判定
    */
   canHandle(url: string): boolean {
-    return url.includes('tech.pepabo.com');
+    return isUrlFromDomain(url, 'tech.pepabo.com');
   }
 
   /**

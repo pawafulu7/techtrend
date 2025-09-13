@@ -5,13 +5,14 @@
 
 import { BaseContentEnricher, EnrichedContent } from './base';
 import * as cheerio from 'cheerio';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class ThinkITContentEnricher extends BaseContentEnricher {
   /**
    * Think ITのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return url.includes('thinkit.co.jp');
+    return isUrlFromDomain(url, 'thinkit.co.jp');
   }
 
   /**

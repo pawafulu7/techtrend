@@ -1,4 +1,5 @@
 import { BaseContentEnricher } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
 
@@ -7,7 +8,8 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
    * GitHub Blogの記事URLかどうかを判定
    */
   canHandle(url: string): boolean {
-    return url.includes('github.blog') || url.includes('github.com/blog');
+    return isUrlFromDomain(url, 'github.blog') ||
+           (isUrlFromDomain(url, 'github.com') && url.includes('/blog'));
   }
 
   /**

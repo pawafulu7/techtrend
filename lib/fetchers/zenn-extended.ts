@@ -4,6 +4,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 import type { ContentEnricherFactory } from '../enrichers';
 
 interface ZennRSSItem {
@@ -150,15 +151,18 @@ export class ZennExtendedFetcher extends BaseFetcher {
 
   private extractTagsFromUrl(url?: string): string[] {
     if (!url) return [];
-    
+
     const tags: string[] = [];
-    
+
     // Zenn URLs often contain article type information
     // Note: 'article' tag is not added as it's redundant (all items are articles)
-    if (url.includes('/books/')) {
-      tags.push('book');
-    } else if (url.includes('/scraps/')) {
-      tags.push('scrap');
+    // First validate it's a Zenn URL, then check the path
+    if (isUrlFromDomain(url, 'zenn.dev')) {
+      if (url.includes('/books/')) {
+        tags.push('book');
+      } else if (url.includes('/scraps/')) {
+        tags.push('scrap');
+      }
     }
 
     // Try to extract topic from URL slug

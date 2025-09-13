@@ -4,14 +4,22 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class HuggingFaceEnricher extends BaseContentEnricher {
   /**
    * Hugging Face BlogのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return url.includes('huggingface.co/blog') || 
-           url.includes('hf.co/blog');
+    if (isUrlFromDomain(url, 'huggingface.co') || isUrlFromDomain(url, 'hf.co')) {
+      try {
+        const parsed = new URL(url);
+        return parsed.pathname.includes('/blog');
+      } catch {
+        return false;
+      }
+    }
+    return false;
   }
 
   /**

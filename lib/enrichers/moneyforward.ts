@@ -1,4 +1,5 @@
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 /**
  * マネーフォワード技術ブログのコンテンツエンリッチャー
@@ -8,7 +9,7 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
    * このエンリッチャーが処理可能なURLかどうかを判定
    */
   canHandle(url: string): boolean {
-    return url.includes('moneyforward-dev.jp');
+    return isUrlFromDomain(url, 'moneyforward-dev.jp');
   }
 
   /**
@@ -48,11 +49,13 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
       
       // コンテンツ取得結果のログ
       if (content && content.length > 0) {
-        
+
         // 最小限のコンテンツチェック（200文字以上あれば有効とする）
         if (content.length < 200) {
+          // 短いコンテンツは警告ログ出力
+          console.warn(`[MoneyForward] Content too short: ${content.length} chars for ${url}`);
         }
-        
+
         return { content, thumbnail };
       } else {
         

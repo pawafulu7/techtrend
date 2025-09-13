@@ -1,15 +1,16 @@
 import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class MediumEngineeringEnricher extends BaseContentEnricher {
   canHandle(url: string): boolean {
     // Medium系のURLを処理
-    return url.includes('medium.com') || 
-           url.includes('medium.engineering') ||
-           url.includes('netflixtechblog') ||
-           url.includes('engineering.atspotify.com') ||
-           url.includes('eng.uber.com');
+    return isUrlFromDomain(url, 'medium.com') ||
+           isUrlFromDomain(url, 'medium.engineering') ||
+           isUrlFromDomain(url, 'netflixtechblog.com') ||
+           isUrlFromDomain(url, 'engineering.atspotify.com') ||
+           isUrlFromDomain(url, 'eng.uber.com');
   }
   
   async enrich(url: string): Promise<EnrichmentResult | null> {

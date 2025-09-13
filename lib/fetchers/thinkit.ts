@@ -1,6 +1,7 @@
 import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types';
 import Parser from 'rss-parser';
+import { cleanHtml } from '@/lib/utils/html-sanitizer';
 
 interface ThinkITItem {
   title?: string;
@@ -66,7 +67,7 @@ export class ThinkITFetcher extends BaseFetcher {
     // 要約の生成
     let summary = '';
     if (item.description) {
-      summary = this.cleanHtml(item.description)
+      summary = cleanHtml(item.description)
         .substring(0, 200);
     } else if (item.contentSnippet) {
       summary = item.contentSnippet
@@ -94,16 +95,4 @@ export class ThinkITFetcher extends BaseFetcher {
     };
   }
   
-  private cleanHtml(html: string): string {
-    return html
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&[a-z]+;/gi, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
 }

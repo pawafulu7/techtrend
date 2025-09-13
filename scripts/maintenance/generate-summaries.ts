@@ -6,7 +6,8 @@ import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
 import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { isDeletedContent } from '@/lib/utils/content-validator';
-import { 
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import {
   checkSummaryQuality,
   isQualityCheckEnabled,
   getMaxRegenerationAttempts,
@@ -518,10 +519,10 @@ async function generateSummaries(): Promise<GenerateResult> {
               }
               
               // はてなブックマーク経由の外部サイト記事でコンテンツ不足の場合はスキップ
-              if (article.source.name === 'はてなブックマーク' && 
+              if (article.source.name === 'はてなブックマーク' &&
                   content.length < 300 &&
-                  (article.url.includes('speakerdeck.com') || 
-                   article.url.includes('slideshare.net'))) {
+                  (isUrlFromDomain(article.url, 'speakerdeck.com') ||
+                   isUrlFromDomain(article.url, 'slideshare.net'))) {
                 console.error(`  ⏭️ スキップ: ${article.title} (はてなブックマーク経由の外部サイト記事でコンテンツ不足)`);
                 break; // このarticleの処理をスキップ
               }

@@ -14,6 +14,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import fetch from 'node-fetch';
+import { stripHtmlTags } from '../lib/utils/html-sanitizer';
 
 const prisma = new PrismaClient();
 
@@ -65,18 +66,25 @@ function extractArticleId(url: string): string | null {
 }
 
 // Dev.to APIから記事本文を取得
-async function fetchArticleContent(articleId: string): Promise<{ 
-  content: string | null; 
+async function fetchArticleContent(articleId: string): Promise<{
+  content: string | null;
   bodyHtml?: string;
   bodyMarkdown?: string;
   error?: string;
 }> {
   try {
+    // Timeout using AbortController (15 seconds)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     const response = await fetch(`https://dev.to/api/articles/${articleId}`, {
       headers: {
         'Accept': 'application/json',
-      }
+      },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeout);
     
     if (!response.ok) {
       if (response.status === 404) {
@@ -109,19 +117,12 @@ async function fetchArticleContent(articleId: string): Promise<{
 
 // HTMLコンテンツのクリーンアップ
 function cleanHtmlContent(html: string): string {
-  // 基本的なHTMLタグは残しつつ、不要な要素を削除
-  let cleaned = html;
-  
-  // スクリプトタグの削除
-  cleaned = cleaned.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  
-  // スタイルタグの削除
-  cleaned = cleaned.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-  
+  // Use the library to strip dangerous tags while preserving content
+  // Note: We keep some formatting here for readability of stored content
+  const cleaned = stripHtmlTags(html);
+
   // 過度な改行の正規化
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  
-  return cleaned.trim();
+  return cleaned.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 // メイン処理

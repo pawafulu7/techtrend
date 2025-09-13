@@ -4,14 +4,25 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class StackOverflowEnricher extends BaseContentEnricher {
   /**
    * Stack Overflow BlogのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return url.includes('stackoverflow.blog') || 
-           url.includes('stackexchange.com/blog');
+    if (isUrlFromDomain(url, 'stackoverflow.blog')) {
+      return true;
+    }
+    if (isUrlFromDomain(url, 'stackexchange.com')) {
+      try {
+        const parsed = new URL(url);
+        return parsed.pathname.includes('/blog');
+      } catch {
+        return false;
+      }
+    }
+    return false;
   }
 
   /**

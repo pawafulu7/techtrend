@@ -1,13 +1,14 @@
 import { BaseContentEnricher } from './base';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class MozillaHacksEnricher extends BaseContentEnricher {
   /**
    * Mozilla Hacksの記事URLかどうかを判定
    */
   canHandle(url: string): boolean {
-    return url.includes('hacks.mozilla.org');
+    return isUrlFromDomain(url, 'hacks.mozilla.org');
   }
 
   /**

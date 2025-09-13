@@ -4,6 +4,7 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 import * as cheerio from 'cheerio';
 
 export class ZennContentEnricher extends BaseContentEnricher {
@@ -11,7 +12,7 @@ export class ZennContentEnricher extends BaseContentEnricher {
    * ZennのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return url.includes('zenn.dev');
+    return isUrlFromDomain(url, 'zenn.dev');
   }
 
   /**

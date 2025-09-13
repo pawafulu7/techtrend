@@ -1,4 +1,5 @@
 import { BaseContentEnricher } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 /**
  * リクルート技術ブログのコンテンツエンリッチャー
@@ -8,7 +9,7 @@ export class RecruitContentEnricher extends BaseContentEnricher {
    * このエンリッチャーが処理可能なURLかどうかを判定
    */
   canHandle(url: string): boolean {
-    return url.includes('techblog.recruit.co.jp');
+    return isUrlFromDomain(url, 'techblog.recruit.co.jp');
   }
 
   /**

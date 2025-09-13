@@ -4,6 +4,7 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 import * as cheerio from 'cheerio';
 
 export class FreeeContentEnricher extends BaseContentEnricher {
@@ -11,7 +12,7 @@ export class FreeeContentEnricher extends BaseContentEnricher {
    * freeeのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return url.includes('developers.freee.co.jp');
+    return isUrlFromDomain(url, 'developers.freee.co.jp');
   }
 
   /**

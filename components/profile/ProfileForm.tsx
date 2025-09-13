@@ -161,7 +161,7 @@ export function ProfileForm() {
           placeholder="https://example.com"
           {...register('website', {
             pattern: {
-              value: /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
+              value: /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})(\/[^\s]*)?$/,
               message: '有効なURLを入力してください',
             },
           })}

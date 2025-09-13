@@ -2,6 +2,8 @@
  * RSSフィードからコンテンツを抽出するユーティリティ
  */
 
+import sanitizeHtmlLib from 'sanitize-html';
+
 /**
  * RSSアイテムから本文コンテンツを抽出
  * 複数のフィールドをチェックして最適なコンテンツを取得
@@ -79,29 +81,31 @@ export function checkContentQuality(
  * HTMLタグやスクリプトを除去
  */
 export function extractPlainText(htmlContent: string): string {
-  // スクリプトタグとその内容を削除
-  let text = htmlContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  
-  // スタイルタグとその内容を削除
-  text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-  
-  // HTMLタグを削除
-  text = text.replace(/<[^>]+>/g, ' ');
-  
-  // HTMLエンティティをデコード
-  text = text
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ');
-  
+  if (!htmlContent) return '';
+
+  // Use sanitize-html library to safely remove all HTML tags and scripts
+  const text = sanitizeHtmlLib(htmlContent, {
+    allowedTags: [],  // Remove all tags
+    allowedAttributes: {},  // Remove all attributes
+    textFilter: function(txt) {
+      // Decode HTML entities
+      return txt
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&apos;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&');
+    },
+    exclusiveFilter: function(frame) {
+      // Remove script and style tags completely including content
+      return frame.tag === 'script' || frame.tag === 'style';
+    }
+  });
+
   // 連続する空白を1つに
-  text = text.replace(/\s+/g, ' ');
-  
-  // 前後の空白を削除
-  return text.trim();
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 /**

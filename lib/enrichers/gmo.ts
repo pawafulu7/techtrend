@@ -4,6 +4,7 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 import * as cheerio from 'cheerio';
 
 export class GMOContentEnricher extends BaseContentEnricher {
@@ -11,7 +12,7 @@ export class GMOContentEnricher extends BaseContentEnricher {
    * GMOのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return url.includes('developers.gmo.jp');
+    return isUrlFromDomain(url, 'developers.gmo.jp');
   }
 
   /**

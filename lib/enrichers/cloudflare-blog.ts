@@ -1,13 +1,15 @@
 import { BaseContentEnricher } from './base';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export class CloudflareBlogEnricher extends BaseContentEnricher {
   /**
    * Cloudflare Blogの記事URLかどうかを判定
    */
   canHandle(url: string): boolean {
-    return url.includes('blog.cloudflare.com') || url.includes('cloudflare.com/blog');
+    return isUrlFromDomain(url, 'cloudflare.com') &&
+           (url.includes('/blog') || isUrlFromDomain(url, 'blog.cloudflare.com'));
   }
 
   /**

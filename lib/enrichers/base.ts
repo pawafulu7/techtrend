@@ -96,7 +96,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
    */
   protected async fetchWithRetry(url: string): Promise<string> {
     let lastError: Error | null = null;
-    
+
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
       try {
         if (attempt > 0) {
@@ -104,13 +104,20 @@ export abstract class BaseContentEnricher implements IContentEnricher {
           await this.delay(this.retryDelay * Math.pow(2, attempt - 1));
         }
 
+        // Timeout using AbortController (15 seconds)
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+
         const response = await fetch(url, {
           headers: {
             'User-Agent': 'TechTrend/1.0 (https://techtrend.example.com) ContentEnricher',
             'Accept': 'text/html,application/xhtml+xml',
             'Accept-Language': 'ja,en;q=0.9',
           },
+          signal: controller.signal,
         });
+
+        clearTimeout(timeout);
 
         if (response.status === 429) {
           // Rate limit エラー時は長めに待機

@@ -3,6 +3,8 @@
  * 記事コンテンツの妥当性を検証する機能を提供
  */
 
+import { isUrlFromDomain } from './url-validator';
+
 /**
  * コンテンツが削除メッセージかどうかを判定
  * @param content - 検証するコンテンツ
@@ -108,7 +110,7 @@ export function validateContentQuality(content: string | null | undefined): {
  * @returns Qiita記事の場合はtrue
  */
 export function isQiitaUrl(url: string): boolean {
-  return url.includes('qiita.com/') && url.includes('/items/');
+  return isUrlFromDomain(url, 'qiita.com') && url.includes('/items/');
 }
 
 /**
@@ -118,13 +120,13 @@ export function isQiitaUrl(url: string): boolean {
  */
 export function detectArticleType(url: string): string {
   if (isQiitaUrl(url)) return 'qiita';
-  if (url.includes('zenn.dev')) return 'zenn';
-  if (url.includes('dev.to')) return 'devto';
-  if (url.includes('speakerdeck.com')) return 'speakerdeck';
-  if (url.includes('slideshare.net')) return 'slideshare';
-  if (url.includes('github.com')) return 'github';
-  if (url.includes('medium.com')) return 'medium';
-  if (url.includes('note.com')) return 'note';
+  if (isUrlFromDomain(url, 'zenn.dev')) return 'zenn';
+  if (isUrlFromDomain(url, 'dev.to')) return 'devto';
+  if (isUrlFromDomain(url, 'speakerdeck.com')) return 'speakerdeck';
+  if (isUrlFromDomain(url, 'slideshare.net')) return 'slideshare';
+  if (isUrlFromDomain(url, 'github.com')) return 'github';
+  if (isUrlFromDomain(url, 'medium.com')) return 'medium';
+  if (isUrlFromDomain(url, 'note.com')) return 'note';
   return 'other';
 }
 
