@@ -423,13 +423,12 @@ export async function waitForUrlParam(
   }
 ) {
   const timeout = options?.timeout ?? getTimeout('medium');
-  const polling = getPollingInterval(options?.polling ?? 'normal');
-  const maxRetries = options?.retries ?? (process.env.CI ? 3 : 1);
+  const polling = getPollingInterval(options?.polling ?? (process.env.CI ? 'fast' : 'normal'));
+  const maxRetries = options?.retries ?? (process.env.CI ? 5 : 2);  // CI環境でリトライ回数を増やす
   
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
-  // CI環境では更に長く待機
-  // 初期待機時間を短縮（CI環境でも500ms）
-  const initialWait = 500;
+  // CI環境では更に長く待機してURL更新を確実に待つ
+  const initialWait = process.env.CI ? 1000 : 500;  // CI: 1秒、ローカル: 500ms
   await page.waitForTimeout(initialWait);
   
   let lastError: Error | null = null;
@@ -441,15 +440,17 @@ export async function waitForUrlParam(
         throw new Error('Page has been closed');
       }
       
-      // CI環境でもリトライ前の待機を短縮
+      // リトライ前の待機（CI環境では長めに）
       if (attempt > 0) {
-        // 線形バックオフを更に短縮（200ms, 400ms, 600ms...）
-        await page.waitForTimeout(200 + (200 * attempt));
+        const backoffWait = process.env.CI 
+          ? 500 + (500 * attempt)  // CI: 500ms, 1000ms, 1500ms...
+          : 200 + (200 * attempt);  // ローカル: 200ms, 400ms, 600ms...
+        await page.waitForTimeout(backoffWait);
       }
       
       // タイムアウトを各リトライで調整（CI環境では長めに設定）
-      const minTimeout = process.env.CI ? 10000 : 3000;  // CI: 10秒、ローカル: 3秒
-      const maxTimeout = process.env.CI ? 30000 : 10000;  // CI: 30秒、ローカル: 10秒
+      const minTimeout = process.env.CI ? 15000 : 5000;  // CI: 15秒、ローカル: 5秒
+      const maxTimeout = process.env.CI ? 60000 : 15000;  // CI: 60秒、ローカル: 15秒
       const retryTimeout = Math.min(Math.max(minTimeout, timeout / maxRetries), maxTimeout);
       
       // デバッグ: 現在のURL確認
@@ -457,6 +458,7 @@ export async function waitForUrlParam(
         const currentUrl = page.url();
         console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${currentUrl}`);
         console.log(`[waitForUrlParam] Waiting for param: ${paramName}=${paramValue || '<any value>'}`);
+        console.log(`[waitForUrlParam] Timeout: ${retryTimeout}ms, Polling: ${polling}ms`);
       }
       
       await page.waitForFunction(
@@ -469,7 +471,7 @@ export async function waitForUrlParam(
           return param === value;
         },
         { name: paramName, value: paramValue },
-        { timeout: retryTimeout, polling }
+        { timeout: retryTimeout, polling: polling }
       );
       
       // 成功したら終了

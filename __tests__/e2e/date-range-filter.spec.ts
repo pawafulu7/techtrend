@@ -119,7 +119,7 @@ test.describe('Date Range Filter', () => {
     if (!navResult) {
       // Wait for URL to update (CI環境対応で長めのタイムアウト + リトライ)
       await waitForUrlParam(page, 'dateRange', 'today', { 
-        polling: 'raf',  // Request Animation Frame polling（より頻繁にチェック）
+        polling: 'fast',  // 高速ポーリング（100ms間隔）
         timeout: getTimeout('long'),
         retries: process.env.CI ? 5 : 2  // CI環境では5回までリトライ
       });
