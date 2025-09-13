@@ -84,13 +84,15 @@ export function extractPlainText(htmlContent: string): string {
   let previousText;
   do {
     previousText = text;
-    text = text.replace(/<script\b[^<]*(?:(?!<\/script\s*>)<[^<]*)*<\/script\s*>/gi, '');
+    // Use simpler, more robust pattern that handles spaces in closing tags
+    text = text.replace(/<script\b[\s\S]*?<\/script\s*>/gi, '');
   } while (text !== previousText);
 
   // スタイルタグとその内容を削除（複数パスで処理）
   do {
     previousText = text;
-    text = text.replace(/<style\b[^<]*(?:(?!<\/style\s*>)<[^<]*)*<\/style\s*>/gi, '');
+    // Use simpler, more robust pattern that handles spaces in closing tags
+    text = text.replace(/<style\b[\s\S]*?<\/style\s*>/gi, '');
   } while (text !== previousText);
 
   // HTMLタグを削除

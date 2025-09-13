@@ -49,11 +49,13 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
       
       // コンテンツ取得結果のログ
       if (content && content.length > 0) {
-        
+
         // 最小限のコンテンツチェック（200文字以上あれば有効とする）
         if (content.length < 200) {
+          // 短いコンテンツは警告ログ出力
+          console.warn(`[MoneyForward] Content too short: ${content.length} chars for ${url}`);
         }
-        
+
         return { content, thumbnail };
       } else {
         

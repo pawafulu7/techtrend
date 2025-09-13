@@ -65,18 +65,25 @@ function extractArticleId(url: string): string | null {
 }
 
 // Dev.to APIから記事本文を取得
-async function fetchArticleContent(articleId: string): Promise<{ 
-  content: string | null; 
+async function fetchArticleContent(articleId: string): Promise<{
+  content: string | null;
   bodyHtml?: string;
   bodyMarkdown?: string;
   error?: string;
 }> {
   try {
+    // Timeout using AbortController (15 seconds)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     const response = await fetch(`https://dev.to/api/articles/${articleId}`, {
       headers: {
         'Accept': 'application/json',
-      }
+      },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeout);
     
     if (!response.ok) {
       if (response.status === 404) {
@@ -116,13 +123,15 @@ function cleanHtmlContent(html: string): string {
   let previousCleaned;
   do {
     previousCleaned = cleaned;
-    cleaned = cleaned.replace(/<script\b[^<]*(?:(?!<\/script\s*>)<[^<]*)*<\/script\s*>/gi, '');
+    // Use simpler, more robust pattern that handles spaces in closing tags
+    cleaned = cleaned.replace(/<script\b[\s\S]*?<\/script\s*>/gi, '');
   } while (cleaned !== previousCleaned);
 
   // スタイルタグの削除（複数パスで処理）
   do {
     previousCleaned = cleaned;
-    cleaned = cleaned.replace(/<style\b[^<]*(?:(?!<\/style\s*>)<[^<]*)*<\/style\s*>/gi, '');
+    // Use simpler, more robust pattern that handles spaces in closing tags
+    cleaned = cleaned.replace(/<style\b[\s\S]*?<\/style\s*>/gi, '');
   } while (cleaned !== previousCleaned);
   
   // 過度な改行の正規化

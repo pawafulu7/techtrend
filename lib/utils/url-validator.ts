@@ -44,6 +44,8 @@ const ALLOWED_HOSTS = [
   'techblog.lycorp.co.jp',
   'tech.ca-adv.co.jp',
   'note.com',
+  'moneyforward-dev.jp',
+  'moneyforward.com',
 
   // Cloud Providers
   'aws.amazon.com',
@@ -133,6 +135,7 @@ export function validateUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     // Ensure the URL has a valid protocol
+    // Block potentially dangerous protocols like data:, blob:, javascript:, file:
     return ['http:', 'https:'].includes(parsed.protocol);
   } catch {
     return false;

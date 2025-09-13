@@ -51,8 +51,9 @@ export function stripHtmlTags(html: string): string {
   do {
     previousResult = result;
     result = result
-      .replace(/<script\b[^<]*(?:(?!<\/script\s*>)<[^<]*)*<\/script\s*>/gi, '')
-      .replace(/<style\b[^<]*(?:(?!<\/style\s*>)<[^<]*)*<\/style\s*>/gi, '');
+      // Use simpler, more robust pattern that handles spaces in closing tags
+      .replace(/<script\b[\s\S]*?<\/script\s*>/gi, '')
+      .replace(/<style\b[\s\S]*?<\/style\s*>/gi, '');
   } while (result !== previousResult);
 
   // Remove all remaining HTML tags
@@ -107,8 +108,9 @@ export function cleanHtml(html: string): string {
   do {
     previousCleaned = cleaned;
     cleaned = cleaned
-      .replace(/<script\b[^<]*(?:(?!<\/script\s*>)<[^<]*)*<\/script\s*>/gi, '')
-      .replace(/<style\b[^<]*(?:(?!<\/style\s*>)<[^<]*)*<\/style\s*>/gi, '');
+      // Use simpler, more robust pattern that handles spaces in closing tags
+      .replace(/<script\b[\s\S]*?<\/script\s*>/gi, '')
+      .replace(/<style\b[\s\S]*?<\/style\s*>/gi, '');
   } while (cleaned !== previousCleaned);
 
   // Replace block-level elements with spaces for better text flow

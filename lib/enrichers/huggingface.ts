@@ -11,8 +11,15 @@ export class HuggingFaceEnricher extends BaseContentEnricher {
    * Hugging Face BlogのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return (isUrlFromDomain(url, 'huggingface.co') && url.includes('/blog')) ||
-           (isUrlFromDomain(url, 'hf.co') && url.includes('/blog'));
+    if (isUrlFromDomain(url, 'huggingface.co') || isUrlFromDomain(url, 'hf.co')) {
+      try {
+        const parsed = new URL(url);
+        return parsed.pathname.includes('/blog');
+      } catch {
+        return false;
+      }
+    }
+    return false;
   }
 
   /**

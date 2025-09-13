@@ -11,8 +11,18 @@ export class StackOverflowEnricher extends BaseContentEnricher {
    * Stack Overflow BlogのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
-    return isUrlFromDomain(url, 'stackoverflow.blog') ||
-           (isUrlFromDomain(url, 'stackexchange.com') && url.includes('/blog'));
+    if (isUrlFromDomain(url, 'stackoverflow.blog')) {
+      return true;
+    }
+    if (isUrlFromDomain(url, 'stackexchange.com')) {
+      try {
+        const parsed = new URL(url);
+        return parsed.pathname.includes('/blog');
+      } catch {
+        return false;
+      }
+    }
+    return false;
   }
 
   /**
