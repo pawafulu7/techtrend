@@ -47,17 +47,23 @@ export function decodeHtmlEntities(html: string): string {
 export function stripHtmlTags(html: string): string {
   if (!html) return '';
 
-  // First, replace block-level tags with spaces to preserve word boundaries
-  const processedHtml = html
-    .replace(/<\/(p|div|h[1-6]|li|br|tr|td|th)>/gi, ' ')
-    .replace(/<(p|div|h[1-6]|li|br|tr|td|th)[^>]*>/gi, ' ');
+  // Pre-process: Add spaces where tags will be removed to preserve word boundaries
+  let processedHtml = html;
 
-  // Use sanitize-html library to safely remove all remaining HTML tags
+  // Add space between text and tags
+  processedHtml = processedHtml.replace(/>([^<]+)</g, '> $1 <');
+  processedHtml = processedHtml.replace(/([^>])(<[^>]*>)([^<])/g, '$1 $2 $3');
+
+  // Use sanitize-html library to safely remove all HTML tags
   const result = sanitizeHtmlLib(processedHtml, {
     allowedTags: [],  // Remove all tags
     allowedAttributes: {},  // Remove all attributes
     textFilter: function(text) {
       return text;  // Keep text content
+    },
+    exclusiveFilter: function(frame) {
+      // Remove script and style tags completely including content
+      return frame.tag === 'script' || frame.tag === 'style';
     }
   });
 
@@ -79,34 +85,17 @@ export function stripHtmlTags(html: string): string {
 export function sanitizeHtml(html: string): string {
   if (!html) return '';
 
-  // First, replace block-level tags with spaces to preserve word boundaries
-  const processedHtml = html
-    .replace(/<\/(p|div|h[1-6]|li|br|tr|td|th)>/gi, ' ')
-    .replace(/<(p|div|h[1-6]|li|br|tr|td|th)[^>]*>/gi, ' ');
-
   // Use sanitize-html library with strict settings
-  const sanitized = sanitizeHtmlLib(processedHtml, {
+  const sanitized = sanitizeHtmlLib(html, {
     allowedTags: [],  // Remove all HTML tags for text-only output
     allowedAttributes: {},
     textFilter: function(text) {
       return text;
-    },
-    exclusiveFilter: function(frame) {
-      // Remove script and style tags completely including content
-      return frame.tag === 'script' || frame.tag === 'style';
     }
   });
 
-  // Additional cleanup for any remaining suspicious patterns
-  let cleaned = decodeHtmlEntities(sanitized);
-
-  // Remove any remaining script-like patterns
-  cleaned = cleaned.replace(/\balert\s*\([^)]*\)/gi, '');
-  cleaned = cleaned.replace(/\bon\w+\s*=/gi, '');
-  cleaned = cleaned.replace(/javascript:/gi, '');
-
-  // Clean up whitespace
-  return cleaned
+  // Decode HTML entities safely and clean whitespace
+  return decodeHtmlEntities(sanitized)
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -158,7 +147,7 @@ export function cleanHtml(html: string): string {
     .replace(/&trade;/g, '™')
     .replace(/&mdash;/g, '—')
     .replace(/&ndash;/g, '–')
-    .replace(/&hellip;/g, '...')
+    .replace(/&hellip;/g, '...')  // Three dots for compatibility
     // Process &amp; last
     .replace(/&amp;/g, '&');
 
