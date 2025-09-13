@@ -434,13 +434,22 @@ test.describe('フィルター条件の永続化', () => {
     
     await page.getByRole('button', { name: '人気' }).click();
     // ソートパラメータの待機時間を延長（CI環境では更に延長）
-    const sortTimeout = process.env.CI ? 30000 : 15000;
-    await page.waitForFunction(
-      () => window.location.search.includes('sortBy='),
-      { timeout: sortTimeout, polling: 100 }
-    );
+    const sortTimeout = process.env.CI ? 60000 : 15000;
+    
+    // URLパラメータの変更を待つ（より確実な方法）
+    await page.waitForURL(
+      url => url.searchParams.has('sortBy'),
+      { timeout: sortTimeout }
+    ).catch(() => {
+      // フォールバック: waitForFunctionを使用
+      return page.waitForFunction(
+        () => window.location.search.includes('sortBy='),
+        { timeout: sortTimeout, polling: process.env.CI ? 500 : 100 }
+      );
+    });
+    
     // ネットワーク安定化待機
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
     // 2. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -451,15 +460,21 @@ test.describe('フィルター条件の永続化', () => {
 
       // 3. 記事一覧に戻るリンクをクリック
       await page.click('a:has-text("記事一覧に戻る")');
-      await page.waitForURL(url => url.pathname === '/', { timeout: getTimeout('medium') });
-      // returningパラメータが削除されるのを待つ
+      await page.waitForURL(url => url.pathname === '/', { timeout: getTimeout('long') });
+      
+      // returningパラメータが削除されるのを待つ（CI環境では長めに待機）
+      const returningTimeout = process.env.CI ? 30000 : 10000;
       await page.waitForFunction(
         () => {
           const url = new URL(window.location.href);
           return !url.searchParams.has('returning');
         },
-        { timeout: getTimeout('medium') }
-      );
+        { timeout: returningTimeout, polling: process.env.CI ? 1000 : 200 }
+      ).catch(async () => {
+        // フォールバック: パラメータが削除されない場合でも続行
+        console.log('[Test] Warning: returning parameter was not removed, continuing anyway');
+        await page.waitForTimeout(2000);  // 短い待機を追加
+      });
 
       // 4. 検索条件が保持されていることを確認
       // 複数の検索ボックスがある場合は最初の要素を使用

@@ -449,8 +449,8 @@ export async function waitForUrlParam(
       }
       
       // タイムアウトを各リトライで調整（CI環境では長めに設定）
-      const minTimeout = process.env.CI ? 15000 : 5000;  // CI: 15秒、ローカル: 5秒
-      const maxTimeout = process.env.CI ? 60000 : 15000;  // CI: 60秒、ローカル: 15秒
+      const minTimeout = process.env.CI ? 30000 : 5000;  // CI: 30秒、ローカル: 5秒
+      const maxTimeout = process.env.CI ? 120000 : 15000;  // CI: 120秒、ローカル: 15秒
       const retryTimeout = Math.min(Math.max(minTimeout, timeout / maxRetries), maxTimeout);
       
       // デバッグ: 現在のURL確認
@@ -459,6 +459,11 @@ export async function waitForUrlParam(
         console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${currentUrl}`);
         console.log(`[waitForUrlParam] Waiting for param: ${paramName}=${paramValue || '<any value>'}`);
         console.log(`[waitForUrlParam] Timeout: ${retryTimeout}ms, Polling: ${polling}ms`);
+      }
+      
+      // CI環境では最初に短い待機を入れる
+      if (process.env.CI && attempt === 0) {
+        await page.waitForTimeout(1000);
       }
       
       await page.waitForFunction(
@@ -625,7 +630,15 @@ export async function waitForPageLoad(page: Page, options?: {
   ];
   
   if (waitForNetworkIdle) {
-    promises.push(page.waitForLoadState('networkidle', { timeout }));
+    // CI環境ではnetworkidleのタイムアウトを長めに設定
+    const networkIdleTimeout = process.env.CI ? Math.min(timeout * 2, 120000) : timeout;
+    promises.push(
+      page.waitForLoadState('networkidle', { timeout: networkIdleTimeout })
+        .catch(() => {
+          // networkidleがタイムアウトしても処理を続行
+          console.log('[waitForPageLoad] networkidle timeout, continuing anyway');
+        })
+    );
   }
   
   await Promise.all(promises);

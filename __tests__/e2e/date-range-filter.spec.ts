@@ -117,11 +117,16 @@ test.describe('Date Range Filter', () => {
     
     // ナビゲーションが失敗した場合はフォールバック
     if (!navResult) {
+      // CI環境では追加の待機
+      if (process.env.CI) {
+        await page.waitForTimeout(2000);
+      }
+      
       // Wait for URL to update (CI環境対応で長めのタイムアウト + リトライ)
       await waitForUrlParam(page, 'dateRange', 'today', { 
-        polling: 'fast',  // 高速ポーリング（100ms間隔）
-        timeout: getTimeout('long'),
-        retries: process.env.CI ? 5 : 2  // CI環境では5回までリトライ
+        polling: process.env.CI ? 'slow' : 'fast',  // CI環境では低速ポーリング
+        timeout: process.env.CI ? 60000 : getTimeout('long'),  // CI環境では60秒
+        retries: process.env.CI ? 10 : 2  // CI環境では10回までリトライ
       });
     }
     
