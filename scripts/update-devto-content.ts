@@ -112,11 +112,18 @@ function cleanHtmlContent(html: string): string {
   // 基本的なHTMLタグは残しつつ、不要な要素を削除
   let cleaned = html;
   
-  // スクリプトタグの削除
-  cleaned = cleaned.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  
-  // スタイルタグの削除
-  cleaned = cleaned.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  // スクリプトタグの削除（複数パスで処理）
+  let previousCleaned;
+  do {
+    previousCleaned = cleaned;
+    cleaned = cleaned.replace(/<script\b[^<]*(?:(?!<\/script\s*>)<[^<]*)*<\/script\s*>/gi, '');
+  } while (cleaned !== previousCleaned);
+
+  // スタイルタグの削除（複数パスで処理）
+  do {
+    previousCleaned = cleaned;
+    cleaned = cleaned.replace(/<style\b[^<]*(?:(?!<\/style\s*>)<[^<]*)*<\/style\s*>/gi, '');
+  } while (cleaned !== previousCleaned);
   
   // 過度な改行の正規化
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
