@@ -62,6 +62,7 @@ test.describe('検索クリア機能', () => {
     // URLから検索パラメータが消えるまで待機
     await page.waitForFunction(
       () => !window.location.href.includes('search='),
+      undefined,
       { timeout: getTimeout('short') }
     );
     
@@ -109,6 +110,7 @@ test.describe('検索クリア機能', () => {
     // URLからsearchパラメータが消えたことを確認
     await page.waitForFunction(
       () => !window.location.href.includes('search=React'),
+      undefined,
       { timeout: getTimeout('short') }
     );
     const url1 = page.url();
@@ -137,10 +139,11 @@ test.describe('検索クリア機能', () => {
     await expect(searchBox).toHaveValue('');
     
     // URLからsearchパラメータが消えたことを確認
-    const clearTimeout = process.env.CI ? 60000 : getTimeout('short');
+    const clearWaitMs = process.env.CI ? 60000 : getTimeout('short');
     await page.waitForFunction(
       () => !window.location.href.includes('search=Vue'),
-      { timeout: clearTimeout, polling: process.env.CI ? 500 : 100 }
+      undefined,
+      { timeout: clearWaitMs, polling: process.env.CI ? 500 : 100 }
     );
     const url2 = page.url();
     expect(url2).not.toContain('search=Vue');

@@ -436,6 +436,7 @@ test.describe('フィルター条件の永続化', () => {
                 const content = document.querySelector('[data-testid="source-filter-content"]');
                 return content && content.clientHeight > 0;
               },
+              undefined,
               { timeout: getTimeout('short'), polling: 50 }
             );
           }
@@ -496,6 +497,7 @@ test.describe('フィルター条件の永続化', () => {
           const url = new URL(window.location.href);
           return !url.searchParams.has('returning');
         },
+        undefined,
         { timeout: returningTimeout, polling: process.env.CI ? 1000 : 200 }
       ).catch(async () => {
         // フォールバック: パラメータが削除されない場合でも続行
@@ -577,6 +579,7 @@ test.describe('フィルター条件の永続化', () => {
                 const content = document.querySelector('[data-testid="source-filter-content"]');
                 return content && content.clientHeight > 0;
               },
+              undefined,
               { timeout: getTimeout('short'), polling: 50 }
             );
           }
