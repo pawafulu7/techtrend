@@ -20,16 +20,28 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const skip = (page - 1) * limit;
 
+    const includeRelations = searchParams.get('includeRelations') === 'true';
+    const lightweight = searchParams.get('lightweight') === 'true';
+
+    const articleSelect = lightweight ? {
+      id: true,
+      title: true,
+      url: true,
+      summary: true,
+      publishedAt: true,
+      thumbnail: true,
+    } : includeRelations ? {
+      include: {
+        source: true,
+        tags: true,
+      },
+    } : true;
+
     const [favorites, total] = await Promise.all([
       prisma.favorite.findMany({
         where: { userId: session.user.id },
         include: {
-          article: {
-            include: {
-              source: true,
-              tags: true,
-            },
-          },
+          article: articleSelect as any,
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -119,9 +131,13 @@ export async function POST(request: Request) {
       },
       include: {
         article: {
-          include: {
-            source: true,
-            tags: true,
+          select: {
+            id: true,
+            title: true,
+            url: true,
+            summary: true,
+            thumbnail: true,
+            publishedAt: true,
           },
         },
       },

@@ -216,8 +216,8 @@ export class EnhancedRedisCache extends RedisCache {
     
     // This would need to be implemented based on specific warmup logic
     // For now, just log the intent
-    for (const key of this.options.warmupKeys) {
-      // logger.debug(`Would warm up key: ${key}`);
+    for (const _key of this.options.warmupKeys) {
+      // logger.debug(`Would warm up key: ${_key}`);
     }
   }
 

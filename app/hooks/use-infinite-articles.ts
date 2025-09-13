@@ -9,7 +9,9 @@ interface ArticleFilters {
   tags?: string;
   dateRange?: string;
   readFilter?: string;
-  [key: string]: string | undefined;
+  lightweight?: boolean;  // Add lightweight mode flag
+  includeRelations?: boolean;  // Add relations flag
+  [key: string]: string | boolean | undefined;
 }
 
 interface ArticlesResponse {
@@ -122,14 +124,29 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       // フィルターパラメータを追加
       Object.entries(normalizedFilters).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
-          searchParams.append(key, value);
+          searchParams.append(key, String(value));
         }
       });
       
       // ページパラメータを追加
       searchParams.set('page', String(pageParam));
       searchParams.set('limit', '20');
-      
+
+      // パフォーマンス最適化: デフォルトで軽量モード
+      // モバイルまたは低速接続では lightweight=true を使用
+      const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+      const isSlowConnection = (navigator as any).connection?.effectiveType === 'slow-2g' || (navigator as any).connection?.effectiveType === '2g';
+
+      if (isMobile || isSlowConnection) {
+        searchParams.set('lightweight', 'true');
+      }
+
+      // includeRelations はデフォルトで false（APIサイドで設定済み）
+      // 必要な場合のみ明示的に true を設定
+      if (normalizedFilters.includeRelations) {
+        searchParams.set('includeRelations', 'true');
+      }
+
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
       const response = await fetch(`${endpoint}?${searchParams.toString()}`, { signal });
@@ -146,6 +163,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     },
     initialPageParam: 1,
     staleTime: 1000 * 60 * 5, // 5分間キャッシュ（Firefox互換性改善）
+    gcTime: 1000 * 60 * 10, // 10分間メモリに保持（データ転送削減）
     refetchOnWindowFocus: false,
   });
   

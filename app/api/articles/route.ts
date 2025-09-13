@@ -52,8 +52,10 @@ export async function GET(request: NextRequest) {
     const dateRange = searchParams.get('dateRange'); // Date range filter
     const readFilter = searchParams.get('readFilter'); // Read status filter
     const category = searchParams.get('category'); // Category filter
-    const includeRelations = searchParams.get('includeRelations') !== 'false'; // Include source and tags by default for backward compatibility
+    const includeRelations = searchParams.get('includeRelations') === 'true'; // Default to false to reduce data transfer
     const includeEmptyContent = searchParams.get('includeEmptyContent') === 'true'; // Filter out empty content by default
+    const lightweight = searchParams.get('lightweight') === 'true'; // Ultra-lightweight mode for mobile/bandwidth-conscious clients
+    const fields = searchParams.get('fields'); // Comma-separated list of fields to include
 
     // Generate cache key based on query parameters
     // Normalize search keywords for consistent cache key
@@ -92,7 +94,9 @@ export async function GET(request: NextRequest) {
         userId: userCtxForKey,
         category: category || 'all',
         includeRelations: includeRelations.toString(), // Add to cache key
-        includeEmptyContent: includeEmptyContent.toString() // Add new parameter to cache key
+        includeEmptyContent: includeEmptyContent.toString(), // Add new parameter to cache key
+        lightweight: lightweight.toString(), // Add lightweight mode to cache key
+        fields: fields || 'default' // Add fields to cache key
       }
     });
 
@@ -277,29 +281,58 @@ export async function GET(request: NextRequest) {
         'db_count'
       );
 
-      // Build select object based on includeRelations parameter
-      const selectFields: Prisma.ArticleSelect = {
-        id: true,
-        title: true,
-        url: true,
-        summary: true,
-        thumbnail: true,
-        publishedAt: true,
-        qualityScore: true,
-        bookmarks: true,
-        userVotes: true,
-        difficulty: true,
-        createdAt: true,
-        updatedAt: true,
-        sourceId: true,
-        summaryVersion: true,
-        articleType: true,
-        category: true,
-        // Exclude: content, detailedSummary for performance
-      };
+      // Build select object based on parameters
+      let selectFields: Prisma.ArticleSelect;
 
-      // Only include relations if requested (default: true for backward compatibility)
-      if (includeRelations) {
+      if (lightweight) {
+        // Ultra-lightweight mode: minimum fields only
+        selectFields = {
+          id: true,
+          title: true,
+          url: true,
+          summary: true,
+          publishedAt: true,
+          sourceId: true,
+        };
+      } else if (fields) {
+        // Custom field selection
+        const fieldList = fields.split(',').map(f => f.trim());
+        selectFields = {};
+
+        // Always include id for consistency
+        selectFields.id = true;
+
+        // Add requested fields
+        fieldList.forEach(field => {
+          if (field in prisma.article.fields) {
+            (selectFields as any)[field] = true;
+          }
+        });
+      } else {
+        // Standard mode
+        selectFields = {
+          id: true,
+          title: true,
+          url: true,
+          summary: true,
+          thumbnail: true,
+          publishedAt: true,
+          qualityScore: true,
+          bookmarks: true,
+          userVotes: true,
+          difficulty: true,
+          createdAt: true,
+          updatedAt: true,
+          sourceId: true,
+          summaryVersion: true,
+          articleType: true,
+          category: true,
+          // Exclude: content, detailedSummary for performance
+        };
+      }
+
+      // Only include relations if explicitly requested (default: false to save bandwidth)
+      if (includeRelations && !lightweight) {
         selectFields.source = {
           select: {
             id: true,

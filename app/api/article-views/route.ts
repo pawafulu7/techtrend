@@ -20,33 +20,46 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const skip = (page - 1) * limit;
+    const includeRelations = searchParams.get('includeRelations') === 'true';
+    const lightweight = searchParams.get('lightweight') === 'true';
 
     // 90日前の日付を計算
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
+    const articleSelect = lightweight ? {
+      select: {
+        id: true,
+        title: true,
+        url: true,
+        summary: true,
+        publishedAt: true,
+        thumbnail: true,
+      },
+    } : includeRelations ? {
+      include: {
+        source: true,
+        tags: true,
+      },
+    } : true;
+
     const [views, total] = await Promise.all([
       prisma.articleView.findMany({
-        where: { 
+        where: {
           userId: session.user.id,
           viewedAt: {
             gte: ninetyDaysAgo, // 90日以内の履歴のみ取得
           }
         },
         include: {
-          article: {
-            include: {
-              source: true,
-              tags: true,
-            },
-          },
+          article: articleSelect as any,
         },
         orderBy: { viewedAt: 'desc' },
         skip,
         take: limit,
       }),
       prisma.articleView.count({
-        where: { 
+        where: {
           userId: session.user.id,
           viewedAt: {
             gte: ninetyDaysAgo, // カウントも90日以内のみ
