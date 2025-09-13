@@ -14,6 +14,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import fetch from 'node-fetch';
+import { stripHtmlTags } from '../lib/utils/html-sanitizer';
 
 const prisma = new PrismaClient();
 
@@ -116,28 +117,12 @@ async function fetchArticleContent(articleId: string): Promise<{
 
 // HTMLコンテンツのクリーンアップ
 function cleanHtmlContent(html: string): string {
-  // 基本的なHTMLタグは残しつつ、不要な要素を削除
-  let cleaned = html;
-  
-  // スクリプトタグの削除（複数パスで処理）
-  let previousCleaned;
-  do {
-    previousCleaned = cleaned;
-    // Use simpler, more robust pattern that handles spaces in closing tags
-    cleaned = cleaned.replace(/<script\b[\s\S]*?<\/script\s*>/gi, '');
-  } while (cleaned !== previousCleaned);
+  // Use the library to strip dangerous tags while preserving content
+  // Note: We keep some formatting here for readability of stored content
+  const cleaned = stripHtmlTags(html);
 
-  // スタイルタグの削除（複数パスで処理）
-  do {
-    previousCleaned = cleaned;
-    // Use simpler, more robust pattern that handles spaces in closing tags
-    cleaned = cleaned.replace(/<style\b[\s\S]*?<\/style\s*>/gi, '');
-  } while (cleaned !== previousCleaned);
-  
   // 過度な改行の正規化
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  
-  return cleaned.trim();
+  return cleaned.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 // メイン処理

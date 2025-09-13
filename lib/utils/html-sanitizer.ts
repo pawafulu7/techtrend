@@ -7,6 +7,8 @@
  * @module html-sanitizer
  */
 
+import sanitizeHtmlLib from 'sanitize-html';
+
 /**
  * Decode HTML entities safely
  *
@@ -37,6 +39,7 @@ export function decodeHtmlEntities(html: string): string {
  * Strip HTML tags from a string
  *
  * Removes all HTML tags while preserving text content.
+ * Uses sanitize-html library for robust and secure tag removal.
  *
  * @param html - HTML string
  * @returns Text without HTML tags
@@ -44,34 +47,31 @@ export function decodeHtmlEntities(html: string): string {
 export function stripHtmlTags(html: string): string {
   if (!html) return '';
 
-  // Remove script and style content completely
-  // Use multiple passes to handle nested or malformed tags
-  let result = html;
-  let previousResult;
-  do {
-    previousResult = result;
-    result = result
-      // Use simpler, more robust pattern that handles spaces in closing tags
-      .replace(/<script\b[\s\S]*?<\/script\s*>/gi, '')
-      .replace(/<style\b[\s\S]*?<\/style\s*>/gi, '');
-  } while (result !== previousResult);
+  // First, replace block-level tags with spaces to preserve word boundaries
+  let processedHtml = html
+    .replace(/<\/(p|div|h[1-6]|li|br|tr|td|th)>/gi, ' ')
+    .replace(/<(p|div|h[1-6]|li|br|tr|td|th)[^>]*>/gi, ' ');
 
-  // Remove all remaining HTML tags
-  result = result.replace(/<[^>]*>/g, ' ');
+  // Use sanitize-html library to safely remove all remaining HTML tags
+  const result = sanitizeHtmlLib(processedHtml, {
+    allowedTags: [],  // Remove all tags
+    allowedAttributes: {},  // Remove all attributes
+    textFilter: function(text) {
+      return text;  // Keep text content
+    }
+  });
 
   // Clean up whitespace
-  result = result
+  return result
     .replace(/\s+/g, ' ')
     .trim();
-
-  return result;
 }
 
 /**
  * Sanitize HTML content
  *
  * Removes dangerous HTML elements and attributes while preserving safe content.
- * This function strips all HTML tags and then decodes entities safely.
+ * Uses sanitize-html library for comprehensive XSS protection.
  *
  * @param html - HTML string to sanitize
  * @returns Sanitized text content
@@ -79,13 +79,36 @@ export function stripHtmlTags(html: string): string {
 export function sanitizeHtml(html: string): string {
   if (!html) return '';
 
-  // First strip all HTML tags
-  let sanitized = stripHtmlTags(html);
+  // First, replace block-level tags with spaces to preserve word boundaries
+  let processedHtml = html
+    .replace(/<\/(p|div|h[1-6]|li|br|tr|td|th)>/gi, ' ')
+    .replace(/<(p|div|h[1-6]|li|br|tr|td|th)[^>]*>/gi, ' ');
 
-  // Then decode HTML entities safely
-  sanitized = decodeHtmlEntities(sanitized);
+  // Use sanitize-html library with strict settings
+  const sanitized = sanitizeHtmlLib(processedHtml, {
+    allowedTags: [],  // Remove all HTML tags for text-only output
+    allowedAttributes: {},
+    textFilter: function(text) {
+      return text;
+    },
+    exclusiveFilter: function(frame) {
+      // Remove script and style tags completely including content
+      return frame.tag === 'script' || frame.tag === 'style';
+    }
+  });
 
-  return sanitized;
+  // Additional cleanup for any remaining suspicious patterns
+  let cleaned = decodeHtmlEntities(sanitized);
+
+  // Remove any remaining script-like patterns
+  cleaned = cleaned.replace(/\balert\s*\([^)]*\)/gi, '');
+  cleaned = cleaned.replace(/\bon\w+\s*=/gi, '');
+  cleaned = cleaned.replace(/javascript:/gi, '');
+
+  // Clean up whitespace
+  return cleaned
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
@@ -100,25 +123,25 @@ export function sanitizeHtml(html: string): string {
 export function cleanHtml(html: string): string {
   if (!html) return '';
 
-  let cleaned = html;
+  // Use sanitize-html library to remove dangerous tags but preserve text structure
+  let cleaned = sanitizeHtmlLib(html, {
+    allowedTags: ['p', 'br', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'ol'],
+    allowedAttributes: {},
+    textFilter: function(text) {
+      return text;
+    },
+    exclusiveFilter: function(frame) {
+      // Remove script and style tags completely including content
+      return frame.tag === 'script' || frame.tag === 'style';
+    }
+  });
 
-  // Remove script and style tags with their content
-  // Use multiple passes to handle nested or malformed tags
-  let previousCleaned;
-  do {
-    previousCleaned = cleaned;
-    cleaned = cleaned
-      // Use simpler, more robust pattern that handles spaces in closing tags
-      .replace(/<script\b[\s\S]*?<\/script\s*>/gi, '')
-      .replace(/<style\b[\s\S]*?<\/style\s*>/gi, '');
-  } while (cleaned !== previousCleaned);
-
-  // Replace block-level elements with spaces for better text flow
+  // Convert block elements to spaces for better text flow
   cleaned = cleaned
     .replace(/<\/?(div|p|br|li|tr|h[1-6])[^>]*>/gi, ' ')
     .replace(/<\/?(ul|ol|table|thead|tbody|tfoot)[^>]*>/gi, ' ');
 
-  // Remove all other HTML tags
+  // Remove any remaining HTML tags
   cleaned = cleaned.replace(/<[^>]*>/g, '');
 
   // Decode HTML entities in the correct order
@@ -129,17 +152,15 @@ export function cleanHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
     .replace(/&nbsp;/g, ' ')
-    // Process other common entities
-    .replace(/&mdash;/g, '—')
-    .replace(/&ndash;/g, '–')
-    .replace(/&hellip;/g, '...')
+    // Process other common entities (before processing &amp;)
     .replace(/&copy;/g, '©')
     .replace(/&reg;/g, '®')
     .replace(/&trade;/g, '™')
+    .replace(/&mdash;/g, '—')
+    .replace(/&ndash;/g, '–')
+    .replace(/&hellip;/g, '...')
     // Process &amp; last
-    .replace(/&amp;/g, '&')
-    // Remove any remaining entities
-    .replace(/&[a-z]+;/gi, ' ');
+    .replace(/&amp;/g, '&');
 
   // Clean up whitespace
   cleaned = cleaned
