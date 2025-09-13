@@ -38,6 +38,9 @@ test.describe('フィルター条件の永続化', () => {
       timeout: getTimeout('long'),
       retries: process.env.CI ? 3 : 1
     });
+    
+    // 検索結果の反映完了を待つ
+    await waitForFilterApplication(page, { waitForNetworkIdle: true });
 
     // 2. 記事の有無を確認して適切に処理
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -47,8 +50,9 @@ test.describe('フィルター条件の永続化', () => {
     
     if (articleCount > 0) {
       // 記事がある場合は記事詳細ページへ遷移
-      await firstArticle.click();
+      await safeClick(firstArticle);
       await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
+      await waitForPageLoad(page, { waitForNetworkIdle: true });
       navigationPath = 'via article';
     } else {
       // 記事がない場合は別のページ（お気に入りなど）へ遷移
@@ -56,7 +60,7 @@ test.describe('フィルター条件の永続化', () => {
       
       // 別のページへ遷移（例：フィルターページやタグページ）
       await page.goto('/tags');
-      await page.waitForTimeout(1000);
+      await waitForPageLoad(page, { waitForNetworkIdle: true });
       navigationPath = 'via tags page';
     }
 
