@@ -133,7 +133,7 @@ export async function waitForArticles(page: Page, options?: {
     if (minCount > 1) {
       try {
         await page.waitForFunction(
-          (min, selector) => {
+          ({ min, selector }) => {
             const articles = document.querySelectorAll(selector);
             return articles.length >= min;
           },

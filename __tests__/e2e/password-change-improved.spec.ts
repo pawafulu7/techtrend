@@ -416,9 +416,9 @@ test.describe.serial('Password Change Feature - Improved', () => {
     // タブの内容が表示されるまで待機
     await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
-    // 正しいパスワード情報を入力
+    // ローディング表示のみ検証するため、あえて失敗する入力を送る（副作用回避）
     await fillPasswordChangeForm(page, {
-      current: testUser.password,
+      current: 'WrongPassword123',  // 間違った現在のパスワード
       new: 'NewPassword123',
       confirm: 'NewPassword123'
     });

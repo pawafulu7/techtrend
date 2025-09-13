@@ -30,7 +30,8 @@ rl.on('line', (line) => {
   const flakyMatch = line.match(/(\d+)\s+flaky/);
   const skippedMatch = line.match(/(\d+)\s+skipped/);
   const didNotRunMatch = line.match(/(\d+)\s+did not run/);
-  const timeMatch = line.match(/\(([0-9.]+[ms])\)/);
+  // "(3m 20s)" や "(245ms)" など括弧内の全表記を取得
+  const timeMatch = line.match(/\(([^)]+)\)/);
   
   if (passedMatch) {
     testResults.passed = parseInt(passedMatch[1]);
@@ -50,7 +51,8 @@ rl.on('line', (line) => {
   if (timeMatch) {
     testResults.timeElapsed = timeMatch[1];
   }
-  if (line.includes('Command timed out')) {
+  // タイムアウト検出を広げる
+  if (/Command timed out|Timed out|Timeout/i.test(line)) {
     testResults.timeout = true;
   }
   
@@ -87,12 +89,12 @@ function displaySummary() {
   console.log(`   Successful Tests:   ${successfulTests} (Passed + Flaky)`);
   
   // 成功率計算
-  const successRate = executedTests > 0 
-    ? ((successfulTests / executedTests) * 100).toFixed(2)
+  const successRateNum = executedTests > 0 
+    ? ((successfulTests / executedTests) * 100)
     : 0;
   
   console.log('\n🎯 Success Rate (Excluding Non-Executed):');
-  console.log(`   ${successRate}% (${successfulTests}/${executedTests})`);
+  console.log(`   ${successRateNum.toFixed(2)}% (${successfulTests}/${executedTests})`);
   
   // ステータス評価
   let status = '';
@@ -101,16 +103,16 @@ function displaySummary() {
   if (testResults.timeout) {
     status = '⏱️  TIMEOUT - Tests did not complete within time limit';
     emoji = '⚠️';
-  } else if (successRate == 100) {
+  } else if (successRateNum === 100) {
     status = '✨ PERFECT! All executed tests passed!';
     emoji = '🎉';
-  } else if (successRate >= 95) {
+  } else if (successRateNum >= 95) {
     status = '✅ EXCELLENT - Very high success rate';
     emoji = '👍';
-  } else if (successRate >= 90) {
+  } else if (successRateNum >= 90) {
     status = '🔵 GOOD - Acceptable success rate';
     emoji = '👌';
-  } else if (successRate >= 80) {
+  } else if (successRateNum >= 80) {
     status = '🟡 NEEDS ATTENTION - Some failures need fixing';
     emoji = '⚠️';
   } else {
@@ -127,7 +129,7 @@ function displaySummary() {
   }
   
   // 100%達成への道のり
-  if (successRate < 100 && executedTests > 0) {
+  if (successRateNum < 100 && executedTests > 0) {
     const testsToFix = testResults.failed;
     console.log(`\n📌 To Achieve 100%: Fix ${testsToFix} failing test(s)`);
   }

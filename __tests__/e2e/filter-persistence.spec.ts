@@ -452,10 +452,14 @@ test.describe('フィルター条件の永続化', () => {
       // 3. 記事一覧に戻るリンクをクリック
       await page.click('a:has-text("記事一覧に戻る")');
       await page.waitForURL(url => url.pathname === '/', { timeout: getTimeout('medium') });
-      await waitForUrlParam(page, 'returning', undefined, {
-        timeout: getTimeout('medium'),
-        polling: 'normal'
-      });
+      // returningパラメータが削除されるのを待つ
+      await page.waitForFunction(
+        () => {
+          const url = new URL(window.location.href);
+          return !url.searchParams.has('returning');
+        },
+        { timeout: getTimeout('medium') }
+      );
 
       // 4. 検索条件が保持されていることを確認
       // 複数の検索ボックスがある場合は最初の要素を使用
