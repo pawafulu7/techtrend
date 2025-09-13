@@ -112,9 +112,15 @@ export function sanitizeHtml(html: string): string {
 export function cleanHtml(html: string): string {
   if (!html) return '';
 
-  // Use sanitize-html library to remove dangerous tags but preserve text structure
-  let cleaned = sanitizeHtmlLib(html, {
-    allowedTags: ['p', 'br', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'ol'],
+  // Pre-process: Add spaces between block elements for better text flow
+  const processedHtml = html
+    .replace(/<\/(p|div|li|h[1-6])>/gi, (match) => match + ' ')
+    .replace(/<(p|div|li|h[1-6])([^>]*)>/gi, (match) => ' ' + match);
+
+  // First pass: Use sanitize-html to strip all tags but preserve text content
+  // This ensures no malformed or incomplete tags remain
+  let cleaned = sanitizeHtmlLib(processedHtml, {
+    allowedTags: [],  // Remove ALL tags for text extraction
     allowedAttributes: {},
     textFilter: function(text) {
       return text;
@@ -124,14 +130,6 @@ export function cleanHtml(html: string): string {
       return frame.tag === 'script' || frame.tag === 'style';
     }
   });
-
-  // Convert block elements to spaces for better text flow
-  cleaned = cleaned
-    .replace(/<\/?(div|p|br|li|tr|h[1-6])[^>]*>/gi, ' ')
-    .replace(/<\/?(ul|ol|table|thead|tbody|tfoot)[^>]*>/gi, ' ');
-
-  // Remove any remaining HTML tags
-  cleaned = cleaned.replace(/<[^>]*>/g, '');
 
   // Decode HTML entities in the correct order
   cleaned = cleaned
