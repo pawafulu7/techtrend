@@ -3,16 +3,31 @@
  */
 
 // モックの設定
-jest.mock('@/lib/prisma');
+const mockPrisma = {
+  favorite: {
+    findMany: jest.fn(),
+    count: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    delete: jest.fn(),
+  },
+  article: {
+    findUnique: jest.fn(),
+  },
+};
+
+jest.mock('@/lib/prisma', () => ({
+  prisma: mockPrisma
+}));
+
 jest.mock('@/lib/auth/auth');
 
 import { GET, POST, DELETE } from '@/app/api/favorites/route';
-import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth/auth';
 import { NextRequest } from 'next/server';
 
 // モック関数のヘルパーを取得
-const prismaMock = prisma as any;
+const prismaMock = mockPrisma;
 const authMock = auth as jest.MockedFunction<typeof auth>;
 const setUnauthenticated = () => authMock.mockResolvedValue(null);
 const resetMockSession = () => authMock.mockResolvedValue({

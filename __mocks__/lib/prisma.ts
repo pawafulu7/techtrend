@@ -1,5 +1,5 @@
 // Prismaモックの定義
-export const prisma = {
+const prismaMock = {
   favorite: {
     findMany: jest.fn(),
     count: jest.fn(),
@@ -32,3 +32,6 @@ export const prisma = {
     findMany: jest.fn(),
   },
 };
+
+export const prisma = prismaMock;
+export default prismaMock;
