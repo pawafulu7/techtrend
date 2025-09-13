@@ -87,11 +87,9 @@ test.describe.serial('Login Feature - Improved', () => {
     // 送信ボタンをクリックしてバリデーションをトリガー
     await page.click('button[type="submit"]:has-text("ログイン")');
     
-    // サーバー側バリデーションエラーを待つ（エラーアラートまたはURLの変化を待機）
-    await Promise.race([
-      page.waitForSelector('[role="alert"]', { state: 'visible', timeout: 3000 }),
-      page.waitForURL((url) => !url.toString().includes('/auth/login'), { timeout: 3000 })
-    ]).catch(() => {});
+    // サーバー側バリデーションエラーを待つ（エラーアラートの出現を待機）
+    // ログイン成功時はダッシュボードへ遷移するが、ここではエラーケースなのでアラートを待つ
+    await page.waitForSelector('[role="alert"]', { state: 'visible', timeout: 3000 }).catch(() => {});
     
     // サーバーからのエラーメッセージを確認
     // 短いパスワードの場合、サーバー側でエラーになる可能性
@@ -204,10 +202,10 @@ test.describe.serial('Login Feature - Improved', () => {
     await page.fill('input[id="password"]', TEST_USER.password);
     await page.click('button[type="submit"]:has-text("ログイン")');
     
-    // ログイン処理の完了を待つ（エラーまたはURL変化）
+    // ログイン処理の完了を待つ（エラーまたはダッシュボードへの遷移）
     await Promise.race([
       page.waitForSelector('[role="alert"]', { state: 'visible', timeout: 5000 }),
-      page.waitForURL((url) => !url.toString().includes('/auth/login'), { timeout: 5000 })
+      page.waitForURL(/^\/$/, { timeout: 5000 })  // ルートページ（ダッシュボード）への遷移を待つ
     ]).catch(() => {});
     
     // プロフィールページにアクセス試行

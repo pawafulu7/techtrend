@@ -100,9 +100,9 @@ test.describe('Date Range Filter', () => {
     }
     
     // Promise.allで並列にクリックとナビゲーション待機を実行
-    const navigationPromise = page.waitForURL((url) => {
-      return url.toString().includes('dateRange=today');
-    }, { timeout: getTimeout('long') }).catch(() => null);
+    const navigationPromise = page
+      .waitForURL(/dateRange=today/, { timeout: getTimeout('long') })
+      .catch(() => null);
     
     await safeClick(todayOption);
     
