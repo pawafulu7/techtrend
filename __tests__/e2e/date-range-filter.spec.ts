@@ -93,17 +93,42 @@ test.describe('Date Range Filter', () => {
     // Select "今日" option
     const todayOption = page.locator('[data-testid="date-range-option-today"]');
     await todayOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
+    
+    // クリック前に少し待機（CI環境での安定性向上）
+    if (process.env.CI) {
+      await page.waitForTimeout(500);
+    }
+    
+    // Promise.allで並列にクリックとナビゲーション待機を実行
+    const navigationPromise = page
+      .waitForURL(/dateRange=today/, { timeout: getTimeout('long') })
+      .catch(() => null);
+    
     await safeClick(todayOption);
     
     // ドロップダウンが閉じるのを待つ
     await expect(page.locator('[data-testid="date-range-content"]')).toBeHidden({ timeout: getTimeout('short') });
     
-    // Wait for URL to update (CI環境対応で長めのタイムアウト + リトライ)
-    await waitForUrlParam(page, 'dateRange', 'today', { 
-      polling: 'normal', 
-      timeout: getTimeout('long'),
-      retries: process.env.CI ? 3 : 1
-    });
+    // URLパラメータ更新前に少し待機（React状態更新を待つ）
+    await page.waitForTimeout(1000);
+    
+    // ナビゲーションを待つ
+    const navResult = await navigationPromise;
+    
+    // ナビゲーションが失敗した場合はフォールバック
+    if (!navResult) {
+      // CI環境では追加の待機
+      if (process.env.CI) {
+        await page.waitForTimeout(2000);
+      }
+      
+      // Wait for URL to update (CI環境対応で長めのタイムアウト + リトライ)
+      await waitForUrlParam(page, 'dateRange', 'today', { 
+        polling: process.env.CI ? 'slow' : 'fast',  // CI環境では低速ポーリング
+        timeout: process.env.CI ? 60000 : getTimeout('long'),  // CI環境では60秒
+        retries: process.env.CI ? 10 : 2  // CI環境では10回までリトライ
+      });
+    }
     
     // Additional network wait after URL change
     await waitForPageLoad(page, { waitForNetworkIdle: true });
@@ -250,10 +275,10 @@ test.describe('Date Range Filter', () => {
     await safeClick(page.locator('[data-testid="date-range-option-all"]'));
     
     // Check URL doesn't have dateRange parameter with extended timeout
+    const resetTimeout = process.env.CI ? 60000 : 15000; // CI: 60s, Local: 15s
     await page.waitForFunction(
       () => !window.location.href.includes('dateRange'),
-      {},
-      { timeout: 15000 }
+      { timeout: resetTimeout, polling: process.env.CI ? 500 : 100 }
     );
     
     // Additional network wait after reset

@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('回帰テスト - 既存機能の動作確認', () => {
+  // このテストスイートは多数の機能を網羅的にテストするため、タイムアウトを3倍に延長
+  test.slow();
   
   test.describe('記事一覧の基本機能', () => {
     test('記事カードが正しく表示される', async ({ page }) => {

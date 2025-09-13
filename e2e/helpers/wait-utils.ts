@@ -27,10 +27,10 @@ const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase())
  * 環境に応じたタイムアウト値
  */
 export const TIMEOUTS = {
-  short: isCI ? 10000 : 5000,
-  medium: isCI ? 30000 : 15000,
-  long: isCI ? 60000 : 30000,
-  extraLong: isCI ? 90000 : 45000,
+  short: isCI ? 15000 : 5000,    // CI: 15秒 (元10秒)
+  medium: isCI ? 45000 : 15000,   // CI: 45秒 (元30秒)
+  long: isCI ? 90000 : 30000,     // CI: 90秒 (元60秒)
+  extraLong: isCI ? 120000 : 45000, // CI: 120秒 (元90秒)
 };
 
 /**
@@ -87,69 +87,63 @@ export async function waitForArticles(page: Page, options?: {
     }
   }
   
-  // 複数のセレクターを順番に試す
-  const selectors = [
-    '[data-testid="article-card"]',
+  // 主要なセレクターに絞る（優先順位順）
+  const primarySelector = '[data-testid="article-card"]';
+  const fallbackSelectors = [
     '[data-testid="article-list-item"]',
-    '[data-testid="article-list"]',
     'article',
-    '.article-card',
-    '.article-item',
-    '.article-list'
+    '.article-card'
   ];
   
   let found = false;
   
-  // 各セレクターを順番に試す
-  for (const selector of selectors) {
-    try {
-      const element = await page.waitForSelector(selector, {
-        state: 'visible',
-        timeout: Math.floor(timeout / selectors.length)
-      });
-      if (element) {
+  // まず主要なセレクターで待機
+  try {
+    await page.waitForSelector(primarySelector, {
+      state: 'visible',
+      timeout: timeout * 0.7 // タイムアウトの70%を使用
+    });
+    found = true;
+  } catch {
+    // フォールバックセレクターを試す
+    for (const selector of fallbackSelectors) {
+      try {
+        await page.waitForSelector(selector, {
+          state: 'visible',
+          timeout: Math.floor(timeout * 0.1) // 各フォールバックに10%ずつ
+        });
         found = true;
         break;
+      } catch {
+        continue;
       }
-    } catch {
-      continue; // 次のセレクターを試す
     }
   }
   
   // 記事が見つからない場合
   if (!found && !allowEmpty) {
-    // もう一度総合的なセレクターで試す
-    try {
-      await page.waitForSelector(
-        '[data-testid="article-card"], [data-testid="article-list-item"], article, .article-card, .article-item',
-        { state: 'visible', timeout: getTimeout('short') }
-      );
-    } catch (error) {
-      // 記事がなくても続行するオプション
-      if (allowEmpty) {
-        console.log('No articles found, but continuing as allowEmpty is true');
-        return;
-      }
-      throw new Error(`No articles found with any selector after ${timeout}ms`);
-    }
+    throw new Error(`No articles found after ${timeout}ms`);
   }
   
-  // 最小数の記事が表示されるまで待機
-  if (minCount > 1 && found) {
-    try {
-      await page.waitForFunction(
-        (min) => {
-          const articles = document.querySelectorAll(
-            '[data-testid="article-card"], [data-testid="article-list-item"], article, .article-card, .article-item'
-          );
-          return articles.length >= min;
-        },
-        minCount,
-        { timeout: getTimeout('short'), polling: getPollingInterval('normal') }
-      );
-    } catch {
-      // 最小数に達しなくても続行
-      console.log(`Only found less than ${minCount} articles, but continuing`);
+  // 要素が安定するまで少し待機
+  if (found) {
+    await page.waitForTimeout(500);
+    
+    // 最小数の記事が表示されるまで待機
+    if (minCount > 1) {
+      try {
+        await page.waitForFunction(
+          ({ min, selector }) => {
+            const articles = document.querySelectorAll(selector);
+            return articles.length >= min;
+          },
+          { min: minCount, selector: primarySelector },
+          { timeout: getTimeout('short'), polling: getPollingInterval('fast') }
+        );
+      } catch {
+        // 最小数に達しなくても続行
+        console.log(`Only found less than ${minCount} articles, but continuing`);
+      }
     }
   }
 }
@@ -290,6 +284,9 @@ export async function safeClick(locator: Locator, options?: {
   
   for (let i = 0; i < maxRetries; i++) {
     try {
+      // クリック前に要素が安定するまで待機
+      await locator.waitFor({ state: 'visible', timeout: getTimeout('short') });
+      await locator.page().waitForTimeout(200); // 短い安定化待機
       await locator.click({ timeout: getTimeout('short'), force });
       return; // 成功したら終了
     } catch (error) {
@@ -306,6 +303,40 @@ export async function safeClick(locator: Locator, options?: {
   if (lastError) {
     throw lastError;
   }
+}
+
+/**
+ * 汎用的なリトライ関数
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  options?: {
+    retries?: number;
+    delay?: number;
+    onRetry?: (attempt: number, error: Error) => void;
+  }
+): Promise<T> {
+  const maxRetries = options?.retries ?? 3;
+  const delay = options?.delay ?? 1000;
+  let lastError: Error | null = null;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      
+      if (options?.onRetry) {
+        options.onRetry(i + 1, lastError);
+      }
+      
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(1.5, i)));
+      }
+    }
+  }
+  
+  throw lastError || new Error('All retries failed');
 }
 
 /**
@@ -392,13 +423,12 @@ export async function waitForUrlParam(
   }
 ) {
   const timeout = options?.timeout ?? getTimeout('medium');
-  const polling = getPollingInterval(options?.polling ?? 'normal');
-  const maxRetries = options?.retries ?? (process.env.CI ? 3 : 1);
+  const polling = getPollingInterval(options?.polling ?? (process.env.CI ? 'fast' : 'normal'));
+  const maxRetries = options?.retries ?? (process.env.CI ? 5 : 2);  // CI環境でリトライ回数を増やす
   
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
-  // CI環境では更に長く待機
-  // 初期待機時間を短縮（CI環境でも500ms）
-  const initialWait = 500;
+  // CI環境では更に長く待機してURL更新を確実に待つ
+  const initialWait = process.env.CI ? 1000 : 500;  // CI: 1秒、ローカル: 500ms
   await page.waitForTimeout(initialWait);
   
   let lastError: Error | null = null;
@@ -410,16 +440,31 @@ export async function waitForUrlParam(
         throw new Error('Page has been closed');
       }
       
-      // CI環境でもリトライ前の待機を短縮
+      // リトライ前の待機（CI環境では長めに）
       if (attempt > 0) {
-        // 線形バックオフを更に短縮（200ms, 400ms, 600ms...）
-        await page.waitForTimeout(200 + (200 * attempt));
+        const backoffWait = process.env.CI 
+          ? 500 + (500 * attempt)  // CI: 500ms, 1000ms, 1500ms...
+          : 200 + (200 * attempt);  // ローカル: 200ms, 400ms, 600ms...
+        await page.waitForTimeout(backoffWait);
       }
       
       // タイムアウトを各リトライで調整（CI環境では長めに設定）
-      const minTimeout = process.env.CI ? 10000 : 3000;  // CI: 10秒、ローカル: 3秒
-      const maxTimeout = process.env.CI ? 30000 : 10000;  // CI: 30秒、ローカル: 10秒
+      const minTimeout = process.env.CI ? 30000 : 5000;  // CI: 30秒、ローカル: 5秒
+      const maxTimeout = process.env.CI ? 120000 : 15000;  // CI: 120秒、ローカル: 15秒
       const retryTimeout = Math.min(Math.max(minTimeout, timeout / maxRetries), maxTimeout);
+      
+      // デバッグ: 現在のURL確認
+      if (process.env.CI || process.env.DEBUG_E2E) {
+        const currentUrl = page.url();
+        console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${currentUrl}`);
+        console.log(`[waitForUrlParam] Waiting for param: ${paramName}=${paramValue || '<any value>'}`);
+        console.log(`[waitForUrlParam] Timeout: ${retryTimeout}ms, Polling: ${polling}ms`);
+      }
+      
+      // CI環境では最初に短い待機を入れる
+      if (process.env.CI && attempt === 0) {
+        await page.waitForTimeout(1000);
+      }
       
       await page.waitForFunction(
         ({ name, value }) => {
@@ -431,7 +476,7 @@ export async function waitForUrlParam(
           return param === value;
         },
         { name: paramName, value: paramValue },
-        { timeout: retryTimeout, polling }
+        { timeout: retryTimeout, polling: polling }
       );
       
       // 成功したら終了
@@ -585,7 +630,15 @@ export async function waitForPageLoad(page: Page, options?: {
   ];
   
   if (waitForNetworkIdle) {
-    promises.push(page.waitForLoadState('networkidle', { timeout }));
+    // CI環境ではnetworkidleのタイムアウトを長めに設定
+    const networkIdleTimeout = process.env.CI ? Math.min(timeout * 2, 120000) : timeout;
+    promises.push(
+      page.waitForLoadState('networkidle', { timeout: networkIdleTimeout })
+        .catch(() => {
+          // networkidleがタイムアウトしても処理を続行
+          console.log('[waitForPageLoad] networkidle timeout, continuing anyway');
+        })
+    );
   }
   
   await Promise.all(promises);

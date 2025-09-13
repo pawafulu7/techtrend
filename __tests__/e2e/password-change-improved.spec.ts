@@ -63,42 +63,35 @@ test.describe.serial('Password Change Feature - Improved', () => {
     const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
     
     // プロフィールページへ移動
+    console.log('Test - Navigating to profile page...');
     await page.goto('/profile');
     await waitForPageLoad(page);
     
-    // アカウントタブを直接クリック（既にプロフィールページにいるため）
-    let accountTabOpened = false;
-    const accountTabSelectors = [
-      'button[value="account"]',
-      '[role="tab"][value="account"]',
-      'button[role="tab"][value="account"]',
-      'button:has-text("アカウント")',
-      '[role="tab"]:has-text("アカウント")',
-      '[data-testid="account-tab"]'
-    ];
+    // ページが完全に読み込まれるまで少し待機
+    await page.waitForTimeout(2000);
     
-    for (const selector of accountTabSelectors) {
-      try {
-        const tab = page.locator(selector).first();
-        if (await tab.count() > 0) {
-          await tab.scrollIntoViewIfNeeded();
-          await tab.waitFor({ state: 'visible', timeout: 2000 });
-          await tab.click();
-          await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
-          accountTabOpened = true;
-          break;
-        }
-      } catch {
-        continue;
-      }
-    }
+    // アカウントタブを開く（ヘルパー関数を使用）
+    console.log('Test - Opening account tab...');
+    const accountTabOpened = await openAccountTab(page, { debug: true });
     
     if (!accountTabOpened) {
-      // アカウントタブが見つからない場合、パスワード変更セクションが既に表示されているか確認
+      console.log('Test - Account tab not opened via helper, checking if password section is already visible...');
+      
+      // アカウントタブが開けなかった場合、パスワード変更セクションが既に表示されているか確認
       const passwordSection = page.locator(':has-text("パスワード変更")');
-      if (await passwordSection.count() === 0) {
+      const passwordSectionCount = await passwordSection.count();
+      
+      if (passwordSectionCount === 0) {
+        // ページの内容をデバッグ出力
+        const pageContent = await page.locator('body').textContent();
+        console.log('Test - Page content preview:', pageContent?.substring(0, 500));
+        
         throw new Error('Account tab not found and password change section not visible');
+      } else {
+        console.log('Test - Password change section is already visible');
       }
+    } else {
+      console.log('Test - Account tab opened successfully');
     }
     
     // タブの内容が表示されるまで待機
@@ -341,57 +334,91 @@ test.describe.serial('Password Change Feature - Improved', () => {
   test('7. ローディング状態が表示される', async ({ page, browserName }) => {
     test.skip(!!process.env.CI, 'CI環境では認証が不安定なためスキップ');
     
-    // まずログインする
-    await loginTestUser(page);
+    // デバッグ情報を出力
+    console.log(`Test 7 - Browser: ${browserName}`);
+    console.log(`Test 7 - Starting login process...`);
+    
+    // まずログインする（デバッグモード有効化、リトライ付き）
+    const maxRetries = 3;
+    let loginSuccess = false;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.log(`Test 7 - Login attempt ${attempt}/${maxRetries}`);
+      
+      try {
+        // ログインページに直接アクセスしてリトライ
+        if (attempt > 1) {
+          await page.goto('/auth/login', { waitUntil: 'domcontentloaded' });
+          await page.waitForTimeout(2000); // 待機時間を追加
+        }
+        
+        loginSuccess = await loginTestUser(page, { 
+          debug: true,
+          timeout: 45000  // タイムアウトを延長
+        });
+        
+        if (loginSuccess) {
+          console.log(`Test 7 - Login successful on attempt ${attempt}`);
+          break;
+        } else {
+          console.log(`Test 7 - Login failed on attempt ${attempt}`);
+        }
+      } catch (error) {
+        console.error(`Test 7 - Login error on attempt ${attempt}:`, error);
+      }
+      
+      // リトライ前に待機
+      if (!loginSuccess && attempt < maxRetries) {
+        await page.waitForTimeout(3000);
+      }
+    }
+    
+    // ログイン失敗時は早期終了
+    if (!loginSuccess) {
+      throw new Error('Login failed after multiple attempts');
+    }
     
     // ブラウザ固有のテストユーザーを使用
     const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
     
     // プロフィールページへ移動
+    console.log('Test - Navigating to profile page...');
     await page.goto('/profile');
     await waitForPageLoad(page);
     
-    // アカウントタブを直接クリック（既にプロフィールページにいるため）
-    let accountTabOpened = false;
-    const accountTabSelectors = [
-      'button[value="account"]',
-      '[role="tab"][value="account"]',
-      'button[role="tab"][value="account"]',
-      'button:has-text("アカウント")',
-      '[role="tab"]:has-text("アカウント")',
-      '[data-testid="account-tab"]'
-    ];
+    // ページが完全に読み込まれるまで少し待機
+    await page.waitForTimeout(2000);
     
-    for (const selector of accountTabSelectors) {
-      try {
-        const tab = page.locator(selector).first();
-        if (await tab.count() > 0) {
-          await tab.scrollIntoViewIfNeeded();
-          await tab.waitFor({ state: 'visible', timeout: 2000 });
-          await tab.click();
-          await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
-          accountTabOpened = true;
-          break;
-        }
-      } catch {
-        continue;
-      }
-    }
+    // アカウントタブを開く（ヘルパー関数を使用）
+    console.log('Test - Opening account tab...');
+    const accountTabOpened = await openAccountTab(page, { debug: true });
     
     if (!accountTabOpened) {
-      // アカウントタブが見つからない場合、パスワード変更セクションが既に表示されているか確認
+      console.log('Test - Account tab not opened via helper, checking if password section is already visible...');
+      
+      // アカウントタブが開けなかった場合、パスワード変更セクションが既に表示されているか確認
       const passwordSection = page.locator(':has-text("パスワード変更")');
-      if (await passwordSection.count() === 0) {
+      const passwordSectionCount = await passwordSection.count();
+      
+      if (passwordSectionCount === 0) {
+        // ページの内容をデバッグ出力
+        const pageContent = await page.locator('body').textContent();
+        console.log('Test - Page content preview:', pageContent?.substring(0, 500));
+        
         throw new Error('Account tab not found and password change section not visible');
+      } else {
+        console.log('Test - Password change section is already visible');
       }
+    } else {
+      console.log('Test - Account tab opened successfully');
     }
     
     // タブの内容が表示されるまで待機
     await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
     
-    // 正しいパスワード情報を入力
+    // ローディング表示のみ検証するため、あえて失敗する入力を送る（副作用回避）
     await fillPasswordChangeForm(page, {
-      current: testUser.password,
+      current: 'WrongPassword123',  // 間違った現在のパスワード
       new: 'NewPassword123',
       confirm: 'NewPassword123'
     });
