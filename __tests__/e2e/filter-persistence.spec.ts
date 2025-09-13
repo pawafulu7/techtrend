@@ -472,6 +472,7 @@ test.describe('フィルター条件の永続化', () => {
       // フォールバック: waitForFunctionを使用
       return page.waitForFunction(
         () => window.location.search.includes('sortBy='),
+        undefined,
         { timeout: sortTimeout, polling: process.env.CI ? 500 : 100 }
       );
     });
