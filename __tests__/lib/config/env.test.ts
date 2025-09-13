@@ -190,9 +190,9 @@ describe('Environment Configuration', () => {
     it('uses test database configuration in test environment', () => {
       process.env.NODE_ENV = 'test';
       // jest.setup.jsで既にDATABASE_URLが設定されているため、その値が使用される
-      const expectedUrl = process.env.CI 
+      const expectedUrl = process.env.CI
         ? 'postgresql://postgres:postgres@localhost:5432/techtrend_test'
-        : 'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
+        : 'postgresql://postgres:postgres_test_password@localhost:5433/techtrend_test';
       expect(config.database.url()).toBe(expectedUrl);
     });
 
@@ -443,7 +443,7 @@ describe('Environment Configuration - Config Helpers', () => {
     // jest.setup.jsで既にDATABASE_URLが設定されているため、その値が使用される
     const expectedUrl = process.env.CI 
       ? 'postgresql://postgres:postgres@localhost:5432/techtrend_test'
-      : 'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
+      : 'postgresql://postgres:postgres_test_password@localhost:5433/techtrend_test';
     expect(config.database.url()).toBe(expectedUrl);
   });
 

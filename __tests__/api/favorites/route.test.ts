@@ -8,11 +8,11 @@ jest.mock('@/lib/auth/auth');
 
 import { GET, POST, DELETE } from '@/app/api/favorites/route';
 import { prisma } from '@/lib/prisma';
-// モック関数は jest.mock によって自動的に __mocks__ から読み込まれる
 import { auth } from '@/lib/auth/auth';
 import { NextRequest } from 'next/server';
 
 // モック関数のヘルパーを取得
+const prismaMock = prisma as any;
 const authMock = auth as jest.MockedFunction<typeof auth>;
 const setUnauthenticated = () => authMock.mockResolvedValue(null);
 const resetMockSession = () => authMock.mockResolvedValue({
@@ -24,25 +24,18 @@ const resetMockSession = () => authMock.mockResolvedValue({
   expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 });
 
-const prismaMock = prisma as any;
-
 describe('/api/favorites', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetMockSession();
 
-    // デフォルトのPrismaモック設定
-    prismaMock.favorite = {
-      findMany: jest.fn().mockResolvedValue([]),
-      count: jest.fn().mockResolvedValue(0),
-      findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({} as any),
-      delete: jest.fn().mockResolvedValue({} as any),
-    };
-
-    prismaMock.article = {
-      findUnique: jest.fn().mockResolvedValue(null),
-    };
+    // モックのリセット
+    prismaMock.favorite.findMany.mockResolvedValue([]);
+    prismaMock.favorite.count.mockResolvedValue(0);
+    prismaMock.favorite.findUnique.mockResolvedValue(null);
+    prismaMock.favorite.create.mockResolvedValue({} as any);
+    prismaMock.favorite.delete.mockResolvedValue({} as any);
+    prismaMock.article.findUnique.mockResolvedValue(null);
   });
 
   describe('GET', () => {
@@ -113,7 +106,7 @@ describe('/api/favorites', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.favorites).toHaveLength(2);
       expect(data.favorites[0].title).toBe('Test Article 1');
       expect(data.favorites[0].favoriteId).toBe('fav1');
@@ -127,7 +120,7 @@ describe('/api/favorites', () => {
       expect(prismaMock.favorite.findMany).toHaveBeenCalledWith({
         where: { userId: 'test-user-id' },
         include: {
-          article: true, // デフォルトではrelationsは含まれない
+          article: true,
         },
         orderBy: { createdAt: 'desc' },
         skip: 0,
@@ -144,7 +137,7 @@ describe('/api/favorites', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.pagination).toEqual({
         page: 2,
         limit: 10,
@@ -181,7 +174,7 @@ describe('/api/favorites', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.favorites).toHaveLength(0);
       expect(data.pagination.total).toBe(0);
     });
@@ -233,7 +226,7 @@ describe('/api/favorites', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.message).toBe('Article favorited successfully');
       expect(data.favorite.title).toBe('Test Article');
       expect(data.favorite.favoriteId).toBe('fav1');
