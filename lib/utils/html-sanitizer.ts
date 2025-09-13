@@ -48,7 +48,7 @@ export function stripHtmlTags(html: string): string {
   if (!html) return '';
 
   // First, replace block-level tags with spaces to preserve word boundaries
-  let processedHtml = html
+  const processedHtml = html
     .replace(/<\/(p|div|h[1-6]|li|br|tr|td|th)>/gi, ' ')
     .replace(/<(p|div|h[1-6]|li|br|tr|td|th)[^>]*>/gi, ' ');
 
@@ -80,7 +80,7 @@ export function sanitizeHtml(html: string): string {
   if (!html) return '';
 
   // First, replace block-level tags with spaces to preserve word boundaries
-  let processedHtml = html
+  const processedHtml = html
     .replace(/<\/(p|div|h[1-6]|li|br|tr|td|th)>/gi, ' ')
     .replace(/<(p|div|h[1-6]|li|br|tr|td|th)[^>]*>/gi, ' ');
 
