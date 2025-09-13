@@ -197,7 +197,6 @@ test.describe('フィルター条件の永続化', () => {
         
         // チェックボックスの状態を確認
         await expect(targetCheckbox).toHaveAttribute('data-state', 'checked');
-      }
     } else {
       // 記事がない場合でもソースフィルター自体の永続化は確認できる
       console.log('No articles after applying source filter - checking filter state only');
