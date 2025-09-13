@@ -1,8 +1,11 @@
-name: Scheduler - RSS Hourly
+name: Scheduler - RSS Feeds
 
 on:
   schedule:
-    - cron: '0 * * * *' # Every hour (UTC)
+    # Run 3 times a day: 7:00, 13:00, 19:00 JST (22:00, 04:00, 10:00 UTC)
+    - cron: '0 22 * * *' # 7:00 JST
+    - cron: '0 4 * * *'  # 13:00 JST
+    - cron: '0 10 * * *' # 19:00 JST
   workflow_dispatch:
     inputs:
       confirm:
