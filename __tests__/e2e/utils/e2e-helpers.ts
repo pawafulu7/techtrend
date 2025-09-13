@@ -398,10 +398,17 @@ export async function deleteTestUser(email: string): Promise<boolean> {
  * アカウントタブを開く（ユーザーメニュー → プロフィール → アカウントタブ）
  * @param page - Playwright page object
  */
-export async function openAccountTab(page: Page): Promise<boolean> {
+export async function openAccountTab(
+  page: Page,
+  options: { debug?: boolean } = {}
+): Promise<boolean> {
+  const { debug = false } = options;
+  
   try {
     // Early return if already on profile page
     if (page.url().includes('/profile')) {
+      if (debug) console.log('[openAccountTab] Already on profile page, looking for account tab...');
+      
       // Radix UI TabsTrigger specific selectors
       const accountTabSelectors = [
         'button[value="account"]',  // Radix UI TabsTrigger with value
@@ -412,25 +419,50 @@ export async function openAccountTab(page: Page): Promise<boolean> {
         '[data-testid="account-tab"]'  // data-testid if added
       ];
       
+      // Debug: Check what tabs are available
+      if (debug) {
+        const allTabs = await page.locator('[role="tab"], button[value]').count();
+        console.log(`[openAccountTab] Total tabs found: ${allTabs}`);
+        
+        if (allTabs > 0) {
+          const tabTexts = await page.locator('[role="tab"], button[value]').allTextContents();
+          console.log('[openAccountTab] Tab texts:', tabTexts);
+        }
+      }
+      
       for (const selector of accountTabSelectors) {
         try {
           const tab = page.locator(selector).first();
           const count = await tab.count();
+          
+          if (debug && count > 0) {
+            console.log(`[openAccountTab] Found tab with selector: ${selector}`);
+          }
+          
           if (count > 0) {
             await tab.scrollIntoViewIfNeeded();
             await tab.waitFor({ state: 'visible', timeout: 2000 });
             await tab.click();
+            
+            if (debug) console.log(`[openAccountTab] Clicked tab with selector: ${selector}`);
+            
             // Wait for tab content to be active
-            await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
-            return true;
+            try {
+              await page.waitForSelector('[role="tabpanel"][data-state="active"], :has-text("パスワード変更")', { timeout: 3000 });
+              if (debug) console.log('[openAccountTab] Tab content activated successfully');
+              return true;
+            } catch {
+              if (debug) console.log('[openAccountTab] Tab content did not activate, trying next selector');
+            }
           }
-        } catch {
+        } catch (err) {
+          if (debug) console.log(`[openAccountTab] Error with selector ${selector}:`, err);
           continue;
         }
       }
       
       // If no selector worked, log error
-      console.error('Could not find account tab with any selector');
+      if (debug) console.error('[openAccountTab] Could not find account tab with any selector');
       return false;
     }
 
@@ -658,59 +690,100 @@ export async function loginTestUser(
   } = options;
   
   try {
-    if (debug) console.log('Navigating to login page...');
+    if (debug) console.log(`[loginTestUser] Navigating to login page with email: ${email}`);
     
     // Navigate to login page with retry
     await page.goto('/auth/login', { waitUntil: 'domcontentloaded', timeout });
     await waitForPageLoad(page, { timeout });
     
+    if (debug) console.log('[loginTestUser] Page loaded, looking for form elements...');
+    
     // Wait for form elements (fallback selectors)
     const emailInput = page.locator('input#email, input[name="email"], input[type="email"]').first();
     const passwordInput = page.locator('input#password, input[name="password"], input[type="password"]').first();
+    
+    // Check if elements exist
+    const emailCount = await emailInput.count();
+    const passwordCount = await passwordInput.count();
+    
+    if (debug) {
+      console.log(`[loginTestUser] Email input found: ${emailCount > 0}`);
+      console.log(`[loginTestUser] Password input found: ${passwordCount > 0}`);
+    }
+    
+    if (emailCount === 0 || passwordCount === 0) {
+      if (debug) console.log('[loginTestUser] Form elements not found, page might not be ready');
+      throw new Error('Login form elements not found');
+    }
+    
     await emailInput.waitFor({ state: 'visible', timeout: 5000 });
     await passwordInput.waitFor({ state: 'visible', timeout: 5000 });
+    
+    if (debug) console.log('[loginTestUser] Filling form fields...');
     await emailInput.fill(email);
     await passwordInput.fill(password);
     
-    if (debug) console.log('Submitting login form...');
+    if (debug) console.log('[loginTestUser] Submitting login form...');
     
     // Submit login - try multiple methods
     const submitButton = page
       .locator('button[type="submit"], [data-testid="login-submit"], button:has-text("ログイン"), button:has-text("Login")')
       .first();
+    
+    const submitCount = await submitButton.count();
+    if (debug) console.log(`[loginTestUser] Submit button found: ${submitCount > 0}`);
+    
+    if (submitCount === 0) {
+      throw new Error('Submit button not found');
+    }
+    
     await submitButton.waitFor({ state: 'visible', timeout: 5000 });
     
     // ナビゲーションを待つPromiseを先に作成
     const navigationPromise = page.waitForURL((u) => {
       try { 
         const url = new URL(u);
-        return !url.pathname.includes('/auth/login');
+        const isNotLogin = !url.pathname.includes('/auth/login');
+        if (debug && isNotLogin) {
+          console.log(`[loginTestUser] Navigated to: ${url.pathname}`);
+        }
+        return isNotLogin;
       } catch { 
         return false; 
       }
-    }, { timeout: 20000 }).catch(() => null);
+    }, { timeout: 20000 }).catch((err) => {
+      if (debug) console.log(`[loginTestUser] Navigation timeout: ${err.message}`);
+      return null;
+    });
     
     // ボタンをクリック
+    if (debug) console.log('[loginTestUser] Clicking submit button...');
     await submitButton.click();
     
     // Enterキーも試す（フォーム送信のフォールバック）
+    await page.waitForTimeout(500); // 少し待機
+    if (debug) console.log('[loginTestUser] Pressing Enter key as fallback...');
     await page.keyboard.press('Enter');
     
     // ナビゲーションを待つ
+    if (debug) console.log('[loginTestUser] Waiting for navigation...');
     const navigationResult = await navigationPromise;
     
     if (!navigationResult) {
-      if (debug) console.log('Navigation timeout, checking current state...');
+      if (debug) console.log('[loginTestUser] Navigation timeout, checking current state...');
       
       // 少し待ってから再度URLをチェック
       await page.waitForTimeout(2000);
       
       const currentUrl = page.url();
+      if (debug) console.log(`[loginTestUser] Current URL: ${currentUrl}`);
+      
       if (currentUrl.includes('/auth/login')) {
         // エラーメッセージを確認
         const errorMessage = await page.locator('p.text-destructive, .text-red-500, [role="alert"]').count();
         if (errorMessage > 0) {
-          if (debug) console.log('Login error message detected');
+          const errorText = await page.locator('p.text-destructive, .text-red-500, [role="alert"]').first().textContent();
+          if (debug) console.log(`[loginTestUser] Login error message detected: ${errorText}`);
           return false;
         }
         
@@ -733,7 +806,7 @@ export async function loginTestUser(
     const isSuccess = !finalUrl.includes('/auth/login') && !finalUrl.includes('/error');
     
     if (isSuccess) {
-      if (debug) console.log('Login successful! Redirected to:', finalUrl);
+      if (debug) console.log(`[loginTestUser] Login successful! ✅ Redirected to: ${finalUrl}`);
       
       // ユーザーインジケーターの確認（オプション）
       try {
@@ -741,19 +814,38 @@ export async function loginTestUser(
           '[data-testid="user-menu-trigger"], [data-testid="user-menu"], button:has-text("ログアウト")'
         ).first();
         await userIndicator.waitFor({ state: 'visible', timeout: 3000 });
-        if (debug) console.log('User indicator confirmed');
+        if (debug) console.log('[loginTestUser] User indicator confirmed ✅');
       } catch {
-        if (debug) console.log('User indicator not visible, but login succeeded');
+        if (debug) console.log('[loginTestUser] User indicator not visible, but login succeeded');
       }
     } else {
-      if (debug) console.log('Login failed, still on:', finalUrl);
+      if (debug) {
+        console.log(`[loginTestUser] Login failed ❌ Still on: ${finalUrl}`);
+        
+        // ページの状態を詳しく調査
+        try {
+          const pageTitle = await page.title();
+          console.log(`[loginTestUser] Page title: ${pageTitle}`);
+          
+          const hasLoginForm = await page.locator('input[type="email"], input[type="password"]').count() > 0;
+          console.log(`[loginTestUser] Login form present: ${hasLoginForm}`);
+          
+          const errorMessages = await page.locator('[role="alert"], .text-destructive, .text-red-500').allTextContents();
+          if (errorMessages.length > 0) {
+            console.log(`[loginTestUser] Error messages found:`, errorMessages);
+          }
+        } catch (err) {
+          console.log('[loginTestUser] Could not get page details');
+        }
+      }
     }
     
     return isSuccess;
   } catch (error) {
     if (debug) {
-      console.error('Login failed with error:', error);
-      console.error('Current URL:', page.url());
+      console.error('[loginTestUser] Login failed with error:', error);
+      console.error('[loginTestUser] Error details:', (error as Error).message);
+      console.error('[loginTestUser] Current URL:', page.url());
     }
     return false;
   }
