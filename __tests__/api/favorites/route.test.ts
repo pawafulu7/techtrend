@@ -3,31 +3,16 @@
  */
 
 // モックの設定
-const mockPrisma = {
-  favorite: {
-    findMany: jest.fn(),
-    count: jest.fn(),
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    delete: jest.fn(),
-  },
-  article: {
-    findUnique: jest.fn(),
-  },
-};
-
-jest.mock('@/lib/prisma', () => ({
-  prisma: mockPrisma
-}));
-
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/auth/auth');
 
 import { GET, POST, DELETE } from '@/app/api/favorites/route';
+import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth/auth';
 import { NextRequest } from 'next/server';
 
 // モック関数のヘルパーを取得
-const prismaMock = mockPrisma;
+const prismaMock = prisma as any;
 const authMock = auth as jest.MockedFunction<typeof auth>;
 const setUnauthenticated = () => authMock.mockResolvedValue(null);
 const resetMockSession = () => authMock.mockResolvedValue({
@@ -44,13 +29,18 @@ describe('/api/favorites', () => {
     jest.clearAllMocks();
     resetMockSession();
 
-    // モックのリセット
-    prismaMock.favorite.findMany.mockResolvedValue([]);
-    prismaMock.favorite.count.mockResolvedValue(0);
-    prismaMock.favorite.findUnique.mockResolvedValue(null);
-    prismaMock.favorite.create.mockResolvedValue({} as any);
-    prismaMock.favorite.delete.mockResolvedValue({} as any);
-    prismaMock.article.findUnique.mockResolvedValue(null);
+    // モックのリセット - 関数を再作成
+    prismaMock.favorite = {
+      findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+      findUnique: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({} as any),
+      delete: jest.fn().mockResolvedValue({} as any),
+    };
+
+    prismaMock.article = {
+      findUnique: jest.fn().mockResolvedValue(null),
+    };
   });
 
   describe('GET', () => {
