@@ -2,13 +2,8 @@ import { getRedisClient } from '@/lib/redis/client';
 import { CacheOptions, CacheStats, CacheKeyOptions } from './types';
 import type { Redis } from 'ioredis';
 
-// Extended Redis interface with unlink method
-interface RedisWithUnlink extends Redis {
-  unlink(...keys: string[]): Promise<number>;
-}
-
 export class RedisCache {
-  protected redis: RedisWithUnlink;
+  protected redis: ReturnType<typeof getRedisClient>;
   protected defaultTTL: number;
   protected namespace: string;
   protected stats: CacheStats = {
@@ -18,7 +13,7 @@ export class RedisCache {
   };
 
   constructor(options?: CacheOptions) {
-    this.redis = getRedisClient() as RedisWithUnlink;
+    this.redis = getRedisClient();
     this.defaultTTL = options?.ttl || 3600; // 1 hour default
     // Separate cache namespace per environment to avoid cross-environment bleed
     const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
@@ -156,7 +151,7 @@ export class RedisCache {
         for (let i = 0; i < keys.length; i += batchSize) {
           const batch = keys.slice(i, i + batchSize);
           // Use UNLINK if available for non-blocking deletion
-          if ('unlink' in this.redis && typeof this.redis.unlink === 'function') {
+          if ('unlink' in this.redis && typeof (this.redis as Redis & { unlink?: Function }).unlink === 'function') {
             pipeline.unlink(...batch);
           } else {
             pipeline.del(...batch);

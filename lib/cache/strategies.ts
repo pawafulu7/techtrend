@@ -6,11 +6,6 @@
 import { Redis } from 'ioredis';
 import logger from '@/lib/logger';
 
-// Extended Redis interface with unlink method
-interface RedisWithUnlink extends Redis {
-  unlink(...keys: string[]): Promise<number>;
-}
-
 export interface CacheOptions {
   ttl: number;          // Time to live in seconds
   staleTime: number;    // Time before cache is considered stale (but still usable)
@@ -28,11 +23,11 @@ export interface CachedData<T> {
  * This strategy serves stale content while fetching fresh data in the background
  */
 export class AggressiveCacheStrategy {
-  private redis: RedisWithUnlink;
+  private redis: Redis;
   private defaultOptions: CacheOptions;
   private pendingRevalidations: Map<string, Promise<void>>;
 
-  constructor(redis: RedisWithUnlink, defaultOptions: Partial<CacheOptions> = {}) {
+  constructor(redis: Redis, defaultOptions: Partial<CacheOptions> = {}) {
     this.redis = redis;
     this.defaultOptions = {
       ttl: 900,         // 15 minutes default
@@ -225,8 +220,8 @@ export class AggressiveCacheStrategy {
     
     if (cacheKeys.length > 0) {
       // Use UNLINK for non-blocking deletion
-      if ('unlink' in this.redis && typeof this.redis.unlink === 'function') {
-        await this.redis.unlink(...cacheKeys);
+      if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
+        await (this.redis as any).unlink(...cacheKeys);
       } else {
         await this.redis.del(...cacheKeys);
       }
@@ -265,7 +260,7 @@ export class AggressiveCacheStrategy {
       for (let i = 0; i < keys.length; i += batchSize) {
         const batch = keys.slice(i, i + batchSize);
         // Prefer UNLINK for non-blocking operation
-        if ('unlink' in this.redis && typeof this.redis.unlink === 'function') {
+        if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
           pipeline.unlink(...batch);
         } else {
           pipeline.del(...batch);

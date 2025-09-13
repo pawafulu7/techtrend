@@ -3,19 +3,13 @@ import { statsCache } from './stats-cache';
 import { trendsCache } from './trends-cache';
 import { searchCache } from './search-cache';
 import logger from '@/lib/logger';
-import type { Redis } from 'ioredis';
-
-// Extended Redis interface with unlink method
-interface RedisWithUnlink extends Redis {
-  unlink(...keys: string[]): Promise<number>;
-}
 
 /**
  * メモリ最適化戦略実装
  * Redisメモリ使用量の監視と最適化
  */
 export class MemoryOptimizer {
-  private redis = getRedisClient() as RedisWithUnlink;
+  private redis = getRedisClient();
   private monitoringInterval: NodeJS.Timeout | null = null;
   private isChecking = false; // Guard against concurrent checks
   private readonly checkInterval = 60000; // 1分ごとにチェック
@@ -285,8 +279,8 @@ export class MemoryOptimizer {
         const batchSize = 1000;
         for (let i = 0; i < keysToDelete.length; i += batchSize) {
           const batch = keysToDelete.slice(i, i + batchSize);
-          if ('unlink' in this.redis && typeof this.redis.unlink === 'function') {
-            await this.redis.unlink(...batch);
+          if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
+            await (this.redis as any).unlink(...batch);
           } else {
             await this.redis.del(...batch);
           }
@@ -321,8 +315,8 @@ export class MemoryOptimizer {
           for (let i = 0; i < keys.length; i += batchSize) {
             const batch = keys.slice(i, i + batchSize);
             // Prefer UNLINK to avoid blocking the server thread
-            if ('unlink' in this.redis && typeof this.redis.unlink === 'function') {
-              await this.redis.unlink(...batch);
+            if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
+              await (this.redis as any).unlink(...batch);
             } else {
               await this.redis.del(...batch);
             }
