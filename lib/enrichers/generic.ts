@@ -94,7 +94,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
             const nodes = Array.isArray(data) ? data : (Array.isArray(data?.['@graph']) ? data['@graph'] : [data]);
             for (const node of nodes) {
               if (node && typeof node === 'object') {
-                const body = (node as any).articleBody ?? (node as any).description;
+                const body = (node as Record<string, unknown>).articleBody ?? (node as Record<string, unknown>).description;
                 if (typeof body === 'string' && body.trim().length > 0) {
                   content = body;
                   return false; // break .each
