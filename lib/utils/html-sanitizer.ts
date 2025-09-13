@@ -45,9 +45,14 @@ export function stripHtmlTags(html: string): string {
   if (!html) return '';
 
   // Remove script and style content completely
-  let result = html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  let result = html;
+  let previousResult;
+  do {
+    previousResult = result;
+    result = result
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  } while (result !== previousResult);
 
   // Remove all remaining HTML tags
   result = result.replace(/<[^>]*>/g, ' ');
