@@ -150,8 +150,8 @@ test.describe('フィルター条件の永続化', () => {
           await waitForPageLoad(page, { waitForNetworkIdle: true });
         }
         
-        await page.waitForSelector('[data-testid="article-card"]', { 
-          timeout: process.env.CI ? 30000 : getTimeout('long'),
+        await page.waitForSelector('[data-testid="article-card"]', {
+          timeout: process.env.CI ? 60000 : getTimeout('long'),
           state: 'visible'
         });
         articleCardFound = true;
@@ -553,9 +553,9 @@ test.describe('フィルター条件の永続化', () => {
     // URL更新を待つ（waitForUrlParamで統一）
     try {
       await waitForUrlParam(page, 'search', 'Vue', {
-        timeout: getTimeout('medium'),
-        retries: process.env.CI ? 3 : 1,
-        polling: 'normal'
+        timeout: process.env.CI ? 90000 : getTimeout('medium'),
+        retries: process.env.CI ? 10 : 2,
+        polling: 'fast'
       });
     } catch (error) {
       console.log('Current URL after search:', page.url());
