@@ -82,27 +82,32 @@ export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
     return null;
   };
 
-  const renderCustomizedLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    percent,
-  }: {
-    cx: number;
-    cy: number;
+  // Rechartsのlabelプロパティ用の型定義（Rechartsの内部型に準拠）
+  interface LabelRenderProps {
+    cx?: string | number;
+    cy?: string | number;
     midAngle?: number;
-    innerRadius: number;
-    outerRadius: number;
+    innerRadius?: number;
+    outerRadius?: number;
     percent?: number;
-  }): React.ReactNode => {
-    if (!midAngle || !percent) return null;
-    
+  }
+
+  const renderCustomizedLabel = (props: LabelRenderProps): React.ReactNode => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
+    // 必須プロパティが存在しない場合は早期リターン
+    if (cx == null || cy == null || midAngle == null ||
+        innerRadius == null || outerRadius == null || percent == null) {
+      return null;
+    }
+
+    // cx, cyを数値に変換（文字列の場合があるため）
+    const numCx = typeof cx === 'string' ? parseFloat(cx) : cx;
+    const numCy = typeof cy === 'string' ? parseFloat(cy) : cy;
+
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const x = numCx + radius * Math.cos(-midAngle * RADIAN);
+    const y = numCy + radius * Math.sin(-midAngle * RADIAN);
 
     if (percent < 0.05) return null; // 5%未満は表示しない
 
@@ -111,7 +116,7 @@ export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
         x={x}
         y={y}
         fill="white"
-        textAnchor={x > cx ? 'start' : 'end'}
+        textAnchor={x > numCx ? 'start' : 'end'}
         dominantBaseline="central"
         fontSize="12"
         fontWeight="bold"

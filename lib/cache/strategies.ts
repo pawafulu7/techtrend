@@ -220,7 +220,7 @@ export class AggressiveCacheStrategy {
     
     if (cacheKeys.length > 0) {
       // Use UNLINK for non-blocking deletion
-      if (typeof (this.redis as any).unlink === 'function') {
+      if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
         await (this.redis as any).unlink(...cacheKeys);
       } else {
         await this.redis.del(...cacheKeys);
@@ -260,7 +260,7 @@ export class AggressiveCacheStrategy {
       for (let i = 0; i < keys.length; i += batchSize) {
         const batch = keys.slice(i, i + batchSize);
         // Prefer UNLINK for non-blocking operation
-        if (typeof (this.redis as any).unlink === 'function') {
+        if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
           pipeline.unlink(...batch);
         } else {
           pipeline.del(...batch);

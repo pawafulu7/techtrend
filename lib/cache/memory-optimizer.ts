@@ -279,7 +279,7 @@ export class MemoryOptimizer {
         const batchSize = 1000;
         for (let i = 0; i < keysToDelete.length; i += batchSize) {
           const batch = keysToDelete.slice(i, i + batchSize);
-          if (typeof (this.redis as any).unlink === 'function') {
+          if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
             await (this.redis as any).unlink(...batch);
           } else {
             await this.redis.del(...batch);
@@ -315,7 +315,7 @@ export class MemoryOptimizer {
           for (let i = 0; i < keys.length; i += batchSize) {
             const batch = keys.slice(i, i + batchSize);
             // Prefer UNLINK to avoid blocking the server thread
-            if (typeof (this.redis as any).unlink === 'function') {
+            if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
               await (this.redis as any).unlink(...batch);
             } else {
               await this.redis.del(...batch);

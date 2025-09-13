@@ -31,7 +31,21 @@ const eslintConfig = [
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
     },
-    ignores: ['**/__mocks__/**', '**/__tests__/**', '**/node_modules/**', '.next/**', 'out/**', 'build/**'],
+    ignores: [
+      '**/__mocks__/**',
+      '**/__tests__/**',
+      '**/node_modules/**',
+      '.next/**',
+      'out/**',
+      'build/**',
+      'dist/**',
+      'coverage/**',
+      '.backup/**',
+      'tmp/**',
+      'temp/**',
+      '*.tsbuildinfo',
+      'next-env.d.ts'
+    ],
   },
 ];
 

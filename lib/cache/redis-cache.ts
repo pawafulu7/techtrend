@@ -1,5 +1,6 @@
 import { getRedisClient } from '@/lib/redis/client';
 import { CacheOptions, CacheStats, CacheKeyOptions } from './types';
+import type { Redis } from 'ioredis';
 
 export class RedisCache {
   protected redis: ReturnType<typeof getRedisClient>;
@@ -150,7 +151,7 @@ export class RedisCache {
         for (let i = 0; i < keys.length; i += batchSize) {
           const batch = keys.slice(i, i + batchSize);
           // Use UNLINK if available for non-blocking deletion
-          if (typeof (this.redis as any).unlink === 'function') {
+          if ('unlink' in this.redis && typeof (this.redis as Redis & { unlink?: (...keys: string[]) => Promise<number> }).unlink === 'function') {
             pipeline.unlink(...batch);
           } else {
             pipeline.del(...batch);
