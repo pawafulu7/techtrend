@@ -56,6 +56,39 @@ describe('HTML Sanitizer', () => {
       expect(stripHtmlTags('<p>Unclosed paragraph')).toBe('Unclosed paragraph');
       expect(stripHtmlTags('Text with <b>unclosed bold')).toBe('Text with unclosed bold');
     });
+
+    it('should handle script tags with spaces in closing tag', () => {
+      const html = '<script>alert("XSS")</script >';
+      expect(stripHtmlTags(html)).toBe('');
+
+      const html2 = '<script >alert("XSS")</script >';
+      expect(stripHtmlTags(html2)).toBe('');
+
+      const html3 = '<script>alert("XSS")</script     >';
+      expect(stripHtmlTags(html3)).toBe('');
+    });
+
+    it('should handle style tags with spaces in closing tag', () => {
+      const html = '<style>body { color: red; }</style >';
+      expect(stripHtmlTags(html)).toBe('');
+
+      const html2 = '<style >body { color: red; }</style >';
+      expect(stripHtmlTags(html2)).toBe('');
+    });
+
+    it('should handle nested script tags', () => {
+      const html = '<script><script>alert(1)</script></script>';
+      expect(stripHtmlTags(html)).toBe('');
+    });
+
+    it('should handle partial script tag patterns', () => {
+      const html = 'text<scriptXalert(1)</scriptX>more';
+      expect(stripHtmlTags(html)).toBe('text more');
+
+      // This complex nested case completely removes the content due to multiple passes
+      const html2 = '<scr<script>ipt>alert(1)</scr</script>ipt>';
+      expect(stripHtmlTags(html2)).toBe('');
+    });
   });
 
   describe('sanitizeHtml', () => {

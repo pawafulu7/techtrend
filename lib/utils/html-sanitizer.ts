@@ -45,13 +45,14 @@ export function stripHtmlTags(html: string): string {
   if (!html) return '';
 
   // Remove script and style content completely
+  // Use multiple passes to handle nested or malformed tags
   let result = html;
   let previousResult;
   do {
     previousResult = result;
     result = result
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+      .replace(/<script\b[^<]*(?:(?!<\/script\s*>)<[^<]*)*<\/script\s*>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style\s*>)<[^<]*)*<\/style\s*>/gi, '');
   } while (result !== previousResult);
 
   // Remove all remaining HTML tags
@@ -101,9 +102,14 @@ export function cleanHtml(html: string): string {
   let cleaned = html;
 
   // Remove script and style tags with their content
-  cleaned = cleaned
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  // Use multiple passes to handle nested or malformed tags
+  let previousCleaned;
+  do {
+    previousCleaned = cleaned;
+    cleaned = cleaned
+      .replace(/<script\b[^<]*(?:(?!<\/script\s*>)<[^<]*)*<\/script\s*>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style\s*>)<[^<]*)*<\/style\s*>/gi, '');
+  } while (cleaned !== previousCleaned);
 
   // Replace block-level elements with spaces for better text flow
   cleaned = cleaned
