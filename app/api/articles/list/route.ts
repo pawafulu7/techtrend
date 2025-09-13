@@ -32,9 +32,9 @@ interface LightweightArticle {
   updatedAt: Date | string;
 }
 
-// Initialize Redis cache with 5 minutes TTL for lightweight articles
+// Initialize Redis cache with 30 minutes TTL for lightweight articles
 const cache = new RedisCache({
-  ttl: 300, // 5 minutes
+  ttl: 1800, // 30 minutes (increased from 5 minutes)
   namespace: '@techtrend/cache:api:lightweight'
 });
 
@@ -80,10 +80,14 @@ export async function GET(request: NextRequest) {
       sources.split(',').filter(id => id.trim()).sort().join(',') : 
       sourceId || 'all';
     
-    // Get session for read filter
-    const session = await auth();
+    // Get session only when readFilter requires user context
+    const shouldUseUserContext = readFilter === 'read' || readFilter === 'unread';
+    const session = shouldUseUserContext ? await auth() : null;
     const userId = session?.user?.id;
-    
+
+    // Include userId in cache key only when user context is needed
+    const userCtxForKey = shouldUseUserContext ? (userId ?? 'anonymous') : 'n/a';
+
     const cacheKey = cache.generateCacheKey('articles:lightweight', {
       params: {
         page: page.toString(),
@@ -97,7 +101,7 @@ export async function GET(request: NextRequest) {
         search: normalizedSearch,
         dateRange: dateRange || 'all',
         readFilter: readFilter || 'all',
-        userId: userId || 'anonymous',
+        userId: userCtxForKey,
         category: category || 'all'
       }
     });

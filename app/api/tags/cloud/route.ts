@@ -9,7 +9,7 @@ let tagCloudCache: RedisCache | null = null;
 const getTagCloudCache = () => {
   if (!tagCloudCache) {
     tagCloudCache = new RedisCache({
-      ttl: 1800, // 30分
+      ttl: 10800, // 3時間（30分から延長）
       namespace: '@techtrend/cache:tagcloud'
     });
   }

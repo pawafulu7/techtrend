@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForSourceFilter, getTimeout, waitForFilterApplication } from '../../e2e/helpers/wait-utils';
+import { waitForSourceFilter, getTimeout, waitForFilterApplication, waitForCheckboxesCount } from '../../e2e/helpers/wait-utils';
 
 test.describe('ソースカテゴリフィルター機能', () => {
   test.beforeEach(async ({ page }) => {
@@ -49,6 +49,19 @@ test.describe('ソースカテゴリフィルター機能', () => {
     const totalInForeign = await content.locator('button[role="checkbox"]').count();
     // 「全選択」で全て選択状態になる
     await page.getByTestId('category-foreign-select-all').click();
+
+    // CI環境では待機時間を長めに設定
+    if (process.env.CI) {
+      await page.waitForTimeout(1000);
+    }
+
+    // チェックボックスの状態変更を待つ
+    await waitForCheckboxesCount(page, '[data-testid="category-foreign-content"]', totalInForeign, {
+      timeout: process.env.CI ? 15000 : 5000,
+      polling: 'fast',
+      state: 'checked'
+    });
+
     await expect(content.locator('button[role="checkbox"][data-state="checked"]')).toHaveCount(totalInForeign);
 
     // 他カテゴリの一例が未選択のままであることを相対的に確認（全体選択数の変化で担保）

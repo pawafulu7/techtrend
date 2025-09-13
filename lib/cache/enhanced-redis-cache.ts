@@ -26,8 +26,8 @@ export class EnhancedRedisCache extends RedisCache {
     super(options);
     
     this.options = {
-      ttl: 900,              // 15 minutes default (increased from 5)
-      staleTime: 300,        // 5 minutes before stale
+      ttl: 3600,             // 1 hour default (increased from 15 minutes)
+      staleTime: 600,        // 10 minutes before stale (increased from 5)
       enableSWR: true,       // Enable SWR by default
       ...options,
     };
@@ -83,7 +83,7 @@ export class EnhancedRedisCache extends RedisCache {
         break;
       case 'stale':
         this.stats.hits++; // Still a hit, just stale
-        logger.debug(`Serving stale content for key: ${key}`);
+        // logger.debug(`Serving stale content for key: ${key}`);
         break;
       case 'miss':
         this.stats.misses++;
@@ -216,8 +216,8 @@ export class EnhancedRedisCache extends RedisCache {
     
     // This would need to be implemented based on specific warmup logic
     // For now, just log the intent
-    for (const key of this.options.warmupKeys) {
-      logger.debug(`Would warm up key: ${key}`);
+    for (const _key of this.options.warmupKeys) {
+      // logger.debug(`Would warm up key: ${_key}`);
     }
   }
 

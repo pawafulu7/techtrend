@@ -47,8 +47,17 @@ export default function FavoritesPage() {
   const fetchFavorites = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/favorites');
-      
+      // モバイルの場合は軽量モードを使用
+      const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+      const params = new URLSearchParams();
+
+      if (isMobile) {
+        params.set('lightweight', 'true');
+      }
+      // includeRelationsはデフォルトでfalseなので設定不要
+
+      const response = await fetch(`/api/favorites?${params.toString()}`);
+
       if (!response.ok) {
         throw new Error('お気に入りの取得に失敗しました');
       }

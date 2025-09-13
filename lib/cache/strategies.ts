@@ -61,7 +61,7 @@ export class AggressiveCacheStrategy {
         
         // Fresh cache - return immediately
         if (age < opts.staleTime * 1000) {
-          logger.debug(`Cache hit (fresh): ${key}`);
+          // logger.debug(`Cache hit (fresh): ${key}`);
           return {
             data: parsedCache.data,
             status: 'fresh',
@@ -70,7 +70,7 @@ export class AggressiveCacheStrategy {
         
         // Stale but still within TTL - return and revalidate in background
         if (age < opts.ttl * 1000) {
-          logger.debug(`Cache hit (stale): ${key}, revalidating in background`);
+          // logger.debug(`Cache hit (stale): ${key}, revalidating in background`);
           
           // Trigger background revalidation if not already in progress
           this.revalidateInBackground(cacheKey, fetcher, opts);
@@ -82,11 +82,11 @@ export class AggressiveCacheStrategy {
         }
         
         // Expired - fall through to fetch fresh
-        logger.debug(`Cache expired: ${key}`);
+        // logger.debug(`Cache expired: ${key}`);
       }
       
       // Cache miss or expired - fetch fresh data
-      logger.debug(`Cache miss: ${key}, fetching fresh data`);
+      // logger.debug(`Cache miss: ${key}, fetching fresh data`);
       const freshData = await fetcher();
       
       // Save to cache
@@ -126,17 +126,17 @@ export class AggressiveCacheStrategy {
   ): void {
     // Check if revalidation is already in progress for this key
     if (this.pendingRevalidations.has(cacheKey)) {
-      logger.debug(`Revalidation already in progress for: ${cacheKey}`);
+      // logger.debug(`Revalidation already in progress for: ${cacheKey}`);
       return;
     }
     
     // Create revalidation promise
     const revalidationPromise = (async () => {
       try {
-        logger.debug(`Starting background revalidation for: ${cacheKey}`);
+        // logger.debug(`Starting background revalidation for: ${cacheKey}`);
         const freshData = await fetcher();
         await this.set(cacheKey, freshData, options.ttl);
-        logger.debug(`Background revalidation completed for: ${cacheKey}`);
+        // logger.debug(`Background revalidation completed for: ${cacheKey}`);
       } catch (error) {
         logger.error({ error }, `Background revalidation failed for ${cacheKey}`);
       } finally {
@@ -193,7 +193,7 @@ export class AggressiveCacheStrategy {
             const cacheKey = this.buildKey(key, opts.namespace);
             const data = await fetcher();
             await this.set(cacheKey, data, opts.ttl);
-            logger.debug(`Cache warmed for: ${key}`);
+            // logger.debug(`Cache warmed for: ${key}`);
           } catch (error) {
             logger.error({ error }, `Failed to warm cache for ${key}`);
           }
@@ -225,7 +225,7 @@ export class AggressiveCacheStrategy {
       } else {
         await this.redis.del(...cacheKeys);
       }
-      logger.debug(`Cache invalidated for ${cacheKeys.length} keys`);
+      // logger.debug(`Cache invalidated for ${cacheKeys.length} keys`);
     }
   }
 

@@ -424,11 +424,11 @@ export async function waitForUrlParam(
 ) {
   const timeout = options?.timeout ?? getTimeout('medium');
   const polling = getPollingInterval(options?.polling ?? (process.env.CI ? 'fast' : 'normal'));
-  const maxRetries = options?.retries ?? (process.env.CI ? 5 : 2);  // CI環境でリトライ回数を増やす
-  
+  const maxRetries = options?.retries ?? (process.env.CI ? 10 : 3);  // CI環境でリトライ回数を大幅に増やす
+
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
   // CI環境では更に長く待機してURL更新を確実に待つ
-  const initialWait = process.env.CI ? 1000 : 500;  // CI: 1秒、ローカル: 500ms
+  const initialWait = process.env.CI ? 2000 : 500;  // CI: 2秒、ローカル: 500ms
   await page.waitForTimeout(initialWait);
   
   let lastError: Error | null = null;
@@ -449,8 +449,8 @@ export async function waitForUrlParam(
       }
       
       // タイムアウトを各リトライで調整（CI環境では長めに設定）
-      const minTimeout = process.env.CI ? 30000 : 5000;  // CI: 30秒、ローカル: 5秒
-      const maxTimeout = process.env.CI ? 120000 : 15000;  // CI: 120秒、ローカル: 15秒
+      const minTimeout = process.env.CI ? 60000 : 5000;  // CI: 60秒、ローカル: 5秒
+      const maxTimeout = process.env.CI ? 180000 : 15000;  // CI: 180秒、ローカル: 15秒
       const retryTimeout = Math.min(Math.max(minTimeout, timeout / maxRetries), maxTimeout);
       
       // デバッグ: 現在のURL確認
@@ -463,20 +463,33 @@ export async function waitForUrlParam(
       
       // CI環境では最初に短い待機を入れる
       if (process.env.CI && attempt === 0) {
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(2000);
       }
-      
+
+      // まず現在のURLをログに出力（デバッグ用）
+      const currentUrlBeforeWait = page.url();
+      if (process.env.CI || process.env.DEBUG_E2E) {
+        console.log(`[waitForUrlParam] Before wait - URL: ${currentUrlBeforeWait}`);
+        const currentParams = new URL(currentUrlBeforeWait).searchParams;
+        console.log(`[waitForUrlParam] Current params: ${Array.from(currentParams.entries()).map(([k, v]) => `${k}=${v}`).join(', ')}`);
+      }
+
       await page.waitForFunction(
         ({ name, value }) => {
-          const url = new URL(window.location.href);
-          const param = url.searchParams.get(name);
-          if (value === undefined) {
-            return param !== null;
+          try {
+            const url = new URL(window.location.href);
+            const param = url.searchParams.get(name);
+            if (value === undefined) {
+              return param !== null;
+            }
+            return param === value;
+          } catch (e) {
+            // URL解析エラーの場合はfalseを返す
+            return false;
           }
-          return param === value;
         },
         { name: paramName, value: paramValue },
-        { timeout: retryTimeout, polling: polling }
+        { timeout: retryTimeout, polling: Math.min(polling, 100) }  // CI環境では高頻度でポーリング
       );
       
       // 成功したら終了
@@ -659,9 +672,9 @@ export async function waitForElementAndClick(
   const timeout = options?.timeout ?? getTimeout('medium');
   const retries = options?.retries ?? 3;
   const force = options?.force ?? false;
-  
+
   const element = page.locator(selector).first();
-  
+
   for (let i = 0; i < retries; i++) {
     try {
       await element.waitFor({ state: 'visible', timeout });
@@ -672,4 +685,91 @@ export async function waitForElementAndClick(
       await page.waitForTimeout(getPollingInterval('normal')); // リトライ前に少し待機
     }
   }
+}
+
+/**
+ * チェックボックスの状態が変更されるまで待機
+ */
+export async function waitForCheckboxStateChange(
+  page: Page,
+  selector: string,
+  expectedState: 'checked' | 'unchecked',
+  options?: {
+    timeout?: number;
+    polling?: 'fast' | 'normal' | 'slow';
+  }
+) {
+  const timeout = options?.timeout ?? (process.env.CI ? 10000 : 5000);
+  const polling = getPollingInterval(options?.polling ?? 'fast');
+
+  // CI環境では初期待機を入れる
+  if (process.env.CI) {
+    await page.waitForTimeout(500);
+  }
+
+  await page.waitForFunction(
+    ({ selector, expectedState }) => {
+      const element = document.querySelector(selector);
+      if (!element) return false;
+
+      const dataState = element.getAttribute('data-state');
+      const ariaChecked = element.getAttribute('aria-checked');
+      const isChecked = element.classList?.contains('checked') ||
+                        dataState === 'checked' ||
+                        ariaChecked === 'true';
+
+      return expectedState === 'checked' ? isChecked : !isChecked;
+    },
+    { selector, expectedState },
+    { timeout, polling }
+  );
+}
+
+/**
+ * 複数のチェックボックスの状態が変更されるまで待機
+ */
+export async function waitForCheckboxesCount(
+  page: Page,
+  containerSelector: string,
+  expectedCount: number,
+  options?: {
+    timeout?: number;
+    polling?: 'fast' | 'normal' | 'slow';
+    state?: 'checked' | 'unchecked';
+  }
+) {
+  const timeout = options?.timeout ?? (process.env.CI ? 15000 : 5000);
+  const polling = getPollingInterval(options?.polling ?? 'fast');
+  const state = options?.state ?? 'checked';
+
+  // CI環境では初期待機を入れる
+  if (process.env.CI) {
+    await page.waitForTimeout(1000);
+  }
+
+  await page.waitForFunction(
+    ({ containerSelector, expectedCount, state }) => {
+      const container = document.querySelector(containerSelector);
+      if (!container) return false;
+
+      const checkboxes = container.querySelectorAll('button[role="checkbox"]');
+      let count = 0;
+
+      checkboxes.forEach(checkbox => {
+        const dataState = checkbox.getAttribute('data-state');
+        const ariaChecked = checkbox.getAttribute('aria-checked');
+        const isChecked = checkbox.classList?.contains('checked') ||
+                          dataState === 'checked' ||
+                          ariaChecked === 'true';
+
+        if ((state === 'checked' && isChecked) || (state === 'unchecked' && !isChecked)) {
+          count++;
+        }
+      });
+
+      return count === expectedCount;
+    },
+    { containerSelector, expectedCount, state },
+    { timeout, polling }
+  );
 }

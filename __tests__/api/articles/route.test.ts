@@ -121,14 +121,25 @@ describe('/api/articles', () => {
       expect(data.data.items[0].qualityScore).toBe(85);
 
       // Prismaクエリのパラメータを確認
+      // デフォルトではrelationsは含まれない（includeRelations=false）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           take: 20,
           skip: 0,
           orderBy: { publishedAt: 'desc' },
           select: expect.objectContaining({
-            source: expect.any(Object),
-            tags: expect.any(Object),
+            id: true,
+            title: true,
+            url: true,
+            summary: true,
+            thumbnail: true,
+            publishedAt: true,
+            sourceId: true,
+            bookmarks: true,
+            qualityScore: true,
+            userVotes: true,
+            createdAt: true,
+            updatedAt: true,
           }),
         })
       );

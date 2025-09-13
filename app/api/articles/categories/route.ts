@@ -5,7 +5,7 @@ import { RedisCache } from '@/lib/cache';
 
 // Initialize Redis cache with 1 hour TTL for category stats
 const cache = new RedisCache({
-  ttl: 3600, // 1 hour
+  ttl: 10800, // 3 hours (increased from 1 hour)
   namespace: '@techtrend/cache:categories'
 });
 

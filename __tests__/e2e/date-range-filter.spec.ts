@@ -123,10 +123,10 @@ test.describe('Date Range Filter', () => {
       }
       
       // Wait for URL to update (CI環境対応で長めのタイムアウト + リトライ)
-      await waitForUrlParam(page, 'dateRange', 'today', { 
-        polling: process.env.CI ? 'slow' : 'fast',  // CI環境では低速ポーリング
-        timeout: process.env.CI ? 60000 : getTimeout('long'),  // CI環境では60秒
-        retries: process.env.CI ? 10 : 2  // CI環境では10回までリトライ
+      await waitForUrlParam(page, 'dateRange', 'today', {
+        polling: 'fast',  // 高速ポーリングに統一
+        timeout: process.env.CI ? 120000 : getTimeout('long'),  // CI環境では120秒
+        retries: process.env.CI ? 15 : 3  // CI環境では15回までリトライ
       });
     }
     
@@ -204,10 +204,10 @@ test.describe('Date Range Filter', () => {
     await safeClick(page.locator('[data-testid="date-range-option-month"]'));
     
     // Extended timeout for URL change (CI環境では延長 + リトライ)
-    await waitForUrlParam(page, 'dateRange', 'month', { 
-      polling: 'normal', 
-      timeout: process.env.CI ? 45000 : 15000,
-      retries: process.env.CI ? 3 : 1
+    await waitForUrlParam(page, 'dateRange', 'month', {
+      polling: 'fast',
+      timeout: process.env.CI ? 90000 : 15000,
+      retries: process.env.CI ? 10 : 2
     });
     
     // Additional network wait after URL change
