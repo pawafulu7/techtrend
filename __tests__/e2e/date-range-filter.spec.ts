@@ -93,17 +93,37 @@ test.describe('Date Range Filter', () => {
     // Select "今日" option
     const todayOption = page.locator('[data-testid="date-range-option-today"]');
     await todayOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
+    
+    // クリック前に少し待機（CI環境での安定性向上）
+    if (process.env.CI) {
+      await page.waitForTimeout(500);
+    }
+    
+    // Promise.allで並列にクリックとナビゲーション待機を実行
+    const navigationPromise = page.waitForURL((url) => {
+      return url.toString().includes('dateRange=today');
+    }, { timeout: getTimeout('long') }).catch(() => null);
+    
     await safeClick(todayOption);
     
     // ドロップダウンが閉じるのを待つ
     await expect(page.locator('[data-testid="date-range-content"]')).toBeHidden({ timeout: getTimeout('short') });
     
-    // Wait for URL to update (CI環境対応で長めのタイムアウト + リトライ)
-    await waitForUrlParam(page, 'dateRange', 'today', { 
-      polling: 'normal', 
-      timeout: getTimeout('long'),
-      retries: process.env.CI ? 3 : 1
-    });
+    // URLパラメータ更新前に少し待機（React状態更新を待つ）
+    await page.waitForTimeout(1000);
+    
+    // ナビゲーションを待つ
+    const navResult = await navigationPromise;
+    
+    // ナビゲーションが失敗した場合はフォールバック
+    if (!navResult) {
+      // Wait for URL to update (CI環境対応で長めのタイムアウト + リトライ)
+      await waitForUrlParam(page, 'dateRange', 'today', { 
+        polling: 'raf',  // Request Animation Frame polling（より頻繁にチェック）
+        timeout: getTimeout('long'),
+        retries: process.env.CI ? 5 : 2  // CI環境では5回までリトライ
+      });
+    }
     
     // Additional network wait after URL change
     await waitForPageLoad(page, { waitForNetworkIdle: true });

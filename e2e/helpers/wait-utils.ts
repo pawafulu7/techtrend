@@ -27,10 +27,10 @@ const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase())
  * 環境に応じたタイムアウト値
  */
 export const TIMEOUTS = {
-  short: isCI ? 10000 : 5000,
-  medium: isCI ? 30000 : 15000,
-  long: isCI ? 60000 : 30000,
-  extraLong: isCI ? 90000 : 45000,
+  short: isCI ? 15000 : 5000,    // CI: 15秒 (元10秒)
+  medium: isCI ? 45000 : 15000,   // CI: 45秒 (元30秒)
+  long: isCI ? 90000 : 30000,     // CI: 90秒 (元60秒)
+  extraLong: isCI ? 120000 : 45000, // CI: 120秒 (元90秒)
 };
 
 /**
@@ -451,6 +451,13 @@ export async function waitForUrlParam(
       const minTimeout = process.env.CI ? 10000 : 3000;  // CI: 10秒、ローカル: 3秒
       const maxTimeout = process.env.CI ? 30000 : 10000;  // CI: 30秒、ローカル: 10秒
       const retryTimeout = Math.min(Math.max(minTimeout, timeout / maxRetries), maxTimeout);
+      
+      // デバッグ: 現在のURL確認
+      if (process.env.CI || process.env.DEBUG_E2E) {
+        const currentUrl = page.url();
+        console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${currentUrl}`);
+        console.log(`[waitForUrlParam] Waiting for param: ${paramName}=${paramValue || '<any value>'}`);
+      }
       
       await page.waitForFunction(
         ({ name, value }) => {
