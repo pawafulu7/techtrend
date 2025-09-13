@@ -82,21 +82,8 @@ export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
     return null;
   };
 
-  const renderCustomizedLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    percent,
-  }: {
-    cx: number;
-    cy: number;
-    midAngle?: number;
-    innerRadius: number;
-    outerRadius: number;
-    percent?: number;
-  }): React.ReactNode => {
+  const renderCustomizedLabel = (props: any): React.ReactNode => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
     if (!midAngle || !percent) return null;
     
     const RADIAN = Math.PI / 180;
