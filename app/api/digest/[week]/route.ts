@@ -10,7 +10,7 @@ let cache: RedisCache | null = null;
 const getCache = () => {
   if (!cache) {
     cache = new RedisCache({
-      ttl: 3600,
+      ttl: 10800, // 3 hours (increased from 1 hour)
       namespace: '@techtrend/cache:digest'
     });
   }

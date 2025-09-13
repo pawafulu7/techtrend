@@ -13,11 +13,11 @@ import { getDateRangeFilter } from '@/app/lib/date-utils';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
-// Initialize Enhanced Redis cache with 15 minutes TTL for articles
+// Initialize Enhanced Redis cache with 1 hour TTL for articles
 const cache = new EnhancedRedisCache({
-  ttl: 900, // 15 minutes
+  ttl: 3600, // 1 hour (increased from 15 minutes)
   namespace: '@techtrend/cache:api',
-  staleTime: 300, // 5 minutes before stale
+  staleTime: 600, // 10 minutes before stale (increased from 5)
   enableSWR: true // Enable stale-while-revalidate
 });
 
