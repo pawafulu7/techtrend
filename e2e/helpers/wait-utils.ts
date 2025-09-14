@@ -462,9 +462,11 @@ export async function waitForUrlParam(
       const attemptsLeft = Math.max(1, maxRetries - attempt);
       const perAttemptFloor = isCI ? 2000 : 500;
       const perAttemptCap = isCI ? 15000 : 10000;
+      const perAttemptBudget = Math.floor(remaining / attemptsLeft);
+      // 合計予算順守: 最終的に remaining を上回らないようにクランプ
       const retryTimeout = Math.min(
-        Math.max(Math.floor(remaining / attemptsLeft), perAttemptFloor),
-        perAttemptCap
+        remaining,
+        Math.max(perAttemptFloor, Math.min(perAttemptBudget, perAttemptCap))
       );
       
       // デバッグ: 現在のURL確認（DEBUG_E2E環境のみ、値はマスク）
