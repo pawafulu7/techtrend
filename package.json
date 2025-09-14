@@ -38,7 +38,7 @@
     "scheduler:stop": "pm2 stop techtrend-scheduler",
     "scheduler:restart": "pm2 restart techtrend-scheduler",
     "scheduler:logs": "pm2 logs techtrend-scheduler",
-    "scheduler:start:local": "pm2 start ecosystem.local.config.js",
+    "scheduler:start:local": "pm2 start ecosystem.local.config.js --only techtrend-scheduler-local",
     "scheduler:stop:local": "pm2 stop techtrend-scheduler-local",
     "scheduler:restart:local": "pm2 restart techtrend-scheduler-local",
     "scheduler:logs:local": "pm2 logs techtrend-scheduler-local",

@@ -1,12 +1,16 @@
 // PM2 configuration for local development with dotenv
-require('dotenv').config();
+const path = require('path');
+
+// Explicitly load .env from project root
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 module.exports = {
   apps: [
     {
       name: 'techtrend-scheduler-local',
       script: 'scripts/scheduled/scheduler.ts',
-      interpreter: './node_modules/.bin/tsx',
+      interpreter: 'tsx',
+      cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,
@@ -23,14 +27,14 @@ module.exports = {
       },
       error_file: 'logs/scheduler-error.log',
       out_file: 'logs/scheduler-out.log',
-      log_file: 'logs/scheduler-combined.log',
       time: true,
       merge_logs: true
     },
     {
       name: 'techtrend-auto-regenerate-local',
       script: 'scripts/scheduled/auto-regenerate.ts',
-      interpreter: './node_modules/.bin/tsx',
+      interpreter: 'tsx',
+      cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
       autorestart: false,
@@ -44,14 +48,14 @@ module.exports = {
       },
       error_file: 'logs/auto-regenerate-error.log',
       out_file: 'logs/auto-regenerate-out.log',
-      log_file: 'logs/auto-regenerate-combined.log',
       time: true,
       merge_logs: true
     },
     {
       name: 'techtrend-quality-check-local',
       script: 'scripts/scheduled/quality-check.ts',
-      interpreter: './node_modules/.bin/tsx',
+      interpreter: 'tsx',
+      cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
       autorestart: false,
@@ -64,7 +68,6 @@ module.exports = {
       },
       error_file: 'logs/quality-check-error.log',
       out_file: 'logs/quality-check-out.log',
-      log_file: 'logs/quality-check-combined.log',
       time: true,
       merge_logs: true
     }
