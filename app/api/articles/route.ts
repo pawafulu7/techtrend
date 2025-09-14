@@ -401,9 +401,21 @@ export async function GET(request: NextRequest) {
     // Add performance metrics to headers
     metrics.addMetricsToHeaders(response.headers);
 
-    // Add cache headers for browser caching
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
-    response.headers.set('CDN-Cache-Control', 'max-age=300');
+    // Set cache headers based on whether response is user-dependent
+    const isUserDependent = shouldUseUserContext || request.headers.get('Authorization');
+
+    if (isUserDependent) {
+      // User-specific responses should not be cached publicly
+      response.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+    } else {
+      // Public responses can be cached
+      response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+      response.headers.set('CDN-Cache-Control', 'max-age=300');
+    }
+
+    // Always set Vary header for proper cache key generation
     response.headers.set('Vary', 'Accept-Encoding, Authorization');
 
     return response;

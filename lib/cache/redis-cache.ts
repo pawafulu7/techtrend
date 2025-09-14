@@ -166,6 +166,62 @@ export class RedisCache {
   }
 
   /**
+   * Delete all keys matching a pattern using SCAN and batch deletion
+   * This method allows direct pattern matching without namespace prefix
+   * @param pattern - The pattern to match (e.g., 'related:articleId:*')
+   * @param batchSize - Number of keys to delete in each batch (default: 500)
+   */
+  async deleteByPattern(pattern: string, batchSize: number = 500): Promise<number> {
+    try {
+      const fullPattern = this.generateKey(pattern);
+      const keys: string[] = [];
+      
+      // Use SCAN to find all matching keys
+      const stream = this.redis.scanStream({
+        match: fullPattern,
+        count: 100, // Scan 100 keys at a time
+      });
+      
+      stream.on('data', (resultKeys: string[]) => {
+        keys.push(...resultKeys);
+      });
+      
+      await new Promise<void>((resolve, reject) => {
+        stream.on('end', resolve);
+        stream.on('error', reject);
+      });
+      
+      if (keys.length === 0) {
+        return 0;
+      }
+      
+      // Delete keys in batches using pipeline
+      const pipeline = this.redis.pipeline();
+      let deletedCount = 0;
+      
+      for (let i = 0; i < keys.length; i += batchSize) {
+        const batch = keys.slice(i, i + batchSize);
+        
+        // Prefer UNLINK for non-blocking deletion
+        if ('unlink' in this.redis && typeof (this.redis as Redis & { unlink?: (...keys: string[]) => Promise<number> }).unlink === 'function') {
+          pipeline.unlink(...batch);
+        } else {
+          pipeline.del(...batch);
+        }
+        
+        deletedCount += batch.length;
+      }
+      
+      await pipeline.exec();
+      return deletedCount;
+      
+    } catch (error) {
+      this.stats.errors++;
+      throw error;
+    }
+  }
+
+  /**
    * Get cache statistics
    */
   getStats(): CacheStats {

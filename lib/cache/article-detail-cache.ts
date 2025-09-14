@@ -18,6 +18,53 @@ export class ArticleDetailCache {
   /**
    * 記事詳細を取得（キャッシュ利用）
    */
+  /**
+   * Restore Date objects from cached string timestamps
+   * Handles nested date fields in article, source, and tags
+   */
+  private restoreDates<T>(cached: T): T {
+    if (!cached || typeof cached !== 'object') {
+      return cached;
+    }
+
+    const restored: any = { ...cached };
+
+    // Restore article date fields
+    const dateFields = ['publishedAt', 'createdAt', 'updatedAt'];
+    dateFields.forEach(field => {
+      if (restored[field] && typeof restored[field] === 'string') {
+        restored[field] = new Date(restored[field]);
+      }
+    });
+
+    // Restore source date fields if present
+    if (restored.source && typeof restored.source === 'object') {
+      ['createdAt', 'updatedAt'].forEach(field => {
+        if (restored.source[field] && typeof restored.source[field] === 'string') {
+          restored.source[field] = new Date(restored.source[field]);
+        }
+      });
+    }
+
+    // Restore tag date fields if present
+    if (Array.isArray(restored.tags)) {
+      restored.tags = restored.tags.map((tag: any) => {
+        if (tag && typeof tag === 'object') {
+          const restoredTag = { ...tag };
+          ['createdAt', 'updatedAt'].forEach(field => {
+            if (restoredTag[field] && typeof restoredTag[field] === 'string') {
+              restoredTag[field] = new Date(restoredTag[field]);
+            }
+          });
+          return restoredTag;
+        }
+        return tag;
+      });
+    }
+
+    return restored as T;
+  }
+
   async getArticleWithRelations(articleId: string): Promise<Prisma.ArticleGetPayload<{
     include: {
       source: true;
@@ -28,7 +75,9 @@ export class ArticleDetailCache {
     const cacheKey = `article:${articleId}:with-relations`;
     const cached = await this.cache.get(cacheKey);
     if (cached) {
-      return cached as Prisma.ArticleGetPayload<{
+      // Restore Date objects from cached string timestamps
+      const restored = this.restoreDates(cached);
+      return restored as Prisma.ArticleGetPayload<{
         include: {
           source: true;
           tags: true;
@@ -126,7 +175,7 @@ export class ArticleDetailCache {
     await this.cache.delete(`article:${articleId}:with-relations`);
 
     // 関連記事のキャッシュも削除（パターンマッチング）
-    // TODO: より効率的な削除方法を検討
+    await this.cache.deleteByPattern(`related:${articleId}:*`);
   }
 
   /**
