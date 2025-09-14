@@ -427,8 +427,8 @@ export async function waitForUrlParam(
   const maxRetries = options?.retries ?? (process.env.CI ? 5 : 2);  // CI環境では十分なリトライ回数を確保
 
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
-  // CI環境では更に長く待機してURL更新を確実に待つ
-  const initialWait = process.env.CI ? 2000 : 300;  // CI: 2秒（増加）、ローカル: 300ms
+  // CI環境でも短めに統一して総タイムアウト予算を有効活用
+  const initialWait = process.env.CI ? 500 : 300;  // CI: 500ms、ローカル: 300ms
   await page.waitForTimeout(initialWait);
   
   let lastError: Error | null = null;
@@ -460,11 +460,6 @@ export async function waitForUrlParam(
         console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${currentUrl}`);
         console.log(`[waitForUrlParam] Waiting for param: ${paramName}=${paramValue || '<any value>'}`);
         console.log(`[waitForUrlParam] Timeout: ${retryTimeout}ms, Polling: ${polling}ms`);
-      }
-      
-      // CI環境では最初に短い待機を入れる（削減）
-      if (process.env.CI && attempt === 0) {
-        await page.waitForTimeout(500);  // 2000ms → 500msに削減
       }
 
       // まず現在のURLをログに出力（デバッグ用）
