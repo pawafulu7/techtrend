@@ -261,8 +261,9 @@ describe('BaseFetcher', () => {
           <style>body { color: red; }</style>
         </div>
       `;
-      
-      expect(fetcher.testSanitizeText(html)).toBe('Title First paragraph with link alert(\'test\'); body { color: red; }');
+
+      // sanitize-htmlはscriptとstyleタグの内容を完全に除去する（セキュリティ対策）
+      expect(fetcher.testSanitizeText(html)).toBe('Title First paragraph with link');
     });
   });
 });
