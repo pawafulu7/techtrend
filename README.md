@@ -53,7 +53,27 @@ npm run summarize:local
 npm run scheduler:local
 ```
 
-**注意**: 通常の `npx tsx scripts/...` コマンドでは `.env` ファイルが読み込まれないため、上記のローカル実行用コマンドを使用してください。
+### PM2でのローカル実行
+
+PM2を使用してスケジューラーをバックグラウンドで実行する場合：
+
+```bash
+# PM2でスケジューラー起動（ローカル環境用）
+npm run scheduler:start:local
+
+# ログ確認
+npm run scheduler:logs:local
+
+# 再起動
+npm run scheduler:restart:local
+
+# 停止
+npm run scheduler:stop:local
+```
+
+**注意**:
+- 通常の `npx tsx scripts/...` コマンドでは `.env` ファイルが読み込まれないため、上記のローカル実行用コマンドを使用してください。
+- PM2のローカル実行では `ecosystem.local.config.js` が使用され、`.env` ファイルが自動的に読み込まれます。
 
 ## ライセンス
 
