@@ -454,20 +454,22 @@ export async function waitForUrlParam(
         ? Math.min(timeout - (attempt * 1000), 30000)  // CI: 最大30秒、但し総タイムアウトを考慮
         : Math.min(timeout / maxRetries, 10000);       // ローカル: 均等配分、最大10秒
       
-      // デバッグ: 現在のURL確認
-      if (process.env.CI || process.env.DEBUG_E2E) {
+      // デバッグ: 現在のURL確認（DEBUG_E2E環境のみ、値はマスク）
+      if (process.env.DEBUG_E2E) {
         const currentUrl = page.url();
-        console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${currentUrl}`);
-        console.log(`[waitForUrlParam] Waiting for param: ${paramName}=${paramValue || '<any value>'}`);
+        const safeUrl = currentUrl.replace(/\?.*$/, '?<redacted>');
+        console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${safeUrl}`);
+        console.log(`[waitForUrlParam] Waiting for param: ${paramName}=<redacted>`);
         console.log(`[waitForUrlParam] Timeout: ${retryTimeout}ms, Polling: ${polling}ms`);
       }
 
-      // まず現在のURLをログに出力（デバッグ用）
-      const currentUrlBeforeWait = page.url();
-      if (process.env.CI || process.env.DEBUG_E2E) {
-        console.log(`[waitForUrlParam] Before wait - URL: ${currentUrlBeforeWait}`);
+      // 現在のURLをデバッグ出力（DEBUG_E2E環境のみ、値はマスク）
+      if (process.env.DEBUG_E2E) {
+        const currentUrlBeforeWait = page.url();
+        const safeUrl = currentUrlBeforeWait.replace(/\?.*$/, '?<redacted>');
+        console.log(`[waitForUrlParam] Before wait - URL: ${safeUrl}`);
         const currentParams = new URL(currentUrlBeforeWait).searchParams;
-        console.log(`[waitForUrlParam] Current params: ${Array.from(currentParams.entries()).map(([k, v]) => `${k}=${v}`).join(', ')}`);
+        console.log(`[waitForUrlParam] Current params: ${Array.from(currentParams.keys()).join(', ')} (values redacted)`);
       }
 
       await page.waitForFunction(
