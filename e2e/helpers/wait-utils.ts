@@ -487,6 +487,7 @@ export async function waitForUrlParam(
         console.log(`[waitForUrlParam] Current params: ${Array.from(currentParams.keys()).join(', ')} (values redacted)`);
       }
 
+      // CI環境では特に長めに待機
       await page.waitForFunction(
         ({ name, value }) => {
           try {
@@ -502,7 +503,10 @@ export async function waitForUrlParam(
           }
         },
         { name: paramName, value: paramValue },
-        { timeout: retryTimeout, polling: process.env.CI ? 50 : polling }  // CI環境では高頻度でポーリング（50ms固定）
+        {
+          timeout: retryTimeout,
+          polling: process.env.CI ? 50 : polling  // CI環境では高頻度でポーリング（50ms固定）
+        }
       );
       
       // 成功したら終了
