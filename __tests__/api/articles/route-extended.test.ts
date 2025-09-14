@@ -11,6 +11,33 @@ declare global {
 // モックの設定
 jest.mock('@/lib/database');
 jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/cache/cache-invalidator');
+
+// LayeredCacheを直接モック
+jest.mock('@/lib/cache/layered-cache', () => ({
+  LayeredCache: jest.fn().mockImplementation(() => ({
+    getArticles: jest.fn(async (params, fetcher) => {
+      return await fetcher();
+    }),
+    getOrFetch: jest.fn(async (key, fetcher) => {
+      return await fetcher();
+    }),
+    set: jest.fn(),
+    del: jest.fn(),
+    clear: jest.fn(),
+  })),
+}));
+
+jest.mock('@/lib/metrics/performance', () => ({
+  MetricsCollector: jest.fn().mockImplementation(() => ({
+    startTimer: jest.fn(),
+    endTimer: jest.fn().mockReturnValue(10),
+    setCacheStatus: jest.fn(),
+    addMetricsToHeaders: jest.fn(),
+  })),
+  withDbTiming: jest.fn(async (metrics, fn) => await fn()),
+  withCacheTiming: jest.fn(async (metrics, fn) => await fn()),
+}));
 
 // モックインスタンスを保持する変数
 let mockCacheInstance: any;
@@ -51,6 +78,11 @@ const resetMockSession = () => authMock.mockResolvedValue({
 });
 
 describe('/api/articles - Extended Tests', () => {
+  afterEach(() => {
+    // テスト間での状態持ち越しを防ぐ
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (global as any).__mockCacheInstance;
+  });
   const mockArticles = [
     {
       id: 'article1',

@@ -36,8 +36,8 @@ describe('Date Utils', () => {
       expect(result?.toISOString()).toBe('2025-07-19T12:00:00.000Z');
     });
 
-    it('should return 3 months ago for "3months"', () => {
-      const result = getDateRangeFilter('3months');
+    it('should return 3 months ago for "three_months"', () => {
+      const result = getDateRangeFilter('three_months');
       expect(result).toBeInstanceOf(Date);
       expect(result?.toISOString()).toBe('2025-05-19T12:00:00.000Z');
     });
@@ -59,7 +59,7 @@ describe('Date Utils', () => {
       expect(getDateRangeLabel('today')).toBe('今日');
       expect(getDateRangeLabel('week')).toBe('今週');
       expect(getDateRangeLabel('month')).toBe('今月');
-      expect(getDateRangeLabel('3months')).toBe('過去3ヶ月');
+      expect(getDateRangeLabel('three_months')).toBe('過去3ヶ月');
     });
 
     it('should return "全期間" for invalid value', () => {
@@ -132,7 +132,7 @@ describe('Date Utils', () => {
       expect(DATE_RANGE_OPTIONS[1]).toEqual({ value: 'today', label: '今日' });
       expect(DATE_RANGE_OPTIONS[2]).toEqual({ value: 'week', label: '今週' });
       expect(DATE_RANGE_OPTIONS[3]).toEqual({ value: 'month', label: '今月' });
-      expect(DATE_RANGE_OPTIONS[4]).toEqual({ value: '3months', label: '過去3ヶ月' });
+      expect(DATE_RANGE_OPTIONS[4]).toEqual({ value: 'three_months', label: '過去3ヶ月' });
     });
   });
 });

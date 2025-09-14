@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { isCI } from './helpers/env';
 
 test.describe('スクロール位置復元機能', () => {
   // このテストスイートはスクロールとページ遷移を多用するため、タイムアウトを3倍に延長
@@ -10,7 +11,7 @@ test.describe('スクロール位置復元機能', () => {
     await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
     
     // CI環境での初期ロード待機
-    if (process.env.CI) {
+    if (isCI) {
       await page.waitForTimeout(2000);
     }
     
@@ -71,7 +72,7 @@ test.describe('スクロール位置復元機能', () => {
       }
       
       // スクロール後の安定化待機（CI環境では長めに）
-      await page.waitForTimeout(process.env.CI ? 4000 : 2000);
+      await page.waitForTimeout(isCI ? 4000 : 2000);
     }
     
     // 3. スクロール位置を記録（確実な取得）
@@ -110,11 +111,11 @@ test.describe('スクロール位置復元機能', () => {
     
     // 5. 記事詳細ページに遷移したことを確認
     await page.waitForURL(url => url.pathname === `/articles/${articleId}`, { 
-      timeout: process.env.CI ? 30000 : 10000 
+      timeout: isCI ? 30000 : 10000 
     });
     
     // CI環境での記事詳細ページロード待機
-    if (process.env.CI) {
+    if (isCI) {
       await page.waitForTimeout(2000);
     }
     
@@ -128,7 +129,7 @@ test.describe('スクロール位置復元機能', () => {
         return url.pathname === '/' && url.searchParams.has('returning');
       },
       undefined,
-      { timeout: process.env.CI ? 30000 : 10000 }
+      { timeout: isCI ? 30000 : 10000 }
     );
     
     // 8. 記事が読み込まれるまで待機
@@ -136,7 +137,7 @@ test.describe('スクロール位置復元機能', () => {
     
     // CI環境でのスクロール復元待機時間を延長
     // スクロール復元は非同期で実行されるため、十分な待機時間が必要
-    await page.waitForTimeout(process.env.CI ? 5000 : 2000);
+    await page.waitForTimeout(isCI ? 5000 : 2000);
     
     // 9. スクロール位置が復元されたか確認
     const scrollPositionAfter = await page.evaluate(() => {

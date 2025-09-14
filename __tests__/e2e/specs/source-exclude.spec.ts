@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { waitForPageLoad } from '../utils/e2e-helpers';
 
+// CI環境の検出
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
 test.describe('ソースフィルタリング機能', () => {
   // CI環境でのflaky対策 - タイムアウトを3倍に延長
   test.slow();
@@ -114,14 +117,14 @@ test.describe('ソースフィルタリング機能', () => {
     // Firefox対応: 記事データの読み込み完了を待つ（タイムアウトを延長）
     try {
       await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
-        timeout: process.env.CI ? 30000 : 10000
+        timeout: isCI ? 30000 : 10000
       });
     } catch {
       // 記事カードが見つからない場合は代替セレクタを試す
       const articles = page.locator('article, .article-item, .article-list-item').first();
       await expect(articles).toBeVisible({ timeout: 10000 });
     }
-    await page.waitForTimeout(process.env.CI ? 2000 : 500);
+    await page.waitForTimeout(isCI ? 2000 : 500);
     
     // 最初に全選択ボタンをクリックして、すべて選択状態にする
     const selectAllButton = page.locator('[data-testid="select-all-button"]');
@@ -183,7 +186,7 @@ test.describe('ソースフィルタリング機能', () => {
     await selectAllButton.click();
     
     // ネットワーク待機と状態更新を確実に待つ
-    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 10000 : 5000 });
+    await page.waitForLoadState('networkidle', { timeout: isCI ? 10000 : 5000 });
     await page.waitForTimeout(1000);
     
     // すべてのチェックボックスが選択されたことを確認
@@ -196,7 +199,7 @@ test.describe('ソースフィルタリング機能', () => {
     // タイムアウトを延長し、CI環境では更に長く待機
     try {
       await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
-        timeout: process.env.CI ? 20000 : 10000
+        timeout: isCI ? 20000 : 10000
       });
     } catch (error) {
       // タイムアウトした場合は、ローディング状態を確認
@@ -225,11 +228,11 @@ test.describe('ソースフィルタリング機能', () => {
   test('複数ソースの選択状態を管理できる', async ({ page, browserName }) => {
     // Firefox対応: 記事データの読み込み完了を待つ
     await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
-      timeout: process.env.CI ? 20000 : 10000
+      timeout: isCI ? 20000 : 10000
     });
     
     // ネットワーク待機（Firefoxも含めて統一）
-    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 15000 : 10000 });
+    await page.waitForLoadState('networkidle', { timeout: isCI ? 15000 : 10000 });
     
     // CI環境でも待機は不要（適切なセレクタ待機で対応）
     
@@ -238,7 +241,7 @@ test.describe('ソースフィルタリング機能', () => {
     
     // 記事カードが表示されるまで待つ
     await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
-      timeout: process.env.CI ? 20000 : 10000
+      timeout: isCI ? 20000 : 10000
     });
     
     // 海外ソースカテゴリを展開
@@ -302,8 +305,8 @@ test.describe('ソースフィルタリング機能', () => {
     }
     
     // URLに sources= の非空値が入るまで待機（変更が反映されたことを保証）
-    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 10000 : 5000 });
-    await expect(page).toHaveURL(/[\?&]sources=[^&]+/, { timeout: process.env.CI ? 15000 : 5000 });
+    await page.waitForLoadState('networkidle', { timeout: isCI ? 10000 : 5000 });
+    await expect(page).toHaveURL(/[\?&]sources=[^&]+/, { timeout: isCI ? 15000 : 5000 });
     
     // URLが更新されたら再度取得
     const currentUrl = page.url();
@@ -325,7 +328,7 @@ test.describe('ソースフィルタリング機能', () => {
     
     // 記事が更新されたことを確認（記事数が減少）
     // networkidleで統一（ブラウザ問わず、CI環境対応）
-    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 10000 : 5000 });
+    await page.waitForLoadState('networkidle', { timeout: isCI ? 10000 : 5000 });
     const articles = await page.locator('[data-testid="article-card"]').count();
     
     // 選択を元に戻す
@@ -344,12 +347,12 @@ test.describe('ソースフィルタリング機能', () => {
     );
     
     // 記事が再表示されるまで待機（状態ベースの待機）
-    await page.waitForLoadState('networkidle', { timeout: process.env.CI ? 10000 : 5000 });
+    await page.waitForLoadState('networkidle', { timeout: isCI ? 10000 : 5000 });
     await page.waitForTimeout(1000); // 追加の安定待機
     
     // 記事が表示されることを確認
     await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
-      timeout: process.env.CI ? 10000 : 5000
+      timeout: isCI ? 10000 : 5000
     });
     
     const articlesAfter = await page.locator('[data-testid="article-card"]').count();

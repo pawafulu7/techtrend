@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { waitForSourceFilter, getTimeout, waitForFilterApplication, waitForCheckboxesCount } from '../../e2e/helpers/wait-utils';
 
+// CI環境の検出
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
 test.describe('ソースカテゴリフィルター機能', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -51,13 +54,13 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await page.getByTestId('category-foreign-select-all').click();
 
     // CI環境では待機時間を長めに設定
-    if (process.env.CI) {
+    if (isCI) {
       await page.waitForTimeout(1000);
     }
 
     // チェックボックスの状態変更を待つ
     await waitForCheckboxesCount(page, '[data-testid="category-foreign-content"]', totalInForeign, {
-      timeout: process.env.CI ? 15000 : 5000,
+      timeout: isCI ? 15000 : 5000,
       polling: 'fast',
       state: 'checked'
     });
@@ -113,7 +116,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
     try {
       await page.waitForFunction(
         () => window.location.href.includes('sources='),
-        { timeout: process.env.CI ? 30000 : 10000 }
+        { timeout: isCI ? 30000 : 10000 }
       );
     } catch {
       // リトライ（CI環境では特に必要）
@@ -142,7 +145,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
             return sources && sources !== 'none' && sources.includes(id);
           },
           selectedId,
-          { timeout: process.env.CI ? 15000 : 5000 }
+          { timeout: isCI ? 15000 : 5000 }
         );
         // 再度URLパラメータを確認
         const updatedUrl = page.url();

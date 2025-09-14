@@ -2,15 +2,17 @@
  * 日付範囲フィルター用のユーティリティ関数
  */
 
-export type DateRangeOption = 'today' | 'week' | 'month' | '3months' | 'all';
-
+// 定数定義（型の派生元）
 export const DATE_RANGE_OPTIONS = [
   { value: 'all', label: '全期間' },
   { value: 'today', label: '今日' },
   { value: 'week', label: '今週' },
   { value: 'month', label: '今月' },
-  { value: '3months', label: '過去3ヶ月' },
+  { value: 'three_months', label: '過去3ヶ月' },
 ] as const;
+
+// 定数から型を派生させて重複をなくす
+export type DateRangeOption = typeof DATE_RANGE_OPTIONS[number]['value'];
 
 /**
  * 日付範囲文字列から開始日を計算
@@ -19,32 +21,39 @@ export const DATE_RANGE_OPTIONS = [
  */
 export function getDateRangeFilter(range: string): Date | null {
   const now = new Date();
-  
-  switch(range) {
-    case 'today':
+
+  // 後方互換: 旧値 '3months' を新値に正規化
+  const normalized = range === '3months' ? 'three_months' : range;
+
+  switch (normalized) {
+    case 'today': {
       // 今日の0時0分0秒から
       const today = new Date(now);
       today.setHours(0, 0, 0, 0);
       return today;
-      
-    case 'week':
+    }
+
+    case 'week': {
       // 7日前から
       const weekAgo = new Date(now);
       weekAgo.setDate(weekAgo.getDate() - 7);
       return weekAgo;
-      
-    case 'month':
+    }
+
+    case 'month': {
       // 1ヶ月前から
       const monthAgo = new Date(now);
       monthAgo.setMonth(monthAgo.getMonth() - 1);
       return monthAgo;
-      
-    case '3months':
+    }
+
+    case 'three_months': {
       // 3ヶ月前から
       const threeMonthsAgo = new Date(now);
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
       return threeMonthsAgo;
-      
+    }
+
     case 'all':
     default:
       // 全期間
@@ -58,7 +67,9 @@ export function getDateRangeFilter(range: string): Date | null {
  * @returns ラベル文字列
  */
 export function getDateRangeLabel(value: string): string {
-  const option = DATE_RANGE_OPTIONS.find(opt => opt.value === value);
+  // 後方互換: 旧値 '3months' を新値に正規化
+  const v = value === '3months' ? 'three_months' : value;
+  const option = DATE_RANGE_OPTIONS.find(opt => opt.value === v);
   return option?.label || '全期間';
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
+import { favoriteCache } from '@/lib/cache/favorites-cache';
 
 // GET: ユーザーのお気に入り記事一覧を取得
 export async function GET(request: Request) {
@@ -143,6 +144,9 @@ export async function POST(request: Request) {
       },
     });
 
+    // キャッシュを更新
+    await favoriteCache.updateSingle(session.user.id, articleId, true);
+
     return NextResponse.json({
       message: 'Article favorited successfully',
       favorite: {
@@ -203,6 +207,9 @@ export async function DELETE(request: Request) {
         id: favorite.id,
       },
     });
+
+    // キャッシュを更新
+    await favoriteCache.updateSingle(session.user.id, articleId, false);
 
     return NextResponse.json({
       message: 'Article removed from favorites',

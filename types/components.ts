@@ -11,6 +11,8 @@ export interface ArticleCardProps {
   showTags?: boolean;
   onTagClick?: (tagName: string) => void;
   onArticleClick?: () => void;
+  isFavorited?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 // 記事リスト

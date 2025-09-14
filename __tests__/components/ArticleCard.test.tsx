@@ -5,11 +5,12 @@ import '@testing-library/jest-dom';
 import { ArticleCard } from '@/app/components/article/card';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { 
-  createMockArticleWithRelations, 
-  createMockTag, 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  createMockArticleWithRelations,
+  createMockTag,
   createMockSource,
-  mockArticleWithRelations 
+  mockArticleWithRelations
 } from '@/test/utils/mock-factories';
 
 // Next.jsのモック
@@ -39,10 +40,12 @@ jest.mock('next/image', () => ({
   },
 }));
 
+
 const mockedUseRouter = jest.mocked(useRouter);
 const mockedUseSession = jest.mocked(useSession);
 
 describe('ArticleCard', () => {
+  let queryClient: QueryClient;
   const mockRouter = {
     push: jest.fn(),
     prefetch: jest.fn(),
@@ -70,12 +73,26 @@ describe('ArticleCard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
     mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
     mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
   });
 
+  const renderWithProviders = (ui: React.ReactElement) => {
+    return render(
+      <QueryClientProvider client={queryClient}>
+        {ui}
+      </QueryClientProvider>
+    );
+  };
+
   it('renders article information correctly', () => {
-    render(<ArticleCard article={mockArticle} />);
+    renderWithProviders(<ArticleCard article={mockArticle} />);
     
     // タイトルが表示される
     expect(screen.getByText('Test Article Title')).toBeInTheDocument();
@@ -94,7 +111,7 @@ describe('ArticleCard', () => {
   it('handles click events when onArticleClick is provided', async () => {
     const user = userEvent.setup();
     const handleClick = jest.fn();
-    render(<ArticleCard article={mockArticle} onArticleClick={handleClick} />);
+    renderWithProviders(<ArticleCard article={mockArticle} onArticleClick={handleClick} />);
     
     const card = screen.getByTestId('article-card');
     await user.click(card);
@@ -105,7 +122,7 @@ describe('ArticleCard', () => {
 
   it('navigates to article detail page when clicked without onArticleClick', async () => {
     const user = userEvent.setup();
-    render(<ArticleCard article={mockArticle} />);
+    renderWithProviders(<ArticleCard article={mockArticle} />);
     
     const card = screen.getByTestId('article-card');
     await user.click(card);
@@ -122,7 +139,7 @@ describe('ArticleCard', () => {
       status: 'authenticated',
     });
 
-    render(<ArticleCard article={mockArticle} />);
+    renderWithProviders(<ArticleCard article={mockArticle} />);
     
     // お気に入りボタンが表示される（data-testidがある場合）
     const favoriteButton = screen.queryByTestId('favorite-button');
@@ -133,7 +150,7 @@ describe('ArticleCard', () => {
 
 
   it('renders the article card container', () => {
-    render(<ArticleCard article={mockArticle} />);
+    renderWithProviders(<ArticleCard article={mockArticle} />);
     
     // data-testidで確認（role="article"は実装にない）
     const card = screen.getByTestId('article-card');
@@ -148,7 +165,7 @@ describe('ArticleCard', () => {
       tags: [],
     };
     
-    render(<ArticleCard article={articleWithoutTags} />);
+    renderWithProviders(<ArticleCard article={articleWithoutTags} />);
     
     // タグセクションが存在しないか、空である
     const tagElements = screen.queryAllByTestId('tag-chip');
@@ -161,7 +178,7 @@ describe('ArticleCard', () => {
       publishedAt: new Date(), // 現在時刻
     };
     
-    render(<ArticleCard article={newArticle} />);
+    renderWithProviders(<ArticleCard article={newArticle} />);
     
     // Newバッジが表示される
     expect(screen.getByText(/New/i)).toBeInTheDocument();
@@ -173,21 +190,21 @@ describe('ArticleCard', () => {
       publishedAt: new Date('2020-01-01'),
     };
     
-    render(<ArticleCard article={oldArticle} />);
+    renderWithProviders(<ArticleCard article={oldArticle} />);
     
     // Newバッジが表示されない
     expect(screen.queryByText(/New/i)).not.toBeInTheDocument();
   });
 
   it('displays unread badge when isRead is false', () => {
-    render(<ArticleCard article={mockArticle} isRead={false} />);
+    renderWithProviders(<ArticleCard article={mockArticle} isRead={false} />);
     
     // 未読バッジが表示される
     expect(screen.getByText('未読')).toBeInTheDocument();
   });
 
   it('does not display unread badge when isRead is true', () => {
-    render(<ArticleCard article={mockArticle} isRead={true} />);
+    renderWithProviders(<ArticleCard article={mockArticle} isRead={true} />);
     
     // 未読バッジが表示されない
     expect(screen.queryByText('未読')).not.toBeInTheDocument();
@@ -200,7 +217,7 @@ describe('ArticleCard', () => {
       thumbnail: 'https://example.com/thumbnail.jpg',
     };
     
-    render(<ArticleCard article={speakerDeckArticle} />);
+    renderWithProviders(<ArticleCard article={speakerDeckArticle} />);
     
     // サムネイル画像が表示される
     const thumbnail = screen.getByRole('img', { name: speakerDeckArticle.title });
@@ -216,7 +233,7 @@ describe('ArticleCard', () => {
       content: 'Long content that is more than 300 characters. '.repeat(10),
     };
     
-    render(<ArticleCard article={articleWithSummary} />);
+    renderWithProviders(<ArticleCard article={articleWithSummary} />);
     
     // 要約が表示される
     expect(screen.getByText(/This is a test article summary/)).toBeInTheDocument();
@@ -231,7 +248,7 @@ describe('ArticleCard', () => {
       } as Response)
     );
     
-    render(<ArticleCard article={mockArticle} />);
+    renderWithProviders(<ArticleCard article={mockArticle} />);
     
     // data-testidで投票ボタンを取得
     const voteButton = screen.getByTestId('vote-button');
@@ -257,7 +274,7 @@ describe('ArticleCard', () => {
       qualityScore: 85,
     };
     
-    render(<ArticleCard article={articleWithScore} />);
+    renderWithProviders(<ArticleCard article={articleWithScore} />);
     
     // 品質スコアが表示される（実装に依存）
     const scoreElement = screen.queryByText(/85/i);
@@ -272,7 +289,7 @@ describe('ArticleCard', () => {
       category: 'frontend',
     };
     
-    render(<ArticleCard article={articleWithCategory} />);
+    renderWithProviders(<ArticleCard article={articleWithCategory} />);
     
     // カテゴリラベルが表示される（CategoryClassifierが適用される）
     // CategoryClassifierがラベルを変換する可能性があるため、複数の可能性をチェック
@@ -295,7 +312,7 @@ describe('ArticleCard', () => {
       createdAt: new Date('2025-01-01T10:00:00Z'),
     };
     
-    render(<ArticleCard article={dateArticle} />);
+    renderWithProviders(<ArticleCard article={dateArticle} />);
     
     // 日付が表示される（formatDateWithTime関数でフォーマット）
     // 複数の日付要素が存在する可能性があるため、最初の要素を取得
@@ -311,7 +328,7 @@ describe('ArticleCard', () => {
   });
 
   it('renders share button component', () => {
-    render(<ArticleCard article={mockArticle} />);
+    renderWithProviders(<ArticleCard article={mockArticle} />);
     
     // ShareButtonコンポーネントが表示される
     const shareButton = screen.queryByTestId('share-button');
@@ -321,7 +338,7 @@ describe('ArticleCard', () => {
   });
 
   it('applies correct styling for dark mode', () => {
-    render(<ArticleCard article={mockArticle} />);
+    renderWithProviders(<ArticleCard article={mockArticle} />);
     
     const card = screen.getByTestId('article-card');
     
@@ -336,7 +353,7 @@ describe('ArticleCard', () => {
       title: 'This is an extremely long title that should be truncated properly in the UI to maintain good visual appearance and user experience. It should not break the layout of the card component and should display with ellipsis at the end.',
     };
     
-    render(<ArticleCard article={longTitleArticle} />);
+    renderWithProviders(<ArticleCard article={longTitleArticle} />);
     
     const titleElement = screen.getByText(/This is an extremely long title/i);
     expect(titleElement).toBeInTheDocument();
@@ -359,7 +376,7 @@ describe('ArticleCard', () => {
       tags: [],
     });
     
-    render(<ArticleCard article={minimalArticle} />);
+    renderWithProviders(<ArticleCard article={minimalArticle} />);
     
     // タイトルは表示される
     expect(screen.getByText('Minimal Article')).toBeInTheDocument();
@@ -376,7 +393,7 @@ describe('ArticleCard', () => {
         source: createMockSource({ name: 'Test Source' })
       });
       
-      render(<ArticleCard article={articleWithSource} />);
+      renderWithProviders(<ArticleCard article={articleWithSource} />);
       
       // ArticleCardが正常にレンダリングされることを確認
       expect(screen.getByTestId('article-card')).toBeInTheDocument();
@@ -397,7 +414,7 @@ describe('ArticleCard', () => {
         source: createMockSource({ name })
       });
       
-      render(<ArticleCard article={article} />);
+      renderWithProviders(<ArticleCard article={article} />);
       
       // 記事が正しくレンダリングされる
       expect(screen.getByTestId('article-card')).toBeInTheDocument();
@@ -416,7 +433,7 @@ describe('ArticleCard', () => {
         source: createMockSource({ name: 'Custom Source' })
       });
       
-      render(<ArticleCard article={articleWithSource} />);
+      renderWithProviders(<ArticleCard article={articleWithSource} />);
       
       // ソース名が表示される（実装によってはBadgeやテキストで表示）
       expect(screen.getByText('Custom Source')).toBeInTheDocument();
@@ -435,7 +452,7 @@ describe('ArticleCard', () => {
         source: createMockSource({ name })
       });
       
-      render(<ArticleCard article={article} />);
+      renderWithProviders(<ArticleCard article={article} />);
       
       // サムネイルが表示されないことを確認
       const thumbnail = screen.queryByRole('img', { name: `${name} without thumbnail` });

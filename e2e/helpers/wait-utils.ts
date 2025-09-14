@@ -423,17 +423,17 @@ export async function waitForUrlParam(
   }
 ) {
   const timeout = options?.timeout ?? getTimeout('medium');
-  const polling = getPollingInterval(options?.polling ?? (process.env.CI ? 'fast' : 'normal'));
-  const maxRetries = options?.retries ?? (process.env.CI ? 5 : 2);  // CI環境では十分なリトライ回数を確保
+  const polling = getPollingInterval(options?.polling ?? (isCI ? 'fast' : 'normal'));
+  const maxRetries = options?.retries ?? (isCI ? 5 : 2);  // CI環境では十分なリトライ回数を確保
 
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
   // CI環境でも短めに統一して総タイムアウト予算を有効活用
-  const initialWait = process.env.CI ? 500 : 300;  // CI: 500ms、ローカル: 300ms
+  const initialWait = isCI ? 500 : 300;  // CI: 500ms、ローカル: 300ms
   await page.waitForTimeout(initialWait);
 
   // 合計タイムアウト予算の管理用
   const startedAt = Date.now();
-  const isCI = !!process.env.CI;
+  // ローカルでのシャドーイングを削除（ファイル先頭の isCI を利用）
 
   let lastError: Error | null = null;
   
@@ -446,7 +446,7 @@ export async function waitForUrlParam(
       
       // リトライ前の待機（最小限に削減）
       if (attempt > 0) {
-        const backoffWait = process.env.CI
+        const backoffWait = isCI
           ? 200 + (100 * attempt)  // CI: 200ms, 300ms, 400ms（大幅削減）
           : 100 + (50 * attempt);  // ローカル: 100ms, 150ms, 200ms
         await page.waitForTimeout(backoffWait);
@@ -470,7 +470,8 @@ export async function waitForUrlParam(
       );
       
       // デバッグ: 現在のURL確認（DEBUG_E2E環境のみ、値はマスク）
-      if (process.env.DEBUG_E2E) {
+      const isDebugE2E = ['1', 'true', 'yes'].includes(String(process.env.DEBUG_E2E).toLowerCase());
+      if (isDebugE2E) {
         const currentUrl = page.url();
         const safeUrl = currentUrl.replace(/\?.*$/, '?<redacted>');
         console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${safeUrl}`);
@@ -487,22 +488,38 @@ export async function waitForUrlParam(
         console.log(`[waitForUrlParam] Current params: ${Array.from(currentParams.keys()).join(', ')} (values redacted)`);
       }
 
+      // CI環境では特に長めに待機
+      // CI環境では待機前に少し時間を置く
+      if (isCI) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       await page.waitForFunction(
-        ({ name, value }) => {
+        ({ name, value, debugCI }) => {
           try {
             const url = new URL(window.location.href);
             const param = url.searchParams.get(name);
+
+            // デバッグ用：現在のパラメータを出力（CI環境のみ）
+            if (debugCI) {
+              console.log(`[waitForUrlParam] Checking ${name}=${param}, expecting ${value}`);
+            }
+
             if (value === undefined) {
               return param !== null;
             }
             return param === value;
           } catch (e) {
             // URL解析エラーの場合はfalseを返す
+            console.error('[waitForUrlParam] URL parse error:', e);
             return false;
           }
         },
-        { name: paramName, value: paramValue },
-        { timeout: retryTimeout, polling: process.env.CI ? 50 : polling }  // CI環境では高頻度でポーリング（50ms固定）
+        { name: paramName, value: paramValue, debugCI: isCI },
+        {
+          timeout: retryTimeout,
+          polling: isCI ? 100 : polling  // CI環境でも100msポーリングに
+        }
       );
       
       // 成功したら終了
@@ -657,7 +674,7 @@ export async function waitForPageLoad(page: Page, options?: {
   
   if (waitForNetworkIdle) {
     // CI環境ではnetworkidleのタイムアウトを長めに設定
-    const networkIdleTimeout = process.env.CI ? Math.min(timeout * 2, 120000) : timeout;
+    const networkIdleTimeout = isCI ? Math.min(timeout * 2, 120000) : timeout;
     promises.push(
       page.waitForLoadState('networkidle', { timeout: networkIdleTimeout })
         .catch(() => {
@@ -712,11 +729,11 @@ export async function waitForCheckboxStateChange(
     polling?: 'fast' | 'normal' | 'slow';
   }
 ) {
-  const timeout = options?.timeout ?? (process.env.CI ? 10000 : 5000);
+  const timeout = options?.timeout ?? (isCI ? 10000 : 5000);
   const polling = getPollingInterval(options?.polling ?? 'fast');
 
   // CI環境では初期待機を入れる
-  if (process.env.CI) {
+  if (isCI) {
     await page.waitForTimeout(500);
   }
 
@@ -751,12 +768,12 @@ export async function waitForCheckboxesCount(
     state?: 'checked' | 'unchecked';
   }
 ) {
-  const timeout = options?.timeout ?? (process.env.CI ? 15000 : 5000);
+  const timeout = options?.timeout ?? (isCI ? 15000 : 5000);
   const polling = getPollingInterval(options?.polling ?? 'fast');
   const state = options?.state ?? 'checked';
 
   // CI環境では初期待機を入れる
-  if (process.env.CI) {
+  if (isCI) {
     await page.waitForTimeout(1000);
   }
 

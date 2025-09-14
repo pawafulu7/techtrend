@@ -225,27 +225,38 @@ test.describe.serial('Login Feature - Improved', () => {
   test('9. ローディング状態が表示される', async ({ page, browserName }) => {
     // 新しいコンテキストでテスト（前のセッションを引き継がない）
     await page.context().clearCookies();
-    
+
     // ログインページへ移動
     await page.goto('/auth/login');
-    
+
     // ブラウザ固有のテストユーザーを使用
     const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
-    
+
     // ログイン情報を入力
     await page.fill('input[id="email"]', testUser.email);
     await page.fill('input[id="password"]', testUser.password);
-    
+
     // ログインボタンをクリック
     const submitButton = page.locator('button[type="submit"]:has-text("ログイン")');
     await submitButton.click();
-    
-    // ローディング状態を確認（すぐに確認する必要がある）
-    const loadingButton = page.locator('button:has-text("ログイン中...")');
-    const isLoading = await loadingButton.isVisible();
-    
-    // ローディング状態が表示されるか、すでにリダイレクトされていることを確認
-    const currentUrl = page.url();
-    expect(isLoading || !currentUrl.includes('/auth/login')).toBe(true);
+
+    // ローディング状態またはリダイレクトを待つ
+    // いずれかの条件を満たすまで待機
+    try {
+      await Promise.race([
+        // ボタンがdisabledになる（ローディング状態）
+        expect(submitButton).toBeDisabled({ timeout: 2000 }),
+        // またはホームページにリダイレクトされる
+        expect(page).toHaveURL('http://localhost:3000/', { timeout: 2000 })
+      ]);
+
+      // いずれかの条件が満たされればテスト成功
+      expect(true).toBe(true);
+    } catch (error) {
+      // タイムアウトした場合は、現在のURLを確認
+      const currentUrl = page.url();
+      // リダイレクト済みならOK、そうでなければエラー
+      expect(!currentUrl.includes('/auth/login')).toBe(true);
+    }
   });
 });

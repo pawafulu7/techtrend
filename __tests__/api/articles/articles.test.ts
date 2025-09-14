@@ -5,6 +5,37 @@
 
 // モックを先に設定
 jest.mock('@/lib/database');
+jest.mock('@/lib/cache/cache-invalidator');
+
+// LayeredCacheを直接モック
+jest.mock('@/lib/cache/layered-cache', () => ({
+  LayeredCache: jest.fn().mockImplementation(() => ({
+    getArticles: jest.fn(async (params, fetcher) => {
+      return await fetcher();
+    }),
+    getOrFetch: jest.fn(async (key, fetcher) => {
+      return await fetcher();
+    }),
+    set: jest.fn(),
+    del: jest.fn(),
+    clear: jest.fn(),
+  })),
+}));
+
+jest.mock('@/lib/metrics/performance', () => ({
+  MetricsCollector: jest.fn().mockImplementation(() => ({
+    startTimer: jest.fn(),
+    endTimer: jest.fn().mockReturnValue(10),
+    setCacheStatus: jest.fn(),
+    addMetricsToHeaders: jest.fn((headers) => {
+      headers.set('X-Cache-Status', 'HIT');
+      headers.set('X-Response-Time', '10ms');
+    }),
+  })),
+  withDbTiming: jest.fn(async (metrics, fn) => await fn()),
+  withCacheTiming: jest.fn(async (metrics, fn) => await fn()),
+}));
+
 // Redisクライアントのモックはjest.setup.node.jsで設定済み
 
 import { NextRequest } from 'next/server';
@@ -315,9 +346,10 @@ describe('Articles API', () => {
         url: 'http://localhost:3000/api/articles'
       });
 
-      // 実際の動作に合わせて調整
-      expect(response.status).toBe(200);
-      expect(response.data.success).toBeDefined();
+      // エラーが発生した場合は500エラーを返す
+      expect(response.status).toBe(500);
+      expect(response.data.success).toBe(false);
+      expect(response.data.error).toBeDefined();
     });
 
 

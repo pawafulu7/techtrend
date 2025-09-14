@@ -10,6 +10,9 @@ import {
 import { waitForArticles, getTimeout, waitForUrlParam } from '../../../e2e/helpers/wait-utils';
 import { SELECTORS } from '../constants/selectors';
 
+// CI環境の検出
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
 test.describe('検索機能', () => {
   test.beforeEach(async ({ page }) => {
     // ホームページにアクセス
@@ -209,7 +212,7 @@ test.describe('検索機能', () => {
     const pagination = page.locator(SELECTORS.PAGINATION);
     
     // CI環境では待機時間を延長
-    const paginationTimeout = process.env.CI ? 5000 : 3000;
+    const paginationTimeout = isCI ? 5000 : 3000;
     // ページネーションが表示されるまで少し待つ
     try {
       await pagination.waitFor({ state: 'visible', timeout: paginationTimeout });
@@ -260,7 +263,7 @@ test.describe('検索機能', () => {
 
   test('複数キーワードのAND検索が機能する', async ({ page }) => {
     // CI環境では特定の記事データが必要なためスキップ
-    if (process.env.CI) {
+    if (isCI) {
       test.skip();
       return;
     }

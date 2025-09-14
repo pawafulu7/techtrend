@@ -11,12 +11,18 @@ import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
 import { Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FavoriteButton } from '@/components/article/favorite-button';
+import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { ShareButton } from '@/app/components/article/share-button';
 import { ArticleThumbnail } from '@/app/components/common/optimized-image';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
 
-export function ArticleCard({ article, onArticleClick, isRead = false }: ArticleCardProps & { isRead?: boolean }) {
+export function ArticleCard({
+  article,
+  onArticleClick,
+  isRead = false,
+  isFavorited,
+  onToggleFavorite
+}: ArticleCardProps & { isRead?: boolean }) {
   const [votes, setVotes] = useState(article.userVotes || 0);
   const [hasVoted, setHasVoted] = useState(false);
   
@@ -218,9 +224,11 @@ export function ArticleCard({ article, onArticleClick, isRead = false }: Article
         
         {/* アクションボタン */}
         <div className="flex items-center justify-between pt-1">
-          <FavoriteButton 
-            articleId={article.id} 
+          <FavoriteButton
+            articleId={article.id}
             className="h-8 px-3"
+            isFavorited={isFavorited}
+            onToggleFavorite={onToggleFavorite}
           />
           <div className="flex items-center gap-1">
             <ShareButton

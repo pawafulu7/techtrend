@@ -13,6 +13,9 @@ import {
   waitForPageLoad
 } from './utils/e2e-helpers';
 
+// CI環境の検出
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
 /**
  * パスワード変更機能の改善版E2Eテスト
  * - シリアル実行を強制
@@ -152,7 +155,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('5. 現在のパスワードが間違っている場合エラーが表示される', async ({ page }) => {
-    test.skip(!!process.env.CI, 'CI環境では認証が不安定なためスキップ');
+    test.skip(!!isCI, 'CI環境では認証が不安定なためスキップ');
     
     // まずログインする
     try {
@@ -265,7 +268,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     }
     
     // CI環境では追加の待機
-    if (process.env.CI) {
+    if (isCI) {
       await page.waitForTimeout(2000);
     }
     
@@ -276,7 +279,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
     await page.goto('/profile');
     
     // CI環境では長いタイムアウト
-    const profileTimeout = process.env.CI ? 15000 : 5000;
+    const profileTimeout = isCI ? 15000 : 5000;
     
     // プロフィールページが正しく読み込まれたか確認
     const profileTitle = page.locator('h1:has-text("プロフィール")');
@@ -332,7 +335,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('7. ローディング状態が表示される', async ({ page, browserName }) => {
-    test.skip(!!process.env.CI, 'CI環境では認証が不安定なためスキップ');
+    test.skip(!!isCI, 'CI環境では認証が不安定なためスキップ');
     
     // デバッグ情報を出力
     console.log(`Test 7 - Browser: ${browserName}`);
@@ -443,7 +446,7 @@ test.describe.serial('Password Change Feature - Improved', () => {
   });
 
   test('8. 有効な入力でパスワードが正常に変更される', async ({ page }) => {
-    test.skip(!!process.env.CI, 'CI環境では認証が不安定なためスキップ');
+    test.skip(!!isCI, 'CI環境では認証が不安定なためスキップ');
     // パスワード変更専用ユーザーでログイン
     const customUser = {
       email: TEST_USER_FOR_PASSWORD_CHANGE.email,

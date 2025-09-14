@@ -8,6 +8,9 @@ import {
   waitForFilterApplication
 } from '../../e2e/helpers/wait-utils';
 
+// CI環境の検出
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
 test.describe('フィルター条件の永続化', () => {
   // このテストスイートは多くのページ遷移と待機処理を含むため、タイムアウトを3倍に延長
   test.slow();
@@ -26,7 +29,7 @@ test.describe('フィルター条件の永続化', () => {
     
     // 検索ボックスの準備完了を待機
     const searchInput = page.locator('[data-testid="search-box-input"]').first();
-    await searchInput.waitFor({ state: 'visible', timeout: process.env.CI ? 15000 : getTimeout('medium') });
+    await searchInput.waitFor({ state: 'visible', timeout: isCI ? 15000 : getTimeout('medium') });
     
     // 1. 検索キーワードを入力
     await searchInput.fill('TypeScript');
@@ -36,7 +39,7 @@ test.describe('フィルター条件の永続化', () => {
     await waitForUrlParam(page, 'search', 'TypeScript', { 
       polling: 'normal',
       timeout: getTimeout('long'),
-      retries: process.env.CI ? 3 : 1
+      retries: isCI ? 3 : 1
     });
     
     // 検索結果の反映完了を待つ
@@ -140,7 +143,7 @@ test.describe('フィルター条件の永続化', () => {
     // 3. 記事詳細ページへ遷移
     // CI環境では記事カードの表示を複数回試行
     let articleCardFound = false;
-    const maxRetries = process.env.CI ? 3 : 1;
+    const maxRetries = isCI ? 3 : 1;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -151,7 +154,7 @@ test.describe('フィルター条件の永続化', () => {
         }
         
         await page.waitForSelector('[data-testid="article-card"]', {
-          timeout: process.env.CI ? 60000 : getTimeout('long'),
+          timeout: isCI ? 60000 : getTimeout('long'),
           state: 'visible'
         });
         articleCardFound = true;
@@ -220,7 +223,7 @@ test.describe('フィルター条件の永続化', () => {
 
   test('日付範囲フィルターがページ遷移後も保持される', async ({ page }) => {
     // CI環境では待機時間を延長
-    const loadTimeout = process.env.CI ? 10000 : 5000;
+    const loadTimeout = isCI ? 10000 : 5000;
     
     // ページが完全に読み込まれるまで待機
     try {
@@ -295,7 +298,7 @@ test.describe('フィルター条件の永続化', () => {
     await waitForFilterApplication(page, { waitForNetworkIdle: true });
     
     // URLパラメータが設定されることを確認（タイムアウトエラーをキャッチ）
-    const urlTimeout = process.env.CI ? 10000 : 5000;
+    const urlTimeout = isCI ? 10000 : 5000;
     try {
       await page.waitForFunction(
         () => {
@@ -385,12 +388,12 @@ test.describe('フィルター条件の永続化', () => {
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
     test.slow(); // CI環境でのタイムアウトを3倍に延長
     // CI環境用の初期待機とネットワーク安定化
-    const networkTimeout = process.env.CI ? 15000 : 5000;
+    const networkTimeout = isCI ? 15000 : 5000;
     await page.waitForLoadState('networkidle', { timeout: networkTimeout });
     await waitForPageLoad(page, { waitForNetworkIdle: true });
     
     // CI環境では追加の待機
-    if (process.env.CI) {
+    if (isCI) {
       await page.waitForTimeout(2000);
     }
     
@@ -404,7 +407,7 @@ test.describe('フィルター条件の永続化', () => {
     try {
       await waitForUrlParam(page, 'search', 'React', {
         timeout: getTimeout('medium'),
-        retries: process.env.CI ? 3 : 1,
+        retries: isCI ? 3 : 1,
         polling: 'normal'
       });
     } catch {
@@ -466,7 +469,7 @@ test.describe('フィルター条件の永続化', () => {
     
     await page.getByRole('button', { name: '人気' }).click();
     // ソートパラメータの待機時間を延長（CI環境では更に延長）
-    const sortTimeout = process.env.CI ? 60000 : 15000;
+    const sortTimeout = isCI ? 60000 : 15000;
     
     // URLパラメータの変更を待つ（より確実な方法）
     await page.waitForURL(
@@ -477,7 +480,7 @@ test.describe('フィルター条件の永続化', () => {
       return page.waitForFunction(
         () => window.location.search.includes('sortBy='),
         undefined,
-        { timeout: sortTimeout, polling: process.env.CI ? 500 : 100 }
+        { timeout: sortTimeout, polling: isCI ? 500 : 100 }
       );
     });
     
@@ -496,14 +499,14 @@ test.describe('フィルター条件の永続化', () => {
       await page.waitForURL(url => url.pathname === '/', { timeout: getTimeout('long') });
       
       // returningパラメータが削除されるのを待つ（CI環境では長めに待機）
-      const returningTimeout = process.env.CI ? 30000 : 10000;
+      const returningTimeout = isCI ? 30000 : 10000;
       await page.waitForFunction(
         () => {
           const url = new URL(window.location.href);
           return !url.searchParams.has('returning');
         },
         undefined,
-        { timeout: returningTimeout, polling: process.env.CI ? 1000 : 200 }
+        { timeout: returningTimeout, polling: isCI ? 1000 : 200 }
       ).catch(async () => {
         // フォールバック: パラメータが削除されない場合でも続行
         console.log('[Test] Warning: returning parameter was not removed, continuing anyway');
@@ -540,7 +543,7 @@ test.describe('フィルター条件の永続化', () => {
 
   test('フィルターリセットボタンですべての条件がクリアされる', async ({ page }) => {
     // CI環境では追加の初期待機
-    if (process.env.CI) {
+    if (isCI) {
       await page.waitForTimeout(2000);
     }
     
@@ -553,8 +556,8 @@ test.describe('フィルター条件の永続化', () => {
     // URL更新を待つ（waitForUrlParamで統一）
     try {
       await waitForUrlParam(page, 'search', 'Vue', {
-        timeout: process.env.CI ? 90000 : getTimeout('medium'),
-        retries: process.env.CI ? 10 : 2,
+        timeout: isCI ? 90000 : getTimeout('medium'),
+        retries: isCI ? 10 : 2,
         polling: 'fast'
       });
     } catch (error) {
@@ -677,7 +680,7 @@ test.describe('フィルター条件の永続化', () => {
     try {
       await waitForUrlParam(page, 'search', 'Rust', {
         timeout: getTimeout('medium'),
-        retries: process.env.CI ? 3 : 1,
+        retries: isCI ? 3 : 1,
         polling: 'normal'
       });
     } catch (error) {
@@ -721,7 +724,7 @@ test.describe('ブラウザ間での動作確認', () => {
     
     // 記事が表示されるまで待機（CI環境では長めのタイムアウト）
     await page.waitForSelector('[data-testid="article-card"]', {
-      timeout: process.env.CI ? getTimeout('medium') : getTimeout('short')
+      timeout: isCI ? getTimeout('medium') : getTimeout('short')
     });
     
     // 検索入力ボックスが準備完了するまで待機
@@ -736,7 +739,7 @@ test.describe('ブラウザ間での動作確認', () => {
     await waitForUrlParam(page, 'search', `Test-${browserName}`, {
       timeout: getTimeout('long'),  // longのまま（CI: 90秒）
       polling: 'fast',  // fastのまま（100ms間隔でチェック）
-      retries: process.env.CI ? 3 : 2  // リトライ回数を削減（CI: 5→3）
+      retries: isCI ? 3 : 2  // リトライ回数を削減（CI: 5→3）
     });
     const currentUrl = page.url();
     expect(currentUrl).toContain(`search=Test-${browserName}`);

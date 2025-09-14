@@ -3,7 +3,8 @@ import { prisma } from '@/lib/database';
 import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
-import { EnhancedRedisCache } from '@/lib/cache/enhanced-redis-cache';
+import { LayeredCache, type ArticleQueryParams } from '@/lib/cache/layered-cache';
+import { CacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { Prisma, ArticleCategory } from '@prisma/client';
 import logger from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
@@ -13,13 +14,9 @@ import { getDateRangeFilter } from '@/app/lib/date-utils';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
-// Initialize Enhanced Redis cache with 1 hour TTL for articles
-const cache = new EnhancedRedisCache({
-  ttl: 3600, // 1 hour (increased from 15 minutes)
-  namespace: '@techtrend/cache:api',
-  staleTime: 600, // 10 minutes before stale (increased from 5)
-  enableSWR: true // Enable stale-while-revalidate
-});
+// Initialize Layered cache system for articles
+const cache = new LayeredCache();
+const cacheInvalidator = new CacheInvalidator();
 
 export async function GET(request: NextRequest) {
   const metrics = new MetricsCollector();
@@ -77,28 +74,28 @@ export async function GET(request: NextRequest) {
     
     // Include userId in cache key only when user context is needed
     const userCtxForKey = shouldUseUserContext ? (userId ?? 'anonymous') : 'n/a';
-    
-    const cacheKey = cache.generateCacheKey('articles', {
-      params: {
-        page: page.toString(),
-        limit: limit.toString(),
-        sortBy: finalSortBy,
-        sortOrder,
-        sources: normalizedSources, // Use normalized sources
-        tag: tag || 'all',
-        tags: tags || 'none', // Multiple tags support
-        tagMode: tagMode, // Tag filter mode
-        search: normalizedSearch,
-        dateRange: dateRange || 'all',
-        readFilter: readFilter || 'all',
-        userId: userCtxForKey,
-        category: category || 'all',
-        includeRelations: includeRelations.toString(), // Add to cache key
-        includeEmptyContent: includeEmptyContent.toString(), // Add new parameter to cache key
-        lightweight: lightweight.toString(), // Add lightweight mode to cache key
-        fields: fields || 'default' // Add fields to cache key
-      }
-    });
+
+    // Prepare cache params for LayeredCache
+    const cacheParams: ArticleQueryParams = {
+      page: page,
+      limit: limit,
+      sortBy: finalSortBy,
+      sortOrder,
+      sources: normalizedSources, // Use normalized sources
+      sourceId: sourceId || undefined,
+      tag: tag || undefined,
+      tags: tags || undefined, // Multiple tags support
+      tagMode: tagMode || undefined, // Tag filter mode
+      search: normalizedSearch === 'none' ? undefined : normalizedSearch,
+      dateRange: dateRange || undefined,
+      readFilter: readFilter || undefined,
+      userId: userCtxForKey === 'n/a' ? undefined : userCtxForKey,
+      category: category || undefined,
+      includeRelations: includeRelations,
+      includeEmptyContent: includeEmptyContent,
+      lightweight: lightweight,
+      fields: fields || undefined
+    };
 
     // Build data fetcher function for SWR
     const buildResult = async () => {
@@ -297,17 +294,18 @@ export async function GET(request: NextRequest) {
       } else if (fields) {
         // Custom field selection
         const fieldList = fields.split(',').map(f => f.trim());
-        selectFields = {};
-
-        // Always include id for consistency
-        selectFields.id = true;
-
-        // Add requested fields
-        fieldList.forEach(field => {
-          if (field in prisma.article.fields) {
+        // 許可フィールドのホワイトリスト
+        const allowedSelectableFields = new Set([
+          'title','url','summary','thumbnail','publishedAt','qualityScore',
+          'bookmarks','userVotes','difficulty','createdAt','updatedAt',
+          'sourceId','summaryVersion','articleType','category','detailedSummary'
+        ]);
+        selectFields = { id: true } as Prisma.ArticleSelect;
+        for (const field of fieldList) {
+          if (allowedSelectableFields.has(field)) {
             (selectFields as any)[field] = true;
           }
-        });
+        }
       } else {
         // Standard mode
         selectFields = {
@@ -377,13 +375,16 @@ export async function GET(request: NextRequest) {
       };
     };
 
-    // Use getOrFetch with SWR support
+    // Try to get from layered cache first
     const result = await withCacheTiming(
       metrics,
-      () => cache.getOrFetch(cacheKey, buildResult, { 
-        ttl: 900, // 15 minutes
-        useSWR: true 
-      })
+      async () => {
+        // Get data from cache or fetch from database
+        const data = await cache.getArticles(cacheParams, buildResult);
+
+        // This will never be null since we're providing a fetcher
+        return data!;
+      }
     );
     
     // Note: getOrFetch always returns data (either from cache or freshly fetched)
@@ -396,10 +397,27 @@ export async function GET(request: NextRequest) {
       success: true,
       data: result,
     } as ApiResponse<PaginatedResponse<ArticleWithRelations>>);
-    
+
     // Add performance metrics to headers
     metrics.addMetricsToHeaders(response.headers);
-    
+
+    // Set cache headers based on whether response is user-dependent
+    const isUserDependent = shouldUseUserContext || request.headers.get('Authorization');
+
+    if (isUserDependent) {
+      // User-specific responses should not be cached publicly
+      response.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+    } else {
+      // Public responses can be cached
+      response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+      response.headers.set('CDN-Cache-Control', 'max-age=300');
+    }
+
+    // Always set Vary header for proper cache key generation
+    response.headers.set('Vary', 'Accept-Encoding, Authorization');
+
     return response;
   } catch (error) {
     logger.error({ err: error }, 'Error fetching articles');
@@ -473,7 +491,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Invalidate articles cache when new article is created
-    await cache.invalidatePattern('articles:*');
+    await cacheInvalidator.onArticleCreated(article);
 
     return NextResponse.json({
       success: true,

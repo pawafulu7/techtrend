@@ -13,7 +13,7 @@ const rl = readline.createInterface({
   terminal: false
 });
 
-let testResults = {
+const testResults = {
   passed: 0,
   failed: 0,
   flaky: 0,

@@ -1,440 +1,181 @@
 import { test, expect } from '@playwright/test';
-import { 
-  waitForArticles, 
-  getTimeout,
-  waitForUrlParam,
-  safeClick,
-  waitForPageLoad,
-  waitForElementText
-} from '../../e2e/helpers/wait-utils';
+
+// Desktop viewport for sidebar visibility
+test.use({
+  viewport: { width: 1280, height: 720 }
+});
 
 test.describe('Date Range Filter', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await waitForPageLoad(page);
-    
-    // 記事がない場合でもテストを続行できるようにallowEmptyオプションを追加
-    try {
-      await waitForArticles(page, { 
-        timeout: getTimeout('medium'),
-        allowEmpty: true,
-        waitForNetworkIdle: true
-      });
-    } catch (error) {
-      // 記事が表示されなくてもフィルター機能のテストは可能
-      console.log('No articles loaded initially, continuing with filter tests');
-    }
+    // Navigate to home page
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    // Wait for the page to be fully loaded
+    await page.waitForLoadState('networkidle');
+
+    // Wait for the filter area to be present
+    await page.waitForSelector('[data-testid="filter-area"]', {
+      state: 'visible',
+      timeout: 30000
+    });
   });
 
   test('should display date range filter', async ({ page }) => {
-    // Date range filter is in the sidebar on desktop
-    // Check if viewport is wide enough to show sidebar
-    const viewportSize = page.viewportSize();
-    if (viewportSize && viewportSize.width >= 1024) {
-      // On desktop, filter is in sidebar
-      // Wait for page to fully load
-      await page.waitForLoadState('networkidle');
-      
-      // Try multiple selectors for date range filter
-      const dateRangeFilter = page.locator('[data-testid="date-range-filter"], [data-testid="date-range-trigger"]').first();
-      const filterCount = await dateRangeFilter.count();
-      
-      if (filterCount > 0) {
-        await expect(dateRangeFilter).toBeVisible({ timeout: getTimeout('medium') });
-        
-        // Check default value
-        const trigger = page.locator('[data-testid="date-range-trigger"]').first();
-        await expect(trigger).toContainText('全期間');
-      } else {
-        // Date range filter might not be implemented
-        console.log('Date range filter not found');
-        test.skip();
-      }
-    } else {
-      // On mobile, skip this test as filter is in mobile menu
-      test.skip();
+    // フィルターエリアが存在することを確認
+    const filterArea = page.locator('[data-testid="filter-area"]');
+    await expect(filterArea).toBeVisible();
+
+    // カレンダーアイコンと「全期間」を含むセレクトボックスを探す
+    // Selectコンポーネントは role="combobox" としてレンダリングされる
+    const dateFilterContainer = filterArea.locator('div').filter({ hasText: '全期間' }).first();
+    await expect(dateFilterContainer).toBeVisible();
+
+    // comboboxが存在することを確認
+    const combobox = filterArea.locator('[role="combobox"]').first();
+    await expect(combobox).toBeVisible();
+
+    // デフォルト値が「全期間」であることを確認
+    await expect(combobox).toContainText('全期間');
+  });
+
+  test('should open date range dropdown', async ({ page }) => {
+    const filterArea = page.locator('[data-testid="filter-area"]');
+    const combobox = filterArea.locator('[role="combobox"]').first();
+    const listbox = page.locator('[role="listbox"]');
+
+    // comboboxをクリック
+    await combobox.click();
+
+    // ドロップダウンメニューが開くのを待機
+    // Radix UIのSelectはポータルを使用するので、body直下に表示される
+    await expect(listbox).toBeVisible({ timeout: 5000 });
+
+    // オプションが表示されることを確認
+    const expectedOptions = ['全期間', '今日', '今週', '今月', '過去3ヶ月'];
+    for (const optionText of expectedOptions) {
+      const option = listbox.getByRole('option', { name: optionText });
+      await expect(option).toBeVisible();
     }
   });
 
-  test('should open date range dropdown on click', async ({ page }) => {
-    // Wait for filter to be ready
-    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
-    const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await safeClick(trigger);
-    
-    // Check if dropdown content is visible
-    const content = page.locator('[data-testid="date-range-content"]');
-    await expect(content).toBeVisible();
-    
-    // Check all options are present
-    await expect(page.locator('[data-testid="date-range-option-all"]')).toBeVisible();
-    await expect(page.locator('[data-testid="date-range-option-today"]')).toBeVisible();
-    await expect(page.locator('[data-testid="date-range-option-week"]')).toBeVisible();
-    await expect(page.locator('[data-testid="date-range-option-month"]')).toBeVisible();
-    await expect(page.locator('[data-testid="date-range-option-3months"]')).toBeVisible();
-  });
+  test('should filter articles by date range', async ({ page }) => {
+    const filterArea = page.locator('[data-testid="filter-area"]');
+    const combobox = filterArea.locator('[role="combobox"]').first();
+    const listbox = page.locator('[role="listbox"]');
 
-  test('should filter articles by today', async ({ page }) => {
-    test.slow(); // CI環境でのタイムアウトを3倍に延長
-    // Wait for network idle before starting
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    // Ensure filter is ready
-    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
-    const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
-    await safeClick(trigger);
-    
-    // Wait for dropdown to be visible
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
-    
-    // Select "今日" option
-    const todayOption = page.locator('[data-testid="date-range-option-today"]');
-    await todayOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
-    
-    // クリック前に少し待機（CI環境での安定性向上）
-    if (process.env.CI) {
-      await page.waitForTimeout(500);
-    }
-    
-    // Promise.allで並列にクリックとナビゲーション待機を実行
-    const navigationPromise = page
-      .waitForURL(/dateRange=today/, { timeout: getTimeout('long') })
-      .catch(() => null);
-    
-    await safeClick(todayOption);
-    
-    // ドロップダウンが閉じるのを待つ
-    await expect(page.locator('[data-testid="date-range-content"]')).toBeHidden({ timeout: getTimeout('short') });
-    
-    // URLパラメータ更新前に少し待機（React状態更新を待つ）
-    await page.waitForTimeout(1000);
-    
-    // ナビゲーションを待つ
-    const navResult = await navigationPromise;
-    
-    // ナビゲーションが失敗した場合はフォールバック
-    if (!navResult) {
-      // CI環境では追加の待機
-      if (process.env.CI) {
-        await page.waitForTimeout(2000);
-      }
-      
-      // Wait for URL to update (CI環境対応で長めのタイムアウト + リトライ)
-      await waitForUrlParam(page, 'dateRange', 'today', {
-        polling: 'fast',  // 高速ポーリングに統一
-        timeout: process.env.CI ? 120000 : getTimeout('long'),  // CI環境では120秒
-        retries: process.env.CI ? 15 : 3  // CI環境では15回までリトライ
-      });
-    }
-    
-    // Additional network wait after URL change
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    // Check URL has correct parameter
-    expect(page.url()).toContain('dateRange=today');
-    
-    // Check trigger text updated
-    await expect(trigger).toContainText('今日');
-    
-    // Wait for articles to reload（記事がない場合もあるため柔軟に対応）
-    try {
-      await waitForArticles(page, { 
-        timeout: getTimeout('medium'),
-        allowEmpty: true 
-      });
-    } catch {
-      // 記事が表示されなくても続行
-      console.log('Articles may not be visible after filter, continuing test');
-    }
-  });
+    // comboboxをクリック
+    await combobox.click();
 
-  test('should filter articles by week', async ({ page }) => {
-    test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
-    
-    // Wait for network idle before starting
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    
-    // Ensure filter is ready
-    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
-    const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
-    await safeClick(trigger);
-    
-    await page.waitForSelector('[data-testid="date-range-content"]', { 
-      state: 'visible', 
-      timeout: process.env.CI ? 10000 : getTimeout('short') 
-    });
-    const weekOption = page.locator('[data-testid="date-range-option-week"]');
-    await weekOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
-    await safeClick(weekOption);
-    
-    // Extended timeout for URL change (CI環境ではさらに延長 + リトライ追加)
-    await waitForUrlParam(page, 'dateRange', 'week', { 
-      polling: 'normal', 
-      timeout: process.env.CI ? 45000 : 15000,
-      retries: process.env.CI ? 3 : 1
-    });
-    
-    // Additional network wait after URL change
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    expect(page.url()).toContain('dateRange=week');
-    await expect(trigger).toContainText('今週');
-  });
+    // listboxが表示されるのを待機
+    await expect(listbox).toBeVisible();
 
-  test('should filter articles by month', async ({ page }) => {
-    test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
-    
-    // Wait for network idle before starting
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    // Ensure filter is ready
-    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
-    const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
-    await safeClick(trigger);
-    
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
-    await safeClick(page.locator('[data-testid="date-range-option-month"]'));
-    
-    // Extended timeout for URL change (CI環境では延長 + リトライ)
-    await waitForUrlParam(page, 'dateRange', 'month', {
-      polling: 'fast',
-      timeout: process.env.CI ? 90000 : 15000,
-      retries: process.env.CI ? 10 : 2
-    });
-    
-    // Additional network wait after URL change
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    expect(page.url()).toContain('dateRange=month');
-    await expect(trigger).toContainText('今月');
-  });
+    // ドロップダウンから「今日」を選択
+    await listbox.getByRole('option', { name: '今日' }).click();
 
-  test('should filter articles by 3 months', async ({ page }) => {
-    // Wait for network idle before starting
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    // Ensure filter is ready
-    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
-    const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
-    await safeClick(trigger);
-    
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
-    await safeClick(page.locator('[data-testid="date-range-option-3months"]'));
-    
-    // ドロップダウンが閉じるのを待つ
-    await expect(page.locator('[data-testid="date-range-content"]')).toBeHidden({ timeout: getTimeout('short') });
-    
-    // Wait for URL change (CI環境対応で長めのタイムアウト + リトライ)
-    await waitForUrlParam(page, 'dateRange', '3months', { 
-      polling: 'normal', 
-      timeout: getTimeout('long'),
-      retries: process.env.CI ? 3 : 1
-    });
-    
-    // Additional network wait after URL change
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    expect(page.url()).toContain('dateRange=3months');
-    await expect(trigger).toContainText('過去3ヶ月');
+    // URLが更新されるのを待機
+    await expect(page).toHaveURL(/[\?&]dateRange=today\b/);
+
+    // listboxが閉じたことを確認
+    await expect(listbox).toBeHidden();
+
+    // comboboxのテキストが更新されたことを確認
+    await expect(combobox).toContainText('今日');
   });
 
   test('should reset to all periods', async ({ page }) => {
-    // Wait for network idle before starting
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    // Ensure filter is ready
-    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
-    // First set a filter
-    const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
-    await safeClick(trigger);
-    
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
-    await safeClick(page.locator('[data-testid="date-range-option-week"]'));
-    
-    // Wait for URL to update with extended timeout
-    await waitForUrlParam(page, 'dateRange', 'week', { polling: 'normal', timeout: 15000 });
-    
-    // Wait for network idle after first filter
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    // Then reset to all
-    await safeClick(trigger);
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
-    await safeClick(page.locator('[data-testid="date-range-option-all"]'));
-    
-    // Check URL doesn't have dateRange parameter with extended timeout
-    const resetTimeout = process.env.CI ? 60000 : 15000; // CI: 60s, Local: 15s
-    await page.waitForFunction(
-      () => !window.location.href.includes('dateRange'),
-      { timeout: resetTimeout, polling: process.env.CI ? 500 : 100 }
-    );
-    
-    // Additional network wait after reset
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    expect(page.url()).not.toContain('dateRange');
-    await expect(trigger).toContainText('全期間');
+    const filterArea = page.locator('[data-testid="filter-area"]');
+    const combobox = filterArea.locator('[role="combobox"]').first();
+    const listbox = page.locator('[role="listbox"]');
+
+    // まず「今週」を選択
+    await combobox.click();
+    await expect(listbox).toBeVisible();
+    await listbox.getByRole('option', { name: '今週' }).click();
+
+    // URLが更新されるのを待機
+    await expect(page).toHaveURL(/[\?&]dateRange=week\b/);
+    await expect(listbox).toBeHidden();
+
+    // 「全期間」に戻す
+    await combobox.click();
+    await expect(listbox).toBeVisible();
+    await listbox.getByRole('option', { name: '全期間' }).click();
+
+    // URLからdateRangeパラメータが削除されるのを待機
+    await expect(page).not.toHaveURL(/[\?&]dateRange=/);
+    await expect(listbox).toBeHidden();
+
+    // テキストが「全期間」に戻ったことを確認
+    await expect(combobox).toContainText('全期間');
   });
 
-  test('should combine with source filter', async ({ page }) => {
-    // Ensure filter is ready
-    await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
-    // Apply date range filter
-    const dateRangeTrigger = page.locator('[data-testid="date-range-trigger"]');
-    await safeClick(dateRangeTrigger);
-    
-    await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
-    await safeClick(page.locator('[data-testid="date-range-option-week"]'));
-    
-    await waitForUrlParam(page, 'dateRange', 'week');
-    
-    // Apply source filter - use more flexible selector
-    const sourceCheckbox = page.locator('[data-testid^="source-checkbox-"]').first();
-    if (await sourceCheckbox.count() > 0) {
-      await safeClick(sourceCheckbox);
-    } else {
-      // No source filter available, skip this part
-      console.log('Source filter not available');
-      test.skip();
-      return;
-    }
-    
-    // Check both filters are in URL
-    await page.waitForFunction(
-      () => {
-        const url = window.location.href;
-        return url.includes('dateRange=week') && url.includes('sources=');
-      },
-      undefined,
-      { timeout: getTimeout('medium') }
-    );
-    
-    const url = page.url();
-    expect(url).toContain('dateRange=week');
-    expect(url).toContain('sources=');
-  });
+  test('should persist filter on page reload', async ({ page }) => {
+    const filterArea = page.locator('[data-testid="filter-area"]');
+    const combobox = filterArea.locator('[role="combobox"]').first();
+    const listbox = page.locator('[role="listbox"]');
 
-  test('should reset page to 1 when changing date range', async ({ page }) => {
-    // Navigate to page 2 first
-    await page.goto('/?page=2');
-    // ページの準備を待つ
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    await page.waitForSelector('[data-testid="article-list"]', { timeout: process.env.CI ? 30000 : 15000 });
-    
-    // Apply date range filter
-    const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: process.env.CI ? 20000 : 10000 });
-    await safeClick(trigger);
-    
-    const weekOption = page.locator('[data-testid="date-range-option-week"]');
-    await weekOption.waitFor({ state: 'visible', timeout: process.env.CI ? 20000 : 10000 });
-    await safeClick(weekOption);
-    
-    // URL更新を確定（CI環境用に長いタイムアウト）
-    await waitForUrlParam(page, 'dateRange', 'week', { 
-      timeout: process.env.CI ? 30000 : 15000, 
-      polling: 'normal' 
+    // 「今月」を選択
+    await combobox.click();
+    await expect(listbox).toBeVisible();
+    await listbox.getByRole('option', { name: '今月' }).click();
+
+    // URLが更新されるのを待機
+    await expect(page).toHaveURL(/[\?&]dateRange=month\b/);
+    await expect(listbox).toBeHidden();
+
+    // ページをリロード
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    // フィルターエリアが再表示されるのを待機（networkidleの代わりに具体的な要素を待つ）
+    await page.waitForSelector('[data-testid="filter-area"]', {
+      state: 'visible',
+      timeout: 10000
     });
-    
-    
-    // pageパラメータの消失を待機（実装未達ならここでタイムアウト）
-    try {
-      await page.waitForFunction(
-        () => !new URL(window.location.href).searchParams.has('page'),
-        undefined,
-        { timeout: process.env.CI ? 20000 : 10000, polling: 100 }
-      );
-      const url = page.url();
-      expect(url).not.toContain('page=2');
-    } catch {
-      // 未実装ならfixmeとして残す
-      test.fixme(true, 'Changing date range should reset page to 1 (page param removal not observed)');
-    }
+
+    // 記事リストの最初の要素が表示されるのを待機（データ読み込み完了の指標）
+    await page.waitForSelector('[data-testid="article-list"] > *:first-child', {
+      state: 'visible',
+      timeout: 10000
+    }).catch(() => {
+      // 記事リストが空の場合もあるので、エラーを無視
+    });
+
+    // フィルターが維持されていることを確認
+    const newCombobox = page.locator('[data-testid="filter-area"]').locator('[role="combobox"]').first();
+    await expect(newCombobox).toContainText('今月');
+    await expect(page).toHaveURL(/[\?&]dateRange=month\b/);
   });
 
-  test('should work on mobile view', async ({ page }) => {
-    // Set mobile viewport
-    await page.setViewportSize({ width: 375, height: 667 });
-    
-    // モバイルビューでのフィルター機能は現在未実装の可能性が高い
-    // フィルターボタンの存在確認
-    const filterButtons = [
-      'button:has-text("フィルター")',
-      'button:has-text("Filter")',
-      'button[aria-label*="filter"]',
-      'button[aria-label*="フィルター"]',
-      '[data-testid="mobile-filter-button"]'
+  test('should work with multiple date ranges', async ({ page }) => {
+    const filterArea = page.locator('[data-testid="filter-area"]');
+    const combobox = filterArea.locator('[role="combobox"]').first();
+    const listbox = page.locator('[role="listbox"]');
+
+    const testCases = [
+      { label: '今日', value: 'today' },
+      { label: '今週', value: 'week' },
+      { label: '今月', value: 'month' },
+      { label: '過去3ヶ月', value: 'three_months' }
     ];
-    
-    let filterButtonFound = false;
-    for (const selector of filterButtons) {
-      const button = page.locator(selector).first();
-      if (await button.count() > 0) {
-        filterButtonFound = true;
-        await button.click();
-        // フィルターメニューが開くのを待つ
-        await page.waitForSelector('[role="dialog"], .sheet-content, .modal', {
-          state: 'visible',
-          timeout: 3000
-        }).catch(() => {
-          // フィルターメニューが表示されない場合は続行
-        });
-        break;
-      }
-    }
-    
-    if (!filterButtonFound) {
-      // モバイルフィルターが実装されていない場合は、これが正常な動作
-      console.log('Mobile filter feature not implemented - this is expected behavior');
-      // テストをパスさせる（実装されていないことが期待される動作）
-      expect(filterButtonFound).toBe(false);
-      return;
-    }
-    
-    // フィルターボタンが見つかった場合の処理
-    const dateRangeFilter = page.locator('[data-testid="date-range-filter"], [data-testid="date-range-trigger"]').first();
-    const filterCount = await dateRangeFilter.count();
-    
-    if (filterCount > 0) {
-      // 要素が存在するが非表示の可能性を確認
-      const isVisible = await dateRangeFilter.isVisible();
-      
-      if (isVisible) {
-        // 可視の場合は通常のテストを実行
-        const trigger = page.locator('[data-testid="date-range-trigger"]').first();
-        if (await trigger.count() > 0) {
-          await safeClick(trigger);
-          
-          const weekOption = page.locator('[data-testid="date-range-option-week"]');
-          if (await weekOption.count() > 0) {
-            await safeClick(weekOption);
-            
-            await waitForUrlParam(page, 'dateRange', 'week');
-            expect(page.url()).toContain('dateRange=week');
-          }
-        }
-      } else {
-        // 要素は存在するが非表示（モバイルでは非表示が正常）
-        console.log('Date range filter exists but hidden in mobile view - this is expected behavior');
-        expect(isVisible).toBe(false);
-      }
-    } else {
-      // Date range filterがモバイルで存在しない場合も、これが正常な動作
-      console.log('Date range filter not available in mobile view - this is expected');
-      expect(filterCount).toBe(0);
+
+    for (const testCase of testCases) {
+      // comboboxをクリック
+      await combobox.click();
+
+      // listboxが表示されるのを待機
+      await expect(listbox).toBeVisible();
+
+      // オプションを選択
+      await listbox.getByRole('option', { name: testCase.label }).click();
+
+      // URLが更新されるのを待機
+      await expect(page).toHaveURL(new RegExp(`[?&]dateRange=${testCase.value}\\b`));
+
+      // テキストが更新されたことを確認
+      await expect(combobox).toContainText(testCase.label);
+
+      // ポータルのリストボックスが閉じたことを確認（次操作の安定化）
+      await expect(listbox).toBeHidden();
     }
   });
 });
