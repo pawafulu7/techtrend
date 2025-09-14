@@ -424,11 +424,11 @@ export async function waitForUrlParam(
 ) {
   const timeout = options?.timeout ?? getTimeout('medium');
   const polling = getPollingInterval(options?.polling ?? (process.env.CI ? 'fast' : 'normal'));
-  const maxRetries = options?.retries ?? (process.env.CI ? 3 : 2);  // リトライ回数を削減（CI: 3回、ローカル: 2回）
+  const maxRetries = options?.retries ?? (process.env.CI ? 5 : 2);  // CI環境では十分なリトライ回数を確保
 
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
   // CI環境では更に長く待機してURL更新を確実に待つ
-  const initialWait = process.env.CI ? 1000 : 300;  // CI: 1秒、ローカル: 300ms
+  const initialWait = process.env.CI ? 2000 : 300;  // CI: 2秒（増加）、ローカル: 300ms
   await page.waitForTimeout(initialWait);
   
   let lastError: Error | null = null;
@@ -449,13 +449,10 @@ export async function waitForUrlParam(
       }
       
       // タイムアウトを各リトライで調整（CI環境では長めに設定）
-      // 注意: timeout は合計予算。各リトライはその等分（下限/上限付き）にする
-      const perAttemptFloor = process.env.CI ? 2000 : 500;   // 極端な短時間ループを避ける最低値
-      const perAttemptCap   = process.env.CI ? 15000 : 10000; // 1回あたりの上限
-      const retryTimeout = Math.min(
-        Math.max(Math.floor(timeout / Math.max(1, maxRetries)), perAttemptFloor),
-        perAttemptCap
-      );
+      // CI環境では各リトライに十分な時間を確保
+      const retryTimeout = process.env.CI
+        ? Math.min(timeout - (attempt * 1000), 30000)  // CI: 最大30秒、但し総タイムアウトを考慮
+        : Math.min(timeout / maxRetries, 10000);       // ローカル: 均等配分、最大10秒
       
       // デバッグ: 現在のURL確認
       if (process.env.CI || process.env.DEBUG_E2E) {
@@ -493,7 +490,7 @@ export async function waitForUrlParam(
           }
         },
         { name: paramName, value: paramValue },
-        { timeout: retryTimeout, polling: Math.min(polling, 100) }  // CI環境では高頻度でポーリング
+        { timeout: retryTimeout, polling: process.env.CI ? 50 : polling }  // CI環境では高頻度でポーリング（50ms固定）
       );
       
       // 成功したら終了
