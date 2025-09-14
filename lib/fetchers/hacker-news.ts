@@ -152,8 +152,6 @@ export class HackerNewsFetcher extends BaseFetcher {
     
     // URLベースのタグ（安全なドメイン検証を使用）
     try {
-      const domain = new URL(url).hostname.replace('www.', '');
-
       // 主要なドメインに対するタグ付け（セキュアなURL検証）
       if (isUrlFromDomain(url, 'github.com')) {
         tags.add('GitHub');
