@@ -95,7 +95,17 @@
     "fix:short-content": "tsx scripts/manual/fix-short-content-summaries.ts",
     "collect:local": "dotenv -e .env -- tsx scripts/scheduled/collect-feeds.ts",
     "summarize:local": "dotenv -e .env -- tsx scripts/maintenance/generate-summaries.ts",
-    "scheduler:local": "dotenv -e .env -- tsx scripts/scheduled/scheduler.ts"
+    "scheduler:local": "dotenv -e .env -- tsx scripts/scheduled/scheduler.ts",
+    "docker:dev": "docker compose -f docker-compose.app.yml up app",
+    "docker:build": "docker compose -f docker-compose.app.yml exec app npm run build",
+    "docker:lint": "docker compose -f docker-compose.app.yml exec app npm run lint",
+    "docker:test": "docker compose -f docker-compose.app.yml exec app npm test",
+    "docker:bash": "docker compose -f docker-compose.app.yml exec app sh",
+    "docker:setup": "bash scripts/docker-dev-setup.sh",
+    "docker:clean": "docker compose -f docker-compose.app.yml down -v",
+    "docker:restart": "docker compose -f docker-compose.app.yml restart app",
+    "docker:logs": "docker compose -f docker-compose.app.yml logs -f app",
+    "docker:ps": "docker compose -f docker-compose.app.yml ps"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
