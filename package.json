@@ -38,6 +38,10 @@
     "scheduler:stop": "pm2 stop techtrend-scheduler",
     "scheduler:restart": "pm2 restart techtrend-scheduler",
     "scheduler:logs": "pm2 logs techtrend-scheduler",
+    "scheduler:start:local": "pm2 start ecosystem.local.config.js --only techtrend-scheduler-local",
+    "scheduler:stop:local": "pm2 stop techtrend-scheduler-local",
+    "scheduler:restart:local": "pm2 restart techtrend-scheduler-local",
+    "scheduler:logs:local": "pm2 logs techtrend-scheduler-local",
     "scheduler:dev": "tsx scripts/scheduled/scheduler.ts",
     "scheduler:prod": "tsx scripts/scheduled/scheduler.ts",
     "scripts:collect": "tsx scripts/scheduled/collect-feeds.ts",
@@ -88,7 +92,10 @@
     "migrate:version6": "tsx scripts/manual/migrate-to-version6.ts",
     "migrate:version6:critical": "tsx scripts/manual/migrate-to-version6.ts --priority=critical",
     "migrate:version6:substandard": "tsx scripts/manual/migrate-to-version6.ts --priority=substandard",
-    "fix:short-content": "tsx scripts/manual/fix-short-content-summaries.ts"
+    "fix:short-content": "tsx scripts/manual/fix-short-content-summaries.ts",
+    "collect:local": "dotenv -e .env -- tsx scripts/scheduled/collect-feeds.ts",
+    "summarize:local": "dotenv -e .env -- tsx scripts/maintenance/generate-summaries.ts",
+    "scheduler:local": "dotenv -e .env -- tsx scripts/scheduled/scheduler.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -167,6 +174,7 @@
     "@types/uuid": "^10.0.0",
     "cross-env": "^10.0.0",
     "dotenv": "^17.2.2",
+    "dotenv-cli": "^10.0.0",
     "eslint": "^9.35.0",
     "eslint-config-next": "15.4.4",
     "eslint-config-prettier": "^10.1.8",

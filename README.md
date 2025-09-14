@@ -38,6 +38,43 @@ npx prisma migrate dev
 npm run dev
 ```
 
+### ローカル環境でのスクリプト実行
+
+ローカル環境でスケジューラースクリプトを実行する場合は、環境変数を読み込むため以下のコマンドを使用してください：
+
+```bash
+# 記事収集（環境変数自動読み込み）
+npm run collect:local
+
+# 要約生成（環境変数自動読み込み）
+npm run summarize:local
+
+# スケジューラー（環境変数自動読み込み）
+npm run scheduler:local
+```
+
+### PM2でのローカル実行
+
+PM2を使用してスケジューラーをバックグラウンドで実行する場合：
+
+```bash
+# PM2でスケジューラー起動（ローカル環境用）
+npm run scheduler:start:local
+
+# ログ確認
+npm run scheduler:logs:local
+
+# 再起動
+npm run scheduler:restart:local
+
+# 停止
+npm run scheduler:stop:local
+```
+
+**注意**:
+- 通常の `npx tsx scripts/...` コマンドでは `.env` ファイルが読み込まれないため、上記のローカル実行用コマンドを使用してください。
+- PM2のローカル実行では `ecosystem.local.config.js` が使用され、`.env` ファイルが自動的に読み込まれます。
+
 ## ライセンス
 
 MIT License
