@@ -194,9 +194,9 @@ describe('Environment Configuration', () => {
       const actualUrl = config.database.url();
       // テスト環境では必ずtechtrend_testデータベースを使用していることを確認
       expect(actualUrl).toContain('techtrend_test');
-      // ローカル環境では5433ポートを使用していることを確認（CI環境では5432）
+      // ローカル環境では5434ポートを使用していることを確認（CI環境では5432）
       if (!process.env.CI) {
-        expect(actualUrl).toContain(':5433');
+        expect(actualUrl).toContain(':5434');
       }
     });
 
@@ -445,9 +445,9 @@ describe('Environment Configuration - Config Helpers', () => {
   it('uses test database configuration in test environment', () => {
     process.env.NODE_ENV = 'test';
     // jest.setup.jsで既にDATABASE_URLが設定されているため、その値が使用される
-    const expectedUrl = process.env.CI 
+    const expectedUrl = process.env.CI
       ? 'postgresql://postgres:postgres@localhost:5432/techtrend_test'
-      : 'postgresql://postgres:postgres_test_password@localhost:5433/techtrend_test';
+      : 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
     expect(config.database.url()).toBe(expectedUrl);
   });
 
