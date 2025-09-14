@@ -3,6 +3,9 @@ import { existsSync, readdirSync } from 'fs';
 import * as dotenv from 'dotenv';
 import * as path from 'node:path';
 
+// CI環境の検出
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
 // Load test environment variables
 dotenv.config({ path: path.resolve(process.cwd(), '.env.test') });
 
@@ -105,7 +108,7 @@ export async function teardownTestDatabase() {
     console.error('Cleaning up test database...');
     
     // Optionally stop containers if in CI environment
-    if (process.env.CI) {
+    if (isCI) {
       execSync('docker compose -p techtrend_codex_test -f docker-compose.test.yml down -v', {
         stdio: 'inherit',
         env: process.env,

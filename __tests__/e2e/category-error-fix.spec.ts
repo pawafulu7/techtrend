@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// CI環境の検出
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
 test.describe('カテゴリーエラー修正のテスト', () => {
   // CI環境でのflaky対策 - タイムアウトを3倍に延長
   test.slow();
@@ -9,7 +12,7 @@ test.describe('カテゴリーエラー修正のテスト', () => {
     // CI環境でのタイムアウトに対応 - networkidleを待たずにdomcontentloadedのみ待機
     await page.waitForLoadState('domcontentloaded');
     // 最低限の待機時間を設定
-    await page.waitForTimeout(process.env.CI ? 2000 : 1000);
+    await page.waitForTimeout(isCI ? 2000 : 1000);
   });
 
   test('"l"を入力してもエラーが発生しない', async ({ page, browserName }) => {

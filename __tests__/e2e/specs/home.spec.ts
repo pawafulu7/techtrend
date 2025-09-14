@@ -10,10 +10,13 @@ import {
 import { getTimeout } from '../../../e2e/helpers/wait-utils';
 import { SELECTORS } from '../constants/selectors';
 
+// CI環境の検出
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
 test.describe('ホームページ', () => {
   test.beforeEach(async ({ page }) => {
     // CI環境では待機時間を延長
-    const loadTimeout = process.env.CI ? 45000 : 30000;
+    const loadTimeout = isCI ? 45000 : 30000;
     // ホームページにアクセス
     await page.goto(testData.paths.home, { waitUntil: 'domcontentloaded' });
     await waitForPageLoad(page, { timeout: loadTimeout, waitForNetworkIdle: true });
@@ -35,7 +38,7 @@ test.describe('ホームページ', () => {
     const articles = page.locator(SELECTORS.ARTICLE_CARD).first();
     
     // CI環境では待機時間を延長
-    const articleTimeout = process.env.CI ? 30000 : 15000;
+    const articleTimeout = isCI ? 30000 : 15000;
     // 少なくとも1つの記事要素が存在することを確認
     await expect(articles).toBeVisible({ timeout: articleTimeout });
 

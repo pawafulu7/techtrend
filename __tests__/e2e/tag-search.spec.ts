@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { waitForArticles, getTimeout } from '../../e2e/helpers/wait-utils';
 
+// CI環境の検出
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
 test.describe('動的タグ検索機能', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -67,7 +70,7 @@ test.describe('動的タグ検索機能', () => {
 
   test('タグフィルターで企業タグを検索できる', async ({ page }) => {
     // CI環境では企業タグデータが不足しているためスキップ
-    test.skip(Boolean(process.env.CI), 'CI環境では企業タグデータが不足');
+    test.skip(Boolean(isCI), 'CI環境では企業タグデータが不足');
     
     // 初期読み込み待機
     await page.waitForLoadState('networkidle');
@@ -166,7 +169,7 @@ test.describe('動的タグ検索機能', () => {
 
   test('企業タグを選択してフィルタリングできる', async ({ page }) => {
     // CI環境では企業タグデータが不安定なためスキップ
-    test.skip(Boolean(process.env.CI), 'CI環境では企業タグデータが不安定');
+    test.skip(Boolean(isCI), 'CI環境では企業タグデータが不安定');
     
     // 初期読み込み待機
     await page.waitForLoadState('networkidle', { timeout: 5000 });
@@ -293,7 +296,7 @@ test.describe('動的タグ検索機能', () => {
     if (!spinnerVisible) {
       console.log('Warning: Loading spinner was not detected - search may be too fast or cached');
       // CI環境では検索が高速なため、スピナーが表示されないことを許容
-      test.skip(Boolean(process.env.CI), 'CI環境では検索が高速すぎてスピナーが表示されない');
+      test.skip(Boolean(isCI), 'CI環境では検索が高速すぎてスピナーが表示されない');
     } else {
       expect(spinnerVisible).toBe(true);
     }
