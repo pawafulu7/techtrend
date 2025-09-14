@@ -59,9 +59,8 @@ describe('Environment Configuration', () => {
       process.env.DATABASE_URL = 'not-a-valid-url';
       process.env.NODE_ENV = 'production';
 
-      // DATABASE_URLは空文字列がデフォルト値なので、無効なURLでもエラーにならない設計
-      const result = getEnv();
-      expect(result.DATABASE_URL).toBe('');  // 無効なURLは空文字列になる
+      // production環境では無効なURLでエラーを投げる
+      expect(() => getEnv()).toThrow('Environment validation failed');
     });
 
     it('validates port numbers', () => {
@@ -69,18 +68,16 @@ describe('Environment Configuration', () => {
       process.env.PORT = 'not-a-number';
       process.env.NODE_ENV = 'production';
 
-      // PORTは正規表現バリデーションで数値チェック、無効な値はデフォルト3000になる
-      const result = getEnv();
-      expect(result.PORT).toBe('3000');  // 無効な値はデフォルト値になる
+      // production環境では無効なPORT番号でエラーを投げる
+      expect(() => getEnv()).toThrow('Environment validation failed');
     });
 
     it('validates enum values', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
       process.env.NODE_ENV = 'invalid-env';
 
-      // NODE_ENVは無効な値の場合デフォルト値'development'になる
-      const result = getEnv();
-      expect(result.NODE_ENV).toBe('development');
+      // 無効なNODE_ENVでエラーを投げる
+      expect(() => getEnv()).toThrow('Environment validation failed');
     });
 
     it('handles development mode with warnings', () => {
