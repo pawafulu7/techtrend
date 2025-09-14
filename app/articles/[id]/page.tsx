@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ArrowLeft, ExternalLink, TrendingUp, GraduationCap } from 'lucide-react';
-import { prisma } from '@/lib/database';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
@@ -14,7 +13,8 @@ import { ViewTracker } from '@/components/article/view-tracker';
 import { ReadTracker } from '@/components/article/read-tracker';
 import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summary-display';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
-import { FavoriteButton } from '@/components/article/favorite-button';
+import { FavoriteButton } from '@/app/components/article/favorite-button';
+import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 
 interface PageProps {
   params: Promise<{
@@ -26,16 +26,14 @@ interface PageProps {
 }
 
 async function getArticle(id: string) {
-  const article = await prisma.article.findUnique({
-    where: { id },
-    include: {
-      source: true,
-      tags: true,
-    },
-  });
-
+  // キャッシュを使用して記事を取得
+  const article = await articleDetailCache.getArticleWithRelations(id);
   return article;
 }
+
+// Next.jsのキャッシュを無効化
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function ArticlePage({ params, searchParams }: PageProps) {
   const { id } = await params;

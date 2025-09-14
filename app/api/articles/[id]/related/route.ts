@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { RedisCache } from '@/lib/cache';
+import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 
 // Initialize Redis cache for related articles
 const cache = new RedisCache({
@@ -25,13 +26,8 @@ export async function GET(
       return NextResponse.json(cachedResult);
     }
     
-    // 対象記事を取得
-    const targetArticle = await prisma.article.findUnique({
-      where: { id: articleId },
-      include: {
-        tags: true
-      }
-    });
+    // 対象記事を取得（キャッシュ利用）
+    const targetArticle = await articleDetailCache.getArticleWithRelations(articleId);
 
     if (!targetArticle) {
       return NextResponse.json(

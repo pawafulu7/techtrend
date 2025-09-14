@@ -23,8 +23,7 @@ export function ArticleList({
   const { isRead, isLoading, refetch } = useReadStatus(articleIds);
 
   // お気に入り状態を一括取得
-  // TODO: ArticleCardとArticleListItemコンポーネントにfavorites情報を渡す
-  const { favorites: _favorites } = useFavoritesBatch(articleIds);
+  const favoritesBatch = useFavoritesBatch(articleIds);
   
   // 強制再レンダリング用のstate
   const [refreshKey, setRefreshKey] = useState(0);
@@ -81,11 +80,13 @@ export function ArticleList({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4" data-testid="article-list" key={refreshKey}>
       {articles.map((article) => (
-        <ArticleCard 
-          key={`${article.id}-${refreshKey}`} 
+        <ArticleCard
+          key={`${article.id}-${refreshKey}`}
           article={article}
           onArticleClick={onArticleClick}
           isRead={isLoading ? true : getReadStatus(article.id)}
+          isFavorited={favoritesBatch.isFavorited(article.id)}
+          onToggleFavorite={() => favoritesBatch.toggleFavorite(article.id)}
         />
       ))}
     </div>

@@ -14,6 +14,8 @@ interface FavoriteButtonProps {
   size?: 'sm' | 'default' | 'lg';
   showText?: boolean;
   compact?: boolean;
+  isFavorited?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 export function FavoriteButton({
@@ -21,11 +23,25 @@ export function FavoriteButton({
   className,
   size = 'sm',
   showText = false,
-  compact = false
+  compact = false,
+  isFavorited: parentIsFavorited,
+  onToggleFavorite: parentToggleFavorite
 }: FavoriteButtonProps) {
   const { data: session } = useSession();
   const router = useRouter();
-  const { isFavorited, toggleFavorite, isToggling, isLoading } = useFavorite(articleId);
+
+  // 親からデータが渡されている場合はそれを使用、そうでない場合は個別フックを使用
+  const useParentData = parentIsFavorited !== undefined && parentToggleFavorite !== undefined;
+
+  // 個別フックは親データがない場合のみ有効化
+  const individualHook = useFavorite(articleId, !useParentData);
+
+  // 使用するデータを決定
+  const isFavorited = useParentData ? parentIsFavorited : individualHook.isFavorited;
+  const toggleFavorite = useParentData ? parentToggleFavorite : individualHook.toggleFavorite;
+  const isToggling = useParentData ? false : individualHook.isToggling;
+  const isLoading = useParentData ? false : individualHook.isLoading;
+
   const [isAnimating, setIsAnimating] = useState(false);
 
   const handleClick = (e: React.MouseEvent) => {

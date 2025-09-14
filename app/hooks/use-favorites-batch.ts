@@ -200,13 +200,14 @@ export function useFavoritesBatch(articleIds: string[]) {
 /**
  * 単一記事のお気に入り状態を管理するHook（バッチAPIを利用）
  */
-export function useFavorite(articleId: string) {
-  const batch = useFavoritesBatch([articleId]);
+export function useFavorite(articleId: string, enabled: boolean = true) {
+  // enabledがfalseの場合は空の配列を渡してAPIコールを抑制
+  const batch = useFavoritesBatch(enabled ? [articleId] : []);
 
   return {
-    isFavorited: batch.isFavorited(articleId),
-    isLoading: batch.isLoading,
-    toggleFavorite: () => batch.toggleFavorite(articleId),
-    isToggling: batch.isToggling,
+    isFavorited: enabled ? batch.isFavorited(articleId) : false,
+    isLoading: enabled ? batch.isLoading : false,
+    toggleFavorite: enabled ? () => batch.toggleFavorite(articleId) : () => {},
+    isToggling: enabled ? batch.isToggling : false,
   };
 }
