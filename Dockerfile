@@ -10,12 +10,16 @@ RUN apk add --no-cache libc6-compat
 # Dependencies stage - install npm packages
 FROM base AS deps
 COPY package*.json ./
+# Copy prisma schema for postinstall script
+COPY prisma ./prisma
 # Install dependencies with cache mount for faster rebuilds
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --only=production
 
 # Development dependencies stage
-FROM deps AS dev-deps
+FROM base AS dev-deps
+COPY package*.json ./
+COPY prisma ./prisma
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
