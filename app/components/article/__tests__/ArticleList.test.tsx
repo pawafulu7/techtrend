@@ -6,6 +6,7 @@ import { ArticleList } from '@/app/components/article/list';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useReadStatus } from '@/app/hooks/use-read-status';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMockArticleWithRelations } from '@/test/utils/mock-factories';
 
 // Next.jsのモック
@@ -50,6 +51,7 @@ jest.mock('@/app/components/article/list-item', () => ({
 }));
 
 describe('ArticleList', () => {
+  let queryClient: QueryClient;
   const mockRouter = {
     push: jest.fn(),
     prefetch: jest.fn(),
@@ -94,11 +96,25 @@ describe('ArticleList', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
     (useSearchParams as jest.Mock).mockReturnValue(mockSearchParams);
     (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
     (useReadStatus as jest.Mock).mockReturnValue(mockReadStatus);
   });
+
+  const renderWithProviders = (ui: React.ReactElement) => {
+    return render(
+      <QueryClientProvider client={queryClient}>
+        {ui}
+      </QueryClientProvider>
+    );
+  };
 
   afterEach(() => {
     jest.restoreAllMocks();
@@ -106,7 +122,7 @@ describe('ArticleList', () => {
 
   describe('基本的なレンダリング', () => {
     it('カードビューで記事リストを表示する', () => {
-      render(<ArticleList articles={mockArticles} viewMode="card" />);
+      renderWithProviders(<ArticleList articles={mockArticles} viewMode="card" />);
       
       expect(screen.getByTestId('article-list')).toBeInTheDocument();
       expect(screen.getByTestId('article-card-1')).toBeInTheDocument();
@@ -119,7 +135,7 @@ describe('ArticleList', () => {
     });
 
     it('リストビューで記事リストを表示する', () => {
-      render(<ArticleList articles={mockArticles} viewMode="list" />);
+      renderWithProviders(<ArticleList articles={mockArticles} viewMode="list" />);
       
       expect(screen.getByTestId('article-list')).toBeInTheDocument();
       expect(screen.getByTestId('article-list-item-1')).toBeInTheDocument();
@@ -132,14 +148,14 @@ describe('ArticleList', () => {
     });
 
     it('デフォルトではカードビューを使用する', () => {
-      render(<ArticleList articles={mockArticles} />);
+      renderWithProviders(<ArticleList articles={mockArticles} />);
       
       expect(screen.getByTestId('article-card-1')).toBeInTheDocument();
       expect(screen.queryByTestId('article-list-item-1')).not.toBeInTheDocument();
     });
 
     it('記事が空の場合は空状態メッセージを表示する', () => {
-      render(<ArticleList articles={[]} />);
+      renderWithProviders(<ArticleList articles={[]} />);
       
       expect(screen.getByText('記事が見つかりませんでした')).toBeInTheDocument();
       expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
@@ -158,7 +174,7 @@ describe('ArticleList', () => {
 
       mockReadStatus.isRead.mockImplementation((id: string) => id === '1');
       
-      render(<ArticleList articles={mockArticles} />);
+      renderWithProviders(<ArticleList articles={mockArticles} />);
       
       // 記事1は既読
       const article1 = screen.getByTestId('article-card-1');
@@ -188,7 +204,7 @@ describe('ArticleList', () => {
         status: 'unauthenticated' 
       });
       
-      render(<ArticleList articles={mockArticles} />);
+      renderWithProviders(<ArticleList articles={mockArticles} />);
       
       // すべての記事が既読として表示される
       expect(screen.getByTestId('article-card-1')).toHaveAttribute('data-is-read', 'true');
@@ -210,7 +226,7 @@ describe('ArticleList', () => {
         isLoading: true,
       });
       
-      render(<ArticleList articles={mockArticles} />);
+      renderWithProviders(<ArticleList articles={mockArticles} />);
       
       // ローディング中はすべて既読として表示
       expect(screen.getByTestId('article-card-1')).toHaveAttribute('data-is-read', 'true');
@@ -246,7 +262,7 @@ describe('ArticleList', () => {
         status: 'authenticated' 
       });
       
-      render(<ArticleList articles={mockArticles} />);
+      renderWithProviders(<ArticleList articles={mockArticles} />);
       
       // 初期状態を確認
       const article1Before = screen.getByTestId('article-card-1');
@@ -269,7 +285,7 @@ describe('ArticleList', () => {
     it('コンポーネントアンマウント時にイベントリスナーを削除する', () => {
       const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
       
-      const { unmount } = render(<ArticleList articles={mockArticles} />);
+      const { unmount } = renderWithProviders(<ArticleList articles={mockArticles} />);
       
       unmount();
       
@@ -282,7 +298,7 @@ describe('ArticleList', () => {
 
   describe('リストビューモード', () => {
     it('リストビューで正しくレンダリングする', () => {
-      render(<ArticleList articles={mockArticles} viewMode="list" />);
+      renderWithProviders(<ArticleList articles={mockArticles} viewMode="list" />);
       
       const listContainer = screen.getByTestId('article-list');
       expect(listContainer).toHaveClass('space-y-2');
@@ -307,7 +323,7 @@ describe('ArticleList', () => {
 
       mockReadStatus.isRead.mockImplementation((id: string) => id === '2');
       
-      render(<ArticleList articles={mockArticles} viewMode="list" />);
+      renderWithProviders(<ArticleList articles={mockArticles} viewMode="list" />);
       
       expect(screen.getByTestId('article-list-item-1')).toHaveAttribute('data-is-read', 'false');
       expect(screen.getByTestId('article-list-item-2')).toHaveAttribute('data-is-read', 'true');
@@ -317,10 +333,14 @@ describe('ArticleList', () => {
 
   describe('パフォーマンス最適化', () => {
     it('記事IDのリストを一度だけ作成する（useMemo）', () => {
-      const { rerender } = render(<ArticleList articles={mockArticles} />);
+      const { rerender } = renderWithProviders(<ArticleList articles={mockArticles} />);
       
       // 同じpropsで再レンダリング
-      rerender(<ArticleList articles={mockArticles} />);
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <ArticleList articles={mockArticles} />
+        </QueryClientProvider>
+      );
       
       // useReadStatusへの引数（articleIds）が変わらないことを確認
       const calls = (useReadStatus as jest.Mock).mock.calls;
@@ -330,7 +350,7 @@ describe('ArticleList', () => {
     });
 
     it.skip('refreshKeyで強制再レンダリングする', async () => {
-      render(<ArticleList articles={mockArticles} />);
+      renderWithProviders(<ArticleList articles={mockArticles} />);
       
       // 既読状態変更イベントを発火
       await act(async () => {
@@ -356,20 +376,24 @@ describe('ArticleList', () => {
         })
       );
       
-      const { container } = render(<ArticleList articles={manyArticles} />);
+      const { container } = renderWithProviders(<ArticleList articles={manyArticles} />);
       
       expect(container.querySelectorAll('[data-testid^="article-card-"]')).toHaveLength(100);
     });
 
     it('記事配列が更新されたときに正しく再レンダリングする', () => {
-      const { rerender } = render(<ArticleList articles={mockArticles} />);
+      const { rerender } = renderWithProviders(<ArticleList articles={mockArticles} />);
       
       expect(screen.getByTestId('article-card-1')).toBeInTheDocument();
       expect(screen.getByTestId('article-card-2')).toBeInTheDocument();
       expect(screen.getByTestId('article-card-3')).toBeInTheDocument();
       
       const newArticles = mockArticles.slice(0, 2);
-      rerender(<ArticleList articles={newArticles} />);
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <ArticleList articles={newArticles} />
+        </QueryClientProvider>
+      );
       
       expect(screen.getByTestId('article-card-1')).toBeInTheDocument();
       expect(screen.getByTestId('article-card-2')).toBeInTheDocument();
@@ -377,12 +401,16 @@ describe('ArticleList', () => {
     });
 
     it('viewModeが変更されたときに正しくレンダリングを切り替える', () => {
-      const { rerender } = render(<ArticleList articles={mockArticles} viewMode="card" />);
+      const { rerender } = renderWithProviders(<ArticleList articles={mockArticles} viewMode="card" />);
       
       expect(screen.getByTestId('article-card-1')).toBeInTheDocument();
       expect(screen.queryByTestId('article-list-item-1')).not.toBeInTheDocument();
       
-      rerender(<ArticleList articles={mockArticles} viewMode="list" />);
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <ArticleList articles={mockArticles} viewMode="list" />
+        </QueryClientProvider>
+      );
       
       expect(screen.queryByTestId('article-card-1')).not.toBeInTheDocument();
       expect(screen.getByTestId('article-list-item-1')).toBeInTheDocument();

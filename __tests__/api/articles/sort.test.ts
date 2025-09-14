@@ -4,6 +4,22 @@ import { prisma } from '@/lib/database';
 
 // Mock dependencies
 jest.mock('@/lib/database');
+jest.mock('@/lib/cache/cache-invalidator');
+
+// LayeredCacheを直接モック
+jest.mock('@/lib/cache/layered-cache', () => ({
+  LayeredCache: jest.fn().mockImplementation(() => ({
+    getArticles: jest.fn(async (params, fetcher) => {
+      return await fetcher();
+    }),
+    getOrFetch: jest.fn(async (key, fetcher) => {
+      return await fetcher();
+    }),
+    set: jest.fn(),
+    del: jest.fn(),
+    clear: jest.fn(),
+  })),
+}));
 
 jest.mock('@/lib/cache/enhanced-redis-cache', () => ({
   EnhancedRedisCache: jest.fn().mockImplementation(() => ({
@@ -25,8 +41,8 @@ jest.mock('@/lib/metrics/performance', () => ({
     setCacheStatus: jest.fn(),
     addMetricsToHeaders: jest.fn(),
   })),
-  withDbTiming: jest.fn((metrics, fn) => fn()),
-  withCacheTiming: jest.fn((metrics, fn) => fn()),
+  withDbTiming: jest.fn(async (metrics, fn) => await fn()),
+  withCacheTiming: jest.fn(async (metrics, fn) => await fn()),
 }));
 
 const prismaMock = prisma as any;
