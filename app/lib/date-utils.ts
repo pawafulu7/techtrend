@@ -25,31 +25,35 @@ export function getDateRangeFilter(range: string): Date | null {
   // 後方互換: 旧値 '3months' を新値に正規化
   const normalized = range === '3months' ? 'three_months' : range;
 
-  switch(normalized) {
-    case 'today':
+  switch (normalized) {
+    case 'today': {
       // 今日の0時0分0秒から
       const today = new Date(now);
       today.setHours(0, 0, 0, 0);
       return today;
-      
-    case 'week':
+    }
+
+    case 'week': {
       // 7日前から
       const weekAgo = new Date(now);
       weekAgo.setDate(weekAgo.getDate() - 7);
       return weekAgo;
-      
-    case 'month':
+    }
+
+    case 'month': {
       // 1ヶ月前から
       const monthAgo = new Date(now);
       monthAgo.setMonth(monthAgo.getMonth() - 1);
       return monthAgo;
-      
-    case 'three_months':
+    }
+
+    case 'three_months': {
       // 3ヶ月前から
       const threeMonthsAgo = new Date(now);
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
       return threeMonthsAgo;
-      
+    }
+
     case 'all':
     default:
       // 全期間

@@ -40,40 +40,43 @@ test.describe('Date Range Filter', () => {
 
   test('should open date range dropdown', async ({ page }) => {
     const filterArea = page.locator('[data-testid="filter-area"]');
+    const combobox = filterArea.locator('[role="combobox"]').first();
+    const listbox = page.locator('[role="listbox"]');
 
     // comboboxをクリック
-    const combobox = filterArea.locator('[role="combobox"]').first();
     await combobox.click();
 
     // ドロップダウンメニューが開くのを待機
     // Radix UIのSelectはポータルを使用するので、body直下に表示される
-    const dropdown = page.locator('[role="listbox"]');
-    await expect(dropdown).toBeVisible({ timeout: 5000 });
+    await expect(listbox).toBeVisible({ timeout: 5000 });
 
     // オプションが表示されることを確認
     const expectedOptions = ['全期間', '今日', '今週', '今月', '過去3ヶ月'];
     for (const optionText of expectedOptions) {
-      const option = dropdown.locator('[role="option"]').filter({ hasText: optionText });
+      const option = listbox.getByRole('option', { name: optionText });
       await expect(option).toBeVisible();
     }
   });
 
   test('should filter articles by date range', async ({ page }) => {
     const filterArea = page.locator('[data-testid="filter-area"]');
+    const combobox = filterArea.locator('[role="combobox"]').first();
+    const listbox = page.locator('[role="listbox"]');
 
     // comboboxをクリック
-    const combobox = filterArea.locator('[role="combobox"]').first();
     await combobox.click();
 
+    // listboxが表示されるのを待機
+    await expect(listbox).toBeVisible();
+
     // ドロップダウンから「今日」を選択
-    const dropdown = page.locator('[role="listbox"]');
-    await dropdown.locator('[role="option"]').filter({ hasText: '今日' }).click();
+    await listbox.getByRole('option', { name: '今日' }).click();
 
     // URLが更新されるのを待機
-    await page.waitForFunction(
-      () => window.location.href.includes('dateRange=today'),
-      { timeout: 5000 }
-    );
+    await expect(page).toHaveURL(/[\?&]dateRange=today\b/);
+
+    // listboxが閉じたことを確認
+    await expect(listbox).toBeHidden();
 
     // comboboxのテキストが更新されたことを確認
     await expect(combobox).toContainText('今日');
@@ -82,26 +85,25 @@ test.describe('Date Range Filter', () => {
   test('should reset to all periods', async ({ page }) => {
     const filterArea = page.locator('[data-testid="filter-area"]');
     const combobox = filterArea.locator('[role="combobox"]').first();
+    const listbox = page.locator('[role="listbox"]');
 
     // まず「今週」を選択
     await combobox.click();
-    await page.locator('[role="listbox"]').locator('[role="option"]').filter({ hasText: '今週' }).click();
+    await expect(listbox).toBeVisible();
+    await listbox.getByRole('option', { name: '今週' }).click();
 
     // URLが更新されるのを待機
-    await page.waitForFunction(
-      () => window.location.href.includes('dateRange=week'),
-      { timeout: 5000 }
-    );
+    await expect(page).toHaveURL(/[\?&]dateRange=week\b/);
+    await expect(listbox).toBeHidden();
 
     // 「全期間」に戻す
     await combobox.click();
-    await page.locator('[role="listbox"]').locator('[role="option"]').filter({ hasText: '全期間' }).click();
+    await expect(listbox).toBeVisible();
+    await listbox.getByRole('option', { name: '全期間' }).click();
 
     // URLからdateRangeパラメータが削除されるのを待機
-    await page.waitForFunction(
-      () => !window.location.href.includes('dateRange'),
-      { timeout: 5000 }
-    );
+    await expect(page).not.toHaveURL(/[\?&]dateRange=/);
+    await expect(listbox).toBeHidden();
 
     // テキストが「全期間」に戻ったことを確認
     await expect(combobox).toContainText('全期間');
@@ -110,16 +112,16 @@ test.describe('Date Range Filter', () => {
   test('should persist filter on page reload', async ({ page }) => {
     const filterArea = page.locator('[data-testid="filter-area"]');
     const combobox = filterArea.locator('[role="combobox"]').first();
+    const listbox = page.locator('[role="listbox"]');
 
     // 「今月」を選択
     await combobox.click();
-    await page.locator('[role="listbox"]').locator('[role="option"]').filter({ hasText: '今月' }).click();
+    await expect(listbox).toBeVisible();
+    await listbox.getByRole('option', { name: '今月' }).click();
 
     // URLが更新されるのを待機
-    await page.waitForFunction(
-      () => window.location.href.includes('dateRange=month'),
-      { timeout: 5000 }
-    );
+    await expect(page).toHaveURL(/[\?&]dateRange=month\b/);
+    await expect(listbox).toBeHidden();
 
     // ページをリロード
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -141,12 +143,13 @@ test.describe('Date Range Filter', () => {
     // フィルターが維持されていることを確認
     const newCombobox = page.locator('[data-testid="filter-area"]').locator('[role="combobox"]').first();
     await expect(newCombobox).toContainText('今月');
-    expect(page.url()).toContain('dateRange=month');
+    await expect(page).toHaveURL(/[\?&]dateRange=month\b/);
   });
 
   test('should work with multiple date ranges', async ({ page }) => {
     const filterArea = page.locator('[data-testid="filter-area"]');
     const combobox = filterArea.locator('[role="combobox"]').first();
+    const listbox = page.locator('[role="listbox"]');
 
     const testCases = [
       { label: '今日', value: 'today' },
@@ -159,18 +162,14 @@ test.describe('Date Range Filter', () => {
       // comboboxをクリック
       await combobox.click();
 
-      // listboxのロケータを取得
-      const listbox = page.locator('[role="listbox"]');
+      // listboxが表示されるのを待機
+      await expect(listbox).toBeVisible();
 
       // オプションを選択
       await listbox.getByRole('option', { name: testCase.label }).click();
 
       // URLが更新されるのを待機
-      await page.waitForFunction(
-        (expectedValue) => window.location.href.includes(`dateRange=${expectedValue}`),
-        testCase.value,
-        { timeout: 5000 }
-      );
+      await expect(page).toHaveURL(new RegExp(`[?&]dateRange=${testCase.value}\\b`));
 
       // テキストが更新されたことを確認
       await expect(combobox).toContainText(testCase.label);
