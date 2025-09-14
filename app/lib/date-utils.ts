@@ -2,8 +2,7 @@
  * 日付範囲フィルター用のユーティリティ関数
  */
 
-export type DateRangeOption = 'today' | 'week' | 'month' | 'three_months' | 'all';
-
+// 定数定義（型の派生元）
 export const DATE_RANGE_OPTIONS = [
   { value: 'all', label: '全期間' },
   { value: 'today', label: '今日' },
@@ -12,6 +11,9 @@ export const DATE_RANGE_OPTIONS = [
   { value: 'three_months', label: '過去3ヶ月' },
 ] as const;
 
+// 定数から型を派生させて重複をなくす
+export type DateRangeOption = typeof DATE_RANGE_OPTIONS[number]['value'];
+
 /**
  * 日付範囲文字列から開始日を計算
  * @param range - 日付範囲の文字列
@@ -19,8 +21,11 @@ export const DATE_RANGE_OPTIONS = [
  */
 export function getDateRangeFilter(range: string): Date | null {
   const now = new Date();
-  
-  switch(range) {
+
+  // 後方互換: 旧値 '3months' を新値に正規化
+  const normalized = range === '3months' ? 'three_months' : range;
+
+  switch(normalized) {
     case 'today':
       // 今日の0時0分0秒から
       const today = new Date(now);
@@ -58,7 +63,9 @@ export function getDateRangeFilter(range: string): Date | null {
  * @returns ラベル文字列
  */
 export function getDateRangeLabel(value: string): string {
-  const option = DATE_RANGE_OPTIONS.find(opt => opt.value === value);
+  // 後方互換: 旧値 '3months' を新値に正規化
+  const v = value === '3months' ? 'three_months' : value;
+  const option = DATE_RANGE_OPTIONS.find(opt => opt.value === v);
   return option?.label || '全期間';
 }
 

@@ -123,12 +123,19 @@ test.describe('Date Range Filter', () => {
 
     // ページをリロード
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
 
-    // フィルターエリアが再表示されるのを待機
+    // フィルターエリアが再表示されるのを待機（networkidleの代わりに具体的な要素を待つ）
     await page.waitForSelector('[data-testid="filter-area"]', {
       state: 'visible',
       timeout: 10000
+    });
+
+    // 記事リストの最初の要素が表示されるのを待機（データ読み込み完了の指標）
+    await page.waitForSelector('[data-testid="article-list"] > *:first-child', {
+      state: 'visible',
+      timeout: 10000
+    }).catch(() => {
+      // 記事リストが空の場合もあるので、エラーを無視
     });
 
     // フィルターが維持されていることを確認
@@ -152,8 +159,11 @@ test.describe('Date Range Filter', () => {
       // comboboxをクリック
       await combobox.click();
 
+      // listboxのロケータを取得
+      const listbox = page.locator('[role="listbox"]');
+
       // オプションを選択
-      await page.locator('[role="listbox"]').locator('[role="option"]').filter({ hasText: testCase.label }).click();
+      await listbox.getByRole('option', { name: testCase.label }).click();
 
       // URLが更新されるのを待機
       await page.waitForFunction(
@@ -165,8 +175,8 @@ test.describe('Date Range Filter', () => {
       // テキストが更新されたことを確認
       await expect(combobox).toContainText(testCase.label);
 
-      // 次のテストのために少し待機
-      await page.waitForTimeout(500);
+      // ポータルのリストボックスが閉じたことを確認（次操作の安定化）
+      await expect(listbox).toBeHidden();
     }
   });
 });
