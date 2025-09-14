@@ -73,7 +73,9 @@ export class ArticleDetailCache {
     }
 
     // DBから取得（既存のクエリを使用）
-    const relatedArticles = await prisma.$queryRaw`
+    const placeholders = tagIds.map((_, index) => `$${index + 1}`).join(',');
+    const relatedArticles = await prisma.$queryRawUnsafe(
+      `
       WITH RelatedArticles AS (
         SELECT DISTINCT
           a.id,
@@ -89,8 +91,8 @@ export class ArticleDetailCache {
         FROM "Article" a
         JOIN "_ArticleToTag" at ON a.id = at."A"
         JOIN "Source" s ON a."sourceId" = s.id
-        WHERE at."B" IN (${tagIds.join(',')})
-          AND a.id != ${articleId}
+        WHERE at."B" IN (${placeholders})
+          AND a.id != $${tagIds.length + 1}
           AND a."qualityScore" >= 30
         GROUP BY a.id, a.title, a.summary, a.url, a."publishedAt", a."sourceId", s.name, a."qualityScore", a.difficulty
         HAVING COUNT(DISTINCT at."B") > 0
@@ -105,7 +107,10 @@ export class ArticleDetailCache {
       LEFT JOIN "Tag" t ON at2."B" = t.id
       GROUP BY ra.id, ra.title, ra.summary, ra.url, ra."publishedAt", ra."sourceId", ra."sourceName", ra."qualityScore", ra.difficulty, ra."commonTags"
       ORDER BY ra."commonTags" DESC, ra."publishedAt" DESC
-    `;
+      `,
+      ...tagIds,
+      articleId
+    );
 
     // キャッシュに保存
     await this.cache.set(cacheKey, relatedArticles);

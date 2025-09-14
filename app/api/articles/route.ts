@@ -294,17 +294,18 @@ export async function GET(request: NextRequest) {
       } else if (fields) {
         // Custom field selection
         const fieldList = fields.split(',').map(f => f.trim());
-        selectFields = {};
-
-        // Always include id for consistency
-        selectFields.id = true;
-
-        // Add requested fields
-        fieldList.forEach(field => {
-          if (field in prisma.article.fields) {
+        // 許可フィールドのホワイトリスト
+        const allowedSelectableFields = new Set([
+          'title','url','summary','thumbnail','publishedAt','qualityScore',
+          'bookmarks','userVotes','difficulty','createdAt','updatedAt',
+          'sourceId','summaryVersion','articleType','category','detailedSummary'
+        ]);
+        selectFields = { id: true } as Prisma.ArticleSelect;
+        for (const field of fieldList) {
+          if (allowedSelectableFields.has(field)) {
             (selectFields as any)[field] = true;
           }
-        });
+        }
       } else {
         // Standard mode
         selectFields = {

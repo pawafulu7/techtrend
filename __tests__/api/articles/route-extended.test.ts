@@ -78,6 +78,11 @@ const resetMockSession = () => authMock.mockResolvedValue({
 });
 
 describe('/api/articles - Extended Tests', () => {
+  afterEach(() => {
+    // テスト間での状態持ち越しを防ぐ
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (global as any).__mockCacheInstance;
+  });
   const mockArticles = [
     {
       id: 'article1',

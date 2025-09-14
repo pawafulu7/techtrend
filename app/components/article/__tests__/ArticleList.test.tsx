@@ -240,9 +240,9 @@ describe('ArticleList', () => {
       const handleArticleClick = jest.fn();
       const user = userEvent.setup();
       
-      render(
-        <ArticleList 
-          articles={mockArticles} 
+      renderWithProviders(
+        <ArticleList
+          articles={mockArticles}
           onArticleClick={handleArticleClick}
         />
       );

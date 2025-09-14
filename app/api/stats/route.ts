@@ -14,7 +14,13 @@ export async function GET() {
     const cacheKey = 'stats:overview';
 
     // Try to get stats from cache first
-    const cachedStats = await statsCache.get(cacheKey);
+    type StatsPayload = {
+      overview: { total: number; last7Days: number; last30Days: number; averagePerDay: number };
+      sources: { id: string; name: string; count: number; percentage: number }[];
+      daily: { date: string; total: number; sources: Record<string, number> }[];
+      tags: { id: string; name: string; count: number }[];
+    };
+    const cachedStats = await statsCache.get<StatsPayload>(cacheKey);
 
     if (cachedStats) {
       const response = NextResponse.json({
@@ -168,13 +174,8 @@ export async function GET() {
     response.headers.set('Vary', 'Accept-Encoding');
 
     return response;
-  } catch (error) {
-    
-    // Redisエラーの場合はフォールバックとしてDBから直接取得を試みる
-    if (error instanceof Error && error.message.includes('Redis')) {
-      // ここに直接DB取得のロジックを追加可能
-    }
-    
+  } catch (_error) {
+
     return NextResponse.json(
       {
         success: false,
