@@ -52,7 +52,8 @@ const testRegistration = async () => {
       });
       
       const weakResult = await weakResponse.json();
-      console.log(`   ${desc}: ${weakResponse.ok ? '❌ 通ってしまった' : '✅ 正しく拒否'} - ${weakResult.error || '成功'}`);
+      // Security fix: 機密情報のログ出力を削除（脆弱性対応）
+      // console.log(`   ${desc}: ${weakResponse.ok ? '❌ 通ってしまった' : '✅ 正しく拒否'} - ${weakResult.error || '成功'}`);
     }
     
     console.log('\n📧 メール送信をご確認ください（Gmail設定が必要）');

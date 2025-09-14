@@ -424,13 +424,17 @@ export async function waitForUrlParam(
 ) {
   const timeout = options?.timeout ?? getTimeout('medium');
   const polling = getPollingInterval(options?.polling ?? (process.env.CI ? 'fast' : 'normal'));
-  const maxRetries = options?.retries ?? (process.env.CI ? 10 : 3);  // CI環境でリトライ回数を大幅に増やす
+  const maxRetries = options?.retries ?? (process.env.CI ? 5 : 2);  // CI環境では十分なリトライ回数を確保
 
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
-  // CI環境では更に長く待機してURL更新を確実に待つ
-  const initialWait = process.env.CI ? 2000 : 500;  // CI: 2秒、ローカル: 500ms
+  // CI環境でも短めに統一して総タイムアウト予算を有効活用
+  const initialWait = process.env.CI ? 500 : 300;  // CI: 500ms、ローカル: 300ms
   await page.waitForTimeout(initialWait);
-  
+
+  // 合計タイムアウト予算の管理用
+  const startedAt = Date.now();
+  const isCI = !!process.env.CI;
+
   let lastError: Error | null = null;
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -440,38 +444,47 @@ export async function waitForUrlParam(
         throw new Error('Page has been closed');
       }
       
-      // リトライ前の待機（CI環境では長めに）
+      // リトライ前の待機（最小限に削減）
       if (attempt > 0) {
-        const backoffWait = process.env.CI 
-          ? 500 + (500 * attempt)  // CI: 500ms, 1000ms, 1500ms...
-          : 200 + (200 * attempt);  // ローカル: 200ms, 400ms, 600ms...
+        const backoffWait = process.env.CI
+          ? 200 + (100 * attempt)  // CI: 200ms, 300ms, 400ms（大幅削減）
+          : 100 + (50 * attempt);  // ローカル: 100ms, 150ms, 200ms
         await page.waitForTimeout(backoffWait);
       }
       
-      // タイムアウトを各リトライで調整（CI環境では長めに設定）
-      const minTimeout = process.env.CI ? 60000 : 5000;  // CI: 60秒、ローカル: 5秒
-      const maxTimeout = process.env.CI ? 180000 : 15000;  // CI: 180秒、ローカル: 15秒
-      const retryTimeout = Math.min(Math.max(minTimeout, timeout / maxRetries), maxTimeout);
+      // 合計予算(timeout)を厳守: 残余予算から各試行のタイムアウトを算出（等分＋下限/上限）
+      const now = Date.now();
+      const elapsed = now - startedAt;
+      const remaining = Math.max(timeout - elapsed, 0);
+      if (remaining <= 0) {
+        throw new Error(`[waitForUrlParam] Timeout exceeded (${timeout}ms)`);
+      }
+      const attemptsLeft = Math.max(1, maxRetries - attempt);
+      const perAttemptFloor = isCI ? 2000 : 500;
+      const perAttemptCap = isCI ? 15000 : 10000;
+      const perAttemptBudget = Math.floor(remaining / attemptsLeft);
+      // 合計予算順守: 最終的に remaining を上回らないようにクランプ
+      const retryTimeout = Math.min(
+        remaining,
+        Math.max(perAttemptFloor, Math.min(perAttemptBudget, perAttemptCap))
+      );
       
-      // デバッグ: 現在のURL確認
-      if (process.env.CI || process.env.DEBUG_E2E) {
+      // デバッグ: 現在のURL確認（DEBUG_E2E環境のみ、値はマスク）
+      if (process.env.DEBUG_E2E) {
         const currentUrl = page.url();
-        console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${currentUrl}`);
-        console.log(`[waitForUrlParam] Waiting for param: ${paramName}=${paramValue || '<any value>'}`);
+        const safeUrl = currentUrl.replace(/\?.*$/, '?<redacted>');
+        console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${safeUrl}`);
+        console.log(`[waitForUrlParam] Waiting for param: ${paramName}=<redacted>`);
         console.log(`[waitForUrlParam] Timeout: ${retryTimeout}ms, Polling: ${polling}ms`);
       }
-      
-      // CI環境では最初に短い待機を入れる
-      if (process.env.CI && attempt === 0) {
-        await page.waitForTimeout(2000);
-      }
 
-      // まず現在のURLをログに出力（デバッグ用）
-      const currentUrlBeforeWait = page.url();
-      if (process.env.CI || process.env.DEBUG_E2E) {
-        console.log(`[waitForUrlParam] Before wait - URL: ${currentUrlBeforeWait}`);
+      // 現在のURLをデバッグ出力（DEBUG_E2E環境のみ、値はマスク）
+      if (process.env.DEBUG_E2E) {
+        const currentUrlBeforeWait = page.url();
+        const safeUrl = currentUrlBeforeWait.replace(/\?.*$/, '?<redacted>');
+        console.log(`[waitForUrlParam] Before wait - URL: ${safeUrl}`);
         const currentParams = new URL(currentUrlBeforeWait).searchParams;
-        console.log(`[waitForUrlParam] Current params: ${Array.from(currentParams.entries()).map(([k, v]) => `${k}=${v}`).join(', ')}`);
+        console.log(`[waitForUrlParam] Current params: ${Array.from(currentParams.keys()).join(', ')} (values redacted)`);
       }
 
       await page.waitForFunction(
@@ -489,7 +502,7 @@ export async function waitForUrlParam(
           }
         },
         { name: paramName, value: paramValue },
-        { timeout: retryTimeout, polling: Math.min(polling, 100) }  // CI環境では高頻度でポーリング
+        { timeout: retryTimeout, polling: process.env.CI ? 50 : polling }  // CI環境では高頻度でポーリング（50ms固定）
       );
       
       // 成功したら終了

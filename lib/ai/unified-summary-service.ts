@@ -7,6 +7,7 @@ import fetch from 'node-fetch';
 import { generateEnhancedUnifiedPrompt } from '../utils/article-type-prompts';
 import { parseUnifiedResponse, validateParsedResult, ParsedSummaryResult } from './unified-summary-parser';
 import { checkSummaryQuality } from '../utils/summary-quality-checker';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 export interface UnifiedSummaryResult extends ParsedSummaryResult {
   articleType: 'unified';
@@ -201,11 +202,12 @@ export class UnifiedSummaryService {
       return '__SKIP_SUMMARY_GENERATION__';
     }
     
-    // はてなブックマーク経由の外部サイト記事でコンテンツ不足の場合
-    if (sourceInfo?.sourceName === 'はてなブックマーク' && 
+    // はてなブックマーク経由の外部サイト記事でコンテンツ不足の場合（セキュアなURL検証）
+    if (sourceInfo?.sourceName === 'はてなブックマーク' &&
         content.length < 300 &&
-        (sourceInfo.url?.includes('speakerdeck.com') || 
-         sourceInfo.url?.includes('slideshare.net'))) {
+        sourceInfo.url &&
+        (isUrlFromDomain(sourceInfo.url, 'speakerdeck.com') ||
+         isUrlFromDomain(sourceInfo.url, 'slideshare.net'))) {
       // 要約生成不可のマーカーを返す
       return '__SKIP_SUMMARY_GENERATION__';
     }
