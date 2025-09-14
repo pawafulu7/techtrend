@@ -1,6 +1,7 @@
 import { Source } from '@prisma/client';
 import { FetchResult } from '@/types/fetchers';
 import { logger } from '@/lib/cli/utils/logger';
+import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 
 export abstract class BaseFetcher {
   protected source: Source;
@@ -93,9 +94,7 @@ export abstract class BaseFetcher {
   }
 
   protected sanitizeText(text: string): string {
-    return text
-      .replace(/<[^>]*>/g, '') // Remove HTML tags
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .trim();
+    // html-sanitizer.tsの安全な実装を使用
+    return stripHtmlTags(text);
   }
 }

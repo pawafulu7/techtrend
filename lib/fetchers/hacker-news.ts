@@ -3,6 +3,7 @@ import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import logger from '@/lib/logger';
+import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 interface HackerNewsStory {
   id: number;
@@ -149,23 +150,27 @@ export class HackerNewsFetcher extends BaseFetcher {
     tags.add('Hacker News');
     tags.add('Tech News');
     
-    // URLベースのタグ
-    const domain = new URL(url).hostname.replace('www.', '');
-    
-    // 主要なドメインに対するタグ付け
-    if (domain.includes('github.com')) {
-      tags.add('GitHub');
-      tags.add('Open Source');
-    }
-    if (domain.includes('arxiv.org')) {
-      tags.add('Research');
-      tags.add('Academic');
-    }
-    if (domain.includes('medium.com')) {
-      tags.add('Medium');
-    }
-    if (domain.includes('substack.com')) {
-      tags.add('Newsletter');
+    // URLベースのタグ（安全なドメイン検証を使用）
+    try {
+      const domain = new URL(url).hostname.replace('www.', '');
+
+      // 主要なドメインに対するタグ付け（セキュアなURL検証）
+      if (isUrlFromDomain(url, 'github.com')) {
+        tags.add('GitHub');
+        tags.add('Open Source');
+      }
+      if (isUrlFromDomain(url, 'arxiv.org')) {
+        tags.add('Research');
+        tags.add('Academic');
+      }
+      if (isUrlFromDomain(url, 'medium.com')) {
+        tags.add('Medium');
+      }
+      if (isUrlFromDomain(url, 'substack.com')) {
+        tags.add('Newsletter');
+      }
+    } catch {
+      // Invalid URL - skip domain-based tags
     }
     
     // タイトルベースのタグ

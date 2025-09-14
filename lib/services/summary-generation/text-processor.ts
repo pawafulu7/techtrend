@@ -74,19 +74,7 @@ export function normalizeDetailedSummary(text: string): string {
  * @param text HTMLを含む可能性のあるテキスト
  * @returns HTMLタグを除去したテキスト
  */
-export function stripHtmlTags(text: string): string {
-  if (!text) return '';
-
-  return text
-    .replace(/<[^>]*>/g, '')           // HTMLタグを除去
-    .replace(/&nbsp;/g, ' ')           // &nbsp;をスペースに
-    .replace(/&lt;/g, '<')             // &lt;を<に
-    .replace(/&gt;/g, '>')             // &gt;を>に
-    .replace(/&quot;/g, '"')           // &quot;を"に
-    .replace(/&#39;/g, "'")            // &#39;を'に
-    .replace(/&amp;/g, '&')            // &amp;を&に（最後に処理）
-    .trim();
-}
+export { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 
 /**
  * 文字数制限付きトリミング
