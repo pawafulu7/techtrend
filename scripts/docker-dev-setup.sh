@@ -3,7 +3,7 @@
 # Docker Development Environment Setup Script
 # This script sets up the complete Docker development environment for TechTrend
 
-set -e  # Exit on error
+set -euo pipefail  # Exit on error, undefined var, and fail on pipe errors
 
 echo "========================================="
 echo "TechTrend Docker Development Setup"
@@ -35,9 +35,9 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Check if Docker Compose is installed
-if ! command -v docker compose &> /dev/null; then
-    print_error "Docker Compose is not installed. Please install Docker Compose first."
+# Check if Docker Compose (v2) is available
+if ! docker compose version >/dev/null 2>&1; then
+    print_error "Docker Compose v2 is not available. Please install/enable Docker Compose (plugin)."
     exit 1
 fi
 

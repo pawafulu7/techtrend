@@ -5,7 +5,7 @@ FROM node:20-alpine AS base
 WORKDIR /app
 
 # Install system dependencies
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat curl
 
 # Dependencies stage - install npm packages
 FROM base AS deps
@@ -14,7 +14,7 @@ COPY package*.json ./
 COPY prisma ./prisma
 # Install dependencies with cache mount for faster rebuilds
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --only=production
+    npm ci --omit=dev --ignore-scripts
 
 # Development dependencies stage
 FROM base AS dev-deps
@@ -60,8 +60,9 @@ COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
 COPY next.config.ts ./
 COPY tsconfig.json ./
-# Generate Prisma Client
-RUN npx prisma generate
+# Use client generated in builder
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
