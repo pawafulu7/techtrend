@@ -1,4 +1,4 @@
-import { Article, ArticleCategory } from '@prisma/client';
+import { ArticleCategory } from '@prisma/client';
 import { tagCache } from './tag-cache';
 import { sourceCache } from './source-cache';
 import { popularCache } from './popular-cache';
@@ -6,6 +6,28 @@ import { RedisCache } from './index';
 import { getRedisService } from '@/lib/redis/factory';
 import type { IRedisService } from '@/lib/redis/interfaces';
 import logger from '@/lib/logger';
+
+// 一時的な型定義（Prismaの型生成問題を回避）
+interface Article {
+  id: string;
+  title: string;
+  url: string;
+  summary?: string | null;
+  thumbnail?: string | null;
+  content?: string | null;
+  publishedAt: Date;
+  sourceId: string;
+  category?: ArticleCategory | null;
+  bookmarks: number;
+  qualityScore: number;
+  userVotes: number;
+  createdAt: Date;
+  updatedAt: Date;
+  difficulty?: string | null;
+  detailedSummary?: string | null;
+  articleType?: string | null;
+  summaryVersion: number;
+}
 
 /**
  * キャッシュ無効化を管理するクラス
