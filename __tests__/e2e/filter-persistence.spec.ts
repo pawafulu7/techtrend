@@ -734,9 +734,9 @@ test.describe('ブラウザ間での動作確認', () => {
     
     // 検索パラメータが設定されるまで待機（CI環境では延長 + リトライ）
     await waitForUrlParam(page, 'search', `Test-${browserName}`, {
-      timeout: getTimeout('long'),  // mediumからlongに変更（CI: 90秒）
-      polling: 'fast',  // normalからfastに変更（100ms間隔でチェック）
-      retries: process.env.CI ? 5 : 2  // リトライ回数を増やす
+      timeout: getTimeout('long'),  // longのまま（CI: 90秒）
+      polling: 'fast',  // fastのまま（100ms間隔でチェック）
+      retries: process.env.CI ? 3 : 2  // リトライ回数を削減（CI: 5→3）
     });
     const currentUrl = page.url();
     expect(currentUrl).toContain(`search=Test-${browserName}`);

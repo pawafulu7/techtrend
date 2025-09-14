@@ -424,11 +424,11 @@ export async function waitForUrlParam(
 ) {
   const timeout = options?.timeout ?? getTimeout('medium');
   const polling = getPollingInterval(options?.polling ?? (process.env.CI ? 'fast' : 'normal'));
-  const maxRetries = options?.retries ?? (process.env.CI ? 10 : 3);  // CI環境でリトライ回数を大幅に増やす
+  const maxRetries = options?.retries ?? (process.env.CI ? 3 : 2);  // リトライ回数を削減（CI: 3回、ローカル: 2回）
 
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
   // CI環境では更に長く待機してURL更新を確実に待つ
-  const initialWait = process.env.CI ? 2000 : 500;  // CI: 2秒、ローカル: 500ms
+  const initialWait = process.env.CI ? 1000 : 300;  // CI: 1秒、ローカル: 300ms
   await page.waitForTimeout(initialWait);
   
   let lastError: Error | null = null;
@@ -440,11 +440,11 @@ export async function waitForUrlParam(
         throw new Error('Page has been closed');
       }
       
-      // リトライ前の待機（CI環境では長めに）
+      // リトライ前の待機（最小限に削減）
       if (attempt > 0) {
-        const backoffWait = process.env.CI 
-          ? 500 + (500 * attempt)  // CI: 500ms, 1000ms, 1500ms...
-          : 200 + (200 * attempt);  // ローカル: 200ms, 400ms, 600ms...
+        const backoffWait = process.env.CI
+          ? 200 + (100 * attempt)  // CI: 200ms, 300ms, 400ms（大幅削減）
+          : 100 + (50 * attempt);  // ローカル: 100ms, 150ms, 200ms
         await page.waitForTimeout(backoffWait);
       }
       
@@ -465,9 +465,9 @@ export async function waitForUrlParam(
         console.log(`[waitForUrlParam] Timeout: ${retryTimeout}ms, Polling: ${polling}ms`);
       }
       
-      // CI環境では最初に短い待機を入れる
+      // CI環境では最初に短い待機を入れる（削減）
       if (process.env.CI && attempt === 0) {
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);  // 2000ms → 500msに削減
       }
 
       // まず現在のURLをログに出力（デバッグ用）
