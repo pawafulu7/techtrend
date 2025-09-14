@@ -35,12 +35,16 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     // production環境では待機しない
     if (typeof window !== 'undefined' &&
         (window.location.hostname === 'localhost' || process.env.NODE_ENV === 'test')) {
+      // CI環境の判定を正規化
+      const isCI = typeof process !== 'undefined' &&
+                   ['1', 'true', 'yes'].includes(String(process.env?.CI).toLowerCase());
+
       // CI環境では長めに待機し、URL更新を確実にする
-      const waitTime = process.env.CI ? 500 : 200;
+      const waitTime = isCI ? 500 : 200;
       await new Promise(resolve => setTimeout(resolve, waitTime));
 
       // CI環境では追加でURLの変更を確認
-      if (process.env.CI && value === 'all') {
+      if (isCI && value === 'all') {
         // 最大1秒待ってURLから'dateRange'が消えることを確認
         const maxAttempts = 10;
         for (let i = 0; i < maxAttempts; i++) {

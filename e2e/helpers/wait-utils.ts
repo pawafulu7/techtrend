@@ -470,7 +470,8 @@ export async function waitForUrlParam(
       );
       
       // デバッグ: 現在のURL確認（DEBUG_E2E環境のみ、値はマスク）
-      if (process.env.DEBUG_E2E) {
+      const isDebugE2E = ['1', 'true', 'yes'].includes(String(process.env.DEBUG_E2E).toLowerCase());
+      if (isDebugE2E) {
         const currentUrl = page.url();
         const safeUrl = currentUrl.replace(/\?.*$/, '?<redacted>');
         console.log(`[waitForUrlParam] Attempt ${attempt + 1}/${maxRetries} - Current URL: ${safeUrl}`);
@@ -494,13 +495,13 @@ export async function waitForUrlParam(
       }
 
       await page.waitForFunction(
-        ({ name, value }) => {
+        ({ name, value, debugCI }) => {
           try {
             const url = new URL(window.location.href);
             const param = url.searchParams.get(name);
 
             // デバッグ用：現在のパラメータを出力（CI環境のみ）
-            if (process.env.CI) {
+            if (debugCI) {
               console.log(`[waitForUrlParam] Checking ${name}=${param}, expecting ${value}`);
             }
 
@@ -514,7 +515,7 @@ export async function waitForUrlParam(
             return false;
           }
         },
-        { name: paramName, value: paramValue },
+        { name: paramName, value: paramValue, debugCI: isCI },
         {
           timeout: retryTimeout,
           polling: isCI ? 100 : polling  // CI環境でも100msポーリングに

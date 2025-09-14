@@ -8,6 +8,9 @@ import {
   waitForElementText
 } from '../../e2e/helpers/wait-utils';
 
+// CI環境の検出
+const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+
 test.describe('Date Range Filter', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -76,74 +79,42 @@ test.describe('Date Range Filter', () => {
   });
 
   test('should filter articles by today', async ({ page }) => {
-    test.slow(); // CI環境でのタイムアウトを3倍に延長
     // Wait for network idle before starting
     await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+
     // Ensure filter is ready
     await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
+
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(trigger);
-    
+
     // Wait for dropdown to be visible
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
-    
+
     // Select "今日" option
     const todayOption = page.locator('[data-testid="date-range-option-today"]');
     await todayOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
-    
-    // クリック前に少し待機（CI環境での安定性向上）
-    if (process.env.CI) {
-      await page.waitForTimeout(500);
-    }
-    
-    // Promise.allで並列にクリックとナビゲーション待機を実行
-    const navigationPromise = page
-      .waitForURL(/dateRange=today/, { timeout: getTimeout('long') })
-      .catch(() => null);
-    
+
+    // Click and wait for URL change
     await safeClick(todayOption);
-    
-    // ドロップダウンが閉じるのを待つ
-    await expect(page.locator('[data-testid="date-range-content"]')).toBeHidden({ timeout: getTimeout('short') });
-    
-    // URLパラメータ更新前に少し待機（React状態更新を待つ）
-    await page.waitForTimeout(1000);
-    
-    // ナビゲーションを待つ
-    const navResult = await navigationPromise;
-    
-    // ナビゲーションが失敗した場合はフォールバック
-    if (!navResult) {
-      // CI環境では追加の待機
-      if (process.env.CI) {
-        await page.waitForTimeout(2000);
-      }
-      
-      // Wait for URL to update (CI環境対応で長めのタイムアウト + リトライ)
-      await waitForUrlParam(page, 'dateRange', 'today', {
-        polling: 'fast',  // 高速ポーリングに統一
-        timeout: process.env.CI ? 120000 : getTimeout('long'),  // CI環境では120秒
-        retries: process.env.CI ? 15 : 3  // CI環境では15回までリトライ
-      });
-    }
-    
-    // Additional network wait after URL change
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+
+    // Wait for URL to update with the dateRange parameter
+    await waitForUrlParam(page, 'dateRange', 'today', {
+      polling: 'fast',
+      timeout: getTimeout('long')
+    });
+
     // Check URL has correct parameter
     expect(page.url()).toContain('dateRange=today');
-    
+
     // Check trigger text updated
     await expect(trigger).toContainText('今日');
-    
+
     // Wait for articles to reload（記事がない場合もあるため柔軟に対応）
     try {
-      await waitForArticles(page, { 
+      await waitForArticles(page, {
         timeout: getTimeout('medium'),
-        allowEmpty: true 
+        allowEmpty: true
       });
     } catch {
       // 記事が表示されなくても続行
@@ -152,67 +123,52 @@ test.describe('Date Range Filter', () => {
   });
 
   test('should filter articles by week', async ({ page }) => {
-    test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
-    
     // Wait for network idle before starting
     await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
-    
+
     // Ensure filter is ready
     await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
+
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(trigger);
-    
-    await page.waitForSelector('[data-testid="date-range-content"]', { 
-      state: 'visible', 
-      timeout: process.env.CI ? 10000 : getTimeout('short') 
+
+    await page.waitForSelector('[data-testid="date-range-content"]', {
+      state: 'visible',
+      timeout: getTimeout('short')
     });
     const weekOption = page.locator('[data-testid="date-range-option-week"]');
     await weekOption.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(weekOption);
-    
-    // Extended timeout for URL change (CI環境ではさらに延長 + リトライ追加)
-    await waitForUrlParam(page, 'dateRange', 'week', { 
-      polling: 'normal', 
-      timeout: process.env.CI ? 45000 : 15000,
-      retries: process.env.CI ? 3 : 1
+
+    // Wait for URL to update
+    await waitForUrlParam(page, 'dateRange', 'week', {
+      polling: 'fast',
+      timeout: getTimeout('long')
     });
-    
-    // Additional network wait after URL change
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+
     expect(page.url()).toContain('dateRange=week');
     await expect(trigger).toContainText('今週');
   });
 
   test('should filter articles by month', async ({ page }) => {
-    test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
-    
     // Wait for network idle before starting
     await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+
     // Ensure filter is ready
     await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
+
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(trigger);
-    
+
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
     await safeClick(page.locator('[data-testid="date-range-option-month"]'));
-    
-    // Extended timeout for URL change (CI環境では延長 + リトライ)
+
+    // Wait for URL to update
     await waitForUrlParam(page, 'dateRange', 'month', {
       polling: 'fast',
-      timeout: process.env.CI ? 90000 : 15000,
-      retries: process.env.CI ? 10 : 2
+      timeout: getTimeout('long')
     });
-    
-    // Additional network wait after URL change
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+
     expect(page.url()).toContain('dateRange=month');
     await expect(trigger).toContainText('今月');
   });
@@ -220,30 +176,22 @@ test.describe('Date Range Filter', () => {
   test('should filter articles by 3 months', async ({ page }) => {
     // Wait for network idle before starting
     await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+
     // Ensure filter is ready
     await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
+
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(trigger);
-    
+
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
     await safeClick(page.locator('[data-testid="date-range-option-3months"]'));
-    
-    // ドロップダウンが閉じるのを待つ
-    await expect(page.locator('[data-testid="date-range-content"]')).toBeHidden({ timeout: getTimeout('short') });
-    
-    // Wait for URL change (CI環境対応で長めのタイムアウト + リトライ)
-    await waitForUrlParam(page, 'dateRange', '3months', { 
-      polling: 'normal', 
-      timeout: getTimeout('long'),
-      retries: process.env.CI ? 3 : 1
+
+    // Wait for URL to update
+    await waitForUrlParam(page, 'dateRange', '3months', {
+      polling: 'fast',
+      timeout: getTimeout('long')
     });
-    
-    // Additional network wait after URL change
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+
     expect(page.url()).toContain('dateRange=3months');
     await expect(trigger).toContainText('過去3ヶ月');
   });
@@ -251,23 +199,22 @@ test.describe('Date Range Filter', () => {
   test('should reset to all periods', async ({ page }) => {
     // Wait for network idle before starting
     await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+
     // Ensure filter is ready
     await page.waitForSelector('[data-testid="date-range-trigger"]', { state: 'visible', timeout: getTimeout('medium') });
-    
+
     // First set a filter
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: getTimeout('short') });
     await safeClick(trigger);
-    
+
     await page.waitForSelector('[data-testid="date-range-content"]', { state: 'visible', timeout: getTimeout('short') });
     await safeClick(page.locator('[data-testid="date-range-option-week"]'));
-    
-    // Wait for URL to update with extended timeout
-    await waitForUrlParam(page, 'dateRange', 'week', { polling: 'normal', timeout: 15000 });
-    
-    // Wait for network idle after first filter
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
+
+    // Wait for URL to update
+    await waitForUrlParam(page, 'dateRange', 'week', {
+      polling: 'fast',
+      timeout: getTimeout('long')
+    });
     
     // Then reset to all
     await safeClick(trigger);
@@ -275,10 +222,10 @@ test.describe('Date Range Filter', () => {
     await safeClick(page.locator('[data-testid="date-range-option-all"]'));
     
     // Check URL doesn't have dateRange parameter with extended timeout
-    const resetTimeout = process.env.CI ? 60000 : 15000; // CI: 60s, Local: 15s
+    const resetTimeout = isCI ? 60000 : 15000; // CI: 60s, Local: 15s
     await page.waitForFunction(
       () => !window.location.href.includes('dateRange'),
-      { timeout: resetTimeout, polling: process.env.CI ? 500 : 100 }
+      { timeout: resetTimeout, polling: isCI ? 500 : 100 }
     );
     
     // Additional network wait after reset
@@ -332,20 +279,20 @@ test.describe('Date Range Filter', () => {
     await page.goto('/?page=2');
     // ページの準備を待つ
     await waitForPageLoad(page, { waitForNetworkIdle: true });
-    await page.waitForSelector('[data-testid="article-list"]', { timeout: process.env.CI ? 30000 : 15000 });
+    await page.waitForSelector('[data-testid="article-list"]', { timeout: isCI ? 30000 : 15000 });
     
     // Apply date range filter
     const trigger = page.locator('[data-testid="date-range-trigger"]');
-    await trigger.waitFor({ state: 'visible', timeout: process.env.CI ? 20000 : 10000 });
+    await trigger.waitFor({ state: 'visible', timeout: isCI ? 20000 : 10000 });
     await safeClick(trigger);
     
     const weekOption = page.locator('[data-testid="date-range-option-week"]');
-    await weekOption.waitFor({ state: 'visible', timeout: process.env.CI ? 20000 : 10000 });
+    await weekOption.waitFor({ state: 'visible', timeout: isCI ? 20000 : 10000 });
     await safeClick(weekOption);
     
     // URL更新を確定（CI環境用に長いタイムアウト）
     await waitForUrlParam(page, 'dateRange', 'week', { 
-      timeout: process.env.CI ? 30000 : 15000, 
+      timeout: isCI ? 30000 : 15000, 
       polling: 'normal' 
     });
     
@@ -355,7 +302,7 @@ test.describe('Date Range Filter', () => {
       await page.waitForFunction(
         () => !new URL(window.location.href).searchParams.has('page'),
         undefined,
-        { timeout: process.env.CI ? 20000 : 10000, polling: 100 }
+        { timeout: isCI ? 20000 : 10000, polling: 100 }
       );
       const url = page.url();
       expect(url).not.toContain('page=2');
