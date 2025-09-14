@@ -4,6 +4,7 @@ import { ArticleCard } from './card';
 import { ArticleListItem } from './list-item';
 import type { ArticleListProps } from '@/types/components';
 import { useReadStatus } from '@/app/hooks/use-read-status';
+import { useFavoritesBatch } from '@/app/hooks/use-favorites-batch';
 import { useMemo, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
@@ -14,12 +15,16 @@ export function ArticleList({
 }: ArticleListProps) {
   // 認証状態を取得
   const { data: session } = useSession();
-  
+
   // 記事IDリストを作成
   const articleIds = useMemo(() => articles.map(a => a.id), [articles]);
-  
+
   // 既読状態を取得
   const { isRead, isLoading, refetch } = useReadStatus(articleIds);
+
+  // お気に入り状態を一括取得
+  // TODO: ArticleCardとArticleListItemコンポーネントにfavorites情報を渡す
+  const { favorites: _favorites } = useFavoritesBatch(articleIds);
   
   // 強制再レンダリング用のstate
   const [refreshKey, setRefreshKey] = useState(0);
