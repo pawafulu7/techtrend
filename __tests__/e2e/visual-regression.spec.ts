@@ -206,7 +206,7 @@ test.describe.skip(isRunningInCI(), 'Visual Regression Tests', () => {
 });
 
 // CI環境ではVRTテストをスキップ（環境依存のため）
-test.describe.skip(isCI === 'true', 'レスポンシブデザインのVRT', () => {
+test.describe.skip(isCI, 'レスポンシブデザインのVRT', () => {
   const viewports = [
     { name: 'desktop', width: 1920, height: 1080 },
     { name: 'tablet', width: 768, height: 1024 },

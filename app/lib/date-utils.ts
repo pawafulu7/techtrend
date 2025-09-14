@@ -2,14 +2,14 @@
  * 日付範囲フィルター用のユーティリティ関数
  */
 
-export type DateRangeOption = 'today' | 'week' | 'month' | '3months' | 'all';
+export type DateRangeOption = 'today' | 'week' | 'month' | 'three_months' | 'all';
 
 export const DATE_RANGE_OPTIONS = [
   { value: 'all', label: '全期間' },
   { value: 'today', label: '今日' },
   { value: 'week', label: '今週' },
   { value: 'month', label: '今月' },
-  { value: '3months', label: '過去3ヶ月' },
+  { value: 'three_months', label: '過去3ヶ月' },
 ] as const;
 
 /**
@@ -39,7 +39,7 @@ export function getDateRangeFilter(range: string): Date | null {
       monthAgo.setMonth(monthAgo.getMonth() - 1);
       return monthAgo;
       
-    case '3months':
+    case 'three_months':
       // 3ヶ月前から
       const threeMonthsAgo = new Date(now);
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);

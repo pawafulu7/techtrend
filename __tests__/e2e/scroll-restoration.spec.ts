@@ -1,7 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-// CI環境の検出
-const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+import { isCI } from './helpers/env';
 
 test.describe('スクロール位置復元機能', () => {
   // このテストスイートはスクロールとページ遷移を多用するため、タイムアウトを3倍に延長

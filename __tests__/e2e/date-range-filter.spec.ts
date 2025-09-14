@@ -145,7 +145,7 @@ test.describe('Date Range Filter', () => {
       { label: '今日', value: 'today' },
       { label: '今週', value: 'week' },
       { label: '今月', value: 'month' },
-      { label: '過去3ヶ月', value: '3months' }
+      { label: '過去3ヶ月', value: 'three_months' }
     ];
 
     for (const testCase of testCases) {

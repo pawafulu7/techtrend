@@ -2,9 +2,7 @@ import { execSync } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
 import * as dotenv from 'dotenv';
 import * as path from 'node:path';
-
-// CI環境の検出
-const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+import { isCI } from '../helpers/env';
 
 // Load test environment variables
 dotenv.config({ path: path.resolve(process.cwd(), '.env.test') });
