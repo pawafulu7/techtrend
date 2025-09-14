@@ -449,10 +449,13 @@ export async function waitForUrlParam(
       }
       
       // タイムアウトを各リトライで調整（CI環境では長めに設定）
-      // 注意: CI環境ではテスト全体のタイムアウトが180秒なので、waitForFunctionのタイムアウトはそれより短くする必要がある
-      const minTimeout = process.env.CI ? 30000 : 5000;  // CI: 30秒、ローカル: 5秒
-      const maxTimeout = process.env.CI ? 60000 : 15000;  // CI: 60秒（テスト全体180秒より短く）、ローカル: 15秒
-      const retryTimeout = Math.min(Math.max(minTimeout, timeout / maxRetries), maxTimeout);
+      // 注意: timeout は合計予算。各リトライはその等分（下限/上限付き）にする
+      const perAttemptFloor = process.env.CI ? 2000 : 500;   // 極端な短時間ループを避ける最低値
+      const perAttemptCap   = process.env.CI ? 15000 : 10000; // 1回あたりの上限
+      const retryTimeout = Math.min(
+        Math.max(Math.floor(timeout / Math.max(1, maxRetries)), perAttemptFloor),
+        perAttemptCap
+      );
       
       // デバッグ: 現在のURL確認
       if (process.env.CI || process.env.DEBUG_E2E) {
