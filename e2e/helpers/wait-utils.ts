@@ -423,17 +423,17 @@ export async function waitForUrlParam(
   }
 ) {
   const timeout = options?.timeout ?? getTimeout('medium');
-  const polling = getPollingInterval(options?.polling ?? (process.env.CI ? 'fast' : 'normal'));
-  const maxRetries = options?.retries ?? (process.env.CI ? 5 : 2);  // CI環境では十分なリトライ回数を確保
+  const polling = getPollingInterval(options?.polling ?? (isCI ? 'fast' : 'normal'));
+  const maxRetries = options?.retries ?? (isCI ? 5 : 2);  // CI環境では十分なリトライ回数を確保
 
   // Next.jsのrouter.pushは非同期なので、最初に少し待機
   // CI環境でも短めに統一して総タイムアウト予算を有効活用
-  const initialWait = process.env.CI ? 500 : 300;  // CI: 500ms、ローカル: 300ms
+  const initialWait = isCI ? 500 : 300;  // CI: 500ms、ローカル: 300ms
   await page.waitForTimeout(initialWait);
 
   // 合計タイムアウト予算の管理用
   const startedAt = Date.now();
-  const isCI = !!process.env.CI;
+  // ローカルでのシャドーイングを削除（ファイル先頭の isCI を利用）
 
   let lastError: Error | null = null;
   
@@ -446,7 +446,7 @@ export async function waitForUrlParam(
       
       // リトライ前の待機（最小限に削減）
       if (attempt > 0) {
-        const backoffWait = process.env.CI
+        const backoffWait = isCI
           ? 200 + (100 * attempt)  // CI: 200ms, 300ms, 400ms（大幅削減）
           : 100 + (50 * attempt);  // ローカル: 100ms, 150ms, 200ms
         await page.waitForTimeout(backoffWait);
@@ -489,7 +489,7 @@ export async function waitForUrlParam(
 
       // CI環境では特に長めに待機
       // CI環境では待機前に少し時間を置く
-      if (process.env.CI) {
+      if (isCI) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
@@ -517,7 +517,7 @@ export async function waitForUrlParam(
         { name: paramName, value: paramValue },
         {
           timeout: retryTimeout,
-          polling: process.env.CI ? 100 : polling  // CI環境でも100msポーリングに
+          polling: isCI ? 100 : polling  // CI環境でも100msポーリングに
         }
       );
       
@@ -673,7 +673,7 @@ export async function waitForPageLoad(page: Page, options?: {
   
   if (waitForNetworkIdle) {
     // CI環境ではnetworkidleのタイムアウトを長めに設定
-    const networkIdleTimeout = process.env.CI ? Math.min(timeout * 2, 120000) : timeout;
+    const networkIdleTimeout = isCI ? Math.min(timeout * 2, 120000) : timeout;
     promises.push(
       page.waitForLoadState('networkidle', { timeout: networkIdleTimeout })
         .catch(() => {
@@ -728,11 +728,11 @@ export async function waitForCheckboxStateChange(
     polling?: 'fast' | 'normal' | 'slow';
   }
 ) {
-  const timeout = options?.timeout ?? (process.env.CI ? 10000 : 5000);
+  const timeout = options?.timeout ?? (isCI ? 10000 : 5000);
   const polling = getPollingInterval(options?.polling ?? 'fast');
 
   // CI環境では初期待機を入れる
-  if (process.env.CI) {
+  if (isCI) {
     await page.waitForTimeout(500);
   }
 
@@ -767,12 +767,12 @@ export async function waitForCheckboxesCount(
     state?: 'checked' | 'unchecked';
   }
 ) {
-  const timeout = options?.timeout ?? (process.env.CI ? 15000 : 5000);
+  const timeout = options?.timeout ?? (isCI ? 15000 : 5000);
   const polling = getPollingInterval(options?.polling ?? 'fast');
   const state = options?.state ?? 'checked';
 
   // CI環境では初期待機を入れる
-  if (process.env.CI) {
+  if (isCI) {
     await page.waitForTimeout(1000);
   }
 
