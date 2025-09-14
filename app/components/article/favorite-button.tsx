@@ -73,6 +73,7 @@ export function FavoriteButton({
           className
         )}
         aria-label={isFavorited ? "お気に入りから削除" : "お気に入りに追加"}
+        data-testid="favorite-button"
       >
         <Heart
           className={cn(
@@ -96,6 +97,7 @@ export function FavoriteButton({
         isAnimating && "scale-110",
         className
       )}
+      data-testid="favorite-button"
     >
       <Heart
         className={cn(

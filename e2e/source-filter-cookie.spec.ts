@@ -187,9 +187,9 @@ test.describe('Source Filter Cookie', () => {
   test('should work on mobile view', async ({ page }) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
-    
+
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
     
     // Try to find mobile filter button
     const mobileFilterButton = page.locator('button').filter({ hasText: /フィルター|filter/i }).first();

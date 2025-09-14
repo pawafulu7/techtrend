@@ -211,7 +211,7 @@ test.describe('Multiple Source Filter', () => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
     
     // Open mobile filters - more flexible
     const mobileFilterButton = page.locator('button').filter({ hasText: /フィルター|filter/i }).first();

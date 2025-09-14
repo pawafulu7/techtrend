@@ -10,7 +10,7 @@ test.describe('動的タグ検索機能', () => {
   test('タグ検索APIが正常に動作する', async ({ request, page }) => {
     // CI環境での安定性のため、ページを先に読み込む
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
     // データベース準備を待つ（記事が表示されるまで待機、エラーは無視）
     await waitForArticles(page, { timeout: getTimeout('short') }).catch(() => {
       // 記事がない場合でもテストを続行
