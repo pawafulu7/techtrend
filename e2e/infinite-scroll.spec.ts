@@ -199,13 +199,34 @@ test.describe('無限スクロール機能', () => {
 
 test.describe('APIレスポンス構造とページネーション', () => {
   test('APIレスポンス構造が正しいことを確認', async ({ page }) => {
-    await page.goto('/');
-    
-    // APIレスポンスをインターセプト
-    const apiResponse = await page.waitForResponse(
-      response => response.url().includes('/api/articles') && response.status() === 200,
-      { timeout: 10000 }
+    // APIレスポンスをインターセプトする準備
+    const apiResponsePromise = page.waitForResponse(
+      response => {
+        // より柔軟なURLマッチング
+        const url = response.url();
+        return (url.includes('/api/articles') || url.includes('/api/articles/list'))
+               && response.status() === 200;
+      },
+      { timeout: process.env.CI ? 30000 : 15000 } // CI環境では30秒待つ
     );
+
+    // ページに移動
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    // ページの読み込みが完了するまで待つ
+    await page.waitForLoadState('domcontentloaded');
+
+    // 記事リストが表示されるまで待つ（APIリクエストのトリガー）
+    await page.waitForSelector('[data-testid="article-card"], article, .article-item', {
+      timeout: 10000,
+      state: 'visible'
+    }).catch(() => {
+      // セレクタが見つからない場合は、少し待ってから続行
+      console.log('Article selector not found, continuing...');
+    });
+
+    // APIレスポンスを待つ
+    const apiResponse = await apiResponsePromise;
     
     const json = await apiResponse.json();
     

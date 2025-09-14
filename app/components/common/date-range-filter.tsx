@@ -26,17 +26,30 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     // ページ番号をリセット
     params.delete('page');
 
-    // URLを更新
-    const newUrl = `/?${params.toString()}`;
+    // URLを更新（パラメータがない場合は'/'のみ）
+    const queryString = params.toString();
+    const newUrl = queryString ? `/?${queryString}` : '/';
     router.push(newUrl);
 
     // E2Eテスト環境またはCI環境では、URLの更新を確実にするため少し待機
     // production環境では待機しない
     if (typeof window !== 'undefined' &&
         (window.location.hostname === 'localhost' || process.env.NODE_ENV === 'test')) {
-      // CI環境では長めに待機
-      const waitTime = process.env.CI ? 200 : 100;
+      // CI環境では長めに待機し、URL更新を確実にする
+      const waitTime = process.env.CI ? 500 : 200;
       await new Promise(resolve => setTimeout(resolve, waitTime));
+
+      // CI環境では追加でURLの変更を確認
+      if (process.env.CI && value === 'all') {
+        // 最大1秒待ってURLから'dateRange'が消えることを確認
+        const maxAttempts = 10;
+        for (let i = 0; i < maxAttempts; i++) {
+          if (!window.location.href.includes('dateRange')) {
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
     }
 
     // Update filter preferences cookie

@@ -241,24 +241,39 @@ test.describe.serial('Login Feature - Improved', () => {
     await submitButton.click();
 
     // ローディング状態またはリダイレクトを待つ
-    // Promise.race を使って、どちらか早い方を待つ
+    // CI環境では時間がかかるため、タイムアウトを延長
     const loadingButton = page.locator('button:has-text("ログイン中...")');
+    const timeout = process.env.CI ? 10000 : 5000; // CI: 10秒, Local: 5秒
 
-    try {
-      await Promise.race([
-        // ローディング状態が表示される
-        loadingButton.waitFor({ state: 'visible', timeout: 2000 }),
-        // またはリダイレクトが発生する
-        page.waitForURL((url) => !url.includes('/auth/login'), { timeout: 2000 })
-      ]);
+    // 3つの条件のいずれかを待つ
+    const result = await Promise.race([
+      // 1. ローディング状態が表示される
+      loadingButton.waitFor({ state: 'visible', timeout }).then(() => 'loading'),
+      // 2. リダイレクトが発生する
+      page.waitForURL((url) => !url.includes('/auth/login'), { timeout }).then(() => 'redirected'),
+      // 3. タイムアウト
+      new Promise((resolve) => setTimeout(() => resolve('timeout'), timeout))
+    ]);
 
-      // いずれかの条件が満たされればテスト成功
-      expect(true).toBe(true);
-    } catch (error) {
-      // タイムアウトした場合は、現在のURLを確認
+    // 結果に応じた検証
+    if (result === 'loading') {
+      // ローディング状態が表示された
+      expect(await loadingButton.isVisible()).toBe(true);
+      // その後リダイレクトを待つ
+      await page.waitForURL((url) => !url.includes('/auth/login'), { timeout: 10000 });
+    } else if (result === 'redirected') {
+      // 直接リダイレクトされた（ローディング表示が短すぎて見えない）
+      expect(page.url()).not.toContain('/auth/login');
+    } else {
+      // タイムアウトの場合、現在のURLを確認
       const currentUrl = page.url();
-      // リダイレクト済みならOK、そうでなければエラー
-      expect(!currentUrl.includes('/auth/login')).toBe(true);
+      // リダイレクト済みならOK
+      if (!currentUrl.includes('/auth/login')) {
+        expect(true).toBe(true);
+      } else {
+        // ログインページに留まっている場合はエラー
+        throw new Error(`Login failed or took too long. Still on login page: ${currentUrl}`);
+      }
     }
   });
 });

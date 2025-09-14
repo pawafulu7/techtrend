@@ -488,24 +488,36 @@ export async function waitForUrlParam(
       }
 
       // CI環境では特に長めに待機
+      // CI環境では待機前に少し時間を置く
+      if (process.env.CI) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       await page.waitForFunction(
         ({ name, value }) => {
           try {
             const url = new URL(window.location.href);
             const param = url.searchParams.get(name);
+
+            // デバッグ用：現在のパラメータを出力（CI環境のみ）
+            if (process.env.CI) {
+              console.log(`[waitForUrlParam] Checking ${name}=${param}, expecting ${value}`);
+            }
+
             if (value === undefined) {
               return param !== null;
             }
             return param === value;
           } catch (e) {
             // URL解析エラーの場合はfalseを返す
+            console.error('[waitForUrlParam] URL parse error:', e);
             return false;
           }
         },
         { name: paramName, value: paramValue },
         {
           timeout: retryTimeout,
-          polling: process.env.CI ? 50 : polling  // CI環境では高頻度でポーリング（50ms固定）
+          polling: process.env.CI ? 100 : polling  // CI環境でも100msポーリングに
         }
       );
       
