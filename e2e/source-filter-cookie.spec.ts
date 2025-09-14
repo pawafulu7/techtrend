@@ -122,9 +122,10 @@ test.describe('Source Filter Cookie', () => {
         { timeout: 10000 }
       );
     } catch (error) {
-      // タイムアウトした場合、現在のURLを確認
+      // タイムアウトした場合、現在のURLを確認（クエリ文字列はマスク）
       const currentUrl = page.url();
-      console.log(`Current URL after deselect all: ${currentUrl}`);
+      const safeUrl = currentUrl.replace(/\?.*$/, '?<redacted>');
+      console.log(`Current URL after deselect all: ${safeUrl}`);
       // エラーを再スローせず、テストを続行
     }
     

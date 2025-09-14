@@ -430,7 +430,11 @@ export async function waitForUrlParam(
   // CI環境でも短めに統一して総タイムアウト予算を有効活用
   const initialWait = process.env.CI ? 500 : 300;  // CI: 500ms、ローカル: 300ms
   await page.waitForTimeout(initialWait);
-  
+
+  // 合計タイムアウト予算の管理用
+  const startedAt = Date.now();
+  const isCI = !!process.env.CI;
+
   let lastError: Error | null = null;
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -448,11 +452,20 @@ export async function waitForUrlParam(
         await page.waitForTimeout(backoffWait);
       }
       
-      // タイムアウトを各リトライで調整（CI環境では長めに設定）
-      // CI環境では各リトライに十分な時間を確保
-      const retryTimeout = process.env.CI
-        ? Math.min(timeout - (attempt * 1000), 30000)  // CI: 最大30秒、但し総タイムアウトを考慮
-        : Math.min(timeout / maxRetries, 10000);       // ローカル: 均等配分、最大10秒
+      // 合計予算(timeout)を厳守: 残余予算から各試行のタイムアウトを算出（等分＋下限/上限）
+      const now = Date.now();
+      const elapsed = now - startedAt;
+      const remaining = Math.max(timeout - elapsed, 0);
+      if (remaining <= 0) {
+        throw new Error(`[waitForUrlParam] Timeout exceeded (${timeout}ms)`);
+      }
+      const attemptsLeft = Math.max(1, maxRetries - attempt);
+      const perAttemptFloor = isCI ? 2000 : 500;
+      const perAttemptCap = isCI ? 15000 : 10000;
+      const retryTimeout = Math.min(
+        Math.max(Math.floor(remaining / attemptsLeft), perAttemptFloor),
+        perAttemptCap
+      );
       
       // デバッグ: 現在のURL確認（DEBUG_E2E環境のみ、値はマスク）
       if (process.env.DEBUG_E2E) {
