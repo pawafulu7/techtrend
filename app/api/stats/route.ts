@@ -1,16 +1,40 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
-import { statsCache } from '@/lib/cache/stats-cache';
+import { RedisCache } from '@/lib/cache';
+
+// Use dedicated cache for stats with 1 hour TTL
+const statsCache = new RedisCache({
+  ttl: 3600, // 1 hour
+  namespace: '@techtrend/cache:stats'
+});
 
 export async function GET() {
   try {
-    // キャッシュキーを生成
-    const cacheKey = statsCache.generateKey();
-    
-    // キャッシュから取得またはDBから取得してキャッシュに保存
-    const stats = await statsCache.getOrSet(
-      cacheKey,
-      async () => {
+    // Generate cache key for stats
+    const cacheKey = 'stats:overview';
+
+    // Try to get stats from cache first
+    const cachedStats = await statsCache.get(cacheKey);
+
+    if (cachedStats) {
+      const response = NextResponse.json({
+        success: true,
+        data: cachedStats,
+        cache: {
+          hit: true
+        }
+      });
+
+      // Add cache headers for browser caching
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      response.headers.set('CDN-Cache-Control', 'max-age=600');
+      response.headers.set('Vary', 'Accept-Encoding');
+
+      return response;
+    }
+
+    // If not in cache, fetch from database
+    const stats = await (async () => {
         
         // 記事の統計情報を取得
         const [
@@ -125,20 +149,25 @@ export async function GET() {
         };
 
         return formattedStats;
-      }
-    );
+      })();
 
-    // キャッシュ統計をログ出力
-    const cacheStats = statsCache.getStats();
+    // Store stats in cache
+    await statsCache.set(cacheKey, stats);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: stats,
       cache: {
-        hit: cacheStats.hits > 0,
-        stats: cacheStats
+        hit: false
       }
     });
+
+    // Add cache headers for browser caching
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    response.headers.set('CDN-Cache-Control', 'max-age=600');
+    response.headers.set('Vary', 'Accept-Encoding');
+
+    return response;
   } catch (error) {
     
     // Redisエラーの場合はフォールバックとしてDBから直接取得を試みる
