@@ -1,6 +1,7 @@
 import { getRedisClient } from '@/lib/redis/client';
-import { CacheOptions, CacheStats, CacheKeyOptions } from './types';
+import { CacheStats, CacheKeyOptions } from './types';
 import type { Redis } from 'ioredis';
+import { CACHE_NAMESPACE_PREFIX } from './constants';
 
 export class RedisCache {
   protected redis: ReturnType<typeof getRedisClient>;
@@ -12,12 +13,11 @@ export class RedisCache {
     errors: 0,
   };
 
-  constructor(options?: CacheOptions) {
+  constructor(options?: { ttl?: number; namespace?: string }) {
+    const envName = process.env.NODE_ENV || 'development';
+    this.defaultTTL = options?.ttl || 300; // デフォルト5分
+    this.namespace = options?.namespace || `${CACHE_NAMESPACE_PREFIX}:${envName}`;
     this.redis = getRedisClient();
-    this.defaultTTL = options?.ttl || 3600; // 1 hour default
-    // Separate cache namespace per environment to avoid cross-environment bleed
-    const envName = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
-    this.namespace = options?.namespace || `@techtrend/cache:${envName}`;
   }
 
   /**

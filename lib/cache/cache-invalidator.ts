@@ -6,6 +6,14 @@ import { RedisCache } from './index';
 import { getRedisService } from '@/lib/redis/factory';
 import type { IRedisService } from '@/lib/redis/interfaces';
 import logger from '@/lib/logger';
+import {
+  CACHE_NAMESPACE_PREFIX,
+  CACHE_NAMESPACES,
+  CACHE_TTL,
+  createCachePattern,
+  createUserCacheKey,
+  createL2UserCacheKey
+} from './constants';
 
 // 一時的な型定義（Prismaの型生成問題を回避）
 interface Article {
@@ -41,25 +49,27 @@ export class CacheInvalidator {
 
   constructor(redisService?: IRedisService) {
     this.articleCache = new RedisCache({
-      ttl: 300,
-      namespace: '@techtrend/cache:articles'
+      ttl: CACHE_TTL.SHORT,
+      namespace: CACHE_NAMESPACES.ARTICLES
     });
 
     this.relatedCache = new RedisCache({
-      ttl: 600,
-      namespace: '@techtrend/cache:related'
+      ttl: CACHE_TTL.MEDIUM,
+      namespace: CACHE_NAMESPACES.ARTICLES_RELATED
     });
 
     this.tagCloudCache = new RedisCache({
-      ttl: 1800,
-      namespace: '@techtrend/cache:tagcloud'
+      ttl: CACHE_TTL.LONG,
+      namespace: CACHE_NAMESPACES.TAG_CLOUD
     });
 
     this.redisService = redisService || getRedisService();
   }
 
   /**
-   * 新しい記事が追加された時のキャッシュ無効化
+   * Invalidate cache when a new article is created
+   * Clears article lists, popular articles, tag cloud, and related API caches
+   * @param article - The newly created article (optional)
    */
   async onArticleCreated(article?: Article): Promise<void> {
     try {
@@ -73,9 +83,9 @@ export class CacheInvalidator {
         // タグクラウドキャッシュを無効化
         this.tagCloudCache.invalidatePattern('*'),
         // 新規: APIエンドポイントのキャッシュもクリア
-        this.redisService.clearPattern('@techtrend/cache:api:articles:*'),
-        this.redisService.clearPattern('@techtrend/cache:api:lightweight:*'),
-        this.redisService.clearPattern('@techtrend/cache:l1:public:*')
+        this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.ARTICLES_API)),
+        this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.ARTICLES_LIGHTWEIGHT)),
+        this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.L1_PUBLIC))
       ]);
 
       // カテゴリ別キャッシュをクリア
@@ -93,7 +103,10 @@ export class CacheInvalidator {
   }
 
   /**
-   * 記事が更新された時のキャッシュ無効化
+   * Invalidate cache when an article is updated
+   * Clears article lists, related articles, popular lists, and search caches as needed
+   * @param articleId - The ID of the updated article
+   * @param changes - Partial article changes (optional)
    */
   async onArticleUpdated(articleId: string, changes?: Partial<Article>): Promise<void> {
     try {
@@ -126,7 +139,9 @@ export class CacheInvalidator {
   }
 
   /**
-   * 記事が削除された時のキャッシュ無効化
+   * Invalidate cache when an article is deleted
+   * Clears all article-related caches and statistics
+   * @param articleId - The ID of the deleted article
    */
   async onArticleDeleted(articleId: string): Promise<void> {
     try {
@@ -134,14 +149,16 @@ export class CacheInvalidator {
       await this.onArticleUpdated(articleId);
 
       // 統計キャッシュもクリア
-      await this.redisService.clearPattern('@techtrend/cache:stats:*');
+      await this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.STATS));
     } catch (error) {
       logger.error({ error, articleId }, 'Failed to invalidate cache on article delete');
     }
   }
 
   /**
-   * タグが作成・更新された時のキャッシュ無効化
+   * Invalidate cache when tags are created or updated
+   * Clears tag cache, tag cloud, and article lists (due to tag filtering)
+   * @param tagId - The ID of the updated tag (optional)
    */
   async onTagUpdated(tagId?: string): Promise<void> {
     await Promise.all([
@@ -155,7 +172,9 @@ export class CacheInvalidator {
   }
 
   /**
-   * ソースが作成・更新された時のキャッシュ無効化
+   * Invalidate cache when sources are created or updated
+   * Clears source cache and article lists (due to source filtering)
+   * @param sourceId - The ID of the updated source (optional)
    */
   async onSourceUpdated(sourceId?: string): Promise<void> {
     await Promise.all([
@@ -167,7 +186,8 @@ export class CacheInvalidator {
   }
 
   /**
-   * 一括記事インポート後のキャッシュ無効化
+   * Invalidate all caches after bulk import
+   * Clears all cache types to ensure data consistency
    */
   async onBulkImport(): Promise<void> {
     await Promise.all([
@@ -182,7 +202,8 @@ export class CacheInvalidator {
   }
 
   /**
-   * 定期的なキャッシュリフレッシュ
+   * Refresh stale cache periodically
+   * Updates daily popular article caches
    */
   async refreshStaleCache(): Promise<void> {
     // 人気記事の日次キャッシュをリフレッシュ
@@ -190,8 +211,10 @@ export class CacheInvalidator {
   }
 
   /**
-   * ユーザー固有データのキャッシュ無効化
-   * お気に入りや既読状態の変更時に呼び出される
+   * Invalidate user-specific cache
+   * Clears user favorites, read status, or recommendation caches
+   * @param userId - The user ID
+   * @param type - The type of cache to invalidate
    */
   async invalidateUserCache(userId: string, type: 'favorites' | 'read_status' | 'recommendations' | 'all'): Promise<void> {
     try {
@@ -199,16 +222,16 @@ export class CacheInvalidator {
 
       if (type === 'all') {
         // すべてのユーザーキャッシュをクリア
-        await this.redisService.clearPattern(`user:${userId}:*`);
-        await this.redisService.clearPattern(`@techtrend/cache:l2:user:${userId}:*`);
-        await this.redisService.clearPattern(`recommendations:${userId}:*`);
+        await this.redisService.clearPattern(createUserCacheKey(userId, '*'));
+        await this.redisService.clearPattern(createL2UserCacheKey(userId, '*'));
+        await this.redisService.clearPattern(`${CACHE_NAMESPACES.RECOMMENDATIONS}:${userId}:*`);
       } else {
         // 特定タイプのキャッシュのみクリア
-        await this.redisService.clearPattern(`user:${userId}:${type}:*`);
-        await this.redisService.clearPattern(`@techtrend/cache:l2:user:${userId}:${type}:*`);
+        await this.redisService.clearPattern(createUserCacheKey(userId, `${type}:*`));
+        await this.redisService.clearPattern(createL2UserCacheKey(userId, `${type}:*`));
 
         if (type === 'recommendations') {
-          await this.redisService.clearPattern(`recommendations:${userId}:*`);
+          await this.redisService.clearPattern(`${CACHE_NAMESPACES.RECOMMENDATIONS}:${userId}:*`);
         }
       }
     } catch (error) {
@@ -217,30 +240,33 @@ export class CacheInvalidator {
   }
 
   /**
-   * 一覧系キャッシュの無効化
-   * 記事の追加・削除・重要な更新時に呼び出される
+   * Invalidate list caches
+   * Clears basic article lists and popular article caches
+   * Called when articles are added/deleted or significantly updated
    */
   private async invalidateListCaches(): Promise<void> {
     // 基本的な記事リストキャッシュをクリア
-    await this.redisService.clearPattern('@techtrend/cache:api:articles:basic:*');
-    await this.redisService.clearPattern('@techtrend/cache:api:lightweight:articles:basic:*');
-    await this.redisService.clearPattern('@techtrend/cache:l1:public:*');
+    await this.redisService.clearPattern(`${CACHE_NAMESPACES.ARTICLES_API}:basic:*`);
+    await this.redisService.clearPattern(`${CACHE_NAMESPACES.ARTICLES_LIGHTWEIGHT}:articles:basic:*`);
+    await this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.L1_PUBLIC));
 
     // 人気記事キャッシュもクリア
     await this.redisService.clearPattern('*:popular:*');
   }
 
   /**
-   * 検索キャッシュの無効化
-   * 記事の内容が変更された時に呼び出される
+   * Invalidate search caches
+   * Clears L3 search layer and search-related caches
+   * Called when article content is modified
    */
   private async invalidateSearchCaches(): Promise<void> {
-    await this.redisService.clearPattern('@techtrend/cache:l3:search:*');
+    await this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.L3_SEARCH));
     await this.redisService.clearPattern('*:search:*');
   }
 
   /**
-   * ソース別キャッシュの無効化
+   * Invalidate source-specific cache
+   * @param sourceId - The source ID
    */
   private async invalidateSourceCache(sourceId: string): Promise<void> {
     await this.redisService.clearPattern(`*:source:${sourceId}:*`);
@@ -248,22 +274,25 @@ export class CacheInvalidator {
   }
 
   /**
-   * カテゴリ別キャッシュの無効化
+   * Invalidate category-specific cache
+   * @param category - The article category
    */
   private async invalidateCategoryCache(category: ArticleCategory): Promise<void> {
     await this.redisService.clearPattern(`*:category:${category}:*`);
   }
 
   /**
-   * すべてのキャッシュをクリア（緊急時用）
+   * Invalidate all caches (emergency use only)
+   * Completely clears all cache entries across the application
+   * WARNING: This will cause temporary performance degradation
    */
   async invalidateAll(): Promise<void> {
     try {
       logger.warn('Invalidating ALL caches');
 
-      await this.redisService.clearPattern('@techtrend/cache:*');
-      await this.redisService.clearPattern('user:*');
-      await this.redisService.clearPattern('recommendations:*');
+      await this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACE_PREFIX));
+      await this.redisService.clearPattern(`${CACHE_NAMESPACES.USER}:*`);
+      await this.redisService.clearPattern(`${CACHE_NAMESPACES.RECOMMENDATIONS}:*`);
 
       logger.info('All caches invalidated successfully');
     } catch (error) {
