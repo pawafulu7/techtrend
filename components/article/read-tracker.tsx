@@ -56,7 +56,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
                 parsed.readArticleIds.push(articleId);
                 localStorage.setItem('read-status', JSON.stringify(parsed));
               }
-            } catch (e) {
+            } catch (_e) {
               // Ignore cache update errors
             }
           }
