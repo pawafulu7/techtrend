@@ -15,14 +15,19 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
     const sortBy = searchParams.get('sortBy') || 'relevance';
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const rawPage = Number.parseInt(searchParams.get('page') ?? '1', 10);
+    const page = Number.isFinite(rawPage) && rawPage > 0 ? Math.min(rawPage, 1000) : 1;
+    const rawLimit = Number.parseInt(searchParams.get('limit') ?? '20', 10);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 20;
     
     // 拡張パラメータ
     const excludeTags = searchParams.get('excludeTags')?.split(',').filter(Boolean) || [];
     const excludeSources = searchParams.get('excludeSources')?.split(',').filter(Boolean) || [];
-    const qualityMin = parseInt(searchParams.get('qualityMin') || '0');
-    const qualityMax = parseInt(searchParams.get('qualityMax') || '100');
+    const _qmin = Number.parseInt(searchParams.get('qualityMin') ?? '0', 10);
+    const _qmax = Number.parseInt(searchParams.get('qualityMax') ?? '100', 10);
+    let qualityMin = Number.isFinite(_qmin) ? Math.max(0, Math.min(100, _qmin)) : 0;
+    let qualityMax = Number.isFinite(_qmax) ? Math.max(0, Math.min(100, _qmax)) : 100;
+    if (qualityMin > qualityMax) [qualityMin, qualityMax] = [qualityMax, qualityMin];
     const hasContent = searchParams.get('hasContent') === 'true';
     
     const offset = (page - 1) * limit;
@@ -57,8 +62,8 @@ export async function GET(request: NextRequest) {
     // ソースフィルター（包含）
     if (sources.length > 0) {
       whereConditions.source = {
-        name: {
-          in: sources
+        is: {
+          name: { in: sources }
         }
       };
     }
@@ -83,8 +88,8 @@ export async function GET(request: NextRequest) {
       } else {
         whereConditions.NOT = {
           source: {
-            name: {
-              in: excludeSources
+            is: {
+              name: { in: excludeSources }
             }
           }
         };
@@ -100,12 +105,14 @@ export async function GET(request: NextRequest) {
 
     // 期間フィルター
     if (dateFrom || dateTo) {
-      whereConditions.publishedAt = {};
-      if (dateFrom) {
-        whereConditions.publishedAt.gte = new Date(dateFrom);
-      }
-      if (dateTo) {
-        whereConditions.publishedAt.lte = new Date(dateTo);
+      const from = dateFrom ? new Date(dateFrom) : undefined;
+      const to = dateTo ? new Date(dateTo) : undefined;
+      const hasFrom = from && !Number.isNaN(from.getTime());
+      const hasTo = to && !Number.isNaN(to.getTime());
+      if (hasFrom || hasTo) {
+        whereConditions.publishedAt = {} as any;
+        if (hasFrom) (whereConditions.publishedAt as any).gte = from!;
+        if (hasTo) (whereConditions.publishedAt as any).lte = to!;
       }
     }
 
@@ -188,11 +195,7 @@ export async function GET(request: NextRequest) {
             articles.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
             break;
           case 'popularity':
-            articles.sort((a, b) => {
-              const bWithBookmarks = b as typeof b & { bookmarks?: number };
-              const aWithBookmarks = a as typeof a & { bookmarks?: number };
-              return (bWithBookmarks.bookmarks ?? 0) - (aWithBookmarks.bookmarks ?? 0);
-            });
+            articles.sort((a, b) => (b.userVotes ?? 0) - (a.userVotes ?? 0));
             break;
           case 'quality':
             articles.sort((a, b) => b.qualityScore - a.qualityScore);
@@ -203,13 +206,17 @@ export async function GET(request: NextRequest) {
       }
 
       // 総件数を取得
-      const countResult = await prisma.$queryRaw<{ count: number }[]>`
-        SELECT COUNT(*) as count
-        FROM articles_fts 
+      // FTSの一致 ID を別途取得（上限ガード）し、whereConditions と組み合わせて count
+      const countIds = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id
+        FROM articles_fts
         WHERE articles_fts MATCH ${searchQuery}
+        LIMIT 5000
       `;
-      
-      totalCount = Number(countResult[0]?.count || 0);
+      const allFtsIds = countIds.map(r => r.id);
+      totalCount = allFtsIds.length > 0
+        ? await prisma.article.count({ where: { AND: [ { id: { in: allFtsIds } }, whereConditions ] } })
+        : 0;
     } else {
       // 通常の検索（全文検索なし）
       const orderBy = 

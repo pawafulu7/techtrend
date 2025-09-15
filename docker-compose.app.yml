@@ -16,6 +16,12 @@ services:
       - app_node_modules:/app/node_modules
       # Exclude .prisma to avoid permission issues
       - app_prisma:/app/node_modules/.prisma
+      # Isolate runtime/test outputs and caches from host to avoid permission conflicts
+      - /app/coverage
+      - /app/test-results
+      - /app/playwright-report
+      - /app/tmp
+      - /app/.cache
     ports:
       - "3001:3000"
     env_file:

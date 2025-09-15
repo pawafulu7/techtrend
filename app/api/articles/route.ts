@@ -414,15 +414,15 @@ export async function GET(request: NextRequest) {
     };
 
     // Try to get from layered cache first
-    // For user-dependent responses, bypass cache to avoid serving stale, user-specific data
-    const result = shouldUseUserContext
+    // Only bypass cache when actual user context is present
+    const hasUserContext = ((includeUserData && !!userId) || ((readFilter === 'read' || readFilter === 'unread') && !!userId));
+
+    const result = hasUserContext
       ? await withDbTiming(metrics, buildResult, 'db_user_context')
       : await withCacheTiming(
           metrics,
           async () => {
-            // Get data from cache or fetch from database
             const data = await cache.getArticles(cacheParams, buildResult);
-            // This will never be null since we're providing a fetcher
             return data!;
           }
         );
@@ -445,7 +445,7 @@ export async function GET(request: NextRequest) {
     metrics.addMetricsToHeaders(response.headers);
 
     // Set cache headers based on whether response is user-dependent
-    const isUserDependent = shouldUseUserContext || request.headers.get('Authorization');
+    const isUserDependent = hasUserContext || request.headers.get('Authorization');
 
     if (isUserDependent) {
       // User-specific responses should not be cached publicly

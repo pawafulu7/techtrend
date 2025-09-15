@@ -38,6 +38,9 @@ export function useScrollRestoration(
       return;
     }
 
+    // 新規復元開始時に abort フラグを解除
+    restorationAbortRef.current = false;
+
     // sessionStorageから保存されたスクロール位置を取得（正規化したキーを使用）
     const scrollKey = buildScrollStorageKey();
     const savedData = sessionStorage.getItem(scrollKey);
@@ -159,28 +162,27 @@ export function useScrollRestoration(
       const tryOnce = () => {
         if (restorationAbortRef.current) return;
         const mainContainer = document.getElementById('main-scroll-container');
-        const ok = (() => {
-          // 記事IDがあり、かつ要素が見つかったら即復元
-          if (articleId) {
-            const el = document.getElementById(`article-${articleId}`) || document.querySelector(`[data-article-id="${articleId}"]`);
-            if (el) {
-              restoreScroll();
-              return true;
-            }
-          }
-          // 記事IDなしまたは要素未発見だが、スクロール領域が整ったらフォールバック復元
-          if (mainContainer) {
-            restoreScroll();
-            return true;
-          }
-          return false;
-        })();
 
-        if (!ok && attempts < maxAttempts) {
+        // a) articleId がある場合は要素の出現を優先して待つ
+        if (articleId) {
+          const el =
+            document.getElementById(`article-${articleId}`) ||
+            document.querySelector(`[data-article-id="${articleId}"]`);
+          if (el) {
+            restoreScroll();
+            return;
+          }
+        } else if (mainContainer) {
+          // b) articleId が無い場合のみ、コンテナ準備でき次第フォールバック復元
+          restoreScroll();
+          return;
+        }
+
+        // c) まだ要素が無い → リトライ、上限でフォールバック
+        if (attempts < maxAttempts) {
           attempts += 1;
           setRestorationTimeout(tryOnce, interval);
-        } else if (!ok) {
-          // 最後にフォールバックを強制実行
+        } else {
           restoreScroll();
         }
       };

@@ -44,6 +44,12 @@ services:
       - /app/node_modules
       # Next.js のビルド成果物をホストではなく匿名ボリュームへ
       - /app/.next
+      # テスト出力・一時ファイルもホストから隔離
+      - /app/coverage
+      - /app/test-results
+      - /app/playwright-report
+      - /app/tmp
+      - /app/.cache
       # 注意: /app/node_modules/.prisma を匿名ボリュームにすると
       # npm ci のクリーンアップで rmdir EBUSY が発生するためマウントしない
     depends_on:
@@ -62,6 +68,9 @@ services:
       - .env
     volumes:
       - ./:/app
+      # Playwright の出力をホストから隔離
+      - /app/test-results
+      - /app/playwright-report
     depends_on:
       postgres-test:
         condition: service_healthy
