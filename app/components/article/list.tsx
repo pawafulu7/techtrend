@@ -64,8 +64,8 @@ export function ArticleList({
     return (
       <div className="space-y-2" data-testid="article-list" key={refreshKey}>
         {articles.map((article, index) => (
-          <ArticleListItem 
-            key={`${article.id}-${refreshKey}`} 
+          <ArticleListItem
+            key={`${article.id}-${index}-${refreshKey}`}
             article={article}
             articleIndex={index}
             totalArticleCount={articles.length}
@@ -80,9 +80,9 @@ export function ArticleList({
   // カード形式の場合
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4" data-testid="article-list" key={refreshKey}>
-      {articles.map((article) => (
+      {articles.map((article, index) => (
         <ArticleCard
-          key={`${article.id}-${refreshKey}`}
+          key={`${article.id}-${index}-${refreshKey}`}
           article={article}
           onArticleClick={onArticleClick}
           isRead={article.isRead ?? true}

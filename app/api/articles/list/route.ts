@@ -283,8 +283,8 @@ export async function GET(request: NextRequest) {
       });
 
       // Fetch user-specific data if requested
-      let favoritesMap: Map<string, boolean> = new Map();
-      let readStatusMap: Map<string, boolean> = new Map();
+      const favoritesMap: Map<string, boolean> = new Map();
+      const readStatusMap: Map<string, boolean> = new Map();
 
       if (includeUserData && userId) {
         const articleIds = articles.map(a => a.id);

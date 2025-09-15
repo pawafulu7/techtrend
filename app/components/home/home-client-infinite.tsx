@@ -105,10 +105,18 @@ export function HomeClientInfinite({
     includeUserData: true // Include favorites and read status in API response
   });
 
-  // ページごとの記事を1つの配列にフラット化
+  // ページごとの記事を1つの配列にフラット化（重複除去付き）
   const allArticles = useMemo(() => {
     if (!data) return [];
-    return data.pages.flatMap(page => page.data.items);
+    // flatMapで全ページの記事を取得
+    const articles = data.pages.flatMap(page => page.data.items);
+
+    // 重複除去: 同じIDの記事は最初のものだけを保持
+    const uniqueArticles = articles.filter((article, index, self) =>
+      index === self.findIndex(a => a.id === article.id)
+    );
+
+    return uniqueArticles;
   }, [data]);
 
   // 合計記事数
