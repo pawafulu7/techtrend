@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "docker:build": "NODE_ENV=production prisma generate && NODE_ENV=production next build",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
@@ -70,7 +71,7 @@
     "test:db:up": "docker compose -f docker-compose.test.yml up -d --wait",
     "test:db:down": "docker compose -f docker-compose.test.yml down",
     "test:db:setup": "dotenv -e .env -- sh -c 'DATABASE_URL=\"$TEST_DATABASE_URL_HOST\" npx prisma migrate deploy && DATABASE_URL=\"$TEST_DATABASE_URL_HOST\" npx tsx prisma/seed-test.ts'",
-    "test:db:reset": "dotenv -e .env -- sh -c 'DATABASE_URL=\"$TEST_DATABASE_URL_HOST\" npx prisma migrate reset --force'",
+    "test:db:reset:prisma": "dotenv -e .env -- sh -c 'DATABASE_URL=\"$TEST_DATABASE_URL_HOST\" npx prisma migrate reset --force'",
     "test:e2e": "playwright test",
     "test:e2e:report": "npm run test:e2e 2>&1 | node scripts/e2e-reporter.js",
     "test:e2e:smoke": "playwright test --grep @smoke",
@@ -106,7 +107,10 @@
     "docker:clean": "docker compose -f docker-compose.app.yml down -v",
     "docker:restart": "docker compose -f docker-compose.app.yml restart app",
     "docker:logs": "docker compose -f docker-compose.app.yml logs -f app",
-    "docker:ps": "docker compose -f docker-compose.app.yml ps"
+    "docker:ps": "docker compose -f docker-compose.app.yml ps",
+    "test:db:reset": "tsx scripts/test/reset-test-db.ts",
+    "test:db:reset:seed": "tsx scripts/test/reset-test-db.ts --seed",
+    "test:db:migrate": "dotenv -e .env -- sh -c 'DATABASE_URL=\"${TEST_DATABASE_URL:-postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test}\" npx prisma migrate deploy'"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

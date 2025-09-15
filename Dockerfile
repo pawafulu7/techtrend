@@ -32,12 +32,12 @@ RUN getent group 1000 || addgroup -g 1000 -S techtrend && \
     adduser -S techtrend -u 1000 -G node
 # Copy node_modules from dev-deps stage with correct ownership
 COPY --from=dev-deps --chown=1000:1000 /app/node_modules ./node_modules
-# Copy application code with correct ownership
-COPY --chown=1000:1000 . .
-# Switch to non-root user before generating Prisma Client
-USER 1000
-# Generate Prisma Client
+# Copy application code
+COPY . .
+# Generate Prisma Client as root
 RUN npx prisma generate
+# Create .next directory with proper permissions
+RUN mkdir -p /app/.next && chmod 777 /app/.next
 # Expose port
 EXPOSE 3000
 # Development command
