@@ -37,6 +37,13 @@ export function useFavoritesBatch(articleIds: string[]) {
       // 新規に追加された記事IDのみを抽出
       const newIds = articleIds.filter(id => !prevIds.has(id) && !globalFavoritesCache.has(`${session.user.id}:${id}`));
 
+      console.log('[Favorites Debug]', {
+        totalArticles: articleIds.length,
+        prevArticles: prevArticleIdsRef.current.length,
+        newArticles: newIds.length,
+        cacheSize: globalFavoritesCache.size
+      });
+
       // 新規記事がない場合は、既存のキャッシュから結果を構築
       if (newIds.length === 0) {
         const result: FavoritesMap = {};
@@ -56,6 +63,11 @@ export function useFavoritesBatch(articleIds: string[]) {
       }
 
       // 各バッチを並列実行
+      console.log('[Favorites Debug] APIコール開始', {
+        batchCount: batches.length,
+        batchSizes: batches.map(b => b.length)
+      });
+
       const responses = await Promise.all(
         batches.map(async (batch) => {
           const response = await fetch('/api/favorites/batch', {
