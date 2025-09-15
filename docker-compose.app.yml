@@ -7,15 +7,16 @@ services:
       dockerfile: Dockerfile
       target: dev
     container_name: techtrend-app
+    user: "1000:1000"
     volumes:
       # Source code mount for hot reload
       - ./:/app
       # Persist node_modules in named volume
       - app_node_modules:/app/node_modules
-      # Don't mount .next directory as volume to avoid conflicts
-      # - app_next:/app/.next
       # Exclude .next from bind mount
       - /app/.next
+      # Exclude .prisma to avoid permission issues
+      - /app/node_modules/.prisma
     ports:
       - "3001:3000"
     environment:

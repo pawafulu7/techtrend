@@ -97,7 +97,7 @@
     "summarize:local": "dotenv -e .env -- tsx scripts/maintenance/generate-summaries.ts",
     "scheduler:local": "dotenv -e .env -- tsx scripts/scheduled/scheduler.ts",
     "docker:dev": "docker compose -f docker-compose.app.yml up app",
-    "docker:build": "docker compose -f docker-compose.app.yml run --rm -e NODE_ENV=production app npm run build",
+    "docker:build": "docker build --target builder -t techtrend-builder .",
     "docker:lint": "docker compose -f docker-compose.app.yml run --rm app npm run lint",
     "docker:test": "docker run --rm --network host -v $(pwd):/app -w /app -e NODE_ENV=test -e DATABASE_URL=postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test -e REDIS_HOST=localhost -e REDIS_PORT=6380 techtrend-app npm test",
     "docker:bash": "docker compose -f docker-compose.app.yml run --rm app sh",

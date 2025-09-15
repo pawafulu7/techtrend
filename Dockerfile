@@ -25,10 +25,17 @@ RUN --mount=type=cache,target=/root/.npm \
 
 # Development stage - for local development
 FROM base AS dev
-# Copy node_modules from dev-deps stage
-COPY --from=dev-deps /app/node_modules ./node_modules
-# Copy application code
-COPY . .
+# Create non-root user with UID 1000 (matches host user)
+# Check if group/user already exists before creating
+RUN getent group 1000 || addgroup -g 1000 -S techtrend && \
+    getent passwd 1000 || adduser -S techtrend -u 1000 -G techtrend || \
+    adduser -S techtrend -u 1000 -G node
+# Copy node_modules from dev-deps stage with correct ownership
+COPY --from=dev-deps --chown=1000:1000 /app/node_modules ./node_modules
+# Copy application code with correct ownership
+COPY --chown=1000:1000 . .
+# Switch to non-root user before generating Prisma Client
+USER 1000
 # Generate Prisma Client
 RUN npx prisma generate
 # Expose port
