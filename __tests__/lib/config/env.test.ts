@@ -44,11 +44,13 @@ describe('Environment Configuration', () => {
 
     it('provides defaults for optional variables', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+      // REDIS_PORTを明示的に削除してデフォルト値をテスト
+      delete process.env.REDIS_PORT;
 
       const result = getEnv();
       expect(result.REDIS_HOST).toBe('localhost');
-      // テスト環境では6380ポートを使用
-      expect(result.REDIS_PORT).toBe('6380');
+      // デフォルトポートは6379
+      expect(result.REDIS_PORT).toBe('6379');
       expect(result.ENABLE_CACHE).toBe('true');
       // LOG_LEVELはテスト環境設定の影響を受ける可能性があるためスキップ
       // expect(result.LOG_LEVEL).toBe('info');
