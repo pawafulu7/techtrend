@@ -35,13 +35,31 @@ export async function GET(request: Request) {
         summary: true,
         publishedAt: true,
         thumbnail: true,
+        source: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          }
+        }
       },
     } : includeRelations ? {
       include: {
         source: true,
         tags: true,
       },
-    } : true;
+    } : {
+      include: {
+        source: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            url: true,
+          }
+        }
+      }
+    };
 
     const [views, total] = await Promise.all([
       prisma.articleView.findMany({
