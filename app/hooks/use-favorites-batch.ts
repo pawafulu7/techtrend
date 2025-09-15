@@ -72,7 +72,6 @@ export function useFavoritesBatch(articleIds: string[]) {
       );
 
       // 新規取得分をグローバルキャッシュに保存
-      const userId = session.user.id;
       for (const response of responses) {
         for (const [articleId, isFavorited] of Object.entries(response.favorites)) {
           globalFavoritesCache.set(`${userId}:${articleId}`, isFavorited as boolean);
