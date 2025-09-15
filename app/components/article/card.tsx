@@ -84,7 +84,7 @@ export function ArticleCard({
 
     // 親コンポーネントのコールバックを実行（スクロール位置保存）
     if (onArticleClick) {
-      onArticleClick();
+      onArticleClick(article.id);
     }
 
     // URLパラメータを保持して記事詳細ページに遷移
@@ -100,7 +100,7 @@ export function ArticleCard({
     const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
 
-    // Next.jsのルーターを使用して遷移
+    // 遷移を実行
     router.push(articleUrl);
   };
 
@@ -124,6 +124,7 @@ export function ArticleCard({
 
   return (
     <Card 
+      id={`article-${article.id}`}
       data-testid="article-card"
       data-article-id={article.id}
       onClick={handleCardClick}

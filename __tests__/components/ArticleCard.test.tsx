@@ -127,9 +127,8 @@ describe('ArticleCard', () => {
     const card = screen.getByTestId('article-card');
     await user.click(card);
     
-    // クリック時のナビゲーションがonArticleClickプロパティに依存
-    // onArticleClickが提供されていない場合、デフォルト動作は定義されていない可能性
-    expect(mockRouter.push).not.toHaveBeenCalled();
+    // onArticleClick未指定時はデフォルトのナビゲーションが発生する
+    expect(mockRouter.push).toHaveBeenCalled();
   });
 
 

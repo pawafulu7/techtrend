@@ -74,7 +74,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     const customEvent = event as CustomEvent;
     const { articleId, isRead } = customEvent.detail;
 
-    console.log('[useInfiniteArticles] Read status changed event:', { articleId, isRead });
+    // Debug log removed
 
     // すべての関連するキャッシュを更新
     const cacheKeys = queryClient.getQueryCache().findAll({
@@ -82,9 +82,9 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       exact: false
     });
 
-    console.log('[useInfiniteArticles] Found cache keys:', cacheKeys.length);
+    // Debug log removed
 
-    let articleFound = false;
+    let _articleFound = false;
     cacheKeys.forEach((query) => {
       queryClient.setQueryData<InfiniteArticlesData>(query.queryKey, (oldData) => {
         if (oldData?.pages) {
@@ -96,8 +96,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
                 ...page.data,
                 items: page.data.items.map((item: ArticleWithRelations) => {
                   if (item.id === articleId) {
-                    articleFound = true;
-                    console.log('[useInfiniteArticles] Updating article:', articleId, 'to isRead:', isRead);
+                    _articleFound = true;
                     // 該当記事の既読状態を更新
                     return {
                       ...item,
@@ -116,13 +115,10 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       });
     });
 
-    if (articleFound) {
-      console.log('[useInfiniteArticles] Article cache updated successfully');
-    }
+    // Debug log removed
 
     // 既読フィルターが有効な場合のみ再取得
     if (normalizedFilters.readFilter) {
-      console.log('[useInfiniteArticles] Invalidating queries due to readFilter');
       queryClient.invalidateQueries({
         queryKey: ['infinite-articles', filterKey],
         refetchType: 'active'
@@ -181,14 +177,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
 
-      // デバッグ: APIリクエストを確認
-      console.log('[useInfiniteArticles] API Request:', {
-        endpoint,
-        includeUserData: normalizedFilters.includeUserData,
-        returning: normalizedFilters.returning,
-        readFilter: normalizedFilters.readFilter,
-        params: searchParams.toString()
-      });
+      // Debug log removed
 
       const response = await fetch(`${endpoint}?${searchParams.toString()}`, { signal });
 
@@ -198,17 +187,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
 
       const data = await response.json();
 
-      // デバッグ: レスポンスを確認
-      console.log('[useInfiniteArticles] API Response:', {
-        endpoint,
-        totalItems: data.data?.items?.length,
-        firstItem: data.data?.items?.[0] ? {
-          title: data.data.items[0].title,
-          isRead: data.data.items[0].isRead,
-          isFavorited: data.data.items[0].isFavorited
-        } : null,
-        meta: data.meta
-      });
+      // Debug log removed
 
       return data;
     },

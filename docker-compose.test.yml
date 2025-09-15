@@ -32,6 +32,44 @@ services:
       retries: 5
     restart: "no"
 
+  node-ci:
+    image: node:20-alpine
+    container_name: techtrend-node-ci
+    working_dir: /app
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      # 匿名ボリュームで node_modules をコンテナ側に隔離（ホストを汚さない）
+      - /app/node_modules
+      # Next.js のビルド成果物をホストではなく匿名ボリュームへ
+      - /app/.next
+      # 注意: /app/node_modules/.prisma を匿名ボリュームにすると
+      # npm ci のクリーンアップで rmdir EBUSY が発生するためマウントしない
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    networks:
+      - default
+
+  playwright-e2e:
+    image: mcr.microsoft.com/playwright:v1.55.0-jammy
+    container_name: techtrend-playwright-e2e
+    working_dir: /app
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    networks:
+      - default
+
 volumes:
   postgres_test_data:
     name: techtrend_postgres_test_data

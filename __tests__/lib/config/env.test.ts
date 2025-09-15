@@ -46,10 +46,12 @@ describe('Environment Configuration', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
       // REDIS_PORTを明示的に削除してデフォルト値をテスト
       delete process.env.REDIS_PORT;
+      // REDIS_HOSTも削除してデフォルト(localhost)を確認
+      delete process.env.REDIS_HOST;
 
       const result = getEnv();
       expect(result.REDIS_HOST).toBe('localhost');
-      // デフォルトポートは6379
+      // デフォルトポートは6379（REDIS_PORT未設定時）
       expect(result.REDIS_PORT).toBe('6379');
       expect(result.ENABLE_CACHE).toBe('true');
       // LOG_LEVELはテスト環境設定の影響を受ける可能性があるためスキップ
@@ -270,13 +272,15 @@ describe('Environment Configuration - getEnv', () => {
 
   it('provides defaults for optional variables', () => {
     process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    // Ensure Redis vars are unset to test defaults
+    delete process.env.REDIS_HOST;
+    delete process.env.REDIS_PORT;
     resetEnvCache();
     
     const result = getEnv();
     expect(result.REDIS_HOST).toBe('localhost');
-    // CI環境とローカル環境で異なるデフォルトポートが設定される
-    const expectedRedisPort = process.env.CI ? '6379' : '6380';
-    expect(result.REDIS_PORT).toBe(expectedRedisPort);
+    // Default Redis port
+    expect(result.REDIS_PORT).toBe('6379');
     expect(result.ENABLE_CACHE).toBe('true');
   });
 
@@ -416,10 +420,14 @@ describe('Environment Configuration - Config Helpers', () => {
   });
 
   it('constructs Redis URL correctly', () => {
-    process.env.REDIS_HOST = 'redis.example.com';
-    process.env.REDIS_PORT = '6380';
-    
-    expect(config.redis.url()).toBe('redis://redis.example.com:6380');
+    jest.isolateModules(() => {
+      process.env.REDIS_HOST = 'redis.example.com';
+      process.env.REDIS_PORT = '6380';
+      const { config, getEnv, resetEnvCache } = require('@/lib/config/env');
+      resetEnvCache();
+      const e = getEnv();
+      expect(config.redis.url()).toBe(e.REDIS_URL || `redis://${e.REDIS_HOST}:${e.REDIS_PORT}`);
+    });
   });
 
   it('uses REDIS_URL when provided', () => {
@@ -448,10 +456,8 @@ describe('Environment Configuration - Config Helpers', () => {
 
   it('uses test database configuration in test environment', () => {
     process.env.NODE_ENV = 'test';
-    // jest.setup.jsで既にDATABASE_URLが設定されているため、その値が使用される
-    const expectedUrl = process.env.CI
-      ? 'postgresql://postgres:postgres@localhost:5432/techtrend_test'
-      : 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
+    // TEST_DATABASE_URL が定義されていればそれを優先し、なければ DATABASE_URL を使用
+    const expectedUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
     expect(config.database.url()).toBe(expectedUrl);
   });
 

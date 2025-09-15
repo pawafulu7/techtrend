@@ -10,7 +10,7 @@ export interface ArticleCardProps {
   showSource?: boolean;
   showTags?: boolean;
   onTagClick?: (tagName: string) => void;
-  onArticleClick?: () => void;
+  onArticleClick?: (articleId?: string) => void;
   isFavorited?: boolean;
   onToggleFavorite?: () => void;
 }
@@ -23,7 +23,7 @@ export interface ArticleListProps {
   error?: string;
   onLoadMore?: () => void;
   hasMore?: boolean;
-  onArticleClick?: () => void;
+  onArticleClick?: (articleId?: string) => void;
   currentFilters?: Record<string, string>;
 }
 
@@ -34,7 +34,7 @@ export interface ArticleListItemProps {
   articleIndex?: number;
   totalArticleCount?: number;
   currentFilters?: Record<string, string>;
-  onArticleClick?: () => void;
+  onArticleClick?: (articleId?: string) => void;
 }
 
 // 表示モード切り替えボタン

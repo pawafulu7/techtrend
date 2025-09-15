@@ -363,8 +363,9 @@ test.describe('フィルター条件の永続化', () => {
     await qualityButton.click();
     // URLパラメータの更新を待つ（ページ遷移ではなくパラメータ更新のため）
     await waitForUrlParam(page, 'sortBy', 'qualityScore', { 
-      timeout: getTimeout('medium'),
-      polling: 'normal'
+      timeout: getTimeout('long'),
+      polling: 'fast',
+      retries: 5,
     });
 
     // 2. 記事詳細ページへ遷移  

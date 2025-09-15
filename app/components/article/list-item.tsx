@@ -46,9 +46,9 @@ export function ArticleListItem({
   const isNew = hoursAgo < 24;
 
   const handleClick = (_e: React.MouseEvent) => {
-    // 先にスクロール位置を保存
+    // 親コンポーネントのスクロール位置保存処理を呼び出し
     if (onArticleClick) {
-      onArticleClick();
+      onArticleClick(article.id);
     }
 
     // URLパラメータを保持して記事詳細ページに遷移
@@ -64,12 +64,14 @@ export function ArticleListItem({
     const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
 
-    // Next.jsのルーターを使用して遷移
+    // 遷移を実行
     router.push(articleUrl);
   };
 
   return (
     <div 
+      id={`article-${article.id}`}
+      data-article-id={article.id}
       onClick={handleClick}
       className={cn(
         "group flex items-center justify-between gap-4 p-3 rounded-lg cursor-pointer",

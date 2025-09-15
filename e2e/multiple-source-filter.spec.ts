@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForArticles } from './helpers/wait-utils';
 
 // 環境別タイムアウト値
 const timeout = process.env.CI ? 30000 : 15000;
@@ -211,7 +212,8 @@ test.describe('Multiple Source Filter', () => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    // モバイル表示では networkidle が安定しないことがあるため、記事表示の完了を待つ
+    await waitForArticles(page, { timeout: 30000, allowEmpty: true });
     
     // Open mobile filters - more flexible
     const mobileFilterButton = page.locator('button').filter({ hasText: /フィルター|filter/i }).first();

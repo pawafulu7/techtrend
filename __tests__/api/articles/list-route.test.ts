@@ -8,7 +8,7 @@
  */
 
 // モックを先に設定
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 
 jest.mock('@/lib/cache', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
@@ -24,7 +24,7 @@ jest.mock('@/lib/auth/auth', () => ({
 
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/articles/list/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { RedisCache } from '@/lib/cache';
 
 const mockPrisma = prisma as jest.Mocked<typeof prisma>;

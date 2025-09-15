@@ -354,6 +354,11 @@ test.describe('検索機能', () => {
     // URLに検索パラメータが追加されることを確認
     await expect(page).toHaveURL(/\?.*search=/, { timeout: 15000 });
     await waitForPageLoad(page);
+    // 検索結果の安定化を追加で待機
+    try {
+      await waitForSearchResults(page, 20000);
+      await waitForArticles(page, { timeout: 20000, allowEmpty: true });
+    } catch {}
     
     // エラーがないことを確認
     await expectNoErrors(page);

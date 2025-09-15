@@ -30,7 +30,13 @@ export const testConfig = {
       reuseExistingServer: true,
       stdout: 'pipe',  // ログ出力を有効化
       stderr: 'pipe',  // エラーログ出力を有効化
-      env: { PORT: String(this.port), BASE_URL: this.baseUrl },
+      env: {
+        PORT: String(this.port),
+        BASE_URL: this.baseUrl,
+        // DB/Redis接続情報をテスト用Webサーバーへ伝播
+        DATABASE_URL: process.env.DATABASE_URL || '',
+        REDIS_URL: process.env.REDIS_URL || '',
+      },
     };
   },
   

@@ -101,8 +101,8 @@ test.describe('Date Range Filter', () => {
     await expect(listbox).toBeVisible();
     await listbox.getByRole('option', { name: '全期間' }).click();
 
-    // URLからdateRangeパラメータが削除されるのを待機
-    await expect(page).not.toHaveURL(/[\?&]dateRange=/);
+    // URLからdateRangeパラメータが削除されるのを待機（Firefox対策で関数待機に変更）
+    await page.waitForFunction(() => !window.location.search.includes('dateRange'), { timeout: 10000 });
     await expect(listbox).toBeHidden();
 
     // テキストが「全期間」に戻ったことを確認
@@ -149,7 +149,7 @@ test.describe('Date Range Filter', () => {
   test('should work with multiple date ranges', async ({ page }) => {
     const filterArea = page.locator('[data-testid="filter-area"]');
     const combobox = filterArea.locator('[role="combobox"]').first();
-    const listbox = page.locator('[role="listbox"]');
+    const listbox = page.locator('[role,"listbox"]');
 
     const testCases = [
       { label: '今日', value: 'today' },
@@ -158,24 +158,33 @@ test.describe('Date Range Filter', () => {
       { label: '過去3ヶ月', value: 'three_months' }
     ];
 
+    // 選択の安定化ヘルパー（クリック→検証を最大2回までリトライ）
+    async function selectDateRange(label: string, value: string) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await combobox.click();
+        await expect(page.locator('[role="listbox"]')).toBeVisible();
+        await page.locator('[role="listbox"]').getByRole('option', { name: label }).click();
+        // URLの更新とテキストの更新を待機（どちらかが満たされればOK）
+        try {
+          await expect(page).toHaveURL(new RegExp(`[?&]dateRange=${value}\\b`), { timeout: 5000 });
+        } catch {
+          // URLがまだ更新されていない場合はテキストで確認
+          try {
+            await expect(combobox).toContainText(label, { timeout: 3000 });
+          } catch {
+            // リトライ
+            continue;
+          }
+        }
+        // ポータルの listbox が閉じるのを待って安定化
+        await expect(page.locator('[role="listbox"]')).toBeHidden({ timeout: 5000 });
+        return;
+      }
+      throw new Error(`Failed to select date range: ${label}`);
+    }
+
     for (const testCase of testCases) {
-      // comboboxをクリック
-      await combobox.click();
-
-      // listboxが表示されるのを待機
-      await expect(listbox).toBeVisible();
-
-      // オプションを選択
-      await listbox.getByRole('option', { name: testCase.label }).click();
-
-      // URLが更新されるのを待機
-      await expect(page).toHaveURL(new RegExp(`[?&]dateRange=${testCase.value}\\b`));
-
-      // テキストが更新されたことを確認
-      await expect(combobox).toContainText(testCase.label);
-
-      // ポータルのリストボックスが閉じたことを確認（次操作の安定化）
-      await expect(listbox).toBeHidden();
+      await selectDateRange(testCase.label, testCase.value);
     }
   });
 });

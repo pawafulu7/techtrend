@@ -214,16 +214,47 @@ export async function POST(request: Request) {
       });
     }
 
-    // 新規閲覧記録を作成
-    const view = await prisma.articleView.create({
-      data: {
-        userId: session.user.id,
-        articleId,
-        viewedAt: new Date(),  // 明示的に設定
-        isRead: true,
-        readAt: new Date()
-      },
-    });
+    // 新規閲覧記録を作成（ユニーク制約エラーの処理を追加）
+    let view;
+    try {
+      view = await prisma.articleView.create({
+        data: {
+          userId: session.user.id,
+          articleId,
+          viewedAt: new Date(),  // 明示的に設定
+          isRead: true,
+          readAt: new Date()
+        },
+      });
+    } catch (createError: any) {
+      // ユニーク制約違反の場合は既存のレコードを更新
+      if (createError?.code === 'P2002') {
+        logger.info('Unique constraint violation, updating existing record');
+        const existingView = await prisma.articleView.findFirst({
+          where: {
+            userId: session.user.id,
+            articleId,
+          },
+        });
+
+        if (existingView) {
+          view = await prisma.articleView.update({
+            where: { id: existingView.id },
+            data: {
+              viewedAt: new Date(),
+              isRead: true,
+              readAt: existingView.readAt || new Date()
+            },
+          });
+        } else {
+          // 既存レコードが見つからない場合はエラーを再throw
+          throw createError;
+        }
+      } else {
+        // ユニーク制約以外のエラーは再throw
+        throw createError;
+      }
+    }
 
     // クリーンアップ処理: 古い履歴と超過分を削除
     // 90日以上前の履歴を削除

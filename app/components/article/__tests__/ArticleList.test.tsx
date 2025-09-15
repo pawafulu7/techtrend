@@ -172,9 +172,12 @@ describe('ArticleList', () => {
         status: 'authenticated' 
       });
 
-      mockReadStatus.isRead.mockImplementation((id: string) => id === '1');
-      
-      renderWithProviders(<ArticleList articles={mockArticles} />);
+      // ArticleList は article.isRead を参照するため、フラグ付きで渡す
+      const articlesWithFlags = mockArticles.map(a => ({
+        ...a,
+        isRead: a.id === '1',
+      }));
+      renderWithProviders(<ArticleList articles={articlesWithFlags as typeof mockArticles} />);
       
       // 記事1は既読
       const article1 = screen.getByTestId('article-card-1');
@@ -321,9 +324,11 @@ describe('ArticleList', () => {
         status: 'authenticated' 
       });
 
-      mockReadStatus.isRead.mockImplementation((id: string) => id === '2');
-      
-      renderWithProviders(<ArticleList articles={mockArticles} viewMode="list" />);
+      const articlesWithFlags = mockArticles.map(a => ({
+        ...a,
+        isRead: a.id === '2',
+      }));
+      renderWithProviders(<ArticleList articles={articlesWithFlags as typeof mockArticles} viewMode="list" />);
       
       expect(screen.getByTestId('article-list-item-1')).toHaveAttribute('data-is-read', 'false');
       expect(screen.getByTestId('article-list-item-2')).toHaveAttribute('data-is-read', 'true');
