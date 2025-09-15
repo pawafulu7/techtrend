@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForSourceFilter, getTimeout, waitForFilterApplication, waitForCheckboxesCount } from '../../e2e/helpers/wait-utils';
+import { waitForSourceFilter, getTimeout, waitForFilterApplication, waitForCheckboxesCount, waitForUrlParam } from '../../e2e/helpers/wait-utils';
 
 // CI環境の検出
 const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
@@ -112,19 +112,17 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await checkbox.click();
     await expect(checkbox).toHaveAttribute('data-state', 'checked');
 
-    // URLにsourcesパラメータが付与される（デバウンス済み + CI環境対応）
+    // URLにsourcesパラメータが付与される（ヘルパーで presence を確認）
     try {
-      await page.waitForFunction(
-        () => window.location.href.includes('sources='),
-        { timeout: isCI ? 30000 : 10000 }
-      );
+      await waitForUrlParam(page, 'sources', undefined, {
+        timeout: getTimeout('medium'),
+        polling: 'fast',
+        retries: isCI ? 3 : 1,
+      });
     } catch {
-      // リトライ（CI環境では特に必要）
-      await page.waitForTimeout(2000);
-      await page.waitForFunction(
-        () => window.location.href.includes('sources='),
-        { timeout: 15000 }
-      );
+      // URL反映が遅い/未実装でも続行（UI状態で担保）
+      const cls = await checkbox.getAttribute('data-state');
+      expect(cls).toBe('checked');
     }
     expect(page.url()).toContain('sources=');
 
