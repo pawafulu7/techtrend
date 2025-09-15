@@ -6,7 +6,7 @@ import logger from '@/lib/logger';
 
 // 確認メール送信用の関数をインポート
 async function sendVerificationEmail(email: string, token: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   let nodemailer: any;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports

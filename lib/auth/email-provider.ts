@@ -8,7 +8,7 @@ interface Theme {
 }
 
 // Initialize Resend client dynamically
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 let resend: any = null;
 if (process.env.RESEND_API_KEY) {
   try {

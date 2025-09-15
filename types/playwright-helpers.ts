@@ -178,7 +178,7 @@ export async function scrollToBottom(page: Page, selector?: string): Promise<voi
 /**
  * 無限スクロールの次ページ読み込みを待つ
  */
-export async function waitForInfiniteScroll(page: Page, initialCount: number): Promise<number> {
+export async function waitForInfiniteScroll(page: Page, _initialCount: number): Promise<number> {
   await scrollToBottom(page);
   await page.waitForTimeout(1000); // API呼び出し待ち
   

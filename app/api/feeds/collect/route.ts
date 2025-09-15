@@ -60,7 +60,7 @@ async function performCollect() {
 
             if (!existing) {
               // タグを正規化してバリデーション
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+               
               const tagNames = (articleData as any).tagNames || [];
               const normalizedTags = normalizeTagInput(tagNames);
               

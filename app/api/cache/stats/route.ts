@@ -50,7 +50,7 @@ export async function GET() {
           hits: statsCacheStats.hits,
           misses: statsCacheStats.misses,
           hitRate: calculateHitRate(statsCacheStats),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           lastResetAt: (statsCacheStats as any).lastResetAt || null
         },
         trends: {
@@ -58,7 +58,7 @@ export async function GET() {
           hits: trendsCacheStats.hits,
           misses: trendsCacheStats.misses,
           hitRate: calculateHitRate(trendsCacheStats),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           lastResetAt: (trendsCacheStats as any).lastResetAt || null
         }
       },
