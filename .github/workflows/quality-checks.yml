@@ -416,12 +416,19 @@ jobs:
             echo "❌ Build: Failed"
           fi
 
+          if [ "${{ needs.e2e.result }}" == "success" ]; then
+            echo "✅ E2E Tests: Passed"
+          else
+            echo "❌ E2E Tests: Failed"
+          fi
+
           # Fail if any check failed
           if [ "${{ needs.type-check.result }}" != "success" ] || \
              [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
              [ "${{ needs.security.result }}" != "success" ] || \
-             [ "${{ needs.build.result }}" != "success" ]; then
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.e2e.result }}" != "success" ]; then
             echo ""
             echo "❌ Quality gate failed!"
             exit 1

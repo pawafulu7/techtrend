@@ -149,7 +149,7 @@ test.describe('Date Range Filter', () => {
   test('should work with multiple date ranges', async ({ page }) => {
     const filterArea = page.locator('[data-testid="filter-area"]');
     const combobox = filterArea.locator('[role="combobox"]').first();
-    const listbox = page.locator('[role,"listbox"]');
+    const listbox = page.locator('[role="listbox"]');
 
     const testCases = [
       { label: '今日', value: 'today' },

@@ -380,7 +380,8 @@ test.describe('検索機能', () => {
     
     // 検索が実行されたことの最終確認
     if (urlUpdated) {
-      await expect(page.url()).resolves.toContain('search=');
+      // Playwright の expect は Promise の resolves チェックではなく、単純な値検証で十分
+      expect(page.url()).toContain('search=');
     } else {
       // URL更新で確認できない場合、メインコンテンツの表示で代替
       await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 15000 });

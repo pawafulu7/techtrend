@@ -21,27 +21,7 @@ jest.mock('@/lib/auth/config', () => ({
   authOptions: {},
 }));
 
-// 明示的に Prisma クライアントをモック（ルートが同一インスタンスを参照するよう保証）
-jest.mock('@/lib/prisma', () => {
-  const prisma = {
-    article: {
-      findMany: jest.fn(),
-      count: jest.fn(),
-    },
-    favorite: {
-      findMany: jest.fn(),
-    },
-    articleView: {
-      findMany: jest.fn(),
-    },
-    tag: {
-      findMany: jest.fn(),
-    },
-  };
-  return { prisma };
-});
-
-// Use Prisma client mock
+// Use existing Prisma mock from __mocks__/lib/prisma.ts
 const { prisma } = require('@/lib/prisma');
 // Defer requiring GET until inside each test (ensures fresh module with mocks)
 
