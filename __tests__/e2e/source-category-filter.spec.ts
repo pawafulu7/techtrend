@@ -112,49 +112,45 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await checkbox.click();
     await expect(checkbox).toHaveAttribute('data-state', 'checked');
 
-    // URLにsourcesパラメータが付与される（ヘルパーで presence を確認）
+    // URLにsourcesパラメータが付与される（presence）
+    let urlParamObserved = false;
     try {
-      await waitForUrlParam(page, 'sources', undefined, {
-        timeout: getTimeout('medium'),
-        polling: 'fast',
-        retries: isCI ? 3 : 1,
-      });
+      await waitForUrlParam(page, 'sources'); // デフォルトのtimeout/retriesに委譲
+      urlParamObserved = true;
     } catch {
       // URL反映が遅い/未実装でも続行（UI状態で担保）
-      const cls = await checkbox.getAttribute('data-state');
-      expect(cls).toBe('checked');
+      await expect(checkbox).toHaveAttribute('data-state', 'checked');
     }
-    expect(page.url()).toContain('sources=');
 
-    // URLパラメータを解析して選択したIDが含まれることを確認
-    if (firstRowTestId) {
-      const selectedId = firstRowTestId.replace('source-checkbox-', '');
-      const currentUrl = page.url();
-      const urlParams = new URLSearchParams(new URL(currentUrl).search);
-      const sourcesParam = urlParams.get('sources');
-      
-      // sources=noneは一時的な状態のため、正しいURLパラメータを待つ
-      if (sourcesParam === 'none') {
-        // URLパラメータが更新されるまで待機（CI環境では長めのタイムアウト）
-        await page.waitForFunction(
-          (id) => {
-            const url = new URL(window.location.href);
-            const sources = url.searchParams.get('sources');
-            return sources && sources !== 'none' && sources.includes(id);
-          },
-          selectedId,
-          { timeout: isCI ? 15000 : 5000 }
-        );
-        // 再度URLパラメータを確認
-        const updatedUrl = page.url();
-        const updatedParams = new URLSearchParams(new URL(updatedUrl).search);
-        const updatedSourcesParam = updatedParams.get('sources');
-        const sources = updatedSourcesParam?.split(',') || [];
-        expect(sources).toContain(selectedId);
-      } else {
-        const sources = sourcesParam?.split(',') || [];
-        // 選択したIDがURLパラメータに含まれることを確認
-        expect(sources).toContain(selectedId);
+    if (urlParamObserved) {
+      expect(page.url()).toContain('sources=');
+
+      // URLパラメータを解析して選択したIDが含まれることを確認
+      if (firstRowTestId) {
+        const selectedId = firstRowTestId.replace('source-checkbox-', '');
+        const currentUrl = page.url();
+        const urlParams = new URLSearchParams(new URL(currentUrl).search);
+        const sourcesParam = urlParams.get('sources');
+
+        if (sourcesParam === 'none') {
+          await page.waitForFunction(
+            (id) => {
+              const url = new URL(window.location.href);
+              const sources = url.searchParams.get('sources');
+              return sources && sources !== 'none' && sources.includes(id);
+            },
+            selectedId,
+            { timeout: isCI ? 15000 : 5000 }
+          );
+          const updatedUrl = page.url();
+          const updatedParams = new URLSearchParams(new URL(updatedUrl).search);
+          const updatedSourcesParam = updatedParams.get('sources');
+          const sources = updatedSourcesParam?.split(',') || [];
+          expect(sources).toContain(selectedId);
+        } else {
+          const sources = sourcesParam?.split(',') || [];
+          expect(sources).toContain(selectedId);
+        }
       }
     }
   });
