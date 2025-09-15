@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
-import { useCallback, useMemo, useRef, useEffect } from 'react';
+import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
 
 interface FavoritesMap {
   [articleId: string]: boolean;
@@ -20,36 +20,31 @@ const globalFavoritesCache = new Map<string, boolean>();
 export function useFavoritesBatch(articleIds: string[]) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const prevArticleIdsRef = useRef<string[]>([]);
+  const [favorites, setFavorites] = useState<FavoritesMap>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const fetchingRef = useRef<Set<string>>(new Set());
 
-  // お気に入り状態を取得（初回のみ、または手動リフレッシュ時）
-  const { data, isLoading, error, refetch } = useQuery<FavoritesResponse>({
-    queryKey: ['favorites-batch', session?.user?.id],
-    queryFn: async () => {
-      if (!session?.user?.id) {
-        return { favorites: {} };
-      }
+  // 新規記事のお気に入り状態を取得
+  const fetchNewFavorites = useCallback(async (newIds: string[]) => {
+    if (!session?.user?.id || newIds.length === 0) return;
 
-      // 現在要求されている記事IDから、キャッシュにないものを抽出
-      const userId = session.user.id;
-      const newIds = articleIds.filter(id => !globalFavoritesCache.has(`${userId}:${id}`));
+    const userId = session.user.id;
 
-      // 新規記事がない場合は、既存のキャッシュから結果を構築
-      if (newIds.length === 0) {
-        const result: FavoritesMap = {};
-        for (const id of articleIds) {
-          const cacheKey = `${session.user.id}:${id}`;
-          result[id] = globalFavoritesCache.get(cacheKey) || false;
-        }
-        return { favorites: result };
-      }
+    // すでにフェッチ中のIDは除外
+    const idsToFetch = newIds.filter(id => !fetchingRef.current.has(id));
+    if (idsToFetch.length === 0) return;
 
-      // 新規記事のみAPIコール（100件ずつに分割）
+    // フェッチ中フラグを立てる
+    idsToFetch.forEach(id => fetchingRef.current.add(id));
+
+    try {
+      setIsLoading(true);
+
+      // 100件ずつに分割
       const BATCH_SIZE = 100;
       const batches: string[][] = [];
-
-      for (let i = 0; i < newIds.length; i += BATCH_SIZE) {
-        batches.push(newIds.slice(i, i + BATCH_SIZE));
+      for (let i = 0; i < idsToFetch.length; i += BATCH_SIZE) {
+        batches.push(idsToFetch.slice(i, i + BATCH_SIZE));
       }
 
       // 各バッチを並列実行
@@ -71,55 +66,55 @@ export function useFavoritesBatch(articleIds: string[]) {
         })
       );
 
-      // 新規取得分をグローバルキャッシュに保存
+      // グローバルキャッシュとステートを更新
+      const newFavorites: FavoritesMap = {};
       for (const response of responses) {
         for (const [articleId, isFavorited] of Object.entries(response.favorites)) {
-          globalFavoritesCache.set(`${userId}:${articleId}`, isFavorited as boolean);
+          const cacheKey = `${userId}:${articleId}`;
+          globalFavoritesCache.set(cacheKey, isFavorited as boolean);
+          newFavorites[articleId] = isFavorited as boolean;
         }
       }
 
-      // 現在要求されているIDの結果を構築
-      const result: FavoritesMap = {};
-      for (const id of articleIds) {
-        const cacheKey = `${userId}:${id}`;
-        result[id] = globalFavoritesCache.get(cacheKey) || false;
-      }
+      setFavorites(prev => ({ ...prev, ...newFavorites }));
+    } finally {
+      setIsLoading(false);
+      // フェッチ中フラグをクリア
+      idsToFetch.forEach(id => fetchingRef.current.delete(id));
+    }
+  }, [session?.user?.id]);
 
-      return { favorites: result };
-    },
-    enabled: !!session?.user?.id,
-    staleTime: 1000 * 60 * 5, // 5分間キャッシュ
-    gcTime: 1000 * 60 * 10, // 10分間メモリに保持
-    // 記事IDが変わっても自動的に再フェッチしない
-    structuralSharing: false,
-  });
-
-  // 記事IDが変更されたときに、既存データを更新
+  // 記事IDが変更されたときに、新規記事のみフェッチ
   useEffect(() => {
     if (!session?.user?.id || articleIds.length === 0) return;
 
-    // 現在のクエリデータを更新（キャッシュから構築）
     const userId = session.user.id;
-    const updatedFavorites: FavoritesMap = {};
-    let hasAllData = true;
+    const newIds: string[] = [];
+    const cachedFavorites: FavoritesMap = {};
 
+    // キャッシュ済みとフェッチが必要なIDを分離
     for (const id of articleIds) {
       const cacheKey = `${userId}:${id}`;
       if (globalFavoritesCache.has(cacheKey)) {
-        updatedFavorites[id] = globalFavoritesCache.get(cacheKey) || false;
+        cachedFavorites[id] = globalFavoritesCache.get(cacheKey) || false;
       } else {
-        hasAllData = false;
-        break;
+        newIds.push(id);
       }
     }
 
-    // すべてのデータがキャッシュにある場合は、クエリデータを更新
-    if (hasAllData && Object.keys(updatedFavorites).length > 0) {
-      queryClient.setQueryData(['favorites-batch', userId], {
-        favorites: updatedFavorites
-      });
+    // キャッシュ済みのデータを即座に反映
+    if (Object.keys(cachedFavorites).length > 0) {
+      setFavorites(prev => ({ ...prev, ...cachedFavorites }));
     }
-  }, [articleIds, session?.user?.id, queryClient]);
+
+    // 新規記事があればフェッチ
+    if (newIds.length > 0) {
+      console.log(`[Favorites] Fetching ${newIds.length} new articles`);
+      fetchNewFavorites(newIds);
+    } else {
+      console.log(`[Favorites] All ${articleIds.length} articles are cached`);
+    }
+  }, [articleIds, session?.user?.id, fetchNewFavorites]);
 
   // お気に入り追加ミューテーション
   const addFavorite = useMutation({
@@ -140,49 +135,21 @@ export function useFavoritesBatch(articleIds: string[]) {
     },
     onMutate: async (articleId) => {
       // Optimistic Update
-      await queryClient.cancelQueries({
-        queryKey: ['favorites-batch', session?.user?.id]
-      });
-
-      // グローバルキャッシュを更新
       if (session?.user?.id) {
-        globalFavoritesCache.set(`${session.user.id}:${articleId}`, true);
+        const cacheKey = `${session.user.id}:${articleId}`;
+        globalFavoritesCache.set(cacheKey, true);
+        setFavorites(prev => ({ ...prev, [articleId]: true }));
       }
 
-      const previousData = queryClient.getQueryData<FavoritesResponse>([
-        'favorites-batch',
-        session?.user?.id,
-      ]);
-
-      queryClient.setQueryData<FavoritesResponse>(
-        ['favorites-batch', session?.user?.id],
-        (old) => ({
-          favorites: {
-            ...old?.favorites,
-            [articleId]: true,
-          },
-        })
-      );
-
-      return { previousData, articleId };
+      return { articleId };
     },
-    onError: (_, articleId, context) => {
+    onError: (_, articleId) => {
       // エラー時はロールバック
       if (session?.user?.id) {
-        globalFavoritesCache.set(`${session.user.id}:${articleId}`, false);
+        const cacheKey = `${session.user.id}:${articleId}`;
+        globalFavoritesCache.set(cacheKey, false);
+        setFavorites(prev => ({ ...prev, [articleId]: false }));
       }
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          ['favorites-batch', session?.user?.id],
-          context.previousData
-        );
-      }
-    },
-    onSettled: () => {
-      // 最新データを再取得
-      queryClient.invalidateQueries({
-        queryKey: ['favorites-batch']
-      });
     },
   });
 
@@ -201,56 +168,28 @@ export function useFavoritesBatch(articleIds: string[]) {
     },
     onMutate: async (articleId) => {
       // Optimistic Update
-      await queryClient.cancelQueries({
-        queryKey: ['favorites-batch', session?.user?.id]
-      });
-
-      // グローバルキャッシュを更新
       if (session?.user?.id) {
-        globalFavoritesCache.set(`${session.user.id}:${articleId}`, false);
+        const cacheKey = `${session.user.id}:${articleId}`;
+        globalFavoritesCache.set(cacheKey, false);
+        setFavorites(prev => ({ ...prev, [articleId]: false }));
       }
 
-      const previousData = queryClient.getQueryData<FavoritesResponse>([
-        'favorites-batch',
-        session?.user?.id,
-      ]);
-
-      queryClient.setQueryData<FavoritesResponse>(
-        ['favorites-batch', session?.user?.id],
-        (old) => ({
-          favorites: {
-            ...old?.favorites,
-            [articleId]: false,
-          },
-        })
-      );
-
-      return { previousData, articleId };
+      return { articleId };
     },
-    onError: (_, articleId, context) => {
+    onError: (_, articleId) => {
       // エラー時はロールバック
       if (session?.user?.id) {
-        globalFavoritesCache.set(`${session.user.id}:${articleId}`, true);
+        const cacheKey = `${session.user.id}:${articleId}`;
+        globalFavoritesCache.set(cacheKey, true);
+        setFavorites(prev => ({ ...prev, [articleId]: true }));
       }
-      if (context?.previousData) {
-        queryClient.setQueryData(
-          ['favorites-batch', session?.user?.id],
-          context.previousData
-        );
-      }
-    },
-    onSettled: () => {
-      // 最新データを再取得
-      queryClient.invalidateQueries({
-        queryKey: ['favorites-batch']
-      });
     },
   });
 
   // お気に入り状態のトグル
   const toggleFavorite = useCallback(
     (articleId: string) => {
-      const isFavorited = data?.favorites[articleId] || false;
+      const isFavorited = favorites[articleId] || false;
 
       if (isFavorited) {
         removeFavorite.mutate(articleId);
@@ -258,21 +197,21 @@ export function useFavoritesBatch(articleIds: string[]) {
         addFavorite.mutate(articleId);
       }
     },
-    [data?.favorites, addFavorite, removeFavorite]
+    [favorites, addFavorite, removeFavorite]
   );
 
   // 特定記事のお気に入り状態を取得
   const isFavorited = useCallback(
     (articleId: string) => {
-      return data?.favorites[articleId] || false;
+      return favorites[articleId] || false;
     },
-    [data?.favorites]
+    [favorites]
   );
 
   return {
-    favorites: data?.favorites || {},
+    favorites,
     isLoading,
-    error,
+    error: null,
     toggleFavorite,
     isFavorited,
     addFavorite: addFavorite.mutate,
