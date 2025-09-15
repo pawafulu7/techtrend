@@ -1,3 +1,11 @@
+-- Note: CREATE INDEX CONCURRENTLY cannot be used inside Prisma migrations
+-- because Prisma runs migrations within transactions by default.
+-- If you need to create indexes without locking tables in production,
+-- consider one of the following approaches:
+-- 1. Run CREATE INDEX CONCURRENTLY manually via psql after deployment
+-- 2. Create separate single-statement migration files for each index
+-- 3. Use this migration for staging/development, and manual index creation for production
+
 -- CreateIndex for full-text search on Article title
 CREATE INDEX IF NOT EXISTS "idx_article_title_gin" ON "Article" USING gin(to_tsvector('english', "title"));
 
@@ -7,8 +15,8 @@ CREATE INDEX IF NOT EXISTS "idx_article_summary_gin" ON "Article" USING gin(to_t
 -- CreateIndex for Article category (partial index for non-null values)
 CREATE INDEX IF NOT EXISTS "idx_article_category" ON "Article"("category") WHERE "category" IS NOT NULL;
 
--- CreateIndex for _ArticleToTag join table (composite index)
-CREATE INDEX IF NOT EXISTS "idx_article_tag_join" ON "_ArticleToTag"("A", "B");
+-- Note: idx_article_tag_join on (A, B) is redundant as _ArticleToTag already has a primary key on (A, B)
+-- which automatically creates an index. Removed to avoid duplication.
 
--- Additional index for tag filtering performance
+-- Additional index for tag filtering performance (reverse order for different query patterns)
 CREATE INDEX IF NOT EXISTS "idx_article_tag_reverse" ON "_ArticleToTag"("B", "A");
