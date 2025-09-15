@@ -18,5 +18,5 @@ CREATE INDEX IF NOT EXISTS "idx_article_category" ON "Article"("category") WHERE
 -- Note: idx_article_tag_join on (A, B) is redundant as _ArticleToTag already has a primary key on (A, B)
 -- which automatically creates an index. Removed to avoid duplication.
 
--- Additional index for tag filtering performance (reverse order for different query patterns)
-CREATE INDEX IF NOT EXISTS "idx_article_tag_reverse" ON "_ArticleToTag"("B", "A");
+-- Note: idx_article_tag_reverse moved to a separate migration (20250915110438_add_article_tag_reverse_index)
+-- to enable CONCURRENTLY execution without transaction issues
