@@ -289,8 +289,9 @@ export async function waitForLoadingToDisappear(page: Page, timeout = 10000) {
   // SELECTORSから定義されたローディングインジケーターを使用
   const loadingIndicator = page.locator(SELECTORS.LOADING_INDICATOR);
   
-  // すべてのローディングインジケーターが非表示になるまで待つ
-  await expect(loadingIndicator).toBeHidden({ timeout });
+  // すべてのローディングインジケーターがDOM上から消えるまで待つ
+  // Playwrightのstrict modeでは単一要素でないとtoBeHiddenが失敗するため、件数で判定する
+  await expect(loadingIndicator).toHaveCount(0, { timeout });
 }
 
 /**

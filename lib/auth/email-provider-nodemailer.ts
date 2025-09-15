@@ -95,7 +95,7 @@ export interface SendVerificationRequestParams {
 // Create transporter based on environment
 function createTransporter() {
   // nodemailerを関数内で動的にインポート
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   let nodemailer: any;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports

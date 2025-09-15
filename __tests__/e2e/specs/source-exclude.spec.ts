@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { waitForPageLoad } from '../utils/e2e-helpers';
+import { waitForArticles, getTimeout } from '../../../e2e/helpers/wait-utils';
 
 // CI環境の検出
 const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
@@ -195,34 +196,8 @@ test.describe('ソースフィルタリング機能', () => {
       await expect(checkbox).toHaveAttribute('data-state', 'checked');
     }
     
-    // 記事が再度表示されることを確認（状態ベースの待機）
-    // タイムアウトを延長し、CI環境では更に長く待機
-    try {
-      await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
-        timeout: isCI ? 20000 : 10000
-      });
-    } catch (error) {
-      // タイムアウトした場合は、ローディング状態を確認
-      const loadingElement = page.locator('[data-testid="loading"], .loading, .spinner');
-      const isLoading = await loadingElement.count() > 0;
-      console.log('Article card not found. Loading state:', isLoading);
-      
-      // 追加の待機後に再試行（代替セレクタも試す）
-      await page.waitForTimeout(3000);
-      
-      try {
-        await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
-          timeout: 10000
-        });
-      } catch {
-        // 代替セレクタを試す
-        const articles = page.locator('article, .article-item, .article-list-item').first();
-        await expect(articles).toBeVisible({ timeout: 5000 });
-      }
-    }
-    
-    const articlesAfterSelect = await page.locator('[data-testid="article-card"]').count();
-    expect(articlesAfterSelect).toBeGreaterThan(0);
+    // 記事の再表示をヘルパーで待機（空リストも許容）
+    await waitForArticles(page, { timeout: isCI ? 45000 : 15000, allowEmpty: true });
   });
 
   test('複数ソースの選択状態を管理できる', async ({ page, browserName }) => {

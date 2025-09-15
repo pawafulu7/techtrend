@@ -6,19 +6,25 @@
 import { z } from 'zod';
 import logger from '@/lib/logger';
 
+// Helpers to coerce empty strings to undefined for optional vars
+const emptyToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
+const optionalUrl = z.preprocess(emptyToUndefined, z.string().url()).optional();
+const numericStringWithDefault = (def: string) =>
+  z.preprocess(emptyToUndefined, z.string().regex(/^\d+$/)).optional().default(def);
+
 // Environment variable schema
 const envSchema = z.object({
   // Database
-  DATABASE_URL: z.string().url().optional().default(''),
+  DATABASE_URL: optionalUrl,
   
   // Redis
   REDIS_URL: z.string().optional(),
   REDIS_HOST: z.string().optional().default('localhost'),
-  REDIS_PORT: z.string().regex(/^\d+$/).optional().default('6379'),
+  REDIS_PORT: numericStringWithDefault('6379'),
   REDIS_PASSWORD: z.string().optional(),
   
   // Authentication
-  NEXTAUTH_URL: z.string().url().optional(),
+  NEXTAUTH_URL: optionalUrl,
   NEXTAUTH_SECRET: z.string().min(32),
   
   // OAuth Providers (optional)
@@ -39,18 +45,18 @@ const envSchema = z.object({
   
   // Quality Control
   QUALITY_CHECK_ENABLED: z.enum(['true', 'false']).optional().default('false'),
-  QUALITY_MIN_SCORE: z.string().regex(/^\d+$/).optional().default('70'),
+  QUALITY_MIN_SCORE: numericStringWithDefault('70'),
   QUALITY_AUTO_FIX: z.enum(['true', 'false']).optional().default('false'),
-  MAX_REGENERATION_ATTEMPTS: z.string().regex(/^\d+$/).optional().default('3'),
+  MAX_REGENERATION_ATTEMPTS: numericStringWithDefault('3'),
   
   // Event Filtering
   EXCLUDE_EVENT_ARTICLES: z.enum(['true', 'false']).optional().default('false'),
-  MAX_ARTICLES_PER_COMPANY: z.string().regex(/^\d+$/).optional().default('10'),
+  MAX_ARTICLES_PER_COMPANY: numericStringWithDefault('10'),
   
   // Application
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.string().regex(/^\d+$/).optional().default('3000'),
-  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  PORT: numericStringWithDefault('3000'),
+  NEXT_PUBLIC_APP_URL: optionalUrl,
   
   // Logging
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional().default('info'),
@@ -144,13 +150,8 @@ export const config = {
     url: () => env.NODE_ENV === 'test' ? env.TEST_DATABASE_URL || env.DATABASE_URL : env.DATABASE_URL,
   },
   redis: {
-    // Prefer explicit REDIS_URL, then live host/port, then validated env defaults
+    // Build URL strictly from validated env to ensure test determinism
     url: () => {
-      const liveUrl = process.env.REDIS_URL;
-      if (liveUrl && liveUrl.length > 0) return liveUrl;
-      const liveHost = process.env.REDIS_HOST;
-      const livePort = process.env.REDIS_PORT;
-      if (liveHost && livePort) return `redis://${liveHost}:${livePort}`;
       const e = getEnv();
       return e.REDIS_URL || `redis://${e.REDIS_HOST}:${e.REDIS_PORT}`;
     },

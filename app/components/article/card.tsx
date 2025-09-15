@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { TrendingUp, ThumbsUp, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,12 +19,34 @@ import { CategoryClassifier } from '@/lib/services/category-classifier';
 export function ArticleCard({
   article,
   onArticleClick,
-  isRead = false,
+  isRead: initialIsRead = false,
   isFavorited,
   onToggleFavorite
 }: ArticleCardProps & { isRead?: boolean }) {
   const [votes, setVotes] = useState(article.userVotes || 0);
   const [hasVoted, setHasVoted] = useState(false);
+  const [isRead, setIsRead] = useState(initialIsRead);
+  const router = useRouter();
+
+  // Listen for read status changes
+  useEffect(() => {
+    const handleReadStatusChange = (event: CustomEvent) => {
+      if (event.detail.articleId === article.id) {
+        setIsRead(event.detail.isRead);
+      }
+    };
+
+    window.addEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+
+    return () => {
+      window.removeEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+    };
+  }, [article.id]);
+
+  // Update isRead when prop changes
+  useEffect(() => {
+    setIsRead(initialIsRead);
+  }, [initialIsRead]);
   
   // サムネイル表示判定ロジック
   const shouldShowThumbnail = (): boolean => {
@@ -59,21 +81,27 @@ export function ArticleCard({
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
-    // 親コンポーネントのコールバックを実行
-    onArticleClick?.();
+
+    // 親コンポーネントのコールバックを実行（スクロール位置保存）
+    if (onArticleClick) {
+      onArticleClick(article.id);
+    }
+
     // URLパラメータを保持して記事詳細ページに遷移
     const params = new URLSearchParams(searchParams.toString());
-    
+
     // returningパラメータは除外（記事詳細からの戻りを示すパラメータなので）
     params.delete('returning');
-    
+
     // 記事一覧に戻る時用にreturningパラメータを追加
     params.set('returning', '1');
-    
+
     // 現在のフィルター状態を保持したURLを生成
     const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
-    window.location.href = articleUrl;
+
+    // 遷移を実行
+    router.push(articleUrl);
   };
 
   const handleVote = async (e: React.MouseEvent) => {
@@ -96,6 +124,7 @@ export function ArticleCard({
 
   return (
     <Card 
+      id={`article-${article.id}`}
       data-testid="article-card"
       data-article-id={article.id}
       onClick={handleCardClick}

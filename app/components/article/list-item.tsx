@@ -1,6 +1,7 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Clock, TrendingUp, ExternalLink, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,39 +11,67 @@ import type { ArticleListItemProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/components/article/favorite-button';
 
-export function ArticleListItem({ 
-  article, 
-  onTagClick, 
+export function ArticleListItem({
+  article,
+  onTagClick,
   onArticleClick,
-  isRead = true 
+  isRead: initialIsRead = true
 }: ArticleListItemProps & { isRead?: boolean }) {
+  const [isRead, setIsRead] = useState(initialIsRead);
+  const router = useRouter();
+
+  // Listen for read status changes
+  useEffect(() => {
+    const handleReadStatusChange = (event: CustomEvent) => {
+      if (event.detail.articleId === article.id) {
+        setIsRead(event.detail.isRead);
+      }
+    };
+
+    window.addEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+
+    return () => {
+      window.removeEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+    };
+  }, [article.id]);
+
+  // Update isRead when prop changes
+  useEffect(() => {
+    setIsRead(initialIsRead);
+  }, [initialIsRead]);
   const searchParams = useSearchParams();
   const sourceColor = getSourceColor(article.source.name);
   const publishedDate = new Date(article.publishedAt);
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
 
-  const handleClick = () => {
-    // 親コンポーネントのコールバックを実行
-    onArticleClick?.();
-    
+  const handleClick = (_e: React.MouseEvent) => {
+    // 親コンポーネントのスクロール位置保存処理を呼び出し
+    if (onArticleClick) {
+      onArticleClick(article.id);
+    }
+
     // URLパラメータを保持して記事詳細ページに遷移
     const params = new URLSearchParams(searchParams.toString());
-    
+
     // returningパラメータは除外（記事詳細からの戻りを示すパラメータなので）
     params.delete('returning');
-    
+
     // 記事一覧に戻る時用にreturningパラメータを追加
     params.set('returning', '1');
-    
+
     // 現在のフィルター状態を保持したURLを生成
     const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
-    window.location.href = articleUrl;
+
+    // 遷移を実行
+    router.push(articleUrl);
   };
 
   return (
     <div 
+      id={`article-${article.id}`}
+      data-article-id={article.id}
       onClick={handleClick}
       className={cn(
         "group flex items-center justify-between gap-4 p-3 rounded-lg cursor-pointer",

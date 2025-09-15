@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       cacheKey,
       async () => {
         
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         let articles: any[] = [];
         let totalCount = 0;
 

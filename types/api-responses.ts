@@ -3,8 +3,8 @@
  * 共通のAPIレスポンス型定義
  */
 
-import type { User } from '@prisma/client';
-import type { Article, Source, Tag, ArticleWithRelations as ArticleWithRelationsBase } from './prisma-override';
+import type { User as _User } from '@prisma/client';
+import type { Article as _Article, Source, Tag, ArticleWithRelations as ArticleWithRelationsBase } from './prisma-override';
 
 // 基本的なAPIレスポンス
 export interface ApiResponse<T = any> {

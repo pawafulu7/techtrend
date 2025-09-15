@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForTagFilter, waitForArticles } from './helpers/wait-utils';
 
 // 環境別タイムアウト値
 const timeout = process.env.CI ? 30000 : 15000;
@@ -7,11 +8,11 @@ test.describe('タグフィルター機能', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // 初期読み込み待機（タイムアウトを延長）
-    await page.waitForSelector('[data-testid="article-card"]', { timeout });
+    await waitForArticles(page, { timeout, allowEmpty: true });
   });
 
   test('タグフィルタードロップダウンが表示される', async ({ page }) => {
-    // data-testidを使用したセレクタに変更
+    await waitForTagFilter(page);
     const tagFilterButton = page.getByTestId('tag-filter-button');
     await expect(tagFilterButton).toBeVisible({ timeout });
   });

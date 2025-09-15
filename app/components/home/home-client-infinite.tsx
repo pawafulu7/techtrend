@@ -7,6 +7,7 @@ import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
+import { buildScrollStorageKey } from '@/lib/utils/scroll';
 import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { RecommendationSectionInline } from '@/components/recommendation/recommendation-section-inline';
@@ -22,25 +23,94 @@ interface HomeClientInfiniteProps {
   initialSourceIds?: string[];
 }
 
-export function HomeClientInfinite({ 
-  viewMode, 
-  sources: _sources, 
+export function HomeClientInfinite({
+  viewMode,
+  sources: _sources,
   tags: _tags,
   enableInfiniteScroll = true,
   initialSortBy,
   initialSourceIds: _initialSourceIds
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // 参照は保持するが使用しない
   const [previousCategory, setPreviousCategory] = useState<string | null>(null);
   const [isCategoryChanging, setIsCategoryChanging] = useState(false);
+  const currentScrollPositionRef = useRef<number>(0); // 現在のスクロール位置を常に追跡
   
   // 記事詳細から戻ってきたかどうかをチェック
   const isReturningFromArticle = searchParams.has('returning');
-  
+
+  // スクロール位置を常に追跡
+  useEffect(() => {
+    const handleScroll = (_e?: Event) => {
+      // まずwindowのスクロール位置を確認
+      const windowScrollY = window.scrollY || window.pageYOffset || 0;
+
+      // 次にスクロールコンテナの位置を確認
+      const container = scrollContainerRef.current;
+      const containerScrollY = container ? container.scrollTop : 0;
+
+      // 実際のスクロール要素を特定（overflow-y-autoを持つ要素）
+      const mainContainer = document.getElementById('main-scroll-container');
+      const mainScrollY = mainContainer ? mainContainer.scrollTop : 0;
+
+      // overflow-y-autoを持つすべての要素をチェック
+      const scrollableElements = document.querySelectorAll('.overflow-y-auto');
+      let maxScroll = 0;
+      scrollableElements.forEach((el) => {
+        const scrollTop = (el as HTMLElement).scrollTop;
+        if (scrollTop > maxScroll) {
+          maxScroll = scrollTop;
+        }
+      });
+
+      // 最も大きい値を使用（実際にスクロールしている要素を検出）
+      const scrollY = Math.max(windowScrollY, containerScrollY, mainScrollY, maxScroll);
+
+      currentScrollPositionRef.current = scrollY;
+    };
+
+    // 初期位置を記録
+    handleScroll();
+
+    // 複数の要素にリスナーを追加
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    // スクロールコンテナにもリスナーを追加
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll, { passive: true });
+    }
+
+    // main-scroll-containerにもリスナーを追加
+    const mainContainer = document.getElementById('main-scroll-container');
+    if (mainContainer) {
+      mainContainer.addEventListener('scroll', handleScroll, { passive: true });
+    }
+
+    // overflow-y-autoを持つすべての要素にリスナーを追加
+    const scrollableElements = document.querySelectorAll('.overflow-y-auto');
+    scrollableElements.forEach((el) => {
+      el.addEventListener('scroll', handleScroll, { passive: true });
+    });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+      if (mainContainer) {
+        mainContainer.removeEventListener('scroll', handleScroll);
+      }
+      scrollableElements.forEach((el) => {
+        el.removeEventListener('scroll', handleScroll);
+      });
+    };
+  }, []);
+
   // カテゴリの変更を検出
   const currentCategory = searchParams.get('category') || 'all';
-  
+
   useEffect(() => {
     if (previousCategory !== null && previousCategory !== currentCategory) {
       setIsCategoryChanging(true);
@@ -88,9 +158,14 @@ export function HomeClientInfinite({
       // Cookieの値は無視して、何も設定しない（全選択として扱う）
       // params.sourcesを設定しない = 全記事を表示
     }
-    
+
+    // 記事詳細から戻ってきた場合のフラグを追加
+    if (isReturningFromArticle) {
+      params.returning = 'true';
+    }
+
     return params;
-  }, [searchParams, initialSortBy]);
+  }, [searchParams, initialSortBy, isReturningFromArticle]);
 
   const {
     data,
@@ -100,20 +175,30 @@ export function HomeClientInfinite({
     isLoading,
     isError,
     error,
-  } = useInfiniteArticles(filters);
+  } = useInfiniteArticles({
+    ...filters,
+    includeUserData: true // Include favorites and read status in API response
+  });
 
-  // ページごとの記事を1つの配列にフラット化
+  // ページごとの記事を1つの配列にフラット化（重複除去付き）
   const allArticles = useMemo(() => {
     if (!data) return [];
-    return data.pages.flatMap(page => page.data.items);
+    // flatMapで全ページの記事を取得
+    const articles = data.pages.flatMap(page => page.data.items);
+
+    // 重複除去: 同じIDの記事は最初のものだけを保持
+    const uniqueArticles = articles.filter((article, index, self) =>
+      index === self.findIndex(a => a.id === article.id)
+    );
+
+    return uniqueArticles;
   }, [data]);
 
   // 合計記事数
   const totalCount = data?.pages[0]?.data.total || 0;
 
   // スクロール位置復元フックを使用（記事詳細から戻った時のみ有効）
-  const { 
-    saveScrollPosition, 
+  const {
     isRestoring,
     currentPage,
     targetPages,
@@ -130,9 +215,21 @@ export function HomeClientInfinite({
   );
 
   // 記事クリック時のコールバック
-  const handleArticleClick = useCallback(() => {
-    saveScrollPosition();
-  }, [saveScrollPosition]);
+  const handleArticleClick = useCallback((articleId?: string) => {
+    // 追跡していたスクロール位置を保存
+    const scrollY = currentScrollPositionRef.current;
+
+    if (scrollY > 50) {
+      const scrollKey = buildScrollStorageKey();
+      sessionStorage.setItem(scrollKey, JSON.stringify({
+        scrollY: scrollY,
+        timestamp: Date.now(),
+        articleId: articleId || null
+      }));
+    } else {
+      // 小さいスクロール位置は保存しない
+    }
+  }, []);
 
   if (isError) {
     return (

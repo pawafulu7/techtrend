@@ -35,13 +35,31 @@ export async function GET(request: Request) {
         summary: true,
         publishedAt: true,
         thumbnail: true,
+        source: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          }
+        }
       },
     } : includeRelations ? {
       include: {
         source: true,
         tags: true,
       },
-    } : true;
+    } : {
+      include: {
+        source: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            url: true,
+          }
+        }
+      }
+    };
 
     const [views, total] = await Promise.all([
       prisma.articleView.findMany({
@@ -132,15 +150,25 @@ export async function DELETE(_request: Request) {
 // POST: 記事閲覧を記録
 export async function POST(request: Request) {
   try {
-    
+
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       // 未ログインユーザーの場合は記録しない
       return NextResponse.json({ message: 'View not recorded (not logged in)' });
     }
 
-    const { articleId } = await request.json();
+    let articleId: string;
+    try {
+      const body = await request.json();
+      articleId = body.articleId;
+    } catch (e) {
+      logger.error({ err: e as Error }, 'Failed to parse request body');
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      );
+    }
 
     if (!articleId) {
       return NextResponse.json(
@@ -186,16 +214,47 @@ export async function POST(request: Request) {
       });
     }
 
-    // 新規閲覧記録を作成
-    const view = await prisma.articleView.create({
-      data: {
-        userId: session.user.id,
-        articleId,
-        viewedAt: new Date(),  // 明示的に設定
-        isRead: true,
-        readAt: new Date()
-      },
-    });
+    // 新規閲覧記録を作成（ユニーク制約エラーの処理を追加）
+    let view;
+    try {
+      view = await prisma.articleView.create({
+        data: {
+          userId: session.user.id,
+          articleId,
+          viewedAt: new Date(),  // 明示的に設定
+          isRead: true,
+          readAt: new Date()
+        },
+      });
+    } catch (createError: any) {
+      // ユニーク制約違反の場合は既存のレコードを更新
+      if (createError?.code === 'P2002') {
+        logger.info('Unique constraint violation, updating existing record');
+        const existingView = await prisma.articleView.findFirst({
+          where: {
+            userId: session.user.id,
+            articleId,
+          },
+        });
+
+        if (existingView) {
+          view = await prisma.articleView.update({
+            where: { id: existingView.id },
+            data: {
+              viewedAt: new Date(),
+              isRead: true,
+              readAt: existingView.readAt || new Date()
+            },
+          });
+        } else {
+          // 既存レコードが見つからない場合はエラーを再throw
+          throw createError;
+        }
+      } else {
+        // ユニーク制約以外のエラーは再throw
+        throw createError;
+      }
+    }
 
     // クリーンアップ処理: 古い履歴と超過分を削除
     // 90日以上前の履歴を削除

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
 import { RedisCache } from '@/lib/cache';
@@ -30,6 +30,9 @@ interface LightweightArticle {
   userVotes: number;
   createdAt: Date | string;
   updatedAt: Date | string;
+  // User-specific data (when includeUserData=true)
+  isFavorited?: boolean;
+  isRead?: boolean;
 }
 
 // Initialize Redis cache with 30 minutes TTL for lightweight articles
@@ -68,6 +71,7 @@ export async function GET(request: NextRequest) {
     const dateRange = searchParams.get('dateRange');
     const readFilter = searchParams.get('readFilter');
     const category = searchParams.get('category');
+    const includeUserData = searchParams.get('includeUserData') === 'true';
 
     // Generate cache key
     const normalizedSearch = search ? 
@@ -80,8 +84,8 @@ export async function GET(request: NextRequest) {
       sources.split(',').filter(id => id.trim()).sort().join(',') : 
       sourceId || 'all';
     
-    // Get session only when readFilter requires user context
-    const shouldUseUserContext = readFilter === 'read' || readFilter === 'unread';
+    // Get session when readFilter requires user context or includeUserData is true
+    const shouldUseUserContext = readFilter === 'read' || readFilter === 'unread' || includeUserData;
     const session = shouldUseUserContext ? await auth() : null;
     const userId = session?.user?.id;
 
@@ -102,13 +106,14 @@ export async function GET(request: NextRequest) {
         dateRange: dateRange || 'all',
         readFilter: readFilter || 'all',
         userId: userCtxForKey,
-        category: category || 'all'
+        category: category || 'all',
+        includeUserData: includeUserData ? 'true' : 'false'
       }
     });
 
-    // Check cache first
-    const cachedResult = await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
-    
+    // Check cache first - SKIP CACHE when includeUserData is true to always get fresh data
+    const cachedResult = includeUserData ? null : await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
+
     let result;
     if (cachedResult) {
       cacheStatus = 'HIT';
@@ -277,13 +282,54 @@ export async function GET(request: NextRequest) {
         take: limit,
       });
 
-      // Normalize dates to ISO strings for consistency
-      const normalizedArticles = articles.map(article => ({
-        ...article,
-        publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
-        createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
-        updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
-      }));
+      // Fetch user-specific data if requested
+      const favoritesMap: Map<string, boolean> = new Map();
+      const readStatusMap: Map<string, boolean> = new Map();
+
+      if (includeUserData && userId) {
+        const articleIds = articles.map(a => a.id);
+
+        // Fetch favorites and read status in parallel
+        const [favorites, articleViews] = await Promise.all([
+          prisma.favorite.findMany({
+            where: {
+              userId: userId,
+              articleId: { in: articleIds }
+            },
+            select: { articleId: true }
+          }),
+          prisma.articleView.findMany({
+            where: {
+              userId: userId,
+              articleId: { in: articleIds },
+              isRead: true
+            },
+            select: { articleId: true }
+          })
+        ]);
+
+        // Create maps for O(1) lookup
+        favorites.forEach(f => favoritesMap.set(f.articleId, true));
+        articleViews.forEach(v => readStatusMap.set(v.articleId, true));
+      }
+
+      // Normalize dates to ISO strings for consistency and add user data
+      const normalizedArticles = articles.map(article => {
+        const normalized: LightweightArticle = {
+          ...article,
+          publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
+          createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
+          updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
+        };
+
+        // Add user-specific data if requested
+        if (includeUserData && userId) {
+          normalized.isFavorited = favoritesMap.get(article.id) || false;
+          normalized.isRead = readStatusMap.get(article.id) || false;
+        }
+
+        return normalized;
+      });
 
       // Return the data to be cached
       result = {
@@ -294,8 +340,10 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       };
       
-      // Save to cache
-      await cache.set(cacheKey, result);
+      // Save to cache - SKIP when includeUserData is true
+      if (!includeUserData) {
+        await cache.set(cacheKey, result);
+      }
     }
     
     // Calculate response time
@@ -307,7 +355,8 @@ export async function GET(request: NextRequest) {
       data: result,
       meta: {
         lightweight: true,
-        info: 'This endpoint returns lightweight article data without relations for better performance'
+        info: 'This endpoint returns lightweight article data without relations for better performance',
+        userDataIncluded: includeUserData && userId ? true : false
       }
     } as ApiResponse<PaginatedResponse<LightweightArticle>>);
     

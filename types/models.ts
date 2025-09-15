@@ -38,6 +38,13 @@ export type ArticleWithDetails = Prisma.ArticleGetPayload<{
   };
 }>;
 
+// ユーザー固有データを含む記事型（無限スクロール用）
+export type ArticleWithUserData = ArticleWithRelations & {
+  isFavorited?: boolean;
+  isRead?: boolean;
+  onToggleFavorite?: () => void;
+};
+
 // CreateとUpdate用の入力型
 export type ArticleCreateInput = Prisma.ArticleCreateInput;
 export type ArticleUpdateInput = Prisma.ArticleUpdateInput;

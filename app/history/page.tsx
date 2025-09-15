@@ -58,7 +58,8 @@ export default function HistoryPage() {
       if (isMobile) {
         params.set('lightweight', 'true');
       }
-      // includeRelationsはデフォルトでfalseなので設定不要
+      // sourceリレーションを含める（表示に必要）
+      params.set('includeRelations', 'true');
 
       const response = await fetch(`/api/article-views?${params.toString()}`);
 

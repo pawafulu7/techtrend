@@ -10,6 +10,7 @@ const prismaMock = {
   article: {
     findUnique: jest.fn(),
     findMany: jest.fn(),
+    count: jest.fn(),
   },
   articleView: {
     findMany: jest.fn(),

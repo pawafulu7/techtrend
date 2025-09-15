@@ -1,5 +1,5 @@
 // コンポーネント関連の型定義
-import { ArticleWithRelations, SourceWithCount, TagWithCount } from './models';
+import { ArticleWithRelations, ArticleWithUserData, SourceWithCount, TagWithCount } from './models';
 
 // 表示モード
 export type ViewMode = 'card' | 'list';
@@ -10,20 +10,20 @@ export interface ArticleCardProps {
   showSource?: boolean;
   showTags?: boolean;
   onTagClick?: (tagName: string) => void;
-  onArticleClick?: () => void;
+  onArticleClick?: (articleId?: string) => void;
   isFavorited?: boolean;
   onToggleFavorite?: () => void;
 }
 
 // 記事リスト
 export interface ArticleListProps {
-  articles: ArticleWithRelations[];
+  articles: ArticleWithUserData[];
   viewMode?: ViewMode; // 追加
   loading?: boolean;
   error?: string;
   onLoadMore?: () => void;
   hasMore?: boolean;
-  onArticleClick?: () => void;
+  onArticleClick?: (articleId?: string) => void;
   currentFilters?: Record<string, string>;
 }
 
@@ -34,7 +34,7 @@ export interface ArticleListItemProps {
   articleIndex?: number;
   totalArticleCount?: number;
   currentFilters?: Record<string, string>;
-  onArticleClick?: () => void;
+  onArticleClick?: (articleId?: string) => void;
 }
 
 // 表示モード切り替えボタン

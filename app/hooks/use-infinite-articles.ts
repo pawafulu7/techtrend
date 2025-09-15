@@ -11,6 +11,7 @@ interface ArticleFilters {
   readFilter?: string;
   lightweight?: boolean;  // Add lightweight mode flag
   includeRelations?: boolean;  // Add relations flag
+  includeUserData?: boolean;  // Add user data flag for favorites and read status
   [key: string]: string | boolean | undefined;
 }
 
@@ -69,49 +70,71 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   }, [filterKey, handleFilterChange]);
   
   // 既読状態変更ハンドラ（最適化版）
-  const handleReadStatusChanged = useCallback(() => {
-    // 既読フィルターが有効な場合のみ再取得
-    if (normalizedFilters.readFilter) {
-      // 部分的な更新のみ実施（全体再取得を避ける）
-      queryClient.setQueryData<InfiniteArticlesData>(['infinite-articles', filterKey], (oldData) => {
+  const handleReadStatusChanged = useCallback((event: Event) => {
+    const customEvent = event as CustomEvent;
+    const { articleId, isRead } = customEvent.detail;
+
+    // Debug log removed
+
+    // すべての関連するキャッシュを更新
+    const cacheKeys = queryClient.getQueryCache().findAll({
+      queryKey: ['infinite-articles'],
+      exact: false
+    });
+
+    // Debug log removed
+
+    let _articleFound = false;
+    cacheKeys.forEach((query) => {
+      queryClient.setQueryData<InfiniteArticlesData>(query.queryKey, (oldData) => {
         if (oldData?.pages) {
-          // 既読状態のみ更新（optimistic update）
-          return {
+          const newData = {
             ...oldData,
             pages: oldData.pages.map((page: ArticlesResponse) => ({
               ...page,
               data: {
                 ...page.data,
-                items: page.data.items.map((item: ArticleWithRelations) => ({
-                  ...item,
-                  // 既読状態を更新（楽観的更新）
-                  isRead: true,
-                  readAt: new Date().toISOString()
-                }))
+                items: page.data.items.map((item: ArticleWithRelations) => {
+                  if (item.id === articleId) {
+                    _articleFound = true;
+                    // 該当記事の既読状態を更新
+                    return {
+                      ...item,
+                      isRead: isRead
+                      // Note: readAt is not part of the API response, so we don't update it
+                    } as typeof item;
+                  }
+                  return item;
+                })
               }
             }))
           };
+          return newData;
         }
         return oldData;
       });
-      
-      // バックグラウンドで実際のデータを取得
-      queryClient.invalidateQueries({ 
+    });
+
+    // Debug log removed
+
+    // 既読フィルターが有効な場合のみ再取得
+    if (normalizedFilters.readFilter) {
+      queryClient.invalidateQueries({
         queryKey: ['infinite-articles', filterKey],
-        refetchType: 'active' // アクティブなクエリのみ再取得
+        refetchType: 'active'
       });
     }
-    
+
     // 既読状態のキャッシュも無効化
     queryClient.invalidateQueries({ queryKey: ['read-status'] });
   }, [normalizedFilters.readFilter, filterKey, queryClient]);
   
   // 既読状態が変更されたときに記事リストを再取得
   useEffect(() => {
-    window.addEventListener('articles-read-status-changed', handleReadStatusChanged);
-    
+    window.addEventListener('article-read-status-changed', handleReadStatusChanged as EventListener);
+
     return () => {
-      window.removeEventListener('articles-read-status-changed', handleReadStatusChanged);
+      window.removeEventListener('article-read-status-changed', handleReadStatusChanged as EventListener);
     };
   }, [handleReadStatusChanged]);
   
@@ -147,24 +170,36 @@ export function useInfiniteArticles(filters: ArticleFilters) {
         searchParams.set('includeRelations', 'true');
       }
 
+      // includeUserData を常に設定（既読状態とお気に入り状態を取得）
+      // ユーザーがログインしている場合のみAPIで処理される
+      searchParams.set('includeUserData', 'true');
+
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
+
+      // Debug log removed
+
       const response = await fetch(`${endpoint}?${searchParams.toString()}`, { signal });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch articles: ${response.status} ${response.statusText}`);
       }
-      
-      return response.json();
+
+      const data = await response.json();
+
+      // Debug log removed
+
+      return data;
     },
     getNextPageParam: (lastPage) => {
       const { page, totalPages } = lastPage.data;
       return page < totalPages ? page + 1 : undefined;
     },
     initialPageParam: 1,
-    staleTime: 1000 * 60 * 5, // 5分間キャッシュ（Firefox互換性改善）
+    staleTime: normalizedFilters.returning ? 0 : 1000 * 60 * 1, // 記事詳細から戻った時のみ即座に再取得、通常は1分間キャッシュ
     gcTime: 1000 * 60 * 10, // 10分間メモリに保持（データ転送削減）
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: false, // 通常はfalse（パフォーマンスのため）
+    refetchOnMount: normalizedFilters.returning ? 'always' : false, // 記事詳細から戻った時のみ再取得
   });
   
   return infiniteQuery;

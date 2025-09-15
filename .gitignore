@@ -75,6 +75,9 @@ docs/
 data/
 reports/
 
+# jest-dom snapshot output (should not be committed)
+.jest-dom-partial.json
+
 # test and temporary files
 # More specific patterns to avoid excluding legitimate test files
 scripts/test-temp-*.ts

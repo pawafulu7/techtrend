@@ -2,21 +2,12 @@
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "emailVerified" TIMESTAMP(3);
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "password" TEXT;
 
--- Create VerificationToken table if it doesn't exist
 CREATE TABLE IF NOT EXISTS "VerificationToken" (
     "identifier" TEXT NOT NULL,
     "token" TEXT NOT NULL,
     "expires" TIMESTAMP(3) NOT NULL
 );
 
--- Add unique constraints if they don't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'VerificationToken_token_key') THEN
-        ALTER TABLE "VerificationToken" ADD CONSTRAINT "VerificationToken_token_key" UNIQUE ("token");
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'VerificationToken_identifier_token_key') THEN
-        ALTER TABLE "VerificationToken" ADD CONSTRAINT "VerificationToken_identifier_token_key" UNIQUE ("identifier", "token");
-    END IF;
-END $$;
+-- Note: Unique constraints for VerificationToken were created in the baseline
+-- migration (20250830000000_initial_baseline). We intentionally do not recreate
+-- them here to avoid duplicate constraint errors when resetting/applying.
