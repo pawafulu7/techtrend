@@ -106,7 +106,10 @@
     "docker:clean": "docker compose -f docker-compose.app.yml down -v",
     "docker:restart": "docker compose -f docker-compose.app.yml restart app",
     "docker:logs": "docker compose -f docker-compose.app.yml logs -f app",
-    "docker:ps": "docker compose -f docker-compose.app.yml ps"
+    "docker:ps": "docker compose -f docker-compose.app.yml ps",
+    "test:db:reset": "tsx scripts/test/reset-test-db.ts",
+    "test:db:reset:seed": "tsx scripts/test/reset-test-db.ts --seed",
+    "test:db:migrate": "DATABASE_URL=\"${TEST_DATABASE_URL:-postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test}\" npx prisma migrate deploy"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
