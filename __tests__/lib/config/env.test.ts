@@ -44,12 +44,13 @@ describe('Environment Configuration', () => {
 
     it('provides defaults for optional variables', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
-      
+      // REDIS_PORTを明示的に削除してデフォルト値をテスト
+      delete process.env.REDIS_PORT;
+
       const result = getEnv();
       expect(result.REDIS_HOST).toBe('localhost');
-      // CI環境とローカル環境で異なるデフォルトポートが設定される
-      const expectedRedisPort = process.env.CI ? '6379' : '6380';
-      expect(result.REDIS_PORT).toBe(expectedRedisPort);
+      // デフォルトポートは6379
+      expect(result.REDIS_PORT).toBe('6379');
       expect(result.ENABLE_CACHE).toBe('true');
       // LOG_LEVELはテスト環境設定の影響を受ける可能性があるためスキップ
       // expect(result.LOG_LEVEL).toBe('info');
@@ -59,7 +60,8 @@ describe('Environment Configuration', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
       process.env.DATABASE_URL = 'not-a-valid-url';
       process.env.NODE_ENV = 'production';
-      
+
+      // production環境では無効なURLでエラーを投げる
       expect(() => getEnv()).toThrow('Environment validation failed');
     });
 
@@ -67,15 +69,17 @@ describe('Environment Configuration', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
       process.env.PORT = 'not-a-number';
       process.env.NODE_ENV = 'production';
-      
+
+      // production環境では無効なPORT番号でエラーを投げる
       expect(() => getEnv()).toThrow('Environment validation failed');
     });
 
     it('validates enum values', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
       process.env.NODE_ENV = 'invalid-env';
-      
-      expect(() => getEnv()).toThrow();
+
+      // 無効なNODE_ENVでエラーを投げる
+      expect(() => getEnv()).toThrow('Environment validation failed');
     });
 
     it('handles development mode with warnings', () => {
