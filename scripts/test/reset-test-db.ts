@@ -14,16 +14,60 @@ import path from 'path';
 // .env.testファイルを読み込み
 dotenv.config({ path: path.resolve(__dirname, '../../.env.test') });
 
+// データベースURL処理ユーティリティ
+function parseDbUrl(url: string) {
+  try {
+    const u = new URL(url);
+    return {
+      dbName: u.pathname.replace(/^\//, '') || 'techtrend_test',
+      dbUser: u.username || 'postgres',
+      dbPass: u.password || '',
+      dbHost: u.hostname || 'localhost',
+      dbPort: u.port || '5432'
+    };
+  } catch {
+    // URLパースエラーの場合はデフォルト値を返す
+    return {
+      dbName: 'techtrend_test',
+      dbUser: 'postgres',
+      dbPass: 'postgres_dev_password',
+      dbHost: 'localhost',
+      dbPort: '5433'
+    };
+  }
+}
+
+// URLのパスワードをマスクする関数
+function maskUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.password) {
+      u.password = '****';
+    }
+    return u.toString();
+  } catch {
+    // URLパースに失敗した場合は正規表現でマスク
+    return url.replace(/(postgres(?:ql)?:\/\/[^:]+:)[^@]+@/i, '$1****@');
+  }
+}
+
+const TEST_DB_URL = process.env.TEST_DATABASE_URL ||
+                    process.env.TEST_DATABASE_URL_HOST ||
+                    'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
+
+const { dbName, dbUser, dbPass } = parseDbUrl(TEST_DB_URL);
+
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: process.env.TEST_DATABASE_URL || process.env.TEST_DATABASE_URL_HOST || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test'
+      url: TEST_DB_URL
     }
   }
 });
 
 async function resetTestDatabase() {
   console.log('🔄 テスト環境データベースのリセットを開始します...');
+  console.log(`📍 接続先: ${maskUrl(TEST_DB_URL)}`);
 
   try {
     // 1. まず既存の接続を切断
@@ -49,9 +93,12 @@ async function resetTestDatabase() {
     `;
 
     // PostgreSQLに直接接続してクリーンアップを実行
-    const dbUrl = process.env.TEST_DATABASE_URL || process.env.TEST_DATABASE_URL_HOST || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
-    execSync(`echo '${cleanupSQL}' | docker exec -i techtrend-postgres psql -U postgres -d techtrend_test`, {
-      stdio: 'inherit'
+    execSync(`echo '${cleanupSQL}' | docker exec -i techtrend-postgres psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
+      stdio: 'pipe', // NOTICEメッセージを抑制
+      env: {
+        ...process.env,
+        PGPASSWORD: dbPass
+      }
     });
 
     console.log('✅ クリーンアップ完了');
@@ -71,8 +118,12 @@ async function resetTestDatabase() {
       END \\$\\$;
     `;
 
-    execSync(`echo "${dropAllTablesSQL}" | docker exec -i techtrend-postgres psql -U postgres -d techtrend_test`, {
-      stdio: 'inherit'
+    execSync(`echo "${dropAllTablesSQL}" | docker exec -i techtrend-postgres psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        PGPASSWORD: dbPass
+      }
     });
 
     console.log('✅ テーブル削除完了');
@@ -80,12 +131,11 @@ async function resetTestDatabase() {
     // 4. マイグレーションを適用
     console.log('🔄 マイグレーションを適用中...');
 
-    const testDbUrl = process.env.TEST_DATABASE_URL || process.env.TEST_DATABASE_URL_HOST || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
-    execSync(`DATABASE_URL="${testDbUrl}" npx prisma migrate deploy`, {
+    execSync(`DATABASE_URL="${TEST_DB_URL}" npx prisma migrate deploy`, {
       stdio: 'inherit',
       env: {
         ...process.env,
-        DATABASE_URL: testDbUrl
+        DATABASE_URL: TEST_DB_URL
       }
     });
 
@@ -94,11 +144,11 @@ async function resetTestDatabase() {
     // 5. テスト用シードデータを投入（オプション）
     if (process.argv.includes('--seed')) {
       console.log('🌱 テスト用シードデータを投入中...');
-      execSync(`DATABASE_URL="${testDbUrl}" npx tsx prisma/seed-test.ts`, {
+      execSync(`DATABASE_URL="${TEST_DB_URL}" npx tsx prisma/seed-test.ts`, {
         stdio: 'inherit',
         env: {
           ...process.env,
-          DATABASE_URL: testDbUrl
+          DATABASE_URL: TEST_DB_URL
         }
       });
       console.log('✅ シードデータ投入完了');

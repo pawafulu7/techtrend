@@ -17,37 +17,96 @@ try {
   // .env.testがない場合は通常の.envを使用
 }
 
+// データベースURL処理ユーティリティ
+function parseDbUrl(url: string) {
+  try {
+    const u = new URL(url);
+    return {
+      dbName: u.pathname.replace(/^\//, '') || 'techtrend_test',
+      dbUser: u.username || 'postgres',
+      dbPass: u.password || '',
+      dbHost: u.hostname || 'localhost',
+      dbPort: u.port || '5432'
+    };
+  } catch {
+    // URLパースエラーの場合はデフォルト値を返す
+    return {
+      dbName: 'techtrend_test',
+      dbUser: 'postgres',
+      dbPass: 'postgres_dev_password',
+      dbHost: 'localhost',
+      dbPort: '5434'
+    };
+  }
+}
+
+// URLのパスワードをマスクする関数
+function maskUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.password) {
+      u.password = '****';
+    }
+    return u.toString();
+  } catch {
+    // URLパースに失敗した場合は正規表現でマスク
+    return url.replace(/(postgres(?:ql)?:\/\/[^:]+:)[^@]+@/i, '$1****@');
+  }
+}
+
 // テストDBのURL（環境変数から取得、またはデフォルト値）
 const TEST_DB_URL = process.env.TEST_DATABASE_URL ||
                     process.env.TEST_DATABASE_URL_HOST ||
                     'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
 
+const { dbName, dbUser, dbPass } = parseDbUrl(TEST_DB_URL);
+
 async function resetTestDatabase() {
   console.log('🔄 テスト環境データベースのリセットを開始します...');
-  console.log(`📍 接続先: ${TEST_DB_URL}`);
+  console.log(`📍 接続先: ${maskUrl(TEST_DB_URL)}`);
 
   try {
     // 1. スキーマを再作成してDBを完全にクリーンにする
-    console.log('🗑️ データベースを完全にクリアしています...');
+    console.log('📋 データベースをクリーンアップ中...');
 
     const resetSQL = `
-      -- 既存のスキーマを削除して再作成
+      -- Drop the schema cascade (this will drop all tables, indexes, etc.)
       DROP SCHEMA IF EXISTS public CASCADE;
+
+      -- Recreate the schema
       CREATE SCHEMA public;
+
+      -- Grant permissions
       GRANT ALL ON SCHEMA public TO postgres;
       GRANT ALL ON SCHEMA public TO public;
     `;
 
-    execSync(`echo '${resetSQL}' | docker exec -i techtrend-postgres psql -U postgres -d techtrend_test`, {
-      stdio: 'pipe' // NOTICEメッセージを抑制
+    // PostgreSQLに直接接続してリセットを実行
+    execSync(`echo '${resetSQL}' | docker exec -i techtrend-postgres psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
+      stdio: 'pipe', // NOTICEメッセージを抑制
+      env: {
+        ...process.env,
+        PGPASSWORD: dbPass
+      }
     });
 
-    console.log('✅ データベースクリア完了');
+    console.log('✅ データベースクリーンアップ完了');
 
-    // 2. Prismaマイグレーションを適用
-    console.log('📦 マイグレーションを適用中...');
+    // 2. テーブルが確実に削除されたことを確認
+    console.log('📋 テーブル削除を確認中...');
 
-    execSync(`npx prisma migrate deploy`, {
+    execSync(`echo '\\dt' | docker exec -i techtrend-postgres psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        PGPASSWORD: dbPass
+      }
+    });
+
+    // 3. マイグレーションを適用
+    console.log('🔄 マイグレーションを適用中...');
+
+    execSync(`DATABASE_URL="${TEST_DB_URL}" npx prisma migrate deploy`, {
       stdio: 'inherit',
       env: {
         ...process.env,
@@ -57,34 +116,21 @@ async function resetTestDatabase() {
 
     console.log('✅ マイグレーション適用完了');
 
-    // 3. テスト用シードデータを投入（オプション）
+    // 4. テスト用シードデータを投入（オプション）
     if (process.argv.includes('--seed')) {
       console.log('🌱 テスト用シードデータを投入中...');
-
-      const seedFile = path.resolve(__dirname, '../../prisma/seed-test.ts');
-      const seedFileExists = require('fs').existsSync(seedFile);
-
-      if (seedFileExists) {
-        execSync(`npx tsx ${seedFile}`, {
-          stdio: 'inherit',
-          env: {
-            ...process.env,
-            DATABASE_URL: TEST_DB_URL
-          }
-        });
-        console.log('✅ シードデータ投入完了');
-      } else {
-        console.log('⚠️ seed-test.tsファイルが見つかりません。スキップします。');
-      }
+      execSync(`DATABASE_URL="${TEST_DB_URL}" npx tsx prisma/seed-test.ts`, {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          DATABASE_URL: TEST_DB_URL
+        }
+      });
+      console.log('✅ シードデータ投入完了');
     }
 
-    // 4. テーブル一覧を表示（確認用）
-    console.log('\n📊 作成されたテーブル:');
-    execSync(`echo '\\dt' | docker exec -i techtrend-postgres psql -U postgres -d techtrend_test`, {
-      stdio: 'inherit'
-    });
-
-    console.log('\n🎉 テスト環境データベースのリセットが完了しました！');
+    console.log('🎉 テスト環境データベースのリセットが完了しました！');
+    console.log('💡 ヒント: --seed オプションを付けるとテストデータも投入されます');
 
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
