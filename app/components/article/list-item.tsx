@@ -45,22 +45,35 @@ export function ArticleListItem({
   const isNew = hoursAgo < 24;
 
   const handleClick = () => {
-    // 親コンポーネントのコールバックを実行
-    onArticleClick?.();
-    
+    console.log('[ArticleListItem] handleClick called for article:', article.id);
+
+    // 親コンポーネントのコールバックを実行（スクロール位置保存）
+    if (onArticleClick) {
+      console.log('[ArticleListItem] Calling onArticleClick callback');
+      onArticleClick();
+    } else {
+      console.log('[ArticleListItem] No onArticleClick callback provided');
+    }
+
     // URLパラメータを保持して記事詳細ページに遷移
     const params = new URLSearchParams(searchParams.toString());
-    
+
     // returningパラメータは除外（記事詳細からの戻りを示すパラメータなので）
     params.delete('returning');
-    
+
     // 記事一覧に戻る時用にreturningパラメータを追加
     params.set('returning', '1');
-    
+
     // 現在のフィルター状態を保持したURLを生成
     const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
-    window.location.href = articleUrl;
+
+    console.log('[ArticleListItem] Navigating to:', articleUrl);
+
+    // スクロール位置保存の完了を待つために少し遅延
+    setTimeout(() => {
+      window.location.href = articleUrl;
+    }, 100); // 少し長めに遅延
   };
 
   return (

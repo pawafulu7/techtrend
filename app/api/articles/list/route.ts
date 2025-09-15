@@ -111,9 +111,9 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Check cache first
-    const cachedResult = await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
-    
+    // Check cache first - SKIP CACHE when includeUserData is true to always get fresh data
+    const cachedResult = includeUserData ? null : await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
+
     let result;
     if (cachedResult) {
       cacheStatus = 'HIT';
@@ -340,8 +340,10 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       };
       
-      // Save to cache
-      await cache.set(cacheKey, result);
+      // Save to cache - SKIP when includeUserData is true
+      if (!includeUserData) {
+        await cache.set(cacheKey, result);
+      }
     }
     
     // Calculate response time

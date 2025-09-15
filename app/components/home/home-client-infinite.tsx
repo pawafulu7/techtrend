@@ -22,16 +22,16 @@ interface HomeClientInfiniteProps {
   initialSourceIds?: string[];
 }
 
-export function HomeClientInfinite({ 
-  viewMode, 
-  sources: _sources, 
+export function HomeClientInfinite({
+  viewMode,
+  sources: _sources,
   tags: _tags,
   enableInfiniteScroll = true,
   initialSortBy,
   initialSourceIds: _initialSourceIds
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // 参照は保持するが使用しない
   const [previousCategory, setPreviousCategory] = useState<string | null>(null);
   const [isCategoryChanging, setIsCategoryChanging] = useState(false);
   
@@ -147,6 +147,7 @@ export function HomeClientInfinite({
 
   // 記事クリック時のコールバック
   const handleArticleClick = useCallback(() => {
+    console.log('[HomeClientInfinite] handleArticleClick called');
     saveScrollPosition();
   }, [saveScrollPosition]);
 

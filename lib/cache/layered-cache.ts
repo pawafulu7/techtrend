@@ -67,6 +67,12 @@ export class LayeredCache {
     params: ArticleQueryParams,
     fetcher?: () => Promise<T>
   ): Promise<T | null> {
+    // includeUserDataがtrueの場合はキャッシュを使用しない（常に最新データを取得）
+    if (params.includeUserData) {
+      logger.debug({ params }, 'Skipping cache due to includeUserData=true');
+      return fetcher ? await fetcher() : null;
+    }
+
     const cacheKey = this.getCacheKey(params);
 
     // L1: 基本的なクエリ（検索、ユーザー固有フィルターなし）
@@ -108,6 +114,12 @@ export class LayeredCache {
    * 記事データをキャッシュに保存
    */
   async setArticles<T>(params: ArticleQueryParams, data: T): Promise<void> {
+    // includeUserDataがtrueの場合はキャッシュに保存しない
+    if (params.includeUserData) {
+      logger.debug({ params }, 'Skipping cache set due to includeUserData=true');
+      return;
+    }
+
     const cacheKey = this.getCacheKey(params);
 
     if (this.isBasicQuery(params)) {
