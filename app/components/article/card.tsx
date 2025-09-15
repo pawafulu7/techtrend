@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { TrendingUp, ThumbsUp, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -19,12 +19,33 @@ import { CategoryClassifier } from '@/lib/services/category-classifier';
 export function ArticleCard({
   article,
   onArticleClick,
-  isRead = false,
+  isRead: initialIsRead = false,
   isFavorited,
   onToggleFavorite
 }: ArticleCardProps & { isRead?: boolean }) {
   const [votes, setVotes] = useState(article.userVotes || 0);
   const [hasVoted, setHasVoted] = useState(false);
+  const [isRead, setIsRead] = useState(initialIsRead);
+
+  // Listen for read status changes
+  useEffect(() => {
+    const handleReadStatusChange = (event: CustomEvent) => {
+      if (event.detail.articleId === article.id) {
+        setIsRead(event.detail.isRead);
+      }
+    };
+
+    window.addEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+
+    return () => {
+      window.removeEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+    };
+  }, [article.id]);
+
+  // Update isRead when prop changes
+  useEffect(() => {
+    setIsRead(initialIsRead);
+  }, [initialIsRead]);
   
   // サムネイル表示判定ロジック
   const shouldShowThumbnail = (): boolean => {

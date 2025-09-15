@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Clock, TrendingUp, ExternalLink, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -10,12 +11,33 @@ import type { ArticleListItemProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/components/article/favorite-button';
 
-export function ArticleListItem({ 
-  article, 
-  onTagClick, 
+export function ArticleListItem({
+  article,
+  onTagClick,
   onArticleClick,
-  isRead = true 
+  isRead: initialIsRead = true
 }: ArticleListItemProps & { isRead?: boolean }) {
+  const [isRead, setIsRead] = useState(initialIsRead);
+
+  // Listen for read status changes
+  useEffect(() => {
+    const handleReadStatusChange = (event: CustomEvent) => {
+      if (event.detail.articleId === article.id) {
+        setIsRead(event.detail.isRead);
+      }
+    };
+
+    window.addEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+
+    return () => {
+      window.removeEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+    };
+  }, [article.id]);
+
+  // Update isRead when prop changes
+  useEffect(() => {
+    setIsRead(initialIsRead);
+  }, [initialIsRead]);
   const searchParams = useSearchParams();
   const sourceColor = getSourceColor(article.source.name);
   const publishedDate = new Date(article.publishedAt);
