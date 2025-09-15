@@ -30,19 +30,9 @@ export function useFavoritesBatch(articleIds: string[]) {
         return { favorites: {} };
       }
 
-      // 前回取得した記事IDとの差分を計算
-      const prevIds = new Set(prevArticleIdsRef.current);
-      const currentIds = new Set(articleIds);
-
-      // 新規に追加された記事IDのみを抽出
-      const newIds = articleIds.filter(id => !prevIds.has(id) && !globalFavoritesCache.has(`${session.user.id}:${id}`));
-
-      console.log('[Favorites Debug]', {
-        totalArticles: articleIds.length,
-        prevArticles: prevArticleIdsRef.current.length,
-        newArticles: newIds.length,
-        cacheSize: globalFavoritesCache.size
-      });
+      // 現在要求されている記事IDから、キャッシュにないものを抽出
+      const userId = session.user.id;
+      const newIds = articleIds.filter(id => !globalFavoritesCache.has(`${userId}:${id}`));
 
       // 新規記事がない場合は、既存のキャッシュから結果を構築
       if (newIds.length === 0) {
@@ -63,11 +53,6 @@ export function useFavoritesBatch(articleIds: string[]) {
       }
 
       // 各バッチを並列実行
-      console.log('[Favorites Debug] APIコール開始', {
-        batchCount: batches.length,
-        batchSizes: batches.map(b => b.length)
-      });
-
       const responses = await Promise.all(
         batches.map(async (batch) => {
           const response = await fetch('/api/favorites/batch', {
@@ -101,9 +86,6 @@ export function useFavoritesBatch(articleIds: string[]) {
         result[id] = globalFavoritesCache.get(cacheKey) || false;
       }
 
-      // 現在の記事IDリストを保存
-      prevArticleIdsRef.current = articleIds;
-
       return { favorites: result };
     },
     enabled: !!session?.user?.id,
@@ -113,24 +95,32 @@ export function useFavoritesBatch(articleIds: string[]) {
     structuralSharing: false,
   });
 
-  // 記事IDが変更されたときに、新規分のみ取得
+  // 記事IDが変更されたときに、既存データを更新
   useEffect(() => {
     if (!session?.user?.id || articleIds.length === 0) return;
 
-    const prevIds = new Set(prevArticleIdsRef.current);
-    const newIds = articleIds.filter(id => !prevIds.has(id));
+    // 現在のクエリデータを更新（キャッシュから構築）
+    const userId = session.user.id;
+    const updatedFavorites: FavoritesMap = {};
+    let hasAllData = true;
 
-    // 新規記事がある場合のみ再フェッチ
-    if (newIds.length > 0) {
-      // 既存のキャッシュデータがある場合は、新規分のみ取得
-      const userId = session.user.id;
-      const uncachedIds = newIds.filter(id => !globalFavoritesCache.has(`${userId}:${id}`));
-
-      if (uncachedIds.length > 0) {
-        refetch();
+    for (const id of articleIds) {
+      const cacheKey = `${userId}:${id}`;
+      if (globalFavoritesCache.has(cacheKey)) {
+        updatedFavorites[id] = globalFavoritesCache.get(cacheKey) || false;
+      } else {
+        hasAllData = false;
+        break;
       }
     }
-  }, [articleIds, session?.user?.id, refetch]);
+
+    // すべてのデータがキャッシュにある場合は、クエリデータを更新
+    if (hasAllData && Object.keys(updatedFavorites).length > 0) {
+      queryClient.setQueryData(['favorites-batch', userId], {
+        favorites: updatedFavorites
+      });
+    }
+  }, [articleIds, session?.user?.id, queryClient]);
 
   // お気に入り追加ミューテーション
   const addFavorite = useMutation({
