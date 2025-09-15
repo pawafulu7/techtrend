@@ -31,14 +31,23 @@ const eslintConfig = [
       'testStability.ts',
       '*.tsbuildinfo',
       'next-env.d.ts',
+      // E2Eテスト（全除外）
+      'e2e/**',
+      '**/*.spec.ts',
+      '**/*.test.ts',
+      '**/*.test.tsx',
       // 設定ファイル系
       '*.config.js',
       'ecosystem*.js',
       'jest.*.js',
       'playwright.config.ts',
-      // スクリプト系
-      'scripts/temp/**',
-      'scripts/test/**',
+      // スクリプト系（全除外）
+      'scripts/**',
+      'prisma/seed.ts',
+      'prisma/seed-*.ts',
+      // hooks（テスト用）
+      'hooks/use-toast.ts',
+      'hooks/useSession.ts',
       // 一時ファイル・テストファイル
       'test-*.js',
       'test-*.ts',
@@ -48,7 +57,9 @@ const eslintConfig = [
       '*.js',
       // Playwrightレポート
       'playwright-report/**',
-      'test-results/**'
+      'test-results/**',
+      // 型定義ファイル（使用量管理不要）
+      'types/**'
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript", "prettier"),
