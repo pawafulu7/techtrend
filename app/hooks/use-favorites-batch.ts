@@ -30,15 +30,13 @@ export function useFavoritesBatch(articleIds: string[]) {
         return { favorites: {} };
       }
 
-      const response = await fetch(
-        `/api/favorites/batch?articleIds=${articleIds.join(',')}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const response = await fetch('/api/favorites/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ articleIds }),
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch favorites');
