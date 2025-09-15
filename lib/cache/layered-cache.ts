@@ -25,6 +25,8 @@ export interface ArticleQueryParams {
   includeEmptyContent?: boolean;
   lightweight?: boolean;
   fields?: string;
+  includeUserData?: boolean;
+  returning?: string;
 }
 
 /**
