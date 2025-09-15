@@ -169,13 +169,14 @@ export function useInfiniteArticles(filters: ArticleFilters) {
 
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
+
       const response = await fetch(`${endpoint}?${searchParams.toString()}`, { signal });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch articles: ${response.status} ${response.statusText}`);
       }
-      
-      return response.json();
+
+      return await response.json();
     },
     getNextPageParam: (lastPage) => {
       const { page, totalPages } = lastPage.data;

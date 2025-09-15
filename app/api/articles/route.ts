@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
     const includeEmptyContent = searchParams.get('includeEmptyContent') === 'true'; // Filter out empty content by default
     const lightweight = searchParams.get('lightweight') === 'true'; // Ultra-lightweight mode for mobile/bandwidth-conscious clients
     const fields = searchParams.get('fields'); // Comma-separated list of fields to include
+    const includeUserData = searchParams.get('includeUserData') === 'true'; // Include user-specific data (favorites, read status)
 
     // Generate cache key based on query parameters
     // Normalize search keywords for consistent cache key
@@ -67,11 +68,11 @@ export async function GET(request: NextRequest) {
       sources.split(',').filter(id => id.trim()).sort().join(',') : 
       sourceId || 'all';
     
-    // Get session only when readFilter requires user context
-    const shouldUseUserContext = readFilter === 'read' || readFilter === 'unread';
+    // Get session when readFilter requires user context or includeUserData is true
+    const shouldUseUserContext = readFilter === 'read' || readFilter === 'unread' || includeUserData;
     const session = shouldUseUserContext ? await auth() : null;
     const userId = session?.user?.id;
-    
+
     // Include userId in cache key only when user context is needed
     const userCtxForKey = shouldUseUserContext ? (userId ?? 'anonymous') : 'n/a';
 
@@ -94,7 +95,8 @@ export async function GET(request: NextRequest) {
       includeRelations: includeRelations,
       includeEmptyContent: includeEmptyContent,
       lightweight: lightweight,
-      fields: fields || undefined
+      fields: fields || undefined,
+      includeUserData: includeUserData
     };
 
     // Build data fetcher function for SWR
@@ -365,9 +367,45 @@ export async function GET(request: NextRequest) {
         'db_query'
       );
 
+      // Fetch user-specific data if requested
+      let articlesWithUserData = articles;
+      if (includeUserData && userId) {
+        const articleIds = articles.map(a => a.id);
+
+        // Fetch favorites and read status in parallel
+        const [favorites, articleViews] = await Promise.all([
+          prisma.favorite.findMany({
+            where: {
+              userId: userId,
+              articleId: { in: articleIds }
+            },
+            select: { articleId: true }
+          }),
+          prisma.articleView.findMany({
+            where: {
+              userId: userId,
+              articleId: { in: articleIds },
+              isRead: true
+            },
+            select: { articleId: true }
+          })
+        ]);
+
+        // Create maps for O(1) lookup
+        const favoritesMap = new Map(favorites.map(f => [f.articleId, true]));
+        const readStatusMap = new Map(articleViews.map(v => [v.articleId, true]));
+
+        // Add user-specific data to articles
+        articlesWithUserData = articles.map(article => ({
+          ...article,
+          isFavorited: favoritesMap.get(article.id) || false,
+          isRead: readStatusMap.get(article.id) || false
+        }));
+      }
+
       // Return the data to be cached
       return {
-        items: articles,
+        items: articlesWithUserData,
         total,
         page,
         limit,
@@ -396,6 +434,9 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       data: result,
+      meta: {
+        userDataIncluded: includeUserData && userId ? true : false
+      }
     } as ApiResponse<PaginatedResponse<ArticleWithRelations>>);
 
     // Add performance metrics to headers
