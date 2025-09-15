@@ -17,6 +17,8 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
   useEffect(() => {
     if (!session?.user?.id || !articleId) return;
 
+    console.log('[ReadTracker] Starting for article:', articleId);
+
     // Reset refs when articleId changes
     hasSentRequest.current = false;
     retryCount.current = 0;
@@ -25,6 +27,8 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
     const markAsRead = async () => {
       // Prevent duplicate requests
       if (hasSentRequest.current) return;
+
+      console.log('[ReadTracker] Marking as read:', articleId);
 
       try {
         const response = await fetch('/api/articles/read-status', {
@@ -38,11 +42,13 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
         }
 
         const data = await response.json();
+        console.log('[ReadTracker] API Response:', data);
 
         if (data.success) {
           hasSentRequest.current = true;
 
           // Dispatch custom event to update UI
+          console.log('[ReadTracker] Dispatching event for:', articleId);
           window.dispatchEvent(new CustomEvent('article-read-status-changed', {
             detail: { articleId, isRead: true }
           }));
@@ -64,6 +70,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
           logger.info({ articleId }, 'Article marked as read successfully');
         }
       } catch (error) {
+        console.error('[ReadTracker] Error:', error);
         logger.error({ error, articleId, retryCount: retryCount.current }, 'Error marking article as read');
 
         // Retry logic

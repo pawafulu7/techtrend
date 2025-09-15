@@ -74,16 +74,21 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     const customEvent = event as CustomEvent;
     const { articleId, isRead } = customEvent.detail;
 
+    console.log('[useInfiniteArticles] Read status changed event:', { articleId, isRead });
+
     // すべての関連するキャッシュを更新
     const cacheKeys = queryClient.getQueryCache().findAll({
       queryKey: ['infinite-articles'],
       exact: false
     });
 
+    console.log('[useInfiniteArticles] Found cache keys:', cacheKeys.length);
+
     cacheKeys.forEach((query) => {
       queryClient.setQueryData<InfiniteArticlesData>(query.queryKey, (oldData) => {
         if (oldData?.pages) {
-          return {
+          let updated = false;
+          const newData = {
             ...oldData,
             pages: oldData.pages.map((page: ArticlesResponse) => ({
               ...page,
@@ -91,6 +96,8 @@ export function useInfiniteArticles(filters: ArticleFilters) {
                 ...page.data,
                 items: page.data.items.map((item: ArticleWithRelations) => {
                   if (item.id === articleId) {
+                    updated = true;
+                    console.log('[useInfiniteArticles] Updating article:', articleId, 'to isRead:', isRead);
                     // 該当記事の既読状態を更新
                     return {
                       ...item,
@@ -103,6 +110,10 @@ export function useInfiniteArticles(filters: ArticleFilters) {
               }
             }))
           };
+          if (updated) {
+            console.log('[useInfiniteArticles] Cache updated for query:', query.queryKey);
+          }
+          return newData;
         }
         return oldData;
       });
@@ -110,6 +121,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
 
     // 既読フィルターが有効な場合は、リストの再取得も行う
     if (normalizedFilters.readFilter) {
+      console.log('[useInfiniteArticles] Invalidating queries due to readFilter');
       // バックグラウンドで実際のデータを取得
       queryClient.invalidateQueries({
         queryKey: ['infinite-articles', filterKey],
@@ -170,13 +182,36 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
 
+      // デバッグ: APIリクエストを確認
+      console.log('[useInfiniteArticles] API Request:', {
+        endpoint,
+        includeUserData: normalizedFilters.includeUserData,
+        returning: normalizedFilters.returning,
+        readFilter: normalizedFilters.readFilter,
+        params: searchParams.toString()
+      });
+
       const response = await fetch(`${endpoint}?${searchParams.toString()}`, { signal });
 
       if (!response.ok) {
         throw new Error(`Failed to fetch articles: ${response.status} ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+
+      // デバッグ: レスポンスを確認
+      console.log('[useInfiniteArticles] API Response:', {
+        endpoint,
+        totalItems: data.data?.items?.length,
+        firstItem: data.data?.items?.[0] ? {
+          title: data.data.items[0].title,
+          isRead: data.data.items[0].isRead,
+          isFavorited: data.data.items[0].isFavorited
+        } : null,
+        meta: data.meta
+      });
+
+      return data;
     },
     getNextPageParam: (lastPage) => {
       const { page, totalPages } = lastPage.data;

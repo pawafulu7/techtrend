@@ -88,9 +88,14 @@ export function HomeClientInfinite({
       // Cookieの値は無視して、何も設定しない（全選択として扱う）
       // params.sourcesを設定しない = 全記事を表示
     }
-    
+
+    // 記事詳細から戻ってきた場合のフラグを追加
+    if (isReturningFromArticle) {
+      params.returning = 'true';
+    }
+
     return params;
-  }, [searchParams, initialSortBy]);
+  }, [searchParams, initialSortBy, isReturningFromArticle]);
 
   const {
     data,
