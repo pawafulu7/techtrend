@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Ensure backup files are owner-only readable/writable
+umask 077
 
 # 開発DBバックアップスクリプト
 # 優先: Dockerコンテナ(techtrend-postgres) -> ローカルpg_dump(DATABASE_URL必要)

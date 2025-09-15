@@ -138,7 +138,7 @@ test.describe('検索機能', () => {
       if (options.includes('Dev.to')) {
         await sourceFilter.selectOption({ label: 'Dev.to' });
         // フィルター適用を待つ - URL変更を待機
-        await page.waitForURL('**/source=**', { timeout: 5000 });
+        await waitForUrlParam(page, 'source', undefined, { timeout: 5000 });
         
         // URLパラメータが更新されることを確認
         const currentUrl = page.url();

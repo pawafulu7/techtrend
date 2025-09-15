@@ -1,13 +1,7 @@
 import bcrypt from 'bcryptjs';
 
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    user: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
-    },
-  },
-}));
+// Use the manual mock to keep shared state
+jest.mock('@/lib/prisma');
 
 // Explicitly mock bcryptjs
 jest.mock('bcryptjs', () => ({

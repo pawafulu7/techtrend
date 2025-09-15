@@ -53,8 +53,7 @@ const eslintConfig = [
       'test-*.ts',
       '*-test.js',
       '*-test.ts',
-      // .js ファイル（レガシー）
-      '*.js',
+      // 注意: .js は全面除外しない（設定/スクリプトもLint対象にする）
       // Playwrightレポート
       'playwright-report/**',
       'test-results/**',

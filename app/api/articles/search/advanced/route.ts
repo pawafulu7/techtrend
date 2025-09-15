@@ -124,14 +124,10 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    let articles: Array<{
-      id: string;
-      publishedAt: Date;
-      qualityScore: number;
-      source: unknown;
-      tags: unknown[];
-      [key: string]: unknown;
-    }> = [];
+    type SearchArticle = Prisma.ArticleGetPayload<{
+      include: { source: true; tags: true; _count: { select: { favorites: true; articleViews: true } } }
+    }>;
+    let articles: SearchArticle[] = [];
     let totalCount = 0;
 
     // 全文検索クエリがある場合
@@ -178,6 +174,7 @@ export async function GET(request: NextRequest) {
           include: {
             source: true,
             tags: true,
+            _count: { select: { favorites: true, articleViews: true } },
           }
         });
 
@@ -227,6 +224,7 @@ export async function GET(request: NextRequest) {
           include: {
             source: true,
             tags: true,
+            _count: { select: { favorites: true, articleViews: true } },
           },
           orderBy,
           skip: offset,
@@ -243,12 +241,11 @@ export async function GET(request: NextRequest) {
 
     // ArticleWithRelations形式に変換
      
-    const articlesWithRelations = articles.map((article: any) => ({
+    const articlesWithRelations = articles.map((article) => ({
       ...article,
-       
-      tags: article.tags.map((tag: any) => tag.name),
-      bookmarkCount: article._count?.readingList || 0,
-      voteScore: article._count?.votes || 0
+      tags: (article.tags as Array<{ name: string }>).map(tag => tag.name),
+      bookmarkCount: (article as any)._count?.favorites || 0,
+      voteScore: (article as any).userVotes || 0
     }));
 
     // ファセット情報を取得（オプション）

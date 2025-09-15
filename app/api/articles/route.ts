@@ -414,16 +414,18 @@ export async function GET(request: NextRequest) {
     };
 
     // Try to get from layered cache first
-    const result = await withCacheTiming(
-      metrics,
-      async () => {
-        // Get data from cache or fetch from database
-        const data = await cache.getArticles(cacheParams, buildResult);
-
-        // This will never be null since we're providing a fetcher
-        return data!;
-      }
-    );
+    // For user-dependent responses, bypass cache to avoid serving stale, user-specific data
+    const result = shouldUseUserContext
+      ? await withDbTiming(metrics, buildResult, 'db_user_context')
+      : await withCacheTiming(
+          metrics,
+          async () => {
+            // Get data from cache or fetch from database
+            const data = await cache.getArticles(cacheParams, buildResult);
+            // This will never be null since we're providing a fetcher
+            return data!;
+          }
+        );
     
     // Note: getOrFetch always returns data (either from cache or freshly fetched)
     // We can't distinguish between HIT/MISS/STALE without API changes
@@ -450,6 +452,7 @@ export async function GET(request: NextRequest) {
       response.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
       response.headers.set('Pragma', 'no-cache');
       response.headers.set('Expires', '0');
+      response.headers.set('X-Cache-Bypass', 'user-context');
     } else {
       // Public responses can be cached
       response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');

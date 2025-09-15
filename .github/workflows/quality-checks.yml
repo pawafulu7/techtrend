@@ -242,8 +242,11 @@ jobs:
     name: E2E Tests
     if: |
       github.event_name == 'pull_request' ||
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
+    env:
+      NEXT_IGNORE_ESLINT: 'true'
     timeout-minutes: 20
     services:
       postgres:

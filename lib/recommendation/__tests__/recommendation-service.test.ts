@@ -1,20 +1,7 @@
 import * as utils from '../utils';
 
-// Mock Prisma
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    articleView: {
-      findMany: jest.fn(),
-    },
-    favorite: {
-      findMany: jest.fn(),
-    },
-    article: {
-      findMany: jest.fn(),
-      count: jest.fn(),
-    },
-  },
-}));
+// Mock Prisma using the shared manual mock instance
+jest.mock('@/lib/prisma');
 
 // Mock Redis factory
 jest.mock('@/lib/redis/factory', () => ({

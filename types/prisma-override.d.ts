@@ -6,6 +6,8 @@ export interface Tag {
   id: string;
   name: string;
   category: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Source {

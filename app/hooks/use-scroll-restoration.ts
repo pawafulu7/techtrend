@@ -19,6 +19,19 @@ export function useScrollRestoration(
   const restorationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const restorationAbortRef = useRef<boolean>(false);
 
+  // Helper to manage timeouts safely
+  const setRestorationTimeout = useCallback((fn: () => void, delay: number) => {
+    if (restorationTimeoutRef.current) {
+      clearTimeout(restorationTimeoutRef.current);
+    }
+    const handle = setTimeout(() => {
+      if (restorationAbortRef.current) return;
+      fn();
+    }, delay);
+    restorationTimeoutRef.current = handle as unknown as NodeJS.Timeout;
+    return handle;
+  }, []);
+
   // スクロール位置復元処理（記事詳細から戻った時のみ）
   useEffect(() => {
     if (!isReturningFromArticle) {
@@ -33,8 +46,20 @@ export function useScrollRestoration(
       return;
     }
 
-    const { scrollY, timestamp, articleId } = JSON.parse(savedData);
-    const age = Date.now() - timestamp;
+    // Parse with safety and validation
+    let parsed: any;
+    try {
+      parsed = JSON.parse(savedData);
+    } catch {
+      sessionStorage.removeItem(scrollKey);
+      return;
+    }
+    const { scrollY, timestamp, articleId } = parsed ?? {};
+    if (typeof timestamp !== 'number') {
+      sessionStorage.removeItem(scrollKey);
+      return;
+    }
+    const age = Date.now() - Number(timestamp);
 
     // 30分以内のデータのみ有効
     if (age > 30 * 60 * 1000) {
@@ -67,7 +92,7 @@ export function useScrollRestoration(
             (mainContainer as HTMLElement).scrollTop = target;
           }
           // メインコンテナを使う場合、ウィンドウは最上部に固定
-          window.scrollTo({ top: 0, behavior: 'instant' });
+          window.scrollTo({ top: 0, behavior: 'auto' });
           return true;
         }
         // windowスクロールの場合
@@ -115,7 +140,8 @@ export function useScrollRestoration(
       sessionStorage.removeItem(scrollKey);
 
       // スムーススクロール完了を待ってUIを閉じる（簡易的に遅延）
-      setTimeout(() => {
+      setRestorationTimeout(() => {
+        if (restorationAbortRef.current) return;
         setIsRestoring(false);
         try {
           const evt = new CustomEvent('scrollRestored', { detail: { restored: true, cancelled: false } });
@@ -131,6 +157,7 @@ export function useScrollRestoration(
       const interval = 100;
 
       const tryOnce = () => {
+        if (restorationAbortRef.current) return;
         const mainContainer = document.getElementById('main-scroll-container');
         const ok = (() => {
           // 記事IDがあり、かつ要素が見つかったら即復元
@@ -151,22 +178,27 @@ export function useScrollRestoration(
 
         if (!ok && attempts < maxAttempts) {
           attempts += 1;
-          setTimeout(tryOnce, interval);
+          setRestorationTimeout(tryOnce, interval);
         } else if (!ok) {
           // 最後にフォールバックを強制実行
           restoreScroll();
         }
       };
 
-      setTimeout(tryOnce, 100);
+      setRestorationTimeout(tryOnce, 100);
     };
 
     tryRestoreWithRetry();
 
     return () => {
-      // no-op
+      // cleanup on effect dispose
+      restorationAbortRef.current = true;
+      if (restorationTimeoutRef.current) {
+        clearTimeout(restorationTimeoutRef.current);
+        restorationTimeoutRef.current = null;
+      }
     };
-  }, [isReturningFromArticle, scrollContainerRef]);
+  }, [isReturningFromArticle, scrollContainerRef, setRestorationTimeout]);
 
   // スクロール位置を保存（互換性のため残す）
   const saveScrollPosition = useCallback(() => {
