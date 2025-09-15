@@ -100,7 +100,10 @@ export function HomeClientInfinite({
     isLoading,
     isError,
     error,
-  } = useInfiniteArticles(filters);
+  } = useInfiniteArticles({
+    ...filters,
+    includeUserData: true // Include favorites and read status in API response
+  });
 
   // ページごとの記事を1つの配列にフラット化
   const allArticles = useMemo(() => {

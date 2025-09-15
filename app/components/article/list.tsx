@@ -3,9 +3,7 @@
 import { ArticleCard } from './card';
 import { ArticleListItem } from './list-item';
 import type { ArticleListProps } from '@/types/components';
-import { useReadStatus } from '@/app/hooks/use-read-status';
-import { useFavoritesBatch } from '@/app/hooks/use-favorites-batch';
-import { useMemo, useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 
 export function ArticleList({ 
@@ -13,26 +11,36 @@ export function ArticleList({
   viewMode = 'card',
   onArticleClick 
 }: ArticleListProps) {
-  // 認証状態を取得
+  // 認証状態を取得（お気に入り切り替え用）
   const { data: session } = useSession();
-
-  // 記事IDリストを作成
-  const articleIds = useMemo(() => articles.map(a => a.id), [articles]);
-
-  // 既読状態を取得
-  const { isRead, isLoading, refetch } = useReadStatus(articleIds);
-
-  // お気に入り状態を一括取得
-  const favoritesBatch = useFavoritesBatch(articleIds);
   
   // 強制再レンダリング用のstate
   const [refreshKey, setRefreshKey] = useState(0);
   
+  // お気に入り切り替え処理
+  const handleToggleFavorite = useCallback(async (articleId: string) => {
+    if (!session?.user) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/favorites/${articleId}`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        // 成功時は再レンダリングをトリガー
+        setRefreshKey(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+    }
+  }, [session]);
+  
   // 既読状態変更イベントをリッスンして再レンダリング
   useEffect(() => {
     const handleReadStatusChanged = () => {
-      // 既読状態を再取得して再レンダリング
-      refetch();
+      // 再レンダリングをトリガー
       setRefreshKey(prev => prev + 1);
     };
     
@@ -41,15 +49,8 @@ export function ArticleList({
     return () => {
       window.removeEventListener('articles-read-status-changed', handleReadStatusChanged);
     };
-  }, [refetch]);
+  }, []);
   
-  // 未認証時は全て既読として扱う
-  const getReadStatus = (articleId: string) => {
-    if (!session?.user) {
-      return true; // 未認証時は既読扱い（未読マークを表示しない）
-    }
-    return isRead(articleId);
-  };
   if (articles.length === 0) {
     return (
       <div className="text-center py-12">
@@ -69,14 +70,14 @@ export function ArticleList({
             articleIndex={index}
             totalArticleCount={articles.length}
             onArticleClick={onArticleClick}
-            isRead={isLoading ? true : getReadStatus(article.id)}
+            isRead={article.isRead ?? true}
           />
         ))}
       </div>
     );
   }
 
-  // カード形式の場合（既存のコード）
+  // カード形式の場合
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4" data-testid="article-list" key={refreshKey}>
       {articles.map((article) => (
@@ -84,9 +85,9 @@ export function ArticleList({
           key={`${article.id}-${refreshKey}`}
           article={article}
           onArticleClick={onArticleClick}
-          isRead={isLoading ? true : getReadStatus(article.id)}
-          isFavorited={favoritesBatch.isFavorited(article.id)}
-          onToggleFavorite={() => favoritesBatch.toggleFavorite(article.id)}
+          isRead={article.isRead ?? true}
+          isFavorited={article.isFavorited ?? false}
+          onToggleFavorite={() => handleToggleFavorite(article.id)}
         />
       ))}
     </div>

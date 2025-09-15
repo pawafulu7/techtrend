@@ -1,5 +1,5 @@
 // コンポーネント関連の型定義
-import { ArticleWithRelations, SourceWithCount, TagWithCount } from './models';
+import { ArticleWithRelations, ArticleWithUserData, SourceWithCount, TagWithCount } from './models';
 
 // 表示モード
 export type ViewMode = 'card' | 'list';
@@ -17,7 +17,7 @@ export interface ArticleCardProps {
 
 // 記事リスト
 export interface ArticleListProps {
-  articles: ArticleWithRelations[];
+  articles: ArticleWithUserData[];
   viewMode?: ViewMode; // 追加
   loading?: boolean;
   error?: string;

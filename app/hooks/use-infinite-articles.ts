@@ -11,6 +11,7 @@ interface ArticleFilters {
   readFilter?: string;
   lightweight?: boolean;  // Add lightweight mode flag
   includeRelations?: boolean;  // Add relations flag
+  includeUserData?: boolean;  // Add user data flag for favorites and read status
   [key: string]: string | boolean | undefined;
 }
 
