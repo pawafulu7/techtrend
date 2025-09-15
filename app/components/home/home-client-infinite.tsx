@@ -147,7 +147,6 @@ export function HomeClientInfinite({
 
   // 記事クリック時のコールバック
   const handleArticleClick = useCallback(() => {
-    console.log('[HomeClientInfinite] handleArticleClick called');
     saveScrollPosition();
   }, [saveScrollPosition]);
 

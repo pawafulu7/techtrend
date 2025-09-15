@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Clock, TrendingUp, ExternalLink, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ export function ArticleListItem({
   isRead: initialIsRead = true
 }: ArticleListItemProps & { isRead?: boolean }) {
   const [isRead, setIsRead] = useState(initialIsRead);
+  const router = useRouter();
 
   // Listen for read status changes
   useEffect(() => {
@@ -44,15 +45,10 @@ export function ArticleListItem({
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
 
-  const handleClick = () => {
-    console.log('[ArticleListItem] handleClick called for article:', article.id);
-
-    // 親コンポーネントのコールバックを実行（スクロール位置保存）
+  const handleClick = (_e: React.MouseEvent) => {
+    // 先にスクロール位置を保存
     if (onArticleClick) {
-      console.log('[ArticleListItem] Calling onArticleClick callback');
       onArticleClick();
-    } else {
-      console.log('[ArticleListItem] No onArticleClick callback provided');
     }
 
     // URLパラメータを保持して記事詳細ページに遷移
@@ -68,12 +64,8 @@ export function ArticleListItem({
     const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
 
-    console.log('[ArticleListItem] Navigating to:', articleUrl);
-
-    // スクロール位置保存の完了を待つために少し遅延
-    setTimeout(() => {
-      window.location.href = articleUrl;
-    }, 100); // 少し長めに遅延
+    // Next.jsのルーターを使用して遷移
+    router.push(articleUrl);
   };
 
   return (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { TrendingUp, ThumbsUp, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ export function ArticleCard({
   const [votes, setVotes] = useState(article.userVotes || 0);
   const [hasVoted, setHasVoted] = useState(false);
   const [isRead, setIsRead] = useState(initialIsRead);
+  const router = useRouter();
 
   // Listen for read status changes
   useEffect(() => {
@@ -81,14 +82,9 @@ export function ArticleCard({
       return;
     }
 
-    console.log('[ArticleCard] handleCardClick called for article:', article.id);
-
     // 親コンポーネントのコールバックを実行（スクロール位置保存）
     if (onArticleClick) {
-      console.log('[ArticleCard] Calling onArticleClick callback');
       onArticleClick();
-    } else {
-      console.log('[ArticleCard] No onArticleClick callback provided');
     }
 
     // URLパラメータを保持して記事詳細ページに遷移
@@ -104,12 +100,8 @@ export function ArticleCard({
     const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
 
-    console.log('[ArticleCard] Navigating to:', articleUrl);
-
-    // スクロール位置保存の完了を待つために少し遅延
-    setTimeout(() => {
-      window.location.href = articleUrl;
-    }, 100); // 少し長めに遅延
+    // Next.jsのルーターを使用して遷移
+    router.push(articleUrl);
   };
 
   const handleVote = async (e: React.MouseEvent) => {

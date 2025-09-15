@@ -20,9 +20,13 @@ export function ViewTracker({ articleId }: ViewTrackerProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ articleId })
         });
-        
+
         if (response.ok) {
           hasRecordedRef.current = true;
+        } else {
+          // エラーレスポンスの詳細を取得
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('[ViewTracker] Server error:', response.status, errorData);
         }
       } catch (error) {
         console.error('[ViewTracker] Failed to record view:', error);

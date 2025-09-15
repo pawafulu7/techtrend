@@ -150,15 +150,25 @@ export async function DELETE(_request: Request) {
 // POST: 記事閲覧を記録
 export async function POST(request: Request) {
   try {
-    
+
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       // 未ログインユーザーの場合は記録しない
       return NextResponse.json({ message: 'View not recorded (not logged in)' });
     }
 
-    const { articleId } = await request.json();
+    let articleId: string;
+    try {
+      const body = await request.json();
+      articleId = body.articleId;
+    } catch (e) {
+      logger.error({ err: e as Error }, 'Failed to parse request body');
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      );
+    }
 
     if (!articleId) {
       return NextResponse.json(
