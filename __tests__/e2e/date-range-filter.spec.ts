@@ -88,37 +88,36 @@ test.describe('Date Range Filter', () => {
     const combobox = page.getByTestId('date-range-trigger');
     const listbox = page.locator('[role="listbox"]');
 
-    // まず「今週」を選択
-    await combobox.click();
-    await expect(listbox).toBeVisible();
-    await listbox.getByRole('option', { name: '今週' }).click();
+    // まず「今週」を選択（堅牢な共通ヘルパーを使用）
+    await selectDateRangeGlobal(page, '今週', 'week');
+    await expect(combobox).toContainText('今週');
 
-    // URLが更新されるのを待機（遅延時のフォールバックを含めて堅牢化）
-    let updatedToWeek = true;
-    try {
-      await waitForUrlParam(page, 'dateRange', 'week', { timeout: getTimeout('medium') });
-    } catch {
-      updatedToWeek = false;
-      // URLが更新されない実装でも、コンボボックスの表示で確認
-      await expect(combobox).toContainText('今週', { timeout: getTimeout('short') });
-    }
-    await expect(listbox).toBeHidden();
+    // CI 環境での router.push の遅延を考慮して少し待機
+    await page.waitForTimeout(500);
 
     // 「全期間」に戻す
-    await combobox.click();
-    await expect(listbox).toBeVisible();
-    await listbox.getByRole('option', { name: '全期間' }).click();
+    let paramCleared = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await combobox.click();
+      await expect(listbox).toBeVisible();
+      await listbox.getByRole('option', { name: '全期間' }).click();
+      await expect(listbox).toBeHidden();
 
-    // URLからdateRangeパラメータが削除されるのを待機
-    // 以前の手順でURL未更新だった場合は、テキストの検証にフォールバック
-    if (updatedToWeek) {
-      await expect
-        .poll(() => page.url(), { timeout: getTimeout('medium') })
-        .not.toContain('dateRange=');
-    } else {
-      await expect(combobox).toContainText('全期間', { timeout: getTimeout('short') });
+      try {
+        await expect
+          .poll(() => new URL(page.url()).searchParams.get('dateRange'), {
+            timeout: getTimeout('short')
+          })
+          .toBeNull();
+        paramCleared = true;
+        break;
+      } catch {
+        await expect(combobox).toContainText('全期間', { timeout: getTimeout('short') });
+        await page.waitForTimeout(500);
+      }
     }
-    await expect(listbox).toBeHidden();
+
+    expect(paramCleared).toBeTruthy();
 
     // テキストが「全期間」に戻ったことを確認
     await expect(combobox).toContainText('全期間');

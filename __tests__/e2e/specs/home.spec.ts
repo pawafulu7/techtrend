@@ -7,7 +7,7 @@ import {
   expectPageTitle,
   expectNoErrors,
 } from '../utils/e2e-helpers';
-import { getTimeout } from '../../../e2e/helpers/wait-utils';
+import { getTimeout, waitForUrlParam } from '../../../e2e/helpers/wait-utils';
 import { SELECTORS } from '../constants/selectors';
 
 // CI環境の検出
@@ -55,25 +55,27 @@ test.describe('ホームページ', () => {
     const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
     
     if (await searchInput.isVisible()) {
-      // 検索クエリを入力
-      await searchInput.fill(testData.searchQueries.valid);
-      
-      // Enterキーで検索実行
-      await searchInput.press('Enter');
-      
-      // URLに検索パラメータが追加されることを確認（動的待機）
-      await page.waitForFunction(
-        () => {
-          const url = window.location.search;
-          return url.includes('search=');
-        },
-        undefined,
-        { timeout: getTimeout('medium'), polling: 100 }
-      );
-      
+      const query = testData.searchQueries.valid;
+
+      let searchTriggered = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await searchInput.fill(query);
+        await searchInput.press('Enter');
+
+        try {
+          await waitForUrlParam(page, 'search', query, { timeout: getTimeout('medium') });
+          searchTriggered = true;
+          break;
+        } catch {
+          await page.waitForTimeout(500);
+        }
+      }
+
+      expect(searchTriggered).toBeTruthy();
+
       // URLが正しく更新されたことを確認
-      const currentUrl = page.url();
-      expect(currentUrl).toContain('search=');
+      const searchParam = new URL(page.url()).searchParams.get('search');
+      expect(searchParam).toBe(query);
     }
   });
 

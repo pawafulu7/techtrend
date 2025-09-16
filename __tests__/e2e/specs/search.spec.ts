@@ -27,15 +27,25 @@ test.describe('検索機能', () => {
     await expect(searchInput).toBeVisible({ timeout: 10000 });
     
     // 検索キーワードを入力
-    await searchInput.fill('JavaScript');
-    
-    // Enterキーで検索実行
-    await searchInput.press('Enter');
-    
-    // ホームページで検索パラメータが追加されることを確認（タイムアウト延長）
-    await expect(page).toHaveURL(/\?.*search=/, { timeout: 45000 });
+    const query = 'JavaScript';
+
+    let searchTriggered = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await searchInput.fill(query);
+      await searchInput.press('Enter');
+
+      try {
+        await waitForUrlParam(page, 'search', query, { timeout: getTimeout('medium') });
+        searchTriggered = true;
+        break;
+      } catch {
+        await page.waitForTimeout(500);
+      }
+    }
+
+    expect(searchTriggered).toBeTruthy();
     await waitForPageLoad(page);
-    
+
     // エラーがないことを確認
     await expectNoErrors(page);
     
