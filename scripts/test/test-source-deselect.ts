@@ -1,13 +1,13 @@
 #!/usr/bin/env -S tsx
 /**
- * 「すべて解除」状態の永続化テスト
- * すべて解除を選択してページリロードしても状態が保持されることを確認
+ * 「全て解除」状態の永続化テスト
+ * 全て解除を選択してページリロードしても状態が保持されることを確認
  */
 
 import { chromium } from 'playwright';
 
 async function testSourceDeselect() {
-  console.error('🧪 ソースフィルター「すべて解除」のテスト開始...\n');
+  console.error('🧪 ソースフィルター「全て解除」のテスト開始...\n');
   
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
@@ -20,8 +20,8 @@ async function testSourceDeselect() {
     await page.goto('http://localhost:3000');
     await page.waitForTimeout(2000);
     
-    // 2. 「すべて解除」ボタンをクリック
-    console.error('2. 「すべて解除」ボタンをクリック');
+    // 2. 「全て解除」ボタンをクリック
+    console.error('2. 「全て解除」ボタンをクリック');
     await page.click('[data-testid="deselect-all-button"]');
     await page.waitForTimeout(1000);
     

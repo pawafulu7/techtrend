@@ -198,7 +198,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               data-testid="select-all-button"
               type="button"
             >
-              <CheckSquare className="w-3 h-3 mr-1 flex-shrink-0" />
+              <CheckSquare className="w-3 h-3 me-1 flex-shrink-0" />
               <span className="truncate">全て選択</span>
             </Button>
             <Button
@@ -209,7 +209,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               data-testid="deselect-all-button"
               type="button"
             >
-              <Square className="w-3 h-3 mr-1 flex-shrink-0" />
+              <Square className="w-3 h-3 me-1 flex-shrink-0" />
               <span className="truncate">全て解除</span>
             </Button>
           </div>
@@ -258,21 +258,21 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleCategorySelectAll(category)}
-                            className="h-6 text-xs px-2 min-w-0 overflow-hidden"
+                            className="h-6 text-xs px-2 flex-1 min-w-0 overflow-hidden"
                             type="button"
                             data-testid={`category-${category.id}-select-all`}
                           >
-                            <span className="truncate">全選択</span>
+                            <span className="truncate">全て選択</span>
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleCategoryDeselectAll(category)}
-                            className="h-6 text-xs px-2 min-w-0 overflow-hidden"
+                            className="h-6 text-xs px-2 flex-1 min-w-0 overflow-hidden"
                             type="button"
                             data-testid={`category-${category.id}-deselect-all`}
                           >
-                            <span className="truncate">全解除</span>
+                            <span className="truncate">全て解除</span>
                           </Button>
                         </div>
                         

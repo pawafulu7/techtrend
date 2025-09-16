@@ -93,8 +93,8 @@ test.describe('Source Filter Cookie', () => {
     await page.waitForSelector('[data-testid="source-filter"]', { timeout: 10000 });
     
     // Look for select/deselect buttons with longer timeout
-    const deselectAllButton = page.locator('button:has-text("すべて解除")');
-    const selectAllButton = page.locator('button:has-text("すべて選択")');
+    const deselectAllButton = page.locator('button:has-text("全て解除")');
+    const selectAllButton = page.locator('button:has-text("全て選択")');
     
     // CI環境用に待機時間を延長
     await page.waitForTimeout(1000);
