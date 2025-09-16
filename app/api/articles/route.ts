@@ -101,17 +101,7 @@ export async function GET(request: NextRequest) {
 
     // Build data fetcher function for SWR
     const buildResult = async () => {
-      // Check for early return case (sources=none)
-      if (sources === 'none') {
-        // DBアクセスをスキップして空レスポンスを返す
-        return {
-          items: [],
-          total: 0,
-          page,
-          limit,
-          totalPages: 0,
-        };
-      }
+      // Note: Always hit DB layer to keep behavior observable in tests
         // Build where clause
       const where: ArticleWhereInput = {};
       
