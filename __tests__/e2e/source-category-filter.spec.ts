@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForSourceFilter, getTimeout, waitForFilterApplication, waitForCheckboxesCount, waitForUrlParam } from '../../e2e/helpers/wait-utils';
+import { waitForSourceFilter, getTimeout, waitForUrlParam } from '../../e2e/helpers/wait-utils';
 
 // CI環境の検出
 const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
@@ -59,11 +59,12 @@ test.describe('ソースカテゴリフィルター機能', () => {
     }
 
     // チェックボックスの状態変更を待つ
-    await waitForCheckboxesCount(page, '[data-testid="category-foreign-content"]', totalInForeign, {
-      timeout: isCI ? 15000 : 5000,
-      polling: 'fast',
-      state: 'checked'
-    });
+    await expect
+      .poll(
+        async () => await content.locator('button[role="checkbox"][data-state="checked"]').count(),
+        { timeout: getTimeout('medium') }
+      )
+      .toBe(totalInForeign);
 
     await expect(content.locator('button[role="checkbox"][data-state="checked"]')).toHaveCount(totalInForeign);
 

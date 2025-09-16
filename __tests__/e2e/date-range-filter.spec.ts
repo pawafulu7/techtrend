@@ -112,7 +112,9 @@ test.describe('Date Range Filter', () => {
     // URLからdateRangeパラメータが削除されるのを待機
     // 以前の手順でURL未更新だった場合は、テキストの検証にフォールバック
     if (updatedToWeek) {
-      await page.waitForFunction(() => !window.location.search.includes('dateRange'), { timeout: getTimeout('medium') });
+      await expect
+        .poll(() => page.url(), { timeout: getTimeout('medium') })
+        .not.toContain('dateRange=');
     } else {
       await expect(combobox).toContainText('全期間', { timeout: getTimeout('short') });
     }
