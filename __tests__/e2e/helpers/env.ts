@@ -2,32 +2,18 @@
  * E2Eテスト用の環境変数ユーティリティ
  */
 
+import { getTimeout as getWaitUtilsTimeout, isRunningInCI } from '../../../e2e/helpers/wait-utils';
+
 /**
  * CI環境かどうかを判定
  * process.env.CIが '1', 'true', 'yes' のいずれかの場合にtrueを返す
  */
-export const isCI = ['1', 'true', 'yes'].includes(String(process.env?.CI).toLowerCase());
+export const isCI = isRunningInCI();
 
 /**
- * タイムアウト値を取得
- * @param level - タイムアウトレベル
- * @returns ミリ秒単位のタイムアウト値
+ * wait-utils のタイムアウト定義をそのまま再エクスポート
  */
-export function getTimeout(level: 'short' | 'medium' | 'long' | 'extraLong'): number {
-  const timeouts = {
-    short: 5000,
-    medium: 10000,
-    long: 30000,
-    extraLong: 60000
-  };
-
-  // CI環境では長めのタイムアウトを設定
-  if (isCI) {
-    return timeouts[level] * 2;
-  }
-
-  return timeouts[level];
-}
+export const getTimeout = getWaitUtilsTimeout;
 
 /**
  * 環境に応じたタイムアウトを取得
