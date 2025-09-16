@@ -164,40 +164,11 @@ export async function GET(request: NextRequest) {
           };
         }
       }
-      // Support multiple sources selection
+      // Support multiple sources selection (treat values as IDs directly)
       if (sources) {
-        const sourceList = sources.split(',').filter(s => s.trim());
-        if (sourceList.length > 0) {
-          // Check if sources are IDs or names
-          // If any source starts with 'cl' (Prisma cuid prefix), treat all as IDs
-          const areIds = sourceList.some(s => s.startsWith('cl'));
-
-          if (areIds) {
-            // Sources are IDs, use them directly
-            where.sourceId = { in: sourceList };
-          } else {
-            // Sources are names, fetch corresponding IDs
-            const sourceDocs = await prisma.source.findMany({
-              where: {
-                name: { in: sourceList }
-              },
-              select: { id: true }
-            });
-
-            if (sourceDocs.length > 0) {
-              const sourceIds = sourceDocs.map(s => s.id);
-              where.sourceId = { in: sourceIds };
-            } else {
-              // No matching sources found, return empty result
-              return {
-                items: [],
-                total: 0,
-                page,
-                limit,
-                totalPages: 0,
-              };
-            }
-          }
+        const sourceIds = sources.split(',').map(s => s.trim()).filter(Boolean);
+        if (sourceIds.length > 0) {
+          where.sourceId = { in: sourceIds };
         }
       } else if (sourceId) {
         // Backward compatibility with single sourceId
