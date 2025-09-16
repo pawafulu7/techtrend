@@ -111,12 +111,10 @@ async function testMixedSourcesFilter() {
     // Dev.to + Zennの合計
     const bothCount = await prisma.article.count({
       where: {
-        source: {
-          name: {
-            in: ['Dev.to', 'Zenn'],
-            mode: 'insensitive'
-          }
-        }
+        OR: [
+          { source: { name: { equals: 'Dev.to', mode: 'insensitive' } } },
+          { source: { name: { equals: 'Zenn', mode: 'insensitive' } } },
+        ]
       }
     });
     console.log(`DB直接: Dev.to + Zenn = ${bothCount}件`);
