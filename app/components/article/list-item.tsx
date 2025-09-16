@@ -40,7 +40,7 @@ export function ArticleListItem({
     setIsRead(initialIsRead);
   }, [initialIsRead]);
   const searchParams = useSearchParams();
-  const sourceColor = getSourceColor(article.source.name);
+  const sourceColor = getSourceColor(article.source?.name || 'Unknown');
   const publishedDate = new Date(article.publishedAt);
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
@@ -143,7 +143,7 @@ export function ArticleListItem({
           variant="secondary" 
           className={cn("text-xs font-medium", sourceColor.tag)}
         >
-          {article.source.name}
+          {article.source?.name || 'Unknown'}
         </Badge>
 
         {/* 時間表示 - デスクトップでは配信・取込両方、モバイルでは配信のみ */}

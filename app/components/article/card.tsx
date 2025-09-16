@@ -50,28 +50,33 @@ export function ArticleCard({
   
   // サムネイル表示判定ロジック
   const shouldShowThumbnail = (): boolean => {
+    // sourceが存在しない場合は早期リターン
+    if (!article.source) {
+      return false;
+    }
+
     // Speaker DeckとDocswellは常にサムネイル表示（スライドサービス）
     if (article.source.name === 'Speaker Deck' || article.source.name === 'Docswell') {
       return !!article.thumbnail;
     }
-    
+
     // 薄いコンテンツ（300文字未満）でサムネイルがある場合
     if (article.content && article.content.length < 300 && article.thumbnail) {
       return true;
     }
-    
+
     // 品質スコアが低い（30未満）でサムネイルがある場合
     if (article.qualityScore && article.qualityScore < 30 && article.thumbnail) {
       return true;
     }
-    
+
     return false;
   };
-  
+
   const showThumbnail = shouldShowThumbnail();
-  
+
   const searchParams = useSearchParams();
-  const sourceColor = getSourceColor(article.source.name);
+  const sourceColor = getSourceColor(article.source?.name || 'Unknown');
   const publishedDate = new Date(article.publishedAt);
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
@@ -191,7 +196,7 @@ export function ArticleCard({
             variant="secondary" 
             className={cn("text-xs font-medium", sourceColor.tag)}
           >
-            {article.source.name}
+            {article.source?.name || 'Unknown'}
           </Badge>
           {article.category && (
             <Badge 
