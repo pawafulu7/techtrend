@@ -138,9 +138,8 @@ export class LayeredCache {
   private isBasicQuery(params: ArticleQueryParams): boolean {
     return !params.search &&
            !params.readFilter &&
-           !params.userId &&
-           !params.tags &&
-           !params.tag;
+           !params.userId;
+    // タグの条件を削除 - タグはフィルター条件の一種として基本クエリに含める
   }
 
   /**
