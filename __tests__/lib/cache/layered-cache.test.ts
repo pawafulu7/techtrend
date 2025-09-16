@@ -2,16 +2,17 @@ import { LayeredCache } from '@/lib/cache/layered-cache';
 import type { ArticleQueryParams } from '@/lib/cache/layered-cache';
 
 // RedisCacheのモック
-// 各レイヤーごとに異なるストレージを使用
-const storageMap = new Map<string, Map<string, any>>();
+jest.mock('@/lib/cache/index', () => {
+  // 各レイヤーごとに異なるストレージを使用
+  const storageMap = new Map<string, Map<string, any>>();
 
-jest.mock('@/lib/cache/index', () => ({
-  RedisCache: jest.fn().mockImplementation((options) => {
-    const namespace = options.namespace || 'default';
-    if (!storageMap.has(namespace)) {
-      storageMap.set(namespace, new Map());
-    }
-    const storage = storageMap.get(namespace)!;
+  return {
+    RedisCache: jest.fn().mockImplementation((options) => {
+      const namespace = options.namespace || 'default';
+      if (!storageMap.has(namespace)) {
+        storageMap.set(namespace, new Map());
+      }
+      const storage = storageMap.get(namespace)!;
 
     return {
       get: jest.fn(async (key) => storage.get(key) || null),
@@ -31,15 +32,14 @@ jest.mock('@/lib/cache/index', () => ({
       resetStats: jest.fn(),
     };
   }),
-}));
+  };
+});
 
 describe('LayeredCache', () => {
   let cache: LayeredCache;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // ストレージをクリア
-    storageMap.clear();
     cache = new LayeredCache();
   });
 

@@ -187,7 +187,7 @@ export class LayeredCache {
    * 基本クエリ用のキーを生成（簡素化）
    */
   private generateBasicKey(params: ArticleQueryParams): string {
-    // 基本的なパラメータのみを使用（sources/sourceIdを追加）
+    // 基本的なパラメータのみを使用（sources/sourceId/tag/tagsを追加）
     const basicParams = {
       page: params.page || 1,
       limit: params.limit || 20,
@@ -195,6 +195,9 @@ export class LayeredCache {
       category: params.category || 'all',
       sources: params.sources || 'all',  // sourcesパラメータを追加
       sourceId: params.sourceId || 'none',  // sourceIdパラメータを追加（後方互換性）
+      tag: params.tag || 'none',  // 単一タグパラメータを追加
+      tags: params.tags || 'none',  // 複数タグパラメータを追加
+      tagMode: params.tagMode || 'OR',  // タグモードを追加
       dateRange: params.dateRange || 'all',  // dateRangeも追加
       includeEmptyContent: params.includeEmptyContent || false  // includeEmptyContentも追加
     };
@@ -223,7 +226,8 @@ export class LayeredCache {
       category: params.category || 'all',  // categoryも追加
       dateRange: params.dateRange || 'all',  // dateRangeも追加
       tag: params.tag || 'none',  // tagも追加
-      tags: params.tags || 'none'  // tagsも追加
+      tags: params.tags || 'none',  // tagsも追加
+      tagMode: params.tagMode || 'OR'  // tagModeも追加
     };
 
     const sortedParams = Object.entries(userParams)
