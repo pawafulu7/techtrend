@@ -35,6 +35,7 @@ services:
   node-ci:
     image: node:20-alpine
     container_name: techtrend-node-ci
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /app
     env_file:
       - .env
@@ -63,6 +64,7 @@ services:
   playwright-e2e:
     image: mcr.microsoft.com/playwright:v1.55.0-jammy
     container_name: techtrend-playwright-e2e
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /app
     env_file:
       - .env

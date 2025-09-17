@@ -20,7 +20,7 @@ test.describe('ソースフィルタリング機能', () => {
     await expect(filterArea).toBeVisible();
 
     // 全て選択ボタンをクリックして、初期状態を統一
-    const selectAllButton = page.locator('[data-testid="select-all-button"]');
+    const selectAllButton = page.locator('[data-testid="select-all-button"]:visible');
     await selectAllButton.click();
     await page.waitForTimeout(500);
 
@@ -128,7 +128,7 @@ test.describe('ソースフィルタリング機能', () => {
     await page.waitForTimeout(isCI ? 2000 : 500);
     
     // 最初に全て選択ボタンをクリックして、全て選択状態にする
-    const selectAllButton = page.locator('[data-testid="select-all-button"]');
+    const selectAllButton = page.locator('[data-testid="select-all-button"]:visible');
     await expect(selectAllButton).toBeVisible();
     await selectAllButton.click();
     await page.waitForLoadState('networkidle', { timeout: 5000 });
@@ -141,7 +141,7 @@ test.describe('ソースフィルタリング機能', () => {
     expect(initialArticles).toBeGreaterThan(0);
     
     // 全て解除ボタンをクリック
-    const deselectAllButton = page.locator('[data-testid="deselect-all-button"]');
+    const deselectAllButton = page.locator('[data-testid="deselect-all-button"]:visible');
     await expect(deselectAllButton).toBeVisible();
     await deselectAllButton.click();
     

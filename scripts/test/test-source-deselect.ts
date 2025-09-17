@@ -22,7 +22,7 @@ async function testSourceDeselect() {
     
     // 2. 「全て解除」ボタンをクリック
     console.error('2. 「全て解除」ボタンをクリック');
-    await page.click('[data-testid="deselect-all-button"]');
+    await page.click('[data-testid="deselect-all-button"]:visible');
     await page.waitForTimeout(1000);
     
     // 3. URL確認
