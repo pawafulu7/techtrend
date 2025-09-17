@@ -35,10 +35,12 @@ services:
   node-ci:
     image: node:20-alpine
     container_name: techtrend-node-ci
-    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /app
     env_file:
       - .env
+    environment:
+      HOST_UID: ${HOST_UID:-1000}
+      HOST_GID: ${HOST_GID:-1000}
     volumes:
       - ./:/app
       # 匿名ボリュームで node_modules をコンテナ側に隔離（ホストを汚さない）
@@ -64,10 +66,12 @@ services:
   playwright-e2e:
     image: mcr.microsoft.com/playwright:v1.55.0-jammy
     container_name: techtrend-playwright-e2e
-    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /app
     env_file:
       - .env
+    environment:
+      HOST_UID: ${HOST_UID:-1000}
+      HOST_GID: ${HOST_GID:-1000}
     volumes:
       - ./:/app
       # Playwright の出力をホストから隔離
