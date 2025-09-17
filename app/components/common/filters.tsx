@@ -194,23 +194,23 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               variant="outline"
               size="sm"
               onClick={handleSelectAll}
-              className="h-7 text-xs justify-start flex-1"
+              className="h-7 text-xs justify-start flex-1 min-w-0 overflow-hidden"
               data-testid="select-all-button"
               type="button"
             >
-              <CheckSquare className="w-3 h-3 mr-1" />
-              すべて選択
+              <CheckSquare className="w-3 h-3 me-1 flex-shrink-0" />
+              <span className="truncate">全て選択</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleDeselectAll}
-              className="h-7 text-xs justify-start flex-1"
+              className="h-7 text-xs justify-start flex-1 min-w-0 overflow-hidden"
               data-testid="deselect-all-button"
               type="button"
             >
-              <Square className="w-3 h-3 mr-1" />
-              すべて解除
+              <Square className="w-3 h-3 me-1 flex-shrink-0" />
+              <span className="truncate">全て解除</span>
             </Button>
           </div>
           
@@ -258,21 +258,21 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleCategorySelectAll(category)}
-                            className="h-6 text-xs px-2"
+                            className="h-6 text-xs px-2 flex-1 min-w-0 overflow-hidden"
                             type="button"
                             data-testid={`category-${category.id}-select-all`}
                           >
-                            全選択
+                            <span className="truncate">全て選択</span>
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleCategoryDeselectAll(category)}
-                            className="h-6 text-xs px-2"
+                            className="h-6 text-xs px-2 flex-1 min-w-0 overflow-hidden"
                             type="button"
                             data-testid={`category-${category.id}-deselect-all`}
                           >
-                            全解除
+                            <span className="truncate">全て解除</span>
                           </Button>
                         </div>
                         

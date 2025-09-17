@@ -8,7 +8,13 @@ test.use({
 
 test.describe('Date Range Filter', () => {
   // Shared robust date range selection with retries
-  async function selectDateRangeGlobal(page: import('@playwright/test').Page, label: string, value: string) {
+  type DateRangeValue = 'today' | 'week' | 'month' | 'three_months' | 'clear' | string;
+
+  async function selectDateRangeGlobal(
+    page: import('@playwright/test').Page,
+    label: string,
+    value: DateRangeValue
+  ) {
     const combobox = page.getByTestId('date-range-trigger');
     const listbox = page.locator('[role="listbox"]');
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -16,16 +22,32 @@ test.describe('Date Range Filter', () => {
       await expect(listbox).toBeVisible({ timeout: 5000 });
       await page.locator('[role="listbox"]').getByRole('option', { name: label }).click();
       try {
-        await waitForUrlParam(page, 'dateRange', value, { timeout: getTimeout('short') });
+        if (value === 'clear') {
+          await expect
+            .poll(() => new URL(page.url()).searchParams.get('dateRange'), {
+              timeout: getTimeout('short')
+            })
+            .toBeNull();
+        } else {
+          await waitForUrlParam(page, 'dateRange', String(value), { timeout: getTimeout('short') });
+        }
+        await expect(combobox).toContainText(label, { timeout: getTimeout('short') });
         await expect(listbox).toBeHidden({ timeout: 5000 });
         return;
       } catch {
         try {
           await expect(combobox).toContainText(label, { timeout: 3000 });
           await expect(listbox).toBeHidden({ timeout: 5000 });
+          if (value === 'clear') {
+            const param = new URL(page.url()).searchParams.get('dateRange');
+            if (param !== null) {
+              throw new Error('dateRange param still present');
+            }
+          }
           return;
         } catch {}
       }
+      await page.waitForTimeout(500);
     }
     throw new Error(`Failed to select date range: ${label}`);
   }
@@ -88,35 +110,12 @@ test.describe('Date Range Filter', () => {
     const combobox = page.getByTestId('date-range-trigger');
     const listbox = page.locator('[role="listbox"]');
 
-    // まず「今週」を選択
-    await combobox.click();
-    await expect(listbox).toBeVisible();
-    await listbox.getByRole('option', { name: '今週' }).click();
-
-    // URLが更新されるのを待機（遅延時のフォールバックを含めて堅牢化）
-    let updatedToWeek = true;
-    try {
-      await waitForUrlParam(page, 'dateRange', 'week', { timeout: getTimeout('medium') });
-    } catch {
-      updatedToWeek = false;
-      // URLが更新されない実装でも、コンボボックスの表示で確認
-      await expect(combobox).toContainText('今週', { timeout: getTimeout('short') });
-    }
-    await expect(listbox).toBeHidden();
+    // まず「今週」を選択（堅牢な共通ヘルパーを使用）
+    await selectDateRangeGlobal(page, '今週', 'week');
+    await expect(combobox).toContainText('今週');
 
     // 「全期間」に戻す
-    await combobox.click();
-    await expect(listbox).toBeVisible();
-    await listbox.getByRole('option', { name: '全期間' }).click();
-
-    // URLからdateRangeパラメータが削除されるのを待機
-    // 以前の手順でURL未更新だった場合は、テキストの検証にフォールバック
-    if (updatedToWeek) {
-      await page.waitForFunction(() => !window.location.search.includes('dateRange'), { timeout: getTimeout('medium') });
-    } else {
-      await expect(combobox).toContainText('全期間', { timeout: getTimeout('short') });
-    }
-    await expect(listbox).toBeHidden();
+    await selectDateRangeGlobal(page, '全期間', 'clear');
 
     // テキストが「全期間」に戻ったことを確認
     await expect(combobox).toContainText('全期間');

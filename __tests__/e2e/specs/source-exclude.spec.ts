@@ -19,7 +19,7 @@ test.describe('ソースフィルタリング機能', () => {
     const filterArea = page.locator('[data-testid="filter-area"]');
     await expect(filterArea).toBeVisible();
 
-    // すべて選択ボタンをクリックして、初期状態を統一
+    // 全て選択ボタンをクリックして、初期状態を統一
     const selectAllButton = page.locator('[data-testid="select-all-button"]');
     await selectAllButton.click();
     await page.waitForTimeout(500);
@@ -111,7 +111,7 @@ test.describe('ソースフィルタリング機能', () => {
     }
   });
 
-  test('全選択・全解除ボタンが機能する', async ({ page }) => {
+  test('全て選択・全て解除ボタンが機能する', async ({ page }) => {
     // フィルターエリアを取得
     const _filterArea = page.locator('[data-testid="filter-area"]');
     
@@ -127,7 +127,7 @@ test.describe('ソースフィルタリング機能', () => {
     }
     await page.waitForTimeout(isCI ? 2000 : 500);
     
-    // 最初に全選択ボタンをクリックして、すべて選択状態にする
+    // 最初に全て選択ボタンをクリックして、全て選択状態にする
     const selectAllButton = page.locator('[data-testid="select-all-button"]');
     await expect(selectAllButton).toBeVisible();
     await selectAllButton.click();
@@ -140,7 +140,7 @@ test.describe('ソースフィルタリング機能', () => {
     const initialArticles = await page.locator('[data-testid="article-card"]').count();
     expect(initialArticles).toBeGreaterThan(0);
     
-    // 全解除ボタンをクリック
+    // 全て解除ボタンをクリック
     const deselectAllButton = page.locator('[data-testid="deselect-all-button"]');
     await expect(deselectAllButton).toBeVisible();
     await deselectAllButton.click();
@@ -183,7 +183,7 @@ test.describe('ソースフィルタリング機能', () => {
     // ソースが選択されていない場合、記事数は0または初期より少ない
     expect(articlesAfterDeselect).toBeLessThanOrEqual(initialArticles);
     
-    // 全選択ボタンを再度クリック
+    // 全て選択ボタンを再度クリック
     await selectAllButton.click();
     
     // ネットワーク待機と状態更新を確実に待つ
