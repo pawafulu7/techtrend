@@ -21,8 +21,8 @@ test.describe('Multiple Source Filter', () => {
     const checkboxCount = await checkboxes.count();
     
     // Check if select/deselect buttons exist using data-testid
-    const selectAllButton = page.locator('[data-testid="select-all-button"]');
-    const deselectAllButton = page.locator('[data-testid="deselect-all-button"]');
+    const selectAllButton = page.locator('[data-testid="select-all-button"]:visible');
+    const deselectAllButton = page.locator('[data-testid="deselect-all-button"]:visible');
     
     // At least one of these should exist:
     // 1. Checkboxes
@@ -77,7 +77,7 @@ test.describe('Multiple Source Filter', () => {
     
     if (await filtersSection.isVisible()) {
       // Find the select all button using data-testid
-      const selectAllButton = page.locator('[data-testid="select-all-button"]');
+      const selectAllButton = page.locator('[data-testid="select-all-button"]:visible');
       
       // Click select all if exists
       if (await selectAllButton.count() === 0) {
@@ -97,7 +97,7 @@ test.describe('Multiple Source Filter', () => {
         expect(url1).not.toContain('sources=');
         
         // Click deselect all button using data-testid
-        const deselectButton = page.locator('[data-testid="deselect-all-button"]');
+        const deselectButton = page.locator('[data-testid="deselect-all-button"]:visible');
         if (await deselectButton.count() > 0) {
           await deselectButton.click();
           await page.waitForLoadState('networkidle');

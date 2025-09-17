@@ -71,6 +71,27 @@ npm run scheduler:restart:local
 npm run scheduler:stop:local
 ```
 
+### Docker環境での実行
+
+Docker環境でテストやビルドを実行する場合、macOS等でUID/GIDが異なることがあるため、以下の設定が必要です：
+
+```bash
+# ホストのUID/GIDを環境変数として設定（.envまたはシェルプロファイルに追加）
+export HOST_UID=$(id -u)
+export HOST_GID=$(id -g)
+
+# Dockerでのテスト実行
+npm run docker:test
+
+# DockerでのE2Eテスト実行
+npm run docker:e2e
+
+# Dockerでのビルド実行
+npm run docker:build
+```
+
+**注意**: これらの値はDockerコンテナ内でファイル権限を適切に設定するために使用されます。
+
 **注意**:
 - 通常の `npx tsx scripts/...` コマンドでは `.env` ファイルが読み込まれないため、上記のローカル実行用コマンドを使用してください。
 - PM2のローカル実行では `ecosystem.local.config.js` が使用され、`.env` ファイルが自動的に読み込まれます。

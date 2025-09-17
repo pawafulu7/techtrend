@@ -38,6 +38,9 @@ services:
     working_dir: /app
     env_file:
       - .env
+    environment:
+      HOST_UID: ${HOST_UID:-1000}
+      HOST_GID: ${HOST_GID:-1000}
     volumes:
       - ./:/app
       # 匿名ボリュームで node_modules をコンテナ側に隔離（ホストを汚さない）
@@ -66,6 +69,9 @@ services:
     working_dir: /app
     env_file:
       - .env
+    environment:
+      HOST_UID: ${HOST_UID:-1000}
+      HOST_GID: ${HOST_GID:-1000}
     volumes:
       - ./:/app
       # Playwright の出力をホストから隔離

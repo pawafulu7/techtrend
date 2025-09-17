@@ -41,7 +41,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
   test('カテゴリ単位での全選択が動作する', async ({ page }) => {
     // まず全解除
-    await page.getByTestId('deselect-all-button').click();
+    await page.locator('[data-testid="deselect-all-button"]:visible').click();
 
     // 海外ソースカテゴリを展開
     await page.getByTestId('category-foreign-header').click();
@@ -98,7 +98,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
     test.slow(); // CI環境での遅延に対応するためタイムアウトを3倍に延長
     
     // 全解除
-    await page.getByTestId('deselect-all-button').click();
+    await page.locator('[data-testid="deselect-all-button"]:visible').click();
 
     // 海外ソースカテゴリを展開
     await page.getByTestId('category-foreign-header').click();
@@ -169,7 +169,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
     expect(selectedCount).toBeGreaterThan(0);
 
     // 全解除 → 0/Y
-    await page.getByTestId('deselect-all-button').click();
+    await page.locator('[data-testid="deselect-all-button"]:visible').click();
     await expect(sourceCount).toHaveText(`0/${total}`);
 
     // 海外カテゴリのみ選択 → N/Y（NはDOMから計算）
