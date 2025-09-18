@@ -31,12 +31,37 @@ export async function GET(request: Request) {
       summary: true,
       publishedAt: true,
       thumbnail: true,
+      source: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     } : includeRelations ? {
       include: {
         source: true,
         tags: true,
       },
-    } : true;
+    } : {
+      id: true,
+      title: true,
+      url: true,
+      summary: true,
+      publishedAt: true,
+      thumbnail: true,
+      source: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      tags: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    };
 
     const [favorites, total] = await Promise.all([
       prisma.favorite.findMany({
