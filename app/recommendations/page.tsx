@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth/auth';
 import { RecommendationsClient } from './recommendations-client';
+import { loginWithCallback } from '@/lib/routes/auth';
 
 export const metadata: Metadata = {
   title: 'おすすめ記事 | TechTrend',
@@ -12,7 +13,7 @@ export default async function RecommendationsPage() {
   const session = await auth();
 
   if (!session?.user) {
-    redirect('/auth/signin?callbackUrl=/recommendations');
+    redirect(loginWithCallback('/recommendations'));
   }
 
   return (
