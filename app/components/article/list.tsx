@@ -22,12 +22,17 @@ export function ArticleList({
     if (!session?.user) {
       return;
     }
-    
+
     try {
+      // 現在のお気に入り状態を確認
+      const article = articles.find(a => a.id === articleId);
+      const currentlyFavorited = article?.isFavorited ?? false;
+
+      // お気に入り状態に応じてPOSTまたはDELETEを送信
       const response = await fetch(`/api/favorites/${articleId}`, {
-        method: 'POST',
+        method: currentlyFavorited ? 'DELETE' : 'POST',
       });
-      
+
       if (response.ok) {
         // 成功時は再レンダリングをトリガー
         setRefreshKey(prev => prev + 1);
@@ -35,7 +40,7 @@ export function ArticleList({
     } catch (error) {
       console.error('Failed to toggle favorite:', error);
     }
-  }, [session]);
+  }, [session, articles]);
   
   // 既読状態変更イベントをリッスンして再レンダリング
   useEffect(() => {

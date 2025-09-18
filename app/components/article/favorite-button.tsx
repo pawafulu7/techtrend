@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,14 +23,19 @@ export function FavoriteButton({
   size = 'sm',
   showText = false,
   compact = false,
-  isFavorited = false,
+  isFavorited: initialFavorited = false,
   onToggleFavorite
 }: FavoriteButtonProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const [isToggling, setIsToggling] = useState(false);
-
+  const [isFavorited, setIsFavorited] = useState(initialFavorited);
   const [isAnimating, setIsAnimating] = useState(false);
+
+  // プロップスの変更を反映
+  useEffect(() => {
+    setIsFavorited(initialFavorited);
+  }, [initialFavorited]);
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -44,17 +49,25 @@ export function FavoriteButton({
 
     if (onToggleFavorite) {
       setIsAnimating(true);
+      // 楽観的更新
+      setIsFavorited(!isFavorited);
       onToggleFavorite();
       setTimeout(() => setIsAnimating(false), 300);
     } else {
       // スタンドアロン使用の場合は直接APIを呼び出す
       setIsToggling(true);
       setIsAnimating(true);
+      // 楽観的更新
+      const newState = !isFavorited;
+      setIsFavorited(newState);
+
       try {
         const response = await fetch(`/api/favorites/${articleId}`, {
-          method: 'POST',
+          method: newState ? 'POST' : 'DELETE',
         });
         if (!response.ok) {
+          // エラー時は元に戻す
+          setIsFavorited(!newState);
           throw new Error('Failed to toggle favorite');
         }
       } catch (error) {
@@ -75,7 +88,7 @@ export function FavoriteButton({
           "p-1.5 rounded-full transition-all",
           "hover:bg-red-50 dark:hover:bg-red-950",
           isAnimating && "scale-110",
-          isFavorited && "text-red-500",
+          isFavorited ? "text-red-500 hover:text-red-600" : "text-gray-500 hover:text-red-500",
           className
         )}
         aria-label={isFavorited ? "お気に入りから削除" : "お気に入りに追加"}
@@ -83,8 +96,8 @@ export function FavoriteButton({
       >
         <Heart
           className={cn(
-            "h-4 w-4",
-            isFavorited && "fill-current",
+            "h-4 w-4 transition-colors",
+            isFavorited && "fill-red-500",
             isToggling && "opacity-50"
           )}
         />
@@ -94,21 +107,22 @@ export function FavoriteButton({
 
   return (
     <Button
-      variant={isFavorited ? "default" : "outline"}
+      variant={isFavorited ? "destructive" : "outline"}
       size={size}
       onClick={handleClick}
       disabled={isToggling}
       className={cn(
         "transition-all",
         isAnimating && "scale-110",
+        isFavorited ? "bg-red-500 hover:bg-red-600 text-white" : "hover:text-red-500",
         className
       )}
       data-testid="favorite-button"
     >
       <Heart
         className={cn(
-          "h-4 w-4",
-          isFavorited && "fill-current",
+          "h-4 w-4 transition-colors",
+          isFavorited ? "fill-white" : "fill-none",
           showText && "mr-2",
           isToggling && "opacity-50"
         )}
