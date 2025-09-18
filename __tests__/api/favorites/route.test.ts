@@ -125,7 +125,28 @@ describe('/api/favorites', () => {
       expect(prismaMock.favorite.findMany).toHaveBeenCalledWith({
         where: { userId: 'test-user-id' },
         include: {
-          article: true,
+          article: {
+            select: {
+              id: true,
+              title: true,
+              url: true,
+              summary: true,
+              publishedAt: true,
+              thumbnail: true,
+              source: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              tags: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip: 0,
