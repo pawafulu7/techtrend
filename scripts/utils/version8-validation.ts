@@ -102,6 +102,25 @@ export function normalizeLineBreaks(text: string | null | undefined): string {
 }
 
 /**
+ * 詳細要約の項目数をカウントする共通関数
+ * @param detailedSummary 詳細要約のテキスト
+ * @returns 項目数（・で始まる行の数）
+ */
+export function countDetailedItems(detailedSummary: string | null | undefined): number {
+  if (!detailedSummary) return 0;
+
+  // 改行を正規化
+  const normalized = normalizeLineBreaks(detailedSummary);
+
+  // 各行をチェックし、「・」で始まる行をカウント
+  return normalized
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.startsWith('・'))
+    .length;
+}
+
+/**
  * Version 8形式の生成結果を総合的に検証
  * @param result 検証する結果オブジェクト
  * @returns 検証結果とエラーメッセージ

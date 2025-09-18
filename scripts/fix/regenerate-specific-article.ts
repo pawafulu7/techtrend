@@ -6,6 +6,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { countDetailedItems } from '../utils/version8-validation';
 
 const prisma = new PrismaClient();
 const summaryService = new UnifiedSummaryService();
@@ -27,10 +28,8 @@ async function regenerateSpecificArticle(articleId: string) {
     console.log(`タイトル: ${article.title}`);
     console.log(`本文文字数: ${article.content.length}`);
 
-    // 現在の項目数を計算
-    const currentItemCount = article.detailedSummary
-      ? (article.detailedSummary.match(/・/g) || []).length
-      : 0;
+    // 現在の項目数を計算（共通関数を使用）
+    const currentItemCount = countDetailedItems(article.detailedSummary);
     console.log(`現在の項目数: ${currentItemCount}`);
 
     // 要約を再生成
@@ -58,8 +57,8 @@ async function regenerateSpecificArticle(articleId: string) {
       }
     });
 
-    // 新しい項目数を計算
-    const newItemCount = (result.detailedSummary.match(/・/g) || []).length;
+    // 新しい項目数を計算（共通関数を使用）
+    const newItemCount = countDetailedItems(result.detailedSummary);
     console.log(`✅ 再生成完了 (項目数: ${currentItemCount} → ${newItemCount})`);
     console.log(`品質スコア: ${result.qualityScore}`);
 

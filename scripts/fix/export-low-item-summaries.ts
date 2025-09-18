@@ -11,6 +11,27 @@ import { join } from 'path';
 
 const prisma = new PrismaClient();
 
+/**
+ * CSVフィールドを適切にエスケープする
+ * @param value エスケープする値
+ * @returns エスケープされたCSVフィールド
+ */
+function csvEscape(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const str = String(value);
+
+  // カンマ、改行、ダブルクォートが含まれる場合はダブルクォートで囲む
+  if (str.includes(',') || str.includes('\n') || str.includes('\r') || str.includes('"')) {
+    // ダブルクォートは二重にする
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+
+  return str;
+}
+
 interface ProblemArticle {
   id: string;
   title: string;
@@ -70,23 +91,28 @@ async function exportLowItemSummaries() {
         severity = '中';
       }
 
-      // CSVの行を作成（ダブルクォートでエスケープ）
+      // CSVの行を作成（全フィールドをエスケープ）
       const row = [
-        article.id,
-        `"${article.title.replace(/"/g, '""')}"`,
-        article.url,
-        article.sourceName || 'Unknown',
-        article.contentLength,
-        article.itemCount,
-        article.summaryVersion || 0,
-        article.createdAt.toISOString(),
-        severity
+        csvEscape(article.id),
+        csvEscape(article.title),
+        csvEscape(article.url),
+        csvEscape(article.sourceName || 'Unknown'),
+        csvEscape(article.contentLength),
+        csvEscape(article.itemCount),
+        csvEscape(article.summaryVersion || 0),
+        csvEscape(article.createdAt.toISOString()),
+        csvEscape(severity)
       ].join(',') + '\n';
 
       stream.write(row);
     }
 
-    stream.end();
+    // ファイルクローズを待機
+    await new Promise<void>((resolve, reject) => {
+      stream.on('finish', resolve);
+      stream.on('error', reject);
+      stream.end();
+    });
 
     console.log(`\n✅ CSVファイルを作成しました: ${csvPath}`);
 

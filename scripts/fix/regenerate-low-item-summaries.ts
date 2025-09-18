@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env tsx
 /**
  * 項目数が不足している長文記事の要約を再生成するバッチスクリプト
  *
@@ -18,7 +18,8 @@ import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import {
   preparePrismaUpdateData,
   validateGenerationResult,
-  normalizeLineBreaks
+  normalizeLineBreaks,
+  countDetailedItems
 } from '../utils/version8-validation';
 
 dotenv.config({ path: '.env.local' });
@@ -123,21 +124,13 @@ function toNumber(value: unknown): number {
   return Number(value);
 }
 
-function countDetailedItems(detailedSummary: string | null | undefined): number {
-  if (!detailedSummary) return 0;
-  const normalized = normalizeLineBreaks(detailedSummary);
-  return normalized
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.startsWith('・'))
-    .length;
-}
+// countDetailedItems関数は共通化したため、version8-validationからインポートして使用
 
 function determineRequiredItemCount(contentLength: number): number {
   if (contentLength >= 10000) {
-    return 6;
+    return 7;  // 10000文字以上は最低7項目（プロンプトと統一）
   }
-  return 5;
+  return 5;  // 5000-9999文字は最低5項目
 }
 
 async function fetchTargetArticles(): Promise<TargetArticle[]> {
