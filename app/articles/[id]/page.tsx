@@ -15,6 +15,8 @@ import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summar
 import { OptimizedImage } from '@/app/components/common/optimized-image';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
+import { auth } from '@/lib/auth/auth';
+import { prisma } from '@/lib/prisma';
 
 interface PageProps {
   params: Promise<{
@@ -25,10 +27,34 @@ interface PageProps {
 }>;
 }
 
-async function getArticle(id: string) {
+async function getArticleWithFavoriteStatus(id: string, userId?: string) {
   // キャッシュを使用して記事を取得
   const article = await articleDetailCache.getArticleWithRelations(id);
-  return article;
+
+  if (!article || !userId) {
+    return { article, isFavorited: false };
+  }
+
+  // お気に入り状態を確認
+  try {
+    const favorite = await prisma.favorite.findUnique({
+      where: {
+        userId_articleId: {
+          userId,
+          articleId: id,
+        },
+      },
+    });
+
+    return {
+      article,
+      isFavorited: !!favorite,
+    };
+  } catch (error) {
+    // エラーが発生した場合はデフォルトでfalseを返す
+    console.error('Failed to fetch favorite status:', error);
+    return { article, isFavorited: false };
+  }
 }
 
 // Next.jsのキャッシュを無効化
@@ -38,14 +64,17 @@ export const revalidate = 0;
 export default async function ArticlePage({ params, searchParams }: PageProps) {
   const { id } = await params;
   const { from } = await searchParams;
-  
+
+  // セッション情報を取得
+  const session = await auth();
+
   // セキュリティ: fromパラメータの検証
   const getReturnUrl = (from: string | undefined): string => {
     if (!from) return '/';
-    
+
     // 特定のキーワードから適切なURLへマッピング
     if (from === 'digest') return '/digest';
-    
+
     try {
       const decodedUrl = decodeURIComponent(from);
       // 相対パスまたは同一オリジンのみ許可
@@ -57,10 +86,15 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
       return '/';
     }
   };
-  
+
   const returnUrl = getReturnUrl(from);
   const returnLabel = from === 'digest' ? 'ダイジェストに戻る' : '記事一覧に戻る';
-  const article = await getArticle(id);
+
+  // 記事とお気に入り状態を取得
+  const { article, isFavorited } = await getArticleWithFavoriteStatus(
+    id,
+    session?.user?.id
+  );
 
   if (!article) {
     notFound();
@@ -138,9 +172,10 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                       </Badge>
                     )}
                   </div>
-                  <FavoriteButton 
+                  <FavoriteButton
                     articleId={article.id}
                     className="h-9"
+                    isFavorited={isFavorited}
                   />
                 </div>
 
