@@ -12,7 +12,7 @@ export default async function RecommendationsPage() {
   const session = await auth();
 
   if (!session?.user) {
-    redirect('/auth/signin?callbackUrl=/recommendations');
+    redirect('/auth/login?callbackUrl=/recommendations');
   }
 
   return (

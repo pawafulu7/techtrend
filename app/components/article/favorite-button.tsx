@@ -43,7 +43,7 @@ export function FavoriteButton({
 
     if (!session) {
       // 未ログインの場合はログインページへ
-      router.push('/auth/signin');
+      router.push('/auth/login');
       return;
     }
 
