@@ -122,12 +122,13 @@ export class UnifiedSummaryService {
         const processed = postProcessSummaries(parsed.summary, parsed.detailedSummary);
 
         // コンテンツ分析情報を作成（項目数チェック用）
+        // 注意：品質チェックには処理後のコンテンツ長を使用（切り詰め後）
         const contentAnalysis = {
-          contentLength: content.length,  // 既存のフィールド名を使用
-          totalLength: content.length,    // 互換性のため両方定義
-          isThinContent: content.length < 1000,
-          recommendedMinLength: content.length < 1000 ? 60 : 100,
-          recommendedMaxLength: content.length < 1000 ? 100 : 200
+          contentLength: processedContent.length,  // 処理後のコンテンツ長を使用
+          totalLength: processedContent.length,    // 互換性のため両方定義
+          isThinContent: processedContent.length < 1000,
+          recommendedMinLength: processedContent.length < 1000 ? 60 : 100,
+          recommendedMaxLength: processedContent.length < 1000 ? 100 : 200
         };
 
         // 品質チェック（処理後のテキストで実施、コンテンツ分析情報も渡す）

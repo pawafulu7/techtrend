@@ -71,5 +71,9 @@ async function regenerateSpecificArticle(articleId: string) {
 }
 
 // 実行
-const articleId = process.argv[2] || 'cmfonlsw8004ote8u9m0n8npi';
+const articleId = process.argv[2];
+if (!articleId) {
+  console.error('使用方法: npx tsx scripts/fix/regenerate-specific-article.ts <articleId>');
+  process.exit(1);
+}
 regenerateSpecificArticle(articleId);

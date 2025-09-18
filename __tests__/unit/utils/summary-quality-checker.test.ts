@@ -6,9 +6,9 @@ import {
   isQualityCheckEnabled,
   getMinQualityScore,
   getMaxRegenerationAttempts,
-} from '@/lib/utils/summary-quality-checker';
+} from '../../../lib/utils/summary-quality-checker';
 
-import { ContentAnalysis } from '@/lib/utils/content-analyzer';
+import { ContentAnalysis } from '../../../lib/utils/content-analyzer';
 
 describe('summary-quality-checker', () => {
   describe('checkSummaryQuality', () => {

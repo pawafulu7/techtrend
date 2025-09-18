@@ -147,36 +147,67 @@ export function checkSummaryQuality(
     score -= contentAnalysis?.isThinContent ? 15 : 10;
   }
 
-  // 2. 詳細要約の文字数チェック（薄いコンテンツの場合は基準を緩和）
+  // 2. 詳細要約の文字数チェック（コンテンツ長に応じた可変レンジ）
   const detailedLength = detailedSummary.length;
-  const minDetailedLength = contentAnalysis?.isThinContent ? 50 : 200;
-  const idealMinDetailedLength = contentAnalysis?.isThinContent ? 80 : 400;
-  const maxDetailedLength = contentAnalysis?.isThinContent ? 200 : 800;
-  
-  if (!contentAnalysis?.isThinContent) {
-    // 通常コンテンツの詳細要約チェック
-    if (detailedLength < minDetailedLength) {
-      issues.push({
-        type: 'length',
-        severity: 'major',
-        message: `詳細要約が短すぎる: ${detailedLength}文字（最小${minDetailedLength}文字）`
-      });
-      score -= 20;
-    } else if (detailedLength < idealMinDetailedLength) {
-      issues.push({
-        type: 'length',
-        severity: 'minor',
-        message: `詳細要約が短め: ${detailedLength}文字（理想は${idealMinDetailedLength}-600文字）`
-      });
-      score -= 5;
-    } else if (detailedLength > maxDetailedLength) {
-      issues.push({
-        type: 'length',
-        severity: 'minor',
-        message: `詳細要約が長すぎる: ${detailedLength}文字（最大${maxDetailedLength}文字）`
-      });
-      score -= 10;
+
+  // コンテンツ長に応じた動的なレンジ設定
+  // contentLengthは既に上で定義済みなので再利用
+  let minDetailedLength = 200;
+  let idealMinDetailedLength = 400;
+  let maxDetailedLength = 800;
+
+  if (contentAnalysis?.isThinContent) {
+    // 薄いコンテンツの場合（1000文字未満）
+    minDetailedLength = 50;
+    idealMinDetailedLength = 80;
+    maxDetailedLength = 200;
+  } else {
+    // contentLengthに応じた可変レンジ
+    if (contentLength >= 10000) {
+      // 10000文字以上：プロンプトは1200-1500文字を要求
+      minDetailedLength = 1200;
+      idealMinDetailedLength = 1200;
+      maxDetailedLength = 1500;
+    } else if (contentLength >= 5000) {
+      // 5000文字以上：プロンプトは900-1500文字を要求
+      minDetailedLength = 900;
+      idealMinDetailedLength = 900;
+      maxDetailedLength = 1500;
+    } else if (contentLength >= 3000) {
+      // 3000-5000文字：600-1000文字
+      minDetailedLength = 600;
+      idealMinDetailedLength = 600;
+      maxDetailedLength = 1000;
+    } else if (contentLength >= 1000) {
+      // 1000-3000文字：400-700文字
+      minDetailedLength = 400;
+      idealMinDetailedLength = 400;
+      maxDetailedLength = 700;
     }
+  }
+
+  // 詳細要約の長さチェック
+  if (detailedLength < minDetailedLength) {
+    issues.push({
+      type: 'length',
+      severity: 'major',
+      message: `詳細要約が短すぎる: ${detailedLength}文字（最小${minDetailedLength}文字）`
+    });
+    score -= 20;
+  } else if (detailedLength < idealMinDetailedLength) {
+    issues.push({
+      type: 'length',
+      severity: 'minor',
+      message: `詳細要約が短め: ${detailedLength}文字（理想は${idealMinDetailedLength}-${maxDetailedLength}文字）`
+    });
+    score -= 5;
+  } else if (detailedLength > maxDetailedLength) {
+    issues.push({
+      type: 'length',
+      severity: 'minor',
+      message: `詳細要約が長すぎる: ${detailedLength}文字（最大${maxDetailedLength}文字）`
+    });
+    score -= 10;
   }
 
   // 3. 句点チェック
@@ -197,8 +228,8 @@ export function checkSummaryQuality(
   let recommendedItems = '3-4'; // デフォルト推奨
   
   if (contentLength >= 10000) {
-    minItems = 6;
-    recommendedItems = '7-8';
+    minItems = 7;  // プロンプトと統一（最低7項目）
+    recommendedItems = '8-9';  // プロンプトと統一（推奨8-9項目）
   } else if (contentLength >= 5000) {
     minItems = 5;
     recommendedItems = '5-7';
@@ -216,12 +247,12 @@ export function checkSummaryQuality(
         message: `項目数不足: ${itemCount}個（最低${minItems}個必要、推奨${recommendedItems}個）`
       });
       score -= 30; // 大幅減点
-    } else if (contentLength >= 10000 && itemCount < 7) {
+    } else if (contentLength >= 10000 && itemCount < 8) {
       // 超長文記事で推奨値未満の場合
       issues.push({
         type: 'itemCount',
         severity: 'minor',
-        message: `項目数が推奨値未満: ${itemCount}個（推奨7-8個）`
+        message: `項目数が推奨値未満: ${itemCount}個（推奨${recommendedItems}個）`
       });
       score -= 10;
     }

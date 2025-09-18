@@ -271,6 +271,9 @@ async function processArticle(
     const message = error instanceof Error ? error.message : String(error);
     console.error(`❌ 再生成に失敗: ${message}`);
 
+    // 一時的なエラー（Rate Limit、ネットワーク等）かどうかを判定
+    const isTransientError = /(?:429|rate|quota|timeout|ECONNRESET|ENETUNREACH|503)/i.test(message);
+
     progress.processed[article.id] = {
       attempts: attempts + 1,
       status: 'failed',
@@ -282,8 +285,11 @@ async function processArticle(
     saveProgress(progress);
 
     stats.failed += 1;
-    console.log(`⏱️ エラーのため${ERROR_DELAY_MS / 1000}秒待機します...`);
-    await delay(ERROR_DELAY_MS);
+
+    // 一時的エラーの場合は長い待機、それ以外は短い待機
+    const waitMs = isTransientError ? ERROR_DELAY_MS : 2000;
+    console.log(`⏱️ エラーのため${waitMs / 1000}秒待機します...`);
+    await delay(waitMs);
   }
 }
 
