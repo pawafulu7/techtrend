@@ -41,20 +41,19 @@ describe('parseSummary with summaryVersion 8', () => {
     expect(sections[1].content).toContain('複雑なロジックを要約するコメント');
   });
 
-  it('サブ項目がないコロン後が空のメイン項目も処理する', () => {
+  it('サブ項目がないコロン後が空のメイン項目は除外される', () => {
     const summary = `・項目1：内容1
 ・項目2：
 ・項目3：内容3`;
-    
+
     const sections = parseSummary(summary, { summaryVersion: 8 });
-    
-    expect(sections).toHaveLength(3);
+
+    // 空のセクション（項目2）は除外されるので、2つのセクションのみ
+    expect(sections).toHaveLength(2);
     expect(sections[0].title).toBe('項目1');
     expect(sections[0].content).toBe('内容1');
-    expect(sections[1].title).toBe('項目2');
-    expect(sections[1].content).toBe('');
-    expect(sections[2].title).toBe('項目3');
-    expect(sections[2].content).toBe('内容3');
+    expect(sections[1].title).toBe('項目3');
+    expect(sections[1].content).toBe('内容3');
   });
 
   it('独立したサブ項目を正しく処理する', () => {
@@ -87,6 +86,32 @@ describe('parseSummary with summaryVersion 8', () => {
     expect(sections[1].content).toBe('これはコロンがない項目です');
     expect(sections[2].title).toBe('項目3');
     expect(sections[2].content).toBe('内容3');
+  });
+
+  it('コロンなしのサブ項目も正しく処理する（実際の問題データ）', () => {
+    const summary = `・発生した3つのインフラバグ：
+  - 8月5日、Sonnet 4のリクエストの一部が失敗
+  - 8月25日、Claude API TPUサーバーへのネットワーク問題
+  - 9月13日、Haikuモデルのサブセットがクラッシュ
+
+・検出困難だった理由：
+  - 社内使用が少なく、問題の顕在化が遅れた
+  - モニタリングツールのアラート設定が不適切だった`;
+
+    const sections = parseSummary(summary, { summaryVersion: 8 });
+
+    expect(sections).toHaveLength(2);
+
+    // 1つ目のセクション
+    expect(sections[0].title).toBe('発生した3つのインフラバグ');
+    expect(sections[0].content).toContain('8月5日、Sonnet 4のリクエストの一部が失敗');
+    expect(sections[0].content).toContain('8月25日、Claude API TPUサーバーへのネットワーク問題');
+    expect(sections[0].content).toContain('9月13日、Haikuモデルのサブセットがクラッシュ');
+
+    // 2つ目のセクション
+    expect(sections[1].title).toBe('検出困難だった理由');
+    expect(sections[1].content).toContain('社内使用が少なく、問題の顕在化が遅れた');
+    expect(sections[1].content).toContain('モニタリングツールのアラート設定が不適切だった');
   });
 
   it('複雑な階層構造を持つ実際のデータを処理する', () => {

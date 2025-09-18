@@ -99,7 +99,7 @@ function getIconForFlexibleTitle(title: string): string {
 export function parseSummary(detailedSummary: string, options?: ParseOptions): SummarySection[] {
   if (!detailedSummary) return [];
 
-  const sections: SummarySection[] = [];
+  let sections: SummarySection[] = [];
   const lines = detailedSummary.split('\n');
   
   // summaryVersion 7または8の処理（AIが自由に項目を設定）
@@ -147,7 +147,7 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
             });
             currentMainSection = null;
           } else if (isSubItem) {
-            // サブ項目
+            // サブ項目（コロンがある場合）
             if (currentMainSection) {
               // 前のメイン項目のサブ項目として追加
               if (currentMainSection.content) {
@@ -164,27 +164,42 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
             }
           }
         } else {
-          // コロンがない場合は全体を内容として扱う
-          const content = trimmedLine.replace(/^[・-]\s*/, '').trim();
-          // 前のメイン項目があれば先に追加
-          if (currentMainSection) {
-            sections.push(currentMainSection);
-            currentMainSection = null;
+          // コロンがない場合の処理
+          if (isSubItem && currentMainSection) {
+            // サブ項目（コロンなし）を前のメイン項目に追加
+            const content = trimmedLine.replace(/^-\s*/, '').trim();
+            if (content) {
+              if (currentMainSection.content) {
+                currentMainSection.content += '\n';
+              }
+              currentMainSection.content += `• ${content}`;
+            }
+          } else if (isMainItem) {
+            // メイン項目（コロンなし）
+            const content = trimmedLine.replace(/^・\s*/, '').trim();
+            // 前のメイン項目があれば先に追加
+            if (currentMainSection) {
+              sections.push(currentMainSection);
+              currentMainSection = null;
+            }
+            sections.push({
+              title: '詳細',
+              content: content,
+              icon: '📝'
+            });
           }
-          sections.push({
-            title: '詳細',
-            content: content,
-            icon: '📝'
-          });
         }
       }
     }
-    
+
     // 最後のメイン項目を追加
-    if (currentMainSection) {
+    if (currentMainSection && currentMainSection.content) {
       sections.push(currentMainSection);
     }
-    
+
+    // 空のcontentを持つセクションを除外
+    sections = sections.filter(section => section.content && section.content.trim() !== '');
+
     return sections;
   }
   
