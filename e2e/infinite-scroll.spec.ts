@@ -172,34 +172,16 @@ test.describe('無限スクロール機能', () => {
     });
 
     // 無限スクロール
-    // まず要素が存在するか確認
     const triggerSelector = '[data-testid="infinite-scroll-trigger"]';
 
-    try {
-      // タイムアウトを延長して要素の出現を待つ
-      await page.waitForSelector(triggerSelector, { timeout: 30000 });
+    // トリガー出現を待つ（見つからない場合のみフォールバック）
+    const found = await page
+      .waitForSelector(triggerSelector, { timeout: 30000, state: 'visible' })
+      .then(() => true)
+      .catch(() => false);
 
-      // 要素が見つかったらスクロール
-      await page.locator(triggerSelector).scrollIntoViewIfNeeded();
-      await page.waitForTimeout(2000); // 待機時間を少し延長
-
-      // 完了メッセージが表示されることを確認
-      const triggerElement = page.locator(triggerSelector);
-
-      // 要素が表示されているか確認
-      await expect(triggerElement).toBeVisible({ timeout: 15000 });
-
-      // textContentを安全に取得
-      const triggerText = await triggerElement.textContent({ timeout: 10000 });
-
-      // 完了メッセージのいずれかに必ず一致させる
-      const donePattern =
-        /(すべての記事を読み込みました|全ての記事を読み込みました|すべて読み込みました|これ以上記事はありません|No more articles)/;
-      await expect(triggerElement).toHaveText(donePattern, { timeout: 15000 });
-    } catch (error: unknown) {
-      // 要素が見つからない場合はスキップ（CI環境での問題を回避）
-      const msg = error instanceof Error ? error.message : String(error);
-      console.log(`Trigger element not found or timeout: ${msg}`);
+    if (!found) {
+      console.log('Trigger element not found or timeout. Falling back to scroll-bottom verification.');
 
       // 代替チェック: 明示的に最下部へスクロールしてから判定
       const scrollContainer = page.locator('.overflow-y-auto').first();
@@ -217,7 +199,15 @@ test.describe('無限スクロール機能', () => {
         // 最下部付近にいることを確認（誤差100px許容）
         expect(pos.top + pos.height).toBeGreaterThanOrEqual(pos.total - 100);
       }
+      return;
     }
+
+    // 要素が見つかった場合は、完了メッセージを厳密に検証
+    const triggerElement = page.locator(triggerSelector);
+    await triggerElement.scrollIntoViewIfNeeded();
+    const donePattern =
+      /(すべての記事を読み込みました|全ての記事を読み込みました|すべて読み込みました|これ以上記事はありません|No more articles)/;
+    await expect(triggerElement).toHaveText(donePattern, { timeout: 15000 });
   });
 });
 
