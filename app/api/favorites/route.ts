@@ -24,50 +24,56 @@ export async function GET(request: Request) {
     const includeRelations = searchParams.get('includeRelations') === 'true';
     const lightweight = searchParams.get('lightweight') === 'true';
 
-    const articleSelect = lightweight ? {
-      id: true,
-      title: true,
-      url: true,
-      summary: true,
-      publishedAt: true,
-      thumbnail: true,
-      source: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    } : includeRelations ? {
-      include: {
-        source: true,
-        tags: true,
-      },
-    } : {
-      id: true,
-      title: true,
-      url: true,
-      summary: true,
-      publishedAt: true,
-      thumbnail: true,
-      source: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    };
-
     const [favorites, total] = await Promise.all([
       prisma.favorite.findMany({
         where: { userId: session.user.id },
-        include: {
-          article: articleSelect as any,
+        include: lightweight ? {
+          article: {
+            select: {
+              id: true,
+              title: true,
+              url: true,
+              summary: true,
+              publishedAt: true,
+              thumbnail: true,
+              source: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        } : includeRelations ? {
+          article: {
+            include: {
+              source: true,
+              tags: true,
+            },
+          },
+        } : {
+          article: {
+            select: {
+              id: true,
+              title: true,
+              url: true,
+              summary: true,
+              publishedAt: true,
+              thumbnail: true,
+              source: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              tags: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
