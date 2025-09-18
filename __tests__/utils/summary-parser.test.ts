@@ -41,20 +41,19 @@ describe('parseSummary with summaryVersion 8', () => {
     expect(sections[1].content).toContain('複雑なロジックを要約するコメント');
   });
 
-  it('サブ項目がないコロン後が空のメイン項目も処理する', () => {
+  it('サブ項目がないコロン後が空のメイン項目は除外される', () => {
     const summary = `・項目1：内容1
 ・項目2：
 ・項目3：内容3`;
 
     const sections = parseSummary(summary, { summaryVersion: 8 });
 
-    expect(sections).toHaveLength(3);
+    // 空のセクション（項目2）は除外されるので、2つのセクションのみ
+    expect(sections).toHaveLength(2);
     expect(sections[0].title).toBe('項目1');
     expect(sections[0].content).toBe('内容1');
-    expect(sections[1].title).toBe('項目2');
-    expect(sections[1].content).toBe('');
-    expect(sections[2].title).toBe('項目3');
-    expect(sections[2].content).toBe('内容3');
+    expect(sections[1].title).toBe('項目3');
+    expect(sections[1].content).toBe('内容3');
   });
 
   it('独立したサブ項目を正しく処理する', () => {
