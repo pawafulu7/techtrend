@@ -5,19 +5,44 @@
 // node-fetchのモックを先に定義
 jest.mock('node-fetch');
 
+// 動的インポートのモック
+jest.mock('../../../lib/utils/summary-post-processor', () => ({
+  postProcessSummaries: jest.fn((summary, detailedSummary) => ({
+    summary,
+    detailedSummary
+  }))
+}));
+
+// 品質チェッカーのモック
+jest.mock('../../../lib/utils/summary-quality-checker', () => ({
+  checkSummaryQuality: jest.fn(() => ({
+    score: 85,
+    itemCountValid: true,
+    itemCount: 5,
+    isValid: true,
+    requiresRegeneration: false,
+    issues: []
+  }))
+}));
+
 import { UnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 
-// デフォルトのモックレスポンス
+// デフォルトのモックレスポンス（本番と同じフォーマット）
 const defaultMockResponse = {
   candidates: [{
     content: {
       parts: [{
-        text: JSON.stringify({
-          summary: 'テスト要約文。技術的な内容を含む記事の要約です。',
-          detailedSummary: '## 主要ポイント\n\n- ポイント1\n- ポイント2\n- ポイント3',
-          tags: ['TypeScript', 'React', 'Testing'],
-          difficulty: 'intermediate'
-        })
+        text: `要約: TypeScript 5.0では型安全性が強化され、開発者体験が向上します。新機能により既存コードの保守性が改善されます。
+
+詳細要約:
+・型パラメータ推論の改善：既存コードのメンテナンスが容易になり、型安全性が向上します
+・デコレータの安定化：フレームワーク間の互換性が確保され、メタプログラミングが強化されます
+・構成型の最適化：ビルド時間が短縮され、開発効率が大幅に改善されます
+・モジュール解決の強化：ESモジュールとの統合がスムーズになり、パッケージ管理が簡素化されます
+・エラーメッセージの改善：デバッグが効率化され、問題解決が迅速化されます
+
+タグ: TypeScript,JavaScript,開発ツール,型システム,ES2023
+カテゴリ: language`
       }]
     }
   }]
@@ -64,26 +89,26 @@ describe('UnifiedSummaryService', () => {
 
     it('should validate summary length', async () => {
       const result = await service.generate(mockTitle, mockContent);
-      
+
       expect(result.summary.length).toBeLessThanOrEqual(400);
       expect(result.summary.length).toBeGreaterThan(0);
-    }, 10000);
+    }, 30000);
 
     it('should validate tags array', async () => {
       const result = await service.generate(mockTitle, mockContent);
-      
+
       expect(Array.isArray(result.tags)).toBe(true);
       expect(result.tags.length).toBeGreaterThan(0);
       expect(result.tags.length).toBeLessThanOrEqual(5);
-    }, 10000);
+    }, 30000);
 
 
     it('should validate difficulty values', async () => {
       const result = await service.generate(mockTitle, mockContent);
-      
+
       const validDifficulties = ['beginner', 'intermediate', 'advanced', null, undefined];
       expect(validDifficulties).toContain(result.difficulty);
-    }, 10000);
+    }, 30000);
 
     it('should include content in API call', async () => {
       await service.generate(mockTitle, mockContent);

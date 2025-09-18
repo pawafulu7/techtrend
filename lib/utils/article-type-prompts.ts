@@ -276,8 +276,10 @@ export function generateEnhancedUnifiedPrompt(title: string, content: string): s
   // 文字数に応じた項目数の指示
   const contentLength = content.length;
   let itemCountInstruction = '';
-  if (contentLength >= 5000) {
-    itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字の長文記事です。\n詳細要約は必ず800文字以上1500文字以内で作成してください。\n最低5個以上の項目（推奨6-7個）を作成し、各項目は必ず150文字以上の詳細な説明にしてください。\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。';
+  if (contentLength >= 10000) {
+    itemCountInstruction = '\n\n【最重要要件】この記事は' + contentLength + '文字の特大長文記事です。\n詳細要約は必ず1200文字以上1500文字以内で作成し、条件を外れた場合は生成失敗とみなします。\n最低7個以上の項目（推奨8-9個）を必ず作成し、各項目は必ず170文字以上200文字以内の詳細な説明にしてください。\n項目数が6個以下、または文字数要件を満たさない項目が含まれる場合はペナルティとして出力全体を無効化し、直ちに再生成してください。\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。';
+  } else if (contentLength >= 5000) {
+    itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字の長文記事です。\n詳細要約は必ず900文字以上1500文字以内で作成し、条件を外れた場合は生成失敗とみなします。\n最低5個以上の項目（推奨6-7個）を必ず作成し、各項目は必ず150文字以上200文字以内の詳細な説明にしてください。\n項目数が5個未満、または150文字未満の項目が含まれる場合はペナルティとして出力全体を無効化し、再生成してください。\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。';
   } else if (contentLength >= 3000) {
     itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字です。\n詳細要約は必ず600文字以上1000文字以内で作成してください。\n最低4個以上の項目（推奨5個）を作成し、各項目は必ず150文字以上の詳細な説明にしてください。';
   } else if (contentLength >= 1000) {

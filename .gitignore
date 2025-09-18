@@ -165,3 +165,6 @@ claudedocs/
 
 # regeneration logs
 regenerate.log
+
+# progress files
+.regenerate-low-item-summaries-progress.json
