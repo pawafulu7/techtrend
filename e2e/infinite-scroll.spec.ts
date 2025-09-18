@@ -192,41 +192,30 @@ test.describe('無限スクロール機能', () => {
       // textContentを安全に取得
       const triggerText = await triggerElement.textContent({ timeout: 10000 });
 
-      if (triggerText) {
-        // いくつかの可能なメッセージパターン
-        const possibleMessages = [
-          'すべての記事を読み込みました',
-          '全ての記事を読み込みました',
-          'すべて読み込みました',
-          'これ以上記事はありません',
-          'No more articles',
-          'Loading' // ローディング中の場合も許可
-        ];
-
-        const hasValidMessage = possibleMessages.some(msg => triggerText.includes(msg));
-        if (!hasValidMessage) {
-          console.log(`Actual message: "${triggerText}"`);
-        }
-
-        // メッセージが存在することだけ確認（内容は問わない）
-        expect(triggerText).toBeTruthy();
-      } else {
-        // 要素はあるがテキストがない場合も許可（ローディング中など）
-        console.log('Trigger element found but no text content');
-      }
-    } catch (error) {
+      // 完了メッセージのいずれかに必ず一致させる
+      const donePattern =
+        /(すべての記事を読み込みました|全ての記事を読み込みました|すべて読み込みました|これ以上記事はありません|No more articles)/;
+      await expect(triggerElement).toHaveText(donePattern, { timeout: 15000 });
+    } catch (error: unknown) {
       // 要素が見つからない場合はスキップ（CI環境での問題を回避）
-      console.log(`Trigger element not found or timeout: ${error.message}`);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(`Trigger element not found or timeout: ${msg}`);
 
-      // 代替チェック: スクロール可能な要素が最下部に到達したか確認
+      // 代替チェック: 明示的に最下部へスクロールしてから判定
       const scrollContainer = page.locator('.overflow-y-auto').first();
       if (await scrollContainer.count() > 0) {
-        const scrollHeight = await scrollContainer.evaluate(el => el.scrollHeight);
-        const scrollTop = await scrollContainer.evaluate(el => el.scrollTop);
-        const clientHeight = await scrollContainer.evaluate(el => el.clientHeight);
+        // 最下部へスクロール
+        await scrollContainer.evaluate(el => { el.scrollTop = el.scrollHeight; });
+
+        // スクロール位置を取得
+        const pos = await scrollContainer.evaluate(el => ({
+          top: el.scrollTop,
+          height: el.clientHeight,
+          total: el.scrollHeight
+        }));
 
         // 最下部付近にいることを確認（誤差100px許容）
-        expect(scrollTop + clientHeight).toBeGreaterThan(scrollHeight - 100);
+        expect(pos.top + pos.height).toBeGreaterThanOrEqual(pos.total - 100);
       }
     }
   });

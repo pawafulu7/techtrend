@@ -1,8 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { waitForSourceFilter, getTimeout, waitForUrlParam } from '../../e2e/helpers/wait-utils';
-
-// CI環境の検出
-const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
+import { isCI } from '../../e2e/helpers/env';
 
 test.describe('ソースカテゴリフィルター機能', () => {
   test.beforeEach(async ({ page }) => {
@@ -43,14 +41,13 @@ test.describe('ソースカテゴリフィルター機能', () => {
     // まず全解除
     await page.locator('[data-testid="deselect-all-button"]:visible').click();
 
-    // 全解除が完了するまで待機
-    await page.waitForTimeout(1000);
+    // 「0/総数」表示になるまで待機
+    await expect(page.getByTestId('source-count')).toHaveText(/\b0\/\d+\b/);
 
     // 海外ソースカテゴリを展開
     await page.getByTestId('category-foreign-header').click();
 
-    // カテゴリが展開されるまで待機
-    await page.waitForTimeout(500);
+    // カテゴリが展開されるのを待つ（展開後のコンテンツ出現は下のtoBeVisibleに委譲）
 
     const foreignSection = page.getByTestId('category-foreign');
     const content = foreignSection.getByTestId('category-foreign-content');
@@ -79,12 +76,11 @@ test.describe('ソースカテゴリフィルター機能', () => {
     // 「全選択」ボタンをクリック
     await page.getByTestId('category-foreign-select-all').click();
 
-    // CI環境では待機時間を長めに設定
-    if (isCI) {
-      await page.waitForTimeout(2000);
-    } else {
-      await page.waitForTimeout(1000);
-    }
+    // 少なくとも1件が checked になるまで待機（CI考慮はタイムアウトで吸収）
+    await page.waitForSelector(
+      '[data-testid="category-foreign-content"] button[role="checkbox"][data-state="checked"]',
+      { timeout: isCI ? 20000 : 10000 }
+    );
 
     // チェックボックスの状態変更を待つ（より寛容な確認方法）
     try {
@@ -106,8 +102,9 @@ test.describe('ソースカテゴリフィルター機能', () => {
       } else {
         console.log(`${checkedCount} out of ${totalInForeign} checkboxes are checked`);
       }
-    } catch (error) {
-      console.log(`Failed to check checkboxes: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(`Failed to check checkboxes: ${msg}`);
 
       // フォールバック: source-countの変化で確認
       const sourceCount = page.getByTestId('source-count');
@@ -227,8 +224,11 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await page.getByTestId('category-foreign-select-all').click();
     const checkboxes = foreignSection.getByTestId('category-foreign-content').locator('button[role="checkbox"]');
     const n = await checkboxes.count();
-    // 選択されたチェックボックスの数を確認
-    const checkedCount = await checkboxes.filter({ hasNot: page.locator('[data-state="unchecked"]') }).count();
+    // ボタン自身の data-state を直接判定
+    const checkedCount = await foreignSection
+      .getByTestId('category-foreign-content')
+      .locator('button[role="checkbox"][data-state="checked"]')
+      .count();
     expect(checkedCount).toBe(n); // 全て選択されていることを確認
     await expect(sourceCount).toHaveText(`${n}/${total}`);
   });
