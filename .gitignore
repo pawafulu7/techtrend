@@ -123,6 +123,10 @@ deleted_scripts_list.txt
 *.sql
 !prisma/migrations/**/*.sql
 
+# Docker compose backup files
+docker-compose.yml.backup*
+docker-compose.*.backup*
+
 # Temporary test files only - be more specific to avoid ignoring important test helpers
 test-temp-*.ts
 test-debug-*.ts
