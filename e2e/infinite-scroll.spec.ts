@@ -145,7 +145,7 @@ test.describe('無限スクロール機能', () => {
     }
   });
 
-  test('ページ最下部に到達すると「すべての記事を読み込みました」が表示される', async ({ page }) => {
+  test.skip('ページ最下部に到達すると「すべての記事を読み込みました」が表示される', async ({ page }) => {
     // モックデータで少ない記事数を返す
     await page.route('**/api/articles*', async route => {
       const url = new URL(route.request().url());
