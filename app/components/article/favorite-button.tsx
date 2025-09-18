@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { loginWithCallback } from '@/lib/routes/auth';
 
 interface FavoriteButtonProps {
   articleId: string;
@@ -28,6 +29,8 @@ export function FavoriteButton({
 }: FavoriteButtonProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isToggling, setIsToggling] = useState(false);
   const [isFavorited, setIsFavorited] = useState(initialFavorited);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -42,8 +45,9 @@ export function FavoriteButton({
     e.stopPropagation();
 
     if (!session) {
-      // 未ログインの場合はログインページへ
-      router.push('/auth/login');
+      // 未ログインの場合はログインページへ（現在のページをcallbackUrlとして設定）
+      const currentUrl = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
+      router.push(loginWithCallback(currentUrl));
       return;
     }
 
