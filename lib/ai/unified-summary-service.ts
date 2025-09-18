@@ -120,15 +120,39 @@ export class UnifiedSummaryService {
         // postProcessSummariesをインポートして適用
         const { postProcessSummaries } = await import('../utils/summary-post-processor');
         const processed = postProcessSummaries(parsed.summary, parsed.detailedSummary);
+
+        // コンテンツ分析情報を作成（項目数チェック用）
+        const contentAnalysis = {
+          contentLength: content.length,  // 既存のフィールド名を使用
+          totalLength: content.length,    // 互換性のため両方定義
+          isThinContent: content.length < 1000,
+          recommendedMinLength: content.length < 1000 ? 60 : 100,
+          recommendedMaxLength: content.length < 1000 ? 100 : 200
+        };
+
+        // 品質チェック（処理後のテキストで実施、コンテンツ分析情報も渡す）
+        const qualityResult = checkSummaryQuality(
+          processed.summary,
+          processed.detailedSummary,
+          contentAnalysis
+        );
+        const qualityScore = qualityResult.score;
+
+        // 項目数不足の場合はログを出力
+        if (qualityResult.itemCountValid === false) {
+          console.warn(
+            `[UnifiedSummaryService] 項目数不足: ${qualityResult.itemCount}個 ` +
+            `(記事: ${title.substring(0, 50)}..., 文字数: ${content.length})`
+          );
+        }
         
-        // 品質チェック（処理後のテキストで実施）
-        const qualityScore = checkSummaryQuality(
-          processed.summary, 
-          processed.detailedSummary
-        ).score;
-        
-        // 品質スコアが閾値以下の場合、再試行
-        if (qualityScore < opts.minQualityScore! && attempt < opts.maxRetries!) {
+        // 品質スコアが閾値以下または項目数不足の場合、再試行
+        if ((qualityScore < opts.minQualityScore! || qualityResult.itemCountValid === false)
+            && attempt < opts.maxRetries!) {
+          // 項目数不足の場合は次回より強いプロンプトを使用するフラグを立てる
+          if (qualityResult.itemCountValid === false) {
+            console.log(`[UnifiedSummaryService] 項目数不足により再試行 (attempt ${attempt + 1}/${opts.maxRetries})`);
+          }
           await this.delay(opts.retryDelay!);
           continue;
         }

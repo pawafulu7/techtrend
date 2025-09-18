@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "script": "regenerate-low-item-summaries",
+  "totalProcessed": 1,
+  "totalSuccess": 1,
+  "totalFailed": 0,
+  "processed": {
+    "cmezj1jku000jtelql1iem3qd": {
+      "attempts": 1,
+      "status": "success",
+      "lastAttemptAt": "2025-09-18T11:39:57.571Z"
+    }
+  },
+  "lastUpdated": "2025-09-18T11:39:57.571Z"
+}
