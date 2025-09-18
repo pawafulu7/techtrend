@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 
 /**
  * 特定の記事の要約を再生成するスクリプト
@@ -6,15 +6,17 @@
 
 import { PrismaClient } from '@prisma/client';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
-import { countDetailedItems } from '../utils/version8-validation';
+import { countDetailedItems, preparePrismaUpdateData } from '../utils/version8-validation';
 
 const prisma = new PrismaClient();
-const summaryService = new UnifiedSummaryService();
 
 async function regenerateSpecificArticle(articleId: string) {
   console.log(`記事ID: ${articleId} の要約を再生成します...`);
 
   try {
+    // UnifiedSummaryServiceをtry内で生成（コンストラクタ例外対策）
+    const summaryService = new UnifiedSummaryService();
+
     // 記事を取得
     const article = await prisma.article.findUnique({
       where: { id: articleId }
@@ -22,6 +24,7 @@ async function regenerateSpecificArticle(articleId: string) {
 
     if (!article) {
       console.error(`記事が見つかりません: ${articleId}`);
+      process.exitCode = 1;
       return;
     }
 
@@ -44,15 +47,17 @@ async function regenerateSpecificArticle(articleId: string) {
       }
     );
 
-    // データベースを更新
+    // データベースを更新（preparePrismaUpdateDataを使用）
     await prisma.article.update({
       where: { id: articleId },
       data: {
-        summary: result.summary,
-        detailedSummary: result.detailedSummary,
-        summaryVersion: result.summaryVersion,
-        articleType: result.articleType,
-        qualityScore: result.qualityScore,
+        ...preparePrismaUpdateData({
+          summary: result.summary,
+          detailedSummary: result.detailedSummary,
+          summaryVersion: result.summaryVersion,
+          articleType: result.articleType,
+          qualityScore: result.qualityScore
+        }),
         updatedAt: new Date()
       }
     });
@@ -64,6 +69,7 @@ async function regenerateSpecificArticle(articleId: string) {
 
   } catch (error) {
     console.error('エラーが発生しました:', error);
+    process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
   }
