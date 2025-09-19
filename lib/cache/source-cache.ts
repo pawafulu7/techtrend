@@ -20,7 +20,7 @@ export interface SourceWithStats extends Source {
   stats: SourceStats;
 }
 
-const SOURCE_NAME_CACHE_TTL_MS = 60_000;
+const SOURCE_NAME_CACHE_TTL_MS = 300_000; // 5分に延長（ソース情報は頻繁に変わらない）
 
 export class SourceCache {
   private cache: RedisCache;

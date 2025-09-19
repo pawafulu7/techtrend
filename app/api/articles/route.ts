@@ -371,13 +371,6 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Get total count
-      const total = await withDbTiming(
-        metrics,
-        () => prisma.article.count({ where }),
-        'db_count'
-      );
-
       // Build select object based on parameters
       let selectFields: Prisma.ArticleSelect;
 
@@ -450,19 +443,22 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      // Get articles
-      const articles = await withDbTiming(
+      // Execute count and findMany in parallel for better performance
+      const [total, articles] = await withDbTiming(
         metrics,
-        () => prisma.article.findMany({
-          where,
-          select: selectFields,
-          orderBy: {
-            [finalSortBy]: sortOrder,
-          },
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
-        'db_query'
+        () => Promise.all([
+          prisma.article.count({ where }),
+          prisma.article.findMany({
+            where,
+            select: selectFields,
+            orderBy: {
+              [finalSortBy]: sortOrder,
+            },
+            skip: (page - 1) * limit,
+            take: limit,
+          }),
+        ]),
+        'db_parallel_query'
       );
       // Return the data to be cached
       return {

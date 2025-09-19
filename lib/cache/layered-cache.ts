@@ -41,21 +41,21 @@ export class LayeredCache {
   private l3Cache: RedisCache;  // 検索キャッシュ
 
   constructor() {
-    // L1: パブリックキャッシュ（TTL: 1時間）
+    // L1: パブリックキャッシュ（TTL: 2時間）- 基本的な記事リストは長めに保持
     this.l1Cache = new RedisCache({
-      ttl: 3600, // 1時間
+      ttl: 7200, // 2時間（静的コンテンツのため延長）
       namespace: '@techtrend/cache:l1:public'
     });
 
-    // L2: ユーザーキャッシュ（TTL: 15分）- ユーザーフィードバックに基づき5分から15分に延長
+    // L2: ユーザーキャッシュ（TTL: 30分）- ユーザーセッション考慮して延長
     this.l2Cache = new RedisCache({
-      ttl: 900, // 15分（ユーザーセッション中は維持）
+      ttl: 1800, // 30分（ユーザーセッション期間を考慮）
       namespace: '@techtrend/cache:l2:user'
     });
 
-    // L3: 検索キャッシュ（TTL: 10分）- ユーザーフィードバックに基づき1分から10分に延長
+    // L3: 検索キャッシュ（TTL: 15分）- 検索結果の再利用性を考慮
     this.l3Cache = new RedisCache({
-      ttl: 600, // 10分（検索→詳細→戻るの操作を考慮）
+      ttl: 900, // 15分（検索→詳細→戻るの操作を考慮して延長）
       namespace: '@techtrend/cache:l3:search'
     });
   }

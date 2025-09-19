@@ -61,6 +61,7 @@ export async function GET(request: Request) {
       }
     };
 
+    // Execute count and findMany in parallel for better performance
     const [views, total] = await Promise.all([
       prisma.articleView.findMany({
         where: {

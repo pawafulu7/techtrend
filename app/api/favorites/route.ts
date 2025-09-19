@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     const includeRelations = searchParams.get('includeRelations') === 'true';
     const lightweight = searchParams.get('lightweight') === 'true';
 
+    // Execute count and findMany in parallel for better performance
     const [favorites, total] = await Promise.all([
       prisma.favorite.findMany({
         where: { userId: session.user.id },
