@@ -6,6 +6,7 @@ import { RedisCache } from '@/lib/cache';
 import type { Prisma, ArticleCategory } from '@prisma/client';
 import logger from '@/lib/logger';
 import { auth } from '@/lib/auth/auth';
+import { createLoaders } from '@/lib/dataloader';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -289,28 +290,29 @@ export async function GET(request: NextRequest) {
       if (includeUserData && userId) {
         const articleIds = articles.map(a => a.id);
 
-        // Fetch favorites and read status in parallel
-        const [favorites, articleViews] = await Promise.all([
-          prisma.favorite.findMany({
-            where: {
-              userId: userId,
-              articleId: { in: articleIds }
-            },
-            select: { articleId: true }
-          }),
-          prisma.articleView.findMany({
-            where: {
-              userId: userId,
-              articleId: { in: articleIds },
-              isRead: true
-            },
-            select: { articleId: true }
-          })
-        ]);
+        // Create DataLoader instances for this request
+        const loaders = createLoaders({ userId });
 
-        // Create maps for O(1) lookup
-        favorites.forEach(f => favoritesMap.set(f.articleId, true));
-        articleViews.forEach(v => readStatusMap.set(v.articleId, true));
+        if (loaders.favorite && loaders.view) {
+          // Fetch favorites and read status using DataLoader (batched)
+          const [favoriteStatuses, viewStatuses] = await Promise.all([
+            loaders.favorite.loadMany(articleIds),
+            loaders.view.loadMany(articleIds)
+          ]);
+
+          // Create maps for O(1) lookup
+          favoriteStatuses.forEach((status) => {
+            if (status && typeof status === 'object' && 'isFavorited' in status) {
+              favoritesMap.set(status.articleId, status.isFavorited);
+            }
+          });
+
+          viewStatuses.forEach((status) => {
+            if (status && typeof status === 'object' && 'isRead' in status) {
+              readStatusMap.set(status.articleId, status.isRead);
+            }
+          });
+        }
       }
 
       // Normalize dates to ISO strings for consistency and add user data

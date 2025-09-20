@@ -12,6 +12,7 @@ import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
 import { MetricsCollector, withDbTiming, withCacheTiming } from '@/lib/metrics/performance';
 import { getDateRangeFilter } from '@/app/lib/date-utils';
+import { createLoaders } from '@/lib/dataloader';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -41,37 +42,50 @@ async function fetchUserSpecificData(
     };
   }
 
-  const [favoriteArticles, readArticles] = await Promise.all([
+  // Create DataLoader instances for this request
+  const loaders = createLoaders({ userId });
+
+  if (!loaders.favorite || !loaders.view) {
+    return {
+      favoritedArticleIds: new Set<string>(),
+      readArticleIds: new Set<string>(),
+    };
+  }
+
+  // Use DataLoader to batch fetch user-specific data
+  const [favoriteStatuses, viewStatuses] = await Promise.all([
     withDbTiming(
       metrics,
-      () =>
-        prisma.favorite.findMany({
-          where: {
-            userId,
-            articleId: { in: articleIds },
-          },
-          select: { articleId: true },
-        }),
+      () => loaders.favorite!.loadMany(articleIds),
       'db_query'
     ),
     withDbTiming(
       metrics,
-      () =>
-        prisma.articleView.findMany({
-          where: {
-            userId,
-            articleId: { in: articleIds },
-            isRead: true,
-          },
-          select: { articleId: true },
-        }),
+      () => loaders.view!.loadMany(articleIds),
       'db_query'
     ),
   ]);
 
+  const favoritedArticleIds = new Set<string>();
+  const readArticleIds = new Set<string>();
+
+  // Process favorite statuses
+  favoriteStatuses.forEach((status) => {
+    if (status && typeof status === 'object' && 'isFavorited' in status && status.isFavorited) {
+      favoritedArticleIds.add(status.articleId);
+    }
+  });
+
+  // Process view statuses
+  viewStatuses.forEach((status) => {
+    if (status && typeof status === 'object' && 'isRead' in status && status.isRead) {
+      readArticleIds.add(status.articleId);
+    }
+  });
+
   return {
-    favoritedArticleIds: new Set(favoriteArticles.map((favorite) => favorite.articleId)),
-    readArticleIds: new Set(readArticles.map((view) => view.articleId)),
+    favoritedArticleIds,
+    readArticleIds,
   };
 }
 
