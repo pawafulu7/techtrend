@@ -443,10 +443,10 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      // Execute count and findMany in parallel for better performance
+      // Execute count and findMany in transaction for consistency
       const [total, articles] = await withDbTiming(
         metrics,
-        () => Promise.all([
+        () => prisma.$transaction([
           prisma.article.count({ where }),
           prisma.article.findMany({
             where,
@@ -458,7 +458,7 @@ export async function GET(request: NextRequest) {
             take: limit,
           }),
         ]),
-        'db_parallel_query'
+        'db_transaction_query'
       );
       // Return the data to be cached
       return {

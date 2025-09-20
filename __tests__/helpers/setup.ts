@@ -101,7 +101,14 @@ jest.mock('@prisma/client', () => {
     },
     $connect: jest.fn().mockResolvedValue(undefined),
     $disconnect: jest.fn().mockResolvedValue(undefined),
-    $transaction: jest.fn((fn) => Promise.resolve(fn(mockPrismaClient))),
+    $transaction: jest.fn().mockImplementation(async (operations) => {
+      // コールバック形式のトランザクションをサポート
+      if (typeof operations === 'function') {
+        return operations(mockPrismaClient);
+      }
+      // 配列形式のトランザクション（Promise.allのように動作）
+      return Promise.all(operations);
+    }),
     $queryRaw: jest.fn(),
     $executeRaw: jest.fn(),
   };

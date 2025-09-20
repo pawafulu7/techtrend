@@ -18,13 +18,19 @@ describe('DB Optimization - Parallel Queries', () => {
   });
 
   describe('Articles API', () => {
-    it('should execute count and findMany in parallel', async () => {
+    it('should execute count and findMany in transaction', async () => {
       const mockArticles = [
         { id: '1', title: 'Test Article 1', url: 'http://test1.com' },
         { id: '2', title: 'Test Article 2', url: 'http://test2.com' },
       ];
 
-      const promiseAllSpy = jest.spyOn(Promise, 'all');
+      // $transactionのモック
+      prisma.$transaction = jest.fn().mockImplementation(async (operations) => {
+        if (typeof operations === 'function') {
+          return operations(prisma);
+        }
+        return Promise.all(operations);
+      });
 
       prisma.article.count.mockResolvedValue(10 as any);
       prisma.article.findMany.mockResolvedValue(mockArticles as any);
@@ -33,19 +39,17 @@ describe('DB Optimization - Parallel Queries', () => {
       const response = await articlesGET(request);
       const data = await response.json();
 
-      expect(promiseAllSpy).toHaveBeenCalled();
+      expect(prisma.$transaction).toHaveBeenCalled();
       expect(prisma.article.count).toHaveBeenCalled();
       expect(prisma.article.findMany).toHaveBeenCalled();
       expect(data.success).toBe(true);
       expect(data.data.total).toBe(10);
       expect(data.data.items).toHaveLength(2);
-
-      promiseAllSpy.mockRestore();
     });
   });
 
   describe('Favorites API', () => {
-    it('should execute count and findMany in parallel', async () => {
+    it('should execute count and findMany in transaction', async () => {
       mockAuth.mockResolvedValue({
         user: { id: 'user-1', email: 'test@example.com' },
       } as any);
@@ -59,7 +63,13 @@ describe('DB Optimization - Parallel Queries', () => {
         },
       ];
 
-      const promiseAllSpy = jest.spyOn(Promise, 'all');
+      // $transactionのモック
+      prisma.$transaction = jest.fn().mockImplementation(async (operations) => {
+        if (typeof operations === 'function') {
+          return operations(prisma);
+        }
+        return Promise.all(operations);
+      });
 
       prisma.favorite.count.mockResolvedValue(5 as any);
       prisma.favorite.findMany.mockResolvedValue(mockFavorites as any);
@@ -68,18 +78,16 @@ describe('DB Optimization - Parallel Queries', () => {
       const response = await favoritesGET(request);
       const data = await response.json();
 
-      expect(promiseAllSpy).toHaveBeenCalled();
+      expect(prisma.$transaction).toHaveBeenCalled();
       expect(prisma.favorite.count).toHaveBeenCalled();
       expect(prisma.favorite.findMany).toHaveBeenCalled();
       expect(data.pagination.total).toBe(5);
       expect(data.favorites).toHaveLength(1);
-
-      promiseAllSpy.mockRestore();
     });
   });
 
   describe('Article Views API', () => {
-    it('should execute count and findMany in parallel', async () => {
+    it('should execute count and findMany in transaction', async () => {
       mockAuth.mockResolvedValue({
         user: { id: 'user-1', email: 'test@example.com' },
       } as any);
@@ -94,7 +102,13 @@ describe('DB Optimization - Parallel Queries', () => {
         },
       ];
 
-      const promiseAllSpy = jest.spyOn(Promise, 'all');
+      // $transactionのモック
+      prisma.$transaction = jest.fn().mockImplementation(async (operations) => {
+        if (typeof operations === 'function') {
+          return operations(prisma);
+        }
+        return Promise.all(operations);
+      });
 
       prisma.articleView.count.mockResolvedValue(8 as any);
       prisma.articleView.findMany.mockResolvedValue(mockViews as any);
@@ -103,13 +117,11 @@ describe('DB Optimization - Parallel Queries', () => {
       const response = await articleViewsGET(request);
       const data = await response.json();
 
-      expect(promiseAllSpy).toHaveBeenCalled();
+      expect(prisma.$transaction).toHaveBeenCalled();
       expect(prisma.articleView.count).toHaveBeenCalled();
       expect(prisma.articleView.findMany).toHaveBeenCalled();
       expect(data.pagination.total).toBe(8);
       expect(data.views).toHaveLength(1);
-
-      promiseAllSpy.mockRestore();
     });
   });
 });

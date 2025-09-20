@@ -30,7 +30,15 @@ describe('/api/article-views', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetMockSession();
-    
+
+    // $transactionのモック設定
+    prismaMock.$transaction = jest.fn().mockImplementation(async (operations) => {
+      if (typeof operations === 'function') {
+        return operations(prismaMock);
+      }
+      return Promise.all(operations);
+    });
+
     // デフォルトのPrismaモック設定
     prismaMock.articleView = {
       findMany: jest.fn().mockResolvedValue([]),
@@ -41,7 +49,7 @@ describe('/api/article-views', () => {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     };
-    
+
     prismaMock.article = {
       findUnique: jest.fn().mockResolvedValue(null),
     };

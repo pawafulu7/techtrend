@@ -29,6 +29,14 @@ describe('/api/favorites', () => {
     jest.clearAllMocks();
     resetMockSession();
 
+    // $transactionのモック設定
+    prismaMock.$transaction = jest.fn().mockImplementation(async (operations) => {
+      if (typeof operations === 'function') {
+        return operations(prismaMock);
+      }
+      return Promise.all(operations);
+    });
+
     // モックのリセット - 関数を再作成
     prismaMock.favorite = {
       findMany: jest.fn().mockResolvedValue([]),
