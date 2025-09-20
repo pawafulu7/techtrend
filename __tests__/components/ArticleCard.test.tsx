@@ -16,6 +16,7 @@ import {
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+  usePathname: jest.fn(() => '/'),
   useSearchParams: jest.fn(() => ({
     get: jest.fn(),
     has: jest.fn(),
@@ -42,15 +43,22 @@ jest.mock('next/image', () => ({
   },
 }));
 
-jest.mock('@/app/components/common/optimized-image', () => ({
-  __esModule: true,
-  default: (props: any) => {
-    // OptimizedImageコンポーネントをシンプルなimgタグとしてモック
-    const { imageSrc, imageAlt, className, ...rest } = props;
+jest.mock('@/app/components/common/optimized-image', () => {
+  const stripNextImageProps = ({ priority, fill, sizes, quality, loader, ...rest }: any) => rest;
+
+  const mockImg = ({ src, alt, className, ...rest }: any) => {
+    const safeProps = stripNextImageProps(rest);
     // eslint-disable-next-line jsx-a11y/alt-text
-    return <img src={imageSrc} alt={imageAlt} className={className} {...rest} />;
-  },
-}));
+    return <img src={src} alt={alt} className={className} {...safeProps} />;
+  };
+
+  return {
+    __esModule: true,
+    OptimizedImage: mockImg,
+    ArticleThumbnail: mockImg,
+    ProfileImage: mockImg,
+  };
+});
 
 
 const mockedUseRouter = jest.mocked(useRouter);
