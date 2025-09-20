@@ -38,9 +38,21 @@ jest.mock('@/app/hooks/use-read-status', () => ({
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
+  default: (props: any) => {
+    // Next.js Image特有のプロパティを除外
+    const { unoptimized, placeholder, blurDataURL, loader, quality, priority, loading, ...rest } = props;
     // eslint-disable-next-line jsx-a11y/alt-text
-    return <img {...props} />;
+    return <img {...rest} />;
+  },
+}));
+
+jest.mock('@/app/components/common/optimized-image', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    // OptimizedImageコンポーネントをシンプルなimgタグとしてモック
+    const { imageSrc, imageAlt, className, ...rest } = props;
+    // eslint-disable-next-line jsx-a11y/alt-text
+    return <img src={imageSrc} alt={imageAlt} className={className} {...rest} />;
   },
 }));
 

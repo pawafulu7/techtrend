@@ -34,9 +34,21 @@ jest.mock('next-auth/react', () => ({
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
+  default: (props: any) => {
+    // Next.js Image特有のプロパティを除外
+    const { unoptimized, placeholder, blurDataURL, loader, quality, priority, loading, ...rest } = props;
     // eslint-disable-next-line jsx-a11y/alt-text
-    return <img {...props} />;
+    return <img {...rest} />;
+  },
+}));
+
+jest.mock('@/app/components/common/optimized-image', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    // OptimizedImageコンポーネントをシンプルなimgタグとしてモック
+    const { imageSrc, imageAlt, className, ...rest } = props;
+    // eslint-disable-next-line jsx-a11y/alt-text
+    return <img src={imageSrc} alt={imageAlt} className={className} {...rest} />;
   },
 }));
 
@@ -49,7 +61,11 @@ describe('ArticleCard', () => {
   const mockRouter = {
     push: jest.fn(),
     prefetch: jest.fn(),
-  };
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    replace: jest.fn(),
+  } as any;
 
   const mockArticle = createMockArticleWithRelations({
     article: {
@@ -79,8 +95,8 @@ describe('ArticleCard', () => {
         mutations: { retry: false },
       },
     });
-    mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
-    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
+    mockedUseRouter.mockReturnValue(mockRouter);
+    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated', update: jest.fn() } as any);
   });
 
   const renderWithProviders = (ui: React.ReactElement) => {
@@ -134,9 +150,10 @@ describe('ArticleCard', () => {
 
   it('displays favorite button for authenticated users', () => {
     mockedUseSession.mockReturnValue({
-      data: { user: { id: 'user1', email: 'test@example.com' } },
+      data: { user: { id: 'user1', email: 'test@example.com' }, expires: '2025-12-31' } as any,
       status: 'authenticated',
-    });
+      update: jest.fn(),
+    } as any);
 
     renderWithProviders(<ArticleCard article={mockArticle} />);
     
