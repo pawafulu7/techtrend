@@ -151,7 +151,10 @@ describe('/api/articles', () => {
         expect.objectContaining({
           take: 20,
           skip: 0,
-          orderBy: { publishedAt: 'desc' },
+          orderBy: [
+            { publishedAt: 'desc' },
+            { id: 'desc' }
+          ],
           select: expect.objectContaining({
             id: true,
             title: true,
@@ -273,8 +276,12 @@ describe('/api/articles', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } },
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              },
               {
                 OR: [
                   { title: { contains: 'React', mode: 'insensitive' } },
@@ -300,8 +307,12 @@ describe('/api/articles', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } },
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              },
               {
                 OR: [
                   { title: { contains: 'React', mode: 'insensitive' } },
@@ -331,7 +342,10 @@ describe('/api/articles', () => {
       expect(response.status).toBe(200);
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: { qualityScore: 'desc' },
+          orderBy: [
+            { qualityScore: 'desc' },
+            { id: 'desc' }
+          ],
         })
       );
     });

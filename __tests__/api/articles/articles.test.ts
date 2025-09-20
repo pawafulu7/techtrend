@@ -249,8 +249,12 @@ describe('Articles API', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } },
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              },
               {
                 OR: [
                   { title: { contains: 'TypeScript', mode: 'insensitive' } },
@@ -277,8 +281,12 @@ describe('Articles API', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } },
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              },
               {
                 OR: [
                   { title: { contains: 'TypeScript', mode: 'insensitive' } },
@@ -311,8 +319,12 @@ describe('Articles API', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } },
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              },
               {
                 OR: [
                   { title: { contains: 'TypeScript', mode: 'insensitive' } },
@@ -365,9 +377,10 @@ describe('Articles API', () => {
       
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: {
-            qualityScore: 'asc'
-          }
+          orderBy: [
+            { qualityScore: 'asc' },
+            { id: 'desc' }
+          ]
         })
       );
     });

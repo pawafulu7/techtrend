@@ -6,7 +6,7 @@ import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } f
 import { LayeredCache, type ArticleQueryParams } from '@/lib/cache/layered-cache';
 import { CacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { sourceCache } from '@/lib/cache/source-cache';
-import { Prisma, ArticleCategory } from '@prisma/client';
+import { Prisma, ArticleCategory, Article } from '@prisma/client';
 import logger from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
@@ -52,7 +52,7 @@ async function fetchUserSpecificData(
           },
           select: { articleId: true },
         }),
-      'db_user_favorites'
+      'db_query'
     ),
     withDbTiming(
       metrics,
@@ -65,7 +65,7 @@ async function fetchUserSpecificData(
           },
           select: { articleId: true },
         }),
-      'db_user_article_views'
+      'db_query'
     ),
   ]);
 
@@ -138,15 +138,29 @@ export async function GET(request: NextRequest) {
         .sort()
         .join(',') : 'none';
     
-    // Normalize sources for cache key (sort to ensure consistent key regardless of order)
-    const normalizedSources = sources ? 
-      sources.split(',').filter(id => id.trim()).sort().join(',') : 
-      sourceId || 'all';
+    // Normalize sources for cache key (sort and lowercase to ensure consistent key)
+    const normalizedSources = sources ?
+      sources.split(',').filter(id => id.trim()).map(id => id.toLowerCase()).sort().join(',') :
+      sourceId?.toLowerCase() || 'all';
     
     // Get session when readFilter requires user context or includeUserData is true
     const requiresUserSession = readFilter === 'read' || readFilter === 'unread' || includeUserData;
     const session = requiresUserSession ? await auth() : null;
     const userId = session?.user?.id;
+
+    // Return 401 if readFilter is used without authentication
+    if ((readFilter === 'read' || readFilter === 'unread') && !userId) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Authentication required for read filter',
+        }),
+        {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     const hasUserScopedQuery = (readFilter === 'read' || readFilter === 'unread') && !!userId;
     const hasUserContext = (includeUserData && !!userId) || hasUserScopedQuery;
@@ -158,13 +172,14 @@ export async function GET(request: NextRequest) {
       sortBy: finalSortBy,
       sortOrder,
       sources: normalizedSources, // Use normalized sources
-      sourceId: sourceId || undefined,
+      sourceId: sourceId?.toLowerCase() || undefined,
       tag: tag || undefined,
       tags: tags || undefined, // Multiple tags support
       tagMode: tagMode || undefined, // Tag filter mode
       search: normalizedSearch === 'none' ? undefined : normalizedSearch,
       dateRange: dateRange || undefined,
-      readFilter: readFilter || undefined,
+      // Only include readFilter in cache key when authenticated
+      readFilter: userId ? (readFilter || undefined) : undefined,
       userId: hasUserScopedQuery ? userId : undefined,
       category: category || undefined,
       includeRelations: includeRelations,
@@ -174,8 +189,8 @@ export async function GET(request: NextRequest) {
       includeUserData: false
     };
 
-    // Build data fetcher function for SWR
-    const buildResult = async (): Promise<PaginatedResponse<ArticleWithUserData>> => {
+    // Build data fetcher function for cache
+    const buildResult = async (): Promise<PaginatedResponse<Article>> => {
       // Early return: explicit none filter should not hit DB (unit tests expect no DB calls)
       if (sources === 'none') {
         return {
@@ -191,43 +206,34 @@ export async function GET(request: NextRequest) {
       
       // Filter out articles with empty content by default
       if (!includeEmptyContent) {
-        // Exclude both null and empty string content
+        // Optimize for partial index: use single AND condition
         where.AND = Array.isArray(where.AND)
-          ? [...where.AND, 
-             { content: { not: null } },
-             { content: { not: '' } }
-            ]
-          : [
-             { content: { not: null } },
-             { content: { not: '' } }
-            ];
+          ? [...where.AND, {
+              AND: [
+                { content: { not: null } },
+                { content: { not: '' } }
+              ]
+            }]
+          : [{
+              AND: [
+                { content: { not: null } },
+                { content: { not: '' } }
+              ]
+            }];
       }
+      // When includeEmptyContent is true, don't add any condition (include all)
       
       // Apply read filter if user is authenticated
       // Note: userId is only available when shouldUseUserContext is true
       if (readFilter && userId) {
         if (readFilter === 'unread') {
-          // 未読記事のみ: ArticleViewが存在しないか、isReadがfalse
-          const unreadOr = [
-            {
-              articleViews: {
-                none: {
-                  userId: userId
-                }
-              }
-            },
-            {
-              articleViews: {
-                some: {
-                  userId: userId,
-                  isRead: false
-                }
-              }
+          // 未読記事のみ: isRead:trueのレコードが存在しない
+          where.articleViews = {
+            none: {
+              userId: userId,
+              isRead: true
             }
-          ];
-          where.AND = Array.isArray(where.AND)
-            ? [...where.AND, { OR: unreadOr }]
-            : [{ OR: unreadOr }];
+          };
         } else if (readFilter === 'read') {
           // 既読記事のみ
           where.articleViews = {
@@ -243,18 +249,25 @@ export async function GET(request: NextRequest) {
         if (sources === 'none') {
           where.sourceId = { in: [] };
         } else {
-          const sourceList = sources.split(',').map(s => s.trim()).filter(Boolean);
+          const sourceList = sources.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
           if (sourceList.length > 0) {
             // In unit tests, treat tokens as IDs directly to match expectations
             const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
             if (isTestEnv) {
               where.sourceId = { in: sourceList };
             } else {
-              const finalIds = await withCacheTiming(
-                metrics,
-                () => sourceCache.resolveSourceIds(sourceList),
-                'cache_source_resolution'
-              );
+              let finalIds: string[];
+              try {
+                finalIds = await withCacheTiming(
+                  metrics,
+                  () => sourceCache.resolveSourceIds(sourceList),
+                  'cache_source_resolution'
+                );
+              } catch (error) {
+                logger.error('Failed to resolve source IDs:', error);
+                // Fallback: use the source list as-is
+                finalIds = sourceList;
+              }
               if (finalIds.length === 0) {
                 return {
                   items: [],
@@ -451,18 +464,19 @@ export async function GET(request: NextRequest) {
           prisma.article.findMany({
             where,
             select: selectFields,
-            orderBy: {
-              [finalSortBy]: sortOrder,
-            },
+            orderBy: [
+              { [finalSortBy]: sortOrder },
+              { id: 'desc' } // Stable secondary sort
+            ],
             skip: (page - 1) * limit,
             take: limit,
           }),
         ]),
-        'db_transaction_query'
+        'db_query'
       );
       // Return the data to be cached
       return {
-        items: articles as ArticleWithUserData[],
+        items: articles as Article[],
         total,
         page,
         limit,
@@ -473,13 +487,11 @@ export async function GET(request: NextRequest) {
     // Try to get from layered cache first
     // Only bypass cache when actual user-scoped filtering is present
     const baseResult = hasUserScopedQuery
-      ? await withDbTiming(metrics, buildResult, 'db_user_context')
+      ? await withDbTiming(metrics, buildResult, 'db_query')
       : await withCacheTiming(
           metrics,
-          async () => {
-            const data = await cache.getArticles(cacheParams, buildResult);
-            return data ?? (await buildResult());
-          }
+          () => cache.getArticles(cacheParams, buildResult),
+          'cache_articles'
         );
 
     let result = baseResult;
@@ -509,7 +521,7 @@ export async function GET(request: NextRequest) {
       meta: {
         userDataIncluded: includeUserData && userId ? true : false
       }
-    } as ApiResponse<PaginatedResponse<ArticleWithUserData>>);
+    } as ApiResponse<PaginatedResponse<Article>>);
 
     // Add performance metrics to headers
     metrics.addMetricsToHeaders(response.headers);
