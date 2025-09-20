@@ -3,4 +3,6 @@ export const sourceCache = {
   setStats: jest.fn(),
   getAllSourcesWithStats: jest.fn(),
   setAllSourcesWithStats: jest.fn(),
+  resolveSourceIds: jest.fn(),
+  resolveSourceName: jest.fn(),
 };

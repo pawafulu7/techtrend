@@ -126,9 +126,10 @@ describe('Articles API - Sort Functionality', () => {
 
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: {
-            publishedAt: 'desc',
-          },
+          orderBy: [
+            { publishedAt: 'desc' },
+            { id: 'desc' }
+          ],
         })
       );
       expect(data.success).toBe(true);
@@ -150,9 +151,10 @@ describe('Articles API - Sort Functionality', () => {
 
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: {
-            createdAt: 'desc',
-          },
+          orderBy: [
+            { createdAt: 'desc' },
+            { id: 'desc' }
+          ],
         })
       );
       expect(data.success).toBe(true);
@@ -174,9 +176,10 @@ describe('Articles API - Sort Functionality', () => {
 
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: {
-            qualityScore: 'desc',
-          },
+          orderBy: [
+            { qualityScore: 'desc' },
+            { id: 'desc' }
+          ],
         })
       );
       expect(data.success).toBe(true);
@@ -198,9 +201,10 @@ describe('Articles API - Sort Functionality', () => {
 
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: {
-            publishedAt: 'desc',
-          },
+          orderBy: [
+            { publishedAt: 'desc' },
+            { id: 'desc' }
+          ],
         })
       );
       expect(data.success).toBe(true);
@@ -222,9 +226,10 @@ describe('Articles API - Sort Functionality', () => {
 
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: {
-            createdAt: 'asc',
-          },
+          orderBy: [
+            { createdAt: 'asc' },
+            { id: 'desc' }
+          ],
         })
       );
       expect(data.success).toBe(true);
@@ -249,7 +254,10 @@ describe('Articles API - Sort Functionality', () => {
       // sortBy=createdAt が指定されたことを確認
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: { createdAt: 'desc' }
+          orderBy: [
+            { createdAt: 'desc' },
+            { id: 'desc' }
+          ]
         })
       );
     });
@@ -267,9 +275,10 @@ describe('Articles API - Sort Functionality', () => {
         
         expect(prismaMock.article.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
-            orderBy: {
-              [field]: 'desc',
-            },
+            orderBy: [
+              { [field]: 'desc' },
+              { id: 'desc' }
+            ],
           })
         );
         expect(data.success).toBe(true);

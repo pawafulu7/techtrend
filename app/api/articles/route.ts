@@ -5,6 +5,7 @@ import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
 import { LayeredCache, type ArticleQueryParams } from '@/lib/cache/layered-cache';
 import { CacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { sourceCache } from '@/lib/cache/source-cache';
 import { Prisma, ArticleCategory } from '@prisma/client';
 import logger from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
@@ -17,6 +18,79 @@ type ArticleWhereInput = Prisma.ArticleWhereInput;
 // Initialize Layered cache system for articles
 const cache = new LayeredCache();
 const cacheInvalidator = new CacheInvalidator();
+
+type UserSpecificArticleData = {
+  favoritedArticleIds: Set<string>;
+  readArticleIds: Set<string>;
+};
+
+type ArticleUserOverlay = {
+  isFavorited: boolean;
+  isRead: boolean;
+};
+
+async function fetchUserSpecificData(
+  userId: string,
+  articleIds: string[],
+  metrics: MetricsCollector
+): Promise<UserSpecificArticleData> {
+  if (!userId || articleIds.length === 0) {
+    return {
+      favoritedArticleIds: new Set<string>(),
+      readArticleIds: new Set<string>(),
+    };
+  }
+
+  const [favoriteArticles, readArticles] = await Promise.all([
+    withDbTiming(
+      metrics,
+      () =>
+        prisma.favorite.findMany({
+          where: {
+            userId,
+            articleId: { in: articleIds },
+          },
+          select: { articleId: true },
+        }),
+      'db_query'
+    ),
+    withDbTiming(
+      metrics,
+      () =>
+        prisma.articleView.findMany({
+          where: {
+            userId,
+            articleId: { in: articleIds },
+            isRead: true,
+          },
+          select: { articleId: true },
+        }),
+      'db_query'
+    ),
+  ]);
+
+  return {
+    favoritedArticleIds: new Set(favoriteArticles.map((favorite) => favorite.articleId)),
+    readArticleIds: new Set(readArticles.map((view) => view.articleId)),
+  };
+}
+
+function mergeUserData<T extends { id: string }>(
+  items: T[],
+  userSpecificData: UserSpecificArticleData
+): Array<T & ArticleUserOverlay> {
+  if (items.length === 0) {
+    return items as Array<T & ArticleUserOverlay>;
+  }
+
+  const { favoritedArticleIds, readArticleIds } = userSpecificData;
+
+  return items.map((item) => ({
+    ...item,
+    isFavorited: favoritedArticleIds.has(item.id),
+    isRead: readArticleIds.has(item.id),
+  }));
+}
 
 export async function GET(request: NextRequest) {
   const metrics = new MetricsCollector();
@@ -64,18 +138,32 @@ export async function GET(request: NextRequest) {
         .sort()
         .join(',') : 'none';
     
-    // Normalize sources for cache key (sort to ensure consistent key regardless of order)
-    const normalizedSources = sources ? 
-      sources.split(',').filter(id => id.trim()).sort().join(',') : 
-      sourceId || 'all';
+    // Normalize sources for cache key (sort and lowercase to ensure consistent key)
+    const normalizedSources = sources ?
+      sources.split(',').filter(id => id.trim()).map(id => id.toLowerCase()).sort().join(',') :
+      sourceId?.toLowerCase() || 'all';
     
     // Get session when readFilter requires user context or includeUserData is true
-    const shouldUseUserContext = readFilter === 'read' || readFilter === 'unread' || includeUserData;
-    const session = shouldUseUserContext ? await auth() : null;
+    const requiresUserSession = readFilter === 'read' || readFilter === 'unread' || includeUserData;
+    const session = requiresUserSession ? await auth() : null;
     const userId = session?.user?.id;
 
-    // Include userId in cache key only when user context is needed
-    const userCtxForKey = shouldUseUserContext ? (userId ?? 'anonymous') : 'n/a';
+    // Return 401 if readFilter is used without authentication
+    if ((readFilter === 'read' || readFilter === 'unread') && !userId) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Authentication required for read filter',
+        }),
+        {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const hasUserScopedQuery = (readFilter === 'read' || readFilter === 'unread') && !!userId;
+    const hasUserContext = (includeUserData && !!userId) || hasUserScopedQuery;
 
     // Prepare cache params for LayeredCache
     const cacheParams: ArticleQueryParams = {
@@ -84,24 +172,25 @@ export async function GET(request: NextRequest) {
       sortBy: finalSortBy,
       sortOrder,
       sources: normalizedSources, // Use normalized sources
-      sourceId: sourceId || undefined,
+      sourceId: sourceId?.toLowerCase() || undefined,
       tag: tag || undefined,
       tags: tags || undefined, // Multiple tags support
       tagMode: tagMode || undefined, // Tag filter mode
       search: normalizedSearch === 'none' ? undefined : normalizedSearch,
       dateRange: dateRange || undefined,
-      readFilter: readFilter || undefined,
-      userId: userCtxForKey === 'n/a' ? undefined : userCtxForKey,
+      // Only include readFilter in cache key when authenticated
+      readFilter: userId ? (readFilter || undefined) : undefined,
+      userId: hasUserScopedQuery ? userId : undefined,
       category: category || undefined,
       includeRelations: includeRelations,
       includeEmptyContent: includeEmptyContent,
       lightweight: lightweight,
       fields: fields || undefined,
-      includeUserData: includeUserData
+      includeUserData: false
     };
 
-    // Build data fetcher function for SWR
-    const buildResult = async () => {
+    // Build data fetcher function for cache
+    const buildResult = async (): Promise<PaginatedResponse<ArticleWithRelations>> => {
       // Early return: explicit none filter should not hit DB (unit tests expect no DB calls)
       if (sources === 'none') {
         return {
@@ -117,43 +206,34 @@ export async function GET(request: NextRequest) {
       
       // Filter out articles with empty content by default
       if (!includeEmptyContent) {
-        // Exclude both null and empty string content
+        // Optimize for partial index: use single AND condition
         where.AND = Array.isArray(where.AND)
-          ? [...where.AND, 
-             { content: { not: null } },
-             { content: { not: '' } }
-            ]
-          : [
-             { content: { not: null } },
-             { content: { not: '' } }
-            ];
+          ? [...where.AND, {
+              AND: [
+                { content: { not: null } },
+                { content: { not: '' } }
+              ]
+            }]
+          : [{
+              AND: [
+                { content: { not: null } },
+                { content: { not: '' } }
+              ]
+            }];
       }
+      // When includeEmptyContent is true, don't add any condition (include all)
       
       // Apply read filter if user is authenticated
       // Note: userId is only available when shouldUseUserContext is true
       if (readFilter && userId) {
         if (readFilter === 'unread') {
-          // 未読記事のみ: ArticleViewが存在しないか、isReadがfalse
-          const unreadOr = [
-            {
-              articleViews: {
-                none: {
-                  userId: userId
-                }
-              }
-            },
-            {
-              articleViews: {
-                some: {
-                  userId: userId,
-                  isRead: false
-                }
-              }
+          // 未読記事のみ: isRead:trueのレコードが存在しない
+          where.articleViews = {
+            none: {
+              userId: userId,
+              isRead: true
             }
-          ];
-          where.AND = Array.isArray(where.AND)
-            ? [...where.AND, { OR: unreadOr }]
-            : [{ OR: unreadOr }];
+          };
         } else if (readFilter === 'read') {
           // 既読記事のみ
           where.articleViews = {
@@ -169,22 +249,25 @@ export async function GET(request: NextRequest) {
         if (sources === 'none') {
           where.sourceId = { in: [] };
         } else {
-          const sourceList = sources.split(',').map(s => s.trim()).filter(Boolean);
+          const sourceList = sources.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
           if (sourceList.length > 0) {
             // In unit tests, treat tokens as IDs directly to match expectations
             const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
             if (isTestEnv) {
               where.sourceId = { in: sourceList };
             } else {
-              // Resolve tokens against both id and name (case-insensitive)
-              const nameFilters = sourceList.map(token => ({
-                name: { equals: token, mode: 'insensitive' as const }
-              }));
-              const sourceDocs = await prisma.source.findMany({
-                where: { OR: [ { id: { in: sourceList } }, ...nameFilters ] },
-                select: { id: true },
-              });
-              const finalIds = [...new Set(sourceDocs.map(s => s.id))];
+              let finalIds: string[];
+              try {
+                finalIds = await withCacheTiming(
+                  metrics,
+                  () => sourceCache.resolveSourceIds(sourceList),
+                  'cache_source_resolution'
+                );
+              } catch (error) {
+                logger.error(`Failed to resolve source IDs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                // Fallback: use the source list as-is
+                finalIds = sourceList;
+              }
               if (finalIds.length === 0) {
                 return {
                   items: [],
@@ -301,13 +384,6 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Get total count
-      const total = await withDbTiming(
-        metrics,
-        () => prisma.article.count({ where }),
-        'db_count'
-      );
-
       // Build select object based on parameters
       let selectFields: Prisma.ArticleSelect;
 
@@ -380,60 +456,27 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      // Get articles
-      const articles = await withDbTiming(
+      // Execute count and findMany in transaction for consistency
+      const [total, articles] = await withDbTiming(
         metrics,
-        () => prisma.article.findMany({
-          where,
-          select: selectFields,
-          orderBy: {
-            [finalSortBy]: sortOrder,
-          },
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
+        () => prisma.$transaction([
+          prisma.article.count({ where }),
+          prisma.article.findMany({
+            where,
+            select: selectFields,
+            orderBy: [
+              { [finalSortBy]: sortOrder },
+              { id: 'desc' } // Stable secondary sort
+            ],
+            skip: (page - 1) * limit,
+            take: limit,
+          }),
+        ]),
         'db_query'
       );
-
-      // Fetch user-specific data if requested
-      let articlesWithUserData = articles;
-      if (includeUserData && userId) {
-        const articleIds = articles.map(a => a.id);
-
-        // Fetch favorites and read status in parallel
-        const [favorites, articleViews] = await Promise.all([
-          prisma.favorite.findMany({
-            where: {
-              userId: userId,
-              articleId: { in: articleIds }
-            },
-            select: { articleId: true }
-          }),
-          prisma.articleView.findMany({
-            where: {
-              userId: userId,
-              articleId: { in: articleIds },
-              isRead: true
-            },
-            select: { articleId: true }
-          })
-        ]);
-
-        // Create maps for O(1) lookup
-        const favoritesMap = new Map(favorites.map(f => [f.articleId, true]));
-        const readStatusMap = new Map(articleViews.map(v => [v.articleId, true]));
-
-        // Add user-specific data to articles
-        articlesWithUserData = articles.map(article => ({
-          ...article,
-          isFavorited: favoritesMap.get(article.id) || false,
-          isRead: readStatusMap.get(article.id) || false
-        }));
-      }
-
       // Return the data to be cached
       return {
-        items: articlesWithUserData,
+        items: articles as ArticleWithRelations[],
         total,
         page,
         limit,
@@ -442,18 +485,29 @@ export async function GET(request: NextRequest) {
     };
 
     // Try to get from layered cache first
-    // Only bypass cache when actual user context is present
-    const hasUserContext = ((includeUserData && !!userId) || ((readFilter === 'read' || readFilter === 'unread') && !!userId));
-
-    const result = hasUserContext
-      ? await withDbTiming(metrics, buildResult, 'db_user_context')
+    // Only bypass cache when actual user-scoped filtering is present
+    const baseResult = hasUserScopedQuery
+      ? await withDbTiming(metrics, buildResult, 'db_query')
       : await withCacheTiming(
           metrics,
-          async () => {
-            const data = await cache.getArticles(cacheParams, buildResult);
-            return data!;
-          }
+          () => cache.getArticles(cacheParams, buildResult),
+          'cache_articles'
         );
+
+    let result = baseResult;
+
+    if (includeUserData && userId && baseResult && baseResult.items && baseResult.items.length > 0) {
+      const userSpecificData = await fetchUserSpecificData(
+        userId,
+        baseResult.items.map((article: any) => article.id),
+        metrics
+      );
+
+      result = {
+        ...baseResult,
+        items: mergeUserData(baseResult.items as any, userSpecificData) as any,
+      };
+    }
     
     // Note: getOrFetch always returns data (either from cache or freshly fetched)
     // We can't distinguish between HIT/MISS/STALE without API changes

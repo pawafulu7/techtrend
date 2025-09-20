@@ -16,6 +16,7 @@ import {
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+  usePathname: jest.fn(() => '/'),
   useSearchParams: jest.fn(() => ({
     get: jest.fn(),
     has: jest.fn(),
@@ -34,11 +35,30 @@ jest.mock('next-auth/react', () => ({
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
+  default: (props: any) => {
+    // Next.js Image特有のプロパティを除外
+    const { unoptimized, placeholder, blurDataURL, loader, quality, priority, loading, ...rest } = props;
     // eslint-disable-next-line jsx-a11y/alt-text
-    return <img {...props} />;
+    return <img {...rest} />;
   },
 }));
+
+jest.mock('@/app/components/common/optimized-image', () => {
+  const stripNextImageProps = ({ priority, fill, sizes, quality, loader, ...rest }: any) => rest;
+
+  const mockImg = ({ src, alt, className, ...rest }: any) => {
+    const safeProps = stripNextImageProps(rest);
+    // eslint-disable-next-line jsx-a11y/alt-text
+    return <img src={src} alt={alt} className={className} {...safeProps} />;
+  };
+
+  return {
+    __esModule: true,
+    OptimizedImage: mockImg,
+    ArticleThumbnail: mockImg,
+    ProfileImage: mockImg,
+  };
+});
 
 
 const mockedUseRouter = jest.mocked(useRouter);
@@ -49,7 +69,11 @@ describe('ArticleCard', () => {
   const mockRouter = {
     push: jest.fn(),
     prefetch: jest.fn(),
-  };
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    replace: jest.fn(),
+  } as any;
 
   const mockArticle = createMockArticleWithRelations({
     article: {
@@ -79,8 +103,8 @@ describe('ArticleCard', () => {
         mutations: { retry: false },
       },
     });
-    mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
-    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
+    mockedUseRouter.mockReturnValue(mockRouter);
+    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated', update: jest.fn() } as any);
   });
 
   const renderWithProviders = (ui: React.ReactElement) => {
@@ -134,9 +158,10 @@ describe('ArticleCard', () => {
 
   it('displays favorite button for authenticated users', () => {
     mockedUseSession.mockReturnValue({
-      data: { user: { id: 'user1', email: 'test@example.com' } },
+      data: { user: { id: 'user1', email: 'test@example.com' }, expires: '2025-12-31' } as any,
       status: 'authenticated',
-    });
+      update: jest.fn(),
+    } as any);
 
     renderWithProviders(<ArticleCard article={mockArticle} />);
     

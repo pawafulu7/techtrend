@@ -1,0 +1,370 @@
+
+> techtrend@0.1.0 test
+> npm run test:node && npm run test:dom __tests__/api/articles/
+
+
+> techtrend@0.1.0 test:node
+> jest --config jest.config.node.js
+
+{"level":"ERROR","time":1758349435087,"pid":81567,"hostname":"tomoaki-pc","err":{"type":"Error","message":"Database error","stack":"Error: Database error\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/__tests__/api/articles/articles.test.ts:343:53)\n    at Promise.finally.completed (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1556:28)\n    at new Promise (<anonymous>)\n    at callAsyncCircusFn (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1496:10)\n    at _callCircusTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1006:40)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at _runTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:946:3)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:839:13)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at run (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:757:3)\n    at runAndTransformResultsToJestFormat (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1917:21)\n    at jestAdapter (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/runner.js:101:19)\n    at runTestInternal (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:275:16)\n    at runTest (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:343:7)\n    at Object.worker (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:497:12)"},"msg":"Error fetching articles"}
+{"level":"ERROR","time":1758349435134,"pid":81590,"hostname":"tomoaki-pc","err":{"type":"Error","message":"Database connection failed","stack":"Error: Database connection failed\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/__tests__/api/articles/route.test.ts:345:53)\n    at Promise.finally.completed (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1556:28)\n    at new Promise (<anonymous>)\n    at callAsyncCircusFn (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1496:10)\n    at _callCircusTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1006:40)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at _runTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:946:3)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:839:13)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at run (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:757:3)\n    at runAndTransformResultsToJestFormat (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1917:21)\n    at jestAdapter (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/runner.js:101:19)\n    at runTestInternal (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:275:16)\n    at runTest (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:343:7)\n    at Object.worker (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:497:12)"},"msg":"Error fetching articles"}
+{"level":"ERROR","time":1758349435526,"pid":81567,"hostname":"tomoaki-pc","error":{"type":"Error","message":"Enrichment failed","stack":"Error: Enrichment failed\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/__tests__/fetchers/google-dev-blog.test.ts:113:47)\n    at /home/tomoaki/work/techtrend/node_modules/jest-mock/build/index.js:305:39\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/node_modules/jest-mock/build/index.js:312:13)\n    at Object.mockConstructor [as getEnricher] (/home/tomoaki/work/techtrend/node_modules/jest-mock/build/index.js:102:19)\n    at GoogleDevBlogFetcher.getEnricher [as parseItem] (/home/tomoaki/work/techtrend/lib/fetchers/google-dev-blog.ts:114:40)\n    at GoogleDevBlogFetcher.parseItem [as fetch] (/home/tomoaki/work/techtrend/lib/fetchers/google-dev-blog.ts:58:38)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/__tests__/fetchers/google-dev-blog.test.ts:117:22)"},"msg":"[Google Dev Blog] Enrichment failed for https://developers.googleblog.com/test-article"}
+{"level":"ERROR","time":1758349435537,"pid":81567,"hostname":"tomoaki-pc","error":{"type":"Error","message":"Enrichment failed","stack":"Error: Enrichment failed\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/__tests__/fetchers/google-dev-blog.test.ts:113:47)\n    at /home/tomoaki/work/techtrend/node_modules/jest-mock/build/index.js:305:39\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/node_modules/jest-mock/build/index.js:312:13)\n    at Object.mockConstructor [as getEnricher] (/home/tomoaki/work/techtrend/node_modules/jest-mock/build/index.js:102:19)\n    at GoogleDevBlogFetcher.getEnricher [as parseItem] (/home/tomoaki/work/techtrend/lib/fetchers/google-dev-blog.ts:114:40)\n    at GoogleDevBlogFetcher.parseItem [as fetch] (/home/tomoaki/work/techtrend/lib/fetchers/google-dev-blog.ts:58:38)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/__tests__/fetchers/google-dev-blog.test.ts:167:22)"},"msg":"[Google Dev Blog] Enrichment failed for https://developers.googleblog.com/gemini-article"}
+{"level":"ERROR","time":1758349438178,"pid":81590,"hostname":"tomoaki-pc","error":{"type":"Error","message":"Database connection failed","stack":"Error: Database connection failed\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/__tests__/api/user/password.test.ts:204:9)\n    at Promise.finally.completed (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1556:28)\n    at new Promise (<anonymous>)\n    at callAsyncCircusFn (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1496:10)\n    at _callCircusTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1006:40)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at _runTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:946:3)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:839:13)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at run (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:757:3)\n    at runAndTransformResultsToJestFormat (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1917:21)\n    at jestAdapter (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/runner.js:101:19)\n    at runTestInternal (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:275:16)\n    at runTest (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:343:7)\n    at Object.worker (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:497:12)"},"msg":"Password change error"}
+{"level":"ERROR","time":1758349438327,"pid":81590,"hostname":"tomoaki-pc","url":"https://aws.amazon.com/blogs/short-article","contentLength":14,"minLength":200,"msg":"[AWS Enricher] Insufficient content found"}
+{"level":"ERROR","time":1758349438329,"pid":81590,"hostname":"tomoaki-pc","status":404,"url":"https://aws.amazon.com/blogs/not-found","msg":"[AWS Enricher] Failed to fetch"}
+{"level":"ERROR","time":1758349438329,"pid":81590,"hostname":"tomoaki-pc","error":{"type":"Error","message":"Network error","stack":"Error: Network error\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/__tests__/enrichers/aws.test.ts:198:50)\n    at Promise.finally.completed (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1556:28)\n    at new Promise (<anonymous>)\n    at callAsyncCircusFn (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1496:10)\n    at _callCircusTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1006:40)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at _runTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:946:3)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:839:13)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at run (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:757:3)\n    at runAndTransformResultsToJestFormat (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1917:21)\n    at jestAdapter (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/runner.js:101:19)\n    at runTestInternal (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:275:16)\n    at runTest (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:343:7)\n    at Object.worker (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:497:12)"},"url":"https://aws.amazon.com/blogs/error-article","msg":"[AWS Enricher] Error during enrichment"}
+{"level":"ERROR","time":1758349438340,"pid":81590,"hostname":"tomoaki-pc","url":"https://aws.amazon.com/blogs/timeout-test","msg":"[AWS Enricher] Request timeout after 15 seconds"}
+{"level":"ERROR","time":1758349441169,"pid":81568,"hostname":"tomoaki-pc","error":{"type":"Error","message":"Database error","stack":"Error: Database error\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/__tests__/api/tags/cloud/route.test.ts:282:49)\n    at Promise.finally.completed (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1556:28)\n    at new Promise (<anonymous>)\n    at callAsyncCircusFn (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1496:10)\n    at _callCircusTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1006:40)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at _runTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:946:3)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:839:13)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at run (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:757:3)\n    at runAndTransformResultsToJestFormat (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1917:21)\n    at jestAdapter (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/runner.js:101:19)\n    at runTestInternal (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:275:16)\n    at runTest (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:343:7)\n    at Object.worker (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:497:12)"},"msg":"API Error in /api/tags/cloud"}
+{"level":"ERROR","time":1758349441341,"pid":81568,"hostname":"tomoaki-pc","err":{"type":"Error","message":"Database error","stack":"Error: Database error\n    at Object.<anonymous> (/home/tomoaki/work/techtrend/__tests__/api/recommendations.test.ts:107:7)\n    at Promise.finally.completed (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1556:28)\n    at new Promise (<anonymous>)\n    at callAsyncCircusFn (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1496:10)\n    at _callCircusTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1006:40)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at _runTest (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:946:3)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:839:13)\n    at _runTestsForDescribeBlock (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:829:11)\n    at run (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:757:3)\n    at runAndTransformResultsToJestFormat (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/jestAdapterInit.js:1917:21)\n    at jestAdapter (/home/tomoaki/work/techtrend/node_modules/jest-circus/build/runner.js:101:19)\n    at runTestInternal (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:275:16)\n    at runTest (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:343:7)\n    at Object.worker (/home/tomoaki/work/techtrend/node_modules/jest-runner/build/testWorker.js:497:12)"},"route":"API/recommendations","msg":"Unhandled error"}
+
+Summary of all failing tests
+FAIL __tests__/api/articles/route-extended.test.ts
+  ● /api/articles - Extended Tests › GET - Read Filter Tests › 未読記事のみをフィルタリング（認証済み）
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}, {"OR": [{"articleViews": {"none": {"userId": "test-user-id"}}}, {"articleViews": {"some": {"isRead": false, "userId": "test-user-id"}}}]}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}], "articleViews": {"none": {"isRead": true, "userId": "test-user-id"}}}}
+
+    Number of calls: 1
+
+      203 |       
+      204 |       // 未読フィルタの条件を確認（コンテンツフィルタリングも含む）
+    > 205 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      206 |         expect.objectContaining({
+      207 |           where: expect.objectContaining({
+      208 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route-extended.test.ts:205:43)
+
+  ● /api/articles - Extended Tests › GET - Read Filter Tests › 未認証の場合、readFilterは無視される
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 401
+
+      276 |       const response = await GET(request);
+      277 |
+    > 278 |       expect(response.status).toBe(200);
+          |                               ^
+      279 |       
+      280 |       // 未認証の場合、readFilterの条件が適用されないことを確認（コンテンツフィルタリングは含まれる）
+      281 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+
+      at Object.toBe (__tests__/api/articles/route-extended.test.ts:278:31)
+
+  ● /api/articles - Extended Tests › GET - Multiple Tags with AND Mode › 複数タグをAND条件で検索
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}, {"tags": {"some": {"name": "React"}}}, {"tags": {"some": {"name": "TypeScript"}}}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}, {"tags": {"some": {"name": "React"}}}, {"tags": {"some": {"name": "TypeScript"}}}]}}
+
+    Number of calls: 1
+
+      307 |       
+      308 |       // AND条件の確認（コンテンツフィルタリングも含む）
+    > 309 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      310 |         expect.objectContaining({
+      311 |           where: expect.objectContaining({
+      312 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route-extended.test.ts:309:43)
+
+  ● /api/articles - Extended Tests › GET - Multiple Tags with AND Mode › 複数タグをOR条件で検索（デフォルト）
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}], "tags": {"some": {"name": {"in": ["React", "Vue"]}}}}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}], "tags": {"some": {"name": {"in": ["React", "Vue"]}}}}}
+
+    Number of calls: 1
+
+      346 |       
+      347 |       // OR条件の確認（コンテンツフィルタリングも含む）
+    > 348 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      349 |         expect.objectContaining({
+      350 |           where: expect.objectContaining({
+      351 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route-extended.test.ts:348:43)
+
+  ● /api/articles - Extended Tests › GET - Multiple Tags with AND Mode › 空白を含むタグリストを正しく処理
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}, {"tags": {"some": {"name": "React"}}}, {"tags": {"some": {"name": "Vue"}}}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}, {"tags": {"some": {"name": "React"}}}, {"tags": {"some": {"name": "Vue"}}}]}}
+
+    Number of calls: 1
+
+      375 |       
+      376 |       // 空白がフィルタリングされることを確認（コンテンツフィルタリングも含む）
+    > 377 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      378 |         expect.objectContaining({
+      379 |           where: expect.objectContaining({
+      380 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route-extended.test.ts:377:43)
+
+  ● /api/articles - Extended Tests › GET - Category Filter Tests › 未分類（uncategorized）記事をフィルタリング
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}], "category": null}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}], "category": null}}
+
+    Number of calls: 1
+
+      418 |       
+      419 |       // categoryがnullでフィルタリングされることを確認（コンテンツフィルタリングも含む）
+    > 420 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      421 |         expect.objectContaining({
+      422 |           where: expect.objectContaining({
+      423 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route-extended.test.ts:420:43)
+
+  ● /api/articles - Extended Tests › GET - Category Filter Tests › 特定カテゴリー（frontend）でフィルタリング
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}], "category": "frontend"}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}], "category": "frontend"}}
+
+    Number of calls: 1
+
+      444 |       expect(json.data.items).toHaveLength(2);
+      445 |       
+    > 446 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      447 |         expect.objectContaining({
+      448 |           where: expect.objectContaining({
+      449 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route-extended.test.ts:446:43)
+
+  ● /api/articles - Extended Tests › GET - Combined Filters › 複数のフィルタを組み合わせて使用
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}, ObjectContaining {"OR": Any<Array>}, ObjectContaining {"tags": Any<Object>}, ObjectContaining {"tags": Any<Object>}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}, {"tags": {"some": {"name": "React"}}}, {"tags": {"some": {"name": "TypeScript"}}}], "articleViews": {"none": {"isRead": true, "userId": "test-user-id"}}}}
+
+    Number of calls: 1
+
+      491 |       // contentフィルター、readFilter、tagsが全てAND配列に含まれる
+      492 |       // categoryは無効な値のため無視される
+    > 493 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      494 |         expect.objectContaining({
+      495 |           where: expect.objectContaining({
+      496 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route-extended.test.ts:493:43)
+
+  ● /api/articles - Extended Tests › GET - Edge Cases › 無効なreadFilterは無視される
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}]}}
+
+    Number of calls: 1
+
+      539 |       
+      540 |       // 無効なreadFilterは条件に含まれない（コンテンツフィルタリングは含まれる）
+    > 541 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      542 |         expect.objectContaining({
+      543 |           where: expect.objectContaining({
+      544 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route-extended.test.ts:541:43)
+
+  ● /api/articles - Extended Tests › GET - Edge Cases › 空のタグリストは無視される
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}]}}
+
+    Number of calls: 1
+
+      558 |       
+      559 |       // 空のタグリストは条件に含まれない（コンテンツフィルタリングは含まれる）
+    > 560 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      561 |         expect.objectContaining({
+      562 |           where: expect.objectContaining({
+      563 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route-extended.test.ts:560:43)
+
+  ● /api/articles - Extended Tests › GET - Edge Cases › 全て空白のタグリストは無視される
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": {"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}]}}
+
+    Number of calls: 1
+
+      577 |       
+      578 |       // 空白のみのタグリストは条件に含まれない（コンテンツフィルタリングは含まれる）
+    > 579 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      580 |         expect.objectContaining({
+      581 |           where: {
+      582 |             AND: [
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route-extended.test.ts:579:43)
+
+FAIL __tests__/api/articles/articles.test.ts
+  ● Articles API › GET /api/articles › should handle search parameter
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}, {"OR": [{"title": {"contains": "TypeScript", "mode": "insensitive"}}, {"summary": {"contains": "TypeScript", "mode": "insensitive"}}]}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}, {"OR": [{"title": {"contains": "TypeScript", "mode": "insensitive"}}, {"summary": {"contains": "TypeScript", "mode": "insensitive"}}]}]}}
+
+    Number of calls: 1
+
+      246 |       assertSuccessResponse(response);
+      247 |       
+    > 248 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      249 |         expect.objectContaining({
+      250 |           where: expect.objectContaining({
+      251 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/articles.test.ts:248:43)
+
+  ● Articles API › GET /api/articles › should handle multiple keywords with AND search
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}, {"OR": [{"title": {"contains": "TypeScript", "mode": "insensitive"}}, {"summary": {"contains": "TypeScript", "mode": "insensitive"}}]}, {"OR": [{"title": {"contains": "React", "mode": "insensitive"}}, {"summary": {"contains": "React", "mode": "insensitive"}}]}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}, {"OR": [{"title": {"contains": "TypeScript", "mode": "insensitive"}}, {"summary": {"contains": "TypeScript", "mode": "insensitive"}}]}, {"OR": [{"title": {"contains": "React", "mode": "insensitive"}}, {"summary": {"contains": "React", "mode": "insensitive"}}]}]}}
+
+    Number of calls: 1
+
+      274 |       assertSuccessResponse(response);
+      275 |       
+    > 276 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      277 |         expect.objectContaining({
+      278 |           where: expect.objectContaining({
+      279 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/articles.test.ts:276:43)
+
+  ● Articles API › GET /api/articles › should handle search with full-width spaces
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}, {"OR": [{"title": {"contains": "TypeScript", "mode": "insensitive"}}, {"summary": {"contains": "TypeScript", "mode": "insensitive"}}]}, {"OR": [{"title": {"contains": "React", "mode": "insensitive"}}, {"summary": {"contains": "React", "mode": "insensitive"}}]}, {"OR": [{"title": {"contains": "Vue", "mode": "insensitive"}}, {"summary": {"contains": "Vue", "mode": "insensitive"}}]}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}, {"OR": [{"title": {"contains": "TypeScript", "mode": "insensitive"}}, {"summary": {"contains": "TypeScript", "mode": "insensitive"}}]}, {"OR": [{"title": {"contains": "React", "mode": "insensitive"}}, {"summary": {"contains": "React", "mode": "insensitive"}}]}, {"OR": [{"title": {"contains": "Vue", "mode": "insensitive"}}, {"summary": {"contains": "Vue", "mode": "insensitive"}}]}]}}
+
+    Number of calls: 1
+
+      308 |       assertSuccessResponse(response);
+      309 |       
+    > 310 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      311 |         expect.objectContaining({
+      312 |           where: expect.objectContaining({
+      313 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/articles.test.ts:310:43)
+
+  ● Articles API › GET /api/articles › should handle sortOrder parameter
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"orderBy": {"qualityScore": "asc"}}
+    Received: {"orderBy": [{"qualityScore": "asc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}]}}
+
+    Number of calls: 1
+
+      364 |       assertSuccessResponse(response);
+      365 |       
+    > 366 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      367 |         expect.objectContaining({
+      368 |           orderBy: {
+      369 |             qualityScore: 'asc'
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/articles.test.ts:366:43)
+
+FAIL __tests__/api/articles/route.test.ts
+  ● /api/articles › GET › handles search with single keyword
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}, {"OR": [{"title": {"contains": "React", "mode": "insensitive"}}, {"summary": {"contains": "React", "mode": "insensitive"}}]}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}, {"OR": [{"title": {"contains": "React", "mode": "insensitive"}}, {"summary": {"contains": "React", "mode": "insensitive"}}]}]}}
+
+    Number of calls: 1
+
+      273 |
+      274 |       expect(response.status).toBe(200);
+    > 275 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      276 |         expect.objectContaining({
+      277 |           where: expect.objectContaining({
+      278 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route.test.ts:275:43)
+
+  ● /api/articles › GET › handles search with multiple keywords (AND search)
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"where": ObjectContaining {"AND": ArrayContaining [{"content": {"not": null}}, {"content": {"not": ""}}, {"OR": [{"title": {"contains": "React", "mode": "insensitive"}}, {"summary": {"contains": "React", "mode": "insensitive"}}]}, {"OR": [{"title": {"contains": "TypeScript", "mode": "insensitive"}}, {"summary": {"contains": "TypeScript", "mode": "insensitive"}}]}]}}
+    Received: {"orderBy": [{"publishedAt": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}, {"OR": [{"title": {"contains": "React", "mode": "insensitive"}}, {"summary": {"contains": "React", "mode": "insensitive"}}]}, {"OR": [{"title": {"contains": "TypeScript", "mode": "insensitive"}}, {"summary": {"contains": "TypeScript", "mode": "insensitive"}}]}]}}
+
+    Number of calls: 1
+
+      300 |
+      301 |       expect(response.status).toBe(200);
+    > 302 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      303 |         expect.objectContaining({
+      304 |           where: expect.objectContaining({
+      305 |             AND: expect.arrayContaining([
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route.test.ts:302:43)
+
+  ● /api/articles › GET › sorts articles by different fields
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"orderBy": {"qualityScore": "desc"}}
+    Received: {"orderBy": [{"qualityScore": "desc"}, {"id": "desc"}], "select": {"articleType": true, "bookmarks": true, "category": true, "createdAt": true, "difficulty": true, "id": true, "publishedAt": true, "qualityScore": true, "sourceId": true, "summary": true, "summaryVersion": true, "thumbnail": true, "title": true, "updatedAt": true, "url": true, "userVotes": true}, "skip": 0, "take": 20, "where": {"AND": [{"AND": [{"content": {"not": null}}, {"content": {"not": ""}}]}]}}
+
+    Number of calls: 1
+
+      333 |
+      334 |       expect(response.status).toBe(200);
+    > 335 |       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+          |                                           ^
+      336 |         expect.objectContaining({
+      337 |           orderBy: { qualityScore: 'desc' },
+      338 |         })
+
+      at Object.toHaveBeenCalledWith (__tests__/api/articles/route.test.ts:335:43)
+
+
+Test Suites: 3 failed, 1 skipped, 79 passed, 82 of 83 total
+Tests:       18 failed, 42 skipped, 1199 passed, 1259 total
+Snapshots:   0 total
+Time:        7.715 s
+Ran all test suites.

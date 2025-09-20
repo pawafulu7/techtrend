@@ -206,28 +206,19 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } },
               {
-                OR: [
-                  {
-                    articleViews: {
-                      none: {
-                        userId: 'test-user-id'
-                      }
-                    }
-                  },
-                  {
-                    articleViews: {
-                      some: {
-                        userId: 'test-user-id',
-                        isRead: false
-                      }
-                    }
-                  }
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
                 ]
               }
-            ])
+            ]),
+            articleViews: {
+              none: {
+                userId: 'test-user-id',
+                isRead: true
+              }
+            }
           })
         })
       );
@@ -251,8 +242,12 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } }
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              }
             ]),
             articleViews: {
               some: {
@@ -265,25 +260,16 @@ describe('/api/articles - Extended Tests', () => {
       );
     });
 
-    it('未認証の場合、readFilterは無視される', async () => {
+    it('未認証の場合、readFilterは401を返す', async () => {
       setUnauthenticated();
 
       const request = new NextRequest('http://localhost/api/articles?readFilter=unread');
       const response = await GET(request);
 
-      expect(response.status).toBe(200);
-      
-      // 未認証の場合、readFilterの条件が適用されないことを確認（コンテンツフィルタリングは含まれる）
-      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } }
-            ])
-          })
-        })
-      );
+      expect(response.status).toBe(401);
+
+      // 未認証の場合、401が返るためDBクエリは実行されない
+      expect(prismaMock.article.findMany).not.toHaveBeenCalled();
     });
   });
 
@@ -306,8 +292,12 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } },
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              },
               {
                 tags: {
                   some: {
@@ -345,8 +335,12 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } }
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              }
             ]),
             tags: {
               some: {
@@ -374,8 +368,12 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } },
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              },
               {
                 tags: {
                   some: {
@@ -417,8 +415,12 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } }
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              }
             ]),
             category: null
           })
@@ -443,8 +445,12 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } }
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              }
             ]),
             category: 'frontend'
           })
@@ -490,12 +496,21 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } },
-              expect.objectContaining({ OR: expect.any(Array) }), // readFilter
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              },
               expect.objectContaining({ tags: expect.any(Object) }), // React tag
               expect.objectContaining({ tags: expect.any(Object) })  // TypeScript tag
-            ])
+            ]),
+            articleViews: {
+              none: {
+                userId: 'test-user-id',
+                isRead: true
+              }
+            }
           })
         })
       );
@@ -538,8 +553,12 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } }
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              }
             ])
           })
         })
@@ -557,8 +576,12 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             AND: expect.arrayContaining([
-              { content: { not: null } },
-              { content: { not: '' } }
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              }
             ])
           })
         })
@@ -576,8 +599,12 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: {
             AND: [
-              { content: { not: null } },
-              { content: { not: '' } }
+              {
+                AND: [
+                  { content: { not: null } },
+                  { content: { not: '' } }
+                ]
+              }
             ]
           }
         })

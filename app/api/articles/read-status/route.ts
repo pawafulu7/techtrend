@@ -15,58 +15,42 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const articleIds = searchParams.get('articleIds')?.split(',') || [];
 
-    // 未読数を取得
-    const unreadCount = await prisma.article.count({
-      where: {
-        OR: [
-          {
-            articleViews: {
-              none: {
-                userId: session.user.id
-              }
-            }
-          },
-          {
-            articleViews: {
-              some: {
-                userId: session.user.id,
-                isRead: false
-              }
+    // 共通のwhere条件を定義
+    const unreadWhere = {
+      OR: [
+        {
+          articleViews: {
+            none: {
+              userId: session.user.id
             }
           }
-        ]
-      }
-    });
-
-    if (articleIds.length === 0) {
-      // 全ての既読記事IDを取得
-      const readArticles = await prisma.articleView.findMany({
-        where: {
-          userId: session.user.id,
-          isRead: true
         },
-        select: {
-          articleId: true
+        {
+          articleViews: {
+            some: {
+              userId: session.user.id,
+              isRead: false
+            }
+          }
         }
-      });
+      ]
+    };
 
-      return NextResponse.json({
-        readArticleIds: readArticles.map(a => a.articleId),
-        unreadCount
-      });
-    }
+    // 既読記事取得用のwhere条件
+    const readArticlesWhere = {
+      userId: session.user.id,
+      isRead: true,
+      ...(articleIds.length > 0 ? { articleId: { in: articleIds } } : {})
+    };
 
-    // 特定の記事IDの既読状態を取得
-    const readArticles = await prisma.articleView.findMany({
-      where: {
-        userId: session.user.id,
-        articleId: { in: articleIds },
-        isRead: true
-      },
-      select: {
-        articleId: true
-      }
-    });
+    // トランザクションで両方のクエリを実行
+    const [unreadCount, readArticles] = await prisma.$transaction([
+      prisma.article.count({ where: unreadWhere }),
+      prisma.articleView.findMany({
+        where: readArticlesWhere,
+        select: { articleId: true }
+      })
+    ]);
 
     return NextResponse.json({
       readArticleIds: readArticles.map(a => a.articleId),

@@ -41,21 +41,27 @@ export class LayeredCache {
   private l3Cache: RedisCache;  // 検索キャッシュ
 
   constructor() {
-    // L1: パブリックキャッシュ（TTL: 1時間）
+    // TTL設定を環境変数で制御可能にして段階的調整を可能にする
+    // デフォルトは最適化された値を使用
+
+    // L1: パブリックキャッシュ（デフォルト: 1時間）- RSS更新頻度に同期
+    const l1Ttl = parseInt(process.env.CACHE_L1_TTL || '3600', 10);
     this.l1Cache = new RedisCache({
-      ttl: 3600, // 1時間
+      ttl: l1Ttl, // デフォルト1時間（RSS更新サイクルに合わせる）
       namespace: '@techtrend/cache:l1:public'
     });
 
-    // L2: ユーザーキャッシュ（TTL: 15分）- ユーザーフィードバックに基づき5分から15分に延長
+    // L2: ユーザーキャッシュ（デフォルト: 20分）- 実際のセッション利用パターンに合わせる
+    const l2Ttl = parseInt(process.env.CACHE_L2_TTL || '1200', 10);
     this.l2Cache = new RedisCache({
-      ttl: 900, // 15分（ユーザーセッション中は維持）
+      ttl: l2Ttl, // デフォルト20分（ユーザーセッション実態に合わせる）
       namespace: '@techtrend/cache:l2:user'
     });
 
-    // L3: 検索キャッシュ（TTL: 10分）- ユーザーフィードバックに基づき1分から10分に延長
+    // L3: 検索キャッシュ（デフォルト: 10分）- 検索の即時性を重視
+    const l3Ttl = parseInt(process.env.CACHE_L3_TTL || '600', 10);
     this.l3Cache = new RedisCache({
-      ttl: 600, // 10分（検索→詳細→戻るの操作を考慮）
+      ttl: l3Ttl, // デフォルト10分（検索結果の鮮度を優先）
       namespace: '@techtrend/cache:l3:search'
     });
   }

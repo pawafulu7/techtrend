@@ -31,20 +31,28 @@ describe('/api/articles/read-status', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetMockSession();
-    
+
+    // $transactionのモック設定
+    prismaMock.$transaction = jest.fn().mockImplementation(async (operations) => {
+      if (typeof operations === 'function') {
+        return operations(prismaMock);
+      }
+      return Promise.all(operations);
+    });
+
     // デフォルトのPrismaモック設定
     prismaMock.article = {
       count: jest.fn().mockResolvedValue(0),
     };
-    
+
     prismaMock.articleView = {
       findMany: jest.fn().mockResolvedValue([]),
       upsert: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     };
-    
+
     prismaMock.$executeRaw = jest.fn().mockResolvedValue(0);
-    
+
     // Redisサービスのモック設定
     // getRedisServiceは__mocks__/lib/redis/factory.tsで定義されている
     // デフォルトでモックサービスを返すように設定されている

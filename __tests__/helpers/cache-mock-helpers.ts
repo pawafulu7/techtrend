@@ -120,6 +120,8 @@ export const createSourceCacheMock = () => ({
   setAllSourcesWithStats: jest.fn().mockResolvedValue(undefined),
   getSourceById: jest.fn().mockResolvedValue(null),
   clearCache: jest.fn().mockResolvedValue(undefined),
+  resolveSourceIds: jest.fn().mockResolvedValue([]),
+  resolveSourceName: jest.fn().mockResolvedValue(null),
 });
 
 /**

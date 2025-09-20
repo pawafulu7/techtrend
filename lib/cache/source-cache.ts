@@ -1,11 +1,12 @@
 import { prisma } from '@/lib/database';
 import { RedisCache } from './index';
 import { Source } from '@prisma/client';
-import { 
-  SourceStats, 
-  calculateSourceStats, 
+import logger from '@/lib/logger';
+import {
+  SourceStats,
+  calculateSourceStats,
   estimateSourceCategory,
-  SourceCategory 
+  SourceCategory
 } from '@/lib/utils/source-stats';
 
 interface SourceWithCount extends Source {
@@ -19,14 +20,172 @@ export interface SourceWithStats extends Source {
   stats: SourceStats;
 }
 
+const SOURCE_NAME_CACHE_TTL_MS = 300_000; // 5分に延長（ソース情報は頻繁に変わらない）
+
 export class SourceCache {
   private cache: RedisCache;
+  private nameToId = new Map<string, string>();
+  private idToName = new Map<string, string>();
+  private lastNameRefresh = 0;
+  private refreshPromise: Promise<void> | null = null;
+  private refreshTimer: NodeJS.Timeout | null = null;
+  private readonly nameCacheTtlMs = SOURCE_NAME_CACHE_TTL_MS;
 
   constructor() {
     this.cache = new RedisCache({
       ttl: 3600, // 1時間
       namespace: '@techtrend/cache:sources'
     });
+  }
+
+  private normalizeName(name: string): string {
+    return name.trim().toLowerCase();
+  }
+
+  private clearNameCache(): void {
+    this.nameToId = new Map();
+    this.idToName = new Map();
+    this.lastNameRefresh = 0;
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  }
+
+  private scheduleAutoRefresh(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+    }
+
+    this.refreshTimer = setTimeout(() => {
+      this.refreshNameCache(true).catch((error) => {
+        logger.error({ err: error }, 'Failed to auto-refresh source name cache');
+      });
+    }, this.nameCacheTtlMs);
+
+    if (typeof this.refreshTimer.unref === 'function') {
+      this.refreshTimer.unref();
+    }
+  }
+
+  private async refreshNameCache(force = false): Promise<void> {
+    if (this.refreshPromise) {
+      await this.refreshPromise;
+      return;
+    }
+
+    const now = Date.now();
+    if (!force && now - this.lastNameRefresh < this.nameCacheTtlMs) {
+      return;
+    }
+
+    const loadPromise = (async () => {
+      try {
+        const sources = await prisma.source.findMany({
+          select: { id: true, name: true },
+        });
+
+        const nextNameToId = new Map<string, string>();
+        const nextIdToName = new Map<string, string>();
+
+        for (const source of sources) {
+          const { id, name } = source;
+          if (!id || !name) {
+            continue;
+          }
+
+          nextIdToName.set(id, name);
+
+          const normalized = this.normalizeName(name);
+          if (!normalized || nextNameToId.has(normalized)) {
+            continue;
+          }
+          nextNameToId.set(normalized, id);
+        }
+
+        this.nameToId = nextNameToId;
+        this.idToName = nextIdToName;
+        this.lastNameRefresh = Date.now();
+        this.scheduleAutoRefresh();
+      } catch (error) {
+        logger.error({ err: error }, 'Failed to refresh source name cache');
+        throw error;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    this.refreshPromise = loadPromise;
+    await loadPromise;
+  }
+
+  private async ensureNameCache(): Promise<void> {
+    await this.refreshNameCache(false);
+  }
+
+  async resolveSourceIds(identifiers: string[]): Promise<string[]> {
+    const tokens = identifiers.map((identifier) => identifier.trim()).filter(Boolean);
+    if (tokens.length === 0) {
+      return [];
+    }
+
+    await this.ensureNameCache();
+
+    const resolved = new Set<string>();
+    const unresolved = new Set<string>();
+
+    for (const token of tokens) {
+      if (this.idToName.has(token)) {
+        resolved.add(token);
+        continue;
+      }
+
+      const normalized = this.normalizeName(token);
+      const id = this.nameToId.get(normalized);
+      if (id) {
+        resolved.add(id);
+      } else {
+        unresolved.add(token);
+      }
+    }
+
+    if (unresolved.size > 0) {
+      await this.refreshNameCache(true);
+
+      for (const token of unresolved) {
+        if (this.idToName.has(token)) {
+          resolved.add(token);
+          continue;
+        }
+
+        const normalized = this.normalizeName(token);
+        const id = this.nameToId.get(normalized);
+        if (id) {
+          resolved.add(id);
+        }
+      }
+    }
+
+    return Array.from(resolved);
+  }
+
+  async resolveSourceName(sourceId: string): Promise<string | null> {
+    const trimmed = sourceId.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    await this.ensureNameCache();
+
+    let name = this.idToName.get(trimmed) ?? null;
+    if (name) {
+      return name;
+    }
+
+    await this.refreshNameCache(true);
+    name = this.idToName.get(trimmed) ?? null;
+
+    return name ?? null;
   }
 
   /**
@@ -151,6 +310,7 @@ export class SourceCache {
    * キャッシュを無効化
    */
   async invalidate(): Promise<void> {
+    this.clearNameCache();
     await this.cache.invalidatePattern('*');
   }
 
@@ -180,7 +340,9 @@ export const getSourceCache = (): SourceCache => {
 export const sourceCache = {
   getAllSourcesWithStats: () => getSourceCache().getAllSourcesWithStats(),
   invalidate: () => getSourceCache().invalidate(),
-  invalidateSource: (sourceId: string) => getSourceCache().invalidateSource(sourceId)
+  invalidateSource: (sourceId: string) => getSourceCache().invalidateSource(sourceId),
+  resolveSourceIds: (identifiers: string[]) => getSourceCache().resolveSourceIds(identifiers),
+  resolveSourceName: (sourceId: string) => getSourceCache().resolveSourceName(sourceId)
 };
 
 // test-only: インスタンスをリセット
