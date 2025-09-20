@@ -107,6 +107,11 @@ export class BatchProcessor<T> {
     processor: (batch: T[]) => Promise<R>,
     concurrency = 3
   ): Promise<R[]> {
+    // concurrencyの検証: 正の整数であることを確認
+    if (!Number.isFinite(concurrency) || concurrency <= 0) {
+      throw new Error(`concurrency must be a positive integer. Received: ${concurrency}`);
+    }
+
     const batches = this.splitIntoBatches(items);
     const results: R[] = [];
     let processedCount = 0;
@@ -223,6 +228,11 @@ export class QueryBatchProcessor {
     queries: Prisma.PrismaPromise<T>[],
     batchSize = 100
   ): Promise<T[]> {
+    // batchSizeの検証: 正の整数であることを確認
+    if (!Number.isFinite(batchSize) || batchSize <= 0) {
+      throw new Error(`batchSize must be a positive integer. Received: ${batchSize}`);
+    }
+
     const results: T[] = [];
 
     for (let i = 0; i < queries.length; i += batchSize) {
