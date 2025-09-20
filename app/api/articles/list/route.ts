@@ -199,14 +199,19 @@ export async function GET(request: NextRequest) {
           } else if (tagMode === 'AND') {
             // AND mode: Articles must have all specified tags
             // 既存のAND条件とマージ
-            const tagConditions = tagIds.map(tagId => ({
+            const tagConditions: ArticleWhereInput[] = tagIds.map(tagId => ({
               tags: {
                 some: {
                   id: tagId
                 }
               }
             }));
-            where.AND = [...(where.AND ?? []), ...tagConditions];
+            if (!where.AND) {
+              where.AND = [];
+            } else if (!Array.isArray(where.AND)) {
+              where.AND = [where.AND];
+            }
+            where.AND = [...where.AND, ...tagConditions];
           } else {
             // OR mode: Articles must have at least one of the specified tags
             where.tags = {
@@ -233,13 +238,18 @@ export async function GET(request: NextRequest) {
         } else if (keywords.length > 1) {
           // Multiple keywords - AND search
           // 既存のAND条件とマージ
-          const keywordConditions = keywords.map(keyword => ({
+          const keywordConditions: ArticleWhereInput[] = keywords.map(keyword => ({
             OR: [
               { title: { contains: keyword, mode: 'insensitive' } },
               { summary: { contains: keyword, mode: 'insensitive' } }
             ]
           }));
-          where.AND = [...(where.AND ?? []), ...keywordConditions];
+          if (!where.AND) {
+            where.AND = [];
+          } else if (!Array.isArray(where.AND)) {
+            where.AND = [where.AND];
+          }
+          where.AND = [...where.AND, ...keywordConditions];
         }
       }
       
