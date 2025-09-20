@@ -225,7 +225,8 @@ export async function GET(request: NextRequest) {
         sortBy === 'quality' ? { qualityScore: 'desc' as const } :
         { publishedAt: 'desc' as const };
 
-      const [articlesResult, count] = await Promise.all([
+      const [count, articlesResult] = await prisma.$transaction([
+        prisma.article.count({ where: whereConditions }),
         prisma.article.findMany({
           where: whereConditions,
           include: {
@@ -236,9 +237,6 @@ export async function GET(request: NextRequest) {
           orderBy,
           skip: offset,
           take: limit,
-        }),
-        prisma.article.count({
-          where: whereConditions
         })
       ]);
       

@@ -61,8 +61,16 @@ export async function GET(request: Request) {
       }
     };
 
-    // Execute count and findMany in parallel for better performance
-    const [views, total] = await Promise.all([
+    // Execute count and findMany in transaction for consistency
+    const [total, views] = await prisma.$transaction([
+      prisma.articleView.count({
+        where: {
+          userId: session.user.id,
+          viewedAt: {
+            gte: ninetyDaysAgo, // カウントも90日以内のみ
+          }
+        },
+      }),
       prisma.articleView.findMany({
         where: {
           userId: session.user.id,
@@ -76,15 +84,7 @@ export async function GET(request: Request) {
         orderBy: { viewedAt: 'desc' },
         skip,
         take: limit,
-      }),
-      prisma.articleView.count({
-        where: {
-          userId: session.user.id,
-          viewedAt: {
-            gte: ninetyDaysAgo, // カウントも90日以内のみ
-          }
-        },
-      }),
+      })
     ]);
 
     return NextResponse.json({

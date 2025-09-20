@@ -24,8 +24,11 @@ export async function GET(request: Request) {
     const includeRelations = searchParams.get('includeRelations') === 'true';
     const lightweight = searchParams.get('lightweight') === 'true';
 
-    // Execute count and findMany in parallel for better performance
-    const [favorites, total] = await Promise.all([
+    // Execute count and findMany in transaction for consistency
+    const [total, favorites] = await prisma.$transaction([
+      prisma.favorite.count({
+        where: { userId: session.user.id },
+      }),
       prisma.favorite.findMany({
         where: { userId: session.user.id },
         include: lightweight ? {
@@ -79,10 +82,7 @@ export async function GET(request: Request) {
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
-      }),
-      prisma.favorite.count({
-        where: { userId: session.user.id },
-      }),
+      })
     ]);
 
     return NextResponse.json({
