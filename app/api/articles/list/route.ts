@@ -446,6 +446,8 @@ export async function GET(request: NextRequest) {
       if (includeUserData && userId) {
         const articleIds = articles.map(a => a.id);
 
+        logger.info(`DataLoader integration: userId=${userId}, articles=${articleIds.length}`);
+
         // Create DataLoader instances for this request
         const loaders = createLoaders({ userId });
 
@@ -455,6 +457,8 @@ export async function GET(request: NextRequest) {
             loaders.favorite.loadMany(articleIds),
             loaders.view.loadMany(articleIds)
           ]);
+
+          logger.info(`DataLoader results: favorites=${favoriteStatuses.length}, views=${viewStatuses.length}`);
 
           // Create maps for O(1) lookup
           favoriteStatuses.forEach((status) => {
@@ -468,7 +472,11 @@ export async function GET(request: NextRequest) {
               readStatusMap.set(status.articleId, status.isRead);
             }
           });
+
+          logger.info(`DataLoader maps: favorites=${favoritesMap.size}, reads=${readStatusMap.size}`);
         }
+      } else {
+        logger.info(`DataLoader skipped: includeUserData=${includeUserData}, userId=${userId}`);
       }
 
       // Normalize dates to ISO strings for consistency and add user data
