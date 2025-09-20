@@ -17,6 +17,7 @@ export function InfiniteScrollTrigger({
   className = ''
 }: InfiniteScrollTriggerProps) {
   const triggerRef = useRef<HTMLDivElement>(null);
+  const lastTriggerTimeRef = useRef<number>(0);
 
   useEffect(() => {
     if (!triggerRef.current || !hasNextPage) return;
@@ -25,12 +26,17 @@ export function InfiniteScrollTrigger({
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          onIntersect();
+          // デバウンス処理: 500ms以内の連続呼び出しを防ぐ
+          const now = Date.now();
+          if (now - lastTriggerTimeRef.current > 500) {
+            lastTriggerTimeRef.current = now;
+            onIntersect();
+          }
         }
       },
       {
         threshold: 0.1,
-        rootMargin: '100px',
+        rootMargin: '50px', // 100px → 50pxに削減（より近くなってから読み込み開始）
       }
     );
 

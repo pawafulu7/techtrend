@@ -42,6 +42,12 @@ const cache = new RedisCache({
   namespace: '@techtrend/cache:api:lightweight'
 });
 
+// 総件数専用のキャッシュ（5分TTL）
+const countCache = new RedisCache({
+  ttl: 300, // 5分
+  namespace: '@techtrend/cache:api:count'
+});
+
 /**
  * Lightweight articles API endpoint
  * Optimized for performance by excluding heavy fields (tags, content, detailedSummary)
@@ -244,8 +250,53 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Get total count
-      const total = await prisma.article.count({ where });
+      // Get total count with caching（page=1の時のみ実際にカウント、それ以外はキャッシュから取得）
+      let total: number;
+
+      // 総件数用のキャッシュキーを生成（where条件に基づく）
+      const countCacheKey = countCache.generateCacheKey('articles:count', {
+        params: {
+          sources: normalizedSources,
+          tag: tag || 'all',
+          tags: tags || 'none',
+          tagMode: tagMode,
+          search: normalizedSearch,
+          dateRange: dateRange || 'all',
+          readFilter: readFilter || 'all',
+          category: category || 'all',
+          // userIdは含めない（総件数はユーザー固有ではない）
+        }
+      });
+
+      // page=1の時は実際にカウントを取得してキャッシュに保存
+      if (page === 1) {
+        // キャッシュから取得を試みる
+        const cachedCount = await countCache.get<number>(countCacheKey);
+        if (cachedCount !== null && cachedCount !== undefined) {
+          total = cachedCount;
+        } else {
+          // キャッシュミスの場合、DBからカウント取得
+          total = await prisma.article.count({ where });
+          // キャッシュに保存
+          await countCache.set(countCacheKey, total);
+        }
+      } else {
+        // page > 1の場合、リクエストパラメータから総件数を取得（フロントエンドから送信）
+        const totalParam = searchParams.get('total');
+        if (totalParam && !isNaN(parseInt(totalParam))) {
+          total = parseInt(totalParam);
+        } else {
+          // フォールバック: キャッシュから取得
+          const cachedCount = await countCache.get<number>(countCacheKey);
+          if (cachedCount !== null && cachedCount !== undefined) {
+            total = cachedCount;
+          } else {
+            // 最終手段: DBから取得（通常ここには来ないはず）
+            total = await prisma.article.count({ where });
+            await countCache.set(countCacheKey, total);
+          }
+        }
+      }
 
       // Get articles - Optimized query with minimal source relation
       const articles = await prisma.article.findMany({
