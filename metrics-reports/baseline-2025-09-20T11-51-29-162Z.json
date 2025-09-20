@@ -1,0 +1,57 @@
+[
+  {
+    "timestamp": "2025-09-20T11:51:28.972Z",
+    "test": "article_list_basic",
+    "queryCount": 4,
+    "executionTime": 111,
+    "cacheHits": 0,
+    "cacheMisses": 0,
+    "avgQueryTime": 8.5,
+    "maxQueryTime": 27,
+    "minQueryTime": 2
+  },
+  {
+    "timestamp": "2025-09-20T11:51:29.000Z",
+    "test": "article_list_filtered",
+    "queryCount": 3,
+    "executionTime": 27,
+    "cacheHits": 0,
+    "cacheMisses": 0,
+    "avgQueryTime": 6.333333333333333,
+    "maxQueryTime": 18,
+    "minQueryTime": 0
+  },
+  {
+    "timestamp": "2025-09-20T11:51:29.084Z",
+    "test": "user_data_n_plus_1",
+    "queryCount": 42,
+    "executionTime": 83,
+    "cacheHits": 0,
+    "cacheMisses": 0,
+    "avgQueryTime": 0.5238095238095238,
+    "maxQueryTime": 6,
+    "minQueryTime": 0
+  },
+  {
+    "timestamp": "2025-09-20T11:51:29.098Z",
+    "test": "user_data_batched",
+    "queryCount": 4,
+    "executionTime": 14,
+    "cacheHits": 0,
+    "cacheMisses": 0,
+    "avgQueryTime": 1.5,
+    "maxQueryTime": 5,
+    "minQueryTime": 0
+  },
+  {
+    "timestamp": "2025-09-20T11:51:29.162Z",
+    "test": "cache_performance",
+    "queryCount": 1,
+    "executionTime": 61,
+    "cacheHits": 5,
+    "cacheMisses": 1,
+    "avgQueryTime": 3,
+    "maxQueryTime": 3,
+    "minQueryTime": 3
+  }
+]

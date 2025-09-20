@@ -1,6 +1,6 @@
 import { createArticleLoader } from './article-loader';
 import { createFavoriteLoader } from './favorite-loader';
-import { createViewLoader } from './view-loader';
+import { createArticleViewLoader } from './article-view-loader';
 import type { LoaderContext } from './types';
 
 /**
@@ -11,7 +11,7 @@ export function createLoaders(context?: LoaderContext) {
   return {
     article: createArticleLoader(),
     favorite: context?.userId ? createFavoriteLoader(context.userId) : null,
-    view: context?.userId ? createViewLoader(context.userId) : null,
+    view: context?.userId ? createArticleViewLoader(context.userId) : null,
   };
 }
 
@@ -21,4 +21,4 @@ export type DataLoaders = ReturnType<typeof createLoaders>;
 export * from './types';
 export { createArticleLoader } from './article-loader';
 export { createFavoriteLoader } from './favorite-loader';
-export { createViewLoader } from './view-loader';
+export { createArticleViewLoader } from './article-view-loader';

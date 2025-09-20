@@ -1,23 +1,17 @@
-export type ApiResponse<T> = {
-  success: true;
-  data: T;
-} | {
-  success: false;
-  error: string;
-  details?: unknown;
-};
-
-export type PaginationParams = {
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-};
-
-export type PaginatedResponse<T> = {
-  items: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-};
+// Re-export canonical type definitions from types/api.ts
+export type {
+  ApiResponse,
+  PaginatedResponse,
+  PaginationParams,
+  SearchParams,
+  StatsResponse,
+  SourceStats,
+  TagStats,
+  CollectResult,
+  CollectResponse,
+  SummaryGenerateParams,
+  SummaryGenerateResult,
+  QualityScoreParams,
+  QualityScoreResult,
+  ErrorResponse
+} from '@/types/api';

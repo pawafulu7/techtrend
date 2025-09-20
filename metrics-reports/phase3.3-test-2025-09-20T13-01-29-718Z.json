@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-09-20T13:01:29.721Z",
+  "metrics": [
+    {
+      "testName": "N+1 Query Elimination",
+      "queryCount": 0,
+      "duration": 14,
+      "cacheHitRate": 0,
+      "l1Hits": 0,
+      "l2Hits": 0,
+      "dbFallbacks": 0,
+      "batchSizeChanges": 0,
+      "success": true,
+      "errors": []
+    },
+    {
+      "testName": "Cache Hit Rate",
+      "queryCount": 0,
+      "duration": 41,
+      "cacheHitRate": 0,
+      "l1Hits": null,
+      "l2Hits": 0,
+      "dbFallbacks": null,
+      "batchSizeChanges": 0,
+      "success": false,
+      "errors": [
+        "Cache hit rate too low: 0.0%"
+      ]
+    },
+    {
+      "testName": "Cursor Pagination Performance",
+      "queryCount": 0,
+      "duration": 40,
+      "cacheHitRate": 0,
+      "l1Hits": 0,
+      "l2Hits": 0,
+      "dbFallbacks": 0,
+      "batchSizeChanges": 0,
+      "success": false,
+      "errors": [
+        "Improvement only 37.8%"
+      ]
+    },
+    {
+      "testName": "Batch Size Optimization",
+      "queryCount": 0,
+      "duration": 0,
+      "cacheHitRate": 0,
+      "l1Hits": 0,
+      "l2Hits": 0,
+      "dbFallbacks": 0,
+      "batchSizeChanges": 0,
+      "success": true,
+      "errors": []
+    },
+    {
+      "testName": "API Endpoint Functionality",
+      "queryCount": 0,
+      "duration": 0,
+      "cacheHitRate": 0,
+      "l1Hits": 0,
+      "l2Hits": 0,
+      "dbFallbacks": 0,
+      "batchSizeChanges": 0,
+      "success": true,
+      "errors": []
+    }
+  ],
+  "summary": {
+    "totalTests": 5,
+    "passed": 3,
+    "failed": 2,
+    "successRate": 60
+  }
+}

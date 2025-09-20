@@ -1,8 +1,11 @@
+// Prismaモックを最初に定義
+jest.mock('@/lib/prisma');
+
 import { NextRequest } from 'next/server';
 import { GET as articlesListGET } from '@/app/api/articles/list/route';
 import { GET as articlesGET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/prisma';
-import { createLoaders } from '@/lib/dataloader';
+// DataLoaderは動的にインポート
 
 // Mock auth
 jest.mock('@/lib/auth/auth', () => ({
@@ -15,6 +18,25 @@ jest.mock('@/lib/cache', () => ({
     generateCacheKey: jest.fn().mockReturnValue('test-key'),
     get: jest.fn().mockResolvedValue(null),
     set: jest.fn().mockResolvedValue(true),
+    delete: jest.fn().mockResolvedValue(true),
+  }))
+}));
+
+// Mock Redis cache directly
+jest.mock('@/lib/cache/redis-cache', () => ({
+  RedisCache: jest.fn().mockImplementation(() => ({
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(true),
+    delete: jest.fn().mockResolvedValue(true),
+  }))
+}));
+
+// Mock memory cache
+jest.mock('@/lib/cache/memory-cache', () => ({
+  DataLoaderMemoryCache: jest.fn().mockImplementation(() => ({
+    get: jest.fn().mockReturnValue(null),
+    set: jest.fn(),
+    clear: jest.fn(),
   }))
 }));
 
@@ -35,21 +57,26 @@ jest.mock('@/lib/cache/source-cache', () => ({
   }
 }));
 
-// Mock logger
-jest.mock('@/lib/logger', () => ({
-  default: {
-    error: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-  }
-}));
+// Logger is now globally mocked in __mocks__/lib/logger.ts
+
+// Prismaのモック型を定義
+const mockPrisma = prisma as jest.Mocked<typeof prisma>;
 
 describe('DataLoader Integration Tests', () => {
   const userId = 'test-user-123';
   const mockAuth = require('@/lib/auth/auth').auth as jest.Mock;
+  let createLoaders: any;
+  let resetFavoriteLoaderCaches: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.resetModules(); // モジュールキャッシュをクリア
+
+    // モジュールを再インポート（モックが適用された状態で）
+    createLoaders = require('@/lib/dataloader').createLoaders;
+    resetFavoriteLoaderCaches = require('@/lib/dataloader/favorite-loader').resetFavoriteLoaderCaches;
+
+    resetFavoriteLoaderCaches(); // キャッシュをリセット
 
     // Setup auth mock
     mockAuth.mockResolvedValue({
@@ -65,8 +92,8 @@ describe('DataLoader Integration Tests', () => {
       // Create DataLoader instance
       const loaders = createLoaders({ userId });
 
-      // Spy on Prisma favorite.findMany
-      const findManySpy = jest.spyOn(prisma.favorite, 'findMany');
+      // Mock Prisma favorite.findMany
+      const findManySpy = jest.spyOn(mockPrisma.favorite, 'findMany');
       findManySpy.mockResolvedValue([
         { id: '1', userId, articleId: articleIds[0], createdAt: new Date() },
         { id: '2', userId, articleId: articleIds[2], createdAt: new Date() }
@@ -116,7 +143,7 @@ describe('DataLoader Integration Tests', () => {
       const loaders = createLoaders({ userId });
 
       // Spy on Prisma articleView.findMany
-      const findManySpy = jest.spyOn(prisma.articleView, 'findMany');
+      const findManySpy = jest.spyOn(mockPrisma.articleView, 'findMany');
       findManySpy.mockResolvedValue([
         {
           id: '1',
@@ -171,7 +198,7 @@ describe('DataLoader Integration Tests', () => {
   describe('API endpoint integration', () => {
     it('should use DataLoader in /api/articles/list endpoint', async () => {
       // Spy on Prisma methods
-      const articleFindManySpy = jest.spyOn(prisma.article, 'findMany');
+      const articleFindManySpy = jest.spyOn(mockPrisma.article, 'findMany');
       articleFindManySpy.mockResolvedValue([
         {
           id: 'article-1',
@@ -198,10 +225,10 @@ describe('DataLoader Integration Tests', () => {
         }
       ]);
 
-      const articleCountSpy = jest.spyOn(prisma.article, 'count');
+      const articleCountSpy = jest.spyOn(mockPrisma.article, 'count');
       articleCountSpy.mockResolvedValue(1);
 
-      const sourceFindManySpy = jest.spyOn(prisma.source, 'findMany');
+      const sourceFindManySpy = jest.spyOn(mockPrisma.source, 'findMany');
       sourceFindManySpy.mockResolvedValue([
         {
           id: 'source-1',
@@ -219,10 +246,10 @@ describe('DataLoader Integration Tests', () => {
         }
       ]);
 
-      const favoriteFindManySpy = jest.spyOn(prisma.favorite, 'findMany');
+      const favoriteFindManySpy = jest.spyOn(mockPrisma.favorite, 'findMany');
       favoriteFindManySpy.mockResolvedValue([]);
 
-      const viewFindManySpy = jest.spyOn(prisma.articleView, 'findMany');
+      const viewFindManySpy = jest.spyOn(mockPrisma.articleView, 'findMany');
       viewFindManySpy.mockResolvedValue([]);
 
       // Create request
@@ -259,7 +286,7 @@ describe('DataLoader Integration Tests', () => {
     it('should cache results within the same request', async () => {
       const loaders = createLoaders({ userId });
 
-      const findManySpy = jest.spyOn(prisma.favorite, 'findMany');
+      const findManySpy = jest.spyOn(mockPrisma.favorite, 'findMany');
       findManySpy.mockResolvedValue([
         { id: '1', userId, articleId: 'article-1', createdAt: new Date() }
       ]);
@@ -284,7 +311,7 @@ describe('DataLoader Integration Tests', () => {
       const loaders1 = createLoaders({ userId: 'user-1' });
       const loaders2 = createLoaders({ userId: 'user-2' });
 
-      const findManySpy = jest.spyOn(prisma.favorite, 'findMany');
+      const findManySpy = jest.spyOn(mockPrisma.favorite, 'findMany');
       findManySpy.mockImplementation(async ({ where }) => {
         const userId = where?.userId as string;
         return userId === 'user-1'
