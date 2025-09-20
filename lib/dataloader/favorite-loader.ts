@@ -11,6 +11,7 @@ import type { Favorite } from '@prisma/client';
 import type { FavoriteStatus, LoaderOptions } from './types';
 import { DataLoaderMemoryCache } from '../cache/memory-cache';
 import { RedisCache } from '../cache/redis-cache';
+import { getBatchOptimizer } from './batch-optimizer';
 import logger from '../logger';
 
 // グローバルキャッシュインスタンス（プロセス内共有）
@@ -50,9 +51,13 @@ function initializeCaches() {
 export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
   initializeCaches();
 
+  // バッチオプティマイザーを取得
+  const optimizer = getBatchOptimizer('favorite');
+
   return new DataLoader<string, FavoriteStatus>(
     async (articleIds: readonly string[]) => {
       const startTime = Date.now();
+      const queueStartTime = Date.now(); // キュー待ち時間計測用
       stats.totalRequests += articleIds.length;
 
       const results: FavoriteStatus[] = [];
@@ -157,13 +162,25 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
       }
 
       const duration = Date.now() - startTime;
+      const queueWait = startTime - queueStartTime;
+
+      // メトリクスをオプティマイザーに記録
+      optimizer.recordMetrics({
+        batchSize: articleIds.length,
+        latency: duration,
+        queueWait: queueWait,
+        itemCount: articleIds.length,
+        cacheHits: stats.l1Hits + stats.l2Hits,
+        cacheMisses: dbCheckList.length,
+      });
+
       logger.info(`favorite-loader.batch: total=${articleIds.length}, L1=${stats.l1Hits}, L2=${stats.l2Hits}, DB=${dbCheckList.length}, ${duration}ms`);
 
       return results;
     },
     {
       cache: false, // DataLoaderの内部キャッシュは無効化（独自キャッシュを使用）
-      maxBatchSize: options?.maxBatchSize || 100,
+      maxBatchSize: options?.maxBatchSize || optimizer.getBatchSize(), // 動的バッチサイズ
       batchScheduleFn: options?.batchScheduleFn,
     }
   );

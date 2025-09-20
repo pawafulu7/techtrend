@@ -11,6 +11,7 @@ import type { LoaderOptions } from './types';
 import { DataLoaderMemoryCache } from '../cache/memory-cache';
 import { RedisCache } from '../cache/redis-cache';
 import { TwoLayerCacheManager, CacheKeyBuilder } from './cache-utils';
+import { getBatchOptimizer } from './batch-optimizer';
 import logger from '../logger';
 
 /**
@@ -58,11 +59,13 @@ function initializeCacheManager(): TwoLayerCacheManager<ViewStatus> {
  */
 export function createArticleViewLoader(userId: string, options?: LoaderOptions) {
   const cacheManager = initializeCacheManager();
+  const optimizer = getBatchOptimizer('view');
 
   return new DataLoader<string, ViewStatus>(
     async (articleIds: readonly string[]) => {
+      const batchStartTime = Date.now();
       // 共通ユーティリティを使用したバッチローディング
-      return cacheManager.batchLoad(
+      const result = await cacheManager.batchLoad(
         articleIds,
         // データベースフェッチャー
         async (missingKeys) => {
@@ -106,10 +109,24 @@ export function createArticleViewLoader(userId: string, options?: LoaderOptions)
           }
         }
       );
+
+      // メトリクスをオプティマイザーに記録
+      const duration = Date.now() - batchStartTime;
+      const stats = cacheManager.getStats();
+      optimizer.recordMetrics({
+        batchSize: articleIds.length,
+        latency: duration,
+        queueWait: 0, // TwoLayerCacheManagerでは別途計測
+        itemCount: articleIds.length,
+        cacheHits: stats.l1Hits + stats.l2Hits,
+        cacheMisses: stats.dbQueries > 0 ? articleIds.length - (stats.l1Hits + stats.l2Hits) : 0,
+      });
+
+      return result;
     },
     {
       cache: false, // DataLoaderの内部キャッシュは無効化
-      maxBatchSize: options?.maxBatchSize || 100,
+      maxBatchSize: options?.maxBatchSize || optimizer.getBatchSize(), // 動的バッチサイズ
       batchScheduleFn: options?.batchScheduleFn,
     }
   );
