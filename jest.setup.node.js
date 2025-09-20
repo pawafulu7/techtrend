@@ -3,6 +3,7 @@ import '@testing-library/jest-dom';
 import { RedisMockFactory } from './test/factories/redis-mock-factory';
 import { CacheMockFactory } from './test/factories/cache-mock-factory';
 import { initializeTestDI, resetTestProviders } from './lib/di';
+const { prismaMock, resetPrismaMock } = require('./test/utils/prisma-mock');
 // Polyfill for web File/Blob in Node test environment
 try {
    
@@ -21,6 +22,15 @@ try {
 
 // Redisクライアントのモックは__mocks__ディレクトリから自動的に読み込まれる
 jest.mock('@/lib/redis/client');
+
+// Prisma Clientのモック
+jest.mock('@prisma/client', () => {
+  const actual = jest.requireActual('@prisma/client');
+  return {
+    ...actual,
+    PrismaClient: jest.fn(() => prismaMock),
+  };
+});
 
 // next-authのEmailProviderをモック
 jest.mock('next-auth/providers/email', () => {
@@ -52,6 +62,7 @@ beforeEach(() => {
   RedisMockFactory.reset();
   CacheMockFactory.reset();
   resetTestProviders();
+  resetPrismaMock();
 });
 
 // グローバルfetchのモック（Node環境用）

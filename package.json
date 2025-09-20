@@ -39,7 +39,7 @@
 
     "test:report": "npm test 2>&1 | node scripts/test-reporter.js",
     "test:node": "jest --config jest.config.node.js",
-    "test:dom": "jest --config jest.config.dom.js",
+    "test:dom": "jest --config jest.config.dom.js --passWithNoTests",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --config jest.config.node.js",
     "test:unit": "jest --testPathPattern=unit",

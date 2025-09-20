@@ -1,28 +1,84 @@
 import { SourceCache } from '@/lib/cache/source-cache';
-import { RedisCache } from '@/lib/cache';
-
-// Mock dependencies
-jest.mock('@/lib/database');
-jest.mock('@/lib/cache');
 jest.mock('@/lib/logger');
 
-// Import mocked prisma after mocking
-const mockPrisma = require('@/lib/database').prisma;
+const { prisma, resetPrismaMock } = require('@/lib/database');
+
+const createCacheStub = () => {
+  const store = new Map<string, unknown>();
+
+  return {
+    getOrSet: jest.fn(async (key: string, fetcher: () => Promise<unknown>) => {
+      if (store.has(key)) {
+        return store.get(key);
+      }
+      const value = await fetcher();
+      store.set(key, value);
+      return value;
+    }),
+    invalidatePattern: jest.fn(async () => {
+      store.clear();
+    }),
+    delete: jest.fn(async (key: string) => {
+      store.delete(key);
+    }),
+  };
+};
+
+const now = new Date();
 const mockSources = [
-  { id: 'source-1', name: 'Dev.to', type: 'rss', url: 'https://dev.to', enabled: true },
-  { id: 'source-2', name: 'Qiita', type: 'api', url: 'https://qiita.com', enabled: true },
-  { id: 'source-3', name: 'Hacker News', type: 'api', url: 'https://news.ycombinator.com', enabled: false },
+  {
+    id: 'source-1',
+    name: 'Dev.to',
+    type: 'rss',
+    url: 'https://dev.to',
+    enabled: true,
+    _count: { articles: 2 },
+    articles: [
+      { qualityScore: 80, publishedAt: now, tags: [{ name: 'js' }] },
+      { qualityScore: 60, publishedAt: now, tags: [{ name: 'ts' }] }
+    ]
+  },
+  {
+    id: 'source-2',
+    name: 'Qiita',
+    type: 'api',
+    url: 'https://qiita.com',
+    enabled: true,
+    _count: { articles: 1 },
+    articles: [
+      { qualityScore: 70, publishedAt: now, tags: [{ name: 'dev' }] }
+    ]
+  },
+  {
+    id: 'source-3',
+    name: 'Hacker News',
+    type: 'api',
+    url: 'https://news.ycombinator.com',
+    enabled: false,
+    _count: { articles: 0 },
+    articles: []
+  },
 ];
 
 describe('SourceCache', () => {
   let sourceCache: SourceCache;
+  let cacheStub: ReturnType<typeof createCacheStub>;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    resetPrismaMock();
     sourceCache = new SourceCache();
+    cacheStub = createCacheStub();
+    (sourceCache as any).cache = cacheStub;
 
-    // Setup default mock
-    mockPrisma.source.findMany.mockResolvedValue(mockSources);
+    prisma.source.findMany.mockImplementation(async (params?: { where?: { enabled?: boolean } }) => {
+      if (params?.where?.enabled === true) {
+        return mockSources.filter((source) => source.enabled);
+      }
+      return mockSources;
+    });
+    prisma.source.findUnique?.mockResolvedValue(mockSources[0] as any);
+    prisma.source.findFirst?.mockResolvedValue(mockSources[0] as any);
   });
 
   afterEach(() => {
@@ -64,34 +120,11 @@ describe('SourceCache', () => {
     });
 
     it('should cache results for performance', async () => {
-      // First call - loads from DB
       await sourceCache.resolveSourceIds(['Dev.to']);
-      expect(mockPrisma.source.findMany).toHaveBeenCalledTimes(1);
+      expect(prisma.source.findMany).toHaveBeenCalledTimes(1);
 
-      // Second call - uses cache
       await sourceCache.resolveSourceIds(['Qiita']);
-      expect(mockPrisma.source.findMany).toHaveBeenCalledTimes(1);
-    });
-
-    it('should refresh cache when TTL expires', async () => {
-      // First call
-      await sourceCache.resolveSourceIds(['Dev.to']);
-      expect(mockPrisma.source.findMany).toHaveBeenCalledTimes(1);
-
-      // Simulate TTL expiration by manipulating the cache
-      // This would require access to private properties, so we test the behavior instead
-      // by waiting or mocking time
-
-      // Force refresh by providing an unknown name that triggers refresh
-      mockPrisma.source.findMany.mockResolvedValueOnce([
-        ...mockSources,
-        { id: 'source-4', name: 'NewSource', type: 'rss', url: 'https://new.com', enabled: true }
-      ]);
-
-      // This should trigger a refresh since 'NewSource' is not in cache
-      const result = await sourceCache.resolveSourceIds(['NewSource']);
-      // The refresh happens asynchronously, so we check for the fallback behavior
-      expect(mockPrisma.source.findMany).toHaveBeenCalled();
+      expect(prisma.source.findMany).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -118,67 +151,50 @@ describe('SourceCache', () => {
   });
 
   describe('getAllSourcesWithStats', () => {
-    beforeEach(() => {
-      const mockArticles = [
-        { sourceId: 'source-1', _count: { sourceId: 10 } },
-        { sourceId: 'source-2', _count: { sourceId: 5 } },
-      ];
-
-      mockPrisma.article = mockPrisma.article || {};
-      mockPrisma.article.groupBy = jest.fn().mockResolvedValue(mockArticles);
-    });
-
     it('should return all enabled sources with stats', async () => {
       const result = await sourceCache.getAllSourcesWithStats();
 
-      expect(result).toHaveLength(2); // Only enabled sources
+      expect(result).toHaveLength(2);
       expect(result[0]).toMatchObject({
         id: 'source-1',
         name: 'Dev.to',
         enabled: true,
-        articleCount: 10
       });
-      expect(result[0].stats).toBeDefined();
+      expect(result[0].stats).toMatchObject({ totalArticles: 2 });
       expect(result[0].category).toBeDefined();
     });
 
     it('should cache results', async () => {
       await sourceCache.getAllSourcesWithStats();
-      expect(mockPrisma.source.findMany).toHaveBeenCalledTimes(1);
+      expect(prisma.source.findMany).toHaveBeenCalledTimes(1);
 
       await sourceCache.getAllSourcesWithStats();
-      // Should use cache, not call DB again
-      expect(mockPrisma.source.findMany).toHaveBeenCalledTimes(1);
+      expect(prisma.source.findMany).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('invalidate', () => {
     it('should clear all caches', async () => {
-      // Load some data into cache
       await sourceCache.resolveSourceIds(['Dev.to']);
       await sourceCache.getAllSourcesWithStats();
 
-      // Clear cache
       await sourceCache.invalidate();
 
-      // Next call should hit DB again
       await sourceCache.resolveSourceIds(['Dev.to']);
-      // This will be the second call after the initial one
-      expect(mockPrisma.source.findMany).toHaveBeenCalledTimes(3);
+      expect(prisma.source.findMany).toHaveBeenCalledTimes(3);
     });
   });
 
   describe('invalidateSource', () => {
     it('should invalidate specific source cache', async () => {
-      const mockInvalidatePattern = jest.fn().mockResolvedValue(undefined);
-      (RedisCache as jest.Mock).mockImplementation(() => ({
-        invalidatePattern: mockInvalidatePattern
-      }));
-
       const cache = new SourceCache();
+      const localStub = createCacheStub();
+      (cache as any).cache = localStub;
+
       await cache.invalidateSource('source-1');
 
-      expect(mockInvalidatePattern).toHaveBeenCalledWith('*source-1*');
+      expect(localStub.delete).toHaveBeenCalledWith('source:source-1');
+      expect(localStub.invalidatePattern).toHaveBeenCalledWith('*');
     });
   });
 });

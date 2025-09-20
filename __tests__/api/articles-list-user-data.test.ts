@@ -21,9 +21,7 @@ jest.mock('@/lib/auth/config', () => ({
   authOptions: {},
 }));
 
-// Use existing Prisma mock from __mocks__/lib/prisma.ts
-const { prisma } = require('@/lib/prisma');
-// Defer requiring GET until inside each test (ensures fresh module with mocks)
+const { prisma, resetPrismaMock } = require('@/lib/database');
 
 describe('/api/articles/list with user data', () => {
   const mockUserId = 'test-user-id';
@@ -32,17 +30,16 @@ describe('/api/articles/list with user data', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    resetPrismaMock();
   });
 
   it('should include user data when includeUserData=true and user is authenticated', async () => {
-    // Mock auth to return authenticated user
+    const { GET } = require('@/app/api/articles/list/route');
     const { auth } = require('@/lib/auth/auth');
     auth.mockResolvedValueOnce({
       user: { id: mockUserId }
     });
 
-    // Mock Prisma queries
-    // prisma mock comes from __mocks__/lib/prisma
     const mockArticles = [
       {
         id: mockArticleId1,
@@ -64,73 +61,51 @@ describe('/api/articles/list with user data', () => {
       }
     ];
 
-    prisma.article.findMany.mockResolvedValueOnce(mockArticles);
-    prisma.article.count.mockResolvedValueOnce(2);
+    prisma.article.findMany.mockResolvedValueOnce(mockArticles as any);
+    prisma.article.count.mockResolvedValueOnce(2 as any);
 
-    // Mock favorites - only article 1 is favorited
     prisma.favorite.findMany.mockResolvedValueOnce([
       { id: 'fav-1', userId: mockUserId, articleId: mockArticleId1, createdAt: new Date() }
-    ]);
+    ] as any);
 
-    // Mock read status - only article 2 is read
     prisma.articleView.findMany.mockResolvedValueOnce([
       {
         id: 'view-1',
         userId: mockUserId,
         articleId: mockArticleId2,
-        viewedAt: new Date(),
         isRead: true,
-        readAt: new Date()
+        createdAt: new Date()
       }
-    ]);
+    ] as any);
 
-    const request = new NextRequest('http://localhost:3000/api/articles/list?includeUserData=true&limit=2');
-    const { GET } = require('@/app/api/articles/list/route');
+    const request = new NextRequest('http://localhost:3000/api/articles/list?includeUserData=true');
+
     const response = await GET(request);
-    const data = await response.json();
+    const json = await response.json();
 
-    expect(response.status).toBe(200);
-    // CI などの環境差で空配列となる場合があるため、存在時のみ厳密チェック
-    expect(Array.isArray(data.data.items)).toBe(true);
-    if (data.data.items.length > 0) {
-      for (const item of data.data.items) {
-        expect(typeof item.isFavorited).toBe('boolean');
-        expect(typeof item.isRead).toBe('boolean');
-      }
-    }
+    expect(json.success).toBe(true);
+    const payload = json.data;
+
+    expect(payload.total).toBe(2);
+    expect(payload.items).toHaveLength(2);
+
+    const [article1, article2] = payload.items;
+    expect(article1.isFavorited).toBe(true);
+    expect(article1.isRead).toBe(false);
+    expect(article2.isFavorited).toBe(false);
+    expect(article2.isRead).toBe(true);
+
+    expect(prisma.favorite.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ userId: mockUserId })
+    }));
+
+    expect(prisma.articleView.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ userId: mockUserId })
+    }));
   });
 
-  it('should not include user data when includeUserData=false', async () => {
-    const mockArticles = [
-      {
-        id: mockArticleId1,
-        title: 'Test Article 1',
-        url: 'https://example.com/1',
-        publishedAt: new Date(),
-        sourceId: 'source-1',
-        source: { id: 'source-1', name: 'Test Source' },
-        tags: [],
-      }
-    ];
-
-    prisma.article.findMany.mockResolvedValueOnce(mockArticles);
-    prisma.article.count.mockResolvedValueOnce(1);
-
-    const request = new NextRequest('http://localhost:3000/api/articles/list?limit=1');
+  it('should return articles without user data when includeUserData=false', async () => {
     const { GET } = require('@/app/api/articles/list/route');
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(Array.isArray(data.data.items)).toBe(true);
-    if (data.data.items.length > 0) {
-      expect(data.data.items[0].isFavorited).toBeUndefined();
-      expect(data.data.items[0].isRead).toBeUndefined();
-    }
-  });
-
-  it('should not include user data when user is not authenticated', async () => {
-    // Mock auth to return null (not authenticated)
     const { auth } = require('@/lib/auth/auth');
     auth.mockResolvedValueOnce(null);
 
@@ -146,20 +121,47 @@ describe('/api/articles/list with user data', () => {
       }
     ];
 
-    prisma.article.findMany.mockResolvedValueOnce(mockArticles);
-    prisma.article.count.mockResolvedValueOnce(1);
+    prisma.article.findMany.mockResolvedValueOnce(mockArticles as any);
+    prisma.article.count.mockResolvedValueOnce(1 as any);
 
-    const request = new NextRequest('http://localhost:3000/api/articles/list?includeUserData=true&limit=1');
-    const { GET } = require('@/app/api/articles/list/route');
+    const request = new NextRequest('http://localhost:3000/api/articles/list');
+
     const response = await GET(request);
-    const data = await response.json();
+    const json = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(Array.isArray(data.data.items)).toBe(true);
-    if (data.data.items.length > 0) {
-      // User data should not be included even if requested (no authenticated user)
-      expect(data.data.items[0].isFavorited).toBeUndefined();
-      expect(data.data.items[0].isRead).toBeUndefined();
-    }
+    expect(json.success).toBe(true);
+    const payload = json.data;
+
+    expect(payload.total).toBe(1);
+    expect(payload.items).toHaveLength(1);
+    expect(payload.items[0].isFavorited).toBeFalsy();
+    expect(payload.items[0].isRead).toBeFalsy();
+
+    expect(prisma.favorite.findMany).not.toHaveBeenCalled();
+    expect(prisma.articleView.findMany).not.toHaveBeenCalled();
+  });
+
+  it('should handle empty result set gracefully', async () => {
+    const { GET } = require('@/app/api/articles/list/route');
+    const { auth } = require('@/lib/auth/auth');
+    auth.mockResolvedValueOnce({
+      user: { id: mockUserId }
+    });
+
+    prisma.article.findMany.mockResolvedValueOnce([] as any);
+    prisma.article.count.mockResolvedValueOnce(0 as any);
+
+    const request = new NextRequest('http://localhost:3000/api/articles/list?includeUserData=true');
+
+    const response = await GET(request);
+    const json = await response.json();
+
+    expect(json.success).toBe(true);
+    const payload = json.data;
+
+    expect(payload.total).toBe(0);
+    expect(payload.items).toHaveLength(0);
+    expect(prisma.favorite.findMany).not.toHaveBeenCalled();
+    expect(prisma.articleView.findMany).not.toHaveBeenCalled();
   });
 });

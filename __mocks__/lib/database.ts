@@ -1,3 +1,7 @@
-// Re-export prisma mock from the main prisma mock
-export { prisma } from './prisma';
-export default require('./prisma').prisma;
+const { prismaMock, resetPrismaMock } = require('../../test/utils/prisma-mock');
+
+module.exports = {
+  prisma: prismaMock,
+  default: prismaMock,
+  resetPrismaMock,
+};
