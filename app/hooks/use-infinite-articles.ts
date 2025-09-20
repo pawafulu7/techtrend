@@ -143,7 +143,8 @@ export function useInfiniteArticles(filters: ArticleFilters) {
 
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
-    queryFn: async ({ pageParam = 1, signal }) => {
+    queryFn: async ({ pageParam, signal }) => {
+      const currentPage = pageParam as number || 1;
       // 毎回新しいURLSearchParamsを作成
       const searchParams = new URLSearchParams();
 
@@ -155,11 +156,11 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       });
 
       // ページパラメータを追加
-      searchParams.set('page', String(pageParam));
+      searchParams.set('page', String(currentPage));
       searchParams.set('limit', '20');
 
       // page > 1の場合、前回のレスポンスから総件数を送信（COUNTクエリスキップ用）
-      if (pageParam > 1 && totalCountRef.current) {
+      if (currentPage > 1 && totalCountRef.current) {
         searchParams.set('total', String(totalCountRef.current));
       }
 
