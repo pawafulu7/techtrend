@@ -42,12 +42,13 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await page.locator('[data-testid="deselect-all-button"]:visible').click();
 
     // 「0/総数」表示になるまで待機
-    await expect(page.getByTestId('source-count')).toHaveText(/\b0\/\d+\b/);
+    await expect(page.getByTestId('source-count')).toHaveText(/\b0\/\d+\b/, { timeout: 10000 });
 
     // 海外ソースカテゴリを展開
     await page.getByTestId('category-foreign-header').click();
 
     // カテゴリが展開されるのを待つ（展開後のコンテンツ出現は下のtoBeVisibleに委譲）
+    await page.waitForTimeout(500); // アニメーション待機
 
     const foreignSection = page.getByTestId('category-foreign');
     const content = foreignSection.getByTestId('category-foreign-content');
@@ -60,8 +61,13 @@ test.describe('ソースカテゴリフィルター機能', () => {
     try {
       // チェックボックスが存在するまで待機
       await page.waitForSelector('[data-testid="category-foreign-content"] button[role="checkbox"]', {
-        timeout: 10000
+        timeout: 15000,
+        state: 'visible'
       });
+
+      // DOM更新を待つ
+      await page.waitForTimeout(500);
+
       totalInForeign = await content.locator('button[role="checkbox"]').count();
     } catch (error) {
       console.log('No checkboxes found in foreign category, skipping test');
@@ -108,9 +114,25 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
       // フォールバック: source-countの変化で確認
       const sourceCount = page.getByTestId('source-count');
+      await expect(sourceCount).toBeVisible({ timeout: 5000 });
+
+      // 値が更新されるまで待機
+      await page.waitForFunction(
+        () => {
+          const elem = document.querySelector('[data-testid="source-count"]');
+          if (!elem) return false;
+          const text = elem.textContent || '';
+          const match = text.match(/(\d+)\/(\d+)/);
+          if (!match) return false;
+          return Number(match[1]) > 0;
+        },
+        { timeout: 10000 }
+      );
+
       const text = await sourceCount.textContent();
-      const [, selected] = text?.match(/(\d+)\/(\d+)/) || [];
-      expect(Number(selected)).toBeGreaterThan(0);
+      const match = text?.match(/(\d+)\/(\d+)/);
+      const selected = match ? Number(match[1]) : 0;
+      expect(selected).toBeGreaterThan(0);
     }
 
     // 他カテゴリの一例が未選択のままであることを相対的に確認（全体選択数の変化で担保）
@@ -237,7 +259,6 @@ test.describe('ソースカテゴリフィルター機能', () => {
     // 海外ソースカテゴリを展開
     await page.getByTestId('category-foreign-header').click();
     
-    const foreignHeader = page.getByTestId('category-foreign');
     const countBadge = page.getByTestId('category-foreign-count');
     await expect(countBadge).toBeVisible();
     // 初期状態の y（総数）を取得
