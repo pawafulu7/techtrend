@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
-import type { ArticleWithRelations, ArticleWithUserData } from '@/types/models';
+import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
 import { LayeredCache, type ArticleQueryParams } from '@/lib/cache/layered-cache';
 import { CacheInvalidator } from '@/lib/cache/cache-invalidator';
@@ -264,7 +264,7 @@ export async function GET(request: NextRequest) {
                   'cache_source_resolution'
                 );
               } catch (error) {
-                logger.error('Failed to resolve source IDs:', error);
+                logger.error(`Failed to resolve source IDs: ${error instanceof Error ? error.message : 'Unknown error'}`);
                 // Fallback: use the source list as-is
                 finalIds = sourceList;
               }
@@ -496,16 +496,16 @@ export async function GET(request: NextRequest) {
 
     let result = baseResult;
 
-    if (includeUserData && userId && baseResult.items.length > 0) {
+    if (includeUserData && userId && baseResult && baseResult.items && baseResult.items.length > 0) {
       const userSpecificData = await fetchUserSpecificData(
         userId,
-        baseResult.items.map((article) => article.id),
+        baseResult.items.map((article: any) => article.id),
         metrics
       );
 
       result = {
         ...baseResult,
-        items: mergeUserData(baseResult.items, userSpecificData),
+        items: mergeUserData(baseResult.items as any, userSpecificData) as any,
       };
     }
     
