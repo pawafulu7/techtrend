@@ -27,7 +27,13 @@ export class BatchProcessor<T> {
    * データを指定されたサイズのバッチに分割
    */
   private splitIntoBatches(items: T[], batchSize?: number): T[][] {
-    const size = batchSize || this.options.batchSize || this.defaultBatchSize;
+    const size = batchSize ?? this.options.batchSize ?? this.defaultBatchSize;
+
+    // batchSizeの検証: 正の整数であることを確認
+    if (!Number.isFinite(size) || size <= 0) {
+      throw new Error(`batchSize must be a positive integer. Received: ${size}`);
+    }
+
     const batches: T[][] = [];
 
     for (let i = 0; i < items.length; i += size) {

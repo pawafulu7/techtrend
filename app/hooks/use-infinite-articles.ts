@@ -30,7 +30,8 @@ type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
 export function useInfiniteArticles(filters: ArticleFilters) {
   const queryClient = useQueryClient();
   const prevFilterKeyRef = useRef<string>('');
-  
+  const totalCountRef = useRef<number | undefined>(undefined);
+
   // フィルタを正規化（undefined値を削除、キーをソート）
   const normalizedFilters = useMemo(() => {
     return Object.keys(filters)
@@ -62,7 +63,10 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   // フィルターが変更されたときにdebounce処理を実行
   useEffect(() => {
     handleFilterChange(filterKey);
-    
+
+    // フィルター変更時に総件数をリセット（新しいフィルターでは再計算が必要）
+    totalCountRef.current = undefined;
+
     // クリーンアップ: コンポーネントのアンマウント時にpendingな実行をキャンセル
     return () => {
       handleFilterChange.cancel();
@@ -138,9 +142,6 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     };
   }, [handleReadStatusChanged]);
   
-  // 前のページの総件数を保存
-  const totalCountRef = useRef<number | undefined>(undefined);
-
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
     queryFn: async ({ pageParam, signal }) => {
@@ -179,9 +180,11 @@ export function useInfiniteArticles(filters: ArticleFilters) {
         searchParams.set('includeRelations', 'true');
       }
 
-      // includeUserData を常に設定（既読状態とお気に入り状態を取得）
-      // ユーザーがログインしている場合のみAPIで処理される
-      searchParams.set('includeUserData', 'true');
+      // includeUserData を条件付きで設定（キャッシュバイパスを避けるため）
+      // 既読フィルタがある場合またはユーザーデータが明示的に要求された場合のみ
+      if (normalizedFilters.readFilter || normalizedFilters.includeUserData) {
+        searchParams.set('includeUserData', 'true');
+      }
 
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';

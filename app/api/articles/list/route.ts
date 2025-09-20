@@ -193,27 +193,29 @@ export async function GET(request: NextRequest) {
           
           const tagIds = tagRecords.map(t => t.id);
           
-          if (tagIds.length > 0) {
-            if (tagMode === 'AND') {
-              // AND mode: Articles must have all specified tags
-              // Use AND array to check for each tag individually
-              where.AND = tagIds.map(tagId => ({
-                tags: {
-                  some: {
-                    id: tagId
-                  }
-                }
-              }));
-            } else {
-              // OR mode: Articles must have at least one of the specified tags
-              where.tags = {
+          if (tagIds.length === 0) {
+            // 未存在タグの場合、ヒットなし
+            where.id = { in: [] };
+          } else if (tagMode === 'AND') {
+            // AND mode: Articles must have all specified tags
+            // 既存のAND条件とマージ
+            const tagConditions = tagIds.map(tagId => ({
+              tags: {
                 some: {
-                  id: {
-                    in: tagIds
-                  }
+                  id: tagId
                 }
-              };
-            }
+              }
+            }));
+            where.AND = [...(where.AND ?? []), ...tagConditions];
+          } else {
+            // OR mode: Articles must have at least one of the specified tags
+            where.tags = {
+              some: {
+                id: {
+                  in: tagIds
+                }
+              }
+            };
           }
         }
       }
@@ -230,12 +232,14 @@ export async function GET(request: NextRequest) {
           ];
         } else if (keywords.length > 1) {
           // Multiple keywords - AND search
-          where.AND = keywords.map(keyword => ({
+          // 既存のAND条件とマージ
+          const keywordConditions = keywords.map(keyword => ({
             OR: [
               { title: { contains: keyword, mode: 'insensitive' } },
               { summary: { contains: keyword, mode: 'insensitive' } }
             ]
           }));
+          where.AND = [...(where.AND ?? []), ...keywordConditions];
         }
       }
       
@@ -254,6 +258,7 @@ export async function GET(request: NextRequest) {
       let total: number;
 
       // 総件数用のキャッシュキーを生成（where条件に基づく）
+      const isUserScopedCount = readFilter === 'read' || readFilter === 'unread';
       const countCacheKey = countCache.generateCacheKey('articles:count', {
         params: {
           sources: normalizedSources,
@@ -264,7 +269,8 @@ export async function GET(request: NextRequest) {
           dateRange: dateRange || 'all',
           readFilter: readFilter || 'all',
           category: category || 'all',
-          // userIdは含めない（総件数はユーザー固有ではない）
+          // read/unread時はユーザー固有の総件数
+          userId: isUserScopedCount ? (userId ?? 'anonymous') : 'n/a',
         }
       });
 
@@ -281,20 +287,14 @@ export async function GET(request: NextRequest) {
           await countCache.set(countCacheKey, total);
         }
       } else {
-        // page > 1の場合、リクエストパラメータから総件数を取得（フロントエンドから送信）
-        const totalParam = searchParams.get('total');
-        if (totalParam && !isNaN(parseInt(totalParam))) {
-          total = parseInt(totalParam);
+        // page > 1: キャッシュから取得、なければDB。クライアントtotalは信用しない
+        const cachedCount = await countCache.get<number>(countCacheKey);
+        if (cachedCount !== null && cachedCount !== undefined) {
+          total = cachedCount;
         } else {
-          // フォールバック: キャッシュから取得
-          const cachedCount = await countCache.get<number>(countCacheKey);
-          if (cachedCount !== null && cachedCount !== undefined) {
-            total = cachedCount;
-          } else {
-            // 最終手段: DBから取得（通常ここには来ないはず）
-            total = await prisma.article.count({ where });
-            await countCache.set(countCacheKey, total);
-          }
+          // キャッシュミスの場合、DBから取得
+          total = await prisma.article.count({ where });
+          await countCache.set(countCacheKey, total);
         }
       }
 
