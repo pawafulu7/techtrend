@@ -6,7 +6,7 @@ import { DatabaseError, ValidationError, DuplicateError, formatErrorResponse } f
 import { LayeredCache, type ArticleQueryParams } from '@/lib/cache/layered-cache';
 import { CacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { sourceCache } from '@/lib/cache/source-cache';
-import { Prisma, ArticleCategory, Article } from '@prisma/client';
+import { Prisma, ArticleCategory } from '@prisma/client';
 import logger from '@/lib/logger';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import { auth } from '@/lib/auth/auth';
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Build data fetcher function for cache
-    const buildResult = async (): Promise<PaginatedResponse<Article>> => {
+    const buildResult = async (): Promise<PaginatedResponse<ArticleWithRelations>> => {
       // Early return: explicit none filter should not hit DB (unit tests expect no DB calls)
       if (sources === 'none') {
         return {
@@ -476,7 +476,7 @@ export async function GET(request: NextRequest) {
       );
       // Return the data to be cached
       return {
-        items: articles as Article[],
+        items: articles as ArticleWithRelations[],
         total,
         page,
         limit,
@@ -521,7 +521,7 @@ export async function GET(request: NextRequest) {
       meta: {
         userDataIncluded: includeUserData && userId ? true : false
       }
-    } as ApiResponse<PaginatedResponse<Article>>);
+    } as ApiResponse<PaginatedResponse<ArticleWithRelations>>);
 
     // Add performance metrics to headers
     metrics.addMetricsToHeaders(response.headers);
