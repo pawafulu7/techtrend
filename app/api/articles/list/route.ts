@@ -7,6 +7,8 @@ import type { Prisma, ArticleCategory } from '@prisma/client';
 import logger from '@/lib/logger';
 import { auth } from '@/lib/auth/auth';
 import { createLoaders } from '@/lib/dataloader';
+import { TagCache } from '@/lib/cache/tag-mapping-cache';
+import { FilterCache } from '@/lib/cache/filter-cache';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -46,6 +48,18 @@ const cache = new RedisCache({
 const countCache = new RedisCache({
   ttl: 300, // 5分
   namespace: '@techtrend/cache:api:count'
+});
+
+// タグキャッシュ（15分TTL）
+const tagCache = new TagCache({
+  ttl: 900,
+  namespace: '@techtrend/cache:tags'
+});
+
+// フィルタキャッシュ（30分TTL）
+const filterCache = new FilterCache({
+  ttl: 1800,
+  namespace: '@techtrend/cache:filters'
 });
 
 /**
@@ -175,23 +189,102 @@ export async function GET(request: NextRequest) {
       
       // Apply tag filter with optimized approach (no JOIN)
       if (tag || tags) {
-        const tagList = tags ? tags.split(',').filter(t => t.trim()) : 
+        const tagList = tags ? tags.split(',').filter(t => t.trim()) :
                         tag ? [tag] : [];
-        
+
         if (tagList.length > 0) {
-          // Get tag IDs first
-          const tagRecords = await prisma.tag.findMany({
-            where: {
-              name: {
-                in: tagList
+          let tagIds: string[] = [];
+          const tagCacheStartTime = Date.now();
+          let cacheHit = false;
+          let cacheMissCount = 0;
+
+          try {
+            // Try to get tag mapping from cache
+            const cachedMapping = await tagCache.getTagMapping(tagList);
+
+            if (cachedMapping) {
+              cacheHit = true;
+              tagIds = tagList.map(name => cachedMapping[name]).filter(Boolean);
+
+              // Check for missing tags
+              const missingTags = tagList.filter(name => !cachedMapping[name]);
+              cacheMissCount = missingTags.length;
+
+              if (missingTags.length > 0) {
+                // Partial cache miss - fetch missing tags from DB
+                const tagRecords = await prisma.tag.findMany({
+                  where: {
+                    name: {
+                      in: missingTags
+                    }
+                  },
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                });
+
+                // Build mapping for missing tags
+                const missingMapping: { [key: string]: string } = {};
+                tagRecords.forEach(t => {
+                  missingMapping[t.name] = t.id;
+                  tagIds.push(t.id);
+                });
+
+                // Update cache with missing tags
+                if (Object.keys(missingMapping).length > 0) {
+                  await tagCache.setTagMapping(missingTags, missingMapping);
+                }
               }
-            },
-            select: {
-              id: true
+            } else {
+              // Complete cache miss - fetch from DB
+              cacheHit = false;
+              cacheMissCount = tagList.length;
+
+              const tagRecords = await prisma.tag.findMany({
+                where: {
+                  name: {
+                    in: tagList
+                  }
+                },
+                select: {
+                  id: true,
+                  name: true
+                }
+              });
+
+              // Build mapping
+              const mapping: { [key: string]: string } = {};
+              tagRecords.forEach(t => {
+                mapping[t.name] = t.id;
+                tagIds.push(t.id);
+              });
+
+              // Save to cache
+              if (Object.keys(mapping).length > 0) {
+                await tagCache.setTagMapping(tagList, mapping);
+              }
             }
-          });
-          
-          const tagIds = tagRecords.map(t => t.id);
+          } catch (cacheError) {
+            // Cache error - fallback to direct DB query
+            logger.warn(`tag-cache.error: Falling back to direct DB query - ${(cacheError as Error).message}`);
+
+            const tagRecords = await prisma.tag.findMany({
+              where: {
+                name: {
+                  in: tagList
+                }
+              },
+              select: {
+                id: true
+              }
+            });
+
+            tagIds = tagRecords.map(t => t.id);
+          } finally {
+            // Log cache performance metrics
+            logger.debug(`tag-cache.metrics: hit=${cacheHit}, miss=${cacheMissCount}/${tagList.length}, duration=${Date.now() - tagCacheStartTime}ms`);
+          }
           
           if (tagIds.length === 0) {
             // 未存在タグの場合、ヒットなし
