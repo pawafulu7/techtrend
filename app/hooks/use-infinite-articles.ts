@@ -30,7 +30,8 @@ type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
 export function useInfiniteArticles(filters: ArticleFilters) {
   const queryClient = useQueryClient();
   const prevFilterKeyRef = useRef<string>('');
-  
+  const totalCountRef = useRef<number | undefined>(undefined);
+
   // フィルタを正規化（undefined値を削除、キーをソート）
   const normalizedFilters = useMemo(() => {
     return Object.keys(filters)
@@ -62,7 +63,10 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   // フィルターが変更されたときにdebounce処理を実行
   useEffect(() => {
     handleFilterChange(filterKey);
-    
+
+    // フィルター変更時に総件数をリセット（新しいフィルターでは再計算が必要）
+    totalCountRef.current = undefined;
+
     // クリーンアップ: コンポーネントのアンマウント時にpendingな実行をキャンセル
     return () => {
       handleFilterChange.cancel();
@@ -140,20 +144,26 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
-    queryFn: async ({ pageParam = 1, signal }) => {
+    queryFn: async ({ pageParam, signal }) => {
+      const currentPage = pageParam as number || 1;
       // 毎回新しいURLSearchParamsを作成
       const searchParams = new URLSearchParams();
-      
+
       // フィルターパラメータを追加
       Object.entries(normalizedFilters).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
           searchParams.append(key, String(value));
         }
       });
-      
+
       // ページパラメータを追加
-      searchParams.set('page', String(pageParam));
+      searchParams.set('page', String(currentPage));
       searchParams.set('limit', '20');
+
+      // page > 1の場合、前回のレスポンスから総件数を送信（COUNTクエリスキップ用）
+      if (currentPage > 1 && totalCountRef.current) {
+        searchParams.set('total', String(totalCountRef.current));
+      }
 
       // パフォーマンス最適化: デフォルトで軽量モード
       // モバイルまたは低速接続では lightweight=true を使用
@@ -170,9 +180,11 @@ export function useInfiniteArticles(filters: ArticleFilters) {
         searchParams.set('includeRelations', 'true');
       }
 
-      // includeUserData を常に設定（既読状態とお気に入り状態を取得）
-      // ユーザーがログインしている場合のみAPIで処理される
-      searchParams.set('includeUserData', 'true');
+      // includeUserData を条件付きで設定（キャッシュバイパスを避けるため）
+      // 既読フィルタがある場合またはユーザーデータが明示的に要求された場合のみ
+      if (normalizedFilters.readFilter || normalizedFilters.includeUserData) {
+        searchParams.set('includeUserData', 'true');
+      }
 
       // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
       const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
@@ -189,6 +201,11 @@ export function useInfiniteArticles(filters: ArticleFilters) {
 
       // Debug log removed
 
+      // 総件数を保存（次ページ取得時のCOUNTクエリスキップ用）
+      if (data?.data?.total) {
+        totalCountRef.current = data.data.total;
+      }
+
       return data;
     },
     getNextPageParam: (lastPage) => {
@@ -196,10 +213,14 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       return page < totalPages ? page + 1 : undefined;
     },
     initialPageParam: 1,
-    staleTime: normalizedFilters.returning ? 0 : 1000 * 60 * 1, // 記事詳細から戻った時のみ即座に再取得、通常は1分間キャッシュ
-    gcTime: 1000 * 60 * 10, // 10分間メモリに保持（データ転送削減）
+    staleTime: normalizedFilters.returning ? 0 : 1000 * 60 * 5, // 記事詳細から戻った時のみ即座に再取得、通常は5分間キャッシュ（1分→5分に延長）
+    gcTime: 1000 * 60 * 30, // 30分間メモリに保持（データ転送削減、10分→30分に延長）
     refetchOnWindowFocus: false, // 通常はfalse（パフォーマンスのため）
     refetchOnMount: normalizedFilters.returning ? 'always' : false, // 記事詳細から戻った時のみ再取得
+    // 重複リクエスト防止のための設定
+    refetchInterval: false, // 自動リフェッチを無効化
+    retry: 1, // リトライ回数を制限
+    retryDelay: 1000, // リトライ間隔を設定
   });
   
   return infiniteQuery;

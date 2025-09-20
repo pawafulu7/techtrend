@@ -6,6 +6,7 @@ import { RedisCache } from '@/lib/cache';
 import type { Prisma, ArticleCategory } from '@prisma/client';
 import logger from '@/lib/logger';
 import { auth } from '@/lib/auth/auth';
+import { createLoaders } from '@/lib/dataloader';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -39,6 +40,12 @@ interface LightweightArticle {
 const cache = new RedisCache({
   ttl: 1800, // 30 minutes (increased from 5 minutes)
   namespace: '@techtrend/cache:api:lightweight'
+});
+
+// 総件数専用のキャッシュ（5分TTL）
+const countCache = new RedisCache({
+  ttl: 300, // 5分
+  namespace: '@techtrend/cache:api:count'
 });
 
 /**
@@ -186,27 +193,34 @@ export async function GET(request: NextRequest) {
           
           const tagIds = tagRecords.map(t => t.id);
           
-          if (tagIds.length > 0) {
-            if (tagMode === 'AND') {
-              // AND mode: Articles must have all specified tags
-              // Use AND array to check for each tag individually
-              where.AND = tagIds.map(tagId => ({
-                tags: {
-                  some: {
-                    id: tagId
-                  }
-                }
-              }));
-            } else {
-              // OR mode: Articles must have at least one of the specified tags
-              where.tags = {
+          if (tagIds.length === 0) {
+            // 未存在タグの場合、ヒットなし
+            where.id = { in: [] };
+          } else if (tagMode === 'AND') {
+            // AND mode: Articles must have all specified tags
+            // 既存のAND条件とマージ
+            const tagConditions: ArticleWhereInput[] = tagIds.map(tagId => ({
+              tags: {
                 some: {
-                  id: {
-                    in: tagIds
-                  }
+                  id: tagId
                 }
-              };
+              }
+            }));
+            if (!where.AND) {
+              where.AND = [];
+            } else if (!Array.isArray(where.AND)) {
+              where.AND = [where.AND];
             }
+            where.AND = [...where.AND, ...tagConditions];
+          } else {
+            // OR mode: Articles must have at least one of the specified tags
+            where.tags = {
+              some: {
+                id: {
+                  in: tagIds
+                }
+              }
+            };
           }
         }
       }
@@ -223,12 +237,19 @@ export async function GET(request: NextRequest) {
           ];
         } else if (keywords.length > 1) {
           // Multiple keywords - AND search
-          where.AND = keywords.map(keyword => ({
+          // 既存のAND条件とマージ
+          const keywordConditions: ArticleWhereInput[] = keywords.map(keyword => ({
             OR: [
               { title: { contains: keyword, mode: 'insensitive' } },
               { summary: { contains: keyword, mode: 'insensitive' } }
             ]
           }));
+          if (!where.AND) {
+            where.AND = [];
+          } else if (!Array.isArray(where.AND)) {
+            where.AND = [where.AND];
+          }
+          where.AND = [...where.AND, ...keywordConditions];
         }
       }
       
@@ -243,8 +264,49 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Get total count
-      const total = await prisma.article.count({ where });
+      // Get total count with caching（page=1の時のみ実際にカウント、それ以外はキャッシュから取得）
+      let total: number;
+
+      // 総件数用のキャッシュキーを生成（where条件に基づく）
+      const isUserScopedCount = readFilter === 'read' || readFilter === 'unread';
+      const countCacheKey = countCache.generateCacheKey('articles:count', {
+        params: {
+          sources: normalizedSources,
+          tag: tag || 'all',
+          tags: tags || 'none',
+          tagMode: tagMode,
+          search: normalizedSearch,
+          dateRange: dateRange || 'all',
+          readFilter: readFilter || 'all',
+          category: category || 'all',
+          // read/unread時はユーザー固有の総件数
+          userId: isUserScopedCount ? (userId ?? 'anonymous') : 'n/a',
+        }
+      });
+
+      // page=1の時は実際にカウントを取得してキャッシュに保存
+      if (page === 1) {
+        // キャッシュから取得を試みる
+        const cachedCount = await countCache.get<number>(countCacheKey);
+        if (cachedCount !== null && cachedCount !== undefined) {
+          total = cachedCount;
+        } else {
+          // キャッシュミスの場合、DBからカウント取得
+          total = await prisma.article.count({ where });
+          // キャッシュに保存
+          await countCache.set(countCacheKey, total);
+        }
+      } else {
+        // page > 1: キャッシュから取得、なければDB。クライアントtotalは信用しない
+        const cachedCount = await countCache.get<number>(countCacheKey);
+        if (cachedCount !== null && cachedCount !== undefined) {
+          total = cachedCount;
+        } else {
+          // キャッシュミスの場合、DBから取得
+          total = await prisma.article.count({ where });
+          await countCache.set(countCacheKey, total);
+        }
+      }
 
       // Get articles - Optimized query with minimal source relation
       const articles = await prisma.article.findMany({
@@ -289,28 +351,29 @@ export async function GET(request: NextRequest) {
       if (includeUserData && userId) {
         const articleIds = articles.map(a => a.id);
 
-        // Fetch favorites and read status in parallel
-        const [favorites, articleViews] = await Promise.all([
-          prisma.favorite.findMany({
-            where: {
-              userId: userId,
-              articleId: { in: articleIds }
-            },
-            select: { articleId: true }
-          }),
-          prisma.articleView.findMany({
-            where: {
-              userId: userId,
-              articleId: { in: articleIds },
-              isRead: true
-            },
-            select: { articleId: true }
-          })
-        ]);
+        // Create DataLoader instances for this request
+        const loaders = createLoaders({ userId });
 
-        // Create maps for O(1) lookup
-        favorites.forEach(f => favoritesMap.set(f.articleId, true));
-        articleViews.forEach(v => readStatusMap.set(v.articleId, true));
+        if (loaders.favorite && loaders.view) {
+          // Fetch favorites and read status using DataLoader (batched)
+          const [favoriteStatuses, viewStatuses] = await Promise.all([
+            loaders.favorite.loadMany(articleIds),
+            loaders.view.loadMany(articleIds)
+          ]);
+
+          // Create maps for O(1) lookup
+          favoriteStatuses.forEach((status) => {
+            if (status && typeof status === 'object' && 'isFavorited' in status) {
+              favoritesMap.set(status.articleId, status.isFavorited);
+            }
+          });
+
+          viewStatuses.forEach((status) => {
+            if (status && typeof status === 'object' && 'isRead' in status) {
+              readStatusMap.set(status.articleId, status.isRead);
+            }
+          });
+        }
       }
 
       // Normalize dates to ISO strings for consistency and add user data
