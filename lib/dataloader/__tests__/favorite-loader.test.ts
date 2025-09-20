@@ -1,20 +1,41 @@
-import { createFavoriteLoader } from '../favorite-loader';
-import { prisma } from '@/lib/prisma';
-
-// Prismaモック
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    favorite: {
-      findMany: jest.fn()
-    }
-  }
+// モック宣言を先に
+jest.mock('@/lib/prisma');
+jest.mock('@/lib/cache/redis-cache', () => ({
+  RedisCache: jest.fn().mockImplementation(() => ({
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(true),
+    delete: jest.fn().mockResolvedValue(true),
+  }))
 }));
+jest.mock('@/lib/cache/memory-cache', () => ({
+  DataLoaderMemoryCache: jest.fn().mockImplementation(() => ({
+    get: jest.fn().mockReturnValue(null),
+    set: jest.fn(),
+    clear: jest.fn(),
+  }))
+}));
+
+import { prisma } from '@/lib/prisma';
+import type { PrismaClient } from '@prisma/client';
+import type { DeepMockProxy } from 'jest-mock-extended';
+
+const prismaMock = prisma as unknown as DeepMockProxy<PrismaClient>;
 
 describe('FavoriteLoader', () => {
   const userId = 'user123';
+  let createFavoriteLoader: any;
+  let resetFavoriteLoaderCaches: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.resetModules(); // モジュールキャッシュをクリア
+
+    // モジュールを再インポート（モックが適用された状態で）
+    const loaderModule = require('../favorite-loader');
+    createFavoriteLoader = loaderModule.createFavoriteLoader;
+    resetFavoriteLoaderCaches = loaderModule.resetFavoriteLoaderCaches;
+
+    resetFavoriteLoaderCaches(); // キャッシュをリセット
   });
 
   it('should batch multiple favorite status requests', async () => {
@@ -31,7 +52,7 @@ describe('FavoriteLoader', () => {
       }
     ];
 
-    (prisma.favorite.findMany as jest.Mock).mockResolvedValue(mockFavorites);
+    prismaMock.favorite.findMany.mockResolvedValue(mockFavorites);
 
     const loader = createFavoriteLoader(userId);
 
@@ -67,7 +88,7 @@ describe('FavoriteLoader', () => {
   });
 
   it('should return false for articles not favorited', async () => {
-    (prisma.favorite.findMany as jest.Mock).mockResolvedValue([]);
+    prismaMock.favorite.findMany.mockResolvedValue([]);
 
     const loader = createFavoriteLoader(userId);
 
@@ -103,7 +124,7 @@ describe('FavoriteLoader', () => {
       }
     ];
 
-    (prisma.favorite.findMany as jest.Mock).mockResolvedValue(mockFavorites);
+    prismaMock.favorite.findMany.mockResolvedValue(mockFavorites);
 
     const loader = createFavoriteLoader(userId);
 
@@ -127,7 +148,7 @@ describe('FavoriteLoader', () => {
       createdAt: new Date('2024-01-01')
     };
 
-    (prisma.favorite.findMany as jest.Mock).mockResolvedValue([mockFavorite]);
+    prismaMock.favorite.findMany.mockResolvedValue([mockFavorite]);
 
     const loader = createFavoriteLoader(userId);
 
@@ -146,7 +167,7 @@ describe('FavoriteLoader', () => {
       createdAt: new Date('2024-01-01')
     };
 
-    (prisma.favorite.findMany as jest.Mock).mockResolvedValue([mockFavorite]);
+    prismaMock.favorite.findMany.mockResolvedValue([mockFavorite]);
 
     const loader = createFavoriteLoader(userId, { cache: false });
 

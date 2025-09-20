@@ -9,6 +9,8 @@ import { auth } from '@/lib/auth/auth';
 import { createLoaders } from '@/lib/dataloader';
 import { TagCache } from '@/lib/cache/tag-mapping-cache';
 import { FilterCache } from '@/lib/cache/filter-cache';
+import { normalizeArticleCategory } from '@/lib/utils/article-category-normalizer';
+import { getCursorManager } from '@/lib/pagination/cursor-manager';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -74,13 +76,24 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
-    // Parse pagination params
+    // Import CursorManager
+    const { getCursorManager } = await import('@/lib/pagination/cursor-manager');
+    const cursorManager = getCursorManager();
+    
+    // Parse pagination params - Support both cursor and offset
+    const cursor = searchParams.get('cursor');
+    const after = searchParams.get('after');  // Alternative cursor parameter
+    const before = searchParams.get('before'); // For backward pagination
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
     const sortBy = searchParams.get('sortBy') || 'publishedAt';
     const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
     const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
     const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
+    
+    // Determine pagination mode
+    const useCursor = !!(cursor || after || before);
+    const effectiveCursor = cursor || after || before;
     
     // Parse filters
     const sources = searchParams.get('sources');
@@ -113,9 +126,11 @@ export async function GET(request: NextRequest) {
     // Include userId in cache key only when user context is needed
     const userCtxForKey = shouldUseUserContext ? (userId ?? 'anonymous') : 'n/a';
 
+    // Include cursor in cache key if using cursor pagination
     const cacheKey = cache.generateCacheKey('articles:lightweight', {
       params: {
-        page: page.toString(),
+        cursor: effectiveCursor || 'none',
+        page: useCursor ? 'cursor' : page.toString(),
         limit: limit.toString(),
         sortBy: finalSortBy,
         sortOrder,
@@ -134,16 +149,54 @@ export async function GET(request: NextRequest) {
 
     // Check cache first - SKIP CACHE when includeUserData is true to always get fresh data
     const cachedResult = includeUserData ? null : await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
+    // Legacy cache entries may lack cursor metadata; treat them as stale so pageInfo is rebuilt
+    const needsPageInfoHydration = Boolean(
+      cachedResult && useCursor && (
+        !cachedResult.pageInfo ||
+        typeof cachedResult.pageInfo.hasNextPage === 'undefined' ||
+        typeof cachedResult.pageInfo.hasPreviousPage === 'undefined'
+      )
+    );
 
     let result;
-    if (cachedResult) {
+    if (cachedResult && !needsPageInfoHydration) {
       cacheStatus = 'HIT';
       result = cachedResult;
     } else {
-      cacheStatus = 'MISS';
+      cacheStatus = cachedResult ? 'STALE' : 'MISS';
       
       // Build where clause
       const where: ArticleWhereInput = {};
+      
+      // Apply cursor-based pagination if cursor provided
+      let hasPreviousPage = false;
+      let cursorPayload: ReturnType<typeof cursorManager.decodeCursor> | null = null;
+      let isBackwardCursor = false;
+      if (useCursor && effectiveCursor) {
+        cursorPayload = cursorManager.decodeCursor(effectiveCursor);
+        if (cursorPayload) {
+          // Validate sort conditions match
+          if (cursorManager.validateSortCondition(cursorPayload, finalSortBy, sortOrder)) {
+            // Build WHERE clause for cursor pagination
+            const direction = before ? 'backward' : 'forward';
+            const cursorWhere = cursorManager.buildWhereClause(cursorPayload, direction);
+
+            // Merge cursor WHERE with existing WHERE
+            if (Object.keys(cursorWhere).length > 0) {
+              Object.assign(where, cursorWhere);
+            }
+
+            // For backward pagination, we need to check if there are previous items
+            isBackwardCursor = Boolean(before);
+          } else {
+            // Sort conditions have changed, ignore cursor
+            logger.warn('cursor-pagination.sort-mismatch: Cursor invalidated due to sort change');
+          }
+        } else {
+          // Invalid or expired cursor, proceed with offset pagination
+          logger.warn('cursor-pagination.invalid-cursor: Falling back to offset');
+        }
+      }
       
       // Apply read filter if user is authenticated
       if (readFilter && userId) {
@@ -177,13 +230,18 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      // Apply category filter
+      // Apply category filter with normalization
       if (category && category !== 'all') {
         // Handle 'uncategorized' as null
         if (category === 'uncategorized') {
           where.category = null;
         } else {
-          where.category = category as ArticleCategory;
+          // Normalize category name (e.g., 'TECH' -> 'frontend')
+          const normalizedCategory = normalizeArticleCategory(category);
+          if (normalizedCategory) {
+            where.category = normalizedCategory;
+          }
+          // If normalization returns null, skip the filter
         }
       }
       
@@ -359,7 +417,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Get total count with caching（page=1の時のみ実際にカウント、それ以外はキャッシュから取得）
+      // Get total count with caching
       let total: number;
 
       // 総件数用のキャッシュキーを生成（where条件に基づく）
@@ -379,31 +437,25 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // page=1の時は実際にカウントを取得してキャッシュに保存
-      if (page === 1) {
-        // キャッシュから取得を試みる
-        const cachedCount = await countCache.get<number>(countCacheKey);
-        if (cachedCount !== null && cachedCount !== undefined) {
-          total = cachedCount;
-        } else {
-          // キャッシュミスの場合、DBからカウント取得
-          total = await prisma.article.count({ where });
-          // キャッシュに保存
-          await countCache.set(countCacheKey, total);
-        }
+      // Get count from cache or DB
+      const cachedCount = await countCache.get<number>(countCacheKey);
+      if (cachedCount !== null && cachedCount !== undefined) {
+        total = cachedCount;
       } else {
-        // page > 1: キャッシュから取得、なければDB。クライアントtotalは信用しない
-        const cachedCount = await countCache.get<number>(countCacheKey);
-        if (cachedCount !== null && cachedCount !== undefined) {
-          total = cachedCount;
-        } else {
-          // キャッシュミスの場合、DBから取得
-          total = await prisma.article.count({ where });
-          await countCache.set(countCacheKey, total);
+        // Remove cursor-specific WHERE clauses for total count
+        const countWhere = { ...where };
+        if (useCursor && effectiveCursor) {
+          // Remove cursor pagination clauses (OR conditions)
+          delete countWhere.OR;
         }
+        total = await prisma.article.count({ where: countWhere });
+        await countCache.set(countCacheKey, total);
       }
 
       // Get articles - Optimized query with minimal source relation
+      // For cursor pagination, fetch limit+1 to determine hasNextPage
+      const fetchLimit = useCursor ? limit + 1 : limit;
+      
       const articles = await prisma.article.findMany({
         where,
         select: {
@@ -432,19 +484,30 @@ export async function GET(request: NextRequest) {
           // No content field selected (reduces data transfer)
           // No detailedSummary field selected (reduces data transfer)
         },
-        orderBy: {
-          [finalSortBy]: sortOrder,
-        },
-        skip: (page - 1) * limit,
-        take: limit,
+        orderBy: [
+          { [finalSortBy]: sortOrder },
+          { id: sortOrder }  // Secondary sort by id for stable cursor pagination
+        ],
+        skip: useCursor ? 0 : (page - 1) * limit,  // No skip for cursor pagination
+        take: fetchLimit,
       });
+
+      if (useCursor && cursorPayload) {
+        if (isBackwardCursor) {
+          // Backward navigation reaches the beginning when we no longer fetch an extra record
+          hasPreviousPage = articles.length > limit;
+        } else {
+          // Any forward cursor request implies earlier items are available
+          hasPreviousPage = true;
+        }
+      }
 
       // Fetch user-specific data if requested
       const favoritesMap: Map<string, boolean> = new Map();
       const readStatusMap: Map<string, boolean> = new Map();
 
       if (includeUserData && userId) {
-        const articleIds = articles.map(a => a.id);
+        const articleIds = articles.slice(0, limit).map(a => a.id);  // Use only the requested limit
 
         logger.info(`DataLoader integration: userId=${userId}, articles=${articleIds.length}`);
 
@@ -479,32 +542,145 @@ export async function GET(request: NextRequest) {
         logger.info(`DataLoader skipped: includeUserData=${includeUserData}, userId=${userId}`);
       }
 
-      // Normalize dates to ISO strings for consistency and add user data
-      const normalizedArticles = articles.map(article => {
-        const normalized: LightweightArticle = {
-          ...article,
-          publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
-          createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
-          updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
+      // Process results for cursor pagination
+      let pageInfo;
+      let normalizedArticles;
+      
+      if (useCursor) {
+        // Generate page info for cursor pagination
+        const pageData = cursorManager.generatePageInfo(
+          articles,
+          limit,
+          finalSortBy,
+          sortOrder,
+          {
+            sources: normalizedSources,
+            tags: tags || tag,
+            search,
+            dateRange,
+            readFilter,
+            category
+          },
+          hasPreviousPage
+        );
+        
+        pageInfo = {
+          hasNextPage: pageData.hasNextPage,
+          hasPreviousPage: pageData.hasPreviousPage,
+          startCursor: pageData.startCursor,
+          endCursor: pageData.endCursor
         };
+        
+        // Normalize dates and add user data for actual page items
+        normalizedArticles = pageData.items.map(article => {
+          const normalized: LightweightArticle = {
+            ...article,
+            publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
+            createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
+            updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
+          };
 
-        // Add user-specific data if requested
-        if (includeUserData && userId) {
-          normalized.isFavorited = favoritesMap.get(article.id) || false;
-          normalized.isRead = readStatusMap.get(article.id) || false;
+          // Add user-specific data if requested
+          if (includeUserData && userId) {
+            normalized.isFavorited = favoritesMap.get(article.id) || false;
+            normalized.isRead = readStatusMap.get(article.id) || false;
+          }
+
+          return normalized;
+        });
+        
+        // Build cursor-based response
+        result = {
+          items: normalizedArticles as LightweightArticle[],
+          total,
+          pageInfo,
+          // Include legacy pagination fields for backward compatibility
+          page: 1,  // Cursor pagination doesn't have traditional page numbers
+          limit,
+          totalPages: Math.ceil(total / limit),
+        };
+      } else {
+        // Traditional offset pagination - but generate cursor info for transition
+        normalizedArticles = articles.map(article => {
+          const normalized: LightweightArticle = {
+            ...article,
+            publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
+            createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
+            updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
+          };
+
+          // Add user-specific data if requested
+          if (includeUserData && userId) {
+            normalized.isFavorited = favoritesMap.get(article.id) || false;
+            normalized.isRead = readStatusMap.get(article.id) || false;
+          }
+
+          return normalized;
+        });
+
+        // Generate cursor info for offset pagination too (for easy transition)
+        let pageInfo: PaginatedResponse<LightweightArticle>['pageInfo'] = undefined;
+        if (articles.length > 0) {
+          const hasNextPage = page < Math.ceil(total / limit);
+          const hasPreviousPage = page > 1;
+
+          const firstItem = articles[0];
+          const lastItem = articles[articles.length - 1];
+
+          const startCursor = cursorManager.encodeCursor({
+            sortBy: finalSortBy,
+            sortOrder,
+            values: {
+              [finalSortBy]: firstItem[finalSortBy],
+              id: firstItem.id,
+            },
+            limit,
+            filters: {
+              sources: normalizedSources,
+              tags: tags || tag,
+              search,
+              dateRange,
+              readFilter,
+              category
+            }
+          });
+
+          const endCursor = cursorManager.encodeCursor({
+            sortBy: finalSortBy,
+            sortOrder,
+            values: {
+              [finalSortBy]: lastItem[finalSortBy],
+              id: lastItem.id,
+            },
+            limit,
+            filters: {
+              sources: normalizedSources,
+              tags: tags || tag,
+              search,
+              dateRange,
+              readFilter,
+              category
+            }
+          });
+
+          pageInfo = {
+            hasNextPage,
+            hasPreviousPage,
+            startCursor,
+            endCursor
+          };
         }
 
-        return normalized;
-      });
-
-      // Return the data to be cached
-      result = {
-        items: normalizedArticles as LightweightArticle[],
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      };
+        // Return the data to be cached
+        result = {
+          items: normalizedArticles as LightweightArticle[],
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+          pageInfo, // Include cursor info for offset pagination too
+        };
+      }
       
       // Save to cache - SKIP when includeUserData is true
       if (!includeUserData) {
@@ -522,13 +698,15 @@ export async function GET(request: NextRequest) {
       meta: {
         lightweight: true,
         info: 'This endpoint returns lightweight article data without relations for better performance',
-        userDataIncluded: includeUserData && userId ? true : false
+        userDataIncluded: includeUserData && userId ? true : false,
+        paginationMode: useCursor ? 'cursor' : 'offset'
       }
     } as ApiResponse<PaginatedResponse<LightweightArticle>>);
     
     response.headers.set('X-Cache-Status', cacheStatus);
     response.headers.set('X-Response-Time', `${responseTime}ms`);
-    response.headers.set('X-API-Version', 'lightweight-v1');
+    response.headers.set('X-API-Version', 'lightweight-v2');
+    response.headers.set('X-Pagination-Mode', useCursor ? 'cursor' : 'offset');
     
     return response;
   } catch (error) {

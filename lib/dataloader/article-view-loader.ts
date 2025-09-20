@@ -8,11 +8,11 @@ import DataLoader from 'dataloader';
 import { prisma } from '@/lib/prisma';
 import type { ArticleView } from '@prisma/client';
 import type { LoaderOptions } from './types';
-import { DataLoaderMemoryCache } from '../cache/memory-cache';
-import { RedisCache } from '../cache/redis-cache';
+import { DataLoaderMemoryCache } from '@/lib/cache/memory-cache';
+import { RedisCache } from '@/lib/cache/redis-cache';
 import { TwoLayerCacheManager, CacheKeyBuilder } from './cache-utils';
 import { getBatchOptimizer } from './batch-optimizer';
-import logger from '../logger';
+import logger from '@/lib/logger';
 
 /**
  * 既読状態の型定義

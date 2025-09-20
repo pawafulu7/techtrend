@@ -45,6 +45,16 @@ export interface LatencyStats {
 }
 
 /**
+ * 調整履歴の型
+ */
+interface AdjustmentHistoryEntry {
+  timestamp: number;
+  oldSize: number;
+  newSize: number;
+  reason: string;
+}
+
+/**
  * バッチサイズ最適化エンジン
  */
 export class BatchOptimizer {
@@ -52,12 +62,7 @@ export class BatchOptimizer {
   private lastAdjustmentTime: number = 0;
   private metrics: BatchMetrics[] = [];
   private config: BatchOptimizerConfig;
-  private adjustmentHistory: Array<{
-    timestamp: number;
-    oldSize: number;
-    newSize: number;
-    reason: string;
-  }> = [];
+  private adjustmentHistory: AdjustmentHistoryEntry[] = [];
 
   constructor(config: Partial<BatchOptimizerConfig> = {}) {
     this.config = {
@@ -246,7 +251,7 @@ export class BatchOptimizer {
     latencyStats: LatencyStats;
     cacheHitRate: number;
     avgQueueWait: number;
-    recentAdjustments: typeof this.adjustmentHistory;
+    recentAdjustments: AdjustmentHistoryEntry[];
   } {
     return {
       currentBatchSize: this.currentBatchSize,

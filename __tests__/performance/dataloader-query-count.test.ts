@@ -1,6 +1,25 @@
+// Prismaモックを最初に定義
+jest.mock('@/lib/prisma');
+
 import { prisma } from '@/lib/prisma';
-import { createLoaders } from '@/lib/dataloader';
-import { batchGetFavorites, batchGetViews, batchGetUserStates } from '@/lib/batch/batch-utils';
+
+// Redisキャッシュをモック
+jest.mock('@/lib/cache/redis-cache', () => ({
+  RedisCache: jest.fn().mockImplementation(() => ({
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(true),
+    delete: jest.fn().mockResolvedValue(true),
+  }))
+}));
+
+// メモリキャッシュをモック
+jest.mock('@/lib/cache/memory-cache', () => ({
+  DataLoaderMemoryCache: jest.fn().mockImplementation(() => ({
+    get: jest.fn().mockReturnValue(null),
+    set: jest.fn(),
+    clear: jest.fn(),
+  }))
+}));
 
 /**
  * DataLoader Performance Test
@@ -11,10 +30,26 @@ import { batchGetFavorites, batchGetViews, batchGetUserStates } from '@/lib/batc
 describe('DataLoader Query Count Performance', () => {
   const userId = 'test-user-123';
   const articleIds = Array.from({ length: 50 }, (_, i) => `article-${i}`);
+  let createLoaders: any;
+  let batchGetFavorites: any;
+  let batchGetViews: any;
+  let batchGetUserStates: any;
+  let resetFavoriteLoaderCaches: any;
 
   beforeEach(() => {
     // Clear all mock history before each test
     jest.clearAllMocks();
+    jest.resetModules(); // モジュールキャッシュをクリア
+
+    // モジュールを再インポート（モックが適用された状態で）
+    createLoaders = require('@/lib/dataloader').createLoaders;
+    const batchUtils = require('@/lib/batch/batch-utils');
+    batchGetFavorites = batchUtils.batchGetFavorites;
+    batchGetViews = batchUtils.batchGetViews;
+    batchGetUserStates = batchUtils.batchGetUserStates;
+    resetFavoriteLoaderCaches = require('@/lib/dataloader/favorite-loader').resetFavoriteLoaderCaches;
+
+    resetFavoriteLoaderCaches(); // キャッシュをリセット
 
     // Setup mock responses
     (prisma.favorite.findMany as jest.Mock).mockResolvedValue([

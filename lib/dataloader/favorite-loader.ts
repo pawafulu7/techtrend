@@ -9,10 +9,10 @@ import DataLoader from 'dataloader';
 import { prisma } from '@/lib/prisma';
 import type { Favorite } from '@prisma/client';
 import type { FavoriteStatus, LoaderOptions } from './types';
-import { DataLoaderMemoryCache } from '../cache/memory-cache';
-import { RedisCache } from '../cache/redis-cache';
+import { DataLoaderMemoryCache } from '@/lib/cache/memory-cache';
+import { RedisCache } from '@/lib/cache/redis-cache';
 import { getBatchOptimizer } from './batch-optimizer';
-import logger from '../logger';
+import logger from '@/lib/logger';
 
 // グローバルキャッシュインスタンス（プロセス内共有）
 let globalMemoryCache: DataLoaderMemoryCache | null = null;
@@ -24,6 +24,11 @@ const stats = {
   l2Hits: 0,
   dbQueries: 0,
   totalRequests: 0,
+  batchCount: 0,
+  cacheHits: 0,
+  cacheMisses: 0,
+  dbFallbacks: 0,
+  errors: 0,
 };
 
 /**
@@ -49,7 +54,14 @@ function initializeCaches() {
  * @param options - DataLoaderのオプション設定
  */
 export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
-  initializeCaches();
+  const useCache = options?.cache !== false;
+
+  if (useCache) {
+    initializeCaches();
+  }
+
+  const memoryCache = useCache ? globalMemoryCache : null;
+  const redisCache = useCache ? globalRedisCache : null;
 
   // バッチオプティマイザーを取得
   const optimizer = getBatchOptimizer('favorite');
@@ -67,28 +79,37 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
       // Step 1: L1メモリキャッシュチェック
       for (const articleId of articleIds) {
         const cacheKey = `favorite:${userId}:${articleId}`;
-        const cached = globalMemoryCache!.get(cacheKey);
 
-        if (cached !== null) {
-          stats.l1Hits++;
-          results.push(cached as FavoriteStatus);
-        } else {
-          l2CheckList.push(articleId);
-          results.push(null as any); // プレースホルダー
+        if (memoryCache) {
+          const cached = memoryCache.get(cacheKey);
+
+          if (cached !== null) {
+            stats.l1Hits++;
+            results.push(cached as FavoriteStatus);
+            continue;
+          }
         }
+
+        if (redisCache) {
+          l2CheckList.push(articleId);
+        } else {
+          dbCheckList.push(articleId);
+        }
+
+        results.push(null as any); // プレースホルダー
       }
 
       // Step 2: L2 Redisキャッシュチェック（L1ミスのみ）
-      if (l2CheckList.length > 0 && globalRedisCache) {
+      if (redisCache && l2CheckList.length > 0) {
         const l2Results = await Promise.all(
           l2CheckList.map(async (articleId) => {
             const cacheKey = `favorite:${userId}:${articleId}`;
             try {
-              const cached = await globalRedisCache!.get<FavoriteStatus>(cacheKey);
+              const cached = await redisCache.get<FavoriteStatus>(cacheKey);
               if (cached) {
                 stats.l2Hits++;
                 // L1に昇格
-                globalMemoryCache!.set(cacheKey, cached, 30);
+                memoryCache?.set(cacheKey, cached, 30);
                 return cached;
               }
             } catch (error) {
@@ -140,11 +161,13 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
 
           // L1とL2にキャッシュ保存
           const cacheKey = `favorite:${userId}:${articleId}`;
-          globalMemoryCache!.set(cacheKey, status, 30);
+          if (memoryCache) {
+            memoryCache.set(cacheKey, status, 30);
+          }
 
           // L2への保存は非同期で実行
-          if (globalRedisCache) {
-            globalRedisCache.set(cacheKey, status, 60).catch(error => {
+          if (redisCache) {
+            redisCache.set(cacheKey, status, 60).catch(error => {
               logger.debug(`favorite-loader.l2-save-error: ${error}`);
             });
           }
@@ -179,7 +202,7 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
       return results;
     },
     {
-      cache: false, // DataLoaderの内部キャッシュは無効化（独自キャッシュを使用）
+      cache: options?.cache ?? true,
       maxBatchSize: options?.maxBatchSize || optimizer.getBatchSize(), // 動的バッチサイズ
       batchScheduleFn: options?.batchScheduleFn,
     }
@@ -216,4 +239,35 @@ export function getFavoriteLoaderStats() {
     hitRate: hitRate.toFixed(2) + '%',
     memoryCache: globalMemoryCache?.getStats(),
   };
+}
+
+/**
+ * 統計情報をリセット
+ */
+export function resetFavoriteLoaderStats() {
+  stats.totalRequests = 0;
+  stats.batchCount = 0;
+  stats.cacheHits = 0;
+  stats.cacheMisses = 0;
+  stats.l1Hits = 0;
+  stats.l2Hits = 0;
+  stats.dbFallbacks = 0;
+  stats.errors = 0;
+
+  // メモリキャッシュもクリア
+  if (globalMemoryCache) {
+    globalMemoryCache.reset();
+  }
+
+  logger.debug('favorite-loader.stats-reset');
+}
+
+/**
+ * キャッシュインスタンスをリセット（テスト用）
+ */
+export function resetFavoriteLoaderCaches() {
+  globalMemoryCache = null;
+  globalRedisCache = null;
+  resetFavoriteLoaderStats();
+  logger.debug('favorite-loader.caches-reset');
 }

@@ -191,6 +191,20 @@ export class MemoryCache<T = any> {
   }
 
   /**
+   * 統計情報をリセット（キャッシュもクリア）
+   */
+  reset(): void {
+    this.clear();
+    this.stats = {
+      hits: 0,
+      misses: 0,
+      sets: 0,
+      deletes: 0,
+      evictions: 0,
+    };
+  }
+
+  /**
    * キャッシュ統計情報取得
    */
   getStats() {
