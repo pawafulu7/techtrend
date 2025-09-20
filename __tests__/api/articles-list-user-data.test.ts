@@ -21,6 +21,15 @@ jest.mock('@/lib/auth/config', () => ({
   authOptions: {},
 }));
 
+// Mock RedisCache
+jest.mock('@/lib/cache', () => ({
+  RedisCache: jest.fn().mockImplementation(() => ({
+    generateCacheKey: jest.fn().mockReturnValue('test-cache-key'),
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
+
 const { prisma, resetPrismaMock } = require('@/lib/database');
 
 describe('/api/articles/list with user data', () => {
