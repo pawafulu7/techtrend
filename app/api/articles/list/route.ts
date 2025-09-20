@@ -283,7 +283,9 @@ export async function GET(request: NextRequest) {
             tagIds = tagRecords.map(t => t.id);
           } finally {
             // Log cache performance metrics
-            logger.debug(`tag-cache.metrics: hit=${cacheHit}, miss=${cacheMissCount}/${tagList.length}, duration=${Date.now() - tagCacheStartTime}ms`);
+            const metrics = `tag-cache.metrics: hit=${cacheHit}, miss=${cacheMissCount}/${tagList.length}, duration=${Date.now() - tagCacheStartTime}ms`;
+            console.log(metrics);
+            logger.info(metrics);
           }
           
           if (tagIds.length === 0) {
