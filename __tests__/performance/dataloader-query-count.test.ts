@@ -1,7 +1,10 @@
 // Prismaモックを最初に定義
 jest.mock('@/lib/prisma');
 
-import { prisma } from '@/lib/prisma';
+import type { PrismaClient } from '@prisma/client';
+import type { DeepMockProxy } from 'jest-mock-extended';
+
+let prisma: DeepMockProxy<PrismaClient>;
 
 // Redisキャッシュをモック
 jest.mock('@/lib/cache/redis-cache', () => ({
@@ -40,6 +43,9 @@ describe('DataLoader Query Count Performance', () => {
     // Clear all mock history before each test
     jest.clearAllMocks();
     jest.resetModules(); // モジュールキャッシュをクリア
+
+    // prisma を resetModules 後の同一インスタンスに再バインド
+    ({ prisma } = require('@/lib/prisma'));
 
     // モジュールを再インポート（モックが適用された状態で）
     createLoaders = require('@/lib/dataloader').createLoaders;

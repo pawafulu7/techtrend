@@ -214,7 +214,7 @@ export class CursorManager {
     const sortValue = values[sortBy];
     const idValue = values.id;
 
-    if (!sortValue || !idValue) {
+    if (sortValue == null || idValue == null) {
       return {};
     }
 

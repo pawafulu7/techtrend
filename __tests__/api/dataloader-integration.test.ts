@@ -1,6 +1,9 @@
 // Prismaモックを最初に定義
 jest.mock('@/lib/prisma');
 
+// next/serverモックを明示してNode/Jest環境での安定性を向上
+jest.mock('next/server', () => require('__mocks__/next/server'));
+
 import { NextRequest } from 'next/server';
 import { GET as articlesListGET } from '@/app/api/articles/list/route';
 import { GET as articlesGET } from '@/app/api/articles/route';

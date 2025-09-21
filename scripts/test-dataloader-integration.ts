@@ -31,6 +31,11 @@ async function testDataLoaderIntegration() {
 
     logger.info(`Found ${articles.length} articles to test`);
 
+    if (articles.length < 2) {
+      logger.warn('Not enough articles to run the integration test (need >= 2). Skipping.');
+      return;
+    }
+
     // 3. Create some test data
     // Add a favorite
     await prisma.favorite.upsert({

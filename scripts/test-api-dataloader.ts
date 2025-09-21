@@ -3,19 +3,22 @@
  * codex推奨: APIエンドポイント経由での統合テスト
  */
 
+// Jest 実行時のみモック適用
+const __jest = (globalThis as any).jest;
+if (__jest?.mock) {
+  __jest.mock('@/lib/auth/auth', () => ({
+    auth: __jest.fn().mockResolvedValue({
+      user: {
+        id: 'cmefp5z2m0001tem5epun8j6q',
+        email: 'test-view-1755435824112@example.com',
+      },
+    }),
+  }));
+}
+
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
-
-// Mock auth to return test user
-jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn().mockResolvedValue({
-    user: {
-      id: 'cmefp5z2m0001tem5epun8j6q',
-      email: 'test-view-1755435824112@example.com'
-    }
-  })
-}));
 
 async function testApiDataLoader() {
   try {

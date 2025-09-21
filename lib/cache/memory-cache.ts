@@ -55,7 +55,7 @@ export class MemoryCache<T = any> {
     }
 
     // TTL確認
-    if (entry.expiresAt < Date.now()) {
+    if (entry.expiresAt <= Date.now()) {
       this.cache.delete(key);
       this.stats.misses++;
       return null;
@@ -73,7 +73,12 @@ export class MemoryCache<T = any> {
    * キャッシュに値を設定
    */
   set(key: string, value: T, ttl?: number): void {
-    const ttlSeconds = ttl || this.defaultTTL;
+    const ttlSeconds = ttl ?? this.defaultTTL;
+    if (ttlSeconds <= 0) {
+      // 非キャッシュ or 即時失効指定: 既存があれば削除して終了
+      this.delete(key);
+      return;
+    }
     const expiresAt = Date.now() + (ttlSeconds * 1000);
 
     // サイズ制限チェック
@@ -227,7 +232,7 @@ export class MemoryCache<T = any> {
     let cleaned = 0;
 
     for (const [key, entry] of this.cache.entries()) {
-      if (entry.expiresAt < now) {
+      if (entry.expiresAt <= now) {
         this.cache.delete(key);
         cleaned++;
       }

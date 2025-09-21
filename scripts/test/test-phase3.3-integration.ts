@@ -173,7 +173,7 @@ async function testN1QueryElimination() {
 
     console.log(chalk.gray(`   DataLoader stats:`));
     console.log(`   - Favorite batches: ${favoriteStats.batchCount}`);
-    console.log(`   - View batches: ${viewStats.batchCount}`);
+    console.log(`   - View batches: ${viewStats?.batchCount ?? 0}`);
 
   } catch (error) {
     testMetric.success = false;
@@ -415,9 +415,8 @@ async function testBatchOptimization() {
     const favoriteOptimizer = getBatchOptimizer('favorite');
     const viewOptimizer = getBatchOptimizer('view');
 
-    // @ts-ignore - プライベートメソッドへのアクセス
+    // パブリックAPIを使用してオプティマイザーをリセット
     if (favoriteOptimizer.reset) favoriteOptimizer.reset();
-    // @ts-ignore
     if (viewOptimizer.reset) viewOptimizer.reset();
 
     const initialFavoriteSize = favoriteOptimizer.getBatchSize();

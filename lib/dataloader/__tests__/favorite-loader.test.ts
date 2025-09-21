@@ -15,11 +15,10 @@ jest.mock('@/lib/cache/memory-cache', () => ({
   }))
 }));
 
-import { prisma } from '@/lib/prisma';
 import type { PrismaClient } from '@prisma/client';
 import type { DeepMockProxy } from 'jest-mock-extended';
 
-const prismaMock = prisma as unknown as DeepMockProxy<PrismaClient>;
+let prismaMock: DeepMockProxy<PrismaClient>;
 
 describe('FavoriteLoader', () => {
   const userId = 'user123';
@@ -29,6 +28,10 @@ describe('FavoriteLoader', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetModules(); // モジュールキャッシュをクリア
+
+    // prisma モックを reset 後の同一インスタンスへ再バインド
+    const { prisma } = require('@/lib/prisma');
+    prismaMock = prisma as unknown as DeepMockProxy<PrismaClient>;
 
     // モジュールを再インポート（モックが適用された状態で）
     const loaderModule = require('../favorite-loader');
