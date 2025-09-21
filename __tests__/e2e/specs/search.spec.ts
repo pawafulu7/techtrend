@@ -197,7 +197,7 @@ test.describe('検索機能', () => {
         await sortSelect.selectOption({ label: dateOption });
         // ソート適用を待つ - URL変更とローディング完了を待機
         await Promise.all([
-          page.waitForURL('**/sort=**', { timeout: 5000 }),
+          page.waitForURL(/[\?&]sort=[^&]+/, { timeout: getTimeout('short') }),
           waitForLoadingToDisappear(page)
         ]);
         
@@ -293,7 +293,7 @@ test.describe('検索機能', () => {
     await searchInput.press('Enter');
     
     // URLパラメータの更新を待つ（値は指定せず、パラメータの存在のみチェック）
-    const hasParam = await waitForUrlParam(page, 'search', undefined, { timeout: getTimeout('short') });
+    await waitForUrlParam(page, 'search', undefined, { timeout: getTimeout('short') });
     
     // URLパラメータが更新されるまで待機（動的test.skip()を削除）
     try {
@@ -367,14 +367,16 @@ test.describe('検索機能', () => {
       await waitForUrlParam(page, 'search', undefined, { timeout: getTimeout('long') });
       urlUpdated = true;
     } catch (error) {
-      // ページが閉じている場合はテストを終了
+      // ページが閉じている場合はテストをスキップ
       if (page.isClosed()) {
         console.warn('Page was closed during search test, skipping fallback');
+        test.skip(true, 'Page was closed during search test');
         return;
       }
 
       // フォールバック: 半角スペースで再試行（実装差異の許容）
       try {
+        await expect(searchInput).toBeVisible({ timeout: getTimeout('short') });
         await searchInput.fill('TypeScript Vue');
         await searchInput.press('Enter');
         await waitForUrlParam(page, 'search', undefined, { timeout: getTimeout('long') });
@@ -388,6 +390,7 @@ test.describe('検索機能', () => {
     // ページが閉じている場合は後続処理をスキップ
     if (page.isClosed()) {
       console.warn('Page was closed, skipping remaining assertions');
+      test.skip(true, 'Page was closed, skipping remaining assertions');
       return;
     }
 
@@ -396,7 +399,11 @@ test.describe('検索機能', () => {
     try {
       await waitForSearchResults(page, 20000);
       await waitForArticles(page, { timeout: 20000, allowEmpty: true });
-    } catch {}
+    } catch (e) {
+      if (process.env.DEBUG_E2E) {
+        console.warn('[全角スペース検索] results/articles wait skipped:', (e as Error)?.message ?? e);
+      }
+    }
 
     // エラーがないことを確認
     await expectNoErrors(page);
@@ -404,10 +411,10 @@ test.describe('検索機能', () => {
     // 検索が実行されたことの最終確認
     if (urlUpdated) {
       // Playwright の expect は Promise の resolves チェックではなく、単純な値検証で十分
-      expect(page.url()).toContain('search=');
+      await expect(page).toHaveURL(/[\?&]search=/);
     } else {
       // URL更新で確認できない場合、メインコンテンツの表示で代替
-      await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: 15000 });
+      await page.waitForSelector(SELECTORS.MAIN_CONTENT, { state: 'visible', timeout: getTimeout('long') });
     }
   });
 
