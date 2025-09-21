@@ -4,11 +4,20 @@
  */
 
 import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth/auth';
 import { getAllOptimizerStats } from '@/lib/dataloader/batch-optimizer';
 import { getFavoriteLoaderStats } from '@/lib/dataloader/favorite-loader';
 import { getViewLoaderStats } from '@/lib/dataloader/article-view-loader';
 
 export async function GET() {
+  // 管理者権限チェック
+  const session = await auth();
+  if (!session?.user || session.user.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Unauthorized. Admin access required.' },
+      { status: 401 }
+    );
+  }
   try {
     // オプティマイザーの統計
     const optimizerStats = getAllOptimizerStats();

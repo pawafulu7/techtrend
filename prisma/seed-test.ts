@@ -43,28 +43,28 @@ const random = new SeededRandom(
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: process.env.DATABASE_URL || 'postgresql://postgres@localhost:5433/techtrend_test'
+      url: process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test'
     }
   }
 });
 
 async function main() {
   // テストデータベースの安全確認
-  const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres@localhost:5433/techtrend_test';
+  const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
   
   // テストDBであることを厳密に確認（本番DB誤実行防止）
   const url = new URL(dbUrl);
   const dbName = url.pathname.replace(/^\//, '');
   const hostOk = ['localhost', '127.0.0.1'].includes(url.hostname);
-  // CI環境（GitHub Actions等）では5432ポート、ローカル開発環境では5433ポートを許可
+  // CI環境（GitHub Actions等）では5432ポート、ローカル開発環境では5434ポートを許可
   const isCI = process.env.CI === 'true';
-  const portOk = isCI ? url.port === '5432' : url.port === '5433';
+  const portOk = isCI ? url.port === '5432' : url.port === '5434';
   // より厳密なテストDB名チェック（_testで終わる、またはtechtrend_testという名前）
   const nameOk = /(\_test\b|techtrend\_test)/i.test(dbName);
   const override = process.env.E2E_SEED_FORCE === '1';
   
   if (!(hostOk && portOk && nameOk) && !override) {
-    const expectedPort = isCI ? '5432' : '5433';
+    const expectedPort = isCI ? '5432' : '5434';
     console.error(`🚨 ERROR: local test DB only (host=localhost, port=${expectedPort}, db name contains "test") or set E2E_SEED_FORCE=1.`);
     const masked = new URL(dbUrl);
     if (masked.password) masked.password = '****';
