@@ -75,12 +75,12 @@ export interface PerformanceMetrics {
   summary: {
     totalCacheHitRate: string;
     batchSizes: {
-      favorite: number;
-      view: number;
+      favorite: number | 'N/A';
+      view: number | 'N/A';
     };
     latencyP95: {
-      favorite: number;
-      view: number;
+      favorite: number | 'N/A';
+      view: number | 'N/A';
     };
   };
   recommendations?: string[];

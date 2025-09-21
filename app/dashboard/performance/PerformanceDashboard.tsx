@@ -77,20 +77,26 @@ export default function PerformanceDashboard() {
         ].slice(-50);
 
         // レイテンシ（P95の平均）
-        const avgLatency = (
-          (metrics.summary.latencyP95?.favorite || 0) +
-          (metrics.summary.latencyP95?.view || 0)
-        ) / 2;
+        const favLatency = metrics.summary.latencyP95?.favorite === 'N/A'
+          ? 0
+          : (metrics.summary.latencyP95?.favorite || 0);
+        const viewLat = metrics.summary.latencyP95?.view === 'N/A'
+          ? 0
+          : (metrics.summary.latencyP95?.view || 0);
+        const avgLatency = (favLatency + viewLat) / 2;
         newHistory.latency = [
           ...prev.history.latency,
           { time: timestamp, value: avgLatency }
         ].slice(-50);
 
         // バッチサイズ（平均）
-        const avgBatchSize = (
-          (metrics.summary.batchSizes?.favorite || 0) +
-          (metrics.summary.batchSizes?.view || 0)
-        ) / 2;
+        const favBatch = metrics.summary.batchSizes?.favorite === 'N/A'
+          ? 0
+          : (metrics.summary.batchSizes?.favorite || 0);
+        const viewBatch = metrics.summary.batchSizes?.view === 'N/A'
+          ? 0
+          : (metrics.summary.batchSizes?.view || 0);
+        const avgBatchSize = (favBatch + viewBatch) / 2;
         newHistory.batchSize = [
           ...prev.history.batchSize,
           { time: timestamp, value: avgBatchSize }
