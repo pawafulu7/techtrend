@@ -40,7 +40,7 @@ async function cleanupLegacyCache() {
 
   } catch (error) {
     logger.error(`Legacy cache cleanup failed: ${error}`);
-    process.exit(1);
+    throw error; // process.exitを削除してエラーをスロー
   }
 }
 

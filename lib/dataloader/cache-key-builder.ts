@@ -15,8 +15,9 @@ export interface CompositeKey {
 
 /**
  * キャッシュキー構築ユーティリティ
+ * 長さプレフィックス方式による確実な分割を実装
  */
-export class CacheKeyBuilder {
+export class LengthPrefixedCacheKeyBuilder {
   /**
    * ユーザー・記事複合キーを構築
    * 長さプレフィックス方式: `userLen:userId:articleLen:articleId`
@@ -126,3 +127,6 @@ export class CacheKeyBuilder {
     return compositeResults;
   }
 }
+
+// 後方互換性のためのエクスポート（非推奨）
+export const CacheKeyBuilder = LengthPrefixedCacheKeyBuilder;

@@ -146,9 +146,11 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
 
         // 高速検索用のMapを作成
         const favoriteMap = new Map<string, Favorite>();
-        favorites.forEach(favorite => {
-          favoriteMap.set(favorite.articleId, favorite);
-        });
+        if (favorites && Array.isArray(favorites)) {
+          favorites.forEach(favorite => {
+            favoriteMap.set(favorite.articleId, favorite);
+          });
+        }
 
         // DB結果の処理とキャッシュ保存
         const dbResults = dbCheckList.map(articleId => {
@@ -187,13 +189,16 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
       const duration = Date.now() - startTime;
       const queueWait = startTime - queueStartTime;
 
+      // バッチ単位のキャッシュヒット数を計算（累積値ではなくバッチ固有の値）
+      const cacheHitsThisBatch = articleIds.length - dbCheckList.length;
+
       // メトリクスをオプティマイザーに記録
       optimizer.recordMetrics({
         batchSize: articleIds.length,
         latency: duration,
         queueWait: queueWait,
         itemCount: articleIds.length,
-        cacheHits: stats.l1Hits + stats.l2Hits,
+        cacheHits: cacheHitsThisBatch,  // バッチ単位のキャッシュヒット数
         cacheMisses: dbCheckList.length,
       });
 

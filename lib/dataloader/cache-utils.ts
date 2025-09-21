@@ -242,9 +242,17 @@ export class TwoLayerCacheManager<T> {
       count += await this.l1Cache.deletePattern(pattern);
     }
 
-    // L2の無効化
-    if (this.l2Cache && 'delete' in this.l2Cache) {
-      await this.l2Cache.delete(pattern);
+    // L2の無効化 - パターン削除を正しく実装
+    if (this.l2Cache) {
+      // invalidatePatternメソッドが存在する場合は使用
+      if ('invalidatePattern' in this.l2Cache && typeof this.l2Cache.invalidatePattern === 'function') {
+        await this.l2Cache.invalidatePattern(pattern);
+        // RedisCacheのinvalidatePatternは削除数を返さないため、countは増やさない
+      } else if ('delete' in this.l2Cache) {
+        // フォールバック: 単一キー削除（パターン削除できない場合）
+        logger.warn(`L2 cache does not support pattern deletion, falling back to single key delete for pattern: ${pattern}`);
+        await this.l2Cache.delete(pattern);
+      }
     }
 
     logger.debug(`${this.prefix}.invalidated-pattern: ${pattern}, count=${count}`);

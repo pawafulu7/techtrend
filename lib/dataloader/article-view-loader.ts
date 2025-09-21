@@ -11,7 +11,7 @@ import type { LoaderOptions } from './types';
 import { DataLoaderMemoryCache } from '@/lib/cache/memory-cache';
 import { RedisCache } from '@/lib/cache/redis-cache';
 import { TwoLayerCacheManager } from './cache-utils';
-import { CacheKeyBuilder } from './cache-key-builder';
+import { LengthPrefixedCacheKeyBuilder as CacheKeyBuilder } from './cache-key-builder';
 import { getBatchOptimizer } from './batch-optimizer';
 import logger from '@/lib/logger';
 
@@ -84,9 +84,11 @@ export function createArticleViewLoader(userId: string, options?: LoaderOptions)
 
           // 結果をMapに変換
           const viewMap = new Map<string, ArticleView>();
-          views.forEach(view => {
-            viewMap.set(view.articleId, view);
-          });
+          if (views && Array.isArray(views)) {
+            views.forEach(view => {
+              viewMap.set(view.articleId, view);
+            });
+          }
 
           // ViewStatusに変換（複合キーでマッピング）
           const results = new Map<string, ViewStatus>();
