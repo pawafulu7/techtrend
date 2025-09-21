@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth/auth';
 import { statsCache } from '@/lib/cache/stats-cache';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { getRedisClient } from '@/lib/redis/client';
@@ -8,6 +9,14 @@ import { getRedisClient } from '@/lib/redis/client';
  * 各キャッシュのヒット率、ミス率、メモリ使用量などを監視
  */
 export async function GET() {
+  // 管理者権限チェック
+  const session = await auth();
+  if (!session?.user || session.user.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Unauthorized. Admin access required.' },
+      { status: 401 }
+    );
+  }
   try {
     // 各キャッシュの統計を取得
     const statsCacheStats = statsCache.getStats();

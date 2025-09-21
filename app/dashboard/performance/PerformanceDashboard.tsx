@@ -49,14 +49,14 @@ export default function PerformanceDashboard() {
       const optimizerData = await optimizerRes.json();
       const cacheData = await cacheRes.json();
 
-      // データを統合
+      // データを統合（batch-optimizerはdata属性、cache/statsは直接プロパティ）
       const metrics: PerformanceMetrics = {
         timestamp: new Date().toISOString(),
-        optimizers: optimizerData.optimizers || {},
-        dataloaders: optimizerData.dataloaders || {},
+        optimizers: optimizerData.data?.optimizers || {},
+        dataloaders: optimizerData.data?.dataloaders || {},
         caches: cacheData.caches || {},
         redis: cacheData.redis || {},
-        summary: optimizerData.summary || {},
+        summary: optimizerData.data?.summary || {},
         recommendations: cacheData.recommendations || []
       };
 
@@ -200,9 +200,15 @@ export default function PerformanceDashboard() {
 
   const { metrics } = state;
   const cacheHitRate = parseFloat(metrics?.summary?.totalCacheHitRate?.replace('%', '') || '0');
-  const avgLatency = metrics?.summary?.latencyP95
-    ? (metrics.summary.latencyP95.favorite + metrics.summary.latencyP95.view) / 2
-    : 0;
+
+  // N/Aの場合は0として扱う
+  const favoriteLatency = metrics?.summary?.latencyP95?.favorite === 'N/A'
+    ? 0
+    : (metrics?.summary?.latencyP95?.favorite || 0);
+  const viewLatency = metrics?.summary?.latencyP95?.view === 'N/A'
+    ? 0
+    : (metrics?.summary?.latencyP95?.view || 0);
+  const avgLatency = (favoriteLatency + viewLatency) / 2;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -288,7 +294,8 @@ export default function PerformanceDashboard() {
             <div className="text-2xl font-bold">
               {formatMetricValue(
                 metrics?.summary?.batchSizes
-                  ? (metrics.summary.batchSizes.favorite + metrics.summary.batchSizes.view) / 2
+                  ? ((metrics.summary.batchSizes.favorite === 'N/A' ? 0 : metrics.summary.batchSizes.favorite) +
+                     (metrics.summary.batchSizes.view === 'N/A' ? 0 : metrics.summary.batchSizes.view)) / 2
                   : 0
               )}
             </div>
