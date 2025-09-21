@@ -82,7 +82,7 @@ export class LengthPrefixedCacheKeyBuilder {
       const articleId = keyToProcess.slice(articleStart, articleEnd);
 
       return { userId, articleId };
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

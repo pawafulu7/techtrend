@@ -51,7 +51,7 @@ export async function GET() {
       success: true,
       data: metrics,
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch metrics',

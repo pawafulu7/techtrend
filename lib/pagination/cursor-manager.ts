@@ -116,7 +116,7 @@ export class CursorManager {
         const legacySignature = this.generateLegacySignature(jsonStr);
         try {
           isValid = timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(legacySignature, 'hex'));
-        } catch (err) {
+        } catch (_err) {
           isValid = false;
         }
       }

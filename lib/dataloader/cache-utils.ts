@@ -4,8 +4,6 @@
  * codex推奨: キャッシュ昇格・バッチ分解・統計収集の共通化
  */
 
-import { DataLoaderMemoryCache } from '@/lib/cache/memory-cache';
-import { RedisCache } from '@/lib/cache/redis-cache';
 import logger from '@/lib/logger';
 
 /**

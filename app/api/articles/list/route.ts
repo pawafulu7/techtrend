@@ -8,9 +8,7 @@ import logger from '@/lib/logger';
 import { auth } from '@/lib/auth/auth';
 import { createLoaders } from '@/lib/dataloader';
 import { TagCache } from '@/lib/cache/tag-mapping-cache';
-import { FilterCache } from '@/lib/cache/filter-cache';
 import { normalizeArticleCategory } from '@/lib/utils/article-category-normalizer';
-import { getCursorManager } from '@/lib/pagination/cursor-manager';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -56,12 +54,6 @@ const countCache = new RedisCache({
 const tagCache = new TagCache({
   ttl: 900,
   namespace: '@techtrend/cache:tags'
-});
-
-// フィルタキャッシュ（30分TTL）
-const filterCache = new FilterCache({
-  ttl: 1800,
-  namespace: '@techtrend/cache:filters'
 });
 
 /**
