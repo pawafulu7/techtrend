@@ -109,23 +109,23 @@ export class FilterCache {
   async invalidate(type?: 'filter' | 'source' | 'category' | 'precomputed'): Promise<void> {
     switch (type) {
       case 'filter':
-        await this.cache.delete('filter:*');
+        await this.cache.invalidatePattern('filter:*');
         break;
       case 'source':
-        await this.cache.delete('source:*');
+        await this.cache.invalidatePattern('source:*');
         break;
       case 'category':
-        await this.cache.delete('category:*');
+        await this.cache.invalidatePattern('category:*');
         break;
       case 'precomputed':
-        await this.cache.delete('precomputed:*');
+        await this.cache.invalidatePattern('precomputed:*');
         break;
       default:
         // 全フィルターキャッシュをクリア
-        await this.cache.delete('filter:*');
-        await this.cache.delete('source:*');
-        await this.cache.delete('category:*');
-        await this.cache.delete('precomputed:*');
+        await this.cache.invalidatePattern('filter:*');
+        await this.cache.invalidatePattern('source:*');
+        await this.cache.invalidatePattern('category:*');
+        await this.cache.invalidatePattern('precomputed:*');
     }
   }
 

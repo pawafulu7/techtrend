@@ -10,7 +10,8 @@ import type { ArticleView } from '@prisma/client';
 import type { LoaderOptions } from './types';
 import { DataLoaderMemoryCache } from '@/lib/cache/memory-cache';
 import { RedisCache } from '@/lib/cache/redis-cache';
-import { TwoLayerCacheManager, CacheKeyBuilder } from './cache-utils';
+import { TwoLayerCacheManager } from './cache-utils';
+import { CacheKeyBuilder } from './cache-key-builder';
 import { getBatchOptimizer } from './batch-optimizer';
 import logger from '@/lib/logger';
 
@@ -64,16 +65,19 @@ export function createArticleViewLoader(userId: string, options?: LoaderOptions)
   return new DataLoader<string, ViewStatus>(
     async (articleIds: readonly string[]) => {
       const batchStartTime = Date.now();
-      // 共通ユーティリティを使用したバッチローディング
+      // 複合キーを構築してユーザー別キャッシュを実現
+      const compositeKeys = CacheKeyBuilder.buildBatchKeys(userId, articleIds);
       const result = await cacheManager.batchLoad(
-        articleIds,
+        compositeKeys,
         // データベースフェッチャー
         async (missingKeys) => {
+          // 複合キーから articleId を抽出
+          const missingArticleIds = CacheKeyBuilder.extractArticleIds(missingKeys);
           const views = await prisma.articleView.findMany({
             where: {
               userId,
               articleId: {
-                in: missingKeys as string[]
+                in: missingArticleIds
               }
             }
           });
@@ -84,11 +88,12 @@ export function createArticleViewLoader(userId: string, options?: LoaderOptions)
             viewMap.set(view.articleId, view);
           });
 
-          // ViewStatusに変換
+          // ViewStatusに変換（複合キーでマッピング）
           const results = new Map<string, ViewStatus>();
-          for (const articleId of missingKeys) {
+          for (const articleId of missingArticleIds) {
             const view = viewMap.get(articleId);
-            results.set(articleId, {
+            const compositeKey = CacheKeyBuilder.buildUserArticleKey(userId, articleId);
+            results.set(compositeKey, {
               articleId,
               isViewed: !!view,
               viewedAt: view?.viewedAt || undefined,
@@ -138,7 +143,7 @@ export function createArticleViewLoader(userId: string, options?: LoaderOptions)
  */
 export async function invalidateViewCache(userId: string, articleId: string) {
   const cacheManager = initializeCacheManager();
-  const key = `${userId}:${articleId}`;
+  const key = CacheKeyBuilder.buildUserArticleKey(userId, articleId);
   await cacheManager.invalidate(key);
 }
 
@@ -147,7 +152,7 @@ export async function invalidateViewCache(userId: string, articleId: string) {
  */
 export async function invalidateUserViewCache(userId: string) {
   const cacheManager = initializeCacheManager();
-  const pattern = `${userId}:*`;
+  const pattern = CacheKeyBuilder.buildUserPattern(userId);
   await cacheManager.invalidatePattern(pattern);
 }
 
@@ -190,24 +195,16 @@ export async function updateViewStatus(
     readAt: view.readAt || undefined,
   };
 
-  // キャッシュ更新（Write-Through）
+  // キャッシュ更新（Write-Through統合）
   const cacheManager = initializeCacheManager();
-  const key = `${userId}:${articleId}`;
-  const cacheKey = `view:${key}`;
+  const compositeKey = CacheKeyBuilder.buildUserArticleKey(userId, articleId);
 
-  // L1とL2両方を更新
-  const memoryCache = new DataLoaderMemoryCache();
-  const redisCache = new RedisCache({
-    ttl: 60,
-    namespace: '@techtrend/cache:views',
+  await cacheManager.set(compositeKey, newStatus, {
+    l1TTL: 30, // メモリキャッシュ: 30秒
+    l2TTL: 60  // Redisキャッシュ: 60秒
   });
 
-  await Promise.all([
-    memoryCache.set(cacheKey, newStatus, 30),
-    redisCache.set(cacheKey, newStatus, 60),
-  ]);
-
-  logger.debug(`view-loader.updated: ${key}`);
+  logger.debug(`view-loader.updated: ${compositeKey}`);
   return newStatus;
 }
 

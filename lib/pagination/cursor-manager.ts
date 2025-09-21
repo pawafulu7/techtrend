@@ -3,7 +3,7 @@
  * codex推奨: セキュアで効率的なカーソル実装
  */
 
-import { createHmac, randomBytes } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import logger from '@/lib/logger';
 
 /**
@@ -89,24 +89,48 @@ export class CursorManager {
       const padding = '='.repeat((4 - base64.length % 4) % 4);
       const signedPayload = Buffer.from(base64 + padding, 'base64').toString();
 
-      const [signature, jsonStr] = signedPayload.split('.');
-      if (!signature || !jsonStr) {
+      const sep = signedPayload.indexOf('.');
+      if (sep === -1) {
         logger.warn('cursor-manager.invalid-format');
         return null;
       }
+      const signature = signedPayload.slice(0, sep);
+      const jsonStr = signedPayload.slice(sep + 1);
 
-      // 署名検証
+      // 署名検証（バージョン別対応・タイミング攻撃対策）
+      let isValid = false;
+
+      // まず現在のバージョンで検証
       const expectedSignature = this.generateSignature(jsonStr);
-      if (signature !== expectedSignature) {
+      if (signature.length === expectedSignature.length) {
+        try {
+          isValid = timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'));
+        } catch (err) {
+          // hex decode エラーの場合は無効
+          isValid = false;
+        }
+      }
+
+      // 現在版で失敗した場合、旧バージョン（16文字）で検証
+      if (!isValid && signature.length === 16) {
+        const legacySignature = this.generateLegacySignature(jsonStr);
+        try {
+          isValid = timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(legacySignature, 'hex'));
+        } catch (err) {
+          isValid = false;
+        }
+      }
+
+      if (!isValid) {
         logger.warn('cursor-manager.invalid-signature');
         return null;
       }
 
       const payload: CursorPayload = JSON.parse(jsonStr);
 
-      // バージョンチェック
-      if (payload.version !== this.version) {
-        logger.warn(`cursor-manager.version-mismatch: expected=${this.version}, got=${payload.version}`);
+      // バージョンチェック（v1, v2 両方受け入れ・移行期間）
+      if (payload.version !== this.version && payload.version !== 1) {
+        logger.warn(`cursor-manager.version-mismatch: expected=${this.version} or 1, got=${payload.version}`);
         return null;
       }
 
@@ -125,13 +149,22 @@ export class CursorManager {
   }
 
   /**
-   * HMAC署名を生成
+   * HMAC署名を生成（フル長64文字）
    */
   private generateSignature(data: string): string {
     return createHmac('sha256', this.secret)
       .update(data)
+      .digest('hex'); // フル長（64文字）
+  }
+
+  /**
+   * 旧バージョン向けHMAC署名を生成（16文字・互換性用）
+   */
+  private generateLegacySignature(data: string): string {
+    return createHmac('sha256', this.secret)
+      .update(data)
       .digest('hex')
-      .substring(0, 16); // 短縮版（16文字）
+      .substring(0, 16); // 旧形式（16文字）
   }
 
   /**
@@ -277,10 +310,17 @@ let globalCursorManager: CursorManager | null = null;
  */
 export function getCursorManager(): CursorManager {
   if (!globalCursorManager) {
+    const secret = process.env.CURSOR_SECRET || 'default-secret-change-in-production';
+
+    // 本番環境でデフォルト秘密鍵の使用を禁止
+    if (process.env.NODE_ENV === 'production' && secret === 'default-secret-change-in-production') {
+      throw new Error('CURSOR_SECRET is required in production');
+    }
+
     globalCursorManager = new CursorManager({
-      secret: process.env.CURSOR_SECRET || 'default-secret-change-in-production',
+      secret,
       maxAge: 3600, // 1時間
-      version: 1,
+      version: 2, // セキュリティ強化版
     });
   }
 

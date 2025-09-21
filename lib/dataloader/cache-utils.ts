@@ -181,6 +181,34 @@ export class TwoLayerCacheManager<T> {
   }
 
   /**
+   * Write-Through: L1/L2 双方を同一キーで更新
+   * codex推奨: 統一されたwrite-through API
+   */
+  async set(key: string, value: T, options?: { l1TTL?: number, l2TTL?: number }): Promise<void> {
+    const cacheKey = `${this.prefix}:${key}`;
+    const l1TTL = options?.l1TTL ?? this.l1TTL;
+    const l2TTL = options?.l2TTL ?? this.l2TTL;
+
+    // L1 (Memory) を優先して更新
+    try {
+      await Promise.resolve(this.l1Cache.set(cacheKey, value, l1TTL));
+    } catch (err) {
+      logger.debug(`${this.prefix}.l1-set-error: ${err}`);
+    }
+
+    // L2 (Redis) を並行して更新
+    if (this.l2Cache) {
+      try {
+        await Promise.resolve(this.l2Cache.set(cacheKey, value, l2TTL));
+      } catch (err) {
+        logger.debug(`${this.prefix}.l2-set-error: ${err}`);
+      }
+    }
+
+    logger.debug(`${this.prefix}.set: ${cacheKey}`);
+  }
+
+  /**
    * キャッシュの無効化
    * codex推奨: Write-Through戦略
    */

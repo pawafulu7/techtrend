@@ -172,19 +172,16 @@ export async function GET(request: NextRequest) {
       let hasPreviousPage = false;
       let cursorPayload: ReturnType<typeof cursorManager.decodeCursor> | null = null;
       let isBackwardCursor = false;
+      let cursorFilter: ArticleWhereInput | null = null;
       if (useCursor && effectiveCursor) {
         cursorPayload = cursorManager.decodeCursor(effectiveCursor);
         if (cursorPayload) {
           // Validate sort conditions match
           if (cursorManager.validateSortCondition(cursorPayload, finalSortBy, sortOrder)) {
-            // Build WHERE clause for cursor pagination
+            // Build WHERE clause for cursor pagination (分離保持)
             const direction = before ? 'backward' : 'forward';
             const cursorWhere = cursorManager.buildWhereClause(cursorPayload, direction);
-
-            // Merge cursor WHERE with existing WHERE
-            if (Object.keys(cursorWhere).length > 0) {
-              Object.assign(where, cursorWhere);
-            }
+            cursorFilter = Object.keys(cursorWhere).length > 0 ? cursorWhere : null;
 
             // For backward pagination, we need to check if there are previous items
             isBackwardCursor = Boolean(before);
@@ -442,12 +439,8 @@ export async function GET(request: NextRequest) {
       if (cachedCount !== null && cachedCount !== undefined) {
         total = cachedCount;
       } else {
-        // Remove cursor-specific WHERE clauses for total count
+        // 件数はカーソル条件を含めないベース WHERE で算出
         const countWhere = { ...where };
-        if (useCursor && effectiveCursor) {
-          // Remove cursor pagination clauses (OR conditions)
-          delete countWhere.OR;
-        }
         total = await prisma.article.count({ where: countWhere });
         await countCache.set(countCacheKey, total);
       }
@@ -457,7 +450,7 @@ export async function GET(request: NextRequest) {
       const fetchLimit = useCursor ? limit + 1 : limit;
       
       const articles = await prisma.article.findMany({
-        where,
+        where: cursorFilter ? { AND: [where, cursorFilter] } : where,
         select: {
           id: true,
           title: true,

@@ -125,14 +125,13 @@ export class MemoryCache<T = any> {
   }
 
   /**
-   * パターンマッチングで削除
+   * パターンマッチングで削除（glob-style、ReDoS安全）
    */
   deletePattern(pattern: string): number {
-    const regex = new RegExp(pattern);
     let count = 0;
 
     for (const key of this.cache.keys()) {
-      if (regex.test(key)) {
+      if (this.matchesGlob(key, pattern)) {
         this.cache.delete(key);
         count++;
       }
@@ -140,6 +139,55 @@ export class MemoryCache<T = any> {
 
     this.stats.deletes += count;
     return count;
+  }
+
+  /**
+   * glob-style パターンマッチング（* ワイルドカード対応）
+   * ReDoS攻撃を防ぐため正規表現は使用しない
+   */
+  private matchesGlob(text: string, pattern: string): boolean {
+    // 全マッチ（* のみ）
+    if (pattern === '*') {
+      return true;
+    }
+
+    // * を含まない場合はsubstring一致（従来の互換性維持）
+    if (!pattern.includes('*')) {
+      return text.includes(pattern);
+    }
+
+    // * で分割してセグメント単位でマッチング
+    const segments = pattern.split('*');
+    let textIndex = 0;
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+
+      if (segment === '') {
+        // 空セグメント（連続する * など）はスキップ
+        continue;
+      }
+
+      const foundIndex = text.indexOf(segment, textIndex);
+
+      if (foundIndex === -1) {
+        return false; // セグメントが見つからない
+      }
+
+      // 最初のセグメントは開始位置をチェック
+      if (i === 0 && !pattern.startsWith('*') && foundIndex !== 0) {
+        return false;
+      }
+
+      textIndex = foundIndex + segment.length;
+    }
+
+    // 最後のセグメントは終了位置をチェック
+    if (!pattern.endsWith('*') && textIndex !== text.length) {
+      return false;
+    }
+
+    return true;
   }
 
   /**
