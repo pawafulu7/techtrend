@@ -1,19 +1,8 @@
 // Prismaモックを最初に定義
 jest.mock('@/lib/prisma');
 
-import type { PrismaClient } from '@prisma/client';
-import type { DeepMockProxy } from 'jest-mock-extended';
-
-let prisma: DeepMockProxy<PrismaClient>;
-
 // Redisキャッシュをモック
-jest.mock('@/lib/cache/redis-cache', () => ({
-  RedisCache: jest.fn().mockImplementation(() => ({
-    get: jest.fn().mockResolvedValue(null),
-    set: jest.fn().mockResolvedValue(true),
-    delete: jest.fn().mockResolvedValue(true),
-  }))
-}));
+jest.mock('@/lib/cache/redis-cache');
 
 // メモリキャッシュをモック
 jest.mock('@/lib/cache/memory-cache', () => ({
@@ -24,46 +13,60 @@ jest.mock('@/lib/cache/memory-cache', () => ({
   }))
 }));
 
+// DataLoaderを__mocks__ディレクトリのモックで置き換え
+jest.mock('dataloader');
+import DataLoader from 'dataloader';
+
+import { prisma } from '@/lib/prisma';
+import { createLoaders } from '@/lib/dataloader';
+import { batchGetFavorites, batchGetViews, batchGetUserStates } from '@/lib/batch/batch-utils';
+import { resetFavoriteLoaderCaches } from '@/lib/dataloader/favorite-loader';
+import { resetPrismaMock } from '../../test/utils/prisma-mock';
+
+// prismaを型アサーション
+const prismaMock = prisma as any;
+
 /**
  * DataLoader Performance Test
  *
  * Tests query reduction from N+1 to 1 using DataLoader pattern
- * Uses jest-mock-extended's prismaMock from jest.setup.node.js
  */
 describe('DataLoader Query Count Performance', () => {
   const userId = 'test-user-123';
   const articleIds = Array.from({ length: 50 }, (_, i) => `article-${i}`);
-  let createLoaders: any;
-  let batchGetFavorites: any;
-  let batchGetViews: any;
-  let batchGetUserStates: any;
-  let resetFavoriteLoaderCaches: any;
 
   beforeEach(() => {
+    // キャッシュをリセット（最初に実行）
+    resetFavoriteLoaderCaches();
+
+    // Prismaモックをリセット
+    resetPrismaMock();
+
     // Clear all mock history before each test
     jest.clearAllMocks();
-    jest.resetModules(); // モジュールキャッシュをクリア
 
-    // prisma を resetModules 後の同一インスタンスに再バインド
-    ({ prisma } = require('@/lib/prisma'));
+    // DataLoaderのキャッシュをクリア
+    if ((DataLoader as any).clearAllInstances) {
+      (DataLoader as any).clearAllInstances();
+    }
 
-    // モジュールを再インポート（モックが適用された状態で）
-    createLoaders = require('@/lib/dataloader').createLoaders;
-    const batchUtils = require('@/lib/batch/batch-utils');
-    batchGetFavorites = batchUtils.batchGetFavorites;
-    batchGetViews = batchUtils.batchGetViews;
-    batchGetUserStates = batchUtils.batchGetUserStates;
-    resetFavoriteLoaderCaches = require('@/lib/dataloader/favorite-loader').resetFavoriteLoaderCaches;
 
-    resetFavoriteLoaderCaches(); // キャッシュをリセット
+    // Prismaモックを明確に設定（新しいjest.fnインスタンスを作成）
+    if (prismaMock.favorite) {
+      prismaMock.favorite.findMany = jest.fn();
+      prismaMock.favorite.findUnique = jest.fn();
+    }
+    if (prismaMock.articleView) {
+      prismaMock.articleView.findMany = jest.fn();
+    }
 
     // Setup mock responses
-    (prisma.favorite.findMany as jest.Mock).mockResolvedValue([
+    prismaMock.favorite.findMany.mockResolvedValue([
       { id: '1', userId, articleId: articleIds[0], createdAt: new Date() },
       { id: '2', userId, articleId: articleIds[10], createdAt: new Date() },
     ]);
 
-    (prisma.articleView.findMany as jest.Mock).mockResolvedValue([
+    prismaMock.articleView.findMany.mockResolvedValue([
       {
         id: '1',
         userId,
@@ -77,7 +80,11 @@ describe('DataLoader Query Count Performance', () => {
     ]);
 
     // Mock findUnique for N+1 simulation
-    (prisma.favorite.findUnique as jest.Mock).mockResolvedValue(null);
+    prismaMock.favorite.findUnique.mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   describe('N+1 Query Problem vs DataLoader Solution', () => {
@@ -85,7 +92,7 @@ describe('DataLoader Query Count Performance', () => {
       // Simulate the N+1 problem - fetch favorites one by one
       const results = [];
       for (const articleId of articleIds) {
-        const favorite = await prisma.favorite.findUnique({
+        const favorite = await prismaMock.favorite.findUnique({
           where: {
             userId_articleId: { userId, articleId }
           }
@@ -94,10 +101,10 @@ describe('DataLoader Query Count Performance', () => {
       }
 
       // Assert N queries were made
-      expect(prisma.favorite.findUnique as jest.Mock).toHaveBeenCalledTimes(50);
+      expect(prismaMock.favorite.findUnique).toHaveBeenCalledTimes(50);
       expect(results).toHaveLength(50);
 
-      console.log(`N+1 Problem: ${(prisma.favorite.findUnique as jest.Mock).mock.calls.length} queries for ${articleIds.length} articles`);
+      console.log(`N+1 Problem: ${prismaMock.favorite.findUnique.mock.calls.length} queries for ${articleIds.length} articles`);
     });
 
     it('WITH DataLoader: should execute only 1 batched query', async () => {
@@ -109,10 +116,10 @@ describe('DataLoader Query Count Performance', () => {
       );
 
       // Assert only 1 batched query was made
-      expect(prisma.favorite.findMany as jest.Mock).toHaveBeenCalledTimes(1);
+      expect(prismaMock.favorite.findMany).toHaveBeenCalledTimes(1);
 
       // Verify the batched query used IN clause
-      const call = (prisma.favorite.findMany as jest.Mock).mock.calls[0][0];
+      const call = prismaMock.favorite.findMany.mock.calls[0][0];
       expect(call.where.articleId.in).toEqual(articleIds);
       expect(call.where.userId).toBe(userId);
 
@@ -127,45 +134,87 @@ describe('DataLoader Query Count Performance', () => {
     });
 
     it('DataLoader should cache results within same request', async () => {
-      const loaders = createLoaders({ userId });
-      const articleId = articleIds[0];
+      await jest.isolateModulesAsync(async () => {
+        // モジュールを再インポート
+        const { createLoaders } = await import('@/lib/dataloader');
+        const { resetFavoriteLoaderCaches } = await import('@/lib/dataloader/favorite-loader');
 
-      // Load same article multiple times
-      const result1 = await loaders.favorite?.load(articleId);
-      const result2 = await loaders.favorite?.load(articleId);
-      const result3 = await loaders.favorite?.load(articleId);
+        // DataLoaderのキャッシュをクリア
+        resetFavoriteLoaderCaches();
+        if ((DataLoader as any).clearAllInstances) {
+          (DataLoader as any).clearAllInstances();
+        }
+        // Prismaモックをリセット
+        resetPrismaMock();
+        jest.clearAllMocks();
 
-      // Should only make 1 query due to caching
-      expect(prisma.favorite.findMany as jest.Mock).toHaveBeenCalledTimes(1);
+        // Setup mock responses (必ず新しいモックを作成)
+        prismaMock.favorite.findMany = jest.fn().mockResolvedValue([
+          { id: '1', userId, articleId: articleIds[0], createdAt: new Date() },
+          { id: '2', userId, articleId: articleIds[10], createdAt: new Date() },
+        ]);
 
-      // All results should be the same instance (cached)
-      expect(result1).toBe(result2);
-      expect(result2).toBe(result3);
+        const loaders = createLoaders({ userId });
+        const articleId = articleIds[0];
 
-      console.log(`Cache Test: 1 query for 3 loads of same article (cache working)`);
+        // Load same article multiple times
+        const result1 = await loaders.favorite?.load(articleId);
+        const result2 = await loaders.favorite?.load(articleId);
+        const result3 = await loaders.favorite?.load(articleId);
+
+        // Should only make 1 query due to caching
+        expect(prismaMock.favorite.findMany).toHaveBeenCalledTimes(1);
+
+        // All results should be the same (cached)
+        expect(result1).toEqual(result2);
+        expect(result2).toEqual(result3);
+
+        console.log(`Cache Test: 1 query for 3 loads of same article (cache working)`);
+      });
     });
 
     it('DataLoader should batch multiple different articles', async () => {
-      const loaders = createLoaders({ userId });
-      const testArticles = articleIds.slice(0, 5);
+      await jest.isolateModulesAsync(async () => {
+        // モジュールを再インポート
+        const { createLoaders } = await import('@/lib/dataloader');
+        const { resetFavoriteLoaderCaches } = await import('@/lib/dataloader/favorite-loader');
 
-      // Load different articles (should be batched)
-      const results = await Promise.all([
-        loaders.favorite?.load(testArticles[0]),
-        loaders.favorite?.load(testArticles[1]),
-        loaders.favorite?.load(testArticles[2]),
-        loaders.favorite?.load(testArticles[3]),
-        loaders.favorite?.load(testArticles[4]),
-      ]);
+        // DataLoaderのキャッシュをクリア
+        resetFavoriteLoaderCaches();
+        if ((DataLoader as any).clearAllInstances) {
+          (DataLoader as any).clearAllInstances();
+        }
+        // Prismaモックをリセット
+        resetPrismaMock();
+        jest.clearAllMocks();
 
-      // Should make only 1 batched query
-      expect(prisma.favorite.findMany as jest.Mock).toHaveBeenCalledTimes(1);
+        // Setup mock responses (必ず新しいモックを作成)
+        prismaMock.favorite.findMany = jest.fn().mockResolvedValue([
+          { id: '1', userId, articleId: articleIds[0], createdAt: new Date() },
+          { id: '2', userId, articleId: articleIds[10], createdAt: new Date() },
+        ]);
 
-      // Verify batch contained all requested IDs
-      const call = (prisma.favorite.findMany as jest.Mock).mock.calls[0][0];
-      expect(call.where.articleId.in).toEqual(expect.arrayContaining(testArticles));
+        const loaders = createLoaders({ userId });
+        const testArticles = articleIds.slice(0, 5);
 
-      console.log(`Batch Test: 1 query for ${testArticles.length} different articles`);
+        // Load different articles (should be batched)
+        const results = await Promise.all([
+          loaders.favorite?.load(testArticles[0]),
+          loaders.favorite?.load(testArticles[1]),
+          loaders.favorite?.load(testArticles[2]),
+          loaders.favorite?.load(testArticles[3]),
+          loaders.favorite?.load(testArticles[4]),
+        ]);
+
+        // Should make only 1 batched query
+        expect(prismaMock.favorite.findMany).toHaveBeenCalledTimes(1);
+
+        // Verify batch contained all requested IDs
+        const call = prismaMock.favorite.findMany.mock.calls[0][0];
+        expect(call.where.articleId.in).toEqual(expect.arrayContaining(testArticles));
+
+        console.log(`Batch Test: 1 query for ${testArticles.length} different articles`);
+      });
     });
   });
 
@@ -174,10 +223,10 @@ describe('DataLoader Query Count Performance', () => {
       const results = await batchGetFavorites(userId, articleIds);
 
       // Should make exactly 1 query
-      expect(prisma.favorite.findMany as jest.Mock).toHaveBeenCalledTimes(1);
+      expect(prismaMock.favorite.findMany).toHaveBeenCalledTimes(1);
 
       // Verify query structure
-      const call = (prisma.favorite.findMany as jest.Mock).mock.calls[0][0];
+      const call = prismaMock.favorite.findMany.mock.calls[0][0];
       expect(call.where.userId).toBe(userId);
       expect(call.where.articleId.in).toEqual(articleIds);
 
@@ -194,10 +243,10 @@ describe('DataLoader Query Count Performance', () => {
       const results = await batchGetViews(userId, articleIds);
 
       // Should make exactly 1 query
-      expect(prisma.articleView.findMany as jest.Mock).toHaveBeenCalledTimes(1);
+      expect(prismaMock.articleView.findMany).toHaveBeenCalledTimes(1);
 
       // Verify query structure
-      const call = (prisma.articleView.findMany as jest.Mock).mock.calls[0][0];
+      const call = prismaMock.articleView.findMany.mock.calls[0][0];
       expect(call.where.userId).toBe(userId);
       expect(call.where.articleId.in).toEqual(articleIds);
       expect(call.where.isRead).toBe(true);
@@ -214,8 +263,8 @@ describe('DataLoader Query Count Performance', () => {
       const { favorites, views } = await batchGetUserStates(userId, articleIds);
 
       // Should make exactly 2 queries (1 for favorites, 1 for views)
-      expect(prisma.favorite.findMany as jest.Mock).toHaveBeenCalledTimes(1);
-      expect(prisma.articleView.findMany as jest.Mock).toHaveBeenCalledTimes(1);
+      expect(prismaMock.favorite.findMany).toHaveBeenCalledTimes(1);
+      expect(prismaMock.articleView.findMany).toHaveBeenCalledTimes(1);
 
       // Verify results - batchGetUserStates now returns Maps, not Sets
       expect(favorites).toBeInstanceOf(Map);
@@ -230,47 +279,59 @@ describe('DataLoader Query Count Performance', () => {
 
   describe('Performance Comparison Summary', () => {
     it('should demonstrate significant query reduction', async () => {
-      // Reset mocks for clean comparison
-      jest.clearAllMocks();
+      await jest.isolateModulesAsync(async () => {
+        // モジュールを再インポート
+        const { createLoaders } = await import('@/lib/dataloader');
+        const { resetFavoriteLoaderCaches } = await import('@/lib/dataloader/favorite-loader');
 
-      // Setup counters
-      let naiveQueryCount = 0;
-      let optimizedQueryCount = 0;
+        // Reset mocks for clean comparison
+        jest.clearAllMocks();
 
-      // 1. Measure naive approach
-      (prisma.favorite.findUnique as jest.Mock).mockImplementation(async () => {
-        naiveQueryCount++;
-        return null;
-      });
+        // Setup counters
+        let naiveQueryCount = 0;
+        let optimizedQueryCount = 0;
 
-      for (const articleId of articleIds.slice(0, 10)) {
-        await prisma.favorite.findUnique({
-          where: { userId_articleId: { userId, articleId } }
+        // 1. Measure naive approach
+        prismaMock.favorite.findUnique.mockImplementation(async () => {
+          naiveQueryCount++;
+          return null;
         });
-      }
 
-      // 2. Measure optimized approach
-      jest.clearAllMocks();
-      (prisma.favorite.findMany as jest.Mock).mockImplementation(async () => {
-        optimizedQueryCount++;
-        return [];
+        for (const articleId of articleIds.slice(0, 10)) {
+          await prismaMock.favorite.findUnique({
+            where: { userId_articleId: { userId, articleId } }
+          });
+        }
+
+        // 2. Measure optimized approach
+        jest.clearAllMocks();
+        resetFavoriteLoaderCaches(); // キャッシュもリセット
+        // DataLoaderのキャッシュもクリア
+        if ((DataLoader as any).clearAllInstances) {
+          (DataLoader as any).clearAllInstances();
+        }
+        // Prismaモックを再設定（必ずリセット）
+        prismaMock.favorite.findMany = jest.fn().mockImplementation(async () => {
+          optimizedQueryCount++;
+          return [];
+        });
+
+        const loaders = createLoaders({ userId });
+        await Promise.all(articleIds.slice(0, 10).map(id => loaders.favorite?.load(id)));
+
+        // Performance comparison
+        const reduction = ((naiveQueryCount - optimizedQueryCount) / naiveQueryCount * 100).toFixed(0);
+
+        console.log('\n=== Performance Summary ===');
+        console.log(`Naive Approach: ${naiveQueryCount} queries`);
+        console.log(`Optimized Approach: ${optimizedQueryCount} query`);
+        console.log(`Query Reduction: ${reduction}%`);
+        console.log(`Performance Gain: ${naiveQueryCount}x faster`);
+
+        expect(naiveQueryCount).toBe(10);
+        expect(optimizedQueryCount).toBe(1);
+        expect(Number(reduction)).toBeGreaterThanOrEqual(90);
       });
-
-      const loaders = createLoaders({ userId });
-      await Promise.all(articleIds.slice(0, 10).map(id => loaders.favorite?.load(id)));
-
-      // Performance comparison
-      const reduction = ((naiveQueryCount - optimizedQueryCount) / naiveQueryCount * 100).toFixed(0);
-
-      console.log('\n=== Performance Summary ===');
-      console.log(`Naive Approach: ${naiveQueryCount} queries`);
-      console.log(`Optimized Approach: ${optimizedQueryCount} query`);
-      console.log(`Query Reduction: ${reduction}%`);
-      console.log(`Performance Gain: ${naiveQueryCount}x faster`);
-
-      expect(naiveQueryCount).toBe(10);
-      expect(optimizedQueryCount).toBe(1);
-      expect(Number(reduction)).toBeGreaterThanOrEqual(90);
     });
   });
 });

@@ -2,11 +2,9 @@
 jest.mock('@/lib/prisma');
 
 // next/serverモックを明示してNode/Jest環境での安定性を向上
-jest.mock('next/server', () => require('__mocks__/next/server'));
+jest.mock('next/server');
 
 import { NextRequest } from 'next/server';
-import { GET as articlesListGET } from '@/app/api/articles/list/route';
-import { GET as articlesGET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/prisma';
 // DataLoaderは動的にインポート
 
@@ -67,9 +65,11 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>;
 
 describe('DataLoader Integration Tests', () => {
   const userId = 'test-user-123';
-  const mockAuth = require('@/lib/auth/auth').auth as jest.Mock;
   let createLoaders: any;
   let resetFavoriteLoaderCaches: any;
+  let articlesListGET: typeof import('@/app/api/articles/list/route').GET;
+  let articlesGET: typeof import('@/app/api/articles/route').GET;
+  let mockAuth: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -78,6 +78,9 @@ describe('DataLoader Integration Tests', () => {
     // モジュールを再インポート（モックが適用された状態で）
     createLoaders = require('@/lib/dataloader').createLoaders;
     resetFavoriteLoaderCaches = require('@/lib/dataloader/favorite-loader').resetFavoriteLoaderCaches;
+    articlesListGET = require('@/app/api/articles/list/route').GET;
+    articlesGET = require('@/app/api/articles/route').GET;
+    mockAuth = require('@/lib/auth/auth').auth as jest.Mock;
 
     resetFavoriteLoaderCaches(); // キャッシュをリセット
 

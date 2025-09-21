@@ -266,6 +266,13 @@ export function resetFavoriteLoaderStats() {
  * キャッシュインスタンスをリセット（テスト用）
  */
 export function resetFavoriteLoaderCaches() {
+  // 既存のキャッシュインスタンスをクリアしてからnullに設定
+  if (globalMemoryCache) {
+    globalMemoryCache.clear();
+  }
+  if (globalRedisCache) {
+    // RedisキャッシュはMockなので特に処理不要
+  }
   globalMemoryCache = null;
   globalRedisCache = null;
   resetFavoriteLoaderStats();

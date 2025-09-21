@@ -1,6 +1,6 @@
-const { prismaMock } = require('../../test/utils/prisma-mock');
+// Prismaモック - test/utils/prisma-mock.jsを利用
+const { prismaMock, resetPrismaMock } = require('../../test/utils/prisma-mock');
 
-module.exports = {
-  prisma: prismaMock,
-  default: prismaMock,
-};
+export const prisma = prismaMock;
+export { resetPrismaMock };
+export default prismaMock;
