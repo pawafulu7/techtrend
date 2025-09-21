@@ -1,7 +1,8 @@
 // Prismaモックの動作確認用テスト
 jest.mock('@/lib/prisma');
 
-import { prisma, resetPrismaMock } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
+import { resetPrismaMock } from '../test/utils/prisma-mock';
 
 describe('Prisma Mock Verification', () => {
   beforeEach(() => {
