@@ -141,7 +141,7 @@ export class FilterCache {
     await this.cache.set(statsKey, current + 1, 86400); // 24時間保持
   }
 
-  async getPopularFilters(limit: number = 10): Promise<Array<{ filter: string; count: number }>> {
+  async getPopularFilters(_limit: number = 10): Promise<Array<{ filter: string; count: number }>> {
     // 実装は省略（Redis SORTEDSETを使用する場合はより効率的）
     return [];
   }
