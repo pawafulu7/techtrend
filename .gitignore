@@ -48,6 +48,9 @@ next-env.d.ts
 *.db.backup*
 *.db-wal
 *.db-shm
+
+# migration backups
+prisma/migrations_bak_*
 development.db
 techtrend.db
 
