@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, Activity, Database, TrendingUp, Zap, RefreshCw } from 'lucide-react';
+import { usePollingControl } from './hooks/useMetricsPolling';
 import type {
   PerformanceMetrics,
   DashboardState
@@ -118,13 +119,18 @@ export default function PerformanceDashboard() {
     }
   };
 
-  // 初回取得と定期更新（30秒間隔）
-  useEffect(() => {
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000);
+  // ポーリング制御（バックグラウンドタブでは停止）
+  const { isActive, interval } = usePollingControl(30000);
 
-    return () => clearInterval(interval);
-  }, []);
+  // 初回取得と定期更新（可視状態に連動）
+  useEffect(() => {
+    if (!isActive) return;
+
+    fetchMetrics();
+    const intervalId = setInterval(fetchMetrics, interval);
+
+    return () => clearInterval(intervalId);
+  }, [isActive, interval]);
 
   // メトリクス値のフォーマット
   const formatMetricValue = (value: number | string | undefined, unit?: string): string => {

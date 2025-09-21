@@ -21,15 +21,23 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
   trend,
   trendValue,
   status,
-  description
+  description,
+  isIncreaseGood = true
 }) => {
+  // トレンド色の取得
+  const getTrendColor = () => {
+    if (trend === 'up') return isIncreaseGood ? 'text-green-500' : 'text-red-500';
+    if (trend === 'down') return isIncreaseGood ? 'text-red-500' : 'text-green-500';
+    return 'text-gray-500';
+  };
+
   // トレンドアイコンの取得
   const getTrendIcon = () => {
     switch (trend) {
       case 'up':
-        return <TrendingUp className="h-4 w-4 text-green-500" />;
+        return <TrendingUp className={`h-4 w-4 ${getTrendColor()}`} />;
       case 'down':
-        return <TrendingDown className="h-4 w-4 text-red-500" />;
+        return <TrendingDown className={`h-4 w-4 ${getTrendColor()}`} />;
       case 'stable':
         return <Minus className="h-4 w-4 text-gray-500" />;
       default:
@@ -110,9 +118,7 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
               <div className="flex items-center gap-1 mt-1">
                 {getTrendIcon()}
                 <span className={`text-xs ${
-                  trend === 'up' ? 'text-green-600' :
-                  trend === 'down' ? 'text-red-600' :
-                  'text-gray-600'
+                  trend === 'stable' ? 'text-gray-600' : getTrendColor().replace('500', '600')
                 }`}>
                   {trendValue}
                 </span>

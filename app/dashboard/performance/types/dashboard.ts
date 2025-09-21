@@ -41,6 +41,13 @@ export interface CacheStats {
   ttl: number;
 }
 
+// キャッシュトレンド（時系列データ）
+export interface CacheTrends {
+  hitRate: TimeSeriesData[];
+  size: TimeSeriesData[];
+  evictions: TimeSeriesData[];
+}
+
 // Redis統計
 export interface RedisStats {
   memoryUsed: string;
@@ -62,7 +69,7 @@ export interface PerformanceMetrics {
   };
   caches: {
     stats: CacheStats;
-    trends: CacheStats;
+    trends: CacheTrends;
   };
   redis: RedisStats;
   summary: {
@@ -118,6 +125,7 @@ export interface MetricsCardProps {
   trendValue?: string;
   status?: 'good' | 'warning' | 'critical';
   description?: string;
+  isIncreaseGood?: boolean; // 増加が良いことを示すフラグ（デフォルト: true）
 }
 
 // トレンドチャートプロップス
@@ -136,4 +144,85 @@ export interface OptimizationRecommendation {
   severity: 'low' | 'medium' | 'high';
   message: string;
   action?: string;
+}
+
+// デフォルト値生成関数
+export function createEmptyPerformanceMetrics(): PerformanceMetrics {
+  return {
+    timestamp: new Date().toISOString(),
+    optimizers: {
+      favorite: {
+        batchSize: 0,
+        latencyP50: 0,
+        latencyP95: 0,
+        latencyP99: 0,
+        throughput: 0,
+        queueWait: 0,
+        cacheHitRate: 0,
+        cacheHits: 0,
+        cacheMisses: 0
+      },
+      view: {
+        batchSize: 0,
+        latencyP50: 0,
+        latencyP95: 0,
+        latencyP99: 0,
+        throughput: 0,
+        queueWait: 0,
+        cacheHitRate: 0,
+        cacheHits: 0,
+        cacheMisses: 0
+      }
+    },
+    dataloaders: {
+      favorite: {
+        l1Hits: 0,
+        l2Hits: 0,
+        dbQueries: 0,
+        totalRequests: 0,
+        batchCount: 0,
+        hitRate: '0%'
+      },
+      view: {
+        l1Hits: 0,
+        l2Hits: 0,
+        dbQueries: 0,
+        totalRequests: 0,
+        batchCount: 0,
+        hitRate: '0%'
+      }
+    },
+    caches: {
+      stats: {
+        hits: 0,
+        misses: 0,
+        hitRate: 0,
+        size: 0,
+        evictions: 0,
+        ttl: 0
+      },
+      trends: {
+        hitRate: [],
+        size: [],
+        evictions: []
+      }
+    },
+    redis: {
+      memoryUsed: 'N/A',
+      memoryPeak: 'N/A',
+      connected: false
+    },
+    summary: {
+      totalCacheHitRate: '0%',
+      batchSizes: {
+        favorite: 0,
+        view: 0
+      },
+      latencyP95: {
+        favorite: 0,
+        view: 0
+      }
+    },
+    recommendations: []
+  };
 }

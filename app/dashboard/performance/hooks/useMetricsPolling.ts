@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import type { PerformanceMetrics, DashboardError } from '../types/dashboard';
+import { createEmptyPerformanceMetrics } from '../types/dashboard';
 
 /**
  * メトリクスポーリングフック
@@ -47,15 +48,18 @@ export function useMetricsPolling(
       const optimizerData = await optimizerRes.json();
       const cacheData = await cacheRes.json();
 
-      // データを統合
+      // デフォルト値を取得
+      const defaults = createEmptyPerformanceMetrics();
+
+      // データを統合（デフォルト値で安全に初期化）
       const metrics: PerformanceMetrics = {
         timestamp: new Date().toISOString(),
-        optimizers: optimizerData.optimizers || {},
-        dataloaders: optimizerData.dataloaders || {},
-        caches: cacheData.caches || {},
-        redis: cacheData.redis || {},
-        summary: optimizerData.summary || {},
-        recommendations: cacheData.recommendations || []
+        optimizers: optimizerData.optimizers ?? defaults.optimizers,
+        dataloaders: optimizerData.dataloaders ?? defaults.dataloaders,
+        caches: cacheData.caches ?? defaults.caches,
+        redis: cacheData.redis ?? defaults.redis,
+        summary: optimizerData.summary ?? defaults.summary,
+        recommendations: cacheData.recommendations ?? defaults.recommendations
       };
 
       setMetrics(metrics);

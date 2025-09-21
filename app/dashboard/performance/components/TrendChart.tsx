@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useId } from 'react';
 import {
   LineChart,
   Line,
@@ -208,7 +208,8 @@ export const MetricsAreaChart: React.FC<{
   height?: number;
   gradient?: boolean;
 }> = ({ title, data, dataKey = 'value', color = '#3b82f6', height = 300, gradient = true }) => {
-  const gradientId = `gradient-${Math.random().toString(36).substr(2, 9)}`;
+  const id = useId();
+  const gradientId = `gradient-${id}`;
 
   return (
     <Card>
