@@ -1,7 +1,8 @@
 import { SourceCache } from '@/lib/cache/source-cache';
-jest.mock('@/lib/logger');
+import { prisma } from '@/lib/database';
+import { resetPrismaMock } from '../../../test/utils/prisma-mock';
 
-const { prisma, resetPrismaMock } = require('@/lib/database');
+jest.mock('@/lib/logger');
 
 const createCacheStub = () => {
   const store = new Map<string, unknown>();

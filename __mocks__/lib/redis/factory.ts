@@ -1,19 +1,9 @@
-/**
- * Mock for Redis factory
- */
-
-// Default mock service object
-const mockRedisService = {
-  clearPattern: jest.fn().mockResolvedValue(undefined),
-  disconnect: jest.fn().mockResolvedValue(undefined),
-  getJSON: jest.fn().mockResolvedValue(null),
-  setJSON: jest.fn().mockResolvedValue(undefined),
+// Redis factoryのモック
+export const createRedisClient = jest.fn().mockReturnValue({
   get: jest.fn().mockResolvedValue(null),
-  set: jest.fn().mockResolvedValue(undefined),
-  del: jest.fn().mockResolvedValue(undefined),
-  expire: jest.fn().mockResolvedValue(undefined),
-};
-
-export const getRedisService = jest.fn(() => mockRedisService);
-export const closeRedisConnection = jest.fn(() => Promise.resolve());
-export const createRedisService = jest.fn(() => mockRedisService);
+  set: jest.fn().mockResolvedValue('OK'),
+  del: jest.fn().mockResolvedValue(1),
+  exists: jest.fn().mockResolvedValue(0),
+  expire: jest.fn().mockResolvedValue(1),
+  quit: jest.fn().mockResolvedValue('OK'),
+});

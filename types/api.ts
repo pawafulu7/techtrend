@@ -15,6 +15,13 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
+  // Cursor-based pagination fields (optional for backward compatibility)
+  pageInfo?: {
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    startCursor?: string;
+    endCursor?: string;
+  };
 }
 
 export interface PaginationParams {

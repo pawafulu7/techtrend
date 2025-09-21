@@ -1,0 +1,79 @@
+{
+  "timestamp": "2025-09-20T12:45:49.609Z",
+  "metrics": [
+    {
+      "testName": "N+1 Query Elimination",
+      "queryCount": 0,
+      "duration": 0,
+      "cacheHitRate": 0,
+      "l1Hits": 0,
+      "l2Hits": 0,
+      "dbFallbacks": 0,
+      "batchSizeChanges": 0,
+      "success": false,
+      "errors": [
+        "(0 , import_favorite_loader.resetFavoriteLoaderStats) is not a function"
+      ]
+    },
+    {
+      "testName": "Cache Hit Rate",
+      "queryCount": 0,
+      "duration": 0,
+      "cacheHitRate": 0,
+      "l1Hits": 0,
+      "l2Hits": 0,
+      "dbFallbacks": 0,
+      "batchSizeChanges": 0,
+      "success": false,
+      "errors": [
+        "(0 , import_favorite_loader.resetFavoriteLoaderStats) is not a function"
+      ]
+    },
+    {
+      "testName": "Cursor Pagination Performance",
+      "queryCount": 0,
+      "duration": 0,
+      "cacheHitRate": 0,
+      "l1Hits": 0,
+      "l2Hits": 0,
+      "dbFallbacks": 0,
+      "batchSizeChanges": 0,
+      "success": false,
+      "errors": [
+        "No cursor returned from initial request"
+      ]
+    },
+    {
+      "testName": "Batch Size Optimization",
+      "queryCount": 0,
+      "duration": 0,
+      "cacheHitRate": 0,
+      "l1Hits": 0,
+      "l2Hits": 0,
+      "dbFallbacks": 0,
+      "batchSizeChanges": 0,
+      "success": true,
+      "errors": []
+    },
+    {
+      "testName": "API Endpoint Functionality",
+      "queryCount": 0,
+      "duration": 0,
+      "cacheHitRate": 0,
+      "l1Hits": 0,
+      "l2Hits": 0,
+      "dbFallbacks": 0,
+      "batchSizeChanges": 0,
+      "success": false,
+      "errors": [
+        "With filters failed: 500"
+      ]
+    }
+  ],
+  "summary": {
+    "totalTests": 5,
+    "passed": 1,
+    "failed": 4,
+    "successRate": 20
+  }
+}

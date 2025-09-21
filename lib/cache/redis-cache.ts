@@ -98,26 +98,26 @@ export class RedisCache {
 
   /**
    * Delete a value from cache
+   * @returns true if the key was deleted, false otherwise
    */
-  async delete(key: string): Promise<void> {
+  async delete(key: string): Promise<boolean> {
     try {
       const fullKey = this.generateKey(key);
-      await this.redis.del(fullKey);
+      const deletedCount = await this.redis.del(fullKey);
+      return deletedCount > 0;
     } catch (_error) {
       this.stats.errors++;
+      // Re-throw to let upstream code handle the error if needed
+      throw _error;
     }
   }
 
   /**
-   * Delete a specific cache key
+   * Delete a specific cache key (alias for delete method)
+   * @returns true if the key was deleted, false otherwise
    */
-  async del(key: string): Promise<void> {
-    try {
-      const fullKey = this.generateKey(key);
-      await this.redis.del(fullKey);
-    } catch (_error) {
-      this.stats.errors++;
-    }
+  async del(key: string): Promise<boolean> {
+    return this.delete(key);
   }
 
   /**

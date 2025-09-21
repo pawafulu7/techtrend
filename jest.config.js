@@ -20,6 +20,7 @@ const customJestConfig = {
     '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
     '^@/lib/database/index$': '<rootDir>/__mocks__/lib/database.ts',
     '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
+    '^@/lib/logger$': '<rootDir>/__mocks__/lib/logger.ts',
     // Mock Next.js navigation
     '^next/navigation$': '<rootDir>/__tests__/__mocks__/next-navigation.ts',
     // Mock ioredis

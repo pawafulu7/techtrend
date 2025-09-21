@@ -7,7 +7,8 @@ import { GET as articlesGET } from '@/app/api/articles/route';
 import { GET as favoritesGET } from '@/app/api/favorites/route';
 import { GET as articleViewsGET } from '@/app/api/article-views/route';
 import { auth } from '@/lib/auth/auth';
-const { prisma, resetPrismaMock } = require('@/lib/database');
+import { prisma } from '@/lib/database';
+import { resetPrismaMock } from '../../test/utils/prisma-mock';
 
 const mockAuth = auth as jest.MockedFunction<typeof auth>;
 

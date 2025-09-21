@@ -1,4 +1,4 @@
-const { mockDeep, mockReset } = require('jest-mock-extended');
+const { mockDeep, mockReset, mockClear } = require('jest-mock-extended');
 
 const prismaMock = mockDeep();
 
@@ -11,8 +11,9 @@ prismaMock.$transaction = jest.fn().mockImplementation(async (operations) => {
 });
 
 const resetPrismaMock = () => {
-  mockReset(prismaMock);
-  // $transactionモックも再設定
+  // モックの呼び出し履歴をクリア（実装は残す）
+  mockClear(prismaMock);
+  // $transactionモックを再設定
   prismaMock.$transaction = jest.fn().mockImplementation(async (operations) => {
     if (typeof operations === 'function') {
       return operations(prismaMock);

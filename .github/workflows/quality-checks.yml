@@ -309,6 +309,8 @@ jobs:
           NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
           NEXTAUTH_URL: http://localhost:3000  # CI環境用に追加
           AUTH_TRUST_HOST: 'true'  # テスト環境専用、本番では使用しない
+          CURSOR_SECRET: test-cursor-secret-for-ci-environment-only-32chars  # CI環境用のカーソル秘密鍵
+          CI: 'true'  # CI環境フラグ
           PORT: 3000
         run: |
           # ビルドフェーズ
