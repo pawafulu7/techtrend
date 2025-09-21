@@ -40,6 +40,10 @@ export class MemoryCache<T = any> {
     if (options.cleanupInterval !== 0) {
       const interval = (options.cleanupInterval || 60) * 1000;
       this.cleanupTimer = setInterval(() => this.cleanup(), interval);
+      // Jest/Node環境でプロセス終了をブロックしないようにunref
+      if (typeof this.cleanupTimer.unref === 'function') {
+        this.cleanupTimer.unref();
+      }
     }
   }
 
@@ -82,6 +86,9 @@ export class MemoryCache<T = any> {
     const expiresAt = Date.now() + (ttlSeconds * 1000);
 
     // サイズ制限チェック
+    if (this.maxSize <= 0) {
+      return; // 無効化されたL1キャッシュ
+    }
     if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
       this.evictLRU();
     }

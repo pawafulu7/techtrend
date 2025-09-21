@@ -4,6 +4,7 @@ class DataLoaderMock {
     this.batchFn = batchFn;
     this.cache = new Map();
     this.useCache = options?.cache !== false;
+    this.options = options || {};
     this.batch = [];
     this.batchPromises = [];
     this.scheduledBatch = null;
@@ -22,7 +23,12 @@ class DataLoaderMock {
 
       // バッチ実行をスケジュール
       if (!this.scheduledBatch) {
-        this.scheduledBatch = Promise.resolve().then(() => this.dispatchBatch());
+        const schedule = this.options.batchScheduleFn
+          ? (cb) => this.options.batchScheduleFn(cb)
+          : (cb) => Promise.resolve().then(cb);
+        this.scheduledBatch = new Promise((resolve) =>
+          schedule(async () => { await this.dispatchBatch(); resolve(); })
+        );
       }
     });
   }

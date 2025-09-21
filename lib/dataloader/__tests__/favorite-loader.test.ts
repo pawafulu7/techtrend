@@ -14,7 +14,6 @@ jest.mock('dataloader');
 import DataLoader from 'dataloader';
 
 import { prisma } from '@/lib/prisma';
-import { RedisCache } from '@/lib/cache/redis-cache';
 import { createFavoriteLoader, resetFavoriteLoaderCaches } from '../favorite-loader';
 
 // prismaを型アサーション
@@ -157,9 +156,9 @@ describe('FavoriteLoader', () => {
     const result1 = await loader.load('cache-test');
     const result2 = await loader.load('cache-test');
 
-    // DataLoaderのキャッシュが有効な場合、同じインスタンスを返すはず
+    // DataLoaderのキャッシュが有効な場合、同じ値が返るはず（参照の同一性は要求しない）
     expect(prismaMock.favorite.findMany).toHaveBeenCalledTimes(1);
-    // 参照の等価性をチェック
+    // 値の等価性をチェック
     expect(result1).toEqual(result2);
   });
 

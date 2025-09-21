@@ -1,19 +1,17 @@
 // Prismaモックの動作確認用テスト
 jest.mock('@/lib/prisma');
 
-import { prisma } from '@/lib/prisma';
+import { prisma, resetPrismaMock } from '@/lib/prisma';
 
 describe('Prisma Mock Verification', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetPrismaMock();
   });
 
   it('should verify prisma.favorite.findMany mock', async () => {
     const prismaMock = prisma as any;
 
-    console.log('=== Before Setting Mock ===');
-    console.log('findMany type:', typeof prismaMock.favorite.findMany);
-    console.log('Is mock function:', jest.isMockFunction(prismaMock.favorite.findMany));
 
     // mockResolvedValueを試す（DeepMockProxyはこのメソッドを持っているはず）
     const testData = [{ id: '1', userId: 'user1', articleId: 'article1' }];
@@ -22,7 +20,6 @@ describe('Prisma Mock Verification', () => {
     if (prismaMock.favorite.findMany.mockResolvedValue) {
       prismaMock.favorite.findMany.mockResolvedValue(testData);
       const result1 = await prismaMock.favorite.findMany();
-      console.log('Method 1 result:', result1);
       expect(result1).toEqual(testData);
     }
 
@@ -32,7 +29,6 @@ describe('Prisma Mock Verification', () => {
     // 方法2: jest.fn()で上書き
     prismaMock.favorite.findMany = jest.fn().mockResolvedValue(testData);
     const result2 = await prismaMock.favorite.findMany();
-    console.log('Method 2 result:', result2);
     expect(result2).toEqual(testData);
 
     // 呼び出し回数の確認
@@ -62,7 +58,6 @@ describe('Prisma Mock Verification', () => {
       }
     });
 
-    console.log('DataLoader scenario result:', result);
     expect(result).toEqual(mockFavorites);
     expect(prismaMock.favorite.findMany).toHaveBeenCalledWith({
       where: {
