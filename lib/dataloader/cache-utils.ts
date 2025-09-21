@@ -84,7 +84,7 @@ export class TwoLayerCacheManager<T> {
       const cacheKey = `${this.prefix}:${key}`;
       const cached = await this.l1Cache.get(cacheKey);
 
-      if (cached !== null) {
+      if (cached != null) {
         this.stats.l1Hits++;
         results.set(key, cached);
       } else {
@@ -110,7 +110,7 @@ export class TwoLayerCacheManager<T> {
         );
 
         for (const { key, value } of l2Results) {
-          if (value !== null) {
+          if (value != null) {
             this.stats.l2Hits++;
             results.set(key, value);
 

@@ -50,13 +50,18 @@ class DataLoaderMock {
     try {
       const results = await this.batchFn(batch);
 
-      promises.forEach(({ key, resolve }, index) => {
-        const result = results[index];
-        if (this.useCache) {
-          this.cache.set(key, result);
+      for (let i = 0; i < promises.length; i++) {
+        const { key, resolve, reject } = promises[i];
+        try {
+          const value = await Promise.resolve(results[i]);
+          if (this.useCache) {
+            this.cache.set(key, value);
+          }
+          resolve(value);
+        } catch (e) {
+          reject(e);
         }
-        resolve(result);
-      });
+      }
     } catch (error) {
       promises.forEach(({ reject }) => reject(error));
     }

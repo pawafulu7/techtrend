@@ -82,8 +82,8 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
 
         if (memoryCache) {
           const cached = memoryCache.get(cacheKey);
-
-          if (cached !== null) {
+          // null/undefined の双方をミス扱い
+          if (cached != null) {
             stats.l1Hits++;
             results.push(cached as FavoriteStatus);
             continue;
@@ -123,7 +123,7 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
         // L2結果をマージ
         let l2Index = 0;
         for (let i = 0; i < results.length; i++) {
-          if (results[i] === null) {
+          if (results[i] == null) {
             results[i] = l2Results[l2Index++] || null as any;
           }
         }
@@ -180,7 +180,7 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
         // DB結果をマージ
         let dbIndex = 0;
         for (let i = 0; i < results.length; i++) {
-          if (results[i] === null || !(results[i] as any).articleId) {
+          if (results[i] == null || !(results[i] as any)?.articleId) {
             results[i] = dbResults[dbIndex++];
           }
         }
