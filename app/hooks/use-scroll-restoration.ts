@@ -18,6 +18,8 @@ export function useScrollRestoration(
   const [targetPages, setTargetPages] = useState(0);
   const restorationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const restorationAbortRef = useRef<boolean>(false);
+  const fetchingPagesRef = useRef<boolean>(false);
+  const ITEMS_PER_PAGE = 20; // 1ページあたりの記事数
 
   // Helper to manage timeouts safely
   const setRestorationTimeout = useCallback((fn: () => void, delay: number) => {
@@ -57,7 +59,7 @@ export function useScrollRestoration(
       sessionStorage.removeItem(scrollKey);
       return;
     }
-    const { scrollY, timestamp, articleId } = parsed ?? {};
+    const { scrollY, timestamp, articleId, articleIndex } = parsed ?? {};
     if (typeof timestamp !== 'number') {
       sessionStorage.removeItem(scrollKey);
       return;
@@ -71,11 +73,22 @@ export function useScrollRestoration(
     }
 
 
+    // 必要なページ数を計算
+    const calculateRequiredPages = () => {
+      if (typeof articleIndex === 'number' && articleIndex >= 0) {
+        // 記事インデックスから必要なページ数を計算
+        return Math.min(Math.ceil((articleIndex + 1) / ITEMS_PER_PAGE), 10); // 最大10ページまで
+      }
+      return 1; // デフォルトは1ページ
+    };
+
+    const requiredPages = calculateRequiredPages();
+
     // スクロール位置を復元
     // ローディングUIを表示
     setIsRestoring(true);
-    setCurrentPage(1);
-    setTargetPages(1);
+    setCurrentPage(pagesLoaded);
+    setTargetPages(requiredPages);
 
     const restoreScroll = () => {
       // 可能なら記事要素の上端に合わせる（タイトルが確実に見える）
@@ -153,8 +166,31 @@ export function useScrollRestoration(
       }, 700);
     };
 
+    // 必要なページをフェッチしてから復元
+    const fetchRequiredPagesAndRestore = async () => {
+      if (requiredPages > pagesLoaded && !fetchingPagesRef.current) {
+        fetchingPagesRef.current = true;
+
+        // 必要なページまで自動的にフェッチ
+        let currentLoadedPages = pagesLoaded;
+        while (currentLoadedPages < requiredPages && hasNextPage && !restorationAbortRef.current) {
+          await fetchNextPage();
+          currentLoadedPages++;
+          setCurrentPage(currentLoadedPages);
+
+          // 少し待機（レンダリングを待つ）
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        fetchingPagesRef.current = false;
+      }
+    };
+
     // 少し遅延してから復元（DOMの準備を待つ）
-    const tryRestoreWithRetry = () => {
+    const tryRestoreWithRetry = async () => {
+      // まず必要なページをフェッチ
+      await fetchRequiredPagesAndRestore();
+
       let attempts = 0;
       const maxAttempts = 12; // 約1.2秒 (100ms間隔)
       const interval = 100;
@@ -195,12 +231,13 @@ export function useScrollRestoration(
     return () => {
       // cleanup on effect dispose
       restorationAbortRef.current = true;
+      fetchingPagesRef.current = false;
       if (restorationTimeoutRef.current) {
         clearTimeout(restorationTimeoutRef.current);
         restorationTimeoutRef.current = null;
       }
     };
-  }, [isReturningFromArticle, scrollContainerRef, setRestorationTimeout]);
+  }, [isReturningFromArticle, scrollContainerRef, setRestorationTimeout, fetchNextPage, hasNextPage, pagesLoaded]);
 
   // スクロール位置を保存（互換性のため残す）
   const saveScrollPosition = useCallback(() => {

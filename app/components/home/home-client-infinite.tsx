@@ -220,16 +220,21 @@ export function HomeClientInfinite({
     const scrollY = currentScrollPositionRef.current;
 
     if (scrollY > 50) {
+      // 記事のインデックスを取得
+      const articleIndex = allArticles.findIndex(a => a.id === articleId);
+
       const scrollKey = buildScrollStorageKey();
       sessionStorage.setItem(scrollKey, JSON.stringify({
         scrollY: scrollY,
         timestamp: Date.now(),
-        articleId: articleId || null
+        articleId: articleId || null,
+        articleIndex: articleIndex >= 0 ? articleIndex : undefined, // 新規追加
+        totalArticlesLoaded: allArticles.length  // 新規追加
       }));
     } else {
       // 小さいスクロール位置は保存しない
     }
-  }, []);
+  }, [allArticles]);
 
   if (isError) {
     return (
