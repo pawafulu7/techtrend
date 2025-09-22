@@ -19,10 +19,11 @@ const getCache = () => {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { week: string } }
+  { params }: { params: Promise<{ week: string }> }
 ) {
   try {
-    const weekDate = new Date(params.week);
+    const { week } = await params;
+    const weekDate = new Date(week);
     
     if (isNaN(weekDate.getTime())) {
       return NextResponse.json(
@@ -34,7 +35,7 @@ export async function GET(
     // Generate cache key based on week start date
     const cacheInstance = getCache();
     const cacheKey = cacheInstance.generateCacheKey('weekly-digest', {
-      params: { week: params.week }
+      params: { week }
     });
 
     // Check cache first
