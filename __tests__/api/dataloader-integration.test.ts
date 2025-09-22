@@ -103,11 +103,14 @@ describe('DataLoader Integration Tests', () => {
     // 実際のDataLoaderライブラリを使用
     const DataLoader = require('dataloader');
 
-    // モックされたDataLoaderを返すように設定
+    // モックされたDataLoaderを返すように設定（Docker環境対応）
     mockCreateFavoriteLoader.createFavoriteLoader = jest.fn((userId: string) => {
-      // 実際のDataLoaderインスタンスを作成
-      const loader = new DataLoader(async (articleIds: readonly string[]) => {
-        const favorites = await mockPrisma.favorite.findMany({
+      // DataLoaderインスタンスを作成（バッチング関数を外部で定義）
+      const batchFn = async (articleIds: readonly string[]) => {
+        // requireを関数内で実行してmockPrismaを確実に取得
+        const { prisma: currentMockPrisma } = require('@/lib/prisma');
+
+        const favorites = await currentMockPrisma.favorite.findMany({
           where: {
             userId,
             articleId: { in: [...articleIds] }
@@ -122,16 +125,19 @@ describe('DataLoader Integration Tests', () => {
             favoritedAt: favorite?.createdAt
           };
         });
-      });
+      };
 
-      // DataLoaderのインスタンスを直接返す（キャッシュ機能を維持）
+      const loader = new DataLoader(batchFn);
       return loader;
     });
 
     mockCreateArticleViewLoader.createArticleViewLoader = jest.fn((userId: string) => {
-      // 実際のDataLoaderインスタンスを作成
-      const loader = new DataLoader(async (articleIds: readonly string[]) => {
-        const views = await mockPrisma.articleView.findMany({
+      // DataLoaderインスタンスを作成（バッチング関数を外部で定義）
+      const batchFn = async (articleIds: readonly string[]) => {
+        // requireを関数内で実行してmockPrismaを確実に取得
+        const { prisma: currentMockPrisma } = require('@/lib/prisma');
+
+        const views = await currentMockPrisma.articleView.findMany({
           where: {
             userId,
             articleId: { in: [...articleIds] }
@@ -148,9 +154,9 @@ describe('DataLoader Integration Tests', () => {
             readAt: view?.readAt
           };
         });
-      });
+      };
 
-      // DataLoaderのインスタンスを直接返す（キャッシュ機能を維持）
+      const loader = new DataLoader(batchFn);
       return loader;
     });
 
