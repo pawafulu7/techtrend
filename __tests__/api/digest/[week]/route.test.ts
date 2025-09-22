@@ -101,7 +101,7 @@ describe('/api/digest/[week]', () => {
   describe('GET', () => {
     it('週次ダイジェストを取得する（キャッシュなし）', async () => {
       const request = new NextRequest('http://localhost/api/digest/2025-01-01');
-      const params = { week: '2025-01-01' };
+      const params = Promise.resolve({ week: '2025-01-01' });
 
       const response = await GET(request, { params });
 
@@ -121,7 +121,7 @@ describe('/api/digest/[week]', () => {
       mockCacheInstance.get.mockResolvedValue(mockDigest);
 
       const request = new NextRequest('http://localhost/api/digest/2025-01-01');
-      const params = { week: '2025-01-01' };
+      const params = Promise.resolve({ week: '2025-01-01' });
 
       const response = await GET(request, { params });
 
@@ -135,7 +135,7 @@ describe('/api/digest/[week]', () => {
 
     it('無効な日付形式でエラーを返す', async () => {
       const request = new NextRequest('http://localhost/api/digest/invalid-date');
-      const params = { week: 'invalid-date' };
+      const params = Promise.resolve({ week: 'invalid-date' });
 
       const response = await GET(request, { params });
 
@@ -153,7 +153,7 @@ describe('/api/digest/[week]', () => {
       mockGeneratorInstance.getWeeklyDigest.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/digest/2025-01-01');
-      const params = { week: '2025-01-01' };
+      const params = Promise.resolve({ week: '2025-01-01' });
 
       const response = await GET(request, { params });
 
@@ -171,7 +171,7 @@ describe('/api/digest/[week]', () => {
       mockGeneratorInstance.getWeeklyDigest.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest('http://localhost/api/digest/2025-01-01');
-      const params = { week: '2025-01-01' };
+      const params = Promise.resolve({ week: '2025-01-01' });
 
       const response = await GET(request, { params });
 
@@ -187,7 +187,7 @@ describe('/api/digest/[week]', () => {
       mockCacheInstance.get.mockRejectedValue(new Error('Cache error'));
 
       const request = new NextRequest('http://localhost/api/digest/2025-01-01');
-      const params = { week: '2025-01-01' };
+      const params = Promise.resolve({ week: '2025-01-01' });
 
       const response = await GET(request, { params });
 
@@ -202,7 +202,7 @@ describe('/api/digest/[week]', () => {
       mockCacheInstance.set.mockRejectedValue(new Error('Cache set error'));
 
       const request = new NextRequest('http://localhost/api/digest/2025-01-01');
-      const params = { week: '2025-01-01' };
+      const params = Promise.resolve({ week: '2025-01-01' });
 
       const response = await GET(request, { params });
 
@@ -214,7 +214,7 @@ describe('/api/digest/[week]', () => {
 
     it('異なる週の日付でも正しくキャッシュキーを生成する', async () => {
       const request = new NextRequest('http://localhost/api/digest/2025-02-15');
-      const params = { week: '2025-02-15' };
+      const params = Promise.resolve({ week: '2025-02-15' });
 
       const response = await GET(request, { params });
 
