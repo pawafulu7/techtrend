@@ -5,7 +5,7 @@ import { AIService } from '@/lib/ai/ai-service';
 import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
 import { checkSummaryQuality } from '@/lib/utils/summary-quality-checker';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
-import { getLastProcessedTime, saveProcessingStatus, hasUpdatedArticlesSince, setPrisma } from '../utils/processing-status';
+import { getLastProcessedTime, saveProcessingStatus, hasContentUpdatesSince, setPrisma } from '../utils/processing-status';
 
 const prisma = new PrismaClient();
 
@@ -453,8 +453,8 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     // 条件付き処理: 新規記事がない場合はスキップ
     const hasNewArticles = await checkNewArticles(options);
     if (!hasNewArticles && lastProcessedAt) {
-      // 前回処理以降に更新された記事がある場合は処理を継続
-      const hasUpdates = await hasUpdatedArticlesSince(processName);
+      // 前回処理以降にコンテンツが更新された記事がある場合は処理を継続
+      const hasUpdates = await hasContentUpdatesSince(processName);
       if (!hasUpdates) {
         console.error('📋 新規・更新記事なし。要約生成をスキップします。');
         // スキップ時もウォーターマークを更新して、次回の無駄な起動を防ぐ

@@ -15,7 +15,7 @@ export const setPrisma = (client: PrismaClient) => {
  * PrismaClientインスタンスを取得
  * 未注入の場合は新規作成（後方互換性のため）
  */
-const getPrisma = (): PrismaClient => {
+export const getPrisma = (): PrismaClient => {
   if (!injectedPrisma) {
     // 警告: 理想的にはsetPrismaで注入すべき
     console.warn('[processing-status] PrismaClient not injected, creating new instance');
@@ -99,6 +99,26 @@ export async function hasUpdatedArticlesSince(processName: string): Promise<bool
   const count = await getPrisma().article.count({
     where: {
       updatedAt: { gt: lastProcessedAt }
+    }
+  });
+
+  return count > 0;
+}
+
+/**
+ * 前回処理以降にコンテンツが更新された記事があるかチェック
+ * （要約生成などの自己更新による再処理を防ぐため）
+ */
+export async function hasContentUpdatesSince(processName: string): Promise<boolean> {
+  const lastProcessedAt = await getLastProcessedTime('summary-generation');
+
+  if (!lastProcessedAt) {
+    return true; // 初回実行
+  }
+
+  const count = await getPrisma().article.count({
+    where: {
+      contentUpdatedAt: { gt: lastProcessedAt }
     }
   });
 
