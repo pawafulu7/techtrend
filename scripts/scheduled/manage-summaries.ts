@@ -384,11 +384,70 @@ async function sleep(ms: number): Promise<void> {
 type ArticleWithSource = Article & { source: Source };
 
 // generateコマンドの実装（generate-summaries.tsから移植）
+// 条件付き要約生成: 新規記事がある場合のみ処理
+async function checkNewArticles(options?: Options): Promise<boolean> {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+  const whereCondition: Prisma.ArticleWhereInput = {
+    AND: [
+      {
+        // 要約が未生成（nullまたは空文字）
+        OR: [
+          { summary: null },
+          { summary: '' },
+          { detailedSummary: null },
+          { detailedSummary: '' }
+        ]
+      },
+      {
+        // createdAtがある場合は優先、なければpublishedAtを使用
+        OR: [
+          { createdAt: { gte: oneHourAgo } },
+          {
+            createdAt: null,
+            publishedAt: { gte: oneHourAgo }
+          }
+        ]
+      }
+    ]
+  };
+
+  // optionsでsourceが指定されている場合はフィルタリング
+  if (options?.source) {
+    whereCondition.source = { name: options.source };
+  }
+
+  // 存在確認のみのためfindFirstを使用（パフォーマンス向上）
+  const hasNewArticle = await prisma.article.findFirst({
+    where: whereCondition,
+    select: { id: true }
+  });
+
+  if (!hasNewArticle) {
+    console.error('📋 新規記事なし。要約生成をスキップします。');
+    return false;
+  }
+
+  // 詳細なカウントが必要な場合のみcount実行
+  const newArticlesCount = await prisma.article.count({
+    where: whereCondition
+  });
+
+  console.error(`📊 ${newArticlesCount}件の新規記事を検出しました。`);
+  return true;
+}
+
 async function generateSummaries(options: Options): Promise<GenerateResult> {
   console.error('📝 要約とタグの生成を開始します...');
   const startTime = Date.now();
 
   try {
+    // 条件付き処理: 新規記事がない場合はスキップ
+    const hasNewArticles = await checkNewArticles(options);
+    if (!hasNewArticles) {
+      return { generated: 0, errors: 0 };
+    }
+
     // 1. 要約がない記事を取得
     const articlesWithoutSummaryQuery: Prisma.ArticleFindManyArgs = {
       where: { summary: null },
@@ -555,7 +614,6 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                   tags = result.tags;
                 } else {
                   console.error(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (日本語要約あり、スキップ)`);
-                  generatedCount++;
                   return;
                 }
               }
@@ -592,7 +650,6 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
               
               console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
               generatedCount++;
-              apiStats.successes++;
               break; // 成功したらループを抜ける
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : String(error);
