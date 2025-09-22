@@ -384,11 +384,40 @@ async function sleep(ms: number): Promise<void> {
 type ArticleWithSource = Article & { source: Source };
 
 // generateコマンドの実装（generate-summaries.tsから移植）
+// 条件付き要約生成: 新規記事がある場合のみ処理
+async function checkNewArticles(): Promise<boolean> {
+  const newArticlesCount = await prisma.article.count({
+    where: {
+      OR: [
+        { summary: null },
+        { detailedSummary: null }
+      ],
+      createdAt: { 
+        gte: new Date(Date.now() - 60 * 60 * 1000) // 過去1時間以内の新規記事
+      }
+    }
+  });
+
+  if (newArticlesCount === 0) {
+    console.error('📋 新規記事なし。要約生成をスキップします。');
+    return false;
+  }
+
+  console.error(`📊 ${newArticlesCount}件の新規記事を検出しました。`);
+  return true;
+}
+
 async function generateSummaries(options: Options): Promise<GenerateResult> {
   console.error('📝 要約とタグの生成を開始します...');
   const startTime = Date.now();
 
   try {
+    // 条件付き処理: 新規記事がない場合はスキップ
+    const hasNewArticles = await checkNewArticles();
+    if (!hasNewArticles) {
+      return { generated: 0, errors: 0 };
+    }
+
     // 1. 要約がない記事を取得
     const articlesWithoutSummaryQuery: Prisma.ArticleFindManyArgs = {
       where: { summary: null },
