@@ -228,13 +228,17 @@ test.describe('推薦機能', () => {
       await page.waitForFunction(() => {
         const skeletons = document.querySelectorAll('.overflow-hidden:has(.h-48.w-full)');
         const recommendationCards = document.querySelectorAll('[data-testid="recommendation-card"]');
-        return recommendationCards.length > 0 || document.querySelector('text=/推薦記事がありません/');
+        // テキストコンテンツで「推薦記事がありません」を含む要素を探す
+        const emptyMessage = Array.from(document.querySelectorAll('*')).find(el =>
+          el.textContent && el.textContent.includes('推薦記事がありません')
+        );
+        return recommendationCards.length > 0 || emptyMessage;
       }, { timeout: 10000 });
     }
 
     // 最終的に推薦記事またはメッセージが表示されることを確認
     const hasRecommendations = await page.locator('[data-testid="recommendation-card"]').count() > 0;
-    const hasEmptyMessage = await page.locator('text=/推薦記事がありません/').count() > 0;
+    const hasEmptyMessage = await page.locator('text=推薦記事がありません').count() > 0;
 
     expect(hasRecommendations || hasEmptyMessage).toBeTruthy();
   });
@@ -257,8 +261,8 @@ test.describe('推薦機能', () => {
     // 推薦ページへアクセス
     await page.goto('/recommendations');
 
-    // ヘッダー部分が表示されることを確認
-    await expect(page.locator('text=あなたへのおすすめ')).toBeVisible({ timeout: 10000 });
+    // ヘッダー部分が表示されることを確認（最初の要素を選択して重複エラーを回避）
+    await expect(page.locator('text=あなたへのおすすめ').first()).toBeVisible({ timeout: 10000 });
 
     // 更新ボタンが存在することを確認
     const refreshButton = page.locator('button:has-text("更新")');
@@ -269,8 +273,11 @@ test.describe('推薦機能', () => {
 
     // 推薦記事またはメッセージが表示されることを確認
     const hasContent = await page.evaluate(() => {
-      return document.querySelector('[data-testid="recommendation-card"]') !== null ||
-             document.querySelector('text=/推薦記事がありません/') !== null;
+      const hasCard = document.querySelector('[data-testid="recommendation-card"]') !== null;
+      const hasEmptyMessage = Array.from(document.querySelectorAll('*')).some(el =>
+        el.textContent && el.textContent.includes('推薦記事がありません')
+      );
+      return hasCard || hasEmptyMessage;
     });
 
     expect(hasContent).toBeTruthy();
