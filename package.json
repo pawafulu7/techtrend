@@ -39,6 +39,8 @@
     "test:report": "npm test 2>&1 | node scripts/test-reporter.js",
     "test:node": "jest --config jest.config.node.js",
     "test:dom": "jest --config jest.config.dom.js --passWithNoTests",
+    "test:integration": "jest --config jest.config.integration.js",
+    "test:integration:docker": "docker compose -f docker-compose.test.yml up -d --wait && DATABASE_URL=postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test npm run test:integration; docker compose -f docker-compose.test.yml down",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --config jest.config.node.js",
     "test:unit": "jest --testPathPattern=unit",

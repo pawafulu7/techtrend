@@ -4,12 +4,19 @@ import {
   saveProcessingStatus,
   shouldProcess,
   hasUpdatedArticlesSince
-} from '../../scripts/utils/processing-status';
+} from '../../../scripts/utils/processing-status';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasourceUrl: process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test'
+});
 
 describe('ProcessingStatus', () => {
   const testProcessName = 'test-process';
+
+  beforeAll(async () => {
+    // データベース接続を確認
+    await prisma.$connect();
+  });
 
   beforeEach(async () => {
     // テスト用のProcessingLogをクリア
