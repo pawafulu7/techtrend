@@ -8,6 +8,7 @@ import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-t
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
 import { buildScrollStorageKey } from '@/lib/utils/scroll';
+import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { RecommendationSectionInline } from '@/components/recommendation/recommendation-section-inline';
@@ -219,17 +220,29 @@ export function HomeClientInfinite({
     // 追跡していたスクロール位置を保存
     const scrollY = currentScrollPositionRef.current;
 
-    if (scrollY > 50) {
+    if (scrollY > SCROLL.MIN_SCROLL_SAVE_THRESHOLD) {
+      // articleIdがある場合のみ記事のインデックスを取得
+      const idx = articleId ? allArticles.findIndex(a => a.id === articleId) : -1;
+
       const scrollKey = buildScrollStorageKey();
-      sessionStorage.setItem(scrollKey, JSON.stringify({
-        scrollY: scrollY,
+      const payload = {
+        scrollY,
         timestamp: Date.now(),
-        articleId: articleId || null
-      }));
+        articleId: articleId ?? null,
+        articleIndex: idx >= 0 ? idx : undefined,
+        totalArticlesLoaded: allArticles.length,
+      };
+
+      try {
+        sessionStorage.setItem(scrollKey, JSON.stringify(payload));
+      } catch {
+        // Safari Private Browsing等での保存失敗時は復元なしでフォールバック
+        // console.warn('Failed to save scroll position to sessionStorage');
+      }
     } else {
       // 小さいスクロール位置は保存しない
     }
-  }, []);
+  }, [allArticles]);
 
   if (isError) {
     return (
@@ -249,6 +262,7 @@ export function HomeClientInfinite({
             currentPage={currentPage}
             targetPages={targetPages}
             onCancel={cancelRestoration}
+            itemsPerPage={PAGINATION.ITEMS_PER_PAGE}
           />
         )}
         
