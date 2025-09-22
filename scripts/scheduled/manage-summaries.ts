@@ -6,9 +6,12 @@ import { AIService } from '@/lib/ai/ai-service';
 import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
 import { checkSummaryQuality } from '@/lib/utils/summary-quality-checker';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
-import { getLastProcessedTime, saveProcessingStatus, hasUpdatedArticlesSince } from '../utils/processing-status';
+import { getLastProcessedTime, saveProcessingStatus, hasUpdatedArticlesSince, setPrisma } from '../utils/processing-status';
 
 const prisma = new PrismaClient();
+
+// processing-statusモジュールに同じインスタンスを注入
+setPrisma(prisma);
 
 interface GenerateResult {
   generated: number;
@@ -455,6 +458,14 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
       const hasUpdates = await hasUpdatedArticlesSince(processName);
       if (!hasUpdates) {
         console.error('📋 新規・更新記事なし。要約生成をスキップします。');
+        // スキップ時もウォーターマークを更新して、次回の無駄な起動を防ぐ
+        await saveProcessingStatus(
+          processName,
+          0,
+          'success',
+          { processedCount: 0, checkpoint },
+          checkpoint
+        );
         return { generated: 0, errors: 0 };
       }
     }
@@ -560,6 +571,14 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
 
     if (uniqueArticles.length === 0) {
       console.error('✅ すべての記事が適切な要約とタグを持っています');
+      // 対象ゼロでもウォーターマークを進めて、次回の差分処理を効率化
+      await saveProcessingStatus(
+        processName,
+        0,
+        'success',
+        { processedCount: 0, checkpoint },
+        checkpoint
+      );
       return { generated: 0, errors: 0 };
     }
 

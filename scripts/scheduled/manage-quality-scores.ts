@@ -1,8 +1,11 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { calculateQualityScore, checkCategoryQuality } from '@/lib/utils/quality-score';
-import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';
+import { getLastProcessedTime, saveProcessingStatus, setPrisma } from '../utils/processing-status';
 
 const prisma = new PrismaClient();
+
+// processing-statusモジュールに同じインスタンスを注入
+setPrisma(prisma);
 
 interface Options {
   command: 'calculate' | 'fix-zero' | 'recalculate';
@@ -112,12 +115,19 @@ async function calculateAllQualityScores(options: Options) {
     };
 
     // 差分処理のための条件追加
+    // TODO: 恒久対策として、Article に contentUpdatedAt（取込側のみ更新）や qualityScoreComputedAt を追加し、
+    //       差分条件を contentUpdatedAt ベースに切替える必要があります
     if (lastProcessedAt && !options.force) {
       query.where = {
-        OR: [
-          { qualityScore: null },
-          { qualityScore: 0 },
-          { updatedAt: { gt: lastProcessedAt, lte: checkpoint } }
+        AND: [
+          { updatedAt: { lte: checkpoint } }, // 実行中に到着したレコードを除外
+          {
+            OR: [
+              { qualityScore: null },
+              { qualityScore: 0 },
+              { updatedAt: { gt: lastProcessedAt } } // checkpoint超過を除外
+            ]
+          }
         ]
       };
     }
@@ -148,12 +158,15 @@ async function calculateAllQualityScores(options: Options) {
           const baseScore = calculateQualityScore(article);
           const { qualityBonus } = checkCategoryQuality(article);
           const finalScore = Math.min(100, baseScore + qualityBonus);
-          
-          await prisma.article.update({
-            where: { id: article.id },
-            data: { qualityScore: finalScore },
-          });
-          
+
+          // 無駄なUPDATEを避けてupdatedAt汚染を抑制
+          if (article.qualityScore !== finalScore) {
+            await prisma.article.update({
+              where: { id: article.id },
+              data: { qualityScore: finalScore },
+            });
+          }
+
           processedCount++;
         })
       );

@@ -1,12 +1,34 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 
-const prisma = new PrismaClient();
+// DI化: PrismaClientの多重生成を防ぐため依存性注入パターンを採用
+let injectedPrisma: PrismaClient | null = null;
+
+/**
+ * PrismaClientインスタンスを設定
+ * 呼び出し側スクリプトで起動時に一度だけ呼び出す
+ */
+export const setPrisma = (client: PrismaClient) => {
+  injectedPrisma = client;
+};
+
+/**
+ * PrismaClientインスタンスを取得
+ * 未注入の場合は新規作成（後方互換性のため）
+ */
+const getPrisma = (): PrismaClient => {
+  if (!injectedPrisma) {
+    // 警告: 理想的にはsetPrismaで注入すべき
+    console.warn('[processing-status] PrismaClient not injected, creating new instance');
+    injectedPrisma = new PrismaClient();
+  }
+  return injectedPrisma;
+};
 
 /**
  * 最終処理時刻を取得
  */
 export async function getLastProcessedTime(processName: string): Promise<Date | null> {
-  const log = await prisma.processingLog.findUnique({
+  const log = await getPrisma().processingLog.findUnique({
     where: { processName }
   });
 
@@ -24,7 +46,7 @@ export async function saveProcessingStatus(
   processedAt?: Date
 ): Promise<void> {
   const ts = processedAt ?? new Date();
-  await prisma.processingLog.upsert({
+  await getPrisma().processingLog.upsert({
     where: { processName },
     update: {
       lastProcessedAt: ts,
@@ -74,7 +96,7 @@ export async function hasUpdatedArticlesSince(processName: string): Promise<bool
     return true; // 初回実行
   }
 
-  const count = await prisma.article.count({
+  const count = await getPrisma().article.count({
     where: {
       updatedAt: { gt: lastProcessedAt }
     }
@@ -89,7 +111,7 @@ export async function hasUpdatedArticlesSince(processName: string): Promise<bool
 export async function cleanupOldLogs(daysToKeep: number = 30): Promise<void> {
   const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
 
-  await prisma.processingLog.deleteMany({
+  await getPrisma().processingLog.deleteMany({
     where: {
       updatedAt: { lt: cutoffDate }
     }
