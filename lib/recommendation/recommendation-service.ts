@@ -185,25 +185,32 @@ export class RecommendationService {
     userId: string,
     limit: number = 10
   ): Promise<RecommendedArticle[]> {
-    
+
     // ユーザーの興味を取得
     const interests = await this.getUserInterests(userId);
-    
+
     if (!interests || interests.totalActions < 3) {
       // 新規ユーザーまたは履歴が少ない場合はデフォルト推薦
       return this.getDefaultRecommendations(limit);
     }
 
-    // 最近読んだ記事を取得（重複を下げるため）
-    const recentlyViewedIds = await prisma.articleView.findMany({
-      where: { 
-        userId,
-        viewedAt: { 
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7日以内
-        }
+    // 1回のクエリで全ての閲覧履歴を取得（最適化: 2つのクエリを1つに統合）
+    const viewedArticles = await prisma.articleView.findMany({
+      where: { userId },
+      select: {
+        articleId: true,
+        viewedAt: true
       },
-      select: { articleId: true },
-    }).then(views => views.map(v => v.articleId));
+      take: 1000, // メモリ使用量制限のため最大1000件
+      orderBy: { viewedAt: 'desc' }
+    });
+
+    // メモリ上で7日間分とそれ以外を分類
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recentlyViewedIds = viewedArticles
+      .filter(v => v.viewedAt && v.viewedAt >= sevenDaysAgo)
+      .map(v => v.articleId);
+    const allViewedIds = new Set(viewedArticles.map(v => v.articleId));
 
     // 候補記事を取得（過去30日間、品質スコア50以上）
     const thirtyDaysAgo = new Date();
@@ -262,13 +269,7 @@ export class RecommendationService {
       tagSetCount.set(tagSet, currentTagSetCount + 1);
     }
 
-    // 全ての閲覧済み記事IDを取得（既読マーク用）
-    const allViewedIds = await prisma.articleView.findMany({
-      where: { userId },
-      select: { articleId: true },
-    }).then(views => new Set(views.map(v => v.articleId)));
-
-    // RecommendedArticle形式に変換
+    // RecommendedArticle形式に変換（allViewedIdsは既に取得済み）
     return selected.map(item => ({
       id: item.article.id,
       title: item.article.title,
