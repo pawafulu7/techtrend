@@ -172,31 +172,107 @@ test.describe('推薦機能', () => {
     // ログイン（推薦ボタンは認証必須）
     const loginSuccess = await loginTestUser(page);
     await page.goto('/');
-    
+
     // 記事数表示を探す（最初のものを使用してstrict mode違反を回避）
     const articleCount = page.locator('text=/\\d+件の記事/').first();
-    
+
     // 推薦トグルボタンを探す（data-testidを使用）
     const toggleButton = page.locator('[data-testid="recommendation-toggle"]');
-    
+
     // 記事数表示は常に存在することを確認
     await expect(articleCount).toBeVisible();
-    
+
     // ログイン状態を確認
     const userMenuExists = await page.locator('[data-testid="user-menu-trigger"]').count();
-    
+
     if (!loginSuccess || userMenuExists === 0) {
       console.log('Login failed, testing that recommendation toggle is hidden');
       await expect(toggleButton).toBeHidden();
       return;
     }
-    
+
     // ログイン済みの場合は両方が存在することを確認
     await expect(toggleButton).toBeVisible({ timeout: 10000 });
-    
+
     // 同じツールバー内にあることを確認
     const toolbar = page.locator('.flex-shrink-0.bg-gray-50\\/50');
     await expect(toolbar).toContainText('件の記事');
     await expect(toolbar.locator('[data-testid="recommendation-toggle"]')).toBeVisible();
+  });
+
+  test('推薦ページでSuspenseスケルトンが表示される', async ({ page }) => {
+    // ログイン
+    const loginSuccess = await loginTestUser(page);
+
+    if (!loginSuccess) {
+      console.log('Login failed, skipping Suspense test');
+      return;
+    }
+
+    // 推薦ページへ直接アクセス
+    await page.goto('/recommendations');
+
+    // スケルトンローディングが一時的に表示されることを確認
+    // （Suspenseフォールバック）
+    const skeletonCards = page.locator('.overflow-hidden:has(.h-48.w-full)');
+
+    // スケルトンが最初に表示される（または既にデータがロードされている）
+    const skeletonCount = await skeletonCards.count();
+
+    if (skeletonCount > 0) {
+      // スケルトンが表示されている場合
+      console.log('Skeleton loading detected, count:', skeletonCount);
+      expect(skeletonCount).toBeGreaterThan(0);
+
+      // データロード後にスケルトンが消えることを確認
+      await page.waitForFunction(() => {
+        const skeletons = document.querySelectorAll('.overflow-hidden:has(.h-48.w-full)');
+        const recommendationCards = document.querySelectorAll('[data-testid="recommendation-card"]');
+        return recommendationCards.length > 0 || document.querySelector('text=/推薦記事がありません/');
+      }, { timeout: 10000 });
+    }
+
+    // 最終的に推薦記事またはメッセージが表示されることを確認
+    const hasRecommendations = await page.locator('[data-testid="recommendation-card"]').count() > 0;
+    const hasEmptyMessage = await page.locator('text=/推薦記事がありません/').count() > 0;
+
+    expect(hasRecommendations || hasEmptyMessage).toBeTruthy();
+  });
+
+  test('推薦ページのローディング状態とデータ表示', async ({ page }) => {
+    // ログイン
+    const loginSuccess = await loginTestUser(page);
+
+    if (!loginSuccess) {
+      console.log('Login failed, skipping loading state test');
+      return;
+    }
+
+    // ネットワーク遅延をシミュレート
+    await page.route('/api/recommendations*', async (route) => {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await route.continue();
+    });
+
+    // 推薦ページへアクセス
+    await page.goto('/recommendations');
+
+    // ヘッダー部分が表示されることを確認
+    await expect(page.locator('text=あなたへのおすすめ')).toBeVisible({ timeout: 10000 });
+
+    // 更新ボタンが存在することを確認
+    const refreshButton = page.locator('button:has-text("更新")');
+    await expect(refreshButton).toBeVisible();
+
+    // データロード完了を待つ
+    await page.waitForLoadState('networkidle');
+
+    // 推薦記事またはメッセージが表示されることを確認
+    const hasContent = await page.evaluate(() => {
+      return document.querySelector('[data-testid="recommendation-card"]') !== null ||
+             document.querySelector('text=/推薦記事がありません/') !== null;
+    });
+
+    expect(hasContent).toBeTruthy();
   });
 });

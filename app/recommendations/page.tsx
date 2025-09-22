@@ -1,7 +1,9 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth/auth';
 import { RecommendationsClient } from './recommendations-client';
+import { RecommendationsSkeleton } from '@/app/components/recommendations/recommendations-skeleton';
 import { loginWithCallback } from '@/lib/routes/auth';
 
 export const metadata: Metadata = {
@@ -18,7 +20,9 @@ export default async function RecommendationsPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
-      <RecommendationsClient />
+      <Suspense fallback={<RecommendationsSkeleton />}>
+        <RecommendationsClient />
+      </Suspense>
     </div>
   );
 }
