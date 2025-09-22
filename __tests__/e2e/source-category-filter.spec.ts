@@ -268,8 +268,23 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await page.getByTestId('category-foreign-header').click();
     const foreignSection = page.getByTestId('category-foreign');
     await page.getByTestId('category-foreign-select-all').click();
+    await page.waitForTimeout(500); // 選択状態の更新を待つ
+
     const checkboxes = foreignSection.getByTestId('category-foreign-content').locator('button[role="checkbox"]');
     const n = await checkboxes.count();
+
+    // チェックボックスの選択状態が更新されるまで待機
+    await page.waitForFunction(
+      (expectedCount) => {
+        const checkedBoxes = document.querySelectorAll(
+          '[data-testid="category-foreign-content"] button[role="checkbox"][data-state="checked"]'
+        );
+        return checkedBoxes.length === expectedCount;
+      },
+      n,
+      { timeout: 5000 }
+    );
+
     // ボタン自身の data-state を直接判定
     const checkedCount = await foreignSection
       .getByTestId('category-foreign-content')
