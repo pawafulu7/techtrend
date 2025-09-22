@@ -1,8 +1,6 @@
 export const SITE_NAME = 'TechTrend';
 export const SITE_DESCRIPTION = '最新テックトレンドを一括収集・表示';
 
-export const ARTICLES_PER_PAGE = 20;
-
 // ページネーション関連
 export const PAGINATION = {
   /** 1ページあたりの表示記事数 */
@@ -10,6 +8,10 @@ export const PAGINATION = {
   /** スクロール復元時の最大プリフェッチページ数（UX/パフォーマンス観点の上限） */
   MAX_PREFETCH_PAGES: 10,
 } as const;
+
+// 互換性レイヤー（将来的に削除予定）
+// DEPRECATED: 直接参照は避け、PAGINATION.ITEMS_PER_PAGE を使用してください
+export const ARTICLES_PER_PAGE = PAGINATION.ITEMS_PER_PAGE;
 
 // タイムアウト関連
 export const TIMEOUTS = {

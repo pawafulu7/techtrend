@@ -17,11 +17,12 @@ export function useScrollRestoration(
   const [isRestoring, setIsRestoring] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [targetPages, setTargetPages] = useState(0);
-  const restorationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const restorationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restorationAbortRef = useRef<boolean>(false);
   const fetchingPagesRef = useRef<boolean>(false);
   const pagesLoadedRef = useRef<number>(pagesLoaded);
   const restorationStartedRef = useRef<boolean>(false);
+  const hasNextPageRef = useRef<boolean>(hasNextPage);
 
   // Helper to manage timeouts safely
   const setRestorationTimeout = useCallback((fn: () => void, delay: number) => {
@@ -32,7 +33,7 @@ export function useScrollRestoration(
       if (restorationAbortRef.current) return;
       fn();
     }, delay);
-    restorationTimeoutRef.current = handle as unknown as NodeJS.Timeout;
+    restorationTimeoutRef.current = handle;
     return handle;
   }, []);
 
@@ -40,6 +41,11 @@ export function useScrollRestoration(
   useEffect(() => {
     pagesLoadedRef.current = pagesLoaded;
   }, [pagesLoaded]);
+
+  // hasNextPageRefをhasNextPageの変更に同期
+  useEffect(() => {
+    hasNextPageRef.current = hasNextPage;
+  }, [hasNextPage]);
 
   // スクロール位置復元処理（記事詳細から戻った時のみ）
   useEffect(() => {
@@ -178,6 +184,7 @@ export function useScrollRestoration(
       setRestorationTimeout(() => {
         if (restorationAbortRef.current) return;
         setIsRestoring(false);
+        restorationStartedRef.current = false;
         try {
           const evt = new CustomEvent('scrollRestored', { detail: { restored: true, cancelled: false } });
           window.dispatchEvent(evt);
@@ -191,7 +198,7 @@ export function useScrollRestoration(
         fetchingPagesRef.current = true;
         try {
           // 必要なページまで自動的にフェッチ
-          while (pagesLoadedRef.current < requiredPages && hasNextPage && !restorationAbortRef.current) {
+          while (pagesLoadedRef.current < requiredPages && hasNextPageRef.current && !restorationAbortRef.current) {
             // fetchNextPageの結果を待ち、成功したらpagesLoadedRefを更新
             const result = await fetchNextPage();
 
@@ -200,9 +207,12 @@ export function useScrollRestoration(
               break;
             }
 
-            // 実際にロードされたページ数を確認
-            // fetchNextPageがページ数を返さない場合はインクリメント
-            if (result?.pageParams?.length) {
+            // 実際にロードされたページ数を確認（React Query v5のレスポンス構造に対応）
+            // result.data.pageParamsから取得する
+            if (result?.data?.pageParams?.length) {
+              pagesLoadedRef.current = result.data.pageParams.length;
+            } else if (result?.pageParams?.length) {
+              // 互換性のためのフォールバック
               pagesLoadedRef.current = result.pageParams.length;
             } else {
               pagesLoadedRef.current++;
@@ -214,7 +224,15 @@ export function useScrollRestoration(
             }
 
             // hasNextPageの再評価（fetchNextPageの結果を反映）
-            if (result?.hasNextPage === false) {
+            if (result?.data?.hasNextPage !== undefined) {
+              hasNextPageRef.current = result.data.hasNextPage;
+            } else if (result?.hasNextPage !== undefined) {
+              // 互換性のためのフォールバック
+              hasNextPageRef.current = result.hasNextPage;
+            }
+
+            // hasNextPageがfalseならループ終了
+            if (hasNextPageRef.current === false) {
               break;
             }
 
@@ -269,7 +287,7 @@ export function useScrollRestoration(
         }
       };
 
-      setRestorationTimeout(tryOnce, 100);
+      setRestorationTimeout(tryOnce, interval);
     };
 
     tryRestoreWithRetry();

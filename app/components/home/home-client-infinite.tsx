@@ -221,17 +221,24 @@ export function HomeClientInfinite({
     const scrollY = currentScrollPositionRef.current;
 
     if (scrollY > SCROLL.MIN_SCROLL_SAVE_THRESHOLD) {
-      // 記事のインデックスを取得
-      const articleIndex = allArticles.findIndex(a => a.id === articleId);
+      // articleIdがある場合のみ記事のインデックスを取得
+      const idx = articleId ? allArticles.findIndex(a => a.id === articleId) : -1;
 
       const scrollKey = buildScrollStorageKey();
-      sessionStorage.setItem(scrollKey, JSON.stringify({
-        scrollY: scrollY,
+      const payload = {
+        scrollY,
         timestamp: Date.now(),
-        articleId: articleId || null,
-        articleIndex: articleIndex >= 0 ? articleIndex : undefined, // 新規追加
-        totalArticlesLoaded: allArticles.length  // 新規追加
-      }));
+        articleId: articleId ?? null,
+        articleIndex: idx >= 0 ? idx : undefined,
+        totalArticlesLoaded: allArticles.length,
+      };
+
+      try {
+        sessionStorage.setItem(scrollKey, JSON.stringify(payload));
+      } catch {
+        // Safari Private Browsing等での保存失敗時は復元なしでフォールバック
+        // console.warn('Failed to save scroll position to sessionStorage');
+      }
     } else {
       // 小さいスクロール位置は保存しない
     }
