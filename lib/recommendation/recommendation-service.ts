@@ -234,33 +234,39 @@ export class RecommendationService {
 
       if (!interests || interests.totalActions < 3) {
         // 新規ユーザーまたは履歴が少ない場合はデフォルト推薦
-        return this.getDefaultRecommendations(limit);
+        return await this.getDefaultRecommendations(limit);
       }
 
     // DataLoaderを使用して効率的に閲覧履歴を取得
     const viewLoader = this.getViewLoader(userId);
 
-    // 1回のクエリで全ての閲覧履歴を取得（最適化: 2つのクエリを1つに統合）
+    // 7日間分のデータのみを取得（DB側でフィルタリング）
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const viewedArticles = await prisma.articleView.findMany({
-      where: { userId },
+      where: {
+        userId,
+        viewedAt: { gte: sevenDaysAgo }
+      },
       select: {
         articleId: true,
         viewedAt: true
       },
-      take: 1000, // メモリ使用量制限のため最大1000件
+      take: 1000, // 念のための上限（7日分で十分に小さいはず）
       orderBy: { viewedAt: 'desc' }
     });
 
-    // メモリ上で7日間分とそれ以外を分類
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentlyViewedIds = viewedArticles
-      .filter(v => v.viewedAt && v.viewedAt >= sevenDaysAgo)
-      .map(v => v.articleId);
+    // 重複を除去したIDリストを生成
+    const recentlyViewedIds = Array.from(
+      new Set(
+        viewedArticles
+          .filter(v => v.viewedAt && v.viewedAt >= sevenDaysAgo)
+          .map(v => v.articleId)
+      )
+    );
     // DataLoaderがisViewedの判定を行うため、allViewedIdsは不要になった
 
-    // 候補記事を取得（過去30日間、品質スコア50以上）
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // 候補記事を取得（configのcandidateWindow期間内、品質スコア50以上）
+    const thirtyDaysAgo = new Date(Date.now() - this.config.candidateWindow);
 
     const candidates = await prisma.article.findMany({
       where: {
@@ -291,6 +297,11 @@ export class RecommendationService {
     // スコアでソート
     scoredArticles.sort((a, b) => b.score - a.score);
 
+    // 候補が無い場合は空で返す
+    if (scoredArticles.length === 0) {
+      return [];
+    }
+
     // 相対正規化のためのmin/max計算
     const scores = scoredArticles.map(item => item.score);
     const minScore = Math.min(...scores);
@@ -305,7 +316,7 @@ export class RecommendationService {
     for (const scored of scoredArticles) {
       if (selected.length >= limit) break;
 
-      const sourceName = scored.article.source.name;
+      const sourceName = scored.article.source?.name ?? 'unknown';
       const tagSet = hashTagSet(scored.article.tags.map(t => typeof t === 'string' ? t : t.name));
 
       // ソース制限チェック
@@ -346,7 +357,7 @@ export class RecommendationService {
           summary: item.article.summary,
           thumbnail: item.article.thumbnail,
           publishedAt: item.article.publishedAt,
-          sourceName: item.article.source.name,
+          sourceName: item.article.source?.name ?? 'unknown',
           tags: item.article.tags.map(t => typeof t === 'string' ? t : t.name),
           recommendationScore: normalizedScore,
           recommendationReasons: item.reasons,
