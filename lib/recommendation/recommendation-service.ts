@@ -10,8 +10,7 @@ import {
   defaultConfig,
   calculateTimeWeight,
   calculateFreshnessBoost,
-  hashTagSet,
-  normalizeScore
+  hashTagSet
 } from './utils';
 import { getRedisService } from '@/lib/redis/factory';
 import { createArticleViewLoader } from '@/lib/dataloader/article-view-loader';
@@ -22,19 +21,45 @@ import logger from '@/lib/logger';
 
 const redisService = getRedisService();
 
+// ViewLoaderキャッシュエントリの型定義
+interface ViewLoaderCacheEntry {
+  loader: DataLoader<string, ViewStatus>;
+  createdAt: number;
+}
+
 export class RecommendationService {
   private config = defaultConfig;
-  private viewLoaderCache = new Map<string, DataLoader<string, ViewStatus>>();
+  private viewLoaderCache = new Map<string, ViewLoaderCacheEntry>();
+  private readonly VIEW_LOADER_TTL = 5 * 60 * 1000; // 5分のTTL
 
   /**
-   * DataLoaderインスタンスを取得（ユーザー毎にキャッシュ）
+   * DataLoaderインスタンスを取得（ユーザー毎にキャッシュ、TTL付き）
    */
   private getViewLoader(userId: string): DataLoader<string, ViewStatus> {
-    let loader = this.viewLoaderCache.get(userId);
-    if (!loader) {
-      loader = createArticleViewLoader(userId);
-      this.viewLoaderCache.set(userId, loader);
+    const now = Date.now();
+    const entry = this.viewLoaderCache.get(userId);
+
+    // TTLチェック
+    if (entry && (now - entry.createdAt) < this.VIEW_LOADER_TTL) {
+      return entry.loader;
     }
+
+    // 新しいLoaderを作成
+    const loader = createArticleViewLoader(userId);
+    this.viewLoaderCache.set(userId, {
+      loader,
+      createdAt: now
+    });
+
+    // 古いエントリのクリーンアップ（メモリリーク防止）
+    if (this.viewLoaderCache.size > 100) {
+      // 最も古いエントリを削除
+      const entries = Array.from(this.viewLoaderCache.entries());
+      entries.sort((a, b) => a[1].createdAt - b[1].createdAt);
+      const toRemove = entries.slice(0, entries.length - 100);
+      toRemove.forEach(([key]) => this.viewLoaderCache.delete(key));
+    }
+
     return loader;
   }
 
@@ -203,14 +228,14 @@ export class RecommendationService {
     limit: number = 10
   ): Promise<RecommendedArticle[]> {
     const startTime = Date.now();
+    try {
+      // ユーザーの興味を取得
+      const interests = await this.getUserInterests(userId);
 
-    // ユーザーの興味を取得
-    const interests = await this.getUserInterests(userId);
-
-    if (!interests || interests.totalActions < 3) {
-      // 新規ユーザーまたは履歴が少ない場合はデフォルト推薦
-      return this.getDefaultRecommendations(limit);
-    }
+      if (!interests || interests.totalActions < 3) {
+        // 新規ユーザーまたは履歴が少ない場合はデフォルト推薦
+        return this.getDefaultRecommendations(limit);
+      }
 
     // DataLoaderを使用して効率的に閲覧履歴を取得
     const viewLoader = this.getViewLoader(userId);
@@ -266,6 +291,12 @@ export class RecommendationService {
     // スコアでソート
     scoredArticles.sort((a, b) => b.score - a.score);
 
+    // 相対正規化のためのmin/max計算
+    const scores = scoredArticles.map(item => item.score);
+    const minScore = Math.min(...scores);
+    const maxScore = Math.max(...scores);
+    const scoreRange = maxScore - minScore;
+
     // 多様性を確保しながら選択
     const selected: typeof scoredArticles = [];
     const sourceCount = new Map<string, number>();
@@ -290,39 +321,43 @@ export class RecommendationService {
       tagSetCount.set(tagSet, currentTagSetCount + 1);
     }
 
-    // DataLoaderを使用して各記事の閲覧状態を効率的に取得
-    const articleIds = selected.map(item => item.article.id);
-    const viewStatuses = await viewLoader.loadMany(articleIds);
+      // DataLoaderを使用して各記事の閲覧状態を効率的に取得
+      const articleIds = selected.map(item => item.article.id);
+      const viewStatuses = await viewLoader.loadMany(articleIds);
 
-    // メトリクスを記録
-    recommendationMetrics.recordBatchSize(articleIds.length);
-    recommendationMetrics.recordDatabaseQuery('articleView');
-    recommendationMetrics.recordResponseTime('getRecommendations', Date.now() - startTime);
+      // メトリクスを記録
+      recommendationMetrics.recordBatchSize(articleIds.length);
+      recommendationMetrics.recordDatabaseQuery('articleView');
 
-    // RecommendedArticle形式に変換
-    return selected.map((item, index) => {
-      const viewStatus = viewStatuses[index];
-      const isViewed = viewStatus instanceof Error ? false : viewStatus.isViewed;
+      // キャッシュヒット/ミスを正確に測定（DataLoader内部で測定済みのため削除）
+      // RecommendedArticle形式に変換
+      return selected.map((item, index) => {
+        const viewStatus = viewStatuses[index];
+        const isViewed = viewStatus instanceof Error ? false : viewStatus.isViewed;
 
-      // キャッシュヒット率を記録
-      if (!(viewStatus instanceof Error)) {
-        recommendationMetrics.recordCacheHit(true);
-      }
+        // 相対正規化によるスコア計算（0-100）
+        const normalizedScore = scoreRange > 0
+          ? Math.round(((item.score - minScore) / scoreRange) * 100)
+          : 50; // すべて同じスコアの場合は50
 
-      return {
-        id: item.article.id,
-        title: item.article.title,
-        url: item.article.url,
-        summary: item.article.summary,
-        thumbnail: item.article.thumbnail,
-        publishedAt: item.article.publishedAt,
-        sourceName: item.article.source.name,
-        tags: item.article.tags.map(t => typeof t === 'string' ? t : t.name),
-        recommendationScore: normalizeScore(item.score),
-        recommendationReasons: item.reasons,
-        isViewed,  // DataLoaderから取得した既読フラグ
-      };
-    });
+        return {
+          id: item.article.id,
+          title: item.article.title,
+          url: item.article.url,
+          summary: item.article.summary,
+          thumbnail: item.article.thumbnail,
+          publishedAt: item.article.publishedAt,
+          sourceName: item.article.source.name,
+          tags: item.article.tags.map(t => typeof t === 'string' ? t : t.name),
+          recommendationScore: normalizedScore,
+          recommendationReasons: item.reasons,
+          isViewed,  // DataLoaderから取得した既読フラグ
+        };
+      });
+    } finally {
+      // レスポンスタイムを必ず記録
+      recommendationMetrics.recordResponseTime('getRecommendations', Date.now() - startTime);
+    }
   }
 
   /**
@@ -349,18 +384,30 @@ export class RecommendationService {
       take: limit,
     });
 
-    return popularArticles.map(article => ({
-      id: article.id,
-      title: article.title,
-      url: article.url,
-      summary: article.summary,
-      thumbnail: article.thumbnail,
-      publishedAt: article.publishedAt,
-      sourceName: article.source.name,
-      tags: article.tags.map(t => t.name),
-      recommendationScore: article.qualityScore / 100,
-      recommendationReasons: ['話題の記事', '高品質な記事'],
-    }));
+    // 品質スコアで相対正規化（70-100の範囲を0-100に変換）
+    const scores = popularArticles.map(a => a.qualityScore as number);
+    const minScore = Math.min(...scores);
+    const maxScore = Math.max(...scores);
+    const scoreRange = maxScore - minScore;
+
+    return popularArticles.map(article => {
+      const normalizedScore = scoreRange > 0
+        ? Math.round(((article.qualityScore as number - minScore) / scoreRange) * 100)
+        : 50; // すべて同じスコアの場合は50
+
+      return {
+        id: article.id,
+        title: article.title,
+        url: article.url,
+        summary: article.summary,
+        thumbnail: article.thumbnail,
+        publishedAt: article.publishedAt,
+        sourceName: article.source.name,
+        tags: article.tags.map(t => t.name),
+        recommendationScore: normalizedScore,
+        recommendationReasons: ['話題の記事', '高品質な記事'],
+      };
+    });
   }
 }
 

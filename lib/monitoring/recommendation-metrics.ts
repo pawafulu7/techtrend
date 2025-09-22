@@ -1,13 +1,57 @@
 import logger from '@/lib/logger';
 
 /**
+ * リングバッファの実装
+ */
+class RingBuffer {
+  private buffer: number[];
+  private writeIndex: number = 0;
+  private isFull: boolean = false;
+  private readonly maxSize: number;
+
+  constructor(maxSize: number = 1000) {
+    this.maxSize = maxSize;
+    this.buffer = new Array(maxSize);
+  }
+
+  push(value: number): void {
+    this.buffer[this.writeIndex] = value;
+    this.writeIndex = (this.writeIndex + 1) % this.maxSize;
+    if (this.writeIndex === 0) {
+      this.isFull = true;
+    }
+  }
+
+  getValues(): number[] {
+    if (!this.isFull && this.writeIndex === 0) {
+      return [];
+    }
+    if (!this.isFull) {
+      return this.buffer.slice(0, this.writeIndex);
+    }
+    // フルの場合は、writeIndexから最後まで + 最初からwriteIndexまでの順で返す
+    return [...this.buffer.slice(this.writeIndex), ...this.buffer.slice(0, this.writeIndex)];
+  }
+
+  size(): number {
+    return this.isFull ? this.maxSize : this.writeIndex;
+  }
+
+  clear(): void {
+    this.writeIndex = 0;
+    this.isFull = false;
+  }
+}
+
+/**
  * 推薦システムのメトリクス収集と分析
  */
 export class RecommendationMetrics {
   private static instance: RecommendationMetrics;
-  private metrics: Map<string, number[]> = new Map();
+  private metrics: Map<string, RingBuffer> = new Map();
   private counters: Map<string, number> = new Map();
   private startTime: number = Date.now();
+  private readonly MAX_METRICS_SIZE = 1000; // リングバッファの最大サイズ
 
   private constructor() {}
 
@@ -24,12 +68,13 @@ export class RecommendationMetrics {
   recordResponseTime(operation: string, duration: number): void {
     const key = `response_time:${operation}`;
     if (!this.metrics.has(key)) {
-      this.metrics.set(key, []);
+      this.metrics.set(key, new RingBuffer(this.MAX_METRICS_SIZE));
     }
-    this.metrics.get(key)!.push(duration);
+    const buffer = this.metrics.get(key)!;
+    buffer.push(duration);
 
     // 100回ごとに統計をログ出力
-    if (this.metrics.get(key)!.length % 100 === 0) {
+    if (buffer.size() % 100 === 0) {
       this.logStatistics(key);
     }
   }
@@ -63,7 +108,7 @@ export class RecommendationMetrics {
   recordBatchSize(size: number): void {
     const key = 'batch:sizes';
     if (!this.metrics.has(key)) {
-      this.metrics.set(key, []);
+      this.metrics.set(key, new RingBuffer(this.MAX_METRICS_SIZE));
     }
     this.metrics.get(key)!.push(size);
   }
@@ -72,10 +117,13 @@ export class RecommendationMetrics {
    * 統計情報をログ出力
    */
   private logStatistics(key: string): void {
-    const values = this.metrics.get(key);
-    if (!values || values.length === 0) return;
+    const buffer = this.metrics.get(key);
+    if (!buffer) return;
 
-    const sorted = values.sort((a, b) => a - b);
+    const values = buffer.getValues();
+    if (values.length === 0) return;
+
+    const sorted = [...values].sort((a, b) => a - b);
     const p50 = sorted[Math.floor(sorted.length * 0.5)];
     const p95 = sorted[Math.floor(sorted.length * 0.95)];
     const p99 = sorted[Math.floor(sorted.length * 0.99)];
@@ -113,7 +161,8 @@ export class RecommendationMetrics {
       : '0.00';
 
     const dbTotal = this.counters.get('db:total') || 0;
-    const requestCount = this.metrics.get('response_time:getRecommendations')?.length || 0;
+    const requestBuffer = this.metrics.get('response_time:getRecommendations');
+    const requestCount = requestBuffer ? requestBuffer.size() : 0;
     const avgQueriesPerRequest = requestCount > 0
       ? (dbTotal / requestCount).toFixed(2)
       : '0.00';

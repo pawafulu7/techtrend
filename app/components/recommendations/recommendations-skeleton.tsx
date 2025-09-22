@@ -19,7 +19,7 @@ export function RecommendationsSkeleton() {
       {/* 記事カードのスケルトン */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[...Array(12)].map((_, i) => (
-          <Card key={i} className="overflow-hidden">
+          <Card key={i} className="overflow-hidden" data-testid="recommendation-skeleton-card">
             <CardHeader className="pb-3">
               {/* サムネイル */}
               <Skeleton className="h-48 w-full rounded-md mb-3" />

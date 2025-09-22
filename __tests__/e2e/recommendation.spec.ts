@@ -162,7 +162,7 @@ test.describe('推薦機能', () => {
   test('推薦セクション表示切り替え（ログイン済みの場合）', async ({ page }) => {
     // 注意: 実際のテストではログイン処理が必要
     // ここでは推薦トグルボタンの存在確認のみ
-    const recommendationSection = page.locator('section:has-text("あなたへのおすすめ")');
+    const recommendationSection = page.locator('[data-testid="recommendation-header"]');
     
     // ログインしていない場合は推薦セクションが表示されない
     await expect(recommendationSection).toBeHidden();
@@ -214,7 +214,7 @@ test.describe('推薦機能', () => {
 
     // スケルトンローディングが一時的に表示されることを確認
     // （Suspenseフォールバック）
-    const skeletonCards = page.locator('.overflow-hidden:has(.h-48.w-full)');
+    const skeletonCards = page.locator('[data-testid="recommendation-skeleton-card"]');
 
     // スケルトンが最初に表示される（または既にデータがロードされている）
     const skeletonCount = await skeletonCards.count();
@@ -226,7 +226,7 @@ test.describe('推薦機能', () => {
 
       // データロード後にスケルトンが消えることを確認
       await page.waitForFunction(() => {
-        const skeletons = document.querySelectorAll('.overflow-hidden:has(.h-48.w-full)');
+        const skeletons = document.querySelectorAll('[data-testid="recommendation-skeleton-card"]');
         const recommendationCards = document.querySelectorAll('[data-testid="recommendation-card"]');
         // テキストコンテンツで「推薦記事がありません」を含む要素を探す
         const emptyMessage = Array.from(document.querySelectorAll('*')).find(el =>
@@ -261,11 +261,11 @@ test.describe('推薦機能', () => {
     // 推薦ページへアクセス
     await page.goto('/recommendations');
 
-    // ヘッダー部分が表示されることを確認（最初の要素を選択して重複エラーを回避）
-    await expect(page.locator('text=あなたへのおすすめ').first()).toBeVisible({ timeout: 10000 });
+    // ヘッダー部分が表示されることを確認
+    await expect(page.locator('[data-testid="recommendation-header"]')).toBeVisible({ timeout: 10000 });
 
     // 更新ボタンが存在することを確認
-    const refreshButton = page.locator('button:has-text("更新")');
+    const refreshButton = page.locator('[data-testid="recommendation-refresh-button"]');
     await expect(refreshButton).toBeVisible();
 
     // データロード完了を待つ

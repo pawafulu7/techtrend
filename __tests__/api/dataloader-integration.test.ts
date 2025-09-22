@@ -63,7 +63,7 @@ jest.mock('@/lib/cache/source-cache', () => ({
 // Prismaのモック変数を宣言（beforeEachで再バインド）
 let mockPrisma: jest.Mocked<any>;
 
-describe.skip('DataLoader Integration Tests', () => {
+describe('DataLoader Integration Tests', () => {
   const userId = 'test-user-123';
   let createLoaders: any;
   let resetFavoriteLoaderCaches: any;
