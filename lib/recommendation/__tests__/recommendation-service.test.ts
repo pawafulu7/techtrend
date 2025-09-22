@@ -8,10 +8,22 @@ jest.mock('@/lib/redis/factory', () => ({
   getRedisService: jest.fn(),
 }));
 
+// Mock DataLoader
+jest.mock('@/lib/dataloader/article-view-loader', () => ({
+  createArticleViewLoader: jest.fn(() => ({
+    load: jest.fn(),
+    loadMany: jest.fn(),
+    clear: jest.fn(),
+    clearAll: jest.fn(),
+  })),
+  ViewStatus: {},
+}));
+
 // Import after mocks
 import { RecommendationService } from '../recommendation-service';
 import { prisma } from '@/lib/prisma';
 import { getRedisService } from '@/lib/redis/factory';
+import { createArticleViewLoader } from '@/lib/dataloader/article-view-loader';
 
 describe.skip('RecommendationService', () => {
   let service: RecommendationService;
@@ -127,6 +139,7 @@ describe.skip('RecommendationService', () => {
 
   describe('getRecommendations', () => {
     const userId = 'test-user-id';
+    let mockDataLoader: any;
     const mockArticles = [
       {
         id: 'article-1',
@@ -156,6 +169,15 @@ describe.skip('RecommendationService', () => {
     ];
 
     beforeEach(() => {
+      // DataLoaderのモック設定
+      mockDataLoader = {
+        loadMany: jest.fn().mockResolvedValue([
+          { articleId: 'article-1', isViewed: false, viewedAt: undefined },
+          { articleId: 'article-2', isViewed: false, viewedAt: undefined },
+        ]),
+      };
+      (createArticleViewLoader as jest.Mock).mockReturnValue(mockDataLoader);
+
       jest.spyOn(service, 'getUserInterests').mockResolvedValue({
         tagScores: new Map([['React', 10], ['TypeScript', 5]]),
         totalActions: 15,
@@ -224,12 +246,24 @@ describe.skip('RecommendationService', () => {
         ...mockArticles[0],
         id: `article-${i}`,
       }));
-      
+
       (prisma.article.findMany as jest.Mock).mockResolvedValue(manyArticles);
-      
+
       const result = await service.getRecommendations(userId, 5);
-      
+
       expect(result).toHaveLength(5);
+    });
+
+    it('should use DataLoader for efficient batch loading', async () => {
+      // Mock viewed articles
+      (prisma.articleView.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+
+      await service.getRecommendations(userId, 10);
+
+      // DataLoaderが作成され、loadManyが呼ばれたことを確認
+      expect(createArticleViewLoader).toHaveBeenCalledWith(userId);
+      expect(mockDataLoader.loadMany).toHaveBeenCalled();
     });
   });
 

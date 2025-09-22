@@ -1,25 +1,42 @@
 import { prisma } from '@/lib/prisma';
 import { ExtendedArticle } from '@/types/common';
-import { 
-  UserInterests, 
-  RecommendedArticle, 
+import {
+  UserInterests,
+  RecommendedArticle,
   RecommendationScore,
   CachedUserInterests
 } from './types';
-import { 
-  defaultConfig, 
-  calculateTimeWeight, 
+import {
+  defaultConfig,
+  calculateTimeWeight,
   calculateFreshnessBoost,
   hashTagSet,
   normalizeScore
 } from './utils';
 import { getRedisService } from '@/lib/redis/factory';
+import { createArticleViewLoader } from '@/lib/dataloader/article-view-loader';
+import type DataLoader from 'dataloader';
+import type { ViewStatus } from '@/lib/dataloader/article-view-loader';
+import { recommendationMetrics } from '@/lib/monitoring/recommendation-metrics';
 import logger from '@/lib/logger';
 
 const redisService = getRedisService();
 
 export class RecommendationService {
   private config = defaultConfig;
+  private viewLoaderCache = new Map<string, DataLoader<string, ViewStatus>>();
+
+  /**
+   * DataLoaderインスタンスを取得（ユーザー毎にキャッシュ）
+   */
+  private getViewLoader(userId: string): DataLoader<string, ViewStatus> {
+    let loader = this.viewLoaderCache.get(userId);
+    if (!loader) {
+      loader = createArticleViewLoader(userId);
+      this.viewLoaderCache.set(userId, loader);
+    }
+    return loader;
+  }
 
   /**
    * ユーザーの興味分野を分析
@@ -185,6 +202,7 @@ export class RecommendationService {
     userId: string,
     limit: number = 10
   ): Promise<RecommendedArticle[]> {
+    const startTime = Date.now();
 
     // ユーザーの興味を取得
     const interests = await this.getUserInterests(userId);
@@ -193,6 +211,9 @@ export class RecommendationService {
       // 新規ユーザーまたは履歴が少ない場合はデフォルト推薦
       return this.getDefaultRecommendations(limit);
     }
+
+    // DataLoaderを使用して効率的に閲覧履歴を取得
+    const viewLoader = this.getViewLoader(userId);
 
     // 1回のクエリで全ての閲覧履歴を取得（最適化: 2つのクエリを1つに統合）
     const viewedArticles = await prisma.articleView.findMany({
@@ -210,7 +231,7 @@ export class RecommendationService {
     const recentlyViewedIds = viewedArticles
       .filter(v => v.viewedAt && v.viewedAt >= sevenDaysAgo)
       .map(v => v.articleId);
-    const allViewedIds = new Set(viewedArticles.map(v => v.articleId));
+    // DataLoaderがisViewedの判定を行うため、allViewedIdsは不要になった
 
     // 候補記事を取得（過去30日間、品質スコア50以上）
     const thirtyDaysAgo = new Date();
@@ -269,20 +290,39 @@ export class RecommendationService {
       tagSetCount.set(tagSet, currentTagSetCount + 1);
     }
 
-    // RecommendedArticle形式に変換（allViewedIdsは既に取得済み）
-    return selected.map(item => ({
-      id: item.article.id,
-      title: item.article.title,
-      url: item.article.url,
-      summary: item.article.summary,
-      thumbnail: item.article.thumbnail,
-      publishedAt: item.article.publishedAt,
-      sourceName: item.article.source.name,
-      tags: item.article.tags.map(t => typeof t === 'string' ? t : t.name),
-      recommendationScore: normalizeScore(item.score),
-      recommendationReasons: item.reasons,
-      isViewed: allViewedIds.has(item.article.id),  // 既読フラグを追加
-    }));
+    // DataLoaderを使用して各記事の閲覧状態を効率的に取得
+    const articleIds = selected.map(item => item.article.id);
+    const viewStatuses = await viewLoader.loadMany(articleIds);
+
+    // メトリクスを記録
+    recommendationMetrics.recordBatchSize(articleIds.length);
+    recommendationMetrics.recordDatabaseQuery('articleView');
+    recommendationMetrics.recordResponseTime('getRecommendations', Date.now() - startTime);
+
+    // RecommendedArticle形式に変換
+    return selected.map((item, index) => {
+      const viewStatus = viewStatuses[index];
+      const isViewed = viewStatus instanceof Error ? false : viewStatus.isViewed;
+
+      // キャッシュヒット率を記録
+      if (!(viewStatus instanceof Error)) {
+        recommendationMetrics.recordCacheHit(true);
+      }
+
+      return {
+        id: item.article.id,
+        title: item.article.title,
+        url: item.article.url,
+        summary: item.article.summary,
+        thumbnail: item.article.thumbnail,
+        publishedAt: item.article.publishedAt,
+        sourceName: item.article.source.name,
+        tags: item.article.tags.map(t => typeof t === 'string' ? t : t.name),
+        recommendationScore: normalizeScore(item.score),
+        recommendationReasons: item.reasons,
+        isViewed,  // DataLoaderから取得した既読フラグ
+      };
+    });
   }
 
   /**
