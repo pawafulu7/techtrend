@@ -10,35 +10,31 @@ interface Params {
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
+  const startTime = Date.now();
+
   try {
     const { id } = await params;
-    
-    // ソース情報を取得
-    const source = await prisma.source.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: {
-            articles: true
-          }
-        }
-      }
-    });
 
-    if (!source) {
-      return NextResponse.json(
-        { error: 'Source not found' },
-        { status: 404 }
-      );
-    }
-
-    // 統計情報の取得
+    // すべてのクエリを完全に並列化
     const [
+      source,
       articles,
       recentArticles,
       topArticles,
       tagDistribution
     ] = await Promise.all([
+      // ソース情報を取得
+      prisma.source.findUnique({
+        where: { id },
+        include: {
+          _count: {
+            select: {
+              articles: true
+            }
+          }
+        }
+      }),
+
       // 全記事（統計用）
       prisma.article.findMany({
         where: { sourceId: id },
@@ -49,7 +45,7 @@ export async function GET(request: NextRequest, { params }: Params) {
           userVotes: true
         }
       }),
-      
+
       // 最新記事
       prisma.article.findMany({
         where: { sourceId: id },
@@ -61,7 +57,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         },
         take: 10
       }),
-      
+
       // 人気記事
       prisma.article.findMany({
         where: { sourceId: id },
@@ -73,7 +69,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         },
         take: 5
       }),
-      
+
       // タグ分布
       prisma.$queryRaw<Array<{ name: string; count: bigint }>>`
         SELECT t.name, COUNT(*) as count
@@ -86,6 +82,14 @@ export async function GET(request: NextRequest, { params }: Params) {
         LIMIT 20
       `
     ]);
+
+    // ソースが見つからない場合
+    if (!source) {
+      return NextResponse.json(
+        { error: 'Source not found' },
+        { status: 404 }
+      );
+    }
 
     // 統計計算
     const totalArticles = articles.length;
@@ -116,7 +120,8 @@ export async function GET(request: NextRequest, { params }: Params) {
       return acc;
     }, {} as Record<string, number>);
 
-    return NextResponse.json({
+    const responseTime = Date.now() - startTime;
+    const response = NextResponse.json({
       source,
       stats: {
         totalArticles,
@@ -129,7 +134,14 @@ export async function GET(request: NextRequest, { params }: Params) {
       topArticles,
       tagDistribution: tagDistributionObj
     });
-  } catch {
+
+    // パフォーマンスメトリクスをヘッダーに追加
+    response.headers.set('X-Response-Time', `${responseTime}ms`);
+    response.headers.set('X-Query-Strategy', 'parallel');
+
+    return response;
+  } catch (error) {
+    console.error('Error in sources/[id] API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
