@@ -51,6 +51,9 @@ function calculateQualityScore(article: any): number {
  */
 async function processBatch() {
   const startTime = Date.now();
+  // チェックポイント: 処理開始時点の時刻を記録（TOCTOU回避）
+  const processingCheckpoint = new Date();
+
   let processedCount = 0;
   let status: ProcessingStatus = 'success';
   let error: Error | null = null;
@@ -66,6 +69,7 @@ async function processBatch() {
     logger.info({
       processName: PROCESS_NAME,
       lastProcessedAt,
+      processingCheckpoint,
       status: 'starting'
     }, 'Starting quality score batch processing');
 
@@ -74,7 +78,7 @@ async function processBatch() {
       where: {
         OR: [
           { qualityScoreComputedAt: null },
-          { qualityScoreComputedAt: { lt: lastProcessedAt } },
+          // qualityScoreComputedAt < lastProcessedAt の条件を削除（無限ループ回避）
           { updatedAt: { gt: lastProcessedAt } }
         ]
       },
@@ -115,11 +119,11 @@ async function processBatch() {
       }
     }
 
-    // ProcessingLogを更新
+    // ProcessingLogを更新（成功時のみチェックポイント時刻を記録）
     await prisma.processingLog.upsert({
       where: { processName: PROCESS_NAME },
       update: {
-        lastProcessedAt: new Date(),
+        lastProcessedAt: processingCheckpoint,  // チェックポイント時刻を使用
         processedCount: {
           increment: processedCount
         },
@@ -132,7 +136,7 @@ async function processBatch() {
       },
       create: {
         processName: PROCESS_NAME,
-        lastProcessedAt: new Date(),
+        lastProcessedAt: processingCheckpoint,  // チェックポイント時刻を使用
         processedCount,
         status,
         metadata: {
@@ -164,10 +168,11 @@ async function processBatch() {
       processName: PROCESS_NAME
     }, 'Quality score batch processing failed');
 
-    // エラー時もProcessingLogを更新
+    // エラー時もProcessingLogを更新（失敗時はlastProcessedAtをリセット）
     await prisma.processingLog.upsert({
       where: { processName: PROCESS_NAME },
       update: {
+        lastProcessedAt: new Date(0),  // 失敗時は最初から処理するようにリセット
         status: 'failed',
         metadata: {
           error: error.message,
@@ -176,7 +181,7 @@ async function processBatch() {
       },
       create: {
         processName: PROCESS_NAME,
-        lastProcessedAt: new Date(),
+        lastProcessedAt: new Date(0),  // 失敗時は最初から処理するようにリセット
         processedCount: 0,
         status: 'failed',
         metadata: {

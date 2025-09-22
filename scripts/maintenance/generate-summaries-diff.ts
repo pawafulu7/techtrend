@@ -32,6 +32,9 @@ interface ArticleWithSource {
  */
 async function generateSummariesDiff() {
   const startTime = Date.now();
+  // チェックポイント: 処理開始時点の時刻を記録（TOCTOU回避）
+  const processingCheckpoint = new Date();
+
   let processedCount = 0;
   let skippedCount = 0;
   let failedCount = 0;
@@ -48,6 +51,7 @@ async function generateSummariesDiff() {
     logger.info({
       processName: PROCESS_NAME,
       lastProcessedAt,
+      processingCheckpoint,
       status: 'starting'
     }, 'Starting summary generation batch (differential)');
 
@@ -60,7 +64,7 @@ async function generateSummariesDiff() {
           { detailedSummary: null },
           // 前回処理以降に更新された記事
           { summaryComputedAt: null },
-          { summaryComputedAt: { lt: lastProcessedAt } },
+          // summaryComputedAt < lastProcessedAt の条件を削除（無限ループ回避）
           { updatedAt: { gt: lastProcessedAt } },
           // 古いバージョンの要約
           { summaryVersion: { lt: 7 } }
@@ -154,11 +158,11 @@ async function generateSummariesDiff() {
       }
     }
 
-    // ProcessingLogを更新
+    // ProcessingLogを更新（成功時のみチェックポイント時刻を記録）
     await prisma.processingLog.upsert({
       where: { processName: PROCESS_NAME },
       update: {
-        lastProcessedAt: new Date(),
+        lastProcessedAt: processingCheckpoint,  // チェックポイント時刻を使用
         processedCount: {
           increment: processedCount
         },
@@ -173,7 +177,7 @@ async function generateSummariesDiff() {
       },
       create: {
         processName: PROCESS_NAME,
-        lastProcessedAt: new Date(),
+        lastProcessedAt: processingCheckpoint,  // チェックポイント時刻を使用
         processedCount,
         status,
         metadata: {
@@ -211,10 +215,11 @@ async function generateSummariesDiff() {
       processName: PROCESS_NAME
     }, 'Summary generation batch failed');
 
-    // エラー時もProcessingLogを更新
+    // エラー時もProcessingLogを更新（失敗時はlastProcessedAtをリセット）
     await prisma.processingLog.upsert({
       where: { processName: PROCESS_NAME },
       update: {
+        lastProcessedAt: new Date(0),  // 失敗時は最初から処理するようにリセット
         status: 'failed',
         metadata: {
           error: error.message,
@@ -223,7 +228,7 @@ async function generateSummariesDiff() {
       },
       create: {
         processName: PROCESS_NAME,
-        lastProcessedAt: new Date(),
+        lastProcessedAt: new Date(0),  // 失敗時は最初から処理するようにリセット
         processedCount: 0,
         status: 'failed',
         metadata: {
