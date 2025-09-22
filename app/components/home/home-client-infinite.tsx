@@ -8,6 +8,7 @@ import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-t
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
 import { buildScrollStorageKey } from '@/lib/utils/scroll';
+import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { RecommendationSectionInline } from '@/components/recommendation/recommendation-section-inline';
@@ -219,7 +220,7 @@ export function HomeClientInfinite({
     // 追跡していたスクロール位置を保存
     const scrollY = currentScrollPositionRef.current;
 
-    if (scrollY > 50) {
+    if (scrollY > SCROLL.MIN_SCROLL_SAVE_THRESHOLD) {
       // 記事のインデックスを取得
       const articleIndex = allArticles.findIndex(a => a.id === articleId);
 
@@ -254,6 +255,7 @@ export function HomeClientInfinite({
             currentPage={currentPage}
             targetPages={targetPages}
             onCancel={cancelRestoration}
+            itemsPerPage={PAGINATION.ITEMS_PER_PAGE}
           />
         )}
         

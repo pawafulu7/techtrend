@@ -8,12 +8,14 @@ interface ScrollRestorationLoadingProps {
   currentPage: number;
   targetPages: number;
   onCancel: () => void;
+  itemsPerPage?: number; // 既定 20
 }
 
 export function ScrollRestorationLoading({
   currentPage,
   targetPages,
-  onCancel
+  onCancel,
+  itemsPerPage = 20
 }: ScrollRestorationLoadingProps) {
   const progress = targetPages > 0 ? (currentPage / targetPages) * 100 : 0;
   
@@ -40,7 +42,7 @@ export function ScrollRestorationLoading({
 
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {targetPages > 1
-              ? `約${targetPages * 20}件の記事を読み込んで、前回の位置まで復元しています...`
+              ? `約${targetPages * itemsPerPage}件の記事を読み込んで、前回の位置まで復元しています...`
               : '前回の位置まで記事を読み込んでいます...'}
           </p>
           
