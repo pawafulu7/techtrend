@@ -114,18 +114,28 @@ async function calculateAllQualityScores(options: Options) {
       },
     };
 
-    // 差分処理のための条件追加
-    // TODO: 恒久対策として、Article に contentUpdatedAt（取込側のみ更新）や qualityScoreComputedAt を追加し、
-    //       差分条件を contentUpdatedAt ベースに切替える必要があります
+    // 差分処理のための条件追加（contentUpdatedAtベース）
     if (lastProcessedAt && !options.force) {
       query.where = {
         AND: [
-          { updatedAt: { lte: checkpoint } }, // 実行中に到着したレコードを除外
+          // contentUpdatedAtがcheckpoint以前のレコードのみ対象
           {
             OR: [
-              { qualityScore: null },
-              { qualityScore: 0 },
-              { updatedAt: { gt: lastProcessedAt } } // checkpoint超過を除外
+              { contentUpdatedAt: null }, // 初回処理のデータ
+              { contentUpdatedAt: { lte: checkpoint } }
+            ]
+          },
+          {
+            OR: [
+              { qualityScoreComputedAt: null }, // 未計算
+              { qualityScore: 0 }, // エラー時のフォールバック値
+              // コンテンツが更新されたもの
+              {
+                AND: [
+                  { contentUpdatedAt: { gt: lastProcessedAt } },
+                  { contentUpdatedAt: { lte: checkpoint } }
+                ]
+              }
             ]
           }
         ]
@@ -163,7 +173,10 @@ async function calculateAllQualityScores(options: Options) {
           if (article.qualityScore !== finalScore) {
             await prisma.article.update({
               where: { id: article.id },
-              data: { qualityScore: finalScore },
+              data: {
+                qualityScore: finalScore,
+                qualityScoreComputedAt: checkpoint
+              },
             });
           }
 
@@ -318,7 +331,10 @@ async function fixZeroScores(options: Options) {
       // 更新
       await prisma.article.update({
         where: { id: article.id },
-        data: { qualityScore: finalScore }
+        data: {
+          qualityScore: finalScore,
+          qualityScoreComputedAt: new Date()
+        }
       });
 
       console.error(`✓ ${article.title.slice(0, 50)}... -> スコア: ${finalScore}`);

@@ -625,11 +625,12 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                 // 要約を更新
                 await prisma.article.update({
                   where: { id: article.id },
-                  data: { 
+                  data: {
                     summary,
                     detailedSummary: result.detailedSummary,
                     articleType: 'unified',
-                    summaryVersion: getUnifiedSummaryService().getSummaryVersion()
+                    summaryVersion: getUnifiedSummaryService().getSummaryVersion(),
+                    summaryComputedAt: checkpoint
                   }
                 });
               } else {
@@ -811,9 +812,10 @@ async function regenerateSummaries(options: Options): Promise<GenerateResult> {
         // 要約を更新
         await prisma.article.update({
           where: { id: article.id },
-          data: { 
+          data: {
             summary: result.summary,
-            detailedSummary: result.detailedSummary
+            detailedSummary: result.detailedSummary,
+            summaryComputedAt: new Date()
           }
         });
 
@@ -920,9 +922,10 @@ async function generateMissingSummaries(options: Options): Promise<GenerateResul
         // 要約を更新
         await prisma.article.update({
           where: { id: article.id },
-          data: { 
+          data: {
             summary: result.summary,
-            detailedSummary: result.detailedSummary
+            detailedSummary: result.detailedSummary,
+            summaryComputedAt: new Date()
           }
         });
 

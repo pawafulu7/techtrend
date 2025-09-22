@@ -181,6 +181,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                 bookmarks: article.bookmarks || 0,
                 sourceId: source.id,
                 category: category,  // カテゴリを設定
+                contentUpdatedAt: new Date(),  // コンテンツの初回取得時刻を記録
                 ...(tagConnections.length > 0 && {
                   tags: {
                     connect: tagConnections
@@ -202,6 +203,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                     where: { id: savedArticle.id },
                     data: {
                       content: enrichedData.content,
+                      contentUpdatedAt: new Date(),  // コンテンツ更新時刻を記録
                       ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
                     }
                   });
