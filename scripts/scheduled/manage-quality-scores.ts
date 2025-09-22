@@ -99,7 +99,9 @@ async function calculateAllQualityScores(options: Options) {
 
   try {
     // 差分処理: 前回処理以降に更新された記事のみを対象
-    const lastProcessedAt = await getLastProcessedTime('quality-score-calculation');
+    const processName = 'quality-score-calculation';
+    const checkpoint = new Date();
+    const lastProcessedAt = await getLastProcessedTime(processName);
 
     // 記事を取得
     const query: Prisma.ArticleFindManyArgs = {
@@ -115,10 +117,13 @@ async function calculateAllQualityScores(options: Options) {
         OR: [
           { qualityScore: null },
           { qualityScore: 0 },
-          { updatedAt: { gt: lastProcessedAt } }
+          { updatedAt: { gt: lastProcessedAt, lte: checkpoint } }
         ]
       };
     }
+
+    // ソート順を追加
+    query.orderBy = { updatedAt: 'asc' };
 
     if (options.source) {
       query.where = { ...query.where, source: { name: options.source } };
@@ -219,13 +224,14 @@ async function calculateAllQualityScores(options: Options) {
 
     // 処理状態を記録（差分処理用）
     await saveProcessingStatus(
-      'quality-score-calculation',
+      processName,
       processedCount,
       'success',
       {
         processedCount,
-        lastProcessedAt: new Date()
-      }
+        checkpoint
+      },
+      checkpoint
     );
 
   } catch (error) {

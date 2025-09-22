@@ -444,7 +444,9 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
 
   try {
     // 差分処理: 前回処理以降の新規・更新記事のみを対象にする
-    const lastProcessedAt = await getLastProcessedTime('summary-generation');
+    const processName = 'summary-generation';
+    const checkpoint = new Date();
+    const lastProcessedAt = await getLastProcessedTime(processName);
 
     // 条件付き処理: 新規記事がない場合はスキップ
     const hasNewArticles = await checkNewArticles(options);
@@ -719,15 +721,17 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
 
     // 処理状態を記録（差分処理用）
     await saveProcessingStatus(
-      'summary-generation',
+      processName,
       generatedCount,
       errorCount > 0 ? 'partial' : 'success',
       {
         processedCount: generatedCount,
         errorCount,
         duration: totalDuration,
-        apiStats
-      }
+        apiStats,
+        checkpoint
+      },
+      checkpoint
     );
 
     return { generated: generatedCount, errors: errorCount };

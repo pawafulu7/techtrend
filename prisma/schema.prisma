@@ -52,6 +52,7 @@ model Article {
   @@index([sourceId, publishedAt(sort: Desc)], map: "idx_article_source_published")
   @@index([createdAt(sort: Desc)], map: "idx_article_created_at")
   @@index([qualityScore(sort: Desc)], map: "idx_article_quality_score")
+  @@index([updatedAt], map: "idx_article_updated_at")
   @@index([bookmarks(sort: Desc)])
 }
 

@@ -20,20 +20,22 @@ export async function saveProcessingStatus(
   processName: string,
   processedCount: number,
   status: 'success' | 'failed' | 'partial' = 'success',
-  metadata?: any
+  metadata?: any,
+  processedAt?: Date
 ): Promise<void> {
+  const ts = processedAt ?? new Date();
   await prisma.processingLog.upsert({
     where: { processName },
     update: {
-      lastProcessedAt: new Date(),
+      lastProcessedAt: ts,
       processedCount,
       status,
       metadata,
-      updatedAt: new Date()
+      updatedAt: ts
     },
     create: {
       processName,
-      lastProcessedAt: new Date(),
+      lastProcessedAt: ts,
       processedCount,
       status,
       metadata

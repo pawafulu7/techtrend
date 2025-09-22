@@ -9,16 +9,19 @@ async function calculateDifficultyLevels() {
 
   try {
     // 差分処理: 前回処理以降に更新された記事のみを対象
-    const lastProcessedAt = await getLastProcessedTime('difficulty-calculation');
+    const processName = 'difficulty-calculation';
+    const checkpoint = new Date();
+    const lastProcessedAt = await getLastProcessedTime(processName);
 
     // 処理対象の記事を取得（差分処理）
     const articles = await prisma.article.findMany({
       where: lastProcessedAt ? {
         OR: [
           { difficulty: null },
-          { updatedAt: { gt: lastProcessedAt } }
+          { updatedAt: { gt: lastProcessedAt, lte: checkpoint } }
         ]
       } : undefined,
+      orderBy: { updatedAt: 'asc' },
       include: {
         source: true,
         tags: true,
@@ -90,14 +93,15 @@ async function calculateDifficultyLevels() {
 
     // 処理状態を記録（差分処理用）
     await saveProcessingStatus(
-      'difficulty-calculation',
+      processName,
       processedCount,
       'success',
       {
         processedCount,
         difficultyCount,
-        lastProcessedAt: new Date()
-      }
+        checkpoint
+      },
+      checkpoint
     );
 
   } catch (error) {

@@ -1,12 +1,3 @@
--- DropIndex
-DROP INDEX "public"."idx_favorite_user_article";
-
--- DropIndex
-DROP INDEX "public"."idx_article_tag_join";
-
--- DropIndex
-DROP INDEX "public"."idx_article_tag_reverse";
-
 -- AlterTable
 ALTER TABLE "public"."User" ALTER COLUMN "role" SET DATA TYPE TEXT;
 
