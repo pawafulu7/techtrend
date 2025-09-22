@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { RedisCache } from '@/lib/cache';
+import logger from '@/lib/logger';
 
-// Use dedicated cache for stats with 1 hour TTL
+// Optimized cache configuration: 5-minute TTL for stats
 const statsCache = new RedisCache({
-  ttl: 3600, // 1 hour
-  namespace: '@techtrend/cache:stats'
+  ttl: 300, // 5 minutes (optimized from 1 hour)
+  namespace: '@techtrend/cache:stats:v2'
 });
 
 export async function GET() {
+  const startTime = Date.now();
+
   try {
-    // Generate cache key for stats
-    const cacheKey = 'stats:overview';
+    // Generate cache key for stats with version
+    const cacheKey = 'stats:dashboard:v2';
 
     // Try to get stats from cache first
     type StatsPayload = {
@@ -23,6 +26,7 @@ export async function GET() {
     const cachedStats = await statsCache.get<StatsPayload>(cacheKey);
 
     if (cachedStats) {
+      const responseTime = Date.now() - startTime;
       const response = NextResponse.json({
         success: true,
         data: cachedStats,
@@ -31,10 +35,18 @@ export async function GET() {
         }
       });
 
-      // Add cache headers for browser caching
+      // Add cache headers for browser caching and performance metrics
       response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
       response.headers.set('CDN-Cache-Control', 'max-age=600');
       response.headers.set('Vary', 'Accept-Encoding');
+      response.headers.set('X-Cache-Status', 'HIT');
+      response.headers.set('X-Response-Time', `${responseTime}ms`);
+
+      logger.info({
+        route: '/api/stats',
+        cacheHit: true,
+        responseTime,
+      }, 'Stats API cache hit');
 
       return response;
     }
@@ -160,6 +172,7 @@ export async function GET() {
     // Store stats in cache
     await statsCache.set(cacheKey, stats);
 
+    const responseTime = Date.now() - startTime;
     const response = NextResponse.json({
       success: true,
       data: stats,
@@ -168,13 +181,27 @@ export async function GET() {
       }
     });
 
-    // Add cache headers for browser caching
+    // Add cache headers for browser caching and performance metrics
     response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
     response.headers.set('CDN-Cache-Control', 'max-age=600');
     response.headers.set('Vary', 'Accept-Encoding');
+    response.headers.set('X-Cache-Status', 'MISS');
+    response.headers.set('X-Response-Time', `${responseTime}ms`);
+
+    logger.info({
+      route: '/api/stats',
+      cacheHit: false,
+      responseTime,
+    }, 'Stats API cache miss - data fetched from DB');
 
     return response;
-  } catch (_error) {
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    logger.error({
+      err: error as Error,
+      route: '/api/stats',
+      responseTime,
+    }, 'Stats API error');
 
     return NextResponse.json(
       {

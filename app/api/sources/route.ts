@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { sourceCache } from '@/lib/cache/source-cache';
 import logger from '@/lib/logger';
-
-type SourceCategory = 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
+import { parseBoolean } from '@/lib/utils/env-parser';
+import { Prisma } from '@prisma/client';
+import { inferSourceCategory, sortSources, type SourceCategory } from '@/lib/utils/source-helpers';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -89,8 +90,117 @@ export async function GET(request: NextRequest) {
     }
 
     // 特定のIDsの場合は従来の処理（キャッシュなし）
-        // 基本的なソース情報を取得
-      const sources = await prisma.source.findMany({
+    // フィーチャーフラグで最適化バージョンを選択
+    const useOptimized = parseBoolean(process.env.USE_OPTIMIZED_SOURCES_API, false);
+
+    if (useOptimized) {
+      // Phase 2: メモリ最適化版（集計クエリのみ実行）
+      const [sources, sourceStats] = await Promise.all([
+        // 基本的なソース情報
+        prisma.source.findMany({
+          where: {
+            enabled: true,
+            ...(ids && {
+              id: {
+                in: ids.split(',')
+              }
+            }),
+            ...(search && {
+              name: {
+                contains: search,
+                mode: 'insensitive'
+              }
+            })
+          }
+        }),
+        // 統計情報を集計クエリで取得
+        prisma.$queryRaw`
+          SELECT
+            s.id as source_id,
+            COUNT(a.id)::int as total_articles,
+            COALESCE(AVG(a."qualityScore")::int, 0) as avg_quality_score,
+            COUNT(CASE WHEN a."publishedAt" >= NOW() - INTERVAL '30 days' THEN 1 END)::int as recent_articles,
+            COUNT(CASE WHEN a."publishedAt" >= NOW() - INTERVAL '60 days'
+                       AND a."publishedAt" < NOW() - INTERVAL '30 days' THEN 1 END)::int as past_month_articles,
+            MAX(a."publishedAt") as last_published
+          FROM "Source" s
+          LEFT JOIN "Article" a ON s.id = a."sourceId"
+          WHERE s.enabled = true
+          ${ids ? Prisma.sql`AND s.id IN (${Prisma.join(ids.split(','))})` : Prisma.empty}
+          ${search ? Prisma.sql`AND s.name ILIKE ${`%${search}%`}` : Prisma.empty}
+          GROUP BY s.id
+        ` as Promise<Array<{
+          source_id: string;
+          total_articles: number;
+          avg_quality_score: number;
+          recent_articles: number;
+          past_month_articles: number;
+          last_published: Date | null;
+        }>>
+      ]);
+
+      // 統計情報をマップ化
+      const statsMap = new Map(sourceStats.map(stat => [stat.source_id, stat]));
+
+      // ソース情報と統計を結合
+      const sourcesWithStats = sources.map(source => {
+        const stats = statsMap.get(source.id);
+        const publishFrequency = stats ? stats.recent_articles / 30 : 0;
+        const growthRate = stats && stats.past_month_articles > 0
+          ? Math.round(((stats.recent_articles - stats.past_month_articles) / stats.past_month_articles) * 100)
+          : stats && stats.recent_articles > 0 ? 100 : 0;
+
+        // カテゴリー推定（共通関数を使用）
+        const category = inferSourceCategory(source.name);
+
+        return {
+          id: source.id,
+          name: source.name,
+          type: source.type,
+          url: source.url,
+          enabled: source.enabled,
+          category,
+          stats: {
+            totalArticles: stats?.total_articles || 0,
+            avgQualityScore: stats?.avg_quality_score || 0,
+            popularTags: [], // タグ情報は別途必要な場合のみ取得
+            publishFrequency: Math.round(publishFrequency * 10) / 10,
+            lastPublished: stats?.last_published || null,
+            growthRate
+          }
+        };
+      });
+
+      // カテゴリーフィルタリング
+      let filteredSources = sourcesWithStats;
+      if (category) {
+        filteredSources = filteredSources.filter(s => s.category === category);
+      }
+
+      // ソート処理（共通関数を使用）
+      filteredSources = sortSources(filteredSources, sortBy, order);
+
+      const responseTime = Date.now() - startTime;
+      const response = NextResponse.json({
+        sources: filteredSources,
+        totalCount: filteredSources.length
+      });
+      response.headers.set('X-Cache-Status', 'MISS');
+      response.headers.set('X-Response-Time', `${responseTime}ms`);
+      response.headers.set('X-Optimization', 'memory-optimized');
+
+      logger.info({
+        route: '/api/sources',
+        optimization: 'memory-optimized',
+        responseTime,
+        sourceCount: filteredSources.length
+      }, 'Sources API with memory optimization');
+
+      return response;
+    }
+
+    // Phase 1: 従来の実装（全記事データを取得）
+    const sources = await prisma.source.findMany({
       where: {
         enabled: true,
         ...(ids && {
@@ -177,22 +287,8 @@ export async function GET(request: NextRequest) {
         ? Math.round(((currentMonthCount - pastMonthCount) / pastMonthCount) * 100)
         : currentMonthCount > 0 ? 100 : 0;
 
-      // カテゴリー推定（簡易版）
-      let category: SourceCategory = 'other';
-      const nameLower = source.name.toLowerCase();
-      if (nameLower.includes('blog')) {
-        if (nameLower.includes('company') || nameLower.includes('tech')) {
-          category = 'company_blog';
-        } else {
-          category = 'personal_blog';
-        }
-      } else if (nameLower.includes('news')) {
-        category = 'news_site';
-      } else if (['qiita', 'zenn', 'dev.to', 'reddit'].some(c => nameLower.includes(c))) {
-        category = 'community';
-      } else if (['techcrunch', 'hacker news'].some(c => nameLower.includes(c))) {
-        category = 'news_site';
-      }
+      // カテゴリー推定（共通関数を使用）
+      const category = inferSourceCategory(source.name);
 
       return {
         id: source.id,
@@ -218,41 +314,8 @@ export async function GET(request: NextRequest) {
       filteredSources = filteredSources.filter(s => s.category === category);
     }
 
-    // ソート
-      filteredSources.sort((a, b) => {
-        let aValue, bValue;
-        switch (sortBy) {
-          case 'articles':
-            aValue = a.stats.totalArticles;
-            bValue = b.stats.totalArticles;
-            break;
-          case 'quality':
-            aValue = a.stats.avgQualityScore;
-            bValue = b.stats.avgQualityScore;
-            break;
-          case 'frequency':
-            aValue = a.stats.publishFrequency;
-            bValue = b.stats.publishFrequency;
-            break;
-          case 'name':
-            aValue = a.name;
-            bValue = b.name;
-            break;
-          default:
-            aValue = a.stats.totalArticles;
-            bValue = b.stats.totalArticles;
-        }
-
-        if (sortBy === 'name') {
-          return order === 'asc' 
-            ? (aValue as string).localeCompare(bValue as string)
-            : (bValue as string).localeCompare(aValue as string);
-        } else {
-          return order === 'asc' 
-            ? (aValue as number) - (bValue as number)
-            : (bValue as number) - (aValue as number);
-        }
-      });
+    // ソート（共通関数を使用）
+    filteredSources = sortSources(filteredSources, sortBy, order);
 
       const responseTime = Date.now() - startTime;
       const response = NextResponse.json({
@@ -261,7 +324,8 @@ export async function GET(request: NextRequest) {
       });
       response.headers.set('X-Cache-Status', 'MISS');
       response.headers.set('X-Response-Time', `${responseTime}ms`);
-      
+      response.headers.set('X-Optimization', 'standard');
+
       return response;
   } catch (error) {
     const durationMs = Date.now() - startTime;

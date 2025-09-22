@@ -62,28 +62,45 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
   const articleType = 'unified';  // 統一タイプを設定
 
   apiStats.attempts++;
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 2500,  // 詳細要約に対応した統一設定
-      }
-    })
-  });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API request failed: ${response.status} - ${error}`);
+  // AbortControllerでタイムアウト設定（30秒）
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+
+  let responseText: string;
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2500,  // 詳細要約に対応した統一設定
+        }
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`API request failed: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json() as any;
+    responseText = data.candidates[0].content.parts[0].text.trim();
+  } catch (error: any) {
+    clearTimeout(timeout);
+    if (error.name === 'AbortError') {
+      throw new Error('API request timeout after 30 seconds');
+    }
+    throw error;
   }
 
-  const data = await response.json() as any;
-  const responseText = data.candidates[0].content.parts[0].text.trim();
-  
   // デバッグログ追加（Phase 1）
   const DEBUG_SUMMARIES = process.env.DEBUG_SUMMARIES === 'true';
   if (DEBUG_SUMMARIES) {
@@ -620,19 +637,13 @@ async function generateSummaries(): Promise<GenerateResult> {
 
               // タグを処理
               if (tags.length > 0) {
-                // 既存のタグを取得または作成
+                // upsertパターンでタグを作成（race conditionを防ぐ）
                 const tagRecords = await Promise.all(
                   tags.map(async (tagName) => {
-                    const existingTag = await prisma.tag.findUnique({
-                      where: { name: tagName }
-                    });
-
-                    if (existingTag) {
-                      return existingTag;
-                    }
-
-                    return await prisma.tag.create({
-                      data: { name: tagName }
+                    return await prisma.tag.upsert({
+                      where: { name: tagName },
+                      update: {},  // 既存の場合は何も更新しない
+                      create: { name: tagName }
                     });
                   })
                 );
