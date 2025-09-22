@@ -126,9 +126,6 @@
     "summarize:local": "dotenv -e .env -- tsx scripts/maintenance/generate-summaries.ts",
     "scheduler:local": "dotenv -e .env -- tsx scripts/scheduled/scheduler.ts"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@auth/prisma-adapter": "^2.0.0",
     "@google/generative-ai": "^0.24.1",
