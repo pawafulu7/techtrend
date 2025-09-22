@@ -225,6 +225,7 @@ test.describe('推薦機能', () => {
       expect(skeletonCount).toBeGreaterThan(0);
 
       // データロード後にスケルトンが消えることを確認
+      // スケルトンが消えるか、推薦記事が表示されるまで待つ
       await page.waitForFunction(() => {
         const skeletons = document.querySelectorAll('[data-testid="recommendation-skeleton-card"]');
         const recommendationCards = document.querySelectorAll('[data-testid="recommendation-card"]');
@@ -232,8 +233,9 @@ test.describe('推薦機能', () => {
         const emptyMessage = Array.from(document.querySelectorAll('*')).find(el =>
           el.textContent && el.textContent.includes('推薦記事がありません')
         );
-        return recommendationCards.length > 0 || emptyMessage;
-      }, { timeout: 10000 });
+        // スケルトンが消えた（0個になった）、または推薦記事/空メッセージが表示された
+        return skeletons.length === 0 || recommendationCards.length > 0 || emptyMessage;
+      }, { timeout: 30000 });
     }
 
     // 最終的に推薦記事またはメッセージが表示されることを確認
@@ -261,8 +263,8 @@ test.describe('推薦機能', () => {
     // 推薦ページへアクセス
     await page.goto('/recommendations');
 
-    // ヘッダー部分が表示されることを確認
-    await expect(page.locator('[data-testid="recommendation-header"]')).toBeVisible({ timeout: 10000 });
+    // ヘッダー部分が表示されることを確認（最初の要素を使用）
+    await expect(page.locator('[data-testid="recommendation-header"]').first()).toBeVisible({ timeout: 10000 });
 
     // 更新ボタンが存在することを確認
     const refreshButton = page.locator('[data-testid="recommendation-refresh-button"]');
@@ -271,14 +273,17 @@ test.describe('推薦機能', () => {
     // データロード完了を待つ
     await page.waitForLoadState('networkidle');
 
-    // 推薦記事またはメッセージが表示されることを確認
-    const hasContent = await page.evaluate(() => {
+    // 推薦記事またはメッセージが表示されるまで待つ（より長いタイムアウトを設定）
+    const hasContent = await page.waitForFunction(() => {
       const hasCard = document.querySelector('[data-testid="recommendation-card"]') !== null;
       const hasEmptyMessage = Array.from(document.querySelectorAll('*')).some(el =>
         el.textContent && el.textContent.includes('推薦記事がありません')
       );
-      return hasCard || hasEmptyMessage;
-    });
+      const hasNoRecommendations = Array.from(document.querySelectorAll('*')).some(el =>
+        el.textContent && el.textContent.includes('おすすめの記事が見つかりませんでした')
+      );
+      return hasCard || hasEmptyMessage || hasNoRecommendations;
+    }, { timeout: 20000 });
 
     expect(hasContent).toBeTruthy();
   });

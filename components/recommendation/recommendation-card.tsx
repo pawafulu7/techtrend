@@ -23,7 +23,7 @@ export function RecommendationCard({ article, showReasons = true }: Recommendati
   const fromUrl = pathname || '/';
   
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200">
+    <Card className="hover:shadow-lg transition-shadow duration-200" data-testid="recommendation-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between mb-2">
           <Badge 
