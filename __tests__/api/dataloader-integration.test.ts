@@ -5,6 +5,7 @@ jest.mock('@/lib/prisma');
 // モジュール自体をモックして、モックされたprismaを使用させる
 jest.mock('@/lib/dataloader/favorite-loader');
 jest.mock('@/lib/dataloader/article-view-loader');
+jest.mock('@/lib/dataloader');
 
 // next/serverモックを明示してNode/Jest環境での安定性を向上
 jest.mock('next/server');
@@ -156,8 +157,17 @@ describe('DataLoader Integration Tests', () => {
     mockCreateFavoriteLoader.resetFavoriteLoaderCaches = jest.fn();
     resetFavoriteLoaderCaches = mockCreateFavoriteLoader.resetFavoriteLoaderCaches;
 
+    // DataLoaderモジュール全体をモック
+    const mockDataLoaderModule = require('@/lib/dataloader');
+    mockDataLoaderModule.createLoaders = jest.fn(({ userId }: { userId: string }) => {
+      return {
+        favorite: mockCreateFavoriteLoader.createFavoriteLoader(userId),
+        view: mockCreateArticleViewLoader.createArticleViewLoader(userId)
+      };
+    });
+
     // モジュールを再インポート（モックが適用された状態で）
-    createLoaders = require('@/lib/dataloader').createLoaders;
+    createLoaders = mockDataLoaderModule.createLoaders;
     articlesListGET = require('@/app/api/articles/list/route').GET;
     articlesGET = require('@/app/api/articles/route').GET;
     mockAuth = require('@/lib/auth/auth').auth as jest.Mock;
