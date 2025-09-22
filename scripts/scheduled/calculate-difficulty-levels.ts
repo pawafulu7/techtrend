@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { determineDifficulty } from '@/lib/utils/quality-score';
+import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';
 
 const prisma = new PrismaClient();
 
@@ -7,8 +8,17 @@ async function calculateDifficultyLevels() {
   console.error('📊 記事の難易度レベルを計算します...\n');
 
   try {
-    // すべての記事を取得
+    // 差分処理: 前回処理以降に更新された記事のみを対象
+    const lastProcessedAt = await getLastProcessedTime('difficulty-calculation');
+
+    // 処理対象の記事を取得（差分処理）
     const articles = await prisma.article.findMany({
+      where: lastProcessedAt ? {
+        OR: [
+          { difficulty: null },
+          { updatedAt: { gt: lastProcessedAt } }
+        ]
+      } : undefined,
       include: {
         source: true,
         tags: true,
@@ -77,6 +87,18 @@ async function calculateDifficultyLevels() {
     });
 
     console.error('\n✅ 難易度レベルの計算が完了しました');
+
+    // 処理状態を記録（差分処理用）
+    await saveProcessingStatus(
+      'difficulty-calculation',
+      processedCount,
+      'success',
+      {
+        processedCount,
+        difficultyCount,
+        lastProcessedAt: new Date()
+      }
+    );
 
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);

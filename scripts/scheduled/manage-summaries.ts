@@ -6,6 +6,7 @@ import { AIService } from '@/lib/ai/ai-service';
 import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
 import { checkSummaryQuality } from '@/lib/utils/summary-quality-checker';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
+import { getLastProcessedTime, saveProcessingStatus, hasUpdatedArticlesSince } from '../utils/processing-status';
 
 const prisma = new PrismaClient();
 
@@ -442,10 +443,18 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
   const startTime = Date.now();
 
   try {
+    // 差分処理: 前回処理以降の新規・更新記事のみを対象にする
+    const lastProcessedAt = await getLastProcessedTime('summary-generation');
+
     // 条件付き処理: 新規記事がない場合はスキップ
     const hasNewArticles = await checkNewArticles(options);
-    if (!hasNewArticles) {
-      return { generated: 0, errors: 0 };
+    if (!hasNewArticles && lastProcessedAt) {
+      // 前回処理以降に更新された記事がある場合は処理を継続
+      const hasUpdates = await hasUpdatedArticlesSince('summary-generation');
+      if (!hasUpdates) {
+        console.error('📋 新規・更新記事なし。要約生成をスキップします。');
+        return { generated: 0, errors: 0 };
+      }
     }
 
     // 1. 要約がない記事を取得
@@ -707,6 +716,19 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     if (successRate < 50 && apiStats.attempts > 10) {
       console.error(`\n⚠️  警告: API成功率が${successRate}%と低いです。深夜の実行を推奨します。`);
     }
+
+    // 処理状態を記録（差分処理用）
+    await saveProcessingStatus(
+      'summary-generation',
+      generatedCount,
+      errorCount > 0 ? 'partial' : 'success',
+      {
+        processedCount: generatedCount,
+        errorCount,
+        duration: totalDuration,
+        apiStats
+      }
+    );
 
     return { generated: generatedCount, errors: errorCount };
 

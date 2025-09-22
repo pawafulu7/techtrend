@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { calculateQualityScore, checkCategoryQuality } from '@/lib/utils/quality-score';
+import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';
 
 const prisma = new PrismaClient();
 
@@ -97,6 +98,9 @@ async function calculateAllQualityScores(options: Options) {
   console.error('📊 品質スコアの計算を開始します...\n');
 
   try {
+    // 差分処理: 前回処理以降に更新された記事のみを対象
+    const lastProcessedAt = await getLastProcessedTime('quality-score-calculation');
+
     // 記事を取得
     const query: Prisma.ArticleFindManyArgs = {
       include: {
@@ -105,8 +109,19 @@ async function calculateAllQualityScores(options: Options) {
       },
     };
 
+    // 差分処理のための条件追加
+    if (lastProcessedAt && !options.force) {
+      query.where = {
+        OR: [
+          { qualityScore: null },
+          { qualityScore: 0 },
+          { updatedAt: { gt: lastProcessedAt } }
+        ]
+      };
+    }
+
     if (options.source) {
-      query.where = { source: { name: options.source } };
+      query.where = { ...query.where, source: { name: options.source } };
     }
 
     const articles = await prisma.article.findMany(query);
@@ -201,6 +216,17 @@ async function calculateAllQualityScores(options: Options) {
     });
 
     console.error('\n✅ 品質スコアの計算が完了しました');
+
+    // 処理状態を記録（差分処理用）
+    await saveProcessingStatus(
+      'quality-score-calculation',
+      processedCount,
+      'success',
+      {
+        processedCount,
+        lastProcessedAt: new Date()
+      }
+    );
 
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
