@@ -8,25 +8,15 @@
 import { PrismaClient, ProcessingStatus } from '@prisma/client';
 import { GeminiSummaryGenerator } from '@/lib/ai/gemini-summary';
 import logger from '@/lib/logger';
+import { SUMMARY_VERSION } from '@/types/article';
+import type { ArticleWithSource } from '@/types/models';
 
 const prisma = new PrismaClient();
 const summaryGenerator = new GeminiSummaryGenerator();
 
 const PROCESS_NAME = 'summary_generation_batch';
 const BATCH_SIZE = 50;
-const SUMMARY_VERSION = 8;
-
-interface ArticleWithSource {
-  id: string;
-  title: string;
-  url: string;
-  content: string | null;
-  summaryComputedAt: Date | null;
-  summaryVersion: number;
-  source: {
-    name: string;
-  };
-}
+const TARGET_SUMMARY_VERSION = SUMMARY_VERSION.UNIFIED;
 
 /**
  * 差分処理による要約生成バッチ
@@ -40,6 +30,22 @@ async function generateSummariesDiff() {
   let skippedCount = 0;
   let failedCount = 0;
   let status: ProcessingStatus = 'success';
+
+  // PostgreSQLアドバイザリロックで多重実行を防止
+  const LOCK_KEY = 902202509n; // 固定キー（PROCESS_NAMEのハッシュ値）
+  const lockResult = await prisma.$queryRaw<{ pg_try_advisory_lock: boolean }[]>`
+    SELECT pg_try_advisory_lock(${LOCK_KEY})`;
+
+  if (!lockResult[0]?.pg_try_advisory_lock) {
+    logger.warn('Another batch run is in progress; skipping this run');
+    return {
+      processedCount: 0,
+      skippedCount: 0,
+      failedCount: 0,
+      duration: 0,
+      status: 'skipped' as ProcessingStatus
+    };
+  }
 
   try {
     // 前回処理情報を取得
@@ -64,7 +70,7 @@ async function generateSummariesDiff() {
           { summary: null },
           { detailedSummary: null },
           // 古いバージョンの要約
-          { summaryVersion: { lt: SUMMARY_VERSION } },
+          { summaryVersion: { lt: TARGET_SUMMARY_VERSION } },
           // 前回処理以降、チェックポイント以前に更新された記事
           { updatedAt: { gt: lastProcessedAt, lte: processingCheckpoint } }
         ],
@@ -117,7 +123,7 @@ async function generateSummariesDiff() {
             data: {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
-              summaryVersion: SUMMARY_VERSION,
+              summaryVersion: TARGET_SUMMARY_VERSION,
               summaryComputedAt: new Date(),
               tags: {
                 connectOrCreate: result.tags.map(tag => ({
@@ -236,6 +242,8 @@ async function generateSummariesDiff() {
 
     throw error;
   } finally {
+    // アドバイザリロックを解放
+    await prisma.$executeRaw`SELECT pg_advisory_unlock(${LOCK_KEY})`;
     await prisma.$disconnect();
   }
 }
@@ -253,8 +261,26 @@ async function generateSummariesFull() {
   return generateSummariesDiff();
 }
 
-// 実行
-if (require.main === module) {
+// 実行（ESM/CJS両対応）
+// tsx経由で実行される場合を考慮
+const isMainModule = (() => {
+  // CJSの場合
+  if (typeof require !== 'undefined' && require.main === module) {
+    return true;
+  }
+  // ESMの場合（tsx実行時）
+  // process.argv[1]に実行ファイルパスが含まれるかチェック
+  if (process.argv[1] && __filename && process.argv[1] === __filename) {
+    return true;
+  }
+  // tsx実行時の追加チェック
+  if (process.argv[1] && process.argv[1].includes('generate-summaries-diff')) {
+    return true;
+  }
+  return false;
+})();
+
+if (isMainModule) {
   const isDifferential = process.argv.includes('--diff');
   const processFn = isDifferential ? generateSummariesDiff : generateSummariesFull;
 

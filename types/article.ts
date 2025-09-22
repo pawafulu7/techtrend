@@ -20,7 +20,8 @@ export const SUMMARY_VERSION = {
   V4: 4,          // バージョン4
   V5: 5,          // バージョン5
   V6: 6,          // バージョン6
-  UNIFIED: 7,     // 統一バージョン（最新）
+  V7: 7,          // バージョン7
+  UNIFIED: 8,     // 統一バージョン（最新）
 } as const;
 
 // 記事品質スコアの閾値
