@@ -14,7 +14,7 @@ const summaryGenerator = new GeminiSummaryGenerator();
 
 const PROCESS_NAME = 'summary_generation_batch';
 const BATCH_SIZE = 50;
-const SUMMARY_VERSION = 7;
+const SUMMARY_VERSION = 8;
 
 interface ArticleWithSource {
   id: string;
