@@ -452,7 +452,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     const hasNewArticles = await checkNewArticles(options);
     if (!hasNewArticles && lastProcessedAt) {
       // 前回処理以降に更新された記事がある場合は処理を継続
-      const hasUpdates = await hasUpdatedArticlesSince('summary-generation');
+      const hasUpdates = await hasUpdatedArticlesSince(processName);
       if (!hasUpdates) {
         console.error('📋 新規・更新記事なし。要約生成をスキップします。');
         return { generated: 0, errors: 0 };

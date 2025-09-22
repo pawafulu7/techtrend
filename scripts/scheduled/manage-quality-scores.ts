@@ -126,7 +126,7 @@ async function calculateAllQualityScores(options: Options) {
     query.orderBy = { updatedAt: 'asc' };
 
     if (options.source) {
-      query.where = { ...query.where, source: { name: options.source } };
+      query.where = { ...(query.where ?? {}), source: { name: options.source } };
     }
 
     const articles = await prisma.article.findMany(query);

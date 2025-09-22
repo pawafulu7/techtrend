@@ -20,7 +20,7 @@ async function calculateDifficultyLevels() {
           { difficulty: null },
           { updatedAt: { gt: lastProcessedAt, lte: checkpoint } }
         ]
-      } : undefined,
+      } : { updatedAt: { lte: checkpoint } },
       orderBy: { updatedAt: 'asc' },
       include: {
         source: true,

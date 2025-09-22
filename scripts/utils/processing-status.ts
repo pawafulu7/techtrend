@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -20,7 +20,7 @@ export async function saveProcessingStatus(
   processName: string,
   processedCount: number,
   status: 'success' | 'failed' | 'partial' = 'success',
-  metadata?: any,
+  metadata?: Prisma.InputJsonValue,
   processedAt?: Date
 ): Promise<void> {
   const ts = processedAt ?? new Date();
@@ -59,6 +59,8 @@ export async function shouldProcess(
   const intervalMs = intervalHours * 60 * 60 * 1000;
   const timeSinceLastProcess = Date.now() - lastProcessedAt.getTime();
 
+  // 将来時刻（時計ずれ）なら即処理する
+  if (timeSinceLastProcess < 0) return true;
   return timeSinceLastProcess >= intervalMs;
 }
 
