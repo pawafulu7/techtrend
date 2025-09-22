@@ -8,7 +8,7 @@ export function useScrollRestoration(
   articlesCount: number,
   pagesLoaded: number,
   filters: Record<string, string>,
-  fetchNextPage: () => Promise<any>,
+  fetchNextPage: () => Promise<unknown>,
   hasNextPage: boolean,
   isFetchingNextPage: boolean,
   scrollContainerRef?: React.RefObject<HTMLElement | null>,
@@ -80,7 +80,7 @@ export function useScrollRestoration(
     const age = Date.now() - Number(timestamp);
 
     // 指定時間以内のデータのみ有効
-    if (age > SCROLL.RESTORE_DATA_EXPIRY_MINUTES * 60 * 1000) {
+    if (age > SCROLL.RESTORE_DATA_EXPIRY_MS) {
       sessionStorage.removeItem(scrollKey);
       return;
     }
@@ -115,12 +115,19 @@ export function useScrollRestoration(
     // pagesLoadedRefを更新
     pagesLoadedRef.current = pagesLoaded;
 
+    // prefers-reduced-motionを尊重したスクロール動作を取得
+    const getScrollBehavior = (): ScrollBehavior => {
+      const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+      return prefersReduced ? 'auto' : 'smooth';
+    };
+
     const restoreScroll = () => {
       // 可能なら記事要素の上端に合わせる（タイトルが確実に見える）
       const mainContainer = document.getElementById('main-scroll-container');
       const HEADER_OFFSET_PX = SCROLL.HEADER_OFFSET_PX;
 
       const tryScrollToElement = (id: string): boolean => {
+        const behavior = getScrollBehavior();
         const el = document.getElementById(`article-${id}`) || document.querySelector(`[data-article-id="${id}"]`) as HTMLElement | null;
         if (!el) return false;
         // コンテナがスクロール領域の場合はoffsetTopを使う
@@ -128,18 +135,18 @@ export function useScrollRestoration(
           const target = Math.max(el.offsetTop - HEADER_OFFSET_PX, 0);
           const containerElement = mainContainer as unknown;
           if (containerElement && typeof (containerElement as { scrollTo?: (options: { top: number; behavior: string }) => void }).scrollTo === 'function') {
-            (containerElement as { scrollTo: (options: { top: number; behavior: string }) => void }).scrollTo({ top: target, behavior: 'smooth' });
+            (containerElement as { scrollTo: (options: { top: number; behavior: string }) => void }).scrollTo({ top: target, behavior });
           } else {
             (mainContainer as HTMLElement).scrollTop = target;
           }
           // メインコンテナを使う場合、ウィンドウは最上部に固定
-          window.scrollTo({ top: 0, behavior: 'auto' });
+          window.scrollTo({ top: 0, behavior });
           return true;
         }
         // windowスクロールの場合
         const rect = el.getBoundingClientRect();
         const y = Math.max(window.scrollY + rect.top - HEADER_OFFSET_PX, 0);
-        window.scrollTo({ top: y, behavior: 'smooth' });
+        window.scrollTo({ top: y, behavior });
         return true;
       };
 
@@ -147,13 +154,14 @@ export function useScrollRestoration(
         // OK: 要素に合わせて復元完了
       } else {
         // フォールバック: 保存されたスクロール値に微調整を加えて復元
+        const behavior = getScrollBehavior();
         const RESTORE_OFFSET_PX = 0; // 要素に合わせられない場合はそのまま使う
         const adjustedScrollY = Math.max((scrollY ?? 0) + RESTORE_OFFSET_PX, 0);
-        window.scrollTo({ top: adjustedScrollY, behavior: 'smooth' });
+        window.scrollTo({ top: adjustedScrollY, behavior });
         if (mainContainer) {
           const containerElement = mainContainer as unknown;
           if (containerElement && typeof (containerElement as { scrollTo?: (options: { top: number; behavior: string }) => void }).scrollTo === 'function') {
-            (containerElement as { scrollTo: (options: { top: number; behavior: string }) => void }).scrollTo({ top: adjustedScrollY, behavior: 'smooth' });
+            (containerElement as { scrollTo: (options: { top: number; behavior: string }) => void }).scrollTo({ top: adjustedScrollY, behavior });
           } else {
             mainContainer.scrollTop = adjustedScrollY;
           }
@@ -161,7 +169,7 @@ export function useScrollRestoration(
         if (scrollContainerRef?.current) {
           const sc = scrollContainerRef.current as unknown;
           if (sc && typeof (sc as { scrollTo?: (options: { top: number; behavior: string }) => void }).scrollTo === 'function') {
-            (sc as { scrollTo: (options: { top: number; behavior: string }) => void }).scrollTo({ top: adjustedScrollY, behavior: 'smooth' });
+            (sc as { scrollTo: (options: { top: number; behavior: string }) => void }).scrollTo({ top: adjustedScrollY, behavior });
           } else {
             (scrollContainerRef.current as HTMLElement).scrollTop = adjustedScrollY;
           }
@@ -170,7 +178,7 @@ export function useScrollRestoration(
         scrollableElements.forEach((el, _index) => {
           const anyEl = el as unknown;
           if (anyEl && typeof (anyEl as { scrollTo?: (options: { top: number; behavior: string }) => void }).scrollTo === 'function') {
-            (anyEl as { scrollTo: (options: { top: number; behavior: string }) => void }).scrollTo({ top: adjustedScrollY, behavior: 'smooth' });
+            (anyEl as { scrollTo: (options: { top: number; behavior: string }) => void }).scrollTo({ top: adjustedScrollY, behavior });
           } else {
             (el as HTMLElement).scrollTop = adjustedScrollY;
           }
@@ -199,22 +207,22 @@ export function useScrollRestoration(
         try {
           // 必要なページまで自動的にフェッチ
           while (pagesLoadedRef.current < requiredPages && hasNextPageRef.current && !restorationAbortRef.current) {
-            // fetchNextPageの結果を待ち、成功したらpagesLoadedRefを更新
-            const result = await fetchNextPage();
+            const previousPages = pagesLoadedRef.current;
+
+            // fetchNextPageを実行（戻り値は使用しない）
+            await fetchNextPage();
 
             // abortチェック
             if (restorationAbortRef.current) {
               break;
             }
 
-            // 実際にロードされたページ数を確認（React Query v5のレスポンス構造に対応）
-            // result.data.pageParamsから取得する
-            if (result?.data?.pageParams?.length) {
-              pagesLoadedRef.current = result.data.pageParams.length;
-            } else if (result?.pageParams?.length) {
-              // 互換性のためのフォールバック
-              pagesLoadedRef.current = result.pageParams.length;
-            } else {
+            // 親コンポーネントがpagesLoadedを更新するのを短時間待つ
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            // pagesLoadedが変化していない場合は自前でインクリメント
+            // （親コンポーネントが更新しなかった場合のフォールバック）
+            if (pagesLoadedRef.current === previousPages) {
               pagesLoadedRef.current++;
             }
 
@@ -223,16 +231,9 @@ export function useScrollRestoration(
               setCurrentPage(pagesLoadedRef.current);
             }
 
-            // hasNextPageの再評価（fetchNextPageの結果を反映）
-            if (result?.data?.hasNextPage !== undefined) {
-              hasNextPageRef.current = result.data.hasNextPage;
-            } else if (result?.hasNextPage !== undefined) {
-              // 互換性のためのフォールバック
-              hasNextPageRef.current = result.hasNextPage;
-            }
-
-            // hasNextPageがfalseならループ終了
-            if (hasNextPageRef.current === false) {
+            // hasNextPageがfalseになったら終了
+            // （hasNextPageRefは外部から更新される）
+            if (!hasNextPageRef.current) {
               break;
             }
 

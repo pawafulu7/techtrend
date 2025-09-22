@@ -10,7 +10,10 @@ export const PAGINATION = {
 } as const;
 
 // 互換性レイヤー（将来的に削除予定）
-// DEPRECATED: 直接参照は避け、PAGINATION.ITEMS_PER_PAGE を使用してください
+/**
+ * @deprecated 直接参照は避け、PAGINATION.ITEMS_PER_PAGE を使用してください。
+ *             v2.0.0で削除予定。
+ */
 export const ARTICLES_PER_PAGE = PAGINATION.ITEMS_PER_PAGE;
 
 // タイムアウト関連
@@ -29,7 +32,9 @@ export const TIMEOUTS = {
 export const SCROLL = {
   /** スクロール保存のしきい値（px） */
   MIN_SCROLL_SAVE_THRESHOLD: 50,
-  /** スクロール復元データの有効期限（分） */
+  /** スクロール復元データの有効期限（ms） */
+  RESTORE_DATA_EXPIRY_MS: 30 * 60 * 1000, // 30分
+  /** スクロール復元データの有効期限（分） @deprecated RESTORE_DATA_EXPIRY_MSを使用してください */
   RESTORE_DATA_EXPIRY_MINUTES: 30,
   /** ヘッダーオフセット（px） */
   HEADER_OFFSET_PX: 8,
