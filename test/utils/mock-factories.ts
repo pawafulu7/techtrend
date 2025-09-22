@@ -38,6 +38,9 @@ interface MockArticle {
   userVotes: number;
   difficulty: ArticleDifficulty | null;
   category: ArticleCategory | null;
+  contentUpdatedAt: Date | null;
+  qualityScoreComputedAt: Date | null;
+  summaryComputedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -141,6 +144,9 @@ export function createMockArticle(overrides?: Partial<MockArticle>): MockArticle
     userVotes: 0,
     difficulty: null,
     category: null,
+    contentUpdatedAt: now,
+    qualityScoreComputedAt: null,
+    summaryComputedAt: now,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -313,6 +319,9 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
     userVotes: faker.number.int({ min: 0, max: 50 }),
     difficulty: faker.helpers.arrayElement<ArticleDifficulty | null>([null, 'beginner', 'intermediate', 'advanced']),
     category: faker.helpers.arrayElement<ArticleCategory | null>([null, 'frontend', 'backend', 'ai_ml']),
+    contentUpdatedAt: publishedAt,
+    qualityScoreComputedAt: faker.datatype.boolean() ? now : null,
+    summaryComputedAt: now,
     createdAt: now,
     updatedAt: now,
     ...overrides,

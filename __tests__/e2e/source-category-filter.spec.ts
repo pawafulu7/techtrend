@@ -244,6 +244,11 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
   test('選択数が正しく表示される', async ({ page }) => {
     const sourceCount = page.getByTestId('source-count');
+
+    // まず初期状態を全選択にする（テスト環境での一貫性のため）
+    await page.locator('[data-testid="select-all-button"]:visible').click();
+    await page.waitForTimeout(500); // 状態更新を待つ
+
     // 初期の合計値 Y を取得
     const initial = await sourceCount.textContent();
     const [, initSelected, total] = initial?.match(/(\d+)\/(\d+)/) || [];
@@ -252,7 +257,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
     // NaNチェック
     expect(selectedCount).not.toBeNaN();
     expect(totalCount).not.toBeNaN();
-    expect(selectedCount).toBeGreaterThan(0);
+    expect(selectedCount).toBe(totalCount); // 全選択されていることを確認
 
     // 全解除 → 0/Y
     await page.locator('[data-testid="deselect-all-button"]:visible').click();

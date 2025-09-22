@@ -1,13 +1,16 @@
 import { PrismaClient, Article, Source, Prisma } from '@prisma/client';
-import fetch from 'node-fetch';
-import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
+import { normalizeTag } from '@/lib/utils/tag-normalizer';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { AIService } from '@/lib/ai/ai-service';
 import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
 import { checkSummaryQuality } from '@/lib/utils/summary-quality-checker';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
+import { getLastProcessedTime, saveProcessingStatus, hasContentUpdatesSince, setPrisma } from '../utils/processing-status';
 
 const prisma = new PrismaClient();
+
+// processing-statusモジュールに同じインスタンスを注入
+setPrisma(prisma);
 
 interface GenerateResult {
   generated: number;
@@ -442,10 +445,28 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
   const startTime = Date.now();
 
   try {
+    // 差分処理: 前回処理以降の新規・更新記事のみを対象にする
+    const processName = 'summary-generation';
+    const checkpoint = new Date();
+    const lastProcessedAt = await getLastProcessedTime(processName);
+
     // 条件付き処理: 新規記事がない場合はスキップ
     const hasNewArticles = await checkNewArticles(options);
-    if (!hasNewArticles) {
-      return { generated: 0, errors: 0 };
+    if (!hasNewArticles && lastProcessedAt) {
+      // 前回処理以降にコンテンツが更新された記事がある場合は処理を継続
+      const hasUpdates = await hasContentUpdatesSince(processName);
+      if (!hasUpdates) {
+        console.error('📋 新規・更新記事なし。要約生成をスキップします。');
+        // スキップ時もウォーターマークを更新して、次回の無駄な起動を防ぐ
+        await saveProcessingStatus(
+          processName,
+          0,
+          'success',
+          { processedCount: 0, checkpoint },
+          checkpoint
+        );
+        return { generated: 0, errors: 0 };
+      }
     }
 
     // 1. 要約がない記事を取得
@@ -549,6 +570,14 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
 
     if (uniqueArticles.length === 0) {
       console.error('✅ すべての記事が適切な要約とタグを持っています');
+      // 対象ゼロでもウォーターマークを進めて、次回の差分処理を効率化
+      await saveProcessingStatus(
+        processName,
+        0,
+        'success',
+        { processedCount: 0, checkpoint },
+        checkpoint
+      );
       return { generated: 0, errors: 0 };
     }
 
@@ -595,11 +624,12 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                 // 要約を更新
                 await prisma.article.update({
                   where: { id: article.id },
-                  data: { 
+                  data: {
                     summary,
                     detailedSummary: result.detailedSummary,
                     articleType: 'unified',
-                    summaryVersion: getUnifiedSummaryService().getSummaryVersion()
+                    summaryVersion: getUnifiedSummaryService().getSummaryVersion(),
+                    summaryComputedAt: checkpoint
                   }
                 });
               } else {
@@ -708,6 +738,21 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
       console.error(`\n⚠️  警告: API成功率が${successRate}%と低いです。深夜の実行を推奨します。`);
     }
 
+    // 処理状態を記録（差分処理用）
+    await saveProcessingStatus(
+      processName,
+      generatedCount,
+      errorCount > 0 ? 'partial' : 'success',
+      {
+        processedCount: generatedCount,
+        errorCount,
+        duration: totalDuration,
+        apiStats,
+        checkpoint
+      },
+      checkpoint
+    );
+
     return { generated: generatedCount, errors: errorCount };
 
   } catch (error) {
@@ -766,9 +811,10 @@ async function regenerateSummaries(options: Options): Promise<GenerateResult> {
         // 要約を更新
         await prisma.article.update({
           where: { id: article.id },
-          data: { 
+          data: {
             summary: result.summary,
-            detailedSummary: result.detailedSummary
+            detailedSummary: result.detailedSummary,
+            summaryComputedAt: new Date()
           }
         });
 
@@ -875,9 +921,10 @@ async function generateMissingSummaries(options: Options): Promise<GenerateResul
         // 要約を更新
         await prisma.article.update({
           where: { id: article.id },
-          data: { 
+          data: {
             summary: result.summary,
-            detailedSummary: result.detailedSummary
+            detailedSummary: result.detailedSummary,
+            summaryComputedAt: new Date()
           }
         });
 

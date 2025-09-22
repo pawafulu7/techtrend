@@ -1,5 +1,4 @@
 import { PrismaClient, Source } from '@prisma/client';
-import { CreateArticleInput } from '@/types/models';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { adjustTimezoneForArticle } from '@/lib/utils/date';
@@ -181,6 +180,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                 bookmarks: article.bookmarks || 0,
                 sourceId: source.id,
                 category: category,  // カテゴリを設定
+                contentUpdatedAt: new Date(),  // コンテンツの初回取得時刻を記録
                 ...(tagConnections.length > 0 && {
                   tags: {
                     connect: tagConnections
@@ -202,6 +202,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                     where: { id: savedArticle.id },
                     data: {
                       content: enrichedData.content,
+                      contentUpdatedAt: new Date(),  // コンテンツ更新時刻を記録
                       ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
                     }
                   });
@@ -219,8 +220,13 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
             }
 
             newCount++;
-          } catch (error) {
-            console.error(`   記事保存エラー: ${article.title}`, error instanceof Error ? error.message : String(error));
+          } catch (error: any) {
+            if (error?.code === 'P2002' && error?.meta?.target?.includes('url')) {
+              // 同時実行などでの一意制約競合は重複としてカウント
+              duplicateCount++;
+            } else {
+              console.error(`   記事保存エラー: ${article.title}`, error instanceof Error ? error.message : String(error));
+            }
           }
         }
 

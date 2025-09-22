@@ -89,7 +89,6 @@ async function resetTestDatabase() {
       DROP INDEX IF EXISTS "idx_article_summary_gin";
       DROP INDEX IF EXISTS "idx_article_category";
       DROP INDEX IF EXISTS "idx_article_search_gin";
-      DROP INDEX IF EXISTS "idx_article_tag_reverse";
     `;
 
     // PostgreSQLに直接接続してクリーンアップを実行

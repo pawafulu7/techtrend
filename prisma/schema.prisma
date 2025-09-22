@@ -41,18 +41,25 @@ model Article {
   detailedSummary String?
   articleType     String?
   summaryVersion  Int           @default(7)
-  category        ArticleCategory?
-  source          Source        @relation(fields: [sourceId], references: [id])
-  articleViews    ArticleView[]
-  favorites       Favorite[]
-  tags            Tag[]         @relation("ArticleToTag")
+  category                ArticleCategory?
+  contentUpdatedAt        DateTime?     @db.Timestamp(6)
+  qualityScoreComputedAt  DateTime?     @db.Timestamp(6)
+  summaryComputedAt       DateTime?     @db.Timestamp(6)
+  source                  Source        @relation(fields: [sourceId], references: [id])
+  articleViews            ArticleView[]
+  favorites               Favorite[]
+  tags                    Tag[]         @relation("ArticleToTag")
 
   @@index([publishedAt(sort: Desc)], map: "idx_article_published_at")
   @@index([sourceId], map: "idx_article_source_id")
   @@index([sourceId, publishedAt(sort: Desc)], map: "idx_article_source_published")
   @@index([createdAt(sort: Desc)], map: "idx_article_created_at")
   @@index([qualityScore(sort: Desc)], map: "idx_article_quality_score")
+  @@index([updatedAt], map: "idx_article_updated_at")
   @@index([bookmarks(sort: Desc)])
+  @@index([contentUpdatedAt], map: "idx_article_content_updated_at")
+  @@index([qualityScoreComputedAt], map: "idx_article_quality_score_computed_at")
+  @@index([summaryComputedAt], map: "idx_article_summary_computed_at")
 }
 
 model Source {
@@ -153,4 +160,23 @@ model WeeklyDigest {
   createdAt     DateTime @default(now())
 
   @@index([createdAt(sort: Desc)], map: "idx_weekly_digest_created_at")
+}
+
+model ProcessingLog {
+  id              String            @id @default(cuid())
+  processName     String            @unique
+  lastProcessedAt DateTime
+  processedCount  Int               @default(0)
+  status          ProcessingStatus  @default(success)
+  metadata        Json?             // Additional processing information
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([lastProcessedAt], map: "idx_processing_log_processed_at")
+}
+
+enum ProcessingStatus {
+  success
+  failed
+  partial
 }

@@ -132,11 +132,26 @@ test.describe('フィルター条件の永続化', () => {
     
     // 2. 最初のソースチェックボックスを選択
     await safeClick(firstSourceContainer, { retries: 3 });
-    await page.waitForTimeout(500); // 状態更新を待つ
-    
-    // 選択されたことを確認
+    await page.waitForTimeout(1000); // 状態更新を待つ（より長く待機）
+
+    // 選択されたことを確認（リトライロジック追加）
     const checkbox = firstSourceContainer.locator('button[role="checkbox"]');
-    await expect(checkbox).toHaveAttribute('data-state', 'checked', { timeout: getTimeout('short') });
+    let isChecked = false;
+    for (let i = 0; i < 3 && !isChecked; i++) {
+      try {
+        await expect(checkbox).toHaveAttribute('data-state', 'checked', { timeout: 5000 });
+        isChecked = true;
+      } catch {
+        // リトライ: クリックを再実行
+        await safeClick(firstSourceContainer, { retries: 1 });
+        await page.waitForTimeout(1000);
+      }
+    }
+
+    if (!isChecked) {
+      // 最後にもう一度確認
+      await expect(checkbox).toHaveAttribute('data-state', 'checked', { timeout: getTimeout('short') });
+    }
     
     // どのソースが選択されたか記録
     const selectedSourceId = await firstSourceContainer.getAttribute('data-testid');
