@@ -162,8 +162,8 @@ test.describe('推薦機能', () => {
   test('推薦セクション表示切り替え（ログイン済みの場合）', async ({ page }) => {
     // 注意: 実際のテストではログイン処理が必要
     // ここでは推薦トグルボタンの存在確認のみ
-    const recommendationSection = page.locator('[data-testid="recommendation-header"]');
-    
+    const recommendationSection = page.locator('[data-testid="recommendation-section"]');
+
     // ログインしていない場合は推薦セクションが表示されない
     await expect(recommendationSection).toBeHidden();
   });

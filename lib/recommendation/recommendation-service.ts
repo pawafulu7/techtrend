@@ -325,9 +325,8 @@ export class RecommendationService {
       const articleIds = selected.map(item => item.article.id);
       const viewStatuses = await viewLoader.loadMany(articleIds);
 
-      // メトリクスを記録
+      // メトリクスを記録（バッチサイズのみ、DBクエリはDataLoader内で記録）
       recommendationMetrics.recordBatchSize(articleIds.length);
-      recommendationMetrics.recordDatabaseQuery('articleView');
 
       // キャッシュヒット/ミスを正確に測定（DataLoader内部で測定済みのため削除）
       // RecommendedArticle形式に変換
