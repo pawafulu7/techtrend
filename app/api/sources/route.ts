@@ -3,6 +3,7 @@ import { prisma } from '@/lib/database';
 import { sourceCache } from '@/lib/cache/source-cache';
 import logger from '@/lib/logger';
 import { parseBoolean } from '@/lib/utils/env-parser';
+import { Prisma } from '@prisma/client';
 
 type SourceCategory = 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
 
@@ -126,8 +127,8 @@ export async function GET(request: NextRequest) {
           FROM "Source" s
           LEFT JOIN "Article" a ON s.id = a."sourceId"
           WHERE s.enabled = true
-          ${ids ? prisma.Prisma.sql`AND s.id IN (${prisma.Prisma.join(ids.split(','))})` : prisma.Prisma.empty}
-          ${search ? prisma.Prisma.sql`AND s.name ILIKE ${`%${search}%`}` : prisma.Prisma.empty}
+          ${ids ? Prisma.sql`AND s.id IN (${Prisma.join(ids.split(','))})` : Prisma.empty}
+          ${search ? Prisma.sql`AND s.name ILIKE ${`%${search}%`}` : Prisma.empty}
           GROUP BY s.id
         ` as Promise<Array<{
           source_id: string;
