@@ -1,6 +1,5 @@
 import { PrismaClient, Article, Source, Prisma } from '@prisma/client';
-import fetch from 'node-fetch';
-import { normalizeTag, normalizeTags } from '@/lib/utils/tag-normalizer';
+import { normalizeTag } from '@/lib/utils/tag-normalizer';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { AIService } from '@/lib/ai/ai-service';
 import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';

@@ -118,32 +118,20 @@ async function calculateAllQualityScores(options: Options) {
     if (lastProcessedAt && !options.force) {
       query.where = {
         AND: [
-          // contentUpdatedAtがcheckpoint以前のレコードのみ対象
+          { contentUpdatedAt: { lte: checkpoint } },
           {
             OR: [
-              { contentUpdatedAt: null }, // 初回処理のデータ
-              { contentUpdatedAt: { lte: checkpoint } }
-            ]
-          },
-          {
-            OR: [
-              { qualityScoreComputedAt: null }, // 未計算
-              { qualityScore: 0 }, // エラー時のフォールバック値
-              // コンテンツが更新されたもの
-              {
-                AND: [
-                  { contentUpdatedAt: { gt: lastProcessedAt } },
-                  { contentUpdatedAt: { lte: checkpoint } }
-                ]
-              }
+              { qualityScoreComputedAt: null }, // 初回
+              { qualityScore: 0 },              // エラー・未設定
+              { contentUpdatedAt: { gt: lastProcessedAt } } // 入力の差分
             ]
           }
         ]
       };
     }
 
-    // ソート順を追加
-    query.orderBy = { updatedAt: 'asc' };
+    // ソート順を追加（contentUpdatedAt優先）
+    query.orderBy = [{ contentUpdatedAt: 'asc' }, { updatedAt: 'asc' }];
 
     if (options.source) {
       query.where = { ...(query.where ?? {}), source: { name: options.source } };
@@ -177,6 +165,12 @@ async function calculateAllQualityScores(options: Options) {
                 qualityScore: finalScore,
                 qualityScoreComputedAt: checkpoint
               },
+            });
+          } else if (!article.qualityScoreComputedAt) {
+            // スコア同一でも未計算扱いを解消
+            await prisma.article.update({
+              where: { id: article.id },
+              data: { qualityScoreComputedAt: checkpoint },
             });
           }
 

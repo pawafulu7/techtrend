@@ -1,11 +1,11 @@
--- DropIndex (if exists to avoid error)
-DROP INDEX IF EXISTS "public"."idx_favorite_user_article";
+-- DropIndex
+DROP INDEX "public"."idx_favorite_user_article";
 
--- DropIndex (if exists to avoid error)
-DROP INDEX IF EXISTS "public"."idx_article_tag_join";
+-- DropIndex
+DROP INDEX "public"."idx_article_tag_join";
 
--- DropIndex (if exists to avoid error)
-DROP INDEX IF EXISTS "public"."idx_article_tag_reverse";
+-- DropIndex
+DROP INDEX "public"."idx_article_tag_reverse";
 
 -- AlterTable
 ALTER TABLE "public"."Article" ADD COLUMN     "contentUpdatedAt" TIMESTAMP(6),

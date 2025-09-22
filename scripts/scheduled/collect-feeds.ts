@@ -1,5 +1,4 @@
 import { PrismaClient, Source } from '@prisma/client';
-import { CreateArticleInput } from '@/types/models';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { adjustTimezoneForArticle } from '@/lib/utils/date';
@@ -221,8 +220,13 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
             }
 
             newCount++;
-          } catch (error) {
-            console.error(`   記事保存エラー: ${article.title}`, error instanceof Error ? error.message : String(error));
+          } catch (error: any) {
+            if (error?.code === 'P2002' && error?.meta?.target?.includes('url')) {
+              // 同時実行などでの一意制約競合は重複としてカウント
+              duplicateCount++;
+            } else {
+              console.error(`   記事保存エラー: ${article.title}`, error instanceof Error ? error.message : String(error));
+            }
           }
         }
 

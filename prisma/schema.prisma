@@ -163,15 +163,20 @@ model WeeklyDigest {
 }
 
 model ProcessingLog {
-  id              String   @id @default(cuid())
-  processName     String   @unique
+  id              String            @id @default(cuid())
+  processName     String            @unique
   lastProcessedAt DateTime
-  processedCount  Int      @default(0)
-  status          String   @default("success") // "success" | "failed" | "partial"
-  metadata        Json?    // Additional processing information
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  processedCount  Int               @default(0)
+  status          ProcessingStatus  @default(success)
+  metadata        Json?             // Additional processing information
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
-  @@index([processName], map: "idx_processing_log_name")
   @@index([lastProcessedAt], map: "idx_processing_log_processed_at")
+}
+
+enum ProcessingStatus {
+  success
+  failed
+  partial
 }
