@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { createFavoriteLoader } from '@/lib/dataloader/favorite-loader';
 import { favoriteCache } from '@/lib/cache/favorites-cache';
+import { parseBoolean } from '@/lib/utils/env-parser';
 import logger from '@/lib/logger';
+
+// DataLoaderインスタンスキャッシュ
+// リクエストスコープでDataLoaderを再利用
+const dataLoaderCache = new WeakMap<any, ReturnType<typeof createFavoriteLoader>>();
 
 /**
  * お気に入り状態を一括取得するAPI
  * DataLoaderパターンを使用してN+1問題を解決
  * POST /api/favorites/batch
- * Body: { articleIds: string[] }
+ * Body: { articleIds: string[], useDataLoader?: boolean }
  * Response: { favorites: { [articleId: string]: boolean } }
  */
 export async function POST(request: NextRequest) {
@@ -24,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { articleIds, useDataLoader = true } = body; // DataLoader使用フラグ追加
+    const { articleIds, useDataLoader = false } = body; // DataLoader使用フラグ（デフォルト: false）
 
     if (!Array.isArray(articleIds) || articleIds.length === 0) {
       return NextResponse.json(
@@ -44,11 +49,16 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id;
 
     // DataLoader方式とキャッシュ方式を環境変数で切り替え可能にする
-    const shouldUseDataLoader = useDataLoader && process.env.USE_DATALOADER !== 'false';
+    // 環境変数の解析を堅牢化
+    const shouldUseDataLoader = useDataLoader && parseBoolean(process.env.USE_DATALOADER, true);
 
     if (shouldUseDataLoader) {
-      // DataLoader経由で効率的に取得
-      const loader = createFavoriteLoader(userId);
+      // DataLoaderインスタンスをキャッシュから取得または作成
+      let loader = dataLoaderCache.get(request);
+      if (!loader) {
+        loader = createFavoriteLoader(userId);
+        dataLoaderCache.set(request, loader);
+      }
       const favoriteStatuses = await loader.loadMany(articleIds);
 
       // DataLoader結果を既存APIレスポンス形式に変換
