@@ -15,42 +15,62 @@ export async function GET(request: NextRequest, { params }: Params) {
   try {
     const { id } = params;
 
-    // すべてのクエリを完全に並列化
+    // ソース情報を先に取得して404を早期リターン
+    const source = await prisma.source.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            articles: true
+          }
+        }
+      }
+    });
+
+    // ソースが見つからない場合は早期リターン
+    if (!source) {
+      return NextResponse.json(
+        { error: 'Source not found' },
+        { status: 404 }
+      );
+    }
+
+    // 残りのクエリを並列化（DB集約を使用してメモリ効率化）
     const [
-      source,
-      articles,
+      articleAgg,
+      recentArticlesCount,
       recentArticles,
       topArticles,
       tagDistribution
     ] = await Promise.all([
-      // ソース情報を取得
-      prisma.source.findUnique({
-        where: { id },
-        include: {
-          _count: {
-            select: {
-              articles: true
-            }
-          }
+      // 統計情報をDB側で集約
+      prisma.article.aggregate({
+        where: { sourceId: id },
+        _count: { _all: true },
+        _avg: { qualityScore: true, bookmarks: true }
+      }),
+
+      // 30日以内の記事数をカウント
+      prisma.article.count({
+        where: {
+          sourceId: id,
+          publishedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
         }
       }),
 
-      // 全記事（統計用）
+      // 最新記事（必要なフィールドのみ選択）
       prisma.article.findMany({
         where: { sourceId: id },
         select: {
-          qualityScore: true,
+          id: true,
+          title: true,
+          url: true,
+          summary: true,
+          thumbnail: true,
           publishedAt: true,
+          qualityScore: true,
           bookmarks: true,
-          userVotes: true
-        }
-      }),
-
-      // 最新記事
-      prisma.article.findMany({
-        where: { sourceId: id },
-        include: {
-          tags: true
+          tags: { select: { id: true, name: true } }
         },
         orderBy: {
           publishedAt: 'desc'
@@ -58,15 +78,24 @@ export async function GET(request: NextRequest, { params }: Params) {
         take: 10
       }),
 
-      // 人気記事
+      // 人気記事（安定したソート）
       prisma.article.findMany({
         where: { sourceId: id },
-        include: {
-          tags: true
+        select: {
+          id: true,
+          title: true,
+          url: true,
+          summary: true,
+          thumbnail: true,
+          publishedAt: true,
+          qualityScore: true,
+          bookmarks: true,
+          tags: { select: { id: true, name: true } }
         },
-        orderBy: {
-          bookmarks: 'desc'
-        },
+        orderBy: [
+          { bookmarks: 'desc' },
+          { publishedAt: 'desc' }  // タイブレーカーとして使用
+        ],
         take: 5
       }),
 
@@ -83,31 +112,11 @@ export async function GET(request: NextRequest, { params }: Params) {
       `
     ]);
 
-    // ソースが見つからない場合
-    if (!source) {
-      return NextResponse.json(
-        { error: 'Source not found' },
-        { status: 404 }
-      );
-    }
-
-    // 統計計算
-    const totalArticles = articles.length;
-    const avgQualityScore = totalArticles > 0
-      ? articles.reduce((sum, a) => sum + a.qualityScore, 0) / totalArticles
-      : 0;
-    
-    const avgBookmarks = totalArticles > 0
-      ? articles.reduce((sum, a) => sum + a.bookmarks, 0) / totalArticles
-      : 0;
-    
-    // 投稿頻度
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const recentArticleCount = articles.filter(
-      a => a.publishedAt >= thirtyDaysAgo
-    ).length;
-    const publishFrequency = recentArticleCount / 30;
+    // 統計計算（DB集約結果を使用）
+    const totalArticles = articleAgg._count._all;
+    const avgQualityScore = Number(articleAgg._avg.qualityScore ?? 0);
+    const avgBookmarks = Number(articleAgg._avg.bookmarks ?? 0);
+    const publishFrequency = recentArticlesCount / 30;
 
     // 最終投稿日（最新記事から取得）
     const lastPublished = recentArticles.length > 0

@@ -4,8 +4,7 @@ import { sourceCache } from '@/lib/cache/source-cache';
 import logger from '@/lib/logger';
 import { parseBoolean } from '@/lib/utils/env-parser';
 import { Prisma } from '@prisma/client';
-
-type SourceCategory = 'tech_blog' | 'company_blog' | 'personal_blog' | 'news_site' | 'community' | 'other';
+import { inferSourceCategory, sortSources, type SourceCategory } from '@/lib/utils/source-helpers';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -151,22 +150,8 @@ export async function GET(request: NextRequest) {
           ? Math.round(((stats.recent_articles - stats.past_month_articles) / stats.past_month_articles) * 100)
           : stats && stats.recent_articles > 0 ? 100 : 0;
 
-        // カテゴリー推定
-        let category: SourceCategory = 'other';
-        const nameLower = source.name.toLowerCase();
-        if (nameLower.includes('blog')) {
-          if (nameLower.includes('company') || nameLower.includes('tech')) {
-            category = 'company_blog';
-          } else {
-            category = 'personal_blog';
-          }
-        } else if (nameLower.includes('news')) {
-          category = 'news_site';
-        } else if (['qiita', 'zenn', 'dev.to', 'reddit'].some(c => nameLower.includes(c))) {
-          category = 'community';
-        } else if (['techcrunch', 'hacker news'].some(c => nameLower.includes(c))) {
-          category = 'news_site';
-        }
+        // カテゴリー推定（共通関数を使用）
+        const category = inferSourceCategory(source.name);
 
         return {
           id: source.id,
@@ -192,41 +177,8 @@ export async function GET(request: NextRequest) {
         filteredSources = filteredSources.filter(s => s.category === category);
       }
 
-      // ソート処理（既存のロジックを再利用）
-      filteredSources.sort((a, b) => {
-        let aValue, bValue;
-        switch (sortBy) {
-          case 'articles':
-            aValue = a.stats.totalArticles;
-            bValue = b.stats.totalArticles;
-            break;
-          case 'quality':
-            aValue = a.stats.avgQualityScore;
-            bValue = b.stats.avgQualityScore;
-            break;
-          case 'frequency':
-            aValue = a.stats.publishFrequency;
-            bValue = b.stats.publishFrequency;
-            break;
-          case 'name':
-            aValue = a.name;
-            bValue = b.name;
-            break;
-          default:
-            aValue = a.stats.totalArticles;
-            bValue = b.stats.totalArticles;
-        }
-
-        if (sortBy === 'name') {
-          return order === 'asc'
-            ? (aValue as string).localeCompare(bValue as string)
-            : (bValue as string).localeCompare(aValue as string);
-        } else {
-          return order === 'asc'
-            ? (aValue as number) - (bValue as number)
-            : (bValue as number) - (aValue as number);
-        }
-      });
+      // ソート処理（共通関数を使用）
+      filteredSources = sortSources(filteredSources, sortBy, order);
 
       const responseTime = Date.now() - startTime;
       const response = NextResponse.json({
@@ -335,22 +287,8 @@ export async function GET(request: NextRequest) {
         ? Math.round(((currentMonthCount - pastMonthCount) / pastMonthCount) * 100)
         : currentMonthCount > 0 ? 100 : 0;
 
-      // カテゴリー推定（簡易版）
-      let category: SourceCategory = 'other';
-      const nameLower = source.name.toLowerCase();
-      if (nameLower.includes('blog')) {
-        if (nameLower.includes('company') || nameLower.includes('tech')) {
-          category = 'company_blog';
-        } else {
-          category = 'personal_blog';
-        }
-      } else if (nameLower.includes('news')) {
-        category = 'news_site';
-      } else if (['qiita', 'zenn', 'dev.to', 'reddit'].some(c => nameLower.includes(c))) {
-        category = 'community';
-      } else if (['techcrunch', 'hacker news'].some(c => nameLower.includes(c))) {
-        category = 'news_site';
-      }
+      // カテゴリー推定（共通関数を使用）
+      const category = inferSourceCategory(source.name);
 
       return {
         id: source.id,
@@ -376,41 +314,8 @@ export async function GET(request: NextRequest) {
       filteredSources = filteredSources.filter(s => s.category === category);
     }
 
-    // ソート
-      filteredSources.sort((a, b) => {
-        let aValue, bValue;
-        switch (sortBy) {
-          case 'articles':
-            aValue = a.stats.totalArticles;
-            bValue = b.stats.totalArticles;
-            break;
-          case 'quality':
-            aValue = a.stats.avgQualityScore;
-            bValue = b.stats.avgQualityScore;
-            break;
-          case 'frequency':
-            aValue = a.stats.publishFrequency;
-            bValue = b.stats.publishFrequency;
-            break;
-          case 'name':
-            aValue = a.name;
-            bValue = b.name;
-            break;
-          default:
-            aValue = a.stats.totalArticles;
-            bValue = b.stats.totalArticles;
-        }
-
-        if (sortBy === 'name') {
-          return order === 'asc' 
-            ? (aValue as string).localeCompare(bValue as string)
-            : (bValue as string).localeCompare(aValue as string);
-        } else {
-          return order === 'asc' 
-            ? (aValue as number) - (bValue as number)
-            : (bValue as number) - (aValue as number);
-        }
-      });
+    // ソート（共通関数を使用）
+    filteredSources = sortSources(filteredSources, sortBy, order);
 
       const responseTime = Date.now() - startTime;
       const response = NextResponse.json({

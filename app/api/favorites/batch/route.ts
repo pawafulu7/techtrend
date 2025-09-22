@@ -28,8 +28,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { articleIds, useDataLoader = false } = body; // DataLoader使用フラグ（デフォルト: false）
+    // JSONパースエラーを適切にハンドリング
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      const responseTime = Date.now() - startTime;
+      const res = NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+      res.headers.set('X-Response-Time', `${responseTime}ms`);
+      return res;
+    }
+    const { articleIds, useDataLoader = false } = body as { articleIds?: unknown; useDataLoader?: boolean };
 
     if (
       !Array.isArray(articleIds) ||
@@ -65,13 +74,21 @@ export async function POST(request: NextRequest) {
       }
       const favoriteStatuses = await loader.loadMany(articleIds);
 
-      // DataLoader結果を既存APIレスポンス形式に変換
-      const favoritesMap: { [key: string]: boolean } = {};
+      // DataLoader結果を既存APIレスポンス形式に変換（型チェック強化）
+      const favoritesMap: Record<string, boolean> = {};
       favoriteStatuses.forEach((status, index) => {
-        if (status && !(status instanceof Error)) {
-          favoritesMap[articleIds[index]] = status.isFavorited;
+        const id = articleIds[index];
+        if (status instanceof Error) {
+          favoritesMap[id] = false;
+          return;
+        }
+        // DataLoaderの戻り値の型を安全にチェック
+        if (typeof status === 'object' && status !== null && 'isFavorited' in status) {
+          favoritesMap[id] = Boolean((status as any).isFavorited);
+        } else if (typeof status === 'boolean') {
+          favoritesMap[id] = status;
         } else {
-          favoritesMap[articleIds[index]] = false;
+          favoritesMap[id] = false;
         }
       });
 
