@@ -31,7 +31,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { articleIds, useDataLoader = false } = body; // DataLoader使用フラグ（デフォルト: false）
 
-    if (!Array.isArray(articleIds) || articleIds.length === 0) {
+    if (
+      !Array.isArray(articleIds) ||
+      articleIds.length === 0 ||
+      !articleIds.every(id => typeof id === 'string' && id.trim().length > 0)
+    ) {
       return NextResponse.json(
         { error: 'Invalid articleIds' },
         { status: 400 }
@@ -49,8 +53,8 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id;
 
     // DataLoader方式とキャッシュ方式を環境変数で切り替え可能にする
-    // 環境変数の解析を堅牢化
-    const shouldUseDataLoader = useDataLoader && parseBoolean(process.env.USE_DATALOADER, true);
+    // 環境変数の解析を堅牢化（デフォルトはfalseで安全側に）
+    const shouldUseDataLoader = useDataLoader && parseBoolean(process.env.USE_DATALOADER, false);
 
     if (shouldUseDataLoader) {
       // DataLoaderインスタンスをキャッシュから取得または作成

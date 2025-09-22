@@ -4,16 +4,16 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 interface Params {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
   const startTime = Date.now();
 
   try {
-    const { id } = await params;
+    const { id } = params;
 
     // すべてのクエリを完全に並列化
     const [
@@ -72,11 +72,11 @@ export async function GET(request: NextRequest, { params }: Params) {
 
       // タグ分布
       prisma.$queryRaw<Array<{ name: string; count: bigint }>>`
-        SELECT t.name, COUNT(*) as count
-        FROM Tag t
-        INNER JOIN _ArticleToTag at ON t.id = at.B
-        INNER JOIN Article a ON at.A = a.id
-        WHERE a.sourceId = ${id}
+        SELECT t.name, COUNT(*)::bigint AS count
+        FROM "Tag" t
+        INNER JOIN "_ArticleToTag" at ON t.id = at."B"
+        INNER JOIN "Article" a ON at."A" = a.id
+        WHERE a."sourceId" = ${id}
         GROUP BY t.name
         ORDER BY count DESC
         LIMIT 20
@@ -109,9 +109,9 @@ export async function GET(request: NextRequest, { params }: Params) {
     ).length;
     const publishFrequency = recentArticleCount / 30;
 
-    // 最終投稿日
-    const lastPublished = articles.length > 0
-      ? Math.max(...articles.map(a => a.publishedAt.getTime()))
+    // 最終投稿日（最新記事から取得）
+    const lastPublished = recentArticles.length > 0
+      ? recentArticles[0].publishedAt
       : null;
 
     // タグ分布をオブジェクトに変換

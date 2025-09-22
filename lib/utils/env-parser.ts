@@ -26,10 +26,20 @@ export function parseBoolean(value: string | undefined, defaultValue = true): bo
   // Normalize the value: trim whitespace and convert to lowercase
   const normalizedValue = value.trim().toLowerCase();
 
+  // Explicit list of values that should be considered as true
+  const trueValues = ['true', '1', 'yes', 'on', 'enabled'];
+
   // List of values that should be considered as false
   const falseValues = ['false', '0', 'no', 'off', 'disabled'];
 
-  return !falseValues.includes(normalizedValue);
+  // Check against explicit true values
+  if (trueValues.includes(normalizedValue)) return true;
+
+  // Check against explicit false values
+  if (falseValues.includes(normalizedValue)) return false;
+
+  // Unknown value - return default
+  return defaultValue;
 }
 
 /**
