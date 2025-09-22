@@ -6,10 +6,10 @@
  */
 
 import { PrismaClient, ProcessingStatus } from '@prisma/client';
-import { GeminiSummaryGenerator } from '@/lib/ai/gemini-summary';
-import logger from '@/lib/logger';
-import { SUMMARY_VERSION } from '@/types/article';
-import type { ArticleWithSource } from '@/types/models';
+import { GeminiSummaryGenerator } from '../../lib/ai/gemini-summary';
+import logger from '../../lib/logger';
+import { SUMMARY_VERSION } from '../../types/article';
+import type { ArticleWithSource } from '../../types/models';
 
 const prisma = new PrismaClient();
 const summaryGenerator = new GeminiSummaryGenerator();
