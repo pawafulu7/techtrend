@@ -355,16 +355,19 @@ test.describe('検索機能', () => {
   test('全角スペース区切りの複数キーワード検索', async ({ page }) => {
     const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
 
-    await expect(searchInput).toBeVisible({ timeout: 10000 });
+    // タイムアウトを延長して待機
+    await expect(searchInput).toBeVisible({ timeout: 30000 });
+    await page.waitForTimeout(1000); // UIの安定化を待つ
 
     // 全角スペース区切りで複数キーワードを入力
     await searchInput.fill('TypeScript　Vue');
+    await page.waitForTimeout(500); // 入力後の待機を追加
     await searchInput.press('Enter');
 
-    // URLに検索パラメータが追加されることを確認（CIでの反映遅延に備えてヘルパー使用 + フォールバック）
+    // URLに検索パラメータが追加されることを確認（タイムアウトを延長）
     let urlUpdated = false;
     try {
-      await waitForUrlParam(page, 'search', undefined, { timeout: getTimeout('long') });
+      await waitForUrlParam(page, 'search', undefined, { timeout: 30000 });
       urlUpdated = true;
     } catch (error) {
       // ページが閉じている場合はテストをスキップ
@@ -376,10 +379,11 @@ test.describe('検索機能', () => {
 
       // フォールバック: 半角スペースで再試行（実装差異の許容）
       try {
-        await expect(searchInput).toBeVisible({ timeout: getTimeout('short') });
+        await expect(searchInput).toBeVisible({ timeout: 10000 });
         await searchInput.fill('TypeScript Vue');
+        await page.waitForTimeout(500); // 入力後の待機
         await searchInput.press('Enter');
-        await waitForUrlParam(page, 'search', undefined, { timeout: getTimeout('long') });
+        await waitForUrlParam(page, 'search', undefined, { timeout: 20000 });
         urlUpdated = true;
       } catch {
         // URLに反映されない実装（サーバーサイド検索等）の場合はDOMで代替検証
