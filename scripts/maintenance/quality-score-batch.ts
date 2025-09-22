@@ -78,8 +78,8 @@ async function processBatch() {
       where: {
         OR: [
           { qualityScoreComputedAt: null },
-          // qualityScoreComputedAt < lastProcessedAt の条件を削除（無限ループ回避）
-          { updatedAt: { gt: lastProcessedAt } }
+          // 前回処理以降、チェックポイント以前に更新された記事
+          { updatedAt: { gt: lastProcessedAt, lte: processingCheckpoint } }
         ]
       },
       include: {
@@ -168,11 +168,11 @@ async function processBatch() {
       processName: PROCESS_NAME
     }, 'Quality score batch processing failed');
 
-    // エラー時もProcessingLogを更新（失敗時はlastProcessedAtをリセット）
+    // エラー時もProcessingLogを更新（失敗時はlastProcessedAtを更新しない）
     await prisma.processingLog.upsert({
       where: { processName: PROCESS_NAME },
       update: {
-        lastProcessedAt: new Date(0),  // 失敗時は最初から処理するようにリセット
+        // lastProcessedAtは更新しない（前回成功時の値を維持）
         status: 'failed',
         metadata: {
           error: error.message,

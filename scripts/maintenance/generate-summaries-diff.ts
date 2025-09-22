@@ -14,6 +14,7 @@ const summaryGenerator = new GeminiSummaryGenerator();
 
 const PROCESS_NAME = 'summary_generation_batch';
 const BATCH_SIZE = 50;
+const SUMMARY_VERSION = 7;
 
 interface ArticleWithSource {
   id: string;
@@ -62,12 +63,10 @@ async function generateSummariesDiff() {
           // 要約が生成されていない記事
           { summary: null },
           { detailedSummary: null },
-          // 前回処理以降に更新された記事
-          { summaryComputedAt: null },
-          // summaryComputedAt < lastProcessedAt の条件を削除（無限ループ回避）
-          { updatedAt: { gt: lastProcessedAt } },
           // 古いバージョンの要約
-          { summaryVersion: { lt: 7 } }
+          { summaryVersion: { lt: SUMMARY_VERSION } },
+          // 前回処理以降、チェックポイント以前に更新された記事
+          { updatedAt: { gt: lastProcessedAt, lte: processingCheckpoint } }
         ],
         // コンテンツがある記事のみ
         NOT: {
@@ -82,10 +81,7 @@ async function generateSummariesDiff() {
         }
       },
       take: BATCH_SIZE,
-      orderBy: [
-        { summaryComputedAt: 'asc' },
-        { updatedAt: 'asc' }
-      ]
+      orderBy: { updatedAt: 'asc' }
     }) as ArticleWithSource[];
 
     logger.info({
@@ -121,7 +117,7 @@ async function generateSummariesDiff() {
             data: {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
-              summaryVersion: 7,
+              summaryVersion: SUMMARY_VERSION,
               summaryComputedAt: new Date(),
               tags: {
                 connectOrCreate: result.tags.map(tag => ({
@@ -215,11 +211,11 @@ async function generateSummariesDiff() {
       processName: PROCESS_NAME
     }, 'Summary generation batch failed');
 
-    // エラー時もProcessingLogを更新（失敗時はlastProcessedAtをリセット）
+    // エラー時もProcessingLogを更新（失敗時はlastProcessedAtを更新しない）
     await prisma.processingLog.upsert({
       where: { processName: PROCESS_NAME },
       update: {
-        lastProcessedAt: new Date(0),  // 失敗時は最初から処理するようにリセット
+        // lastProcessedAtは更新しない（前回成功時の値を維持）
         status: 'failed',
         metadata: {
           error: error.message,
