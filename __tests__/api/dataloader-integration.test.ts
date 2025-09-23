@@ -7,8 +7,11 @@ jest.mock('@/lib/dataloader/favorite-loader');
 jest.mock('@/lib/dataloader/article-view-loader');
 jest.mock('@/lib/dataloader');
 
-// next/serverモックを明示してNode/Jest環境での安定性を向上
-jest.mock('next/server');
+// next/serverはNextRequestを実装から取得するため部分モック
+jest.mock('next/server', () => {
+  const actual = jest.requireActual('next/server');
+  return { ...actual };
+});
 
 import { NextRequest } from 'next/server';
 // Prismaは動的にインポート（beforeEachで再バインド）
@@ -166,34 +169,13 @@ describe('DataLoader Integration Tests', () => {
       return loader;
     });
 
-    mockCreateFavoriteLoader.resetFavoriteLoaderCaches = jest.fn();
-    resetFavoriteLoaderCaches = mockCreateFavoriteLoader.resetFavoriteLoaderCaches;
+    // resetFavoriteLoaderCachesを実装から取得
+    const { resetFavoriteLoaderCaches: actualReset } = jest.requireActual('@/lib/dataloader/favorite-loader');
+    resetFavoriteLoaderCaches = actualReset;
 
-    // articleローダーのモックを設定
-    (mockCreateArticleLoader as any).createArticleLoader = jest.fn(() => {
-      const batchFn = async (articleIds: readonly string[]) => {
-        const { prisma: currentMockPrisma } = require('@/lib/prisma');
-
-        const articles = await currentMockPrisma.article.findMany({
-          where: {
-            id: { in: [...articleIds] }
-          },
-          include: {
-            tags: true,
-            source: true,
-          }
-        });
-
-        const articleMap = new Map();
-        articles.forEach((article: any) => {
-          articleMap.set(article.id, article);
-        });
-
-        return articleIds.map(id => articleMap.get(id) || null);
-      };
-
-      return new DataLoader(batchFn, { cache: true });
-    });
+    // articleローダーのモックを実装を使用するように設定
+    const actualArticleLoader = jest.requireActual('@/lib/dataloader/article-loader');
+    (mockCreateArticleLoader as any).createArticleLoader = actualArticleLoader.createArticleLoader;
 
     // DataLoaderモジュール全体をモック
     const mockDataLoaderModule = require('@/lib/dataloader');
@@ -206,13 +188,16 @@ describe('DataLoader Integration Tests', () => {
     });
 
     // モジュールを再インポート（モックが適用された状態で）
-    // createLoadersは既にモック化済みのため、参照のみ取得
+    // createLoadersはモック化済みモジュールから取得
     createLoaders = mockDataLoaderModule.createLoaders;
     articlesListGET = require('@/app/api/articles/list/route').GET;
     articlesGET = require('@/app/api/articles/route').GET;
     mockAuth = require('@/lib/auth/auth').auth as jest.Mock;
 
-    // resetFavoriteLoaderCaches(); // モックなのでリセット不要
+    // キャッシュをリセット
+    if (resetFavoriteLoaderCaches) {
+      resetFavoriteLoaderCaches();
+    }
 
     // Setup auth mock
     mockAuth.mockResolvedValue({
@@ -247,6 +232,7 @@ describe('DataLoader Integration Tests', () => {
 
       // Create DataLoader instance
       const loaders = createLoaders({ userId });
+      expect(loaders.favorite).toBeDefined();
 
       // Mock Prisma favorite.findMany
       const findManySpy = jest.spyOn(mockPrisma.favorite, 'findMany');
@@ -300,6 +286,7 @@ describe('DataLoader Integration Tests', () => {
       const articleIds = ['article-1', 'article-2', 'article-3'];
 
       const loaders = createLoaders({ userId });
+      expect(loaders.view).toBeDefined();
 
       // Spy on Prisma articleView.findMany
       const findManySpy = jest.spyOn(mockPrisma.articleView, 'findMany');
@@ -462,11 +449,9 @@ describe('DataLoader Integration Tests', () => {
       const promise2 = loaders.favorite?.load('article-1');
       const promise3 = loaders.favorite?.load('article-1');
 
-      // DataLoaderの仕様: 同じキーに対しては同じPromiseインスタンスを返すべき
-      // しかしテスト環境では実装の制約により、同じ値を返すことを確認
-      // 本番環境では真のDataLoaderが使われ、同一Promiseが返される
-      // expect(promise1).toBe(promise2);
-      // expect(promise2).toBe(promise3);
+      // DataLoaderの仕様: 同じキーに対しては同じPromiseインスタンスを返す
+      expect(promise1).toBe(promise2);
+      expect(promise2).toBe(promise3);
 
       // Wait for batching to complete
       await new Promise(resolve => process.nextTick(resolve));

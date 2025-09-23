@@ -204,11 +204,11 @@ test.describe('推薦機能', () => {
     const loginSuccess = await loginTestUser(page);
 
     if (!loginSuccess) {
-      test.skip('ログイン失敗のためスキップ');
+      return test.skip('ログイン失敗のためスキップ');
     }
 
     // 推薦APIを遅延させてスケルトンを確実に観測
-    await page.route('/api/recommendations*', async (route) => {
+    await page.route('**/api/recommendations*', async (route) => {
       await new Promise(r => setTimeout(r, 800));
       await route.continue();
     });
@@ -233,6 +233,9 @@ test.describe('推薦機能', () => {
       (await page.getByText(/推薦記事がありません|おすすめの記事が見つかりませんでした/).count()) > 0;
 
     expect(hasRecommendations || hasEmptyMessage).toBeTruthy();
+
+    // ルートをクリーンアップ
+    await page.unroute('**/api/recommendations*');
   });
 
   test('推薦ページのローディング状態とデータ表示', async ({ page }) => {
@@ -240,11 +243,11 @@ test.describe('推薦機能', () => {
     const loginSuccess = await loginTestUser(page);
 
     if (!loginSuccess) {
-      test.skip('ログイン失敗のためスキップ');
+      return test.skip('ログイン失敗のためスキップ');
     }
 
     // ネットワーク遅延をシミュレート
-    await page.route('/api/recommendations*', async (route) => {
+    await page.route('**/api/recommendations*', async (route) => {
       await new Promise(resolve => setTimeout(resolve, 500));
       await route.continue();
     });
@@ -266,8 +269,9 @@ test.describe('推薦機能', () => {
     await expect(
       page.locator('[data-testid="recommendation-card"], [data-testid="recommendations-empty"]')
     ).toBeVisible({ timeout: 60000 });
-    const hasContent = true;
+    // 上の toBeVisible アサーションで可視性は既に確認済み
 
-    expect(hasContent).toBeTruthy();
+    // ルートをクリーンアップ
+    await page.unroute('**/api/recommendations*');
   });
 });

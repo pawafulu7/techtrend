@@ -72,6 +72,7 @@ services:
       HOST_GID: ${HOST_GID:-1000}
     user: pwuser
     shm_size: "2gb"
+    init: true
     volumes:
       - ./:/app
       # 名前付きボリュームで隔離（優先順位を高くする）
