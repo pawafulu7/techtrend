@@ -257,8 +257,8 @@ test.describe('推薦機能', () => {
       // ヘッダー部分が表示されることを確認（最初の要素を使用）
       await expect(page.locator('[data-testid="recommendation-header"]').first()).toBeVisible({ timeout: 30000 });
 
-      // 更新ボタンが存在することを確認
-      const refreshButton = page.locator('[data-testid="recommendation-refresh-button"]');
+      // 更新ボタンが存在することを確認（first()を追加して strict mode エラーを回避）
+      const refreshButton = page.locator('[data-testid="recommendation-refresh-button"]').first();
       await expect(refreshButton).toBeVisible();
 
       // （不要）gotoでdomcontentloadedは満たしているため削除可
