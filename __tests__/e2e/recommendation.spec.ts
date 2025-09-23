@@ -18,18 +18,9 @@ test.describe('推薦機能', () => {
     const userMenuExists = await page.locator('[data-testid="user-menu-trigger"]').count();
     console.log('User menu exists:', userMenuExists > 0);
     
-    // セッション状態をデバッグ
-    const sessionInfo = await page.evaluate(() => {
-      return {
-        cookies: document.cookie,
-        hasNextAuthSession: !!document.cookie.includes('next-auth.session'),
-        localStorage: Object.keys(localStorage).reduce((acc, key) => {
-          acc[key] = localStorage.getItem(key);
-          return acc;
-        }, {} as Record<string, string | null>)
-      };
-    });
-    console.log('Session debug info:', sessionInfo);
+    // セッション有無のみをログ（機密値は出さない）
+    const hasSession = await page.evaluate(() => !!document.cookie.includes('next-auth.session'));
+    console.log('Session: hasNextAuthSession', hasSession);
     
     // ログインしていない場合はテストをスキップ
     if (!loginSuccess || userMenuExists === 0) {
@@ -163,8 +154,8 @@ test.describe('推薦機能', () => {
     // 非ログイン状態での推薦セクション挙動確認
     const recommendationSection = page.locator('[data-testid="recommendation-section"]');
 
-    // ログインしていない場合は推薦セクションが表示されない
-    await expect(recommendationSection).toBeHidden();
+    // ログインしていない場合は推薦セクションがDOMに存在しない
+    await expect(recommendationSection).toHaveCount(0);
   });
 
   test('記事数表示の位置関係', async ({ page }) => {
@@ -172,8 +163,10 @@ test.describe('推薦機能', () => {
     const loginSuccess = await loginTestUser(page);
     await page.goto('/');
 
-    // 記事数表示を探す（getByTextを使用）
-    const articleCount = page.getByText(/\d+件の記事/).first();
+    // ツールバー内にスコープして記事数を検証
+    const toolbar = page.locator('[data-testid="article-toolbar"], .flex-shrink-0.bg-gray-50\\/50').first();
+    await expect(toolbar).toBeVisible();
+    const articleCount = toolbar.getByText(/\d+件の記事/).first();
 
     // 推薦トグルボタンを探す（data-testidを使用）
     const toggleButton = page.locator('[data-testid="recommendation-toggle"]');
@@ -194,17 +187,18 @@ test.describe('推薦機能', () => {
     await expect(toggleButton).toBeVisible({ timeout: 10000 });
 
     // 同じツールバー内にあることを確認
-    const toolbar = page.locator('[data-testid="article-toolbar"], .flex-shrink-0.bg-gray-50\\/50').first();
     await expect(toolbar).toContainText('件の記事');
     await expect(toolbar.locator('[data-testid="recommendation-toggle"]')).toBeVisible();
   });
 
   test('推薦ページでSuspenseスケルトンが表示される', async ({ page }) => {
+    test.slow();
     // ログイン
     const loginSuccess = await loginTestUser(page);
 
     if (!loginSuccess) {
-      return test.skip('ログイン失敗のためスキップ');
+      test.skip('ログイン失敗のためスキップ');
+      return;
     }
 
     // 推薦APIを遅延させてスケルトンを確実に観測
@@ -213,37 +207,41 @@ test.describe('推薦機能', () => {
       await route.continue();
     });
 
-    // 推薦ページへ直接アクセス
-    await page.goto('/recommendations', { waitUntil: 'domcontentloaded' });
+    try {
+      // 推薦ページへ直接アクセス
+      await page.goto('/recommendations', { waitUntil: 'domcontentloaded' });
 
-    // スケルトンローディングが一時的に表示されることを確認
-    // （Suspenseフォールバック）
-    const skeletonCards = page.locator('[data-testid="recommendation-skeleton-card"]');
+      // スケルトンローディングが一時的に表示されることを確認
+      // （Suspenseフォールバック）
+      const skeletonCards = page.locator('[data-testid="recommendation-skeleton-card"]');
 
-    // まずは表示されることを厳密に確認
-    await expect(skeletonCards.first()).toBeVisible({ timeout: 5000 });
+      // まずは表示されることを厳密に確認
+      await expect(skeletonCards.first()).toBeVisible({ timeout: 5000 });
 
-    // その後、消えることを確認
-    await expect(skeletonCards).toHaveCount(0, { timeout: 60000 });
+      // その後、消えることを確認
+      await expect(skeletonCards).toHaveCount(0, { timeout: 60000 });
 
-    // 最終的に推薦記事またはメッセージが表示されることを確認
-    const hasRecommendations = await page.locator('[data-testid="recommendation-card"]').count() > 0;
-    const hasEmptyMessage =
-      (await page.getByTestId('recommendations-empty').count()) > 0 ||
-      (await page.getByText(/推薦記事がありません|おすすめの記事が見つかりませんでした/).count()) > 0;
+      // 最終的に推薦記事またはメッセージが表示されることを確認
+      const hasRecommendations = await page.locator('[data-testid="recommendation-card"]').count() > 0;
+      const hasEmptyMessage =
+        (await page.getByTestId('recommendations-empty').count()) > 0 ||
+        (await page.getByText(/推薦記事がありません|おすすめの記事が見つかりませんでした/).count()) > 0;
 
-    expect(hasRecommendations || hasEmptyMessage).toBeTruthy();
-
-    // ルートをクリーンアップ
-    await page.unroute('**/api/recommendations*');
+      expect(hasRecommendations || hasEmptyMessage).toBeTruthy();
+    } finally {
+      // 失敗時でも必ず解除
+      await page.unroute('**/api/recommendations*');
+    }
   });
 
   test('推薦ページのローディング状態とデータ表示', async ({ page }) => {
+    test.slow();
     // ログイン
     const loginSuccess = await loginTestUser(page);
 
     if (!loginSuccess) {
-      return test.skip('ログイン失敗のためスキップ');
+      test.skip('ログイン失敗のためスキップ');
+      return;
     }
 
     // ネットワーク遅延をシミュレート
@@ -252,26 +250,26 @@ test.describe('推薦機能', () => {
       await route.continue();
     });
 
-    // 推薦ページへアクセス
-    await page.goto('/recommendations', { waitUntil: 'domcontentloaded' });
+    try {
+      // 推薦ページへアクセス
+      await page.goto('/recommendations', { waitUntil: 'domcontentloaded' });
 
-    // ヘッダー部分が表示されることを確認（最初の要素を使用）
-    await expect(page.locator('[data-testid="recommendation-header"]').first()).toBeVisible({ timeout: 30000 });
+      // ヘッダー部分が表示されることを確認（最初の要素を使用）
+      await expect(page.locator('[data-testid="recommendation-header"]').first()).toBeVisible({ timeout: 30000 });
 
-    // 更新ボタンが存在することを確認
-    const refreshButton = page.locator('[data-testid="recommendation-refresh-button"]');
-    await expect(refreshButton).toBeVisible();
+      // 更新ボタンが存在することを確認
+      const refreshButton = page.locator('[data-testid="recommendation-refresh-button"]');
+      await expect(refreshButton).toBeVisible();
 
-    // データロード完了を待つ
-    await page.waitForLoadState('domcontentloaded');
+      // （不要）gotoでdomcontentloadedは満たしているため削除可
 
-    // 推薦記事またはメッセージが表示されるまで待つ
-    await expect(
-      page.locator('[data-testid="recommendation-card"], [data-testid="recommendations-empty"]')
-    ).toBeVisible({ timeout: 60000 });
-    // 上の toBeVisible アサーションで可視性は既に確認済み
-
-    // ルートをクリーンアップ
-    await page.unroute('**/api/recommendations*');
+      // 推薦記事またはメッセージが表示されるまで待つ
+      await expect(
+        page.locator('[data-testid="recommendation-card"], [data-testid="recommendations-empty"]')
+      ).toBeVisible({ timeout: 60000 });
+      // 上の toBeVisible アサーションで可視性は既に確認済み
+    } finally {
+      await page.unroute('**/api/recommendations*');
+    }
   });
 });
