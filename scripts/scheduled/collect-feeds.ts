@@ -31,6 +31,9 @@ import { HackerNewsFetcher } from '@/lib/fetchers/hacker-news';
 import { MediumEngineeringFetcher } from '@/lib/fetchers/medium-engineering';
 // import { MicrosoftDevBlogFetcher } from '@/lib/fetchers/microsoft-dev-blog';
 
+// AI/LLM関連フェッチャー
+import { OpenAIBlogFetcher } from '@/lib/fetchers/ai/openai-blog';
+
 // 企業ブログフェッチャーを個別にインポート
 import { DenaFetcher } from '@/lib/fetchers/corporate-blogs/dena-fetcher';
 import { SmartHRFetcher } from '@/lib/fetchers/corporate-blogs/smarthr-fetcher';
@@ -80,6 +83,9 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'Hacker News': HackerNewsFetcher,
   'Medium Engineering': MediumEngineeringFetcher,
   // 'Microsoft Developer Blog': MicrosoftDevBlogFetcher,
+
+  // AI/LLM関連
+  'OpenAI Blog': OpenAIBlogFetcher,
 
   // 個別企業ブログフェッチャー
   'DeNA Tech Blog': DenaFetcher,
