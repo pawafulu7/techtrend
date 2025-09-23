@@ -582,6 +582,73 @@ export class TagNormalizer {
       category: 'mobile'
     },
     
+    // 企業名
+    {
+      patterns: [/^dena$/i],
+      canonical: 'DeNA',
+      category: 'company'
+    },
+    {
+      patterns: [/^smarthr$/i],
+      canonical: 'SmartHR',
+      category: 'company'
+    },
+    {
+      patterns: [/^line\s*ヤフー$/i, /^lineヤフー$/i],
+      canonical: 'LINEヤフー',
+      category: 'company'
+    },
+    {
+      patterns: [/^メルカリ$/i],
+      canonical: 'メルカリ',
+      category: 'company'
+    },
+    {
+      patterns: [/^sansan$/i],
+      canonical: 'Sansan',
+      category: 'company'
+    },
+    {
+      patterns: [/^zozo$/i],
+      canonical: 'ZOZO',
+      category: 'company'
+    },
+    {
+      patterns: [/^はてな(developer)?$/i],
+      canonical: 'はてなDeveloper',
+      category: 'company'
+    },
+    {
+      patterns: [/^マネーフォワード$/i],
+      canonical: 'マネーフォワード',
+      category: 'company'
+    },
+    {
+      patterns: [/^gmo\s*ペパボ$/i, /^gmoペパボ$/i],
+      canonical: 'GMOペパボ',
+      category: 'company'
+    },
+    {
+      patterns: [/^freee$/i],
+      canonical: 'freee',
+      category: 'company'
+    },
+    {
+      patterns: [/^クックパッド$/i],
+      canonical: 'クックパッド',
+      category: 'company'
+    },
+    {
+      patterns: [/^サイバーエージェント$/i],
+      canonical: 'サイバーエージェント',
+      category: 'company'
+    },
+    {
+      patterns: [/^gmo$/i],
+      canonical: 'GMO',
+      category: 'company'
+    },
+
     // セキュリティ
     {
       patterns: [

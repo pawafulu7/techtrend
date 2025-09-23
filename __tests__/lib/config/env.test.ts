@@ -163,9 +163,12 @@ describe('Environment Configuration', () => {
     });
 
     it('constructs Redis URL correctly', () => {
+      // Clear any existing REDIS_URL to test fallback
+      delete process.env.REDIS_URL;
+
       process.env.REDIS_HOST = 'redis.example.com';
       process.env.REDIS_PORT = '6380';
-      
+
       expect(config.redis.url()).toBe('redis://redis.example.com:6380');
     });
 

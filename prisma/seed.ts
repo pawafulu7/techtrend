@@ -12,7 +12,7 @@ async function main() {
   const sources = await Promise.all([
     prisma.source.create({
       data: {
-        name: 'はてなブックマーク',
+        name: 'Hatena Developer Blog',
         type: 'RSS',
         url: 'https://b.hatena.ne.jp/hotentry/it.rss',
         enabled: true,

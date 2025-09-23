@@ -6,11 +6,12 @@ const createJestConfig = nextJest({
 });
 
 const customJestConfig = {
+  rootDir: './',
   setupFiles: ['<rootDir>/jest.polyfills.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.node.js'],
   testEnvironment: 'node',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  reporters: ['summary'],
+  reporters: ['default'],
   transformIgnorePatterns: [
     'node_modules/(?!(node-fetch|next-auth|@auth)/)',
   ],

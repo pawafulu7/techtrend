@@ -70,15 +70,17 @@ docs
 !README.md
 
 # Test files
-__tests__
+# __tests__ディレクトリはモックファイルが含まれるので除外しない
+# __tests__
 *.test.ts
 *.test.tsx
 *.spec.ts
 *.spec.tsx
 e2e
 playwright.config.ts
-jest.config.*
-jest.setup.*
+# Jest設定は含める必要があるのでコメントアウト
+# jest.config.*
+# jest.setup.*
 
 # Logs
 logs

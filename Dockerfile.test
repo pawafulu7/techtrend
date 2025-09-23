@@ -1,0 +1,47 @@
+# Test environment Dockerfile
+# Complete isolation from local environment - no volume mounts
+
+FROM node:20-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git \
+    bash
+
+# Create app directory with proper permissions
+RUN mkdir -p /app && chown -R node:node /app
+
+# Set working directory
+WORKDIR /app
+
+# Switch to node user for security
+USER node
+
+# Copy package files
+COPY --chown=node:node package*.json ./
+
+# Copy prisma schema first (needed for npm ci postinstall)
+COPY --chown=node:node prisma ./prisma
+
+# Install dependencies (prisma generate runs automatically in postinstall)
+RUN npm ci --no-audit --no-fund
+
+# Copy jest config and setup files (needed for tests)
+# Now that .dockerignore is fixed, we can use wildcards
+COPY --chown=node:node jest.* ./
+
+# Copy all source files
+COPY --chown=node:node . .
+
+# Create necessary directories
+RUN mkdir -p coverage test-results playwright-report tmp .cache .next
+
+# Set environment
+ENV NODE_ENV=test
+ENV CI=true
+
+# Default command
+CMD ["npm", "test"]

@@ -33,26 +33,19 @@ services:
     restart: "no"
 
   node-ci:
-    image: node:20-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.test
     container_name: techtrend-node-ci
     working_dir: /app
     env_file:
       - .env
     environment:
-      HOST_UID: ${HOST_UID:-1000}
-      HOST_GID: ${HOST_GID:-1000}
-    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres-test:5432/techtrend_test
+      REDIS_URL: redis://redis-test:6379
+      NODE_ENV: test
+      CI: true
     init: true
-    volumes:
-      - ./:/app
-      # 名前付きボリュームで隔離（優先順位を高くする）
-      - node_ci_modules:/app/node_modules
-      - node_ci_next:/app/.next
-      - node_ci_coverage:/app/coverage
-      - node_ci_test_results:/app/test-results
-      - node_ci_playwright_report:/app/playwright-report
-      - node_ci_tmp:/app/tmp
-      - node_ci_cache:/app/.cache
     depends_on:
       postgres-test:
         condition: service_healthy
@@ -62,26 +55,21 @@ services:
       - default
 
   playwright-e2e:
-    image: mcr.microsoft.com/playwright:v1.55.0-jammy
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
     container_name: techtrend-playwright-e2e
     working_dir: /app
     env_file:
       - .env
     environment:
-      HOST_UID: ${HOST_UID:-1000}
-      HOST_GID: ${HOST_GID:-1000}
-    user: pwuser
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres-test:5432/techtrend_test
+      REDIS_URL: redis://redis-test:6379
+      BASE_URL: http://localhost:3000
+      NODE_ENV: test
+      CI: true
     shm_size: "2gb"
     init: true
-    volumes:
-      - ./:/app
-      # 名前付きボリュームで隔離（優先順位を高くする）
-      - playwright_modules:/app/node_modules
-      - playwright_next:/app/.next
-      - playwright_test_results:/app/test-results
-      - playwright_report:/app/playwright-report
-      - playwright_tmp:/app/tmp
-      - playwright_cache:/app/.cache
     depends_on:
       postgres-test:
         condition: service_healthy
@@ -95,34 +83,6 @@ volumes:
     name: techtrend_postgres_test_data
   redis_test_data:
     name: techtrend_redis_test_data
-  # node-ci用ボリューム
-  node_ci_modules:
-    name: techtrend_node_ci_modules
-  node_ci_next:
-    name: techtrend_node_ci_next
-  node_ci_coverage:
-    name: techtrend_node_ci_coverage
-  node_ci_test_results:
-    name: techtrend_node_ci_test_results
-  node_ci_playwright_report:
-    name: techtrend_node_ci_playwright_report
-  node_ci_tmp:
-    name: techtrend_node_ci_tmp
-  node_ci_cache:
-    name: techtrend_node_ci_cache
-  # playwright-e2e用ボリューム
-  playwright_modules:
-    name: techtrend_playwright_modules
-  playwright_next:
-    name: techtrend_playwright_next
-  playwright_test_results:
-    name: techtrend_playwright_test_results
-  playwright_report:
-    name: techtrend_playwright_report
-  playwright_tmp:
-    name: techtrend_playwright_tmp
-  playwright_cache:
-    name: techtrend_playwright_cache
 
 networks:
   default:
