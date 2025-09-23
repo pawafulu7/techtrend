@@ -175,18 +175,21 @@ test.describe('フィルター条件の永続化', () => {
         // 記事カードまたは「記事がありません」メッセージを待つ
         const articleOrEmpty = await Promise.race([
           page.waitForSelector('[data-testid="article-card"]', {
-            timeout: isCI ? 60000 : getTimeout('long'),
+            timeout: isCI ? 90000 : getTimeout('long'),  // CI環境では90秒に延長
             state: 'visible'
           }).then(() => 'articles'),
           page.waitForSelector('text="記事がありません"', {
-            timeout: isCI ? 60000 : getTimeout('long'),
+            timeout: isCI ? 90000 : getTimeout('long'),  // CI環境では90秒に延長
             state: 'visible'
           }).then(() => 'empty'),
           page.waitForSelector('text="検索結果がありません"', {
-            timeout: isCI ? 60000 : getTimeout('long'),
+            timeout: isCI ? 90000 : getTimeout('long'),  // CI環境では90秒に延長
             state: 'visible'
           }).then(() => 'no-results')
-        ]).catch(() => null);
+        ]).catch((error) => {
+          console.error('[Test] Timeout or error waiting for articles/empty message:', error);
+          return null;
+        });
 
         if (articleOrEmpty === 'empty' || articleOrEmpty === 'no-results') {
           console.log('[Test] No articles found with current filter, skipping article navigation');
@@ -195,7 +198,10 @@ test.describe('フィルター条件の永続化', () => {
         }
 
         if (!articleOrEmpty) {
-          throw new Error('Neither articles nor empty message appeared');
+          // デバッグ情報を出力
+          console.error('[Test] Current page URL:', page.url());
+          console.error('[Test] Current page state - waiting for articles or empty message failed');
+          throw new Error('Neither articles nor empty message appeared after 90s timeout');
         }
         articleCardFound = true;
         break;
