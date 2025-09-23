@@ -38,6 +38,11 @@ jest.mock('@/lib/cache/redis-cache', () => ({
   }))
 }));
 
+// Mock article-loader
+jest.mock('@/lib/dataloader/article-loader', () => ({
+  createArticleLoader: jest.fn()
+}));
+
 // Mock memory cache
 jest.mock('@/lib/cache/memory-cache', () => ({
   DataLoaderMemoryCache: jest.fn().mockImplementation(() => ({
@@ -97,6 +102,7 @@ describe('DataLoader Integration Tests', () => {
     ({ prisma: mockPrisma } = require('@/lib/prisma'));
 
     // DataLoaderモジュールのモックを再設定
+    const mockCreateArticleLoader = require('@/lib/dataloader/article-loader');
     const mockCreateFavoriteLoader = require('@/lib/dataloader/favorite-loader');
     const mockCreateArticleViewLoader = require('@/lib/dataloader/article-view-loader');
 
@@ -163,12 +169,39 @@ describe('DataLoader Integration Tests', () => {
     mockCreateFavoriteLoader.resetFavoriteLoaderCaches = jest.fn();
     resetFavoriteLoaderCaches = mockCreateFavoriteLoader.resetFavoriteLoaderCaches;
 
+    // articleローダーのモックを設定
+    (mockCreateArticleLoader as any).createArticleLoader = jest.fn(() => {
+      const batchFn = async (articleIds: readonly string[]) => {
+        const { prisma: currentMockPrisma } = require('@/lib/prisma');
+
+        const articles = await currentMockPrisma.article.findMany({
+          where: {
+            id: { in: [...articleIds] }
+          },
+          include: {
+            tags: true,
+            source: true,
+          }
+        });
+
+        const articleMap = new Map();
+        articles.forEach((article: any) => {
+          articleMap.set(article.id, article);
+        });
+
+        return articleIds.map(id => articleMap.get(id) || null);
+      };
+
+      return new DataLoader(batchFn, { cache: true });
+    });
+
     // DataLoaderモジュール全体をモック
     const mockDataLoaderModule = require('@/lib/dataloader');
-    mockDataLoaderModule.createLoaders = jest.fn(({ userId }: { userId: string }) => {
+    mockDataLoaderModule.createLoaders = jest.fn((context?: { userId?: string }) => {
       return {
-        favorite: mockCreateFavoriteLoader.createFavoriteLoader(userId),
-        view: mockCreateArticleViewLoader.createArticleViewLoader(userId)
+        article: (mockCreateArticleLoader as any).createArticleLoader(),
+        favorite: context?.userId ? mockCreateFavoriteLoader.createFavoriteLoader(context.userId) : null,
+        view: context?.userId ? mockCreateArticleViewLoader.createArticleViewLoader(context.userId) : null
       };
     });
 

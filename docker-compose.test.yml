@@ -22,7 +22,7 @@ services:
     image: redis:7-alpine
     container_name: techtrend-redis-test
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
     volumes:
       - redis_test_data:/data
     healthcheck:
@@ -41,6 +41,8 @@ services:
     environment:
       HOST_UID: ${HOST_UID:-1000}
       HOST_GID: ${HOST_GID:-1000}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    init: true
     volumes:
       - ./:/app
       # 名前付きボリュームで隔離（優先順位を高くする）
@@ -68,6 +70,8 @@ services:
     environment:
       HOST_UID: ${HOST_UID:-1000}
       HOST_GID: ${HOST_GID:-1000}
+    user: pwuser
+    shm_size: "2gb"
     volumes:
       - ./:/app
       # 名前付きボリュームで隔離（優先順位を高くする）
@@ -92,19 +96,32 @@ volumes:
     name: techtrend_redis_test_data
   # node-ci用ボリューム
   node_ci_modules:
+    name: techtrend_node_ci_modules
   node_ci_next:
+    name: techtrend_node_ci_next
   node_ci_coverage:
+    name: techtrend_node_ci_coverage
   node_ci_test_results:
+    name: techtrend_node_ci_test_results
   node_ci_playwright_report:
+    name: techtrend_node_ci_playwright_report
   node_ci_tmp:
+    name: techtrend_node_ci_tmp
   node_ci_cache:
+    name: techtrend_node_ci_cache
   # playwright-e2e用ボリューム
   playwright_modules:
+    name: techtrend_playwright_modules
   playwright_next:
+    name: techtrend_playwright_next
   playwright_test_results:
+    name: techtrend_playwright_test_results
   playwright_report:
+    name: techtrend_playwright_report
   playwright_tmp:
+    name: techtrend_playwright_tmp
   playwright_cache:
+    name: techtrend_playwright_cache
 
 networks:
   default:

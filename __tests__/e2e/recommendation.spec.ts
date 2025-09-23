@@ -172,8 +172,8 @@ test.describe('推薦機能', () => {
     const loginSuccess = await loginTestUser(page);
     await page.goto('/');
 
-    // 記事数表示を探す（最初のものを使用してstrict mode違反を回避）
-    const articleCount = page.locator('text=/\\d+件の記事/').first();
+    // 記事数表示を探す（getByTextを使用）
+    const articleCount = page.getByText(/\d+件の記事/).first();
 
     // 推薦トグルボタンを探す（data-testidを使用）
     const toggleButton = page.locator('[data-testid="recommendation-toggle"]');
@@ -194,7 +194,7 @@ test.describe('推薦機能', () => {
     await expect(toggleButton).toBeVisible({ timeout: 10000 });
 
     // 同じツールバー内にあることを確認
-    const toolbar = page.locator('[data-testid="article-toolbar"]').or(page.locator('.flex-shrink-0.bg-gray-50\\/50'));
+    const toolbar = page.locator('[data-testid="article-toolbar"], .flex-shrink-0.bg-gray-50\\/50').first();
     await expect(toolbar).toContainText('件の記事');
     await expect(toolbar.locator('[data-testid="recommendation-toggle"]')).toBeVisible();
   });
@@ -204,44 +204,33 @@ test.describe('推薦機能', () => {
     const loginSuccess = await loginTestUser(page);
 
     if (!loginSuccess) {
-      console.log('Login failed, skipping Suspense test');
-      // ログイン失敗時はテストを成功として扱う（スキップ相当）
-      expect(true).toBeTruthy();
-      return;
+      test.skip('ログイン失敗のためスキップ');
     }
 
+    // 推薦APIを遅延させてスケルトンを確実に観測
+    await page.route('/api/recommendations*', async (route) => {
+      await new Promise(r => setTimeout(r, 800));
+      await route.continue();
+    });
+
     // 推薦ページへ直接アクセス
-    await page.goto('/recommendations', { waitUntil: 'networkidle' });
+    await page.goto('/recommendations', { waitUntil: 'domcontentloaded' });
 
     // スケルトンローディングが一時的に表示されることを確認
     // （Suspenseフォールバック）
     const skeletonCards = page.locator('[data-testid="recommendation-skeleton-card"]');
 
-    // スケルトンが最初に表示される（または既にデータがロードされている）
-    const skeletonCount = await skeletonCards.count();
+    // まずは表示されることを厳密に確認
+    await expect(skeletonCards.first()).toBeVisible({ timeout: 5000 });
 
-    if (skeletonCount > 0) {
-      // スケルトンが表示されている場合
-      console.log('Skeleton loading detected, count:', skeletonCount);
-      expect(skeletonCount).toBeGreaterThan(0);
-
-      // データロード後にスケルトンが消えることを確認
-      // スケルトンが消えるか、推薦記事が表示されるまで待つ
-      await page.waitForFunction(() => {
-        const skeletons = document.querySelectorAll('[data-testid="recommendation-skeleton-card"]');
-        const recommendationCards = document.querySelectorAll('[data-testid="recommendation-card"]');
-        // テキストコンテンツで「推薦記事がありません」を含む要素を探す
-        const emptyMessage = Array.from(document.querySelectorAll('*')).find(el =>
-          el.textContent && el.textContent.includes('推薦記事がありません')
-        );
-        // スケルトンが消えた（0個になった）、または推薦記事/空メッセージが表示された
-        return skeletons.length === 0 || recommendationCards.length > 0 || emptyMessage;
-      }, { timeout: 60000 }); // タイムアウトを60秒に延長
-    }
+    // その後、消えることを確認
+    await expect(skeletonCards).toHaveCount(0, { timeout: 60000 });
 
     // 最終的に推薦記事またはメッセージが表示されることを確認
     const hasRecommendations = await page.locator('[data-testid="recommendation-card"]').count() > 0;
-    const hasEmptyMessage = await page.locator('text=推薦記事がありません').count() > 0;
+    const hasEmptyMessage =
+      (await page.getByTestId('recommendations-empty').count()) > 0 ||
+      (await page.getByText(/推薦記事がありません|おすすめの記事が見つかりませんでした/).count()) > 0;
 
     expect(hasRecommendations || hasEmptyMessage).toBeTruthy();
   });
@@ -251,10 +240,7 @@ test.describe('推薦機能', () => {
     const loginSuccess = await loginTestUser(page);
 
     if (!loginSuccess) {
-      console.log('Login failed, skipping loading state test');
-      // ログイン失敗時はテストを成功として扱う（スキップ相当）
-      expect(true).toBeTruthy();
-      return;
+      test.skip('ログイン失敗のためスキップ');
     }
 
     // ネットワーク遅延をシミュレート
@@ -264,7 +250,7 @@ test.describe('推薦機能', () => {
     });
 
     // 推薦ページへアクセス
-    await page.goto('/recommendations', { waitUntil: 'networkidle' });
+    await page.goto('/recommendations', { waitUntil: 'domcontentloaded' });
 
     // ヘッダー部分が表示されることを確認（最初の要素を使用）
     await expect(page.locator('[data-testid="recommendation-header"]').first()).toBeVisible({ timeout: 30000 });
@@ -274,19 +260,13 @@ test.describe('推薦機能', () => {
     await expect(refreshButton).toBeVisible();
 
     // データロード完了を待つ
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
-    // 推薦記事またはメッセージが表示されるまで待つ（より長いタイムアウトを設定）
-    const hasContent = await page.waitForFunction(() => {
-      const hasCard = document.querySelector('[data-testid="recommendation-card"]') !== null;
-      const hasEmptyMessage = Array.from(document.querySelectorAll('*')).some(el =>
-        el.textContent && el.textContent.includes('推薦記事がありません')
-      );
-      const hasNoRecommendations = Array.from(document.querySelectorAll('*')).some(el =>
-        el.textContent && el.textContent.includes('おすすめの記事が見つかりませんでした')
-      );
-      return hasCard || hasEmptyMessage || hasNoRecommendations;
-    }, { timeout: 60000 }); // タイムアウトを60秒に延長
+    // 推薦記事またはメッセージが表示されるまで待つ
+    await expect(
+      page.locator('[data-testid="recommendation-card"], [data-testid="recommendations-empty"]')
+    ).toBeVisible({ timeout: 60000 });
+    const hasContent = true;
 
     expect(hasContent).toBeTruthy();
   });
