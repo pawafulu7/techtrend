@@ -122,8 +122,13 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
             finalTags.push('企業テックブログ');
           }
 
-          // コンテンツの取得
-          const content = item.content || item.contentSnippet || item.description || '';
+          // コンテンツの取得（WordPress系RSS対応でcontent:encodedを優先）
+          const content = (item as any).contentEncoded
+            || (item as any)['content:encoded']
+            || item.content
+            || item.contentSnippet
+            || item.description
+            || '';
 
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
@@ -134,7 +139,7 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
             publishedAt,
             sourceId: this.source.id, // 正しい企業別ソースIDを使用
             tagNames: finalTags,
-            author: item.creator || item['dc:creator'] || this.getCompanyName(),
+            author: (item as any).dcCreator || item.creator || item['dc:creator'] || this.getCompanyName(),
           };
 
           // サムネイル抽出（enclosure）

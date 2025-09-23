@@ -155,7 +155,7 @@ async function createSources() {
 
   sources.push(await ensureSource(
     'cmdq3nww60000tegxi8ruki95',
-    'はてなブックマーク',
+    'Hatena Developer Blog',
     'RSS',
     'https://b.hatena.ne.jp/hotentry/it.rss'
   ));

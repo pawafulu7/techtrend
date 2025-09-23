@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import logger from '@/lib/logger';
 
 const prisma = new PrismaClient();
@@ -48,15 +48,16 @@ async function createBackup(): Promise<void> {
 
   logger.info(`Creating backup table: ${backupTableName}`);
 
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE "${backupTableName}" AS
-    SELECT * FROM "Article"
-    WHERE "sourceId" = $1
-  `, CORPORATE_BLOG_SOURCE_ID);
+  // Prisma.sqlとPrisma.rawを使用してSQLインジェクション対策
+  await prisma.$executeRaw(
+    Prisma.sql`CREATE TABLE ${Prisma.raw('"' + backupTableName + '"')} AS
+      SELECT * FROM "Article"
+      WHERE "sourceId" = ${CORPORATE_BLOG_SOURCE_ID}`
+  );
 
-  const count = await prisma.$queryRawUnsafe<{count: bigint}[]>(`
-    SELECT COUNT(*) as count FROM "${backupTableName}"
-  `);
+  const count = await prisma.$queryRaw<{count: bigint}[]>(
+    Prisma.sql`SELECT COUNT(*) as count FROM ${Prisma.raw('"' + backupTableName + '"')}`
+  );
 
   logger.success(`Backup created: ${backupTableName} with ${count[0].count} records`);
 }
