@@ -1,4 +1,4 @@
-#!/usr/bin/env -S npx tsx
+#!/usr/bin/env tsx
 
 import { PrismaClient, Prisma } from '@prisma/client';
 import logger from '@/lib/logger';
@@ -44,6 +44,18 @@ interface ArticleToUpdate {
   title: string;
   sourceId: string;
   tags: (string | null)[];
+}
+
+interface SkippedArticle {
+  articleId: string;
+  title: string;
+  reason: string;
+}
+
+interface ArticleError {
+  articleId: string;
+  title: string;
+  error: string;
 }
 
 /**
@@ -98,7 +110,7 @@ async function getArticlesToUpdate(): Promise<ArticleToUpdate[]> {
 /**
  * 記事の企業タグを特定（長い/特異なタグを優先）
  */
-function identifyCompanyTag(tags: string[]): string | null {
+function identifyCompanyTag(tags: (string | null)[]): string | null {
   if (!tags || tags.length === 0) return null;
 
   const normalize = (s: string) => s.normalize('NFKC').trim().toLowerCase();
@@ -139,8 +151,8 @@ async function updateArticleSources(options: UpdateOptions): Promise<void> {
   );
 
   const updateResults: UpdateResult[] = [];
-  const skippedArticles: any[] = [];
-  const errors: any[] = [];
+  const skippedArticles: SkippedArticle[] = [];
+  const errors: ArticleError[] = [];
 
   // バッチ処理
   for (let i = 0; i < articles.length; i += BATCH_SIZE) {
@@ -261,7 +273,16 @@ async function main() {
 }
 
 // 実行
-if (require.main === module) {
+// ESM対応: import.meta.urlでエントリポイントチェック
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(error => {
+    console.error('Unhandled error:', error);
+    process.exit(1);
+  });
+}
+
+// CommonJS互換性保持
+if (typeof require !== 'undefined' && require.main === module) {
   main().catch(error => {
     console.error('Unhandled error:', error);
     process.exit(1);
