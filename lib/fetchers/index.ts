@@ -24,6 +24,9 @@ import { HackerNewsFetcher } from './hacker-news';
 import { MediumEngineeringFetcher } from './medium-engineering';
 // import { MicrosoftDevBlogFetcher } from './microsoft-dev-blog';
 
+// AI/LLM関連フェッチャー
+import { OpenAIBlogFetcher } from './ai';
+
 export function createFetcher(source: Source): BaseFetcher {
   switch (source.name) {
     case 'はてなブックマーク':
@@ -72,6 +75,11 @@ export function createFetcher(source: Source): BaseFetcher {
       return new MediumEngineeringFetcher(source);
     // case 'Microsoft Developer Blog':
     //   return new MicrosoftDevBlogFetcher(source);
+
+    // AI/LLM関連ソース
+    case 'OpenAI Blog':
+      return new OpenAIBlogFetcher(source);
+
     default:
       throw new Error(`Unsupported source: ${source.name}`);
   }
@@ -100,7 +108,8 @@ export {
   CloudflareBlogFetcher,
   MozillaHacksFetcher,
   HackerNewsFetcher,
-  MediumEngineeringFetcher
+  MediumEngineeringFetcher,
   // MicrosoftDevBlogFetcher
+  OpenAIBlogFetcher
 };
 export type { FetchResult } from '@/types/fetchers';
