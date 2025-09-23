@@ -102,9 +102,14 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
             continue;
           }
 
-          // 日本語チェック
-          const textToCheck = item.description || item.content ||
-                            item.summary || item.contentSnippet || '';
+          // 日本語チェック（content:encodedを含めて誤除外を防止）
+          const textToCheck = (item as any).contentEncoded
+                            || (item as any)['content:encoded']
+                            || item.description
+                            || item.content
+                            || item.summary
+                            || item.contentSnippet
+                            || '';
           const hasJapanese = this.containsJapanese(item.title) ||
                             this.containsJapanese(textToCheck);
 
@@ -176,6 +181,8 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
       errors.push(new Error(errorMessage));
     }
 
+    // 念のためpublishedAt降順にソート（フィード順のばらつき対策）
+    articles.sort((a, b) => (b.publishedAt as Date).getTime() - (a.publishedAt as Date).getTime());
     return { articles, errors };
   }
 
@@ -184,8 +191,8 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
    */
   protected containsJapanese(text: string): boolean {
     if (!text) return false;
-    // CJK末尾（〜9FFF）と和文記号（3000-303F）も含める
-    const japaneseRegex = /[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/u;
+    // CJK末尾（〜9FFF）と和文記号（3000-303F）、半角カナも含める
+    const japaneseRegex = /[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\uFF65-\uFF9F]/u;
     return japaneseRegex.test(text);
   }
 

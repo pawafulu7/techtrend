@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S npx tsx
 
 import { PrismaClient, Prisma } from '@prisma/client';
 import logger from '@/lib/logger';
@@ -39,6 +39,13 @@ interface UpdateResult {
   companyTag: string;
 }
 
+interface ArticleToUpdate {
+  articleId: string;
+  title: string;
+  sourceId: string;
+  tags: (string | null)[];
+}
+
 /**
  * バックアップテーブル作成
  */
@@ -48,9 +55,14 @@ async function createBackup(): Promise<void> {
 
   logger.info(`Creating backup table: ${backupTableName}`);
 
+  // テーブル名は英数/アンダースコア/ハイフンのみ許可
+  if (!/^[A-Za-z0-9_-]+$/.test(backupTableName)) {
+    throw new Error(`Invalid backup table name: ${backupTableName}`);
+  }
+
   // Prisma.sqlとPrisma.rawを使用してSQLインジェクション対策
   await prisma.$executeRaw(
-    Prisma.sql`CREATE TABLE ${Prisma.raw('"' + backupTableName + '"')} AS
+    Prisma.sql`CREATE TABLE IF NOT EXISTS ${Prisma.raw('"' + backupTableName + '"')} AS
       SELECT * FROM "Article"
       WHERE "sourceId" = ${CORPORATE_BLOG_SOURCE_ID}`
   );
@@ -65,8 +77,8 @@ async function createBackup(): Promise<void> {
 /**
  * 更新対象の記事を取得
  */
-async function getArticlesToUpdate(): Promise<any[]> {
-  const articles = await prisma.$queryRaw`
+async function getArticlesToUpdate(): Promise<ArticleToUpdate[]> {
+  const articles = await prisma.$queryRaw<ArticleToUpdate[]>`
     SELECT
       a.id as "articleId",
       a.title,
@@ -76,11 +88,11 @@ async function getArticlesToUpdate(): Promise<any[]> {
     LEFT JOIN "_ArticleToTag" at ON a.id = at."A"
     LEFT JOIN "Tag" t ON at."B" = t.id
     WHERE a."sourceId" = ${CORPORATE_BLOG_SOURCE_ID}
-    GROUP BY a.id, a.title, a."sourceId"
+    GROUP BY a.id, a.title, a."sourceId", a."publishedAt"
     ORDER BY a."publishedAt" DESC
   `;
 
-  return articles as any[];
+  return articles;
 }
 
 /**
@@ -89,26 +101,19 @@ async function getArticlesToUpdate(): Promise<any[]> {
 function identifyCompanyTag(tags: string[]): string | null {
   if (!tags || tags.length === 0) return null;
 
-  const set = new Set(tags.filter(Boolean).map(t => t.trim()));
+  const normalize = (s: string) => s.normalize('NFKC').trim().toLowerCase();
+  const set = new Set(tags.filter(Boolean).map(t => normalize(t)));
   // より特異的（長い）タグを優先するため、長さでソート
   const candidates = Object.keys(COMPANY_SOURCE_MAPPING).sort((a, b) => b.length - a.length);
 
   for (const key of candidates) {
-    if (set.has(key)) return key;
+    if (set.has(normalize(key))) return key;
   }
 
   return null;
 }
 
-/**
- * ソースIDの存在確認
- */
-async function validateSourceExists(sourceId: string): Promise<boolean> {
-  const source = await prisma.source.findUnique({
-    where: { id: sourceId }
-  });
-  return source !== null;
-}
+// N+1クエリ回避のため、validateSourceExists関数は削除し、先読みに変更
 
 /**
  * 記事のソースID更新処理
@@ -124,6 +129,14 @@ async function updateArticleSources(options: UpdateOptions): Promise<void> {
   // 更新対象記事の取得
   const articles = await getArticlesToUpdate();
   logger.info(`Found ${articles.length} articles to process`);
+
+  // 既存ソースIDを先読み（N+1回避）
+  const existingSourceIds = new Set(
+    (await prisma.source.findMany({
+      where: { id: { in: Object.values(COMPANY_SOURCE_MAPPING) } },
+      select: { id: true },
+    })).map(s => s.id)
+  );
 
   const updateResults: UpdateResult[] = [];
   const skippedArticles: any[] = [];
@@ -149,9 +162,8 @@ async function updateArticleSources(options: UpdateOptions): Promise<void> {
 
         const newSourceId = COMPANY_SOURCE_MAPPING[companyTag];
 
-        // ソースIDの存在確認
-        const sourceExists = await validateSourceExists(newSourceId);
-        if (!sourceExists) {
+        // ソースIDの存在確認（先読みSet利用）
+        if (!existingSourceIds.has(newSourceId)) {
           skippedArticles.push({
             articleId: article.articleId,
             title: article.title,
@@ -191,23 +203,23 @@ async function updateArticleSources(options: UpdateOptions): Promise<void> {
   }
 
   // 結果サマリー出力
-  console.log('\n=== Update Summary ===');
-  console.log(`Total articles processed: ${articles.length}`);
-  console.log(`Successfully updated: ${updateResults.length}`);
-  console.log(`Skipped: ${skippedArticles.length}`);
-  console.log(`Errors: ${errors.length}`);
+  logger.info('\n=== Update Summary ===');
+  logger.info(`Total articles processed: ${articles.length}`);
+  logger.info(`Successfully updated: ${updateResults.length}`);
+  logger.info(`Skipped: ${skippedArticles.length}`);
+  logger.info(`Errors: ${errors.length}`);
 
   if (skippedArticles.length > 0) {
-    console.log('\n=== Skipped Articles ===');
+    logger.info('\n=== Skipped Articles ===');
     skippedArticles.forEach(article => {
-      console.log(`- ${article.title} (${article.reason})`);
+      logger.info(`- ${article.title} (${article.reason})`);
     });
   }
 
   if (errors.length > 0) {
-    console.log('\n=== Errors ===');
+    logger.info('\n=== Errors ===');
     errors.forEach(err => {
-      console.log(`- ${err.title}: ${err.error}`);
+      logger.info(`- ${err.title}: ${err.error}`);
     });
   }
 
@@ -217,9 +229,9 @@ async function updateArticleSources(options: UpdateOptions): Promise<void> {
     return acc;
   }, {} as Record<string, number>);
 
-  console.log('\n=== Updates by Company ===');
+  logger.info('\n=== Updates by Company ===');
   Object.entries(updatesByCompany).forEach(([company, count]) => {
-    console.log(`- ${company}: ${count} articles`);
+    logger.info(`- ${company}: ${count} articles`);
   });
 }
 
