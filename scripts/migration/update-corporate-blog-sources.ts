@@ -84,16 +84,19 @@ async function getArticlesToUpdate(): Promise<any[]> {
 }
 
 /**
- * 記事の企業タグを特定
+ * 記事の企業タグを特定（長い/特異なタグを優先）
  */
 function identifyCompanyTag(tags: string[]): string | null {
   if (!tags || tags.length === 0) return null;
 
-  for (const tag of tags) {
-    if (COMPANY_SOURCE_MAPPING[tag]) {
-      return tag;
-    }
+  const set = new Set(tags.filter(Boolean).map(t => t.trim()));
+  // より特異的（長い）タグを優先するため、長さでソート
+  const candidates = Object.keys(COMPANY_SOURCE_MAPPING).sort((a, b) => b.length - a.length);
+
+  for (const key of candidates) {
+    if (set.has(key)) return key;
   }
+
   return null;
 }
 
@@ -239,7 +242,7 @@ async function main() {
     logger.info('Corporate blog source update completed successfully');
   } catch (error) {
     logger.error('Fatal error during update:', error);
-    process.exit(1);
+    throw error; // rethrowしてfinallyブロックを確実に実行
   } finally {
     await prisma.$disconnect();
   }

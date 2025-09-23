@@ -17,6 +17,7 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
   constructor(source: Source) {
     super(source);
     this.parser = new Parser({
+      timeout: 15000, // 15秒のHTTPタイムアウトを設定
       customFields: {
         item: [
           ['dc:creator', 'dcCreator'],
@@ -33,10 +34,14 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
     this.thirtyDaysAgo = new Date();
     this.thirtyDaysAgo.setDate(this.thirtyDaysAgo.getDate() - 30);
 
-    // 環境変数から最大記事数を取得
+    // 環境変数から最大記事数を取得（堅牢化: NaN/負値ガード＋上限）
     const maxArticles = process.env.MAX_ARTICLES_PER_COMPANY;
-    if (maxArticles) {
-      this.maxArticlesPerCompany = parseInt(maxArticles);
+    if (maxArticles != null) {
+      const n = Number.parseInt(maxArticles, 10);
+      if (Number.isFinite(n) && n > 0) {
+        // 過負荷防止の上限（必要なら調整）
+        this.maxArticlesPerCompany = Math.min(n, 100);
+      }
     }
   }
 
@@ -80,12 +85,18 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
           // 基本的なバリデーション
           if (!item.title || !item.link) continue;
 
-          // 日付チェック
-          const publishedAt = item.isoDate
-            ? new Date(item.isoDate)
-            : item.pubDate
-              ? parseRSSDate(item.pubDate)
-              : new Date();
+          // 日付の堅牢なパース（isoDateが不正ならpubDateにフォールバック）
+          let publishedAt = new Date();
+          if (item.isoDate) {
+            const d = new Date(item.isoDate as string);
+            if (!isNaN(d.getTime())) {
+              publishedAt = d;
+            } else if (item.pubDate) {
+              publishedAt = parseRSSDate(item.pubDate as string);
+            }
+          } else if (item.pubDate) {
+            publishedAt = parseRSSDate(item.pubDate as string);
+          }
 
           if (publishedAt < this.thirtyDaysAgo) {
             continue;
@@ -101,8 +112,8 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
             continue;
           }
 
-          // イベント記事の除外
-          const excludeEvents = process.env.EXCLUDE_EVENT_ARTICLES !== 'false';
+          // イベント記事の除外（環境変数の解釈を厳密化）
+          const excludeEvents = !/^(false|0|no)$/i.test(String(process.env.EXCLUDE_EVENT_ARTICLES ?? 'true'));
           if (excludeEvents && this.isEventArticle(item.title, item.link)) {
             continue;
           }
@@ -173,7 +184,8 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
    */
   protected containsJapanese(text: string): boolean {
     if (!text) return false;
-    const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
+    // CJK末尾（〜9FFF）と和文記号（3000-303F）も含める
+    const japaneseRegex = /[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/u;
     return japaneseRegex.test(text);
   }
 
@@ -219,11 +231,12 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
   protected extractTags(item: any): string[] {
     const tags: string[] = [];
 
-    // カテゴリからタグ抽出
+    // カテゴリからタグ抽出（trim＋大文字小文字非依存の重複排除）
     if (item.categories && Array.isArray(item.categories)) {
       item.categories.forEach((category: string) => {
-        if (category && !tags.includes(category)) {
-          tags.push(category);
+        const tag = (category ?? '').trim();
+        if (tag && !tags.some(t => t.toLowerCase() === tag.toLowerCase())) {
+          tags.push(tag);
         }
       });
     }
