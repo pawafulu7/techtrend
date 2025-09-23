@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function RecommendationSkeleton() {
   return (
-    <Card>
+    <Card data-testid="recommendation-skeleton-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between mb-2">
           <Skeleton className="h-5 w-20" />

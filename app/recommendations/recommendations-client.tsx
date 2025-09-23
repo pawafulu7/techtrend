@@ -46,7 +46,7 @@ export function RecommendationsClient() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Sparkles className="h-6 w-6 text-primary" />
-          <div>
+          <div data-testid="recommendation-header">
             <h1 className="text-2xl font-bold">あなたへのおすすめ</h1>
             <p className="text-sm text-muted-foreground mt-1">
               閲覧履歴とお気に入りから、あなたの興味に合った記事を推薦します
@@ -58,6 +58,7 @@ export function RecommendationsClient() {
           variant="outline"
           size="sm"
           disabled={loading}
+          data-testid="recommendation-refresh-button"
         >
           <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
           更新

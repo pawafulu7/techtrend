@@ -1,25 +1,67 @@
 import { prisma } from '@/lib/prisma';
 import { ExtendedArticle } from '@/types/common';
-import { 
-  UserInterests, 
-  RecommendedArticle, 
+import {
+  UserInterests,
+  RecommendedArticle,
   RecommendationScore,
   CachedUserInterests
 } from './types';
-import { 
-  defaultConfig, 
-  calculateTimeWeight, 
+import {
+  defaultConfig,
+  calculateTimeWeight,
   calculateFreshnessBoost,
-  hashTagSet,
-  normalizeScore
+  hashTagSet
 } from './utils';
 import { getRedisService } from '@/lib/redis/factory';
+import { createArticleViewLoader } from '@/lib/dataloader/article-view-loader';
+import type DataLoader from 'dataloader';
+import type { ViewStatus } from '@/lib/dataloader/article-view-loader';
+import { recommendationMetrics } from '@/lib/monitoring/recommendation-metrics';
 import logger from '@/lib/logger';
 
 const redisService = getRedisService();
 
+// ViewLoaderキャッシュエントリの型定義
+interface ViewLoaderCacheEntry {
+  loader: DataLoader<string, ViewStatus>;
+  createdAt: number;
+}
+
 export class RecommendationService {
   private config = defaultConfig;
+  private viewLoaderCache = new Map<string, ViewLoaderCacheEntry>();
+  private readonly VIEW_LOADER_TTL = 5 * 60 * 1000; // 5分のTTL
+
+  /**
+   * DataLoaderインスタンスを取得（ユーザー毎にキャッシュ、TTL付き）
+   */
+  private getViewLoader(userId: string): DataLoader<string, ViewStatus> {
+    const now = Date.now();
+    const entry = this.viewLoaderCache.get(userId);
+
+    // TTLチェック
+    if (entry && (now - entry.createdAt) < this.VIEW_LOADER_TTL) {
+      return entry.loader;
+    }
+
+    // 新しいLoaderを作成
+    const loader = createArticleViewLoader(userId);
+    this.viewLoaderCache.set(userId, {
+      loader,
+      createdAt: now
+    });
+
+    // 古いエントリのクリーンアップ（メモリリーク防止）
+    if (this.viewLoaderCache.size > 100) {
+      // 最も古いエントリを削除
+      const entries = Array.from(this.viewLoaderCache.entries());
+      entries.sort((a, b) => a[1].createdAt - b[1].createdAt);
+      const toRemove = entries.slice(0, entries.length - 100);
+      toRemove.forEach(([key]) => this.viewLoaderCache.delete(key));
+    }
+
+    return loader;
+  }
 
   /**
    * ユーザーの興味分野を分析
@@ -185,29 +227,46 @@ export class RecommendationService {
     userId: string,
     limit: number = 10
   ): Promise<RecommendedArticle[]> {
-    
-    // ユーザーの興味を取得
-    const interests = await this.getUserInterests(userId);
-    
-    if (!interests || interests.totalActions < 3) {
-      // 新規ユーザーまたは履歴が少ない場合はデフォルト推薦
-      return this.getDefaultRecommendations(limit);
-    }
+    const startTime = Date.now();
+    try {
+      // ユーザーの興味を取得
+      const interests = await this.getUserInterests(userId);
 
-    // 最近読んだ記事を取得（重複を下げるため）
-    const recentlyViewedIds = await prisma.articleView.findMany({
-      where: { 
+      if (!interests || interests.totalActions < 3) {
+        // 新規ユーザーまたは履歴が少ない場合はデフォルト推薦
+        return await this.getDefaultRecommendations(limit);
+      }
+
+    // DataLoaderを使用して効率的に閲覧履歴を取得
+    const viewLoader = this.getViewLoader(userId);
+
+    // 7日間分のデータのみを取得（DB側でフィルタリング）
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const viewedArticles = await prisma.articleView.findMany({
+      where: {
         userId,
-        viewedAt: { 
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7日以内
-        }
+        viewedAt: { gte: sevenDaysAgo }
       },
-      select: { articleId: true },
-    }).then(views => views.map(v => v.articleId));
+      select: {
+        articleId: true,
+        viewedAt: true
+      },
+      take: 1000, // 念のための上限（7日分で十分に小さいはず）
+      orderBy: { viewedAt: 'desc' }
+    });
 
-    // 候補記事を取得（過去30日間、品質スコア50以上）
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // 重複を除去したIDリストを生成
+    const recentlyViewedIds = Array.from(
+      new Set(
+        viewedArticles
+          .filter(v => v.viewedAt && v.viewedAt >= sevenDaysAgo)
+          .map(v => v.articleId)
+      )
+    );
+    // DataLoaderがisViewedの判定を行うため、allViewedIdsは不要になった
+
+    // 候補記事を取得（configのcandidateWindow期間内、品質スコア50以上）
+    const thirtyDaysAgo = new Date(Date.now() - this.config.candidateWindow);
 
     const candidates = await prisma.article.findMany({
       where: {
@@ -238,6 +297,17 @@ export class RecommendationService {
     // スコアでソート
     scoredArticles.sort((a, b) => b.score - a.score);
 
+    // 候補が無い場合は空で返す
+    if (scoredArticles.length === 0) {
+      return [];
+    }
+
+    // 相対正規化のためのmin/max計算
+    const scores = scoredArticles.map(item => item.score);
+    const minScore = Math.min(...scores);
+    const maxScore = Math.max(...scores);
+    const scoreRange = maxScore - minScore;
+
     // 多様性を確保しながら選択
     const selected: typeof scoredArticles = [];
     const sourceCount = new Map<string, number>();
@@ -246,7 +316,7 @@ export class RecommendationService {
     for (const scored of scoredArticles) {
       if (selected.length >= limit) break;
 
-      const sourceName = scored.article.source.name;
+      const sourceName = scored.article.source?.name ?? 'unknown';
       const tagSet = hashTagSet(scored.article.tags.map(t => typeof t === 'string' ? t : t.name));
 
       // ソース制限チェック
@@ -262,26 +332,42 @@ export class RecommendationService {
       tagSetCount.set(tagSet, currentTagSetCount + 1);
     }
 
-    // 全ての閲覧済み記事IDを取得（既読マーク用）
-    const allViewedIds = await prisma.articleView.findMany({
-      where: { userId },
-      select: { articleId: true },
-    }).then(views => new Set(views.map(v => v.articleId)));
+      // DataLoaderを使用して各記事の閲覧状態を効率的に取得
+      const articleIds = selected.map(item => item.article.id);
+      const viewStatuses = await viewLoader.loadMany(articleIds);
 
-    // RecommendedArticle形式に変換
-    return selected.map(item => ({
-      id: item.article.id,
-      title: item.article.title,
-      url: item.article.url,
-      summary: item.article.summary,
-      thumbnail: item.article.thumbnail,
-      publishedAt: item.article.publishedAt,
-      sourceName: item.article.source.name,
-      tags: item.article.tags.map(t => typeof t === 'string' ? t : t.name),
-      recommendationScore: normalizeScore(item.score),
-      recommendationReasons: item.reasons,
-      isViewed: allViewedIds.has(item.article.id),  // 既読フラグを追加
-    }));
+      // メトリクスを記録（バッチサイズのみ、DBクエリはDataLoader内で記録）
+      recommendationMetrics.recordBatchSize(articleIds.length);
+
+      // キャッシュヒット/ミスを正確に測定（DataLoader内部で測定済みのため削除）
+      // RecommendedArticle形式に変換
+      return selected.map((item, index) => {
+        const viewStatus = viewStatuses[index];
+        const isViewed = viewStatus instanceof Error ? false : viewStatus.isViewed;
+
+        // 相対正規化によるスコア計算（0-100）
+        const normalizedScore = scoreRange > 0
+          ? Math.round(((item.score - minScore) / scoreRange) * 100)
+          : 50; // すべて同じスコアの場合は50
+
+        return {
+          id: item.article.id,
+          title: item.article.title,
+          url: item.article.url,
+          summary: item.article.summary,
+          thumbnail: item.article.thumbnail,
+          publishedAt: item.article.publishedAt,
+          sourceName: item.article.source?.name ?? 'unknown',
+          tags: item.article.tags.map(t => typeof t === 'string' ? t : t.name),
+          recommendationScore: normalizedScore,
+          recommendationReasons: item.reasons,
+          isViewed,  // DataLoaderから取得した既読フラグ
+        };
+      });
+    } finally {
+      // レスポンスタイムを必ず記録
+      recommendationMetrics.recordResponseTime('getRecommendations', Date.now() - startTime);
+    }
   }
 
   /**
@@ -308,18 +394,30 @@ export class RecommendationService {
       take: limit,
     });
 
-    return popularArticles.map(article => ({
-      id: article.id,
-      title: article.title,
-      url: article.url,
-      summary: article.summary,
-      thumbnail: article.thumbnail,
-      publishedAt: article.publishedAt,
-      sourceName: article.source.name,
-      tags: article.tags.map(t => t.name),
-      recommendationScore: article.qualityScore / 100,
-      recommendationReasons: ['話題の記事', '高品質な記事'],
-    }));
+    // 品質スコアで相対正規化（70-100の範囲を0-100に変換）
+    const scores = popularArticles.map(a => a.qualityScore as number);
+    const minScore = Math.min(...scores);
+    const maxScore = Math.max(...scores);
+    const scoreRange = maxScore - minScore;
+
+    return popularArticles.map(article => {
+      const normalizedScore = scoreRange > 0
+        ? Math.round(((article.qualityScore as number - minScore) / scoreRange) * 100)
+        : 50; // すべて同じスコアの場合は50
+
+      return {
+        id: article.id,
+        title: article.title,
+        url: article.url,
+        summary: article.summary,
+        thumbnail: article.thumbnail,
+        publishedAt: article.publishedAt,
+        sourceName: article.source.name,
+        tags: article.tags.map(t => t.name),
+        recommendationScore: normalizedScore,
+        recommendationReasons: ['話題の記事', '高品質な記事'],
+      };
+    });
   }
 }
 

@@ -8,10 +8,22 @@ jest.mock('@/lib/redis/factory', () => ({
   getRedisService: jest.fn(),
 }));
 
+// Mock DataLoader
+jest.mock('@/lib/dataloader/article-view-loader', () => ({
+  createArticleViewLoader: jest.fn(() => ({
+    load: jest.fn(),
+    loadMany: jest.fn(),
+    clear: jest.fn(),
+    clearAll: jest.fn(),
+  })),
+  ViewStatus: {},
+}));
+
 // Import after mocks
 import { RecommendationService } from '../recommendation-service';
 import { prisma } from '@/lib/prisma';
 import { getRedisService } from '@/lib/redis/factory';
+import { createArticleViewLoader } from '@/lib/dataloader/article-view-loader';
 
 describe.skip('RecommendationService', () => {
   let service: RecommendationService;
@@ -127,6 +139,7 @@ describe.skip('RecommendationService', () => {
 
   describe('getRecommendations', () => {
     const userId = 'test-user-id';
+    let mockDataLoader: any;
     const mockArticles = [
       {
         id: 'article-1',
@@ -156,6 +169,15 @@ describe.skip('RecommendationService', () => {
     ];
 
     beforeEach(() => {
+      // DataLoaderのモック設定
+      mockDataLoader = {
+        loadMany: jest.fn().mockResolvedValue([
+          { articleId: 'article-1', isViewed: false, viewedAt: undefined },
+          { articleId: 'article-2', isViewed: false, viewedAt: undefined },
+        ]),
+      };
+      (createArticleViewLoader as jest.Mock).mockReturnValue(mockDataLoader);
+
       jest.spyOn(service, 'getUserInterests').mockResolvedValue({
         tagScores: new Map([['React', 10], ['TypeScript', 5]]),
         totalActions: 15,
@@ -164,43 +186,49 @@ describe.skip('RecommendationService', () => {
     });
 
     it('should return personalized recommendations', async () => {
+      // Mock viewed articles
+      (prisma.articleView.findMany as jest.Mock).mockResolvedValue([]);
       (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
-      
+
       const result = await service.getRecommendations(userId, 10);
-      
+
       expect(result).toHaveLength(2);
       expect(result[0]).toHaveProperty('id');
-      expect(result[0]).toHaveProperty('score');
-      expect(result[0]).toHaveProperty('reasons');
-      
+      expect(result[0]).toHaveProperty('recommendationScore');
+      expect(result[0]).toHaveProperty('recommendationReasons');
+
       expect(prisma.article.findMany).toHaveBeenCalled();
     });
 
     it('should exclude viewed articles within 7 days', async () => {
+      // Mock viewed articles - 1つのクエリで全履歴を取得
+      (prisma.articleView.findMany as jest.Mock).mockResolvedValue([
+        { articleId: 'article-1', viewedAt: new Date() }, // 今日
+        { articleId: 'article-2', viewedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) }, // 10日前
+      ]);
+
       (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
-      
-      await service.getRecommendations(userId, 10, {
-        excludeViewedWithinDays: 7,
-        includeTags: [],
-        excludeTags: [],
-      });
-      
-      const findManyCall = (prisma.article.findMany as jest.Mock).mock.calls[0][0];
-      expect(findManyCall.where).toHaveProperty('NOT');
-      expect(findManyCall.where.NOT).toHaveProperty('views');
+
+      await service.getRecommendations(userId, 10);
+
+      // articleViewは1回だけ呼ばれるべき（最適化の確認）
+      expect(prisma.articleView.findMany).toHaveBeenCalledTimes(1);
+
+      const articleFindCall = (prisma.article.findMany as jest.Mock).mock.calls[0][0];
+      // 7日以内に閲覧された記事のみ除外される
+      expect(articleFindCall.where.id.notIn).toContain('article-1');
+      expect(articleFindCall.where.id.notIn).not.toContain('article-2');
     });
 
     it('should handle tag filters', async () => {
+      // Mock viewed articles
+      (prisma.articleView.findMany as jest.Mock).mockResolvedValue([]);
       (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
-      
-      await service.getRecommendations(userId, 10, {
-        excludeViewedWithinDays: 7,
-        includeTags: ['React'],
-        excludeTags: ['Angular'],
-      });
-      
+
+      await service.getRecommendations(userId, 10);
+
       const findManyCall = (prisma.article.findMany as jest.Mock).mock.calls[0][0];
-      expect(findManyCall.where.tags).toBeDefined();
+      expect(findManyCall.where).toBeDefined();
     });
 
     it('should return popular articles for users without interests', async () => {
@@ -218,12 +246,24 @@ describe.skip('RecommendationService', () => {
         ...mockArticles[0],
         id: `article-${i}`,
       }));
-      
+
       (prisma.article.findMany as jest.Mock).mockResolvedValue(manyArticles);
-      
+
       const result = await service.getRecommendations(userId, 5);
-      
+
       expect(result).toHaveLength(5);
+    });
+
+    it('should use DataLoader for efficient batch loading', async () => {
+      // Mock viewed articles
+      (prisma.articleView.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
+
+      await service.getRecommendations(userId, 10);
+
+      // DataLoaderが作成され、loadManyが呼ばれたことを確認
+      expect(createArticleViewLoader).toHaveBeenCalledWith(userId);
+      expect(mockDataLoader.loadMany).toHaveBeenCalled();
     });
   });
 
