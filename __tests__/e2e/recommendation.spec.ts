@@ -159,9 +159,8 @@ test.describe('推薦機能', () => {
     expect(stateAfterReload).toBe(newState);
   });
 
-  test('推薦セクション表示切り替え（ログイン済みの場合）', async ({ page }) => {
-    // 注意: 実際のテストではログイン処理が必要
-    // ここでは推薦トグルボタンの存在確認のみ
+  test('推薦セクションの非ログイン時の挙動', async ({ page }) => {
+    // 非ログイン状態での推薦セクション挙動確認
     const recommendationSection = page.locator('[data-testid="recommendation-section"]');
 
     // ログインしていない場合は推薦セクションが表示されない
@@ -195,7 +194,7 @@ test.describe('推薦機能', () => {
     await expect(toggleButton).toBeVisible({ timeout: 10000 });
 
     // 同じツールバー内にあることを確認
-    const toolbar = page.locator('.flex-shrink-0.bg-gray-50\\/50');
+    const toolbar = page.locator('[data-testid="article-toolbar"]').or(page.locator('.flex-shrink-0.bg-gray-50\\/50'));
     await expect(toolbar).toContainText('件の記事');
     await expect(toolbar.locator('[data-testid="recommendation-toggle"]')).toBeVisible();
   });

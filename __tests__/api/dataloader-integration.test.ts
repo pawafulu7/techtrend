@@ -173,6 +173,7 @@ describe('DataLoader Integration Tests', () => {
     });
 
     // モジュールを再インポート（モックが適用された状態で）
+    // createLoadersは既にモック化済みのため、参照のみ取得
     createLoaders = mockDataLoaderModule.createLoaders;
     articlesListGET = require('@/app/api/articles/list/route').GET;
     articlesGET = require('@/app/api/articles/route').GET;
@@ -325,8 +326,9 @@ describe('DataLoader Integration Tests', () => {
 
   describe('API endpoint integration', () => {
     it.skip('should use DataLoader in /api/articles/list endpoint', async () => {
-      // Skip this test for now due to Prisma mock issues with API route
-      // The DataLoader functionality is already tested in other test cases
+      // TODO: APIルートレベルでのDataLoader統合テストを実装
+      // 現状: モック設定の複雑性により一時的にスキップ
+      // 解決策: E2Eテストでカバーまたはモック構造の簡素化が必要
 
       // Spy on Prisma methods
       const articleFindManySpy = jest.spyOn(mockPrisma.article, 'findMany');
@@ -427,11 +429,10 @@ describe('DataLoader Integration Tests', () => {
       const promise2 = loaders.favorite?.load('article-1');
       const promise3 = loaders.favorite?.load('article-1');
 
-      // Promises should be the same instance (DataLoader caching)
-      // DataLoaderは同じPromiseインスタンスを返すはずだが、
-      // モックの実装により異なる場合がある
-      // expect(promise1).toBe(promise2);
-      // expect(promise2).toBe(promise3);
+      // DataLoaderの仕様: 同じキーに対しては同じPromiseインスタンスを返す
+      // これによりメモリ効率とリクエストの重複排除を実現
+      expect(promise1).toBe(promise2);
+      expect(promise2).toBe(promise3);
 
       // Wait for batching to complete
       await new Promise(resolve => process.nextTick(resolve));
