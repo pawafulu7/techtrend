@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 
 import { PrismaClient } from '@prisma/client';
-import { logger } from '@/lib/logger';
+import logger from '@/lib/logger';
 
 const prisma = new PrismaClient();
 
@@ -235,7 +235,7 @@ async function main() {
 
   try {
     await updateArticleSources(options);
-    logger.success('Corporate blog source update completed successfully');
+    logger.info('Corporate blog source update completed successfully');
   } catch (error) {
     logger.error('Fatal error during update:', error);
     process.exit(1);

@@ -55,7 +55,7 @@ async function main() {
   // テストDBであることを厳密に確認（本番DB誤実行防止）
   const url = new URL(dbUrl);
   const dbName = url.pathname.replace(/^\//, '');
-  const hostOk = ['localhost', '127.0.0.1'].includes(url.hostname);
+  const hostOk = ['localhost', '127.0.0.1', 'postgres-test'].includes(url.hostname);
   // CI環境（GitHub Actions等）では5432ポート、ローカル開発環境では5434ポートを許可
   const isCI = process.env.CI === 'true';
   const portOk = isCI ? url.port === '5432' : url.port === '5434';

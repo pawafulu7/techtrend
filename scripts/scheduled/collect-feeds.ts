@@ -20,7 +20,6 @@ import { RailsReleasesFetcher } from '@/lib/fetchers/rails-releases';
 import { AWSFetcher } from '@/lib/fetchers/aws';
 import { SREFetcher } from '@/lib/fetchers/sre';
 import { GoogleDevBlogFetcher } from '@/lib/fetchers/google-dev-blog';
-import { CorporateTechBlogFetcher } from '@/lib/fetchers/corporate-tech-blog';
 import { HuggingFaceFetcher } from '@/lib/fetchers/huggingface';
 import { GoogleAIFetcher } from '@/lib/fetchers/google-ai';
 import { InfoQJapanFetcher } from '@/lib/fetchers/infoq-japan';
@@ -31,6 +30,22 @@ import { MozillaHacksFetcher } from '@/lib/fetchers/mozilla-hacks';
 import { HackerNewsFetcher } from '@/lib/fetchers/hacker-news';
 import { MediumEngineeringFetcher } from '@/lib/fetchers/medium-engineering';
 // import { MicrosoftDevBlogFetcher } from '@/lib/fetchers/microsoft-dev-blog';
+
+// 企業ブログフェッチャーを個別にインポート
+import { DenaFetcher } from '@/lib/fetchers/corporate-blogs/dena-fetcher';
+import { SmartHRFetcher } from '@/lib/fetchers/corporate-blogs/smarthr-fetcher';
+import { LYCorpFetcher } from '@/lib/fetchers/corporate-blogs/lycorp-fetcher';
+import { MercariFetcher } from '@/lib/fetchers/corporate-blogs/mercari-fetcher';
+import { SansanFetcher } from '@/lib/fetchers/corporate-blogs/sansan-fetcher';
+import { ZOZOFetcher } from '@/lib/fetchers/corporate-blogs/zozo-fetcher';
+import { HatenaFetcher } from '@/lib/fetchers/corporate-blogs/hatena-fetcher';
+import { MoneyForwardFetcher } from '@/lib/fetchers/corporate-blogs/moneyforward-fetcher';
+import { PepaboFetcher } from '@/lib/fetchers/corporate-blogs/pepabo-fetcher';
+import { FreeeFetcher } from '@/lib/fetchers/corporate-blogs/freee-fetcher';
+import { CookpadFetcher } from '@/lib/fetchers/corporate-blogs/cookpad-fetcher';
+import { CyberAgentFetcher } from '@/lib/fetchers/corporate-blogs/cyberagent-fetcher';
+import { GMOFetcher } from '@/lib/fetchers/corporate-blogs/gmo-fetcher';
+
 import { BaseFetcher } from '@/lib/fetchers/base';
 
 // エンリッチャーをインポート
@@ -55,7 +70,6 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'AWS': AWSFetcher,
   'SRE': SREFetcher,
   'Google Developers Blog': GoogleDevBlogFetcher,
-  'Corporate Tech Blog': CorporateTechBlogFetcher,
   'Hugging Face Blog': HuggingFaceFetcher,
   'Google AI Blog': GoogleAIFetcher,
   'InfoQ Japan': InfoQJapanFetcher,
@@ -66,6 +80,21 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'Hacker News': HackerNewsFetcher,
   'Medium Engineering': MediumEngineeringFetcher,
   // 'Microsoft Developer Blog': MicrosoftDevBlogFetcher,
+
+  // 個別企業ブログフェッチャー
+  'DeNA Tech Blog': DenaFetcher,
+  'SmartHR Tech Blog': SmartHRFetcher,
+  'LY Corporation Tech Blog': LYCorpFetcher,
+  'Mercari Engineering': MercariFetcher,
+  'Sansan Builders Box': SansanFetcher,
+  'ZOZO Tech Blog': ZOZOFetcher,
+  'Hatena Developer Blog': HatenaFetcher,
+  'Money Forward Developers': MoneyForwardFetcher,
+  'GMO Pepabo Tech Blog': PepaboFetcher,
+  'Freee Developers Hub': FreeeFetcher,
+  'Cookpad Tech Blog': CookpadFetcher,
+  'CyberAgent Developers Blog': CyberAgentFetcher,
+  'GMO Developers': GMOFetcher,
 };
 
 interface CollectResult {
