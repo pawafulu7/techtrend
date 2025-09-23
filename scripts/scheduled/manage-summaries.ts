@@ -403,13 +403,10 @@ async function checkNewArticles(options?: Options): Promise<boolean> {
         ]
       },
       {
-        // createdAtがある場合は優先、なければpublishedAtを使用
+        // createdAtまたはpublishedAtが1時間以内
         OR: [
           { createdAt: { gte: oneHourAgo } },
-          {
-            createdAt: null,
-            publishedAt: { gte: oneHourAgo }
-          }
+          { publishedAt: { gte: oneHourAgo } }
         ]
       }
     ]
