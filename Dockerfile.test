@@ -29,10 +29,9 @@ COPY --chown=node:node prisma ./prisma
 # Install dependencies (prisma generate runs automatically in postinstall)
 RUN npm ci --no-audit --no-fund
 
-# Copy jest config files explicitly (needed for tests)
-# Note: Copying each file pattern separately to avoid errors when some don't exist
-COPY --chown=node:node jest.config.* ./
-COPY --chown=node:node jest.setup.* ./
+# Copy jest config and setup files (needed for tests)
+# Now that .dockerignore is fixed, we can use wildcards
+COPY --chown=node:node jest.* ./
 
 # Copy all source files
 COPY --chown=node:node . .
