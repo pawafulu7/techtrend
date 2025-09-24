@@ -1,4 +1,4 @@
-export type SourceCategoryId = 'foreign' | 'domestic' | 'company' | 'presentation';
+export type SourceCategoryId = 'foreign' | 'domestic' | 'company' | 'presentation' | 'ai' | 'llm';
 
 export interface SourceCategory {
   id: SourceCategoryId;
@@ -20,8 +20,6 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'mozilla_hacks_202508',        // Mozilla Hacks
       'cmdq3nwwz0008tegx2eu8cozq',  // Stack Overflow Blog
       'cmdq43ofy0000teolba9vrndf',  // Google Developers Blog
-      'cmdwmplc10000tec8vg2t9r2o',  // Google AI Blog
-      'cmdwmplco0001tec833nye4ak',  // Hugging Face Blog
       'medium_engineering_202508',   // Medium Engineering
       'cmdq4382o0000tecrle79yxxl',  // AWS
       'cmdq43k070000tekrnqlawd1y'   // SRE
@@ -70,6 +68,31 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
     sourceIds: [
       'speakerdeck_8a450c43f9418ff6',  // Speaker Deck
       'docswell_a4539889f7debebd'      // Docswell
+    ]
+  },
+  ai: {
+    id: 'ai',
+    name: 'AI',
+    description: 'AI関連の技術情報',
+    sourceIds: [
+      'cmfwpq7dc0000te8m6fd12f0x',  // OpenAI Blog
+      'cmdwmplc10000tec8vg2t9r2o',  // Google AI Blog (既にforeignにもある)
+      'cmfxa7efj0000teo06dhbox6e',  // Hugging Face Papers
+      'cmfxa7efs0001teo0kjt70c5k',  // arXiv AI
+      'cmfxa7efx0002teo03tglf5fs',  // Zenn AI
+      'cmfxa7egc0003teo0ofke77yu'   // Qiita AI
+    ]
+  },
+  llm: {
+    id: 'llm',
+    name: 'LLM',
+    description: '大規模言語モデル関連',
+    sourceIds: [
+      'cmdwmplco0001tec833nye4ak',  // Hugging Face Blog (既にforeignにもある)
+      'cmfxa7efj0000teo06dhbox6e',  // Hugging Face Papers (AI/LLM両方に関連)
+      'cmfxa7efs0001teo0kjt70c5k',  // arXiv AI (AI/LLM両方に関連)
+      'cmfxa7efx0002teo03tglf5fs',  // Zenn AI (AI/LLM両方に関連)
+      'cmfxa7egc0003teo0ofke77yu'   // Qiita AI (AI/LLM両方に関連)
     ]
   }
 };
