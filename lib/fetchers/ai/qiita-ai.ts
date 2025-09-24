@@ -34,6 +34,8 @@ interface QiitaApiItem {
 
 export class QiitaAIFetcher extends BaseFetcher {
   private parser: Parser;
+  private lastApiCall = 0;
+  private readonly API_RATE_LIMIT_MS = 1000; // 1秒に1回の制限
   private enricher: QiitaAIEnricher;
   private tags: QiitaTag[] = [
     {
@@ -196,10 +198,10 @@ export class QiitaAIFetcher extends BaseFetcher {
 
     // Qiitaのタグ形式を抽出
     if (item.content) {
-      // Qiitaタグ形式: タグ名を抽出
-      const tagMatches = item.content.match(/タグ:([^<\n]+)/);
+      // Qiitaタグ形式: タグ名を抽出（全角コロンにも対応）
+      const tagMatches = item.content.match(/タグ[:：]\s*([^<\n]+)/);
       if (tagMatches && tagMatches[1]) {
-        const tagList = tagMatches[1].split(/[,、]/).map(t => t.trim());
+        const tagList = tagMatches[1].split(/[,、\s]+/).map((t: string) => t.trim()).filter((t: string) => t.length > 0);
         tags.push(...tagList);
       }
     }
@@ -233,14 +235,23 @@ export class QiitaAIFetcher extends BaseFetcher {
 
       const itemId = match[1];
 
+      // レート制限の確認
+      const now = Date.now();
+      const timeSinceLastCall = now - this.lastApiCall;
+      if (timeSinceLastCall < this.API_RATE_LIMIT_MS) {
+        await new Promise(resolve => setTimeout(resolve, this.API_RATE_LIMIT_MS - timeSinceLastCall));
+      }
+      this.lastApiCall = Date.now();
+
       // Qiita APIから記事情報を取得（いいね数を含む）
-      // 注意: Qiita APIにはレート制限があるため、実際の実装では注意が必要
       const response = await axios.get<QiitaApiItem>(
         `https://qiita.com/api/v2/items/${itemId}`,
         {
           timeout: 5000,
           headers: {
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            // 環境変数からトークンを取得（オプション）
+            ...(process.env.QIITA_API_TOKEN && { 'Authorization': `Bearer ${process.env.QIITA_API_TOKEN}` })
           }
         }
       );
@@ -249,7 +260,12 @@ export class QiitaAIFetcher extends BaseFetcher {
 
     } catch (error) {
       // API取得に失敗した場合はデフォルト値を返す
-      logger.debug(`Qiitaいいね数取得エラー: ${error instanceof Error ? error.message : String(error)}`);
+      if (axios.isAxiosError(error) && error.response?.status === 429) {
+        // レート制限に達した場合
+        logger.warn('Qiita API rate limit reached');
+      } else {
+        logger.debug(`Qiitaいいね数取得エラー: ${error instanceof Error ? error.message : String(error)}`);
+      }
       return 0;
     }
   }

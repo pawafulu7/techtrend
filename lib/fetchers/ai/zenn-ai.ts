@@ -168,7 +168,8 @@ export class ZennAIFetcher extends BaseFetcher {
 
     // contentからタグを抽出（Zennのタグ形式: #tag）
     if (item.content) {
-      const tagMatches = item.content.match(/#[a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+/g);
+      // Unicode属性を使用してより包括的なマッチング
+      const tagMatches = item.content.match(/#[\p{L}\p{N}_]+/gu);
       if (tagMatches) {
         tags.push(...tagMatches.map(tag => tag.substring(1)));
       }
@@ -196,7 +197,13 @@ export class ZennAIFetcher extends BaseFetcher {
       // Zenn記事URLから著者名と記事IDを抽出してOGP画像URLを構築
       const match = item.link.match(/zenn\.dev\/([^\/]+)\/articles\/([^\/\?]+)/);
       if (match) {
-        return `https://res.cloudinary.com/zenn/image/upload/s--og-default--/co_rgb:222%2Cg_south_west%2Cl_text:notosansjp-medium.otf_37_bold:${match[1]}%2Cx_203%2Cy_98/c_fit%2Cco_rgb:222%2Cg_north_west%2Cl_text:notosansjp-medium.otf_70_bold:${encodeURIComponent(item.title || 'Article')}%2Cw_1010%2Cx_90%2Cy_100/bo_3px_solid_rgb:d6d6d6%2Cg_center%2Ch_630%2Cw_1200/v1627283836/default/og-bg-zenn.png`;
+        // タイトルをサニタイゼーション（HTML/制御文字を除去）
+        const sanitizedTitle = (item.title || 'Article')
+          .replace(/<[^>]*>/g, '') // HTMLタグを除去
+          .replace(/[<>'"]/g, '')   // 特殊文字を除去
+          .replace(/[\n\r\t]/g, ' ') // 制御文字をスペースに置換
+          .trim();
+        return `https://res.cloudinary.com/zenn/image/upload/s--og-default--/co_rgb:222%2Cg_south_west%2Cl_text:notosansjp-medium.otf_37_bold:${match[1]}%2Cx_203%2Cy_98/c_fit%2Cco_rgb:222%2Cg_north_west%2Cl_text:notosansjp-medium.otf_70_bold:${encodeURIComponent(sanitizedTitle)}%2Cw_1010%2Cx_90%2Cy_100/bo_3px_solid_rgb:d6d6d6%2Cg_center%2Ch_630%2Cw_1200/v1627283836/default/og-bg-zenn.png`;
       }
     }
 
