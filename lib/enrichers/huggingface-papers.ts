@@ -4,17 +4,37 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
+import { sanitizeHtml } from '@/lib/utils/html-sanitizer';
 
 export class HuggingFacePapersEnricher extends BaseContentEnricher {
   /**
    * Hugging Face PapersのURLパターンにマッチするかチェック
+   * URLをパースして適切にホスト名を検証（セキュリティ対策）
    */
   canHandle(url: string): boolean {
-    // Hugging Face Papers, arXiv, その他の論文サイト
-    return url.includes('huggingface.co/papers') ||
-           url.includes('arxiv.org') ||
-           url.includes('papers.ssrn.com') ||
-           url.includes('openreview.net');
+    try {
+      const parsed = new URL(url);
+      const hostname = parsed.hostname.toLowerCase();
+
+      // ホワイトリスト方式で許可されたドメインのみ受け入れる
+      const allowedHosts = [
+        'huggingface.co',
+        'www.huggingface.co',
+        'arxiv.org',
+        'www.arxiv.org',
+        'papers.ssrn.com',
+        'www.papers.ssrn.com',
+        'openreview.net',
+        'www.openreview.net'
+      ];
+
+      // 完全一致でチェック（サブドメイン攻撃を防ぐ）
+      return allowedHosts.includes(hostname) ||
+             (hostname === 'huggingface.co' && parsed.pathname.includes('/papers'));
+    } catch {
+      // URLパースエラーの場合はfalse
+      return false;
+    }
   }
 
   /**
@@ -100,7 +120,9 @@ export class HuggingFacePapersEnricher extends BaseContentEnricher {
     for (const pattern of titlePatterns) {
       const match = html.match(pattern);
       if (match && match[1]) {
-        const title = match[1]
+        // まずsanitizeHtmlでHTMLタグを安全に除去してから整形
+        const sanitized = sanitizeHtml(match[1]);
+        const title = sanitized
           .replace(/\s*\|.*$/, '') // サイト名を削除
           .replace(/\[.*?\]/g, '') // [PDF]等を削除
           .trim();
@@ -120,8 +142,8 @@ export class HuggingFacePapersEnricher extends BaseContentEnricher {
     for (const pattern of authorPatterns) {
       const match = html.match(pattern);
       if (match && match[1]) {
-        const authors = match[1]
-          .replace(/<[^>]+>/g, '')
+        // sanitizeHtmlを使用してHTMLタグを安全に除去（XSS対策）
+        const authors = sanitizeHtml(match[1])
           .replace(/\s+/g, ' ')
           .trim();
         if (authors) {
