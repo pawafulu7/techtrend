@@ -82,8 +82,9 @@ export class ZennAIFetcher extends BaseFetcher {
             continue;
           }
 
-          // 重複チェック（複数トピックに属する記事があるため）
-          if (processedUrls.has(item.link)) {
+          // 重複チェック（クエリ/フラグメント/末尾スラッシュ差異を吸収）
+          const urlKey = this.normalizeUrl(item.link);
+          if (processedUrls.has(urlKey)) {
             continue;
           }
 
@@ -123,14 +124,13 @@ export class ZennAIFetcher extends BaseFetcher {
             title: item.title,
             url: item.link,
             content, // Webから取得したフルコンテンツ
-            summary: undefined, // 必須: 要約は生成しない
             publishedAt,
             sourceId: this.source.id,
             thumbnail,
           }, topic.name, author, tags);
 
           articles.push(enrichedArticle);
-          processedUrls.add(item.link);
+          processedUrls.add(urlKey);
           topicArticleCount++;
         }
 
@@ -149,12 +149,12 @@ export class ZennAIFetcher extends BaseFetcher {
   }
 
   private extractAuthor(item: any): string | undefined {
-    // Zennの著者情報を抽出
+    // Zennの著者情報を抽出（前後空白を除去）
     if (item.creator) {
-      return item.creator;
+      return String(item.creator).trim();
     }
     if (item['dc:creator']) {
-      return item['dc:creator'];
+      return String(item['dc:creator']).trim();
     }
     return undefined;
   }
@@ -185,11 +185,11 @@ export class ZennAIFetcher extends BaseFetcher {
       return item.enclosure.url;
     }
 
-    // content内からimgタグを探す
+    // content内からimgタグを探す（シングル/ダブルクオート対応）
     if (item.content) {
-      const imgMatch = item.content.match(/<img[^>]+src="([^"]+)"/);
-      if (imgMatch && imgMatch[1]) {
-        return imgMatch[1];
+      const imgMatch = item.content.match(/<img[^>]+src=(["'])(.*?)\1/i);
+      if (imgMatch && imgMatch[2]) {
+        return imgMatch[2];
       }
     }
 
@@ -198,10 +198,13 @@ export class ZennAIFetcher extends BaseFetcher {
       // Zenn記事URLから著者名と記事IDを抽出してOGP画像URLを構築
       const match = item.link.match(/zenn\.dev\/([^\/]+)\/articles\/([^\/\?]+)/);
       if (match) {
+        // 著者スラッグのエンコード
+        const authorSlug = encodeURIComponent(match[1]);
         // セキュアなHTML sanitizerを使用してタイトルをサニタイゼーション
-        // 完全にスクリプトタグを除去し、XSS攻撃を防ぐ
         const sanitizedTitle = sanitizeHtml(item.title || 'Article');
-        return `https://res.cloudinary.com/zenn/image/upload/s--og-default--/co_rgb:222%2Cg_south_west%2Cl_text:notosansjp-medium.otf_37_bold:${match[1]}%2Cx_203%2Cy_98/c_fit%2Cco_rgb:222%2Cg_north_west%2Cl_text:notosansjp-medium.otf_70_bold:${encodeURIComponent(sanitizedTitle)}%2Cw_1010%2Cx_90%2Cy_100/bo_3px_solid_rgb:d6d6d6%2Cg_center%2Ch_630%2Cw_1200/v1627283836/default/og-bg-zenn.png`;
+        // タイトルの長さ制限（過長なURLを防ぐ）
+        const safeTitle = sanitizedTitle.slice(0, 120);
+        return `https://res.cloudinary.com/zenn/image/upload/s--og-default--/co_rgb:222%2Cg_south_west%2Cl_text:notosansjp-medium.otf_37_bold:${authorSlug}%2Cx_203%2Cy_98/c_fit%2Cco_rgb:222%2Cg_north_west%2Cl_text:notosansjp-medium.otf_70_bold:${encodeURIComponent(safeTitle)}%2Cw_1010%2Cx_90%2Cy_100/bo_3px_solid_rgb:d6d6d6%2Cg_center%2Ch_630%2Cw_1200/v1627283836/default/og-bg-zenn.png`;
       }
     }
 
@@ -237,7 +240,8 @@ export class ZennAIFetcher extends BaseFetcher {
         type: 'technical_article',
         language: 'ja',
         keywords: aiKeywords,
-        tags: [...(topicTags[topicName] || []), ...(tags || [])],
+        // タグの重複を排除
+        tags: Array.from(new Set([...(topicTags[topicName] || []), ...(tags || [])])),
         fetchedAt: new Date().toISOString(),
       }
     };
@@ -271,9 +275,19 @@ export class ZennAIFetcher extends BaseFetcher {
 
     for (const [keyword, patterns] of Object.entries(keywordPatterns)) {
       for (const pattern of patterns) {
-        if (text.includes(pattern)) {
-          detectedKeywords.add(keyword);
-          break;
+        // ASCII文字のパターンは単語境界でチェック（誤検知低減）
+        if (/^[a-z0-9\s-]+$/i.test(pattern)) {
+          const regex = new RegExp(`\\b${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+          if (regex.test(text)) {
+            detectedKeywords.add(keyword);
+            break;
+          }
+        } else {
+          // 日本語を含むパターンは部分一致でチェック
+          if (text.includes(pattern)) {
+            detectedKeywords.add(keyword);
+            break;
+          }
         }
       }
     }
@@ -313,5 +327,21 @@ export class ZennAIFetcher extends BaseFetcher {
     enrichedParts.push(content);
 
     return enrichedParts.join('\n');
+  }
+
+  /**
+   * URL正規化: クエリパラメータ、ハッシュ、末尾スラッシュを統一
+   */
+  protected normalizeUrl(url: string): string {
+    try {
+      const u = new URL(url);
+      u.search = '';  // クエリパラメータを除去
+      u.hash = '';    // ハッシュを除去
+      u.pathname = u.pathname.replace(/\/+$/, '');  // 末尾スラッシュを除去
+      return u.toString();
+    } catch {
+      // URL構築に失敗した場合のフォールバック
+      return url.split('#')[0].split('?')[0].replace(/\/+$/, '');
+    }
   }
 }
