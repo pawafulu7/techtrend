@@ -333,7 +333,7 @@ export class QiitaAIFetcher extends BaseFetcher {
 
   private generateEnrichedContent(item: any, tagName: string, author?: string, tags?: string[], likesCount?: number): string {
     // 基本コンテンツ
-    let content = item.content || item.contentSnippet || '';
+    const content = item.content || item.contentSnippet || '';
 
     // メタ情報を追加して要約生成時により良い情報を提供
     const enrichedParts: string[] = [];

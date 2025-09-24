@@ -53,15 +53,23 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
           continue;
         }
 
+        // Hugging Face固有の処理
+        const author = this.extractAuthor(item);
+        const tags = this.extractTags(item);
+
+        // コンテンツの生成（要約生成用）
+        const content = this.generateEnrichedContent(item, author, tags);
+
         // エンリッチメント処理
         const enrichedArticle = this.enrichArticle({
           title: this.cleanTitle(item.title),
           url: item.link,
+          content, // エンリッチされたコンテンツ
           summary: undefined, // 必須: 要約は生成しない
           publishedAt,
           sourceId: this.source.id,
           thumbnail: this.extractThumbnailFromItem(item),
-        });
+        }, author, tags);
 
         articles.push(enrichedArticle);
         processedCount++;
@@ -86,6 +94,28 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
       .trim();
   }
 
+  private extractAuthor(item: any): string | undefined {
+    // Hugging Face Papers の著者情報を抽出
+    if (item.creator) {
+      return item.creator;
+    }
+    if (item['dc:creator']) {
+      return item['dc:creator'];
+    }
+    return undefined;
+  }
+
+  private extractTags(item: any): string[] {
+    const tags: string[] = [];
+
+    // カテゴリからタグを抽出
+    if (item.categories && Array.isArray(item.categories)) {
+      tags.push(...item.categories);
+    }
+
+    return [...new Set(tags)]; // 重複を除去
+  }
+
   private extractThumbnailFromItem(item: any): string | undefined {
     // RSS内の画像URLを抽出（存在する場合）
     if (item.enclosure && item.enclosure.url) {
@@ -103,7 +133,11 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
     return undefined;
   }
 
-  private enrichArticle(article: CreateArticleInput): CreateArticleInput {
+  private enrichArticle(
+    article: CreateArticleInput,
+    author?: string,
+    tags?: string[]
+  ): CreateArticleInput {
     // AI/論文関連のキーワードを検出してタグを追加
     const aiKeywords = [
       'GPT', 'LLM', 'Transformer', 'BERT', 'Neural', 'Deep Learning',
@@ -128,7 +162,9 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
       metadata: {
         source: 'Hugging Face Daily Papers',
         type: 'research_paper',
+        author: author,
         keywords: detectedKeywords,
+        tags: ['Hugging Face', 'AI Research', 'Papers', ...(tags || [])],
         fetchedAt: new Date().toISOString(),
       }
     };
@@ -136,9 +172,9 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
     return enrichedArticle;
   }
 
-  private generateEnrichedContent(item: any): string {
+  private generateEnrichedContent(item: any, author?: string, tags?: string[]): string {
     // 基本コンテンツ
-    let content = item.content || item.contentSnippet || '';
+    const content = item.content || item.contentSnippet || '';
 
     // メタ情報を追加して要約生成時により良い情報を提供
     const enrichedParts: string[] = [];
@@ -147,6 +183,11 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
     enrichedParts.push(`Title: ${item.title}`);
     enrichedParts.push('Source: Hugging Face Daily Papers');
 
+    // 著者情報
+    if (author) {
+      enrichedParts.push(`Author: ${author}`);
+    }
+
     // リンク
     if (item.link) {
       // arXiv IDを抽出
@@ -154,6 +195,11 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
       if (arxivMatch) {
         enrichedParts.push(`arXiv ID: ${arxivMatch[1]}`);
       }
+    }
+
+    // タグ情報
+    if (tags && tags.length > 0) {
+      enrichedParts.push(`Tags: ${tags.join(', ')}`);
     }
 
     // カテゴリ情報

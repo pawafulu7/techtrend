@@ -259,7 +259,7 @@ export class ZennAIFetcher extends BaseFetcher {
 
   private generateEnrichedContent(item: any, topicName: string, author?: string, tags?: string[]): string {
     // 基本コンテンツ
-    let content = item.content || item.contentSnippet || '';
+    const content = item.content || item.contentSnippet || '';
 
     // メタ情報を追加して要約生成時により良い情報を提供
     const enrichedParts: string[] = [];
