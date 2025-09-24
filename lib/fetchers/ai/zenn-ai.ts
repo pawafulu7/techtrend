@@ -5,6 +5,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
+import { ZennAIEnricher } from '@/lib/enrichers/zenn-ai';
 
 interface ZennTopic {
   name: string;
@@ -14,6 +15,7 @@ interface ZennTopic {
 
 export class ZennAIFetcher extends BaseFetcher {
   private parser: Parser;
+  private enricher: ZennAIEnricher;
   private topics: ZennTopic[] = [
     {
       name: 'LLM',
@@ -45,6 +47,7 @@ export class ZennAIFetcher extends BaseFetcher {
   constructor(source: Source) {
     super(source);
     this.parser = new Parser();
+    this.enricher = new ZennAIEnricher();
   }
 
   async fetch(): Promise<FetchResult> {
@@ -95,18 +98,34 @@ export class ZennAIFetcher extends BaseFetcher {
           const author = this.extractAuthor(item);
           const tags = this.extractTags(item);
 
-          // コンテンツの生成（要約生成用）
-          const content = this.generateEnrichedContent(item, topic.name, author, tags);
+          // Webページから本文を取得
+          let fullContent: string | null = null;
+          let thumbnail: string | undefined = this.extractThumbnailFromItem(item);
+
+          try {
+            const enrichedData = await this.enricher.enrich(item.link);
+            if (enrichedData) {
+              fullContent = enrichedData.content;
+              if (enrichedData.thumbnail) {
+                thumbnail = enrichedData.thumbnail;
+              }
+            }
+          } catch (_error) {
+            logger.warn(`Zenn ${topic.name}: エンリッチメント失敗 ${item.link}`);
+          }
+
+          // フルコンテンツが取得できなかった場合はRSSコンテンツを使用
+          const content = fullContent || this.generateEnrichedContent(item, topic.name, author, tags);
 
           // エンリッチメント処理
           const enrichedArticle = this.enrichArticle({
             title: item.title,
             url: item.link,
-            content, // エンリッチされたコンテンツ
+            content, // Webから取得したフルコンテンツ
             summary: undefined, // 必須: 要約は生成しない
             publishedAt,
             sourceId: this.source.id,
-            thumbnail: this.extractThumbnailFromItem(item),
+            thumbnail,
           }, topic.name, author, tags);
 
           articles.push(enrichedArticle);

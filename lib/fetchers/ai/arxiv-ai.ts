@@ -5,6 +5,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
+import { ArxivAIEnricher } from '@/lib/enrichers/arxiv-ai';
 
 interface ArxivCategory {
   name: string;
@@ -14,6 +15,7 @@ interface ArxivCategory {
 
 export class ArxivAIFetcher extends BaseFetcher {
   private parser: Parser;
+  private enricher: ArxivAIEnricher;
   private categories: ArxivCategory[] = [
     {
       name: 'AI',
@@ -35,6 +37,7 @@ export class ArxivAIFetcher extends BaseFetcher {
   constructor(source: Source) {
     super(source);
     this.parser = new Parser();
+    this.enricher = new ArxivAIEnricher();
   }
 
   async fetch(): Promise<FetchResult> {
@@ -86,18 +89,34 @@ export class ArxivAIFetcher extends BaseFetcher {
           const arxivId = this.extractArxivId(item.link);
           const abstract = this.extractAbstract(item);
 
-          // コンテンツの生成（要約生成用）
-          const content = this.generateEnrichedContent(item, category.name, arxivId, abstract);
+          // Webページから論文のアブストラクト全文を取得
+          let fullContent: string | null = null;
+          let thumbnail: string | undefined = undefined;
+
+          try {
+            const enrichedData = await this.enricher.enrich(item.link);
+            if (enrichedData) {
+              fullContent = enrichedData.content;
+              if (enrichedData.thumbnail) {
+                thumbnail = enrichedData.thumbnail;
+              }
+            }
+          } catch (_error) {
+            logger.warn(`arXiv ${category.name}: エンリッチメント失敗 ${item.link}`);
+          }
+
+          // フルコンテンツが取得できなかった場合はRSSコンテンツを使用
+          const content = fullContent || this.generateEnrichedContent(item, category.name, arxivId, abstract);
 
           // エンリッチメント処理
           const enrichedArticle = this.enrichArticle({
             title: cleanedTitle,
             url: item.link,
-            content, // エンリッチされたコンテンツ
+            content, // Webから取得したフルコンテンツ
             summary: undefined, // 必須: 要約は生成しない
             publishedAt,
             sourceId: this.source.id,
-            thumbnail: undefined, // arXivには画像がない
+            thumbnail, // arXivには画像がない場合が多い
           }, category.name, arxivId, abstract);
 
           articles.push(enrichedArticle);

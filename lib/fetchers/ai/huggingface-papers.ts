@@ -5,13 +5,16 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
+import { HuggingFacePapersEnricher } from '@/lib/enrichers/huggingface-papers';
 
 export class HuggingFacePapersFetcher extends BaseFetcher {
   private parser: Parser;
+  private enricher: HuggingFacePapersEnricher;
 
   constructor(source: Source) {
     super(source);
     this.parser = new Parser();
+    this.enricher = new HuggingFacePapersEnricher();
   }
 
   async fetch(): Promise<FetchResult> {
@@ -57,18 +60,34 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
         const author = this.extractAuthor(item);
         const tags = this.extractTags(item);
 
-        // コンテンツの生成（要約生成用）
-        const content = this.generateEnrichedContent(item, author, tags);
+        // Webページから論文の詳細を取得
+        let fullContent: string | null = null;
+        let thumbnail: string | undefined = this.extractThumbnailFromItem(item);
+
+        try {
+          const enrichedData = await this.enricher.enrich(item.link);
+          if (enrichedData) {
+            fullContent = enrichedData.content;
+            if (enrichedData.thumbnail) {
+              thumbnail = enrichedData.thumbnail;
+            }
+          }
+        } catch (_error) {
+          logger.warn(`Hugging Face Papers: エンリッチメント失敗 ${item.link}`);
+        }
+
+        // フルコンテンツが取得できなかった場合はRSSコンテンツを使用
+        const content = fullContent || this.generateEnrichedContent(item, author, tags);
 
         // エンリッチメント処理
         const enrichedArticle = this.enrichArticle({
           title: this.cleanTitle(item.title),
           url: item.link,
-          content, // エンリッチされたコンテンツ
+          content, // Webから取得したフルコンテンツ
           summary: undefined, // 必須: 要約は生成しない
           publishedAt,
           sourceId: this.source.id,
-          thumbnail: this.extractThumbnailFromItem(item),
+          thumbnail,
         }, author, tags);
 
         articles.push(enrichedArticle);

@@ -6,6 +6,7 @@ import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import axios from 'axios';
+import { QiitaAIEnricher } from '@/lib/enrichers/qiita-ai';
 
 interface QiitaTag {
   name: string;
@@ -33,6 +34,7 @@ interface QiitaApiItem {
 
 export class QiitaAIFetcher extends BaseFetcher {
   private parser: Parser;
+  private enricher: QiitaAIEnricher;
   private tags: QiitaTag[] = [
     {
       name: 'LLM',
@@ -63,6 +65,7 @@ export class QiitaAIFetcher extends BaseFetcher {
   constructor(source: Source) {
     super(source);
     this.parser = new Parser();
+    this.enricher = new QiitaAIEnricher();
   }
 
   async fetch(): Promise<FetchResult> {
@@ -120,18 +123,34 @@ export class QiitaAIFetcher extends BaseFetcher {
             continue;
           }
 
-          // コンテンツの生成（要約生成用）
-          const content = this.generateEnrichedContent(item, tag.name, author, tags, likesCount);
+          // Webページから本文を取得
+          let fullContent: string | null = null;
+          let thumbnail: string | undefined = this.extractThumbnailFromItem(item);
+
+          try {
+            const enrichedData = await this.enricher.enrich(item.link);
+            if (enrichedData) {
+              fullContent = enrichedData.content;
+              if (enrichedData.thumbnail) {
+                thumbnail = enrichedData.thumbnail;
+              }
+            }
+          } catch (_error) {
+            logger.warn(`Qiita ${tag.name}: エンリッチメント失敗 ${item.link}`);
+          }
+
+          // フルコンテンツが取得できなかった場合はRSSコンテンツを使用
+          const content = fullContent || this.generateEnrichedContent(item, tag.name, author, tags, likesCount);
 
           // エンリッチメント処理
           const enrichedArticle = this.enrichArticle({
             title: item.title,
             url: item.link,
-            content, // エンリッチされたコンテンツ
+            content, // Webから取得したフルコンテンツ
             summary: undefined, // 必須: 要約は生成しない
             publishedAt,
             sourceId: this.source.id,
-            thumbnail: this.extractThumbnailFromItem(item),
+            thumbnail,
           }, tag.name, author, tags, likesCount);
 
           articles.push(enrichedArticle);
