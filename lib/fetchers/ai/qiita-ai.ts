@@ -120,10 +120,14 @@ export class QiitaAIFetcher extends BaseFetcher {
             continue;
           }
 
+          // コンテンツの生成（要約生成用）
+          const content = this.generateEnrichedContent(item, tag.name, author, tags, likesCount);
+
           // エンリッチメント処理
           const enrichedArticle = this.enrichArticle({
             title: item.title,
             url: item.link,
+            content, // エンリッチされたコンテンツ
             summary: undefined, // 必須: 要約は生成しない
             publishedAt,
             sourceId: this.source.id,
@@ -325,5 +329,44 @@ export class QiitaAIFetcher extends BaseFetcher {
     if (likesCount >= 50 && tags.length >= 3) return 'high';
     if (likesCount >= 20 || tags.length >= 2) return 'medium';
     return 'low';
+  }
+
+  private generateEnrichedContent(item: any, tagName: string, author?: string, tags?: string[], likesCount?: number): string {
+    // 基本コンテンツ
+    let content = item.content || item.contentSnippet || '';
+
+    // メタ情報を追加して要約生成時により良い情報を提供
+    const enrichedParts: string[] = [];
+
+    // タイトルと基本情報
+    enrichedParts.push(`タイトル: ${item.title}`);
+    enrichedParts.push(`タグ: ${tagName}`);
+
+    // 著者情報
+    if (author) {
+      enrichedParts.push(`著者: ${author}`);
+    }
+
+    // タグ情報
+    if (tags && tags.length > 0) {
+      enrichedParts.push(`関連タグ: ${tags.join(', ')}`);
+    }
+
+    // いいね数
+    if (likesCount !== undefined) {
+      enrichedParts.push(`いいね数: ${likesCount}`);
+    }
+
+    // カテゴリ情報
+    if (item.categories && Array.isArray(item.categories) && item.categories.length > 0) {
+      enrichedParts.push(`カテゴリ: ${item.categories.join(', ')}`);
+    }
+
+    // 本文
+    enrichedParts.push('');  // 空行
+    enrichedParts.push('本文:');
+    enrichedParts.push(content);
+
+    return enrichedParts.join('\n');
   }
 }

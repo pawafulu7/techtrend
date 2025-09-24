@@ -135,4 +135,37 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
 
     return enrichedArticle;
   }
+
+  private generateEnrichedContent(item: any): string {
+    // 基本コンテンツ
+    let content = item.content || item.contentSnippet || '';
+
+    // メタ情報を追加して要約生成時により良い情報を提供
+    const enrichedParts: string[] = [];
+
+    // タイトル
+    enrichedParts.push(`Title: ${item.title}`);
+    enrichedParts.push('Source: Hugging Face Daily Papers');
+
+    // リンク
+    if (item.link) {
+      // arXiv IDを抽出
+      const arxivMatch = item.link.match(/arxiv\.org\/abs\/(\d+\.\d+)/);
+      if (arxivMatch) {
+        enrichedParts.push(`arXiv ID: ${arxivMatch[1]}`);
+      }
+    }
+
+    // カテゴリ情報
+    if (item.categories && Array.isArray(item.categories) && item.categories.length > 0) {
+      enrichedParts.push(`Categories: ${item.categories.join(', ')}`);
+    }
+
+    // 本文
+    enrichedParts.push('');  // 空行
+    enrichedParts.push('Abstract/Content:');
+    enrichedParts.push(content);
+
+    return enrichedParts.join('\n');
+  }
 }

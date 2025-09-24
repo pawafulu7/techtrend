@@ -72,25 +72,27 @@ describe('OpenAIBlogFetcher', () => {
       expect(oldArticle).toBeUndefined();
     });
 
-    it('should enrich articles with metadata', async () => {
+    it('should add appropriate tags to articles', async () => {
       const result = await fetcher.fetch();
 
       const article = result.articles[0];
-      expect(article.metadata).toBeDefined();
-      expect(article.metadata.source).toBe('OpenAI');
-      expect(article.metadata.type).toBe('blog');
-      expect(article.metadata.keywords).toContain('ChatGPT');
-      expect(article.metadata.keywords).toContain('GPT');
+      expect(article.tagNames).toBeDefined();
+      expect(article.tagNames).toContain('OpenAI');
+      expect(article.tagNames).toContain('AI');
+      expect(article.tagNames).toContain('LLM');
+      expect(article.tagNames).toContain('ChatGPT');
     });
 
     it('should handle errors gracefully', async () => {
-      // エラーをシミュレート
+      // 新しいフェッチャーインスタンスを作成してエラーをシミュレート
       const Parser = require('rss-parser');
-      Parser.mockImplementation(() => ({
+      Parser.mockImplementationOnce(() => ({
         parseURL: jest.fn().mockRejectedValue(new Error('Network error'))
       }));
 
-      const result = await fetcher.fetch();
+      // 新しいインスタンスを作成（モックが適用される）
+      const errorFetcher = new OpenAIBlogFetcher(mockSource);
+      const result = await errorFetcher.fetch();
 
       expect(result.articles).toEqual([]);
       expect(result.errors).toHaveLength(1);
