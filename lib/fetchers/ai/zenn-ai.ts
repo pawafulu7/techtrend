@@ -199,7 +199,7 @@ export class ZennAIFetcher extends BaseFetcher {
       if (match) {
         // タイトルをサニタイゼーション（HTML/制御文字を除去）
         const sanitizedTitle = (item.title || 'Article')
-          .replace(/<[^>]*>/g, '') // HTMLタグを除去
+          .replace(/<\/?[a-zA-Z][^>]*>/g, '') // HTMLタグを除去（実際のタグのみ）
           .replace(/[<>'"]/g, '')   // 特殊文字を除去
           .replace(/[\n\r\t]/g, ' ') // 制御文字をスペースに置換
           .trim();
