@@ -15,6 +15,12 @@ export class HuggingFacePapersEnricher extends BaseContentEnricher {
     try {
       const parsed = new URL(url);
       const hostname = parsed.hostname.toLowerCase();
+      const protocol = parsed.protocol;
+
+      // HTTPSまたはHTTPプロトコルのみ許可
+      if (protocol !== 'https:' && protocol !== 'http:') {
+        return false;
+      }
 
       // ホワイトリスト方式で許可されたドメインのみ受け入れる
       const allowedHosts = [
