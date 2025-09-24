@@ -53,7 +53,7 @@ export class QiitaAIEnricher extends BaseContentEnricher {
 
         // コンテンツが不十分でもサムネイルがあれば返す
         if (thumbnail) {
-          return { content: content || null, thumbnail };
+          return { content: content !== null && content !== undefined ? content : null, thumbnail };
         }
 
         return null;

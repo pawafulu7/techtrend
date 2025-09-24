@@ -1,18 +1,43 @@
 import { QiitaAIFetcher } from '../../../lib/fetchers/ai/qiita-ai';
+import { Source } from '@prisma/client';
 import axios from 'axios';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
+// テスト用のモックSourceオブジェクト
+const mockSource: Source = {
+  id: 'test-source-id',
+  name: 'Qiita AI Test',
+  url: 'https://qiita.com',
+  feedUrl: 'https://qiita.com/feed',
+  isActive: true,
+  createdAt: new Date(),
+  updatedAt: new Date()
+};
+
 describe('QiitaAIFetcher', () => {
   let fetcher: QiitaAIFetcher;
 
   beforeEach(() => {
-    fetcher = new QiitaAIFetcher();
+    fetcher = new QiitaAIFetcher(mockSource);
     jest.clearAllMocks();
   });
 
   describe('タグ抽出パターンの改善', () => {
+    it('extractTagsメソッドが正しくタグを抽出できる', () => {
+      const item = {
+        content: 'タグ：AI, LLM, ChatGPT\n本文内容',
+        categories: ['機械学習']
+      };
+      // privateメソッドをテストする場合は、as anyでアクセス
+      const tags = (fetcher as any).extractTags(item);
+      expect(tags).toContain('AI');
+      expect(tags).toContain('LLM');
+      expect(tags).toContain('ChatGPT');
+      expect(tags).toContain('機械学習');
+    });
+
     it('全角コロンを含むタグを抽出できる', () => {
       const content = 'タグ：AI, LLM, ChatGPT';
       const matches = content.match(/タグ[:：]\s*([^<\n]+)/);

@@ -62,7 +62,8 @@ export class ArxivAIEnricher extends BaseContentEnricher {
         // より広範囲を取得する試み
         const fallbackContent = this.extractWithFallback(html);
         if (this.isContentSufficient(fallbackContent, 200)) {
-          return { content: fallbackContent, thumbnail };
+          const combined = metadata ? `${metadata}\n\n${fallbackContent}` : fallbackContent;
+          return { content: combined, thumbnail };
         }
 
         return null;
@@ -103,32 +104,44 @@ export class ArxivAIEnricher extends BaseContentEnricher {
   private extractMetadata(html: string): string {
     const metadata: string[] = [];
 
-    // タイトル抽出
-    const titleMatch = html.match(/<h1[^>]*class="title[^"]*"[^>]*>([^<]+)<\/h1>/i);
-    if (titleMatch) {
-      metadata.push(`Title: ${titleMatch[1].trim()}`);
+    // タイトル（descriptor "Title:" を除去）
+    const rawTitle = this.sanitizeContent(html, ['h1.title']);
+    const title = rawTitle.replace(/^Title:\s*/i, '').trim();
+    if (title) {
+      metadata.push(`Title: ${title}`);
     }
 
-    // 著者抽出
-    const authorsMatch = html.match(/<div[^>]*class="authors"[^>]*>([\s\S]*?)<\/div>/i);
+    // 著者（descriptor "Authors:" を除去）
+    const authorsMatch = html.match(/<div[^>]*class=["']authors["'][^>]*>([\s\S]*?)<\/div>/i);
     if (authorsMatch) {
       const authors = authorsMatch[1]
-        .replace(/<[^>]+>/g, '')
+        .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
+        .replace(/^Authors:\s*/i, '')
         .trim();
       if (authors) {
         metadata.push(`Authors: ${authors}`);
       }
     }
 
-    // arXiv ID抽出
-    const arxivIdMatch = html.match(/arXiv:(\d+\.\d+)/);
-    if (arxivIdMatch) {
-      metadata.push(`arXiv ID: ${arxivIdMatch[1]}`);
+    // arXiv ID（meta優先、次に本文）
+    let arxivId: string | null = null;
+    const idMeta = html.match(/<meta[^>]+name=["']citation_arxiv_id["'][^>]+content=["']([^"']+)["']/i);
+    if (idMeta) {
+      arxivId = idMeta[1];
+    } else {
+      const idText = html.match(/\barXiv:(\d{4}\.\d{4,5})(?:v\d+)?\b/i);
+      if (idText) {
+        arxivId = idText[1];
+      }
+    }
+    if (arxivId) {
+      metadata.push(`arXiv ID: ${arxivId}`);
     }
 
-    // カテゴリ抽出
-    const categoryMatch = html.match(/\[([a-z\-]+\.[A-Z]+)\]/);
+    // カテゴリ（(cs.AI) または [cs.AI]）
+    const categoryMatch =
+      html.match(/\(([a-z\-]+\.[A-Z]+)\)/) || html.match(/\[([a-z\-]+\.[A-Z]+)\]/);
     if (categoryMatch) {
       metadata.push(`Category: ${categoryMatch[1]}`);
     }

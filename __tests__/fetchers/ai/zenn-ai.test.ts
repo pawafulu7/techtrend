@@ -1,10 +1,22 @@
 import { ZennAIFetcher } from '../../../lib/fetchers/ai/zenn-ai';
+import { Source } from '@prisma/client';
+
+// テスト用のモックSourceオブジェクト
+const mockSource: Source = {
+  id: 'test-source-id',
+  name: 'Zenn AI Test',
+  url: 'https://zenn.dev',
+  feedUrl: 'https://zenn.dev/feed',
+  isActive: true,
+  createdAt: new Date(),
+  updatedAt: new Date()
+};
 
 describe('ZennAIFetcher', () => {
   let fetcher: ZennAIFetcher;
 
   beforeEach(() => {
-    fetcher = new ZennAIFetcher();
+    fetcher = new ZennAIFetcher(mockSource);
   });
 
   describe('タグ抽出Unicode範囲の拡張', () => {
@@ -40,6 +52,19 @@ describe('ZennAIFetcher', () => {
   });
 
   describe('OGP画像URLのサニタイゼーション', () => {
+    it('extractThumbnailFromItemメソッドが正しくサニタイズされたURLを生成する', () => {
+      const item = {
+        title: '<script>alert("xss")</script>Article Title',
+        link: 'https://zenn.dev/author/articles/test-article',
+        content: ''
+      };
+      // privateメソッドをテストする場合
+      const thumbnail = (fetcher as any).extractThumbnailFromItem(item);
+      expect(thumbnail).toBeDefined();
+      expect(thumbnail).not.toContain('<script>');
+      expect(thumbnail).toContain('Article%20Title');
+    });
+
     it('HTMLタグを除去する', () => {
       const title = '<script>alert("xss")</script>Article Title';
       const sanitized = title
