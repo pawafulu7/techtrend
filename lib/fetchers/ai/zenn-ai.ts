@@ -6,6 +6,7 @@ import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import { ZennAIEnricher } from '@/lib/enrichers/zenn-ai';
+import { sanitizeHtml } from '@/lib/utils/html-sanitizer';
 
 interface ZennTopic {
   name: string;
@@ -197,12 +198,9 @@ export class ZennAIFetcher extends BaseFetcher {
       // Zenn記事URLから著者名と記事IDを抽出してOGP画像URLを構築
       const match = item.link.match(/zenn\.dev\/([^\/]+)\/articles\/([^\/\?]+)/);
       if (match) {
-        // タイトルをサニタイゼーション（HTML/制御文字を除去）
-        const sanitizedTitle = (item.title || 'Article')
-          .replace(/<\/?[a-zA-Z][^>]*>/g, '') // HTMLタグを除去（実際のタグのみ）
-          .replace(/[<>'"]/g, '')   // 特殊文字を除去
-          .replace(/[\n\r\t]/g, ' ') // 制御文字をスペースに置換
-          .trim();
+        // セキュアなHTML sanitizerを使用してタイトルをサニタイゼーション
+        // 完全にスクリプトタグを除去し、XSS攻撃を防ぐ
+        const sanitizedTitle = sanitizeHtml(item.title || 'Article');
         return `https://res.cloudinary.com/zenn/image/upload/s--og-default--/co_rgb:222%2Cg_south_west%2Cl_text:notosansjp-medium.otf_37_bold:${match[1]}%2Cx_203%2Cy_98/c_fit%2Cco_rgb:222%2Cg_north_west%2Cl_text:notosansjp-medium.otf_70_bold:${encodeURIComponent(sanitizedTitle)}%2Cw_1010%2Cx_90%2Cy_100/bo_3px_solid_rgb:d6d6d6%2Cg_center%2Ch_630%2Cw_1200/v1627283836/default/og-bg-zenn.png`;
       }
     }
