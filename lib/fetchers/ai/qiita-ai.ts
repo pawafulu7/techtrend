@@ -99,13 +99,16 @@ export class QiitaAIFetcher extends BaseFetcher {
             continue;
           }
 
-          // 重複チェック（複数タグに属する記事があるため）
-          if (processedUrls.has(item.link)) {
+          // URLを正規化してから重複チェック（複数タグに属する記事があるため）
+          const normalizedUrl = this.normalizeUrl(item.link);
+          if (processedUrls.has(normalizedUrl)) {
             continue;
           }
 
-          const publishedAt = item.pubDate ?
-            parseRSSDate(item.pubDate) : new Date();
+          // 日付のフォールバック処理（isoDate -> pubDate -> 現在日時）
+          const publishedAt = item.isoDate ?
+            new Date(item.isoDate) :
+            (item.pubDate ? parseRSSDate(item.pubDate) : new Date());
 
           // 30日以内の記事のみ
           if (publishedAt < thirtyDaysAgo) {
@@ -145,7 +148,7 @@ export class QiitaAIFetcher extends BaseFetcher {
           // エンリッチメント処理
           const enrichedArticle = this.enrichArticle({
             title: item.title,
-            url: item.link,
+            url: normalizedUrl,
             content, // Webから取得したフルコンテンツ
             summary: undefined, // 必須: 要約は生成しない
             publishedAt,
@@ -154,7 +157,7 @@ export class QiitaAIFetcher extends BaseFetcher {
           }, tag.name, author, tags, likesCount);
 
           articles.push(enrichedArticle);
-          processedUrls.add(item.link);
+          processedUrls.add(normalizedUrl);
           tagArticleCount++;
         }
 
@@ -348,6 +351,28 @@ export class QiitaAIFetcher extends BaseFetcher {
     if (likesCount >= 50 && tags.length >= 3) return 'high';
     if (likesCount >= 20 || tags.length >= 2) return 'medium';
     return 'low';
+  }
+
+  /**
+   * URLを正規化（クエリパラメータ除去、HTTPSへ統一）
+   * @override
+   */
+  protected normalizeUrl(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      // HTTPをHTTPSに統一
+      if (urlObj.protocol === 'http:') {
+        urlObj.protocol = 'https:';
+      }
+      // クエリパラメータを除去（重複検出のため）
+      urlObj.search = '';
+      // フラグメントも除去
+      urlObj.hash = '';
+      return urlObj.toString();
+    } catch (_error) {
+      // URL解析に失敗した場合は元のURLを返す
+      return url;
+    }
   }
 
   private generateEnrichedContent(item: any, tagName: string, author?: string, tags?: string[], likesCount?: number): string {

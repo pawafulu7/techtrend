@@ -47,6 +47,10 @@ describe('OpenAIBlogFetcher', () => {
     fetcher = new OpenAIBlogFetcher(mockSource);
   });
 
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe('fetch', () => {
     it('should fetch articles successfully', async () => {
       const result = await fetcher.fetch();

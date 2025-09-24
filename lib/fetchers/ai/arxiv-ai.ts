@@ -1,5 +1,6 @@
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
+import sanitizeHtml from 'sanitize-html';
 import { BaseFetcher } from '../base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
@@ -157,8 +158,11 @@ export class ArxivAIFetcher extends BaseFetcher {
     // descriptionまたはcontentからアブストラクトを抽出
     const content = item.description || item.content || '';
 
-    // HTMLタグを削除
-    const cleanContent = content.replace(/<[^>]*>/g, '');
+    // HTMLタグを削除（sanitize-htmlを使用）
+    const cleanContent = sanitizeHtml(content, {
+      allowedTags: [],
+      allowedAttributes: {}
+    });
 
     // arXivのアブストラクトは長いので最初の500文字に制限
     return cleanContent.length > 500
