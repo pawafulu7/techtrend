@@ -33,6 +33,10 @@ import { MediumEngineeringFetcher } from '@/lib/fetchers/medium-engineering';
 
 // AI/LLM関連フェッチャー
 import { OpenAIBlogFetcher } from '@/lib/fetchers/ai/openai-blog';
+import { HuggingFacePapersFetcher } from '@/lib/fetchers/ai/huggingface-papers';
+import { ArxivAIFetcher } from '@/lib/fetchers/ai/arxiv-ai';
+import { ZennAIFetcher } from '@/lib/fetchers/ai/zenn-ai';
+import { QiitaAIFetcher } from '@/lib/fetchers/ai/qiita-ai';
 
 // 企業ブログフェッチャーを個別にインポート
 import { DenaFetcher } from '@/lib/fetchers/corporate-blogs/dena-fetcher';
@@ -86,6 +90,10 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
 
   // AI/LLM関連
   'OpenAI Blog': OpenAIBlogFetcher,
+  'Hugging Face Papers': HuggingFacePapersFetcher,
+  'arXiv AI': ArxivAIFetcher,
+  'Zenn AI': ZennAIFetcher,
+  'Qiita AI': QiitaAIFetcher,
 
   // 個別企業ブログフェッチャー
   'DeNA Tech Blog': DenaFetcher,

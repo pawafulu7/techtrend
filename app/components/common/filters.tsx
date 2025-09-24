@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation } from 'lucide-react';
+import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation, Brain, Cpu } from 'lucide-react';
 import { DateRangeFilter } from './date-range-filter';
 import { groupSourcesByCategory, SourceCategory } from '@/lib/constants/source-categories';
 import CategoryFilter from '@/components/filters/CategoryFilter';
@@ -20,7 +20,9 @@ const categoryIcons: Record<string, React.ReactNode> = {
   foreign: <Globe className="w-3 h-3" />,
   domestic: <FileText className="w-3 h-3" />,
   company: <Building2 className="w-3 h-3" />,
-  presentation: <Presentation className="w-3 h-3" />
+  presentation: <Presentation className="w-3 h-3" />,
+  ai: <Brain className="w-3 h-3" />,
+  llm: <Cpu className="w-3 h-3" />
 };
 
 export function Filters({ sources, initialSourceIds }: FiltersProps) {
