@@ -62,11 +62,16 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function ArticlePage({ params, searchParams }: PageProps) {
-  const { id } = await params;
-  const { from } = await searchParams;
-
-  // セッション情報を取得
-  const session = await auth();
+  // Parallel execution of params, searchParams, and session
+  const [
+    { id },
+    { from },
+    session
+  ] = await Promise.all([
+    params,
+    searchParams,
+    auth()
+  ]);
 
   // セキュリティ: fromパラメータの検証
   const getReturnUrl = (from: string | undefined): string => {
