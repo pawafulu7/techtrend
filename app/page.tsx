@@ -74,7 +74,13 @@ async function getPopularTags() {
 
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
-  const cookieStore = await cookies();
+  
+  // Parallel execution of cookies, auth, sources, and tags
+  const [cookieStore, sources, tags] = await Promise.all([
+    cookies(),
+    getSources(),
+    getPopularTags(),
+  ]);
   
   // Get filter preferences from cookie
   const filterPreferences = getFilterPreferencesFromCookies(cookieStore);
@@ -108,12 +114,6 @@ export default async function Home({ searchParams }: PageProps) {
   
   // Infinite Scroll機能のフラグ（環境変数や設定で切り替え可能）
   const enableInfiniteScroll = true;
-  
-  // ソースとタグのみサーバー側で取得（フィルター用）
-  const [sources, tags] = await Promise.all([
-    getSources(),
-    getPopularTags(),
-  ]);
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
