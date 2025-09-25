@@ -75,7 +75,7 @@ async function getPopularTags() {
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
   
-  // Parallel execution of cookies, auth, sources, and tags
+  // Parallel execution of cookies, sources, and tags
   const [cookieStore, sources, tags] = await Promise.all([
     cookies(),
     getSources(),
