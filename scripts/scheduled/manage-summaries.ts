@@ -143,9 +143,10 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
   try {
     // 統一サービスを使用（DI経由）
     const { service } = getAppDependencies();
-    const result = await service.generate(title, content, {
-      maxRetries: 3,
-      minQualityScore: 40
+    const result = await service.generateSummary({
+      title,
+      content,
+      qualityThreshold: 40,
     });
     
     apiStats.successes++;

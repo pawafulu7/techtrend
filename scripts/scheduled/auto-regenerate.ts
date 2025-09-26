@@ -159,11 +159,11 @@ async function regenerateArticles(articles: Array<{
 
       // 統一サービスで要約を再生成（DI経由）
       const { service } = getAppDependencies();
-      const result = await service.generate(
-        article.title,
-        optimizedContent,
-        { maxRetries: 2, minQualityScore: 40 }
-      );
+      const result = await service.generateSummary({
+        title: article.title,
+        content: optimizedContent,
+        qualityThreshold: 40,
+      });
       const { summary, tags } = result;
 
       // 新しい要約のスコアを計算
