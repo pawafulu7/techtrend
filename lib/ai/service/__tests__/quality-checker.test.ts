@@ -11,11 +11,12 @@ describe('SummaryQualityChecker', () => {
   describe('基本的な品質チェック', () => {
     it('should pass quality check for valid summary', () => {
       const summary =
-        'この記事ではTypeScriptの型システムについて詳しく解説しています。型安全性を保ちながら柔軟なコードを書く方法を学びます。';
-      const detailedSummary = `・概要：TypeScriptの基本的な型システムの紹介
-・基本型：プリミティブ型とオブジェクト型の使い分け
+        'この記事ではTypeScriptの型システムについて詳しく解説しています。型安全性を保ちながら柔軟なコードを書く方法を学びます。プリミティブ型からジェネリクスまで、実践的な例とともに理解を深めていきます。';
+      const detailedSummary = `・概要：TypeScriptの基本的な型システムの紹介と背景
+・基本型：プリミティブ型とオブジェクト型の使い分け方
 ・高度な型：ジェネリクス、ユニオン型、インターセクション型の活用方法
-・実践例：実際のプロジェクトでの型定義のベストプラクティス`;
+・実践例：実際のプロジェクトでの型定義のベストプラクティス
+・まとめ：型システムを活用した安全なコード設計の重要性`;
 
       const result = checker.checkQuality(summary, detailedSummary);
 
@@ -207,8 +208,8 @@ describe('SummaryQualityChecker', () => {
 
   describe('薄いコンテンツの処理', () => {
     it('should apply lenient checks for thin content', () => {
-      const summary = 'この記事では新しい機能について簡単に紹介しています。基本的な使い方を学べます。';
-      const detailedSummary = '新機能の概要と基本的な使い方について説明しています。';
+      const summary = 'この記事では新しい機能について簡単に紹介しています。基本的な使い方を学べます。初心者にも分かりやすく解説されています。';
+      const detailedSummary = '新機能の概要と基本的な使い方について説明しています。初心者向けに分かりやすく書かれた内容となっています。';
 
       const contentAnalysis: ContentAnalysis = {
         contentLength: 500,

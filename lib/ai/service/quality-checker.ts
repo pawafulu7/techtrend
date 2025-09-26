@@ -39,6 +39,7 @@ export class SummaryQualityChecker implements QualityChecker {
 
     const contentLength = contentAnalysis?.totalLength || contentAnalysis?.contentLength || 0;
 
+    const absoluteMinSummaryLength = contentAnalysis?.isThinContent ? 40 : 50;
     const minSummaryLength = contentAnalysis?.isThinContent
       ? contentAnalysis.recommendedMinLength || 60
       : 50;
@@ -49,13 +50,20 @@ export class SummaryQualityChecker implements QualityChecker {
     const idealMaxSummaryLength = contentAnalysis?.isThinContent ? 100 : 180;
 
     const summaryLength = summary.length;
-    if (summaryLength < minSummaryLength) {
+    if (summaryLength < absoluteMinSummaryLength) {
       issues.push({
         type: 'length',
         severity: 'major',
-        message: `一覧要約が短すぎる: ${summaryLength}文字（最小${minSummaryLength}文字）`,
+        message: `一覧要約が短すぎる: ${summaryLength}文字（最小${absoluteMinSummaryLength}文字）`,
       });
       score -= 20;
+    } else if (summaryLength < minSummaryLength) {
+      issues.push({
+        type: 'length',
+        severity: 'minor',
+        message: `一覧要約が短め: ${summaryLength}文字（推奨${minSummaryLength}文字以上）`,
+      });
+      score -= 5;
     } else if (summaryLength < idealMinSummaryLength) {
       issues.push({
         type: 'length',
@@ -74,8 +82,8 @@ export class SummaryQualityChecker implements QualityChecker {
 
     const detailedLength = detailedSummary.length;
 
-    let minDetailedLength = 200;
-    let idealMinDetailedLength = 400;
+    let minDetailedLength = 80;
+    let idealMinDetailedLength = 120;
     let maxDetailedLength = 800;
 
     if (contentAnalysis?.isThinContent) {
@@ -108,21 +116,21 @@ export class SummaryQualityChecker implements QualityChecker {
         severity: 'major',
         message: `詳細要約が短すぎる: ${detailedLength}文字（最小${minDetailedLength}文字）`,
       });
-      score -= 20;
+      score -= 10;
     } else if (detailedLength < idealMinDetailedLength) {
       issues.push({
         type: 'length',
         severity: 'minor',
         message: `詳細要約が短め: ${detailedLength}文字（理想は${idealMinDetailedLength}-${maxDetailedLength}文字）`,
       });
-      score -= 5;
+      score -= 3;
     } else if (detailedLength > maxDetailedLength) {
       issues.push({
         type: 'length',
         severity: 'minor',
         message: `詳細要約が長すぎる: ${detailedLength}文字（最大${maxDetailedLength}文字）`,
       });
-      score -= 10;
+      score -= 5;
     }
 
     if (!summary.endsWith('。')) {
@@ -237,16 +245,19 @@ export class SummaryQualityChecker implements QualityChecker {
           message: '一覧要約と詳細要約が完全に同一',
         });
         score = 0;
-      } else if (
-        summary.substring(0, 100) === detailedSummary.substring(0, 100) &&
-        summary.length >= 100
-      ) {
-        issues.push({
-          type: 'duplicate',
-          severity: 'major',
-          message: '一覧要約と詳細要約の最初の100文字が同一',
-        });
-        score -= 30;
+      } else {
+        const compareLength = Math.min(summary.length, detailedSummary.length, 100);
+        if (
+          compareLength >= 30 &&
+          summary.substring(0, compareLength) === detailedSummary.substring(0, compareLength)
+        ) {
+          issues.push({
+            type: 'duplicate',
+            severity: 'major',
+            message: `一覧要約と詳細要約の最初の${compareLength}文字が同一`,
+          });
+          score -= 30;
+        }
       }
 
       if (!contentAnalysis?.isThinContent && !detailedSummary.includes('・')) {
@@ -267,9 +278,12 @@ export class SummaryQualityChecker implements QualityChecker {
       issues.some((issue) => issue.severity === 'critical') ||
       (contentLength >= 5000 && itemCount < minItems);
 
-    let isValid = score >= 60;
+    const hasCriticalIssues = issues.some(
+      (issue) => issue.severity === 'critical' || issue.severity === 'major'
+    );
+    let isValid = score >= 60 && !hasCriticalIssues;
     if (contentAnalysis?.isThinContent) {
-      if (summaryLength < minSummaryLength) {
+      if (summaryLength < absoluteMinSummaryLength) {
         isValid = false;
       }
     }
