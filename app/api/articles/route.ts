@@ -158,8 +158,11 @@ export async function GET(request: NextRequest) {
       sourceId?.toLowerCase() || 'all';
     
     // Get session when readFilter requires user context or includeUserData is true
+    // Start auth() early for parallel execution
+    const sessionPromise = auth();
+
     const requiresUserSession = readFilter === 'read' || readFilter === 'unread' || includeUserData;
-    const session = requiresUserSession ? await auth() : null;
+    const session = requiresUserSession ? await sessionPromise : null;
     const userId = session?.user?.id;
 
     // Return 401 if readFilter is used without authentication
@@ -470,10 +473,10 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      // Execute count and findMany in transaction for consistency
+      // Execute count and findMany in parallel for better performance
       const [total, articles] = await withDbTiming(
         metrics,
-        () => prisma.$transaction([
+        () => Promise.all([
           prisma.article.count({ where }),
           prisma.article.findMany({
             where,
