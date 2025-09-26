@@ -28,7 +28,6 @@ describe('bootstrap', () => {
       const deps = buildAppDependencies({
         gemini: {
           model: 'gemini-2.5-pro',
-          temperature: 0.5,
         } as any,
         quality: {
           threshold: 85,
@@ -37,7 +36,6 @@ describe('bootstrap', () => {
       });
 
       expect(deps.config.gemini.model).toBe('gemini-2.5-pro');
-      expect(deps.config.gemini.temperature).toBe(0.5);
       expect(deps.config.quality.threshold).toBe(85);
       expect(deps.config.quality.maxRetries).toBe(5);
     });

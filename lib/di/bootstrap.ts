@@ -26,13 +26,11 @@ export function buildAppDependencies(configOverrides?: Partial<AppConfig>): AppD
   );
 
   const promptBuilder = new PromptBuilder();
-  const adapter = new GeminiSummaryAdapter(transport, promptBuilder, {
-    model: config.gemini.model,
-    temperature: config.gemini.temperature,
-    maxOutputTokens: config.gemini.maxOutputTokens,
-    topP: config.gemini.topP,
-    topK: config.gemini.topK,
-  });
+  const adapter = new GeminiSummaryAdapter(
+    transport,
+    promptBuilder,
+    config.gemini.model
+  );
 
   const qualityChecker = new SummaryQualityChecker();
   const postProcessor = new SummaryPostProcessor();
@@ -70,13 +68,11 @@ export function buildTestDependencies(mocks: {
   const promptBuilder = new PromptBuilder();
   const adapter =
     mocks.adapter ||
-    new GeminiSummaryAdapter(transport, promptBuilder, {
-      model: config.gemini.model,
-      temperature: config.gemini.temperature,
-      maxOutputTokens: config.gemini.maxOutputTokens,
-      topP: config.gemini.topP,
-      topK: config.gemini.topK,
-    });
+    new GeminiSummaryAdapter(
+      transport,
+      promptBuilder,
+      config.gemini.model
+    );
 
   const qualityChecker = new SummaryQualityChecker();
   const postProcessor = new SummaryPostProcessor();
