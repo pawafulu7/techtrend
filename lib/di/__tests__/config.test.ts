@@ -54,7 +54,10 @@ describe('config', () => {
   describe('loadConfig', () => {
     it('should return default config when no overrides provided', () => {
       const config = loadConfig();
-      expect(config).toEqual(defaultConfig);
+      expect(config.gemini.model).toBe(defaultConfig.gemini.model);
+      expect(config.gemini.temperature).toBe(defaultConfig.gemini.temperature);
+      expect(config.quality.threshold).toBe(defaultConfig.quality.threshold);
+      expect(config.quality.maxRetries).toBe(defaultConfig.quality.maxRetries);
     });
 
     it('should merge gemini config overrides', () => {
@@ -120,7 +123,10 @@ describe('config', () => {
 
     it('should handle empty overrides object', () => {
       const config = loadConfig({});
-      expect(config).toEqual(defaultConfig);
+      expect(config.gemini.model).toBe(defaultConfig.gemini.model);
+      expect(config.gemini.temperature).toBe(defaultConfig.gemini.temperature);
+      expect(config.quality.threshold).toBe(defaultConfig.quality.threshold);
+      expect(config.quality.maxRetries).toBe(defaultConfig.quality.maxRetries);
     });
 
     it('should handle partial gemini config overrides', () => {

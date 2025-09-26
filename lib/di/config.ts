@@ -21,7 +21,7 @@ export type AppConfig = {
 
 export const defaultConfig: AppConfig = {
   gemini: {
-    apiKey: process.env.GEMINI_API_KEY || '',
+    apiKey: '',
     model: 'gemini-2.5-flash',
     baseUrl: 'https://generativelanguage.googleapis.com',
     temperature: 0.3,
@@ -32,28 +32,45 @@ export const defaultConfig: AppConfig = {
     circuitBreakerThreshold: 5,
   },
   quality: {
-    threshold: parseInt(process.env.QUALITY_MIN_SCORE || '70'),
-    maxRetries: parseInt(process.env.MAX_REGENERATION_ATTEMPTS || '3'),
+    threshold: 70,
+    maxRetries: 3,
   },
   logging: {
-    level: (process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') || 'info',
+    level: 'info',
   },
 };
 
 export function loadConfig(overrides?: Partial<AppConfig>): AppConfig {
+  const envConfig: Partial<AppConfig> = {
+    gemini: {
+      apiKey: process.env.GEMINI_API_KEY || defaultConfig.gemini.apiKey,
+    } as any,
+    quality: {
+      threshold: parseInt(process.env.QUALITY_MIN_SCORE || String(defaultConfig.quality.threshold)),
+      maxRetries: parseInt(process.env.MAX_REGENERATION_ATTEMPTS || String(defaultConfig.quality.maxRetries)),
+    },
+    logging: {
+      level: (process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') || defaultConfig.logging.level,
+    },
+  };
+
   return {
     ...defaultConfig,
+    ...envConfig,
     ...overrides,
     gemini: {
       ...defaultConfig.gemini,
+      ...envConfig.gemini,
       ...overrides?.gemini,
     },
     quality: {
       ...defaultConfig.quality,
+      ...envConfig.quality,
       ...overrides?.quality,
     },
     logging: {
       ...defaultConfig.logging,
+      ...envConfig.logging,
       ...overrides?.logging,
     },
   };
