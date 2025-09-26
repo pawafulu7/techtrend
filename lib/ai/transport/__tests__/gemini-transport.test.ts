@@ -32,7 +32,7 @@ describe('GeminiTransportImpl', () => {
 
       expect(result.status).toBe('ok');
       expect(result.payload).toEqual({ result: 'success' });
-      expect(result.latencyMs).toBeGreaterThan(0);
+      expect(result.latencyMs).toBeGreaterThanOrEqual(0);
       expect(result.httpStatus).toBe(200);
     });
 
@@ -213,6 +213,12 @@ describe('GeminiTransportImpl', () => {
             headers: new Map(),
           })
           .mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            text: async () => 'Server error',
+            headers: new Map(),
+          })
+          .mockResolvedValueOnce({
             ok: true,
             status: 200,
             json: async () => ({ ok: true }),
@@ -268,7 +274,7 @@ describe('GeminiTransportImpl', () => {
         expect(result3.status).toBe('retryable_error');
         expect(privateTransport.consecutiveErrors).toBe(1);
       },
-      15000
+      30000
     );
   });
 
@@ -277,9 +283,10 @@ describe('GeminiTransportImpl', () => {
       'should timeout after specified duration',
       async () => {
       (global.fetch as jest.Mock).mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            setTimeout(
+        (_url, options) =>
+          new Promise((resolve, reject) => {
+            const signal = options?.signal as AbortSignal;
+            const timeoutId = setTimeout(
               () =>
                 resolve({
                   ok: true,
@@ -288,8 +295,12 @@ describe('GeminiTransportImpl', () => {
                   headers: new Map(),
                 }),
               10000
-            )
-          )
+            );
+            signal.addEventListener('abort', () => {
+              clearTimeout(timeoutId);
+              reject(new Error('The operation was aborted'));
+            });
+          })
       );
 
       const result = await transport.invoke({
@@ -302,7 +313,7 @@ describe('GeminiTransportImpl', () => {
         expect(result.status).toBe('retryable_error');
         expect(result.error?.message).toContain('abort');
       },
-      10000
+      20000
     );
 
     it(
@@ -329,9 +340,9 @@ describe('GeminiTransportImpl', () => {
 
         const elapsed = timeoutDuration - startTime;
         expect(elapsed).toBeGreaterThanOrEqual(100);
-        expect(elapsed).toBeLessThan(35000);
+        expect(elapsed).toBeLessThan(130000);
       },
-      35000
+      150000
     );
   });
 

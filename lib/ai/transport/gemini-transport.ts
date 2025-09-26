@@ -145,7 +145,7 @@ export class GeminiTransportImpl implements GeminiTransport {
   }
 
   private isRetryableError(error: Error): boolean {
-    const retryablePatterns = ['timeout', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'abort'];
+    const retryablePatterns = ['timeout', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'abort', 'network'];
     return retryablePatterns.some((pattern) => error.message.toLowerCase().includes(pattern));
   }
 
