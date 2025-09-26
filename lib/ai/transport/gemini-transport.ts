@@ -2,7 +2,6 @@ import {
   GeminiTransport,
   TransportRequest,
   TransportResult,
-  TransportError,
 } from './gemini-transport.interface';
 
 export class GeminiTransportImpl implements GeminiTransport {
