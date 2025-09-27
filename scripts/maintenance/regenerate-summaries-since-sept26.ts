@@ -44,7 +44,7 @@ async function main() {
         continue;
       }
 
-      const result = await deps.summaryService.generateSummary({
+      const result = await deps.service.generateSummary({
         title: article.title,
         content: article.content,
         url: article.url,

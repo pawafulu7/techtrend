@@ -5,8 +5,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { generateSummaryWithRetry } from '@/lib/ai/summary-generator';
-import { 
+import {
   checkSummaryQuality,
   generateQualityReport,
   calculateQualityStats
@@ -151,23 +150,15 @@ function getExpectedMinItems(contentLength: number): number {
 
 async function runTest(): Promise<void> {
   console.error('🧪 統一要約生成システムのテストを開始します...\n');
-  // 環境変数のデフォルト値を設定（一度のみ）
-  const config = {
-    QUALITY_CHECK_ENABLED: process.env.QUALITY_CHECK_ENABLED ?? 'true',
-    QUALITY_MIN_SCORE: process.env.QUALITY_MIN_SCORE ?? '70',
-    MAX_REGENERATION_ATTEMPTS: process.env.MAX_REGENERATION_ATTEMPTS ?? '3'
-  };
   
-  // 環境変数を設定
-  process.env.QUALITY_CHECK_ENABLED = config.QUALITY_CHECK_ENABLED;
-  process.env.QUALITY_MIN_SCORE = config.QUALITY_MIN_SCORE;
-  process.env.MAX_REGENERATION_ATTEMPTS = config.MAX_REGENERATION_ATTEMPTS;
+  // 新しいDIアーキテクチャを使用
+  const { getAppDependencies } = await import('@/lib/di/bootstrap');
+  const deps = getAppDependencies();
   
   console.error('=====================================');
   console.error('環境設定:');
-  console.error(`  QUALITY_CHECK_ENABLED: ${config.QUALITY_CHECK_ENABLED}`);
-  console.error(`  QUALITY_MIN_SCORE: ${config.QUALITY_MIN_SCORE}`);
-  console.error(`  MAX_REGENERATION_ATTEMPTS: ${config.MAX_REGENERATION_ATTEMPTS}`);
+  console.error(`  使用モデル: ${deps.config.gemini.model}`);
+  console.error(`  Base URL: ${deps.config.gemini.baseUrl}`);
   console.error('=====================================\n');
   
   const results: TestResult[] = [];
@@ -191,27 +182,23 @@ async function runTest(): Promise<void> {
     };
 
     try {
-      // 1. 統一プロンプトの生成テスト
+      // 1. 統一プロンプト生成テスト
       console.error('  1️⃣ 統一プロンプト生成...');
       const prompt = generateUnifiedPrompt(article.title, article.content);
       console.error(`     ✓ プロンプト生成成功（${prompt.length}文字）`);
 
-      // 2. 要約生成テスト（品質チェック付き）
-      console.error('  2️⃣ 要約生成（品質チェック付き）...');
+      // 2. 要約生成テスト（新DIアーキテクチャ使用）
+      console.error('  2️⃣ 要約生成（Gemini 2.5使用）...');
       const startTime = Date.now();
       
-      const summaryResult = await generateSummaryWithRetry(
-        article.title,
-        article.content
-      );
+      const summaryResult = await deps.service.generateSummary({
+        title: article.title,
+        content: article.content,
+        url: 'https://example.com/test'
+      });
       
       const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(2);
       console.error(`     ✓ 要約生成成功（${elapsedTime}秒）`);
-      
-      if (summaryResult.attempts) {
-        console.error(`     📊 生成試行回数: ${summaryResult.attempts}回`);
-        result.regenerationAttempts = summaryResult.attempts;
-      }
 
       // 3. 生成結果の検証
       console.error('  3️⃣ 生成結果の検証...');
@@ -220,7 +207,6 @@ async function runTest(): Promise<void> {
       
       console.error(`     一覧要約: ${result.summaryLength}文字`);
       console.error(`     詳細要約: ${result.detailedSummaryLength}文字`);
-      console.error(`     タグ: ${summaryResult.tags.join(', ')}`);
 
       // 4. 品質チェック
       console.error('  4️⃣ 品質チェック...');
@@ -253,7 +239,8 @@ async function runTest(): Promise<void> {
       console.error('  5️⃣ フォーマット確認...');
       const lines = summaryResult.detailedSummary.split('\n').filter(l => l.trim());
       // 箇条書き記号を幅広く許容（・, -, *, •, ●, 数字+区切り（全角含む））
-      const bulletRegex = /^\s*(?:・|[-*•●]|[0-9０-９]+[.)、．])\s+/;
+      // スペースはオプション（・項目名：内容 形式に対応）
+      const bulletRegex = /^\s*(?:・|[-*•●]|[0-9０-９]+[.)\u3001\uff0e])\s*/;
       const bulletPoints = lines.filter(l => bulletRegex.test(l));
       const contentLen = article.content.length;
       const expectedMin = getExpectedMinItems(contentLen);
@@ -290,7 +277,7 @@ async function runTest(): Promise<void> {
   console.error(`🔥 エラー: ${errorCount}件`);
 
   // 品質統計
-  const minScore = Number(process.env.QUALITY_MIN_SCORE || '70');
+  const minScore = 70;
   const qualityResults = results
     .filter(r => !r.error)
     .map(r => ({

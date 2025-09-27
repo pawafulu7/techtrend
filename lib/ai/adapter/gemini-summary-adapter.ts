@@ -148,7 +148,11 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       if (currentSection === 'headline' && !headline) {
         headline = line;
       } else if (currentSection === 'detailed' && line) {
-        detailedLines.push(line);
+        if (line.startsWith('・')) {
+          detailedLines.push(line);
+        } else if (detailedLines.length > 0) {
+          detailedLines.push(line);
+        }
       } else if (currentSection === 'category' && !category && line) {
         category = line;
       } else if (currentSection === 'tags' && !tags && line) {
