@@ -26,11 +26,7 @@ export function buildAppDependencies(configOverrides?: Partial<AppConfig>): AppD
   );
 
   const promptBuilder = new PromptBuilder();
-  const adapter = new GeminiSummaryAdapter(
-    transport,
-    promptBuilder,
-    config.gemini.model
-  );
+  const adapter = new GeminiSummaryAdapter(transport, promptBuilder, config.gemini.model);
 
   const qualityChecker = new SummaryQualityChecker();
   const postProcessor = new SummaryPostProcessor();

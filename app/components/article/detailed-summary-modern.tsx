@@ -18,7 +18,17 @@ export function DetailedSummaryModern({
   summaryVersion 
 }: DetailedSummaryModernProps) {
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0]));
-  const sections = parseSummary(detailedSummary, { articleType, summaryVersion });
+  const normalizedSummaryVersion =
+    typeof summaryVersion === 'number'
+      ? summaryVersion
+      : typeof summaryVersion === 'string'
+        ? Number.parseInt(summaryVersion, 10)
+        : 8;
+
+  const sections = parseSummary(detailedSummary, {
+    articleType,
+    summaryVersion: normalizedSummaryVersion,
+  });
   
   // パース失敗時のフォールバック
   if (sections.length === 0) {
