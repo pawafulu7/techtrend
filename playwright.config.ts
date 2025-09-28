@@ -2,8 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 import * as dotenv from 'dotenv';
 import { testConfig } from './config/test.config';
 
-// テスト環境変数読み込み
-dotenv.config({ path: '.env.test' });
+// テスト環境変数読み込み（環境変数が未設定の場合のみ）
+if (!process.env.DATABASE_URL) {
+  dotenv.config({ path: '.env.test' });
+}
 
 /**
  * See https://playwright.dev/docs/test-configuration.
