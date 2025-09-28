@@ -7,20 +7,26 @@ import { ArticleType } from '@/lib/utils/article-type-detector';
 interface DetailedSummaryCardsProps {
   detailedSummary: string;
   articleType?: ArticleType;
-  summaryVersion?: number;
+  summaryVersion?: number | string | null;
 }
 
-export function DetailedSummaryCards({ 
-  detailedSummary, 
-  articleType, 
-  summaryVersion 
+export function DetailedSummaryCards({
+  detailedSummary,
+  articleType,
+  summaryVersion
 }: DetailedSummaryCardsProps) {
-  const normalizedSummaryVersion =
-    typeof summaryVersion === 'number'
-      ? summaryVersion
-      : typeof summaryVersion === 'string'
-        ? Number.parseInt(summaryVersion, 10)
-        : 8;
+  const normalizedSummaryVersion = (() => {
+    if (typeof summaryVersion === 'number' && Number.isFinite(summaryVersion)) {
+      return summaryVersion;
+    }
+    if (typeof summaryVersion === 'string') {
+      const parsed = Number.parseInt(summaryVersion, 10);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return undefined;
+  })();
 
   const sections = parseSummary(detailedSummary, {
     articleType,

@@ -6,20 +6,23 @@ import { ArticleType } from '@/lib/utils/article-type-detector';
 interface DetailedSummaryStructuredProps {
   detailedSummary: string;
   articleType?: ArticleType;
-  summaryVersion?: number;
+  summaryVersion?: number | string | null;
 }
 
-export function DetailedSummaryStructured({ 
-  detailedSummary, 
-  articleType, 
-  summaryVersion 
+export function DetailedSummaryStructured({
+  detailedSummary,
+  articleType,
+  summaryVersion
 }: DetailedSummaryStructuredProps) {
-  const normalizedSummaryVersion =
+  const parsedSummaryVersion =
     typeof summaryVersion === 'number'
       ? summaryVersion
       : typeof summaryVersion === 'string'
         ? Number.parseInt(summaryVersion, 10)
-        : 8;
+        : NaN;
+  const normalizedSummaryVersion = Number.isNaN(parsedSummaryVersion)
+    ? 8
+    : parsedSummaryVersion;
 
   const sections = parseSummary(detailedSummary, {
     articleType,

@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 interface DetailedSummaryCompactProps {
   detailedSummary: string;
   articleType?: ArticleType;
-  summaryVersion?: number;
+  summaryVersion?: number | string | null;
 }
 
 // アイコンマッピング
@@ -22,18 +22,24 @@ const iconMap: Record<string, React.ReactNode> = {
   '⚠️': <AlertTriangle className="h-5 w-5" />,
 };
 
-export function DetailedSummaryCompact({ 
-  detailedSummary, 
-  articleType, 
-  summaryVersion 
+export function DetailedSummaryCompact({
+  detailedSummary,
+  articleType,
+  summaryVersion
 }: DetailedSummaryCompactProps) {
   const [selectedSection, setSelectedSection] = useState(0);
-  const normalizedSummaryVersion =
-    typeof summaryVersion === 'number'
-      ? summaryVersion
-      : typeof summaryVersion === 'string'
-        ? Number.parseInt(summaryVersion, 10)
-        : 8;
+  const normalizedSummaryVersion = (() => {
+    if (typeof summaryVersion === 'number' && Number.isFinite(summaryVersion)) {
+      return summaryVersion;
+    }
+    if (typeof summaryVersion === 'string') {
+      const parsed = Number.parseInt(summaryVersion, 10);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return undefined;
+  })();
 
   const sections = parseSummary(detailedSummary, {
     articleType,
