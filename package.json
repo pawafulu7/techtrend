@@ -26,7 +26,7 @@
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --fix --ext .ts,.tsx",
-    "docker:lint": "docker compose -f docker-compose.test.yml run --rm node-ci npm run lint",
+    "docker:lint:ci": "docker compose -f docker-compose.test.yml run --rm node-ci npm run lint",
     "analyze": "cross-env ANALYZE=true npm run build",
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch",
