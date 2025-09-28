@@ -529,6 +529,12 @@ async function generateSummaries(): Promise<GenerateResult> {
             try {
               const content = article.content || '';
               
+              // コンテンツが100文字未満の記事はスキップ
+              if (content.length < 100) {
+                console.error(`  ⏭️ スキップ: ${article.title} (コンテンツ不足: ${content.length}文字)`);
+                break;
+              }
+              
               // 削除メッセージを含む記事はスキップ
               if (isDeletedContent(content)) {
                 console.error(`  ⏭️ スキップ: ${article.title} (削除メッセージを検出)`);
