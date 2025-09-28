@@ -6,6 +6,10 @@ import { SummaryPostProcessor } from '../ai/service/post-processor';
 import { UnifiedSummaryServiceImpl } from '../ai/service/unified-summary-service';
 import { AppConfig, loadConfig } from './config';
 
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+};
+
 export type AppDependencies = {
   transport: GeminiTransportImpl;
   adapter: GeminiSummaryAdapter;
@@ -15,7 +19,7 @@ export type AppDependencies = {
 
 let appDependencies: AppDependencies | null = null;
 
-export function buildAppDependencies(configOverrides?: Partial<AppConfig>): AppDependencies {
+export function buildAppDependencies(configOverrides?: DeepPartial<AppConfig>): AppDependencies {
   const config = loadConfig(configOverrides);
 
   const transport = new GeminiTransportImpl(
@@ -53,7 +57,7 @@ export function buildTestDependencies(mocks: {
   transport?: GeminiTransportImpl;
   adapter?: GeminiSummaryAdapter;
   service?: UnifiedSummaryServiceImpl;
-  config?: Partial<AppConfig>;
+  config?: DeepPartial<AppConfig>;
 }): AppDependencies {
   const config = loadConfig(mocks.config);
 

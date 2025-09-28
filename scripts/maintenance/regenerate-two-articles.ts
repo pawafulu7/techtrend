@@ -4,29 +4,22 @@ import { getAppDependencies } from '@/lib/di/bootstrap';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('=== コロン直後に改行がある記事の再生成スクリプト ===\n');
+  const targetIds = [
+    'cmg1mqnxq000ntewkndqiahgk',
+    'cmg115wkr0005teas4034fom9'
+  ];
+
+  console.log('=== 指定された2件の記事を再生成 ===\n');
 
   const articles = await prisma.article.findMany({
     where: {
-      summaryComputedAt: {
-        gte: new Date('2025-09-26T00:00:00Z'),
-      },
-      detailedSummary: {
-        not: null,
-        contains: '：\n',
-      },
-    },
-    orderBy: {
-      summaryComputedAt: 'desc',
-    },
+      id: {
+        in: targetIds
+      }
+    }
   });
 
   console.log(`対象記事数: ${articles.length}件\n`);
-
-  if (articles.length === 0) {
-    console.log('再生成が必要な記事はありません。');
-    return;
-  }
 
   const deps = getAppDependencies();
   let successCount = 0;
@@ -34,16 +27,9 @@ async function main() {
 
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
-    console.log(
-      `[${i + 1}/${articles.length}] 処理中: ${article.title.substring(0, 50)}...`,
-    );
+    console.log(`[${i + 1}/${articles.length}] 処理中: ${article.title}`);
 
     try {
-      if (!article.content || article.content.length < 100) {
-        console.log('  ⚠️  スキップ: コンテンツが不足しています');
-        continue;
-      }
-
       const result = await deps.service.generateSummary({
         title: article.title,
         content: article.content,
@@ -60,23 +46,17 @@ async function main() {
         },
       });
 
-      console.log('  ✓ 完了');
+      console.log('  ✓ 完了\n');
       successCount++;
-
-      if (i > 0 && i % 5 === 0) {
-        console.log(`\n進捗: ${i}/${articles.length}件完了\n`);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
     } catch (error) {
-      console.error(`  ✗ エラー: ${error}`);
+      console.error(`  ✗ エラー: ${error}\n`);
       failureCount++;
     }
   }
 
-  console.log('\n=== 実行結果 ===');
+  console.log('=== 実行結果 ===');
   console.log(`成功: ${successCount}件`);
   console.log(`失敗: ${failureCount}件`);
-  console.log(`合計: ${articles.length}件`);
 }
 
 main()

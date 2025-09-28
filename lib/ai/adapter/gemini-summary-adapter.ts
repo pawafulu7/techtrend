@@ -141,15 +141,16 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         continue;
       }
 
-      if (line.startsWith('-') || line.startsWith('【') || line === '') {
+      if (line.startsWith('【') || line === '') {
         continue;
       }
 
       if (currentSection === 'headline' && !headline) {
         headline = line;
       } else if (currentSection === 'detailed' && line) {
-        if (line.startsWith('・')) {
-          detailedLines.push(line);
+        const isBullet = /^\s*(?:・|[-*•●]|[0-9０-９]+[.)\u3001\uff0e])/.test(line);
+        if (isBullet) {
+          detailedLines.push(line.trimStart());
         } else if (detailedLines.length > 0) {
           detailedLines.push(line);
         }

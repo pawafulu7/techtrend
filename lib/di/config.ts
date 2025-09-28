@@ -1,3 +1,7 @@
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+};
+
 export type AppConfig = {
   gemini: {
     apiKey: string;
@@ -40,7 +44,7 @@ export const defaultConfig: AppConfig = {
   },
 };
 
-export function loadConfig(overrides?: Partial<AppConfig>): AppConfig {
+export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
   const envConfig: Partial<AppConfig> = {
     gemini: {
       apiKey: process.env.GEMINI_API_KEY || defaultConfig.gemini.apiKey,
