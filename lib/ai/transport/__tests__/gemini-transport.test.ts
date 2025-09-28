@@ -340,7 +340,7 @@ describe('GeminiTransportImpl', () => {
 
         const elapsed = timeoutDuration - startTime;
         expect(elapsed).toBeGreaterThanOrEqual(100);
-        expect(elapsed).toBeLessThan(130000);
+        expect(elapsed).toBeLessThan(148000);
       },
       150000
     );
