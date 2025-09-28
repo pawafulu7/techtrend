@@ -19,10 +19,11 @@ export function DetailedSummaryStructured({
       ? summaryVersion
       : typeof summaryVersion === 'string'
         ? Number.parseInt(summaryVersion, 10)
-        : NaN;
-  const normalizedSummaryVersion = Number.isNaN(parsedSummaryVersion)
-    ? 8
-    : parsedSummaryVersion;
+        : undefined;
+  const normalizedSummaryVersion =
+    typeof parsedSummaryVersion === 'number' && Number.isFinite(parsedSummaryVersion)
+      ? parsedSummaryVersion
+      : undefined;
 
   const sections = parseSummary(detailedSummary, {
     articleType,
