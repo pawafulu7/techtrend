@@ -25,14 +25,14 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await expect(foreignSection.locator('[data-testid="category-foreign-content"]')).toHaveCount(0);
 
     // 展開
-    await page.getByTestId('category-foreign-header').click();
+    await page.getByTestId('category-foreign-header').first().click();
     await expect(foreignSection.getByTestId('category-foreign-content')).toBeVisible();
     const checkboxes = foreignSection.getByTestId('category-foreign-content').locator('button[role="checkbox"]');
     const expandedCount = await checkboxes.count();
     expect(expandedCount).toBeGreaterThan(0);
 
     // 折りたたみ
-    await page.getByTestId('category-foreign-header').click();
+    await page.getByTestId('category-foreign-header').first().click();
     // 折りたたみ時はカテゴリ内のコンテンツ自体が存在しない
     await expect(foreignSection.locator('[data-testid="category-foreign-content"]')).toHaveCount(0);
   });
@@ -45,7 +45,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await expect(page.getByTestId('source-count')).toHaveText(/\b0\/\d+\b/, { timeout: 10000 });
 
     // 海外ソースカテゴリを展開
-    await page.getByTestId('category-foreign-header').click();
+    await page.getByTestId('category-foreign-header').first().click();
 
     // カテゴリが展開されるのを待つ（展開後のコンテンツ出現は下のtoBeVisibleに委譲）
     await page.waitForTimeout(500); // アニメーション待機
@@ -146,7 +146,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
   test('カテゴリ単位での全解除が動作する', async ({ page }) => {
     // 海外ソースカテゴリを展開
-    await page.getByTestId('category-foreign-header').click();
+    await page.getByTestId('category-foreign-header').first().click();
     
     const foreignSection = page.getByTestId('category-foreign');
     const content = foreignSection.getByTestId('category-foreign-content');
@@ -168,7 +168,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
     await page.locator('[data-testid="deselect-all-button"]:visible').click();
 
     // 海外ソースカテゴリを展開
-    await page.getByTestId('category-foreign-header').click();
+    await page.getByTestId('category-foreign-header').first().click();
 
     // 海外カテゴリの最初のソース行を使う（固定IDを排除）
     const foreignSection = page.getByTestId('category-foreign');
@@ -265,7 +265,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
     // 海外カテゴリのみ選択 → N/Y（NはDOMから計算）
     // 海外ソースカテゴリを展開
-    await page.getByTestId('category-foreign-header').click();
+    await page.getByTestId('category-foreign-header').first().click();
     const foreignSection = page.getByTestId('category-foreign');
     await page.getByTestId('category-foreign-select-all').click();
     await page.waitForTimeout(500); // 選択状態の更新を待つ
@@ -296,7 +296,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
   test('カテゴリごとの選択数が表示される', async ({ page }) => {
     // 海外ソースカテゴリを展開
-    await page.getByTestId('category-foreign-header').click();
+    await page.getByTestId('category-foreign-header').first().click();
     
     const countBadge = page.getByTestId('category-foreign-count');
     await expect(countBadge).toBeVisible();

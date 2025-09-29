@@ -6,15 +6,29 @@ import { ArticleType } from '@/lib/utils/article-type-detector';
 interface DetailedSummaryStructuredProps {
   detailedSummary: string;
   articleType?: ArticleType;
-  summaryVersion?: number;
+  summaryVersion?: number | string | null;
 }
 
-export function DetailedSummaryStructured({ 
-  detailedSummary, 
-  articleType, 
-  summaryVersion 
+export function DetailedSummaryStructured({
+  detailedSummary,
+  articleType,
+  summaryVersion
 }: DetailedSummaryStructuredProps) {
-  const sections = parseSummary(detailedSummary, { articleType, summaryVersion });
+  const parsedSummaryVersion =
+    typeof summaryVersion === 'number'
+      ? summaryVersion
+      : typeof summaryVersion === 'string'
+        ? Number.parseInt(summaryVersion, 10)
+        : undefined;
+  const normalizedSummaryVersion =
+    typeof parsedSummaryVersion === 'number' && Number.isFinite(parsedSummaryVersion)
+      ? parsedSummaryVersion
+      : undefined;
+
+  const sections = parseSummary(detailedSummary, {
+    articleType,
+    summaryVersion: normalizedSummaryVersion,
+  });
   
   // パース失敗時のフォールバック
   if (sections.length === 0) {

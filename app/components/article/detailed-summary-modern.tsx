@@ -9,16 +9,32 @@ import { ArticleType } from '@/lib/utils/article-type-detector';
 interface DetailedSummaryModernProps {
   detailedSummary: string;
   articleType?: ArticleType;
-  summaryVersion?: number;
+  summaryVersion?: number | string | null;
 }
 
-export function DetailedSummaryModern({ 
-  detailedSummary, 
-  articleType, 
-  summaryVersion 
+export function DetailedSummaryModern({
+  detailedSummary,
+  articleType,
+  summaryVersion
 }: DetailedSummaryModernProps) {
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0]));
-  const sections = parseSummary(detailedSummary, { articleType, summaryVersion });
+  const normalizedSummaryVersion = (() => {
+    if (typeof summaryVersion === 'number' && Number.isFinite(summaryVersion)) {
+      return summaryVersion;
+    }
+    if (typeof summaryVersion === 'string') {
+      const parsed = Number.parseInt(summaryVersion, 10);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return undefined;
+  })();
+
+  const sections = parseSummary(detailedSummary, {
+    articleType,
+    summaryVersion: normalizedSummaryVersion,
+  });
   
   // パース失敗時のフォールバック
   if (sections.length === 0) {

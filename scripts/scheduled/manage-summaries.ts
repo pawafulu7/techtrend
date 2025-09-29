@@ -4,7 +4,8 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { AIService } from '@/lib/ai/ai-service';
 import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
 import { checkSummaryQuality } from '@/lib/utils/summary-quality-checker';
-import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
+import { getAppDependencies } from '@/lib/di/bootstrap';
+import { SUMMARY_VERSION } from '@/types/article';
 import { getLastProcessedTime, saveProcessingStatus, hasContentUpdatesSince, setPrisma } from '../utils/processing-status';
 
 const prisma = new PrismaClient();
@@ -140,11 +141,12 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
   apiStats.attempts++;
   
   try {
-    // 統一サービスを使用
-    const service = getUnifiedSummaryService();
-    const result = await service.generate(title, content, {
-      maxRetries: 3,
-      minQualityScore: 40
+    // 統一サービスを使用（DI経由）
+    const { service } = getAppDependencies();
+    const result = await service.generateSummary({
+      title,
+      content,
+      qualityThreshold: 40,
     });
     
     apiStats.successes++;
@@ -625,7 +627,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                     summary,
                     detailedSummary: result.detailedSummary,
                     articleType: 'unified',
-                    summaryVersion: getUnifiedSummaryService().getSummaryVersion(),
+                    summaryVersion: SUMMARY_VERSION.UNIFIED,
                     summaryComputedAt: checkpoint
                   }
                 });

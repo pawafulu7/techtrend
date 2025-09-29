@@ -38,6 +38,7 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.test
 
 # Vercel
 .vercel
@@ -52,8 +53,13 @@ next-env.d.ts
 *.db.backup*
 *.db-wal
 *.db-shm
+prisma/*.db*
 prisma/dev.db
 prisma/test.db
+prisma/backup/
+prisma/backups/
+prisma/dev_backup_*.db
+prisma/prisma/
 
 # Git
 .git
@@ -76,8 +82,6 @@ docs
 *.test.tsx
 *.spec.ts
 *.spec.tsx
-e2e
-playwright.config.ts
 # Jest設定は含める必要があるのでコメントアウト
 # jest.config.*
 # jest.setup.*
@@ -92,6 +96,8 @@ backups
 *.backup
 *.sql
 backup_*
+prisma/backup_*
+.archive
 
 # Temporary files
 temp

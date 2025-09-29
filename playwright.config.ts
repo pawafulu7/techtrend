@@ -1,9 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 import * as dotenv from 'dotenv';
-import { testConfig } from './config/test.config';
+import * as path from 'node:path';
 
-// テスト環境変数読み込み
-dotenv.config({ path: '.env.test' });
+// テスト環境変数読み込み（既存変数は上書きせず、未設定変数のみ補完）
+dotenv.config({ path: path.resolve(__dirname, '.env.test'), override: false });
+
+// 静的インポートに戻す（CI環境でtop-level awaitが使用できないため）
+import { testConfig } from './config/test.config';
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -36,7 +39,7 @@ export default defineConfig({
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
+    /* Base URL to use in actions like \`await page.goto('/')\`. */
     baseURL: testConfig.baseUrl,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',

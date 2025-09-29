@@ -10,7 +10,8 @@ import { GeminiClient } from '@/lib/ai/gemini';
 import { calculateSummaryScore, needsRegeneration } from '@/lib/utils/quality-scorer';
 import { optimizeContentForSummary } from '@/lib/utils/content-extractor';
 
-import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
+import { getAppDependencies } from '@/lib/di/bootstrap';
+import { SUMMARY_VERSION } from '@/types/article';
 const prisma = new PrismaClient();
 
 // 環境変数チェック
@@ -156,13 +157,13 @@ async function regenerateArticles(articles: Array<{
         continue;
       }
 
-      // 統一サービスで要約を再生成
-      const service = getUnifiedSummaryService();
-      const result = await service.generate(
-        article.title,
-        optimizedContent,
-        { maxRetries: 2, minQualityScore: 40 }
-      );
+      // 統一サービスで要約を再生成（DI経由）
+      const { service } = getAppDependencies();
+      const result = await service.generateSummary({
+        title: article.title,
+        content: optimizedContent,
+        qualityThreshold: 40,
+      });
       const { summary, tags } = result;
 
       // 新しい要約のスコアを計算
@@ -191,7 +192,7 @@ async function regenerateArticles(articles: Array<{
           where: { id: article.id },
           data: {
             summary,
-            summaryVersion: service.getSummaryVersion(), // 統一フォーマットバージョン
+            summaryVersion: SUMMARY_VERSION.UNIFIED, // 統一フォーマットバージョン
             detailedSummary: result.detailedSummary,
             articleType: result.articleType,
             updatedAt: new Date(),
