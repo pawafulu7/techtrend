@@ -23,6 +23,7 @@ export interface ArticleQueryParams {
   category?: string;
   includeRelations?: boolean;
   includeEmptyContent?: boolean;
+  excludeUnprocessed?: boolean;
   lightweight?: boolean;
   fields?: string;
   includeUserData?: boolean;
@@ -205,7 +206,8 @@ export class LayeredCache {
       tags: params.tags || 'none',  // 複数タグパラメータを追加
       tagMode: params.tagMode || 'OR',  // タグモードを追加
       dateRange: params.dateRange || 'all',  // dateRangeも追加
-      includeEmptyContent: params.includeEmptyContent || false  // includeEmptyContentも追加
+      includeEmptyContent: params.includeEmptyContent || false,  // includeEmptyContentも追加
+      excludeUnprocessed: params.excludeUnprocessed || false  // excludeUnprocessedも追加
     };
 
     // パラメータをソートして一貫性を保つ
@@ -233,7 +235,8 @@ export class LayeredCache {
       dateRange: params.dateRange || 'all',  // dateRangeも追加
       tag: params.tag || 'none',  // tagも追加
       tags: params.tags || 'none',  // tagsも追加
-      tagMode: params.tagMode || 'OR'  // tagModeも追加
+      tagMode: params.tagMode || 'OR',  // tagModeも追加
+      excludeUnprocessed: params.excludeUnprocessed || false  // excludeUnprocessedも追加
     };
 
     const sortedParams = Object.entries(userParams)
@@ -267,7 +270,8 @@ export class LayeredCache {
       dateRange: params.dateRange || 'all',  // dateRangeも追加
       tag: params.tag || 'none',  // tagも追加
       tags: params.tags || 'none',  // tagsも追加
-      tagMode: params.tagMode || 'OR'  // tagModeも追加
+      tagMode: params.tagMode || 'OR',  // tagModeも追加
+      excludeUnprocessed: params.excludeUnprocessed || false  // excludeUnprocessedも追加
     };
 
     const sortedParams = Object.entries(searchParams)

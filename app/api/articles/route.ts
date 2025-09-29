@@ -140,6 +140,8 @@ export async function GET(request: NextRequest) {
     const includeRelations = searchParams.get('includeRelations') === 'true'; // Default to false to reduce data transfer
     // Filter out empty content by default unless explicitly included
     const includeEmptyContent = searchParams.get('includeEmptyContent') === 'true';
+    // Exclude articles without processed summaries (summaryComputedAt is null)
+    const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
     const lightweight = searchParams.get('lightweight') === 'true'; // Ultra-lightweight mode for mobile/bandwidth-conscious clients
     const fields = searchParams.get('fields'); // Comma-separated list of fields to include
     const includeUserData = searchParams.get('includeUserData') === 'true'; // Include user-specific data (favorites, read status)
@@ -201,6 +203,7 @@ export async function GET(request: NextRequest) {
       category: category || undefined,
       includeRelations: includeRelations,
       includeEmptyContent: includeEmptyContent,
+      excludeUnprocessed: excludeUnprocessed,
       lightweight: lightweight,
       fields: fields || undefined,
       includeUserData: false
@@ -239,7 +242,12 @@ export async function GET(request: NextRequest) {
             }];
       }
       // When includeEmptyContent is true, don't add any condition (include all)
-      
+
+      // Exclude articles without processed summaries
+      if (excludeUnprocessed) {
+        where.summaryComputedAt = { not: null };
+      }
+
       // Apply read filter if user is authenticated
       // Note: userId is only available when shouldUseUserContext is true
       if (readFilter && userId) {
