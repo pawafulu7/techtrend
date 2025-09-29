@@ -1,27 +1,24 @@
 // Mock dependencies MUST be first
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    article: {
-      count: jest.fn(),
-      findMany: jest.fn(),
-    },
-  },
-}));
+jest.mock('@/lib/database');
+jest.mock('@/lib/cache/cache-invalidator');
 
 jest.mock('@/lib/auth/auth', () => ({
   auth: jest.fn().mockResolvedValue(null),
 }));
 
-jest.mock('@/lib/cache', () => ({
-  RedisCache: jest.fn().mockImplementation(() => ({
-    get: jest.fn().mockResolvedValue(null),
-    set: jest.fn().mockResolvedValue(undefined),
-    delete: jest.fn().mockResolvedValue(undefined),
-  })),
-}));
-
 jest.mock('@/lib/cache/layered-cache', () => ({
-  LayeredCache: jest.fn(),
+  LayeredCache: jest.fn().mockImplementation(() => ({
+    getArticles: jest.fn(async (params, fetcher) => {
+      // フェッチャーを実行して結果を返す
+      return await fetcher();
+    }),
+    getOrFetch: jest.fn(async (key, fetcher) => {
+      return await fetcher();
+    }),
+    set: jest.fn(),
+    del: jest.fn(),
+    clear: jest.fn(),
+  })),
 }));
 
 jest.mock('@/lib/cache/source-cache', () => ({
@@ -30,7 +27,6 @@ jest.mock('@/lib/cache/source-cache', () => ({
   },
 }));
 
-// DataLoaderのモック
 jest.mock('@/lib/dataloader', () => ({
   createLoaders: jest.fn(() => ({
     article: null,
@@ -39,9 +35,26 @@ jest.mock('@/lib/dataloader', () => ({
   })),
 }));
 
+jest.mock('@/lib/metrics/performance', () => ({
+  MetricsCollector: jest.fn().mockImplementation(() => ({
+    startTimer: jest.fn(),
+    endTimer: jest.fn().mockReturnValue(10),
+    setCacheStatus: jest.fn(),
+    addMetricsToHeaders: jest.fn((headers) => {
+      headers.set('X-Cache-Status', 'HIT');
+      headers.set('X-Response-Time', '10ms');
+    }),
+  })),
+  withDbTiming: jest.fn(async (metrics, fn) => await fn()),
+  withCacheTiming: jest.fn(async (metrics, fn) => await fn()),
+}));
+
 // Import after mocks
 import { GET } from '@/app/api/articles/route';
+import { prisma } from '@/lib/database';
 import { NextRequest } from 'next/server';
+
+const prismaMock = prisma as any;
 
 describe('excludeUnprocessed parameter', () => {
   const mockArticles = [
@@ -87,27 +100,27 @@ describe('excludeUnprocessed parameter', () => {
     },
   ];
 
-  let prisma: any;
   let LayeredCache: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Get mocked modules
-    prisma = require('@/lib/prisma').prisma;
-    LayeredCache = require('@/lib/cache/layered-cache').LayeredCache;
+    // Prismaモックのクリア
+    if (prismaMock.article) {
+      Object.values(prismaMock.article).forEach((fn: any) => {
+        if (fn && fn.mockClear) fn.mockClear();
+      });
+    }
 
-    // Reset LayeredCache mock
-    LayeredCache.mockReset();
-    LayeredCache.mockImplementation(() => ({
-      getArticles: jest.fn().mockImplementation((_params, fetcher) => fetcher()),
-    }));
+    // LayeredCacheモックのリセット
+    LayeredCache = require('@/lib/cache/layered-cache').LayeredCache;
+    LayeredCache.mockClear();
   });
 
   describe('when excludeUnprocessed is not specified (default false)', () => {
     it('should include all articles', async () => {
-      prisma.article.count.mockResolvedValue(2);
-      prisma.article.findMany.mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(2);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const request = new NextRequest('http://localhost:3000/api/articles');
       const response = await GET(request);
@@ -119,7 +132,7 @@ describe('excludeUnprocessed parameter', () => {
       expect(data.data.total).toBe(2);
 
       // Verify Prisma was called without summaryComputedAt filter
-      const findManyCall = prisma.article.findMany.mock.calls[0][0];
+      const findManyCall = prismaMock.article.findMany.mock.calls[0][0];
       expect(findManyCall.where.summaryComputedAt).toBeUndefined();
     });
   });
@@ -127,8 +140,8 @@ describe('excludeUnprocessed parameter', () => {
   describe('when excludeUnprocessed=true', () => {
     it('should exclude articles with null summaryComputedAt', async () => {
       const processedArticles = mockArticles.filter(a => a.summaryComputedAt !== null);
-      prisma.article.count.mockResolvedValue(1);
-      prisma.article.findMany.mockResolvedValue(processedArticles);
+      prismaMock.article.count.mockResolvedValue(1);
+      prismaMock.article.findMany.mockResolvedValue(processedArticles);
 
       const request = new NextRequest('http://localhost:3000/api/articles?excludeUnprocessed=true');
       const response = await GET(request);
@@ -141,15 +154,15 @@ describe('excludeUnprocessed parameter', () => {
       expect(data.data.total).toBe(1);
 
       // Verify Prisma was called with summaryComputedAt filter
-      const findManyCall = prisma.article.findMany.mock.calls[0][0];
+      const findManyCall = prismaMock.article.findMany.mock.calls[0][0];
       expect(findManyCall.where.summaryComputedAt).toEqual({ not: null });
     });
   });
 
   describe('when excludeUnprocessed=false', () => {
     it('should include all articles', async () => {
-      prisma.article.count.mockResolvedValue(2);
-      prisma.article.findMany.mockResolvedValue(mockArticles);
+      prismaMock.article.count.mockResolvedValue(2);
+      prismaMock.article.findMany.mockResolvedValue(mockArticles);
 
       const request = new NextRequest('http://localhost:3000/api/articles?excludeUnprocessed=false');
       const response = await GET(request);
@@ -161,23 +174,28 @@ describe('excludeUnprocessed parameter', () => {
       expect(data.data.total).toBe(2);
 
       // Verify Prisma was called without summaryComputedAt filter
-      const findManyCall = prisma.article.findMany.mock.calls[0][0];
+      const findManyCall = prismaMock.article.findMany.mock.calls[0][0];
       expect(findManyCall.where.summaryComputedAt).toBeUndefined();
     });
   });
 
   describe('cache key generation', () => {
     it('should include excludeUnprocessed in cache key', async () => {
-      prisma.article.count.mockResolvedValue(1);
-      prisma.article.findMany.mockResolvedValue([mockArticles[0]]);
+      prismaMock.article.count.mockResolvedValue(1);
+      prismaMock.article.findMany.mockResolvedValue([mockArticles[0]]);
 
       // Create a new mock for tracking getArticles calls
-      const mockGetArticles = jest.fn().mockImplementation((_params, fetcher) => fetcher());
+      const mockGetArticles = jest.fn(async (params, fetcher) => {
+        return await fetcher();
+      });
 
       // Override LayeredCache for this specific test
-      LayeredCache.mockReset();
       LayeredCache.mockImplementation(() => ({
         getArticles: mockGetArticles,
+        getOrFetch: jest.fn(async (key, fetcher) => await fetcher()),
+        set: jest.fn(),
+        del: jest.fn(),
+        clear: jest.fn(),
       }));
 
       const request1 = new NextRequest('http://localhost:3000/api/articles?excludeUnprocessed=true');
