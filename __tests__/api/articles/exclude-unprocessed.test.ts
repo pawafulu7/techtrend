@@ -6,20 +6,25 @@ jest.mock('@/lib/auth/auth', () => ({
   auth: jest.fn().mockResolvedValue(null),
 }));
 
-jest.mock('@/lib/cache/layered-cache', () => ({
-  LayeredCache: jest.fn().mockImplementation(() => ({
-    getArticles: jest.fn(async (params, fetcher) => {
-      // フェッチャーを実行して結果を返す
-      return await fetcher();
-    }),
-    getOrFetch: jest.fn(async (key, fetcher) => {
-      return await fetcher();
-    }),
-    set: jest.fn(),
-    del: jest.fn(),
-    clear: jest.fn(),
-  })),
-}));
+jest.mock('@/lib/cache/layered-cache', () => {
+  // Create the shared mock inside the jest.mock factory
+  const mockGetArticles = jest.fn(async (params, fetcher) => {
+    return await fetcher();
+  });
+
+  return {
+    LayeredCache: jest.fn().mockImplementation(() => ({
+      getArticles: mockGetArticles,
+      getOrFetch: jest.fn(async (key, fetcher) => {
+        return await fetcher();
+      }),
+      set: jest.fn(),
+      del: jest.fn(),
+      clear: jest.fn(),
+    })),
+    __mockGetArticles: mockGetArticles, // Export for testing
+  };
+});
 
 jest.mock('@/lib/cache/source-cache', () => ({
   sourceCache: {
@@ -53,8 +58,10 @@ jest.mock('@/lib/metrics/performance', () => ({
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { NextRequest } from 'next/server';
+import { __mockGetArticles } from '@/lib/cache/layered-cache';
 
 const prismaMock = prisma as any;
+const mockGetArticles = __mockGetArticles;
 
 describe('excludeUnprocessed parameter', () => {
   const mockArticles = [
@@ -184,19 +191,8 @@ describe('excludeUnprocessed parameter', () => {
       prismaMock.article.count.mockResolvedValue(1);
       prismaMock.article.findMany.mockResolvedValue([mockArticles[0]]);
 
-      // Create a new mock for tracking getArticles calls
-      const mockGetArticles = jest.fn(async (params, fetcher) => {
-        return await fetcher();
-      });
-
-      // Override LayeredCache for this specific test
-      LayeredCache.mockImplementation(() => ({
-        getArticles: mockGetArticles,
-        getOrFetch: jest.fn(async (key, fetcher) => await fetcher()),
-        set: jest.fn(),
-        del: jest.fn(),
-        clear: jest.fn(),
-      }));
+      // Clear previous calls to mockGetArticles
+      mockGetArticles.mockClear();
 
       const request1 = new NextRequest('http://localhost:3000/api/articles?excludeUnprocessed=true');
       await GET(request1);
