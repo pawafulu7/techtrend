@@ -97,6 +97,7 @@ export async function GET(request: NextRequest) {
     const dateRange = searchParams.get('dateRange');
     const readFilter = searchParams.get('readFilter');
     const category = searchParams.get('category');
+    const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
     const includeUserData = searchParams.get('includeUserData') === 'true';
 
     // Generate cache key
@@ -135,6 +136,7 @@ export async function GET(request: NextRequest) {
         readFilter: readFilter || 'all',
         userId: userCtxForKey,
         category: category || 'all',
+        excludeUnprocessed: excludeUnprocessed ? 'true' : 'false',
         includeUserData: includeUserData ? 'true' : 'false'
       }
     });
@@ -159,7 +161,12 @@ export async function GET(request: NextRequest) {
       
       // Build where clause
       const where: ArticleWhereInput = {};
-      
+
+      // Exclude articles without processed summaries
+      if (excludeUnprocessed) {
+        where.summaryComputedAt = { not: null };
+      }
+
       // Apply cursor-based pagination if cursor provided
       let hasPreviousPage = false;
       let cursorPayload: ReturnType<typeof cursorManager.decodeCursor> | null = null;

@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const limit = parseInt(searchParams.get('limit') || '20');
     const includeEmptyContent = searchParams.get('includeEmptyContent') === 'true';
+    const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
 
     // PopularCacheを使用
     const popularPeriod = mapPeriodToPopular(period);
@@ -113,8 +114,8 @@ export async function GET(request: NextRequest) {
         }
 
         // コンテンツフィルターの条件設定
-        const contentFilter = includeEmptyContent 
-          ? {} 
+        const contentFilter = includeEmptyContent
+          ? {}
           : {
               AND: [
                 { content: { not: null } },
@@ -122,13 +123,19 @@ export async function GET(request: NextRequest) {
               ]
             };
 
+        // 処理済み記事フィルターの条件設定
+        const processedFilter = excludeUnprocessed
+          ? { summaryComputedAt: { not: null } }
+          : {};
+
         // 記事取得
         const articles = await prisma.article.findMany({
           where: {
             ...dateFilter,
             ...categoryFilter,
             qualityScore: { gte: 30 }, // 品質フィルター
-            ...contentFilter
+            ...contentFilter,
+            ...processedFilter
           },
           include: {
             source: true,
