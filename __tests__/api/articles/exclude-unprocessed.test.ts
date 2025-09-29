@@ -30,6 +30,15 @@ jest.mock('@/lib/cache/source-cache', () => ({
   },
 }));
 
+// DataLoaderのモック
+jest.mock('@/lib/dataloader', () => ({
+  createLoaders: jest.fn(() => ({
+    article: null,
+    favorite: null,
+    view: null,
+  })),
+}));
+
 // Import after mocks
 import { GET } from '@/app/api/articles/route';
 import { NextRequest } from 'next/server';
