@@ -36,6 +36,7 @@ export function HomeClientInfinite({
   const scrollContainerRef = useRef<HTMLDivElement>(null); // 参照は保持するが使用しない
   const [previousCategory, setPreviousCategory] = useState<string | null>(null);
   const [isCategoryChanging, setIsCategoryChanging] = useState(false);
+  const excludeUnprocessed = true; // デフォルトで要約なし記事を除外（常に有効）
   const currentScrollPositionRef = useRef<number>(0); // 現在のスクロール位置を常に追跡
   
   // 記事詳細から戻ってきたかどうかをチェック
@@ -165,8 +166,13 @@ export function HomeClientInfinite({
       params.returning = 'true';
     }
 
+    // 処理中記事を除外するフラグを追加
+    if (excludeUnprocessed) {
+      params.excludeUnprocessed = 'true';
+    }
+
     return params;
-  }, [searchParams, initialSortBy, isReturningFromArticle]);
+  }, [searchParams, initialSortBy, isReturningFromArticle, excludeUnprocessed]);
 
   const {
     data,
@@ -268,7 +274,7 @@ export function HomeClientInfinite({
         
         {/* 推薦セクション（インライン） */}
         <RecommendationSectionInline />
-        
+
         {(isLoading || isCategoryChanging) ? (
           <div className="relative">
             {isCategoryChanging && (
