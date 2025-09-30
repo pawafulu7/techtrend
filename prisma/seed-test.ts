@@ -407,6 +407,7 @@ async function createArticles(sources: Source[], tags: Tag[]) {
         difficulty: 'intermediate',
         articleType: 'unified',
         summaryVersion: 7,
+        summaryComputedAt: publishedAt, // 要約生成済み
         tags: {
           connect: articleTags.map(tag => ({ id: tag.id })),
         },
@@ -457,6 +458,8 @@ async function createArticles(sources: Source[], tags: Tag[]) {
           difficulty: ['beginner', 'intermediate', 'advanced'][random.nextInt(0, 2)],
           articleType: 'unified',
           summaryVersion: 7,
+          // 一部の記事は要約未生成（テスト用）
+          summaryComputedAt: i % 5 === 0 ? null : publishedAt,
           tags: {
             connect: randomTags.map(tag => ({ id: tag.id })),
           },

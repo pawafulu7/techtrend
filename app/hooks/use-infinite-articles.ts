@@ -12,6 +12,7 @@ interface ArticleFilters {
   lightweight?: boolean;  // Add lightweight mode flag
   includeRelations?: boolean;  // Add relations flag
   includeUserData?: boolean;  // Add user data flag for favorites and read status
+  excludeUnprocessed?: boolean;  // Add flag to exclude articles without summaries
   [key: string]: string | boolean | undefined;
 }
 
