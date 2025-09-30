@@ -21,7 +21,7 @@ describe('bootstrap', () => {
       expect(deps.adapter).toBeInstanceOf(GeminiSummaryAdapter);
       expect(deps.service).toBeInstanceOf(UnifiedSummaryServiceImpl);
       expect(deps.config).toBeDefined();
-      expect(deps.config.gemini.model).toBe('gemini-2.5-flash');
+      expect(deps.config.gemini.model).toBe('gemini-1.5-flash');
     });
 
     it('should create dependencies with config overrides', () => {

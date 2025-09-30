@@ -227,7 +227,7 @@ TypeScript, Node.js, Jest`,
       await adapter.summarize(input);
 
       expect(mockTransport.invoke).toHaveBeenCalledWith({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         body: {
           contents: [
             {
