@@ -357,15 +357,19 @@ export class QiitaAIFetcher extends BaseFetcher {
     if (likesCount >= 100) return 100;
     if (likesCount >= 50) return 90;
     if (likesCount >= 30) return 80;
-    if (likesCount >= 20) return 70;
-    if (likesCount >= 10) return 60;
+    if (likesCount >= 20) return 75;
+    if (likesCount >= 10) return 70;
+    if (likesCount >= 5) return 65;
+    if (likesCount >= 3) return 60;
     return 50;
   }
 
   private assessQuality(likesCount: number, tags: string[]): 'high' | 'medium' | 'low' {
     // 記事の品質を評価
     if (likesCount >= 50 && tags.length >= 3) return 'high';
-    if (likesCount >= 20 || tags.length >= 2) return 'medium';
+    if (likesCount >= 20 || tags.length >= 2) return 'high';
+    if (likesCount >= 10) return 'medium';
+    if (likesCount >= 3) return 'medium';
     return 'low';
   }
 
