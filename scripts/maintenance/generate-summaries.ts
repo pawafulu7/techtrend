@@ -618,11 +618,12 @@ async function generateSummaries(): Promise<GenerateResult> {
                 // 要約を更新（統一プロンプト版として保存）
                 await prisma.article.update({
                   where: { id: article.id },
-                  data: { 
+                  data: {
                     summary,
                     detailedSummary: result!.detailedSummary,
                     articleType: 'unified',  // 統一タイプを設定
-                    summaryVersion: SUMMARY_VERSION.UNIFIED  // 統一プロンプト版のバージョン
+                    summaryVersion: SUMMARY_VERSION.UNIFIED,  // 統一プロンプト版のバージョン
+                    summaryComputedAt: new Date()  // 要約生成タイムスタンプを記録
                   }
                 });
               } else {
