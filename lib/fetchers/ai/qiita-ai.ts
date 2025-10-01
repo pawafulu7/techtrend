@@ -42,25 +42,25 @@ export class QiitaAIFetcher extends BaseFetcher {
       name: 'LLM',
       url: 'https://qiita.com/tags/llm/feed',
       maxArticles: 5,
-      minLikes: 10
+      minLikes: 3
     },
     {
       name: 'ChatGPT',
       url: 'https://qiita.com/tags/chatgpt/feed',
       maxArticles: 5,
-      minLikes: 10
+      minLikes: 3
     },
     {
       name: 'LangChain',
       url: 'https://qiita.com/tags/langchain/feed',
       maxArticles: 5,
-      minLikes: 10
+      minLikes: 3
     },
     {
       name: '機械学習',
       url: 'https://qiita.com/tags/%E6%A9%9F%E6%A2%B0%E5%AD%A6%E7%BF%92/feed',
       maxArticles: 5,
-      minLikes: 10
+      minLikes: 3
     }
   ];
 
