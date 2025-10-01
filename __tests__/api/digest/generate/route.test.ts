@@ -7,7 +7,15 @@ import { createRedisCacheMock } from '../../../helpers/cache-mock-helpers';
 // モックの設定
 jest.mock('@/lib/prisma');
 jest.mock('@/lib/services/digest-generator');
-jest.mock('@/lib/logger');
+jest.mock('@/lib/logger', () => ({
+  __esModule: true,
+  default: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  }
+}));
 
 // モックインスタンスを保持する変数
 let mockCacheInstance: ReturnType<typeof createRedisCacheMock>;
@@ -47,12 +55,7 @@ describe('/api/digest/generate', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Logger モック設定
-    loggerMock.info = jest.fn();
-    loggerMock.error = jest.fn();
-    loggerMock.warn = jest.fn();
-    
+
     // キャッシュモックのリセット（mockCacheInstanceが初期化されていることを確認）
     if (!mockCacheInstance) {
       mockCacheInstance = createRedisCacheMock();
