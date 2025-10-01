@@ -30,6 +30,12 @@ const RSS_SOURCES = [
   'Mozilla Hacks',
   'Hacker News',
   'Medium Engineering',
+  // AI/LLM専門ソース
+  'OpenAI Blog',
+  'Hugging Face Papers',
+  'arXiv AI',
+  'Zenn AI',
+  'Qiita AI',
   // 'Microsoft Developer Blog'
 ];
 
