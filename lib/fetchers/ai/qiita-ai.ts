@@ -42,25 +42,25 @@ export class QiitaAIFetcher extends BaseFetcher {
       name: 'LLM',
       url: 'https://qiita.com/tags/llm/feed',
       maxArticles: 5,
-      minLikes: 10
+      minLikes: 3
     },
     {
       name: 'ChatGPT',
       url: 'https://qiita.com/tags/chatgpt/feed',
       maxArticles: 5,
-      minLikes: 10
+      minLikes: 3
     },
     {
       name: 'LangChain',
       url: 'https://qiita.com/tags/langchain/feed',
       maxArticles: 5,
-      minLikes: 10
+      minLikes: 3
     },
     {
       name: '機械学習',
       url: 'https://qiita.com/tags/%E6%A9%9F%E6%A2%B0%E5%AD%A6%E7%BF%92/feed',
       maxArticles: 5,
-      minLikes: 10
+      minLikes: 3
     }
   ];
 
@@ -357,15 +357,19 @@ export class QiitaAIFetcher extends BaseFetcher {
     if (likesCount >= 100) return 100;
     if (likesCount >= 50) return 90;
     if (likesCount >= 30) return 80;
-    if (likesCount >= 20) return 70;
-    if (likesCount >= 10) return 60;
+    if (likesCount >= 20) return 75;
+    if (likesCount >= 10) return 70;
+    if (likesCount >= 5) return 65;
+    if (likesCount >= 3) return 60;
     return 50;
   }
 
   private assessQuality(likesCount: number, tags: string[]): 'high' | 'medium' | 'low' {
     // 記事の品質を評価
     if (likesCount >= 50 && tags.length >= 3) return 'high';
-    if (likesCount >= 20 || tags.length >= 2) return 'medium';
+    if (likesCount >= 20 && tags.length >= 2) return 'high';
+    if (likesCount >= 10 || tags.length >= 2) return 'medium';
+    if (likesCount >= 3) return 'medium';
     return 'low';
   }
 
