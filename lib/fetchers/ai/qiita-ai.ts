@@ -367,8 +367,8 @@ export class QiitaAIFetcher extends BaseFetcher {
   private assessQuality(likesCount: number, tags: string[]): 'high' | 'medium' | 'low' {
     // 記事の品質を評価
     if (likesCount >= 50 && tags.length >= 3) return 'high';
-    if (likesCount >= 20 || tags.length >= 2) return 'high';
-    if (likesCount >= 10) return 'medium';
+    if (likesCount >= 20 && tags.length >= 2) return 'high';
+    if (likesCount >= 10 || tags.length >= 2) return 'medium';
     if (likesCount >= 3) return 'medium';
     return 'low';
   }
