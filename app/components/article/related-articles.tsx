@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -86,24 +87,24 @@ export function RelatedArticles({
           const isNew = hoursAgo < 24;
 
           return (
-            <div
+            <Link
               key={article.id}
-              className="group cursor-pointer p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              onClick={() => window.open(article.url, '_blank', 'noopener,noreferrer')}
+              href={`/articles/${article.id}`}
+              className="group block cursor-pointer p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
               <div className="space-y-1">
                 <div className="flex items-start justify-between gap-2">
                   <h4 className="text-sm font-medium line-clamp-2 group-hover:text-primary transition-colors">
                     {article.title}
                   </h4>
-                  <Badge 
-                    variant="secondary" 
+                  <Badge
+                    variant="secondary"
                     className="text-xs shrink-0 ml-2"
                   >
                     {Math.round(article.similarity * 100)}%
                   </Badge>
                 </div>
-                
+
                 {article.summary && (
                   <p className="text-xs text-muted-foreground line-clamp-2">
                     {article.summary}
@@ -115,8 +116,8 @@ export function RelatedArticles({
                     {article.source}
                   </Badge>
                   <span>
-                    {hoursAgo < 1 ? 'たった今' : 
-                     hoursAgo < 24 ? `${hoursAgo}時間前` : 
+                    {hoursAgo < 1 ? 'たった今' :
+                     hoursAgo < 24 ? `${hoursAgo}時間前` :
                      formatDate(article.publishedAt)}
                   </span>
                   {isNew && (
@@ -146,7 +147,7 @@ export function RelatedArticles({
                   </div>
                 )}
               </div>
-            </div>
+            </Link>
           );
         })}
         
