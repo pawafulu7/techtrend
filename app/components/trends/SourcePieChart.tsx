@@ -10,6 +10,7 @@ interface SourceData {
   name: string;
   value: number;
   percentage: number;
+  [key: string]: string | number | undefined; // Recharts ChartDataInput compatibility
 }
 
 interface SourcePieChartProps {
