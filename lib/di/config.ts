@@ -26,7 +26,7 @@ export type AppConfig = {
 export const defaultConfig: AppConfig = {
   gemini: {
     apiKey: '',
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash-lite',
     baseUrl: 'https://generativelanguage.googleapis.com',
     temperature: 0.3,
     maxOutputTokens: 2500,
@@ -48,6 +48,7 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
   const envConfig: Partial<AppConfig> = {
     gemini: {
       apiKey: process.env.GEMINI_API_KEY || defaultConfig.gemini.apiKey,
+      model: process.env.GEMINI_MODEL || defaultConfig.gemini.model,
     } as any,
     quality: {
       threshold: parseInt(process.env.QUALITY_MIN_SCORE || String(defaultConfig.quality.threshold)),

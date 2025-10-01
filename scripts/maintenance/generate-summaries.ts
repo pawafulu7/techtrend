@@ -55,8 +55,9 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
     throw new Error('GEMINI_API_KEY is not set');
   }
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  
+  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
   // 統一プロンプトを使用（記事タイプ判定を廃止）
   const prompt = generateUnifiedPrompt(title, content);
   const articleType = 'unified';  // 統一タイプを設定
@@ -617,11 +618,12 @@ async function generateSummaries(): Promise<GenerateResult> {
                 // 要約を更新（統一プロンプト版として保存）
                 await prisma.article.update({
                   where: { id: article.id },
-                  data: { 
+                  data: {
                     summary,
                     detailedSummary: result!.detailedSummary,
                     articleType: 'unified',  // 統一タイプを設定
-                    summaryVersion: SUMMARY_VERSION.UNIFIED  // 統一プロンプト版のバージョン
+                    summaryVersion: SUMMARY_VERSION.UNIFIED,  // 統一プロンプト版のバージョン
+                    summaryComputedAt: new Date()  // 要約生成タイムスタンプを記録
                   }
                 });
               } else {

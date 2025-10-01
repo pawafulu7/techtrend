@@ -14,7 +14,7 @@ describe('config', () => {
 
   describe('defaultConfig', () => {
     it('should have correct default values', () => {
-      expect(defaultConfig.gemini.model).toBe('gemini-1.5-flash');
+      expect(defaultConfig.gemini.model).toBe('gemini-2.0-flash-lite');
       expect(defaultConfig.gemini.temperature).toBe(0.3);
       expect(defaultConfig.gemini.maxOutputTokens).toBe(2500);
       expect(defaultConfig.gemini.topP).toBe(0.8);

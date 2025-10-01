@@ -42,7 +42,7 @@ export const SCROLL = {
 export const MAX_SUMMARY_LENGTH = 200;
 
 export const GEMINI_API = {
-  MODEL: 'gemini-1.5-flash',
+  MODEL: 'gemini-2.0-flash-lite',
   MAX_TOKENS: 200,
   DETAILED_MAX_TOKENS: 2500,  // 詳細要約用の拡張トークン数
   TEMPERATURE: 0.7,

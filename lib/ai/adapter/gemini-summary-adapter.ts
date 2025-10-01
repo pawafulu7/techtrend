@@ -10,7 +10,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
   constructor(
     private readonly transport: GeminiTransport,
     private readonly promptBuilder: PromptBuilder,
-    private readonly model: string = 'gemini-1.5-flash'
+    private readonly model: string = 'gemini-2.0-flash-lite'
   ) {}
 
   async summarize(input: SummaryProviderInput): Promise<SummaryProviderOutput> {
