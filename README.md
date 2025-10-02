@@ -15,6 +15,95 @@
 - **Styling**: Tailwind CSS
 - **Cache**: Redis
 
+## 環境変数設定
+
+### クイックスタート
+
+```bash
+# 1. .env.exampleをコピー
+cp .env.example .env
+
+# 2. 必須項目を設定
+# - NEXTAUTH_SECRET（32文字以上のランダム文字列）
+# - DATABASE_URL（PostgreSQL接続URL）
+# - GEMINI_API_KEY（AI要約生成用）
+```
+
+### 必須環境変数
+
+| 変数名 | 説明 | 生成方法 | セキュリティ |
+|--------|------|---------|-------------|
+| `NEXTAUTH_SECRET` | NextAuth認証シークレット | `openssl rand -base64 32` | 🔴 必須・最小32文字 |
+| `DATABASE_URL` | PostgreSQL接続URL | Vercel/Supabaseから取得 | 🔴 必須 |
+| `GEMINI_API_KEY` | Google Gemini APIキー | [AI Studio](https://ai.google.dev/) | 🔴 要約生成に必須 |
+| `CURSOR_SECRET` | ページネーション暗号化キー | `openssl rand -hex 32` | 🔴 本番環境で必須 |
+
+### 推奨環境変数（本番環境）
+
+| 変数名 | 説明 | デフォルト |
+|--------|------|-----------|
+| `REDIS_URL` | Redis接続URL（キャッシュ） | なし（キャッシュ無効） |
+| `EMAIL_FROM` | メール送信元アドレス | - |
+| `GMAIL_USER` / `GMAIL_APP_PASSWORD` | Gmail経由のメール送信 | - |
+
+### オプション環境変数
+
+詳細は `.env.example` を参照してください。
+
+- OAuth設定（Google/GitHubログイン）
+- 機能フラグ（ENABLE_AUTH, ENABLE_CACHE等）
+- ログレベル設定
+- 品質チェック設定
+
+### セキュリティベストプラクティス
+
+#### ✅ 必ず実施
+
+- **シークレットキーの変更**: 全ての`replace-with-*`を実際の値に置き換え
+- **強力なパスワード**: 最低16文字、大小英数字+記号を含む
+- **環境分離**: 開発環境と本番環境で異なるシークレットを使用
+- **.envの保護**: `.gitignore`に含まれていることを確認
+
+#### ⚠️ 禁止事項
+
+- .envファイルをGitにコミット
+- シークレットをログに出力
+- 開発環境のシークレットを本番で使用
+- デフォルト値のまま本番環境にデプロイ
+
+### トラブルシューティング
+
+#### 問題: 「CURSOR_SECRET is required in production」エラー
+
+**解決方法**:
+```bash
+# シークレットキーを生成
+openssl rand -hex 32
+
+# .envに追加
+CURSOR_SECRET=生成された64文字の文字列
+```
+
+#### 問題: Redisに接続できない
+
+**確認事項**:
+- `REDIS_URL`が正しく設定されているか
+- Redisサーバーが起動しているか（`docker ps`で確認）
+- 接続文字列のフォーマットが正しいか
+
+#### 問題: データベースマイグレーションエラー
+
+**解決方法**:
+```bash
+# マイグレーション状態確認
+npx prisma migrate status
+
+# マイグレーション実行
+npx prisma migrate deploy
+```
+
+詳細な環境変数の説明は [.env.example](./.env.example) を参照してください。
+
 ## ⚠️ 重要なお知らせ
 
 **このプロジェクトは個人の学習・実験用プロジェクトです。**
