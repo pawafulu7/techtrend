@@ -194,6 +194,7 @@ async function regenerateArticles(articles: Array<{
             summary,
             summaryVersion: SUMMARY_VERSION.UNIFIED, // 統一フォーマットバージョン
             detailedSummary: result.detailedSummary,
+            translatedTitle: result.translatedTitle,
             articleType: result.articleType,
             updatedAt: new Date(),
           },

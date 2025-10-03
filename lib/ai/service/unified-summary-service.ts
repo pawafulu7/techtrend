@@ -51,6 +51,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
           return {
             summary,
             detailedSummary,
+            translatedTitle: providerOutput.translatedTitle,
             category: providerOutput.category,
             tags,
             qualityScore: qualityResult.score,

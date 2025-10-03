@@ -15,6 +15,7 @@ export type SummaryProviderInput = {
 export type SummaryProviderOutput = {
   headline: string;
   detailedSummary: string;
+  translatedTitle?: string;
   category?: string;
   tags?: string[];
   confidence: number;

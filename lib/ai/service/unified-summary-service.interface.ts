@@ -8,6 +8,7 @@ export type SummaryServiceParams = {
 export type SummaryServiceResult = {
   summary: string;
   detailedSummary: string;
+  translatedTitle?: string;
   category?: string;
   tags?: string[];
   qualityScore: number;

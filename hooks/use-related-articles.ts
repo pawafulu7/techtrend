@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 export interface RelatedArticle {
   id: string;
   title: string;
+  translatedTitle: string | null;
   summary: string | null;
   url: string;
   publishedAt: Date;
