@@ -75,12 +75,13 @@ async function generateSummariesForArticles(
       try {
         console.log(`\n処理中: [${article.source.name}] ${article.title.substring(0, 50)}...`);
 
-        // コンテンツの取得（URLまたは保存済みコンテンツ）
-        const content = article.content || article.url;
-        if (!content) {
-          console.warn('  ⚠️ コンテンツが見つかりません。スキップします。');
+        // 記事本文が保存されているか確認
+        if (!article.content) {
+          console.warn('  ⚠️ 記事本文が保存されていません。スキップします。');
           continue;
         }
+
+        const content = article.content;
 
         // 要約生成
         const summaryResult = await service.generateSummary({
