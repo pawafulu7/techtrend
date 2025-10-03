@@ -28,4 +28,8 @@ echo "サイズ: ${FILE_SIZE}"
 # 過去のバックアップファイル一覧（最新5件）
 echo ""
 echo "最新のバックアップファイル一覧:"
-ls -lth ${BACKUP_DIR}/*.sql 2>/dev/null | head -5 || echo "バックアップファイルがありません"
+if compgen -G "${BACKUP_DIR}/*.sql" > /dev/null; then
+  ls -lth "${BACKUP_DIR}"/*.sql | head -5
+else
+  echo "バックアップファイルがありません"
+fi
