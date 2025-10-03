@@ -26,15 +26,20 @@ export function formatDate(date: Date | string): string {
 
 export function formatDateWithTime(date: Date | string): string {
   const d = new Date(date);
-  
-  // 日本時間（JST）で表示
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  
-  return `${year}/${month}/${day} ${hours}:${minutes}`;
+
+  // 日本時間（JST = UTC+9）で表示
+  const formatted = d.toLocaleString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  // "2025/10/03 14:06" の形式に整形
+  return formatted.replace(/\//g, '/').replace(/\s+/g, ' ');
 }
 
 export function parseRSSDate(dateString: string): Date {
