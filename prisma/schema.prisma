@@ -26,6 +26,7 @@ enum ArticleCategory {
 model Article {
   id              String        @id @default(cuid())
   title           String
+  translatedTitle String?       // 日本語翻訳タイトル
   url             String        @unique
   summary         String?
   thumbnail       String?
