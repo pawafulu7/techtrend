@@ -35,11 +35,11 @@ describe('Summary and Translation Integration', () => {
       },
     };
 
-    promptBuilder = new PromptBuilder(config);
+    promptBuilder = new PromptBuilder();
     mockTransport = {
-      sendRequest: jest.fn(),
+      invoke: jest.fn(),
     } as any;
-    adapter = new GeminiSummaryAdapter(mockTransport, promptBuilder, config);
+    adapter = new GeminiSummaryAdapter(mockTransport, promptBuilder, 'gemini-2.0-flash-lite');
   });
 
   describe('Translation Feature in Summary Process', () => {
@@ -73,7 +73,10 @@ Reactによるモダンウェブアプリケーションの構築
         ],
       };
 
-      mockTransport.sendRequest.mockResolvedValue(mockResponse);
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: mockResponse,
+      });
 
       const result = await adapter.summarize(article);
 
@@ -84,7 +87,12 @@ Reactによるモダンウェブアプリケーションの構築
       });
 
       // プロンプトに翻訳指示が含まれているか確認
-      const prompt = promptBuilder.build(article);
+      const prompt = promptBuilder.buildPrompt({
+        title: article.title,
+        content: article.content,
+        constraints: { maxHeadlineChars: 60, detailPolicy: 'medium' },
+        requestId: 'test-1',
+      });
       expect(prompt).toContain('日本語タイトル:');
     });
 
@@ -115,7 +123,10 @@ TypeScriptのベストプラクティス
         ],
       };
 
-      mockTransport.sendRequest.mockResolvedValue(mockResponse);
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: mockResponse,
+      });
 
       const result = await adapter.summarize(article);
 
@@ -156,7 +167,10 @@ React Server Componentsの実装方法解説
         ],
       };
 
-      mockTransport.sendRequest.mockResolvedValue(mockResponse);
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: mockResponse,
+      });
 
       const result = await adapter.summarize(article);
 
@@ -169,8 +183,8 @@ React Server Componentsの実装方法解説
 
     it('should handle translation disabled in config', async () => {
       config.translation.enabled = false;
-      promptBuilder = new PromptBuilder(config);
-      adapter = new GeminiSummaryAdapter(mockTransport, promptBuilder, config);
+      promptBuilder = new PromptBuilder();
+      adapter = new GeminiSummaryAdapter(mockTransport, promptBuilder, 'gemini-2.0-flash-lite');
 
       const article = {
         id: 'test-4',
@@ -178,7 +192,12 @@ React Server Componentsの実装方法解説
         content: 'API development guide...',
       };
 
-      const prompt = promptBuilder.build(article);
+      const prompt = promptBuilder.buildPrompt({
+        title: article.title,
+        content: article.content,
+        constraints: { maxHeadlineChars: 60, detailPolicy: 'medium' },
+        requestId: 'test-4',
+      });
       expect(prompt).not.toContain('日本語タイトル:');
     });
   });
@@ -212,7 +231,10 @@ Webアプリケーションのパフォーマンステスト
         ],
       };
 
-      mockTransport.sendRequest.mockResolvedValue(mockResponse);
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: mockResponse,
+      });
 
       const startTime = Date.now();
       await adapter.summarize(article);
