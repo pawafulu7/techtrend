@@ -186,6 +186,10 @@ async function main() {
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--limit' && args[i + 1]) {
       limit = parseInt(args[i + 1], 10);
+      if (isNaN(limit) || limit <= 0) {
+        console.error('エラー: --limit には正の整数を指定してください');
+        process.exit(1);
+      }
       i++;
     } else if (args[i] === '--source' && args[i + 1]) {
       sourceName = args[i + 1];
