@@ -414,4 +414,138 @@ describe('UnifiedSummaryServiceImpl', () => {
       expect(result.processingTimeMs).toBeGreaterThanOrEqual(100);
     });
   });
+
+  describe('title translation', () => {
+    it('should include translatedTitle when translation is enabled and succeeds', async () => {
+      service = new UnifiedSummaryServiceImpl(
+        mockSummaryProvider,
+        mockQualityChecker,
+        mockPostProcessor,
+        mockTitleTranslator,
+        {
+          qualityThreshold: 70,
+          maxRetries: 3,
+          translationEnabled: true,
+        }
+      );
+
+      const params: SummaryServiceParams = {
+        title: 'English Title',
+        content: 'This is a test article content.',
+      };
+
+      mockSummaryProvider.summarize.mockResolvedValue({
+        headline: 'Test Summary',
+        detailedSummary: '・Item 1\n・Item 2\n・Item 3',
+        category: 'Technology',
+        tags: ['test'],
+        confidence: 0.9,
+      });
+
+      mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.formatTags.mockReturnValue(['test']);
+
+      mockQualityChecker.checkQuality.mockReturnValue({
+        isValid: true,
+        issues: [],
+        requiresRegeneration: false,
+        score: 80,
+        itemCount: 3,
+        itemCountValid: true,
+      });
+
+      mockTitleTranslator.translateTitle.mockResolvedValue('翻訳されたタイトル');
+
+      const result = await service.generateSummary(params);
+
+      expect(result.translatedTitle).toBe('翻訳されたタイトル');
+      expect(mockTitleTranslator.translateTitle).toHaveBeenCalledWith({
+        title: 'English Title',
+        summary: 'Test Summary',
+        requestId: expect.stringMatching(/^\d+-0$/),
+      });
+    });
+
+    it('should continue processing when translation fails', async () => {
+      service = new UnifiedSummaryServiceImpl(
+        mockSummaryProvider,
+        mockQualityChecker,
+        mockPostProcessor,
+        mockTitleTranslator,
+        {
+          qualityThreshold: 70,
+          maxRetries: 3,
+          translationEnabled: true,
+        }
+      );
+
+      const params: SummaryServiceParams = {
+        title: 'English Title',
+        content: 'This is a test article content.',
+      };
+
+      mockSummaryProvider.summarize.mockResolvedValue({
+        headline: 'Test Summary',
+        detailedSummary: '・Item 1\n・Item 2\n・Item 3',
+        category: 'Technology',
+        tags: ['test'],
+        confidence: 0.9,
+      });
+
+      mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.formatTags.mockReturnValue(['test']);
+
+      mockQualityChecker.checkQuality.mockReturnValue({
+        isValid: true,
+        issues: [],
+        requiresRegeneration: false,
+        score: 80,
+        itemCount: 3,
+        itemCountValid: true,
+      });
+
+      mockTitleTranslator.translateTitle.mockRejectedValue(new Error('Translation API Error'));
+
+      const result = await service.generateSummary(params);
+
+      expect(result.summary).toBe('Test Summary');
+      expect(result.translatedTitle).toBeUndefined();
+      expect(mockTitleTranslator.translateTitle).toHaveBeenCalled();
+    });
+
+    it('should not call translator when translation is disabled', async () => {
+      const params: SummaryServiceParams = {
+        title: 'English Title',
+        content: 'This is a test article content.',
+      };
+
+      mockSummaryProvider.summarize.mockResolvedValue({
+        headline: 'Test Summary',
+        detailedSummary: '・Item 1\n・Item 2\n・Item 3',
+        category: 'Technology',
+        tags: ['test'],
+        confidence: 0.9,
+      });
+
+      mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.formatTags.mockReturnValue(['test']);
+
+      mockQualityChecker.checkQuality.mockReturnValue({
+        isValid: true,
+        issues: [],
+        requiresRegeneration: false,
+        score: 80,
+        itemCount: 3,
+        itemCountValid: true,
+      });
+
+      const result = await service.generateSummary(params);
+
+      expect(result.translatedTitle).toBeUndefined();
+      expect(mockTitleTranslator.translateTitle).not.toHaveBeenCalled();
+    });
+  });
 });

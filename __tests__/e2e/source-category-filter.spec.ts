@@ -261,7 +261,6 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
     // 全解除 → 0/Y
     await page.locator('[data-testid="deselect-all-button"]:visible').click();
-    await page.waitForTimeout(1000); // 待機時間を増加
     await expect(sourceCount).toHaveText(`0/${total}`);
 
     // 海外カテゴリのみ選択 → N/Y（NはDOMから計算）
@@ -271,7 +270,6 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
     const foreignSection = page.getByTestId('category-foreign');
     await page.getByTestId('category-foreign-select-all').click();
-    await page.waitForTimeout(1000); // 選択状態の更新を待つ（500ms→1000msに増加）
 
     const checkboxes = foreignSection.getByTestId('category-foreign-content').locator('button[role="checkbox"]');
     const n = await checkboxes.count();
@@ -295,8 +293,6 @@ test.describe('ソースカテゴリフィルター機能', () => {
       .count();
     expect(checkedCount).toBe(n); // 全て選択されていることを確認
 
-    // source-countの更新を待機してから検証
-    await page.waitForTimeout(500);
     await expect(sourceCount).toHaveText(`${n}/${total}`, { timeout: 10000 });
   });
 
