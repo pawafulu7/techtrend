@@ -11,8 +11,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { bootstrap } from '@/lib/di/bootstrap';
-import { UnifiedSummaryService } from '@/lib/ai/service/unified-summary-service.interface';
+import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 
 const prisma = new PrismaClient();
@@ -37,8 +36,7 @@ async function generateSummariesForArticles(
 
   try {
     // DIコンテナの初期化
-    const container = bootstrap();
-    const service = container.resolve<UnifiedSummaryService>('UnifiedSummaryService');
+    const { service } = getAppDependencies();
 
     console.log('=== 要約生成処理開始 ===');
     console.log(`開始時刻: ${new Date().toISOString()}`);
