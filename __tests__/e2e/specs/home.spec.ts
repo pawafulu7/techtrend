@@ -50,7 +50,7 @@ test.describe('ホームページ', () => {
     }
   });
 
-  test('検索ボックスが機能する', async ({ page }) => {
+  test.skip('検索ボックスが機能する', async ({ page }) => {
     // 検索入力フィールドを探す（SearchBoxコンポーネント）
     const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
 

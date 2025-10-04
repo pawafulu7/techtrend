@@ -172,13 +172,13 @@ test.describe('フィルター条件の永続化', () => {
         // ローディング状態の終了を待つ
         await page.waitForLoadState('networkidle');
 
-        // 記事カードまたは「記事がありません」メッセージを待つ
+        // 記事カードまたは「記事が見つかりませんでした」メッセージを待つ
         const articleOrEmpty = await Promise.race([
           page.waitForSelector('[data-testid="article-card"]', {
             timeout: isCI ? 90000 : getTimeout('long'),  // CI環境では90秒に延長
             state: 'visible'
           }).then(() => 'articles'),
-          page.waitForSelector('text="記事がありません"', {
+          page.waitForSelector('text="記事が見つかりませんでした"', {
             timeout: isCI ? 90000 : getTimeout('long'),  // CI環境では90秒に延長
             state: 'visible'
           }).then(() => 'empty'),
