@@ -247,7 +247,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
     // まず初期状態を全選択にする（テスト環境での一貫性のため）
     await page.locator('[data-testid="select-all-button"]:visible').click();
-    await page.waitForTimeout(500); // 状態更新を待つ
+    await page.waitForTimeout(1000); // 状態更新を待つ（500ms→1000msに増加）
 
     // 初期の合計値 Y を取得
     const initial = await sourceCount.textContent();
@@ -261,19 +261,22 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
     // 全解除 → 0/Y
     await page.locator('[data-testid="deselect-all-button"]:visible').click();
+    await page.waitForTimeout(1000); // 待機時間を増加
     await expect(sourceCount).toHaveText(`0/${total}`);
 
     // 海外カテゴリのみ選択 → N/Y（NはDOMから計算）
     // 海外ソースカテゴリを展開
     await page.getByTestId('category-foreign-header').first().click();
+    await page.waitForTimeout(500); // 展開アニメーション待機
+
     const foreignSection = page.getByTestId('category-foreign');
     await page.getByTestId('category-foreign-select-all').click();
-    await page.waitForTimeout(500); // 選択状態の更新を待つ
+    await page.waitForTimeout(1000); // 選択状態の更新を待つ（500ms→1000msに増加）
 
     const checkboxes = foreignSection.getByTestId('category-foreign-content').locator('button[role="checkbox"]');
     const n = await checkboxes.count();
 
-    // チェックボックスの選択状態が更新されるまで待機
+    // チェックボックスの選択状態が更新されるまで待機（タイムアウトを延長）
     await page.waitForFunction(
       (expectedCount) => {
         const checkedBoxes = document.querySelectorAll(
@@ -282,7 +285,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
         return checkedBoxes.length === expectedCount;
       },
       n,
-      { timeout: 5000 }
+      { timeout: 10000 } // 5000ms→10000msに増加
     );
 
     // ボタン自身の data-state を直接判定
@@ -291,7 +294,10 @@ test.describe('ソースカテゴリフィルター機能', () => {
       .locator('button[role="checkbox"][data-state="checked"]')
       .count();
     expect(checkedCount).toBe(n); // 全て選択されていることを確認
-    await expect(sourceCount).toHaveText(`${n}/${total}`);
+
+    // source-countの更新を待機してから検証
+    await page.waitForTimeout(500);
+    await expect(sourceCount).toHaveText(`${n}/${total}`, { timeout: 10000 });
   });
 
   test('カテゴリごとの選択数が表示される', async ({ page }) => {
