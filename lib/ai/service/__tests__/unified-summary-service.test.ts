@@ -2,6 +2,7 @@ import { UnifiedSummaryServiceImpl } from '../unified-summary-service';
 import { SummaryProvider } from '../../adapter/summary-provider.interface';
 import { QualityChecker } from '../quality-checker.interface';
 import { PostProcessor } from '../post-processor.interface';
+import { TitleTranslator } from '../../translator/gemini-title-translator';
 import { SummaryServiceParams } from '../unified-summary-service.interface';
 import { SUMMARY_VERSION } from '@/types/article';
 
@@ -10,6 +11,7 @@ describe('UnifiedSummaryServiceImpl', () => {
   let mockSummaryProvider: jest.Mocked<SummaryProvider>;
   let mockQualityChecker: jest.Mocked<QualityChecker>;
   let mockPostProcessor: jest.Mocked<PostProcessor>;
+  let mockTitleTranslator: jest.Mocked<TitleTranslator>;
 
   beforeEach(() => {
     mockSummaryProvider = {
@@ -27,13 +29,19 @@ describe('UnifiedSummaryServiceImpl', () => {
       formatTags: jest.fn(),
     };
 
+    mockTitleTranslator = {
+      translateTitle: jest.fn().mockResolvedValue(null),
+    };
+
     service = new UnifiedSummaryServiceImpl(
       mockSummaryProvider,
       mockQualityChecker,
       mockPostProcessor,
+      mockTitleTranslator,
       {
         qualityThreshold: 70,
         maxRetries: 3,
+        translationEnabled: false,
       }
     );
   });
