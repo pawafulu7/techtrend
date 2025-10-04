@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { bootstrap } from '@/lib/di/bootstrap';
+import { getAppDependencies } from '@/lib/di/bootstrap';
 
 const prisma = new PrismaClient();
 
@@ -42,7 +42,7 @@ async function fixMissingTranslations(options: FixOptions = {}) {
     return;
   }
 
-  const { titleTranslator } = bootstrap();
+  const { translator: titleTranslator } = getAppDependencies();
 
   let successCount = 0;
   let failureCount = 0;
