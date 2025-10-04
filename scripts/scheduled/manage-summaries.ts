@@ -593,6 +593,9 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     let errorCount = 0;
     const batchSize = 1; // API制限を考慮して並列処理を無効化
 
+    // DIコンテナから translator を取得（ループ外で1回のみ）
+    const { translator } = getAppDependencies();
+
     // バッチ処理で要約を生成
     for (let i = 0; i < uniqueArticles.length; i += batchSize) {
       const batch = uniqueArticles.slice(i, i + batchSize);
@@ -615,12 +618,14 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
               
               let summary = existingSummary;
               let tags: string[] = [];
+              let translatedTitle: string | undefined;
               
               // 日本語要約がない場合のみGemini APIを呼び出す
               if (!hasJapaneseSummary || !article.summary || !article.detailedSummary) {
                 const result = await generateSummaryAndTags(article.title, content);
                 summary = result.summary;
                 tags = result.tags;
+                translatedTitle = result.translatedTitle;
                 
                 // 要約を更新
                 await prisma.article.update({
@@ -635,18 +640,49 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                   }
                 });
               } else {
-                // 既に日本語要約がある場合でもタグがなければタグのみ生成
+                // 既に日本語要約がある場合
                 const existingTags = await prisma.article.findUnique({
                   where: { id: article.id },
                   include: { tags: true }
                 });
                 
-                if (!existingTags?.tags || existingTags.tags.length === 0) {
+                const needsTags = !existingTags?.tags || existingTags.tags.length === 0;
+                const needsTranslation = !article.translatedTitle;
+
+                // タグ欠落時は要約生成APIを呼び出し（翻訳も取得）
+                if (needsTags) {
                   const result = await generateSummaryAndTags(article.title, content);
                   tags = result.tags;
+                  
+                  if (needsTranslation && result.translatedTitle) {
+                    translatedTitle = result.translatedTitle;
+                  }
+                } else if (needsTranslation) {
+                  // 翻訳のみ必要な場合は、既存要約を使って翻訳
+                  try {
+                    const requestId = `manage-summaries-${article.id}-${Date.now()}`;
+                    const translated = await translator.translateTitle({
+                      title: article.title,
+                      summary: article.summary ?? undefined,
+                      requestId,
+                    });
+                    translatedTitle = translated ?? undefined;
+                  } catch (error) {
+                    console.warn(
+                      `翻訳失敗 [${article.id}]: ${(error as Error).message}`
+                    );
+                  }
                 } else {
-                  console.error(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (日本語要約あり、スキップ)`);
+                  console.error(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (翻訳: 既存)`);
                   return;
+                }
+
+                // 翻訳を更新
+                if (translatedTitle) {
+                  await prisma.article.update({
+                    where: { id: article.id },
+                    data: { translatedTitle }
+                  });
                 }
               }
 
@@ -680,7 +716,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                 });
               }
               
-              console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
+              console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')}, 翻訳: ${translatedTitle ? '更新' : '既存'})`);
               generatedCount++;
               break; // 成功したらループを抜ける
             } catch (error) {
