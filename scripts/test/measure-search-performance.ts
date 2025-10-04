@@ -83,7 +83,9 @@ async function measureSearchPerformance() {
   await prisma.$disconnect();
 }
 
-measureSearchPerformance().catch((error) => {
-  console.error('Error:', error);
-  process.exit(1);
-});
+measureSearchPerformance()
+  .catch(async (error) => {
+    console.error('Error:', error);
+    await prisma.$disconnect();
+    process.exit(1);
+  });

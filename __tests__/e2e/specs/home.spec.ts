@@ -119,7 +119,7 @@ test.describe('ホームページ', () => {
     const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
 
     if (await searchInput.isVisible()) {
-      await searchInput.fill('TypeScript');
+      await searchInput.fill('型推論');
       await page.waitForTimeout(isCI ? 1000 : 500);
       await searchInput.press('Enter');
 
@@ -133,7 +133,7 @@ test.describe('ホームページ', () => {
       if (count > 0) {
         const firstCard = articles.first();
         const title = await firstCard.locator('h3').textContent();
-        expect(title?.toLowerCase()).toContain('typescript');
+        expect(title).toContain('型');
       }
     }
   });
