@@ -716,7 +716,15 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                 });
               }
               
-              console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')}, 翻訳: ${translatedTitle ? '更新' : '既存'})`);
+              const translationStatus = translatedTitle
+                ? '更新'
+                : article.translatedTitle
+                  ? '既存'
+                  : '未設定';
+
+              console.error(
+                `✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')}, 翻訳: ${translationStatus})`
+              );
               generatedCount++;
               break; // 成功したらループを抜ける
             } catch (error) {
