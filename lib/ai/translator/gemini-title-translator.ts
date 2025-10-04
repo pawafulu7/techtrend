@@ -2,6 +2,7 @@ import { GeminiTransport } from '../transport/gemini-transport.interface';
 
 type TitleTranslationInput = {
   title: string;
+  summary?: string;
   requestId: string;
 };
 
@@ -36,7 +37,7 @@ export class GeminiTitleTranslator implements TitleTranslator {
       return null;
     }
 
-    const prompt = this.buildPrompt(input.title);
+    const prompt = this.buildPrompt(input.title, input.summary);
     const requestId = `${input.requestId}-title-translation`;
 
     const result = await this.transport.invoke({
@@ -70,26 +71,36 @@ export class GeminiTitleTranslator implements TitleTranslator {
     return GeminiTitleTranslator.JAPANESE_CHAR_PATTERN.test(text);
   }
 
-  private buildPrompt(title: string): string {
-    return [
+  private buildPrompt(title: string, summary?: string): string {
+    const parts = [
       'You are a professional technical translator specializing in software engineering content.',
-      'Translate the given English technical article title into natural, contextually appropriate Japanese.',
+      'You will translate the given English technical article title into natural, contextually appropriate Japanese.',
       '',
       'Translation Guidelines:',
-      '- Understand the context and meaning of the title, including wordplay, idioms, or cultural references',
-      '- Provide a translation that conveys both the literal meaning and the intended message',
+      '- Understand the context and intended message of the title',
+      '- If the title references pop culture, wordplay, or idioms, acknowledge it and convey the nuance',
+      '- Prioritize clarity and the intended takeaway over literal translation',
       '- Keep product names, project names, and company names in their original form (e.g., React, GitHub, AWS)',
       '- Retain common technical abbreviations (API, LLM, GPU, AI, ML, etc.)',
-      '- For titles with wordplay or references, prioritize clarity over literal translation',
-      '- Use natural Japanese phrasing that tech professionals would understand',
+      '- Use natural Japanese phrasing that tech professionals would immediately understand',
+      '- Keep the tone punchy and headline-like',
       '- If the input is already Japanese, output exactly "UNCHANGED"',
       '',
-      'Output Format:',
-      '- Output ONLY the translated title',
-      '- No quotes, no explanations, no extra text',
-      '',
-      `Title to translate: ${title}`,
-    ].join('\n');
+    ];
+
+    if (summary) {
+      parts.push('Context (article summary):');
+      parts.push(summary);
+      parts.push('');
+    }
+
+    parts.push('Output Format:');
+    parts.push('- Output ONLY the translated title (one line)');
+    parts.push('- No quotes, no explanations, no extra text');
+    parts.push('');
+    parts.push(`Title to translate: ${title}`);
+
+    return parts.join('\n');
   }
 
   private extractTranslation(payload: Record<string, unknown>): string {
