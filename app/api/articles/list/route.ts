@@ -453,6 +453,7 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           title: true,
+          translatedTitle: true,
           url: true,
           summary: true,
           thumbnail: true,
