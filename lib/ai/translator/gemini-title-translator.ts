@@ -72,15 +72,23 @@ export class GeminiTitleTranslator implements TitleTranslator {
 
   private buildPrompt(title: string): string {
     return [
-      'You are a professional technical translator.',
-      'Translate the given English technical article title into natural Japanese.',
-      'Follow the rules:',
-      '- Keep product or project names in their original form.',
-      '- Retain common abbreviations such as API, LLM, or GPU.',
-      '- Output only the translated title without quotes or extra text.',
-      '- If the input is already Japanese, output exactly "UNCHANGED".',
+      'You are a professional technical translator specializing in software engineering content.',
+      'Translate the given English technical article title into natural, contextually appropriate Japanese.',
       '',
-      `Title: ${title}`,
+      'Translation Guidelines:',
+      '- Understand the context and meaning of the title, including wordplay, idioms, or cultural references',
+      '- Provide a translation that conveys both the literal meaning and the intended message',
+      '- Keep product names, project names, and company names in their original form (e.g., React, GitHub, AWS)',
+      '- Retain common technical abbreviations (API, LLM, GPU, AI, ML, etc.)',
+      '- For titles with wordplay or references, prioritize clarity over literal translation',
+      '- Use natural Japanese phrasing that tech professionals would understand',
+      '- If the input is already Japanese, output exactly "UNCHANGED"',
+      '',
+      'Output Format:',
+      '- Output ONLY the translated title',
+      '- No quotes, no explanations, no extra text',
+      '',
+      `Title to translate: ${title}`,
     ].join('\n');
   }
 
