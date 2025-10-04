@@ -593,6 +593,9 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     let errorCount = 0;
     const batchSize = 1; // API制限を考慮して並列処理を無効化
 
+    // DIコンテナから translator を取得（ループ外で1回のみ）
+    const { translator } = getAppDependencies();
+
     // バッチ処理で要約を生成
     for (let i = 0; i < uniqueArticles.length; i += batchSize) {
       const batch = uniqueArticles.slice(i, i + batchSize);
@@ -615,12 +618,14 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
               
               let summary = existingSummary;
               let tags: string[] = [];
+              let translatedTitle: string | undefined;
               
               // 日本語要約がない場合のみGemini APIを呼び出す
               if (!hasJapaneseSummary || !article.summary || !article.detailedSummary) {
                 const result = await generateSummaryAndTags(article.title, content);
                 summary = result.summary;
                 tags = result.tags;
+                translatedTitle = result.translatedTitle;
                 
                 // 要約を更新
                 await prisma.article.update({
@@ -635,25 +640,46 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                   }
                 });
               } else {
-                // 既に日本語要約がある場合でもタグがなければタグのみ生成
+                // 既に日本語要約がある場合
                 const existingTags = await prisma.article.findUnique({
                   where: { id: article.id },
                   include: { tags: true }
                 });
                 
-                if (!existingTags?.tags || existingTags.tags.length === 0) {
+                const needsTags = !existingTags?.tags || existingTags.tags.length === 0;
+                const needsTranslation = !article.translatedTitle;
+
+                // タグ欠落時は要約生成APIを呼び出し（翻訳も取得）
+                if (needsTags) {
                   const result = await generateSummaryAndTags(article.title, content);
                   tags = result.tags;
-                } else {
-                  console.error(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (日本語要約あり、スキップ)`);
-                  return;
+                  
+                  if (needsTranslation && result.translatedTitle) {
+                    translatedTitle = result.translatedTitle;
+                  }
+                } else if (needsTranslation) {
+                  // 翻訳のみ必要な場合は、既存要約を使って翻訳
+                  try {
+                    const requestId = `manage-summaries-${article.id}-${Date.now()}`;
+                    const translated = await translator.translateTitle({
+                      title: article.title,
+                      summary: article.summary ?? undefined,
+                      requestId,
+                    });
+                    translatedTitle = translated ?? undefined;
+                  } catch (error) {
+                    console.warn(
+                      `翻訳失敗 [${article.id}]: ${(error as Error).message}`
+                    );
+                  }
                 }
+
               }
 
-              // タグを処理
-              if (tags.length > 0) {
+              // タグと翻訳を一括更新
+              if (tags.length > 0 || translatedTitle) {
                 // 既存のタグを取得または作成
-                const tagRecords = await Promise.all(
+                const tagRecords = tags.length > 0 ? await Promise.all(
                   tags.map(async (tagName) => {
                     const existingTag = await prisma.tag.findUnique({
                       where: { name: tagName }
@@ -667,20 +693,31 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                       data: { name: tagName }
                     });
                   })
-                );
+                ) : [];
 
-                // 記事にタグを関連付ける
+                // 記事にタグと翻訳を関連付ける
                 await prisma.article.update({
                   where: { id: article.id },
                   data: {
+                    ...(translatedTitle && { translatedTitle }),
                     tags: {
-                      connect: tagRecords.map(tag => ({ id: tag.id }))
+                      ...(tagRecords.length > 0 && {
+                        connect: tagRecords.map(tag => ({ id: tag.id }))
+                      })
                     }
                   }
                 });
               }
               
-              console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
+              const translationStatus = translatedTitle
+                ? '更新'
+                : article.translatedTitle
+                  ? '既存'
+                  : '未設定';
+
+              console.error(
+                `✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')}, 翻訳: ${translationStatus})`
+              );
               generatedCount++;
               break; // 成功したらループを抜ける
             } catch (error) {

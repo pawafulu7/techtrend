@@ -243,7 +243,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
   });
 
   test('選択数が正しく表示される', async ({ page }) => {
-    const sourceCount = page.getByTestId('source-count');
+    const sourceCount = page.locator('[data-testid="filter-area"]:visible').getByTestId('source-count');
 
     // まず初期状態を全選択にする（テスト環境での一貫性のため）
     await page.locator('[data-testid="select-all-button"]:visible').click();
