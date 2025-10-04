@@ -1,5 +1,4 @@
 import { SummaryProviderInput } from './summary-provider.interface';
-import { loadConfig } from '@/lib/di/config';
 
 const BASE_PROMPT = `
 技術記事を分析して、以下の形式で要約を作成してください。
@@ -156,22 +155,8 @@ AI/LLM関連:
 - MongoDB/Mongo → "MongoDB"
 `;;
 
-const TRANSLATION_PROMPT = `
-
-日本語タイトル:
-【条件】タイトルが英語の場合のみ翻訳
-【翻訳ルール】
-- 技術的に正確で自然な日本語に翻訳
-- 技術用語は適切にカタカナ表記または日本語訳を使用
-- 略語（API、LLM、ML等）はそのまま使用可
-- 製品名、サービス名は原則そのまま（例: Gemini, ChatGPT）
-- 日本語タイトルの場合は「翻訳不要」と出力
-【出力形式】翻訳したタイトル文字列のみ（装飾なし）
-`;
-
 export class PromptBuilder {
   buildPrompt(input: SummaryProviderInput): string {
-    const config = loadConfig();
     const maxContentLength = 150000;
     const truncatedContent = input.content.length > maxContentLength
       ? input.content.substring(0, maxContentLength) + '\n\n...[文字数制限により以下省略]'
@@ -184,9 +169,8 @@ export class PromptBuilder {
 
     const toneGuidance = this.buildToneGuidance(input.tone);
     const articleTypeGuidance = this.buildArticleTypeGuidance(input.articleType);
-    const translationInstruction = config.translation.enabled ? TRANSLATION_PROMPT : '';
 
-    return `${BASE_PROMPT}${itemCountInstruction}${toneGuidance}${articleTypeGuidance}${translationInstruction}
+    return `${BASE_PROMPT}${itemCountInstruction}${toneGuidance}${articleTypeGuidance}
 
 タイトル: ${input.title}
 内容: ${truncatedContent}

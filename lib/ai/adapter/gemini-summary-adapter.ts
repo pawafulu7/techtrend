@@ -80,7 +80,6 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       return {
         headline: parsed.headline,
         detailedSummary: parsed.detailedSummary,
-        translatedTitle: parsed.translatedTitle,
         category: parsed.category,
         tags: parsed.tags,
         confidence: this.calculateConfidence(candidate),
@@ -96,7 +95,6 @@ export class GeminiSummaryAdapter implements SummaryProvider {
   private extractStructuredData(text: string): {
     headline: string;
     detailedSummary: string;
-    translatedTitle?: string;
     category?: string;
     tags?: string[];
   } {
@@ -104,7 +102,6 @@ export class GeminiSummaryAdapter implements SummaryProvider {
 
     let headline = '';
     let detailedSummary = '';
-    let translatedTitle: string | undefined;
     let category: string | undefined;
     let tags: string[] | undefined;
 
@@ -144,14 +141,6 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         continue;
       }
 
-      if (line.startsWith('日本語タイトル:')) {
-        currentSection = 'translatedTitle';
-        const content = line.substring('日本語タイトル:'.length).trim();
-        if (content && content !== '翻訳不要') {
-          translatedTitle = content;
-        }
-        continue;
-      }
 
       if (line.startsWith('【') || line === '') {
         continue;
@@ -170,10 +159,6 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         category = line;
       } else if (currentSection === 'tags' && !tags && line) {
         tags = line.split(',').map((tag) => tag.trim()).filter((tag) => tag.length > 0);
-      } else if (currentSection === 'translatedTitle' && !translatedTitle && line) {
-        if (line !== '翻訳不要') {
-          translatedTitle = line;
-        }
       }
     }
 
@@ -192,7 +177,6 @@ export class GeminiSummaryAdapter implements SummaryProvider {
     return {
       headline,
       detailedSummary,
-      translatedTitle,
       category,
       tags,
     };
