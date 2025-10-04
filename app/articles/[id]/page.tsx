@@ -184,7 +184,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   />
                 </div>
 
-                <h1 className="text-2xl font-bold">{article.title}</h1>
+                <h1 className="text-2xl font-bold">{article.translatedTitle || article.title}</h1>
 
                 {article.tags && article.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">

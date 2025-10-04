@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
@@ -24,31 +24,32 @@ enum ArticleCategory {
 }
 
 model Article {
-  id              String        @id @default(cuid())
-  title           String
-  url             String        @unique
-  summary         String?
-  thumbnail       String?
-  content         String?
-  publishedAt     DateTime
-  sourceId        String
-  bookmarks       Int           @default(0)
-  qualityScore    Float         @default(0)
-  userVotes       Int           @default(0)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  difficulty      String?
-  detailedSummary String?
-  articleType     String?
-  summaryVersion  Int           @default(7)
-  category                ArticleCategory?
-  contentUpdatedAt        DateTime?     @db.Timestamp(6)
-  qualityScoreComputedAt  DateTime?     @db.Timestamp(6)
-  summaryComputedAt       DateTime?     @db.Timestamp(6)
-  source                  Source        @relation(fields: [sourceId], references: [id])
-  articleViews            ArticleView[]
-  favorites               Favorite[]
-  tags                    Tag[]         @relation("ArticleToTag")
+  id                     String           @id @default(cuid())
+  title                  String
+  translatedTitle        String? // 日本語翻訳タイトル
+  url                    String           @unique
+  summary                String?
+  thumbnail              String?
+  content                String?
+  publishedAt            DateTime         @db.Timestamptz(6)
+  sourceId               String
+  bookmarks              Int              @default(0)
+  qualityScore           Float            @default(0)
+  userVotes              Int              @default(0)
+  createdAt              DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime         @updatedAt @db.Timestamptz(6)
+  difficulty             String?
+  detailedSummary        String?
+  articleType            String?
+  summaryVersion         Int              @default(7)
+  category               ArticleCategory?
+  contentUpdatedAt       DateTime?        @db.Timestamptz(6)
+  qualityScoreComputedAt DateTime?        @db.Timestamptz(6)
+  summaryComputedAt      DateTime?        @db.Timestamptz(6)
+  source                 Source           @relation(fields: [sourceId], references: [id])
+  articleViews           ArticleView[]
+  favorites              Favorite[]
+  tags                   Tag[]            @relation("ArticleToTag")
 
   @@index([publishedAt(sort: Desc)], map: "idx_article_published_at")
   @@index([sourceId], map: "idx_article_source_id")
@@ -163,14 +164,14 @@ model WeeklyDigest {
 }
 
 model ProcessingLog {
-  id              String            @id @default(cuid())
-  processName     String            @unique
+  id              String           @id @default(cuid())
+  processName     String           @unique
   lastProcessedAt DateTime
-  processedCount  Int               @default(0)
-  status          ProcessingStatus  @default(success)
-  metadata        Json?             // Additional processing information
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  processedCount  Int              @default(0)
+  status          ProcessingStatus @default(success)
+  metadata        Json? // Additional processing information
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([lastProcessedAt], map: "idx_processing_log_processed_at")
 }

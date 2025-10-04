@@ -21,6 +21,7 @@ interface GenerateResult {
 interface SummaryAndTags {
   summary: string;
   detailedSummary: string;
+  translatedTitle?: string;
   tags: string[];
 }
 
@@ -153,6 +154,7 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
     return {
       summary: result.summary,
       detailedSummary: result.detailedSummary,
+      translatedTitle: result.translatedTitle,
       tags: result.tags
     };
   } catch (error) {
@@ -626,6 +628,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                   data: {
                     summary,
                     detailedSummary: result.detailedSummary,
+                    translatedTitle: result.translatedTitle,
                     articleType: 'unified',
                     summaryVersion: SUMMARY_VERSION.UNIFIED,
                     summaryComputedAt: checkpoint
@@ -813,6 +816,7 @@ async function regenerateSummaries(options: Options): Promise<GenerateResult> {
           data: {
             summary: result.summary,
             detailedSummary: result.detailedSummary,
+            translatedTitle: result.translatedTitle,
             summaryComputedAt: new Date()
           }
         });
@@ -923,6 +927,7 @@ async function generateMissingSummaries(options: Options): Promise<GenerateResul
           data: {
             summary: result.summary,
             detailedSummary: result.detailedSummary,
+            translatedTitle: result.translatedTitle,
             summaryComputedAt: new Date()
           }
         });

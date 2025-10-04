@@ -129,6 +129,7 @@ export class ArticleDetailCache {
         SELECT DISTINCT
           a.id,
           a.title,
+          a."translatedTitle",
           a.summary,
           a.url,
           a."publishedAt",
@@ -143,7 +144,7 @@ export class ArticleDetailCache {
         WHERE at."B" IN (${placeholders})
           AND a.id != $${tagIds.length + 1}
           AND a."qualityScore" >= 30
-        GROUP BY a.id, a.title, a.summary, a.url, a."publishedAt", a."sourceId", s.name, a."qualityScore", a.difficulty
+        GROUP BY a.id, a.title, a."translatedTitle", a.summary, a.url, a."publishedAt", a."sourceId", s.name, a."qualityScore", a.difficulty
         HAVING COUNT(DISTINCT at."B") > 0
         ORDER BY COUNT(DISTINCT at."B") DESC, a."publishedAt" DESC
         LIMIT 10
@@ -154,7 +155,7 @@ export class ArticleDetailCache {
       FROM RelatedArticles ra
       LEFT JOIN "_ArticleToTag" at2 ON ra.id = at2."A"
       LEFT JOIN "Tag" t ON at2."B" = t.id
-      GROUP BY ra.id, ra.title, ra.summary, ra.url, ra."publishedAt", ra."sourceId", ra."sourceName", ra."qualityScore", ra.difficulty, ra."commonTags"
+      GROUP BY ra.id, ra.title, ra."translatedTitle", ra.summary, ra.url, ra."publishedAt", ra."sourceId", ra."sourceName", ra."qualityScore", ra.difficulty, ra."commonTags"
       ORDER BY ra."commonTags" DESC, ra."publishedAt" DESC
       `,
       ...tagIds,

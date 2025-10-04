@@ -101,7 +101,7 @@ export function ArticleListItem({
               </Badge>
             )}
             <h3 className="text-sm font-medium line-clamp-1 text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-              {article.title}
+              {article.translatedTitle || article.title}
             </h3>
           </div>
           {/* 要約表示 */}

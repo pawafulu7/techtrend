@@ -6,6 +6,7 @@ import {
   SummaryServiceParams,
   SummaryServiceResult,
 } from './unified-summary-service.interface';
+import { TitleTranslator } from '../translator/gemini-title-translator';
 
 import { SUMMARY_VERSION } from '@/types/article';
 
@@ -14,9 +15,11 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
     private readonly summaryProvider: SummaryProvider,
     private readonly qualityChecker: QualityChecker,
     private readonly postProcessor: PostProcessor,
+    private readonly titleTranslator: TitleTranslator,
     private readonly config: {
       qualityThreshold: number;
       maxRetries: number;
+      translationEnabled: boolean;
     }
   ) {}
 
@@ -26,6 +29,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
     let lastError: Error | null = null;
 
     while (attempt < this.config.maxRetries) {
+      const requestId = `${Date.now()}-${attempt}`;
       try {
         const providerOutput = await this.summaryProvider.summarize({
           title: params.title,
@@ -35,7 +39,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
             maxHeadlineChars: 200,
             detailPolicy: 'medium',
           },
-          requestId: `${Date.now()}-${attempt}`,
+          requestId,
         });
 
         const summary = this.postProcessor.cleanupSummary(providerOutput.headline);
@@ -48,9 +52,29 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
 
         const threshold = params.qualityThreshold ?? this.config.qualityThreshold;
         if (qualityResult.score >= threshold) {
+          let translatedTitle: string | undefined;
+
+          if (this.config.translationEnabled) {
+            try {
+              const translated = await this.titleTranslator.translateTitle({
+                title: params.title,
+                summary,
+                requestId,
+              });
+              translatedTitle = translated ?? undefined;
+            } catch (translationError) {
+              console.warn(
+                `[Service] Title translation failed for ${requestId}: ${
+                  (translationError as Error).message
+                }`
+              );
+            }
+          }
+
           return {
             summary,
             detailedSummary,
+            translatedTitle,
             category: providerOutput.category,
             tags,
             qualityScore: qualityResult.score,

@@ -1,36 +1,35 @@
 #!/bin/bash
 
-# データベースバックアップスクリプト
+# DBバックアップスクリプト
 # 使用方法: ./scripts/backup-db.sh
 
-BACKUP_DIR="prisma/backup"
-DB_FILE="prisma/dev.db"
+set -e
+
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="${BACKUP_DIR}/dev_${TIMESTAMP}.db"
+BACKUP_DIR="backups"
+BACKUP_FILE="${BACKUP_DIR}/backup_${TIMESTAMP}.sql"
 
-# バックアップディレクトリが存在しない場合は作成
-if [ ! -d "$BACKUP_DIR" ]; then
-    mkdir -p "$BACKUP_DIR"
-    echo "Created backup directory: $BACKUP_DIR"
-fi
+# バックアップディレクトリ作成
+mkdir -p ${BACKUP_DIR}
 
-# データベースファイルが存在するか確認
-if [ ! -f "$DB_FILE" ]; then
-    echo "Error: Database file not found: $DB_FILE"
-    exit 1
-fi
+echo "データベースバックアップを開始します..."
+echo "タイムスタンプ: ${TIMESTAMP}"
 
-# バックアップ実行
-cp "$DB_FILE" "$BACKUP_FILE"
+# PostgreSQLバックアップ実行
+docker exec techtrend-postgres pg_dump -U postgres techtrend_dev > ${BACKUP_FILE}
 
-if [ $? -eq 0 ]; then
-    echo "Backup successful: $BACKUP_FILE"
-    echo "File size: $(ls -lh $BACKUP_FILE | awk '{print $5}')"
-    
-    # 古いバックアップを削除（7日以上前のもの）
-    find "$BACKUP_DIR" -name "dev_*.db" -mtime +7 -delete
-    echo "Cleaned up old backups (older than 7 days)"
+# バックアップファイルサイズ確認
+FILE_SIZE=$(du -h ${BACKUP_FILE} | cut -f1)
+
+echo "バックアップ完了"
+echo "ファイル: ${BACKUP_FILE}"
+echo "サイズ: ${FILE_SIZE}"
+
+# 過去のバックアップファイル一覧（最新5件）
+echo ""
+echo "最新のバックアップファイル一覧:"
+if compgen -G "${BACKUP_DIR}/*.sql" > /dev/null; then
+  ls -lth "${BACKUP_DIR}"/*.sql | head -5
 else
-    echo "Error: Backup failed"
-    exit 1
+  echo "バックアップファイルがありません"
 fi

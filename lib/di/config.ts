@@ -21,6 +21,10 @@ export type AppConfig = {
   logging: {
     level: 'debug' | 'info' | 'warn' | 'error';
   };
+  translation: {
+    enabled: boolean;
+    rateLimit: number;
+  };
 };
 
 export const defaultConfig: AppConfig = {
@@ -42,6 +46,10 @@ export const defaultConfig: AppConfig = {
   logging: {
     level: 'info',
   },
+  translation: {
+    enabled: true,
+    rateLimit: 30,
+  },
 };
 
 export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
@@ -56,6 +64,10 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
     },
     logging: {
       level: (process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') || defaultConfig.logging.level,
+    },
+    translation: {
+      enabled: process.env.ENABLE_TITLE_TRANSLATION !== 'false',
+      rateLimit: parseInt(process.env.TRANSLATION_RATE_LIMIT || String(defaultConfig.translation.rateLimit)),
     },
   };
 
@@ -77,6 +89,11 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
       ...defaultConfig.logging,
       ...envConfig.logging,
       ...overrides?.logging,
+    },
+    translation: {
+      ...defaultConfig.translation,
+      ...envConfig.translation,
+      ...overrides?.translation,
     },
   };
 }

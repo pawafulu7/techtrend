@@ -24,6 +24,7 @@ export class TestFixtures {
     return {
       id,
       title: 'Test Article Title',
+      translatedTitle: null,
       summary: 'This is a test article summary.',
       detailedSummary: 'This is a detailed test article summary with more information.',
       url: `https://example.com/${id}`,
@@ -47,6 +48,7 @@ export class TestFixtures {
     // Article fields
     id?: string;
     title?: string;
+    translatedTitle?: string | null;
     summary?: string | null;
     detailedSummary?: string | null;
     url?: string;

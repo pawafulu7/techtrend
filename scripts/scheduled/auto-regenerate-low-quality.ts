@@ -107,6 +107,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
             data: {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
+              translatedTitle: result.translatedTitle,
               summaryVersion: 8,
               articleType: 'unified',
             },

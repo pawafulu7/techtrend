@@ -24,6 +24,7 @@ interface MockSession {
 interface MockArticle {
   id: string;
   title: string;
+  translatedTitle: string | null;
   url: string;
   summary: string | null;
   detailedSummary: string | null;
@@ -130,6 +131,7 @@ export function createMockArticle(overrides?: Partial<MockArticle>): MockArticle
   return {
     id: `article-${id}`,
     title: `Test Article ${id}`,
+    translatedTitle: null,
     url: `https://example.com/article-${id}`,
     summary: `This is a summary for test article ${id}`,
     detailedSummary: `This is a detailed summary for test article ${id}.\n\n- Point 1\n- Point 2\n- Point 3`,
@@ -305,6 +307,7 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
   return {
     id: overrides.id ?? faker.string.uuid(),
     title: faker.lorem.sentence({ min: 5, max: 10 }),
+    translatedTitle: overrides.translatedTitle !== undefined ? overrides.translatedTitle : null,
     url: faker.internet.url(),
     summary: faker.lorem.paragraph({ min: 2, max: 4 }),
     detailedSummary: `${faker.lorem.paragraph()}\n\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}`,

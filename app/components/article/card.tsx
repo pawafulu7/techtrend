@@ -186,7 +186,7 @@ export function ArticleCard({
               "text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400",
               isRead && "opacity-70"
             )}>
-              {article.title}
+              {article.translatedTitle || article.title}
             </h3>
           </div>
         </div>

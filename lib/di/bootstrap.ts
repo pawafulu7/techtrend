@@ -4,6 +4,7 @@ import { GeminiSummaryAdapter } from '../ai/adapter/gemini-summary-adapter';
 import { SummaryQualityChecker } from '../ai/service/quality-checker';
 import { SummaryPostProcessor } from '../ai/service/post-processor';
 import { UnifiedSummaryServiceImpl } from '../ai/service/unified-summary-service';
+import { GeminiTitleTranslator } from '../ai/translator/gemini-title-translator';
 import { AppConfig, loadConfig } from './config';
 
 type DeepPartial<T> = {
@@ -13,6 +14,7 @@ type DeepPartial<T> = {
 export type AppDependencies = {
   transport: GeminiTransportImpl;
   adapter: GeminiSummaryAdapter;
+  translator: GeminiTitleTranslator;
   service: UnifiedSummaryServiceImpl;
   config: AppConfig;
 };
@@ -32,14 +34,30 @@ export function buildAppDependencies(configOverrides?: DeepPartial<AppConfig>): 
   const promptBuilder = new PromptBuilder();
   const adapter = new GeminiSummaryAdapter(transport, promptBuilder, config.gemini.model);
 
-  const qualityChecker = new SummaryQualityChecker();
-  const postProcessor = new SummaryPostProcessor();
-  const service = new UnifiedSummaryServiceImpl(adapter, qualityChecker, postProcessor, {
-    qualityThreshold: config.quality.threshold,
-    maxRetries: config.quality.maxRetries,
+  const translator = new GeminiTitleTranslator(transport, {
+    enabled: config.translation.enabled,
+    model: config.gemini.model,
+    temperature: config.gemini.temperature,
+    topP: config.gemini.topP,
+    topK: config.gemini.topK,
+    maxOutputTokens: 256,
   });
 
-  return { transport, adapter, service, config };
+  const qualityChecker = new SummaryQualityChecker();
+  const postProcessor = new SummaryPostProcessor();
+  const service = new UnifiedSummaryServiceImpl(
+    adapter,
+    qualityChecker,
+    postProcessor,
+    translator,
+    {
+      qualityThreshold: config.quality.threshold,
+      maxRetries: config.quality.maxRetries,
+      translationEnabled: config.translation.enabled,
+    }
+  );
+
+  return { transport, adapter, translator, service, config };
 }
 
 export function getAppDependencies(): AppDependencies {
@@ -74,14 +92,30 @@ export function buildTestDependencies(mocks: {
       config.gemini.model
     );
 
+  const translator = new GeminiTitleTranslator(transport, {
+    enabled: config.translation.enabled,
+    model: config.gemini.model,
+    temperature: config.gemini.temperature,
+    topP: config.gemini.topP,
+    topK: config.gemini.topK,
+    maxOutputTokens: 256,
+  });
+
   const qualityChecker = new SummaryQualityChecker();
   const postProcessor = new SummaryPostProcessor();
   const service =
     mocks.service ||
-    new UnifiedSummaryServiceImpl(adapter, qualityChecker, postProcessor, {
-      qualityThreshold: config.quality.threshold,
-      maxRetries: config.quality.maxRetries,
-    });
+    new UnifiedSummaryServiceImpl(
+      adapter,
+      qualityChecker,
+      postProcessor,
+      translator,
+      {
+        qualityThreshold: config.quality.threshold,
+        maxRetries: config.quality.maxRetries,
+        translationEnabled: config.translation.enabled,
+      }
+    );
 
-  return { transport, adapter, service, config };
+  return { transport, adapter, translator, service, config };
 }
