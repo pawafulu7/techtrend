@@ -672,24 +672,14 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                       `翻訳失敗 [${article.id}]: ${(error as Error).message}`
                     );
                   }
-                } else {
-                  console.error(`○ [${article.source.name}] ${article.title.substring(0, 40)}... (翻訳: 既存)`);
-                  return;
                 }
 
-                // 翻訳を更新
-                if (translatedTitle) {
-                  await prisma.article.update({
-                    where: { id: article.id },
-                    data: { translatedTitle }
-                  });
-                }
               }
 
-              // タグを処理
-              if (tags.length > 0) {
+              // タグと翻訳を一括更新
+              if (tags.length > 0 || translatedTitle) {
                 // 既存のタグを取得または作成
-                const tagRecords = await Promise.all(
+                const tagRecords = tags.length > 0 ? await Promise.all(
                   tags.map(async (tagName) => {
                     const existingTag = await prisma.tag.findUnique({
                       where: { name: tagName }
@@ -703,14 +693,17 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                       data: { name: tagName }
                     });
                   })
-                );
+                ) : [];
 
-                // 記事にタグを関連付ける
+                // 記事にタグと翻訳を関連付ける
                 await prisma.article.update({
                   where: { id: article.id },
                   data: {
+                    ...(translatedTitle && { translatedTitle }),
                     tags: {
-                      connect: tagRecords.map(tag => ({ id: tag.id }))
+                      ...(tagRecords.length > 0 && {
+                        connect: tagRecords.map(tag => ({ id: tag.id }))
+                      })
                     }
                   }
                 });
