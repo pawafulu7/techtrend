@@ -121,7 +121,6 @@ async function generateSummariesForArticles(
               tags: {
                 connect: tagRecords.map((tag) => ({ id: tag.id })),
               },
-              category: summaryResult.category,
             },
           });
         }
