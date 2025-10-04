@@ -7,6 +7,15 @@ import { GeminiTransport, TransportRequest } from '../transport/gemini-transport
 import { PromptBuilder } from './prompt-builder';
 
 export class GeminiSummaryAdapter implements SummaryProvider {
+  private static readonly INSTRUCTION_PATTERNS = [
+    /^-\s*記事の核心的な内容/,
+    /^【条件】/,
+    /^【書き方】/,
+    /^-\s*技術的価値を/,
+    /ここに.*書く/,
+    /端的に表現$/,
+  ];
+
   constructor(
     private readonly transport: GeminiTransport,
     private readonly promptBuilder: PromptBuilder,
@@ -112,7 +121,8 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       if (line.startsWith('要約:')) {
         currentSection = 'headline';
         const content = line.substring('要約:'.length).trim();
-        if (content) {
+        const isInstruction = GeminiSummaryAdapter.INSTRUCTION_PATTERNS.some(pattern => pattern.test(content));
+        if (content && !isInstruction) {
           headline = content;
         }
         continue;
@@ -147,7 +157,10 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       }
 
       if (currentSection === 'headline' && !headline) {
-        headline = line;
+        const isInstruction = GeminiSummaryAdapter.INSTRUCTION_PATTERNS.some(pattern => pattern.test(line));
+        if (!isInstruction) {
+          headline = line;
+        }
       } else if (currentSection === 'detailed' && line) {
         const isBullet = /^\s*(?:・|[-*•●]|[0-9０-９]+[.)\u3001\uff0e])/.test(line);
         if (isBullet) {
