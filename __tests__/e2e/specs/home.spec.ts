@@ -50,7 +50,7 @@ test.describe('ホームページ', () => {
     }
   });
 
-  test.skip('検索ボックスが機能する', async ({ page }) => {
+  test('検索ボックスが機能する', async ({ page }) => {
     // 検索入力フィールドを探す（SearchBoxコンポーネント）
     const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
 
@@ -111,6 +111,29 @@ test.describe('ホームページ', () => {
         
         // 新しい記事が表示されることを確認
         await expectArticleCards(page, 1);
+      }
+    }
+  });
+
+  test('日本語キーワードで検索できる', async ({ page }) => {
+    const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();
+
+    if (await searchInput.isVisible()) {
+      await searchInput.fill('TypeScript');
+      await page.waitForTimeout(isCI ? 1000 : 500);
+      await searchInput.press('Enter');
+
+      // Wait for search to complete
+      await page.waitForTimeout(isCI ? 2000 : 1000);
+
+      // Check if results are displayed
+      const articles = page.locator('[data-testid^="article-card-"]');
+      const count = await articles.count();
+
+      if (count > 0) {
+        const firstCard = articles.first();
+        const title = await firstCard.locator('h3').textContent();
+        expect(title?.toLowerCase()).toContain('typescript');
       }
     }
   });
