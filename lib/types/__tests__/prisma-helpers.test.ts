@@ -88,17 +88,31 @@ describe('Prisma Helpers', () => {
   });
 
   describe('isApiError', () => {
-    test('should identify Error instance', () => {
+    test('should reject plain Error without ApiError properties', () => {
       const error = new Error('Test error');
-      expect(isApiError(error)).toBe(true);
+      expect(isApiError(error)).toBe(false);
     });
 
-    test('should identify ApiError with additional properties', () => {
+    test('should identify ApiError with required properties', () => {
       const error = Object.assign(new Error('API Error'), {
         code: 'TEST_ERROR',
         statusCode: 400,
       });
       expect(isApiError(error)).toBe(true);
+    });
+
+    test('should reject Error with only code property', () => {
+      const error = Object.assign(new Error('Partial Error'), {
+        code: 'TEST_ERROR',
+      });
+      expect(isApiError(error)).toBe(false);
+    });
+
+    test('should reject Error with only statusCode property', () => {
+      const error = Object.assign(new Error('Partial Error'), {
+        statusCode: 400,
+      });
+      expect(isApiError(error)).toBe(false);
     });
 
     test('should reject non-Error objects', () => {

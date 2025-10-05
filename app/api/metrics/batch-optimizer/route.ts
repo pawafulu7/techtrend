@@ -8,6 +8,7 @@ import { auth } from '@/lib/auth/auth';
 import { getAllOptimizerStats } from '@/lib/dataloader/batch-optimizer';
 import { getFavoriteLoaderStats } from '@/lib/dataloader/favorite-loader';
 import { getViewLoaderStats } from '@/lib/dataloader/article-view-loader';
+import type { PartialDataLoaderStats } from '@/lib/types/metrics';
 
 export async function GET() {
   // 管理者権限チェック
@@ -59,13 +60,7 @@ export async function GET() {
   }
 }
 
-interface DataLoaderStats {
-  l1Hits?: number;
-  l2Hits?: number;
-  totalRequests?: number;
-}
-
-function calculateTotalHitRate(favoriteStats: DataLoaderStats | null, viewStats: DataLoaderStats | null): string {
+function calculateTotalHitRate(favoriteStats: PartialDataLoaderStats | null, viewStats: PartialDataLoaderStats | null): string {
   const totalHits = (favoriteStats?.l1Hits || 0) + (favoriteStats?.l2Hits || 0) +
                     (viewStats?.l1Hits || 0) + (viewStats?.l2Hits || 0);
   const totalRequests = (favoriteStats?.totalRequests || 0) + (viewStats?.totalRequests || 0);

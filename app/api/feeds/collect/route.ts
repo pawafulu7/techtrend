@@ -60,7 +60,8 @@ async function performCollect() {
 
             if (!existing) {
               // タグを正規化してバリデーション
-               
+              // Note: articleData is CreateArticleInput with tagNames (not RSS categories)
+              // The RSS categories have already been converted to tagNames in the fetcher
               const tagNames = (articleData as { tagNames?: string[] }).tagNames || [];
               const normalizedTags = normalizeTagInput(tagNames);
               

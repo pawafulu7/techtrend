@@ -52,11 +52,19 @@ export interface ApiError extends Error {
 /**
  * Type guard for API errors
  *
+ * Validates that error has ApiError-specific properties (code, statusCode).
+ *
  * @param error - Unknown error to validate
- * @returns true if error is ApiError
+ * @returns true if error is ApiError with required properties
  */
 export function isApiError(error: unknown): error is ApiError {
-  return error instanceof Error;
+  if (!(error instanceof Error)) return false;
+
+  const err = error as any;
+  return (
+    typeof err.code === 'string' &&
+    typeof err.statusCode === 'number'
+  );
 }
 
 /**
@@ -71,7 +79,7 @@ export function createDynamicSelect<T>(
 ): DynamicSelect<T> {
   const select: DynamicSelect<T> = {};
   fields.forEach(field => {
-    (select as any)[field] = true;
+    select[field] = true;
   });
   return select;
 }
@@ -109,7 +117,7 @@ export function safeGet<T extends object, K extends keyof T>(
   obj: T | null | undefined,
   key: K
 ): T[K] | undefined {
-  if (!obj || typeof obj !== 'object') return undefined;
+  if (!obj) return undefined;
   return obj[key];
 }
 
@@ -125,14 +133,16 @@ export function toApiError(
   defaultMessage = 'An error occurred'
 ): ApiError {
   if (error instanceof Error) {
-    // Check if already has ApiError properties
-    const errorAny = error as any;
-    if (errorAny.code && errorAny.statusCode) {
-      return error as ApiError;
+    // Check if already is ApiError
+    if (isApiError(error)) {
+      return error;
     }
 
-    // Add ApiError properties
-    const apiError = error as ApiError;
+    // Create new ApiError preserving original properties (avoid mutation)
+    const apiError = Object.create(
+      Object.getPrototypeOf(error),
+      Object.getOwnPropertyDescriptors(error)
+    ) as ApiError;
     apiError.code = 'UNKNOWN_ERROR';
     apiError.statusCode = 500;
     return apiError;
