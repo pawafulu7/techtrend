@@ -113,7 +113,7 @@ export class LayeredCache {
     }
 
     // どのレイヤーにも該当しない場合は、キャッシュを使用しない
-    logger.debug({ params }, 'Query does not match any cache layer');
+    logger.debug({ params }, 'Query does not match cache layer');
     return fetcher ? await fetcher() : null;
   }
 

@@ -27,7 +27,7 @@ export class ArticleDetailCache {
       return cached;
     }
 
-    const restored: any = { ...cached };
+    const restored = { ...cached } as Record<string, unknown>;
 
     // Restore article date fields
     const dateFields = ['publishedAt', 'createdAt', 'updatedAt'];
@@ -39,16 +39,17 @@ export class ArticleDetailCache {
 
     // Restore source date fields if present
     if (restored.source && typeof restored.source === 'object') {
+      const source = restored.source as Record<string, unknown>;
       ['createdAt', 'updatedAt'].forEach(field => {
-        if (restored.source[field] && typeof restored.source[field] === 'string') {
-          restored.source[field] = new Date(restored.source[field]);
+        if (source[field] && typeof source[field] === 'string') {
+          source[field] = new Date(source[field] as string);
         }
       });
     }
 
     // Restore tag date fields if present
     if (Array.isArray(restored.tags)) {
-      restored.tags = restored.tags.map((tag: any) => {
+      restored.tags = restored.tags.map((tag: unknown) => {
         if (tag && typeof tag === 'object') {
           const restoredTag = { ...tag };
           ['createdAt', 'updatedAt'].forEach(field => {
@@ -107,6 +108,7 @@ export class ArticleDetailCache {
   /**
    * 関連記事を取得（キャッシュ利用）
    */
+   
   async getRelatedArticles(articleId: string, tagIds: string[]): Promise<any[]> {
     if (tagIds.length === 0) {
       return [];
@@ -118,7 +120,7 @@ export class ArticleDetailCache {
     // キャッシュから取得を試みる
     const cached = await this.cache.get(cacheKey);
     if (cached) {
-      return cached as any[];
+      return Array.isArray(cached) ? cached : [];
     }
 
     // DBから取得（既存のクエリを使用）
@@ -165,7 +167,7 @@ export class ArticleDetailCache {
     // キャッシュに保存
     await this.cache.set(cacheKey, relatedArticles);
 
-    return relatedArticles as any[];
+    return Array.isArray(relatedArticles) ? relatedArticles : [];
   }
 
   /**

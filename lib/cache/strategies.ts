@@ -5,6 +5,7 @@
 
 import { Redis } from 'ioredis';
 import logger from '@/lib/logger';
+import { safeUnlink } from '@/lib/types/redis';
 
 export interface CacheOptions {
   ttl: number;          // Time to live in seconds
@@ -219,12 +220,8 @@ export class AggressiveCacheStrategy {
     const cacheKeys = keysArray.map(key => this.buildKey(key, ns));
     
     if (cacheKeys.length > 0) {
-      // Use UNLINK for non-blocking deletion
-      if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
-        await (this.redis as any).unlink(...cacheKeys);
-      } else {
-        await this.redis.del(...cacheKeys);
-      }
+      // Use safeUnlink for type-safe non-blocking deletion
+      await safeUnlink(this.redis, ...cacheKeys);
       // logger.debug(`Cache invalidated for ${cacheKeys.length} keys`);
     }
   }
@@ -259,12 +256,8 @@ export class AggressiveCacheStrategy {
       
       for (let i = 0; i < keys.length; i += batchSize) {
         const batch = keys.slice(i, i + batchSize);
-        // Prefer UNLINK for non-blocking operation
-        if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
-          pipeline.unlink(...batch);
-        } else {
-          pipeline.del(...batch);
-        }
+        // Use del in pipeline (unlink not directly supported in pipeline)
+        pipeline.del(...batch);
       }
       
       await pipeline.exec();

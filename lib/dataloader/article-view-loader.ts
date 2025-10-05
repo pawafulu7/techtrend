@@ -41,7 +41,7 @@ function initializeCacheManager(): TwoLayerCacheManager<ViewStatus> {
     });
 
     globalCacheManager = new TwoLayerCacheManager<ViewStatus>(
-      memoryCache,
+      memoryCache as any,
       redisCache,
       'view',
       30,  // L1 TTL: 30秒

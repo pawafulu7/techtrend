@@ -1,4 +1,5 @@
-import { Prisma } from '@prisma/client';
+// Prisma types for dynamic query helpers
+// Note: Prisma import kept for type reference in JSDoc and future use
 
 /**
  * Prisma Helper Types

@@ -3,6 +3,7 @@ import { statsCache } from './stats-cache';
 import { trendsCache } from './trends-cache';
 import { searchCache } from './search-cache';
 import logger from '@/lib/logger';
+import { safeUnlink } from '@/lib/types/redis';
 
 /**
  * メモリ最適化戦略実装
@@ -279,11 +280,7 @@ export class MemoryOptimizer {
         const batchSize = 1000;
         for (let i = 0; i < keysToDelete.length; i += batchSize) {
           const batch = keysToDelete.slice(i, i + batchSize);
-          if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
-            await (this.redis as any).unlink(...batch);
-          } else {
-            await this.redis.del(...batch);
-          }
+          await safeUnlink(this.redis, ...batch);
         }
       }
     } catch (error) {
@@ -314,12 +311,8 @@ export class MemoryOptimizer {
           const batchSize = 1000;
           for (let i = 0; i < keys.length; i += batchSize) {
             const batch = keys.slice(i, i + batchSize);
-            // Prefer UNLINK to avoid blocking the server thread
-            if ('unlink' in this.redis && typeof (this.redis as any).unlink === 'function') {
-              await (this.redis as any).unlink(...batch);
-            } else {
-              await this.redis.del(...batch);
-            }
+            // Use safeUnlink for type-safe non-blocking operation
+            await safeUnlink(this.redis, ...batch);
           }
         }
       } while (cursor !== '0');
