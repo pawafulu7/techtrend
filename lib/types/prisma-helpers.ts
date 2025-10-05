@@ -60,10 +60,11 @@ export interface ApiError extends Error {
 export function isApiError(error: unknown): error is ApiError {
   if (!(error instanceof Error)) return false;
 
-  const err = error as any;
+  // Type-safe property checking without any
+  const candidate = error as Partial<ApiError>;
   return (
-    typeof err.code === 'string' &&
-    typeof err.statusCode === 'number'
+    typeof candidate.code === 'string' &&
+    typeof candidate.statusCode === 'number'
   );
 }
 
