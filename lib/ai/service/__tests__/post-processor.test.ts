@@ -117,6 +117,36 @@ describe('SummaryPostProcessor', () => {
 
       expect(result).toBe('・Item 1。\n・Item 2、\n・Item 3');
     });
+
+    it('should merge bullet headers with continuation lines', () => {
+      const input = '・項目名：\n内容が次の行にある';
+      const result = processor.cleanupDetailedSummary(input);
+
+      expect(result).toBe('・項目名： 内容が次の行にある');
+      expect(result).not.toMatch(/：\s*\n/);
+    });
+
+    it('should not affect normal bullets with content on same line', () => {
+      const input = '・項目名： 内容が同じ行にある';
+      const result = processor.cleanupDetailedSummary(input);
+
+      expect(result).toBe('・項目名： 内容が同じ行にある');
+    });
+
+    it('should handle multiple bullets with newline issues', () => {
+      const input = '・項目1：\n内容1\n・項目2： 正常な内容2\n・項目3：\n内容3が改行後';
+      const result = processor.cleanupDetailedSummary(input);
+
+      expect(result).toBe('・項目1： 内容1\n・項目2： 正常な内容2\n・項目3： 内容3が改行後');
+      expect(result).not.toMatch(/：\s*\n[^・]/);
+    });
+
+    it('should not merge consecutive bullets', () => {
+      const input = '・項目1：\n・項目2： 内容2';
+      const result = processor.cleanupDetailedSummary(input);
+
+      expect(result).toBe('・項目1：\n・項目2： 内容2');
+    });
   });
 
   describe('formatTags', () => {
