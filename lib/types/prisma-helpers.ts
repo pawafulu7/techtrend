@@ -42,10 +42,11 @@ export interface DateRange {
  * API Error Type
  *
  * Standardized error structure for API responses.
+ * Required fields: code and statusCode (always set by toApiError)
  */
 export interface ApiError extends Error {
-  code?: string;
-  statusCode?: number;
+  code: string;
+  statusCode: number;
   details?: unknown;
 }
 
