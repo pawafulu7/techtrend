@@ -84,7 +84,8 @@ export async function POST(request: NextRequest) {
         }
         // DataLoaderの戻り値の型を安全にチェック
         if (typeof status === 'object' && status !== null && 'isFavorited' in status) {
-          favoritesMap[id] = Boolean((status as any).isFavorited);
+          const statusObj = status as { isFavorited: boolean };
+          favoritesMap[id] = Boolean(statusObj.isFavorited);
         } else if (typeof status === 'boolean') {
           favoritesMap[id] = status;
         } else {

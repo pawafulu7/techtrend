@@ -13,7 +13,7 @@ interface SourceMapping {
 interface FilterResult {
   tagIds?: string[];
   sourceIds?: string[];
-  normalizedQuery?: any;
+  normalizedQuery?: unknown;
 }
 
 export class FilterCache {
@@ -30,7 +30,7 @@ export class FilterCache {
   /**
    * フィルター条件からキャッシュキーを生成
    */
-  private generateFilterKey(filters: Record<string, any>): string {
+  private generateFilterKey(filters: Record<string, unknown>): string {
     // フィルターを正規化してソート
     const normalized = Object.keys(filters)
       .sort()
@@ -71,12 +71,12 @@ export class FilterCache {
   /**
    * フィルター結果のキャッシュ
    */
-  async getFilterResult(filters: Record<string, any>): Promise<FilterResult | null> {
+  async getFilterResult(filters: Record<string, unknown>): Promise<FilterResult | null> {
     const cacheKey = this.generateFilterKey(filters);
     return await this.cache.get<FilterResult>(cacheKey);
   }
 
-  async setFilterResult(filters: Record<string, any>, result: FilterResult): Promise<void> {
+  async setFilterResult(filters: Record<string, unknown>, result: FilterResult): Promise<void> {
     const cacheKey = this.generateFilterKey(filters);
     await this.cache.set(cacheKey, result);
   }
@@ -95,11 +95,11 @@ export class FilterCache {
   /**
    * フィルター組み合わせの事前計算結果
    */
-  async getPrecomputedFilter(key: string): Promise<any> {
+  async getPrecomputedFilter(key: string): Promise<unknown> {
     return await this.cache.get(`precomputed:${key}`);
   }
 
-  async setPrecomputedFilter(key: string, data: any): Promise<void> {
+  async setPrecomputedFilter(key: string, data: unknown): Promise<void> {
     await this.cache.set(`precomputed:${key}`, data, 600); // 10分キャッシュ
   }
 
@@ -132,7 +132,7 @@ export class FilterCache {
   /**
    * 人気フィルター条件の統計
    */
-  async trackFilterUsage(filters: Record<string, any>): Promise<void> {
+  async trackFilterUsage(filters: Record<string, unknown>): Promise<void> {
     const key = this.generateFilterKey(filters);
     const statsKey = `stats:${key}`;
 

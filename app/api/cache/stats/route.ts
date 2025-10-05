@@ -60,7 +60,7 @@ export async function GET() {
           misses: statsCacheStats.misses,
           hitRate: calculateHitRate(statsCacheStats),
            
-          lastResetAt: (statsCacheStats as any).lastResetAt || null
+          lastResetAt: (statsCacheStats as { lastResetAt?: Date | null }).lastResetAt || null
         },
         trends: {
           namespace: '@techtrend/cache:trends',
@@ -68,7 +68,7 @@ export async function GET() {
           misses: trendsCacheStats.misses,
           hitRate: calculateHitRate(trendsCacheStats),
            
-          lastResetAt: (trendsCacheStats as any).lastResetAt || null
+          lastResetAt: (trendsCacheStats as { lastResetAt?: Date | null }).lastResetAt || null
         }
       },
       overall: {

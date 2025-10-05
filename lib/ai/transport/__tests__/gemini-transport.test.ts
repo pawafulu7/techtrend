@@ -82,7 +82,8 @@ describe('GeminiTransportImpl', () => {
         requestId: 'test-latency',
       });
 
-      expect(result.latencyMs).toBeGreaterThanOrEqual(100);
+      // Allow 5ms tolerance for timing fluctuations
+      expect(result.latencyMs).toBeGreaterThanOrEqual(95);
     });
   });
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { createDateRange } from '@/lib/types/prisma-helpers';
 
 const prisma = new PrismaClient();
 
@@ -107,12 +108,9 @@ export async function GET(request: NextRequest) {
     if (dateFrom || dateTo) {
       const from = dateFrom ? new Date(dateFrom) : undefined;
       const to = dateTo ? new Date(dateTo) : undefined;
-      const hasFrom = from && !Number.isNaN(from.getTime());
-      const hasTo = to && !Number.isNaN(to.getTime());
-      if (hasFrom || hasTo) {
-        whereConditions.publishedAt = {} as any;
-        if (hasFrom) (whereConditions.publishedAt as any).gte = from!;
-        if (hasTo) (whereConditions.publishedAt as any).lte = to!;
+      const dateRange = createDateRange(from, to);
+      if (dateRange) {
+        whereConditions.publishedAt = dateRange;
       }
     }
 
@@ -246,12 +244,19 @@ export async function GET(request: NextRequest) {
 
     // ArticleWithRelations形式に変換
      
-    const articlesWithRelations = articles.map((article) => ({
-      ...article,
-      tags: (article.tags as Array<{ name: string }>).map(tag => tag.name),
-      bookmarkCount: (article as any)._count?.favorites || 0,
-      voteScore: (article as any).userVotes || 0
-    }));
+    const articlesWithRelations = articles.map((article) => {
+      // Type-safe access to nested properties
+      const articleAny = article as any;
+      const bookmarkCount = articleAny._count?.favorites || 0;
+      const voteScore = articleAny.userVotes || 0;
+
+      return {
+        ...article,
+        tags: (article.tags as Array<{ name: string }>).map(tag => tag.name),
+        bookmarkCount,
+        voteScore,
+      };
+    });
 
     // ファセット情報を取得（オプション）
     const facets = {

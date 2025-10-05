@@ -148,60 +148,71 @@ export class ZennAIFetcher extends BaseFetcher {
     return { articles, errors };
   }
 
-  private extractAuthor(item: any): string | undefined {
+  private extractAuthor(item: unknown): string | undefined {
+    if (typeof item !== 'object' || item === null) return undefined;
+
+    const itemAny = item as any;
+
     // Zennの著者情報を抽出（前後空白を除去）
-    if (item.creator) {
-      return String(item.creator).trim();
+    if (itemAny.creator) {
+      return String(itemAny.creator).trim();
     }
-    if (item['dc:creator']) {
-      return String(item['dc:creator']).trim();
+    if (itemAny['dc:creator']) {
+      return String(itemAny['dc:creator']).trim();
     }
     return undefined;
   }
 
-  private extractTags(item: any): string[] {
+  private extractTags(item: unknown): string[] {
+    if (typeof item !== 'object' || item === null) return [];
+
+    const itemAny = item as any;
     const tags: string[] = [];
 
     // カテゴリからタグを抽出
-    if (item.categories && Array.isArray(item.categories)) {
-      tags.push(...item.categories);
+    if (itemAny.categories && Array.isArray(itemAny.categories)) {
+      tags.push(...itemAny.categories);
     }
 
     // contentからタグを抽出（Zennのタグ形式: #tag）
-    if (item.content) {
+    if (itemAny.content) {
       // Unicode属性を使用してより包括的なマッチング
-      const tagMatches = item.content.match(/#[\p{L}\p{N}_]+/gu);
+      const tagMatches = itemAny.content.match(/#[\p{L}\p{N}_]+/gu);
       if (tagMatches) {
-        tags.push(...tagMatches.map(tag => tag.substring(1)));
+        tags.push(...tagMatches.map((tag: string) => tag.substring(1)));
       }
     }
 
-    return [...new Set(tags)]; // 重複を除去
+    return [...new Set(tags)];
   }
 
-  private extractThumbnailFromItem(item: any): string | undefined {
+  private extractThumbnailFromItem(item: unknown): string | undefined {
+    if (typeof item !== 'object' || item === null) return undefined;
+
+    const itemAny = item as any;
+
     // OGP画像を抽出（存在する場合）
-    if (item.enclosure && item.enclosure.url) {
-      return item.enclosure.url;
+    if (itemAny.enclosure && itemAny.enclosure.url) {
+      return itemAny.enclosure.url;
     }
 
     // content内からimgタグを探す（シングル/ダブルクオート対応）
-    if (item.content) {
-      const imgMatch = item.content.match(/<img[^>]+src=(["'])(.*?)\1/i);
+    if (itemAny.content) {
+      const imgMatch = itemAny.content.match(/<img[^>]+src=(["'])(.*?)\1/i);
       if (imgMatch && imgMatch[2]) {
         return imgMatch[2];
       }
     }
 
     // Zennのデフォルトサムネイル構造から抽出
-    if (item.link) {
+    if (itemAny.link) {
       // Zenn記事URLから著者名と記事IDを抽出してOGP画像URLを構築
-      const match = item.link.match(/zenn\.dev\/([^\/]+)\/articles\/([^\/\?]+)/);
+      const match = itemAny.link.match(/zenn\.dev\/([^\/]+)\/articles\/([^\/\?]+)/);
       if (match) {
         // 著者スラッグのエンコード
         const authorSlug = encodeURIComponent(match[1]);
         // セキュアなHTML sanitizerを使用してタイトルをサニタイゼーション
-        const sanitizedTitle = sanitizeHtml(item.title || 'Article');
+        const sanitizedTitle = sanitizeHtml(itemAny.title || 'Article');
         // タイトルの長さ制限（過長なURLを防ぐ）
         const safeTitle = sanitizedTitle.slice(0, 120);
         return `https://res.cloudinary.com/zenn/image/upload/s--og-default--/co_rgb:222%2Cg_south_west%2Cl_text:notosansjp-medium.otf_37_bold:${authorSlug}%2Cx_203%2Cy_98/c_fit%2Cco_rgb:222%2Cg_north_west%2Cl_text:notosansjp-medium.otf_70_bold:${encodeURIComponent(safeTitle)}%2Cw_1010%2Cx_90%2Cy_100/bo_3px_solid_rgb:d6d6d6%2Cg_center%2Ch_630%2Cw_1200/v1627283836/default/og-bg-zenn.png`;
@@ -295,15 +306,19 @@ export class ZennAIFetcher extends BaseFetcher {
     return Array.from(detectedKeywords);
   }
 
-  private generateEnrichedContent(item: any, topicName: string, author?: string, tags?: string[]): string {
+  private generateEnrichedContent(item: unknown, topicName: string, author?: string, tags?: string[]): string {
+    if (typeof item !== 'object' || item === null) return '';
+
+    const itemAny = item as any;
+
     // 基本コンテンツ
-    const content = item.content || item.contentSnippet || '';
+    const content = itemAny.content || itemAny.contentSnippet || '';
 
     // メタ情報を追加して要約生成時により良い情報を提供
     const enrichedParts: string[] = [];
 
     // タイトルと基本情報
-    enrichedParts.push(`タイトル: ${item.title}`);
+    enrichedParts.push(`タイトル: ${itemAny.title || 'Untitled'}`);
     enrichedParts.push(`トピック: ${topicName}`);
 
     // 著者情報
@@ -317,12 +332,12 @@ export class ZennAIFetcher extends BaseFetcher {
     }
 
     // カテゴリ情報
-    if (item.categories && Array.isArray(item.categories) && item.categories.length > 0) {
-      enrichedParts.push(`カテゴリ: ${item.categories.join(', ')}`);
+    if (itemAny.categories && Array.isArray(itemAny.categories) && itemAny.categories.length > 0) {
+      enrichedParts.push(`カテゴリ: ${itemAny.categories.join(', ')}`);
     }
 
     // 本文
-    enrichedParts.push('');  // 空行
+    enrichedParts.push('');
     enrichedParts.push('本文:');
     enrichedParts.push(content);
 

@@ -4,6 +4,7 @@ import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
+import { getContentFromItem, getAuthorFromItem } from '@/lib/types/rss';
 
 /**
  * 企業ブログフェッチャーの基底クラス
@@ -103,12 +104,9 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
           }
 
           // 日本語チェック（content:encodedを含めて誤除外を防止）
-          const textToCheck = (item as any).contentEncoded
-                            || (item as any)['content:encoded']
+          const textToCheck = getContentFromItem(item)
                             || item.description
-                            || item.content
                             || item.summary
-                            || item.contentSnippet
                             || '';
           const hasJapanese = this.containsJapanese(item.title) ||
                             this.containsJapanese(textToCheck);
@@ -139,12 +137,7 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
           }
 
           // コンテンツの取得（WordPress系RSS対応でcontent:encodedを優先）
-          const content = (item as any).contentEncoded
-            || (item as any)['content:encoded']
-            || item.content
-            || item.contentSnippet
-            || item.description
-            || '';
+          const content = getContentFromItem(item) || '';
 
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
@@ -155,7 +148,7 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
             publishedAt,
             sourceId: this.source.id, // 正しい企業別ソースIDを使用
             tagNames: finalTags,
-            author: (item as any).dcCreator || item.creator || item['dc:creator'] || this.getCompanyName(),
+            author: getAuthorFromItem(item) || this.getCompanyName(),
           };
 
           // サムネイル抽出（enclosure）
@@ -235,17 +228,20 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
   /**
    * タグ抽出（基本実装、必要に応じてオーバーライド）
    */
-  protected extractTags(item: any): string[] {
+  protected extractTags(item: unknown): string[] {
     const tags: string[] = [];
 
-    // カテゴリからタグ抽出（trim＋大文字小文字非依存の重複排除）
-    if (item.categories && Array.isArray(item.categories)) {
-      item.categories.forEach((category: string) => {
-        const tag = (category ?? '').trim();
-        if (tag && !tags.some(t => t.toLowerCase() === tag.toLowerCase())) {
-          tags.push(tag);
-        }
-      });
+    // Type-safe category extraction
+    if (typeof item === 'object' && item !== null) {
+      const itemAny = item as any;
+      if (itemAny.categories && Array.isArray(itemAny.categories)) {
+        itemAny.categories.forEach((category: string) => {
+          const tag = (category ?? '').trim();
+          if (tag && !tags.some(t => t.toLowerCase() === tag.toLowerCase())) {
+            tags.push(tag);
+          }
+        });
+      }
     }
 
     return tags;

@@ -434,7 +434,9 @@ export async function GET(request: NextRequest) {
         selectFields = { id: true } as Prisma.ArticleSelect;
         for (const field of fieldList) {
           if (allowedSelectableFields.has(field)) {
-            (selectFields as any)[field] = true;
+            // Type-safe dynamic field assignment
+            const selectFieldsAny = selectFields as Record<string, boolean>;
+            selectFieldsAny[field] = true;
           }
         }
       } else {
@@ -522,15 +524,22 @@ export async function GET(request: NextRequest) {
     let result = baseResult;
 
     if (includeUserData && userId && baseResult && baseResult.items && baseResult.items.length > 0) {
+      const articleIds = baseResult.items.map((article) => {
+        if (typeof article === 'object' && article !== null && 'id' in article) {
+          return (article as { id: string }).id;
+        }
+        return '';
+      }).filter(id => id !== '');
+
       const userSpecificData = await fetchUserSpecificData(
         userId,
-        baseResult.items.map((article: any) => article.id),
+        articleIds,
         metrics
       );
 
       result = {
         ...baseResult,
-        items: mergeUserData(baseResult.items as any, userSpecificData) as any,
+        items: mergeUserData(baseResult.items, userSpecificData),
       };
     }
     

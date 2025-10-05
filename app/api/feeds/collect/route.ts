@@ -60,8 +60,9 @@ async function performCollect() {
 
             if (!existing) {
               // タグを正規化してバリデーション
-               
-              const tagNames = (articleData as any).tagNames || [];
+              // Note: articleData is CreateArticleInput with tagNames property
+              // The RSS categories have already been converted to tagNames in the fetcher layer
+              const tagNames = articleData.tagNames || [];
               const normalizedTags = normalizeTagInput(tagNames);
               
               // デバッグ: 不正なタグが検出された場合は警告

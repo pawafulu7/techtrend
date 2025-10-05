@@ -17,7 +17,7 @@ interface MemoryCacheOptions {
   cleanupInterval?: number; // クリーンアップ間隔（秒）
 }
 
-export class MemoryCache<T = any> {
+export class MemoryCache<T = unknown> {
   private cache = new Map<string, CacheEntry<T>>();
   private readonly maxSize: number;
   private readonly defaultTTL: number;
@@ -293,7 +293,7 @@ export class MemoryCache<T = any> {
 }
 
 // DataLoader用の特化型メモリキャッシュ
-export class DataLoaderMemoryCache extends MemoryCache<any> {
+export class DataLoaderMemoryCache extends MemoryCache<unknown> {
   constructor() {
     super({
       maxSize: 500,      // DataLoaderは少なめのエントリ数

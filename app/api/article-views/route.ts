@@ -79,7 +79,7 @@ export async function GET(request: Request) {
           }
         },
         include: {
-          article: articleSelect as any,
+          article: articleSelect,
         },
         orderBy: { viewedAt: 'desc' },
         skip,
