@@ -117,51 +117,6 @@ export class ContentEnricherFactory {
   }
 
   /**
-   * エンリッチャーを順次試行し、成功するまで次のエンリッチャーにフォールバック
-   *
-   * @param url - エンリッチメント対象URL
-   * @param content - 元コンテンツ（undefinedの場合は空文字列として扱う）
-   * @returns エンリッチメント結果（全て失敗した場合はnull）
-   */
-  async trySequential(
-    url: string,
-    content: string | undefined
-  ): Promise<string | null> {
-    const safeContent = content || '';
-
-    for (const enricher of this.enrichers) {
-      if (!enricher.canHandle(url)) {
-        continue;
-      }
-
-      try {
-        const result = await enricher.enrich(url, safeContent);
-
-        if (result && typeof result === 'object' && 'content' in result) {
-          const enrichedContent = result.content;
-          if (enrichedContent && enrichedContent.trim().length > 0) {
-            console.log(`[Enricher] Success: ${enricher.constructor.name} - ${url}`);
-            return enrichedContent;
-          }
-        } else if (typeof result === 'string' && result.trim().length > 0) {
-          console.log(`[Enricher] Success: ${enricher.constructor.name} - ${url}`);
-          return result;
-        }
-
-        console.warn(`[Enricher] Empty result: ${enricher.constructor.name} - ${url}`);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.warn(
-          `[Enricher] Failed: ${enricher.constructor.name} - ${url}: ${errorMessage}`
-        );
-      }
-    }
-
-    console.error(`[Enricher] All enrichers failed: ${url}`);
-    return null;
-  }
-
-  /**
    * 利用可能なエンリッチャーの数を取得
    */
   getEnricherCount(): number {
