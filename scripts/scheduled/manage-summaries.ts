@@ -561,10 +561,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
       where: {
         translatedTitle: null,
         summary: { not: null },
-        OR: [
-          { detailedSummary: { not: null } },
-          { summary: { not: null } }
-        ]
+        detailedSummary: { not: null }
       },
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
