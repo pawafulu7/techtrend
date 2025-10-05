@@ -61,7 +61,7 @@ async function performCollect() {
             if (!existing) {
               // タグを正規化してバリデーション
                
-              const tagNames = (articleData as any).tagNames || [];
+              const tagNames = (articleData as { tagNames?: string[] }).tagNames || [];
               const normalizedTags = normalizeTagInput(tagNames);
               
               // デバッグ: 不正なタグが検出された場合は警告

@@ -6,8 +6,8 @@ import logger from '@/lib/logger';
 
 // 確認メール送信用の関数をインポート
 async function sendVerificationEmail(email: string, token: string) {
-   
-  let nodemailer: any;
+
+  let nodemailer: typeof import('nodemailer') | null = null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     nodemailer = require('nodemailer');
@@ -15,6 +15,8 @@ async function sendVerificationEmail(email: string, token: string) {
     logger.warn({ event: 'nodemailer_check', installed: false }, 'Nodemailer not installed. Email sending disabled.');
     return;
   }
+
+  if (!nodemailer) return;
   
   // Gmail設定がある場合はそれを使用
   const transporter = nodemailer.createTransport({

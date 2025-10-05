@@ -59,7 +59,13 @@ export async function GET() {
   }
 }
 
-function calculateTotalHitRate(favoriteStats: any, viewStats: any): string {
+interface DataLoaderStats {
+  l1Hits?: number;
+  l2Hits?: number;
+  totalRequests?: number;
+}
+
+function calculateTotalHitRate(favoriteStats: DataLoaderStats | null, viewStats: DataLoaderStats | null): string {
   const totalHits = (favoriteStats?.l1Hits || 0) + (favoriteStats?.l2Hits || 0) +
                     (viewStats?.l1Hits || 0) + (viewStats?.l2Hits || 0);
   const totalRequests = (favoriteStats?.totalRequests || 0) + (viewStats?.totalRequests || 0);
