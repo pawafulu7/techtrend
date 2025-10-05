@@ -165,8 +165,10 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         const isBullet = /^\s*(?:・|[-*•●]|[0-9０-９]+[.)\u3001\uff0e])/.test(line);
         if (isBullet) {
           detailedLines.push(line.trimStart());
-        } else if (detailedLines.length > 0) {
-          detailedLines.push(line);
+        } else if (detailedLines.length > 0 && !/^\s*$/.test(line)) {
+          // Merge continuation lines into the last bullet item
+          const lastIndex = detailedLines.length - 1;
+          detailedLines[lastIndex] += ' ' + line.trim();
         }
       } else if (currentSection === 'category' && !category && line) {
         category = line;

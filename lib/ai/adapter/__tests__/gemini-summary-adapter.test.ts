@@ -560,4 +560,106 @@ React, TypeScript`,
       expect(result.tags).toEqual(['TypeScript', 'Node.js', 'React']);
     });
   });
+
+  describe('改行処理', () => {
+    it('should merge continuation lines into bullet items', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Test Article with Newlines',
+        content: 'Test content',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'test-newline',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約: テスト要約
+
+詳細要約:
+・項目1：
+内容が次の行にある
+・項目2： 正常な形式で同じ行にある
+
+カテゴリ: AI・機械学習
+
+タグ: AI, テスト`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      });
+
+      const result = await adapter.summarize(input);
+
+      expect(result.headline).toBe('テスト要約');
+      expect(result.detailedSummary).toContain('・項目1： 内容が次の行にある');
+      expect(result.detailedSummary).toContain('・項目2： 正常な形式で同じ行にある');
+      expect(result.detailedSummary).not.toMatch(/：\s*\n[^・]/);
+    });
+
+    it('should preserve blank lines between bullets', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Test with blank lines',
+        content: 'Test content',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'test-blank',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約: テスト要約
+
+詳細要約:
+・項目1： 内容1
+
+・項目2： 内容2
+
+カテゴリ: AI・機械学習
+
+タグ: AI`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      });
+
+      const result = await adapter.summarize(input);
+
+      expect(result.detailedSummary).toContain('・項目1： 内容1');
+      expect(result.detailedSummary).toContain('・項目2： 内容2');
+    });
+  });
 });
