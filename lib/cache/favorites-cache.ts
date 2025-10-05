@@ -112,11 +112,11 @@ export class FavoritesCache {
    */
   async clearAll(): Promise<void> {
     try {
-      // TODO: Redis SCANコマンドを使用したパターンマッチング削除を実装
-      // 現在は個別削除のみサポート
-      logger.info('Clear all favorites cache - not implemented yet');
+      await this.cache.invalidatePattern('user:*');
+      logger.info('All favorites cache cleared successfully');
     } catch (error) {
       logger.error({ error }, 'Failed to clear all favorites cache');
+      throw error;
     }
   }
 
