@@ -110,6 +110,16 @@ export class SummaryQualityChecker implements QualityChecker {
       }
     }
 
+    // 薄いコンテンツで詳細要約が元記事の2倍を超える場合はcritical
+    if (contentAnalysis?.isThinContent === true && detailedLength > contentLength * 2) {
+      issues.push({
+        type: 'length',
+        severity: 'critical',
+        message: `薄いコンテンツで詳細要約が長すぎる: ${detailedLength}文字（元記事${contentLength}文字の${Math.round(detailedLength / contentLength)}倍）`,
+      });
+      score = 0; // 自動Fail
+    }
+
     if (detailedLength < minDetailedLength) {
       issues.push({
         type: 'length',

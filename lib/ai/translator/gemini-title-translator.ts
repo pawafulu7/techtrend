@@ -84,16 +84,23 @@ export class GeminiTitleTranslator implements TitleTranslator {
       '- Retain common technical abbreviations (API, LLM, GPU, AI, ML, etc.)',
       '- Use natural Japanese phrasing that tech professionals would immediately understand',
       '- Keep the tone punchy and headline-like',
-      '- If the input is already Japanese, output exactly "UNCHANGED"',
       '',
     ];
 
     if (summary) {
-      parts.push('Context (article summary):');
+      parts.push('Context (article summary - for reference only):');
       parts.push(summary);
+      parts.push('');
+      parts.push('Important: The context/summary language does NOT affect whether you should translate.');
+      parts.push('Always translate the title if it is in English, regardless of the context language.');
       parts.push('');
     }
 
+    parts.push('Title Check:');
+    parts.push('- Consider ONLY the line that starts with "Title to translate:"');
+    parts.push('- If that title already contains Japanese characters, output exactly "UNCHANGED"');
+    parts.push('- Otherwise, translate the title into Japanese');
+    parts.push('');
     parts.push('Output Format:');
     parts.push('- Output ONLY the translated title (one line)');
     parts.push('- No quotes, no explanations, no extra text');

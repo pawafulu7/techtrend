@@ -65,11 +65,14 @@ export class UnifiedSummaryService {
     if (processedContent === '__SKIP_SUMMARY_GENERATION__') {
       throw new Error('SKIP_GENERATION: はてなブックマーク経由の外部サイト記事でコンテンツ不足のため、要約生成をスキップします');
     }
-    
+
+    // 元記事の長さを保存（前処理前）
+    const rawLength = content.length;
+    const rawWordCount = content.trim().split(/\s+/).length;
+
     // 100文字以下の極端に短い記事のみ詳細要約をスキップ
     // タイトルと合わせて最低限の情報があれば要約を生成する
-    const skipDetailedSummary = processedContent.length <= 100 && 
-                                processedContent.trim().split(/\s+/).length < 20; // 単語数も考慮
+    const skipDetailedSummary = rawLength <= 100 && rawWordCount < 20; // 元記事の長さで判定
     
     let lastError: Error | null = null;
     
@@ -123,13 +126,13 @@ export class UnifiedSummaryService {
         const processed = postProcessSummaries(parsed.summary, parsed.detailedSummary);
 
         // コンテンツ分析情報を作成（項目数チェック用）
-        // 注意：品質チェックには処理後のコンテンツ長を使用（切り詰め後）
+        // 注意：品質チェックには元記事の長さを使用（前処理前）
         const contentAnalysis = {
-          contentLength: processedContent.length,  // 処理後のコンテンツ長を使用
-          totalLength: processedContent.length,    // 互換性のため両方定義
-          isThinContent: processedContent.length < 1000,
-          recommendedMinLength: processedContent.length < 1000 ? 60 : 100,
-          recommendedMaxLength: processedContent.length < 1000 ? 100 : 200
+          contentLength: rawLength,  // 元記事の長さを使用
+          totalLength: rawLength,    // 互換性のため両方定義
+          isThinContent: rawLength < 1000,
+          recommendedMinLength: rawLength < 1000 ? 60 : 100,
+          recommendedMaxLength: rawLength < 1000 ? 100 : 200
         };
 
         // 品質チェック（処理後のテキストで実施、コンテンツ分析情報も渡す）
@@ -335,22 +338,15 @@ export class UnifiedSummaryService {
    */
   private generateShortContentPrompt(title: string, content: string): string {
     const contentLength = content.length;
-    
-    // コンテンツ長に応じた詳細要約の目標文字数を設定
-    let targetDetailLength = '';
+
+    // コンテンツ長に応じた項目数を設定
     let itemCount = '';
-    
+
     if (contentLength <= 200) {
-      // 非常に短いコンテンツ：詳細要約も短めに
-      targetDetailLength = '200-300文字';
       itemCount = '2-3個';
     } else if (contentLength <= 350) {
-      // 短いコンテンツ：適度な詳細要約
-      targetDetailLength = '250-400文字';
       itemCount = '3個';
     } else {
-      // 500文字に近いコンテンツ：通常に近い詳細要約
-      targetDetailLength = '300-500文字';
       itemCount = '3-4個';
     }
     
@@ -360,8 +356,8 @@ export class UnifiedSummaryService {
 【重要な注意事項】
 - この記事はコンテンツが短い（${contentLength}文字）ため、バランスを考慮して要約を作成してください
 - 一覧要約は記事カードに収まる適度な長さ（100-150文字程度）にしてください
-- 詳細要約は${targetDetailLength}程度で、無理に長くせず自然な内容にしてください
-- 情報が限定的な場合は、タイトルから推測できる内容も含めて要約してください
+- 詳細要約は最大200文字以内で、記事に書かれている事実のみをまとめてください
+- 推測や補完は行わず、記事の内容のみを要約してください
 
 【出力形式】
 要約: （記事の要点を簡潔にまとめた一覧表示用の要約）
@@ -378,9 +374,9 @@ ${itemCount === '2-3個' ? '（項目は2-3個で十分です）' : `（項目�
 内容: ${content}
 
 【生成ガイドライン】
-1. コンテンツが短くても、タイトルと内容から読み取れる情報を最大限活用
-2. 推測や一般的な知識で補完する場合は、記事の文脈に沿った内容にする
-3. 詳細要約の各項目は、具体的で意味のある内容にする
+1. 記事に書かれている事実のみを要約する
+2. 推測や一般的な知識での補完は行わない
+3. 詳細要約は最大200文字以内に収める
 4. 一覧要約と詳細要約で情報の重複を避け、相補的な内容にする
 `;
   }

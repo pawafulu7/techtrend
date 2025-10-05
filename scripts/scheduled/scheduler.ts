@@ -110,10 +110,11 @@ async function executeUpdatePipeline(
     // 3. 要約生成（オプション）
     if (!options?.skipSummaries) {
       console.error('📝 要約・タグ生成中...');
-      const { stdout: summaryOutput }: ExecutionResult = await execAsync(
+      const { stdout: summaryOutput, stderr: summaryError }: ExecutionResult = await execAsync(
         'npx tsx scripts/scheduled/manage-summaries.ts generate'
       );
-      console.error(summaryOutput);
+      if (summaryOutput) console.error(summaryOutput);
+      if (summaryError) console.error(summaryError);
     }
     
     // 4. 品質スコア計算

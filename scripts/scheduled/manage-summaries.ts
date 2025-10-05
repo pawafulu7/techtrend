@@ -625,15 +625,15 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                 const result = await generateSummaryAndTags(article.title, content);
                 summary = result.summary;
                 tags = result.tags;
-                translatedTitle = result.translatedTitle;
-                
+                translatedTitle = result.translatedTitle?.trim() || undefined;
+
                 // 要約を更新
                 await prisma.article.update({
                   where: { id: article.id },
                   data: {
                     summary,
                     detailedSummary: result.detailedSummary,
-                    translatedTitle: result.translatedTitle,
+                    translatedTitle,
                     articleType: 'unified',
                     summaryVersion: SUMMARY_VERSION.UNIFIED,
                     summaryComputedAt: checkpoint
@@ -647,7 +647,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                 });
                 
                 const needsTags = !existingTags?.tags || existingTags.tags.length === 0;
-                const needsTranslation = !article.translatedTitle;
+                const needsTranslation = !article.translatedTitle?.trim();
 
                 // タグ欠落時は要約生成APIを呼び出し（翻訳も取得）
                 if (needsTags) {
@@ -655,7 +655,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                   tags = result.tags;
                   
                   if (needsTranslation && result.translatedTitle) {
-                    translatedTitle = result.translatedTitle;
+                    translatedTitle = result.translatedTitle?.trim() || undefined;
                   }
                 } else if (needsTranslation) {
                   // 翻訳のみ必要な場合は、既存要約を使って翻訳
@@ -666,18 +666,23 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                       summary: article.summary ?? undefined,
                       requestId,
                     });
-                    translatedTitle = translated ?? undefined;
+                    translatedTitle = translated?.trim() || undefined;
                   } catch (error) {
-                    console.warn(
+                    console.error(
                       `翻訳失敗 [${article.id}]: ${(error as Error).message}`
                     );
                   }
                 }
 
+                // 翻訳成功時のログ追加
+                if (translatedTitle !== undefined) {
+                  console.log(`翻訳成功 [${article.id}]: ${translatedTitle.substring(0, 30)}...`);
+                }
+
               }
 
               // タグと翻訳を一括更新
-              if (tags.length > 0 || translatedTitle) {
+              if (tags.length > 0 || translatedTitle !== undefined) {
                 // 既存のタグを取得または作成
                 const tagRecords = tags.length > 0 ? await Promise.all(
                   tags.map(async (tagName) => {
@@ -699,7 +704,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                 await prisma.article.update({
                   where: { id: article.id },
                   data: {
-                    ...(translatedTitle && { translatedTitle }),
+                    ...(translatedTitle !== undefined && { translatedTitle }),
                     tags: {
                       ...(tagRecords.length > 0 && {
                         connect: tagRecords.map(tag => ({ id: tag.id }))
