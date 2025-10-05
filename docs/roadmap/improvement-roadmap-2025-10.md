@@ -1,7 +1,7 @@
 # TechTrend 改善ロードマップ 2025年10月
 
 **作成日**: 2025年10月4日
-**最終更新**: 2025年10月4日（調査結果反映）
+**最終更新**: 2025年10月5日（完了タスク更新）
 **対象期間**: 2025年10月 - 2026年3月（6ヶ月）
 
 ---
@@ -263,35 +263,19 @@ TechTrendプロジェクトの継続的な改善と最適化を通じて、以�
 
 **目的**: キャッシュ無効化の最適化
 
-- [ ] **5.1 SCAN実装**
-  - 担当者: _______________
-  - 期限: 2025-11-15
+- [✓] **5.1 SCAN実装**
+  - 担当者: システム（既存）
+  - 期限: 完了済み
   - ファイル: `lib/cache/redis-cache.ts`
-  - 実装内容:
-    ```typescript
-    async invalidatePattern(pattern: string): Promise<void> {
-      const keys: string[] = [];
-      let cursor = '0';
+  - 状態: invalidatePattern()メソッド既に実装済み（126-166行目）
+  - 実装内容: SCAN + UNLINK、バッチ処理（1,000件）、パイプライン処理
 
-      do {
-        const [nextCursor, matchedKeys] = await this.redis.scan(
-          cursor, 'MATCH', `${this.namespace}:${pattern}`, 'COUNT', 100
-        );
-        cursor = nextCursor;
-        keys.push(...matchedKeys);
-      } while (cursor !== '0');
-
-      if (keys.length > 0) {
-        await this.redis.del(...keys);
-      }
-    }
-    ```
-
-- [ ] **5.2 favorites-cache.tsへの適用**
-  - 担当者: _______________
-  - 期限: 2025-11-17
+- [✓] **5.2 favorites-cache.tsへの適用**
+  - 担当者: Claude Code
+  - 期限: 2025-10-05（完了）
   - ファイル: `lib/cache/favorites-cache.ts`
-  - TODO解消: `// TODO: Redis SCANコマンドを使用...`
+  - TODO解消: clearAll()実装、invalidatePattern('user:*')による全ユーザーキャッシュ削除
+  - PR: #99
 
 - [ ] **5.3 パフォーマンステスト**
   - 担当者: _______________
@@ -583,6 +567,42 @@ TechTrendプロジェクトの継続的な改善と最適化を通じて、以�
   - スコアリング評価実施
   - ドキュメント化完了
 
+- [✓] **英語タイトル翻訳機能実装** (2025-10-04)
+  - ENABLE_TITLE_TRANSLATION機能追加
+  - manage-summaries.ts で既存要約を使った翻訳実行
+  - 翻訳のみ欠落時の処理追加
+  - メモリ: `translate_title_implementation_202510`
+
+- [✓] **英語タイトル翻訳バグ修正** (2025-10-05, PR #97)
+  - 翻訳が保存されない問題を根本修正
+  - CodexMCPと連携して段階的問題特定
+  - 1,539件の翻訳欠落記事を一括修正
+  - メモリ: `english_title_translation_fix_implementation_202510`
+
+- [✓] **UNCHANGED問題の根本修正** (2025-10-05, PR #98)
+  - 翻訳プロンプトの完全改訂（UNCHANGEDオプション削除）
+  - 日本語判定の強化（gフラグ、反復記号対応）
+  - エラーハンドリング改善
+  - 翻訳成功率: 0% → 100%
+  - メモリ: `translation_unchanged_fix_implementation_202510`
+
+- [✓] **薄いコンテンツ品質改善** (2025-10-05)
+  - 短文記事の詳細要約品質向上
+  - skipDetailedSummary判定追加
+  - 短文プロンプト実装（推測禁止、200文字上限）
+
+- [✓] **AI記事ソースのワークフロー追加** (2025-10-04, PR #95)
+  - 毎時実行のRSS収集ワークフロー
+  - 5つのAIソースから自動収集
+  - メモリ: `ai_sources_workflow_fix_implementation_202510`
+
+- [✓] **FavoritesCacheのclearAll実装** (2025-10-05, PR #99)
+  - 全ユーザーお気に入りキャッシュのクリア機能実装
+  - invalidatePattern('user:*')を使用したRedis SCAN実装
+  - 包括的な単体テスト追加（12テスト、全合格）
+  - エラーハンドリング改善（ログ記録後の再スロー）
+  - TODO解消: lib/cache/favorites-cache.ts:115
+
 ### 2025年9月
 
 - [✓] **Gemini 2.0 Flash-Lite移行** (2025-10-01)
@@ -654,5 +674,5 @@ TechTrendプロジェクトの継続的な改善と最適化を通じて、以�
 
 **ロードマップ終了**
 
-最終更新: 2025年10月4日
+最終更新: 2025年10月5日
 次回レビュー: 2025年10月11日（週次）
