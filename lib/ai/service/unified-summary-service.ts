@@ -55,19 +55,49 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
           let translatedTitle: string | undefined;
 
           if (this.config.translationEnabled) {
-            try {
-              const translated = await this.titleTranslator.translateTitle({
-                title: params.title,
-                summary,
-                requestId,
-              });
-              translatedTitle = translated ?? undefined;
-            } catch (translationError) {
-              console.warn(
-                `[Service] Title translation failed for ${requestId}: ${
-                  (translationError as Error).message
-                }`
-              );
+            const MAX_TRANSLATION_RETRIES = 3;
+
+            for (let translationAttempt = 0; translationAttempt < MAX_TRANSLATION_RETRIES; translationAttempt++) {
+              try {
+                const attemptSuffix = translationAttempt > 0 ? `-retry${translationAttempt}` : '';
+                const currentRequestId = `${requestId}${attemptSuffix}`;
+
+                // 2回目以降はフォールバック（summaryなし）
+                const useSummary = translationAttempt === 0;
+
+                const translated = await this.titleTranslator.translateTitle({
+                  title: params.title,
+                  summary: useSummary ? summary : undefined,
+                  requestId: currentRequestId,
+                });
+
+                translatedTitle = translated?.trim() || undefined;
+
+                if (translatedTitle) {
+                  if (translationAttempt > 0) {
+                    console.log(
+                      `[Service] Title translation succeeded on attempt ${translationAttempt + 1} for ${requestId}`
+                    );
+                  }
+                  break;
+                } else {
+                  console.warn(
+                    `[Service] Title translation attempt ${translationAttempt + 1} returned empty for ${requestId}, retrying...`
+                  );
+                }
+              } catch (translationError) {
+                const errorMsg = (translationError as Error).message;
+
+                if (translationAttempt >= MAX_TRANSLATION_RETRIES - 1) {
+                  console.error(
+                    `[Service] Title translation failed after ${MAX_TRANSLATION_RETRIES} attempts for ${requestId}: ${errorMsg}`
+                  );
+                } else {
+                  console.warn(
+                    `[Service] Title translation attempt ${translationAttempt + 1} failed for ${requestId}: ${errorMsg}, retrying...`
+                  );
+                }
+              }
             }
           }
 
