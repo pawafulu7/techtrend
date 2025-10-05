@@ -113,37 +113,47 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
       .trim();
   }
 
-  private extractAuthor(item: any): string | undefined {
-    // Hugging Face Papers の著者情報を抽出
-    if (item.creator) {
-      return item.creator;
-    }
-    if (item['dc:creator']) {
-      return item['dc:creator'];
+  private extractAuthor(item: unknown): string | undefined {
+    // Type-safe author extraction
+    if (typeof item === 'object' && item !== null) {
+      const itemAny = item as any;
+      if (itemAny.creator) {
+        return itemAny.creator;
+      }
+      if (itemAny['dc:creator']) {
+        return itemAny['dc:creator'];
+      }
     }
     return undefined;
   }
 
-  private extractTags(item: any): string[] {
+  private extractTags(item: unknown): string[] {
     const tags: string[] = [];
 
-    // カテゴリからタグを抽出
-    if (item.categories && Array.isArray(item.categories)) {
-      tags.push(...item.categories);
+    // Type-safe tag extraction
+    if (typeof item === 'object' && item !== null) {
+      const itemAny = item as any;
+      if (itemAny.categories && Array.isArray(itemAny.categories)) {
+        tags.push(...itemAny.categories);
+      }
     }
 
-    return [...new Set(tags)]; // 重複を除去
+    return [...new Set(tags)];
   }
 
-  private extractThumbnailFromItem(item: any): string | undefined {
-    // RSS内の画像URLを抽出（存在する場合）
-    if (item.enclosure && item.enclosure.url) {
-      return item.enclosure.url;
+  private extractThumbnailFromItem(item: unknown): string | undefined {
+    if (typeof item !== 'object' || item === null) return undefined;
+
+    const itemAny = item as any;
+
+    // RSSのenclosureからサムネイルを抽出
+    if (itemAny.enclosure && itemAny.enclosure.url) {
+      return itemAny.enclosure.url;
     }
 
     // content内からimgタグを探す
-    if (item.content) {
-      const imgMatch = item.content.match(/<img[^>]+src="([^"]+)"/);
+    if (itemAny.content) {
+      const imgMatch = itemAny.content.match(/<img[^>]+src="([^"]+)"/);
       if (imgMatch && imgMatch[1]) {
         return imgMatch[1];
       }
@@ -191,15 +201,19 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
     return enrichedArticle;
   }
 
-  private generateEnrichedContent(item: any, author?: string, tags?: string[]): string {
+  private generateEnrichedContent(item: unknown, author?: string, tags?: string[]): string {
+    if (typeof item !== 'object' || item === null) return '';
+
+    const itemAny = item as any;
+
     // 基本コンテンツ
-    const content = item.content || item.contentSnippet || '';
+    const content = itemAny.content || itemAny.contentSnippet || '';
 
     // メタ情報を追加して要約生成時により良い情報を提供
     const enrichedParts: string[] = [];
 
     // タイトル
-    enrichedParts.push(`Title: ${item.title}`);
+    enrichedParts.push(`Title: ${itemAny.title || 'Untitled'}`);
     enrichedParts.push('Source: Hugging Face Daily Papers');
 
     // 著者情報
@@ -208,9 +222,9 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
     }
 
     // リンク
-    if (item.link) {
+    if (itemAny.link) {
       // arXiv IDを抽出
-      const arxivMatch = item.link.match(/arxiv\.org\/abs\/(\d+\.\d+)/);
+      const arxivMatch = itemAny.link.match(/arxiv\.org\/abs\/(\d+\.\d+)/);
       if (arxivMatch) {
         enrichedParts.push(`arXiv ID: ${arxivMatch[1]}`);
       }
@@ -222,12 +236,12 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
     }
 
     // カテゴリ情報
-    if (item.categories && Array.isArray(item.categories) && item.categories.length > 0) {
-      enrichedParts.push(`Categories: ${item.categories.join(', ')}`);
+    if (itemAny.categories && Array.isArray(itemAny.categories) && itemAny.categories.length > 0) {
+      enrichedParts.push(`Categories: ${itemAny.categories.join(', ')}`);
     }
 
     // 本文
-    enrichedParts.push('');  // 空行
+    enrichedParts.push('');
     enrichedParts.push('Abstract/Content:');
     enrichedParts.push(content);
 

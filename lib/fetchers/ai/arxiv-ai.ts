@@ -154,9 +154,13 @@ export class ArxivAIFetcher extends BaseFetcher {
     return match ? match[1] : undefined;
   }
 
-  private extractAbstract(item: any): string | undefined {
+  private extractAbstract(item: unknown): string | undefined {
+    if (typeof item !== 'object' || item === null) return undefined;
+
+    const itemAny = item as any;
+
     // descriptionまたはcontentからアブストラクトを抽出
-    const content = item.description || item.content || '';
+    const content = itemAny.description || itemAny.content || '';
 
     // HTMLタグを削除（sanitize-htmlを使用）
     const cleanContent = sanitizeHtml(content, {
@@ -240,12 +244,16 @@ export class ArxivAIFetcher extends BaseFetcher {
     return Array.from(detectedKeywords);
   }
 
-  private generateEnrichedContent(item: any, categoryName: string, arxivId?: string, abstract?: string): string {
+  private generateEnrichedContent(item: unknown, categoryName: string, arxivId?: string, abstract?: string): string {
+    if (typeof item !== 'object' || item === null) return '';
+
+    const itemAny = item as any;
+
     // メタ情報を追加して要約生成時により良い情報を提供
     const enrichedParts: string[] = [];
 
     // タイトル
-    enrichedParts.push(`Title: ${item.title}`);
+    enrichedParts.push(`Title: ${itemAny.title || 'Untitled'}`);
     enrichedParts.push(`Category: ${categoryName}`);
     enrichedParts.push('Source: arXiv');
 
@@ -255,25 +263,25 @@ export class ArxivAIFetcher extends BaseFetcher {
     }
 
     // 著者情報
-    if (item.author) {
-      enrichedParts.push(`Authors: ${item.author}`);
+    if (itemAny.author) {
+      enrichedParts.push(`Authors: ${itemAny.author}`);
     }
 
     // カテゴリ情報
-    if (item.categories && Array.isArray(item.categories) && item.categories.length > 0) {
-      enrichedParts.push(`Subject Areas: ${item.categories.join(', ')}`);
+    if (itemAny.categories && Array.isArray(itemAny.categories) && itemAny.categories.length > 0) {
+      enrichedParts.push(`Subject Areas: ${itemAny.categories.join(', ')}`);
     }
 
     // アブストラクト
-    enrichedParts.push('');  // 空行
+    enrichedParts.push('');
     enrichedParts.push('Abstract:');
-    enrichedParts.push(abstract || item.content || item.contentSnippet || '');
+    enrichedParts.push(abstract || itemAny.content || itemAny.contentSnippet || '');
 
     // 本文（追加情報があれば）
-    if (item.content && item.content !== abstract) {
+    if (itemAny.content && itemAny.content !== abstract) {
       enrichedParts.push('');
       enrichedParts.push('Additional Content:');
-      enrichedParts.push(item.content);
+      enrichedParts.push(itemAny.content);
     }
 
     return enrichedParts.join('\n');

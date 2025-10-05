@@ -177,53 +177,67 @@ export class QiitaAIFetcher extends BaseFetcher {
     return { articles, errors };
   }
 
-  private extractAuthor(item: any): string | undefined {
+  private extractAuthor(item: unknown): string | undefined {
+    if (typeof item !== 'object' || item === null) return undefined;
+
+    const itemAny = item as any;
+
     // Qiitaの著者情報を抽出
-    if (item.creator) {
-      return item.creator;
+    if (itemAny.creator) {
+      return itemAny.creator;
     }
-    if (item['dc:creator']) {
-      return item['dc:creator'];
+    if (itemAny['dc:creator']) {
+      return itemAny['dc:creator'];
     }
     return undefined;
   }
 
-  private extractTags(item: any): string[] {
+  private extractTags(item: unknown): string[] {
+    if (typeof item !== 'object' || item === null) return [];
+
+    const itemAny = item as any;
     const tags: string[] = [];
 
     // カテゴリからタグを抽出
-    if (item.categories && Array.isArray(item.categories)) {
-      tags.push(...item.categories);
+    if (itemAny.categories && Array.isArray(itemAny.categories)) {
+      tags.push(...itemAny.categories);
     }
 
     // Qiitaのタグ形式を抽出
-    if (item.content) {
+    if (itemAny.content) {
       // Qiitaタグ形式: タグ名を抽出（全角コロンにも対応）
-      const tagMatches = item.content.match(/タグ[:：]\s*([^<\n]+)/);
+      const tagMatches = itemAny.content.match(/タグ[:：]\s*([^<\n]+)/);
       if (tagMatches && tagMatches[1]) {
         const tagList = tagMatches[1].split(/[,、\s]+/).map((t: string) => t.trim()).filter((t: string) => t.length > 0);
         tags.push(...tagList);
       }
     }
 
-    return [...new Set(tags)]; // 重複を除去
+    return [...new Set(tags)];
   }
 
-  private extractThumbnailFromItem(item: any): string | undefined {
+  private extractThumbnailFromItem(item: unknown): string | undefined {
+    if (typeof item !== 'object' || item === null) {
+      // Qiitaのデフォルトサムネイル
+      return 'https://cdn.qiita.com/assets/qiita-fb-2887e7b4aad86fd8c25cea84846f2236.png';
+    }
+
+    const itemAny = item as any;
+
     // OGP画像を抽出
-    if (item.enclosure && item.enclosure.url) {
-      return item.enclosure.url;
+    if (itemAny.enclosure && itemAny.enclosure.url) {
+      return itemAny.enclosure.url;
     }
 
     // content内からimgタグを探す
-    if (item.content) {
-      const imgMatch = item.content.match(/<img[^>]+src="([^"]+)"/);
+    if (itemAny.content) {
+      const imgMatch = itemAny.content.match(/<img[^>]+src="([^"]+)"/);
       if (imgMatch && imgMatch[1]) {
         return imgMatch[1];
       }
     }
 
-    // QiitaのデフォルトOGP画像
+    // Qiitaのデフォルトサムネイル
     return 'https://cdn.qiita.com/assets/qiita-fb-2887e7b4aad86fd8c25cea84846f2236.png';
   }
 
@@ -395,15 +409,19 @@ export class QiitaAIFetcher extends BaseFetcher {
     }
   }
 
-  private generateEnrichedContent(item: any, tagName: string, author?: string, tags?: string[], likesCount?: number): string {
+  private generateEnrichedContent(item: unknown, tagName: string, author?: string, tags?: string[], likesCount?: number): string {
+    if (typeof item !== 'object' || item === null) return '';
+
+    const itemAny = item as any;
+
     // 基本コンテンツ
-    const content = item.content || item.contentSnippet || '';
+    const content = itemAny.content || itemAny.contentSnippet || '';
 
     // メタ情報を追加して要約生成時により良い情報を提供
     const enrichedParts: string[] = [];
 
     // タイトルと基本情報
-    enrichedParts.push(`タイトル: ${item.title}`);
+    enrichedParts.push(`タイトル: ${itemAny.title || 'Untitled'}`);
     enrichedParts.push(`タグ: ${tagName}`);
 
     // 著者情報
@@ -422,12 +440,12 @@ export class QiitaAIFetcher extends BaseFetcher {
     }
 
     // カテゴリ情報
-    if (item.categories && Array.isArray(item.categories) && item.categories.length > 0) {
-      enrichedParts.push(`カテゴリ: ${item.categories.join(', ')}`);
+    if (itemAny.categories && Array.isArray(itemAny.categories) && itemAny.categories.length > 0) {
+      enrichedParts.push(`カテゴリ: ${itemAny.categories.join(', ')}`);
     }
 
     // 本文
-    enrichedParts.push('');  // 空行
+    enrichedParts.push('');
     enrichedParts.push('本文:');
     enrichedParts.push(content);
 
