@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
+import { isLikelyJapanese } from '@/lib/utils/language-detection';
 
 const prisma = new PrismaClient();
 
@@ -30,9 +31,10 @@ async function fixMissingTranslations(options: FixOptions = {}) {
     take: limit * 2, // Fetch more to account for filtering
   });
 
-  // Filter articles with English titles (10+ alphabetic characters)
+  // Filter articles with English titles (10+ alphabetic characters, excluding Japanese titles)
   const articles = allArticles
     .filter(article => /[a-zA-Z]{10,}/.test(article.title))
+    .filter(article => !isLikelyJapanese(article.title))
     .slice(0, limit);
 
   console.error(`Target articles: ${articles.length}\n`);
@@ -75,9 +77,16 @@ async function fixMissingTranslations(options: FixOptions = {}) {
             requestId,
           });
 
-          const translatedTitle = translated?.trim() || undefined;
+          // Handle null response (Japanese title detected or translation disabled)
+          if (translated === null) {
+            skipCount++;
+            console.error(`  SKIP [${article.id}] Japanese title detected or translation disabled`);
+            return;
+          }
 
-          if (translatedTitle !== undefined) {
+          const translatedTitle = translated.trim();
+
+          if (translatedTitle) {
             await prisma.article.update({
               where: { id: article.id },
               data: { translatedTitle }
