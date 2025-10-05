@@ -12,10 +12,17 @@ export class HatenaContentEnricher extends BaseContentEnricher {
    * はてなブックマーク記事のURLかチェック
    * 注意: これは実際のコンテンツURLをチェック（はてなのURL自体ではない）
    */
-  canHandle(_url: string): boolean {
-    // はてなブックマーク経由の記事すべてに対応
-    // 特定のドメインに限定しない（様々なサイトの記事が対象のため）
-    return true;
+  canHandle(url: string): boolean {
+    try {
+      const hostname = new URL(url).hostname;
+      // Hatenaドメインのみを対象（完全一致またはサブドメイン）
+      return hostname === 'hatena.ne.jp' || hostname.endsWith('.hatena.ne.jp') ||
+             hostname === 'hatenablog.com' || hostname.endsWith('.hatenablog.com') ||
+             hostname === 'hatenablog.jp' || hostname.endsWith('.hatenablog.jp');
+    } catch {
+      // URL解析失敗時は対象外
+      return false;
+    }
   }
 
   /**
