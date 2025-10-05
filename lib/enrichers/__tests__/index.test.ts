@@ -43,11 +43,11 @@ describe('ContentEnricherFactory', () => {
       expect(enricher?.constructor.name).toBe('MoneyForwardContentEnricher');
     });
 
-    it('should return HatenaContentEnricher as fallback for unknown URLs', () => {
+    it('should return GenericContentEnricher as fallback for unknown URLs', () => {
       const enricher = factory.getEnricher('https://unknown-site.com/article');
-      
+
       expect(enricher).not.toBeNull();
-      expect(enricher?.constructor.name).toBe('HatenaContentEnricher');
+      expect(enricher?.constructor.name).toBe('GenericContentEnricher');
     });
 
     it('should handle multiple enrichers for same domain correctly', () => {
