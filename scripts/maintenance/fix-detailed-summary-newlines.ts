@@ -17,18 +17,24 @@ async function fixDetailedSummaryNewlines(options: FixOptions = {}) {
 
   // 1. Backup before making changes (optional)
   if (backup && !dryRun) {
-    const backupData = await prisma.$queryRaw<Array<{ id: string; detailedSummary: string }>>`
-      SELECT id, "detailedSummary"
-      FROM "Article"
-      WHERE "detailedSummary" IS NOT NULL
-        AND "detailedSummary" ~ '・[^：\n]+：\s*\n(?!・)'
-    `;
+    try {
+      const backupData = await prisma.$queryRaw<Array<{ id: string; detailedSummary: string }>>`
+        SELECT id, "detailedSummary"
+        FROM "Article"
+        WHERE "detailedSummary" IS NOT NULL
+          AND "detailedSummary" ~ '・[^：\n]+：\s*\n(?!・)'
+      `;
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupPath = `backup_detailed_summary_${timestamp}.json`;
-    fs.writeFileSync(backupPath, JSON.stringify(backupData, null, 2));
-    console.error(`Backup created: ${backupPath}`);
-    console.error(`Backed up ${backupData.length} articles\n`);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = `backup_detailed_summary_${timestamp}.json`;
+      fs.writeFileSync(backupPath, JSON.stringify(backupData, null, 2));
+      console.error(`Backup created: ${backupPath}`);
+      console.error(`Backed up ${backupData.length} articles\n`);
+    } catch (error) {
+      console.error('Backup creation failed. Aborting to prevent data loss.');
+      console.error(error);
+      throw error;
+    }
   }
 
   // 2. Find articles with newline issues
@@ -67,24 +73,28 @@ async function fixDetailedSummaryNewlines(options: FixOptions = {}) {
   let successCount = 0;
   let failureCount = 0;
 
-  for (const article of articles) {
-    try {
-      const fixed = article.detailedSummary.replace(
-        /^(・[^：\n]+：)\s*\n(?!・)/gm,
-        '$1'
-      );
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const article of articles) {
+        const fixed = article.detailedSummary.replace(
+          /^(・[^：\n]+：)\s*\n(?!・)/gm,
+          '$1'
+        );
 
-      await prisma.article.update({
-        where: { id: article.id },
-        data: { detailedSummary: fixed }
-      });
+        await tx.article.update({
+          where: { id: article.id },
+          data: { detailedSummary: fixed }
+        });
 
-      successCount++;
-      console.error(`  SUCCESS [${article.id}]`);
-    } catch (error) {
-      failureCount++;
-      console.error(`  ERROR [${article.id}]: ${(error as Error).message}`);
-    }
+        successCount++;
+        console.error(`  SUCCESS [${article.id}]`);
+      }
+    });
+  } catch (error) {
+    failureCount = articles.length - successCount;
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`  TRANSACTION FAILED: ${message}`);
+    console.error('  All changes have been rolled back.');
   }
 
   console.error(`\n=== Fix Summary ===`);
