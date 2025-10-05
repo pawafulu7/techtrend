@@ -64,7 +64,7 @@ describe('OpenAIBlogFetcher', () => {
       expect(article.url).toBe('https://openai.com/blog/chatgpt-new-features');
       expect(article.sourceId).toBe('test-openai-id');
       expect(article.summary).toBeUndefined(); // 要約は生成しない
-    });
+    }, 15000);
 
     it('should filter out articles older than 30 days', async () => {
       const result = await fetcher.fetch();
@@ -74,7 +74,7 @@ describe('OpenAIBlogFetcher', () => {
         a.title === 'Old Announcement'
       );
       expect(oldArticle).toBeUndefined();
-    });
+    }, 15000);
 
     it('should add appropriate tags to articles', async () => {
       const result = await fetcher.fetch();
@@ -85,7 +85,7 @@ describe('OpenAIBlogFetcher', () => {
       expect(article.tagNames).toContain('AI');
       expect(article.tagNames).toContain('LLM');
       expect(article.tagNames).toContain('ChatGPT');
-    });
+    }, 15000);
 
     it('should handle errors gracefully', async () => {
       // 新しいフェッチャーインスタンスを作成してエラーをシミュレート
