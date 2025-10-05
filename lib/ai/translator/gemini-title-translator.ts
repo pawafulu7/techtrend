@@ -21,7 +21,7 @@ type TranslatorOptions = {
 
 export class GeminiTitleTranslator implements TitleTranslator {
   private static readonly JAPANESE_CHAR_PATTERN =
-    /[\u3000-\u303F\u3040-\u30FF\u4E00-\u9FFF]/;
+    /[\u3000-\u303F\u3040-\u30FF\u3005-\u3007\u4E00-\u9FFF]/g;
 
   constructor(
     private readonly transport: GeminiTransport,
@@ -60,21 +60,37 @@ export class GeminiTitleTranslator implements TitleTranslator {
     }
 
     const translated = this.extractTranslation(result.payload);
-    if (!translated || translated.toLowerCase() === 'unchanged' || translated === '翻訳不要') {
-      return null;
+
+    if (!translated || translated.trim() === '') {
+      throw new Error('Translation API returned empty result');
     }
 
-    return translated;
+    // UNCHANGEDまたは原文がそのまま返された場合はエラー
+    const normalizedTranslated = translated.trim();
+    if (normalizedTranslated.toLowerCase() === 'unchanged' ||
+        normalizedTranslated === '翻訳不要' ||
+        normalizedTranslated === input.title) {
+      throw new Error(`Translation API returned invalid result: ${normalizedTranslated}`);
+    }
+
+    return normalizedTranslated;
   }
 
   private isLikelyJapanese(text: string): boolean {
-    return GeminiTitleTranslator.JAPANESE_CHAR_PATTERN.test(text);
+    const japaneseMatches = text.match(GeminiTitleTranslator.JAPANESE_CHAR_PATTERN);
+    if (!japaneseMatches) return false;
+
+    // 日本語文字の割合が30%以上なら日本語と判定
+    const japaneseRatio = japaneseMatches.length / text.length;
+    return japaneseRatio >= 0.3;
   }
 
   private buildPrompt(title: string, summary?: string): string {
     const parts = [
       'You are a professional technical translator specializing in software engineering content.',
-      'You will translate the given English technical article title into natural, contextually appropriate Japanese.',
+      '',
+      'TASK: The title below is in English and contains no Japanese characters.',
+      'You MUST translate it into natural Japanese.',
       '',
       'Translation Guidelines:',
       '- Understand the context and intended message of the title',
@@ -91,21 +107,19 @@ export class GeminiTitleTranslator implements TitleTranslator {
       parts.push('Context (article summary - for reference only):');
       parts.push(summary);
       parts.push('');
-      parts.push('Important: The context/summary language does NOT affect whether you should translate.');
-      parts.push('Always translate the title if it is in English, regardless of the context language.');
-      parts.push('');
     }
 
-    parts.push('Title Check:');
-    parts.push('- Consider ONLY the line that starts with "Title to translate:"');
-    parts.push('- If that title already contains Japanese characters, output exactly "UNCHANGED"');
-    parts.push('- Otherwise, translate the title into Japanese');
+    parts.push('CRITICAL INSTRUCTIONS:');
+    parts.push('DO NOT output the original English title');
+    parts.push('DO NOT output the word "UNCHANGED"');
+    parts.push('DO NOT output "翻訳不要" or similar phrases');
+    parts.push('DO NOT add quotes or explanations');
     parts.push('');
-    parts.push('Output Format:');
-    parts.push('- Output ONLY the translated title (one line)');
-    parts.push('- No quotes, no explanations, no extra text');
+    parts.push('OUTPUT FORMAT:');
+    parts.push('Reply with exactly one line: the Japanese translation');
+    parts.push('Nothing else');
     parts.push('');
-    parts.push(`Title to translate: ${title}`);
+    parts.push(`Title: "${title}"`);
 
     return parts.join('\n');
   }
