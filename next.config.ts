@@ -62,82 +62,13 @@ const nextConfig: NextConfig = {
   },
   
   // 画像最適化
+  // Custom loader for unoptimized images (2025-10-06)
+  // - Supports 800+ domains without whitelist management
+  // - Avoids SSRF risks (browser fetches directly)
+  // - See: lib/image-loader.js
   images: {
-    formats: ['image/avif', 'image/webp'],
-    deviceSizes: [640, 750, 828, 1080, 1200],  // 不要な大きいサイズを削除
-    imageSizes: [16, 32, 48, 64, 96, 128],     // 不要な大きいサイズを削除
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'files.speakerdeck.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'speakerdeck.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'cdn.dev.to',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'qiita-user-contents.imgix.net',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'zenn.dev',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'static.zenn.studio',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'storage.googleapis.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'b.hatena.ne.jp',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'cdn.b.hatena.ne.jp',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'avatars.githubusercontent.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'bcdn.docswell.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'video.docswell.com',
-        pathname: '/**',
-      },
-    ],
+    loader: 'custom',
+    loaderFile: './lib/image-loader.js',
   },
 };
 
