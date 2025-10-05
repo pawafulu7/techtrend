@@ -54,7 +54,7 @@ async function fixDetailedSummaryNewlines(options: FixOptions = {}) {
       console.error('Before:', article.detailedSummary.substring(0, 150).replace(/\n/g, '\\n'));
       const fixed = article.detailedSummary.replace(
         /^(・[^：\n]+：)\s*\n(?!・)/gm,
-        '$1 '
+        '$1'
       );
       console.error('After:', fixed.substring(0, 150).replace(/\n/g, '\\n'));
       console.error('');
@@ -71,7 +71,7 @@ async function fixDetailedSummaryNewlines(options: FixOptions = {}) {
     try {
       const fixed = article.detailedSummary.replace(
         /^(・[^：\n]+：)\s*\n(?!・)/gm,
-        '$1 '
+        '$1'
       );
 
       await prisma.article.update({
