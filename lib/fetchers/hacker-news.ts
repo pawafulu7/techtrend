@@ -77,19 +77,22 @@ export class HackerNewsFetcher extends BaseFetcher {
           // コンテンツエンリッチメント
           let content = story.text || '';
           let thumbnail: string | undefined;
-          
-          // URLからコンテンツを取得
-          const enricher = enricherFactory.getEnricher(story.url);
-          if (enricher) {
-            try {
-              const enrichedData = await enricher.enrich(story.url);
-              if (enrichedData && enrichedData.content) {
-                content = enrichedData.content;
-                thumbnail = enrichedData.thumbnail || undefined;
-              }
-            } catch (_error) {
-              logger.error({ error: _error }, `[Hacker News] Enrichment failed for ${story.url}`);
+
+          // URLからコンテンツを取得（フォールバック機能付き）
+          try {
+            const enrichedData = await enricherFactory.trySequential(story.url);
+            if (enrichedData && enrichedData.content) {
+              content = enrichedData.content;
+              thumbnail = enrichedData.thumbnail || undefined;
+            } else {
+              // エンリッチメント失敗の明示的ログ
+              console.error(`[HackerNews] All enrichers failed: ${story.url}`);
+              console.error(`  Title: ${story.title}`);
+              console.error(`  Original content: ${story.text?.length || 0} chars`);
             }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error({ error }, `[Hacker News] Enrichment error: ${story.url}: ${errorMessage}`);
           }
           
           // タグの生成
