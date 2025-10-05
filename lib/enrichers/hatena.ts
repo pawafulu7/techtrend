@@ -15,10 +15,10 @@ export class HatenaContentEnricher extends BaseContentEnricher {
   canHandle(url: string): boolean {
     try {
       const hostname = new URL(url).hostname;
-      // Hatenaドメインのみを対象
-      return hostname.endsWith('hatena.ne.jp') ||
-             hostname.endsWith('hatenablog.com') ||
-             hostname.endsWith('hatenablog.jp');
+      // Hatenaドメインのみを対象（完全一致またはサブドメイン）
+      return hostname === 'hatena.ne.jp' || hostname.endsWith('.hatena.ne.jp') ||
+             hostname === 'hatenablog.com' || hostname.endsWith('.hatenablog.com') ||
+             hostname === 'hatenablog.jp' || hostname.endsWith('.hatenablog.jp');
     } catch {
       // URL解析失敗時は対象外
       return false;
