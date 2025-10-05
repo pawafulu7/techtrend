@@ -1,4 +1,5 @@
 import { GeminiTransport } from '../transport/gemini-transport.interface';
+import { isLikelyJapanese } from '@/lib/utils/language-detection';
 
 type TitleTranslationInput = {
   title: string;
@@ -20,8 +21,6 @@ type TranslatorOptions = {
 };
 
 export class GeminiTitleTranslator implements TitleTranslator {
-  private static readonly JAPANESE_CHAR_PATTERN =
-    /[\u3000-\u303F\u3040-\u30FF\u3005-\u3007\u4E00-\u9FFF]/g;
 
   constructor(
     private readonly transport: GeminiTransport,
@@ -33,7 +32,7 @@ export class GeminiTitleTranslator implements TitleTranslator {
       return null;
     }
 
-    if (this.isLikelyJapanese(input.title)) {
+    if (isLikelyJapanese(input.title)) {
       return null;
     }
 
@@ -74,15 +73,6 @@ export class GeminiTitleTranslator implements TitleTranslator {
     }
 
     return normalizedTranslated;
-  }
-
-  private isLikelyJapanese(text: string): boolean {
-    const japaneseMatches = text.match(GeminiTitleTranslator.JAPANESE_CHAR_PATTERN);
-    if (!japaneseMatches) return false;
-
-    // 日本語文字の割合が30%以上なら日本語と判定
-    const japaneseRatio = japaneseMatches.length / text.length;
-    return japaneseRatio >= 0.3;
   }
 
   private buildPrompt(title: string, summary?: string): string {
