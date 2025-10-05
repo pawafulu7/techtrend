@@ -351,7 +351,11 @@ async function createUsers() {
   ];
 
   return Promise.all(
-    usersData.map(data => prisma.user.create({ data }))
+    usersData.map(data => prisma.user.upsert({
+      where: { email: data.email },
+      update: data,
+      create: data,
+    }))
   );
 }
 

@@ -48,6 +48,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       AUTH_SECRET: ${AUTH_SECRET}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      PRISMA_MIGRATION_ENGINE_SKIP_TRANSACTIONS: "1"
     init: true
     depends_on:
       postgres-test:
@@ -74,6 +75,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       AUTH_SECRET: ${AUTH_SECRET}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      PRISMA_MIGRATION_ENGINE_SKIP_TRANSACTIONS: "1"
     shm_size: "2gb"
     init: true
     depends_on:
