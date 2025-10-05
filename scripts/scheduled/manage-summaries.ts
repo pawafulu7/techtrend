@@ -671,6 +671,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
                     console.error(
                       `翻訳失敗 [${article.id}]: ${(error as Error).message}`
                     );
+                    console.error(`  タイトル: ${article.title}`);
                   }
                 }
 
