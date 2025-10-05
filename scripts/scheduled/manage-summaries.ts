@@ -556,12 +556,34 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
 
     const articlesWithoutTags = await prisma.article.findMany(articlesWithoutTagsQuery) as ArticleWithSource[];
 
+    // 5. 翻訳がない記事を取得
+    const articlesWithoutTranslationQuery: Prisma.ArticleFindManyArgs = {
+      where: {
+        translatedTitle: null,
+        summary: { not: null },
+        OR: [
+          { detailedSummary: { not: null } },
+          { summary: { not: null } }
+        ]
+      },
+      include: { source: true },
+      orderBy: { publishedAt: 'desc' },
+      take: options.limit
+    };
+
+    if (options.source) {
+      articlesWithoutTranslationQuery.where.source = { name: options.source };
+    }
+
+    const articlesWithoutTranslation = await prisma.article.findMany(articlesWithoutTranslationQuery) as ArticleWithSource[];
+
     // すべての対象記事を結合
     const allArticlesToProcess = [
       ...articlesWithoutSummary,
       ...articlesWithEnglishSummary,
       ...truncatedArticles,
-      ...articlesWithoutTags
+      ...articlesWithoutTags,
+      ...articlesWithoutTranslation
     ];
 
     // 重複を除去
@@ -587,6 +609,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
     console.error(`   - 英語要約: ${articlesWithEnglishSummary.length}件`);
     console.error(`   - 途切れた要約: ${truncatedArticles.length}件`);
     console.error(`   - タグなし: ${articlesWithoutTags.length}件`);
+    console.error(`   - 翻訳なし: ${articlesWithoutTranslation.length}件`);
     console.error(`   - 合計（重複除去後）: ${uniqueArticles.length}件`);
 
     let generatedCount = 0;
