@@ -263,35 +263,19 @@ TechTrendプロジェクトの継続的な改善と最適化を通じて、以�
 
 **目的**: キャッシュ無効化の最適化
 
-- [ ] **5.1 SCAN実装**
-  - 担当者: _______________
-  - 期限: 2025-11-15
+- [✓] **5.1 SCAN実装**
+  - 担当者: システム（既存）
+  - 期限: 完了済み
   - ファイル: `lib/cache/redis-cache.ts`
-  - 実装内容:
-    ```typescript
-    async invalidatePattern(pattern: string): Promise<void> {
-      const keys: string[] = [];
-      let cursor = '0';
+  - 状態: invalidatePattern()メソッド既に実装済み（126-166行目）
+  - 実装内容: SCAN + UNLINK、バッチ処理（1,000件）、パイプライン処理
 
-      do {
-        const [nextCursor, matchedKeys] = await this.redis.scan(
-          cursor, 'MATCH', `${this.namespace}:${pattern}`, 'COUNT', 100
-        );
-        cursor = nextCursor;
-        keys.push(...matchedKeys);
-      } while (cursor !== '0');
-
-      if (keys.length > 0) {
-        await this.redis.del(...keys);
-      }
-    }
-    ```
-
-- [ ] **5.2 favorites-cache.tsへの適用**
-  - 担当者: _______________
-  - 期限: 2025-11-17
+- [✓] **5.2 favorites-cache.tsへの適用**
+  - 担当者: Claude Code
+  - 期限: 2025-10-05（完了）
   - ファイル: `lib/cache/favorites-cache.ts`
-  - TODO解消: `// TODO: Redis SCANコマンドを使用...`
+  - TODO解消: clearAll()実装、invalidatePattern('user:*')による全ユーザーキャッシュ削除
+  - PR: #99
 
 - [ ] **5.3 パフォーマンステスト**
   - 担当者: _______________
@@ -611,6 +595,13 @@ TechTrendプロジェクトの継続的な改善と最適化を通じて、以�
   - 毎時実行のRSS収集ワークフロー
   - 5つのAIソースから自動収集
   - メモリ: `ai_sources_workflow_fix_implementation_202510`
+
+- [✓] **FavoritesCacheのclearAll実装** (2025-10-05, PR #99)
+  - 全ユーザーお気に入りキャッシュのクリア機能実装
+  - invalidatePattern('user:*')を使用したRedis SCAN実装
+  - 包括的な単体テスト追加（12テスト、全合格）
+  - エラーハンドリング改善（ログ記録後の再スロー）
+  - TODO解消: lib/cache/favorites-cache.ts:115
 
 ### 2025年9月
 
