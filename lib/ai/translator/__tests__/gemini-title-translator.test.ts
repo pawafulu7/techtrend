@@ -83,14 +83,14 @@ describe('GeminiTitleTranslator', () => {
       expect(mockTransport.invoke).toHaveBeenCalledTimes(1);
     });
 
-    it('should throw error when API returns empty result', async () => {
+    it('should throw error when API returns empty text', async () => {
       mockTransport.invoke.mockResolvedValue({
         status: 'ok',
         payload: {
           candidates: [
             {
               content: {
-                parts: [{ text: '' }],
+                parts: [{ text: '   ' }],
               },
             },
           ],
