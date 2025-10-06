@@ -71,7 +71,8 @@ describe('getJapaneseCharRatio', () => {
 
   it('should calculate ratio for mixed text', () => {
     const ratio = getJapaneseCharRatio('Hello世界');
-    expect(ratio).toBeCloseTo(0.4, 1);
+    // 'Hello世界' = 7 characters, 2 Japanese characters (世界) = 2/7 ≈ 0.286
+    expect(ratio).toBeCloseTo(0.286, 2);
   });
 
   it('should return 0.0 for empty string', () => {
