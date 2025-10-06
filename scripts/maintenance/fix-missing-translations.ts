@@ -31,9 +31,8 @@ async function fixMissingTranslations(options: FixOptions = {}) {
     take: limit * 2, // Fetch more to account for filtering
   });
 
-  // Filter articles with English titles (10+ alphabetic characters, excluding Japanese titles)
+  // Filter articles with English titles (excluding Japanese titles)
   const articles = allArticles
-    .filter(article => /[a-zA-Z]{10,}/.test(article.title))
     .filter(article => !isLikelyJapanese(article.title))
     .slice(0, limit);
 

@@ -64,11 +64,20 @@ export class GeminiTitleTranslator implements TitleTranslator {
       throw new Error('Translation API returned empty result');
     }
 
-    // UNCHANGEDまたは原文がそのまま返された場合はエラー
+    // UNCHANGEDまたは原文がそのまま返された場合のハンドリング
     const normalizedTranslated = translated.trim();
     if (normalizedTranslated.toLowerCase() === 'unchanged' ||
-        normalizedTranslated === '翻訳不要' ||
-        normalizedTranslated === input.title) {
+        normalizedTranslated === '翻訳不要') {
+      throw new Error(`Translation API returned invalid result: ${normalizedTranslated}`);
+    }
+
+    // 原文がそのまま返された場合、日本語タイトルかチェック
+    if (normalizedTranslated === input.title.trim()) {
+      if (isLikelyJapanese(normalizedTranslated)) {
+        // Japanese title detected - skip translation (normal behavior)
+        return null;
+      }
+      // English title returned unchanged - API error
       throw new Error(`Translation API returned invalid result: ${normalizedTranslated}`);
     }
 
