@@ -73,6 +73,7 @@ backups/
 
 # documentation files
 docs/
+!docs/operations/
 
 # data and reports
 data/
@@ -173,3 +174,4 @@ regenerate.log
 .regenerate-low-item-summaries-progress.json
 .archive/
 .claude/
+backups/
