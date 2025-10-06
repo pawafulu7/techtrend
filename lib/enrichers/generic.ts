@@ -1,14 +1,26 @@
 import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
+import type { CheerioAPI } from 'cheerio';
 import logger from '@/lib/logger';
+import {
+  extractWithReadability,
+  extractFromJsonLd,
+  extractFromSelectors,
+  extractFromParagraphs,
+  extractFromMetadata,
+  isHighQuality,
+  isMinimumViable,
+  type MetadataInput,
+} from './strategies';
 
-/**
- * 汎用コンテンツエンリッチャー
- * すべてのURLに対応し、様々な方法でコンテンツ抽出を試みる
- */
+interface StrategyResult {
+  content: string;
+  thumbnail?: string;
+  detail?: string;
+}
+
 export class GenericContentEnricher extends BaseContentEnricher {
   canHandle(_url: string): boolean {
-    // すべてのURLを処理可能
     return true;
   }
 
@@ -17,30 +29,28 @@ export class GenericContentEnricher extends BaseContentEnricher {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // リトライ時は待機時間を設ける（exponential backoff）
         if (attempt > 1) {
           const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
         }
 
         const response = await fetch(url, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Accept:
+              'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
             'Accept-Encoding': 'gzip, deflate, br',
-            'DNT': '1'
-            // Connection, Upgrade-Insecure-Requests are forbidden headers
+            DNT: '1',
           },
           redirect: 'follow',
-          signal: AbortSignal.timeout(30000) // 30秒タイムアウト
+          signal: AbortSignal.timeout(30000),
         });
 
         if (!response.ok) {
-          // HTTP エラーステータスのログ（warningレベルは使用しない）
           if (response.status === 429) {
-            // Rate limit - より長く待機
-            await new Promise(resolve => setTimeout(resolve, 10000));
+            await new Promise((resolve) => setTimeout(resolve, 10000));
             continue;
           }
           if (attempt === maxRetries) {
@@ -50,167 +60,68 @@ export class GenericContentEnricher extends BaseContentEnricher {
         }
 
         const html = await response.text();
-        const $ = cheerio.load(html);
+        const baseUrl = response.url || url;
 
-        // 不要な要素を削除（JSON-LD構造化データは保持）
+        const $ = cheerio.load(html);
         $('script:not([type="application/ld+json"]), style, noscript, iframe').remove();
 
-        // Open Graphメタデータの取得
-        const ogTitle = $('meta[property="og:title"]').attr('content');
-        const ogDescription = $('meta[property="og:description"]').attr('content');
-        const ogImage = $('meta[property="og:image"]').attr('content');
+        const metadata = this.extractMetadata($);
+        let thumbnail = this.resolveThumbnail(
+          metadata.ogImage || metadata.twitterImage,
+          baseUrl,
+          $
+        );
 
-        // Twitter Cardメタデータ
-        const twitterDescription = $('meta[name="twitter:description"]').attr('content');
-        const twitterImage = $('meta[name="twitter:image"]').attr('content');
-
-        // 一般的なメタデータ
-        const metaDescription = $('meta[name="description"]').attr('content');
-        const title = $('title').text().trim();
-
-        // サムネイル画像の優先順位（絶対URLに正規化）
-        // リダイレクト後のURLをベースURLとして使用
-        const baseUrl = response.url || url;
-        let thumbnail = ogImage || twitterImage;
-        if (thumbnail) {
-          try {
-            thumbnail = new URL(thumbnail, baseUrl).toString();
-          } catch {
-            // 変換に失敗した場合はそのまま使用
-          }
-        } else {
-          thumbnail = this.findFirstImage($, baseUrl) || undefined;
-        }
-
-        // コンテンツ抽出戦略
         let content = '';
 
-        // 1. 構造化データを探す（JSON-LD）
-        const jsonLdScripts = $('script[type="application/ld+json"]');
-        jsonLdScripts.each((_, element) => {
-          try {
-            const data = JSON.parse($(element).text() || '{}');
-            // JSON-LDは配列や@graphに格納されることがある
-            const nodes = Array.isArray(data) ? data : (Array.isArray(data?.['@graph']) ? data['@graph'] : [data]);
-            for (const node of nodes) {
-              if (node && typeof node === 'object') {
-                const record = node as Record<string, unknown>;
-                const candidate = record['articleBody'] ?? record['description'];
-                if (typeof candidate === 'string' && candidate.trim().length > 0) {
-                  content = candidate;
-                  return false; // break .each
-                }
-              }
-            }
-          } catch {
-            // JSON解析エラーは無視
+        // Strategy 1: Readability (highest priority)
+        const readabilityResult = await this.tryStrategy(
+          'readability',
+          async () => {
+            const result = await extractWithReadability(html, baseUrl);
+            return result
+              ? { content: result.content, thumbnail: result.thumbnail }
+              : null;
           }
-        });
+        );
 
-        // 2. article要素やmain要素から抽出
-        if (!content) {
-          const contentSelectors = [
-            'article',
-            'main',
-            '[role="main"]',
-            '[role="article"]',
-            '.article',
-            '.post',
-            '.entry-content',
-            '.post-content',
-            '.article-content',
-            '.content-body',
-            '.story-body',
-            '#content',
-            '.content',
-            '.markdown-body', // GitHub
-            '.blob-wrapper', // GitHub
-            '.readme', // GitHub README
-            '.documentation-content',
-            '.doc-content'
-          ];
+        if (readabilityResult && isHighQuality(readabilityResult.content)) {
+          content = readabilityResult.content;
+          thumbnail = readabilityResult.thumbnail || thumbnail;
+        }
 
-          for (const selector of contentSelectors) {
-            const element = $(selector).first();
-            if (!element.length) continue;
-            // ノイズを除去してから長さチェック
-            const cleaned = element.clone();
-            cleaned.find('nav, aside, .sidebar, .navigation, .menu, .toc').remove();
-            const text = cleaned.text().trim();
-            if (text.length > 200) {
-              content = text;
-              break;
-            }
+        // Strategy 2-5: Legacy heuristics (fallback)
+        if (!content || !isHighQuality(content)) {
+          const legacyResult = await this.tryLegacyStrategies($, metadata);
+          if (legacyResult) {
+            content = legacyResult.content;
           }
         }
 
-        // 3. 段落タグから抽出
-        if (!content || content.length < 200) {
-          const paragraphs: string[] = [];
-          $('p').each((_, element) => {
-            const text = $(element).text().trim();
-            if (text.length > 50) {
-              paragraphs.push(text);
-            }
-          });
-          if (paragraphs.length > 0) {
-            content = paragraphs.join('\n\n');
-          }
-        }
-
-        // 4. メタデータから構築
-        if (!content || content.length < 100) {
-          const parts: string[] = [];
-          if (title && !ogTitle) parts.push(title);
-          if (ogTitle) parts.push(ogTitle);
-          if (ogDescription) parts.push(ogDescription);
-          if (metaDescription && metaDescription !== ogDescription) {
-            parts.push(metaDescription);
-          }
-          if (twitterDescription && 
-              twitterDescription !== ogDescription && 
-              twitterDescription !== metaDescription) {
-            parts.push(twitterDescription);
-          }
-
-          // body全体から最初の1000文字を抽出
-          const bodyText = $('body').text().trim();
-          if (bodyText.length > 100) {
-            const cleanBody = bodyText
-              .replace(/\s+/g, ' ')
-              .replace(/\n{3,}/g, '\n\n')
-              .substring(0, 1000);
-            parts.push(cleanBody);
-          }
-
-          content = parts.join('\n\n');
-        }
-
-        // コンテンツのクリーンアップ
         content = this.cleanupContent(content);
 
-        // 最小長チェック
-        if (content.length < 50) {
-          // コンテンツが短すぎる場合は再試行
+        if (!isMinimumViable(content)) {
           if (attempt === maxRetries) {
             return null;
           }
           continue;
         }
 
-        // 成功
         return {
           content,
-          thumbnail
+          thumbnail,
         };
-
       } catch (error) {
-        const errorMessage = error instanceof Error && error.name === 'AbortError' 
-          ? 'Request timeout'
-          : 'Request failed';
-        
-        logger.error({ error, url, attempt, maxRetries }, `[GenericEnricher] ${errorMessage}`);
-        
+        const errorMessage =
+          error instanceof Error && error.name === 'AbortError'
+            ? 'Request timeout'
+            : 'Request failed';
+
+        logger.error(
+          { error, url, attempt, maxRetries },
+          `[GenericEnricher] ${errorMessage}`
+        );
+
         if (attempt === maxRetries) {
           return null;
         }
@@ -220,10 +131,118 @@ export class GenericContentEnricher extends BaseContentEnricher {
     return null;
   }
 
-  /**
-   * 最初の画像を探す
-   */
-  private findFirstImage($: cheerio.CheerioAPI, baseUrl: string): string | undefined {
+  private async tryStrategy(
+    name: string,
+    extractor: () => Promise<StrategyResult | null>
+  ): Promise<StrategyResult | null> {
+    const startTime = Date.now();
+    try {
+      const result = await extractor();
+      const duration = Date.now() - startTime;
+
+      if (result?.content) {
+        logger.debug(
+          {
+            strategy: name,
+            length: result.content.length,
+            duration,
+          },
+          'Extraction succeeded'
+        );
+        return result;
+      }
+
+      logger.debug(
+        {
+          strategy: name,
+          duration,
+          reason: result?.detail || 'no_content',
+        },
+        'Extraction failed'
+      );
+      return null;
+    } catch (error) {
+      logger.debug(
+        {
+          strategy: name,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'Extraction error'
+      );
+      return null;
+    }
+  }
+
+  private async tryLegacyStrategies(
+    $: CheerioAPI,
+    metadata: ReturnType<typeof this.extractMetadata>
+  ): Promise<StrategyResult | null> {
+    // Strategy 2: JSON-LD
+    const jsonLdContent = await this.tryStrategy('json-ld', async () => {
+      const content = extractFromJsonLd($);
+      return content ? { content } : null;
+    });
+    if (jsonLdContent) return jsonLdContent;
+
+    // Strategy 3: Selectors
+    const selectorContent = await this.tryStrategy('selectors', async () => {
+      const content = extractFromSelectors($, 200);
+      return content ? { content } : null;
+    });
+    if (selectorContent) return selectorContent;
+
+    // Strategy 4: Paragraphs
+    const paragraphContent = await this.tryStrategy('paragraphs', async () => {
+      const content = extractFromParagraphs($, 50);
+      return content ? { content } : null;
+    });
+    if (paragraphContent) return paragraphContent;
+
+    // Strategy 5: Metadata
+    const metadataContent = await this.tryStrategy('metadata', async () => {
+      const content = extractFromMetadata($, {
+        title: metadata.title,
+        ogTitle: metadata.ogTitle,
+        ogDescription: metadata.ogDescription,
+        metaDescription: metadata.metaDescription,
+        twitterDescription: metadata.twitterDescription,
+      });
+      return content ? { content } : null;
+    });
+    return metadataContent;
+  }
+
+  private extractMetadata($: CheerioAPI) {
+    return {
+      ogTitle: $('meta[property="og:title"]').attr('content'),
+      ogDescription: $('meta[property="og:description"]').attr('content'),
+      ogImage: $('meta[property="og:image"]').attr('content'),
+      twitterDescription: $('meta[name="twitter:description"]').attr('content'),
+      twitterImage: $('meta[name="twitter:image"]').attr('content'),
+      metaDescription: $('meta[name="description"]').attr('content'),
+      title: $('title').text().trim(),
+    };
+  }
+
+  private resolveThumbnail(
+    thumbnail: string | undefined,
+    baseUrl: string,
+    $: CheerioAPI
+  ): string | undefined {
+    if (thumbnail) {
+      try {
+        return new URL(thumbnail, baseUrl).toString();
+      } catch {
+        return thumbnail;
+      }
+    }
+    return this.findFirstImage($, baseUrl) || undefined;
+  }
+
+  private findFirstImage(
+    $: CheerioAPI,
+    baseUrl: string
+  ): string | undefined {
     const imageSelectors = [
       'meta[property="og:image"]',
       'meta[name="twitter:image"]',
@@ -232,19 +251,24 @@ export class GenericContentEnricher extends BaseContentEnricher {
       '.content img',
       'img[src*="thumbnail"]',
       'img[src*="featured"]',
-      'img'
+      'img',
     ];
 
     for (const selector of imageSelectors) {
       const img = $(selector).first();
       if (img.length) {
-        const src = img.attr('src') || img.attr('data-src') || img.attr('content');
-        if (src && !src.includes('logo') && !src.includes('icon') && !src.includes('avatar')) {
-          // 相対URLを絶対URLに変換
+        const src =
+          img.attr('src') || img.attr('data-src') || img.attr('content');
+        if (
+          src &&
+          !src.includes('logo') &&
+          !src.includes('icon') &&
+          !src.includes('avatar')
+        ) {
           try {
             return new URL(src, baseUrl).toString();
           } catch {
-            return src; // 変換に失敗した場合は元のURLを返す
+            return src;
           }
         }
       }
@@ -253,22 +277,14 @@ export class GenericContentEnricher extends BaseContentEnricher {
     return undefined;
   }
 
-  /**
-   * コンテンツのクリーンアップ
-   */
   private cleanupContent(content: string): string {
     return content
-      // 連続する空白を単一スペースに
       .replace(/[ \t]+/g, ' ')
-      // 3つ以上の改行を2つに
       .replace(/\n{3,}/g, '\n\n')
-      // 行頭行末の空白を削除
       .split('\n')
-      .map(line => line.trim())
+      .map((line) => line.trim())
       .join('\n')
-      // 全体のトリム
       .trim()
-      // 最大長制限
       .substring(0, 50000);
   }
 }
