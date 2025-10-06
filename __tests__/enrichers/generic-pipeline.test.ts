@@ -1,10 +1,25 @@
 import { GenericContentEnricher } from '@/lib/enrichers/generic';
 
+jest.mock('@/lib/enrichers/strategies', () => {
+  const actual = jest.requireActual('@/lib/enrichers/strategies');
+  return {
+    ...actual,
+    extractWithReadability: jest.fn(actual.extractWithReadability),
+    extractFromJsonLd: jest.fn(actual.extractFromJsonLd),
+    extractFromSelectors: jest.fn(actual.extractFromSelectors),
+    extractFromParagraphs: jest.fn(actual.extractFromParagraphs),
+    extractFromMetadata: jest.fn(actual.extractFromMetadata),
+    isHighQuality: jest.fn(actual.isHighQuality),
+    isMinimumViable: jest.fn(actual.isMinimumViable),
+  };
+});
+
 describe('GenericContentEnricher Pipeline', () => {
   let enricher: GenericContentEnricher;
 
   beforeEach(() => {
     enricher = new GenericContentEnricher();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -119,19 +134,17 @@ describe('GenericContentEnricher Pipeline', () => {
     });
 
     it('should try strategies in order when previous ones fail', async () => {
-      const strategies = require('@/lib/enrichers/strategies');
+      const strategies = jest.requireMock('@/lib/enrichers/strategies') as jest.Mocked<
+        typeof import('@/lib/enrichers/strategies')
+      >;
 
-      const readabilitySpy = jest
-        .spyOn(strategies, 'extractWithReadability')
-        .mockResolvedValue(null);
-
-      const jsonLdSpy = jest
-        .spyOn(strategies, 'extractFromJsonLd')
-        .mockReturnValue(null);
-
-      const selectorsSpy = jest
-        .spyOn(strategies, 'extractFromSelectors')
-        .mockReturnValue('Selector extracted content. '.repeat(15));
+      strategies.extractWithReadability.mockResolvedValueOnce(null);
+      strategies.extractFromJsonLd.mockReturnValueOnce(null);
+      strategies.extractFromSelectors.mockReturnValueOnce(
+        'Selector extracted content. '.repeat(15)
+      );
+      strategies.isHighQuality.mockReturnValue(true);
+      strategies.isMinimumViable.mockReturnValue(true);
 
       jest.spyOn(global, 'fetch').mockResolvedValueOnce({
         ok: true,
@@ -141,28 +154,31 @@ describe('GenericContentEnricher Pipeline', () => {
 
       const result = await enricher.enrich('https://example.com/strategy-order');
 
-      expect(readabilitySpy).toHaveBeenCalled();
-      expect(jsonLdSpy).toHaveBeenCalled();
-      expect(selectorsSpy).toHaveBeenCalled();
+      expect(strategies.extractWithReadability).toHaveBeenCalled();
+      expect(strategies.extractFromJsonLd).toHaveBeenCalled();
+      expect(strategies.extractFromSelectors).toHaveBeenCalled();
 
-      expect(readabilitySpy.mock.invocationCallOrder[0]).toBeLessThan(
-        jsonLdSpy.mock.invocationCallOrder[0] || Infinity
-      );
-      expect((jsonLdSpy.mock.invocationCallOrder[0] || 0)).toBeLessThan(
-        selectorsSpy.mock.invocationCallOrder[0] || Infinity
-      );
+      const readabilityOrder =
+        strategies.extractWithReadability.mock.invocationCallOrder[0]!;
+      const jsonLdOrder =
+        strategies.extractFromJsonLd.mock.invocationCallOrder[0]!;
+      const selectorsOrder =
+        strategies.extractFromSelectors.mock.invocationCallOrder[0]!;
+
+      expect(readabilityOrder).toBeLessThan(jsonLdOrder);
+      expect(jsonLdOrder).toBeLessThan(selectorsOrder);
 
       expect(result).not.toBeNull();
       expect(result?.content).toContain('Selector extracted');
-
-      readabilitySpy.mockRestore();
-      jsonLdSpy.mockRestore();
-      selectorsSpy.mockRestore();
     }, 15000);
   });
 
   describe('Strategy order and priority', () => {
-    it('should prioritize Readability strategy first', async () => {
+    it('should prioritize Readability and skip others when it succeeds', async () => {
+      const strategies = jest.requireMock('@/lib/enrichers/strategies') as jest.Mocked<
+        typeof import('@/lib/enrichers/strategies')
+      >;
+
       const readabilityContent = 'Readability extracted content. '.repeat(20);
 
       jest.spyOn(global, 'fetch').mockResolvedValueOnce({
@@ -188,6 +204,10 @@ describe('GenericContentEnricher Pipeline', () => {
 
       expect(result).not.toBeNull();
       expect(result!.content.length).toBeGreaterThan(400);
+
+      expect(strategies.extractWithReadability).toHaveBeenCalled();
+      expect(strategies.extractFromJsonLd).not.toHaveBeenCalled();
+      expect(strategies.extractFromSelectors).not.toHaveBeenCalled();
     });
 
     it('should fall back to JSON-LD when Readability fails', async () => {
@@ -212,7 +232,7 @@ describe('GenericContentEnricher Pipeline', () => {
       expect(result?.content).toContain('JSON-LD fallback');
     });
 
-    it('should respect quality gate thresholds', async () => {
+    it('should respect high quality gate (>=400 chars)', async () => {
       const highQualityHTML = `
         <html>
           <body>
@@ -233,6 +253,76 @@ describe('GenericContentEnricher Pipeline', () => {
 
       expect(result).not.toBeNull();
       expect(result!.content.length).toBeGreaterThan(400);
+    });
+
+    it('should accept medium quality (>=250 chars, >=2 sentences)', async () => {
+      const mediumQualityHTML = `
+        <html>
+          <body>
+            <article>
+              <p>${'Medium quality content. '.repeat(12)}</p>
+              <p>Another sentence here.</p>
+            </article>
+          </body>
+        </html>
+      `;
+
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        url: 'https://example.com/medium-quality',
+        text: async () => mediumQualityHTML,
+      } as Response);
+
+      const result = await enricher.enrich('https://example.com/medium-quality');
+
+      expect(result).not.toBeNull();
+      expect(result!.content.length).toBeGreaterThanOrEqual(250);
+      expect(result!.content.length).toBeLessThan(400);
+    });
+
+    it('should accept minimum viable (>=50 chars)', async () => {
+      const minimalHTML = `
+        <html>
+          <body>
+            <article>
+              <p>${'Minimal content that just meets threshold. '.repeat(2)}</p>
+            </article>
+          </body>
+        </html>
+      `;
+
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        url: 'https://example.com/minimal',
+        text: async () => minimalHTML,
+      } as Response);
+
+      const result = await enricher.enrich('https://example.com/minimal');
+
+      expect(result).not.toBeNull();
+      expect(result!.content.length).toBeGreaterThanOrEqual(50);
+    });
+
+    it('should reject content below minimum (<50 chars)', async () => {
+      const tooShortHTML = `
+        <html>
+          <body>
+            <article>
+              <p>Too short</p>
+            </article>
+          </body>
+        </html>
+      `;
+
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        url: 'https://example.com/too-short',
+        text: async () => tooShortHTML,
+      } as Response);
+
+      const result = await enricher.enrich('https://example.com/too-short');
+
+      expect(result).toBeNull();
     });
   });
 });
