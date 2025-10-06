@@ -1,7 +1,15 @@
 import { GenericContentEnricher } from '@/lib/enrichers/generic';
 
 describe('GenericContentEnricher Pipeline', () => {
-  const enricher = new GenericContentEnricher();
+  let enricher: GenericContentEnricher;
+
+  beforeEach(() => {
+    enricher = new GenericContentEnricher();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
   describe('Strategy pipeline', () => {
     it('should handle simple article HTML', async () => {
@@ -27,8 +35,6 @@ describe('GenericContentEnricher Pipeline', () => {
       expect(result).not.toBeNull();
       expect(result?.content).toBeDefined();
       expect(result!.content.length).toBeGreaterThan(500);
-
-      mockFetch.mockRestore();
     });
 
     it('should handle JSON-LD structured data', async () => {
@@ -54,12 +60,10 @@ describe('GenericContentEnricher Pipeline', () => {
 
       expect(result).not.toBeNull();
       expect(result?.content).toContain('JSON-LD');
-
-      mockFetch.mockRestore();
     });
 
     it('should return null for genuinely thin content', async () => {
-      const mockFetch = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
         ok: true,
         url: 'https://example.com/thin',
         text: async () => '<html><body><p>Short</p></body></html>',
@@ -68,24 +72,20 @@ describe('GenericContentEnricher Pipeline', () => {
       const result = await enricher.enrich('https://example.com/thin');
 
       expect(result).toBeNull();
-
-      mockFetch.mockRestore();
-    }, 10000);
+    });
 
     it('should handle fetch errors gracefully', async () => {
-      const mockFetch = jest.spyOn(global, 'fetch').mockRejectedValueOnce(
+      jest.spyOn(global, 'fetch').mockRejectedValueOnce(
         new Error('Network error')
       );
 
       const result = await enricher.enrich('https://example.com/error');
 
       expect(result).toBeNull();
-
-      mockFetch.mockRestore();
-    }, 10000);
+    });
 
     it('should handle HTTP error status', async () => {
-      const mockFetch = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
         ok: false,
         status: 404,
       } as Response);
@@ -93,14 +93,12 @@ describe('GenericContentEnricher Pipeline', () => {
       const result = await enricher.enrich('https://example.com/notfound');
 
       expect(result).toBeNull();
-
-      mockFetch.mockRestore();
-    }, 10000);
+    });
   });
 
   describe('Fallback behavior', () => {
     it('should try multiple strategies', async () => {
-      const mockFetch = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
         ok: true,
         url: 'https://example.com/fallback',
         text: async () => `
@@ -118,8 +116,81 @@ describe('GenericContentEnricher Pipeline', () => {
 
       expect(result).not.toBeNull();
       expect(result?.content).toContain('Paragraph content');
+    });
+  });
 
-      mockFetch.mockRestore();
+  describe('Strategy order and priority', () => {
+    it('should prioritize Readability strategy first', async () => {
+      const readabilityContent = 'Readability extracted content. '.repeat(20);
+
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        url: 'https://example.com/readability-test',
+        text: async () => `
+          <html>
+            <head>
+              <script type="application/ld+json">
+                {"@type": "Article", "articleBody": "JSON-LD content should be ignored"}
+              </script>
+            </head>
+            <body>
+              <article>
+                <p>${readabilityContent}</p>
+              </article>
+            </body>
+          </html>
+        `,
+      } as Response);
+
+      const result = await enricher.enrich('https://example.com/readability-test');
+
+      expect(result).not.toBeNull();
+      expect(result!.content.length).toBeGreaterThan(400);
+    });
+
+    it('should fall back to JSON-LD when Readability fails', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        url: 'https://example.com/jsonld-fallback',
+        text: async () => `
+          <html>
+            <head>
+              <script type="application/ld+json">
+                {"@type": "Article", "articleBody": "${'JSON-LD fallback content. '.repeat(30)}"}
+              </script>
+            </head>
+            <body></body>
+          </html>
+        `,
+      } as Response);
+
+      const result = await enricher.enrich('https://example.com/jsonld-fallback');
+
+      expect(result).not.toBeNull();
+      expect(result?.content).toContain('JSON-LD fallback');
+    });
+
+    it('should respect quality gate thresholds', async () => {
+      const highQualityHTML = `
+        <html>
+          <body>
+            <article>
+              <p>${'High quality content with substantial information. '.repeat(10)}</p>
+            </article>
+          </body>
+        </html>
+      `;
+
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        url: 'https://example.com/high-quality',
+        text: async () => highQualityHTML,
+      } as Response);
+
+      const result = await enricher.enrich('https://example.com/high-quality');
+
+      expect(result).not.toBeNull();
+      expect(result!.content.length).toBeGreaterThan(400);
     });
   });
 });
