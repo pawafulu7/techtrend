@@ -45,13 +45,7 @@ export function isLikelyJapanese(
 
   // If the text contains any Japanese characters, treat it as Japanese
   // This handles edge cases like "Rancher と Terraform" (1 Japanese character)
-  if (japaneseMatches.length >= 1) {
-    return true;
-  }
-
-  // Calculate the ratio of Japanese characters to total characters
-  const japaneseRatio = japaneseMatches.length / text.length;
-  return japaneseRatio >= threshold;
+  return true;
 }
 
 /**
