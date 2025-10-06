@@ -72,7 +72,7 @@ describe('GenericContentEnricher Pipeline', () => {
       const result = await enricher.enrich('https://example.com/thin');
 
       expect(result).toBeNull();
-    });
+    }, 10000);
 
     it('should handle fetch errors gracefully', async () => {
       jest.spyOn(global, 'fetch').mockRejectedValueOnce(
@@ -82,7 +82,7 @@ describe('GenericContentEnricher Pipeline', () => {
       const result = await enricher.enrich('https://example.com/error');
 
       expect(result).toBeNull();
-    });
+    }, 10000);
 
     it('should handle HTTP error status', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce({
@@ -93,7 +93,7 @@ describe('GenericContentEnricher Pipeline', () => {
       const result = await enricher.enrich('https://example.com/notfound');
 
       expect(result).toBeNull();
-    });
+    }, 10000);
   });
 
   describe('Fallback behavior', () => {

@@ -72,7 +72,7 @@ describe('Quality evaluation', () => {
     });
 
     it('should accept exactly 250 chars with 2 sentences', () => {
-      const exactly250 = 'This is the first sentence with sufficient content to be counted properly in our quality evaluation system here. This is the second sentence which also has enough length for our minimum threshold requirement and completes the test case successfully now.';
+      const exactly250 = ('First sentence with enough content here. ' + 'Second sentence with sufficient length. ').padEnd(250, 'X');
       const result = isHighQuality(exactly250);
 
       expect(exactly250.length).toBe(250);
@@ -80,7 +80,7 @@ describe('Quality evaluation', () => {
     });
 
     it('should accept exactly 400 chars with high density', () => {
-      const exactly400 = 'This is a comprehensive test sentence with substantial content for quality evaluation purposes and testing the high quality threshold boundary condition here today. Another sentence follows with additional meaningful content to ensure proper validation of our quality gates and metrics calculation system implementation. Third sentence adds even more context and information to reach the exact character count target while maintaining text density below threshold. Final text here completes.';
+      const exactly400 = ('First sentence. Second sentence. Third sentence. ').padEnd(400, 'X');
       const result = isHighQuality(exactly400);
 
       expect(exactly400.length).toBe(400);
@@ -90,7 +90,7 @@ describe('Quality evaluation', () => {
 
   describe('isMinimumViable', () => {
     it('should accept content >= 50 chars', () => {
-      const content = 'This is exactly fifty characters for testing now!';
+      const content = 'This is a test string for minimum viable check'.padEnd(50, '!');
       const result = isMinimumViable(content);
 
       expect(content.length).toBe(50);
