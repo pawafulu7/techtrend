@@ -145,12 +145,12 @@ async function main() {
     try {
       // 一覧要約の修正（プロンプト混入除去）
       let fixedSummary = article.summary;
-      if (fixedSummary && INSTRUCTION_PATTERNS.some(p => p.test(fixedSummary))) {
+      if (fixedSummary) {
         const summaryLines = fixedSummary.split('\n');
-        fixedSummary = summaryLines
-          .filter(line => !INSTRUCTION_PATTERNS.some(p => p.test(line.trim())))
-          .join(' ')
-          .trim();
+        const filteredLines = summaryLines.filter(line => !INSTRUCTION_PATTERNS.some(p => p.test(line.trim())));
+        if (filteredLines.length !== summaryLines.length) {
+          fixedSummary = filteredLines.join(' ').trim();
+        }
       }
 
       // 詳細要約の修正

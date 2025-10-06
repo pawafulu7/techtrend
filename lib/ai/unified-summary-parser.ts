@@ -89,14 +89,15 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
     } else if (trimmed) {
       // セクション内容の追加
       switch (currentSection) {
-        case 'summary':
+        case 'summary': {
           // 要約の続き（改善: プロンプトフィルタリング追加）
           const isInstructionSummary = INSTRUCTION_PATTERNS.some(pattern => pattern.test(trimmed));
           if (!summary.includes(trimmed) && !trimmed.startsWith('・') && !isInstructionSummary) {
             summary += (summary ? ' ' : '') + trimmed;
           }
           break;
-        case 'detailed':
+        }
+        case 'detailed': {
           // 詳細要約の内容を収集（改善版：カテゴリ削除 + 1行連結 + プロンプトフィルタ）
           if (trimmed.startsWith('・') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
             // プロンプト行をフィルタリング
@@ -155,6 +156,7 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
             }
           }
           break;
+        }
         case 'category':
           if (!category) {
             category = normalizeCategory(trimmed);
