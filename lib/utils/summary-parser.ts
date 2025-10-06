@@ -1,5 +1,17 @@
 import { ArticleType, getArticleTypeSections } from './article-type-prompts';
 
+// プロンプト行を検出する正規表現パターン
+const INSTRUCTION_PATTERNS = [
+  /^-\s*記事の核心的な内容/,
+  /^【条件】/,
+  /^【書き方】/,
+  /^【重要/,
+  /^-\s*技術的価値を/,
+  /^ここに.*書く/,
+  /^- \d+文字以上の記事/,
+  /必ず\d+文字以上/,
+];
+
 export interface SummarySection {
   title: string;
   content: string;
@@ -105,11 +117,15 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
   // summaryVersion 7または8の処理（AIが自由に項目を設定）
   if (options?.summaryVersion === 7 || options?.summaryVersion === 8) {
     let currentMainSection: SummarySection | null = null;
-    
+
     for (const line of lines) {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
-      
+
+      // プロンプト行をスキップ
+      const isInstruction = INSTRUCTION_PATTERNS.some(pattern => pattern.test(trimmedLine));
+      if (isInstruction) continue;
+
       // メイン項目（・）とサブ項目（-）を区別
       const isMainItem = trimmedLine.startsWith('・');
       const isSubItem = trimmedLine.startsWith('-');
