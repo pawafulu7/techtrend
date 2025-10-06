@@ -5,16 +5,9 @@ import {
 } from './summary-provider.interface';
 import { GeminiTransport, TransportRequest } from '../transport/gemini-transport.interface';
 import { PromptBuilder } from './prompt-builder';
+import { INSTRUCTION_PATTERNS } from '../constants';
 
 export class GeminiSummaryAdapter implements SummaryProvider {
-  private static readonly INSTRUCTION_PATTERNS = [
-    /^-\s*記事の核心的な内容/,
-    /^【条件】/,
-    /^【書き方】/,
-    /^-\s*技術的価値を/,
-    /ここに.*書く/,
-    /端的に表現$/,
-  ];
 
   constructor(
     private readonly transport: GeminiTransport,
@@ -121,7 +114,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       if (line.startsWith('要約:')) {
         currentSection = 'headline';
         const content = line.substring('要約:'.length).trim();
-        const isInstruction = GeminiSummaryAdapter.INSTRUCTION_PATTERNS.some(pattern => pattern.test(content));
+        const isInstruction = INSTRUCTION_PATTERNS.some(pattern => pattern.test(content));
         if (content && !isInstruction) {
           headline = content;
         }
@@ -157,7 +150,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       }
 
       if (currentSection === 'headline' && !headline) {
-        const isInstruction = GeminiSummaryAdapter.INSTRUCTION_PATTERNS.some(pattern => pattern.test(line));
+        const isInstruction = INSTRUCTION_PATTERNS.some(pattern => pattern.test(line));
         if (!isInstruction) {
           headline = line;
         }
@@ -189,12 +182,44 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       throw new Error('Failed to extract detailed summary from response');
     }
 
+    if (this.containsInstructionMarkers(headline)) {
+      console.warn(`[Adapter] Headline contains instruction markers, rejecting: ${headline.substring(0, 100)}`);
+      throw new Error('Headline contains instruction markers - regeneration required');
+    }
+
+    if (this.containsInstructionMarkers(detailedSummary)) {
+      console.warn(`[Adapter] Detailed summary contains instruction markers, rejecting`);
+      throw new Error('Detailed summary contains instruction markers - regeneration required');
+    }
+
     return {
       headline,
       detailedSummary,
       category,
       tags,
     };
+  }
+
+  private containsInstructionMarkers(text: string): boolean {
+    const lines = text.split('\n');
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      if (INSTRUCTION_PATTERNS.some(pattern => pattern.test(trimmedLine))) {
+        return true;
+      }
+
+      if (
+        /^\[ここに.*\]$/.test(trimmedLine) ||
+        trimmedLine === '-' ||
+        /^文字数[:：]/.test(trimmedLine)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private calculateConfidence(candidate: Record<string, unknown>): number {
