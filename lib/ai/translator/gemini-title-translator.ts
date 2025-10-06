@@ -72,7 +72,7 @@ export class GeminiTitleTranslator implements TitleTranslator {
     }
 
     // 原文がそのまま返された場合、日本語タイトルかチェック
-    if (normalizedTranslated === input.title) {
+    if (normalizedTranslated === input.title.trim()) {
       if (isLikelyJapanese(normalizedTranslated)) {
         // Japanese title detected - skip translation (normal behavior)
         return null;

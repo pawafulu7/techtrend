@@ -14,18 +14,21 @@ const DEFAULT_JAPANESE_THRESHOLD = 0.3;
 
 /**
  * Determines if the given text is likely to be Japanese based on character composition.
- * A text is considered Japanese if at least 30% of its characters are Japanese characters
+ * A text is considered Japanese if it contains any Japanese characters
  * (Hiragana, Katakana, Kanji, or Japanese punctuation).
  *
+ * The function uses an early return for any Japanese character presence to handle
+ * edge cases like "Rancher と Terraform" where a single particle indicates Japanese content.
+ *
  * @param text - The text to analyze
- * @param threshold - The minimum ratio of Japanese characters (default: 0.3)
+ * @param threshold - The minimum ratio of Japanese characters (legacy parameter, rarely reached)
  * @returns true if the text is likely Japanese, false otherwise
  *
  * @example
  * isLikelyJapanese("こんにちは世界"); // true
  * isLikelyJapanese("Hello World"); // false
- * isLikelyJapanese("JavaScriptで作るメモアプリ"); // true (>30% Japanese)
- * isLikelyJapanese("JavaScript API"); // false (<30% Japanese)
+ * isLikelyJapanese("Rancher と Terraform"); // true (single Japanese character)
+ * isLikelyJapanese("JavaScript API"); // false (no Japanese characters)
  */
 export function isLikelyJapanese(
   text: string,
