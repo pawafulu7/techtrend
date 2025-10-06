@@ -56,24 +56,52 @@ function isPrivateOrLocalhost(url: string): boolean {
 
 /**
  * Test if HTTPS version is reachable
+ * - First tries HEAD request (lightweight)
+ * - Falls back to GET if HEAD returns 405/501 (method not allowed)
+ * - Ensures timeout is always cleared
  */
 async function testHttpsUrl(httpUrl: string): Promise<boolean> {
   const httpsUrl = httpUrl.replace(/^http:/, 'https:');
 
-  try {
+  const probe = async (
+    method: 'HEAD' | 'GET',
+  ): Promise<{ ok: boolean; status?: number }> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(httpsUrl, {
-      method: 'HEAD',
-      signal: controller.signal,
-    });
+    try {
+      const response = await fetch(httpsUrl, {
+        method,
+        signal: controller.signal,
+        redirect: 'follow',
+      });
 
-    clearTimeout(timeoutId);
-    return response.ok;
-  } catch (error) {
-    return false;
+      // Cancel GET response body to avoid memory leak
+      if (method === 'GET' && response.body) {
+        await response.body.cancel();
+      }
+
+      return { ok: response.ok, status: response.status };
+    } catch {
+      return { ok: false };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
+  // Try HEAD first (lightweight)
+  const headResult = await probe('HEAD');
+  if (headResult.ok) {
+    return true;
   }
+
+  // Fallback to GET if HEAD is not allowed (405/501)
+  if (headResult.status === 405 || headResult.status === 501) {
+    const getResult = await probe('GET');
+    return getResult.ok;
+  }
+
+  return false;
 }
 
 /**
