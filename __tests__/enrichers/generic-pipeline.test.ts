@@ -117,6 +117,48 @@ describe('GenericContentEnricher Pipeline', () => {
       expect(result).not.toBeNull();
       expect(result?.content).toContain('Paragraph content');
     });
+
+    it('should try strategies in order when previous ones fail', async () => {
+      const strategies = require('@/lib/enrichers/strategies');
+
+      const readabilitySpy = jest
+        .spyOn(strategies, 'extractWithReadability')
+        .mockResolvedValue(null);
+
+      const jsonLdSpy = jest
+        .spyOn(strategies, 'extractFromJsonLd')
+        .mockReturnValue(null);
+
+      const selectorsSpy = jest
+        .spyOn(strategies, 'extractFromSelectors')
+        .mockReturnValue('Selector extracted content. '.repeat(15));
+
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        url: 'https://example.com/strategy-order',
+        text: async () => '<html><body><main>Content</main></body></html>',
+      } as Response);
+
+      const result = await enricher.enrich('https://example.com/strategy-order');
+
+      expect(readabilitySpy).toHaveBeenCalled();
+      expect(jsonLdSpy).toHaveBeenCalled();
+      expect(selectorsSpy).toHaveBeenCalled();
+
+      expect(readabilitySpy.mock.invocationCallOrder[0]).toBeLessThan(
+        jsonLdSpy.mock.invocationCallOrder[0] || Infinity
+      );
+      expect((jsonLdSpy.mock.invocationCallOrder[0] || 0)).toBeLessThan(
+        selectorsSpy.mock.invocationCallOrder[0] || Infinity
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.content).toContain('Selector extracted');
+
+      readabilitySpy.mockRestore();
+      jsonLdSpy.mockRestore();
+      selectorsSpy.mockRestore();
+    }, 15000);
   });
 
   describe('Strategy order and priority', () => {
