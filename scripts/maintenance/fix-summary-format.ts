@@ -46,20 +46,21 @@ function fixDetailedSummaryFormat(detailedSummary: string): string {
     const isInstruction = INSTRUCTION_PATTERNS.some(p => p.test(trimmed));
     if (isInstruction) continue;
 
-    if (trimmed.startsWith('・') || trimmed.startsWith('-')) {
+    if (trimmed.startsWith('・') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
       // 前の項目を保存
       if (currentItem) {
         fixed.push(`・${currentItem.title}：${currentItem.content}`);
       }
 
       // 新しい項目を開始
-      const match = trimmed.match(/^[・-]\s*(.+?)[:：]\s*(.*)$/);
+      const match = trimmed.match(/^[・\-\*]\s*(.+?)[:：]\s*(.*)$/);
       if (match) {
         const firstPart = match[1].trim();
         const secondPart = match[2].trim();
         const isCategory = CATEGORY_LABELS.includes(firstPart);
         const nextLine = (lines[i + 1] ?? '').trim();
-        const hasContinuation = nextLine && !/^[・\-]/.test(nextLine);
+        const isNextInstruction = INSTRUCTION_PATTERNS.some(p => p.test(nextLine));
+        const hasContinuation = nextLine && !isNextInstruction && !/^[・\-\*]/.test(nextLine);
 
         if (
           isCategory &&

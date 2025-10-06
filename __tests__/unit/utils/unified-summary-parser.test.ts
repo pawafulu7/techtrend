@@ -17,8 +17,8 @@ describe('unified-summary-parser', () => {
       const result = parseUnifiedResponse(input);
       
       expect(result.detailedSummary).not.toContain('**');
-      expect(result.detailedSummary).toContain('・項目名1:');
-      expect(result.detailedSummary).toContain('・項目名2:');
+      expect(result.detailedSummary).toContain('・項目名1：');
+      expect(result.detailedSummary).toContain('・項目名2：');
     });
     
     it('should handle multiple markdown bold patterns in one line', () => {
@@ -34,7 +34,7 @@ describe('unified-summary-parser', () => {
       const result = parseUnifiedResponse(input);
       
       expect(result.detailedSummary).not.toContain('**');
-      expect(result.detailedSummary).toContain('・重要な点:');
+      expect(result.detailedSummary).toContain('・重要な点：');
       expect(result.detailedSummary).toContain('強調');
     });
     
@@ -68,9 +68,9 @@ describe('unified-summary-parser', () => {
       const result = parseUnifiedResponse(input);
       
       expect(result.detailedSummary).not.toContain('**');
-      expect(result.detailedSummary).toContain('・Markdown項目:');
+      expect(result.detailedSummary).toContain('・Markdown項目：');
       expect(result.detailedSummary).toContain('・通常の項目：');
-      expect(result.detailedSummary).toContain('・別のMarkdown:');
+      expect(result.detailedSummary).toContain('・別のMarkdown：');
     });
     
     it('should handle edge cases with asterisks', () => {
@@ -87,7 +87,7 @@ describe('unified-summary-parser', () => {
       
       // 太字記法のみ削除、単独のアスタリスクは保持
       expect(result.detailedSummary).not.toContain('**項目名:**');
-      expect(result.detailedSummary).toContain('・項目名:');
+      expect(result.detailedSummary).toContain('・項目名：');
       expect(result.detailedSummary).toContain('*アスタリスク*');
       expect(result.detailedSummary).toContain('2 * 3 = 6');
     });
@@ -198,6 +198,36 @@ GPS（Global Positioning System）は、元々軍事利用を目的に開発さ�
 
       expect(result.detailedSummary).not.toContain('。。');
       expect(result.detailedSummary).toContain('。2番目の文');
+    });
+
+    it('should handle asterisk bullets correctly', () => {
+      const input = `
+詳細要約:
+*技術概要：Asterisk箇条書きのテスト
+本文が続きます
+*通常の項目：内容がここに入ります
+`;
+      const result = parseUnifiedResponse(input);
+
+      const lines = result.detailedSummary.split('\n');
+      expect(lines[0]).toBe('・Asterisk箇条書きのテスト：本文が続きます');
+      expect(lines[1]).toBe('・通常の項目：内容がここに入ります');
+    });
+
+    it('should not treat instruction line as continuation', () => {
+      const input = `
+詳細要約:
+・技術概要：項目タイトル
+【重要：以下は指示行です】
+・次の項目：これは別の項目です
+`;
+      const result = parseUnifiedResponse(input);
+
+      const lines = result.detailedSummary.split('\n');
+      // 次行が指示行の場合、hasContinuation = false となり、カテゴリ削除されない
+      expect(lines[0]).toBe('・技術概要：項目タイトル');
+      expect(lines[0]).not.toContain('【重要');
+      expect(lines[1]).toBe('・次の項目：これは別の項目です');
     });
   });
 });

@@ -104,15 +104,16 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
             const isInstructionDetailed = INSTRUCTION_PATTERNS.some(pattern => pattern.test(trimmed));
             if (!isInstructionDetailed) {
               // 「・カテゴリ：項目名」または「・項目名：内容」形式を検出
-              const match = trimmed.match(/^[・-]\s*(.+?)[:：]\s*(.*)$/);
+              const match = trimmed.match(/^[・\-\*]\s*(.+?)[:：]\s*(.*)$/);
               if (match) {
                 const firstPart = match[1].trim();
                 const secondPart = match[2].trim();
                 const isCategory = CATEGORY_LABELS.includes(firstPart);
-                const bulletMark = trimmed[0];
-                const colonChar = trimmed.includes('：') ? '：' : ':';
+                const bulletMark = '・'; // 常に・に統一
+                const colonChar = '：'; // 常に全角コロンに統一
                 const nextLine = (lines[i + 1] ?? '').trim();
-                const hasContinuation = nextLine && !/^[・\-\*]/.test(nextLine);
+                const isNextInstruction = INSTRUCTION_PATTERNS.some(p => p.test(nextLine));
+                const hasContinuation = nextLine && !isNextInstruction && !/^[・\-\*]/.test(nextLine);
 
                 if (
                   isCategory &&
@@ -126,11 +127,12 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
                   detailedSummaryLines.push(`${bulletMark}${secondPart}${colonChar}`);
                 } else if (isCategory && secondPart) {
                   // カテゴリ：内容 形式（secondPartが長文または本文）
-                  // カテゴリを削除せず、そのまま保持
-                  detailedSummaryLines.push(trimmed);
+                  // 箇条書き記号を・に統一、コロンを全角に統一
+                  detailedSummaryLines.push(`${bulletMark}${firstPart}${colonChar}${secondPart}`);
                 } else {
                   // 通常の項目：内容 形式
-                  detailedSummaryLines.push(trimmed);
+                  // 箇条書き記号を・に統一、コロンを全角に統一
+                  detailedSummaryLines.push(`${bulletMark}${firstPart}${colonChar}${secondPart}`);
                 }
               } else {
                 // コロンがない行はそのまま追加
