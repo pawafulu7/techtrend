@@ -26,8 +26,8 @@ export async function extractWithReadability(
       if (article?.textContent) {
         return {
           content: article.textContent,
-          thumbnail: article.siteName ? undefined : article.excerpt,
-          title: article.title,
+          thumbnail: article.siteName ? undefined : article.excerpt || undefined,
+          title: article.title || undefined,
         };
       }
 

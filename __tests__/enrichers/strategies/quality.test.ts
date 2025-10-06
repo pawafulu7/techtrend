@@ -7,7 +7,7 @@ import {
 describe('Quality evaluation', () => {
   describe('evaluateQuality', () => {
     it('should calculate quality metrics correctly', () => {
-      const content = 'This is a test. Another sentence. Third one!';
+      const content = 'This is a test sentence here. Another sentence with more content. Third one with enough length!';
       const metrics = evaluateQuality(content);
 
       expect(metrics.length).toBe(content.length);
@@ -26,7 +26,7 @@ describe('Quality evaluation', () => {
     });
 
     it('should count sentences correctly', () => {
-      const content = 'First! Second? Third.';
+      const content = 'First sentence with enough length! Second sentence here? Third sentence also long enough.';
       const metrics = evaluateQuality(content);
 
       expect(metrics.sentences).toBe(3);
@@ -74,7 +74,7 @@ describe('Quality evaluation', () => {
 
   describe('isMinimumViable', () => {
     it('should accept content >= 50 chars', () => {
-      const content = 'This is exactly fifty characters in this string!!';
+      const content = 'This is exactly fifty characters in this test string!';
       const result = isMinimumViable(content);
 
       expect(content.length).toBeGreaterThanOrEqual(50);

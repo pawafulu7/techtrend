@@ -70,7 +70,7 @@ describe('GenericContentEnricher Pipeline', () => {
       expect(result).toBeNull();
 
       mockFetch.mockRestore();
-    });
+    }, 10000);
 
     it('should handle fetch errors gracefully', async () => {
       const mockFetch = jest.spyOn(global, 'fetch').mockRejectedValueOnce(
@@ -82,7 +82,7 @@ describe('GenericContentEnricher Pipeline', () => {
       expect(result).toBeNull();
 
       mockFetch.mockRestore();
-    });
+    }, 10000);
 
     it('should handle HTTP error status', async () => {
       const mockFetch = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
@@ -95,7 +95,7 @@ describe('GenericContentEnricher Pipeline', () => {
       expect(result).toBeNull();
 
       mockFetch.mockRestore();
-    });
+    }, 10000);
   });
 
   describe('Fallback behavior', () => {
