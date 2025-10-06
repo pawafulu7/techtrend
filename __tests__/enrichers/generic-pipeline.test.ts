@@ -9,8 +9,6 @@ jest.mock('@/lib/enrichers/strategies', () => {
     extractFromSelectors: jest.fn(actual.extractFromSelectors),
     extractFromParagraphs: jest.fn(actual.extractFromParagraphs),
     extractFromMetadata: jest.fn(actual.extractFromMetadata),
-    isHighQuality: jest.fn(actual.isHighQuality),
-    isMinimumViable: jest.fn(actual.isMinimumViable),
   };
 });
 
@@ -143,8 +141,6 @@ describe('GenericContentEnricher Pipeline', () => {
       strategies.extractFromSelectors.mockReturnValueOnce(
         'Selector extracted content. '.repeat(15)
       );
-      strategies.isHighQuality.mockReturnValue(true);
-      strategies.isMinimumViable.mockReturnValue(true);
 
       jest.spyOn(global, 'fetch').mockResolvedValueOnce({
         ok: true,
