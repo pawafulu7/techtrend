@@ -10,7 +10,6 @@ import {
   extractFromMetadata,
   isHighQuality,
   isMinimumViable,
-  type MetadataInput,
 } from './strategies';
 
 interface StrategyResult {

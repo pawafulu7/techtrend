@@ -32,7 +32,7 @@ const DEFAULT_JAPANESE_THRESHOLD = 0.3;
  */
 export function isLikelyJapanese(
   text: string,
-  threshold: number = DEFAULT_JAPANESE_THRESHOLD
+  _threshold: number = DEFAULT_JAPANESE_THRESHOLD
 ): boolean {
   if (!text || text.length === 0) {
     return false;
