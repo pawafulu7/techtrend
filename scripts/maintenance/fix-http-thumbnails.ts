@@ -32,21 +32,26 @@ interface ThumbnailRecord {
  * Check if URL is private IP or localhost
  */
 function isPrivateOrLocalhost(url: string): boolean {
-  const hostname = new URL(url).hostname;
+  try {
+    const hostname = new URL(url).hostname;
 
-  // Localhost
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // Localhost
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return true;
+    }
+
+    // Private IP ranges
+    const privateRanges = [
+      /^192\.168\./,
+      /^10\./,
+      /^172\.(1[6-9]|2[0-9]|3[01])\./,
+    ];
+
+    return privateRanges.some(range => range.test(hostname));
+  } catch {
+    // Invalid URLs treated as private for safety
     return true;
   }
-
-  // Private IP ranges
-  const privateRanges = [
-    /^192\.168\./,
-    /^10\./,
-    /^172\.(1[6-9]|2[0-9]|3[01])\./,
-  ];
-
-  return privateRanges.some(range => range.test(hostname));
 }
 
 /**
@@ -82,9 +87,6 @@ async function main() {
     where: {
       thumbnail: {
         startsWith: 'http://',
-        not: {
-          startsWith: 'https://',
-        },
       },
     },
     select: {
