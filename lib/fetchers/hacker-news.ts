@@ -81,18 +81,45 @@ export class HackerNewsFetcher extends BaseFetcher {
           // URLからコンテンツを取得（フォールバック機能付き）
           try {
             const enrichedData = await enricherFactory.trySequential(story.url);
-            if (enrichedData && enrichedData.content) {
-              content = enrichedData.content;
-              thumbnail = enrichedData.thumbnail || undefined;
+            if (enrichedData?.content) {
+              // Validate enriched content quality
+              const isValidContent =
+                enrichedData.content.length >= 500 &&
+                enrichedData.content.split('\n\n').length >= 3;
+
+              if (isValidContent) {
+                content = enrichedData.content;
+                thumbnail = enrichedData.thumbnail || undefined;
+              } else {
+                // Enriched content too short - use fallback
+                logger.warn(
+                  {
+                    url: story.url,
+                    title: story.title,
+                    enrichedLength: enrichedData.content.length,
+                    paragraphCount: enrichedData.content.split('\n\n').length,
+                    fallbackLength: story.text?.length || 0,
+                  },
+                  '[HackerNews] Enriched content insufficient, using fallback'
+                );
+                content = story.text || '';
+              }
             } else {
               // エンリッチメント失敗の明示的ログ
-              console.error(`[HackerNews] All enrichers failed: ${story.url}`);
-              console.error(`  Title: ${story.title}`);
-              console.error(`  Original content: ${story.text?.length || 0} chars`);
+              logger.warn(
+                {
+                  url: story.url,
+                  title: story.title,
+                  fallbackLength: story.text?.length || 0,
+                },
+                '[HackerNews] All enrichers failed, using fallback'
+              );
+              content = story.text || '';
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error({ error }, `[Hacker News] Enrichment error: ${story.url}: ${errorMessage}`);
+            content = story.text || '';
           }
           
           // タグの生成
