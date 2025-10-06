@@ -73,7 +73,7 @@ function fixDetailedSummaryFormat(detailedSummary: string): string {
       if (currentItem) {
         if (currentItem.content) {
           // 句点補完
-          const needsPeriod = !/[。．！？!?、，]$/.test(currentItem.content);
+          const needsPeriod = !/[。．！？!?、，\.,]$/.test(currentItem.content);
           currentItem.content += (needsPeriod ? '。' : '') + trimmed;
         } else {
           currentItem.content = trimmed;
@@ -85,6 +85,11 @@ function fixDetailedSummaryFormat(detailedSummary: string): string {
   // 最後の項目を保存
   if (currentItem) {
     fixed.push(`・${currentItem.title}：${currentItem.content}`);
+  }
+
+  // 箇条書きが1件も変換されない場合は元のdetailedSummaryを返す
+  if (fixed.length === 0) {
+    return detailedSummary;
   }
 
   return fixed.join('\n');
