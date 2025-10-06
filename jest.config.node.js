@@ -39,16 +39,16 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
   },
   moduleDirectories: ['node_modules', '<rootDir>', '<rootDir>/__tests__'],
+  testMatch: [
+    '**/__tests__/**/*.test.[jt]s',
+  ],
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/__tests__/e2e/',
     '<rootDir>/e2e/',
     '<rootDir>/__tests__/integration/', // 統合テストは別コマンドで実行
-  ],
-  testMatch: [
-    '**/__tests__/**/*.test.ts',
-    '!**/__tests__/**/*.test.tsx', // Reactコンポーネントテストは除外
+    '\\.test\\.tsx$', // Reactコンポーネントテストは除外
   ],
   collectCoverageFrom: [
     'app/**/*.{ts,tsx}',
