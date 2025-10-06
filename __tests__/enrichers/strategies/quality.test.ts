@@ -43,7 +43,7 @@ describe('Quality evaluation', () => {
     });
 
     it('should accept 250+ chars with 2+ sentences', () => {
-      const mediumQuality = 'This is a medium quality article. ' + 'Another sentence here. '.repeat(6);
+      const mediumQuality = 'This is the first sentence with enough content here. This is the second sentence also with sufficient length for quality check. And here is more text to ensure we exceed the minimum character threshold required.';
       const result = isHighQuality(mediumQuality);
 
       expect(result).toBe(true);
