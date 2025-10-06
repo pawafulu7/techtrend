@@ -89,7 +89,7 @@ function fixDetailedSummaryFormat(detailedSummary: string): string {
       if (currentItem) {
         if (currentItem.content) {
           // 句点補完
-          const needsPeriod = !currentItem.content.endsWith('。') && !currentItem.content.endsWith('.') && !currentItem.content.endsWith('、');
+          const needsPeriod = !/[。．！？!?、，]$/.test(currentItem.content);
           currentItem.content += (needsPeriod ? '。' : '') + trimmed;
         } else {
           currentItem.content = trimmed;

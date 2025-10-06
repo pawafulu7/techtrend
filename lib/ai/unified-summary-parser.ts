@@ -151,7 +151,7 @@ export function parseUnifiedResponse(text: string): ParsedSummaryResult {
                 detailedSummaryLines[lastIndex] += trimmed;
               } else {
                 // 既に内容がある場合は句点を補完して連結
-                const needsPeriod = !lastLine.endsWith('。') && !lastLine.endsWith('.') && !lastLine.endsWith('、');
+                const needsPeriod = !/[。．！？!?、，]$/.test(lastLine);
                 const separator = needsPeriod ? '。' : '';
                 detailedSummaryLines[lastIndex] += separator + trimmed;
               }

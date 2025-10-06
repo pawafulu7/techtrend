@@ -229,5 +229,37 @@ GPS（Global Positioning System）は、元々軍事利用を目的に開発さ�
       expect(lines[0]).not.toContain('【重要');
       expect(lines[1]).toBe('・次の項目：これは別の項目です');
     });
+
+    it('should not add period after exclamation or question marks', () => {
+      const input = `
+詳細要約:
+・項目名：これは重要な発見です！
+次の文章が続きます
+・別の項目：本当にそうなのか？
+確認が必要です
+`;
+      const result = parseUnifiedResponse(input);
+
+      const lines = result.detailedSummary.split('\n');
+      expect(lines[0]).toBe('・項目名：これは重要な発見です！次の文章が続きます');
+      expect(lines[0]).not.toContain('！。');
+      expect(lines[1]).toBe('・別の項目：本当にそうなのか？確認が必要です');
+      expect(lines[1]).not.toContain('？。');
+    });
+
+    it('should not add period after English punctuation', () => {
+      const input = `
+詳細要約:
+・Technical overview：This is amazing!
+Next sentence follows
+・Another item：Is this correct?
+We need to verify
+`;
+      const result = parseUnifiedResponse(input);
+
+      const lines = result.detailedSummary.split('\n');
+      expect(lines[0]).not.toContain('!。');
+      expect(lines[1]).not.toContain('?。');
+    });
   });
 });
