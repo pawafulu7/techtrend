@@ -310,7 +310,7 @@ describe('GenericContentEnricher Pipeline', () => {
         </html>
       `;
 
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      jest.spyOn(global, 'fetch').mockResolvedValue({
         ok: true,
         url: 'https://example.com/too-short',
         text: async () => tooShortHTML,

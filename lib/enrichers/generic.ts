@@ -100,10 +100,11 @@ export class GenericContentEnricher extends BaseContentEnricher {
         content = this.cleanupContent(content);
 
         if (!isMinimumViable(content)) {
-          if (attempt === maxRetries) {
-            return null;
-          }
-          continue;
+          logger.debug(
+            { url, attempt, length: content.length },
+            '[GenericEnricher] Rejecting thin content'
+          );
+          return null;
         }
 
         return {
