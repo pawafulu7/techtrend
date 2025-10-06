@@ -4,24 +4,7 @@
  */
 
 import { normalizeTag } from '../utils/tag-normalizer';
-
-// プロンプト行を検出する正規表現パターン
-const INSTRUCTION_PATTERNS = [
-  /^-\s*記事の核心的な内容/,
-  /^【条件】/,
-  /^【書き方】/,
-  /^【重要/,
-  /^-\s*技術的価値を/,
-  /^ここに.*書く/,
-  /^- \d+文字以上の記事/,
-];
-
-// カテゴリ的なラベル（削除対象）
-const CATEGORY_LABELS = ['技術概要', '詳細', '背景', '概要', '実装', '効果', '結果', '考察', '展望'];
-
-// タイトル判定のしきい値
-const TITLE_CHAR_THRESHOLD = 60;
-const SENTENCE_MARKERS = /[。．！？]/;
+import { INSTRUCTION_PATTERNS, CATEGORY_LABELS, TITLE_CHAR_THRESHOLD, SENTENCE_MARKERS } from './constants';
 
 export interface ParsedSummaryResult {
   summary: string;

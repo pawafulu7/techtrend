@@ -13,25 +13,9 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { INSTRUCTION_PATTERNS, CATEGORY_LABELS, TITLE_CHAR_THRESHOLD, SENTENCE_MARKERS } from '../../lib/ai/constants';
 
 const prisma = new PrismaClient();
-
-// プロンプト行を検出する正規表現パターン
-const INSTRUCTION_PATTERNS = [
-  /^【条件】/,
-  /^【重要/,
-  /^【書き方】/,
-  /^- \d+文字以上の記事/,
-  /^-\s*記事の核心的な内容/,
-  /^-\s*技術的価値を/,
-];
-
-// カテゴリ的なラベル（削除対象）
-const CATEGORY_LABELS = ['技術概要', '詳細', '背景', '概要', '実装', '効果', '結果', '考察', '展望', '課題', '問題', '解決策', '方法', '手順', '注意点'];
-
-// タイトル判定のしきい値
-const TITLE_CHAR_THRESHOLD = 60;
-const SENTENCE_MARKERS = /[。．！？]/;
 
 function fixDetailedSummaryFormat(detailedSummary: string): string {
   const lines = detailedSummary.split('\n');
