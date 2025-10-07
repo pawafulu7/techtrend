@@ -27,6 +27,14 @@ export const INSTRUCTION_PATTERNS = [
   /^-\s*.*→.*/,        // 略称指示パターン (例: JavaScript→JS)
   /^\[ここに.*\]/,     // テンプレート指示 (例: [ここに要約を出力])
   /^-\s*文字数[:：]/,  // 文字数指示
+
+  // 再発防止パターン（2025-10-07追加）
+  /^【記事文字数要件】/,
+  /^INTERNAL METADATA/,
+  /^Article content length:/,
+  /^Summary requirements:/,
+  /^IMPORTANT: The above metadata/,
+  /DO NOT OUTPUT/,  // 部分一致（行頭以外でも検出）
 ];
 
 // カテゴリ的なラベル（削除対象）
@@ -69,4 +77,12 @@ export const CONTAMINATION_SEARCH_TERMS = [
   '- 技術用語は略称',
   '[ここに',
   '- 文字数',
+
+  // 再発防止用（2025-10-07追加）
+  '【記事文字数要件】',
+  'INTERNAL METADATA',
+  'DO NOT OUTPUT',
+  'Article content length:',
+  'Summary requirements:',
+  'IMPORTANT: The above metadata',
 ];
