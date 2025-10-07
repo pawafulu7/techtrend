@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { INSTRUCTION_PATTERNS } from '@/lib/ai/constants';
+import { INSTRUCTION_PATTERNS, CONTAMINATION_SEARCH_TERMS } from '@/lib/ai/constants';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -8,17 +8,9 @@ const prisma = new PrismaClient();
 async function detectContaminatedSummaries() {
   console.log('=== Contaminated Summaries Detection ===\n');
 
-  const contaminated = await prisma.article.findMany({
+  const candidates = await prisma.article.findMany({
     where: {
-      OR: [
-        { summary: { contains: '【条件】' } },
-        { summary: { contains: '【書き方】' } },
-        { summary: { contains: '【文末】' } },
-        { summary: { contains: '- 記事の核心的な' } },
-        { summary: { contains: '- 技術的価値を' } },
-        { summary: { contains: '- 冗長な表現' } },
-        { summary: { contains: '[ここに' } },
-      ],
+      OR: CONTAMINATION_SEARCH_TERMS.map(term => ({ summary: { contains: term } })),
     },
     select: {
       id: true,
@@ -31,16 +23,22 @@ async function detectContaminatedSummaries() {
     },
   });
 
+  const contaminated = candidates.filter((article) =>
+    (article.summary ?? '').split('\n').some((line) =>
+      INSTRUCTION_PATTERNS.some((pattern) => pattern.test(line.trim()))
+    )
+  );
+
   console.log(`Found ${contaminated.length} contaminated articles\n`);
 
   const report = contaminated.map((article, index) => ({
     index: index + 1,
     id: article.id,
-    title: article.title,
-    summaryPreview: article.summary.substring(0, 100),
+    title: article.title ?? '',
+    summaryPreview: article.summary?.substring(0, 100) ?? '',
     computedAt: article.summaryComputedAt?.toISOString(),
     matchedPatterns: INSTRUCTION_PATTERNS
-      .filter(pattern => pattern.test(article.summary))
+      .filter(pattern => pattern.test(article.summary ?? ''))
       .map(p => p.toString()),
   }));
 
@@ -55,7 +53,7 @@ async function detectContaminatedSummaries() {
   console.log(`Report saved to: ${outputPath}`);
   console.log(`\nContaminated Article IDs:`);
   report.forEach(item => {
-    console.log(`  ${item.index}. ${item.id} - ${item.title.substring(0, 60)}...`);
+    console.log(`  ${item.index}. ${item.id} - ${item.title?.substring(0, 60) ?? '[No title]'}...`);
   });
 
   await prisma.$disconnect();

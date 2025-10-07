@@ -53,3 +53,20 @@ export const TITLE_CHAR_THRESHOLD = 60;
 
 // 文末記号（句点が不要な記号）
 export const SENTENCE_MARKERS = /[。．！？]/;
+
+// プロンプト汚染検出用の検索文字列
+// Prismaのcontains検索で使用する部分文字列のリスト
+// INSTRUCTION_PATTERNSと同期して保守すること
+export const CONTAMINATION_SEARCH_TERMS = [
+  '【条件】',
+  '【書き方】',
+  '【文末】',
+  '【システム指示】',
+  '【指示】',
+  '- 記事の核心的な',
+  '- 技術的価値を',
+  '- 冗長な表現',
+  '- 技術用語は略称',
+  '[ここに',
+  '- 文字数',
+];

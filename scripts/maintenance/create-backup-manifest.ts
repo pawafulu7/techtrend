@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { CONTAMINATION_SEARCH_TERMS, INSTRUCTION_PATTERNS } from '@/lib/ai/constants';
 
 const prisma = new PrismaClient();
 
@@ -27,16 +28,9 @@ async function createBackupManifest() {
 
   const totalCount = await prisma.article.count();
 
-  const contaminated = await prisma.article.findMany({
+  const candidates = await prisma.article.findMany({
     where: {
-      OR: [
-        { summary: { contains: '【条件】' } },
-        { summary: { contains: '【書き方】' } },
-        { summary: { contains: '【文末】' } },
-        { summary: { contains: '- 記事の核心的な' } },
-        { summary: { contains: '- 技術的価値を' } },
-        { summary: { contains: '- 冗長な表現' } },
-      ],
+      OR: CONTAMINATION_SEARCH_TERMS.map(term => ({ summary: { contains: term } })),
     },
     select: {
       id: true,
@@ -48,6 +42,12 @@ async function createBackupManifest() {
       summaryComputedAt: 'desc',
     },
   });
+
+  const contaminated = candidates.filter((article) =>
+    (article.summary ?? '').split('\n').some((line) =>
+      INSTRUCTION_PATTERNS.some((pattern) => pattern.test(line.trim()))
+    )
+  );
 
   const backupDir = path.join(process.cwd(), 'backups');
   const fullBackupPath = path.join(backupDir, `article-table-full-${timestamp}.sql`);
@@ -70,8 +70,8 @@ async function createBackupManifest() {
     },
     contaminatedArticleIds: contaminated.map(article => ({
       id: article.id,
-      title: article.title,
-      summaryPreview: article.summary.substring(0, 100),
+      title: article.title ?? '',
+      summaryPreview: article.summary?.substring(0, 100) ?? '',
       summaryComputedAt: article.summaryComputedAt?.toISOString() || null,
     })),
   };
@@ -86,7 +86,7 @@ async function createBackupManifest() {
 
   console.log(`\nContaminated Article IDs:`);
   contaminated.forEach((article, index) => {
-    console.log(`  ${index + 1}. ${article.id} - ${article.title.substring(0, 50)}...`);
+    console.log(`  ${index + 1}. ${article.id} - ${article.title?.substring(0, 50) ?? '[No title]'}...`);
   });
 
   await prisma.$disconnect();

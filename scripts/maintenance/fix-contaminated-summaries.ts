@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { CONTAMINATION_SEARCH_TERMS } from '@/lib/ai/constants';
 
 const prisma = new PrismaClient();
 
@@ -16,15 +17,7 @@ async function fixContaminatedSummaries(options: FixOptions) {
   const whereClause = targetIds && targetIds.length > 0
     ? { id: { in: targetIds } }
     : {
-        OR: [
-          { summary: { contains: '【条件】' } },
-          { summary: { contains: '【書き方】' } },
-          { summary: { contains: '【文末】' } },
-          { summary: { contains: '- 記事の核心的な' } },
-          { summary: { contains: '- 技術的価値を' } },
-          { summary: { contains: '- 冗長な表現' } },
-          { summary: { contains: '[ここに' } },
-        ],
+        OR: CONTAMINATION_SEARCH_TERMS.map(term => ({ summary: { contains: term } })),
       };
 
   const articles = await prisma.article.findMany({
@@ -37,8 +30,8 @@ async function fixContaminatedSummaries(options: FixOptions) {
   if (dryRun) {
     console.log('Article IDs to be reset:');
     articles.forEach((article, index) => {
-      console.log(`  ${index + 1}. ${article.id} - ${article.title.substring(0, 60)}...`);
-      console.log(`     Summary preview: ${article.summary.substring(0, 80)}...`);
+      console.log(`  ${index + 1}. ${article.id} - ${article.title?.substring(0, 60) ?? '[No title]'}...`);
+      console.log(`     Summary preview: ${article.summary?.substring(0, 80) ?? '[Empty]'}...`);
     });
     console.log('\nRun with --execute flag to actually fix these articles');
     await prisma.$disconnect();
@@ -58,7 +51,7 @@ async function fixContaminatedSummaries(options: FixOptions) {
         },
       });
       successCount++;
-      console.log(`  ${successCount}. Reset: ${article.id} - ${article.title.substring(0, 60)}...`);
+      console.log(`  ${successCount}. Reset: ${article.id} - ${article.title?.substring(0, 60) ?? '[No title]'}...`);
     } catch (error) {
       errorCount++;
       console.error(`  Error: ${article.id} - ${error}`);
