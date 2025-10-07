@@ -111,6 +111,9 @@ const OUTPUT_SCHEMA = `
 [タグ1, タグ2, タグ3, ...]
 `;
 
+const METADATA_WARNING = `
+${METADATA_WARNING}`;
+
 export class PromptBuilder {
   buildPrompt(input: SummaryProviderInput): string {
     const maxContentLength = 150000;
@@ -156,9 +159,7 @@ Summary requirements:
 - Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
 - Length per item: 170-200 characters each
 - Include specific numbers, dates, technical terms, product names, and command examples
-
-IMPORTANT: The above metadata is for your reference only. Never include it in your output.
-`;
+${METADATA_WARNING}`;
     } else if (contentLength >= 5000) {
       const minItems = Math.max(5, Math.floor(5 * policyMultiplier));
       const maxItems = Math.max(7, Math.floor(7 * policyMultiplier));
@@ -174,8 +175,7 @@ Summary requirements:
 - Length per item: 150-200 characters each
 - Include specific technical details
 
-IMPORTANT: The above metadata is for your reference only. Never include it in your output.
-`;
+${METADATA_WARNING}`;
     } else if (contentLength >= 3000) {
       const minItems = Math.max(4, Math.floor(4 * policyMultiplier));
       const maxItems = Math.max(5, Math.floor(5 * policyMultiplier));
@@ -189,8 +189,7 @@ Summary requirements:
 - Number of items: Minimum ${minItems} items (recommended: ${maxItems} items)
 - Length per item: Minimum 150 characters each
 
-IMPORTANT: The above metadata is for your reference only. Never include it in your output.
-`;
+${METADATA_WARNING}`;
     } else if (contentLength >= 1000) {
       const minItems = Math.max(3, Math.floor(3 * policyMultiplier));
       const maxItems = Math.max(4, Math.floor(4 * policyMultiplier));
@@ -204,8 +203,7 @@ Summary requirements:
 - Number of items: Minimum ${minItems} items (recommended: ${maxItems} items)
 - Length per item: Minimum 130 characters each
 
-IMPORTANT: The above metadata is for your reference only. Never include it in your output.
-`;
+${METADATA_WARNING}`;
     } else {
       const minItems = Math.max(3, Math.floor(3 * policyMultiplier));
       return `
@@ -219,8 +217,7 @@ Summary requirements:
 - Number of items: Minimum ${minItems} items
 - Length per item: Minimum 100 characters each
 
-IMPORTANT: The above metadata is for your reference only. Never include it in your output.
-`;
+${METADATA_WARNING}`;
     }
   }
 
