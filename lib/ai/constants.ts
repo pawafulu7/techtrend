@@ -34,6 +34,7 @@ export const INSTRUCTION_PATTERNS = [
   /^Article content length:/,
   /^Summary requirements:/,
   /^IMPORTANT: The above metadata/,
+  /DO NOT OUTPUT/,  // 部分一致（行頭以外でも検出）
 ];
 
 // カテゴリ的なラベル（削除対象）
@@ -81,4 +82,7 @@ export const CONTAMINATION_SEARCH_TERMS = [
   '【記事文字数要件】',
   'INTERNAL METADATA',
   'DO NOT OUTPUT',
+  'Article content length:',
+  'Summary requirements:',
+  'IMPORTANT: The above metadata',
 ];
