@@ -187,7 +187,7 @@ Article content length: ${contentLength} characters
 
 Summary requirements:
 - Detailed summary: 600-1000 characters
-- Number of items: Minimum ${minItems} items (recommended: ${maxItems} items)
+- Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
 - Length per item: Minimum 150 characters each
 
 ${METADATA_WARNING}`;
@@ -201,7 +201,7 @@ Article content length: ${contentLength} characters
 
 Summary requirements:
 - Detailed summary: 400-700 characters
-- Number of items: Minimum ${minItems} items (recommended: ${maxItems} items)
+- Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
 - Length per item: Minimum 130 characters each
 
 ${METADATA_WARNING}`;
