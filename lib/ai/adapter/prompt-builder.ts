@@ -112,7 +112,8 @@ const OUTPUT_SCHEMA = `
 `;
 
 const METADATA_WARNING = `
-${METADATA_WARNING}`;
+IMPORTANT: The above metadata is for your reference only. Never include it in your output.
+`;
 
 export class PromptBuilder {
   buildPrompt(input: SummaryProviderInput): string {
