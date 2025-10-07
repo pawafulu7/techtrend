@@ -421,8 +421,9 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('タイトル: Complex Article');
       expect(prompt).toContain('【トーン指定】フォーマル');
       expect(prompt).toContain('【記事タイプ】技術解説');
-      expect(prompt).toContain('長文記事');
-      expect(prompt).toContain('最低6個以上');
+      expect(prompt).toContain('INTERNAL METADATA');
+      expect(prompt).toContain('long article');
+      expect(prompt).toContain('Minimum 6 items');
     });
   });
 });
