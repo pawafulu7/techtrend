@@ -80,9 +80,10 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('特大長文記事');
-      expect(prompt).toContain('1200文字以上1500文字以内');
-      expect(prompt).toContain('項目数: 最低7個以上');
+      expect(prompt).toContain('INTERNAL METADATA');
+      expect(prompt).toContain('very long article');
+      expect(prompt).toContain('1200-1500 characters');
+      expect(prompt).toContain('Minimum 7 items');
     });
 
     it('should generate instructions for long content (5000-9999 chars)', () => {
@@ -99,9 +100,10 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('長文記事');
-      expect(prompt).toContain('900文字以上1500文字以内');
-      expect(prompt).toContain('項目数: 最低5個以上');
+      expect(prompt).toContain('INTERNAL METADATA');
+      expect(prompt).toContain('long article');
+      expect(prompt).toContain('900-1500 characters');
+      expect(prompt).toContain('Minimum 5 items');
     });
 
     it('should generate instructions for medium content (3000-4999 chars)', () => {
@@ -118,9 +120,10 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('4000文字');
-      expect(prompt).toContain('600文字以上1000文字以内');
-      expect(prompt).toContain('項目数: 最低4個以上');
+      expect(prompt).toContain('INTERNAL METADATA');
+      expect(prompt).toContain('4000 characters');
+      expect(prompt).toContain('600-1000 characters');
+      expect(prompt).toContain('Minimum 4 items');
     });
 
     it('should generate instructions for short content (1000-2999 chars)', () => {
@@ -137,9 +140,10 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('1500文字');
-      expect(prompt).toContain('400文字以上700文字以内');
-      expect(prompt).toContain('項目数: 最低3個以上');
+      expect(prompt).toContain('INTERNAL METADATA');
+      expect(prompt).toContain('1500 characters');
+      expect(prompt).toContain('400-700 characters');
+      expect(prompt).toContain('Minimum 3 items');
     });
 
     it('should generate instructions for very short content (<1000 chars)', () => {
@@ -156,9 +160,10 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('短い記事');
-      expect(prompt).toContain('300文字以上500文字以内');
-      expect(prompt).toContain('項目数: 最低3個');
+      expect(prompt).toContain('INTERNAL METADATA');
+      expect(prompt).toContain('short article');
+      expect(prompt).toContain('300-500 characters');
+      expect(prompt).toContain('Minimum 3 items');
     });
   });
 
@@ -177,7 +182,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('項目数: 最低6個以上');
+      expect(prompt).toContain('Minimum 6 items');
     });
 
     it('should adjust item count for short policy', () => {
@@ -194,7 +199,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('項目数: 最低5個以上');
+      expect(prompt).toContain('Minimum 5 items');
     });
 
     it('should use default multiplier for medium policy', () => {
@@ -211,7 +216,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('項目数: 最低5個以上');
+      expect(prompt).toContain('Minimum 5 items');
     });
   });
 
@@ -416,8 +421,9 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('タイトル: Complex Article');
       expect(prompt).toContain('【トーン指定】フォーマル');
       expect(prompt).toContain('【記事タイプ】技術解説');
-      expect(prompt).toContain('長文記事');
-      expect(prompt).toContain('最低6個以上');
+      expect(prompt).toContain('INTERNAL METADATA');
+      expect(prompt).toContain('long article');
+      expect(prompt).toContain('Minimum 6 items');
     });
   });
 });

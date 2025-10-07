@@ -111,6 +111,10 @@ const OUTPUT_SCHEMA = `
 [タグ1, タグ2, タグ3, ...]
 `;
 
+const METADATA_WARNING = `
+IMPORTANT: The above metadata is for your reference only. Never include it in your output.
+`;
+
 export class PromptBuilder {
   buildPrompt(input: SummaryProviderInput): string {
     const maxContentLength = 150000;
@@ -145,39 +149,76 @@ ${OUTPUT_SCHEMA}
     if (contentLength >= 10000) {
       const minItems = Math.max(7, Math.floor(7 * policyMultiplier));
       const maxItems = Math.max(9, Math.floor(9 * policyMultiplier));
-      return `\n\n【記事文字数要件】この記事は${contentLength}文字の特大長文記事です。
-- 詳細要約: 必ず1200文字以上1500文字以内で作成（条件を外れた場合は生成失敗）
-- 項目数: 最低${minItems}個以上（推奨${minItems}-${maxItems}個）を必ず作成
-- 各項目の文字数: 必ず170文字以上200文字以内の詳細な説明
-- 重要な数値、日付、技術名、機能名を省略せず、具体的に記載`;
+      return `
+
+INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
+Article content length: ${contentLength} characters
+This is a very long article requiring detailed summarization.
+
+Summary requirements:
+- Detailed summary: 1200-1500 characters (strict requirement)
+- Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
+- Length per item: 170-200 characters each
+- Include specific numbers, dates, technical terms, product names, and command examples
+${METADATA_WARNING}`;
     } else if (contentLength >= 5000) {
       const minItems = Math.max(5, Math.floor(5 * policyMultiplier));
       const maxItems = Math.max(7, Math.floor(7 * policyMultiplier));
-      return `\n\n【記事文字数要件】この記事は${contentLength}文字の長文記事です。
-- 詳細要約: 必ず900文字以上1500文字以内で作成（条件を外れた場合は生成失敗）
-- 項目数: 最低${minItems}個以上（推奨${minItems}-${maxItems}個）を必ず作成
-- 各項目の文字数: 必ず150文字以上200文字以内の詳細な説明
-- 重要な数値、日付、技術名、機能名を省略せず、具体的に記載`;
+      return `
+
+INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
+Article content length: ${contentLength} characters
+This is a long article.
+
+Summary requirements:
+- Detailed summary: 900-1500 characters (strict requirement)
+- Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
+- Length per item: 150-200 characters each
+- Include specific technical details
+
+${METADATA_WARNING}`;
     } else if (contentLength >= 3000) {
       const minItems = Math.max(4, Math.floor(4 * policyMultiplier));
       const maxItems = Math.max(5, Math.floor(5 * policyMultiplier));
-      return `\n\n【記事文字数要件】この記事は${contentLength}文字です。
-- 詳細要約: 必ず600文字以上1000文字以内で作成
-- 項目数: 最低${minItems}個以上（推奨${maxItems}個）を作成
-- 各項目の文字数: 必ず150文字以上の詳細な説明`;
+      return `
+
+INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
+Article content length: ${contentLength} characters
+
+Summary requirements:
+- Detailed summary: 600-1000 characters
+- Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
+- Length per item: Minimum 150 characters each
+
+${METADATA_WARNING}`;
     } else if (contentLength >= 1000) {
       const minItems = Math.max(3, Math.floor(3 * policyMultiplier));
       const maxItems = Math.max(4, Math.floor(4 * policyMultiplier));
-      return `\n\n【記事文字数要件】この記事は${contentLength}文字です。
-- 詳細要約: 必ず400文字以上700文字以内で作成
-- 項目数: 最低${minItems}個以上（推奨${maxItems}個）を作成
-- 各項目の文字数: 必ず130文字以上`;
+      return `
+
+INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
+Article content length: ${contentLength} characters
+
+Summary requirements:
+- Detailed summary: 400-700 characters
+- Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
+- Length per item: Minimum 130 characters each
+
+${METADATA_WARNING}`;
     } else {
       const minItems = Math.max(3, Math.floor(3 * policyMultiplier));
-      return `\n\n【記事文字数要件】この記事は${contentLength}文字の短い記事です。
-- 詳細要約: 必ず300文字以上500文字以内で作成
-- 項目数: 最低${minItems}個を作成
-- 各項目の文字数: 100文字以上`;
+      return `
+
+INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
+Article content length: ${contentLength} characters
+This is a short article.
+
+Summary requirements:
+- Detailed summary: 300-500 characters
+- Number of items: Minimum ${minItems} items
+- Length per item: Minimum 100 characters each
+
+${METADATA_WARNING}`;
     }
   }
 

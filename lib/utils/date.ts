@@ -39,7 +39,7 @@ export function formatDateWithTime(date: Date | string): string {
   });
 
   // "2025/10/03 14:06" の形式に整形
-  return formatted.replace(/\//g, '/').replace(/\s+/g, ' ');
+  return formatted.replace(/\s+/g, ' ');
 }
 
 export function parseRSSDate(dateString: string): Date {
