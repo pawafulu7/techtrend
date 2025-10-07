@@ -82,7 +82,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('特大長文記事');
       expect(prompt).toContain('1200文字以上1500文字以内');
-      expect(prompt).toContain('最低7個以上の項目');
+      expect(prompt).toContain('項目数: 最低7個以上');
     });
 
     it('should generate instructions for long content (5000-9999 chars)', () => {
@@ -101,7 +101,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('長文記事');
       expect(prompt).toContain('900文字以上1500文字以内');
-      expect(prompt).toContain('最低5個以上の項目');
+      expect(prompt).toContain('項目数: 最低5個以上');
     });
 
     it('should generate instructions for medium content (3000-4999 chars)', () => {
@@ -120,7 +120,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('4000文字');
       expect(prompt).toContain('600文字以上1000文字以内');
-      expect(prompt).toContain('最低4個以上の項目');
+      expect(prompt).toContain('項目数: 最低4個以上');
     });
 
     it('should generate instructions for short content (1000-2999 chars)', () => {
@@ -139,7 +139,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('1500文字');
       expect(prompt).toContain('400文字以上700文字以内');
-      expect(prompt).toContain('最低3個以上の項目');
+      expect(prompt).toContain('項目数: 最低3個以上');
     });
 
     it('should generate instructions for very short content (<1000 chars)', () => {
@@ -158,7 +158,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('短い記事');
       expect(prompt).toContain('300文字以上500文字以内');
-      expect(prompt).toContain('最低3個の項目');
+      expect(prompt).toContain('項目数: 最低3個');
     });
   });
 
@@ -177,7 +177,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('最低6個以上の項目');
+      expect(prompt).toContain('項目数: 最低6個以上');
     });
 
     it('should adjust item count for short policy', () => {
@@ -194,7 +194,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('最低5個以上の項目');
+      expect(prompt).toContain('項目数: 最低5個以上');
     });
 
     it('should use default multiplier for medium policy', () => {
@@ -211,7 +211,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('最低5個以上の項目');
+      expect(prompt).toContain('項目数: 最低5個以上');
     });
   });
 
