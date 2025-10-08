@@ -80,7 +80,9 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'cmfxa7efj0000teo06dhbox6e',  // Hugging Face Papers
       'cmfxa7efs0001teo0kjt70c5k',  // arXiv AI
       'cmfxa7efx0002teo03tglf5fs',  // Zenn AI
-      'cmfxa7egc0003teo0ofke77yu'   // Qiita AI
+      'cmfxa7egc0003teo0ofke77yu',  // Qiita AI
+      'cmgimjzu40000te7ffkqk2quc',  // NVIDIA Developer Blog
+      'cmgimjzu90001te7f8ted8zsh'   // DeepMind Blog
     ]
   },
   llm: {
@@ -92,7 +94,9 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'cmfxa7efj0000teo06dhbox6e',  // Hugging Face Papers (AI/LLM両方に関連)
       'cmfxa7efs0001teo0kjt70c5k',  // arXiv AI (AI/LLM両方に関連)
       'cmfxa7efx0002teo03tglf5fs',  // Zenn AI (AI/LLM両方に関連)
-      'cmfxa7egc0003teo0ofke77yu'   // Qiita AI (AI/LLM両方に関連)
+      'cmfxa7egc0003teo0ofke77yu',  // Qiita AI (AI/LLM両方に関連)
+      'cmgimjzu40000te7ffkqk2quc',  // NVIDIA Developer Blog
+      'cmgimjzu90001te7f8ted8zsh'   // DeepMind Blog
     ]
   }
 };
