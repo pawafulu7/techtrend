@@ -37,6 +37,8 @@ import { HuggingFacePapersFetcher } from '@/lib/fetchers/ai/huggingface-papers';
 import { ArxivAIFetcher } from '@/lib/fetchers/ai/arxiv-ai';
 import { ZennAIFetcher } from '@/lib/fetchers/ai/zenn-ai';
 import { QiitaAIFetcher } from '@/lib/fetchers/ai/qiita-ai';
+import { NVIDIADeveloperBlogFetcher } from '@/lib/fetchers/nvidia-developer-blog';
+import { DeepMindBlogFetcher } from '@/lib/fetchers/deepmind-blog';
 
 // 企業ブログフェッチャーを個別にインポート
 import { DenaFetcher } from '@/lib/fetchers/corporate-blogs/dena-fetcher';
@@ -94,6 +96,8 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'arXiv AI': ArxivAIFetcher,
   'Zenn AI': ZennAIFetcher,
   'Qiita AI': QiitaAIFetcher,
+  'NVIDIA Developer Blog': NVIDIADeveloperBlogFetcher,
+  'DeepMind Blog': DeepMindBlogFetcher,
 
   // 個別企業ブログフェッチャー
   'DeNA Tech Blog': DenaFetcher,

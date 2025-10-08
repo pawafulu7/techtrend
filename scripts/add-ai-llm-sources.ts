@@ -19,13 +19,11 @@ async function addAILLMSources() {
       update: {
         url: 'https://developer.nvidia.com/blog/feed',
         enabled: true,
-        category: 'AI',
       },
       create: {
         name: 'NVIDIA Developer Blog',
         url: 'https://developer.nvidia.com/blog/feed',
         type: 'RSS',
-        category: 'AI',
         enabled: true,
       },
     });
@@ -37,13 +35,11 @@ async function addAILLMSources() {
       update: {
         url: 'https://deepmind.google/blog/rss.xml',
         enabled: true,
-        category: 'AI',
       },
       create: {
         name: 'DeepMind Blog',
         url: 'https://deepmind.google/blog/rss.xml',
         type: 'RSS',
-        category: 'AI',
         enabled: true,
       },
     });
@@ -52,8 +48,13 @@ async function addAILLMSources() {
     // 登録確認
     const aiSources = await prisma.source.findMany({
       where: {
-        category: 'AI',
         enabled: true,
+        OR: [
+          { name: { contains: 'AI' } },
+          { name: { contains: 'DeepMind' } },
+          { name: { contains: 'NVIDIA' } },
+          { name: { contains: 'LLM' } },
+        ]
       },
       select: {
         name: true,
@@ -74,7 +75,18 @@ async function addAILLMSources() {
     // 統計情報
     const totalSources = await prisma.source.count();
     const aiSourceCount = await prisma.source.count({
-      where: { category: 'AI' },
+      where: {
+        OR: [
+          { name: { contains: 'AI' } },
+          { name: { contains: 'DeepMind' } },
+          { name: { contains: 'NVIDIA' } },
+          { name: { contains: 'LLM' } },
+          { name: { contains: 'Hugging Face' } },
+          { name: { contains: 'OpenAI' } },
+          { name: { contains: 'arXiv' } },
+          { name: { contains: 'Google AI' } },
+        ]
+      },
     });
     const enabledCount = await prisma.source.count({
       where: { enabled: true },
