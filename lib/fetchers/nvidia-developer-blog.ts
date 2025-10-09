@@ -126,10 +126,10 @@ export class NVIDIADeveloperBlogFetcher extends BaseFetcher {
       .replace(/^\s+|\s+$/g, '')
       .replace(/&#8211;/g, '–')
       .replace(/&#8217;/g, "'")
-      .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"');
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&'); // ampersandは最後にデコード
   }
 
   /**

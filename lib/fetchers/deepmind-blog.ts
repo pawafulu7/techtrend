@@ -145,11 +145,11 @@ export class DeepMindBlogFetcher extends BaseFetcher {
       .replace(/&#8217;/g, "'")
       .replace(/&#8220;/g, '"')
       .replace(/&#8221;/g, '"')
-      .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
-      .replace(/&nbsp;/g, ' ');
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&'); // ampersandは最後にデコード
   }
 
   /**
@@ -351,8 +351,15 @@ export class DeepMindBlogFetcher extends BaseFetcher {
     }
 
     // deepmind.comからdeepmind.googleへのリダイレクト対応
-    if (url.includes('deepmind.com')) {
-      return url.replace('deepmind.com', 'deepmind.google');
+    // セキュリティ: URLをパースしてホストを検証
+    try {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.hostname === 'deepmind.com' || parsedUrl.hostname === 'www.deepmind.com') {
+        parsedUrl.hostname = parsedUrl.hostname.replace('deepmind.com', 'deepmind.google');
+        return parsedUrl.href;
+      }
+    } catch {
+      // URLパースに失敗した場合はそのまま返す
     }
 
     return url;
