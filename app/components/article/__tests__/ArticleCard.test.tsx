@@ -205,18 +205,23 @@ describe('ArticleCard', () => {
       expect(screen.getByTestId('article-thumbnail')).toBeInTheDocument();
     });
 
-    it('品質スコアが低い（30未満）でサムネイルがある場合表示する', () => {
+    it('品質スコアが低い（30未満）でもサムネイルではなく要約を表示する', () => {
       const lowQualityArticle = createMockArticleWithRelations({
         article: {
           ...mockArticle,
           qualityScore: 25,
           thumbnail: 'https://example.com/thumbnail.jpg',
+          summary: 'This is a low quality article summary',
+          content: 'This is a very long content that exceeds 300 characters...' + 'x'.repeat(300),
         },
       });
-      
+
       render(<ArticleCard article={lowQualityArticle} />);
-      
-      expect(screen.getByTestId('article-thumbnail')).toBeInTheDocument();
+
+      // サムネイルは表示されない
+      expect(screen.queryByTestId('article-thumbnail')).not.toBeInTheDocument();
+      // 要約が表示される
+      expect(screen.getByText('This is a low quality article summary')).toBeInTheDocument();
     });
 
     it('通常の記事ではサムネイルの代わりに要約を表示する', () => {
