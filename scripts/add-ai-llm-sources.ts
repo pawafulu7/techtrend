@@ -99,7 +99,7 @@ async function addAILLMSources() {
 
   } catch (error) {
     logger.error('ソース追加エラー:', error);
-    process.exit(1);
+    throw error; // finallyの実行を保証
   } finally {
     await prisma.$disconnect();
   }

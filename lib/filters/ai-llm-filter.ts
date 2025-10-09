@@ -189,10 +189,10 @@ export class AILLMFilter {
       });
     });
 
-    // 日本語キーワードチェック
+    // 日本語キーワードチェック（大文字小文字を考慮）
     Object.entries(this.aiKeywordsJa).forEach(([_category, keywords]) => {
       keywords.forEach(kw => {
-        if (text.includes(kw)) {
+        if (text.includes(kw.toLowerCase())) {
           matched.add(kw);
         }
       });

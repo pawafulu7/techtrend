@@ -296,8 +296,8 @@ export class DeepMindBlogFetcher extends BaseFetcher {
       return this.extractThumbnailFromContent(item.content);
     }
 
-    // DeepMindのデフォルト画像（ロゴ）
-    return 'https://deepmind.google/assets/images/deepmind-logo.png';
+    // サムネイルが見つからない場合はundefinedを返す
+    return undefined;
   }
 
   /**
@@ -333,7 +333,7 @@ export class DeepMindBlogFetcher extends BaseFetcher {
   private isImageUrl(url: string): boolean {
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
     const lowerUrl = url.toLowerCase();
-    return imageExtensions.some(ext => lowerUrl.includes(ext));
+    return imageExtensions.some(ext => lowerUrl.endsWith(ext));
   }
 
   /**
