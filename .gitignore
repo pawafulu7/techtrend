@@ -101,10 +101,14 @@ test-email*.js
 # markdown documentation for setup
 scripts/setup-*.md
 
-# claude work files (docs and investigateは除外、commandsは含める)
-.claude/docs/
-.claude/investigate/
-# .claude/commands/ は含める（カスタムコマンド用）
+# Claude Code related files (個人の作業ファイル)
+.claude/
+CLAUDE*
+claudedocs/
+*.claude.*
+*claude-*.ts
+.serena/
+TROUBLESHOOTING.md
 
 # Temporary scripts
 scripts/temp/
@@ -159,19 +163,10 @@ __tests__/e2e/**/*-actual/
 toolbox
 .mcp.json
 
-# Claude Code related files
-.claude/
-CLAUDE.md
-claudedocs/
-*.claude.*
-*claude-*.ts
-.serena/
-
 # regeneration logs
 regenerate.log
 
 # progress files
 .regenerate-low-item-summaries-progress.json
 .archive/
-.claude/
 backups/

@@ -49,6 +49,7 @@ export function ArticleCard({
   }, [initialIsRead]);
   
   // サムネイル表示判定ロジック
+  // スライドサービス（Speaker Deck, Docswell）または薄いコンテンツ（300文字未満）の場合のみサムネイル優先
   const shouldShowThumbnail = (): boolean => {
     // sourceが存在しない場合は早期リターン
     if (!article.source) {
@@ -65,10 +66,8 @@ export function ArticleCard({
       return true;
     }
 
-    // 品質スコアが低い（30未満）でサムネイルがある場合
-    if (article.qualityScore && article.qualityScore < 30 && article.thumbnail) {
-      return true;
-    }
+    // qualityScore条件は削除: 品質スコアは表示形式ではなく記事の価値を示す指標
+    // 要約が存在する記事では、qualityScoreに関わらず要約を優先表示
 
     return false;
   };

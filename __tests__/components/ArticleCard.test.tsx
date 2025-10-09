@@ -475,14 +475,57 @@ describe('ArticleCard', () => {
         },
         source: createMockSource({ name })
       });
-      
+
       renderWithProviders(<ArticleCard article={article} />);
-      
+
       // サムネイルが表示されないことを確認
       const thumbnail = screen.queryByRole('img', { name: `${name} without thumbnail` });
       expect(thumbnail).not.toBeInTheDocument();
       // 代わりに要約が表示されることを確認
       expect(screen.getByText(/This is a test article summary/)).toBeInTheDocument();
+    });
+  });
+
+  describe('qualityScore display logic', () => {
+    it('displays summary for low quality score articles instead of thumbnail', () => {
+      const lowQualityArticle = createMockArticleWithRelations({
+        article: {
+          id: 'low-quality-1',
+          title: 'Low Quality Article',
+          qualityScore: 18,
+          thumbnail: 'https://example.com/thumbnail.jpg',
+          summary: 'This is a low quality article summary that should be displayed',
+          content: 'Long content that exceeds 300 characters. '.repeat(20),
+        },
+        source: createMockSource({ name: 'Hugging Face Papers' }),
+      });
+
+      renderWithProviders(<ArticleCard article={lowQualityArticle} />);
+
+      // サムネイルは表示されない
+      expect(screen.queryByRole('img', { name: 'Low Quality Article' })).not.toBeInTheDocument();
+
+      // 要約が表示される
+      expect(screen.getByText('This is a low quality article summary that should be displayed')).toBeInTheDocument();
+    });
+
+    it('displays summary for articles with qualityScore below 30', () => {
+      const article = createMockArticleWithRelations({
+        article: {
+          id: 'quality-test',
+          title: 'Quality Test Article',
+          qualityScore: 25,
+          thumbnail: '/static/images/arxiv-logo.png',
+          summary: 'Summary for quality score 25 article',
+          content: 'Content exceeding 300 characters threshold. '.repeat(15),
+        },
+        source: createMockSource({ name: 'arXiv' }),
+      });
+
+      renderWithProviders(<ArticleCard article={article} />);
+
+      // 要約が表示される
+      expect(screen.getByText('Summary for quality score 25 article')).toBeInTheDocument();
     });
   });
 });
