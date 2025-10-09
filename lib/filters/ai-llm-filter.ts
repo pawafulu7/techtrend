@@ -222,13 +222,25 @@ export class AILLMFilter {
     const lowerKeyword = keyword.toLowerCase();
 
     // CamelCaseキーワード（PaLM等）は大文字小文字を厳密にチェック
+    // ただし、短い略語的なCamelCase（PaLM、CoT等、5文字以下）のみ厳密化
     const hasMixedCase = /[a-z]/.test(keyword) && /[A-Z]/.test(keyword);
-    if (hasMixedCase) {
-      const pattern = new RegExp(`\\b${this.escapeRegex(keyword)}\\b`);
-      if (pattern.test(rawText)) {
+    const isShortMixedCase = hasMixedCase && keyword.length <= 5;
+
+    if (isShortMixedCase) {
+      const exactPattern = new RegExp(`\\b${this.escapeRegex(keyword)}\\b`);
+      if (exactPattern.test(rawText)) {
         return true;
       }
-      // CamelCaseでマッチしない場合は小文字でも試す
+
+      // 大文字を含む境界マッチのみ許可（palm tree等の誤検知を防ぐ）
+      const boundaryPattern = new RegExp(`\\b${this.escapeRegex(lowerKeyword)}\\b`, 'i');
+      const match = rawText.match(boundaryPattern);
+      if (match && /[A-Z]/.test(match[0])) {
+        return true;
+      }
+
+      // 短いCamelCaseで厳密マッチしない場合は不一致
+      return false;
     }
 
     // 短い略語（4文字以下）は完全一致
