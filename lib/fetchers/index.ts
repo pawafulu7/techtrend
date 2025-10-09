@@ -32,6 +32,8 @@ import {
   ZennAIFetcher,
   QiitaAIFetcher
 } from './ai';
+import { NVIDIADeveloperBlogFetcher } from './nvidia-developer-blog';
+import { DeepMindBlogFetcher } from './deepmind-blog';
 
 export function createFetcher(source: Source): BaseFetcher {
   switch (source.name) {
@@ -93,6 +95,10 @@ export function createFetcher(source: Source): BaseFetcher {
       return new ZennAIFetcher(source);
     case 'Qiita AI':
       return new QiitaAIFetcher(source);
+    case 'NVIDIA Developer Blog':
+      return new NVIDIADeveloperBlogFetcher(source);
+    case 'DeepMind Blog':
+      return new DeepMindBlogFetcher(source);
 
     default:
       throw new Error(`Unsupported source: ${source.name}`);
@@ -128,6 +134,8 @@ export {
   HuggingFacePapersFetcher,
   ArxivAIFetcher,
   ZennAIFetcher,
-  QiitaAIFetcher
+  QiitaAIFetcher,
+  NVIDIADeveloperBlogFetcher,
+  DeepMindBlogFetcher
 };
 export type { FetchResult } from '@/types/fetchers';
