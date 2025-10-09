@@ -21,13 +21,6 @@ export class DeepMindBlogFetcher extends BaseFetcher {
     this.parser = new Parser({
       customFields: {
         item: ['author', 'category', 'media:thumbnail', 'media:content']
-      },
-      // 302リダイレクトを自動的に追跡
-      requestOptions: {
-        redirect: 'follow',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0; +https://techtrend.example.com/bot)'
-        }
       }
     });
   }
@@ -110,7 +103,7 @@ export class DeepMindBlogFetcher extends BaseFetcher {
         const content = this.generateContent(item, filterResult.matchedKeywords);
 
         // サムネイル抽出
-        const thumbnail = this.extractThumbnail(item);
+        const thumbnail = this.extractItemThumbnail(item);
 
         const article: CreateArticleInput = {
           title: this.cleanTitle(item.title),
@@ -284,7 +277,7 @@ export class DeepMindBlogFetcher extends BaseFetcher {
   /**
    * サムネイルの抽出
    */
-  private extractThumbnail(item: any): string | undefined {
+  private extractItemThumbnail(item: any): string | undefined {
     // media:thumbnail
     if (item['media:thumbnail'] && item['media:thumbnail'].$ && item['media:thumbnail'].$.url) {
       return this.normalizeImageUrl(item['media:thumbnail'].$.url);
