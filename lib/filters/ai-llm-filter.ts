@@ -177,13 +177,14 @@ export class AILLMFilter {
    * マッチしたキーワードを取得
    */
   getMatchedKeywords(article: ArticleInput): string[] {
-    const text = this.normalizeText(article);
+    const rawText = `${article.title} ${article.summary || ''} ${article.content || ''}`;
+    const text = rawText.toLowerCase();
     const matched: Set<string> = new Set();
 
     // 英語キーワードチェック
     Object.entries(this.aiKeywords).forEach(([_category, keywords]) => {
       keywords.forEach(kw => {
-        if (this.containsKeyword(text, kw)) {
+        if (this.containsKeyword(rawText, text, kw)) {
           matched.add(kw);
         }
       });
@@ -217,18 +218,35 @@ export class AILLMFilter {
   /**
    * キーワードが含まれるかチェック（大文字小文字、単語境界考慮）
    */
-  private containsKeyword(text: string, keyword: string): boolean {
+  private containsKeyword(rawText: string, lowerText: string, keyword: string): boolean {
     const lowerKeyword = keyword.toLowerCase();
-    const lowerText = text.toLowerCase();
 
-    // 略語や短い語は完全一致
-    if (keyword.length <= 4 || keyword === keyword.toUpperCase()) {
-      const pattern = new RegExp(`\\b${lowerKeyword}\\b`, 'i');
+    // CamelCaseキーワード（PaLM等）は大文字小文字を厳密にチェック
+    const hasMixedCase = /[a-z]/.test(keyword) && /[A-Z]/.test(keyword);
+    if (hasMixedCase) {
+      const pattern = new RegExp(`\\b${this.escapeRegex(keyword)}\\b`);
+      if (pattern.test(rawText)) {
+        return true;
+      }
+      // CamelCaseでマッチしない場合は小文字でも試す
+    }
+
+    // 短い略語（4文字以下）は完全一致
+    const isShortAcronym = keyword.length <= 4 && /^[A-Z0-9-]+$/.test(keyword);
+    if (isShortAcronym || keyword === keyword.toUpperCase()) {
+      const pattern = new RegExp(`\\b${this.escapeRegex(lowerKeyword)}\\b`, 'i');
       return pattern.test(lowerText);
     }
 
     // それ以外は部分一致（小文字で比較）
     return lowerText.includes(lowerKeyword);
+  }
+
+  /**
+   * 正規表現用のエスケープ
+   */
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /**

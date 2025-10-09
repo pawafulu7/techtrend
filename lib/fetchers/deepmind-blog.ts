@@ -355,8 +355,9 @@ export class DeepMindBlogFetcher extends BaseFetcher {
     try {
       const parsedUrl = new URL(url);
       if (parsedUrl.hostname === 'deepmind.com' || parsedUrl.hostname === 'www.deepmind.com') {
-        parsedUrl.hostname = parsedUrl.hostname.replace('deepmind.com', 'deepmind.google');
-        return parsedUrl.href;
+        // www.deepmind.googleは存在しないため、deepmind.googleに統一
+        parsedUrl.hostname = 'deepmind.google';
+        return parsedUrl.toString();
       }
     } catch {
       // URLパースに失敗した場合はそのまま返す
