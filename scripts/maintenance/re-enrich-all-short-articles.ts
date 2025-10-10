@@ -11,8 +11,8 @@ interface ReEnrichOptions {
 }
 
 async function reEnrichAllShortArticles(options: ReEnrichOptions = {}) {
-  const maxContentLength = options.maxContentLength || 500;
-  const dryRun = options.dryRun || false;
+  const maxContentLength = options.maxContentLength ?? 500;
+  const dryRun = options.dryRun ?? false;
 
   console.log('開始: 短いコンテンツ記事の一括再エンリッチメント');
   console.log(`対象: ${maxContentLength}文字以下のコンテンツ`);
@@ -65,7 +65,7 @@ async function reEnrichAllShortArticles(options: ReEnrichOptions = {}) {
       FROM "Article" a
       JOIN "Source" s ON a."sourceId" = s.id
       WHERE a.content IS NOT NULL
-      AND LENGTH(a.content) <= ${maxContentLength}
+      AND char_length(a.content) <= ${maxContentLength}
       ${sourceCondition}
       ORDER BY a."createdAt" DESC
     `;
@@ -86,6 +86,7 @@ async function reEnrichAllShortArticles(options: ReEnrichOptions = {}) {
 
         if (dryRun) {
           console.log(`  [DRY RUN] エンリッチメント実行をスキップ`);
+          skippedCount++;
           continue;
         }
 
@@ -116,18 +117,25 @@ async function reEnrichAllShortArticles(options: ReEnrichOptions = {}) {
               enrichedData.content
             );
 
+            // タグの重複排除と空配列ガード
+            const uniqueTags = Array.from(
+              new Set(summaryResult.tags.map(t => t.trim()).filter(Boolean))
+            );
+
             await prisma.article.update({
               where: { id: article.id },
               data: {
                 summary: summaryResult.summary,
                 detailedSummary: summaryResult.detailedSummary,
-                tags: {
-                  set: [],
-                  connectOrCreate: summaryResult.tags.map(tagName => ({
-                    where: { name: tagName },
-                    create: { name: tagName }
-                  }))
-                }
+                ...(uniqueTags.length > 0 && {
+                  tags: {
+                    set: [],
+                    connectOrCreate: uniqueTags.map(tagName => ({
+                      where: { name: tagName },
+                      create: { name: tagName }
+                    }))
+                  }
+                })
               }
             });
 
