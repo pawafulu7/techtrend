@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { AIService } from '@/lib/ai/ai-service';
 
@@ -36,42 +36,39 @@ async function reEnrichAllShortArticles(options: ReEnrichOptions = {}) {
   let skippedCount = 0;
 
   try {
-    // 短いコンテンツの記事を取得
-    const whereClause: any = {
-      content: {
-        not: null,
-      },
-    };
+    // 生SQLクエリで効率的にLENGTH(content)でフィルタリング
+    const sourceCondition = options.sourceName
+      ? Prisma.sql`AND a."sourceId" IN (SELECT id FROM "Source" WHERE name = ${options.sourceName})`
+      : Prisma.empty;
 
-    // ソース名でフィルタリング（オプション）
-    if (options.sourceName) {
-      whereClause.source = {
-        name: options.sourceName
-      };
-    }
-
-    const articles = await prisma.article.findMany({
-      where: whereClause,
-      include: {
-        source: {
-          select: { name: true }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-
-    // コンテンツ長でフィルタリング
-    const shortArticles = articles.filter(a =>
-      a.content && a.content.length <= maxContentLength
-    );
+    const shortArticles = await prisma.$queryRaw<Array<{
+      id: string;
+      title: string;
+      url: string;
+      content: string;
+      createdAt: Date;
+      sourceName: string;
+    }>>`
+      SELECT
+        a.id,
+        a.title,
+        a.url,
+        a.content,
+        a."createdAt",
+        s.name as "sourceName"
+      FROM "Article" a
+      JOIN "Source" s ON a."sourceId" = s.id
+      WHERE a.content IS NOT NULL
+      AND LENGTH(a.content) <= ${maxContentLength}
+      ${sourceCondition}
+      ORDER BY a."createdAt" DESC
+    `;
 
     console.log(`\n対象記事数: ${shortArticles.length}件`);
 
     for (const article of shortArticles) {
       try {
-        console.log(`\n[${article.source.name}] ${article.title.substring(0, 60)}...`);
+        console.log(`\n[${article.sourceName}] ${article.title.substring(0, 60)}...`);
         console.log(`  現在のコンテンツ長: ${article.content?.length || 0}文字`);
 
         const enricher = enricherFactory.getEnricher(article.url);
