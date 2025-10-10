@@ -70,7 +70,19 @@ async function enrichShortArticles() {
   }
 
   console.log(`\nCompleted: Success ${successCount}, Failed ${failCount}`);
-  await prisma.$disconnect();
 }
 
-enrichShortArticles().catch(console.error);
+(async () => {
+  try {
+    await enrichShortArticles();
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  } finally {
+    try {
+      await prisma.$disconnect();
+    } catch (_) {
+      // Ignore disconnect errors
+    }
+  }
+})();

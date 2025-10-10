@@ -58,7 +58,7 @@ import { GMOFetcher } from '@/lib/fetchers/corporate-blogs/gmo-fetcher';
 import { BaseFetcher } from '@/lib/fetchers/base';
 
 // エンリッチャーをインポート
-import { ContentEnricherFactory } from '../../lib/enrichers';
+import { ContentEnricherFactory } from '@/lib/enrichers';
 
 const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'はてなブックマーク': HatenaExtendedFetcher,
