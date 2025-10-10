@@ -24,8 +24,14 @@ async function reEnrichAllShortArticles(options: ReEnrichOptions = {}) {
   }
 
   const enricherFactory = new ContentEnricherFactory();
+
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    throw new Error('GEMINI_API_KEY environment variable is not set');
+  }
+
   const aiService = new AIService({
-    geminiApiKey: process.env.GEMINI_API_KEY || '',
+    geminiApiKey,
     preferLocalLLM: false,
     useLocalLLMFallback: false,
   });
