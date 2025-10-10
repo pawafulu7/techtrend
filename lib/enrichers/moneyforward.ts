@@ -17,12 +17,11 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
    */
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      
       const html = await this.fetchWithRetry(url);
-      
+
       // サムネイルを取得
       const thumbnail = this.extractThumbnail(html);
-      
+
       // マネーフォワードのブログ記事構造に対応したセレクタ（優先順位順）
       const selectors = [
         // はてなブログPro専用のセレクタ（最優先）
@@ -31,7 +30,7 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
         '.entry-body',
         'div.p-entry__body',
         '.hatenablog-entry',
-        
+
         // 記事本文のセレクタ
         'article .content',
         '.article-body',
@@ -44,30 +43,31 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
         '.post',
         'main'
       ];
-      
+
       const content = this.sanitizeContent(html, selectors);
-      
-      // コンテンツ取得結果のログ
+
+      // コンテンツ取得結果の詳細ログ
       if (content && content.length > 0) {
-
-        // 最小限のコンテンツチェック（200文字以上あれば有効とする）
-        if (content.length < 200) {
-          // 短いコンテンツは警告ログ出力
+        if (content.length < 500) {
           console.warn(`[MoneyForward] Content too short: ${content.length} chars for ${url}`);
+          console.warn(`[MoneyForward] First 200 chars: ${content.substring(0, 200)}`);
+        } else {
+          console.log(`[MoneyForward] Content enriched successfully: ${content.length} chars`);
         }
-
         return { content, thumbnail };
       } else {
-        
+        console.error(`[MoneyForward] No content extracted for ${url}`);
+
         // コンテンツが取得できなくてもサムネイルがあれば返す
         if (thumbnail) {
           return { content: null, thumbnail };
         }
-        
+
         return null;
       }
-      
-    } catch (_error) {
+
+    } catch (error) {
+      console.error(`[MoneyForward] Enrichment error for ${url}:`, error);
       return null;
     }
   }
