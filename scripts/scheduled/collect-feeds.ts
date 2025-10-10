@@ -58,13 +58,7 @@ import { GMOFetcher } from '@/lib/fetchers/corporate-blogs/gmo-fetcher';
 import { BaseFetcher } from '@/lib/fetchers/base';
 
 // エンリッチャーをインポート
-import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
-import { BaseContentEnricher } from '../../lib/enrichers/base';
-
-// エンリッチャーのマッピング
-const enrichers: Record<string, BaseContentEnricher> = {
-  'Google AI Blog': new GoogleAIEnricher(),
-};
+import { ContentEnricherFactory } from '../../lib/enrichers';
 
 const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'はてなブックマーク': HatenaExtendedFetcher,
@@ -127,7 +121,10 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     console.error(`   対象ソース: ${sourceTypes.join(', ')}`);
   }
   const startTime = Date.now();
-  
+
+  // ContentEnricherFactoryのインスタンスを作成
+  const enricherFactory = new ContentEnricherFactory();
+
   try {
     // 有効なソースを取得（sourceTypesが指定されている場合はフィルタリング）
     const sources = await prisma.source.findMany({
@@ -237,13 +234,13 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
               }
             });
 
-            // エンリッチメント処理（対応するエンリッチャーがある場合）
-            const enricher = enrichers[source.name];
-            if (enricher && enricher.canHandle(article.url)) {
+            // エンリッチメント処理（ContentEnricherFactoryで適切なエンリッチャーを取得）
+            const enricher = enricherFactory.getEnricher(article.url);
+            if (enricher) {
               try {
                 console.error(`   🔍 エンリッチメント実行: ${article.title.substring(0, 40)}...`);
                 const enrichedData = await enricher.enrich(article.url);
-                
+
                 if (enrichedData && enrichedData.content) {
                   // エンリッチメントしたコンテンツで更新
                   await prisma.article.update({
@@ -262,7 +259,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                 console.error(`   ⚠️ エンリッチメントエラー:`, enrichError instanceof Error ? enrichError.message : String(enrichError));
                 // エンリッチメントが失敗しても記事保存は成功とする
               }
-              
+
               // Rate limit対策：エンリッチメント後は2秒待機
               await new Promise(resolve => setTimeout(resolve, 2000));
             }
