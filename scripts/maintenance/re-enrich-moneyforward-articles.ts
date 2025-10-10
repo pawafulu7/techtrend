@@ -16,7 +16,11 @@ async function reEnrichArticles() {
   console.log(`対象記事数: ${AFFECTED_ARTICLE_IDS.length}`);
 
   const enricherFactory = new ContentEnricherFactory();
-  const aiService = new AIService();
+  const aiService = new AIService({
+    geminiApiKey: process.env.GEMINI_API_KEY || '',
+    preferLocalLLM: false,
+    useLocalLLMFallback: false,
+  });
 
   let successCount = 0;
   let failureCount = 0;
