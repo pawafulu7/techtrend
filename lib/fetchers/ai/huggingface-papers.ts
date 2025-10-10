@@ -193,7 +193,7 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
         type: 'research_paper',
         author: author,
         keywords: detectedKeywords,
-        tags: ['Hugging Face', 'AI Research', 'Papers', ...(tags || [])],
+        tags: ['AI Research', 'Papers', ...(tags || [])],  // 'Hugging Face'は削除（ソース情報）
         fetchedAt: new Date().toISOString(),
       }
     };

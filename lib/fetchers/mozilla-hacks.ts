@@ -143,11 +143,11 @@ export class MozillaHacksFetcher extends BaseFetcher {
 
   private generateMozillaTags(categories?: string[], title?: string): string[] {
     const tags = new Set<string>();
-    
-    // 必須タグ
-    tags.add('Mozilla');
+
+    // ソースベースタグ'Mozilla'は削除
+    // 'Web Standards'は技術分野として有効なので保持
     tags.add('Web Standards');
-    
+
     // タイトルベースのタグ
     if (title) {
       const lowerTitle = title.toLowerCase();
@@ -236,11 +236,10 @@ export class MozillaHacksFetcher extends BaseFetcher {
         normalizedTags.forEach(tag => tags.add(tag));
       }
     }
-    
-    // 基本的な技術タグ
-    tags.add('Web Development');
-    tags.add('Frontend');
-    
+
+    // 一般的すぎるタグは削除（'Web Development', 'Frontend'）
+    // より具体的なタグ（'Web Standards', 'JavaScript', 'CSS'等）で十分
+
     return Array.from(tags);
   }
 }

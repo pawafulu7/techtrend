@@ -1,0 +1,133 @@
+name: Tag Quality Check
+
+on:
+  # 毎週日曜日の午前9時（JST）に実行
+  schedule:
+    - cron: '0 0 * * 0'  # UTC 00:00 = JST 09:00
+
+  # 手動実行も可能
+  workflow_dispatch:
+
+  # PRでも実行（オプション：コメントアウト可）
+  # pull_request:
+  #   paths:
+  #     - 'lib/fetchers/**'
+  #     - 'scripts/maintenance/**'
+
+jobs:
+  check-tag-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        timeout-minutes: 15
+
+      - name: Setup PostgreSQL
+        uses: ikalnytskyi/action-setup-postgres@v6
+        with:
+          username: postgres
+          password: postgres_test_password
+          database: techtrend_test
+          port: 5432
+        id: postgres
+
+      - name: Run Prisma migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres_test_password@localhost:5432/techtrend_test
+
+      - name: Seed test data
+        run: npx tsx prisma/seed-test.ts
+        env:
+          DATABASE_URL: postgresql://postgres:postgres_test_password@localhost:5432/techtrend_test
+          E2E_TOTAL_ARTICLES: 100
+          E2E_TS_ARTICLES: 20
+
+      - name: Run tag quality check
+        id: tag_check
+        run: |
+          npx tsx scripts/monitoring/check-tag-quality.ts | tee tag-quality-report.txt
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+        env:
+          DATABASE_URL: postgresql://postgres:postgres_test_password@localhost:5432/techtrend_test
+        continue-on-error: true
+
+      - name: Upload quality report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tag-quality-report
+          path: tag-quality-report.txt
+          retention-days: 30
+
+      - name: Comment on issues (if problems detected)
+        if: steps.tag_check.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('tag-quality-report.txt', 'utf8');
+
+            const body = `## タグ品質チェック結果
+
+週次のタグ品質チェックで問題が検出されました。
+
+<details>
+<summary>詳細レポート</summary>
+
+\`\`\`
+${report}
+\`\`\`
+
+</details>
+
+**対応が必要な項目**:
+- ソースベースタグの削除
+- 一般的すぎるタグの見直し
+- タグの重複解消（大文字小文字の統一）
+
+**参考**: [タグガイドライン](../blob/main/docs/development/tag-guidelines.md)
+            `;
+
+            // 既存のIssueを検索
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['tag-quality'],
+              state: 'open'
+            });
+
+            if (issues.data.length > 0) {
+              // 既存のIssueにコメント
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: `### 週次チェック結果 (${new Date().toISOString().split('T')[0]})\n\n${body}`
+              });
+            } else {
+              // 新しいIssueを作成
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'タグ品質の問題が検出されました',
+                body: body,
+                labels: ['tag-quality', 'maintenance']
+              });
+            }
+
+      - name: Fail if quality issues detected
+        if: steps.tag_check.outputs.exit_code != '0'
+        run: |
+          echo "::warning::タグ品質の問題が検出されました。詳細はArtifactsを確認してください。"
+          exit 1

@@ -175,11 +175,10 @@ export class HackerNewsFetcher extends BaseFetcher {
 
   private generateHackerNewsTags(title: string, url: string): string[] {
     const tags = new Set<string>();
-    
-    // 必須タグ
-    tags.add('Hacker News');
-    tags.add('Tech News');
-    
+
+    // ソースベースタグは削除（ソース情報はSourceテーブルで管理）
+    // AI生成タグとコンテンツベースのタグのみを使用
+
     // URLベースのタグ（安全なドメイン検証を使用）
     try {
       // 主要なドメインに対するタグ付け（セキュアなURL検証）
@@ -252,11 +251,10 @@ export class HackerNewsFetcher extends BaseFetcher {
         tags.add('Cloud');
       }
     }
-    
-    // 基本的な技術タグ
-    tags.add('Technology');
-    tags.add('Programming');
-    
+
+    // 一般的すぎるタグは削除（'Technology', 'Programming'）
+    // AI要約サービスとコンテンツベースのタグで十分な分類が可能
+
     return Array.from(tags);
   }
 }

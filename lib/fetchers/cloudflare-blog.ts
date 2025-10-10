@@ -143,10 +143,9 @@ export class CloudflareBlogFetcher extends BaseFetcher {
 
   private generateCloudflareTags(categories?: string[], title?: string): string[] {
     const tags = new Set<string>();
-    
-    // 必須タグ
-    tags.add('Cloudflare');
-    
+
+    // ソースベースタグ'Cloudflare'は削除
+
     // タイトルベースのタグ
     if (title) {
       const lowerTitle = title.toLowerCase();
@@ -211,11 +210,10 @@ export class CloudflareBlogFetcher extends BaseFetcher {
         normalizedTags.forEach(tag => tags.add(tag));
       }
     }
-    
-    // 基本的な技術タグ
-    tags.add('Cloud');
-    tags.add('Infrastructure');
-    
+
+    // 一般的すぎるタグは削除（'Cloud', 'Infrastructure'）
+    // より具体的なタグ（'CDN', 'Edge Computing', 'Security'等）で十分
+
     return Array.from(tags);
   }
 }
