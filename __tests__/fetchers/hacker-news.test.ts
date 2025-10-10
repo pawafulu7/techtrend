@@ -1,28 +1,22 @@
 import { HackerNewsFetcher } from '@/lib/fetchers/hacker-news';
-import { PrismaClient } from '@prisma/client';
+import { Source } from '@prisma/client';
 
 describe('HackerNewsFetcher', () => {
   let fetcher: HackerNewsFetcher;
-  let prisma: PrismaClient;
 
-  beforeAll(() => {
-    prisma = new PrismaClient();
-  });
+  beforeEach(() => {
+    // モックSourceオブジェクトを使用（データベース接続不要）
+    const mockSource: Source = {
+      id: 'hacker_news_test',
+      name: 'Hacker News',
+      type: 'rss',
+      url: 'https://news.ycombinator.com/rss',
+      enabled: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
 
-  beforeEach(async () => {
-    const source = await prisma.source.findFirst({
-      where: { name: 'Hacker News' }
-    });
-
-    if (!source) {
-      throw new Error('Hacker News source not found');
-    }
-
-    fetcher = new HackerNewsFetcher(source);
-  });
-
-  afterAll(async () => {
-    await prisma.$disconnect();
+    fetcher = new HackerNewsFetcher(mockSource);
   });
 
   describe('generateHackerNewsTags', () => {
@@ -50,7 +44,7 @@ describe('HackerNewsFetcher', () => {
 
     it('should include content-based tags', () => {
       const tags = (fetcher as any).generateHackerNewsTags(
-        'Building a React App with TypeScript',
+        'Building a React App with JavaScript and TypeScript',
         'https://github.com/example/repo'
       );
 
@@ -58,6 +52,8 @@ describe('HackerNewsFetcher', () => {
       expect(tags).toContain('JavaScript');
       expect(tags).toContain('TypeScript');
       expect(tags).toContain('React');
+      expect(tags).toContain('GitHub');
+      expect(tags).toContain('Open Source');
     });
 
     it('should include URL-based tags for GitHub', () => {
