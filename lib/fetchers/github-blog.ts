@@ -143,10 +143,9 @@ export class GitHubBlogFetcher extends BaseFetcher {
 
   private generateGitHubTags(categories?: string[]): string[] {
     const tags = new Set<string>();
-    
-    // 必須タグ
-    tags.add('GitHub');
-    
+
+    // ソースベースタグ'GitHub'は削除
+
     // カテゴリベースのタグ
     if (categories && categories.length > 0) {
       for (const category of categories) {

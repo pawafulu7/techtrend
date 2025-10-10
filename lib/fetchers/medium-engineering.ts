@@ -211,13 +211,16 @@ export class MediumEngineeringFetcher extends BaseFetcher {
     _author?: string
   ): string[] {
     const tags = new Set<string>();
-    
-    // 必須タグ
-    tags.add('Medium');
-    tags.add('Engineering Blog');
-    
-    // フィード固有のタグ
-    feedTags.forEach(tag => tags.add(tag));
+
+    // ソースベースタグは削除（'Medium', 'Engineering Blog'）
+    // フィード固有のタグから企業名を除外してから追加
+    feedTags.forEach(tag => {
+      // 企業名（Medium, Netflix, Airbnb, Uber, Spotify）は除外
+      const companyNames = ['Medium', 'Netflix', 'Airbnb', 'Uber', 'Spotify'];
+      if (!companyNames.includes(tag)) {
+        tags.add(tag);
+      }
+    });
     
     // カテゴリベースのタグ
     if (categories && categories.length > 0) {
@@ -285,11 +288,9 @@ export class MediumEngineeringFetcher extends BaseFetcher {
         tags.add('Scalability');
       }
     }
-    
-    // 基本的な技術タグ
-    tags.add('Tech Companies');
-    tags.add('Software Engineering');
-    
+
+    // 一般的すぎるタグは削除（'Tech Companies', 'Software Engineering'）
+
     return Array.from(tags);
   }
 }

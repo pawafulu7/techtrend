@@ -103,8 +103,8 @@ describe('QiitaAIFetcher', () => {
 
       const elapsedTime = Date.now() - startTime;
 
-      // 2回目の呼び出しは1秒以上後になるはず
-      expect(elapsedTime).toBeGreaterThanOrEqual(1000);
+      // 2回目の呼び出しは約1秒後になるはず（タイミングの誤差を考慮して990ms以上）
+      expect(elapsedTime).toBeGreaterThanOrEqual(990);
     });
 
     it('環境変数からAPIトークンを使用する', async () => {
