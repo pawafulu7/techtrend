@@ -88,7 +88,7 @@ async function reEnrichAllShortArticles(options: ReEnrichOptions = {}) {
 
         const enrichedData = await enricher.enrich(article.url);
 
-        if (enrichedData && enrichedData.content && enrichedData.content.length >= 500) {
+        if (enrichedData && enrichedData.content && enrichedData.content.length >= maxContentLength) {
           await prisma.article.update({
             where: { id: article.id },
             data: {
