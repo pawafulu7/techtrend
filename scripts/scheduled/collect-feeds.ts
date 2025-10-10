@@ -242,16 +242,25 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
                 const enrichedData = await enricher.enrich(article.url);
 
                 if (enrichedData && enrichedData.content) {
-                  // エンリッチメントしたコンテンツで更新
-                  await prisma.article.update({
-                    where: { id: savedArticle.id },
-                    data: {
-                      content: enrichedData.content,
-                      contentUpdatedAt: new Date(),  // コンテンツ更新時刻を記録
-                      ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
-                    }
-                  });
-                  console.error(`   ✅ エンリッチメント成功: ${enrichedData.content.length}文字`);
+                  // エンリッチメント結果の検証
+                  const originalContentLength = article.content?.length || 0;
+                  const enrichedContentLength = enrichedData.content.length;
+
+                  // RSSコンテンツより短い場合は採用しない、かつ最低500文字の閾値を設定
+                  if (enrichedContentLength > originalContentLength && enrichedContentLength >= 500) {
+                    // エンリッチメントしたコンテンツで更新
+                    await prisma.article.update({
+                      where: { id: savedArticle.id },
+                      data: {
+                        content: enrichedData.content,
+                        contentUpdatedAt: new Date(),  // コンテンツ更新時刻を記録
+                        ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
+                      }
+                    });
+                    console.error(`   ✅ エンリッチメント成功: ${enrichedData.content.length}文字`);
+                  } else {
+                    console.warn(`   ⚠️ エンリッチメント結果が不十分: ${enrichedContentLength}文字（元: ${originalContentLength}文字）`);
+                  }
                 } else {
                   console.error(`   ⚠️ エンリッチメント失敗: コンテンツなし`);
                 }
