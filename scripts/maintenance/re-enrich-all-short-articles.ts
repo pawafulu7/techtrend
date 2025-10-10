@@ -195,7 +195,12 @@ if (require.main === module) {
   // --max-length=数値 オプション
   const maxLengthArg = args.find(arg => arg.startsWith('--max-length='));
   if (maxLengthArg) {
-    options.maxContentLength = parseInt(maxLengthArg.split('=')[1], 10);
+    const parsed = parseInt(maxLengthArg.split('=')[1], 10);
+    if (isNaN(parsed) || parsed <= 0) {
+      console.error('Error: --max-length must be a positive integer');
+      process.exit(1);
+    }
+    options.maxContentLength = parsed;
   }
 
   reEnrichAllShortArticles(options)
