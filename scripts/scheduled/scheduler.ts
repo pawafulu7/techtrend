@@ -21,7 +21,6 @@ const RSS_SOURCES = [
   'AWS',
   'SRE',
   'Google Developers Blog',
-  'Corporate Tech Blog',
   'Hugging Face Blog',
   'Google AI Blog',
   'InfoQ Japan',
@@ -36,7 +35,22 @@ const RSS_SOURCES = [
   'arXiv AI',
   'Zenn AI',
   'Qiita AI',
-  // 'Microsoft Developer Blog'
+  'NVIDIA Developer Blog',
+  'DeepMind Blog',
+  // 国内企業ブログ（13社）
+  'DeNA Engineering',
+  'CyberAgent Developers Blog',
+  'Mercari Engineering',
+  'LY Corporation Tech Blog',
+  'ZOZO TECH BLOG',
+  'Money Forward Developers Blog',
+  'SmartHR Tech Blog',
+  'Cookpad Tech Life',
+  'freee Developers Hub',
+  'Hatena Developer Blog',
+  'Sansan Builders Box',
+  'GMO Developers',
+  'ペパボテックブログ',
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）

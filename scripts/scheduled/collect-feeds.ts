@@ -100,17 +100,18 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'DeepMind Blog': DeepMindBlogFetcher,
 
   // 個別企業ブログフェッチャー
-  'DeNA Tech Blog': DenaFetcher,
+  // IMPORTANT: キー名はDBのSource.nameと完全一致させること（大文字小文字含む）
+  'DeNA Engineering': DenaFetcher,
   'SmartHR Tech Blog': SmartHRFetcher,
   'LY Corporation Tech Blog': LYCorpFetcher,
   'Mercari Engineering': MercariFetcher,
   'Sansan Builders Box': SansanFetcher,
-  'ZOZO Tech Blog': ZOZOFetcher,
+  'ZOZO TECH BLOG': ZOZOFetcher,
   'Hatena Developer Blog': HatenaFetcher,
-  'Money Forward Developers': MoneyForwardFetcher,
-  'GMO Pepabo Tech Blog': PepaboFetcher,
-  'Freee Developers Hub': FreeeFetcher,
-  'Cookpad Tech Blog': CookpadFetcher,
+  'Money Forward Developers Blog': MoneyForwardFetcher,
+  'ペパボテックブログ': PepaboFetcher,
+  'freee Developers Hub': FreeeFetcher,
+  'Cookpad Tech Life': CookpadFetcher,
   'CyberAgent Developers Blog': CyberAgentFetcher,
   'GMO Developers': GMOFetcher,
 };

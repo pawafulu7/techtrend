@@ -57,8 +57,8 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'hatena_tech_blog',           // Hatena Developer Blog
       'pepabo_tech_blog',           // ペパボテックブログ
       'cookpad_tech_blog',          // Cookpad Tech Life
-      // 旧統合ソース（移行期間中は残す）
-      'cmdwgsk1b0000te2vrjnpm6gc'   // Corporate Tech Blog (legacy)
+      // 旧統合ソース（2025年10月10日無効化済み、将来的に削除予定）
+      // 'cmdwgsk1b0000te2vrjnpm6gc'   // Corporate Tech Blog (legacy, disabled)
     ]
   },
   presentation: {
