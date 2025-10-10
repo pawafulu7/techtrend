@@ -49,22 +49,24 @@ async function checkTagQuality(): Promise<{
   let totalArticles = 0;
 
   try {
-    // 1. 全タグを取得
-    const allTags = await prisma.tag.findMany({
-      include: {
-        _count: {
-          select: { articles: true }
+    // 1. 全タグと総記事数を並列取得
+    const [allTags, totalArticlesCount] = await Promise.all([
+      prisma.tag.findMany({
+        include: {
+          _count: {
+            select: { articles: true }
+          }
         }
-      }
-    });
+      }),
+      prisma.article.count()
+    ]);
 
     totalTags = allTags.length;
-    const articleCounts = allTags.map(t => t._count.articles);
-    totalArticles = Math.max(...articleCounts, 0);
+    totalArticles = totalArticlesCount;
 
     console.log(`📊 タグ統計:`);
     console.log(`   総タグ数: ${totalTags}`);
-    console.log(`   最大使用数: ${totalArticles}記事\n`);
+    console.log(`   総記事数: ${totalArticles}件\n`);
 
     // 2. ソースベースタグの検出
     const sourceBasedTags = allTags.filter(tag =>
