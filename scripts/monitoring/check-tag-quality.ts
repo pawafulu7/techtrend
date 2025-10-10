@@ -90,9 +90,10 @@ async function checkTagQuality(): Promise<{
       console.log('✅ ソースベースタグは検出されませんでした。');
     }
 
-    // 3. 一般的すぎるタグの検出
+    // 3. 一般的すぎるタグの検出（大文字小文字非依存）
+    const genericTagSet = new Set(OVERLY_GENERIC_TAGS.map(tag => tag.toLowerCase()));
     const genericTags = allTags.filter(tag =>
-      OVERLY_GENERIC_TAGS.includes(tag.name)
+      genericTagSet.has(tag.name.toLowerCase())
     );
 
     if (genericTags.length > 0) {
