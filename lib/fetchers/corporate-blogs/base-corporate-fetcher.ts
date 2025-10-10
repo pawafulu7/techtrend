@@ -126,15 +126,9 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
             break;
           }
 
-          // タグの準備（企業名を最初に追加）
+          // タグの準備（RSSフィードのカテゴリから抽出のみ）
           const tags = this.extractTags(item);
-          const companyTagName = this.getNormalizedCompanyName();
-          const finalTags = [companyTagName, ...tags.filter(tag => tag !== companyTagName)];
-
-          // 企業テックブログタグを追加
-          if (!finalTags.includes('企業テックブログ')) {
-            finalTags.push('企業テックブログ');
-          }
+          const finalTags = tags;
 
           // コンテンツの取得（WordPress系RSS対応でcontent:encodedを優先）
           const content = getContentFromItem(item) || '';
