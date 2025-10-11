@@ -16,6 +16,7 @@ type ArticleWhereInput = Prisma.ArticleWhereInput;
 interface LightweightArticle {
   id: string;
   title: string;
+  translatedTitle: string | null;
   url: string;
   summary: string | null;
   thumbnail: string | null;
@@ -99,6 +100,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
     const includeUserData = searchParams.get('includeUserData') === 'true';
+    const totalParam = searchParams.get('total'); // Quick Win 2: Skip COUNT on page >1
 
     // Generate cache key
     const normalizedSearch = search ? 
@@ -413,9 +415,6 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Get total count with caching
-      let total: number;
-
       // 総件数用のキャッシュキーを生成（where条件に基づく）
       const isUserScopedCount = readFilter === 'read' || readFilter === 'unread';
       const countCacheKey = countCache.generateCacheKey('articles:count', {
@@ -433,22 +432,33 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Get count from cache or DB
-      const cachedCount = await countCache.get<number>(countCacheKey);
-      if (cachedCount !== null && cachedCount !== undefined) {
-        total = cachedCount;
-      } else {
-        // 件数はカーソル条件を含めないベース WHERE で算出
+      // Get count and articles in parallel (Quick Win 2+3: 50-100ms improvement)
+      const countPromise = (async () => {
+        // Quick Win 2: Use client-provided total only for offset pagination page >1
+        // Prevents total manipulation on initial load or cursor pagination
+        if (!useCursor && page > 1 && totalParam) {
+          const parsedTotal = Number.parseInt(totalParam, 10);
+          if (!Number.isNaN(parsedTotal) && parsedTotal >= (page - 1) * limit) {
+            return parsedTotal;
+          }
+        }
+
+        const cachedCount = await countCache.get<number>(countCacheKey);
+        if (cachedCount !== null && cachedCount !== undefined) {
+          return cachedCount;
+        }
+
         const countWhere = { ...where };
-        total = await prisma.article.count({ where: countWhere });
-        await countCache.set(countCacheKey, total);
-      }
+        const computedTotal = await prisma.article.count({ where: countWhere });
+        await countCache.set(countCacheKey, computedTotal);
+        return computedTotal;
+      })();
 
       // Get articles - Optimized query with minimal source relation
       // For cursor pagination, fetch limit+1 to determine hasNextPage
       const fetchLimit = useCursor ? limit + 1 : limit;
-      
-      const articles = await prisma.article.findMany({
+
+      const articlesPromise = prisma.article.findMany({
         where: cursorFilter ? { AND: [where, cursorFilter] } : where,
         select: {
           id: true,
@@ -484,6 +494,9 @@ export async function GET(request: NextRequest) {
         skip: useCursor ? 0 : (page - 1) * limit,  // No skip for cursor pagination
         take: fetchLimit,
       });
+
+      // Execute count and articles in parallel
+      const [total, articles] = await Promise.all([countPromise, articlesPromise]);
 
       if (useCursor && cursorPayload) {
         if (isBackwardCursor) {

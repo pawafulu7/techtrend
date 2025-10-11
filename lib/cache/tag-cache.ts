@@ -1,12 +1,7 @@
 import { prisma } from '@/lib/database';
 import { RedisCache } from './index';
 import { Tag } from '@prisma/client';
-
-interface TagWithCount extends Tag {
-  _count: {
-    articles: number;
-  };
-}
+import type { TagWithCount } from '@/types/models';
 
 export class TagCache {
   private cache: RedisCache;

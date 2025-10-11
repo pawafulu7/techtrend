@@ -14,10 +14,11 @@ import { HomeClient } from '@/app/components/home/home-client';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { RecommendationToggle } from '@/components/recommendation/recommendation-toggle';
-import { prisma } from '@/lib/database';
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
 import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
 import { getFilterPreferencesFromCookies } from '@/lib/filter-preferences-cookie';
+import { getSourceCache } from '@/lib/cache/source-cache';
+import { tagCache } from '@/lib/cache/tag-cache';
 
 interface PageProps {
   searchParams: Promise<{
@@ -35,34 +36,17 @@ interface PageProps {
 // getArticles function removed - now handled by client component
 
 async function getSources() {
-  const sources = await prisma.source.findMany({
-    where: { enabled: true },
-    include: {
-      _count: {
-        select: { articles: true }
-      }
-    },
-    orderBy: { name: 'asc' },
-  });
+  // Redis-backed cache使用（150-250ms短縮）
+  const sourceCache = getSourceCache();
+  const sources = await sourceCache.getAllSources();
 
   // 記事が1件以上あるソースのみを返す
   return sources.filter(source => source._count.articles > 0);
 }
 
 async function getPopularTags() {
-  const tags = await prisma.tag.findMany({
-    include: {
-      _count: {
-        select: { articles: true },
-      },
-    },
-    orderBy: {
-      articles: {
-        _count: 'desc',
-      },
-    },
-    take: 20,
-  });
+  // Redis-backed cache使用（150-250ms短縮）
+  const tags = await tagCache.getPopularTags(20);
 
   return tags.map(tag => ({
     id: tag.id,
