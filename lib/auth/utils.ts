@@ -128,6 +128,7 @@ export async function changePassword(
 
 /**
  * Delete user account
+ * @deprecated Use deleteUserAccountWithAudit instead for production use
  */
 export async function deleteUserAccount(userId: string) {
   // Delete all related data
@@ -151,4 +152,71 @@ export async function deleteUserAccount(userId: string) {
   ]);
 
   return true;
+}
+
+/**
+ * Delete user account with audit logging
+ * Uses interactive transaction to ensure data consistency and proper cleanup
+ */
+export async function deleteUserAccountWithAudit(
+  userId: string,
+  options?: {
+    reason?: string;
+    clientIp?: string;
+    userAgent?: string;
+  }
+) {
+  return prisma.$transaction(
+    async (tx) => {
+      // 1. Get user info before deletion (for email and auth method)
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: {
+          email: true,
+          password: true,
+          accounts: {
+            select: { provider: true },
+          },
+        },
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // 2. Determine authentication method
+      const authMethod = user.password
+        ? 'credentials'
+        : user.accounts.map((a) => a.provider).join(',');
+
+      // 3. Delete verification tokens (no FK, manual cleanup required)
+      await tx.verificationToken.deleteMany({
+        where: {
+          identifier: user.email,
+        },
+      });
+
+      // 4. Delete user (CASCADE will automatically delete Account, Favorite, ArticleView)
+      await tx.user.delete({
+        where: { id: userId },
+      });
+
+      // 5. Create audit log
+      await tx.userDeletionLog.create({
+        data: {
+          userId,
+          email: user.email,
+          reason: options?.reason,
+          authMethod,
+          clientIp: options?.clientIp,
+          userAgent: options?.userAgent,
+        },
+      });
+
+      return { email: user.email, authMethod };
+    },
+    {
+      timeout: 10000, // 10 seconds timeout
+    }
+  );
 }
