@@ -16,6 +16,7 @@ type ArticleWhereInput = Prisma.ArticleWhereInput;
 interface LightweightArticle {
   id: string;
   title: string;
+  translatedTitle: string | null;
   url: string;
   summary: string | null;
   thumbnail: string | null;
