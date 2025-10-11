@@ -252,7 +252,7 @@ function sanitizeInstructionLines(text: string): string {
 /**
  * フォールバック要約を生成
  */
-function createFallbackSummary(text: string, title?: string): string {
+function createFallbackSummary(text: string, _title?: string): string {
   // 指示行をフィルタ
   const sanitizedText = sanitizeInstructionLines(text);
 
