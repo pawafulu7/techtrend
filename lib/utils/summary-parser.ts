@@ -1,16 +1,5 @@
 import { ArticleType, getArticleTypeSections } from './article-type-prompts';
-
-// プロンプト行を検出する正規表現パターン
-const INSTRUCTION_PATTERNS = [
-  /^-\s*記事の核心的な内容/,
-  /^【条件】/,
-  /^【書き方】/,
-  /^【重要/,
-  /^-\s*技術的価値を/,
-  /^ここに.*書く/,
-  /^- \d+文字以上の記事/,
-  /必ず\d+文字以上/,
-];
+import { INSTRUCTION_PATTERNS } from '@/lib/ai/constants';
 
 export interface SummarySection {
   title: string;
