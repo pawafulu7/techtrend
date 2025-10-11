@@ -18,6 +18,7 @@ import { generateSummaryWithRetry } from '@/lib/ai/summary-generator';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
 
 import { SUMMARY_VERSION } from '@/types/article';
+import { INSTRUCTION_PATTERNS } from '@/lib/ai/constants';
 const prisma = new PrismaClient();
 
 interface GenerateResult {
@@ -229,22 +230,15 @@ function parseSummaryAndTags(text: string, title: string = '', content: string =
     /^#{1,3}\s*詳細要約[:：]\s*/   // マークダウン形式の詳細要約ラベル
   ];
   
-  const promptPatterns = [
-    /^\d+-\d+文字の日本語で/,
-    /^簡潔にまとめ/,
-    /^以下の観点で/,
-    /^記事が解決する問題/,
-    /^以下の要素を箇条書き/
-  ];
-
   let summaryStarted = false;
   let detailedSummaryStarted = false;
   let expectingSummaryContent = false;  // 要約ラベル後の内容待ちフラグ
   let expectingDetailedContent = false;  // 詳細要約ラベル後の内容待ちフラグ
 
   for (const line of lines) {
-    // プロンプト指示行をスキップ
-    if (promptPatterns.some(pattern => pattern.test(line))) {
+    // プロンプト指示行をスキップ（trim追加で空白付き指示行も検知）
+    const trimmedLine = line.trim();
+    if (INSTRUCTION_PATTERNS.some(pattern => pattern.test(trimmedLine))) {
       continue;
     }
     
