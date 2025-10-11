@@ -413,9 +413,6 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Get total count with caching
-      let total: number;
-
       // 総件数用のキャッシュキーを生成（where条件に基づく）
       const isUserScopedCount = readFilter === 'read' || readFilter === 'unread';
       const countCacheKey = countCache.generateCacheKey('articles:count', {
@@ -433,22 +430,24 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Get count from cache or DB
-      const cachedCount = await countCache.get<number>(countCacheKey);
-      if (cachedCount !== null && cachedCount !== undefined) {
-        total = cachedCount;
-      } else {
-        // 件数はカーソル条件を含めないベース WHERE で算出
+      // Get count and articles in parallel (Quick Win 3: 50-100ms improvement)
+      const countPromise = (async () => {
+        const cachedCount = await countCache.get<number>(countCacheKey);
+        if (cachedCount !== null && cachedCount !== undefined) {
+          return cachedCount;
+        }
+
         const countWhere = { ...where };
-        total = await prisma.article.count({ where: countWhere });
-        await countCache.set(countCacheKey, total);
-      }
+        const computedTotal = await prisma.article.count({ where: countWhere });
+        await countCache.set(countCacheKey, computedTotal);
+        return computedTotal;
+      })();
 
       // Get articles - Optimized query with minimal source relation
       // For cursor pagination, fetch limit+1 to determine hasNextPage
       const fetchLimit = useCursor ? limit + 1 : limit;
-      
-      const articles = await prisma.article.findMany({
+
+      const articlesPromise = prisma.article.findMany({
         where: cursorFilter ? { AND: [where, cursorFilter] } : where,
         select: {
           id: true,
@@ -484,6 +483,9 @@ export async function GET(request: NextRequest) {
         skip: useCursor ? 0 : (page - 1) * limit,  // No skip for cursor pagination
         take: fetchLimit,
       });
+
+      // Execute count and articles in parallel
+      const [total, articles] = await Promise.all([countPromise, articlesPromise]);
 
       if (useCursor && cursorPayload) {
         if (isBackwardCursor) {
