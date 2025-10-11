@@ -238,27 +238,59 @@ function normalizeCategory(category: string): string | undefined {
 }
 
 /**
+ * テキストから指示行を除去
+ */
+function sanitizeInstructionLines(text: string): string {
+  const lines = text.split('\n');
+  const sanitizedLines = lines.filter(line => {
+    const trimmedLine = line.trim();
+    return !INSTRUCTION_PATTERNS.some(pattern => pattern.test(trimmedLine));
+  });
+  return sanitizedLines.join('\n');
+}
+
+/**
  * フォールバック要約を生成
  */
-function createFallbackSummary(text: string, title?: string): string {
-  // エラーメッセージではなく、利用可能な情報から要約を生成
-  if (title) {
-    const contentPreview = text.substring(0, 100).replace(/[\n\r]+/g, ' ').trim();
-    return `${title}についての記事。${contentPreview}`;
+function createFallbackSummary(text: string): string {
+  // 指示行をフィルタ
+  const sanitizedText = sanitizeInstructionLines(text);
+
+  // サニタイズ後のテキストが十分な長さなら使用
+  const cleanedText = sanitizedText.replace(/[\n\r]+/g, ' ').trim();
+  if (cleanedText.length >= 50) {
+    if (cleanedText.length > 150) {
+      return cleanedText.substring(0, 150) + '...';
+    }
+    return cleanedText;
   }
-  
-  // タイトルがない場合は、テキストの最初の部分を使用
-  const cleanedText = text.replace(/[\n\r]+/g, ' ').trim();
-  if (cleanedText.length > 150) {
-    return cleanedText.substring(0, 150) + '...';
-  }
-  return cleanedText;
+
+  // サニタイズ後も不十分な場合のみエラーメッセージ
+  console.warn('[createFallbackSummary] Insufficient content after sanitization');
+  return '記事の要約生成に失敗しました';
 }
 
 /**
  * フォールバック詳細要約を生成
  */
-function createFallbackDetailedSummary(_text: string): string {
+function createFallbackDetailedSummary(text: string): string {
+  // 詳細要約も同様に指示行フィルタ
+  const sanitizedText = sanitizeInstructionLines(text);
+  const cleanedText = sanitizedText.replace(/[\n\r]+/g, '\n').trim();
+
+  if (cleanedText.length >= 100) {
+    // 簡易的な箇条書き化
+    const lines = cleanedText.split('\n').slice(0, 5);
+    return lines.map(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('・') || trimmed.startsWith('-')) {
+        return trimmed;
+      }
+      return '・' + trimmed;
+    }).join('\n');
+  }
+
+  // デフォルトのエラーメッセージ
   return `・詳細要約の生成に失敗しました
 ・APIエラーまたはコンテンツ不足の可能性があります
 ・記事の内容を確認してください

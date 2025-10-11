@@ -262,4 +262,73 @@ We need to verify
       expect(lines[1]).not.toContain('?。');
     });
   });
+
+  describe('Fallback handling with instruction sanitization', () => {
+    it('should sanitize instruction lines from fallback summary', () => {
+      const input = `【条件】195文字
+JavaScriptの新機能について解説。非同期処理の改善点を説明する。
+- 記事の核心的な内容を抽出
+Promiseとasync/awaitの使い方を比較。`;
+
+      const result = parseUnifiedResponse(input);
+
+      expect(result.summary).not.toContain('【条件】');
+      expect(result.summary).not.toContain('- 記事の核心的な');
+      expect(result.summary).toContain('JavaScript');
+      expect(result.summary).toContain('Promise');
+    });
+
+    it('should return error message when all lines are instructions', () => {
+      const input = `【条件】195文字
+【書き方】簡潔に
+- 記事の核心的な内容を抽出`;
+
+      const result = parseUnifiedResponse(input);
+
+      expect(result.summary).toBe('記事の要約生成に失敗しました');
+    });
+
+    it('should preserve valid content starting with similar patterns', () => {
+      const input = `【背景】従来のシステムでは処理速度が遅かった。新しいアプローチを提案する。
+【課題】大規模データ処理における性能問題を解決する必要がある。`;
+
+      const result = parseUnifiedResponse(input);
+
+      // 【背景】【課題】はCATEGORY_LABELSだがINSTRUCTION_PATTERNSではないので通過
+      expect(result.summary).toContain('背景');
+      expect(result.summary).toContain('課題');
+    });
+
+    it('should sanitize instruction lines from detailed fallback', () => {
+      // 要約セクションあり、詳細要約セクションなし → 詳細要約はフォールバック
+      const input = `要約: テスト要約
+
+【重要：以下の文字数を必ず守ること】
+- 5000文字以上の記事：必ず800文字以上1500文字以内で作成
+Reactの新しいHooksについて解説する。useStateとuseEffectの使い方を詳しく説明する。ライフサイクルメソッドとの違いを理解することが重要である。
+コンポーネントの状態管理を効率的に行う方法を学ぶ。`;
+
+      const result = parseUnifiedResponse(input);
+
+      // 詳細要約はフォールバックで生成され、指示行が除去される
+      expect(result.detailedSummary).not.toContain('【重要');
+      expect(result.detailedSummary).not.toContain('5000文字以上');
+      expect(result.detailedSummary).toContain('React');
+      expect(result.detailedSummary).toContain('Hooks');
+    });
+
+    it('should handle whitespace-prefixed instruction lines', () => {
+      const input = `  【条件】195文字
+JavaScriptの基本的な概念と使い方を解説する技術記事。変数宣言、関数定義、非同期処理について説明する。
+  DO NOT OUTPUT この行は指示
+コードサンプルを使って実際の実装方法を紹介する。初心者にも分かりやすく説明。`;
+
+      const result = parseUnifiedResponse(input);
+
+      expect(result.summary).not.toContain('【条件】');
+      expect(result.summary).not.toContain('DO NOT OUTPUT');
+      expect(result.summary).toContain('JavaScript');
+      expect(result.summary).toContain('コードサンプル');
+    });
+  });
 });
