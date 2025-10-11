@@ -99,6 +99,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
     const includeUserData = searchParams.get('includeUserData') === 'true';
+    const totalParam = searchParams.get('total'); // Quick Win 2: Skip COUNT on page >1
 
     // Generate cache key
     const normalizedSearch = search ? 
@@ -430,8 +431,16 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Get count and articles in parallel (Quick Win 3: 50-100ms improvement)
+      // Get count and articles in parallel (Quick Win 2+3: 50-100ms improvement)
       const countPromise = (async () => {
+        // Quick Win 2: Use client-provided total if valid (skip COUNT on page >1)
+        if (totalParam) {
+          const parsedTotal = parseInt(totalParam);
+          if (!isNaN(parsedTotal) && parsedTotal >= 0) {
+            return parsedTotal;
+          }
+        }
+
         const cachedCount = await countCache.get<number>(countCacheKey);
         if (cachedCount !== null && cachedCount !== undefined) {
           return cachedCount;
