@@ -54,16 +54,17 @@ export async function POST() {
           tagName => !existingTagNames.includes(tagName)
         );
 
-        // 新規タグを作成または取得
-        const tagConnections: { id: string }[] = [];
-        for (const tagName of uniqueNewTags) {
-          const tag = await prisma.tag.upsert({
-            where: { name: tagName },
-            update: {},
-            create: { name: tagName }
-          });
-          tagConnections.push({ id: tag.id });
-        }
+        // 新規タグを並列でupsert（パフォーマンス最適化）
+        const tagConnections = await Promise.all(
+          uniqueNewTags.map(async tagName => {
+            const tag = await prisma.tag.upsert({
+              where: { name: tagName },
+              update: {},
+              create: { name: tagName },
+            });
+            return { id: tag.id };
+          })
+        );
 
         // category正規化
         const normalizedCategory = result.category
