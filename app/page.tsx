@@ -14,7 +14,6 @@ import { HomeClient } from '@/app/components/home/home-client';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { RecommendationToggle } from '@/components/recommendation/recommendation-toggle';
-import { prisma } from '@/lib/database';
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
 import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
 import { getFilterPreferencesFromCookies } from '@/lib/filter-preferences-cookie';
