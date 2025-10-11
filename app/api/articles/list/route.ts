@@ -433,10 +433,11 @@ export async function GET(request: NextRequest) {
 
       // Get count and articles in parallel (Quick Win 2+3: 50-100ms improvement)
       const countPromise = (async () => {
-        // Quick Win 2: Use client-provided total if valid (skip COUNT on page >1)
-        if (totalParam) {
-          const parsedTotal = parseInt(totalParam);
-          if (!isNaN(parsedTotal) && parsedTotal >= 0) {
+        // Quick Win 2: Use client-provided total only for offset pagination page >1
+        // Prevents total manipulation on initial load or cursor pagination
+        if (!useCursor && page > 1 && totalParam) {
+          const parsedTotal = Number.parseInt(totalParam, 10);
+          if (!Number.isNaN(parsedTotal) && parsedTotal >= (page - 1) * limit) {
             return parsedTotal;
           }
         }
