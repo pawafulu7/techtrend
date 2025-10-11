@@ -6,6 +6,7 @@ import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
 import { checkSummaryQuality } from '@/lib/utils/summary-quality-checker';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
+import { INSTRUCTION_PATTERNS } from '@/lib/ai/constants';
 import { getLastProcessedTime, saveProcessingStatus, hasContentUpdatesSince, setPrisma } from '../utils/processing-status';
 
 const prisma = new PrismaClient();
@@ -282,20 +283,13 @@ function parseSummaryAndTags(text: string): SummaryAndTags {
     /^【詳細要約】[:：]?\s*/
   ];
   
-  const promptPatterns = [
-    /^\d+-\d+文字の日本語で/,
-    /^簡潔にまとめ/,
-    /^以下の観点で/,
-    /^記事が解決する問題/,
-    /^以下の要素を箇条書き/
-  ];
-
   let summaryStarted = false;
   let detailedSummaryStarted = false;
 
   for (const line of lines) {
-    // プロンプト指示行をスキップ
-    if (promptPatterns.some(pattern => pattern.test(line))) {
+    // プロンプト指示行をスキップ（trim追加で空白付き指示行も検知）
+    const trimmedLine = line.trim();
+    if (INSTRUCTION_PATTERNS.some(pattern => pattern.test(trimmedLine))) {
       continue;
     }
     
