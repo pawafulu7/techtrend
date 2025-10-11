@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
+import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -254,6 +255,7 @@ export default function ProfilePage() {
                 アカウントを削除すると、すべてのデータが完全に削除されます。
                 この操作は取り消すことができません。
               </p>
+              <DeleteAccountDialog hasPassword={userProfile?.hasPassword ?? false} />
             </CardContent>
           </Card>
         </TabsContent>
