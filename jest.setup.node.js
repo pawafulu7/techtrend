@@ -79,24 +79,14 @@ global.fetch = jest.fn(() =>
 
 // Next.jsのレスポンスモック
 global.Response = class Response {
-  constructor(body, init) {
+  constructor(body, init = {}) {
     this.body = body;
-    this.status = init?.status || 200;
-    this.statusText = init?.statusText || 'OK';
-
-    // Headers can be Headers instance, Map, or plain object
-    if (init?.headers instanceof Map) {
-      this.headers = new Map(init.headers);
-    } else if (init?.headers && typeof init.headers.forEach === 'function') {
-      // Headers instance
-      this.headers = new Map();
-      init.headers.forEach((value, key) => {
-        this.headers.set(key, value);
-      });
-    } else {
-      this.headers = new Map(Object.entries(init?.headers || {}));
-    }
-
+    this.status = init.status ?? 200;
+    this.statusText = init.statusText ?? 'OK';
+    // Use Headers polyfill for case-insensitive header access (CodexMCP recommended)
+    this.headers = init.headers instanceof Headers
+      ? new Headers(init.headers)
+      : new Headers(init.headers ?? {});
     this.ok = this.status >= 200 && this.status < 300;
   }
   
