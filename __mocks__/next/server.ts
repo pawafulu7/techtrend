@@ -77,13 +77,14 @@ export class NextResponse extends Response {
     return response;
   }
   
-  static redirect(url: string | URL, status?: number) {
-    return new NextResponse(null, {
-      status: status || 302,
-      headers: {
-        Location: typeof url === 'string' ? url : url.toString()
-      }
-    });
+  static redirect(url: string | URL, init?: number | ResponseInit) {
+    const status = typeof init === 'number'
+      ? init
+      : init?.status ?? 307;
+    const initObj = typeof init === 'object' ? init : {};
+    const headers = new Headers(initObj.headers);
+    headers.set('Location', typeof url === 'string' ? url : url.toString());
+    return new NextResponse(null, { ...initObj, status, headers });
   }
   
   static rewrite(url: string | URL) {
@@ -94,12 +95,10 @@ export class NextResponse extends Response {
     });
   }
   
-  static next() {
-    return new NextResponse(null, {
-      headers: {
-        'x-middleware-next': '1'
-      }
-    });
+  static next(init?: ResponseInit) {
+    const headers = new Headers(init?.headers);
+    headers.set('x-middleware-next', '1');
+    return new NextResponse(null, { ...init, headers });
   }
 }
 
@@ -128,7 +127,8 @@ if (typeof Headers === 'undefined') {
     }
     
     get(name: string) {
-      return this.headers.get(name.toLowerCase()) || null;
+      const value = this.headers.get(name.toLowerCase());
+      return value === undefined ? null : value;
     }
     
     set(name: string, value: string) {
