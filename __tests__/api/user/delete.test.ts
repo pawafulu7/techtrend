@@ -9,12 +9,6 @@ jest.mock('@/lib/auth/auth', () => ({
 jest.mock('@/lib/auth/utils', () => ({
   verifyPassword: jest.fn(),
   deleteUserAccountWithAudit: jest.fn(),
-  hashPassword: jest.fn(),
-  createUser: jest.fn(),
-  getUserByEmail: jest.fn(),
-  updateUserProfile: jest.fn(),
-  changePassword: jest.fn(),
-  deleteUserAccount: jest.fn(),
 }));
 
 // Import DELETE after mocks are set up
@@ -265,6 +259,30 @@ describe('/api/user/delete', () => {
       );
     });
 
+    it('should return 400 when request body is malformed JSON', async () => {
+      const { auth } = require('@/lib/auth/auth');
+
+      (auth as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' }
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/user/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: '{invalid json}',
+      });
+
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+      expect(data.error).toBe('VALIDATION_ERROR');
+      expect(data.message).toBe('リクエストの形式が正しくありません');
+    });
+
     it('should return 500 when an unexpected error occurs', async () => {
       const { auth } = require('@/lib/auth/auth');
       const { deleteUserAccountWithAudit } = require('@/lib/auth/utils');
@@ -296,6 +314,7 @@ describe('/api/user/delete', () => {
 
       expect(response.status).toBe(500);
       expect(data.success).toBe(false);
+      expect(data.error).toBe('INTERNAL_ERROR');
     });
   });
 });
