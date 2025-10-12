@@ -71,5 +71,16 @@ export function setSecurityHeaders(response: NextResponse, request: NextRequest)
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
 
   // Cross-Origin-Embedder-Policy
+  // Phase 3: 'unsafe-none' で基盤整備完了
+  // 理由:
+  // - 800+の外部ドメインから画像を取得しており、'require-corp' は現実的でない
+  // - 'require-corp' では全外部リソースに Cross-Origin-Resource-Policy が必須
+  // - 'credentialless' はブラウザサポートが不十分（Chromium系のみ、Firefox/Safari未対応）
+  // Phase 4での移行計画:
+  // - ブラウザサポート状況の定期確認
+  // - Cookie/認証ヘッダー依存の調査
+  // - Reporting-Endpoints での影響評価
+  // - 段階的に 'credentialless' へ移行検討
+  // 参考: CodexMCP評価 (2025-10-12)
   response.headers.set('Cross-Origin-Embedder-Policy', 'unsafe-none');
 }
