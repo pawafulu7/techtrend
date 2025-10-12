@@ -40,9 +40,20 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
     setIsDeleting(true);
 
     try {
+      // Validate confirmation word before sending (type safety)
+      if (confirmationWord !== CONFIRMATION_WORD) {
+        toast({
+          title: '確認ワードが正しくありません',
+          description: `"${CONFIRMATION_WORD}" と正確に入力してください`,
+          variant: 'destructive',
+        });
+        setIsDeleting(false);
+        return;
+      }
+
       const requestBody: DeleteAccountRequest = {
         password: hasPassword ? password : undefined,
-        confirmationWord: confirmationWord as typeof CONFIRMATION_WORD,
+        confirmationWord: CONFIRMATION_WORD,
         reason: reason || undefined,
       };
 
@@ -57,7 +68,17 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
       const data: DeleteAccountResult = await response.json();
 
       if (!response.ok || !data.success) {
-        const errorData = data as { success: false; error: string; message: string };
+        // Validate error response structure
+        if (!data || typeof data !== 'object' || !('error' in data) || !('message' in data)) {
+          toast({
+            title: 'エラーが発生しました',
+            description: 'もう一度お試しください',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const errorData = data;
 
         if (errorData.error === 'INVALID_PASSWORD') {
           setPassword('');
@@ -90,8 +111,16 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
 
       setOpen(false);
 
-      await signOut({ callbackUrl: '/' });
-    } catch (_error) {
+      // Handle sign out with error recovery
+      try {
+        await signOut({ callbackUrl: '/' });
+      } catch (signOutError) {
+        console.error('Sign out failed after account deletion:', signOutError);
+        // Even if sign out fails, the account is deleted, so redirect manually
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Account deletion failed:', error);
       toast({
         title: 'エラーが発生しました',
         description: 'もう一度お試しください',

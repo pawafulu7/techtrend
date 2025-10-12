@@ -154,11 +154,11 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteA
       }
     }
 
-    // Generic error response
+    // Generic error response (internal server error)
     return NextResponse.json(
       {
         success: false,
-        error: 'VALIDATION_ERROR',
+        error: 'INTERNAL_ERROR',
         message: 'アカウント削除中にエラーが発生しました',
       },
       { status: 500 }
