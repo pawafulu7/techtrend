@@ -104,6 +104,47 @@ npx prisma migrate deploy
 
 詳細な環境変数の説明は [.env.example](./.env.example) を参照してください。
 
+## OpenTelemetry統合（Phase 1）
+
+### 開発環境でのトレース確認
+
+#### 1. OpenTelemetry Collector起動
+
+```bash
+# Collector起動
+npm run otel:dev
+
+# トレースログをリアルタイム表示
+npm run otel:logs
+```
+
+#### 2. Next.jsアプリ起動
+
+```bash
+npm run dev
+```
+
+#### 3. トレース確認
+
+ブラウザで http://localhost:3000 にアクセスすると、Collectorログに`trace_id`が出力されます。
+
+```bash
+# トレースIDで絞り込み
+docker compose -f docker-compose.otel.yml logs otel-collector | grep trace_id
+```
+
+#### 4. 停止
+
+```bash
+npm run otel:down
+```
+
+### 本番環境（Vercel）
+
+Vercel Marketplace統合（New Relic推奨）でトレース/ログを閲覧可能。
+
+詳細は [CLAUDE.md](./CLAUDE.md) を参照してください。
+
 ## ⚠️ 重要なお知らせ
 
 **このプロジェクトは個人の学習・実験用プロジェクトです。**
