@@ -118,7 +118,7 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="destructive" size="sm">
+        <Button variant="destructive" size="sm" data-test="delete-account-button">
           アカウントを削除
         </Button>
       </DialogTrigger>
@@ -155,6 +155,7 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
                 placeholder="パスワードを入力"
                 disabled={isDeleting}
                 autoComplete="current-password"
+                data-test="delete-password-input"
               />
             </div>
           )}
@@ -171,6 +172,7 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
               placeholder={CONFIRMATION_WORD}
               disabled={isDeleting}
               autoComplete="off"
+              data-test="delete-confirmation-input"
             />
           </div>
 
@@ -184,6 +186,7 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
               disabled={isDeleting}
               maxLength={500}
               rows={3}
+              data-test="delete-reason-textarea"
             />
             <p className="text-xs text-muted-foreground text-right">
               {reason.length}/500
@@ -196,6 +199,7 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
             variant="outline"
             onClick={() => handleOpenChange(false)}
             disabled={isDeleting}
+            data-test="delete-cancel-button"
           >
             キャンセル
           </Button>
@@ -203,6 +207,7 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
             variant="destructive"
             onClick={handleDelete}
             disabled={!isValid || isDeleting}
+            data-test="delete-confirm-button"
           >
             {isDeleting ? '削除中...' : 'アカウントを削除'}
           </Button>
