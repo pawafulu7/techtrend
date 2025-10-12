@@ -196,9 +196,10 @@ export async function deleteUserAccountWithAudit(
         },
       });
 
-      // 4. Delete user (CASCADE will automatically delete Account, Favorite, ArticleView)
-      await tx.user.delete({
+      // 4. Mark user as deleted (soft delete with deletedAt timestamp)
+      await tx.user.update({
         where: { id: userId },
+        data: { deletedAt: new Date() },
       });
 
       // 5. Create audit log
