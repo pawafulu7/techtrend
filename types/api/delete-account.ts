@@ -18,7 +18,13 @@ export interface DeleteAccountResponse {
 
 export interface DeleteAccountError {
   success: false;
-  error: 'INVALID_PASSWORD' | 'INVALID_CONFIRMATION' | 'UNAUTHORIZED' | 'USER_NOT_FOUND' | 'VALIDATION_ERROR';
+  error:
+    | 'INVALID_PASSWORD'
+    | 'INVALID_CONFIRMATION'
+    | 'UNAUTHORIZED'
+    | 'USER_NOT_FOUND'
+    | 'VALIDATION_ERROR'
+    | 'INTERNAL_ERROR';
   message: string;
 }
 
