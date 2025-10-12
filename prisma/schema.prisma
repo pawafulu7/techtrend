@@ -91,11 +91,14 @@ model User {
   image         String?
   password      String?
   role          String?       @default("user") // "user" | "admin"
+  deletedAt     DateTime?     @db.Timestamptz(6)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   accounts      Account[]
   articleViews  ArticleView[]
   favorites     Favorite[]
+
+  @@index([deletedAt], map: "idx_user_deleted_at")
 }
 
 model Account {
@@ -180,4 +183,19 @@ enum ProcessingStatus {
   success
   failed
   partial
+}
+
+model UserDeletionLog {
+  id         String   @id @default(cuid())
+  userId     String
+  email      String
+  reason     String?
+  authMethod String?
+  clientIp   String?
+  userAgent  String?
+  deletedAt  DateTime @default(now()) @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([deletedAt], map: "idx_user_deletion_log_deleted_at")
+  @@index([email], map: "idx_user_deletion_log_email")
 }
