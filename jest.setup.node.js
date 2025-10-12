@@ -83,7 +83,20 @@ global.Response = class Response {
     this.body = body;
     this.status = init?.status || 200;
     this.statusText = init?.statusText || 'OK';
-    this.headers = new Map(Object.entries(init?.headers || {}));
+
+    // Headers can be Headers instance, Map, or plain object
+    if (init?.headers instanceof Map) {
+      this.headers = new Map(init.headers);
+    } else if (init?.headers && typeof init.headers.forEach === 'function') {
+      // Headers instance
+      this.headers = new Map();
+      init.headers.forEach((value, key) => {
+        this.headers.set(key, value);
+      });
+    } else {
+      this.headers = new Map(Object.entries(init?.headers || {}));
+    }
+
     this.ok = this.status >= 200 && this.status < 300;
   }
   
