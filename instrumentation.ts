@@ -1,10 +1,16 @@
 import { registerOTel } from '@vercel/otel';
+import {
+  ParentBasedSampler,
+  TraceIdRatioBasedSampler,
+} from '@opentelemetry/sdk-trace-base';
 
 const baseEndpoint =
   process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318';
 
 const normalize = (url: string, path: string) =>
   `${url.replace(/\/$/, '')}${path}`;
+
+const ratio = Number(process.env.OTEL_TRACES_SAMPLER_ARG ?? '0.1');
 
 export function register() {
   registerOTel({
@@ -21,9 +27,8 @@ export function register() {
     logExporter: {
       url: normalize(baseEndpoint, '/v1/logs'),
     },
-    traceSampler: {
-      type: process.env.OTEL_TRACES_SAMPLER ?? 'traceidratio',
-      ratio: Number(process.env.OTEL_TRACES_SAMPLER_ARG ?? '0.1'),
-    },
+    traceSampler: new ParentBasedSampler({
+      root: new TraceIdRatioBasedSampler(ratio),
+    }),
   });
 }
