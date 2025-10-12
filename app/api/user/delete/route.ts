@@ -14,8 +14,20 @@ export const dynamic = 'force-dynamic';
 
 export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteAccountResponse | DeleteAccountError>> {
   try {
-    // 1. Parse request body
-    const body = await request.json();
+    // 1. Parse request body (handle JSON parse errors)
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'VALIDATION_ERROR',
+          message: 'リクエストの形式が正しくありません',
+        },
+        { status: 400 }
+      );
+    }
 
     // 2. Validate request with zod
     const validationResult = DeleteAccountRequestSchema.safeParse(body);
