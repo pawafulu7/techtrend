@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getThemeFromCookie } from '@/lib/theme-cookie';
+import { setSecurityHeaders } from '@/config/security-headers';
 
 // Optional Basic Auth (enabled when env is set)
 function needsBasicAuth(): boolean {
@@ -86,13 +87,16 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
-  
+
+  // セキュリティヘッダ設定（Phase 2: 並行運用検証）
+  setSecurityHeaders(response, request);
+
   // テーマCookieの処理
   const theme = getThemeFromCookie(request);
-  
+
   // レスポンスヘッダーにテーマ情報を追加（デバッグ用）
   response.headers.set('x-theme', theme);
-  
+
   return response;
 }
 

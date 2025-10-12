@@ -1,45 +1,11 @@
 import type { NextConfig } from "next";
 
 import bundleAnalyzer from '@next/bundle-analyzer';
+import { getDevelopmentCSP, getProductionCSP } from './config/security-headers';
+
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
-
-/**
- * Development CSP - HMR対応のため緩和
- */
-export function getDevelopmentCSP(): string {
-  return [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https: blob:",
-    "font-src 'self' data:",
-    "connect-src 'self' https: ws: wss:",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'"
-  ].join('; ');
-}
-
-/**
- * Production CSP - unsafe-eval削除、セキュリティ強化
- */
-export function getProductionCSP(): string {
-  return [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https: blob:",
-    "font-src 'self' data:",
-    "connect-src 'self' https://api.github.com https://www.googleapis.com",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "object-src 'none'",
-    "upgrade-insecure-requests"
-  ].join('; ');
-}
 
 const nextConfig: NextConfig = {
   // ビルド最適化設定

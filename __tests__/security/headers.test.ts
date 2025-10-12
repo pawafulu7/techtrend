@@ -1,4 +1,4 @@
-import { getDevelopmentCSP, getProductionCSP } from '@/next.config';
+import { getDevelopmentCSP, getProductionCSP } from '@/config/security-headers';
 
 describe('Security Headers - CSP', () => {
   describe('Development CSP', () => {
