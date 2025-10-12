@@ -9,12 +9,55 @@ export class NextRequest {
   public method: string;
   public headers: Headers;
   public body: any;
-  
+  public nextUrl: URL;
+  private _cookies: Map<string, { name: string; value: string }> = new Map();
+
   constructor(url: string | URL, init?: RequestInit) {
     this.url = typeof url === 'string' ? url : url.toString();
     this.method = init?.method || 'GET';
     this.headers = new Headers(init?.headers);
     this.body = init?.body;
+
+    // nextUrl プロパティを初期化（CodexMCP推奨）
+    this.nextUrl = new URL(this.url);
+
+    // cookieヘッダーをパースして_cookiesに格納（CodeRabbit指摘対応）
+    const cookieHeader = this.headers.get('cookie');
+    if (cookieHeader) {
+      cookieHeader.split(/;\s*/).forEach((pair) => {
+        if (!pair) return;
+        const [name, ...rest] = pair.split('=');
+        if (!name) return;
+        const value = rest.join('=');
+        this._cookies.set(name, { name, value });
+      });
+    }
+  }
+
+  // cookies.get() メソッドを追加
+  get cookies() {
+    const self = this;
+    return {
+      get(name: string) {
+        return self._cookies.get(name);
+      },
+      getAll() {
+        return Array.from(self._cookies.values());
+      },
+      set(name: string, value: string) {
+        self._cookies.set(name, { name, value });
+      },
+      delete(name: string) {
+        self._cookies.delete(name);
+      },
+      has(name: string) {
+        return self._cookies.has(name);
+      }
+    };
+  }
+
+  set cookies(value: any) {
+    // setter は必要ないが、getter との互換性のために定義
   }
   
   async json() {
@@ -34,41 +77,47 @@ export class NextRequest {
 
 // NextResponseクラスのモック
 export class NextResponse extends Response {
-  static json(data: any, init?: ResponseInit) {
-    const body = JSON.stringify(data);
-    const response = new NextResponse(body, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...init?.headers,
-      }
+  constructor(body: BodyInit | null = null, init: ResponseInit = {}) {
+    const headers = new Headers(init.headers);
+    super(body, { ...init, headers });
+
+    // Headers property fallback for Jest mock environment (CodexMCP recommended)
+    // jest.setup.node.js replaces Response class, so this.headers may be Map instead of Headers
+    const thisHeaders = (this as any).headers;
+    const candidate = thisHeaders !== undefined ? thisHeaders : headers;
+
+    Object.defineProperty(this, 'headers', {
+      value: candidate,
+      writable: false,
+      enumerable: true,
+      configurable: true,
     });
+  }
+
+  static next(init?: ResponseInit) {
+    const response = new NextResponse(null, init);
+    response.headers.set('x-middleware-next', '1');
     return response;
   }
-  
-  static redirect(url: string | URL, status?: number) {
-    return new NextResponse(null, {
-      status: status || 302,
-      headers: {
-        Location: typeof url === 'string' ? url : url.toString()
-      }
-    });
+
+  static redirect(url: string | URL, init?: number | ResponseInit) {
+    const status = typeof init === 'number' ? init : init?.status ?? 307;
+    const initObj = typeof init === 'object' ? init : {};
+    const response = new NextResponse(null, { ...initObj, status });
+    response.headers.set('location', url.toString());
+    return response;
   }
-  
-  static rewrite(url: string | URL) {
-    return new NextResponse(null, {
-      headers: {
-        'x-middleware-rewrite': typeof url === 'string' ? url : url.toString()
-      }
-    });
+
+  static json(data: unknown, init?: ResponseInit) {
+    const response = new NextResponse(JSON.stringify(data), init);
+    response.headers.set('content-type', 'application/json');
+    return response;
   }
-  
-  static next() {
-    return new NextResponse(null, {
-      headers: {
-        'x-middleware-next': '1'
-      }
-    });
+
+  static rewrite(url: string | URL, init?: ResponseInit) {
+    const response = new NextResponse(null, init);
+    response.headers.set('x-middleware-rewrite', url.toString());
+    return response;
   }
 }
 
@@ -97,7 +146,8 @@ if (typeof Headers === 'undefined') {
     }
     
     get(name: string) {
-      return this.headers.get(name.toLowerCase()) || null;
+      const value = this.headers.get(name.toLowerCase());
+      return value === undefined ? null : value;
     }
     
     set(name: string, value: string) {

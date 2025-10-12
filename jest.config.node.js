@@ -41,6 +41,7 @@ const customJestConfig = {
   moduleDirectories: ['node_modules', '<rootDir>', '<rootDir>/__tests__'],
   testMatch: [
     '**/__tests__/**/*.test.[jt]s',
+    '**/__tests__/**/*.node.test.[jt]s',
   ],
   testPathIgnorePatterns: [
     '<rootDir>/.next/',

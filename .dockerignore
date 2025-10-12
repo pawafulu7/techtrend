@@ -78,10 +78,10 @@ docs
 # Test files
 # __tests__ディレクトリはモックファイルが含まれるので除外しない
 # __tests__
-*.test.ts
-*.test.tsx
-*.spec.ts
-*.spec.tsx
+# *.test.ts  ← Docker環境でテストを実行するためコメントアウト
+# *.test.tsx ← Docker環境でテストを実行するためコメントアウト
+# *.spec.ts  ← Docker環境でテストを実行するためコメントアウト
+# *.spec.tsx ← Docker環境でテストを実行するためコメントアウト
 # Jest設定は含める必要があるのでコメントアウト
 # jest.config.*
 # jest.setup.*

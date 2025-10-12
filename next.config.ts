@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 import bundleAnalyzer from '@next/bundle-analyzer';
+
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
@@ -19,48 +20,11 @@ const nextConfig: NextConfig = {
     optimizeCss: true,
     optimizePackageImports: ['@radix-ui', 'lucide-react', 'recharts'],
   },
-  
-  // セキュリティヘッダー設定
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https: blob:",
-              "font-src 'self' data:",
-              "connect-src 'self' https://api.github.com https://www.googleapis.com",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'"
-            ].join('; ')
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY'
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff'
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin'
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()'
-          }
-        ]
-      }
-    ]
-  },
-  
+
+  // セキュリティヘッダはmiddleware.tsで管理
+  // Phase 3: Complete migration to middleware.ts
+  // See: middleware.ts, config/security-headers.ts
+
   // 画像最適化
   // Custom loader for unoptimized images (2025-10-06)
   // - Supports 800+ domains without whitelist management
