@@ -140,7 +140,7 @@ describe('/api/user/delete', () => {
       expect(data.error).toBe('INVALID_PASSWORD');
     });
 
-    it('should return 403 when password is incorrect', async () => {
+    it('should return 401 when password is incorrect', async () => {
       const { auth } = require('@/lib/auth/auth');
       const { verifyPassword } = require('@/lib/auth/utils');
 
