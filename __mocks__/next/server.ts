@@ -9,12 +9,43 @@ export class NextRequest {
   public method: string;
   public headers: Headers;
   public body: any;
-  
+  public nextUrl: URL;
+  private _cookies: Map<string, { name: string; value: string }> = new Map();
+
   constructor(url: string | URL, init?: RequestInit) {
     this.url = typeof url === 'string' ? url : url.toString();
     this.method = init?.method || 'GET';
     this.headers = new Headers(init?.headers);
     this.body = init?.body;
+
+    // nextUrl プロパティを初期化（CodexMCP推奨）
+    this.nextUrl = new URL(this.url);
+  }
+
+  // cookies.get() メソッドを追加
+  get cookies() {
+    const self = this;
+    return {
+      get(name: string) {
+        return self._cookies.get(name);
+      },
+      getAll() {
+        return Array.from(self._cookies.values());
+      },
+      set(name: string, value: string) {
+        self._cookies.set(name, { name, value });
+      },
+      delete(name: string) {
+        self._cookies.delete(name);
+      },
+      has(name: string) {
+        return self._cookies.has(name);
+      }
+    };
+  }
+
+  set cookies(value: any) {
+    // setter は必要ないが、getter との互換性のために定義
   }
   
   async json() {
