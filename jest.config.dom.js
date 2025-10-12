@@ -39,11 +39,17 @@ const customJestConfig = {
     // window.location操作を含むテストはDOM環境では除外（jsdom制限）
     '<rootDir>/app/components/article/__tests__/ArticleCard.test.tsx',
     '<rootDir>/app/components/article/__tests__/ArticleListItem.test.tsx',
+    // Node環境専用テストをDOM環境では除外（middleware, API tests等）
+    '<rootDir>/__tests__/middleware\\.test\\.ts$',
+    '<rootDir>/__tests__/api/.*\\.test\\.ts$',
+    '<rootDir>/__tests__/lib/.*\\.test\\.ts$',
+    '<rootDir>/__tests__/unit/.*\\.test\\.ts$',
+    '<rootDir>/lib/.*/__ tests__/.*\\.test\\.ts$',
+    '<rootDir>/app/api/.*/.*\\.test\\.ts$',
   ],
   testMatch: [
     '**/__tests__/**/*.test.tsx',
     '**/tests/**/*.test.tsx',
-    '!**/__tests__/**/*.test.ts', // TypeScriptのみのテストは除外
   ],
   collectCoverageFrom: [
     'app/**/*.tsx',
