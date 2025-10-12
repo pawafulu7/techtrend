@@ -20,6 +20,18 @@ export class NextRequest {
 
     // nextUrl プロパティを初期化（CodexMCP推奨）
     this.nextUrl = new URL(this.url);
+
+    // cookieヘッダーをパースして_cookiesに格納（CodeRabbit指摘対応）
+    const cookieHeader = this.headers.get('cookie');
+    if (cookieHeader) {
+      cookieHeader.split(/;\s*/).forEach((pair) => {
+        if (!pair) return;
+        const [name, ...rest] = pair.split('=');
+        if (!name) return;
+        const value = rest.join('=');
+        this._cookies.set(name, { name, value });
+      });
+    }
   }
 
   // cookies.get() メソッドを追加
@@ -65,40 +77,42 @@ export class NextRequest {
 
 // NextResponseクラスのモック
 export class NextResponse extends Response {
-  static json(data: any, init?: ResponseInit) {
-    const body = JSON.stringify(data);
-    const response = new NextResponse(body, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...init?.headers,
-      }
+  constructor(body: BodyInit | null = null, init: ResponseInit = {}) {
+    const headers = new Headers(init.headers);
+    super(body, { ...init, headers });
+    // headersプロパティを明示的に定義（CodexMCP推奨）
+    Object.defineProperty(this, 'headers', {
+      value: super.headers,
+      writable: false,
+      enumerable: true,
+      configurable: true,
     });
+  }
+
+  static next(init?: ResponseInit) {
+    const response = new NextResponse(null, init);
+    response.headers.set('x-middleware-next', '1');
     return response;
   }
-  
+
   static redirect(url: string | URL, init?: number | ResponseInit) {
-    const status = typeof init === 'number'
-      ? init
-      : init?.status ?? 307;
+    const status = typeof init === 'number' ? init : init?.status ?? 307;
     const initObj = typeof init === 'object' ? init : {};
-    const headers = new Headers(initObj.headers);
-    headers.set('Location', typeof url === 'string' ? url : url.toString());
-    return new NextResponse(null, { ...initObj, status, headers });
+    const response = new NextResponse(null, { ...initObj, status });
+    response.headers.set('location', url.toString());
+    return response;
   }
-  
-  static rewrite(url: string | URL) {
-    return new NextResponse(null, {
-      headers: {
-        'x-middleware-rewrite': typeof url === 'string' ? url : url.toString()
-      }
-    });
+
+  static json(data: unknown, init?: ResponseInit) {
+    const response = new NextResponse(JSON.stringify(data), init);
+    response.headers.set('content-type', 'application/json');
+    return response;
   }
-  
-  static next(init?: ResponseInit) {
-    const headers = new Headers(init?.headers);
-    headers.set('x-middleware-next', '1');
-    return new NextResponse(null, { ...init, headers });
+
+  static rewrite(url: string | URL, init?: ResponseInit) {
+    const response = new NextResponse(null, init);
+    response.headers.set('x-middleware-rewrite', url.toString());
+    return response;
   }
 }
 
