@@ -59,12 +59,10 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteA
 
     const userId = session.user.id;
 
-    // 4. Get user info for password verification
+    // 4. Get user password for verification (other fields fetched in transaction)
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
-        id: true,
-        email: true,
         password: true,
       },
     });
@@ -89,7 +87,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteA
             error: 'INVALID_PASSWORD',
             message: 'パスワードを入力してください',
           },
-          { status: 403 }
+          { status: 400 }
         );
       }
 
@@ -101,7 +99,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteA
             error: 'INVALID_PASSWORD',
             message: 'パスワードが正しくありません',
           },
-          { status: 403 }
+          { status: 401 }
         );
       }
     }

@@ -112,15 +112,13 @@ describe('/api/user/delete', () => {
       expect(data.error).toBe('USER_NOT_FOUND');
     });
 
-    it('should return 403 when password is missing for password user', async () => {
+    it('should return 400 when password is missing for password user', async () => {
       const { auth } = require('@/lib/auth/auth');
       (auth as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' }
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
-        id: 'user123',
-        email: 'test@example.com',
         password: 'hashedPassword123',
       });
 
@@ -137,7 +135,7 @@ describe('/api/user/delete', () => {
       const response = await DELETE(request);
       const data = await response.json();
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(400);
       expect(data.success).toBe(false);
       expect(data.error).toBe('INVALID_PASSWORD');
     });
@@ -172,7 +170,7 @@ describe('/api/user/delete', () => {
       const response = await DELETE(request);
       const data = await response.json();
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(401);
       expect(data.success).toBe(false);
       expect(data.error).toBe('INVALID_PASSWORD');
     });
@@ -186,8 +184,6 @@ describe('/api/user/delete', () => {
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
-        id: 'user123',
-        email: 'test@example.com',
         password: 'hashedPassword123',
       });
 
@@ -235,8 +231,6 @@ describe('/api/user/delete', () => {
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
-        id: 'user123',
-        email: 'oauth@example.com',
         password: null,
       });
 
@@ -280,8 +274,6 @@ describe('/api/user/delete', () => {
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
-        id: 'user123',
-        email: 'test@example.com',
         password: null,
       });
 
