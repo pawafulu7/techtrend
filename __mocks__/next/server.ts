@@ -80,9 +80,14 @@ export class NextResponse extends Response {
   constructor(body: BodyInit | null = null, init: ResponseInit = {}) {
     const headers = new Headers(init.headers);
     super(body, { ...init, headers });
-    // headersプロパティを明示的に定義（CodexMCP推奨）
+
+    // Headers property fallback for Jest mock environment (CodexMCP recommended)
+    // jest.setup.node.js replaces Response class, so this.headers may be Map instead of Headers
+    const thisHeaders = (this as any).headers;
+    const candidate = thisHeaders !== undefined ? thisHeaders : headers;
+
     Object.defineProperty(this, 'headers', {
-      value: super.headers,
+      value: candidate,
       writable: false,
       enumerable: true,
       configurable: true,
