@@ -69,7 +69,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: { email: credentials.email as string },
           });
 
-          if (!user || !user.emailVerified) {
+          if (!user || !user.emailVerified || user.deletedAt) {
             return null;
           }
 
@@ -102,7 +102,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
         });
 
-        if (!user || !user.password) {
+        if (!user || !user.password || user.deletedAt) {
           return null;
         }
 
@@ -154,6 +154,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     async session({ session, token }) {
+      // Check if user is deleted (early exit)
+      if (token.deleted) {
+        return null as any;
+      }
+
       if (session?.user && token?.sub) {
         session.user.id = token.sub;
         // Add role to session
@@ -164,16 +169,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
 
-    async jwt({ token, user }) {
-      if (user) {
-        token.uid = user.id;
-        // Fetch role from database when user logs in
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { role: true }
-        });
-        token.role = dbUser?.role || 'user';
+    async jwt({ token, user, trigger }) {
+      // Check if token is marked as deleted
+      if (token.deleted) {
+        return null as any;
       }
+
+      // On user login or update, refresh user data
+      if (user || trigger === 'update') {
+        const userId = user?.id || token.sub;
+        if (userId) {
+          // Fetch user status including deletedAt
+          const dbUser = await prisma.user.findUnique({
+            where: { id: userId as string },
+            select: {
+              role: true,
+              deletedAt: true,
+            },
+          });
+
+          // If user is deleted, mark token as deleted and return null
+          if (dbUser?.deletedAt) {
+            token.deleted = true;
+            return null as any;
+          }
+
+          // Update token with fresh data
+          if (user) {
+            token.uid = user.id;
+          }
+          token.role = dbUser?.role || 'user';
+        }
+      }
+
       return token;
     },
   },
