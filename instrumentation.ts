@@ -32,10 +32,14 @@ const parseHeaders = () => {
   try {
     return JSON.parse(raw) as Record<string, string>;
   } catch (error) {
-    console.warn(logNamespace, 'Failed to parse OTEL_EXPORTER_OTLP_HEADERS; ignoring value', {
-      error,
+    const headers: Record<string, string> = {};
+    raw.split(',').forEach((pair) => {
+      const [key, ...valueParts] = pair.split('=');
+      if (key && valueParts.length > 0) {
+        headers[key.trim()] = valueParts.join('=').trim();
+      }
     });
-    return undefined;
+    return Object.keys(headers).length > 0 ? headers : undefined;
   }
 };
 
