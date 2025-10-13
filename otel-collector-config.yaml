@@ -16,7 +16,7 @@ exporters:
     loglevel: debug
   loki:
     endpoint: http://loki:3100/loki/api/v1/push
-  otlp/tempo:
+  otlphttp/tempo:
     endpoint: http://tempo:3200
     tls:
       insecure: true
@@ -26,7 +26,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [probabilistic_sampler, batch]
-      exporters: [logging, otlp/tempo]
+      exporters: [logging, otlphttp/tempo]
     logs:
       receivers: [otlp]
       processors: [batch]
