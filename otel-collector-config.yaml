@@ -17,7 +17,7 @@ exporters:
   loki:
     endpoint: http://loki:3100/loki/api/v1/push
   otlphttp/tempo:
-    endpoint: http://tempo:3200
+    endpoint: http://tempo:4318
     tls:
       insecure: true
 
