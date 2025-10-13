@@ -104,44 +104,50 @@ npx prisma migrate deploy
 
 詳細な環境変数の説明は [.env.example](./.env.example) を参照してください。
 
-## OpenTelemetry統合（Phase 1）
+## OpenTelemetry統合
 
-### 開発環境でのトレース確認
-
-#### 1. OpenTelemetry Collector起動
+### Phase 1: CLI確認（最小構成）
 
 ```bash
 # Collector起動
 npm run otel:dev
 
-# トレースログをリアルタイム表示
+# トレースログ確認
 npm run otel:logs
-```
 
-#### 2. Next.jsアプリ起動
-
-```bash
-npm run dev
-```
-
-#### 3. トレース確認
-
-ブラウザで http://localhost:3000 にアクセスすると、Collectorログに`trace_id`が出力されます。
-
-```bash
-# トレースIDで絞り込み
-docker compose -f docker-compose.otel.yml logs otel-collector | grep trace_id
-```
-
-#### 4. 停止
-
-```bash
+# 停止
 npm run otel:down
 ```
 
+### Phase 2: Grafana UI（基本監視）
+
+#### 起動
+
+```bash
+# 監視スタック起動（Loki + Tempo + Grafana + Collector）
+npm run monitoring:up
+
+# すべてのログ確認
+npm run monitoring:logs
+
+# 停止
+npm run monitoring:down
+```
+
+#### Grafana UIアクセス
+
+1. **URL**: http://localhost:3001
+2. **ログイン**:
+   - Username: `admin`
+   - Password: `admin`（初回ログイン時に変更必須）
+3. **データソース確認**: "Connections" → "Data sources" → Tempo/Loki
+4. **トレース検索**: "Explore" → "Tempo" → Service = `techtrend-dev`
+5. **ログ検索**: "Explore" → "Loki" → `{service_name="techtrend-dev"}`
+6. **ダッシュボード**: "Dashboards" → "Observability" → "TechTrend Observability"
+
 ### 本番環境（Vercel）
 
-Vercel Marketplace統合（New Relic推奨）でトレース/ログを閲覧可能。
+Vercel Marketplace統合（New Relic推奨）でトレース/ログを閲覧。
 
 詳細は [CLAUDE.md](./CLAUDE.md) を参照してください。
 
