@@ -78,26 +78,33 @@ jobs:
             const fs = require('fs');
             const report = fs.readFileSync('tag-quality-report.txt', 'utf8');
 
-            const body = `## タグ品質チェック結果
+            const body = [
+              '## タグ品質チェック結果',
+              '',
+              '週次のタグ品質チェックで問題が検出されました。',
+              '',
+              '<details>',
+              '<summary>詳細レポート</summary>',
+              '',
+              '```',
+              report,
+              '```',
+              '',
+              '</details>',
+              '',
+              '**対応が必要な項目**:',
+              '- ソースベースタグの削除',
+              '- 一般的すぎるタグの見直し',
+              '- タグの重複解消（大文字小文字の統一）',
+              '',
+              '**参考**: https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/blob/main/docs/development/tag-guidelines.md'
+            ].join('\n');
 
-週次のタグ品質チェックで問題が検出されました。
-
-<details>
-<summary>詳細レポート</summary>
-
-\`\`\`
-${report}
-\`\`\`
-
-</details>
-
-**対応が必要な項目**:
-- ソースベースタグの削除
-- 一般的すぎるタグの見直し
-- タグの重複解消（大文字小文字の統一）
-
-**参考**: [タグガイドライン](../blob/main/docs/development/tag-guidelines.md)
-            `;
+            const commentBody = [
+              '### 週次チェック結果 (' + new Date().toISOString().split('T')[0] + ')',
+              '',
+              body
+            ].join('\n');
 
             // 既存のIssueを検索
             const issues = await github.rest.issues.listForRepo({
@@ -113,7 +120,7 @@ ${report}
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issues.data[0].number,
-                body: `### 週次チェック結果 (${new Date().toISOString().split('T')[0]})\n\n${body}`
+                body: commentBody
               });
             } else {
               // 新しいIssueを作成
