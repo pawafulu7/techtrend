@@ -12,15 +12,15 @@ storage:
   trace:
     backend: local
     wal:
-      path: /tmp/tempo/wal
+      path: /var/tempo/wal
     local:
-      path: /tmp/tempo/blocks
+      path: /var/tempo/blocks
 
 metrics_generator:
   registry:
     collection_interval: 1m
   storage:
-    path: /tmp/tempo/metrics
+    path: /var/tempo/metrics
   processor:
     service_graphs: {}
     span_metrics: {}

@@ -8,7 +8,7 @@ services:
       - "3100:3100"
     volumes:
       - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
-      - loki_data:/tmp/loki
+      - loki_data:/loki
     mem_limit: 1g
     restart: unless-stopped
     networks:
@@ -21,7 +21,7 @@ services:
       - "3200:3200"
     volumes:
       - ./tempo-config.yaml:/etc/tempo/config.yaml:ro
-      - tempo_data:/tmp/tempo
+      - tempo_data:/var/tempo
     mem_limit: 1g
     restart: unless-stopped
     networks:
