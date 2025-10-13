@@ -66,6 +66,10 @@ prisma/backups/auto/
 logs/
 *.log
 
+# OpenTelemetry
+otel-collector.log
+.otel-collector/
+
 # backup files
 backup/
 backups/

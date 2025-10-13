@@ -1,0 +1,36 @@
+{
+  "title": "TechTrend Observability",
+  "uid": "techtrend-observability",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Recent Traces",
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "targets": [
+        {
+          "queryType": "search",
+          "refId": "A",
+          "serviceName": "techtrend-dev",
+          "limit": 20
+        }
+      ],
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "logs",
+      "title": "Latest Logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{service_name=\"techtrend-dev\"}",
+          "refId": "B"
+        }
+      ],
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 10 }
+    }
+  ]
+}

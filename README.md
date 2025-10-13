@@ -104,6 +104,71 @@ npx prisma migrate deploy
 
 詳細な環境変数の説明は [.env.example](./.env.example) を参照してください。
 
+## OpenTelemetry統合
+
+### Phase 1: CLI確認（最小構成）
+
+```bash
+# Collector起動
+npm run otel:dev
+
+# トレースログ確認
+npm run otel:logs
+
+# 停止
+npm run otel:down
+```
+
+### Phase 2: Grafana UI（基本監視）
+
+#### 起動
+
+```bash
+# 監視スタック起動（Loki + Tempo + Grafana + Collector）
+npm run monitoring:up
+
+# すべてのログ確認
+npm run monitoring:logs
+
+# 停止
+npm run monitoring:down
+```
+
+#### Grafana UIアクセス
+
+1. **URL**: http://localhost:3001
+2. **ログイン**:
+   - Username: `admin`
+   - Password: `admin`（初回ログイン時に変更必須）
+3. **データソース確認**: "Connections" → "Data sources" → Tempo/Loki
+4. **トレース検索**: "Explore" → "Tempo" → Service = `techtrend-dev`
+5. **ログ検索**: "Explore" → "Loki" → `{service_name="techtrend-dev"}`
+6. **ダッシュボード**: "Dashboards" → "Observability" → "TechTrend Observability"
+
+### Phase 1.5: 本番環境（Vercel + New Relic）
+
+#### セットアップ（初回のみ、約20分）
+
+**前提条件**: Phase 1 & 2完了、Vercelプロジェクト作成済み
+
+**手順**:
+1. New Relicアカウント作成: https://newrelic.com/signup
+2. License Key発行: New Relic → API Keys
+3. Vercel Marketplace統合: https://vercel.com/integrations/newrelic
+4. GitHubプッシュ（自動デプロイ）
+5. New Relicでトレース確認: https://one.newrelic.com
+
+**詳細**: 本番環境セットアップガイドおよびチェックリストは`.claude/docs/`配下（gitignore、ローカル参照）
+
+#### New Relicダッシュボード
+
+- APM & Services → `techtrend-web`
+- Distributed tracing: トレース検索
+- Logs: ログ検索（console.log移行後）
+- Alerts: エラー率、レスポンスタイム監視
+
+詳細は [CLAUDE.md](./CLAUDE.md) を参照してください。
+
 ## ⚠️ 重要なお知らせ
 
 **このプロジェクトは個人の学習・実験用プロジェクトです。**
