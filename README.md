@@ -158,9 +158,7 @@ npm run monitoring:down
 4. GitHubプッシュ（自動デプロイ）
 5. New Relicでトレース確認: https://one.newrelic.com
 
-**詳細ガイド**: [本番環境セットアップガイド](./.claude/docs/guides/production-setup-guide.md)
-
-**チェックリスト**: [デプロイチェックリスト](./.claude/docs/checklists/production-deployment-checklist.md)
+**詳細**: 本番環境セットアップガイドおよびチェックリストは`.claude/docs/`配下（gitignore、ローカル参照）
 
 #### New Relicダッシュボード
 
