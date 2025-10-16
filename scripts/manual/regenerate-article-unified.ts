@@ -1,9 +1,7 @@
 #!/usr/bin/env tsx
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
-
-const prisma = new PrismaClient();
 
 async function regenerateArticleUnified(articleId: string) {
   console.log('='.repeat(60));
@@ -77,16 +75,10 @@ ${result.detailedSummary}`);
 
       const tagRecords = await Promise.all(
         result.tags.map(async (tagName) => {
-          const existingTag = await prisma.tag.findUnique({
+          return await prisma.tag.upsert({
             where: { name: tagName },
-          });
-
-          if (existingTag) {
-            return existingTag;
-          }
-
-          return await prisma.tag.create({
-            data: { name: tagName },
+            create: { name: tagName },
+            update: {},
           });
         })
       );
@@ -104,21 +96,38 @@ ${result.detailedSummary}`);
       console.log('タグを更新しました');
     }
 
+    let cacheInvalidationFailed = false;
     try {
       await cacheInvalidator.invalidateArticle(articleId);
       console.log('キャッシュを無効化しました');
     } catch (cacheError) {
-      console.warn('キャッシュ無効化に失敗（手動で対応が必要）:', cacheError instanceof Error ? cacheError.message : String(cacheError));
+      cacheInvalidationFailed = true;
+      console.error('');
+      console.error('警告: キャッシュ無効化に失敗しました');
+      console.error('記事ID:', articleId);
+      console.error('エラー:', cacheError instanceof Error ? cacheError.message : String(cacheError));
+      if (cacheError instanceof Error && cacheError.stack) {
+        console.error('スタックトレース:', cacheError.stack);
+      }
+      console.error('');
+      console.error('手動対応が必要:');
+      console.error('  1. Redisサービスが起動しているか確認: docker ps | grep redis');
+      console.error('  2. 手動でキャッシュをクリア: docker exec techtrend-redis redis-cli FLUSHALL');
+      console.error('  3. または、アプリケーション再起動でキャッシュを更新');
     }
     console.log('');
     console.log('='.repeat(60));
-    console.log('完了');
-    console.log('='.repeat(60));
+    if (cacheInvalidationFailed) {
+      console.log('完了（警告: キャッシュ無効化に失敗）');
+      console.log('='.repeat(60));
+      process.exitCode = 1;
+    } else {
+      console.log('完了');
+      console.log('='.repeat(60));
+    }
   } catch (error) {
     console.error('エラー:', error);
     throw error;
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
