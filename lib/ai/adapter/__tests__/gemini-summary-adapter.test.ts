@@ -561,6 +561,296 @@ React, TypeScript`,
     });
   });
 
+  describe('プロンプト混入検出', () => {
+    it('should reject summary with range-based instruction markers (3000-5000文字の記事)', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Test Article',
+        content: 'Test content',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'test-range-instruction',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      const mockResponse: TransportResult = {
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約:\n- 3000-5000文字の記事：必ず600文字以上1000文字以内で作成。\n\n詳細要約:\n・テスト項目1\n・テスト項目2`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      };
+
+      mockTransport.invoke.mockResolvedValue(mockResponse);
+
+      await expect(adapter.summarize(input)).rejects.toThrow(
+        'Headline contains instruction markers'
+      );
+    });
+
+    it('should reject summary with single-value instruction markers (5000文字以上の記事)', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Test Article 2',
+        content: 'Test content 2',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'test-single-instruction',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      const mockResponse: TransportResult = {
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約:\n- 5000文字以上の記事：必ず800文字以上で作成。\n\n詳細要約:\n・テスト項目`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      };
+
+      mockTransport.invoke.mockResolvedValue(mockResponse);
+
+      await expect(adapter.summarize(input)).rejects.toThrow(
+        'Headline contains instruction markers'
+      );
+    });
+
+    it('should reject summary with colon omitted instruction (3000-5000文字の記事)', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Test Article 3',
+        content: 'Test content 3',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'test-no-colon',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      const mockResponse: TransportResult = {
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約:\n- 3000-5000文字の記事 600文字以上で作成\n\n詳細要約:\n・テスト項目`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      };
+
+      mockTransport.invoke.mockResolvedValue(mockResponse);
+
+      await expect(adapter.summarize(input)).rejects.toThrow(
+        'Headline contains instruction markers'
+      );
+    });
+
+    it('should reject summary with full-width tilde (3000〜5000文字)', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Test Article 4',
+        content: 'Test content 4',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'test-fullwidth-tilde',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      const mockResponse: TransportResult = {
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約:\n- 3000〜5000文字の記事：600文字以上\n\n詳細要約:\n・テスト項目`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      };
+
+      mockTransport.invoke.mockResolvedValue(mockResponse);
+
+      await expect(adapter.summarize(input)).rejects.toThrow(
+        'Headline contains instruction markers'
+      );
+    });
+
+    it('should reject summary with full-width numbers (３０００-５０００文字)', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Test Article 5',
+        content: 'Test content 5',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'test-fullwidth-numbers',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      const mockResponse: TransportResult = {
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約:\n- ３０００-５０００文字の記事：必ず作成\n\n詳細要約:\n・テスト項目`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      };
+
+      mockTransport.invoke.mockResolvedValue(mockResponse);
+
+      await expect(adapter.summarize(input)).rejects.toThrow(
+        'Headline contains instruction markers'
+      );
+    });
+
+    it('should reject summary with space around separator (3000 ~ 5000文字)', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Test Article 6',
+        content: 'Test content 6',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'test-space-separator',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      const mockResponse: TransportResult = {
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約:\n- 3000 ~ 5000文字の記事：必ず600文字以上で作成\n\n詳細要約:\n・テスト項目`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      };
+
+      mockTransport.invoke.mockResolvedValue(mockResponse);
+
+      await expect(adapter.summarize(input)).rejects.toThrow(
+        'Headline contains instruction markers'
+      );
+    });
+
+    it('should NOT reject normal summary with numbers and keywords', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Normal Article',
+        content: 'Normal content',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'test-normal',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      const mockResponse: TransportResult = {
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約:\n2024年に3000件以上のユーザーが登録し、5000万円の売上を記録した。\n\n詳細要約:\n・実績：2024年の成果`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      };
+
+      mockTransport.invoke.mockResolvedValue(mockResponse);
+
+      const result = await adapter.summarize(input);
+
+      expect(result.headline).toBe('2024年に3000件以上のユーザーが登録し、5000万円の売上を記録した。');
+      expect(result.detailedSummary).toContain('・実績：2024年の成果');
+    });
+  });
+
   describe('改行処理', () => {
     it('should merge continuation lines into bullet items', async () => {
       const input: SummaryProviderInput = {
