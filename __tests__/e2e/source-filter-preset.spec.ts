@@ -116,7 +116,16 @@ test.describe('ソースフィルタープリセット機能', () => {
     // 「国内企業」プリセット適用
     await page.getByTestId('preset-company').click();
     await page.waitForURL(/sources=/, { timeout: 5000 });
-    await page.waitForTimeout(500); // UI更新待機
+
+    // カウント表示の更新を待つ
+    await page.waitForFunction(
+      (expectedText) => {
+        const element = document.querySelector('[data-testid="source-count"]');
+        return element?.textContent !== expectedText;
+      },
+      countBefore,
+      { timeout: 2000 }
+    );
 
     // プリセット適用後のカウントを取得
     const countAfter = await page.getByTestId('source-count').textContent();

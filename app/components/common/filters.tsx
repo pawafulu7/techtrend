@@ -97,7 +97,9 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     // プリセットからソースIDを取得
     const presetSourceIds = getSourceIdsForPreset(presetId);
     if (presetSourceIds.length === 0) {
-      console.warn(`Preset ${presetId} has no sources`);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`Preset ${presetId} has no sources`);
+      }
       return;
     }
 
@@ -106,7 +108,9 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     const filteredSourceIds = presetSourceIds.filter(id => validSourceIds.includes(id));
 
     if (filteredSourceIds.length === 0) {
-      console.warn(`No valid sources found for preset ${presetId}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`No valid sources found for preset ${presetId}`);
+      }
       return;
     }
 
