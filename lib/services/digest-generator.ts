@@ -29,6 +29,7 @@ type ArticleWithRelations = Prisma.ArticleGetPayload<{
 interface TopArticle {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   url: string;
   viewCount: number;
   favoriteCount: number;
@@ -41,12 +42,14 @@ interface CategorySummary {
   topArticle: {
     id: string;
     title: string;
+    translatedTitle?: string | null;
   } | null;
 }
 
 interface DigestTopArticle {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   url: string;
   score: number;
 }

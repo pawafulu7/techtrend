@@ -11,6 +11,7 @@ import { CalendarIcon, TrendingUpIcon, TagIcon, RefreshCwIcon, ExternalLinkIcon,
 interface DigestArticle {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   url: string;
   source: {
     name: string;
@@ -23,6 +24,7 @@ interface DigestArticle {
 interface TopArticle {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   url: string;
   score: number;
 }
@@ -33,6 +35,7 @@ interface Category {
   topArticle: {
     id: string;
     title: string;
+    translatedTitle?: string | null;
   } | null;
 }
 
