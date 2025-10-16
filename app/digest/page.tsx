@@ -11,6 +11,7 @@ import { CalendarIcon, TrendingUpIcon, TagIcon, RefreshCwIcon, ExternalLinkIcon,
 interface DigestArticle {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   url: string;
   source: {
     name: string;
@@ -23,6 +24,7 @@ interface DigestArticle {
 interface TopArticle {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   url: string;
   score: number;
 }
@@ -33,6 +35,7 @@ interface Category {
   topArticle: {
     id: string;
     title: string;
+    translatedTitle?: string | null;
   } | null;
 }
 
@@ -224,7 +227,7 @@ export default function DigestPage() {
                     href={`/articles/${article.id}?from=digest`}
                     className="font-medium text-foreground hover:text-blue-600 group-hover:text-blue-600 transition-colors inline-flex items-center gap-1"
                   >
-                    {article.title}
+                    {article.translatedTitle || article.title}
                     <ExternalLinkIcon className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                   <div className="flex items-center gap-2 mt-1">
@@ -273,7 +276,7 @@ export default function DigestPage() {
                         <div className="flex items-start gap-2">
                           <ChevronRightIcon className="h-4 w-4 mt-0.5 text-blue-600 flex-shrink-0 group-hover:translate-x-1 transition-transform" />
                           <span className="font-medium text-foreground group-hover:text-blue-600 line-clamp-2 flex-1">
-                            {category.topArticle.title}
+                            {category.topArticle.translatedTitle || category.topArticle.title}
                           </span>
                         </div>
                         <div className="mt-2 flex items-center gap-1 text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity pl-6">

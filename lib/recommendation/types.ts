@@ -16,6 +16,7 @@ export interface RecommendationScore {
 export interface RecommendedArticle {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   url: string;
   summary: string | null;
   thumbnail: string | null;

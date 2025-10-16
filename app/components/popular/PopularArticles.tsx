@@ -137,7 +137,7 @@ export function PopularArticles({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium line-clamp-2">
-                      {article.title}
+                      {article.translatedTitle || article.title}
                     </p>
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <span>{article.source.name}</span>
@@ -227,7 +227,7 @@ export function PopularArticles({
                       href={`/articles/${article.id}`}
                       className="font-medium hover:text-primary transition-colors line-clamp-2"
                     >
-                      {article.title}
+                      {article.translatedTitle || article.title}
                     </Link>
                     
                     <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">

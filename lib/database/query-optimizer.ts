@@ -184,6 +184,7 @@ export class ArticleQueryOptimizer {
       select: {
         id: true,
         title: true,
+        translatedTitle: true,
         url: true,
         thumbnail: true,
         publishedAt: true,

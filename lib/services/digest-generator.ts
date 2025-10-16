@@ -29,6 +29,7 @@ type ArticleWithRelations = Prisma.ArticleGetPayload<{
 interface TopArticle {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   url: string;
   viewCount: number;
   favoriteCount: number;
@@ -41,12 +42,14 @@ interface CategorySummary {
   topArticle: {
     id: string;
     title: string;
+    translatedTitle?: string | null;
   } | null;
 }
 
 interface DigestTopArticle {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   url: string;
   score: number;
 }
@@ -141,6 +144,7 @@ export class DigestGenerator {
           topArticles: JSON.parse(JSON.stringify(topArticles.slice(0, 10).map(a => ({
             id: a.id,
             title: a.title,
+            translatedTitle: a.translatedTitle ?? undefined,
             url: a.url,
             score: a.score
           })))),
@@ -153,6 +157,7 @@ export class DigestGenerator {
           topArticles: JSON.parse(JSON.stringify(topArticles.slice(0, 10).map(a => ({
             id: a.id,
             title: a.title,
+            translatedTitle: a.translatedTitle ?? undefined,
             url: a.url,
             score: a.score
           })))),
@@ -230,6 +235,7 @@ export class DigestGenerator {
       return {
         id: article.id,
         title: article.title,
+        translatedTitle: article.translatedTitle ?? undefined,
         url: article.url,
         viewCount,
         favoriteCount,
@@ -277,7 +283,8 @@ export class DigestGenerator {
         count: articles.length,
         topArticle: topArticle ? {
           id: topArticle.id,
-          title: topArticle.title
+          title: topArticle.title,
+          translatedTitle: topArticle.translatedTitle ?? undefined
         } : null
       });
     }
