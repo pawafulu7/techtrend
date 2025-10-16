@@ -243,10 +243,10 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
           {/* Preset Buttons */}
           <div className="flex flex-wrap gap-1 mb-2">
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => applyPreset('company')}
-              className="h-7 text-xs"
+              className="h-7 text-xs border-blue-200 hover:bg-blue-50 hover:border-blue-400 dark:border-blue-800 dark:hover:bg-blue-950 transition-all"
               data-testid="preset-company"
               type="button"
               title="日本企業の技術ブログのみ"
@@ -255,10 +255,10 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               国内企業
             </Button>
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => applyPreset('ai-ml')}
-              className="h-7 text-xs"
+              className="h-7 text-xs border-purple-200 hover:bg-purple-50 hover:border-purple-400 dark:border-purple-800 dark:hover:bg-purple-950 transition-all"
               data-testid="preset-ai-ml"
               type="button"
               title="AI・機械学習関連の情報のみ"
@@ -267,10 +267,10 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               AI/ML
             </Button>
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => applyPreset('foreign')}
-              className="h-7 text-xs"
+              className="h-7 text-xs border-green-200 hover:bg-green-50 hover:border-green-400 dark:border-green-800 dark:hover:bg-green-950 transition-all"
               data-testid="preset-foreign"
               type="button"
               title="海外の技術情報サイトのみ"
@@ -279,10 +279,10 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               海外
             </Button>
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => applyPreset('domestic-all')}
-              className="h-7 text-xs"
+              className="h-7 text-xs border-orange-200 hover:bg-orange-50 hover:border-orange-400 dark:border-orange-800 dark:hover:bg-orange-950 transition-all"
               data-testid="preset-domestic-all"
               type="button"
               title="日本の技術情報全般（情報サイト+企業ブログ）"
