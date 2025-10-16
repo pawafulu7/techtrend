@@ -54,12 +54,12 @@ export function RecommendationCard({ article, showReasons = true }: Recommendati
           </div>
         )}
         
-        <Link 
+        <Link
           href={`/articles/${article.id}?from=${encodeURIComponent(fromUrl)}`}
           className="group"
         >
           <h3 className="font-semibold text-base line-clamp-2 group-hover:text-primary transition-colors">
-            {article.title}
+            {article.translatedTitle || article.title}
           </h3>
         </Link>
       </CardHeader>
