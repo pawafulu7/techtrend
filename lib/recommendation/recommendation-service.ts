@@ -353,6 +353,7 @@ export class RecommendationService {
         return {
           id: item.article.id,
           title: item.article.title,
+          translatedTitle: item.article.translatedTitle ?? undefined,
           url: item.article.url,
           summary: item.article.summary,
           thumbnail: item.article.thumbnail,
@@ -408,6 +409,7 @@ export class RecommendationService {
       return {
         id: article.id,
         title: article.title,
+        translatedTitle: article.translatedTitle ?? undefined,
         url: article.url,
         summary: article.summary,
         thumbnail: article.thumbnail,
