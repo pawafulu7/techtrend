@@ -141,20 +141,32 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   
   for (const article of articles) {
     if (!article.summary) continue;
-    
+
+    const contentAnalysis = {
+      contentLength: article.content?.length || 0,
+      totalLength: article.content?.length || 0,
+      isThinContent: (article.content?.length || 0) < 1000,
+      recommendedMinLength: (article.content?.length || 0) < 1000 ? 60 : 100,
+      recommendedMaxLength: (article.content?.length || 0) < 1000 ? 100 : 200
+    };
+
     const qualityCheck = checkSummaryQuality(
       article.summary,
-      article.detailedSummary || ''
+      article.detailedSummary || '',
+      contentAnalysis
     );
-    
+
     // スコア分布を記録
     if (qualityCheck.score >= 90) scoreDistribution.excellent++;
     else if (qualityCheck.score >= 80) scoreDistribution.good++;
     else if (qualityCheck.score >= 70) scoreDistribution.fair++;
     else scoreDistribution.poor++;
-    
-    // 閾値未満の記事を低品質として記録
-    if (qualityCheck.score < qualityThreshold) {
+
+    // 閾値未満、または文字数不足の記事を低品質として記録
+    const summaryLength = article.summary.length;
+    const isTooShort = summaryLength < 100;
+
+    if (qualityCheck.score < qualityThreshold || isTooShort) {
       lowQualityArticles.push({
         article,
         score: qualityCheck.score,
