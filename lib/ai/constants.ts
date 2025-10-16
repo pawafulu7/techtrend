@@ -14,6 +14,7 @@ export const INSTRUCTION_PATTERNS = [
   /^-\s*技術的価値を/,
   /^ここに.*書く/,
   /^- \d+文字以上の記事/,
+  /^-\s*[0-9０-９]+(?:\s*[-〜~～]\s*[0-9０-９]+)?\s*文字(?:以上)?(?:の記事)?[:：]?/,  // 範囲形式対応（全角数字・チルダ・スペース含む）
 
   // 新規追加パターン（プロンプト混入問題対応）
   /^【文末】/,
@@ -85,4 +86,8 @@ export const CONTAMINATION_SEARCH_TERMS = [
   'Article content length:',
   'Summary requirements:',
   'IMPORTANT: The above metadata',
+
+  // 範囲形式パターン（2025-10-16追加）
+  '文字の記事',
+  '文字以上',
 ];

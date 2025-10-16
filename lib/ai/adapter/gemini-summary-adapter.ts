@@ -109,6 +109,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
 
     let currentSection = '';
     const detailedLines: string[] = [];
+    let rejectedHeadlineDueToInstruction = false;
 
     for (const line of lines) {
       if (line.startsWith('要約:')) {
@@ -117,6 +118,8 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         const isInstruction = INSTRUCTION_PATTERNS.some(pattern => pattern.test(content));
         if (content && !isInstruction) {
           headline = content;
+        } else if (content && isInstruction) {
+          rejectedHeadlineDueToInstruction = true;
         }
         continue;
       }
@@ -153,6 +156,8 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         const isInstruction = INSTRUCTION_PATTERNS.some(pattern => pattern.test(line));
         if (!isInstruction) {
           headline = line;
+        } else {
+          rejectedHeadlineDueToInstruction = true;
         }
       } else if (currentSection === 'detailed' && line) {
         const isBullet = /^\s*(?:・|[-*•●]|[0-9０-９]+[.)\u3001\uff0e])/.test(line);
@@ -175,6 +180,9 @@ export class GeminiSummaryAdapter implements SummaryProvider {
     }
 
     if (!headline) {
+      if (rejectedHeadlineDueToInstruction) {
+        throw new Error('Headline contains instruction markers - regeneration required');
+      }
       throw new Error('Failed to extract headline from response');
     }
 
