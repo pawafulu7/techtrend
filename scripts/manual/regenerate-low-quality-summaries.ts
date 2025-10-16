@@ -12,15 +12,14 @@
  */
 
 import { PrismaClient, Article, Source } from '@prisma/client';
-import { 
+import {
   checkSummaryQuality,
   isQualityCheckEnabled,
   getMinQualityScore,
   generateQualityReport
 } from '../../lib/utils/summary-quality-checker';
-import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
+import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
-import fetch from 'node-fetch';
 
 const prisma = new PrismaClient();
 
@@ -77,7 +76,7 @@ interface SummaryAndTags {
 }
 
 /**
- * 要約とタグを生成
+ * 要約とタグを生成（UnifiedSummaryServiceを使用）
  */
 async function generateSummaryAndTags(title: string, content: string, isRegeneration: boolean = false): Promise<SummaryAndTags> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -85,98 +84,29 @@ async function generateSummaryAndTags(title: string, content: string, isRegenera
     throw new Error('GEMINI_API_KEY is not set');
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  
-  // 統一プロンプトを使用
-  const prompt = generateUnifiedPrompt(title, content);
-  const articleType = 'unified';
+  const summaryService = new UnifiedSummaryService();
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 2500,
-      }
-    })
-  });
+  try {
+    const result = await summaryService.generate(title, content, {
+      maxRetries: 3,
+      minQualityScore: 70,
+      retryDelay: 2000
+    });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API request failed: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json() as any;
-  const responseText = data.candidates[0].content.parts[0].text.trim();
-  
-  return parseSummaryAndTags(responseText);
-}
-
-/**
- * APIレスポンスをパース
- */
-function parseSummaryAndTags(responseText: string): SummaryAndTags {
-  const lines = responseText.split('\n');
-  let summary = '';
-  let detailedSummary = '';
-  let tags: string[] = [];
-  let isDetailedSection = false;
-
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    
-    if (trimmedLine.startsWith('一覧要約:') || trimmedLine.startsWith('一覧要約：')) {
-      summary = trimmedLine.replace(/一覧要約[:：]\s*/, '').trim();
-    } else if (trimmedLine.startsWith('詳細要約:') || trimmedLine.startsWith('詳細要約：')) {
-      isDetailedSection = true;
-      const content = trimmedLine.replace(/詳細要約[:：]\s*/, '').trim();
-      if (content) {
-        detailedSummary = content;
-      }
-    } else if (trimmedLine.startsWith('タグ:') || trimmedLine.startsWith('タグ：')) {
-      isDetailedSection = false;
-      const tagLine = trimmedLine.replace(/タグ[:：]\s*/, '').trim();
-      tags = tagLine.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-    } else if (isDetailedSection && trimmedLine) {
-      if (detailedSummary) {
-        detailedSummary += '\n' + trimmedLine;
-      } else {
-        detailedSummary = trimmedLine;
-      }
+    return {
+      summary: result.summary,
+      detailedSummary: result.detailedSummary,
+      tags: result.tags,
+      articleType: result.articleType
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('SKIP_GENERATION')) {
+      throw error;
     }
+    throw new Error(`Failed to generate summary: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  // タグの正規化
-  const normalizedTags: string[] = [];
-  for (const tag of tags) {
-    const normalized = normalizeTag(tag);
-    if (normalized && !normalizedTags.includes(normalized)) {
-      normalizedTags.push(normalized);
-    }
-  }
-
-  return {
-    summary: summary || '要約を生成できませんでした',
-    detailedSummary: detailedSummary || '詳細要約を生成できませんでした',
-    tags: normalizedTags.slice(0, 5),  // 最大5個
-    articleType: 'unified'
-  };
 }
 
-/**
- * タグを正規化
- */
-function normalizeTag(tag: string): string {
-  return tag
-    .replace(/^["']|["']$/g, '')  // クォートを削除
-    .replace(/\s+/g, '')  // 空白を削除
-    .trim();
-}
 
 /**
  * 低品質な要約を持つ記事を検出
@@ -294,21 +224,30 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
         console.error(`   再生成試行 ${attempt}/${MAX_ATTEMPTS}...`);
         
         try {
-          // 要約とタグを生成
+          // 要約とタグを生成（UnifiedSummaryServiceが内部で品質チェック済み）
           const generated = await generateSummaryAndTags(
             article.title,
             content,
             attempt > 1  // 2回目以降は再生成フラグを立てる
           );
-          
-          // 品質チェック
+
+          // UnifiedSummaryServiceが返すqualityScoreを使用
+          const contentAnalysis = {
+            contentLength: content.length,
+            totalLength: content.length,
+            isThinContent: content.length < 1000,
+            recommendedMinLength: content.length < 1000 ? 60 : 100,
+            recommendedMaxLength: content.length < 1000 ? 100 : 200
+          };
+
           const newQualityCheck = checkSummaryQuality(
             generated.summary,
-            generated.detailedSummary
+            generated.detailedSummary,
+            contentAnalysis
           );
-          
+
           result.afterScore = newQualityCheck.score;
-          
+
           if (newQualityCheck.score >= qualityThreshold) {
             // 品質基準を満たした場合
             if (!isDryRun) {
@@ -319,7 +258,8 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                   summary: generated.summary,
                   detailedSummary: generated.detailedSummary,
                   articleType: 'unified',
-                  summaryVersion: 4
+                  summaryVersion: 8,
+                  summaryComputedAt: new Date()
                 }
               });
               
