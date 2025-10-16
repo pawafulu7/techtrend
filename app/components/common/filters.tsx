@@ -4,9 +4,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation, Brain, Cpu } from 'lucide-react';
+import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation, Brain, Cpu, Home } from 'lucide-react';
 import { DateRangeFilter } from './date-range-filter';
 import { groupSourcesByCategory, SourceCategory } from '@/lib/constants/source-categories';
+import { getSourceIdsForPreset } from '@/lib/constants/source-presets';
 import CategoryFilter from '@/components/filters/CategoryFilter';
 
 interface FiltersProps {
@@ -90,7 +91,30 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     // Clear all selections
     applySourceFilter([]);
   };
-  
+
+  // プリセット適用
+  const applyPreset = (presetId: string) => {
+    // プリセットからソースIDを取得
+    const presetSourceIds = getSourceIdsForPreset(presetId);
+    if (presetSourceIds.length === 0) {
+      console.warn(`Preset ${presetId} has no sources`);
+      return;
+    }
+
+    // 現在有効なソースIDとの整合性チェック
+    const validSourceIds = sources.map(s => s.id);
+    const filteredSourceIds = presetSourceIds.filter(id => validSourceIds.includes(id));
+
+    if (filteredSourceIds.length === 0) {
+      console.warn(`No valid sources found for preset ${presetId}`);
+      return;
+    }
+
+    // 既存のapplySourceFilter関数を使用
+    // これにより自動的にCookieに保存される
+    applySourceFilter(filteredSourceIds);
+  };
+
   // カテゴリ単位の選択/解除
   const handleCategorySelectAll = (category: SourceCategory) => {
     const categorySourceIds = category.sourceIds.filter(id => 
@@ -215,7 +239,59 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               <span className="truncate">全て解除</span>
             </Button>
           </div>
-          
+
+          {/* Preset Buttons */}
+          <div className="flex flex-wrap gap-1 mb-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => applyPreset('company')}
+              className="h-7 text-xs"
+              data-testid="preset-company"
+              type="button"
+              title="日本企業の技術ブログのみ"
+            >
+              <Building2 className="w-3 h-3 me-1" />
+              国内企業
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => applyPreset('ai-ml')}
+              className="h-7 text-xs"
+              data-testid="preset-ai-ml"
+              type="button"
+              title="AI・機械学習関連の情報のみ"
+            >
+              <Brain className="w-3 h-3 me-1" />
+              AI/ML
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => applyPreset('foreign')}
+              className="h-7 text-xs"
+              data-testid="preset-foreign"
+              type="button"
+              title="海外の技術情報サイトのみ"
+            >
+              <Globe className="w-3 h-3 me-1" />
+              海外
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => applyPreset('domestic-all')}
+              className="h-7 text-xs"
+              data-testid="preset-domestic-all"
+              type="button"
+              title="日本の技術情報全般（情報サイト+企業ブログ）"
+            >
+              <Home className="w-3 h-3 me-1" />
+              国内全般
+            </Button>
+          </div>
+
           {/* Categories */}
           <div className="space-y-2">
             {Array.from(groupedSources.entries()).map(([category, categorySources]) => {
