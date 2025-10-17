@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import type { SkipReason } from '@prisma/client';
 
 /**
  * テスト用のモックデータファクトリー
@@ -42,6 +43,8 @@ interface MockArticle {
   contentUpdatedAt: Date | null;
   qualityScoreComputedAt: Date | null;
   summaryComputedAt: Date | null;
+  skipReason: SkipReason | null;
+  summaryError: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -139,7 +142,7 @@ export function createMockArticle(overrides?: Partial<MockArticle>): MockArticle
     publishedAt: now,
     sourceId: `source-1`,
     thumbnail: null,
-    summaryVersion: 7,
+    summaryVersion: 8,
     articleType: 'unified',
     qualityScore: 0,
     bookmarks: 0,
@@ -149,6 +152,8 @@ export function createMockArticle(overrides?: Partial<MockArticle>): MockArticle
     contentUpdatedAt: now,
     qualityScoreComputedAt: null,
     summaryComputedAt: now,
+    skipReason: null,
+    summaryError: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -315,7 +320,7 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
     publishedAt,
     sourceId: overrides.sourceId ?? `source-${faker.number.int({ min: 1, max: 10 })}`,  // デフォルト値、mockArticleWithRelationsで的確にsource.idで上書き
     thumbnail: faker.datatype.boolean() ? faker.image.url() : null,
-    summaryVersion: 7,
+    summaryVersion: 8,
     articleType: 'unified',
     qualityScore: faker.number.float({ min: 60, max: 100, fractionDigits: 2 }),
     bookmarks: faker.number.int({ min: 0, max: 100 }),
@@ -325,6 +330,8 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
     contentUpdatedAt: publishedAt,
     qualityScoreComputedAt: faker.datatype.boolean() ? now : null,
     summaryComputedAt: now,
+    skipReason: null,
+    summaryError: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
