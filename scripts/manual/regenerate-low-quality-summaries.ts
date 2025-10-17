@@ -25,7 +25,9 @@ const limit = limitIndex !== -1 && args[limitIndex + 1] ? parseInt(args[limitInd
 const isDryRun = args.includes('--dry-run');
 const scoreIndex = args.indexOf('--score');
 const parsedScore = scoreIndex !== -1 && args[scoreIndex + 1] ? Number(args[scoreIndex + 1]) : NaN;
-const qualityThreshold = Number.isFinite(parsedScore) ? parsedScore : 70;
+const qualityThreshold = Number.isFinite(parsedScore)
+  ? Math.min(100, Math.max(0, parsedScore))
+  : 70;
 
 interface ArticleWithSource extends Article {
   source: Source;
@@ -69,26 +71,37 @@ interface SummaryAndTags {
   detailedSummary: string;
   tags: string[];
   articleType: string;
+  summaryVersion: number;
 }
 
 /**
  * 要約とタグを生成（UnifiedSummaryServiceを使用）
  */
-async function generateSummaryAndTags(title: string, content: string): Promise<SummaryAndTags> {
+async function generateSummaryAndTags(
+  title: string,
+  content: string,
+  sourceInfo?: { sourceName?: string; url?: string }
+): Promise<SummaryAndTags> {
   const summaryService = new UnifiedSummaryService();
 
   try {
-    const result = await summaryService.generate(title, content, {
-      maxRetries: 1,            // 外側の再試行と重複させない
-      minQualityScore: qualityThreshold,
-      retryDelay: 2000
-    });
+    const result = await summaryService.generate(
+      title,
+      content,
+      {
+        maxRetries: 1,            // 外側の再試行と重複させない
+        minQualityScore: qualityThreshold,
+        retryDelay: 2000
+      },
+      sourceInfo
+    );
 
     return {
       summary: result.summary,
       detailedSummary: result.detailedSummary,
       tags: result.tags,
-      articleType: result.articleType
+      articleType: result.articleType,
+      summaryVersion: result.summaryVersion
     };
   } catch (error) {
     if (error instanceof Error && error.message.includes('SKIP_GENERATION')) {
@@ -229,7 +242,11 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
         
         try {
           // 要約とタグを生成（UnifiedSummaryServiceが内部で品質チェック済み）
-          const generated = await generateSummaryAndTags(article.title, content);
+          const generated = await generateSummaryAndTags(
+            article.title,
+            content,
+            { sourceName: article.source?.name, url: article.url }
+          );
 
           // checkSummaryQualityで再検証（スクリプトレベルの品質確認）
           const contentAnalysis = {
@@ -251,36 +268,34 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
           if (newQualityCheck.score >= qualityThreshold) {
             // 品質基準を満たした場合
             if (!isDryRun) {
-              // データベース更新
-              await prisma.article.update({
-                where: { id: article.id },
-                data: {
-                  summary: generated.summary,
-                  detailedSummary: generated.detailedSummary,
-                  articleType: generated.articleType,
-                  summaryVersion: 8,
-                  summaryComputedAt: new Date()
-                }
-              });
-              
-              // タグの更新（一括処理・トランザクション）
-              if (generated.tags.length > 0) {
-                await prisma.$transaction(async (tx) => {
-                  const tags = await Promise.all(
-                    generated.tags.map((name) =>
-                      tx.tag.upsert({ where: { name }, update: {}, create: { name } })
+              // データベース更新（記事とタグを同一トランザクションで更新）
+              await prisma.$transaction(async (tx) => {
+                // タグのupsert
+                const tags = generated.tags.length > 0
+                  ? await Promise.all(
+                      generated.tags.map((name) =>
+                        tx.tag.upsert({ where: { name }, update: {}, create: { name } })
+                      )
                     )
-                  );
-                  await tx.article.update({
-                    where: { id: article.id },
-                    data: {
+                  : [];
+
+                // 記事の本文・version・タグを一括更新
+                await tx.article.update({
+                  where: { id: article.id },
+                  data: {
+                    summary: generated.summary,
+                    detailedSummary: generated.detailedSummary,
+                    articleType: generated.articleType,
+                    summaryVersion: generated.summaryVersion,
+                    summaryComputedAt: new Date(),
+                    ...(tags.length > 0 && {
                       tags: {
                         set: tags.map(t => ({ id: t.id }))
                       }
-                    }
-                  });
+                    })
+                  }
                 });
-              }
+              });
             }
             
             console.error(`   ✅ 再生成成功! スコア: ${beforeScore} → ${result.afterScore}点`);
