@@ -120,10 +120,11 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   console.error('\n🔍 低品質な要約を検出中...');
   console.error(`   品質スコア閾値: ${qualityThreshold}点`);
   
-  // 要約がある全記事を取得
+  // 要約がある全記事を取得（skipReason設定済みの記事は除外）
   const articles = await prisma.article.findMany({
     where: {
-      summary: { not: null }
+      summary: { not: null },
+      skipReason: null  // スキップ理由が設定されていない記事のみ対象
     },
     include: {
       source: true
