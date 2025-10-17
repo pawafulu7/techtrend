@@ -12,12 +12,7 @@
  */
 
 import { PrismaClient, Article, Source } from '@prisma/client';
-import {
-  checkSummaryQuality,
-  isQualityCheckEnabled,
-  getMinQualityScore,
-  generateQualityReport
-} from '../../lib/utils/summary-quality-checker';
+import { checkSummaryQuality } from '../../lib/utils/summary-quality-checker';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 
@@ -29,7 +24,8 @@ const limitIndex = args.indexOf('--limit');
 const limit = limitIndex !== -1 && args[limitIndex + 1] ? parseInt(args[limitIndex + 1]) : undefined;
 const isDryRun = args.includes('--dry-run');
 const scoreIndex = args.indexOf('--score');
-const qualityThreshold = scoreIndex !== -1 && args[scoreIndex + 1] ? parseInt(args[scoreIndex + 1]) : 70;
+const parsedScore = scoreIndex !== -1 && args[scoreIndex + 1] ? Number(args[scoreIndex + 1]) : NaN;
+const qualityThreshold = Number.isFinite(parsedScore) ? parsedScore : 70;
 
 interface ArticleWithSource extends Article {
   source: Source;
@@ -78,18 +74,13 @@ interface SummaryAndTags {
 /**
  * 要約とタグを生成（UnifiedSummaryServiceを使用）
  */
-async function generateSummaryAndTags(title: string, content: string, isRegeneration: boolean = false): Promise<SummaryAndTags> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not set');
-  }
-
+async function generateSummaryAndTags(title: string, content: string): Promise<SummaryAndTags> {
   const summaryService = new UnifiedSummaryService();
 
   try {
     const result = await summaryService.generate(title, content, {
-      maxRetries: 3,
-      minQualityScore: 70,
+      maxRetries: 1,            // 外側の再試行と重複させない
+      minQualityScore: qualityThreshold,
       retryDelay: 2000
     });
 
@@ -177,10 +168,11 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   
   // 検出結果サマリー
   console.error('\n📊 品質分布:');
-  console.error(`   優秀 (90-100): ${scoreDistribution.excellent}件 (${Math.round(scoreDistribution.excellent / articles.length * 100)}%)`);
-  console.error(`   良好 (80-89):  ${scoreDistribution.good}件 (${Math.round(scoreDistribution.good / articles.length * 100)}%)`);
-  console.error(`   普通 (70-79):  ${scoreDistribution.fair}件 (${Math.round(scoreDistribution.fair / articles.length * 100)}%)`);
-  console.error(`   要改善 (<70):  ${scoreDistribution.poor}件 (${Math.round(scoreDistribution.poor / articles.length * 100)}%)`);
+  const denom = articles.length || 1;
+  console.error(`   優秀 (90-100): ${scoreDistribution.excellent}件 (${Math.round(scoreDistribution.excellent / denom * 100)}%)`);
+  console.error(`   良好 (80-89):  ${scoreDistribution.good}件 (${Math.round(scoreDistribution.good / denom * 100)}%)`);
+  console.error(`   普通 (70-79):  ${scoreDistribution.fair}件 (${Math.round(scoreDistribution.fair / denom * 100)}%)`);
+  console.error(`   要改善 (<70):  ${scoreDistribution.poor}件 (${Math.round(scoreDistribution.poor / denom * 100)}%)`);
   
   console.error(`\n✅ 低品質記事検出完了: ${lowQualityArticles.length}件`);
   
@@ -237,13 +229,9 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
         
         try {
           // 要約とタグを生成（UnifiedSummaryServiceが内部で品質チェック済み）
-          const generated = await generateSummaryAndTags(
-            article.title,
-            content,
-            attempt > 1  // 2回目以降は再生成フラグを立てる
-          );
+          const generated = await generateSummaryAndTags(article.title, content);
 
-          // UnifiedSummaryServiceが返すqualityScoreを使用
+          // checkSummaryQualityで再検証（スクリプトレベルの品質確認）
           const contentAnalysis = {
             contentLength: content.length,
             totalLength: content.length,
@@ -269,30 +257,29 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                 data: {
                   summary: generated.summary,
                   detailedSummary: generated.detailedSummary,
-                  articleType: 'unified',
+                  articleType: generated.articleType,
                   summaryVersion: 8,
                   summaryComputedAt: new Date()
                 }
               });
               
-              // タグの更新
+              // タグの更新（一括処理・トランザクション）
               if (generated.tags.length > 0) {
-                for (const tagName of generated.tags) {
-                  const tag = await prisma.tag.upsert({
-                    where: { name: tagName },
-                    update: {},
-                    create: { name: tagName }
-                  });
-                  
-                  await prisma.article.update({
+                await prisma.$transaction(async (tx) => {
+                  const tags = await Promise.all(
+                    generated.tags.map((name) =>
+                      tx.tag.upsert({ where: { name }, update: {}, create: { name } })
+                    )
+                  );
+                  await tx.article.update({
                     where: { id: article.id },
                     data: {
                       tags: {
-                        connect: { id: tag.id }
+                        set: tags.map(t => ({ id: t.id }))
                       }
                     }
                   });
-                }
+                });
               }
             }
             
@@ -307,8 +294,15 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
             }
           }
         } catch (error) {
-          console.error(`   ❌ エラー: ${error instanceof Error ? error.message : String(error)}`);
-          result.error = error instanceof Error ? error.message : String(error);
+          const msg = error instanceof Error ? error.message : String(error);
+          console.error(`   ❌ エラー: ${msg}`);
+          result.error = msg;
+          if (msg.includes('SKIP_GENERATION')) {
+            // サービスの方針で要約生成対象外
+            result.status = 'skipped';
+            console.error('   ⏭️  生成スキップ条件に該当のためスキップ');
+            break;
+          }
           if (attempt < MAX_ATTEMPTS) {
             await sleep(5000);  // エラー時は長めに待機
           }
