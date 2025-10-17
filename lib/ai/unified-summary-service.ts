@@ -62,8 +62,17 @@ export class UnifiedSummaryService {
     const processedContent = this.preprocessContent(title, content, opts.contentMaxLength!, sourceInfo);
     
     // スキップマーカーのチェック
-    if (processedContent === '__SKIP_SUMMARY_GENERATION__') {
-      throw new Error('SKIP_GENERATION: はてなブックマーク経由の外部サイト記事でコンテンツ不足のため、要約生成をスキップします');
+    if (processedContent.startsWith('__SKIP_SUMMARY_GENERATION__')) {
+      const parts = processedContent.split(':');
+      const reason = parts[1] || 'UNKNOWN';
+
+      const messages: Record<string, string> = {
+        'PDF': 'PDFファイルのため要約生成をスキップします',
+        'SLIDE': 'スライド資料のため要約生成をスキップします',
+        'THIN_CONTENT': 'コンテンツ不足（< 300文字）のため要約生成をスキップします'
+      };
+
+      throw new Error(`SKIP_GENERATION:${reason}: ${messages[reason] || reason}`);
     }
 
     // 元記事の長さを保存（前処理前）
@@ -185,6 +194,10 @@ export class UnifiedSummaryService {
       }
     }
     
+    // リトライ上限到達時のエラー詳細化
+    if (lastError?.message && lastError.message.includes('品質基準未達')) {
+      throw new Error(`QUALITY_FAILED: 品質基準未達（試行回数: ${opts.maxRetries}）`);
+    }
     throw new Error(`Failed to generate summary after ${opts.maxRetries} attempts: ${lastError?.message}`);
   }
 
@@ -224,33 +237,39 @@ export class UnifiedSummaryService {
    */
   private preprocessContent(title: string, content: string, maxLength: number, sourceInfo?: { sourceName?: string, url?: string }): string {
     // PDFファイルの場合（URLが.pdfで終わる、またはPDFバイナリを含む）
-    if (sourceInfo?.url?.toLowerCase().endsWith('.pdf') || 
-        content.includes('%PDF-') || 
+    if (sourceInfo?.url?.toLowerCase().endsWith('.pdf') ||
+        content.includes('%PDF-') ||
         content.includes('%%EOF')) {
       // PDFは要約生成不可
-      return '__SKIP_SUMMARY_GENERATION__';
+      return '__SKIP_SUMMARY_GENERATION__:PDF';
     }
-    
-    // はてなブックマーク経由の外部サイト記事でコンテンツ不足の場合（セキュアなURL検証）
-    if (sourceInfo?.sourceName === 'はてなブックマーク' &&
-        content.length < 300 &&
-        sourceInfo.url &&
+
+    // スライド資料の場合（Speaker Deck、Docswell、SlideShare）
+    // コンテンツが不足している場合はスキップ
+    if (sourceInfo?.url &&
         (isUrlFromDomain(sourceInfo.url, 'speakerdeck.com') ||
-         isUrlFromDomain(sourceInfo.url, 'slideshare.net'))) {
-      // 要約生成不可のマーカーを返す
-      return '__SKIP_SUMMARY_GENERATION__';
+         isUrlFromDomain(sourceInfo.url, 'docswell.com') ||
+         isUrlFromDomain(sourceInfo.url, 'slideshare.net')) &&
+        content.length < 500) {
+      // スライド資料は要約生成不可
+      return '__SKIP_SUMMARY_GENERATION__:SLIDE';
     }
-    
+
+    // コンテンツが極端に不足している場合
+    if (content.length < 300) {
+      return '__SKIP_SUMMARY_GENERATION__:THIN_CONTENT';
+    }
+
     if (!content || content.length < 100) {
       // 推測指示を削除し、基本情報のみ返す
       return `タイトル: ${title}\n\n内容:\n${content || 'コンテンツ不足'}\n\n注意: 内容が不十分なため、実際の記事内容に基づいた要約のみを生成してください。推測や憶測は避けてください。`;
     }
-    
+
     if (content.length > maxLength) {
       // 長すぎる場合は切り詰め
       return content.substring(0, maxLength);
     }
-    
+
     return content;
   }
 
