@@ -308,8 +308,8 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
           }
         }
       }
-      
-      if (!regenerated) {
+
+      if (!regenerated && result.status !== 'skipped') {
         result.status = 'failed';
         console.error(`   ❌ 再生成失敗（${MAX_ATTEMPTS}回試行）`);
       }
