@@ -23,6 +23,14 @@ enum ArticleCategory {
   architecture
 }
 
+enum SkipReason {
+  PDF                    // PDFファイル
+  SLIDE                  // スライド資料
+  THIN_CONTENT           // コンテンツ不足
+  CONTENT_FETCH_FAILED   // コンテンツ取得失敗
+  QUALITY_FAILED         // 品質基準未達
+}
+
 model Article {
   id                     String           @id @default(cuid())
   title                  String
@@ -46,6 +54,8 @@ model Article {
   contentUpdatedAt       DateTime?        @db.Timestamptz(6)
   qualityScoreComputedAt DateTime?        @db.Timestamptz(6)
   summaryComputedAt      DateTime?        @db.Timestamptz(6)
+  skipReason             SkipReason?      // スキップ理由（NULL = 正常生成）
+  summaryError           String?          // エラーメッセージ（NULL = エラーなし）
   source                 Source           @relation(fields: [sourceId], references: [id])
   articleViews           ArticleView[]
   favorites              Favorite[]
@@ -61,6 +71,7 @@ model Article {
   @@index([contentUpdatedAt], map: "idx_article_content_updated_at")
   @@index([qualityScoreComputedAt], map: "idx_article_quality_score_computed_at")
   @@index([summaryComputedAt], map: "idx_article_summary_computed_at")
+  @@index([skipReason], map: "idx_article_skip_reason")
 }
 
 model Source {
