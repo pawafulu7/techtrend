@@ -15,6 +15,7 @@ import { PrismaClient, Article, Source } from '@prisma/client';
 import { checkSummaryQuality } from '../../lib/utils/summary-quality-checker';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
+import { extractSkipReason, getSkipReasonLabel } from '../../lib/utils/skip-reason-extractor';
 
 const prisma = new PrismaClient();
 
@@ -288,6 +289,8 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                     articleType: generated.articleType,
                     summaryVersion: generated.summaryVersion,
                     summaryComputedAt: new Date(),
+                    skipReason: null,        // 成功時はnull
+                    summaryError: null,
                     ...(tags.length > 0 && {
                       tags: {
                         set: tags.map(t => ({ id: t.id }))
@@ -310,14 +313,18 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
           }
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
-          console.error(`   ❌ エラー: ${msg}`);
-          result.error = msg;
-          if (msg.includes('SKIP_GENERATION')) {
+          const skipReason = extractSkipReason(error);
+
+          if (skipReason) {
             // サービスの方針で要約生成対象外
             result.status = 'skipped';
-            console.error('   ⏭️  生成スキップ条件に該当のためスキップ');
+            result.error = skipReason;
+            console.error(`   ⏭️  ${getSkipReasonLabel(skipReason)}でスキップ`);
             break;
           }
+
+          console.error(`   ❌ エラー: ${msg}`);
+          result.error = msg;
           if (attempt < MAX_ATTEMPTS) {
             await sleep(5000);  // エラー時は長めに待機
           }
