@@ -161,14 +161,16 @@ export class UnifiedSummaryService {
         }
         
         // 品質スコアが閾値以下または項目数不足の場合、再試行
-        if ((qualityScore < opts.minQualityScore! || qualityResult.itemCountValid === false)
-            && attempt < opts.maxRetries!) {
-          // 項目数不足の場合は次回より強いプロンプトを使用するフラグを立てる
-          if (qualityResult.itemCountValid === false) {
-            console.log(`[UnifiedSummaryService] 項目数不足により再試行 (attempt ${attempt + 1}/${opts.maxRetries})`);
+        if (qualityScore < opts.minQualityScore! || qualityResult.itemCountValid === false) {
+          if (attempt < opts.maxRetries!) {
+            if (qualityResult.itemCountValid === false) {
+              console.log(`[UnifiedSummaryService] 項目数不足により再試行 (attempt ${attempt + 1}/${opts.maxRetries})`);
+            }
+            await this.delay(opts.retryDelay!);
+            continue;
           }
-          await this.delay(opts.retryDelay!);
-          continue;
+          // 最終試行でも基準未達 → 明示的に失敗扱い
+          throw new Error('品質基準未達');
         }
         
         // 結果を返す（postProcessSummariesで処理済みのテキストを使用）

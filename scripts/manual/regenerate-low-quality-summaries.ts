@@ -228,7 +228,17 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
       if (content.length < 300) {
         console.error('   ⚠️  コンテンツが短すぎるためスキップ（最低300文字必要）');
         result.status = 'skipped';
-        result.error = 'コンテンツ不足';
+        result.error = 'THIN_CONTENT';
+        if (!isDryRun) {
+          await prisma.article.update({
+            where: { id: article.id },
+            data: {
+              skipReason: 'THIN_CONTENT',
+              summaryError: 'コンテンツ不足（<300文字）',
+              summaryComputedAt: new Date()
+            }
+          });
+        }
         results.push(result);
         continue;
       }
@@ -289,6 +299,8 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                     articleType: generated.articleType,
                     summaryVersion: generated.summaryVersion,
                     summaryComputedAt: new Date(),
+                    qualityScore: newQualityCheck.score,
+                    qualityScoreComputedAt: new Date(),
                     skipReason: null,        // 成功時はnull
                     summaryError: null,
                     ...(tags.length > 0 && {
@@ -320,6 +332,16 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
             result.status = 'skipped';
             result.error = skipReason;
             console.error(`   ⏭️  ${getSkipReasonLabel(skipReason)}でスキップ`);
+            if (!isDryRun) {
+              await prisma.article.update({
+                where: { id: article.id },
+                data: {
+                  skipReason,
+                  summaryError: msg,
+                  summaryComputedAt: new Date()
+                }
+              });
+            }
             break;
           }
 
@@ -327,6 +349,16 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
           result.error = msg;
           if (attempt < MAX_ATTEMPTS) {
             await sleep(5000);  // エラー時は長めに待機
+          } else if (!isDryRun) {
+            // 最終試行失敗時にsummaryErrorを記録
+            await prisma.article.update({
+              where: { id: article.id },
+              data: {
+                skipReason: null,
+                summaryError: msg,
+                summaryComputedAt: new Date()
+              }
+            });
           }
         }
       }

@@ -3,7 +3,9 @@
  * 要約生成のエラーメッセージからskipReasonを抽出
  */
 
-export type SkipReason = 'PDF' | 'SLIDE' | 'THIN_CONTENT' | 'CONTENT_FETCH_FAILED' | 'QUALITY_FAILED';
+import type { SkipReason as PrismaSkipReason } from '@prisma/client';
+
+export type SkipReason = PrismaSkipReason;
 
 /**
  * エラーメッセージからスキップ理由を抽出

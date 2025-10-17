@@ -49,7 +49,7 @@ model Article {
   difficulty             String?
   detailedSummary        String?
   articleType            String?
-  summaryVersion         Int              @default(7)
+  summaryVersion         Int              @default(8)
   category               ArticleCategory?
   contentUpdatedAt       DateTime?        @db.Timestamptz(6)
   qualityScoreComputedAt DateTime?        @db.Timestamptz(6)
