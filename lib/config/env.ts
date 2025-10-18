@@ -82,7 +82,7 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional().default('info'),
   
   // Testing
-  CI: z.enum(['true', 'false']).optional(),
+  CI: z.union([z.enum(['true', 'false']), z.literal('1'), z.literal('0')]).optional(),
   TEST_DATABASE_URL: z.string().optional(),
 })
   .superRefine((env, ctx) => {
