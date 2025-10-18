@@ -24,19 +24,10 @@ declare module 'ioredis' {
   }
 }
 
-// Prisma Extended Types
-declare module '@prisma/client' {
-  interface Article {
-    thumbnail?: string | null;
-    articlesDisplayed?: number;
-    articlesCount?: number;
-    difficulty?: string | null;
-  }
-  
-  interface Tag {
-    category?: string | null;
-  }
-}
+// Prisma Extended Types - REMOVED
+// The interface augmentation was causing type shadowing issues
+// Optional fields (thumbnail, articlesDisplayed, etc.) should be handled
+// through separate helper types or Prisma.$ArticlePayload extensions
 
 // Test Mock Helpers
 

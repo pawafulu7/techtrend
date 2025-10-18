@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import type { SkipReason } from '@prisma/client';
 
 /**
  * テスト用のモックデータファクトリー
@@ -42,6 +43,8 @@ interface MockArticle {
   contentUpdatedAt: Date | null;
   qualityScoreComputedAt: Date | null;
   summaryComputedAt: Date | null;
+  skipReason: SkipReason | null;
+  summaryError: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -149,6 +152,8 @@ export function createMockArticle(overrides?: Partial<MockArticle>): MockArticle
     contentUpdatedAt: now,
     qualityScoreComputedAt: null,
     summaryComputedAt: now,
+    skipReason: null,
+    summaryError: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -325,6 +330,8 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
     contentUpdatedAt: publishedAt,
     qualityScoreComputedAt: faker.datatype.boolean() ? now : null,
     summaryComputedAt: now,
+    skipReason: null,
+    summaryError: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
