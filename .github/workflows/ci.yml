@@ -18,7 +18,7 @@ jobs:
     
     services:
       postgres:
-        image: postgres:14
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -43,6 +43,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Enable pgvector extension
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+            -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
 
       - name: Setup test database
         env:
