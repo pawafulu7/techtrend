@@ -2,7 +2,10 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres-pgvector
+    image: techtrend-postgres-pgvector:latest
     container_name: techtrend-postgres
     environment:
       POSTGRES_DB: techtrend_dev

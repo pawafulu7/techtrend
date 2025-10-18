@@ -167,6 +167,8 @@
     "@tanstack/react-query-devtools": "^5.87.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/sanitize-html": "^2.16.0",
+    "@upstash/ratelimit": "^2.0.6",
+    "@upstash/redis": "^1.35.6",
     "@vercel/otel": "^2.0.1",
     "axios": "^1.12.1",
     "bcryptjs": "^3.0.2",
@@ -187,6 +189,8 @@
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.7",
+    "openai": "^4.77.3",
+    "p-limit": "^7.1.1",
     "pino": "^9.9.5",
     "pino-pretty": "^13.1.1",
     "react": "19.1.0",
@@ -199,7 +203,7 @@
     "tailwind-merge": "^3.3.1",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0",
-    "zod": "^4.1.8"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -1,16 +1,20 @@
 services:
   postgres-test:
-    image: postgres:15-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres-pgvector
+    image: techtrend-postgres-pgvector:latest
     container_name: techtrend-postgres-test
     environment:
       POSTGRES_DB: techtrend_test
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_test_password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=ja_JP.UTF-8"
     ports:
       - "127.0.0.1:5434:5432"
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
+      - ./scripts/docker/init-pgvector-test.sql:/docker-entrypoint-initdb.d/init-pgvector.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -39,15 +43,15 @@ services:
     container_name: techtrend-node-ci
     working_dir: /app
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres-test:5432/techtrend_test
-      TEST_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres-test:5432/techtrend_test
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres_test_password}@postgres-test:5432/techtrend_test
+      TEST_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres_test_password}@postgres-test:5432/techtrend_test
       REDIS_URL: redis://redis-test:6379
       NODE_ENV: test
       CI: true
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_test_password}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      AUTH_SECRET: ${AUTH_SECRET}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_SECRET: ${AUTH_SECRET:-test-secret-key-for-testing-only-32-chars}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-test-secret-key-for-testing-only-32-chars}
       PRISMA_MIGRATION_ENGINE_SKIP_TRANSACTIONS: "1"
     init: true
     depends_on:
@@ -65,16 +69,16 @@ services:
     container_name: techtrend-playwright-e2e
     working_dir: /app
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres-test:5432/techtrend_test
-      TEST_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres-test:5432/techtrend_test
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres_test_password}@postgres-test:5432/techtrend_test
+      TEST_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres_test_password}@postgres-test:5432/techtrend_test
       REDIS_URL: redis://redis-test:6379
       BASE_URL: http://localhost:3000
       NODE_ENV: test
       CI: true
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_test_password}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      AUTH_SECRET: ${AUTH_SECRET}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_SECRET: ${AUTH_SECRET:-test-secret-key-for-testing-only-32-chars}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-test-secret-key-for-testing-only-32-chars}
       PRISMA_MIGRATION_ENGINE_SKIP_TRANSACTIONS: "1"
     shm_size: "2gb"
     init: true

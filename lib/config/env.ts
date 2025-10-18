@@ -23,9 +23,10 @@ const envSchema = z.object({
   REDIS_PORT: numericStringWithDefault('6379'),
   REDIS_PASSWORD: z.string().optional(),
   
-  // Authentication
+  // Authentication (Auth.js v5 supports both AUTH_* and NEXTAUTH_*)
   NEXTAUTH_URL: optionalUrl,
-  NEXTAUTH_SECRET: z.string().min(32),
+  AUTH_SECRET: z.string().min(32).optional(),
+  NEXTAUTH_SECRET: z.string().min(32).optional(),
   
   // OAuth Providers (optional)
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -35,8 +36,27 @@ const envSchema = z.object({
   
   // AI Services
   GEMINI_API_KEY: z.string().optional(),
-  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string()
+    .startsWith('sk-', 'Invalid OpenAI API key format')
+    .optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
+
+  // RAG & Embeddings
+  EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
+  EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
+  EMBEDDING_BATCH_SIZE: z.coerce.number().int().min(1).max(2048).default(100),
+  EMBEDDING_CONCURRENCY: z.coerce.number().int().min(1).max(100).default(50),
+
+  // RAG Configuration
+  RAG_TOP_K: z.coerce.number().int().min(1).max(100).default(10),
+  RAG_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+  RAG_ACTIVE_MODEL: z.string().default('text-embedding-3-small'),
+  RAG_ACTIVE_VERSION: z.coerce.number().int().positive().default(1),
+  RAG_ENABLED: z.enum(['true', 'false']).optional().default('false'),
+
+  // Upstash Redis (for rate limiting in production)
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   
   // Feature Flags
   ENABLE_CACHE: z.enum(['true', 'false']).optional().default('true'),
@@ -64,7 +84,26 @@ const envSchema = z.object({
   // Testing
   CI: z.enum(['true', 'false']).optional(),
   TEST_DATABASE_URL: z.string().optional(),
-});
+})
+  .superRefine((env, ctx) => {
+    // Ensure at least one auth secret is provided
+    if (!env.AUTH_SECRET && !env.NEXTAUTH_SECRET) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AUTH_SECRET'],
+        message: 'Either AUTH_SECRET or NEXTAUTH_SECRET must be provided',
+      });
+    }
+  })
+  .transform((env) => {
+    // Normalize: use AUTH_SECRET as primary, fallback to NEXTAUTH_SECRET
+    const secret = env.AUTH_SECRET ?? env.NEXTAUTH_SECRET!;
+    return {
+      ...env,
+      AUTH_SECRET: secret,
+      NEXTAUTH_SECRET: env.NEXTAUTH_SECRET ?? secret,
+    };
+  });
 
 // Type inference for the environment
 export type Env = z.infer<typeof envSchema>;
@@ -83,41 +122,64 @@ function formatValidationErrors(errors: z.ZodError): string {
 // Lazy initialization
 let _env: Env | null = null;
 
+// Development fallback secret
+const DEV_AUTH_SECRET = 'development-secret-key-change-me-in-production-min-32-chars';
+
+/**
+ * Check if ZodError is only about missing auth secrets
+ */
+function isAuthSecretOnlyError(error: z.ZodError): boolean {
+  return error.issues.every((issue) => {
+    const path = issue.path.join('.');
+    return path === 'AUTH_SECRET' || path === 'NEXTAUTH_SECRET';
+  });
+}
+
 /**
  * Get validated environment variables
  * Throws on first access if validation fails
  */
 export function getEnv(): Env {
   if (_env === null) {
-    try {
-      _env = envSchema.parse(process.env);
-    } catch (_error) {
-      if (_error instanceof z.ZodError) {
-        const errorMessage = `
+    const parsed = envSchema.safeParse(process.env);
+
+    if (parsed.success) {
+      _env = parsed.data;
+      return _env;
+    }
+
+    // Validation failed
+    const errorMessage = `
 Environment validation failed:
-${formatValidationErrors(_error)}
+${formatValidationErrors(parsed.error)}
 
 Please check your .env file and ensure all required variables are set correctly.
-        `.trim();
-        
-        // In development, log the error but continue with defaults
-        if (process.env.NODE_ENV === 'development') {
-          logger.warn(errorMessage);
-          // Use safe defaults for development
-          _env = envSchema.parse({
-            ...process.env,
-            NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'development-secret-key-should-be-replaced-in-production',
-          });
-        } else {
-          // In production, fail fast
-          throw new Error(errorMessage);
-        }
-      } else {
-        throw _error;
+    `.trim();
+
+    // In development, allow fallback ONLY for auth secret issues
+    if (process.env.NODE_ENV === 'development' && isAuthSecretOnlyError(parsed.error)) {
+      logger.warn(errorMessage);
+      logger.warn('Using development auth secret fallback');
+
+      const retryParsed = envSchema.safeParse({
+        ...process.env,
+        AUTH_SECRET: process.env.AUTH_SECRET || DEV_AUTH_SECRET,
+        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || DEV_AUTH_SECRET,
+      });
+
+      if (retryParsed.success) {
+        _env = retryParsed.data;
+        return _env;
       }
+
+      // Retry failed - throw original error
+      throw new Error(errorMessage);
     }
+
+    // Production or non-auth errors: fail fast
+    throw new Error(errorMessage);
   }
-  
+
   return _env;
 }
 
@@ -140,6 +202,8 @@ export const features = {
   isAnalyticsEnabled: () => env.ENABLE_ANALYTICS === 'true',
   isQualityCheckEnabled: () => env.QUALITY_CHECK_ENABLED === 'true',
   shouldExcludeEventArticles: () => env.EXCLUDE_EVENT_ARTICLES === 'true',
+  isRagEnabled: () => env.RAG_ENABLED === 'true' && !!env.OPENAI_API_KEY,
+  isRateLimitingEnabled: () => !!(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
 };
 
 /**
@@ -170,6 +234,19 @@ export const config = {
     isProduction: () => env.NODE_ENV === 'production',
     isDevelopment: () => env.NODE_ENV === 'development',
     isTest: () => env.NODE_ENV === 'test',
+  },
+  rag: {
+    topK: () => env.RAG_TOP_K,
+    similarityThreshold: () => env.RAG_SIMILARITY_THRESHOLD,
+    activeModel: () => env.RAG_ACTIVE_MODEL,
+    activeVersion: () => env.RAG_ACTIVE_VERSION,
+    isEnabled: () => features.isRagEnabled(),
+  },
+  embedding: {
+    model: () => env.EMBEDDING_MODEL,
+    dimensions: () => env.EMBEDDING_DIMENSIONS,
+    batchSize: () => env.EMBEDDING_BATCH_SIZE,
+    concurrency: () => env.EMBEDDING_CONCURRENCY,
   },
 };
 

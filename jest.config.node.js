@@ -12,9 +12,6 @@ const customJestConfig = {
   testEnvironment: 'node',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   reporters: ['default'],
-  transformIgnorePatterns: [
-    'node_modules/(?!(node-fetch|next-auth|@auth)/)',
-  ],
   moduleNameMapper: {
     // Manual mocks for Prisma and Redis (must come before generic alias)
     '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
@@ -62,4 +59,18 @@ const customJestConfig = {
   ],
 };
 
-module.exports = createJestConfig(customJestConfig);
+// Export async config to override Next.js default transformIgnorePatterns
+const nextJestConfig = createJestConfig(customJestConfig);
+const esmAllowList = ['geist', 'node-fetch', 'next-auth', '@auth(?:[+/].+)?', 'p-limit', 'yocto-queue'];
+const esmPattern = esmAllowList.join('|');
+
+module.exports = async () => {
+  const config = await nextJestConfig();
+  return {
+    ...config,
+    transformIgnorePatterns: [
+      `/node_modules/(?!(?:${esmPattern})/)`,
+      '^.+\\.module\\.(css|sass|scss)$',
+    ],
+  };
+};

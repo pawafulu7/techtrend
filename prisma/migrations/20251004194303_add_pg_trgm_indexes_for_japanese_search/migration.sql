@@ -6,12 +6,13 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Create trigram indexes on title and summary columns
 -- These indexes will significantly speed up LIKE/ILIKE queries
--- CONCURRENTLY is used to avoid ACCESS EXCLUSIVE locks in production
+-- Note: CONCURRENTLY removed for Prisma compatibility (shadow database)
+-- For production zero-downtime deployment, use manual script: scripts/manual/create_trgm_indexes_concurrently.sql
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_article_title_trgm
+CREATE INDEX IF NOT EXISTS idx_article_title_trgm
   ON "Article" USING gin(title gin_trgm_ops);
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_article_summary_trgm
+CREATE INDEX IF NOT EXISTS idx_article_summary_trgm
   ON "Article" USING gin(summary gin_trgm_ops);
 
 -- Note:
