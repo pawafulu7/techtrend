@@ -88,14 +88,15 @@ describe('Environment Configuration', () => {
       // モジュールキャッシュをクリア
       jest.resetModules();
       resetEnvCache();
-      
+
       process.env.NODE_ENV = 'development';
-      // Missing NEXTAUTH_SECRET
+      // Missing both AUTH_SECRET and NEXTAUTH_SECRET (triggers warning)
+      delete process.env.AUTH_SECRET;
       delete process.env.NEXTAUTH_SECRET;
-      
+
       const loggerSpy = jest.spyOn(logger, 'warn').mockImplementation();
       const result = getEnv();
-      
+
       expect(result).toBeDefined();
       expect(loggerSpy).toHaveBeenCalled();
       loggerSpy.mockRestore();
@@ -315,12 +316,14 @@ describe('Environment Configuration - getEnv', () => {
 
   it('handles development mode with warnings', () => {
     process.env.NODE_ENV = 'development';
+    // Missing both AUTH_SECRET and NEXTAUTH_SECRET (triggers warning)
+    delete process.env.AUTH_SECRET;
     delete process.env.NEXTAUTH_SECRET;
     resetEnvCache();
-    
+
     const loggerSpy = jest.spyOn(logger, 'warn').mockImplementation();
     const result = getEnv();
-    
+
     expect(result).toBeDefined();
     expect(loggerSpy).toHaveBeenCalled();
     loggerSpy.mockRestore();
