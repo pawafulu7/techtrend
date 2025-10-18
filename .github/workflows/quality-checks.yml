@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:15
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -113,14 +113,21 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
+
+      - name: Enable pgvector extension
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+            -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
 
       - name: Setup test database
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test  # CI環境のローカルサービス用
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
         run: |
           npx prisma generate
-          npx prisma db push
+          npx prisma migrate deploy
           npx tsx prisma/seed-test.ts
 
       - name: Run tests with coverage
@@ -250,7 +257,7 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:15
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
