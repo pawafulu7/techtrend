@@ -22,8 +22,28 @@ import { APIError } from 'openai/error';
  * @see .claude/docs/plan/plan_20251018_104352_577_mastra-rag-final-secure.md:1038-1149
  */
 
-// Singleton VectorSearchService (module-scoped for connection pooling)
-const searchService = new VectorSearchService(prisma);
+class RagSearchNotConfiguredError extends Error {
+  constructor() {
+    super('RAG search is not configured. Set OPENAI_API_KEY on the server.');
+    this.name = 'RagSearchNotConfiguredError';
+  }
+}
+
+// Lazily instantiate to avoid build-time OpenAI client creation
+let searchService: VectorSearchService | null = null;
+
+const getSearchService = (): VectorSearchService => {
+  if (searchService) {
+    return searchService;
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    throw new RagSearchNotConfiguredError();
+  }
+
+  searchService = new VectorSearchService(prisma);
+  return searchService;
+};
 
 export async function POST(request: NextRequest) {
   // Layer 1: Authentication check (REQUIRED)
@@ -88,7 +108,8 @@ export async function POST(request: NextRequest) {
     }, 'RAG search request');
 
     // Layer 4: Execute search (SECURE - Prisma.sql in VectorSearchService)
-    const results = await searchService.search(validatedRequest.query, {
+    const vectorSearch = getSearchService();
+    const results = await vectorSearch.search(validatedRequest.query, {
       topK: validatedRequest.topK,
       similarityThreshold: validatedRequest.similarityThreshold,
       sourceIds: validatedRequest.filters?.sources,
@@ -105,6 +126,21 @@ export async function POST(request: NextRequest) {
       version: parseInt(process.env.RAG_ACTIVE_VERSION || '1', 10),
     });
   } catch (error) {
+    // Handle RAG not configured error
+    if (error instanceof RagSearchNotConfiguredError) {
+      logger.warn({
+        userId: session?.user?.id,
+      }, 'RAG search requested without OpenAI API key');
+
+      return NextResponse.json(
+        {
+          error: 'Semantic search is not configured',
+          details: 'Contact an administrator to set OPENAI_API_KEY on the server.',
+        },
+        { status: 503 }
+      );
+    }
+
     // Handle Zod validation errors
     if (error instanceof ZodError) {
       logger.warn({
