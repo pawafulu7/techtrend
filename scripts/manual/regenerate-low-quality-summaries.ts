@@ -12,15 +12,10 @@
  */
 
 import { PrismaClient, Article, Source } from '@prisma/client';
-import { 
-  checkSummaryQuality,
-  isQualityCheckEnabled,
-  getMinQualityScore,
-  generateQualityReport
-} from '../../lib/utils/summary-quality-checker';
-import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
+import { checkSummaryQuality } from '../../lib/utils/summary-quality-checker';
+import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
-import fetch from 'node-fetch';
+import { extractSkipReason, getSkipReasonLabel } from '../../lib/utils/skip-reason-extractor';
 
 const prisma = new PrismaClient();
 
@@ -30,10 +25,13 @@ const limitIndex = args.indexOf('--limit');
 const limit = limitIndex !== -1 && args[limitIndex + 1] ? parseInt(args[limitIndex + 1]) : undefined;
 const isDryRun = args.includes('--dry-run');
 const scoreIndex = args.indexOf('--score');
-const qualityThreshold = scoreIndex !== -1 && args[scoreIndex + 1] ? parseInt(args[scoreIndex + 1]) : 70;
+const parsedScore = scoreIndex !== -1 && args[scoreIndex + 1] ? Number(args[scoreIndex + 1]) : NaN;
+const qualityThreshold = Number.isFinite(parsedScore)
+  ? Math.min(100, Math.max(0, parsedScore))
+  : 70;
 
 interface ArticleWithSource extends Article {
-  source: Source;
+  source: Source | null;
 }
 
 interface LowQualityArticle {
@@ -74,108 +72,46 @@ interface SummaryAndTags {
   detailedSummary: string;
   tags: string[];
   articleType: string;
+  summaryVersion: number;
 }
 
 /**
- * 要約とタグを生成
+ * 要約とタグを生成（UnifiedSummaryServiceを使用）
  */
-async function generateSummaryAndTags(title: string, content: string, isRegeneration: boolean = false): Promise<SummaryAndTags> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not set');
-  }
+async function generateSummaryAndTags(
+  title: string,
+  content: string,
+  sourceInfo?: { sourceName?: string; url?: string }
+): Promise<SummaryAndTags> {
+  const summaryService = new UnifiedSummaryService();
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  
-  // 統一プロンプトを使用
-  const prompt = generateUnifiedPrompt(title, content);
-  const articleType = 'unified';
+  try {
+    const result = await summaryService.generate(
+      title,
+      content,
+      {
+        maxRetries: 1,            // 外側の再試行と重複させない
+        minQualityScore: qualityThreshold,
+        retryDelay: 2000
+      },
+      sourceInfo
+    );
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 2500,
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API request failed: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json() as any;
-  const responseText = data.candidates[0].content.parts[0].text.trim();
-  
-  return parseSummaryAndTags(responseText);
-}
-
-/**
- * APIレスポンスをパース
- */
-function parseSummaryAndTags(responseText: string): SummaryAndTags {
-  const lines = responseText.split('\n');
-  let summary = '';
-  let detailedSummary = '';
-  let tags: string[] = [];
-  let isDetailedSection = false;
-
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    
-    if (trimmedLine.startsWith('一覧要約:') || trimmedLine.startsWith('一覧要約：')) {
-      summary = trimmedLine.replace(/一覧要約[:：]\s*/, '').trim();
-    } else if (trimmedLine.startsWith('詳細要約:') || trimmedLine.startsWith('詳細要約：')) {
-      isDetailedSection = true;
-      const content = trimmedLine.replace(/詳細要約[:：]\s*/, '').trim();
-      if (content) {
-        detailedSummary = content;
-      }
-    } else if (trimmedLine.startsWith('タグ:') || trimmedLine.startsWith('タグ：')) {
-      isDetailedSection = false;
-      const tagLine = trimmedLine.replace(/タグ[:：]\s*/, '').trim();
-      tags = tagLine.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-    } else if (isDetailedSection && trimmedLine) {
-      if (detailedSummary) {
-        detailedSummary += '\n' + trimmedLine;
-      } else {
-        detailedSummary = trimmedLine;
-      }
+    return {
+      summary: result.summary,
+      detailedSummary: result.detailedSummary,
+      tags: result.tags,
+      articleType: result.articleType,
+      summaryVersion: result.summaryVersion
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('SKIP_GENERATION')) {
+      throw error;
     }
+    throw new Error(`Failed to generate summary: ${error instanceof Error ? error.message : String(error)}`);
   }
-
-  // タグの正規化
-  const normalizedTags: string[] = [];
-  for (const tag of tags) {
-    const normalized = normalizeTag(tag);
-    if (normalized && !normalizedTags.includes(normalized)) {
-      normalizedTags.push(normalized);
-    }
-  }
-
-  return {
-    summary: summary || '要約を生成できませんでした',
-    detailedSummary: detailedSummary || '詳細要約を生成できませんでした',
-    tags: normalizedTags.slice(0, 5),  // 最大5個
-    articleType: 'unified'
-  };
 }
 
-/**
- * タグを正規化
- */
-function normalizeTag(tag: string): string {
-  return tag
-    .replace(/^["']|["']$/g, '')  // クォートを削除
-    .replace(/\s+/g, '')  // 空白を削除
-    .trim();
-}
 
 /**
  * 低品質な要約を持つ記事を検出
@@ -184,10 +120,16 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   console.error('\n🔍 低品質な要約を検出中...');
   console.error(`   品質スコア閾値: ${qualityThreshold}点`);
   
-  // 要約がある全記事を取得
+  // 要約がある全記事を取得（skipReason設定済み、または24時間以内に再生成された記事は除外）
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const articles = await prisma.article.findMany({
     where: {
-      summary: { not: null }
+      summary: { not: null },
+      skipReason: null,  // スキップ理由が設定されていない記事のみ対象
+      OR: [
+        { summaryComputedAt: null },
+        { summaryComputedAt: { lt: oneDayAgo } }  // 24時間以上前に生成された記事のみ
+      ]
     },
     include: {
       source: true
@@ -195,7 +137,7 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
     orderBy: {
       publishedAt: 'desc'
     },
-    take: limit || undefined
+    ...(limit !== undefined ? { take: limit } : {})
   }) as ArticleWithSource[];
   
   console.error(`   検査対象記事数: ${articles.length}件`);
@@ -210,20 +152,32 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   
   for (const article of articles) {
     if (!article.summary) continue;
-    
+
+    const contentAnalysis = {
+      contentLength: article.content?.length || 0,
+      totalLength: article.content?.length || 0,
+      isThinContent: (article.content?.length || 0) < 1000,
+      recommendedMinLength: (article.content?.length || 0) < 1000 ? 60 : 100,
+      recommendedMaxLength: (article.content?.length || 0) < 1000 ? 100 : 200
+    };
+
     const qualityCheck = checkSummaryQuality(
       article.summary,
-      article.detailedSummary || ''
+      article.detailedSummary || '',
+      contentAnalysis
     );
-    
+
     // スコア分布を記録
     if (qualityCheck.score >= 90) scoreDistribution.excellent++;
     else if (qualityCheck.score >= 80) scoreDistribution.good++;
     else if (qualityCheck.score >= 70) scoreDistribution.fair++;
     else scoreDistribution.poor++;
-    
-    // 閾値未満の記事を低品質として記録
-    if (qualityCheck.score < qualityThreshold) {
+
+    // 閾値未満、または文字数不足の記事を低品質として記録
+    const summaryLength = article.summary.length;
+    const isTooShort = summaryLength < 100;
+
+    if (qualityCheck.score < qualityThreshold || isTooShort) {
       lowQualityArticles.push({
         article,
         score: qualityCheck.score,
@@ -234,10 +188,11 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   
   // 検出結果サマリー
   console.error('\n📊 品質分布:');
-  console.error(`   優秀 (90-100): ${scoreDistribution.excellent}件 (${Math.round(scoreDistribution.excellent / articles.length * 100)}%)`);
-  console.error(`   良好 (80-89):  ${scoreDistribution.good}件 (${Math.round(scoreDistribution.good / articles.length * 100)}%)`);
-  console.error(`   普通 (70-79):  ${scoreDistribution.fair}件 (${Math.round(scoreDistribution.fair / articles.length * 100)}%)`);
-  console.error(`   要改善 (<70):  ${scoreDistribution.poor}件 (${Math.round(scoreDistribution.poor / articles.length * 100)}%)`);
+  const denom = articles.length || 1;
+  console.error(`   優秀 (90-100): ${scoreDistribution.excellent}件 (${Math.round(scoreDistribution.excellent / denom * 100)}%)`);
+  console.error(`   良好 (80-89):  ${scoreDistribution.good}件 (${Math.round(scoreDistribution.good / denom * 100)}%)`);
+  console.error(`   普通 (70-79):  ${scoreDistribution.fair}件 (${Math.round(scoreDistribution.fair / denom * 100)}%)`);
+  console.error(`   要改善 (<70):  ${scoreDistribution.poor}件 (${Math.round(scoreDistribution.poor / denom * 100)}%)`);
   
   console.error(`\n✅ 低品質記事検出完了: ${lowQualityArticles.length}件`);
   
@@ -279,7 +234,17 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
       if (content.length < 300) {
         console.error('   ⚠️  コンテンツが短すぎるためスキップ（最低300文字必要）');
         result.status = 'skipped';
-        result.error = 'コンテンツ不足';
+        result.error = 'THIN_CONTENT';
+        if (!isDryRun) {
+          await prisma.article.update({
+            where: { id: article.id },
+            data: {
+              skipReason: 'THIN_CONTENT',
+              summaryError: 'コンテンツ不足（<300文字）',
+              summaryComputedAt: new Date()
+            }
+          });
+        }
         results.push(result);
         continue;
       }
@@ -293,58 +258,77 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
         console.error(`   再生成試行 ${attempt}/${MAX_ATTEMPTS}...`);
         
         try {
-          // 要約とタグを生成
+          // 要約とタグを生成（UnifiedSummaryServiceが内部で品質チェック済み）
           const generated = await generateSummaryAndTags(
             article.title,
             content,
-            attempt > 1  // 2回目以降は再生成フラグを立てる
+            { sourceName: article.source?.name, url: article.url }
           );
-          
-          // 品質チェック
+
+          // checkSummaryQualityで再検証（スクリプトレベルの品質確認）
+          const contentAnalysis = {
+            contentLength: content.length,
+            totalLength: content.length,
+            isThinContent: content.length < 1000,
+            recommendedMinLength: content.length < 1000 ? 60 : 100,
+            recommendedMaxLength: content.length < 1000 ? 100 : 200
+          };
+
           const newQualityCheck = checkSummaryQuality(
             generated.summary,
-            generated.detailedSummary
+            generated.detailedSummary,
+            contentAnalysis
           );
-          
+
           result.afterScore = newQualityCheck.score;
-          
+
           if (newQualityCheck.score >= qualityThreshold) {
             // 品質基準を満たした場合
+            // ただし、再生成後も文字数が100文字未満の場合はskipReasonを設定
+            const stillTooShort = generated.summary.length < 100;
+
             if (!isDryRun) {
-              // データベース更新
-              await prisma.article.update({
-                where: { id: article.id },
-                data: {
-                  summary: generated.summary,
-                  detailedSummary: generated.detailedSummary,
-                  articleType: 'unified',
-                  summaryVersion: 4
-                }
-              });
-              
-              // タグの更新
-              if (generated.tags.length > 0) {
-                for (const tagName of generated.tags) {
-                  const tag = await prisma.tag.upsert({
-                    where: { name: tagName },
-                    update: {},
-                    create: { name: tagName }
-                  });
-                  
-                  await prisma.article.update({
-                    where: { id: article.id },
-                    data: {
+              // データベース更新（記事とタグを同一トランザクションで更新）
+              await prisma.$transaction(async (tx) => {
+                // タグのupsert
+                const tags = generated.tags.length > 0
+                  ? await Promise.all(
+                      generated.tags.map((name) =>
+                        tx.tag.upsert({ where: { name }, update: {}, create: { name } })
+                      )
+                    )
+                  : [];
+
+                // 記事の本文・version・タグを一括更新
+                await tx.article.update({
+                  where: { id: article.id },
+                  data: {
+                    summary: generated.summary,
+                    detailedSummary: generated.detailedSummary,
+                    articleType: generated.articleType,
+                    summaryVersion: generated.summaryVersion,
+                    summaryComputedAt: new Date(),
+                    qualityScore: newQualityCheck.score,
+                    qualityScoreComputedAt: new Date(),
+                    skipReason: stillTooShort ? 'QUALITY_FAILED' : null,
+                    summaryError: stillTooShort ? '再生成後も文字数不足（<100文字）' : null,
+                    ...(tags.length > 0 && {
                       tags: {
-                        connect: { id: tag.id }
+                        set: tags.map(t => ({ id: t.id }))
                       }
-                    }
-                  });
-                }
-              }
+                    })
+                  }
+                });
+              });
             }
-            
-            console.error(`   ✅ 再生成成功! スコア: ${beforeScore} → ${result.afterScore}点`);
-            result.status = 'success';
+
+            if (stillTooShort) {
+              console.error(`   ⚠️  再生成成功だが文字数不足: ${generated.summary.length}文字 → QUALITY_FAILEDマーク`);
+              result.status = 'skipped';
+            } else {
+              console.error(`   ✅ 再生成成功! スコア: ${beforeScore} → ${result.afterScore}点`);
+              result.status = 'success';
+            }
             regenerated = true;
             break;
           } else {
@@ -354,15 +338,46 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
             }
           }
         } catch (error) {
-          console.error(`   ❌ エラー: ${error instanceof Error ? error.message : String(error)}`);
-          result.error = error instanceof Error ? error.message : String(error);
+          const msg = error instanceof Error ? error.message : String(error);
+          const skipReason = extractSkipReason(error);
+
+          if (skipReason) {
+            // サービスの方針で要約生成対象外
+            result.status = 'skipped';
+            result.error = skipReason;
+            console.error(`   ⏭️  ${getSkipReasonLabel(skipReason)}でスキップ`);
+            if (!isDryRun) {
+              await prisma.article.update({
+                where: { id: article.id },
+                data: {
+                  skipReason,
+                  summaryError: msg,
+                  summaryComputedAt: new Date()
+                }
+              });
+            }
+            break;
+          }
+
+          console.error(`   ❌ エラー: ${msg}`);
+          result.error = msg;
           if (attempt < MAX_ATTEMPTS) {
             await sleep(5000);  // エラー時は長めに待機
+          } else if (!isDryRun) {
+            // 最終試行失敗時にsummaryErrorを記録
+            await prisma.article.update({
+              where: { id: article.id },
+              data: {
+                skipReason: null,
+                summaryError: msg,
+                summaryComputedAt: new Date()
+              }
+            });
           }
         }
       }
-      
-      if (!regenerated) {
+
+      if (!regenerated && result.status !== 'skipped') {
         result.status = 'failed';
         console.error(`   ❌ 再生成失敗（${MAX_ATTEMPTS}回試行）`);
       }
@@ -543,11 +558,15 @@ async function main() {
     
   } catch (error) {
     console.error('\n❌ エラーが発生しました:', error);
-    process.exit(1);
+    throw error;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// メイン処理を実行
-main().catch(console.error);
+// メイン処理を実行（終了コードの制御と確実なdisconnect）
+main().catch(async (err) => {
+  console.error('\n❌ エラーが発生しました:', err);
+  try { await prisma.$disconnect(); } catch {}
+  process.exit(1);
+});

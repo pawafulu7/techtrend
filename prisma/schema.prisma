@@ -30,11 +30,11 @@ enum EmbeddingKey {
 }
 
 enum SkipReason {
-  PDF
-  SLIDE
-  THIN_CONTENT
-  CONTENT_FETCH_FAILED
-  QUALITY_FAILED
+  PDF // PDFファイル
+  SLIDE // スライド資料
+  THIN_CONTENT // コンテンツ不足
+  CONTENT_FETCH_FAILED // コンテンツ取得失敗
+  QUALITY_FAILED // 品質基準未達
 }
 
 model Article {
@@ -55,13 +55,13 @@ model Article {
   difficulty             String?
   detailedSummary        String?
   articleType            String?
-  summaryVersion         Int                @default(7)
+  summaryVersion         Int                @default(8)
   category               ArticleCategory?
   contentUpdatedAt       DateTime?          @db.Timestamptz(6)
   qualityScoreComputedAt DateTime?          @db.Timestamptz(6)
   summaryComputedAt      DateTime?          @db.Timestamptz(6)
-  skipReason             SkipReason?
-  summaryError           String?
+  skipReason             SkipReason? // スキップ理由（NULL = 正常生成）
+  summaryError           String? // エラーメッセージ（NULL = エラーなし）
   source                 Source             @relation(fields: [sourceId], references: [id])
   articleViews           ArticleView[]
   favorites              Favorite[]
@@ -79,8 +79,6 @@ model Article {
   @@index([contentUpdatedAt], map: "idx_article_content_updated_at")
   @@index([qualityScoreComputedAt], map: "idx_article_quality_score_computed_at")
   @@index([summaryComputedAt], map: "idx_article_summary_computed_at")
-  @@index([title], map: "idx_article_title_trgm")
-  @@index([summary], map: "idx_article_summary_trgm")
   @@index([skipReason], map: "idx_article_skip_reason")
 }
 

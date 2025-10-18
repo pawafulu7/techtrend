@@ -84,7 +84,7 @@ describe('UnifiedSummaryService', () => {
 
   describe('generate', () => {
     const mockTitle = 'TypeScript 5.0の新機能について';
-    const mockContent = 'TypeScript 5.0では様々な新機能が追加されました...';
+    const mockContent = 'TypeScript 5.0では様々な新機能が追加されました。型パラメータ推論の改善により、既存コードのメンテナンスが容易になり、型安全性が向上します。デコレータの安定化により、フレームワーク間の互換性が確保され、メタプログラミングが強化されます。構成型の最適化により、ビルド時間が短縮され、開発効率が大幅に改善されます。モジュール解決の強化により、ESモジュールとの統合がスムーズになり、パッケージ管理が簡素化されます。エラーメッセージの改善により、デバッグが効率化され、問題解決が迅速化されます。'.repeat(2);
 
 
     it('should validate summary length', async () => {
@@ -125,12 +125,8 @@ describe('UnifiedSummaryService', () => {
       );
     }, 10000);
 
-    it('should handle empty content gracefully', async () => {
-      const result = await service.generate(mockTitle, '');
-      
-      expect(result).toHaveProperty('summary');
-      expect(result).toHaveProperty('detailedSummary');
-      expect(result).toHaveProperty('tags');
+    it('should skip empty content with THIN_CONTENT reason', async () => {
+      await expect(service.generate(mockTitle, '')).rejects.toThrow('SKIP_GENERATION:THIN_CONTENT');
     }, 10000);
 
     it('should handle very long content', async () => {
