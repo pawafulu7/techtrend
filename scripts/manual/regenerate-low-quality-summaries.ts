@@ -31,7 +31,7 @@ const qualityThreshold = Number.isFinite(parsedScore)
   : 70;
 
 interface ArticleWithSource extends Article {
-  source: Source;
+  source: Source | null;
 }
 
 interface LowQualityArticle {
@@ -137,7 +137,7 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
     orderBy: {
       publishedAt: 'desc'
     },
-    take: limit || undefined
+    ...(limit !== undefined ? { take: limit } : {})
   }) as ArticleWithSource[];
   
   console.error(`   検査対象記事数: ${articles.length}件`);
@@ -324,10 +324,11 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
 
             if (stillTooShort) {
               console.error(`   ⚠️  再生成成功だが文字数不足: ${generated.summary.length}文字 → QUALITY_FAILEDマーク`);
+              result.status = 'skipped';
             } else {
               console.error(`   ✅ 再生成成功! スコア: ${beforeScore} → ${result.afterScore}点`);
+              result.status = 'success';
             }
-            result.status = 'success';
             regenerated = true;
             break;
           } else {
@@ -557,11 +558,15 @@ async function main() {
     
   } catch (error) {
     console.error('\n❌ エラーが発生しました:', error);
-    process.exit(1);
+    throw error;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// メイン処理を実行
-main().catch(console.error);
+// メイン処理を実行（終了コードの制御と確実なdisconnect）
+main().catch(async (err) => {
+  console.error('\n❌ エラーが発生しました:', err);
+  try { await prisma.$disconnect(); } catch {}
+  process.exit(1);
+});
