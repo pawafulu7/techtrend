@@ -35,8 +35,27 @@ const envSchema = z.object({
   
   // AI Services
   GEMINI_API_KEY: z.string().optional(),
-  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string()
+    .startsWith('sk-', 'Invalid OpenAI API key format')
+    .optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
+
+  // RAG & Embeddings
+  EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
+  EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
+  EMBEDDING_BATCH_SIZE: z.coerce.number().int().min(1).max(2048).default(100),
+  EMBEDDING_CONCURRENCY: z.coerce.number().int().min(1).max(100).default(50),
+
+  // RAG Configuration
+  RAG_TOP_K: z.coerce.number().int().min(1).max(100).default(10),
+  RAG_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+  RAG_ACTIVE_MODEL: z.string().default('text-embedding-3-small'),
+  RAG_ACTIVE_VERSION: z.coerce.number().int().positive().default(1),
+  RAG_ENABLED: z.enum(['true', 'false']).optional().default('false'),
+
+  // Upstash Redis (for rate limiting in production)
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   
   // Feature Flags
   ENABLE_CACHE: z.enum(['true', 'false']).optional().default('true'),
@@ -140,6 +159,8 @@ export const features = {
   isAnalyticsEnabled: () => env.ENABLE_ANALYTICS === 'true',
   isQualityCheckEnabled: () => env.QUALITY_CHECK_ENABLED === 'true',
   shouldExcludeEventArticles: () => env.EXCLUDE_EVENT_ARTICLES === 'true',
+  isRagEnabled: () => env.RAG_ENABLED === 'true' && !!env.OPENAI_API_KEY,
+  isRateLimitingEnabled: () => !!(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
 };
 
 /**
@@ -170,6 +191,19 @@ export const config = {
     isProduction: () => env.NODE_ENV === 'production',
     isDevelopment: () => env.NODE_ENV === 'development',
     isTest: () => env.NODE_ENV === 'test',
+  },
+  rag: {
+    topK: () => env.RAG_TOP_K,
+    similarityThreshold: () => env.RAG_SIMILARITY_THRESHOLD,
+    activeModel: () => env.RAG_ACTIVE_MODEL,
+    activeVersion: () => env.RAG_ACTIVE_VERSION,
+    isEnabled: () => features.isRagEnabled(),
+  },
+  embedding: {
+    model: () => env.EMBEDDING_MODEL,
+    dimensions: () => env.EMBEDDING_DIMENSIONS,
+    batchSize: () => env.EMBEDDING_BATCH_SIZE,
+    concurrency: () => env.EMBEDDING_CONCURRENCY,
   },
 };
 
