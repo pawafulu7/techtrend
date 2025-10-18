@@ -1,6 +1,8 @@
-import { prisma } from '@/lib/prisma';
-import { ArticleEmbeddingPipeline } from '@/lib/rag/article-embedding-pipeline';
-import { logger } from '@/lib/logger';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load .env.local FIRST
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 /**
  * Embedding Generation Script for Sample Articles
@@ -32,6 +34,11 @@ async function main() {
   // Validate required environment variables
   assertEnv(['OPENAI_API_KEY', 'DATABASE_URL']);
 
+  // Dynamic import after env is loaded (CodexMCP guidance)
+  const { prisma } = await import('@/lib/prisma');
+  const { ArticleEmbeddingPipeline } = await import('@/lib/rag/article-embedding-pipeline');
+  const { logger } = await import('@/lib/logger');
+
   console.log('========================================');
   console.log('Embedding Generation for Sample Articles');
   console.log('========================================\n');
@@ -50,6 +57,7 @@ async function main() {
 
   if (results.length === 0) {
     console.log('\nNo articles to embed. All articles already have embeddings.');
+    await prisma.$disconnect();
     return;
   }
 
@@ -107,16 +115,23 @@ async function main() {
   if (failureCount > 0) {
     process.exitCode = 1;
   }
+
+  // Ensure Prisma disconnects cleanly
+  await prisma.$disconnect();
 }
 
 // Execute main function
 main()
-  .catch(error => {
+  .catch(async error => {
     console.error('\nFATAL ERROR:', error instanceof Error ? error.message : error);
-    logger.error('Embedding generation script failed', { error });
+
+    // Try to disconnect prisma if available
+    try {
+      const { prisma } = await import('@/lib/prisma');
+      await prisma.$disconnect();
+    } catch {
+      // Ignore if prisma not available
+    }
+
     process.exitCode = 1;
-  })
-  .finally(async () => {
-    // Ensure Prisma disconnects cleanly
-    await prisma.$disconnect();
   });

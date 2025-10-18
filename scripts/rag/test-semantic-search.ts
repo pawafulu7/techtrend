@@ -1,6 +1,8 @@
-import { prisma } from '@/lib/prisma';
-import { VectorSearchService } from '@/lib/rag/vector-search-service';
-import { logger } from '@/lib/logger';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load .env.local FIRST
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 /**
  * Semantic Search Testing Script
@@ -41,6 +43,11 @@ async function main() {
   // Validate required environment variables
   assertEnv(['OPENAI_API_KEY', 'DATABASE_URL']);
 
+  // Dynamic import after env is loaded (CodexMCP guidance)
+  const { prisma } = await import('@/lib/prisma');
+  const { VectorSearchService } = await import('@/lib/rag/vector-search-service');
+  const { logger } = await import('@/lib/logger');
+
   console.log('========================================');
   console.log('Semantic Search Test');
   console.log('========================================\n');
@@ -55,6 +62,7 @@ async function main() {
   if (count === 0) {
     console.log('ERROR: No embeddings found in database.');
     console.log('Please run: npx tsx scripts/rag/embed-sample-articles.ts\n');
+    await prisma.$disconnect();
     process.exitCode = 1;
     return;
   }
@@ -125,16 +133,23 @@ async function main() {
   });
 
   console.log('\n========================================\n');
+
+  // Ensure Prisma disconnects cleanly
+  await prisma.$disconnect();
 }
 
 // Execute main function
 main()
-  .catch(error => {
+  .catch(async error => {
     console.error('\nFATAL ERROR:', error instanceof Error ? error.message : error);
-    logger.error('Semantic search test script failed', { error });
+
+    // Try to disconnect prisma if available
+    try {
+      const { prisma } = await import('@/lib/prisma');
+      await prisma.$disconnect();
+    } catch {
+      // Ignore if prisma not available
+    }
+
     process.exitCode = 1;
-  })
-  .finally(async () => {
-    // Ensure Prisma disconnects cleanly
-    await prisma.$disconnect();
   });
