@@ -27,6 +27,15 @@ jest.mock('@/lib/rate-limiter', () => ({
 
 jest.mock('@/lib/rag/vector-search-service');
 
+// Helper function to create test requests
+function makeRequest(body: any): NextRequest {
+  return new NextRequest('http://localhost:3000/api/rag/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 describe('POST /api/rag/search', () => {
   let mockGetServerSession: jest.Mock;
   let mockRateLimiter: { limit: jest.Mock };
@@ -55,13 +64,10 @@ describe('POST /api/rag/search', () => {
     it('should reject unauthenticated requests (401)', async () => {
       mockGetServerSession.mockResolvedValueOnce(null);
 
-      const request = new NextRequest('http://localhost:3000/api/rag/search', {
-        method: 'POST',
-        body: JSON.stringify({
-          query: 'test query',
-          topK: 5,
-          similarityThreshold: 0.5,
-        }),
+      const request = makeRequest({
+        query: 'test query',
+        topK: 5,
+        similarityThreshold: 0.5,
       });
 
       const response = await POST(request);
@@ -77,13 +83,10 @@ describe('POST /api/rag/search', () => {
         user: { id: 'test-user-1', email: 'test@example.com' },
       });
 
-      const request = new NextRequest('http://localhost:3000/api/rag/search', {
-        method: 'POST',
-        body: JSON.stringify({
-          query: 'test query',
-          topK: 5,
-          similarityThreshold: 0.5,
-        }),
+      const request = makeRequest({
+        query: 'test query',
+        topK: 5,
+        similarityThreshold: 0.5,
       });
 
       const response = await POST(request);
@@ -102,13 +105,10 @@ describe('POST /api/rag/search', () => {
         reset: Date.now() + 60000,
       });
 
-      const request = new NextRequest('http://localhost:3000/api/rag/search', {
-        method: 'POST',
-        body: JSON.stringify({
-          query: 'test query',
-          topK: 5,
-          similarityThreshold: 0.5,
-        }),
+      const request = makeRequest({
+        query: 'test query',
+        topK: 5,
+        similarityThreshold: 0.5,
       });
 
       const response = await POST(request);
@@ -125,13 +125,10 @@ describe('POST /api/rag/search', () => {
     });
 
     it('should include rate limit headers in successful responses', async () => {
-      const request = new NextRequest('http://localhost:3000/api/rag/search', {
-        method: 'POST',
-        body: JSON.stringify({
-          query: 'test query',
-          topK: 5,
-          similarityThreshold: 0.5,
-        }),
+      const request = makeRequest({
+        query: 'test query',
+        topK: 5,
+        similarityThreshold: 0.5,
       });
 
       const response = await POST(request);
@@ -254,30 +251,27 @@ describe('POST /api/rag/search', () => {
   });
 
   describe('Response Headers', () => {
-    it('should include proper CORS headers', async () => {
-      const request = new NextRequest('http://localhost:3000/api/rag/search', {
-        method: 'POST',
-        body: JSON.stringify({
-          query: 'test query',
-          topK: 5,
-          similarityThreshold: 0.5,
-        }),
+    it('should include proper response headers', async () => {
+      const request = makeRequest({
+        query: 'test query',
+        topK: 5,
+        similarityThreshold: 0.5,
       });
 
       const response = await POST(request);
 
-      // Should include security headers
+      // Should include proper headers
       expect(response.headers.get('Content-Type')).toBe('application/json');
+
+      // Note: CORS headers (Access-Control-Allow-Origin) are handled by Next.js middleware
+      // and may not be present in unit test responses
     });
 
     it('should include rate limit headers', async () => {
-      const request = new NextRequest('http://localhost:3000/api/rag/search', {
-        method: 'POST',
-        body: JSON.stringify({
-          query: 'test query',
-          topK: 5,
-          similarityThreshold: 0.5,
-        }),
+      const request = makeRequest({
+        query: 'test query',
+        topK: 5,
+        similarityThreshold: 0.5,
       });
 
       const response = await POST(request);

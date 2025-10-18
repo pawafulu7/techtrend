@@ -226,8 +226,20 @@ export class VectorSearchService {
   constructor(prisma: PrismaClient, userId?: string) {
     this.prisma = prisma;
 
-    // Determine version based on user ID (50/50 split)
-    this.activeVersion = userId && userId.endsWith('0') ? 1 : 2;
+    // Determine version based on user ID (true 50/50 split using hash)
+    // Note: endsWith('0') gives ~10%, not 50%. Use stable hash for true distribution.
+    const bucket = userId ? (simpleHash(userId) % 2) : 0;
+    this.activeVersion = bucket === 0 ? 1 : 2;
+
+    // Simple hash function for demo (use murmurhash or similar in production)
+    function simpleHash(str: string): number {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      return Math.abs(hash);
+    }
   }
 }
 ```

@@ -123,18 +123,40 @@ async function main() {
   await prisma.$disconnect();
 }
 
+// Signal handlers for clean shutdown
+process.on('SIGINT', async () => {
+  console.log('\n\nReceived SIGINT, shutting down gracefully...');
+  try {
+    const { prisma } = await import('@/lib/prisma');
+    await prisma.$disconnect();
+  } catch {
+    // Ignore if prisma not available
+  }
+  process.exit(130);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n\nReceived SIGTERM, shutting down gracefully...');
+  try {
+    const { prisma } = await import('@/lib/prisma');
+    await prisma.$disconnect();
+  } catch {
+    // Ignore if prisma not available
+  }
+  process.exit(143);
+});
+
 // Execute main function
-main()
-  .catch(async error => {
-    console.error('\nFATAL ERROR:', error instanceof Error ? error.message : error);
+main().catch(async (error) => {
+  console.error('\nFATAL ERROR:', error instanceof Error ? error.message : error);
 
-    // Try to disconnect prisma if available
-    try {
-      const { prisma } = await import('@/lib/prisma');
-      await prisma.$disconnect();
-    } catch {
-      // Ignore if prisma not available
-    }
+  // Try to disconnect prisma if available
+  try {
+    const { prisma } = await import('@/lib/prisma');
+    await prisma.$disconnect();
+  } catch {
+    // Ignore if prisma not available
+  }
 
-    process.exitCode = 1;
-  });
+  process.exitCode = 1;
+});
