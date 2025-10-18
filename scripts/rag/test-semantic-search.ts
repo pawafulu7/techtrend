@@ -1,8 +1,8 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// Load .env.local FIRST
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+// Load .env.local FIRST (override any existing env vars)
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true });
 
 /**
  * Semantic Search Testing Script
@@ -82,7 +82,7 @@ async function main() {
 
       const results = await searchService.search(query, {
         topK: 5,
-        similarityThreshold: 0.5,
+        similarityThreshold: 0.1,
         embeddingKey: 'summary',
       });
 
@@ -90,7 +90,7 @@ async function main() {
       totalResults += results.length;
 
       if (results.length === 0) {
-        console.log('\nNo results found (similarity < 0.5)\n');
+        console.log('\nNo results found (similarity < 0.1)\n');
         continue;
       }
 

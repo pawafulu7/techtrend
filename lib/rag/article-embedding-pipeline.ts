@@ -81,7 +81,7 @@ export class ArticleEmbeddingPipeline {
           VALUES (
             gen_random_uuid()::text,
             ${article.id},
-            ${key}::text,
+            ${key}::"EmbeddingKey",
             ${vectorString}::vector,
             ${this.activeModel},
             ${this.activeVersion},

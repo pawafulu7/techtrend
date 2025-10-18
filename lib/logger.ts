@@ -69,4 +69,7 @@ export const createLogger = (context: string) => {
   return logger.child({ context });
 };
 
+// Named export for named imports
+export { logger };
+
 export default logger;

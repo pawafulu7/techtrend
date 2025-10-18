@@ -72,7 +72,7 @@ export class VectorSearchService {
       const embeddingKeyFilter =
         embeddingKey === 'both'
           ? Prisma.sql`AND e."embeddingKey" IN ('title', 'summary')`
-          : Prisma.sql`AND e."embeddingKey" = ${embeddingKey}::text`;
+          : Prisma.sql`AND e."embeddingKey" = ${embeddingKey}::"EmbeddingKey"`;
 
       // Build source filter (SECURE: parameter binding)
       const sourceFilter =

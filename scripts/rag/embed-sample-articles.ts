@@ -1,8 +1,8 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// Load .env.local FIRST
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+// Load .env.local FIRST (override any existing env vars)
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true });
 
 /**
  * Embedding Generation Script for Sample Articles
@@ -46,14 +46,17 @@ async function main() {
   console.log('Configuration:');
   console.log(`  Model: ${process.env.RAG_ACTIVE_MODEL || 'text-embedding-3-small'}`);
   console.log(`  Version: ${process.env.RAG_ACTIVE_VERSION || '1'}`);
-  console.log(`  Batch Size: 100 articles\n`);
+
+  // Batch size for embedding generation
+  const batchSize = 100;
+  console.log(`  Batch Size: ${batchSize} articles\n`);
 
   const pipeline = new ArticleEmbeddingPipeline(prisma);
 
   console.log('Finding articles without embeddings...');
 
-  // Process articles without embeddings (limit: 100)
-  const results = await pipeline.embedArticlesWithoutEmbeddings(100);
+  // Process articles without embeddings
+  const results = await pipeline.embedArticlesWithoutEmbeddings(batchSize);
 
   if (results.length === 0) {
     console.log('\nNo articles to embed. All articles already have embeddings.');
