@@ -13,7 +13,9 @@
  */
 
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
+import { EmbeddingService } from '@/lib/rag/embedding-service';
 import { PrismaClient } from '@prisma/client';
+import { ZodError } from 'zod';
 
 describe('RAG Security - SQL Injection Prevention', () => {
   let searchService: VectorSearchService;
@@ -22,10 +24,17 @@ describe('RAG Security - SQL Injection Prevention', () => {
   beforeAll(async () => {
     prisma = new PrismaClient();
     searchService = new VectorSearchService(prisma);
+
+    // Mock OpenAI API to avoid external dependencies and flakiness
+    const mockEmbedding = Array.from({ length: 1536 }, () => 0.01);
+    jest
+      .spyOn(EmbeddingService.prototype, 'generateEmbedding')
+      .mockResolvedValue(mockEmbedding);
   });
 
   afterAll(async () => {
     await prisma.$disconnect();
+    jest.restoreAllMocks();
   });
 
   describe('Parameter Sanitization', () => {
@@ -75,13 +84,13 @@ describe('RAG Security - SQL Injection Prevention', () => {
       const queryWithSpecialChars = "test's \"query\" with <HTML> & chars; DROP TABLE Article; --";
 
       // Should not throw - query text is for embedding generation, not SQL
-      // But OpenAI API might reject it for other reasons
-      await expect(
-        searchService.search(queryWithSpecialChars, {
-          topK: 5,
-          similarityThreshold: 0.5,
-        })
-      ).resolves.toBeDefined();
+      // OpenAI API is mocked, so this tests search layer safety only
+      const result = await searchService.search(queryWithSpecialChars, {
+        topK: 5,
+        similarityThreshold: 0.5,
+      });
+
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 
@@ -92,7 +101,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
           topK: -1,
           similarityThreshold: 0.5,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(ZodError);
     });
 
     it('should reject invalid topK (too large)', async () => {
@@ -101,7 +110,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
           topK: 101,
           similarityThreshold: 0.5,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(ZodError);
     });
 
     it('should reject invalid similarityThreshold (< 0)', async () => {
@@ -110,7 +119,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
           topK: 5,
           similarityThreshold: -0.1,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(ZodError);
     });
 
     it('should reject invalid similarityThreshold (> 1)', async () => {
@@ -119,7 +128,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
           topK: 5,
           similarityThreshold: 1.5,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(ZodError);
     });
 
     it('should reject too many sourceIds (> 50)', async () => {
@@ -131,7 +140,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
           similarityThreshold: 0.5,
           sourceIds: tooManySourceIds,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(ZodError);
     });
 
     it('should reject too many tags (> 20)', async () => {
@@ -143,7 +152,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
           similarityThreshold: 0.5,
           tags: tooManyTags,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(ZodError);
     });
 
     it('should reject duplicate sourceIds', async () => {
@@ -153,7 +162,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
           similarityThreshold: 0.5,
           sourceIds: ['source1', 'source1', 'source2'],
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(ZodError);
     });
 
     it('should reject duplicate tags', async () => {
@@ -163,7 +172,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
           similarityThreshold: 0.5,
           tags: ['tag1', 'tag1', 'tag2'],
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(ZodError);
     });
 
     it('should reject empty sourceIds after trim', async () => {
@@ -173,7 +182,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
           similarityThreshold: 0.5,
           sourceIds: ['source1', '   ', 'source2'],
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(ZodError);
     });
 
     it('should reject empty tags after trim', async () => {
@@ -183,7 +192,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
           similarityThreshold: 0.5,
           tags: ['tag1', '   ', 'tag2'],
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(ZodError);
     });
   });
 

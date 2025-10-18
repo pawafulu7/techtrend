@@ -23,9 +23,10 @@ const envSchema = z.object({
   REDIS_PORT: numericStringWithDefault('6379'),
   REDIS_PASSWORD: z.string().optional(),
   
-  // Authentication
+  // Authentication (Auth.js v5 supports both AUTH_* and NEXTAUTH_*)
   NEXTAUTH_URL: optionalUrl,
-  NEXTAUTH_SECRET: z.string().min(32),
+  AUTH_SECRET: z.string().min(32).optional(),
+  NEXTAUTH_SECRET: z.string().min(32).optional(),
   
   // OAuth Providers (optional)
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -83,7 +84,26 @@ const envSchema = z.object({
   // Testing
   CI: z.enum(['true', 'false']).optional(),
   TEST_DATABASE_URL: z.string().optional(),
-});
+})
+  .superRefine((env, ctx) => {
+    // Ensure at least one auth secret is provided
+    if (!env.AUTH_SECRET && !env.NEXTAUTH_SECRET) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AUTH_SECRET'],
+        message: 'Either AUTH_SECRET or NEXTAUTH_SECRET must be provided',
+      });
+    }
+  })
+  .transform((env) => {
+    // Normalize: use AUTH_SECRET as primary, fallback to NEXTAUTH_SECRET
+    const secret = env.AUTH_SECRET ?? env.NEXTAUTH_SECRET!;
+    return {
+      ...env,
+      AUTH_SECRET: secret,
+      NEXTAUTH_SECRET: env.NEXTAUTH_SECRET ?? secret,
+    };
+  });
 
 // Type inference for the environment
 export type Env = z.infer<typeof envSchema>;
@@ -102,41 +122,64 @@ function formatValidationErrors(errors: z.ZodError): string {
 // Lazy initialization
 let _env: Env | null = null;
 
+// Development fallback secret
+const DEV_AUTH_SECRET = 'development-secret-key-change-me-in-production-min-32-chars';
+
+/**
+ * Check if ZodError is only about missing auth secrets
+ */
+function isAuthSecretOnlyError(error: z.ZodError): boolean {
+  return error.issues.every((issue) => {
+    const path = issue.path.join('.');
+    return path === 'AUTH_SECRET' || path === 'NEXTAUTH_SECRET';
+  });
+}
+
 /**
  * Get validated environment variables
  * Throws on first access if validation fails
  */
 export function getEnv(): Env {
   if (_env === null) {
-    try {
-      _env = envSchema.parse(process.env);
-    } catch (_error) {
-      if (_error instanceof z.ZodError) {
-        const errorMessage = `
+    const parsed = envSchema.safeParse(process.env);
+
+    if (parsed.success) {
+      _env = parsed.data;
+      return _env;
+    }
+
+    // Validation failed
+    const errorMessage = `
 Environment validation failed:
-${formatValidationErrors(_error)}
+${formatValidationErrors(parsed.error)}
 
 Please check your .env file and ensure all required variables are set correctly.
-        `.trim();
-        
-        // In development, log the error but continue with defaults
-        if (process.env.NODE_ENV === 'development') {
-          logger.warn(errorMessage);
-          // Use safe defaults for development
-          _env = envSchema.parse({
-            ...process.env,
-            NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'development-secret-key-should-be-replaced-in-production',
-          });
-        } else {
-          // In production, fail fast
-          throw new Error(errorMessage);
-        }
-      } else {
-        throw _error;
+    `.trim();
+
+    // In development, allow fallback ONLY for auth secret issues
+    if (process.env.NODE_ENV === 'development' && isAuthSecretOnlyError(parsed.error)) {
+      logger.warn(errorMessage);
+      logger.warn('Using development auth secret fallback');
+
+      const retryParsed = envSchema.safeParse({
+        ...process.env,
+        AUTH_SECRET: process.env.AUTH_SECRET || DEV_AUTH_SECRET,
+        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || DEV_AUTH_SECRET,
+      });
+
+      if (retryParsed.success) {
+        _env = retryParsed.data;
+        return _env;
       }
+
+      // Retry failed - throw original error
+      throw new Error(errorMessage);
     }
+
+    // Production or non-auth errors: fail fast
+    throw new Error(errorMessage);
   }
-  
+
   return _env;
 }
 

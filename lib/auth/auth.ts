@@ -6,13 +6,14 @@ import GoogleProvider from 'next-auth/providers/google';
 import GitHubProvider from 'next-auth/providers/github';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import { env } from '@/lib/config/env';
 // Use Nodemailer if Gmail is configured, otherwise use Resend
 import { sendVerificationRequest } from './email-provider';
 import { sendVerificationRequestNodemailer } from './email-provider-nodemailer';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // Ensure secret is picked up in all environments
-  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+  // Use normalized auth secret from env config
+  secret: env.AUTH_SECRET,
   adapter: PrismaAdapter(prisma),
   
   providers: [

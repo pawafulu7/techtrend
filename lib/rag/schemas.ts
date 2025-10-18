@@ -28,10 +28,6 @@ export const searchOptionsSchema = z.object({
     .number()
     .min(0, 'Similarity threshold must be between 0 and 1')
     .max(1, 'Similarity threshold must be between 0 and 1')
-    .refine(
-      (value) => value >= 0 && value <= 1,
-      'Similarity threshold must be a valid number between 0 and 1'
-    )
     .default(0.7),
 
   sourceIds: z
@@ -50,15 +46,11 @@ export const searchOptionsSchema = z.object({
   tags: z
     .array(
       z.string()
+        .trim()
         .min(1, 'Tag cannot be empty')
         .max(50, 'Tag name too long (max 50 characters)')
-        .transform((tag) => tag.trim())
     )
     .max(20, 'Too many tag filters (max 20)')
-    .refine(
-      (arr) => arr.every((tag) => tag.length > 0),
-      'Empty tags are not allowed after trimming'
-    )
     .refine(
       (arr) => new Set(arr).size === arr.length,
       'Duplicate tags are not allowed'
@@ -77,31 +69,30 @@ export type SearchOptions = z.infer<typeof searchOptionsSchema>;
  *
  * Validates incoming POST /api/rag/search requests
  */
-export const searchRequestSchema = z.object({
-  query: z
-    .string()
-    .min(1, 'Query cannot be empty')
-    .max(500, 'Query too long (max 500 characters)')
-    .transform((q) => q.trim())
-    .refine(
-      (q) => q.length > 0,
-      'Query cannot be empty after trimming'
-    ),
+export const searchRequestSchema = z
+  .object({
+    query: z
+      .string()
+      .min(1, 'Query cannot be empty')
+      .max(500, 'Query too long (max 500 characters)')
+      .transform((q) => q.trim())
+      .refine((q) => q.length > 0, 'Query cannot be empty after trimming'),
 
-  topK: z.coerce.number().optional(),
-  similarityThreshold: z.coerce.number().optional(),
+    topK: z.coerce.number().optional(),
+    similarityThreshold: z.coerce.number().optional(),
 
-  filters: z
-    .object({
-      sources: z.array(z.string()).optional(),
-      tags: z.array(z.string()).optional(),
-    })
-    .partial()
-    .strict()
-    .default({}),
+    filters: z
+      .object({
+        sources: z.array(z.string()).optional(),
+        tags: z.array(z.string()).optional(),
+      })
+      .partial()
+      .strict()
+      .default({}),
 
-  embeddingKey: z.enum(['title', 'summary', 'both']).optional(),
-});
+    embeddingKey: z.enum(['title', 'summary', 'both']).optional(),
+  })
+  .strict();
 
 export type SearchRequest = z.infer<typeof searchRequestSchema>;
 

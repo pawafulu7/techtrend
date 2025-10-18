@@ -6,7 +6,7 @@ import { searchRequestSchema } from '@/lib/rag/schemas';
 import { ragSearchRateLimit, checkRateLimit, RateLimitError } from '@/lib/rate-limiter';
 import { logger, sanitizeError } from '@/lib/logger';
 import { ZodError } from 'zod';
-import OpenAI from 'openai';
+import { APIError } from 'openai/error';
 
 /**
  * RAG Semantic Search API
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle OpenAI API errors
-    if (error instanceof OpenAI.APIError) {
+    if (error instanceof APIError) {
       const status = error.status || 500;
 
       // Map OpenAI errors to appropriate HTTP status
