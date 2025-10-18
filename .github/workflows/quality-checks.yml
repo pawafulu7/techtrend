@@ -296,17 +296,22 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
 
+      - name: Enable pgvector extension
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
       - name: Setup test database (E2E)
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test  # CI環境のローカルサービス用
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
         run: |
           npx prisma generate
-          npx prisma db push
+          npx prisma migrate deploy
           npx tsx prisma/seed-test.ts
 
       - name: Run E2E tests
