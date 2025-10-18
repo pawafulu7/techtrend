@@ -23,33 +23,51 @@ enum ArticleCategory {
   architecture
 }
 
+enum EmbeddingKey {
+  title
+  summary
+  content
+}
+
+enum SkipReason {
+  PDF
+  SLIDE
+  THIN_CONTENT
+  CONTENT_FETCH_FAILED
+  QUALITY_FAILED
+}
+
 model Article {
-  id                     String           @id @default(cuid())
+  id                     String             @id @default(cuid())
   title                  String
   translatedTitle        String? // 日本語翻訳タイトル
-  url                    String           @unique
+  url                    String             @unique
   summary                String?
   thumbnail              String?
   content                String?
-  publishedAt            DateTime         @db.Timestamptz(6)
+  publishedAt            DateTime           @db.Timestamptz(6)
   sourceId               String
-  bookmarks              Int              @default(0)
-  qualityScore           Float            @default(0)
-  userVotes              Int              @default(0)
-  createdAt              DateTime         @default(now()) @db.Timestamptz(6)
-  updatedAt              DateTime         @updatedAt @db.Timestamptz(6)
+  bookmarks              Int                @default(0)
+  qualityScore           Float              @default(0)
+  userVotes              Int                @default(0)
+  createdAt              DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime           @updatedAt @db.Timestamptz(6)
   difficulty             String?
   detailedSummary        String?
   articleType            String?
-  summaryVersion         Int              @default(7)
+  summaryVersion         Int                @default(7)
   category               ArticleCategory?
-  contentUpdatedAt       DateTime?        @db.Timestamptz(6)
-  qualityScoreComputedAt DateTime?        @db.Timestamptz(6)
-  summaryComputedAt      DateTime?        @db.Timestamptz(6)
-  source                 Source           @relation(fields: [sourceId], references: [id])
+  contentUpdatedAt       DateTime?          @db.Timestamptz(6)
+  qualityScoreComputedAt DateTime?          @db.Timestamptz(6)
+  summaryComputedAt      DateTime?          @db.Timestamptz(6)
+  skipReason             SkipReason?
+  summaryError           String?
+  source                 Source             @relation(fields: [sourceId], references: [id])
   articleViews           ArticleView[]
   favorites              Favorite[]
-  tags                   Tag[]            @relation("ArticleToTag")
+  tags                   Tag[]              @relation("ArticleToTag")
+  embeddings             ArticleEmbedding[]
+  chunks                 ArticleChunk[]
 
   @@index([publishedAt(sort: Desc)], map: "idx_article_published_at")
   @@index([sourceId], map: "idx_article_source_id")
@@ -61,6 +79,9 @@ model Article {
   @@index([contentUpdatedAt], map: "idx_article_content_updated_at")
   @@index([qualityScoreComputedAt], map: "idx_article_quality_score_computed_at")
   @@index([summaryComputedAt], map: "idx_article_summary_computed_at")
+  @@index([title], map: "idx_article_title_trgm")
+  @@index([summary], map: "idx_article_summary_trgm")
+  @@index([skipReason], map: "idx_article_skip_reason")
 }
 
 model Source {
@@ -198,4 +219,36 @@ model UserDeletionLog {
 
   @@index([deletedAt], map: "idx_user_deletion_log_deleted_at")
   @@index([email], map: "idx_user_deletion_log_email")
+}
+
+model ArticleEmbedding {
+  id           String                      @id @default(cuid())
+  articleId    String
+  embeddingKey EmbeddingKey
+  embedding    Unsupported("vector(1536)")
+  model        String                      @default("text-embedding-3-small")
+  version      Int                         @default(1)
+  computedAt   DateTime                    @default(now()) @db.Timestamptz(6)
+  article      Article                     @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, embeddingKey, model, version])
+  @@index([articleId], map: "idx_article_embedding_article_id")
+  @@index([model, version], map: "idx_article_embedding_model_version")
+  @@index([embeddingKey], map: "idx_article_embedding_key")
+  @@index([computedAt], map: "idx_article_embedding_computed_at")
+}
+
+model ArticleChunk {
+  id         String                      @id @default(cuid())
+  articleId  String
+  chunkIndex Int
+  text       String
+  embedding  Unsupported("vector(1536)")
+  model      String                      @default("text-embedding-3-small")
+  version    Int                         @default(1)
+  createdAt  DateTime                    @default(now()) @db.Timestamptz(6)
+  article    Article                     @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, chunkIndex, model, version])
+  @@index([articleId, chunkIndex], map: "idx_article_chunk_article_index")
 }
