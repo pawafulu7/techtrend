@@ -1,7 +1,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { EmbeddingService } from './embedding-service';
 import { logger, sanitizeError } from '@/lib/logger';
-import { searchOptionsSchema, SearchOptions } from './schemas';
+import { searchOptionsSchema, SearchOptionsInput } from './schemas';
 
 /**
  * Vector Search Service
@@ -46,21 +46,21 @@ export class VectorSearchService {
    * @param options - Search options (topK, filters, etc.)
    * @returns Array of articles ranked by similarity
    */
-  async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
+  async search(query: string, options: SearchOptionsInput = {}): Promise<SearchResult[]> {
     try {
       // Validate options with Zod schema
       const validated = searchOptionsSchema.parse(options);
 
       const { topK, similarityThreshold, sourceIds, tags, embeddingKey } = validated;
 
-      logger.info('Vector search started', {
+      logger.info({
         query: query.substring(0, 50),
         topK,
         similarityThreshold,
         embeddingKey,
         hasSourceFilter: !!sourceIds,
         hasTagFilter: !!tags,
-      });
+      }, 'Vector search started');
 
       // Generate query embedding
       const queryEmbedding = await this.embeddingService.embedText(query);
@@ -117,7 +117,7 @@ export class VectorSearchService {
         LIMIT ${topK}
       `;
 
-      logger.info('Vector search completed', {
+      logger.info({
         query: query.substring(0, 50),
         resultCount: results.length,
         model: this.activeModel,
@@ -127,18 +127,18 @@ export class VectorSearchService {
           results.length > 0
             ? (results.reduce((sum, r) => sum + r.similarity, 0) / results.length).toFixed(4)
             : 0,
-      });
+      }, 'Vector search completed');
 
       return results;
     } catch (error) {
-      logger.error('Vector search failed', {
+      logger.error({
         error: sanitizeError(error),
         query: query.substring(0, 50),
         options: {
           topK: options.topK,
           embeddingKey: options.embeddingKey,
         },
-      });
+      }, 'Vector search failed');
 
       throw error;
     }

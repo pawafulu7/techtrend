@@ -81,24 +81,24 @@ export class EmbeddingService {
         if (this.shouldRetry(error, retryCount)) {
           const backoffMs = this.calculateBackoff(retryCount, error);
 
-          logger.warn('Rate limited or transient error, retrying', {
+          logger.warn({
             attempt: retryCount + 1,
             maxRetries: this.config.maxRetries,
             backoffMs,
             errorType: error instanceof Error ? error.constructor.name : 'Unknown',
-          });
+          }, 'Rate limited or transient error, retrying');
 
           await this.sleep(backoffMs);
           return this.embedText(text, retryCount + 1);
         }
 
         // Log error without exposing API key
-        logger.error('Embedding generation failed', {
+        logger.error({
           error: sanitizeError(error),
           textLength: trimmedText.length,
           textPreview: trimmedText.substring(0, 50),
           model: this.config.model,
-        });
+        }, 'Embedding generation failed');
 
         throw error;
       }

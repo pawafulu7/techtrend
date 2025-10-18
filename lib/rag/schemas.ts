@@ -62,7 +62,9 @@ export const searchOptionsSchema = z.object({
     .default('summary'),
 });
 
-export type SearchOptions = z.infer<typeof searchOptionsSchema>;
+// Separate input and output types for Zod v3 compatibility
+export type SearchOptionsInput = z.input<typeof searchOptionsSchema>;
+export type SearchOptions = z.output<typeof searchOptionsSchema>;
 
 /**
  * Search request schema for API endpoint

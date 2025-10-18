@@ -96,12 +96,12 @@ export class ArticleEmbeddingPipeline {
         embeddingsCreated.push(key);
       }
 
-      logger.info('Article embeddings created', {
+      logger.info({
         articleId: article.id,
         keys: embeddingsCreated,
         model: this.activeModel,
         version: this.activeVersion,
-      });
+      }, 'Article embeddings created');
 
       return {
         articleId: article.id,
@@ -109,10 +109,10 @@ export class ArticleEmbeddingPipeline {
         success: true,
       };
     } catch (error) {
-      logger.error('Article embedding failed', {
+      logger.error({
         articleId: article.id,
         error: sanitizeError(error),
-      });
+      }, 'Article embedding failed');
 
       return {
         articleId: article.id,
@@ -152,12 +152,12 @@ export class ArticleEmbeddingPipeline {
     const successCount = results.filter(r => r.success).length;
     const failureCount = results.length - successCount;
 
-    logger.info('Batch embedding completed', {
+    logger.info({
       total: results.length,
       success: successCount,
       failure: failureCount,
       successRate: ((successCount / results.length) * 100).toFixed(2) + '%',
-    });
+    }, 'Batch embedding completed');
 
     return results;
   }
@@ -191,11 +191,12 @@ export class ArticleEmbeddingPipeline {
       LIMIT ${limit}
     `;
 
-    logger.info(`Found ${articlesWithoutEmbeddings.length} articles without embeddings`, {
+    logger.info({
+      count: articlesWithoutEmbeddings.length,
       model: this.activeModel,
       version: this.activeVersion,
       limit,
-    });
+    }, `Found ${articlesWithoutEmbeddings.length} articles without embeddings`);
 
     if (articlesWithoutEmbeddings.length === 0) {
       logger.info('No articles to embed');

@@ -26,14 +26,15 @@ import { APIError } from 'openai/error';
 const searchService = new VectorSearchService(prisma);
 
 export async function POST(request: NextRequest) {
+  // Layer 1: Authentication check (REQUIRED)
+  const session = await auth();
+
   try {
-    // Layer 1: Authentication check (REQUIRED)
-    const session = await auth();
 
     if (!session?.user) {
-      logger.warn('Unauthorized RAG search attempt', {
+      logger.warn({
         ip: request.headers.get('x-forwarded-for') || 'unknown',
-      });
+      }, 'Unauthorized RAG search attempt');
 
       return NextResponse.json(
         { error: 'Unauthorized - Authentication required' },
@@ -47,11 +48,11 @@ export async function POST(request: NextRequest) {
         await checkRateLimit(`rag:search:${session.user.id}`, ragSearchRateLimit);
       } catch (error) {
         if (error instanceof RateLimitError) {
-          logger.warn('Rate limit exceeded', {
+          logger.warn({
             userId: session.user.id,
             limit: error.limit,
             remaining: error.remaining,
-          });
+          }, 'Rate limit exceeded');
 
           return NextResponse.json(
             {
@@ -79,12 +80,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedRequest = searchRequestSchema.parse(body);
 
-    logger.info('RAG search request', {
+    logger.info({
       userId: session.user.id,
       queryPreview: validatedRequest.query.substring(0, 50),
       topK: validatedRequest.topK,
       embeddingKey: validatedRequest.embeddingKey,
-    });
+    }, 'RAG search request');
 
     // Layer 4: Execute search (SECURE - Prisma.sql in VectorSearchService)
     const results = await searchService.search(validatedRequest.query, {
@@ -106,10 +107,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Handle Zod validation errors
     if (error instanceof ZodError) {
-      logger.warn('Invalid RAG search request', {
+      logger.warn({
         userId: session?.user?.id,
         errors: error.errors,
-      });
+      }, 'Invalid RAG search request');
 
       return NextResponse.json(
         {
@@ -144,10 +145,10 @@ export async function POST(request: NextRequest) {
         );
       } else if (status >= 500) {
         // OpenAI server errors
-        logger.error('OpenAI API error', {
+        logger.error({
           error: sanitizeError(error),
           userId: session?.user?.id,
-        });
+        }, 'OpenAI API error');
 
         return NextResponse.json(
           {
@@ -158,10 +159,10 @@ export async function POST(request: NextRequest) {
         );
       } else {
         // OpenAI 4xx client errors
-        logger.error('OpenAI client error', {
+        logger.error({
           error: sanitizeError(error),
           userId: session?.user?.id,
-        });
+        }, 'OpenAI client error');
 
         return NextResponse.json(
           {
@@ -175,10 +176,10 @@ export async function POST(request: NextRequest) {
 
     // Handle database connection errors
     if (error instanceof Error && error.message.toLowerCase().includes('prisma')) {
-      logger.error('Database connection error', {
+      logger.error({
         error: sanitizeError(error),
         userId: session?.user?.id,
-      });
+      }, 'Database connection error');
 
       return NextResponse.json(
         {
@@ -190,10 +191,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Other unexpected errors
-    logger.error('RAG search API error', {
+    logger.error({
       error: sanitizeError(error),
       userId: session?.user?.id,
-    });
+    }, 'RAG search API error');
 
     return NextResponse.json(
       {
