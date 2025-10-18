@@ -161,7 +161,7 @@ describe('GeminiTransportImpl', () => {
   });
 
   describe('サーキットブレーカー', () => {
-    // TODO: Fix flaky timeout issue - see GitHub issue #XXX
+    // TODO: Fix flaky timeout issue - see GitHub issue #141
     it.skip(
       'should open circuit breaker after consecutive errors',
       async () => {
@@ -192,7 +192,7 @@ describe('GeminiTransportImpl', () => {
       60000
     );
 
-    // TODO: Fix assertion failure - see GitHub issue #XXX
+    // TODO: Fix assertion failure - see GitHub issue #141
     it.skip(
       'should reset consecutive errors on success',
       async () => {

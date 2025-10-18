@@ -64,7 +64,7 @@ const customJestConfig = {
 
 // Export async config to override Next.js default transformIgnorePatterns
 const nextJestConfig = createJestConfig(customJestConfig);
-const esmAllowList = ['geist', 'node-fetch', 'next-auth', '@auth', 'p-limit', 'yocto-queue'];
+const esmAllowList = ['geist', 'node-fetch', 'next-auth', '@auth(?:[+/].+)?', 'p-limit', 'yocto-queue'];
 const esmPattern = esmAllowList.join('|');
 
 module.exports = async () => {
@@ -72,8 +72,7 @@ module.exports = async () => {
   return {
     ...config,
     transformIgnorePatterns: [
-      `/node_modules/(?!.pnpm)(?!(?:${esmPattern})/)`,
-      `/node_modules/.pnpm/(?!(?:${esmPattern})@)`,
+      `/node_modules/(?!(?:${esmPattern})/)`,
       '^.+\\.module\\.(css|sass|scss)$',
     ],
   };

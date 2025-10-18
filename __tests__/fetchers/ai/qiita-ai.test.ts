@@ -76,7 +76,7 @@ describe('QiitaAIFetcher', () => {
   });
 
   describe('APIレート制限対応', () => {
-    // TODO: Fix timing flakiness - see GitHub issue #XXX
+    // TODO: Fix timing flakiness - see GitHub issue #141
     it.skip('API呼び出し間隔を1秒以上空ける', async () => {
       mockedAxios.get.mockResolvedValueOnce({
         data: { likes_count: 10 },

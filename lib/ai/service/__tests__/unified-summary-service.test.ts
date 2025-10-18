@@ -376,7 +376,7 @@ describe('UnifiedSummaryServiceImpl', () => {
       expect(mockPostProcessor.formatTags).toHaveBeenCalledWith([]);
     });
 
-    // TODO: Fix timing precision issue (99ms vs 100ms) - see GitHub issue #XXX
+    // TODO: Fix timing precision issue (99ms vs 100ms) - see GitHub issue #141
     it.skip('should include processing time in result', async () => {
       const params: SummaryServiceParams = {
         title: 'Test Article',
