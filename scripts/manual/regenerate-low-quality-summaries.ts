@@ -31,7 +31,7 @@ const qualityThreshold = Number.isFinite(parsedScore)
   : 70;
 
 interface ArticleWithSource extends Article {
-  source: Source;
+  source: Source | null;
 }
 
 interface LowQualityArticle {
@@ -120,10 +120,16 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   console.error('\n🔍 低品質な要約を検出中...');
   console.error(`   品質スコア閾値: ${qualityThreshold}点`);
   
-  // 要約がある全記事を取得
+  // 要約がある全記事を取得（skipReason設定済み、または24時間以内に再生成された記事は除外）
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const articles = await prisma.article.findMany({
     where: {
-      summary: { not: null }
+      summary: { not: null },
+      skipReason: null,  // スキップ理由が設定されていない記事のみ対象
+      OR: [
+        { summaryComputedAt: null },
+        { summaryComputedAt: { lt: oneDayAgo } }  // 24時間以上前に生成された記事のみ
+      ]
     },
     include: {
       source: true
@@ -131,7 +137,7 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
     orderBy: {
       publishedAt: 'desc'
     },
-    take: limit || undefined
+    ...(limit !== undefined ? { take: limit } : {})
   }) as ArticleWithSource[];
   
   console.error(`   検査対象記事数: ${articles.length}件`);
@@ -278,6 +284,9 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
 
           if (newQualityCheck.score >= qualityThreshold) {
             // 品質基準を満たした場合
+            // ただし、再生成後も文字数が100文字未満の場合はskipReasonを設定
+            const stillTooShort = generated.summary.length < 100;
+
             if (!isDryRun) {
               // データベース更新（記事とタグを同一トランザクションで更新）
               await prisma.$transaction(async (tx) => {
@@ -301,8 +310,8 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                     summaryComputedAt: new Date(),
                     qualityScore: newQualityCheck.score,
                     qualityScoreComputedAt: new Date(),
-                    skipReason: null,        // 成功時はnull
-                    summaryError: null,
+                    skipReason: stillTooShort ? 'QUALITY_FAILED' : null,
+                    summaryError: stillTooShort ? '再生成後も文字数不足（<100文字）' : null,
                     ...(tags.length > 0 && {
                       tags: {
                         set: tags.map(t => ({ id: t.id }))
@@ -312,9 +321,14 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                 });
               });
             }
-            
-            console.error(`   ✅ 再生成成功! スコア: ${beforeScore} → ${result.afterScore}点`);
-            result.status = 'success';
+
+            if (stillTooShort) {
+              console.error(`   ⚠️  再生成成功だが文字数不足: ${generated.summary.length}文字 → QUALITY_FAILEDマーク`);
+              result.status = 'skipped';
+            } else {
+              console.error(`   ✅ 再生成成功! スコア: ${beforeScore} → ${result.afterScore}点`);
+              result.status = 'success';
+            }
             regenerated = true;
             break;
           } else {
@@ -544,11 +558,15 @@ async function main() {
     
   } catch (error) {
     console.error('\n❌ エラーが発生しました:', error);
-    process.exit(1);
+    throw error;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// メイン処理を実行
-main().catch(console.error);
+// メイン処理を実行（終了コードの制御と確実なdisconnect）
+main().catch(async (err) => {
+  console.error('\n❌ エラーが発生しました:', err);
+  try { await prisma.$disconnect(); } catch {}
+  process.exit(1);
+});
