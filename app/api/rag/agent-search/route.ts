@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { articleSearchAgent } from '@/lib/rag/agents/article-search-agent';
-import { checkRateLimit, ragSearchRateLimit, RateLimitError } from '@/lib/rate-limiter';
+import { checkRateLimit, ragAgentSearchRateLimit, RateLimitError } from '@/lib/rate-limiter';
 import { AgentResponseCache } from '@/lib/cache/agent-response-cache';
 import { detectPromptInjection, sanitizeQuery } from '@/lib/rag/security/prompt-injection-detector';
 import { VectorSearchService, SearchResult } from '@/lib/rag/vector-search-service';
@@ -19,7 +19,7 @@ import { ZodError, z } from 'zod';
  *
  * Security layers:
  * 1. Authentication (Auth.js v5) - REQUIRED
- * 2. Rate limiting (Upstash Redis) - 10 req/min/user
+ * 2. Rate limiting (Upstash Redis) - 5 req/min/user (stricter for cost control)
  * 3. Input validation (Zod + prompt injection detection)
  * 4. Agent guardrails (system prompt with strict rules)
  * 5. Fallback mechanism (direct vector search on agent failure)
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       try {
         rateLimitInfo = await checkRateLimit(
           `rag:agent:${session.user.id}`,
-          ragSearchRateLimit
+          ragAgentSearchRateLimit
         );
         span.setAttribute('rateLimit.remaining', rateLimitInfo.remaining);
       } catch (error) {

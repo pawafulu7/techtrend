@@ -65,12 +65,29 @@ function createRateLimiter(
 }
 
 /**
- * RAG Search Rate Limiter
+ * RAG Search Rate Limiter (Vector Search)
  * - 10 requests per minute per user
  * - Fixed window algorithm (default)
  * - TCP connection via ioredis (< 2ms latency) or in-memory fallback
+ * - Used by: /api/rag/search (direct vector search, low cost)
  */
 export const ragSearchRateLimit = createRateLimiter(10, 60, 'ratelimit:rag:search');
+
+/**
+ * RAG Agent Search Rate Limiter
+ * - 5 requests per minute per user (stricter than vector search)
+ * - Fixed window algorithm
+ * - Used by: /api/rag/agent-search (AI agent with GPT-4o-mini)
+ *
+ * Rationale:
+ * - Agent queries are ~75x more expensive than embeddings-only
+ * - Cost protection: 5 req/min caps at $0.24/hour/user (vs $0.48 with 10/min)
+ * - UX balance: 12 seconds between requests is acceptable for conversational search
+ * - Prevents abuse while maintaining responsive experience
+ *
+ * @see CodexMCP Review: "Tighten agent-specific limit to 3-5/min for cost control"
+ */
+export const ragAgentSearchRateLimit = createRateLimiter(5, 60, 'ratelimit:rag:agent');
 
 /**
  * Embedding Generation Rate Limiter
