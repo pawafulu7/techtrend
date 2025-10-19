@@ -22,6 +22,12 @@ export type AppDependencies = {
 
 let appDependencies: AppDependencies | null = null;
 
+/**
+ * アプリケーションで使用する依存コンポーネント群を構築する。
+ *
+ * @param configOverrides - 読み込む設定に適用する部分的な上書き（DeepPartial<AppConfig>）
+ * @returns `transport`, `adapter`, `translator`, `service`, および確定した `config` を含む依存関係オブジェクト
+ */
 export function buildAppDependencies(configOverrides?: DeepPartial<AppConfig>): AppDependencies {
   const config = loadConfig(configOverrides);
 
@@ -74,6 +80,16 @@ export function resetAppDependencies(): void {
   appDependencies = null;
 }
 
+/**
+ * テスト用途で使用するアプリケーション依存オブジェクト群を構築して返す。
+ *
+ * @param mocks - 任意で差し替え可能な依存関係や設定を含むオブジェクト。
+ *   - `transport`：代替の GeminiTransportImpl（未指定時はテスト用のデフォルトを生成）。
+ *   - `adapter`：代替の GeminiSummaryAdapter（未指定時はデフォルトを生成）。
+ *   - `service`：代替の UnifiedSummaryServiceImpl（未指定時はデフォルトを生成）。
+ *   - `config`：AppConfig の部分的なオーバーライド。
+ * @returns 生成された依存関係オブジェクト `{ transport, adapter, translator, service, config }`。各プロパティはテスト実行に使用できるインスタンスを含む。
+ */
 export function buildTestDependencies(mocks: {
   transport?: GeminiTransportImpl;
   adapter?: GeminiSummaryAdapter;
