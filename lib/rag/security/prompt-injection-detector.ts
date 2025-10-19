@@ -46,6 +46,23 @@ const INJECTION_PATTERNS = [
   /tell\s+me\s+your\s+(instructions|system\s+prompt|rules)/i,
   /what\s+(are\s+your|is\s+your)\s+(instructions|system\s+prompt|rules)/i,
   /reveal\s+your\s+(instructions|prompt)/i,
+
+  // Japanese variants (日本語パターン)
+  /前の指示を無視/i,
+  /これまでの指示を無視/i,
+  /すべての指示を忘れて/i,
+  /指示を無視して/i,
+  /新しい指示\s*[:：]/i,
+  /あなたは今/i,
+  /あなたはもはや/i,
+  /として振る舞って/i,
+  /として行動して/i,
+  /なりすまして/i,
+  /ふりをして/i,
+  /システム\s*[:：]/i,
+  /アシスタント\s*[:：]/i,
+  /ルールを無効/i,
+  /制約を無視/i,
 ] as const;
 
 /**
@@ -82,6 +99,7 @@ export function detectPromptInjection(query: string): boolean {
  */
 export function sanitizeQuery(query: string): string {
   return query
+    .normalize('NFKC')     // Unicode normalization (full-width → half-width)
     .trim()
     .replace(/\s+/g, ' ') // Normalize whitespace
     .substring(0, 500);   // Enforce length limit
