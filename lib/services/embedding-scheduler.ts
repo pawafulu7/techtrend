@@ -60,7 +60,7 @@ export class EmbeddingScheduler {
    * Newest articles first (better user experience).
    */
   async getPendingJobs(limit: number = 500): Promise<EmbeddingJobWithArticle[]> {
-    return prisma.embeddingJob.findMany({
+    return this.db.embeddingJob.findMany({
       where: {
         status: 'PENDING',
         attempts: { lt: MAX_ATTEMPTS },
@@ -83,7 +83,7 @@ export class EmbeddingScheduler {
    * Get failed jobs for debugging.
    */
   async getFailedJobs(limit: number = 100): Promise<EmbeddingJobWithArticle[]> {
-    return prisma.embeddingJob.findMany({
+    return this.db.embeddingJob.findMany({
       where: { status: 'FAILED' },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -128,11 +128,11 @@ export class EmbeddingScheduler {
     total: number;
   }> {
     const [pending, processing, completed, failed, total] = await Promise.all([
-      prisma.embeddingJob.count({ where: { status: 'PENDING' } }),
-      prisma.embeddingJob.count({ where: { status: 'PROCESSING' } }),
-      prisma.embeddingJob.count({ where: { status: 'COMPLETED' } }),
-      prisma.embeddingJob.count({ where: { status: 'FAILED' } }),
-      prisma.embeddingJob.count(),
+      this.db.embeddingJob.count({ where: { status: 'PENDING' } }),
+      this.db.embeddingJob.count({ where: { status: 'PROCESSING' } }),
+      this.db.embeddingJob.count({ where: { status: 'COMPLETED' } }),
+      this.db.embeddingJob.count({ where: { status: 'FAILED' } }),
+      this.db.embeddingJob.count(),
     ]);
 
     return { pending, processing, completed, failed, total };

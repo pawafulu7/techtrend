@@ -35,7 +35,11 @@ describe('EmbeddingScheduler', () => {
   });
 
   beforeEach(async () => {
+    // Pass real prisma to scheduler
     scheduler = new EmbeddingScheduler(prisma);
+
+    // Clear embedding jobs to avoid state bleed
+    await prisma.embeddingJob.deleteMany();
 
     // Create test article
     testArticle = await prisma.article.create({
