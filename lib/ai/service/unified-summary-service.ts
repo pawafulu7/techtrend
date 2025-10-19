@@ -7,6 +7,8 @@ import {
   SummaryServiceResult,
 } from './unified-summary-service.interface';
 import { TitleTranslator } from '../translator/gemini-title-translator';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { logger, sanitizeError } from '@/lib/logger';
 
 import { SUMMARY_VERSION } from '@/types/article';
 
@@ -16,6 +18,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
     private readonly qualityChecker: QualityChecker,
     private readonly postProcessor: PostProcessor,
     private readonly titleTranslator: TitleTranslator,
+    private readonly embeddingScheduler: EmbeddingScheduler,
     private readonly config: {
       qualityThreshold: number;
       maxRetries: number;
@@ -101,7 +104,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
             }
           }
 
-          return {
+          const result = {
             summary,
             detailedSummary,
             translatedTitle,
@@ -111,6 +114,25 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
             processingTimeMs: Date.now() - startTime,
             summaryVersion: SUMMARY_VERSION.UNIFIED,
           };
+
+          // Schedule embedding job (fire-and-forget)
+          if (params.articleId) {
+            this.embeddingScheduler
+              .enqueue(params.articleId)
+              .catch((err) =>
+                logger.error(
+                  {
+                    articleId: params.articleId,
+                    error: sanitizeError(err),
+                  },
+                  'Embedding job enqueue failed'
+                )
+              );
+          } else {
+            logger.debug('Summary generated without articleId, skipping embedding job');
+          }
+
+          return result;
         }
 
         attempt++;

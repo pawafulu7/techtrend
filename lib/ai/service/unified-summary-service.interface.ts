@@ -3,6 +3,7 @@ export type SummaryServiceParams = {
   content: string;
   articleType?: 'technical' | 'news' | 'tutorial' | 'opinion';
   qualityThreshold?: number;
+  articleId?: string; // Optional: Required for automatic embedding job creation
 };
 
 export type SummaryServiceResult = {

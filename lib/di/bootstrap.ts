@@ -5,6 +5,7 @@ import { SummaryQualityChecker } from '../ai/service/quality-checker';
 import { SummaryPostProcessor } from '../ai/service/post-processor';
 import { UnifiedSummaryServiceImpl } from '../ai/service/unified-summary-service';
 import { GeminiTitleTranslator } from '../ai/translator/gemini-title-translator';
+import { EmbeddingScheduler } from '../services/embedding-scheduler';
 import { AppConfig, loadConfig } from './config';
 
 type DeepPartial<T> = {
@@ -45,11 +46,13 @@ export function buildAppDependencies(configOverrides?: DeepPartial<AppConfig>): 
 
   const qualityChecker = new SummaryQualityChecker();
   const postProcessor = new SummaryPostProcessor();
+  const embeddingScheduler = new EmbeddingScheduler();
   const service = new UnifiedSummaryServiceImpl(
     adapter,
     qualityChecker,
     postProcessor,
     translator,
+    embeddingScheduler,
     {
       qualityThreshold: config.quality.threshold,
       maxRetries: config.quality.maxRetries,
@@ -103,6 +106,7 @@ export function buildTestDependencies(mocks: {
 
   const qualityChecker = new SummaryQualityChecker();
   const postProcessor = new SummaryPostProcessor();
+  const embeddingScheduler = new EmbeddingScheduler();
   const service =
     mocks.service ||
     new UnifiedSummaryServiceImpl(
@@ -110,6 +114,7 @@ export function buildTestDependencies(mocks: {
       qualityChecker,
       postProcessor,
       translator,
+      embeddingScheduler,
       {
         qualityThreshold: config.quality.threshold,
         maxRetries: config.quality.maxRetries,
