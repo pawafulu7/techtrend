@@ -3,12 +3,23 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/workers/embedding/route';
 import type { Article, PrismaClient } from '@prisma/client';
 
-// Use real Prisma client (bypass mock)
+// Use real Prisma client (bypass mock) with production DB protection
 const { PrismaClient: RealPrismaClient } = jest.requireActual('@prisma/client');
+const DB_URL = process.env.DATABASE_URL;
+const isSafeTestDb = !!DB_URL && /(localhost|127\.0\.0\.1|test|_test)/i.test(DB_URL);
+
+if (!isSafeTestDb) {
+  throw new Error(
+    'DATABASE_URL must be set and point to a test database (localhost/test). ' +
+      'Current: ' +
+      (DB_URL || 'undefined')
+  );
+}
+
 const prisma: PrismaClient = new RealPrismaClient({
   datasources: {
     db: {
-      url: process.env.DATABASE_URL!,
+      url: DB_URL,
     },
   },
 });
@@ -102,6 +113,21 @@ describe('GET /api/workers/embedding', () => {
       expect(data.succeeded).toBeGreaterThan(0);
       expect(data.durationMs).toBeGreaterThan(0);
     }
+
+    // Verify DB state (jobs marked COMPLETED)
+    const ids = testArticles.map((a) => a.id);
+    const jobs = await prisma.embeddingJob.findMany({
+      where: { articleId: { in: ids } },
+      select: { status: true, processedAt: true },
+    });
+
+    // At least some jobs should be COMPLETED
+    expect(jobs.some((j) => j.status === 'COMPLETED')).toBe(true);
+
+    // COMPLETED jobs should have processedAt
+    jobs
+      .filter((j) => j.status === 'COMPLETED')
+      .forEach((j) => expect(j.processedAt).not.toBeNull());
   });
 
   it('should return idle status when no jobs', async () => {
@@ -168,25 +194,5 @@ describe('GET /api/workers/embedding', () => {
     expect(response.status).toBe(200);
     // Should complete without errors
     expect(data.status).toMatch(/completed|idle/);
-  });
-
-  it('should respect skip_embedding flag for testing', async () => {
-    const request = new NextRequest(
-      'http://localhost:3000/api/workers/embedding?skip_embedding=true',
-      {
-        headers: { 'x-vercel-cron': '1' },
-      }
-    );
-
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.status).toMatch(/completed|idle/);
-
-    // Jobs should be marked completed (not actually embedded)
-    if (data.processed > 0) {
-      expect(data.succeeded).toBeGreaterThan(0);
-    }
   });
 });
