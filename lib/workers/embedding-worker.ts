@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { JobProcessor, JobProcessorOptions } from './job-processor';
+import { JobProcessor } from './job-processor';
 import { logger } from '@/lib/logger';
 
 export interface WorkerConfig {
