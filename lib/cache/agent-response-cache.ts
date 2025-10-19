@@ -156,7 +156,7 @@ export class AgentResponseCache {
     return query
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, ' ')              // Collapse whitespace
-      .replace(/[!?。、；：！？、]/g, ''); // Remove punctuation
+      .replace(/\s+/g, ' ')                    // Collapse whitespace
+      .replace(/[!?。、；：！？、.]/g, '');    // Remove punctuation (including .)
   }
 }

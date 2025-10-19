@@ -250,7 +250,8 @@ export async function POST(request: NextRequest) {
           result.toolCalls?.map((call) => ({
             id: call.toolCallId,
             name: call.toolName,
-            args: call.args,
+            input: call.input,
+            dynamic: call.dynamic ?? false,
           })) ?? [];
         usage = result.usage;
 

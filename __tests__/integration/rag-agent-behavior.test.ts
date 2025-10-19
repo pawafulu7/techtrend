@@ -33,11 +33,19 @@ beforeEach(() => {
 });
 
 describe('ArticleSearchAgent', () => {
-  // Skip if no OpenAI API key (CI environment)
+  // Skip all tests if no OpenAI API key (CI environment)
   const shouldSkip = !process.env.OPENAI_API_KEY;
 
+  beforeAll(() => {
+    if (shouldSkip) {
+      console.log('⚠️  Skipping ArticleSearchAgent tests: OPENAI_API_KEY not found');
+    }
+  });
+
   if (shouldSkip) {
-    it.skip('requires OPENAI_API_KEY', () => {});
+    it.skip('requires OPENAI_API_KEY to run agent tests', () => {
+      // Placeholder test to show skip reason
+    });
     return;
   }
 
@@ -60,27 +68,16 @@ describe('ArticleSearchAgent', () => {
 
         mockSearch.mockResolvedValue(mockResults);
 
-        const response = await articleSearchAgent.respond({
+        const result = await articleSearchAgent.generate({
           messages: [{ role: 'user', content: 'React performance optimization' }],
         });
 
-        // Read streaming response
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullText = '';
-
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            fullText += decoder.decode(value, { stream: true });
-          }
-        }
-
-        expect(fullText).toBeTruthy();
-        expect(fullText.toLowerCase()).toContain('react');
+        expect(result.text).toBeTruthy();
+        expect(result.text.toLowerCase()).toContain('react');
 
         // Verify tool was called
+        expect(result.toolCalls).toBeTruthy();
+        expect(result.toolCalls!.length).toBeGreaterThan(0);
         expect(mockSearch).toHaveBeenCalled();
       },
       30000
@@ -91,26 +88,15 @@ describe('ArticleSearchAgent', () => {
       async () => {
         mockSearch.mockResolvedValue([]);
 
-        const response = await articleSearchAgent.respond({
+        const result = await articleSearchAgent.generate({
           messages: [{ role: 'user', content: 'What is 2 + 2?' }],
         });
 
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullText = '';
-
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            fullText += decoder.decode(value, { stream: true });
-          }
-        }
-
         // Should refuse without calling tool
-        expect(fullText.toLowerCase()).toMatch(/sorry|cannot|only.*search/i);
+        expect(result.text.toLowerCase()).toMatch(/sorry|cannot|only.*search/i);
 
         // Tool should NOT be called for off-topic queries
+        expect(result.toolCalls?.length || 0).toBe(0);
         expect(mockSearch).not.toHaveBeenCalled();
       },
       30000
@@ -134,26 +120,15 @@ describe('ArticleSearchAgent', () => {
 
         mockSearch.mockResolvedValue(mockResults);
 
-        const response = await articleSearchAgent.respond({
+        const result = await articleSearchAgent.generate({
           messages: [{ role: 'user', content: '最新のNext.js記事を教えて' }],
         });
 
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullText = '';
-
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            fullText += decoder.decode(value, { stream: true });
-          }
-        }
-
-        // Should include Japanese text
-        expect(fullText).toBeTruthy();
+        expect(result.text).toBeTruthy();
 
         // Tool should be called
+        expect(result.toolCalls).toBeTruthy();
+        expect(result.toolCalls!.length).toBeGreaterThan(0);
         expect(mockSearch).toHaveBeenCalled();
       },
       30000
@@ -164,24 +139,12 @@ describe('ArticleSearchAgent', () => {
       async () => {
         mockSearch.mockResolvedValue([]); // No results
 
-        const response = await articleSearchAgent.respond({
+        const result = await articleSearchAgent.generate({
           messages: [{ role: 'user', content: 'xyzqwertyuiopasdfghjkl' }],
         });
 
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullText = '';
-
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            fullText += decoder.decode(value, { stream: true });
-          }
-        }
-
         // Should acknowledge no results and suggest refinements
-        expect(fullText.toLowerCase()).toMatch(/no|not found|見つかりませんでした/i);
+        expect(result.text.toLowerCase()).toMatch(/no|not found|見つかりませんでした/i);
       },
       30000
     );

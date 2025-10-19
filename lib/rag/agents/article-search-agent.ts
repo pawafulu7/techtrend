@@ -1,4 +1,4 @@
-import { Agent } from 'ai';
+import { Experimental_Agent as Agent } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { semanticSearchTool } from '../tools/semantic-search-tool';
 

@@ -4,7 +4,9 @@ export type { IDIContainer, IProviders } from './types';
 
 export { registerPrismaProvider, getPrismaClient, closePrismaConnection } from './providers/prisma.provider';
 export { registerRedisProvider, getRedisClient, closeRedisConnection } from './providers/redis.provider';
-export { registerTestProviders, resetTestProviders } from './providers/test.provider';
+// Test providers: DO NOT export statically (causes Jest globals to be bundled in production)
+// Use initializeTestDI() instead, which dynamically imports test.provider
+// export { registerTestProviders, resetTestProviders } from './providers/test.provider';
 
 import { registerPrismaProvider } from './providers/prisma.provider';
 import { registerRedisProvider } from './providers/redis.provider';
