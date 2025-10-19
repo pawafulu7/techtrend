@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from '@jest/globals';
 import { prisma } from '@/lib/prisma';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import type { Article } from '@prisma/client';
@@ -6,15 +6,24 @@ import type { Article } from '@prisma/client';
 describe('EmbeddingScheduler', () => {
   let scheduler: EmbeddingScheduler;
   let testArticle: Article;
+  let testSourceId: string;
+
+  beforeAll(async () => {
+    // Upsert test source (works in both Docker and local environments)
+    const source = await prisma.source.upsert({
+      where: { name: 'Test Source for EmbeddingScheduler' },
+      update: {},
+      create: {
+        name: 'Test Source for EmbeddingScheduler',
+        type: 'TEST',
+        url: 'https://example.com/test-source',
+      },
+    });
+    testSourceId = source.id;
+  });
 
   beforeEach(async () => {
     scheduler = new EmbeddingScheduler();
-
-    // Get first available source
-    const source = await prisma.source.findFirst();
-    if (!source) {
-      throw new Error('No source found in database');
-    }
 
     // Create test article
     testArticle = await prisma.article.create({
@@ -22,7 +31,7 @@ describe('EmbeddingScheduler', () => {
         title: 'Test Article for Scheduler',
         url: `https://example.com/test-scheduler-${Date.now()}`,
         summary: 'Test summary for embedding scheduler',
-        sourceId: source.id,
+        sourceId: testSourceId,
         publishedAt: new Date(),
       },
     });
@@ -124,18 +133,12 @@ describe('EmbeddingScheduler', () => {
 
   describe('getPendingJobs', () => {
     it('should return jobs ordered by queuedAt DESC (newest first)', async () => {
-      // Get first available source
-      const source = await prisma.source.findFirst();
-      if (!source) {
-        throw new Error('No source found in database');
-      }
-
       // Create 3 articles with jobs at different times
       const article1 = await prisma.article.create({
         data: {
           title: 'Article 1',
           url: `https://example.com/test-1-${Date.now()}`,
-          sourceId: source.id,
+          sourceId: testSourceId,
           publishedAt: new Date(),
         },
       });
@@ -144,7 +147,7 @@ describe('EmbeddingScheduler', () => {
         data: {
           title: 'Article 2',
           url: `https://example.com/test-2-${Date.now()}`,
-          sourceId: source.id,
+          sourceId: testSourceId,
           publishedAt: new Date(),
         },
       });
@@ -153,7 +156,7 @@ describe('EmbeddingScheduler', () => {
         data: {
           title: 'Article 3',
           url: `https://example.com/test-3-${Date.now()}`,
-          sourceId: source.id,
+          sourceId: testSourceId,
           publishedAt: new Date(),
         },
       });
@@ -265,19 +268,13 @@ describe('EmbeddingScheduler', () => {
 
   describe('getStats', () => {
     it('should return job statistics', async () => {
-      // Get first available source
-      const source = await prisma.source.findFirst();
-      if (!source) {
-        throw new Error('No source found in database');
-      }
-
       // Create multiple test articles for stats
       const articles = await Promise.all([
         prisma.article.create({
           data: {
             title: 'Stats Test 1',
             url: `https://example.com/stats-1-${Date.now()}`,
-            sourceId: source.id,
+            sourceId: testSourceId,
             publishedAt: new Date(),
           },
         }),
@@ -285,7 +282,7 @@ describe('EmbeddingScheduler', () => {
           data: {
             title: 'Stats Test 2',
             url: `https://example.com/stats-2-${Date.now()}`,
-            sourceId: source.id,
+            sourceId: testSourceId,
             publishedAt: new Date(),
           },
         }),

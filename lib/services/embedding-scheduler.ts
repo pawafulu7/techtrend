@@ -6,6 +6,8 @@ type EmbeddingJobWithArticle = EmbeddingJob & {
   article: Pick<Article, 'id' | 'title' | 'summary'>;
 };
 
+const MAX_ATTEMPTS = 3;
+
 export class EmbeddingScheduler {
   /**
    * Enqueue or re-queue an embedding job for an article.
@@ -13,9 +15,10 @@ export class EmbeddingScheduler {
    *
    * UPSERT Logic:
    * - If job doesn't exist: Create with status=PENDING
-   * - If job exists + status=PENDING: Reset attempts, update queuedAt
-   * - If job exists + status=PROCESSING: Leave as-is (worker handles)
-   * - If job exists + status=COMPLETED/FAILED: Reset to PENDING
+   * - If job exists (any status): Reset to PENDING, clear attempts/errors/processedAt
+   *
+   * Note: This simple UPSERT always resets status to PENDING, even for PROCESSING jobs.
+   * The worker handles this gracefully via optimistic locking.
    */
   async enqueue(articleId: string): Promise<void> {
     try {
@@ -59,7 +62,7 @@ export class EmbeddingScheduler {
     return prisma.embeddingJob.findMany({
       where: {
         status: 'PENDING',
-        attempts: { lt: 3 },
+        attempts: { lt: MAX_ATTEMPTS },
       },
       orderBy: { queuedAt: 'desc' },
       take: limit,
@@ -105,6 +108,7 @@ export class EmbeddingScheduler {
         status: 'PENDING',
         attempts: 0,
         error: null,
+        processedAt: null,
         queuedAt: new Date(),
       },
     });
