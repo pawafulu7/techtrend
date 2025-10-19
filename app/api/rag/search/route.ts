@@ -68,9 +68,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Layer 2: Rate limiting (REQUIRED)
+    let rateLimitInfo: { limit: number; remaining: number; reset: Date } | null = null;
+
     if (ragSearchRateLimit) {
       try {
-        await checkRateLimit(`rag:search:${session.user.id}`, ragSearchRateLimit);
+        rateLimitInfo = await checkRateLimit(`rag:search:${session.user.id}`, ragSearchRateLimit);
       } catch (error) {
         if (error instanceof RateLimitError) {
           logger.warn({
@@ -140,14 +142,23 @@ export async function POST(request: NextRequest) {
       embeddingKey: validatedRequest.embeddingKey,
     });
 
-    // Layer 5: Return results
-    return NextResponse.json({
+    // Layer 5: Return results with rate limit headers
+    const response = NextResponse.json({
       query: validatedRequest.query,
       results,
       count: results.length,
       model: process.env.RAG_ACTIVE_MODEL || 'text-embedding-3-small',
       version: parseInt(process.env.RAG_ACTIVE_VERSION || '1', 10),
     });
+
+    // Add rate limit headers to successful response
+    if (rateLimitInfo) {
+      response.headers.set('X-RateLimit-Limit', rateLimitInfo.limit.toString());
+      response.headers.set('X-RateLimit-Remaining', rateLimitInfo.remaining.toString());
+      response.headers.set('X-RateLimit-Reset', Math.floor(rateLimitInfo.reset.getTime() / 1000).toString());
+    }
+
+    return response;
   } catch (error) {
     // Handle RAG not configured error
     if (error instanceof RagSearchNotConfiguredError) {

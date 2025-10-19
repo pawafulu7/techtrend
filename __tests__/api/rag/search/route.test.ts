@@ -36,7 +36,11 @@ jest.mock('@/lib/rate-limiter', () => {
   return {
     ragSearchRateLimit: mockRateLimiter,
     embeddingRateLimit: mockRateLimiter,
-    checkRateLimit: jest.fn().mockResolvedValue(undefined),
+    checkRateLimit: jest.fn().mockResolvedValue({
+      limit: 10,
+      remaining: 9,
+      reset: new Date(Date.now() + 60000),
+    }),
     RateLimitError: ActualRateLimitError,
   };
 });
@@ -63,6 +67,10 @@ describe('POST /api/rag/search', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    // Reset service cache to prevent test interference
+    const { __resetSearchServiceForTest } = require('@/app/api/rag/search/route');
+    __resetSearchServiceForTest();
+
     mockAuth = require('@/lib/auth/auth').auth;
     mockCheckRateLimit = require('@/lib/rate-limiter').checkRateLimit;
 
@@ -71,8 +79,12 @@ describe('POST /api/rag/search', () => {
       user: { id: 'test-user-1', email: 'test@example.com' },
     });
 
-    // Default: rate limit OK (no throw)
-    mockCheckRateLimit.mockResolvedValue(undefined);
+    // Default: rate limit OK with info
+    mockCheckRateLimit.mockResolvedValue({
+      limit: 10,
+      remaining: 9,
+      reset: new Date(Date.now() + 60000),
+    });
   });
 
   describe('Layer 1: Authentication', () => {
@@ -216,16 +228,29 @@ describe('POST /api/rag/search', () => {
       const response = await POST(request);
 
       expect(response.status).toBe(400);
+
+      const body = await response.json();
+      expect(body.error).toBe('Invalid JSON payload');
+      expect(body.details).toBe('Request body must be valid JSON');
     });
   });
 
   describe('Layer 5: Error Sanitization', () => {
     it('should not leak API keys in error responses', async () => {
-      // Simulate error with API key in message
-      const mockVectorSearchService = require('@/lib/rag/vector-search-service').VectorSearchService;
-      mockVectorSearchService.prototype.search = jest.fn().mockRejectedValueOnce(
-        new Error('OpenAI error with key sk-test-1234567890')
-      );
+      // Mock OPENAI_API_KEY to prevent 503
+      const originalApiKey = process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = 'sk-test-key';
+
+      // Reset cache and override mock to throw error
+      const { __resetSearchServiceForTest } = require('@/app/api/rag/search/route');
+      __resetSearchServiceForTest();
+
+      const { VectorSearchService } = require('@/lib/rag/vector-search-service');
+      VectorSearchService.mockImplementationOnce(() => ({
+        search: jest.fn().mockRejectedValueOnce(
+          new Error('OpenAI error with key sk-test-1234567890')
+        ),
+      }));
 
       const request = new NextRequest('http://localhost:3000/api/rag/search', {
         method: 'POST',
@@ -243,6 +268,9 @@ describe('POST /api/rag/search', () => {
       // Error message should not contain API key
       expect(JSON.stringify(body)).not.toContain('sk-test-');
       expect(JSON.stringify(body)).not.toContain('1234567890');
+
+      // Restore original API key
+      process.env.OPENAI_API_KEY = originalApiKey;
     });
 
     it('should return generic error for unexpected failures (500)', async () => {
@@ -291,8 +319,8 @@ describe('POST /api/rag/search', () => {
 
       const response = await POST(request);
 
-      // Should include proper headers
-      expect(response.headers.get('Content-Type')).toBe('application/json');
+      // Should include proper headers (allow charset)
+      expect(response.headers.get('Content-Type') || '').toMatch(/^application\/json\b/i);
 
       // Note: CORS headers (Access-Control-Allow-Origin) are handled by Next.js middleware
       // and may not be present in unit test responses

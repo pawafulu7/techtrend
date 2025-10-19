@@ -112,11 +112,17 @@ export class RateLimitError extends Error {
 export async function checkRateLimit(
   limitKey: string,
   ratelimiter: RateLimiterAbstract
-): Promise<void> {
+): Promise<{ limit: number; remaining: number; reset: Date }> {
   try {
     // Consume 1 point from the rate limiter
-    await ratelimiter.consume(limitKey, 1);
-    // Success: no action needed
+    const res = await ratelimiter.consume(limitKey, 1);
+    
+    // Success: return rate limit info for headers
+    const limit = (ratelimiter as any).points || 10;
+    const remaining = Math.max(0, res.remainingPoints);
+    const reset = new Date(Date.now() + res.msBeforeNext);
+    
+    return { limit, remaining, reset };
   } catch (rejRes: unknown) {
     // Handle rejection (rate limit exceeded or Redis error)
     if (rejRes instanceof Error) {
