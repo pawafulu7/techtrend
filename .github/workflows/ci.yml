@@ -58,6 +58,17 @@ jobs:
           npx prisma generate
           npx prisma migrate deploy || npx prisma db push
 
+      - name: Seed test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+        run: |
+          echo "Seeding test database..."
+          npx tsx prisma/seed-test.ts
+          echo "Seed completed successfully"
+          echo "Verifying seed data..."
+          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+            -c "SELECT COUNT(*) as source_count FROM \"Source\";"
+
       - name: Run tests (node env only)
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
