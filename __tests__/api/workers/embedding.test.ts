@@ -1,13 +1,25 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/workers/embedding/route';
-import { prisma } from '@/lib/prisma';
-import type { Article } from '@prisma/client';
+import type { Article, PrismaClient } from '@prisma/client';
+
+// Use real Prisma client (bypass mock)
+const { PrismaClient: RealPrismaClient } = jest.requireActual('@prisma/client');
+const prisma: PrismaClient = new RealPrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL!,
+    },
+  },
+});
 
 describe('GET /api/workers/embedding', () => {
   let testArticles: Article[] = [];
 
   beforeAll(async () => {
+    // Connect to real database
+    await prisma.$connect();
+
     // Get first available source
     const source = await prisma.source.findFirst();
     if (!source) {
@@ -43,6 +55,9 @@ describe('GET /api/workers/embedding', () => {
     await prisma.article.deleteMany({
       where: { id: { in: articleIds } },
     });
+
+    // Disconnect from database
+    await prisma.$disconnect();
   });
 
   beforeEach(async () => {
