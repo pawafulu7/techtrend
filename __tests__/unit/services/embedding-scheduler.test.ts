@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from '@jest/globals';
-import { prisma } from '@/lib/prisma';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import type { Article } from '@prisma/client';
+
+// Use real Prisma client (bypass mock)
+jest.unmock('@/lib/prisma');
+const { prisma } = require('@/lib/prisma');
 
 describe('EmbeddingScheduler', () => {
   let scheduler: EmbeddingScheduler;
