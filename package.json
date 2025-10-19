@@ -140,6 +140,7 @@
     "monitoring:logs": "docker compose -f docker-compose.otel.yml -f docker-compose.monitoring.yml logs -f"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.52",
     "@auth/prisma-adapter": "^2.0.0",
     "@google/generative-ai": "^0.24.1",
     "@mozilla/readability": "^0.6.0",
@@ -168,6 +169,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/sanitize-html": "^2.16.0",
     "@vercel/otel": "^2.0.1",
+    "ai": "^5.0.76",
     "axios": "^1.12.1",
     "bcryptjs": "^3.0.2",
     "cheerio": "^1.1.2",
