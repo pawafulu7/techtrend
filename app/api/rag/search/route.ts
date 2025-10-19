@@ -45,6 +45,11 @@ const getSearchService = (): VectorSearchService => {
   return searchService;
 };
 
+// Test-only helper to reset service cache
+export const __resetSearchServiceForTest = (): void => {
+  searchService = null;
+};
+
 export async function POST(request: NextRequest) {
   // Layer 1: Authentication check (REQUIRED)
   const session = await auth();
@@ -97,7 +102,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Layer 3: Input validation (Zod)
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      // Handle malformed JSON
+      logger.warn({
+        userId: session.user.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }, 'Malformed JSON in RAG search request');
+
+      return NextResponse.json(
+        {
+          error: 'Invalid JSON payload',
+          details: 'Request body must be valid JSON',
+        },
+        { status: 400 }
+      );
+    }
+
     const validatedRequest = searchRequestSchema.parse(body);
 
     logger.info({
