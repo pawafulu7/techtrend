@@ -45,7 +45,15 @@ const getSearchService = (): VectorSearchService => {
   return searchService;
 };
 
-// Test-only helper to reset service cache
+/**
+ * Test-only helper to reset the search service cache.
+ *
+ * This function clears the singleton instance to allow test cases
+ * to create fresh mocks with different behaviors.
+ *
+ * @internal
+ * @testonly
+ */
 export const __resetSearchServiceForTest = (): void => {
   searchService = null;
 };

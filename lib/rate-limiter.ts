@@ -5,7 +5,10 @@ import { getRedisClient } from '@/lib/redis/client';
  * Rate Limiter for RAG operations
  *
  * Uses rate-limiter-flexible with ioredis client for unified Redis architecture.
- * Supports sliding window algorithm for precise rate limiting.
+ * Uses fixed window algorithm for rate limiting (default behavior).
+ *
+ * Note: Sliding window requires additional configuration (e.g., inMemoryBlockOnConsumed).
+ * Current implementation uses fixed window for simplicity and performance.
  *
  * Fallback Strategy:
  * - Test/Development without Redis: RateLimiterMemory (in-memory)
@@ -60,7 +63,7 @@ function createRateLimiter(
 /**
  * RAG Search Rate Limiter
  * - 10 requests per minute per user
- * - Sliding window algorithm
+ * - Fixed window algorithm (default)
  * - TCP connection via ioredis (< 2ms latency) or in-memory fallback
  */
 export const ragSearchRateLimit = createRateLimiter(10, 60, 'ratelimit:rag:search');
@@ -68,7 +71,7 @@ export const ragSearchRateLimit = createRateLimiter(10, 60, 'ratelimit:rag:searc
 /**
  * Embedding Generation Rate Limiter
  * - 100 requests per hour per user
- * - Sliding window algorithm
+ * - Fixed window algorithm (default)
  */
 export const embeddingRateLimit = createRateLimiter(100, 3600, 'ratelimit:embedding');
 
