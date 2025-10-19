@@ -47,7 +47,10 @@ const agentRequestSchema = z.object({
     .string()
     .min(1, 'Query cannot be empty')
     .max(500, 'Query too long (max 500 characters)')
-    .transform((q) => sanitizeQuery(q)),
+    .transform((q) => sanitizeQuery(q))
+    .refine((q) => q.length > 0, {
+      message: 'Query cannot be empty after sanitization',
+    }),
 });
 
 /**

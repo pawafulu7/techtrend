@@ -98,27 +98,27 @@ test.describe('RAG Agent Search API', () => {
   });
 
   test('should enforce rate limiting', async ({ request }) => {
-    // Send 11 requests (limit is 10/min)
+    // Send 6 requests (limit is 5/min)
     const responses = [];
 
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 6; i++) {
       const response = await request.post('/api/rag/agent-search', {
         data: { query: `Test query ${i}` },
       });
       responses.push(response);
     }
 
-    // First 10 should succeed
-    for (let i = 0; i < 10; i++) {
+    // First 5 should succeed
+    for (let i = 0; i < 5; i++) {
       expect(responses[i].status()).toBe(200);
     }
 
-    // 11th should be rate limited
-    expect(responses[10].status()).toBe(429);
+    // 6th should be rate limited
+    expect(responses[5].status()).toBe(429);
 
-    const rateLimitData = await responses[10].json();
+    const rateLimitData = await responses[5].json();
     expect(rateLimitData.error).toContain('Rate limit');
-    expect(rateLimitData.limit).toBe(10);
+    expect(rateLimitData.limit).toBe(5);
   });
 
   test('should require authentication', async ({ browser }) => {
