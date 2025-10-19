@@ -125,7 +125,7 @@ export async function checkRateLimit(
     const res = await ratelimiter.consume(limitKey, 1);
     
     // Success: return rate limit info for headers
-    const limit = ratelimiter.points ?? 10;
+    const limit = ratelimiter.points;
     const remaining = Math.max(0, res.remainingPoints);
     const reset = new Date(Date.now() + res.msBeforeNext);
 
@@ -143,7 +143,7 @@ export async function checkRateLimit(
     // Map to RateLimitError for API compatibility
     const rateLimiterRes = rejRes as { msBeforeNext: number; remainingPoints: number };
     const resetDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
-    const limit = ratelimiter.points ?? 10; // Extract configured limit
+    const limit = ratelimiter.points; // Extract configured limit
     const remaining = Math.max(0, rateLimiterRes.remainingPoints); // Never negative
 
     throw new RateLimitError(

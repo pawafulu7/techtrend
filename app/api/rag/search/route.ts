@@ -79,39 +79,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Layer 2: Rate limiting (REQUIRED)
-    let rateLimitInfo: { limit: number; remaining: number; reset: Date } | null = null;
+    let rateLimitInfo: { limit: number; remaining: number; reset: Date } | undefined;
 
-    if (ragSearchRateLimit) {
-      try {
-        rateLimitInfo = await checkRateLimit(`rag:search:${session.user.id}`, ragSearchRateLimit);
-      } catch (error) {
-        if (error instanceof RateLimitError) {
-          logger.warn({
-            userId: session.user.id,
+    try {
+      rateLimitInfo = await checkRateLimit(`rag:search:${session.user.id}`, ragSearchRateLimit);
+    } catch (error) {
+      if (error instanceof RateLimitError) {
+        logger.warn({
+          userId: session.user.id,
+          limit: error.limit,
+          remaining: error.remaining,
+        }, 'Rate limit exceeded');
+
+        return NextResponse.json(
+          {
+            error: 'Rate limit exceeded',
             limit: error.limit,
             remaining: error.remaining,
-          }, 'Rate limit exceeded');
-
-          return NextResponse.json(
-            {
-              error: 'Rate limit exceeded',
-              limit: error.limit,
-              remaining: error.remaining,
-              reset: error.reset.toISOString(),
+            reset: error.reset.toISOString(),
+          },
+          {
+            status: 429,
+            headers: {
+              'X-RateLimit-Limit': error.limit.toString(),
+              'X-RateLimit-Remaining': error.remaining.toString(),
+              'X-RateLimit-Reset': Math.floor(error.reset.getTime() / 1000).toString(),
+              'Retry-After': Math.ceil((error.reset.getTime() - Date.now()) / 1000).toString(),
             },
-            {
-              status: 429,
-              headers: {
-                'X-RateLimit-Limit': error.limit.toString(),
-                'X-RateLimit-Remaining': error.remaining.toString(),
-                'X-RateLimit-Reset': Math.floor(error.reset.getTime() / 1000).toString(),
-                'Retry-After': Math.ceil((error.reset.getTime() - Date.now()) / 1000).toString(),
-              },
-            }
-          );
-        }
-        throw error;
+          }
+        );
       }
+      throw error;
     }
 
     // Layer 3: Input validation (Zod)
