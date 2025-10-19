@@ -1,10 +1,16 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from '@jest/globals';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
-import type { Article } from '@prisma/client';
+import type { Article, PrismaClient } from '@prisma/client';
 
 // Use real Prisma client (bypass mock)
-jest.unmock('@/lib/prisma');
-const { prisma } = require('@/lib/prisma');
+const { PrismaClient: RealPrismaClient } = jest.requireActual('@prisma/client');
+const prisma: PrismaClient = new RealPrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL!,
+    },
+  },
+});
 
 describe('EmbeddingScheduler', () => {
   let scheduler: EmbeddingScheduler;
@@ -12,6 +18,9 @@ describe('EmbeddingScheduler', () => {
   let testSourceId: string;
 
   beforeAll(async () => {
+    // Connect to real database
+    await prisma.$connect();
+
     // Use first source from seed data
     const source = await prisma.source.findFirst();
     if (!source) {
@@ -20,8 +29,13 @@ describe('EmbeddingScheduler', () => {
     testSourceId = source.id;
   });
 
+  afterAll(async () => {
+    // Disconnect from database
+    await prisma.$disconnect();
+  });
+
   beforeEach(async () => {
-    scheduler = new EmbeddingScheduler();
+    scheduler = new EmbeddingScheduler(prisma);
 
     // Create test article
     testArticle = await prisma.article.create({

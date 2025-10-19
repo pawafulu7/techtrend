@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
-import type { EmbeddingJob, Article } from '@prisma/client';
+import type { EmbeddingJob, Article, PrismaClient } from '@prisma/client';
 
 type EmbeddingJobWithArticle = EmbeddingJob & {
   article: Pick<Article, 'id' | 'title' | 'summary'>;
@@ -9,6 +9,7 @@ type EmbeddingJobWithArticle = EmbeddingJob & {
 const MAX_ATTEMPTS = 3;
 
 export class EmbeddingScheduler {
+  constructor(private readonly db: PrismaClient = prisma) {}
   /**
    * Enqueue or re-queue an embedding job for an article.
    * Uses UPSERT semantics to handle concurrent updates.
@@ -22,7 +23,7 @@ export class EmbeddingScheduler {
    */
   async enqueue(articleId: string): Promise<void> {
     try {
-      await prisma.embeddingJob.upsert({
+      await this.db.embeddingJob.upsert({
         where: { articleId },
         create: {
           articleId,
@@ -102,7 +103,7 @@ export class EmbeddingScheduler {
    * Retry a failed job.
    */
   async retryFailed(jobId: string): Promise<void> {
-    await prisma.embeddingJob.update({
+    await this.db.embeddingJob.update({
       where: { id: jobId },
       data: {
         status: 'PENDING',
