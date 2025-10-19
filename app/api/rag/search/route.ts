@@ -45,6 +45,22 @@ const getSearchService = (): VectorSearchService => {
   return searchService;
 };
 
+/**
+ * Test-only helper to reset the search service cache.
+ *
+ * This function clears the singleton instance to allow test cases
+ * to create fresh mocks with different behaviors.
+ *
+ * @internal
+ * @testonly
+ */
+export const __resetSearchServiceForTest = (): void => {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('__resetSearchServiceForTest can only be called in test environment');
+  }
+  searchService = null;
+};
+
 export async function POST(request: NextRequest) {
   // Layer 1: Authentication check (REQUIRED)
   const session = await auth();
@@ -63,41 +79,59 @@ export async function POST(request: NextRequest) {
     }
 
     // Layer 2: Rate limiting (REQUIRED)
-    if (ragSearchRateLimit) {
-      try {
-        await checkRateLimit(`rag:search:${session.user.id}`, ragSearchRateLimit);
-      } catch (error) {
-        if (error instanceof RateLimitError) {
-          logger.warn({
-            userId: session.user.id,
+    let rateLimitInfo: { limit: number; remaining: number; reset: Date } | undefined;
+
+    try {
+      rateLimitInfo = await checkRateLimit(`rag:search:${session.user.id}`, ragSearchRateLimit);
+    } catch (error) {
+      if (error instanceof RateLimitError) {
+        logger.warn({
+          userId: session.user.id,
+          limit: error.limit,
+          remaining: error.remaining,
+        }, 'Rate limit exceeded');
+
+        return NextResponse.json(
+          {
+            error: 'Rate limit exceeded',
             limit: error.limit,
             remaining: error.remaining,
-          }, 'Rate limit exceeded');
-
-          return NextResponse.json(
-            {
-              error: 'Rate limit exceeded',
-              limit: error.limit,
-              remaining: error.remaining,
-              reset: error.reset.toISOString(),
+            reset: error.reset.toISOString(),
+          },
+          {
+            status: 429,
+            headers: {
+              'X-RateLimit-Limit': error.limit.toString(),
+              'X-RateLimit-Remaining': error.remaining.toString(),
+              'X-RateLimit-Reset': Math.floor(error.reset.getTime() / 1000).toString(),
+              'Retry-After': Math.ceil((error.reset.getTime() - Date.now()) / 1000).toString(),
             },
-            {
-              status: 429,
-              headers: {
-                'X-RateLimit-Limit': error.limit.toString(),
-                'X-RateLimit-Remaining': error.remaining.toString(),
-                'X-RateLimit-Reset': Math.floor(error.reset.getTime() / 1000).toString(),
-                'Retry-After': Math.ceil((error.reset.getTime() - Date.now()) / 1000).toString(),
-              },
-            }
-          );
-        }
-        throw error;
+          }
+        );
       }
+      throw error;
     }
 
     // Layer 3: Input validation (Zod)
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      // Handle malformed JSON
+      logger.warn({
+        userId: session.user.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }, 'Malformed JSON in RAG search request');
+
+      return NextResponse.json(
+        {
+          error: 'Invalid JSON payload',
+          details: 'Request body must be valid JSON',
+        },
+        { status: 400 }
+      );
+    }
+
     const validatedRequest = searchRequestSchema.parse(body);
 
     logger.info({
@@ -117,14 +151,23 @@ export async function POST(request: NextRequest) {
       embeddingKey: validatedRequest.embeddingKey,
     });
 
-    // Layer 5: Return results
-    return NextResponse.json({
+    // Layer 5: Return results with rate limit headers
+    const response = NextResponse.json({
       query: validatedRequest.query,
       results,
       count: results.length,
       model: process.env.RAG_ACTIVE_MODEL || 'text-embedding-3-small',
       version: parseInt(process.env.RAG_ACTIVE_VERSION || '1', 10),
     });
+
+    // Add rate limit headers to successful response
+    if (rateLimitInfo) {
+      response.headers.set('X-RateLimit-Limit', rateLimitInfo.limit.toString());
+      response.headers.set('X-RateLimit-Remaining', rateLimitInfo.remaining.toString());
+      response.headers.set('X-RateLimit-Reset', Math.floor(rateLimitInfo.reset.getTime() / 1000).toString());
+    }
+
+    return response;
   } catch (error) {
     // Handle RAG not configured error
     if (error instanceof RagSearchNotConfiguredError) {

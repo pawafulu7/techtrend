@@ -80,8 +80,16 @@ export const searchRequestSchema = z
       .transform((q) => q.trim())
       .refine((q) => q.length > 0, 'Query cannot be empty after trimming'),
 
-    topK: z.coerce.number().optional(),
-    similarityThreshold: z.coerce.number().optional(),
+    topK: z.coerce.number()
+      .int('topK must be an integer')
+      .min(1, 'topK must be at least 1')
+      .max(100, 'topK cannot exceed 100')
+      .optional(),
+    
+    similarityThreshold: z.coerce.number()
+      .min(0, 'similarityThreshold must be at least 0')
+      .max(1, 'similarityThreshold cannot exceed 1')
+      .optional(),
 
     filters: z
       .object({
@@ -94,7 +102,7 @@ export const searchRequestSchema = z
 
     embeddingKey: z.enum(['title', 'summary', 'both']).optional(),
   })
-  .strict();
+  .strict();;
 
 export type SearchRequest = z.infer<typeof searchRequestSchema>;
 
