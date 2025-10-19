@@ -55,6 +55,9 @@ const getSearchService = (): VectorSearchService => {
  * @testonly
  */
 export const __resetSearchServiceForTest = (): void => {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('__resetSearchServiceForTest can only be called in test environment');
+  }
   searchService = null;
 };
 

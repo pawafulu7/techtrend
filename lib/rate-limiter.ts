@@ -1,5 +1,6 @@
 import { RateLimiterRedis, RateLimiterMemory, RateLimiterAbstract } from 'rate-limiter-flexible';
 import { getRedisClient } from '@/lib/redis/client';
+import { logger } from '@/lib/logger';
 
 /**
  * Rate Limiter for RAG operations
@@ -51,7 +52,10 @@ function createRateLimiter(
     });
   } catch (error) {
     // Fallback to memory if Redis connection fails
-    console.warn(`Rate limiter falling back to memory: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logger.warn({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      keyPrefix,
+    }, 'Rate limiter falling back to memory');
     return new RateLimiterMemory({
       points,
       duration,
@@ -121,10 +125,10 @@ export async function checkRateLimit(
     const res = await ratelimiter.consume(limitKey, 1);
     
     // Success: return rate limit info for headers
-    const limit = (ratelimiter as any).points || 10;
+    const limit = ratelimiter.points ?? 10;
     const remaining = Math.max(0, res.remainingPoints);
     const reset = new Date(Date.now() + res.msBeforeNext);
-    
+
     return { limit, remaining, reset };
   } catch (rejRes: unknown) {
     // Handle rejection (rate limit exceeded or Redis error)
@@ -139,7 +143,7 @@ export async function checkRateLimit(
     // Map to RateLimitError for API compatibility
     const rateLimiterRes = rejRes as { msBeforeNext: number; remainingPoints: number };
     const resetDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
-    const limit = (ratelimiter as any).points || 10; // Extract configured limit
+    const limit = ratelimiter.points ?? 10; // Extract configured limit
     const remaining = Math.max(0, rateLimiterRes.remainingPoints); // Never negative
 
     throw new RateLimitError(
