@@ -14,7 +14,13 @@ export async function GET(request: NextRequest) {
   // Security: Verify Vercel Cron header
   const cronHeader = request.headers.get('x-vercel-cron');
   if (cronHeader !== '1') {
-    logger.warn({ headers: Object.fromEntries(request.headers) }, 'Unauthorized worker request');
+    logger.warn(
+      {
+        path: request.nextUrl.pathname,
+        ip: request.headers.get('x-forwarded-for')?.split(',')[0]
+      },
+      'Unauthorized worker request'
+    );
 
     return NextResponse.json({ error: 'Unauthorized: Not a valid cron request' }, { status: 401 });
   }

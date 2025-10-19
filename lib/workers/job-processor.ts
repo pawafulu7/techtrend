@@ -143,11 +143,17 @@ export class JobProcessor {
       const shouldRetry = job.attempts < job.maxAttempts;
 
       try {
+        const sanitized = sanitizeError(error);
+        const safeMessage =
+          typeof sanitized === 'string'
+            ? sanitized
+            : (sanitized as any).message ?? 'Unknown error';
+
         await prisma.embeddingJob.updateMany({
           where: { id: job.id },
           data: {
             status: shouldRetry ? 'PENDING' : 'FAILED',
-            error: (error as Error).message,
+            error: safeMessage,
           },
         });
       } catch (updateError) {

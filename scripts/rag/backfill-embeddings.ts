@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
-const ACTIVE_MODEL = 'text-embedding-004';
-const ACTIVE_VERSION = 1;
+const ACTIVE_MODEL = process.env.RAG_ACTIVE_MODEL ?? 'text-embedding-3-small';
+const ACTIVE_VERSION = parseInt(process.env.RAG_ACTIVE_VERSION ?? '1', 10);
 const BATCH_SIZE = 500; // Create jobs in batches to avoid long transactions
 
 async function backfillEmbeddings() {

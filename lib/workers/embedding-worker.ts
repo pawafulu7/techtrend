@@ -84,35 +84,93 @@ export class EmbeddingWorker {
         abortController.abort();
       }, this.config.timeoutMs);
 
-      // Process jobs in parallel with timeout protection
-      const results = await Promise.allSettled(
-        jobs.map((job) => {
-          // Check if aborted before starting each job
-          if (abortController.signal.aborted) {
-            return Promise.reject(new Error('Worker timeout'));
+      // Process jobs with limited concurrency and timeout protection
+      const WORKER_TIMEOUT_MESSAGE = 'Worker timeout';
+      const WORKER_TIMEOUT_CODE = 'WORKER_TIMEOUT';
+      const concurrencyLimit = Math.min(10, jobs.length);
+      let nextJobIndex = 0;
+      let succeeded = 0;
+      let failed = 0;
+      let timedOut = 0;
+
+      const createTimeoutError = () => {
+        const error = new Error(WORKER_TIMEOUT_MESSAGE) as Error & { code?: string };
+        error.code = WORKER_TIMEOUT_CODE;
+        return error;
+      };
+
+      const isTimeoutError = (error: unknown): error is Error & { code?: string } =>
+        error instanceof Error && (error as { code?: string }).code === WORKER_TIMEOUT_CODE;
+
+      const runJobWithTimeout = async (job: (typeof jobs)[number]) => {
+        if (abortController.signal.aborted) {
+          throw createTimeoutError();
+        }
+
+        return new Promise<void>((resolve, reject) => {
+          const onAbort = () => {
+            abortController.signal.removeEventListener('abort', onAbort);
+            reject(createTimeoutError());
+          };
+
+          abortController.signal.addEventListener('abort', onAbort);
+
+          this.processor
+            .processJob(job)
+            .then(() => {
+              abortController.signal.removeEventListener('abort', onAbort);
+              resolve();
+            })
+            .catch((err) => {
+              abortController.signal.removeEventListener('abort', onAbort);
+              reject(err);
+            });
+        });
+      };
+
+      const worker = async (): Promise<void> => {
+        while (true) {
+          const jobIndex = nextJobIndex++;
+          if (jobIndex >= jobs.length) {
+            return;
           }
 
-          return this.processor.processJob(job);
-        })
-      );
+          if (abortController.signal.aborted) {
+            return;
+          }
+
+          try {
+            await runJobWithTimeout(jobs[jobIndex]);
+            succeeded += 1;
+          } catch (err) {
+            if (isTimeoutError(err)) {
+              timedOut += 1;
+              abortController.abort();
+              return;
+            }
+
+            failed += 1;
+          }
+        }
+      };
+
+      const workerTasks = Array.from({ length: concurrencyLimit }, () => worker());
+      await Promise.allSettled(workerTasks);
 
       clearTimeout(timeoutHandle);
 
-      // Analyze results
-      const succeeded = results.filter((r) => r.status === 'fulfilled').length;
-      const failed = results.filter(
-        (r) => r.status === 'rejected' && (r.reason as Error).message !== 'Worker timeout'
-      ).length;
-      const timedOut = results.filter(
-        (r) => r.status === 'rejected' && (r.reason as Error).message === 'Worker timeout'
-      ).length;
+      const processedBeforeAdjustment = succeeded + failed + timedOut;
+      if (processedBeforeAdjustment < jobs.length) {
+        timedOut += jobs.length - processedBeforeAdjustment;
+      }
 
+      const processed = succeeded + failed + timedOut;
       const durationMs = Date.now() - startTime;
       const wasTimeout = abortController.signal.aborted;
 
       logger.info(
         {
-          processed: jobs.length,
+          processed,
           succeeded,
           failed,
           timedOut,
@@ -123,7 +181,7 @@ export class EmbeddingWorker {
 
       return {
         status: wasTimeout ? 'timeout' : 'completed',
-        processed: jobs.length,
+        processed,
         succeeded,
         failed,
         timedOut,
