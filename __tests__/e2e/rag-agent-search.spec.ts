@@ -23,7 +23,7 @@ import { test, expect } from '@playwright/test';
 test.describe('RAG Agent Search API', () => {
   test.beforeEach(async ({ page }) => {
     // Login as test user
-    await page.goto('/login');
+    await page.goto('/auth/login');
 
     const emailInput = page.locator('input[name="email"]');
     await emailInput.waitFor({ state: 'visible' });
