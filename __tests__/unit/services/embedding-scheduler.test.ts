@@ -9,16 +9,11 @@ describe('EmbeddingScheduler', () => {
   let testSourceId: string;
 
   beforeAll(async () => {
-    // Upsert test source (works in both Docker and local environments)
-    const source = await prisma.source.upsert({
-      where: { name: 'Test Source for EmbeddingScheduler' },
-      update: {},
-      create: {
-        name: 'Test Source for EmbeddingScheduler',
-        type: 'TEST',
-        url: 'https://example.com/test-source',
-      },
-    });
+    // Use first source from seed data
+    const source = await prisma.source.findFirst();
+    if (!source) {
+      throw new Error('No source found - seed-test.ts must run before tests');
+    }
     testSourceId = source.id;
   });
 

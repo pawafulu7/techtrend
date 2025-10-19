@@ -57,7 +57,14 @@ jobs:
         run: |
           npx prisma generate
           npx prisma migrate deploy || npx prisma db push
+
+      - name: Seed test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+        run: |
+          echo "Seeding test database..."
           npx tsx prisma/seed-test.ts
+          echo "Seed completed successfully"
 
       - name: Run tests (node env only)
         env:
