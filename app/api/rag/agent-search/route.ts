@@ -96,11 +96,16 @@ function formatResultsAsText(results: SearchResult[], lang: 'ja' | 'en'): string
 
 /**
  * Attach rate limit headers to response
+ *
+ * Also sets Cache-Control to prevent intermediary caching.
  */
 function attachRateLimitHeaders(
   response: NextResponse,
   rateLimitInfo?: { limit: number; remaining: number; reset: Date }
 ): NextResponse {
+  // Prevent CDN/proxy caching (user-specific, rate-limited responses)
+  response.headers.set('Cache-Control', 'private, no-store');
+
   if (rateLimitInfo) {
     response.headers.set('X-RateLimit-Limit', rateLimitInfo.limit.toString());
     response.headers.set('X-RateLimit-Remaining', rateLimitInfo.remaining.toString());
@@ -120,9 +125,16 @@ export async function POST(request: NextRequest) {
       // Layer 1: Authentication
       if (!session?.user) {
         span.setAttribute('auth.status', 'unauthorized');
+
+        // Mask IP for PII minimization (GDPR compliance)
+        const rawIp = request.headers.get('x-forwarded-for') || 'unknown';
+        const maskedIp = rawIp.includes(':')
+          ? rawIp.split(':').slice(0, 4).join(':') + ':*' // IPv6: keep first 4 segments
+          : rawIp.split(',')[0].trim().split('.').slice(0, 3).join('.') + '.x'; // IPv4: mask last octet
+
         logger.warn(
           {
-            ip: request.headers.get('x-forwarded-for') || 'unknown',
+            ip: maskedIp,
           },
           'Unauthorized agent search attempt'
         );
