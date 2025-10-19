@@ -246,6 +246,10 @@ describe('POST /api/rag/search', () => {
     });
 
     it('should return generic error for unexpected failures (500)', async () => {
+      // Mock OPENAI_API_KEY to prevent 503 (RagSearchNotConfiguredError)
+      const originalApiKey = process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = 'sk-test-key';
+
       // Reset service cache so mockImplementationOnce is picked up
       const { __resetSearchServiceForTest } = require('@/app/api/rag/search/route');
       __resetSearchServiceForTest();
@@ -271,6 +275,9 @@ describe('POST /api/rag/search', () => {
 
       const body = await response.json();
       expect(body.error).toBeDefined();
+
+      // Restore original API key
+      process.env.OPENAI_API_KEY = originalApiKey;
     });
   });
 
