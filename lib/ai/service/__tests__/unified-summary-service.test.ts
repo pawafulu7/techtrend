@@ -3,6 +3,7 @@ import { SummaryProvider } from '../../adapter/summary-provider.interface';
 import { QualityChecker } from '../quality-checker.interface';
 import { PostProcessor } from '../post-processor.interface';
 import { TitleTranslator } from '../../translator/gemini-title-translator';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { SummaryServiceParams } from '../unified-summary-service.interface';
 import { SUMMARY_VERSION } from '@/types/article';
 
@@ -12,6 +13,7 @@ describe('UnifiedSummaryServiceImpl', () => {
   let mockQualityChecker: jest.Mocked<QualityChecker>;
   let mockPostProcessor: jest.Mocked<PostProcessor>;
   let mockTitleTranslator: jest.Mocked<TitleTranslator>;
+  let mockEmbeddingScheduler: jest.Mocked<Partial<EmbeddingScheduler>>;
 
   beforeEach(() => {
     mockSummaryProvider = {
@@ -33,11 +35,16 @@ describe('UnifiedSummaryServiceImpl', () => {
       translateTitle: jest.fn().mockResolvedValue(null),
     };
 
+    mockEmbeddingScheduler = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new UnifiedSummaryServiceImpl(
       mockSummaryProvider,
       mockQualityChecker,
       mockPostProcessor,
       mockTitleTranslator,
+      mockEmbeddingScheduler as any,
       {
         qualityThreshold: 70,
         maxRetries: 3,
@@ -423,6 +430,7 @@ describe('UnifiedSummaryServiceImpl', () => {
         mockQualityChecker,
         mockPostProcessor,
         mockTitleTranslator,
+        mockEmbeddingScheduler as any,
         {
           qualityThreshold: 70,
           maxRetries: 3,
@@ -474,6 +482,7 @@ describe('UnifiedSummaryServiceImpl', () => {
         mockQualityChecker,
         mockPostProcessor,
         mockTitleTranslator,
+        mockEmbeddingScheduler as any,
         {
           qualityThreshold: 70,
           maxRetries: 3,
@@ -555,6 +564,7 @@ describe('UnifiedSummaryServiceImpl', () => {
         mockQualityChecker,
         mockPostProcessor,
         mockTitleTranslator,
+        mockEmbeddingScheduler as any,
         {
           qualityThreshold: 70,
           maxRetries: 3,
@@ -616,6 +626,7 @@ describe('UnifiedSummaryServiceImpl', () => {
         mockQualityChecker,
         mockPostProcessor,
         mockTitleTranslator,
+        mockEmbeddingScheduler as any,
         {
           qualityThreshold: 70,
           maxRetries: 3,
@@ -666,6 +677,7 @@ describe('UnifiedSummaryServiceImpl', () => {
         mockQualityChecker,
         mockPostProcessor,
         mockTitleTranslator,
+        mockEmbeddingScheduler as any,
         {
           qualityThreshold: 70,
           maxRetries: 3,
@@ -716,6 +728,7 @@ describe('UnifiedSummaryServiceImpl', () => {
         mockQualityChecker,
         mockPostProcessor,
         mockTitleTranslator,
+        mockEmbeddingScheduler as any,
         {
           qualityThreshold: 70,
           maxRetries: 3,
@@ -774,6 +787,7 @@ describe('UnifiedSummaryServiceImpl', () => {
         mockQualityChecker,
         mockPostProcessor,
         mockTitleTranslator,
+        mockEmbeddingScheduler as any,
         {
           qualityThreshold: 70,
           maxRetries: 3,
