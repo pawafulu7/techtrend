@@ -35,6 +35,12 @@ async function main() {
     process.exit(1);
   }
 
+  if (!process.env.DATABASE_URL) {
+    console.error('ERROR: DATABASE_URL not found in environment');
+    console.error('Please set DATABASE_URL in your .env file');
+    process.exit(1);
+  }
+
   for (const query of TEST_QUERIES) {
     console.log(`\nQuery: "${query}"`);
     console.log('-'.repeat(60));
@@ -53,9 +59,10 @@ async function main() {
 
       if (result.toolCalls && result.toolCalls.length > 0) {
         console.log(`\nTool Calls: ${result.toolCalls.length}`);
-        result.toolCalls.forEach((call, idx) => {
+        result.toolCalls.forEach((call: any, idx: number) => {
           console.log(`  ${idx + 1}. ${call.toolName}`);
-          console.log(`     Input:`, JSON.stringify(call.input, null, 2));
+          const toolArgs = call.args ?? call.input;
+          console.log(`     Args:`, JSON.stringify(toolArgs, null, 2));
         });
       }
 

@@ -54,25 +54,44 @@ const agentRequestSchema = z.object({
 });
 
 /**
- * Format search results as text (fallback when agent fails)
+ * Detect query language (Japanese or English)
  */
-function formatResultsAsText(results: SearchResult[]): string {
+function detectLang(query: string): 'ja' | 'en' {
+  // Check for Japanese characters (Hiragana, Katakana, Kanji)
+  return /[\u3000-\u303F\u3040-\u30FF\u4E00-\u9FFF]/.test(query) ? 'ja' : 'en';
+}
+
+/**
+ * Format search results as text (fallback when agent fails)
+ *
+ * @param results - Search results
+ * @param lang - Language for formatting ('ja' or 'en')
+ */
+function formatResultsAsText(results: SearchResult[], lang: 'ja' | 'en'): string {
   if (results.length === 0) {
-    return 'No articles found for your query. Try using different keywords or broader terms.';
+    return lang === 'ja'
+      ? '該当する記事が見つかりませんでした。キーワードを広げて再検索してください。'
+      : 'No articles found for your query. Try using different keywords or broader terms.';
   }
 
   const lines = results.map((article, idx) => {
     const similarity = (article.similarity * 100).toFixed(1);
-    const date = new Date(article.publishedAt).toLocaleDateString('ja-JP', {
+    const locale = lang === 'ja' ? 'ja-JP' : 'en-US';
+    const date = new Date(article.publishedAt).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
     const title = article.translatedTitle || article.title;
-    return `${idx + 1}. ${title} (一致度: ${similarity}%) - ${date}公開`;
+
+    return lang === 'ja'
+      ? `${idx + 1}. ${title} (一致度: ${similarity}%) - ${date}公開`
+      : `${idx + 1}. ${title} (${similarity}% match) - Published: ${date}`;
   });
 
-  return `検索結果 ${results.length}件:\n\n${lines.join('\n')}`;
+  return lang === 'ja'
+    ? `検索結果 ${results.length}件:\n\n${lines.join('\n')}`
+    : `Found ${results.length} articles:\n\n${lines.join('\n')}`;
 }
 
 /**
@@ -299,7 +318,8 @@ export async function POST(request: NextRequest) {
           topK: 10,
         });
 
-        agentResponse = formatResultsAsText(fallbackResults);
+        const queryLang = detectLang(validatedRequest.query);
+        agentResponse = formatResultsAsText(fallbackResults, queryLang);
         fallback = true;
 
         span.setAttribute('fallback.used', true);

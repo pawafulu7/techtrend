@@ -38,6 +38,15 @@ function getSearchService(): VectorSearchService {
 }
 
 /**
+ * Convert Date or string to ISO string
+ *
+ * Handles cases where publishedAt might be Date (from Prisma) or string (from mocks/raw queries)
+ */
+function toIsoDate(input: Date | string): string {
+  return input instanceof Date ? input.toISOString() : new Date(input).toISOString();
+}
+
+/**
  * Tool output schema (for agent consumption)
  *
  * Simplified version of SearchResult for agent responses.
@@ -166,7 +175,7 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
           summary: r.summary,
           translatedTitle: r.translatedTitle,
           similarity: r.similarity,
-          publishedAt: r.publishedAt.toISOString(),
+          publishedAt: toIsoDate(r.publishedAt as any),
           sourceId: r.sourceId,
         })),
         count: results.length,
