@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/workers/embedding",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
