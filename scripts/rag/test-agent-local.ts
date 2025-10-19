@@ -18,11 +18,9 @@ import 'dotenv/config';
 import { articleSearchAgent } from '@/lib/rag/agents/article-search-agent';
 
 const TEST_QUERIES = [
+  'terraformについての記事をおすすめ5件教えて',
   'React performance optimization',
   '最新のNext.js記事を3件教えて',
-  'TypeScript best practices',
-  'How to optimize images in Next.js?',
-  'Find articles about Docker containers',
 ];
 
 async function main() {
@@ -57,7 +55,7 @@ async function main() {
         console.log(`\nTool Calls: ${result.toolCalls.length}`);
         result.toolCalls.forEach((call, idx) => {
           console.log(`  ${idx + 1}. ${call.toolName}`);
-          console.log(`     Args:`, JSON.stringify(call.args, null, 2));
+          console.log(`     Input:`, JSON.stringify(call.input, null, 2));
         });
       }
 

@@ -1,4 +1,4 @@
-import { Experimental_Agent as Agent } from 'ai';
+import { Experimental_Agent as Agent, stepCountIs } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { semanticSearchTool } from '../tools/semantic-search-tool';
 
@@ -26,15 +26,22 @@ import { semanticSearchTool } from '../tools/semantic-search-tool';
 export const articleSearchAgent = new Agent({
   model: openai(process.env.AGENT_MODEL || 'gpt-4o-mini'),
 
+  // Allow multiple reasoning steps: tool call + text response generation
+  // Default is stepCountIs(1), which stops after tool call without generating text
+  stopWhen: stepCountIs(3),
+
   system: `
 You are a technical article search assistant for TechTrend, a platform for discovering technical articles.
 
+CRITICAL INSTRUCTION: You MUST ALWAYS provide a text response to the user after calling tools. Never return only tool results without explaining them in natural language.
+
 STRICT RULES (MUST FOLLOW):
 1. ALWAYS use the semantic-article-search tool for article queries
-2. NEVER fabricate or speculate about articles - only present actual search results from the tool
-3. If no results found (count=0), suggest query refinements (e.g., "Try broader keywords like 'React' instead of 'React Server Components'")
-4. REFUSE requests unrelated to article search with a polite explanation
-5. Present results with complete citations: title, similarity score as percentage, published date
+2. ALWAYS provide a conversational text response after tool execution - explain the results in natural language
+3. NEVER fabricate or speculate about articles - only present actual search results from the tool
+4. If no results found (count=0), suggest query refinements (e.g., "Try broader keywords like 'React' instead of 'React Server Components'")
+5. REFUSE requests unrelated to article search with a polite explanation
+6. Present results with complete citations: title, similarity score as percentage, published date
 
 RESPONSE FORMAT:
 - Use numbered lists for multiple results (1., 2., 3., ...)

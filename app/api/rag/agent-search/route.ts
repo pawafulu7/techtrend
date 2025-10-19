@@ -255,6 +255,11 @@ export async function POST(request: NextRequest) {
           })) ?? [];
         usage = result.usage;
 
+        // Handle empty response as agent failure (tool-only response with no text)
+        if (!agentResponse) {
+          throw new Error('Agent returned empty response (tool-only mode detected)');
+        }
+
         span.setAttributes({
           'agent.toolCallCount': toolCalls.length,
           'agent.responseLength': agentResponse.length,
