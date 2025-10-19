@@ -10,6 +10,9 @@ import { GeminiTitleTranslator } from '@/lib/ai/translator/gemini-title-translat
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import type { Article } from '@prisma/client';
 
+const EMBEDDING_ENQUEUE_DELAY_MS = 200;
+const TIMESTAMP_PRECISION_DELAY_MS = 100;
+
 describe('Summary-Embedding Integration', () => {
   let testArticle: Article;
   let summaryService: UnifiedSummaryServiceImpl;
@@ -88,7 +91,7 @@ describe('Summary-Embedding Integration', () => {
     expect(result.detailedSummary).toBeDefined();
 
     // Wait a bit for async enqueue
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, EMBEDDING_ENQUEUE_DELAY_MS));
 
     // Verify job created
     const job = await prisma.embeddingJob.findUnique({
@@ -109,7 +112,7 @@ describe('Summary-Embedding Integration', () => {
       articleId: testArticle.id,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, EMBEDDING_ENQUEUE_DELAY_MS));
 
     const firstJob = await prisma.embeddingJob.findUnique({
       where: { articleId: testArticle.id },
@@ -119,7 +122,7 @@ describe('Summary-Embedding Integration', () => {
     const firstQueuedAt = firstJob!.queuedAt;
 
     // Wait to ensure queuedAt timestamp will be different
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, TIMESTAMP_PRECISION_DELAY_MS));
 
     // Second generation (regeneration)
     await summaryService.generateSummary({
@@ -128,7 +131,7 @@ describe('Summary-Embedding Integration', () => {
       articleId: testArticle.id,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, EMBEDDING_ENQUEUE_DELAY_MS));
 
     const secondJob = await prisma.embeddingJob.findUnique({
       where: { articleId: testArticle.id },
@@ -148,7 +151,7 @@ describe('Summary-Embedding Integration', () => {
       // articleId NOT provided
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, EMBEDDING_ENQUEUE_DELAY_MS));
 
     // Verify NO job created
     const job = await prisma.embeddingJob.findUnique({
