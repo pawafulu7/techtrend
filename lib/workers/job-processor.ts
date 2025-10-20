@@ -12,12 +12,18 @@ export interface JobProcessorOptions {
 }
 
 export class JobProcessor {
-  private pipeline: ArticleEmbeddingPipeline;
+  private pipeline?: ArticleEmbeddingPipeline;
   private options: JobProcessorOptions;
 
   constructor(options: JobProcessorOptions = {}) {
-    this.pipeline = new ArticleEmbeddingPipeline(prisma);
     this.options = options;
+  }
+
+  private getPipeline(): ArticleEmbeddingPipeline {
+    if (!this.pipeline) {
+      this.pipeline = new ArticleEmbeddingPipeline(prisma);
+    }
+    return this.pipeline;
   }
 
   /**
@@ -82,7 +88,7 @@ export class JobProcessor {
       }
 
       // Generate embedding
-      const result = await this.pipeline.embedArticle(job.article as Article);
+      const result = await this.getPipeline().embedArticle(job.article as Article);
 
       // Check if job still exists (may have been cascade deleted during processing)
       const currentJob = await prisma.embeddingJob.findUnique({

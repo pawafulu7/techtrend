@@ -31,10 +31,18 @@ describe('GET /api/workers/embedding', () => {
     // Connect to real database
     await prisma.$connect();
 
-    // Get first available source
-    const source = await prisma.source.findFirst();
+    // Get or create first available source
+    let source = await prisma.source.findFirst();
     if (!source) {
-      throw new Error('No source found in database');
+      // Create a test source if none exists
+      source = await prisma.source.create({
+        data: {
+          name: 'Test Source for Worker',
+          url: 'https://example.com/test-source',
+          type: 'RSS',
+          enabled: true,
+        },
+      });
     }
 
     // Create test articles with jobs
@@ -153,9 +161,17 @@ describe('GET /api/workers/embedding', () => {
 
   it('should handle article cascade delete gracefully', async () => {
     // Create article with job, then delete article
-    const source = await prisma.source.findFirst();
+    let source = await prisma.source.findFirst();
     if (!source) {
-      throw new Error('No source found');
+      // Create a test source if none exists
+      source = await prisma.source.create({
+        data: {
+          name: 'Test Source for Cascade Delete',
+          url: 'https://example.com/test-cascade',
+          type: 'RSS',
+          enabled: true,
+        },
+      });
     }
 
     const article = await prisma.article.create({
