@@ -2,6 +2,8 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/glo
 import { NextRequest } from 'next/server';
 import type { Article, PrismaClient } from '@prisma/client';
 
+// Unmock Prisma client to use real implementation (overrides jest.setup.node.js global mock)
+jest.mock('@prisma/client', () => jest.requireActual('@prisma/client'));
 // Mock @/lib/prisma to use real Prisma client instead of mock
 jest.mock('@/lib/prisma', () => jest.requireActual('../../../lib/prisma'));
 
@@ -118,6 +120,12 @@ describe('GET /api/workers/embedding', () => {
     const response = await GET(request);
     const data = await response.json();
 
+    // Debug: log error if status is not 200
+    if (response.status !== 200) {
+      console.error('Worker failed with status:', response.status);
+      console.error('Error data:', data);
+    }
+
     expect(response.status).toBe(200);
     expect(data.status).toMatch(/completed|idle/);
     expect(data.processed).toBeGreaterThanOrEqual(0);
@@ -157,6 +165,12 @@ describe('GET /api/workers/embedding', () => {
 
     const response = await GET(request);
     const data = await response.json();
+
+    // Debug: log error if status is not 200
+    if (response.status !== 200) {
+      console.error('Worker failed with status:', response.status);
+      console.error('Error data:', data);
+    }
 
     expect(response.status).toBe(200);
     expect(data.status).toBe('idle');
@@ -211,6 +225,12 @@ describe('GET /api/workers/embedding', () => {
 
     const response = await GET(request);
     const data = await response.json();
+
+    // Debug: log error if status is not 200
+    if (response.status !== 200) {
+      console.error('Worker failed with status:', response.status);
+      console.error('Error data:', data);
+    }
 
     expect(response.status).toBe(200);
     // Should complete without errors
