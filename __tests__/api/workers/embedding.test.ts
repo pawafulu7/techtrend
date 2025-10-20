@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/workers/embedding/route';
 import type { Article, PrismaClient } from '@prisma/client';
+
+// Mock @/lib/prisma to use real Prisma client instead of mock
+jest.mock('@/lib/prisma', () => jest.requireActual('../../../lib/prisma'));
+
+// Import route handler AFTER mock setup
+import { GET } from '@/app/api/workers/embedding/route';
 
 // Use real Prisma client (bypass mock) with production DB protection
 const { PrismaClient: RealPrismaClient } = jest.requireActual('@prisma/client');
