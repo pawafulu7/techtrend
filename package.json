@@ -137,7 +137,11 @@
     "otel:down": "docker compose -f docker-compose.otel.yml down",
     "monitoring:up": "docker compose -f docker-compose.otel.yml -f docker-compose.monitoring.yml up -d",
     "monitoring:down": "docker compose -f docker-compose.otel.yml -f docker-compose.monitoring.yml down",
-    "monitoring:logs": "docker compose -f docker-compose.otel.yml -f docker-compose.monitoring.yml logs -f"
+    "monitoring:logs": "docker compose -f docker-compose.otel.yml -f docker-compose.monitoring.yml logs -f",
+    "backfill:embeddings": "dotenv -e .env -- tsx scripts/rag/backfill-embeddings.ts",
+    "backfill:embeddings:dry": "dotenv -e .env -- tsx scripts/rag/backfill-embeddings.ts --dry-run",
+    "worker:embedding": "dotenv -e .env -- tsx scripts/dev/run-embedding-worker.ts",
+    "worker:embedding:dry": "dotenv -e .env -- tsx scripts/dev/run-embedding-worker.ts --dry-run"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.52",
