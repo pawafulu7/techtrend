@@ -78,6 +78,7 @@ const esmAllowList = [
   'ccount',
   'bail',
   'zwitch',
+  'trough',
   'is-plain-obj',
   'html-url-attributes',
   'markdown-table',
