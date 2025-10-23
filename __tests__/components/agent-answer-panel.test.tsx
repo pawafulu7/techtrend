@@ -59,8 +59,8 @@ describe('AgentAnswerPanel', () => {
     const copyButton = screen.getByLabelText('回答をコピー');
     fireEvent.click(copyButton);
 
-    const checkIcon = copyButton.querySelector('.text-green-600');
-    expect(checkIcon).toBeInTheDocument();
+    const checkIcon = copyButton.querySelector('svg');
+    expect(checkIcon).toHaveClass('text-green-600');
 
     jest.advanceTimersByTime(2500);
     jest.useRealTimers();
