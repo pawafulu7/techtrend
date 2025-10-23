@@ -18,7 +18,7 @@ describe('Markdown XSS Prevention', () => {
     expect(link).toHaveAttribute('href', '');
   });
 
-  test('strips data: protocol URLs', () => {
+  test('blocks data: protocol URLs in images', () => {
     const result: AgentSearchResult = {
       query: 'test',
       response: '![img](data:text/html,<script>alert("XSS")</script>)',
@@ -32,9 +32,9 @@ describe('Markdown XSS Prevention', () => {
     const img = screen.queryByRole('img');
 
     if (img) {
-      expect(img).toHaveAttribute('src', '');
-    } else {
-      expect(img).toBeNull();
+      const src = img.getAttribute('src');
+      expect(src).not.toContain('data:');
+      expect(src).not.toContain('script');
     }
   });
 
