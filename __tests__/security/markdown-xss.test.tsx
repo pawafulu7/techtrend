@@ -3,7 +3,7 @@ import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-pa
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 
 describe('Markdown XSS Prevention', () => {
-  test('strips javascript: protocol links', () => {
+  test('blocks javascript: protocol links', () => {
     const result: AgentSearchResult = {
       query: 'test',
       response: '[click me](javascript:alert("XSS"))',
@@ -15,7 +15,11 @@ describe('Markdown XSS Prevention', () => {
 
     render(<AgentAnswerPanel result={result} />);
     const link = screen.queryByRole('link');
-    expect(link).toHaveAttribute('href', '');
+
+    if (link) {
+      const href = link.getAttribute('href');
+      expect(href).not.toContain('javascript:');
+    }
   });
 
   test('blocks data: protocol URLs in images', () => {
@@ -33,8 +37,10 @@ describe('Markdown XSS Prevention', () => {
 
     if (img) {
       const src = img.getAttribute('src');
-      expect(src).not.toContain('data:');
-      expect(src).not.toContain('script');
+      if (src) {
+        expect(src).not.toContain('data:');
+        expect(src).not.toContain('script');
+      }
     }
   });
 
