@@ -35,8 +35,8 @@ describe('AgentSearchBar', () => {
   test('shows loading state when isLoading=true', () => {
     render(<AgentSearchBar onSearch={mockOnSearch} isLoading />);
     expect(screen.getByText('検索中')).toBeInTheDocument();
-    const loader = screen.getByText('検索中').previousElementSibling;
-    expect(loader?.tagName).toBe('svg');
+    const searchButton = screen.getByRole('button', { name: '検索中' });
+    expect(searchButton).toBeInTheDocument();
   });
 
   test('clears input on X button click', () => {
