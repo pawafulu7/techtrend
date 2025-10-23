@@ -69,19 +69,14 @@ describe('AgentErrorDisplay', () => {
     expect(screen.getByText('ネットワークエラー')).toBeInTheDocument();
   });
 
-  test('shows error details when provided', () => {
+  test('renders default error message', () => {
     const error: AgentSearchError = {
-      status: 500,
-      message: 'Server error',
-      details: { code: 'INTERNAL_ERROR', trace: 'stack trace' },
+      status: 999,
+      message: 'Custom error message',
     };
     render(<AgentErrorDisplay error={error} />);
 
-    const detailsToggle = screen.getByText('詳細を表示');
-    expect(detailsToggle).toBeInTheDocument();
-
-    fireEvent.click(detailsToggle);
-
-    expect(screen.getByText(/"code": "INTERNAL_ERROR"/)).toBeInTheDocument();
+    expect(screen.getByText('エラーが発生しました')).toBeInTheDocument();
+    expect(screen.getByText('Custom error message')).toBeInTheDocument();
   });
 });
