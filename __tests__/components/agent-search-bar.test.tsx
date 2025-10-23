@@ -1,11 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 
+const mockSaveToHistory = jest.fn();
+const mockGetSearchHistory = jest.fn(() => ['query 1', 'query 2']);
+const mockClearHistory = jest.fn();
+
 jest.mock('@/lib/hooks/useSearchHistory', () => ({
   useSearchHistory: () => ({
-    getSearchHistory: jest.fn(() => ['query 1', 'query 2']),
-    saveToHistory: jest.fn(),
-    clearHistory: jest.fn(),
+    getSearchHistory: mockGetSearchHistory,
+    saveToHistory: mockSaveToHistory,
+    clearHistory: mockClearHistory,
   }),
 }));
 
@@ -14,6 +18,9 @@ describe('AgentSearchBar', () => {
 
   beforeEach(() => {
     mockOnSearch.mockClear();
+    mockSaveToHistory.mockClear();
+    mockGetSearchHistory.mockClear();
+    mockClearHistory.mockClear();
   });
 
   test('renders with AI search badge', () => {
@@ -65,7 +72,7 @@ describe('AgentSearchBar', () => {
     render(<AgentSearchBar onSearch={mockOnSearch} />);
     const input = screen.getByLabelText('AI検索クエリ入力');
 
-    fireEvent.keyDown(document, { metaKey: true, shiftKey: true, key: 'k' });
+    fireEvent.keyDown(document, { metaKey: true, shiftKey: true, key: 'K' });
     expect(input).toHaveFocus();
   });
 
@@ -96,6 +103,7 @@ describe('AgentSearchBar', () => {
     fireEvent.click(suggestion);
 
     expect(mockOnSearch).toHaveBeenCalledWith('query 1');
+    expect(mockSaveToHistory).toHaveBeenCalledWith('query 1');
   });
 
   test('renders initial query', () => {
