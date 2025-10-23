@@ -62,6 +62,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
           message: 'Query cannot be empty',
         };
         setError(emptyError);
+        callbacksRef.current?.onError?.(emptyError);
         return;
       }
 
@@ -76,7 +77,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
+      const timeout = callbacksRef.current?.timeout ?? DEFAULT_TIMEOUT;
       let didTimeout = false;
       const timeoutId = setTimeout(() => {
         didTimeout = true;
@@ -173,7 +174,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
         }
       }
     },
-    [options]
+    []
   );
 
   const reset = useCallback(() => {
