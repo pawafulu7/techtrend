@@ -37,12 +37,15 @@ async function runWorker() {
     console.log(`Status: ${result.status}`);
     console.log(`Processed: ${result.processed}`);
 
-    if (result.status === 'completed') {
+    if (result.status === 'completed' || result.status === 'timeout') {
       console.log(`Succeeded: ${result.succeeded}`);
       console.log(`Failed: ${result.failed}`);
+      console.log(`Timed Out: ${result.timedOut}`);
       console.log(`Duration: ${result.durationMs}ms`);
     } else if (result.status === 'idle') {
       console.log(`Message: ${result.message}`);
+    } else if (result.status === 'error') {
+      console.log(`Duration: ${result.durationMs}ms`);
     }
 
     if (result.error) {
@@ -60,6 +63,7 @@ async function runWorker() {
         processed: result.processed,
         succeeded: result.succeeded,
         failed: result.failed,
+        timedOut: result.timedOut,
         durationMs: result.durationMs,
         error: result.error,
       },
