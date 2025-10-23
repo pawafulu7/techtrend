@@ -28,7 +28,7 @@ export function AgentSearchBar({
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         inputRef.current?.focus();
         setShowSuggestions(true);
@@ -141,12 +141,13 @@ export function AgentSearchBar({
         <div className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-md shadow-lg z-50">
           <div className="py-1">
             <div className="px-3 py-2 text-xs text-muted-foreground">最近の検索</div>
-            {suggestions.map((suggestion, index) => (
+            {suggestions.map((suggestion) => (
               <button
-                key={index}
+                key={suggestion}
                 className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground text-sm"
                 onClick={() => {
                   setQuery(suggestion);
+                  saveToHistory(suggestion);
                   onSearch(suggestion);
                   setShowSuggestions(false);
                 }}
