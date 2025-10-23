@@ -66,6 +66,7 @@ const esmAllowList = [
   'mdast-util-.*',
   'micromark.*',
   'hast-util-.*',
+  'estree-util-.*',
   'hastscript',
   'property-information',
   'space-separated-tokens',
