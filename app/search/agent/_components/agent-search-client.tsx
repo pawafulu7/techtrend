@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentLoadingState } from './agent-loading-state';
 import { AgentAnswerPanel } from './agent-answer-panel';
@@ -33,13 +33,26 @@ export function AgentSearchClient() {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AgentSearchResult | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSearch = (searchQuery: string) => {
     setQuery(searchQuery);
     setResult(null);
     setIsLoading(true);
 
-    setTimeout(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
       setIsLoading(false);
       setResult({ ...MOCK_RESULT, query: searchQuery });
     }, 5000);
