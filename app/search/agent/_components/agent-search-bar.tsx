@@ -1,0 +1,167 @@
+'use client';
+
+import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import { Search, X, Loader2, Sparkles } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useSearchHistory } from '@/lib/hooks/useSearchHistory';
+
+interface AgentSearchBarProps {
+  onSearch: (query: string) => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+  initialQuery?: string;
+}
+
+export function AgentSearchBar({
+  onSearch,
+  isLoading = false,
+  disabled = false,
+  initialQuery = '',
+}: AgentSearchBarProps) {
+  const [query, setQuery] = useState(initialQuery);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const { getSearchHistory, saveToHistory } = useSearchHistory();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setShowSuggestions(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearch = () => {
+    if (!query.trim()) return;
+    saveToHistory(query);
+    onSearch(query);
+    setShowSuggestions(false);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearch();
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      inputRef.current?.blur();
+    }
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    inputRef.current?.focus();
+  };
+
+  const suggestions = getSearchHistory().slice(0, 5);
+
+  return (
+    <div ref={searchRef} className="relative w-full max-w-3xl mx-auto">
+      <div className="flex items-center gap-2 mb-2">
+        <Badge variant="secondary" className="text-xs">
+          <Sparkles className="h-3 w-3 mr-1" />
+          AI検索
+        </Badge>
+        <span className="text-xs text-muted-foreground">
+          自然言語で記事を検索できます
+        </span>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+
+        <Input
+          ref={inputRef}
+          type="text"
+          placeholder="例: terraformについての記事をおすすめ5件教えて"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setShowSuggestions(true)}
+          className="pl-10 pr-24 py-6 text-base"
+          autoComplete="off"
+          spellCheck={false}
+          disabled={disabled || isLoading}
+          aria-label="AI検索クエリ入力"
+        />
+
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {query && !isLoading && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleClear}
+              className="h-8 w-8 p-0"
+              aria-label="クリア"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSearch}
+            disabled={disabled || isLoading || !query.trim()}
+            className="h-8"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                検索中
+              </>
+            ) : (
+              '検索'
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-md shadow-lg z-50">
+          <div className="py-1">
+            <div className="px-3 py-2 text-xs text-muted-foreground">最近の検索</div>
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground text-sm"
+                onClick={() => {
+                  setQuery(suggestion);
+                  onSearch(suggestion);
+                  setShowSuggestions(false);
+                }}
+              >
+                <Search className="h-3 w-3 text-muted-foreground" />
+                <span className="flex-1">{suggestion}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-2 text-xs text-muted-foreground text-center">
+        キーボードショートカット: <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+Shift+K</kbd> または <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+Shift+K</kbd>
+      </div>
+    </div>
+  );
+}
