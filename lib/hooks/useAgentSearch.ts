@@ -31,16 +31,16 @@ export interface UseAgentSearchReturn {
   reset: () => void;
 }
 
-export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchReturn {
+export function useAgentSearch(_options?: UseAgentSearchOptions): UseAgentSearchReturn {
   const [result, setResult] = useState<AgentSearchResult | null>(null);
   const [error, setError] = useState<AgentSearchError | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const search = useCallback(
-    async (query: string) => {
+    async (_query: string) => {
       throw new Error('Not implemented - Phase 3');
     },
-    [options]
+    []
   );
 
   const reset = useCallback(() => {
