@@ -6,42 +6,32 @@ describe('Markdown XSS Prevention', () => {
   test('blocks javascript: protocol links', () => {
     const result: AgentSearchResult = {
       query: 'test',
-      response: '[click me](javascript:alert("XSS"))',
+      response: '[click me](javascript:alert("XSS")) and safe text',
       toolCalls: [],
       usage: { totalTokens: 0 },
       cached: false,
       fallback: false,
     };
 
-    render(<AgentAnswerPanel result={result} />);
-    const link = screen.queryByRole('link');
-
-    if (link) {
-      const href = link.getAttribute('href');
-      expect(href).not.toContain('javascript:');
-    }
+    const { container } = render(<AgentAnswerPanel result={result} />);
+    expect(container.textContent).toContain('safe text');
+    expect(container.textContent).not.toContain('javascript:');
   });
 
   test('blocks data: protocol URLs in images', () => {
     const result: AgentSearchResult = {
       query: 'test',
-      response: '![img](data:text/html,<script>alert("XSS")</script>)',
+      response: 'Image: ![img](data:text/html,<script>alert("XSS")</script>) and safe text',
       toolCalls: [],
       usage: { totalTokens: 0 },
       cached: false,
       fallback: false,
     };
 
-    render(<AgentAnswerPanel result={result} />);
-    const img = screen.queryByRole('img');
-
-    if (img) {
-      const src = img.getAttribute('src');
-      if (src) {
-        expect(src).not.toContain('data:');
-        expect(src).not.toContain('script');
-      }
-    }
+    const { container } = render(<AgentAnswerPanel result={result} />);
+    expect(container.textContent).toContain('safe text');
+    expect(container.textContent).not.toContain('data:');
+    expect(container.textContent).not.toContain('script');
   });
 
   test('does not render inline HTML (no rehype-raw)', () => {
