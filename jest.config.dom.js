@@ -56,4 +56,44 @@ const customJestConfig = {
   ],
 };
 
-module.exports = createJestConfig(customJestConfig);
+const nextJestConfig = createJestConfig(customJestConfig);
+const esmAllowList = [
+  'react-markdown',
+  'remark-.*',
+  'rehype-.*',
+  'unified',
+  'unist-util-.*',
+  'mdast-util-.*',
+  'micromark.*',
+  'hast-util-.*',
+  'hastscript',
+  'property-information',
+  'space-separated-tokens',
+  'comma-separated-tokens',
+  'trim-lines',
+  'vfile',
+  'vfile-message',
+  'devlop',
+  'ccount',
+  'bail',
+  'zwitch',
+  'is-plain-obj',
+  'html-url-attributes',
+  'markdown-table',
+  'longest-streak',
+  'mdurl',
+  'decode-named-character-reference',
+  '@types[\\/](?:hast|mdast|unist)',
+];
+const esmPattern = esmAllowList.join('|');
+
+module.exports = async () => {
+  const config = await nextJestConfig();
+  return {
+    ...config,
+    transformIgnorePatterns: [
+      `/node_modules/(?!(?:${esmPattern})/)`,
+      '^.+\\.module\\.(css|sass|scss)$',
+    ],
+  };
+};
