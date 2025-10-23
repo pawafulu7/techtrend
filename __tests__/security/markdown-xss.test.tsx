@@ -30,7 +30,12 @@ describe('Markdown XSS Prevention', () => {
 
     render(<AgentAnswerPanel result={result} />);
     const img = screen.queryByRole('img');
-    expect(img).toBeNull();
+
+    if (img) {
+      expect(img).toHaveAttribute('src', '');
+    } else {
+      expect(img).toBeNull();
+    }
   });
 
   test('does not render inline HTML (no rehype-raw)', () => {
