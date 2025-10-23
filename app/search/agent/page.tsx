@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth/auth';
 import { features } from '@/config/features';
+import { AgentSearchClient } from './_components/agent-search-client';
 
 export default async function AgentSearchPage() {
   if (!features.aiSearch) {
@@ -14,11 +15,7 @@ export default async function AgentSearchPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">AI Article Search</h1>
-      <p className="text-muted-foreground">Phase 1: Page shell created</p>
-      <p className="text-sm text-muted-foreground mt-2">
-        Feature flag enabled. Authentication verified.
-      </p>
+      <AgentSearchClient />
     </div>
   );
 }
