@@ -101,7 +101,7 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-destructive mb-2">{title}</h3>
           <p className="text-sm text-destructive/80 mb-4">{message}</p>
-          {error.details && (
+          {error.details !== undefined && error.details !== null && (
             <details className="text-xs text-muted-foreground mb-4">
               <summary className="cursor-pointer">詳細を表示</summary>
               <pre className="mt-2 p-2 bg-muted rounded overflow-auto">
