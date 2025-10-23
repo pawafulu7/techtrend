@@ -31,13 +31,15 @@ export function AgentLoadingState({ className }: AgentLoadingStateProps) {
   useEffect(() => {
     const startTime = Date.now();
     const duration = 8000;
+    let hasReset = false;
 
     const progressInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const newProgress = Math.min(90, (elapsed / duration) * 90);
       setProgress(newProgress);
 
-      if (newProgress >= 90) {
+      if (newProgress >= 90 && !hasReset) {
+        hasReset = true;
         setTimeout(() => setProgress(60), 500);
       }
     }, 100);
