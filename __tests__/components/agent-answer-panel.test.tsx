@@ -52,15 +52,6 @@ describe('AgentAnswerPanel', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockResult.response);
   });
 
-  test('copy button calls clipboard.writeText', async () => {
-    render(<AgentAnswerPanel result={mockResult} />);
-
-    const copyButton = screen.getByLabelText('回答をコピー');
-    fireEvent.click(copyButton);
-
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockResult.response);
-  });
-
   test('feedback buttons call onFeedback', () => {
     const mockOnFeedback = jest.fn();
     render(<AgentAnswerPanel result={mockResult} onFeedback={mockOnFeedback} />);
