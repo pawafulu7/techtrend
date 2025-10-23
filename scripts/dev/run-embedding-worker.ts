@@ -25,10 +25,10 @@ async function runWorker() {
     console.log();
   }
 
-  const worker = new EmbeddingWorker();
+  const worker = new EmbeddingWorker({ skipEmbedding });
 
   try {
-    const result = await worker.run({ skipEmbedding });
+    const result = await worker.run();
 
     console.log();
     console.log('='.repeat(60));
@@ -45,12 +45,9 @@ async function runWorker() {
       console.log(`Message: ${result.message}`);
     }
 
-    if (result.errors && result.errors.length > 0) {
+    if (result.error) {
       console.log();
-      console.log('Errors:');
-      result.errors.forEach((err, i) => {
-        console.log(`  ${i + 1}. ${err}`);
-      });
+      console.log('Error:', result.error);
     }
 
     console.log('='.repeat(60));
@@ -64,6 +61,7 @@ async function runWorker() {
         succeeded: result.succeeded,
         failed: result.failed,
         durationMs: result.durationMs,
+        error: result.error,
       },
       'Worker execution completed'
     );
