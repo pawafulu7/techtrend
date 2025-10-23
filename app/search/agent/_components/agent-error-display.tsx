@@ -105,11 +105,13 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
             <details className="text-xs text-muted-foreground mb-4">
               <summary className="cursor-pointer">詳細を表示</summary>
               <pre className="mt-2 p-2 bg-muted rounded overflow-auto">
-                {JSON.stringify(error.details, null, 2)}
+                {typeof error.details === 'string'
+                  ? error.details
+                  : JSON.stringify(error.details, null, 2)}
               </pre>
             </details>
           )}
-          {action && <div>{action}</div>}
+          {action}
         </div>
       </div>
     </div>
