@@ -37,10 +37,10 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
   const [isLoading, setIsLoading] = useState(false);
 
   const search = useCallback(
-    async (query: string) => {
+    async (_query: string) => {
       throw new Error('Not implemented - Phase 3');
     },
-    [options]
+    []
   );
 
   const reset = useCallback(() => {
