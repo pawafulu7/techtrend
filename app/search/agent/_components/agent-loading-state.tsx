@@ -21,11 +21,11 @@ export function AgentLoadingState({ className }: AgentLoadingStateProps) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const timer = setTimeout(() => {
       setStatusIndex((prev) => (prev + 1) % STATUS_MESSAGES.length);
     }, STATUS_DURATIONS[statusIndex]);
 
-    return () => clearInterval(interval);
+    return () => clearTimeout(timer);
   }, [statusIndex]);
 
   useEffect(() => {
