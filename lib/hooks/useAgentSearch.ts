@@ -77,7 +77,11 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
       abortControllerRef.current = controller;
 
       const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      let didTimeout = false;
+      const timeoutId = setTimeout(() => {
+        didTimeout = true;
+        controller.abort();
+      }, timeout);
 
       try {
         const response = await fetch('/api/rag/agent-search', {
@@ -93,7 +97,22 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
           return;
         }
 
-        const data = await response.json();
+        const ct = response.headers.get('Content-Type') || '';
+        let data: any = null;
+        if (ct.includes('application/json')) {
+          try {
+            data = await response.json();
+          } catch {
+            data = null;
+          }
+        } else {
+          try {
+            const text = await response.text();
+            data = text ? { error: text } : null;
+          } catch {
+            data = null;
+          }
+        }
 
         if (!response.ok) {
           let retryAfter: number | undefined;
@@ -110,8 +129,11 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
 
           const agentError: AgentSearchError = {
             status: response.status,
-            message: data.error || 'Unknown error',
-            details: data.details,
+            message:
+              (data && typeof data.error === 'string' && data.error) ||
+              response.statusText ||
+              'Unknown error',
+            details: data?.details,
             retryAfter,
           };
 
@@ -126,12 +148,14 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
         clearTimeout(timeoutId);
 
         if (err instanceof Error && err.name === 'AbortError') {
-          const timeoutError: AgentSearchError = {
-            status: 408,
-            message: `Request timeout (${timeout / 1000}s)`,
-          };
-          setError(timeoutError);
-          callbacksRef.current?.onError?.(timeoutError);
+          if (didTimeout) {
+            const timeoutError: AgentSearchError = {
+              status: 408,
+              message: `Request timeout (${timeout / 1000}s)`,
+            };
+            setError(timeoutError);
+            callbacksRef.current?.onError?.(timeoutError);
+          }
         } else {
           const networkError: AgentSearchError = {
             status: 0,
@@ -141,8 +165,11 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
           callbacksRef.current?.onError?.(networkError);
         }
       } finally {
-        if (!controller.signal.aborted) {
+        if (didTimeout || !controller.signal.aborted) {
           setIsLoading(false);
+        }
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
         }
       }
     },
