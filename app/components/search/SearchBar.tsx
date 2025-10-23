@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDebounce } from '@/lib/hooks/useDebounce';
+import { useSearchHistory } from '@/lib/hooks/useSearchHistory';
 
 interface SearchSuggestion {
   type: 'history' | 'suggestion';
@@ -21,34 +22,9 @@ export function SearchBar() {
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   const debouncedQuery = useDebounce(query, 300);
-
-  // 検索履歴の取得
-  const getSearchHistory = useCallback(() => {
-    const history = localStorage.getItem('searchHistory');
-    if (history) {
-      try {
-        return JSON.parse(history) as string[];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  }, []);
-
-  // 検索履歴の保存
-  const saveToHistory = useCallback((searchQuery: string) => {
-    if (!searchQuery.trim()) return;
-    
-    const history = getSearchHistory();
-    const updatedHistory = [
-      searchQuery,
-      ...history.filter(h => h !== searchQuery)
-    ].slice(0, 10); // 最新10件を保持
-    
-    localStorage.setItem('searchHistory', JSON.stringify(updatedHistory));
-  }, [getSearchHistory]);
+  const { getSearchHistory, saveToHistory, clearHistory } = useSearchHistory();
 
   // サジェスチョンの生成
   useEffect(() => {
@@ -222,7 +198,7 @@ export function SearchBar() {
               <button
                 className="text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => {
-                  localStorage.removeItem('searchHistory');
+                  clearHistory();
                   setSuggestions([]);
                 }}
               >
