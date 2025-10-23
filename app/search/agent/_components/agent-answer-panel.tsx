@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -23,10 +23,19 @@ interface AgentAnswerPanelProps {
 export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) {
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(result.response);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(result.response);
+      setCopied(true);
+    } catch (error) {
+      console.error('クリップボードへのコピーに失敗しました:', error);
+    }
   };
 
   return (
@@ -79,7 +88,7 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
-            a: ({ node, ...props }) => (
+            a: ({ node: _node, ...props }) => (
               <a {...props} target="_blank" rel="noopener noreferrer" />
             ),
           }}
