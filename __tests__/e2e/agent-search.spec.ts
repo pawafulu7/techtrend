@@ -375,12 +375,12 @@ test.describe('AI Agent Search E2E', () => {
       { timeout: 5000 }
     );
 
-    // Clear input and focus
+    // Clear input
     await input.fill('');
-    await input.focus();
 
-    // Short delay for React to re-render suggestions dropdown (Firefox needs this)
-    await page.waitForTimeout(150);
+    // Firefox needs explicit blur→focus to trigger focus event
+    await input.blur();
+    await input.focus();
 
     // Verify suggestion dropdown - use button selector for deterministic locator
     const suggestion = page.locator('button', { hasText: 'historical query' });
