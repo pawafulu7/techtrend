@@ -25,6 +25,7 @@ export function AgentSearchBar({
   const { getSearchHistory, saveToHistory } = useSearchHistory();
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const skipNextFocusRef = useRef(false);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -96,7 +97,13 @@ export function AgentSearchBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setShowSuggestions(true)}
+          onFocus={() => {
+            if (skipNextFocusRef.current) {
+              skipNextFocusRef.current = false;
+              return;
+            }
+            setShowSuggestions(true);
+          }}
           className="pl-10 pr-24 py-6 text-base bg-card border-2 border-border shadow-sm focus:border-primary focus:shadow-md transition-all duration-200"
           autoComplete="off"
           spellCheck={false}
@@ -162,6 +169,7 @@ export function AgentSearchBar({
                 onClick={() => {
                   setQuery(suggestion);
                   setShowSuggestions(false);
+                  skipNextFocusRef.current = true;
                   inputRef.current?.focus();
                 }}
               >
