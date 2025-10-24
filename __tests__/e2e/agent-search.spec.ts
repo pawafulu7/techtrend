@@ -44,8 +44,13 @@ test.describe('AI Agent Search E2E', () => {
   test('1. Navigate to /search/agent and verify page loads', async ({ page }) => {
     await page.goto('/search/agent');
     await expect(page).toHaveURL('/search/agent');
-    await expect(page.locator('h1')).toContainText('AI記事検索');
-    await expect(page.locator('input[type="text"]')).toBeVisible();
+
+    // Wait for page to render (Firefox needs explicit wait)
+    const heading = page.getByRole('heading', { name: 'AI記事検索', level: 1 });
+    await expect(heading).toBeVisible({ timeout: 10000 });
+
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await expect(input).toBeVisible();
   });
 
   test('2. Enter query and verify loading state appears', async ({ page }) => {
@@ -245,8 +250,9 @@ test.describe('AI Agent Search E2E', () => {
       })
     );
 
-    await page.fill('input[type="text"]', 'test query');
-    await page.press('input[type="text"]', 'Enter');
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('test query');
+    await input.press('Enter');
 
     await page.waitForSelector('[role="article"]', { timeout: 5000 });
 
