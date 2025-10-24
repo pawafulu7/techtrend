@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { loginTestUser } from './utils/e2e-helpers';
 
 const MOCK_SUCCESS_RESPONSE = {
   query: 'test query',
@@ -33,17 +34,11 @@ const MOCK_FALLBACK_RESPONSE = {
 
 test.describe('AI Agent Search E2E', () => {
   test.beforeEach(async ({ page }) => {
-    // Stub authentication check (assume logged in)
-    await page.route('**/api/auth/session', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          user: { id: 'test-user', email: 'test@example.com', name: 'Test User' },
-          expires: '2099-12-31T23:59:59.999Z',
-        }),
-      })
-    );
+    // Login with test user to obtain real session cookies
+    const loginSuccess = await loginTestUser(page);
+    if (!loginSuccess) {
+      throw new Error('Failed to login test user');
+    }
   });
 
   test('1. Navigate to /search/agent and verify page loads', async ({ page }) => {

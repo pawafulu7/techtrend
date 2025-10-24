@@ -80,6 +80,7 @@ services:
       AUTH_SECRET: ${AUTH_SECRET:-test-secret-key-for-testing-only-32-chars}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-test-secret-key-for-testing-only-32-chars}
       PRISMA_MIGRATION_ENGINE_SKIP_TRANSACTIONS: "1"
+      NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"
     shm_size: "2gb"
     init: true
     depends_on:
