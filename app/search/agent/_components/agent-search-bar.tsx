@@ -102,6 +102,10 @@ export function AgentSearchBar({
           spellCheck={false}
           disabled={disabled || isLoading}
           aria-label="AI検索クエリ入力"
+          data-testid="agent-search-input"
+          aria-autocomplete="list"
+          aria-controls="search-history-suggestions"
+          aria-expanded={showSuggestions && suggestions.length > 0}
         />
 
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -138,12 +142,21 @@ export function AgentSearchBar({
       </div>
 
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-md shadow-lg z-50">
+        <div
+          id="search-history-suggestions"
+          data-testid="search-history-suggestions"
+          data-state={showSuggestions ? 'open' : 'closed'}
+          role="listbox"
+          className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-md shadow-lg z-50"
+        >
           <div className="py-1">
             <div className="px-3 py-2 text-xs text-muted-foreground">最近の検索</div>
             {suggestions.map((suggestion) => (
               <button
                 key={suggestion}
+                type="button"
+                role="option"
+                data-testid="search-history-suggestion"
                 className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground text-sm"
                 onClick={() => {
                   setQuery(suggestion);

@@ -391,8 +391,28 @@ test.describe('AI Agent Search E2E', () => {
     await input.blur();
     await input.focus();
 
-    // Verify suggestion dropdown - use button selector for deterministic locator
-    const suggestion = page.locator('button', { hasText: 'historical query' });
-    await expect(suggestion).toBeVisible({ timeout: 7000 });
+    // Ensure input is focused
+    await expect(input).toBeFocused();
+
+    // Wait for both conditions: focus held + suggestions rendered (deterministic)
+    await expect.poll(async () =>
+      page.evaluate(() => {
+        const input = document.querySelector('[data-testid="agent-search-input"]');
+        const active = document.activeElement === input;
+        const suggestions = Array.from(
+          document.querySelectorAll('[data-testid="search-history-suggestion"]')
+        ).map(el => el.textContent?.trim());
+        return active && suggestions.includes('historical query');
+      }),
+      { timeout: 10000 }
+    ).toBeTruthy();
+
+    // Verify suggestion dropdown container is visible
+    const suggestionList = page.getByTestId('search-history-suggestions');
+    await expect(suggestionList).toBeVisible();
+
+    // Verify specific suggestion
+    const suggestion = suggestionList.getByTestId('search-history-suggestion').filter({ hasText: 'historical query' });
+    await expect(suggestion).toBeVisible();
   });
 });
