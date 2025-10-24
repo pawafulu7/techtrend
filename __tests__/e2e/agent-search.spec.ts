@@ -367,7 +367,7 @@ test.describe('AI Agent Search E2E', () => {
     await expect(input).toBeFocused();
   });
 
-  test('13. Search history suggestions display on focus', async ({ page }) => {
+  test('13. Search history suggestions display and allow editing before search', async ({ page }) => {
     // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
@@ -433,5 +433,41 @@ test.describe('AI Agent Search E2E', () => {
     // Verify specific suggestion
     const suggestion = suggestionList.getByTestId('search-history-suggestion').filter({ hasText: 'historical query' });
     await expect(suggestion).toBeVisible();
+
+    // NEW: Verify history click does NOT trigger immediate search
+    let requestFired = false;
+    page.on('request', (req) => {
+      if (req.url().includes('/api/rag/agent-search') && req.method() === 'POST') {
+        requestFired = true;
+      }
+    });
+
+    // Click suggestion
+    await suggestion.click();
+
+    // Wait briefly and verify no request was fired
+    await page.waitForTimeout(500);
+    expect(requestFired).toBe(false);
+
+    // Verify input has the suggestion value
+    await expect(input).toHaveValue('historical query');
+
+    // Verify input is focused for editing
+    await expect(input).toBeFocused();
+
+    // Verify suggestions are hidden
+    await expect(suggestionList).not.toBeVisible();
+
+    // NEW: Verify Enter key triggers search
+    await input.press('Enter');
+
+    // Verify search was executed
+    await page.waitForResponse(
+      (res) => res.url().includes('/api/rag/agent-search') && res.status() === 200,
+      { timeout: 5000 }
+    );
+
+    // Verify results are displayed
+    await expect(page.locator('[role="article"]')).toBeVisible();
   });
 });
