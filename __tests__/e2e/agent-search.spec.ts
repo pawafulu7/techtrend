@@ -33,12 +33,27 @@ const MOCK_FALLBACK_RESPONSE = {
 };
 
 test.describe('AI Agent Search E2E', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, context }) => {
     // Login with test user to obtain real session cookies
     const loginSuccess = await loginTestUser(page);
     if (!loginSuccess) {
       throw new Error('Failed to login test user');
     }
+
+    // Stub clipboard API for deterministic testing (works in headless/CI)
+    await context.addInitScript(() => {
+      const writes: string[] = [];
+      Object.defineProperty(window.navigator, 'clipboard', {
+        value: {
+          writeText: async (text: string) => {
+            writes.push(text);
+            (window as any).__lastCopiedText__ = text;
+            return Promise.resolve();
+          },
+        },
+        configurable: true,
+      });
+    });
   });
 
   test('1. Navigate to /search/agent and verify page loads', async ({ page }) => {
@@ -263,12 +278,15 @@ test.describe('AI Agent Search E2E', () => {
 
     await page.waitForSelector('[role="article"]', { timeout: 5000 });
 
-    // Click copy button (no grantPermissions needed - user gesture is sufficient)
+    // Click copy button
     await page.click('button[aria-label="回答をコピー"]');
 
     // Wait for icon to change from Copy to Check (with text-green-600 class)
-    // Component uses lucide icons: <Copy /> → <Check className="text-green-600" />
     await page.waitForSelector('button[aria-label="回答をコピー"] svg.lucide-check.text-green-600', { timeout: 3000 });
+
+    // Verify clipboard content (using stubbed clipboard API)
+    const copiedText = await page.evaluate(() => (window as any).__lastCopiedText__);
+    expect(copiedText).toContain('テスト記事1');
   });
 
   test('11. Feedback buttons log correctly', async ({ page }) => {
@@ -346,16 +364,26 @@ test.describe('AI Agent Search E2E', () => {
     await page.waitForFunction(
       () => {
         const history = localStorage.getItem('searchHistory');
-        return history?.includes('historical query') ?? false;
+        if (!history) return false;
+        try {
+          const parsed = JSON.parse(history) as string[];
+          return parsed.includes('historical query');
+        } catch {
+          return false;
+        }
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     );
 
     // Clear input and focus
     await input.fill('');
     await input.focus();
 
-    // Verify suggestion dropdown with longer timeout for Firefox
-    await expect(page.getByText('historical query')).toBeVisible({ timeout: 5000 });
+    // Short delay for React to re-render suggestions dropdown (Firefox needs this)
+    await page.waitForTimeout(150);
+
+    // Verify suggestion dropdown - use button selector for deterministic locator
+    const suggestion = page.locator('button', { hasText: 'historical query' });
+    await expect(suggestion).toBeVisible({ timeout: 7000 });
   });
 });
