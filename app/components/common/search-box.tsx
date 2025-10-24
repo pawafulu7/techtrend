@@ -1,16 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Sparkles } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDebounce } from '@/hooks/use-debounce';
+import { features } from '@/config/features';
 
 export function SearchBox() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+  const { status } = useSession();
+
   // URLパラメータから初期値を取得
   const [query, setQuery] = useState(() => {
     return searchParams.get('search') || '';
@@ -78,8 +82,19 @@ export function SearchBox() {
   };
 
   return (
-    <div className="relative" style={{ width: '24rem' }}>
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
+    <div className="flex flex-col" style={{ width: '24rem' }}>
+      {features.aiSearch && status === 'authenticated' && (
+        <Link
+          href="/search/agent"
+          className="inline-flex items-center gap-1 mb-2 text-xs text-primary hover:underline"
+        >
+          <Sparkles className="h-3 w-3" />
+          AI検索を試す
+        </Link>
+      )}
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
       <Input
         type="text"
         placeholder="キーワードで記事を検索..."
@@ -107,6 +122,7 @@ export function SearchBox() {
           <X className="h-3 w-3" />
         </Button>
       )}
+      </div>
     </div>
   );
 }

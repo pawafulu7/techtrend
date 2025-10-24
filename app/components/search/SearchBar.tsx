@@ -1,15 +1,12 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Search, X, Loader2, Sparkles } from 'lucide-react';
+import { Search, X, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useSearchHistory } from '@/lib/hooks/useSearchHistory';
-import { features } from '@/config/features';
 
 interface SearchSuggestion {
   type: 'history' | 'suggestion';
@@ -19,7 +16,6 @@ interface SearchSuggestion {
 export function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { status } = useSession();
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -125,16 +121,6 @@ export function SearchBar() {
 
   return (
     <div ref={searchRef} className="relative w-full max-w-xl">
-      {features.aiSearch && status === 'authenticated' && (
-        <Link
-          href="/search/agent"
-          className="inline-flex items-center gap-1 mb-2 text-xs text-primary hover:underline"
-        >
-          <Sparkles className="h-3 w-3" />
-          AI検索を試す
-        </Link>
-      )}
-
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         
