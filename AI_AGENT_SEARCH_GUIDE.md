@@ -274,6 +274,6 @@ For technical issues or feature requests, contact your system administrator or f
 
 ## Related Documentation
 
-- [Architecture Overview](../architecture/rag-system.md)
-- [API Documentation](../api/rag-endpoints.md)
-- [Feature Flags](../configuration/feature-flags.md)
+- [RAG Embedding Lifecycle](docs/operations/rag-embedding-lifecycle.md)
+- [RAG Search API](docs/api/rag-search-api.md)
+- [RAG Rollback Procedure](docs/operations/rag-rollback-procedure.md)
