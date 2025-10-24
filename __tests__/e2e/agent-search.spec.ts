@@ -304,8 +304,15 @@ test.describe('AI Agent Search E2E', () => {
 
     const input = page.locator('input[type="text"]');
 
-    // Press Cmd+Shift+K
+    // Press Cmd+Shift+K (Meta on Mac, Control on Linux/Windows)
+    // Send both modifiers to ensure cross-platform compatibility
     await page.keyboard.press('Meta+Shift+KeyK');
+
+    // If Meta didn't work (Linux CI), try Control
+    const isFocused = await input.evaluate((el) => document.activeElement === el);
+    if (!isFocused) {
+      await page.keyboard.press('Control+Shift+KeyK');
+    }
 
     // Verify input is focused
     await expect(input).toBeFocused();
