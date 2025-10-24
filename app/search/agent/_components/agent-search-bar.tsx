@@ -157,6 +157,7 @@ export function AgentSearchBar({
                 type="button"
                 role="option"
                 data-testid="search-history-suggestion"
+                aria-selected={false}
                 className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground text-sm"
                 onClick={() => {
                   setQuery(suggestion);
