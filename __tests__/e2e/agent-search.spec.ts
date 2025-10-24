@@ -66,7 +66,7 @@ test.describe('AI Agent Search E2E', () => {
       });
     });
 
-    const input = page.locator('input[type="text"]');
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('test query');
     await input.press('Enter');
 
@@ -86,8 +86,9 @@ test.describe('AI Agent Search E2E', () => {
       })
     );
 
-    await page.fill('input[type="text"]', 'test query');
-    await page.press('input[type="text"]', 'Enter');
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('test query');
+    await input.press('Enter');
 
     // Wait for answer panel
     await page.waitForSelector('text=AI回答', { timeout: 5000 });
@@ -108,8 +109,9 @@ test.describe('AI Agent Search E2E', () => {
       })
     );
 
-    await page.fill('input[type="text"]', 'test query');
-    await page.press('input[type="text"]', 'Enter');
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('test query');
+    await input.press('Enter');
 
     await page.waitForSelector('text=AI回答', { timeout: 5000 });
 
@@ -128,8 +130,9 @@ test.describe('AI Agent Search E2E', () => {
       })
     );
 
-    await page.fill('input[type="text"]', 'test query');
-    await page.press('input[type="text"]', 'Enter');
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('test query');
+    await input.press('Enter');
 
     await page.waitForSelector('text=AI回答', { timeout: 5000 });
 
@@ -148,8 +151,9 @@ test.describe('AI Agent Search E2E', () => {
       })
     );
 
-    await page.fill('input[type="text"]', 'test query');
-    await page.press('input[type="text"]', 'Enter');
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('test query');
+    await input.press('Enter');
 
     // Wait for error display
     await page.waitForSelector('text=認証が必要です', { timeout: 5000 });
@@ -170,8 +174,9 @@ test.describe('AI Agent Search E2E', () => {
       })
     );
 
-    await page.fill('input[type="text"]', 'test query');
-    await page.press('input[type="text"]', 'Enter');
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('test query');
+    await input.press('Enter');
 
     await page.waitForSelector('text=レート制限に達しました', { timeout: 5000 });
 
@@ -190,8 +195,9 @@ test.describe('AI Agent Search E2E', () => {
       })
     );
 
-    await page.fill('input[type="text"]', 'test query');
-    await page.press('input[type="text"]', 'Enter');
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('test query');
+    await input.press('Enter');
 
     await page.waitForSelector('text=サーバーエラー', { timeout: 5000 });
 
@@ -223,8 +229,9 @@ test.describe('AI Agent Search E2E', () => {
       }
     });
 
-    await page.fill('input[type="text"]', 'test query');
-    await page.press('input[type="text"]', 'Enter');
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('test query');
+    await input.press('Enter');
 
     // Wait for error
     await page.waitForSelector('text=サーバーエラー', { timeout: 5000 });
@@ -280,8 +287,9 @@ test.describe('AI Agent Search E2E', () => {
       consoleLogs.push(msg.text());
     });
 
-    await page.fill('input[type="text"]', 'test query');
-    await page.press('input[type="text"]', 'Enter');
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('test query');
+    await input.press('Enter');
 
     await page.waitForSelector('[role="article"]', { timeout: 5000 });
 
