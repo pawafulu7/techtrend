@@ -213,6 +213,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@eslint/eslintrc": "^3",
     "@faker-js/faker": "^9.9.0",
     "@mswjs/data": "^0.16.2",
@@ -243,6 +244,7 @@
     "jest-environment-jsdom": "^30.1.2",
     "jest-mock-extended": "^4.0.0",
     "msw": "^2.11.2",
+    "playwright-lighthouse": "^4.0.0",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.6.14",
     "prisma": "^6.16.1",

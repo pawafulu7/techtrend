@@ -56,6 +56,25 @@ test.describe('AI Agent Search E2E', () => {
     });
   });
 
+  test('0. CTA navigation from home page', async ({ page }) => {
+    // Navigate to home page
+    await page.goto('/');
+    await expect(page).toHaveURL('/');
+
+    // Verify CTA is visible (feature flag ON)
+    const ctaLink = page.getByRole('link', { name: /AI検索を試す/ });
+    await expect(ctaLink).toBeVisible();
+    await expect(ctaLink).toHaveAttribute('href', '/search/agent');
+
+    // Click CTA and verify navigation
+    await ctaLink.click();
+    await expect(page).toHaveURL('/search/agent');
+
+    // Verify page loaded correctly
+    const heading = page.getByRole('heading', { name: 'AI記事検索', level: 1 });
+    await expect(heading).toBeVisible({ timeout: 10000 });
+  });
+
   test('1. Navigate to /search/agent and verify page loads', async ({ page }) => {
     await page.goto('/search/agent');
     await expect(page).toHaveURL('/search/agent');
