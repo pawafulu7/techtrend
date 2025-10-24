@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Search, X, Loader2, Sparkles } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ interface SearchSuggestion {
 export function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { status } = useSession();
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -123,7 +125,7 @@ export function SearchBar() {
 
   return (
     <div ref={searchRef} className="relative w-full max-w-xl">
-      {features.aiSearch && (
+      {features.aiSearch && status === 'authenticated' && (
         <Link
           href="/search/agent"
           className="inline-flex items-center gap-1 mb-2 text-xs text-primary hover:underline"
