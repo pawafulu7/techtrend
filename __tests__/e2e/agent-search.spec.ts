@@ -267,7 +267,8 @@ test.describe('AI Agent Search E2E', () => {
     await page.click('button[aria-label="回答をコピー"]');
 
     // Verify checkmark appears (indicates copy succeeded)
-    await expect(page.locator('svg.text-green-600')).toBeVisible({ timeout: 2000 });
+    // Check icon has class 'text-green-600', not svg element
+    await expect(page.locator('button[aria-label="回答をコピー"] svg')).toHaveClass(/text-green-600/, { timeout: 2000 });
   });
 
   test('11. Feedback buttons log correctly', async ({ page }) => {
