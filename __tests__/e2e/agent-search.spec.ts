@@ -69,9 +69,7 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('2. Enter query and verify loading state appears', async ({ page }) => {
-    await page.goto('/search/agent');
-
-    // Stub API with delay
+    // Stub API with delay BEFORE navigation
     await page.route('**/api/rag/agent-search', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 2000)); // 2s delay
       route.fulfill({
@@ -80,6 +78,8 @@ test.describe('AI Agent Search E2E', () => {
         body: JSON.stringify(MOCK_SUCCESS_RESPONSE),
       });
     });
+
+    await page.goto('/search/agent');
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('test query');
@@ -90,9 +90,7 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('3. Successful search displays answer panel', async ({ page }) => {
-    await page.goto('/search/agent');
-
-    // Stub successful API response
+    // Stub successful API response BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
         status: 200,
@@ -100,6 +98,8 @@ test.describe('AI Agent Search E2E', () => {
         body: JSON.stringify(MOCK_SUCCESS_RESPONSE),
       })
     );
+
+    await page.goto('/search/agent');
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('test query');
@@ -114,8 +114,7 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('4. Cached response displays cached badge', async ({ page }) => {
-    await page.goto('/search/agent');
-
+    // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
         status: 200,
@@ -123,6 +122,8 @@ test.describe('AI Agent Search E2E', () => {
         body: JSON.stringify(MOCK_CACHED_RESPONSE),
       })
     );
+
+    await page.goto('/search/agent');
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('test query');
@@ -135,8 +136,7 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('5. Fallback response displays warning', async ({ page }) => {
-    await page.goto('/search/agent');
-
+    // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
         status: 200,
@@ -144,6 +144,8 @@ test.describe('AI Agent Search E2E', () => {
         body: JSON.stringify(MOCK_FALLBACK_RESPONSE),
       })
     );
+
+    await page.goto('/search/agent');
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('test query');
@@ -156,8 +158,7 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('6. 401 error displays login prompt', async ({ page }) => {
-    await page.goto('/search/agent');
-
+    // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
         status: 401,
@@ -165,6 +166,8 @@ test.describe('AI Agent Search E2E', () => {
         body: JSON.stringify({ error: 'Unauthorized' }),
       })
     );
+
+    await page.goto('/search/agent');
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('test query');
@@ -178,8 +181,7 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('7. 429 error displays rate limit message with retry button', async ({ page }) => {
-    await page.goto('/search/agent');
-
+    // Setup route BEFORE navigation to ensure stub is active
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
         status: 429,
@@ -188,6 +190,8 @@ test.describe('AI Agent Search E2E', () => {
         body: JSON.stringify({ error: 'Rate limit exceeded' }),
       })
     );
+
+    await page.goto('/search/agent');
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('test query');
@@ -200,8 +204,7 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('8. 500 error displays server error with retry button', async ({ page }) => {
-    await page.goto('/search/agent');
-
+    // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
         status: 500,
@@ -209,6 +212,8 @@ test.describe('AI Agent Search E2E', () => {
         body: JSON.stringify({ error: 'Internal server error' }),
       })
     );
+
+    await page.goto('/search/agent');
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('test query');
@@ -221,10 +226,9 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('9. Retry button triggers new search', async ({ page }) => {
-    await page.goto('/search/agent');
-
     let requestCount = 0;
 
+    // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) => {
       requestCount++;
       if (requestCount === 1) {
@@ -244,6 +248,8 @@ test.describe('AI Agent Search E2E', () => {
       }
     });
 
+    await page.goto('/search/agent');
+
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('test query');
     await input.press('Enter');
@@ -262,8 +268,7 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('10. Copy button copies answer to clipboard', async ({ page }) => {
-    await page.goto('/search/agent');
-
+    // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
         status: 200,
@@ -271,6 +276,8 @@ test.describe('AI Agent Search E2E', () => {
         body: JSON.stringify(MOCK_SUCCESS_RESPONSE),
       })
     );
+
+    await page.goto('/search/agent');
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('test query');
@@ -290,8 +297,7 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('11. Feedback buttons log correctly', async ({ page }) => {
-    await page.goto('/search/agent');
-
+    // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
         status: 200,
@@ -299,6 +305,8 @@ test.describe('AI Agent Search E2E', () => {
         body: JSON.stringify(MOCK_SUCCESS_RESPONSE),
       })
     );
+
+    await page.goto('/search/agent');
 
     // Capture console logs
     const consoleLogs: string[] = [];
@@ -341,8 +349,7 @@ test.describe('AI Agent Search E2E', () => {
   });
 
   test('13. Search history suggestions display on focus', async ({ page }) => {
-    await page.goto('/search/agent');
-
+    // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
         status: 200,
@@ -350,6 +357,8 @@ test.describe('AI Agent Search E2E', () => {
         body: JSON.stringify(MOCK_SUCCESS_RESPONSE),
       })
     );
+
+    await page.goto('/search/agent');
 
     // Use unique selector to avoid strict mode violation
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
