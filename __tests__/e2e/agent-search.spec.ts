@@ -256,10 +256,7 @@ test.describe('AI Agent Search E2E', () => {
 
     await page.waitForSelector('[role="article"]', { timeout: 5000 });
 
-    // Grant clipboard permissions (Firefox doesn't support clipboard-read)
-    await page.context().grantPermissions(['clipboard-write']);
-
-    // Click copy button
+    // Click copy button (no grantPermissions needed - user gesture is sufficient)
     await page.click('button[aria-label="回答をコピー"]');
 
     // Verify checkmark appears (indicates copy succeeded)
