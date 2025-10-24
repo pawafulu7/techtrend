@@ -324,6 +324,7 @@ jobs:
           CURSOR_SECRET: test-cursor-secret-for-ci-environment-only-32chars  # CI環境用のカーソル秘密鍵
           CI: 'true'  # CI環境フラグ
           PORT: 3000
+          NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"  # AI Agent Search UI feature flag
         run: |
           # ビルドフェーズ
           echo "Building application..."

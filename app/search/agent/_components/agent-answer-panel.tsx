@@ -31,8 +31,23 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(result.response);
-      setCopied(true);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(result.response);
+        setCopied(true);
+      } else {
+        // Fallback for environments without clipboard API (e.g., headless browsers)
+        const textarea = document.createElement('textarea');
+        textarea.value = result.response;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (success) {
+          setCopied(true);
+        }
+      }
     } catch (error) {
       console.error('クリップボードへのコピーに失敗しました:', error);
     }
