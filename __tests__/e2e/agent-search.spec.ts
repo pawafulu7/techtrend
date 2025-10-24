@@ -266,9 +266,9 @@ test.describe('AI Agent Search E2E', () => {
     // Click copy button (no grantPermissions needed - user gesture is sufficient)
     await page.click('button[aria-label="回答をコピー"]');
 
-    // Verify checkmark appears (indicates copy succeeded)
-    // Check icon has class 'text-green-600', not svg element
-    await expect(page.locator('button[aria-label="回答をコピー"] svg')).toHaveClass(/text-green-600/, { timeout: 2000 });
+    // Wait for icon to change from Copy to Check (with text-green-600 class)
+    // Component uses lucide icons: <Copy /> → <Check className="text-green-600" />
+    await page.waitForSelector('button[aria-label="回答をコピー"] svg.lucide-check.text-green-600', { timeout: 3000 });
   });
 
   test('11. Feedback buttons log correctly', async ({ page }) => {
