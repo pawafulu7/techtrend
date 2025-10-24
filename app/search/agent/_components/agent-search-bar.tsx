@@ -25,6 +25,7 @@ export function AgentSearchBar({
   const { getSearchHistory, saveToHistory } = useSearchHistory();
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const skipNextFocusRef = useRef(false);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -96,8 +97,14 @@ export function AgentSearchBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setShowSuggestions(true)}
-          className="pl-10 pr-24 py-6 text-base"
+          onFocus={() => {
+            if (skipNextFocusRef.current) {
+              skipNextFocusRef.current = false;
+              return;
+            }
+            setShowSuggestions(true);
+          }}
+          className="pl-10 pr-24 py-6 text-base bg-card border-2 border-border shadow-sm focus:border-primary focus:shadow-md transition-all duration-200"
           autoComplete="off"
           spellCheck={false}
           disabled={disabled || isLoading}
@@ -147,7 +154,7 @@ export function AgentSearchBar({
           data-testid="search-history-suggestions"
           data-state={showSuggestions ? 'open' : 'closed'}
           role="listbox"
-          className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-md shadow-lg z-50"
+          className="absolute top-full left-0 right-0 mt-2 bg-card border-2 border-border rounded-md shadow-md z-50"
         >
           <div className="py-1">
             <div className="px-3 py-2 text-xs text-muted-foreground">最近の検索</div>
@@ -161,9 +168,9 @@ export function AgentSearchBar({
                 className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground text-sm"
                 onClick={() => {
                   setQuery(suggestion);
-                  saveToHistory(suggestion);
-                  onSearch(suggestion);
                   setShowSuggestions(false);
+                  skipNextFocusRef.current = true;
+                  inputRef.current?.focus();
                 }}
               >
                 <Search className="h-3 w-3 text-muted-foreground" />
