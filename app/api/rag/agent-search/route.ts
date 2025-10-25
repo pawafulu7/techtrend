@@ -133,6 +133,283 @@ interface ValidatedRequest {
 }
 
 /**
+ * Create SSE response with appropriate headers
+ *
+ * Server-Sent Events format for streaming agent responses.
+ * Includes rate limit headers and cache control.
+ */
+function createSSEResponse(
+  stream: ReadableStream,
+  rateLimitInfo?: RateLimitInfo
+): Response {
+  const headers = new Headers({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  if (rateLimitInfo) {
+    headers.set('X-RateLimit-Limit', rateLimitInfo.limit.toString());
+    headers.set('X-RateLimit-Remaining', rateLimitInfo.remaining.toString());
+    headers.set(
+      'X-RateLimit-Reset',
+      Math.floor(rateLimitInfo.reset.getTime() / 1000).toString()
+    );
+  }
+
+  return new Response(stream, { headers });
+}
+
+/**
+ * Create SSE response for cached results
+ *
+ * Returns cached text via SSE format for client-side compatibility.
+ * Emits 'cached' event followed by 'finish' event.
+ */
+function createCachedSSEResponse(
+  cachedText: string,
+  rateLimitInfo?: RateLimitInfo
+): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({
+            type: 'cached',
+            text: cachedText,
+            timestamp: new Date().toISOString(),
+          })}\n\n`
+        )
+      );
+
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({
+            type: 'finish',
+            cached: true,
+          })}\n\n`
+        )
+      );
+
+      controller.close();
+    },
+  });
+
+  return createSSEResponse(stream, rateLimitInfo);
+}
+
+/**
+ * Handle streaming agent search request
+ *
+ * Uses articleSearchAgent.stream() for real-time progress updates.
+ * Emits SSE events: cached, text-delta, tool-start, tool-complete, fallback, finish, error.
+ */
+async function handleStreamingRequest(
+  validatedRequest: ValidatedRequest,
+  session: Session,
+  parentSpan: Span,
+  rateLimitInfo?: RateLimitInfo
+): Promise<Response> {
+  // Check cache first
+  const responseCache = new AgentResponseCache();
+  const cachedResponse = await responseCache.get(validatedRequest.query);
+
+  if (cachedResponse) {
+    parentSpan.setAttribute('cache.hit', true);
+    parentSpan.setAttribute('streaming.cached', true);
+    logger.debug(
+      {
+        userId: session.user.id,
+        queryPreview: validatedRequest.query.substring(0, 50),
+      },
+      'Agent cache hit (streaming mode)'
+    );
+
+    return createCachedSSEResponse(cachedResponse, rateLimitInfo);
+  }
+
+  parentSpan.setAttribute('cache.hit', false);
+
+  // Start streaming (implementation in createStreamingResponse)
+  return createStreamingResponse(validatedRequest, session, parentSpan, rateLimitInfo);
+}
+
+/**
+ * Create streaming SSE response with real-time agent execution
+ *
+ * Emits tool lifecycle events and text deltas for progress calculation.
+ */
+async function createStreamingResponse(
+  validatedRequest: ValidatedRequest,
+  session: Session,
+  parentSpan: Span,
+  rateLimitInfo?: RateLimitInfo
+): Promise<Response> {
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      let fullText = '';
+      const toolCalls: any[] = [];
+      let usage: any = {};
+      let heartbeatInterval: NodeJS.Timeout | null = null;
+
+      try {
+        const streamResult = await articleSearchAgent.stream({
+          messages: [{ role: 'user', content: validatedRequest.query }],
+        });
+
+        // Send heartbeat for long-running operations (keep-alive)
+        heartbeatInterval = setInterval(() => {
+          controller.enqueue(encoder.encode(':\n\n'));
+        }, 10000);
+
+        for await (const chunk of streamResult.fullStream) {
+          if (chunk.type === 'text-delta') {
+            fullText += chunk.textDelta;
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'text-delta',
+                  delta: chunk.textDelta,
+                })}\n\n`
+              )
+            );
+          } else if (chunk.type === 'tool-call') {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'tool-start',
+                  toolCallId: chunk.toolCallId,
+                  toolName: chunk.toolName,
+                  input: chunk.args,
+                })}\n\n`
+              )
+            );
+
+            toolCalls.push({
+              id: chunk.toolCallId,
+              name: chunk.toolName,
+              input: chunk.args,
+            });
+          } else if (chunk.type === 'tool-result') {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'tool-complete',
+                  toolCallId: chunk.toolCallId,
+                  result: chunk.result,
+                })}\n\n`
+              )
+            );
+
+            const toolCall = toolCalls.find((tc) => tc.id === chunk.toolCallId);
+            if (toolCall) {
+              toolCall.output = chunk.result;
+              toolCall.dynamic = false;
+            }
+          } else if (chunk.type === 'finish') {
+            usage = chunk.usage;
+
+            if (heartbeatInterval) {
+              clearInterval(heartbeatInterval);
+            }
+
+            await responseCache.set(validatedRequest.query, fullText);
+
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'finish',
+                  text: fullText,
+                  usage,
+                  toolCalls,
+                  cached: false,
+                  fallback: false,
+                })}\n\n`
+              )
+            );
+
+            controller.close();
+
+            parentSpan.setAttribute('streaming.success', true);
+            parentSpan.setAttribute('streaming.textLength', fullText.length);
+            parentSpan.setAttribute('streaming.toolCallCount', toolCalls.length);
+
+            logger.info(
+              {
+                userId: session.user.id,
+                queryPreview: validatedRequest.query.substring(0, 50),
+                toolCalls: toolCalls.length,
+                textLength: fullText.length,
+                totalTokens: usage.totalTokens || 0,
+              },
+              'Agent streaming completed'
+            );
+          }
+        }
+      } catch (agentError) {
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
+
+        parentSpan.setAttribute('streaming.failed', true);
+        parentSpan.recordException(agentError as Error);
+
+        logger.warn(
+          {
+            error: sanitizeError(agentError),
+            userId: session.user.id,
+            queryPreview: validatedRequest.query.substring(0, 50),
+          },
+          'Agent streaming failed, using fallback'
+        );
+
+        const searchService = new VectorSearchService(prisma);
+        const fallbackResults = await searchService.search(validatedRequest.query, {
+          topK: 10,
+        });
+
+        const queryLang = detectLang(validatedRequest.query);
+        const fallbackText = formatResultsAsText(fallbackResults, queryLang);
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'fallback',
+              text: fallbackText,
+              resultCount: fallbackResults.length,
+            })}\n\n`
+          )
+        );
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'finish',
+              text: fallbackText,
+              usage: { totalTokens: 0 },
+              toolCalls: [],
+              cached: false,
+              fallback: true,
+            })}\n\n`
+          )
+        );
+
+        controller.close();
+
+        parentSpan.setAttribute('streaming.fallback', true);
+        parentSpan.setAttribute('streaming.fallbackResultCount', fallbackResults.length);
+      }
+    },
+  });
+
+  return createSSEResponse(stream, rateLimitInfo);
+}
+
+/**
  * Handle batch (non-streaming) agent search request
  *
  * This is the original generate() implementation, extracted for dual-path support.
@@ -417,8 +694,7 @@ export async function POST(request: NextRequest) {
 
       // Router: Streaming vs. Batch based on feature flag
       if (features.isAgentStreamingEnabled()) {
-        // TODO: Implement streaming path in Task 1.2
-        throw new Error('Streaming not yet implemented');
+        return await handleStreamingRequest(validatedRequest, session, span, rateLimitInfo);
       } else {
         return await handleBatchRequest(validatedRequest, session, span, rateLimitInfo);
       }
