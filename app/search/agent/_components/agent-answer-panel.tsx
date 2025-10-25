@@ -69,12 +69,33 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
   // 応答に [#...] トークンが含まれるか（通常は true、フォールバック時は false）
   const hasEmbeddedIds = useMemo(() => /\[#\S+?\]/.test(result.response), [result.response]);
 
+  // トップレベル制御用の Context（0: ルート、1以上: ネスト）
+  const ListDepthContext = React.createContext(0);
+
   type MarkdownLi = React.ReactElement<
     React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
   >;
 
   const isMarkdownLi = (node: React.ReactNode): node is MarkdownLi =>
     React.isValidElement(node) && node.type === 'li';
+
+  // ol renderer component (for ListDepthContext hook usage)
+  const OlComponent = ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => {
+    const depth = React.useContext(ListDepthContext);
+    return (
+      <ListDepthContext.Provider value={depth + 1}>
+        <ol {...props}>
+          {React.Children.map(children, (child, index) => {
+            if (!isMarkdownLi(child)) return child;
+            // トップレベル（depth===0）かつトークン不在時のみ index 付与
+            return hasEmbeddedIds || depth > 0
+              ? child
+              : React.cloneElement(child, { 'data-article-index': String(index) });
+          })}
+        </ol>
+      </ListDepthContext.Provider>
+    );
+  };
 
   return (
     <div className="bg-card border rounded-lg shadow-sm p-6" role="article" aria-labelledby="answer-heading">
@@ -126,23 +147,14 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
         className="prose prose-sm dark:prose-invert w-full max-w-none md:max-w-3xl xl:max-w-4xl mb-4"
         data-testid="agent-answer-markdown"
       >
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
-          components={{
+        <ListDepthContext.Provider value={0}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
+            components={{
             a: ({ node: _node, ...props }) => (
               <a {...props} target="_blank" rel="noopener noreferrer" />
             ),
-            ol: ({ node: _node, children, ...props }) => (
-              <ol {...props}>
-                {React.Children.map(children, (child, index) => {
-                  if (!isMarkdownLi(child)) return child;
-                  // IDトークンがある通常ケースでは index を付与しない（ネストリスト誤動作防止）
-                  return hasEmbeddedIds
-                    ? child
-                    : React.cloneElement(child, { 'data-article-index': String(index) });
-                })}
-              </ol>
-            ),
+            ol: OlComponent,
             li: ({ node: _node, children, ...props }) => {
               const articleId = props['data-article-id'] as string | undefined;
               const indexAttr = props['data-article-index'] as string | number | undefined;
@@ -179,17 +191,18 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
                         rel="noopener noreferrer"
                       >
                         <Link2 className="mr-1 h-3 w-3" />
-                        記事を見る
+                        {article.translatedTitle?.trim() ? article.translatedTitle : article.title}
                       </Link>
                     </Button>
                   )}
                 </li>
               );
             },
-          }}
-        >
-          {result.response}
-        </ReactMarkdown>
+            }}
+          >
+            {result.response}
+          </ReactMarkdown>
+        </ListDepthContext.Provider>
       </div>
 
 
