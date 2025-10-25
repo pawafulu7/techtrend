@@ -51,7 +51,7 @@ export class VectorSearchService {
       // Validate options with Zod schema
       const validated = searchOptionsSchema.parse(options);
 
-      const { topK, similarityThreshold, sourceIds, tags, embeddingKey } = validated;
+      const { topK, similarityThreshold, sourceIds, tags, embeddingKey, dateRange, recencyBoost } = validated;
 
       logger.info({
         query: query.substring(0, 50),
@@ -60,6 +60,8 @@ export class VectorSearchService {
         embeddingKey,
         hasSourceFilter: !!sourceIds,
         hasTagFilter: !!tags,
+        hasDateFilter: !!(dateRange && (dateRange.from || dateRange.to)),
+        recencyBoost,
       }, 'Vector search started');
 
       // Generate query embedding
@@ -93,8 +95,20 @@ export class VectorSearchService {
             `
           : Prisma.empty;
 
+      // Build date filter (SECURE: parameter binding + COALESCE + UTC)
+      const dateFilter =
+        dateRange && (dateRange.from || dateRange.to)
+          ? Prisma.sql`
+              AND a."publishedAt" AT TIME ZONE 'UTC' >= COALESCE(${dateRange.from ? Prisma.sql`${dateRange.from}::timestamptz` : Prisma.sql`TIMESTAMP '1970-01-01'`}, TIMESTAMP '1970-01-01')
+              AND a."publishedAt" AT TIME ZONE 'UTC' <= COALESCE(${dateRange.to ? Prisma.sql`${dateRange.to}::timestamptz` : Prisma.sql`now()`}, now())
+            `
+          : Prisma.empty;
+
       // Execute search with Prisma.sql (SECURE - parameter binding)
       // Cosine similarity: 1 - (embedding <=> query_vector)
+      // Recency boost (exponential decay, half-life 30 days):
+      //   finalScore = similarity * (1 + recencyBoost * exp(-days_since / 30))
+      //   Clamped to prevent overflow: LEAST(time_decay, 1)
       const results = await this.prisma.$queryRaw<SearchResult[]>`
         SELECT
           a.id as "articleId",
@@ -104,7 +118,18 @@ export class VectorSearchService {
           a."publishedAt",
           a."sourceId",
           e."embeddingKey",
-          1 - (e.embedding <=> ${vectorString}::vector) as similarity
+          CASE
+            WHEN ${recencyBoost} > 0 THEN
+              (1 - (e.embedding <=> ${vectorString}::vector)) *
+              (1 + ${recencyBoost} * LEAST(
+                exp(
+                  -EXTRACT(EPOCH FROM (NOW() - a."publishedAt")) / (30 * 24 * 3600)
+                ),
+                1
+              ))
+            ELSE
+              1 - (e.embedding <=> ${vectorString}::vector)
+          END as similarity
         FROM "ArticleEmbedding" e
         INNER JOIN "Article" a ON a.id = e."articleId"
         WHERE e.model = ${this.activeModel}
@@ -113,6 +138,7 @@ export class VectorSearchService {
           AND 1 - (e.embedding <=> ${vectorString}::vector) >= ${similarityThreshold}
           ${sourceFilter}
           ${tagFilter}
+          ${dateFilter}
         ORDER BY similarity DESC
         LIMIT ${topK}
       `;
@@ -123,6 +149,8 @@ export class VectorSearchService {
         model: this.activeModel,
         embeddingKey,
         topK,
+        hasDateFilter: !!(dateRange && (dateRange.from || dateRange.to)),
+        recencyBoost,
         avgSimilarity:
           results.length > 0
             ? (results.reduce((sum, r) => sum + r.similarity, 0) / results.length).toFixed(4)
@@ -137,6 +165,8 @@ export class VectorSearchService {
         options: {
           topK: options.topK,
           embeddingKey: options.embeddingKey,
+          hasDateFilter: !!(options.dateRange && (options.dateRange.from || options.dateRange.to)),
+          recencyBoost: options.recencyBoost,
         },
       }, 'Vector search failed');
 
