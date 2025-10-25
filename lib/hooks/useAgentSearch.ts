@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import type { ArticleLink } from '@/lib/types/article-link';
 
 export interface AgentSearchResult {
   query: string;
@@ -9,6 +10,7 @@ export interface AgentSearchResult {
   usage: { totalTokens: number; promptTokens?: number; completionTokens?: number };
   cached: boolean;
   fallback: boolean;
+  articles?: ArticleLink[];
 }
 
 export interface AgentSearchError {
