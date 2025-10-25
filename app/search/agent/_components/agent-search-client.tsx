@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentLoadingState } from './agent-loading-state';
 import { AgentAnswerPanel } from './agent-answer-panel';
@@ -9,18 +9,36 @@ import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 
 export function AgentSearchClient() {
   const [lastQuery, setLastQuery] = useState('');
+  const [progressOverride, setProgressOverride] = useState<number | undefined>(undefined);
+  const [showResult, setShowResult] = useState(false);
   const { search, result, error, isLoading, reset } = useAgentSearch();
 
   const handleSearch = async (query: string) => {
     setLastQuery(query);
+    setProgressOverride(undefined);
+    setShowResult(false);
     reset();
     await search(query);
   };
 
-  const handleRetry = () => {
-    if (lastQuery) {
-      search(lastQuery);
+  useEffect(() => {
+    if (!isLoading && (result || error)) {
+      setProgressOverride(100);
+
+      const timer = setTimeout(() => {
+        setShowResult(true);
+      }, 300); // Smooth transition: allow progress bar to reach 100% before showing results
+
+      return () => clearTimeout(timer);
     }
+  }, [isLoading, result, error]);
+
+  const handleRetry = () => {
+    if (!lastQuery) return;
+    setProgressOverride(undefined);
+    setShowResult(false);
+    reset();
+    search(lastQuery);
   };
 
   const handleFeedback = (positive: boolean) => {
@@ -34,9 +52,9 @@ export function AgentSearchClient() {
       <AgentSearchBar onSearch={handleSearch} isLoading={isLoading} />
 
       <div className="mt-8">
-        {isLoading && <AgentLoadingState />}
-        {error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
-        {result && !error && !isLoading && (
+        {isLoading && <AgentLoadingState progress={progressOverride} />}
+        {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
+        {!isLoading && showResult && result && !error && (
           <AgentAnswerPanel result={result} onFeedback={handleFeedback} />
         )}
       </div>

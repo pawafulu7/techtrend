@@ -470,4 +470,121 @@ test.describe('AI Agent Search E2E', () => {
     // Verify results are displayed
     await expect(page.locator('[role="article"]')).toBeVisible();
   });
+
+  test('15. Article links display and navigation', async ({ page }) => {
+    // Mock API with article links
+    const mockResponseWithArticles = {
+      ...MOCK_SUCCESS_RESPONSE,
+      toolCalls: [
+        {
+          id: '1',
+          name: 'semantic-article-search',
+          input: { query: 'React', topK: 3 },
+          dynamic: false,
+          output: {
+            articles: [
+              { articleId: '101', title: 'React Server Components Guide', similarity: 0.92, publishedAt: '2025-10-20T00:00:00Z' },
+              { articleId: '102', title: 'React Performance Optimization', similarity: 0.88, publishedAt: '2025-10-18T00:00:00Z' },
+              { articleId: '103', title: 'React Hooks Complete Guide', similarity: 0.85, publishedAt: '2025-10-15T00:00:00Z' },
+            ],
+            count: 3,
+          },
+        },
+      ],
+    };
+
+    await page.route('**/api/rag/agent-search', async (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockResponseWithArticles),
+      });
+    });
+
+    await page.goto('/search/agent');
+    await page.waitForLoadState('networkidle');
+
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('React performance optimization');
+    await input.press('Enter');
+
+    await page.waitForResponse(
+      (res) => res.url().includes('/api/rag/agent-search') && res.status() === 200
+    );
+
+    // Verify article links section appears
+    const articlesSection = page.locator('h2:has-text("参照記事")');
+    await expect(articlesSection).toBeVisible();
+
+    // Verify article links are present
+    const articleLinks = page.locator('a[href^="/articles/"]');
+    const linkCount = await articleLinks.count();
+    expect(linkCount).toBe(3);
+
+    // Verify first link structure
+    const firstLink = articleLinks.first();
+    await expect(firstLink).toHaveAttribute('target', '_blank');
+    await expect(firstLink).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(firstLink).toHaveText('React Server Components Guide');
+
+    // Verify similarity and date display
+    const firstArticleInfo = page.locator('text=一致度:').first();
+    await expect(firstArticleInfo).toBeVisible();
+    await expect(firstArticleInfo).toContainText('92.0%');
+
+    // Verify published date
+    const firstDate = page.locator('time').first();
+    await expect(firstDate).toBeVisible();
+    await expect(firstDate).toHaveAttribute('datetime', '2025-10-20T00:00:00Z');
+
+    // Click link and verify navigation (new tab)
+    const [newPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      firstLink.click(),
+    ]);
+    await newPage.waitForLoadState('networkidle');
+
+    // Verify article detail page navigation
+    expect(newPage.url()).toMatch(/\/articles\/101/);
+
+    await newPage.close();
+  });
+
+  test('16. Article links not displayed when no results', async ({ page }) => {
+    // Mock API without article links
+    const mockResponseWithoutArticles = {
+      ...MOCK_SUCCESS_RESPONSE,
+      toolCalls: [
+        {
+          id: '1',
+          name: 'other-tool',
+          input: {},
+          dynamic: false,
+        },
+      ],
+    };
+
+    await page.route('**/api/rag/agent-search', async (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockResponseWithoutArticles),
+      });
+    });
+
+    await page.goto('/search/agent');
+    await page.waitForLoadState('networkidle');
+
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('xyzabc123nonexistent');
+    await input.press('Enter');
+
+    await page.waitForResponse(
+      (res) => res.url().includes('/api/rag/agent-search') && res.status() === 200
+    );
+
+    // Verify article links section is not displayed
+    const articlesSection = page.locator('h2:has-text("参照記事")');
+    await expect(articlesSection).not.toBeVisible();
+  });
 });

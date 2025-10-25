@@ -1,14 +1,23 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import type { ArticleLink } from '@/lib/types/article-link';
+import { extractArticlesFromToolCalls } from '@/lib/utils/article-link-extractor';
 
 export interface AgentSearchResult {
   query: string;
   response: string;
-  toolCalls: Array<{ id: string; name: string; input: unknown; dynamic: boolean }>;
+  toolCalls: Array<{
+    id: string;
+    name: string;
+    input: unknown;
+    dynamic: boolean;
+    output?: unknown;
+  }>;
   usage: { totalTokens: number; promptTokens?: number; completionTokens?: number };
   cached: boolean;
   fallback: boolean;
+  articles?: ArticleLink[];
 }
 
 export interface AgentSearchError {
@@ -143,8 +152,20 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
           return;
         }
 
-        setResult(data);
-        callbacksRef.current?.onSuccess?.(data);
+        const safeToolCalls = Array.isArray(data.toolCalls) ? data.toolCalls : [];
+        const articles = extractArticlesFromToolCalls(safeToolCalls);
+
+        if (process.env.NEXT_PUBLIC_DEBUG) {
+          console.log('[useAgentSearch] Extracted articles:', articles);
+          console.log('[useAgentSearch] toolCalls:', safeToolCalls);
+        }
+
+        const resultWithArticles: AgentSearchResult = {
+          ...data,
+          articles,
+        };
+        setResult(resultWithArticles);
+        callbacksRef.current?.onSuccess?.(resultWithArticles);
       } catch (err) {
         clearTimeout(timeoutId);
 

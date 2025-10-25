@@ -14,11 +14,14 @@ const STATUS_DURATIONS = [3000, 3000, 6000];
 
 interface AgentLoadingStateProps {
   className?: string;
+  progress?: number;
 }
 
-export function AgentLoadingState({ className }: AgentLoadingStateProps) {
+export function AgentLoadingState({ className, progress: externalProgress }: AgentLoadingStateProps) {
   const [statusIndex, setStatusIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
+  const [internalProgress, setInternalProgress] = useState(0);
+
+  const progress = externalProgress ?? internalProgress;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -29,6 +32,10 @@ export function AgentLoadingState({ className }: AgentLoadingStateProps) {
   }, [statusIndex]);
 
   useEffect(() => {
+    if (externalProgress !== undefined) {
+      return;
+    }
+
     const startTime = Date.now();
     const duration = 8000;
 
@@ -37,11 +44,11 @@ export function AgentLoadingState({ className }: AgentLoadingStateProps) {
       // Progress smoothly to 95% (never goes backwards)
       // Parent component should set to 100% on completion
       const newProgress = Math.min(95, (elapsed / duration) * 95);
-      setProgress(newProgress);
+      setInternalProgress(newProgress);
     }, 100);
 
     return () => clearInterval(progressInterval);
-  }, []);
+  }, [externalProgress]);
 
   return (
     <div className={className} role="status" aria-live="polite" aria-busy="true">
@@ -52,14 +59,20 @@ export function AgentLoadingState({ className }: AgentLoadingStateProps) {
         </span>
       </div>
 
-      <Progress
-        value={progress}
-        className="h-1 mb-6"
-        role="progressbar"
-        aria-valuenow={Math.round(progress)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      />
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-muted-foreground">進捗</span>
+          <span className="text-xs font-medium">{Math.round(progress)}%</span>
+        </div>
+        <Progress
+          value={progress}
+          className="h-1"
+          role="progressbar"
+          aria-valuenow={Math.round(progress)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        />
+      </div>
 
       <div className="space-y-3">
         <div className="h-4 bg-muted rounded animate-pulse" style={{ width: '90%' }} />

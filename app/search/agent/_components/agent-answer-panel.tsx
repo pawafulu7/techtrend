@@ -1,15 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import remarkExtractArticleId from './remark-extract-article-id';
 import {
   CheckCircle2,
   AlertTriangle,
   Copy,
   Check,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Link2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +23,9 @@ interface AgentAnswerPanelProps {
   result: AgentSearchResult;
   onFeedback?: (positive: boolean) => void;
 }
+
+// トップレベル制御用の Context（0: ルート、1以上: ネスト）
+const ListDepthContext = React.createContext(0);
 
 export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) {
   const [copied, setCopied] = useState(false);
@@ -31,13 +38,22 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
 
   const handleCopy = async () => {
     try {
+      // レンダリング後のテキスト（トークン除去済み）を取得
+      const root = document.querySelector('[data-testid="agent-answer-markdown"]') as HTMLElement | null;
+      let copyText = result.response;
+      if (root) {
+        const clone = root.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll('[data-copy-exclude]').forEach((el) => el.remove());
+        copyText = (clone.textContent ?? result.response).trim();
+      }
+
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(result.response);
+        await navigator.clipboard.writeText(copyText);
         setCopied(true);
       } else {
         // Fallback for environments without clipboard API (e.g., headless browsers)
         const textarea = document.createElement('textarea');
-        textarea.value = result.response;
+        textarea.value = copyText;
         textarea.style.position = 'fixed';
         textarea.style.opacity = '0';
         document.body.appendChild(textarea);
@@ -51,6 +67,42 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
     } catch (error) {
       console.error('クリップボードへのコピーに失敗しました:', error);
     }
+  };
+
+  const articleMap = useMemo(() => {
+    const articles = result.articles ?? [];
+    return new Map(articles.map((article) => [article.articleId, article]));
+  }, [result.articles]);
+
+  // 応答に [#...] トークンが含まれるか（通常は true、フォールバック時は false）
+  const hasEmbeddedIds = useMemo(() => /\[#\S+?\]/.test(result.response), [result.response]);
+
+  type MarkdownLi = React.ReactElement<
+    React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
+  >;
+
+  const isMarkdownLi = (node: React.ReactNode): node is MarkdownLi =>
+    React.isValidElement(node) && node.type === 'li';
+
+  // ol renderer component (for ListDepthContext hook usage)
+  const OlComponent = ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => {
+    const depth = React.useContext(ListDepthContext);
+    const hasIdInThisOl = React.Children.toArray(children).some(
+      (child) => isMarkdownLi(child) && (child.props as any)['data-article-id']
+    );
+    return (
+      <ListDepthContext.Provider value={depth + 1}>
+        <ol {...props}>
+          {React.Children.map(children, (child, index) => {
+            if (!isMarkdownLi(child)) return child;
+            const shouldAddIndex = depth === 0 && !hasIdInThisOl && !hasEmbeddedIds;
+            return shouldAddIndex
+              ? React.cloneElement(child, { 'data-article-index': String(index) })
+              : child;
+          })}
+        </ol>
+      </ListDepthContext.Provider>
+    );
   };
 
   return (
@@ -99,20 +151,104 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
         </div>
       )}
 
-      <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
+      <div
+        className="prose prose-sm dark:prose-invert w-full max-w-none md:max-w-3xl xl:max-w-4xl mb-4"
+        data-testid="agent-answer-markdown"
+      >
+        <ListDepthContext.Provider value={0}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
+            components={{
             a: ({ node: _node, ...props }) => (
               <a {...props} target="_blank" rel="noopener noreferrer" />
             ),
-          }}
-        >
-          {result.response}
-        </ReactMarkdown>
+            ol: OlComponent,
+            li: ({ node: _node, children, ...props }) => {
+              const articleId = props['data-article-id'] as string | undefined;
+              const indexAttr = props['data-article-index'] as string | number | undefined;
+
+              const articleFromId = articleId ? articleMap.get(articleId) : undefined;
+              const index =
+                typeof indexAttr === 'number'
+                  ? indexAttr
+                  : indexAttr !== undefined
+                    ? Number(indexAttr)
+                    : undefined;
+              // indexフォールバックはIDトークン不在時のみ有効化（誤リンク防止）
+              const articleFromIndex =
+                !articleId &&
+                !hasEmbeddedIds &&
+                typeof index === 'number' &&
+                Number.isInteger(index)
+                  ? result.articles?.[index]
+                  : undefined;
+              const article = articleFromId ?? articleFromIndex ?? null;
+
+              return (
+                <li {...props}>
+                  {children}
+                  {article && (
+                    <Button
+                      asChild
+                      size="sm"
+                      data-copy-exclude
+                      className="ml-2 h-7 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors inline-flex items-center"
+                      title={
+                        article.translatedTitle?.trim() ? article.translatedTitle : article.title
+                      }
+                    >
+                      <Link
+                        href={`/articles/${encodeURIComponent(article.articleId)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Link2 className="mr-1 h-3 w-3" />
+                        {article.translatedTitle?.trim() ? article.translatedTitle : article.title}
+                      </Link>
+                    </Button>
+                  )}
+                </li>
+              );
+            },
+            }}
+          >
+            {result.response}
+          </ReactMarkdown>
+        </ListDepthContext.Provider>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t">
+      {/* 参照記事セクション */}
+      {result.articles && result.articles.length > 0 && (
+        <div className="mt-6 pt-6 border-t">
+          <h2 className="text-lg font-semibold mb-4">参照記事</h2>
+          <ul className="space-y-3">
+            {result.articles.map((article) => (
+              <li key={article.articleId} className="text-sm">
+                <a
+                  href={`/articles/${encodeURIComponent(article.articleId)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium"
+                >
+                  {article.translatedTitle?.trim() ? article.translatedTitle : article.title}
+                </a>
+                <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                  <span>一致度: {(article.similarity * 100).toFixed(1)}%</span>
+                  <time dateTime={article.publishedAt}>
+                    {new Date(article.publishedAt).toLocaleDateString('ja-JP', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </time>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-4 border-t mt-4">
         <div className="text-xs text-muted-foreground">
           {result.usage?.totalTokens && (
             <span>トークン使用: {result.usage.totalTokens.toLocaleString()}</span>

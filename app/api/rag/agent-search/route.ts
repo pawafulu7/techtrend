@@ -279,14 +279,46 @@ export async function POST(request: NextRequest) {
           messages: [{ role: 'user', content: validatedRequest.query }],
         });
 
+        // [DEBUG] Log raw agent result
+        const allToolCalls = result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
+        const allToolResults = result.steps?.flatMap((step) => step.toolResults ?? []) ?? [];
+
+        // Create toolResults map for efficient lookup
+        const toolResultsMap = new Map(
+          allToolResults.map((r) => [r.toolCallId, r])
+        );
+
+        // [DEBUG] Log toolResults structure
+        console.log('[Tool Results DEBUG]', {
+          allToolResultsSample: allToolResults[0],
+          toolResultKeys: allToolResults[0] ? Object.keys(allToolResults[0]) : [],
+        });
+
+        console.log('[Agent Result DEBUG]', {
+          textPreview: result.text?.slice(0, 100),
+          stepsCount: result.steps?.length || 0,
+          allToolCallsCount: allToolCalls.length,
+          allToolResultsCount: allToolResults.length,
+          toolCallNames: allToolCalls.map((tc) => tc.toolName),
+          finishReason: result.finishReason,
+        });
+
         agentResponse = result.text.trim();
-        toolCalls =
-          result.toolCalls?.map((call) => ({
+        toolCalls = allToolCalls.map((call) => {
+          const toolResult = toolResultsMap.get(call.toolCallId);
+          console.log('[Mapping DEBUG]', {
+            callId: call.toolCallId,
+            resultFound: !!toolResult,
+            resultKeys: toolResult ? Object.keys(toolResult) : [],
+          });
+          return {
             id: call.toolCallId,
             name: call.toolName,
             input: call.input,
+            output: toolResult?.output,
             dynamic: call.dynamic ?? false,
-          })) ?? [];
+          };
+        });
         usage = result.usage;
 
         // Handle empty response as agent failure (tool-only response with no text)
