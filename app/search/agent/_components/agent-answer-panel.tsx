@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -112,7 +113,52 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
         </ReactMarkdown>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t">
+      {result.articles && result.articles.length > 0 && (
+        <div className="mt-6 pt-6 border-t">
+          <h2 className="text-base font-semibold mb-4 text-foreground">
+            {/* TODO i18n */}
+            参照記事
+          </h2>
+          <ul className="space-y-3" role="list">
+            {result.articles.map((article, index) => (
+              <li key={article.articleId} className="flex items-start gap-3">
+                <span
+                  className="text-sm text-muted-foreground mt-1 flex-shrink-0 w-5"
+                  aria-hidden="true"
+                >
+                  {index + 1}.
+                </span>
+                <div className="flex-1 min-w-0">
+                  <Link
+                    href={`/articles/${article.articleId}`}
+                    className="text-sm text-primary hover:underline font-medium block break-words"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ minHeight: '44px', display: 'flex', alignItems: 'center' }}
+                  >
+                    {article.title}
+                  </Link>
+                  <div className="text-xs text-muted-foreground mt-1.5 flex flex-wrap gap-x-2">
+                    <span>
+                      一致度: {(article.similarity * 100).toFixed(1)}%
+                    </span>
+                    <span aria-hidden="true">•</span>
+                    <time dateTime={article.publishedAt}>
+                      {new Date(article.publishedAt).toLocaleDateString('ja-JP', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </time>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-4 border-t mt-4">
         <div className="text-xs text-muted-foreground">
           {result.usage?.totalTokens && (
             <span>トークン使用: {result.usage.totalTokens.toLocaleString()}</span>
