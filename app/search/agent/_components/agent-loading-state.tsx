@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 
 const STATUS_MESSAGES = [
   'AIが要約を生成中...',
@@ -14,19 +13,10 @@ const STATUS_DURATIONS = [3000, 3000, 6000];
 
 interface AgentLoadingStateProps {
   className?: string;
-  progress?: number;
 }
 
-export function AgentLoadingState({ className, progress: externalProgress }: AgentLoadingStateProps) {
+export function AgentLoadingState({ className }: AgentLoadingStateProps) {
   const [statusIndex, setStatusIndex] = useState(0);
-  const [internalProgress, setInternalProgress] = useState(0);
-  const [useExternalOnly, setUseExternalOnly] = useState(false);
-
-  const progress = useExternalOnly && externalProgress !== undefined
-    ? externalProgress
-    : externalProgress !== undefined
-    ? Math.max(externalProgress, internalProgress)
-    : internalProgress;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -36,28 +26,6 @@ export function AgentLoadingState({ className, progress: externalProgress }: Age
     return () => clearTimeout(timer);
   }, [statusIndex]);
 
-  useEffect(() => {
-    if (externalProgress !== undefined && externalProgress > 0) {
-      setUseExternalOnly(true);
-      return;
-    }
-
-    if (useExternalOnly) {
-      return;
-    }
-
-    const startTime = Date.now();
-    const duration = 8000;
-
-    const progressInterval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const newProgress = Math.min(95, (elapsed / duration) * 95);
-      setInternalProgress(newProgress);
-    }, 100);
-
-    return () => clearInterval(progressInterval);
-  }, [externalProgress, useExternalOnly]);
-
   return (
     <div className={className} role="status" aria-live="polite" aria-busy="true">
       <div className="flex items-center justify-center gap-3 mb-4">
@@ -65,21 +33,6 @@ export function AgentLoadingState({ className, progress: externalProgress }: Age
         <span className="text-base font-medium">
           {STATUS_MESSAGES[statusIndex]}
         </span>
-      </div>
-
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-muted-foreground">進捗</span>
-          <span className="text-xs font-medium">{Math.round(progress)}%</span>
-        </div>
-        <Progress
-          value={progress}
-          className="h-1"
-          role="progressbar"
-          aria-valuenow={Math.round(progress)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        />
       </div>
 
       <div className="space-y-3">

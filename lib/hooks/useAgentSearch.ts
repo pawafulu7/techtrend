@@ -30,7 +30,6 @@ export interface AgentSearchError {
 export interface UseAgentSearchOptions {
   onSuccess?: (data: AgentSearchResult) => void;
   onError?: (error: AgentSearchError) => void;
-  onProgressUpdate?: (progress: number) => void;
   timeout?: number;
 }
 
@@ -46,15 +45,11 @@ export interface UseAgentSearchReturn {
 const DEFAULT_TIMEOUT = 30000;
 
 /**
- * Parse SSE stream and calculate phase-based progress
- *
- * Implements phase-based progress calculation:
- * - Phase 1 (40%): Tool execution (tool-start → tool-complete)
- * - Phase 2 (60%): Text generation (cumulative character count)
+ * Parse SSE stream
  *
  * @param response - Fetch response with SSE stream
  * @param controller - AbortController for timeout management
- * @param callbacksRef - Callbacks reference (onProgressUpdate, onSuccess, onError)
+ * @param callbacksRef - Callbacks reference (onSuccess, onError)
  * @param query - Original query for result metadata
  * @param setPartialText - State setter for partial text storage
  */
@@ -70,16 +65,9 @@ async function parseSSEStream(
 
   let accumulatedText = '';
   const toolCalls: any[] = [];
-  let toolsCompleted = 0;
-  let toolsTotal = 0;
   let usage = { totalTokens: 0 };
   let cached = false;
   let fallback = false;
-
-  // Progress estimation
-  const ESTIMATED_TOTAL_TOOLS = 2;
-  let estimatedTotalChars = 500;
-  let lastProgress = 0;
 
   // Timeout reset on each chunk
   let lastChunkTime = Date.now();
@@ -126,34 +114,18 @@ async function parseSSEStream(
           accumulatedText = eventData.text;
           cached = true;
           setPartialText(accumulatedText);
-          callbacksRef.current?.onProgressUpdate?.(100);
         } else if (eventData.type === 'text-delta') {
           const delta = eventData.delta ?? '';
           accumulatedText += delta;
           setPartialText(accumulatedText);
 
-          const toolProgress = (toolsCompleted / Math.max(toolsTotal, ESTIMATED_TOTAL_TOOLS)) * 40;
-          const textProgress = Math.min(60, (accumulatedText.length / estimatedTotalChars) * 60);
-          const calculatedProgress = Math.min(95, toolProgress + textProgress);
-
-          const totalProgress = Math.max(lastProgress, calculatedProgress);
-          lastProgress = totalProgress;
-
-          callbacksRef.current?.onProgressUpdate?.(totalProgress);
-
-          if (accumulatedText.length > estimatedTotalChars * 0.8) {
-            estimatedTotalChars = Math.max(estimatedTotalChars, accumulatedText.length * 1.25);
-          }
-
           if (process.env.NEXT_PUBLIC_DEBUG) {
-            console.log('[SSE] Progress:', `${totalProgress.toFixed(1)}%`, {
-              toolProgress: `${toolProgress.toFixed(1)}%`,
-              textProgress: `${textProgress.toFixed(1)}%`,
+            console.log('[SSE] Text delta:', {
+              deltaLength: delta.length,
               accumulatedChars: accumulatedText.length,
             });
           }
         } else if (eventData.type === 'tool-start') {
-          toolsTotal++;
           toolCalls.push({
             id: eventData.toolCallId,
             name: eventData.toolName,
@@ -165,15 +137,13 @@ async function parseSSEStream(
             console.log('[SSE] Tool started:', eventData.toolName);
           }
         } else if (eventData.type === 'tool-complete') {
-          toolsCompleted++;
-
           const toolCall = toolCalls.find((tc) => tc.id === eventData.toolCallId);
           if (toolCall) {
             toolCall.output = eventData.result;
           }
 
           if (process.env.NEXT_PUBLIC_DEBUG) {
-            console.log('[SSE] Tool completed:', eventData.toolCallId, `(${toolsCompleted}/${toolsTotal})`);
+            console.log('[SSE] Tool completed:', eventData.toolCallId);
           }
         } else if (eventData.type === 'fallback') {
           accumulatedText = eventData.text;
@@ -187,8 +157,6 @@ async function parseSSEStream(
           usage = eventData.usage || usage;
           cached = eventData.cached || cached;
           fallback = eventData.fallback || fallback;
-
-          callbacksRef.current?.onProgressUpdate?.(100);
 
           if (process.env.NEXT_PUBLIC_DEBUG) {
             console.log('[SSE] Stream finished', {

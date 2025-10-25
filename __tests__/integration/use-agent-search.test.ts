@@ -167,10 +167,7 @@ describe('useAgentSearch Integration', () => {
     abortSpy.mockRestore();
   });
 
-  test('handles SSE streaming response with progress updates', async () => {
-    const progressUpdates: number[] = [];
-    const onProgressUpdate = jest.fn((p) => progressUpdates.push(p));
-
+  test('handles SSE streaming response', async () => {
     const encoder = new TextEncoder();
     const mockStream = new ReadableStream({
       start(controller) {
@@ -236,18 +233,15 @@ describe('useAgentSearch Integration', () => {
       headers: new Headers({ 'Content-Type': 'text/event-stream' }),
     });
 
-    const { result } = renderHook(() => useAgentSearch({ onProgressUpdate }));
+    const { result } = renderHook(() => useAgentSearch());
 
     await result.current.search('React articles');
 
     await waitFor(() => {
       expect(result.current.result).toBeDefined();
       expect(result.current.result?.response).toBe('Found 3 articles');
+      expect(result.current.partialText).toBe('Found 3 articles');
     });
-
-    expect(onProgressUpdate).toHaveBeenCalled();
-    expect(progressUpdates.length).toBeGreaterThan(0);
-    expect(progressUpdates[progressUpdates.length - 1]).toBe(100);
   });
 
   test('maintains JSON batch mode compatibility when SSE disabled', async () => {
