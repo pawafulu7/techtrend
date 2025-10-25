@@ -86,6 +86,7 @@ async function generateSummariesForArticles(
           title: article.title,
           content,
           articleType: article.articleType as any,
+          articleId: article.id,
         });
 
         // データベース更新

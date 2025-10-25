@@ -2,6 +2,18 @@ import { prisma } from '@/lib/prisma';
 import { JobProcessor } from './job-processor';
 import { logger } from '@/lib/logger';
 
+/**
+ * Parse environment variable as integer with validation.
+ * Returns fallback if value is undefined, non-numeric, or below min threshold.
+ */
+function parseEnvInt(value: string | undefined, fallback: number, min: number = 1): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (Number.isNaN(parsed) || parsed < min) {
+    return fallback;
+  }
+  return parsed;
+}
+
 export interface WorkerConfig {
   batchSize: number;
   maxAttempts: number;
@@ -26,9 +38,9 @@ export class EmbeddingWorker {
 
   constructor(config: Partial<WorkerConfig> = {}) {
     this.config = {
-      batchSize: config.batchSize ?? 300, // Reduced from 500 for safety
-      maxAttempts: config.maxAttempts ?? 3,
-      timeoutMs: config.timeoutMs ?? 9000, // 9s (leave 1s buffer for Vercel 10s limit)
+      batchSize: config.batchSize ?? parseEnvInt(process.env.EMBEDDING_WORKER_BATCH_SIZE, 300, 1),
+      maxAttempts: config.maxAttempts ?? parseEnvInt(process.env.EMBEDDING_WORKER_MAX_ATTEMPTS, 3, 1),
+      timeoutMs: config.timeoutMs ?? parseEnvInt(process.env.EMBEDDING_WORKER_TIMEOUT_MS, 9000, 1000), // Default 9s for Vercel, min 1s
       skipEmbedding: config.skipEmbedding ?? false,
     };
 
@@ -159,6 +171,9 @@ export class EmbeddingWorker {
 
       clearTimeout(timeoutHandle);
 
+      // Count jobs that never started due to overall timeout.
+      // These are technically "unstarted" rather than "timed out during processing",
+      // but we include them in the timedOut count for statistical consistency.
       const processedBeforeAdjustment = succeeded + failed + timedOut;
       if (processedBeforeAdjustment < jobs.length) {
         timedOut += jobs.length - processedBeforeAdjustment;

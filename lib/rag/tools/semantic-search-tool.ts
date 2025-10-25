@@ -73,25 +73,41 @@ const toolOutputSchema = z.object({
  */
 export const semanticSearchTool = tool({
   description: `
-Search for technical articles using semantic similarity.
+Search for technical articles using semantic similarity with optional date filtering and recency boost.
 
 Use this tool when users ask for:
 - Articles on specific topics (e.g., "React performance", "TypeScript tips")
-- Latest articles on a technology
+- Latest/recent articles (interpret temporal language)
+- Articles from specific time periods
 - Articles from specific sources or tags
 
 Examples of WHEN to use:
 - "Find articles about Next.js image optimization"
-- "Show me recent React articles"
+- "Show me recent React articles" → use dateRange (last 30 days)
+- "最新のReact記事を3件教えて" → use dateRange (last 30 days)
+- "先週のTypeScript記事を検索" → use dateRange (last 7 days)
 - "Search for TypeScript best practices"
-- "最新のReact記事を3件教えて"
+
+Temporal language interpretation:
+- "最新" / "latest" / "newest" → dateRange.from: 30 days ago
+- "直近" / "recent" → dateRange.from: 7 days ago
+- "先週" / "last week" → dateRange: {from: 7 days ago, to: today}
+- "今月" / "this month" → dateRange.from: start of current month
+- "今週" / "this week" → dateRange.from: start of current week
+
+IMPORTANT: Always convert temporal language to ISO 8601 UTC format (e.g., "2025-10-25T00:00:00.000Z")
+
+RecencyBoost parameter:
+- Use 0 (default) for pure similarity ranking
+- Use 0.3-0.4 when user emphasizes "latest" or "recent"
+- Higher values favor newer articles more
 
 DO NOT use this tool for:
 - General questions unrelated to article search
 - Coding help or technical support
 - Requests for full article content (only titles and summaries available)
 
-The tool returns articles ranked by semantic similarity (0-1 scale, higher is better).
+The tool returns articles ranked by semantic similarity (0-1 scale, higher is better), optionally boosted by recency.
   `.trim(),
 
   inputSchema: z.object({
@@ -126,9 +142,22 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
           .array(z.string())
           .max(10, 'Too many tag filters (max 10 for agents)') // Clamped to 10 (API allows 20)
           .optional(),
+        dateRange: z
+          .object({
+            from: z.string().datetime().optional().describe('ISO 8601 start date (UTC)'),
+            to: z.string().datetime().optional().describe('ISO 8601 end date (UTC)'),
+          })
+          .optional()
+          .describe('Date range filter for temporal queries (e.g., "latest", "last week")'),
+        recencyBoost: z
+          .number()
+          .min(0, 'recencyBoost must be between 0 and 1')
+          .max(1, 'recencyBoost must be between 0 and 1')
+          .default(0)
+          .describe('Recency weight (0=disabled, 0.3-0.4=balanced, 1=max recency)'),
       })
       .optional()
-      .describe('Optional filters for sources and tags'),
+      .describe('Optional filters for sources, tags, and date range'),
   }),
 
   outputSchema: toolOutputSchema,
@@ -141,6 +170,8 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
           topK,
           similarityThreshold,
           hasFilters: !!filters,
+          hasDateFilter: !!(filters?.dateRange && (filters.dateRange.from || filters.dateRange.to)),
+          recencyBoost: filters?.recencyBoost ?? 0,
         },
         'Tool: semantic-article-search executing'
       );
@@ -152,6 +183,8 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
         similarityThreshold,
         sourceIds: filters?.sources,
         tags: filters?.tags,
+        dateRange: filters?.dateRange,
+        recencyBoost: filters?.recencyBoost,
         embeddingKey: 'summary', // Default to summary search
       });
 
@@ -159,6 +192,8 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
         {
           query: query.substring(0, 50),
           resultCount: results.length,
+          hasDateFilter: !!(filters?.dateRange && (filters.dateRange.from || filters.dateRange.to)),
+          recencyBoost: filters?.recencyBoost ?? 0,
           avgSimilarity:
             results.length > 0
               ? (results.reduce((sum, r) => sum + r.similarity, 0) / results.length).toFixed(4)

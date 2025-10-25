@@ -60,6 +60,51 @@ export const searchOptionsSchema = z.object({
   embeddingKey: z
     .enum(['title', 'summary', 'both'])
     .default('summary'),
+
+  /**
+   * Date range filter for temporal queries
+   *
+   * Both `from` and `to` must be in ISO 8601 format (UTC).
+   * If only `from` is specified, returns articles published after that date.
+   * If only `to` is specified, returns articles published before that date.
+   *
+   * @example
+   * // Last 30 days
+   * { from: "2025-09-25T00:00:00.000Z" }
+   *
+   * // Specific week
+   * { from: "2025-10-18T00:00:00.000Z", to: "2025-10-25T00:00:00.000Z" }
+   */
+  dateRange: z
+    .object({
+      from: z.string().datetime().optional(),
+      to: z.string().datetime().optional(),
+    })
+    .optional()
+    .refine(
+      (range) => {
+        if (!range || (!range.from && !range.to)) return true;
+        if (!range.from || !range.to) return true;
+        return new Date(range.from) <= new Date(range.to);
+      },
+      'dateRange.from must be before or equal to dateRange.to'
+    ),
+
+  /**
+   * Recency boost weight (0-1)
+   *
+   * Controls hybrid scoring: similarity * (1 + recencyBoost * time_decay)
+   * - 0 (default): Pure similarity ranking (no recency)
+   * - 0.3-0.4 (recommended): Balanced similarity + recency
+   * - 1: Maximum recency influence
+   *
+   * Time decay: Exponential with 30-day half-life
+   */
+  recencyBoost: z.coerce
+    .number()
+    .min(0, 'recencyBoost must be between 0 and 1')
+    .max(1, 'recencyBoost must be between 0 and 1')
+    .default(0),
 });
 
 // Separate input and output types for Zod v3 compatibility
