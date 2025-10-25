@@ -312,7 +312,7 @@ async function createStreamingResponse(
               toolCall.dynamic = false;
             }
           } else if (chunk.type === 'finish') {
-            usage = chunk.usage;
+            usage = chunk.totalUsage;
 
             if (heartbeatInterval) {
               clearInterval(heartbeatInterval);
@@ -355,7 +355,7 @@ async function createStreamingResponse(
                 queryPreview: validatedRequest.query.substring(0, 50),
                 toolCalls: toolCalls.length,
                 textLength: fullText.length,
-                totalTokens: usage.totalTokens || 0,
+                totalTokens: usage?.totalTokens || 0,
               },
               'Agent streaming completed'
             );
