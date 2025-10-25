@@ -107,7 +107,7 @@ export class VectorSearchService {
       // Execute search with Prisma.sql (SECURE - parameter binding)
       // Cosine similarity: 1 - (embedding <=> query_vector)
       // Recency boost (exponential decay, half-life 30 days):
-      //   finalScore = similarity * (1 + recencyBoost * exp(-days_since / 30))
+      //   finalScore = similarity * (1 + recencyBoost * exp(-ln(2) * days_since / 30))
       //   Clamped to prevent overflow: LEAST(time_decay, 1)
       const results = await this.prisma.$queryRaw<SearchResult[]>`
         SELECT
@@ -123,7 +123,7 @@ export class VectorSearchService {
               (1 - (e.embedding <=> ${vectorString}::vector)) *
               (1 + ${recencyBoost} * LEAST(
                 exp(
-                  -EXTRACT(EPOCH FROM (NOW() - a."publishedAt")) / (30 * 24 * 3600)
+                  -0.693147 * EXTRACT(EPOCH FROM (NOW() - a."publishedAt")) / (30 * 24 * 3600)
                 ),
                 1
               ))
