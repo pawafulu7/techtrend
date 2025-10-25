@@ -59,14 +59,20 @@ export function AgentLoadingState({ className, progress: externalProgress }: Age
         </span>
       </div>
 
-      <Progress
-        value={progress}
-        className="h-1 mb-6"
-        role="progressbar"
-        aria-valuenow={Math.round(progress)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      />
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-muted-foreground">進捗</span>
+          <span className="text-xs font-medium">{Math.round(progress)}%</span>
+        </div>
+        <Progress
+          value={progress}
+          className="h-1"
+          role="progressbar"
+          aria-valuenow={Math.round(progress)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        />
+      </div>
 
       <div className="space-y-3">
         <div className="h-4 bg-muted rounded animate-pulse" style={{ width: '90%' }} />
