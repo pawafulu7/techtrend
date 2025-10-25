@@ -24,6 +24,9 @@ interface AgentAnswerPanelProps {
   onFeedback?: (positive: boolean) => void;
 }
 
+// トップレベル制御用の Context（0: ルート、1以上: ネスト）
+const ListDepthContext = React.createContext(0);
+
 export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) {
   const [copied, setCopied] = useState(false);
 
@@ -36,8 +39,13 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
   const handleCopy = async () => {
     try {
       // レンダリング後のテキスト（トークン除去済み）を取得
-      const root = document.querySelector('[data-testid="agent-answer-markdown"]');
-      const copyText = root?.textContent ?? result.response;
+      const root = document.querySelector('[data-testid="agent-answer-markdown"]') as HTMLElement | null;
+      let copyText = result.response;
+      if (root) {
+        const clone = root.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll('[data-copy-exclude]').forEach((el) => el.remove());
+        copyText = (clone.textContent ?? result.response).trim();
+      }
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(copyText);
@@ -69,9 +77,6 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
   // 応答に [#...] トークンが含まれるか（通常は true、フォールバック時は false）
   const hasEmbeddedIds = useMemo(() => /\[#\S+?\]/.test(result.response), [result.response]);
 
-  // トップレベル制御用の Context（0: ルート、1以上: ネスト）
-  const ListDepthContext = React.createContext(0);
-
   type MarkdownLi = React.ReactElement<
     React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
   >;
@@ -82,15 +87,18 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
   // ol renderer component (for ListDepthContext hook usage)
   const OlComponent = ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => {
     const depth = React.useContext(ListDepthContext);
+    const hasIdInThisOl = React.Children.toArray(children).some(
+      (child) => isMarkdownLi(child) && (child.props as any)['data-article-id']
+    );
     return (
       <ListDepthContext.Provider value={depth + 1}>
         <ol {...props}>
           {React.Children.map(children, (child, index) => {
             if (!isMarkdownLi(child)) return child;
-            // トップレベル（depth===0）かつトークン不在時のみ index 付与
-            return hasEmbeddedIds || depth > 0
-              ? child
-              : React.cloneElement(child, { 'data-article-index': String(index) });
+            const shouldAddIndex = depth === 0 && !hasIdInThisOl && !hasEmbeddedIds;
+            return shouldAddIndex
+              ? React.cloneElement(child, { 'data-article-index': String(index) })
+              : child;
           })}
         </ol>
       </ListDepthContext.Provider>
@@ -168,7 +176,10 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
                     : undefined;
               // indexフォールバックはIDトークン不在時のみ有効化（誤リンク防止）
               const articleFromIndex =
-                !articleId && !hasEmbeddedIds && typeof index === 'number' && Number.isFinite(index)
+                !articleId &&
+                !hasEmbeddedIds &&
+                typeof index === 'number' &&
+                Number.isInteger(index)
                   ? result.articles?.[index]
                   : undefined;
               const article = articleFromId ?? articleFromIndex ?? null;
@@ -180,6 +191,7 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
                     <Button
                       asChild
                       size="sm"
+                      data-copy-exclude
                       className="ml-2 h-7 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors inline-flex items-center"
                       title={
                         article.translatedTitle?.trim() ? article.translatedTitle : article.title
@@ -205,6 +217,36 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
         </ListDepthContext.Provider>
       </div>
 
+      {/* 参照記事セクション */}
+      {result.articles && result.articles.length > 0 && (
+        <div className="mt-6 pt-6 border-t">
+          <h2 className="text-lg font-semibold mb-4">参照記事</h2>
+          <ul className="space-y-3">
+            {result.articles.map((article) => (
+              <li key={article.articleId} className="text-sm">
+                <a
+                  href={`/articles/${encodeURIComponent(article.articleId)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium"
+                >
+                  {article.translatedTitle?.trim() ? article.translatedTitle : article.title}
+                </a>
+                <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                  <span>一致度: {(article.similarity * 100).toFixed(1)}%</span>
+                  <time dateTime={article.publishedAt}>
+                    {new Date(article.publishedAt).toLocaleDateString('ja-JP', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </time>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="flex items-center justify-between pt-4 border-t mt-4">
         <div className="text-xs text-muted-foreground">
