@@ -146,9 +146,13 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
           return;
         }
 
+        const articles = extractArticlesFromToolCalls(data.toolCalls || []);
+        console.log('[useAgentSearch] Extracted articles:', articles);
+        console.log('[useAgentSearch] toolCalls:', data.toolCalls);
+
         const resultWithArticles: AgentSearchResult = {
           ...data,
-          articles: extractArticlesFromToolCalls(data.toolCalls || []),
+          articles,
         };
         setResult(resultWithArticles);
         callbacksRef.current?.onSuccess?.(resultWithArticles);
