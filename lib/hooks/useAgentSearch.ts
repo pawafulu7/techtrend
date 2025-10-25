@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ArticleLink } from '@/lib/types/article-link';
+import { extractArticlesFromToolCalls } from '@/lib/utils/article-link-extractor';
 
 export interface AgentSearchResult {
   query: string;
@@ -145,8 +146,12 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
           return;
         }
 
-        setResult(data);
-        callbacksRef.current?.onSuccess?.(data);
+        const resultWithArticles: AgentSearchResult = {
+          ...data,
+          articles: extractArticlesFromToolCalls(data.toolCalls || []),
+        };
+        setResult(resultWithArticles);
+        callbacksRef.current?.onSuccess?.(resultWithArticles);
       } catch (err) {
         clearTimeout(timeoutId);
 
