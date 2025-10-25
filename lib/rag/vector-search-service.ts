@@ -95,20 +95,21 @@ export class VectorSearchService {
             `
           : Prisma.empty;
 
-      // Build date filter (SECURE: parameter binding + COALESCE + UTC)
+      // Build date filter (index-friendly; compare as timestamptz without functions on column)
       const dateFilter =
         dateRange && (dateRange.from || dateRange.to)
           ? Prisma.sql`
-              AND a."publishedAt" AT TIME ZONE 'UTC' >= COALESCE(${dateRange.from ? Prisma.sql`${dateRange.from}::timestamptz` : Prisma.sql`TIMESTAMP '1970-01-01'`}, TIMESTAMP '1970-01-01')
-              AND a."publishedAt" AT TIME ZONE 'UTC' <= COALESCE(${dateRange.to ? Prisma.sql`${dateRange.to}::timestamptz` : Prisma.sql`now()`}, now())
+              ${dateRange.from ? Prisma.sql`AND a."publishedAt" >= ${dateRange.from}::timestamptz` : Prisma.empty}
+              ${dateRange.to ? Prisma.sql`AND a."publishedAt" <= ${dateRange.to}::timestamptz` : Prisma.empty}
             `
           : Prisma.empty;
 
       // Execute search with Prisma.sql (SECURE - parameter binding)
       // Cosine similarity: 1 - (embedding <=> query_vector)
-      // Recency boost (exponential decay, half-life 30 days):
-      //   finalScore = similarity * (1 + recencyBoost * exp(-ln(2) * days_since / 30))
-      //   Clamped to prevent overflow: LEAST(time_decay, 1)
+      // Recency boost (exponential decay, half-life = 30 days):
+      //   time_decay = exp(-ln(2) * days_since / 30)
+      //   finalScore = similarity * (1 + recencyBoost * time_decay)
+      //   Optionally clamp finalScore to <= 1.0 if downstream assumes [0,1].
       const results = await this.prisma.$queryRaw<SearchResult[]>`
         SELECT
           a.id as "articleId",
@@ -120,13 +121,13 @@ export class VectorSearchService {
           e."embeddingKey",
           CASE
             WHEN ${recencyBoost} > 0 THEN
-              (1 - (e.embedding <=> ${vectorString}::vector)) *
-              (1 + ${recencyBoost} * LEAST(
-                exp(
-                  -0.693147 * EXTRACT(EPOCH FROM (NOW() - a."publishedAt")) / (30 * 24 * 3600)
+              LEAST(
+                (1 - (e.embedding <=> ${vectorString}::vector)) *
+                (1 + ${recencyBoost} *
+                  exp(-ln(2) * EXTRACT(EPOCH FROM (NOW() - a."publishedAt")) / (30 * 24 * 3600))
                 ),
-                1
-              ))
+                1.0
+              )
             ELSE
               1 - (e.embedding <=> ${vectorString}::vector)
           END as similarity
