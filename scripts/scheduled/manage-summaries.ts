@@ -139,7 +139,7 @@ missingオプション:
 }
 
 // generate-summaries.tsから移植した関数群
-async function generateSummaryAndTags(title: string, content: string): Promise<SummaryAndTags> {
+async function generateSummaryAndTags(title: string, content: string, articleId?: number): Promise<SummaryAndTags> {
   apiStats.attempts++;
   
   try {
@@ -149,6 +149,7 @@ async function generateSummaryAndTags(title: string, content: string): Promise<S
       title,
       content,
       qualityThreshold: 40,
+      articleId,
     });
     
     apiStats.successes++;
@@ -636,7 +637,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
               
               // 日本語要約がない場合のみGemini APIを呼び出す
               if (!hasJapaneseSummary || !article.summary || !article.detailedSummary) {
-                const result = await generateSummaryAndTags(article.title, content);
+                const result = await generateSummaryAndTags(article.title, content, article.id);
                 summary = result.summary;
                 tags = result.tags;
                 translatedTitle = result.translatedTitle?.trim() || undefined;
@@ -665,7 +666,7 @@ async function generateSummaries(options: Options): Promise<GenerateResult> {
 
                 // タグ欠落時は要約生成APIを呼び出し（翻訳も取得）
                 if (needsTags) {
-                  const result = await generateSummaryAndTags(article.title, content);
+                  const result = await generateSummaryAndTags(article.title, content, article.id);
                   tags = result.tags;
                   
                   if (needsTranslation && result.translatedTitle) {
@@ -865,7 +866,7 @@ async function regenerateSummaries(options: Options): Promise<GenerateResult> {
         console.error(`\n処理中: [${article.source.name}] ${article.title}`);
         
         const content = article.content || '';
-        const result = await generateSummaryAndTags(article.title, content);
+        const result = await generateSummaryAndTags(article.title, content, article.id);
         
         // 要約を更新
         await prisma.article.update({
@@ -976,7 +977,7 @@ async function generateMissingSummaries(options: Options): Promise<GenerateResul
         console.error(`\n処理中: [${article.source.name}] ${article.title}`);
         
         const content = article.content || article.title;
-        const result = await generateSummaryAndTags(article.title, content);
+        const result = await generateSummaryAndTags(article.title, content, article.id);
         
         // 要約を更新
         await prisma.article.update({

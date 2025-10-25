@@ -48,6 +48,7 @@ async function main() {
         title: article.title,
         content: article.content,
         url: article.url,
+        articleId: article.id,
       });
 
       await prisma.article.update({

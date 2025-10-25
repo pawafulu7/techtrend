@@ -43,6 +43,7 @@ export async function POST() {
           title: article.title,
           content: article.content,
           qualityThreshold: 40,
+          articleId: article.id,
         });
 
         // 既存のタグ名を取得

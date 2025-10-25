@@ -70,6 +70,28 @@ module.exports = {
       out_file: 'logs/quality-check-out.log',
       time: true,
       merge_logs: true
+    },
+    {
+      name: 'techtrend-embedding-worker-local',
+      script: 'scripts/dev/run-embedding-worker.ts',
+      interpreter: 'tsx',
+      cwd: __dirname,
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      watch: false,
+      cron_restart: '0 * * * *', // 1時間ごとに実行
+      env: {
+        NODE_ENV: 'development',
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        DATABASE_URL: process.env.DATABASE_URL,
+        REDIS_URL: process.env.REDIS_URL,
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY
+      },
+      error_file: 'logs/embedding-worker-error.log',
+      out_file: 'logs/embedding-worker-out.log',
+      time: true,
+      merge_logs: true
     }
   ]
 };

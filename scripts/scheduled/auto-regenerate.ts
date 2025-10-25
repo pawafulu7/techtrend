@@ -163,6 +163,7 @@ async function regenerateArticles(articles: Array<{
         title: article.title,
         content: optimizedContent,
         qualityThreshold: 40,
+        articleId: article.id,
       });
       const { summary, tags } = result;
 
