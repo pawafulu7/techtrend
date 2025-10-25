@@ -33,9 +33,15 @@ export function extractArticlesFromToolCalls(
         return parseResult.data.articles || [];
       });
 
-    // 重複除去 (articleIdベース) → similarity順でソート（降順）
-    const deduped = Array.from(new Map(articles.map((a) => [a.articleId, a])).values());
-    return deduped.sort((a, b) => b.similarity - a.similarity);
+    // 重複除去 (articleIdベース、最高similarityを優先) → similarity順でソート（降順）
+    const byId = new Map<string, ArticleLink>();
+    for (const a of articles) {
+      const prev = byId.get(a.articleId);
+      if (!prev || a.similarity > prev.similarity) {
+        byId.set(a.articleId, a);
+      }
+    }
+    return [...byId.values()].sort((a, b) => b.similarity - a.similarity);
   } catch (error) {
     console.error('[ArticleLinkExtractor] Unexpected error:', error);
     return [];

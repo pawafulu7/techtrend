@@ -34,9 +34,11 @@ export function AgentSearchClient() {
   }, [isLoading, result, error]);
 
   const handleRetry = () => {
-    if (lastQuery) {
-      search(lastQuery);
-    }
+    if (!lastQuery) return;
+    setProgressOverride(undefined);
+    setShowResult(false);
+    reset();
+    search(lastQuery);
   };
 
   const handleFeedback = (positive: boolean) => {

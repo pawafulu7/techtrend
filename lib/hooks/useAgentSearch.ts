@@ -152,11 +152,12 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
           return;
         }
 
-        const articles = extractArticlesFromToolCalls(data.toolCalls || []);
+        const safeToolCalls = Array.isArray(data.toolCalls) ? data.toolCalls : [];
+        const articles = extractArticlesFromToolCalls(safeToolCalls);
 
         if (process.env.NEXT_PUBLIC_DEBUG) {
           console.log('[useAgentSearch] Extracted articles:', articles);
-          console.log('[useAgentSearch] toolCalls:', data.toolCalls);
+          console.log('[useAgentSearch] toolCalls:', safeToolCalls);
         }
 
         const resultWithArticles: AgentSearchResult = {

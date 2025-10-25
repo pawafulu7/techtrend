@@ -66,6 +66,9 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
     return new Map(articles.map((article) => [article.articleId, article]));
   }, [result.articles]);
 
+  // 応答に [#...] トークンが含まれるか（通常は true、フォールバック時は false）
+  const hasEmbeddedIds = useMemo(() => /\[#\S+?\]/.test(result.response), [result.response]);
+
   type MarkdownLi = React.ReactElement<
     React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
   >;
@@ -132,9 +135,11 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
             ol: ({ node: _node, children, ...props }) => (
               <ol {...props}>
                 {React.Children.map(children, (child, index) => {
-                  return isMarkdownLi(child)
-                    ? React.cloneElement(child, { 'data-article-index': String(index) })
-                    : child;
+                  if (!isMarkdownLi(child)) return child;
+                  // IDトークンがある通常ケースでは index を付与しない（ネストリスト誤動作防止）
+                  return hasEmbeddedIds
+                    ? child
+                    : React.cloneElement(child, { 'data-article-index': String(index) });
                 })}
               </ol>
             ),
@@ -149,8 +154,9 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
                   : indexAttr !== undefined
                     ? Number(indexAttr)
                     : undefined;
+              // indexフォールバックはIDトークン不在時のみ有効化（誤リンク防止）
               const articleFromIndex =
-                typeof index === 'number' && Number.isFinite(index)
+                !articleId && !hasEmbeddedIds && typeof index === 'number' && Number.isFinite(index)
                   ? result.articles?.[index]
                   : undefined;
               const article = articleFromId ?? articleFromIndex ?? null;
@@ -168,7 +174,7 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
                       }
                     >
                       <Link
-                        href={`/articles/${article.articleId}`}
+                        href={`/articles/${encodeURIComponent(article.articleId)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
