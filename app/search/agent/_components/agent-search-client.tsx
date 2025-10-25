@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentLoadingState } from './agent-loading-state';
 import { AgentAnswerPanel } from './agent-answer-panel';
@@ -9,13 +9,29 @@ import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 
 export function AgentSearchClient() {
   const [lastQuery, setLastQuery] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [showResult, setShowResult] = useState(false);
   const { search, result, error, isLoading, reset } = useAgentSearch();
 
   const handleSearch = async (query: string) => {
     setLastQuery(query);
+    setProgress(0);
+    setShowResult(false);
     reset();
     await search(query);
   };
+
+  useEffect(() => {
+    if (!isLoading && (result || error)) {
+      setProgress(100);
+
+      const timer = setTimeout(() => {
+        setShowResult(true);
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, result, error]);
 
   const handleRetry = () => {
     if (lastQuery) {
@@ -34,9 +50,9 @@ export function AgentSearchClient() {
       <AgentSearchBar onSearch={handleSearch} isLoading={isLoading} />
 
       <div className="mt-8">
-        {isLoading && <AgentLoadingState />}
-        {error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
-        {result && !error && !isLoading && (
+        {isLoading && <AgentLoadingState progress={progress} />}
+        {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
+        {!isLoading && showResult && result && !error && (
           <AgentAnswerPanel result={result} onFeedback={handleFeedback} />
         )}
       </div>
