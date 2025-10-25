@@ -1,4 +1,3 @@
-import { describe, it, expect, vi } from 'vitest';
 import { extractArticlesFromToolCalls } from '../article-link-extractor';
 import { RAG_TOOL_NAMES } from '@/lib/rag/constants';
 
@@ -47,7 +46,7 @@ describe('extractArticlesFromToolCalls', () => {
   });
 
   it('異常系: articlesが不正な構造の場合（console.warnログ出力）', () => {
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
     const toolCalls = [
       {
