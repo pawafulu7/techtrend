@@ -142,18 +142,21 @@ describe('Environment Configuration', () => {
       process.env.ENABLE_CACHE = 'true';
       process.env.ENABLE_AUTH = 'false';
       process.env.QUALITY_CHECK_ENABLED = 'true';
-      
+      process.env.AGENT_STREAMING_ENABLED = 'true';
+
       expect(features.isCacheEnabled()).toBe(true);
       expect(features.isAuthEnabled()).toBe(false);
       expect(features.isQualityCheckEnabled()).toBe(true);
+      expect(features.isAgentStreamingEnabled()).toBe(true);
     });
 
     it('uses defaults when flags are not set', () => {
       process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
-      
+
       expect(features.isCacheEnabled()).toBe(true); // default
       expect(features.isAuthEnabled()).toBe(true); // default
       expect(features.isAnalyticsEnabled()).toBe(false); // default
+      expect(features.isAgentStreamingEnabled()).toBe(false); // default
     });
   });
 
@@ -351,19 +354,22 @@ describe('Environment Configuration - features', () => {
     process.env.ENABLE_CACHE = 'true';
     process.env.ENABLE_AUTH = 'false';
     process.env.QUALITY_CHECK_ENABLED = 'true';
+    process.env.AGENT_STREAMING_ENABLED = 'true';
     resetEnvCache();
-    
+
     expect(features.isCacheEnabled()).toBe(true);
     expect(features.isAuthEnabled()).toBe(false);
     expect(features.isQualityCheckEnabled()).toBe(true);
+    expect(features.isAgentStreamingEnabled()).toBe(true);
   });
 
   it('uses defaults when flags are not set', () => {
     resetEnvCache();
-    
+
     expect(features.isCacheEnabled()).toBe(true); // default
     expect(features.isAuthEnabled()).toBe(true); // default
     expect(features.isAnalyticsEnabled()).toBe(false); // default
+    expect(features.isAgentStreamingEnabled()).toBe(false); // default
   });
 });
 
