@@ -26,9 +26,9 @@ export class EmbeddingWorker {
 
   constructor(config: Partial<WorkerConfig> = {}) {
     this.config = {
-      batchSize: config.batchSize ?? 300, // Reduced from 500 for safety
-      maxAttempts: config.maxAttempts ?? 3,
-      timeoutMs: config.timeoutMs ?? 9000, // 9s (leave 1s buffer for Vercel 10s limit)
+      batchSize: config.batchSize ?? parseInt(process.env.EMBEDDING_WORKER_BATCH_SIZE || '300', 10),
+      maxAttempts: config.maxAttempts ?? parseInt(process.env.EMBEDDING_WORKER_MAX_ATTEMPTS || '3', 10),
+      timeoutMs: config.timeoutMs ?? parseInt(process.env.EMBEDDING_WORKER_TIMEOUT_MS || '9000', 10), // Default 9s for Vercel, can be overridden for GitHub Actions
       skipEmbedding: config.skipEmbedding ?? false,
     };
 
