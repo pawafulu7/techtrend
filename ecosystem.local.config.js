@@ -9,7 +9,8 @@ module.exports = {
     {
       name: 'techtrend-scheduler-local',
       script: 'scripts/scheduled/scheduler.ts',
-      interpreter: 'tsx',
+      interpreter: 'npx',
+      interpreter_args: 'tsx',
       cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
@@ -33,7 +34,8 @@ module.exports = {
     {
       name: 'techtrend-auto-regenerate-local',
       script: 'scripts/scheduled/auto-regenerate.ts',
-      interpreter: 'tsx',
+      interpreter: 'npx',
+      interpreter_args: 'tsx',
       cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
@@ -54,7 +56,8 @@ module.exports = {
     {
       name: 'techtrend-quality-check-local',
       script: 'scripts/scheduled/quality-check.ts',
-      interpreter: 'tsx',
+      interpreter: 'npx',
+      interpreter_args: 'tsx',
       cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
@@ -74,7 +77,8 @@ module.exports = {
     {
       name: 'techtrend-embedding-worker-local',
       script: 'scripts/dev/run-embedding-worker.ts',
-      interpreter: 'tsx',
+      interpreter: 'npx',
+      interpreter_args: 'tsx',
       cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
