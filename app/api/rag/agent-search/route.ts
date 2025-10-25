@@ -248,6 +248,7 @@ async function createStreamingResponse(
   rateLimitInfo?: RateLimitInfo
 ): Promise<Response> {
   const encoder = new TextEncoder();
+  const responseCache = new AgentResponseCache();
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -261,7 +262,6 @@ async function createStreamingResponse(
           messages: [{ role: 'user', content: validatedRequest.query }],
         });
 
-        // Send heartbeat for long-running operations (keep-alive)
         heartbeatInterval = setInterval(() => {
           controller.enqueue(encoder.encode(':\n\n'));
         }, 10000);
@@ -317,7 +317,17 @@ async function createStreamingResponse(
               clearInterval(heartbeatInterval);
             }
 
-            await responseCache.set(validatedRequest.query, fullText);
+            try {
+              await responseCache.set(validatedRequest.query, fullText);
+            } catch (cacheError) {
+              logger.warn(
+                {
+                  error: sanitizeError(cacheError),
+                  userId: session.user.id,
+                },
+                'Failed to cache streaming response'
+              );
+            }
 
             controller.enqueue(
               encoder.encode(

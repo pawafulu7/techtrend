@@ -79,6 +79,7 @@ async function parseSSEStream(
   // Progress estimation
   const ESTIMATED_TOTAL_TOOLS = 2;
   let estimatedTotalChars = 500;
+  let lastProgress = 0;
 
   // Timeout reset on each chunk
   let lastChunkTime = Date.now();
@@ -132,12 +133,15 @@ async function parseSSEStream(
 
           const toolProgress = (toolsCompleted / Math.max(toolsTotal, ESTIMATED_TOTAL_TOOLS)) * 40;
           const textProgress = Math.min(60, (accumulatedText.length / estimatedTotalChars) * 60);
-          const totalProgress = Math.min(95, toolProgress + textProgress);
+          const calculatedProgress = Math.min(95, toolProgress + textProgress);
+
+          const totalProgress = Math.max(lastProgress, calculatedProgress);
+          lastProgress = totalProgress;
 
           callbacksRef.current?.onProgressUpdate?.(totalProgress);
 
           if (accumulatedText.length > estimatedTotalChars * 0.8) {
-            estimatedTotalChars = accumulatedText.length * 1.25;
+            estimatedTotalChars = Math.max(estimatedTotalChars, accumulatedText.length * 1.25);
           }
 
           if (process.env.NEXT_PUBLIC_DEBUG) {
