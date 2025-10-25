@@ -153,8 +153,11 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
         }
 
         const articles = extractArticlesFromToolCalls(data.toolCalls || []);
-        console.log('[useAgentSearch] Extracted articles:', articles);
-        console.log('[useAgentSearch] toolCalls:', data.toolCalls);
+
+        if (process.env.NEXT_PUBLIC_DEBUG) {
+          console.log('[useAgentSearch] Extracted articles:', articles);
+          console.log('[useAgentSearch] toolCalls:', data.toolCalls);
+        }
 
         const resultWithArticles: AgentSearchResult = {
           ...data,

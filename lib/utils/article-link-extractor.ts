@@ -21,10 +21,12 @@ export function extractArticlesFromToolCalls(
         const parseResult = toolOutputSchema.safeParse(tc.output);
 
         if (!parseResult.success) {
-          console.warn('[ArticleLinkExtractor] Invalid tool output structure:', {
-            toolName: tc.name,
-            error: parseResult.error,
-          });
+          if (process.env.NEXT_PUBLIC_DEBUG) {
+            console.warn('[ArticleLinkExtractor] Invalid tool output structure:', {
+              toolName: tc.name,
+              error: parseResult.error,
+            });
+          }
           return [];
         }
 
