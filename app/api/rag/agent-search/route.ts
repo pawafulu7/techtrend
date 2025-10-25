@@ -268,12 +268,13 @@ async function createStreamingResponse(
 
         for await (const chunk of streamResult.fullStream) {
           if (chunk.type === 'text-delta') {
-            fullText += chunk.text;
+            const textDelta = chunk.textDelta ?? '';
+            fullText += textDelta;
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
                   type: 'text-delta',
-                  delta: chunk.text,
+                  delta: textDelta,
                 })}\n\n`
               )
             );
@@ -284,7 +285,7 @@ async function createStreamingResponse(
                   type: 'tool-start',
                   toolCallId: chunk.toolCallId,
                   toolName: chunk.toolName,
-                  input: chunk.input,
+                  input: chunk.args,
                 })}\n\n`
               )
             );
@@ -292,7 +293,7 @@ async function createStreamingResponse(
             toolCalls.push({
               id: chunk.toolCallId,
               name: chunk.toolName,
-              input: chunk.input,
+              input: chunk.args,
             });
           } else if (chunk.type === 'tool-result') {
             controller.enqueue(
@@ -300,14 +301,14 @@ async function createStreamingResponse(
                 `data: ${JSON.stringify({
                   type: 'tool-complete',
                   toolCallId: chunk.toolCallId,
-                  result: chunk.output,
+                  result: chunk.result,
                 })}\n\n`
               )
             );
 
             const toolCall = toolCalls.find((tc) => tc.id === chunk.toolCallId);
             if (toolCall) {
-              toolCall.output = chunk.output;
+              toolCall.output = chunk.result;
               toolCall.dynamic = false;
             }
           } else if (chunk.type === 'finish') {

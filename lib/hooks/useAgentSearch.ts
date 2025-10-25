@@ -128,7 +128,8 @@ async function parseSSEStream(
           setPartialText(accumulatedText);
           callbacksRef.current?.onProgressUpdate?.(100);
         } else if (eventData.type === 'text-delta') {
-          accumulatedText += eventData.delta;
+          const delta = eventData.delta ?? '';
+          accumulatedText += delta;
           setPartialText(accumulatedText);
 
           const toolProgress = (toolsCompleted / Math.max(toolsTotal, ESTIMATED_TOTAL_TOOLS)) * 40;

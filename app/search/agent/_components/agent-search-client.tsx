@@ -22,7 +22,7 @@ export function AgentSearchClient() {
 
   const handleSearch = async (query: string) => {
     setLastQuery(query);
-    setProgressOverride(undefined);
+    setProgressOverride(0);
     setShowResult(false);
     reset();
     await search(query);

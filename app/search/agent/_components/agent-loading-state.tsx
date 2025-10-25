@@ -20,8 +20,13 @@ interface AgentLoadingStateProps {
 export function AgentLoadingState({ className, progress: externalProgress }: AgentLoadingStateProps) {
   const [statusIndex, setStatusIndex] = useState(0);
   const [internalProgress, setInternalProgress] = useState(0);
+  const [useExternalOnly, setUseExternalOnly] = useState(false);
 
-  const progress = externalProgress ?? internalProgress;
+  const progress = useExternalOnly && externalProgress !== undefined
+    ? externalProgress
+    : externalProgress !== undefined
+    ? Math.max(externalProgress, internalProgress)
+    : internalProgress;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -32,7 +37,12 @@ export function AgentLoadingState({ className, progress: externalProgress }: Age
   }, [statusIndex]);
 
   useEffect(() => {
-    if (externalProgress !== undefined) {
+    if (externalProgress !== undefined && externalProgress > 0) {
+      setUseExternalOnly(true);
+      return;
+    }
+
+    if (useExternalOnly) {
       return;
     }
 
@@ -41,14 +51,12 @@ export function AgentLoadingState({ className, progress: externalProgress }: Age
 
     const progressInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      // Progress smoothly to 95% (never goes backwards)
-      // Parent component should set to 100% on completion
       const newProgress = Math.min(95, (elapsed / duration) * 95);
       setInternalProgress(newProgress);
     }, 100);
 
     return () => clearInterval(progressInterval);
-  }, [externalProgress]);
+  }, [externalProgress, useExternalOnly]);
 
   return (
     <div className={className} role="status" aria-live="polite" aria-busy="true">
