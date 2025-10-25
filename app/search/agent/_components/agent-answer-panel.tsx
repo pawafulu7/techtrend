@@ -35,13 +35,17 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
 
   const handleCopy = async () => {
     try {
+      // レンダリング後のテキスト（トークン除去済み）を取得
+      const root = document.querySelector('[data-testid="agent-answer-markdown"]');
+      const copyText = root?.textContent ?? result.response;
+
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(result.response);
+        await navigator.clipboard.writeText(copyText);
         setCopied(true);
       } else {
         // Fallback for environments without clipboard API (e.g., headless browsers)
         const textarea = document.createElement('textarea');
-        textarea.value = result.response;
+        textarea.value = copyText;
         textarea.style.position = 'fixed';
         textarea.style.opacity = '0';
         document.body.appendChild(textarea);
@@ -115,7 +119,10 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
         </div>
       )}
 
-      <div className="prose prose-sm dark:prose-invert w-full max-w-none md:max-w-3xl xl:max-w-4xl mb-4">
+      <div
+        className="prose prose-sm dark:prose-invert w-full max-w-none md:max-w-3xl xl:max-w-4xl mb-4"
+        data-testid="agent-answer-markdown"
+      >
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
           components={{
@@ -156,7 +163,9 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
                       asChild
                       size="sm"
                       className="ml-2 h-7 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors inline-flex items-center"
-                      title={article.translatedTitle ?? article.title}
+                      title={
+                        article.translatedTitle?.trim() ? article.translatedTitle : article.title
+                      }
                     >
                       <Link
                         href={`/articles/${article.articleId}`}

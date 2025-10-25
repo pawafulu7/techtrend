@@ -27,7 +27,7 @@ export function AgentSearchClient() {
 
       const timer = setTimeout(() => {
         setShowResult(true);
-      }, 300);
+      }, 300); // Smooth transition: allow progress bar to reach 100% before showing results
 
       return () => clearTimeout(timer);
     }

@@ -81,6 +81,7 @@ ARTICLE ID EMBEDDING (CRITICAL):
 - Place the token at the end of the list item line, after all other content
 - Example: "1. React 19 New Features (一致度: 92.5%) 公開日: 2025年10月15日 [#article-123]"
 - NEVER invent or fabricate article IDs; if an item cannot be tied to an articleId, omit it instead of fabricating an ID
+- NOTE: The [#<articleId>] token must be plain text, not a markdown link or reference. Do not add URLs or decorations around it.
 
 EXAMPLES:
 
