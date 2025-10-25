@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import remarkExtractArticleId from './remark-extract-article-id';
 import {
   CheckCircle2,
   AlertTriangle,
   Copy,
   Check,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Link2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +56,18 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
       console.error('クリップボードへのコピーに失敗しました:', error);
     }
   };
+
+  const articleMap = useMemo(() => {
+    const articles = result.articles ?? [];
+    return new Map(articles.map((article) => [article.articleId, article]));
+  }, [result.articles]);
+
+  type MarkdownLi = React.ReactElement<
+    React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
+  >;
+
+  const isMarkdownLi = (node: React.ReactNode): node is MarkdownLi =>
+    React.isValidElement(node) && node.type === 'li';
 
   return (
     <div className="bg-card border rounded-lg shadow-sm p-6" role="article" aria-labelledby="answer-heading">
@@ -100,63 +115,68 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
         </div>
       )}
 
-      <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
+      <div className="prose prose-sm dark:prose-invert w-full max-w-none md:max-w-3xl xl:max-w-4xl mb-4">
         <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
+          remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
           components={{
             a: ({ node: _node, ...props }) => (
               <a {...props} target="_blank" rel="noopener noreferrer" />
             ),
+            ol: ({ node: _node, children, ...props }) => (
+              <ol {...props}>
+                {React.Children.map(children, (child, index) => {
+                  return isMarkdownLi(child)
+                    ? React.cloneElement(child, { 'data-article-index': String(index) })
+                    : child;
+                })}
+              </ol>
+            ),
+            li: ({ node: _node, children, ...props }) => {
+              const articleId = props['data-article-id'] as string | undefined;
+              const indexAttr = props['data-article-index'] as string | number | undefined;
+
+              const articleFromId = articleId ? articleMap.get(articleId) : undefined;
+              const index =
+                typeof indexAttr === 'number'
+                  ? indexAttr
+                  : indexAttr !== undefined
+                    ? Number(indexAttr)
+                    : undefined;
+              const articleFromIndex =
+                typeof index === 'number' && Number.isFinite(index)
+                  ? result.articles?.[index]
+                  : undefined;
+              const article = articleFromId ?? articleFromIndex ?? null;
+
+              return (
+                <li {...props}>
+                  {children}
+                  {article && (
+                    <Button
+                      asChild
+                      size="sm"
+                      className="ml-2 h-7 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors inline-flex items-center"
+                      title={article.translatedTitle ?? article.title}
+                    >
+                      <Link
+                        href={`/articles/${article.articleId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Link2 className="mr-1 h-3 w-3" />
+                        記事を見る
+                      </Link>
+                    </Button>
+                  )}
+                </li>
+              );
+            },
           }}
         >
           {result.response}
         </ReactMarkdown>
       </div>
 
-      {result.articles && result.articles.length > 0 && (
-        <div className="mt-6 pt-6 border-t">
-          <h2 className="text-base font-semibold mb-4 text-foreground">
-            {/* TODO i18n */}
-            参照記事
-          </h2>
-          <ul className="space-y-3" role="list">
-            {result.articles.map((article, index) => (
-              <li key={article.articleId} className="flex items-start gap-3">
-                <span
-                  className="text-sm text-muted-foreground mt-1 flex-shrink-0 w-5"
-                  aria-hidden="true"
-                >
-                  {index + 1}.
-                </span>
-                <div className="flex-1 min-w-0">
-                  <Link
-                    href={`/articles/${article.articleId}`}
-                    className="text-sm text-primary hover:underline font-medium block break-words"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ minHeight: '44px', display: 'flex', alignItems: 'center' }}
-                  >
-                    {article.title}
-                  </Link>
-                  <div className="text-xs text-muted-foreground mt-1.5 flex flex-wrap gap-x-2">
-                    <span>
-                      一致度: {(article.similarity * 100).toFixed(1)}%
-                    </span>
-                    <span aria-hidden="true">•</span>
-                    <time dateTime={article.publishedAt}>
-                      {new Date(article.publishedAt).toLocaleDateString('ja-JP', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </time>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <div className="flex items-center justify-between pt-4 border-t mt-4">
         <div className="text-xs text-muted-foreground">

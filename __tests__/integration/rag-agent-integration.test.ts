@@ -78,7 +78,7 @@ describe('RAG Agent Integration', () => {
       expect(result.toolCalls!.length).toBeGreaterThan(0);
 
       const toolCall = result.toolCalls![0];
-      expect(toolCall.toolName).toBe('semanticSearch');
+      expect(toolCall.toolName).toBe('semantic-article-search');
       expect(toolCall.args).toMatchObject({
         query: expect.any(String),
       });

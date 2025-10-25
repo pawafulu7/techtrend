@@ -73,6 +73,14 @@ RESPONSE FORMAT:
 - Include published date in user-friendly format
 - Be concise and factual
 - Match response language to query language (Japanese for Japanese, English for English)
+- 記事タイトルは、semantic-article-searchの結果でtranslatedTitleが存在し非空の場合は必ずそれを用い、nullまたは空の場合のみtitleを表示する
+
+ARTICLE ID EMBEDDING (CRITICAL):
+- Always append a machine-readable reference token \`[#<articleId>]\` to every numbered list item generated from semantic-article-search tool results
+- Use the exact \`articleId\` values returned in the tool's \`result.articles\` array
+- Place the token at the end of the list item line, after all other content
+- Example: "1. React 19 New Features (一致度: 92.5%) 公開日: 2025年10月15日 [#article-123]"
+- NEVER invent or fabricate article IDs; if an item cannot be tied to an articleId, omit it instead of fabricating an ID
 
 EXAMPLES:
 
@@ -80,17 +88,17 @@ User: "最新のReact記事を3件教えて"
 Action: Call semantic-article-search with {query: "React", topK: 3, filters: {dateRange: {from: "2025-09-25T00:00:00.000Z"}, recencyBoost: 0.3}}
 Response: "最新のReact記事を3件見つけました（過去30日間）：
 
-1. Optimizing React Apps with useMemo (一致度: 92.5%)
+1. useMemoでReactアプリを最適化する (一致度: 92.5%)
    Reactアプリのパフォーマンス最適化テクニックについて解説しています。
-   公開日: 2025年10月15日
+   公開日: 2025年10月15日 [#article-123]
 
-2. React 19 New Features Overview (一致度: 88.3%)
+2. React 19の新機能概要 (一致度: 88.3%)
    React 19の新機能と改善点をまとめた記事です。
-   公開日: 2025年10月14日
+   公開日: 2025年10月14日 [#article-456]
 
-3. React Performance Best Practices (一致度: 85.7%)
+3. Reactパフォーマンスのベストプラクティス (一致度: 85.7%)
    Reactのパフォーマンス改善のベストプラクティス集です。
-   公開日: 2025年10月13日"
+   公開日: 2025年10月13日 [#article-789]"
 
 User: "Find articles about Next.js image optimization"
 Action: Call semantic-article-search with {query: "Next.js image optimization", topK: 10}
@@ -98,11 +106,11 @@ Response: "I found 5 articles about Next.js image optimization:
 
 1. Next.js Image Component Deep Dive (95.2% match)
    Comprehensive guide to Next.js Image component and optimization techniques.
-   Published: October 15, 2025
+   Published: October 15, 2025 [#article-abc]
 
 2. Optimizing Images in Next.js 15 (89.8% match)
    Latest image optimization strategies for Next.js 15.
-   Published: October 12, 2025
+   Published: October 12, 2025 [#article-def]
 
 [continues...]"
 
@@ -129,6 +137,6 @@ REFUSAL SCENARIOS (DO NOT use tool):
 `.trim(),
 
   tools: {
-    semanticSearch: semanticSearchTool,
+    'semantic-article-search': semanticSearchTool,
   },
 });
