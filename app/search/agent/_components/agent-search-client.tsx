@@ -9,13 +9,20 @@ import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 
 export function AgentSearchClient() {
   const [lastQuery, setLastQuery] = useState('');
-  const [progressOverride, setProgressOverride] = useState<number | undefined>(undefined);
+  const [progress, setProgress] = useState(0);
   const [showResult, setShowResult] = useState(false);
-  const { search, result, error, isLoading, reset } = useAgentSearch();
+  const { search, result, error, isLoading, reset } = useAgentSearch({
+    onProgressUpdate: (p) => {
+      setProgress(p);
+      if (process.env.NEXT_PUBLIC_DEBUG) {
+        console.log('[Progress]', `${p.toFixed(1)}%`);
+      }
+    },
+  });
 
   const handleSearch = async (query: string) => {
     setLastQuery(query);
-    setProgressOverride(undefined);
+    setProgress(0);
     setShowResult(false);
     reset();
     await search(query);
@@ -23,7 +30,7 @@ export function AgentSearchClient() {
 
   useEffect(() => {
     if (!isLoading && (result || error)) {
-      setProgressOverride(100);
+      setProgress(100);
 
       const timer = setTimeout(() => {
         setShowResult(true);
@@ -35,7 +42,7 @@ export function AgentSearchClient() {
 
   const handleRetry = () => {
     if (!lastQuery) return;
-    setProgressOverride(undefined);
+    setProgress(0);
     setShowResult(false);
     reset();
     search(lastQuery);
@@ -52,7 +59,7 @@ export function AgentSearchClient() {
       <AgentSearchBar onSearch={handleSearch} isLoading={isLoading} />
 
       <div className="mt-8">
-        {isLoading && <AgentLoadingState progress={progressOverride} />}
+        {isLoading && <AgentLoadingState progress={progress} />}
         {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
         {!isLoading && showResult && result && !error && (
           <AgentAnswerPanel result={result} onFeedback={handleFeedback} />
