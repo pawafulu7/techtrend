@@ -7,8 +7,10 @@ import { detectPromptInjection, sanitizeQuery } from '@/lib/rag/security/prompt-
 import { VectorSearchService, SearchResult } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { trace, SpanStatusCode, Span } from '@opentelemetry/api';
 import { ZodError, z } from 'zod';
+import { features } from '@/lib/config/env';
+import type { Session } from 'next-auth';
 
 /**
  * RAG Agent Search API (Vercel AI SDK)
@@ -115,6 +117,176 @@ function attachRateLimitHeaders(
     );
   }
   return response;
+}
+
+/**
+ * Type definitions for request handling
+ */
+interface RateLimitInfo {
+  limit: number;
+  remaining: number;
+  reset: Date;
+}
+
+interface ValidatedRequest {
+  query: string;
+}
+
+/**
+ * Handle batch (non-streaming) agent search request
+ *
+ * This is the original generate() implementation, extracted for dual-path support.
+ * Used when AGENT_STREAMING_ENABLED=false or as fallback.
+ */
+async function handleBatchRequest(
+  validatedRequest: ValidatedRequest,
+  session: Session,
+  span: Span,
+  rateLimitInfo?: RateLimitInfo
+): Promise<NextResponse> {
+  // Layer 5: Response cache check
+  const responseCache = new AgentResponseCache();
+  const cachedResponse = await responseCache.get(validatedRequest.query);
+
+  if (cachedResponse) {
+    span.setAttribute('cache.hit', true);
+    logger.debug(
+      {
+        userId: session.user.id,
+        queryPreview: validatedRequest.query.substring(0, 50),
+      },
+      'Agent cache hit'
+    );
+
+    const response = NextResponse.json({
+      query: validatedRequest.query,
+      response: cachedResponse,
+      cached: true,
+    });
+
+    return attachRateLimitHeaders(response, rateLimitInfo);
+  }
+
+  span.setAttribute('cache.hit', false);
+
+  // Layer 6: Agent execution with fallback
+  let agentResponse: string;
+  let toolCalls: any[] = [];
+  let usage: any = {};
+  let fallback = false;
+
+  try {
+    const result = await articleSearchAgent.generate({
+      messages: [{ role: 'user', content: validatedRequest.query }],
+    });
+
+    // [DEBUG] Log raw agent result
+    const allToolCalls = result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
+    const allToolResults = result.steps?.flatMap((step) => step.toolResults ?? []) ?? [];
+
+    // Create toolResults map for efficient lookup
+    const toolResultsMap = new Map(
+      allToolResults.map((r) => [r.toolCallId, r])
+    );
+
+    // [DEBUG] Log toolResults structure
+    console.log('[Tool Results DEBUG]', {
+      allToolResultsSample: allToolResults[0],
+      toolResultKeys: allToolResults[0] ? Object.keys(allToolResults[0]) : [],
+    });
+
+    console.log('[Agent Result DEBUG]', {
+      textPreview: result.text?.slice(0, 100),
+      stepsCount: result.steps?.length || 0,
+      allToolCallsCount: allToolCalls.length,
+      allToolResultsCount: allToolResults.length,
+      toolCallNames: allToolCalls.map((tc) => tc.toolName),
+      finishReason: result.finishReason,
+    });
+
+    agentResponse = result.text.trim();
+    toolCalls = allToolCalls.map((call) => {
+      const toolResult = toolResultsMap.get(call.toolCallId);
+      console.log('[Mapping DEBUG]', {
+        callId: call.toolCallId,
+        resultFound: !!toolResult,
+        resultKeys: toolResult ? Object.keys(toolResult) : [],
+      });
+      return {
+        id: call.toolCallId,
+        name: call.toolName,
+        input: call.input,
+        output: toolResult?.output,
+        dynamic: call.dynamic ?? false,
+      };
+    });
+    usage = result.usage;
+
+    // Handle empty response as agent failure (tool-only response with no text)
+    if (!agentResponse) {
+      throw new Error('Agent returned empty response (tool-only mode detected)');
+    }
+
+    span.setAttributes({
+      'agent.toolCallCount': toolCalls.length,
+      'agent.responseLength': agentResponse.length,
+      'agent.promptTokens': usage.promptTokens || 0,
+      'agent.completionTokens': usage.completionTokens || 0,
+    });
+
+    logger.info(
+      {
+        userId: session.user.id,
+        queryPreview: validatedRequest.query.substring(0, 50),
+        toolCalls: toolCalls.length,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+      },
+      'Agent search completed'
+    );
+  } catch (agentError) {
+    span.setAttribute('agent.failed', true);
+    span.recordException(agentError as Error);
+
+    logger.warn(
+      {
+        error: sanitizeError(agentError),
+        userId: session.user.id,
+        queryPreview: validatedRequest.query.substring(0, 50),
+      },
+      'Agent failed, using fallback'
+    );
+
+    // Fallback: Direct vector search
+    const searchService = new VectorSearchService(prisma);
+    const fallbackResults = await searchService.search(validatedRequest.query, {
+      topK: 10,
+    });
+
+    const queryLang = detectLang(validatedRequest.query);
+    agentResponse = formatResultsAsText(fallbackResults, queryLang);
+    fallback = true;
+
+    span.setAttribute('fallback.used', true);
+    span.setAttribute('fallback.resultCount', fallbackResults.length);
+  }
+
+  // Cache successful responses (both agent and fallback)
+  await responseCache.set(validatedRequest.query, agentResponse);
+
+  // Return response with metadata
+  const responseData = {
+    query: validatedRequest.query,
+    response: agentResponse,
+    toolCalls,
+    usage,
+    fallback,
+    cached: false,
+  };
+
+  const responseObject = NextResponse.json(responseData);
+
+  return attachRateLimitHeaders(responseObject, rateLimitInfo);
 }
 
 export async function POST(request: NextRequest) {
@@ -243,149 +415,13 @@ export async function POST(request: NextRequest) {
         'Agent search request'
       );
 
-      // Layer 5: Response cache check
-      const responseCache = new AgentResponseCache();
-      const cachedResponse = await responseCache.get(validatedRequest.query);
-
-      if (cachedResponse) {
-        span.setAttribute('cache.hit', true);
-        logger.debug(
-          {
-            userId: session.user.id,
-            queryPreview: validatedRequest.query.substring(0, 50),
-          },
-          'Agent cache hit'
-        );
-
-        const response = NextResponse.json({
-          query: validatedRequest.query,
-          response: cachedResponse,
-          cached: true,
-        });
-
-        return attachRateLimitHeaders(response, rateLimitInfo);
+      // Router: Streaming vs. Batch based on feature flag
+      if (features.isAgentStreamingEnabled()) {
+        // TODO: Implement streaming path in Task 1.2
+        throw new Error('Streaming not yet implemented');
+      } else {
+        return await handleBatchRequest(validatedRequest, session, span, rateLimitInfo);
       }
-
-      span.setAttribute('cache.hit', false);
-
-      // Layer 6: Agent execution with fallback
-      let agentResponse: string;
-      let toolCalls: any[] = [];
-      let usage: any = {};
-      let fallback = false;
-
-      try {
-        const result = await articleSearchAgent.generate({
-          messages: [{ role: 'user', content: validatedRequest.query }],
-        });
-
-        // [DEBUG] Log raw agent result
-        const allToolCalls = result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
-        const allToolResults = result.steps?.flatMap((step) => step.toolResults ?? []) ?? [];
-
-        // Create toolResults map for efficient lookup
-        const toolResultsMap = new Map(
-          allToolResults.map((r) => [r.toolCallId, r])
-        );
-
-        // [DEBUG] Log toolResults structure
-        console.log('[Tool Results DEBUG]', {
-          allToolResultsSample: allToolResults[0],
-          toolResultKeys: allToolResults[0] ? Object.keys(allToolResults[0]) : [],
-        });
-
-        console.log('[Agent Result DEBUG]', {
-          textPreview: result.text?.slice(0, 100),
-          stepsCount: result.steps?.length || 0,
-          allToolCallsCount: allToolCalls.length,
-          allToolResultsCount: allToolResults.length,
-          toolCallNames: allToolCalls.map((tc) => tc.toolName),
-          finishReason: result.finishReason,
-        });
-
-        agentResponse = result.text.trim();
-        toolCalls = allToolCalls.map((call) => {
-          const toolResult = toolResultsMap.get(call.toolCallId);
-          console.log('[Mapping DEBUG]', {
-            callId: call.toolCallId,
-            resultFound: !!toolResult,
-            resultKeys: toolResult ? Object.keys(toolResult) : [],
-          });
-          return {
-            id: call.toolCallId,
-            name: call.toolName,
-            input: call.input,
-            output: toolResult?.output,
-            dynamic: call.dynamic ?? false,
-          };
-        });
-        usage = result.usage;
-
-        // Handle empty response as agent failure (tool-only response with no text)
-        if (!agentResponse) {
-          throw new Error('Agent returned empty response (tool-only mode detected)');
-        }
-
-        span.setAttributes({
-          'agent.toolCallCount': toolCalls.length,
-          'agent.responseLength': agentResponse.length,
-          'agent.promptTokens': usage.promptTokens || 0,
-          'agent.completionTokens': usage.completionTokens || 0,
-        });
-
-        logger.info(
-          {
-            userId: session.user.id,
-            queryPreview: validatedRequest.query.substring(0, 50),
-            toolCalls: toolCalls.length,
-            promptTokens: usage.promptTokens,
-            completionTokens: usage.completionTokens,
-          },
-          'Agent search completed'
-        );
-      } catch (agentError) {
-        span.setAttribute('agent.failed', true);
-        span.recordException(agentError as Error);
-
-        logger.warn(
-          {
-            error: sanitizeError(agentError),
-            userId: session.user.id,
-            queryPreview: validatedRequest.query.substring(0, 50),
-          },
-          'Agent failed, using fallback'
-        );
-
-        // Fallback: Direct vector search
-        const searchService = new VectorSearchService(prisma);
-        const fallbackResults = await searchService.search(validatedRequest.query, {
-          topK: 10,
-        });
-
-        const queryLang = detectLang(validatedRequest.query);
-        agentResponse = formatResultsAsText(fallbackResults, queryLang);
-        fallback = true;
-
-        span.setAttribute('fallback.used', true);
-        span.setAttribute('fallback.resultCount', fallbackResults.length);
-      }
-
-      // Cache successful responses (both agent and fallback)
-      await responseCache.set(validatedRequest.query, agentResponse);
-
-      // Return response with metadata
-      const responseData = {
-        query: validatedRequest.query,
-        response: agentResponse,
-        toolCalls,
-        usage,
-        fallback,
-        cached: false,
-      };
-
-      const responseObject = NextResponse.json(responseData);
-
-      return attachRateLimitHeaders(responseObject, rateLimitInfo);
     } catch (error) {
       span.setAttribute('error', true);
       span.recordException(error as Error);
