@@ -166,4 +166,115 @@ describe('useAgentSearch Integration', () => {
 
     abortSpy.mockRestore();
   });
+
+  test('handles SSE streaming response with progress updates', async () => {
+    const progressUpdates: number[] = [];
+    const onProgressUpdate = jest.fn((p) => progressUpdates.push(p));
+
+    const encoder = new TextEncoder();
+    const mockStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'tool-start',
+              toolCallId: 'call1',
+              toolName: 'semantic-article-search',
+              input: { query: 'React' },
+            })}\n\n`
+          )
+        );
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'tool-complete',
+              toolCallId: 'call1',
+              result: { articles: [] },
+            })}\n\n`
+          )
+        );
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'text-delta',
+              delta: 'Found ',
+            })}\n\n`
+          )
+        );
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'text-delta',
+              delta: '3 articles',
+            })}\n\n`
+          )
+        );
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'finish',
+              text: 'Found 3 articles',
+              usage: { totalTokens: 100 },
+              toolCalls: [],
+              cached: false,
+              fallback: false,
+            })}\n\n`
+          )
+        );
+
+        controller.close();
+      },
+    });
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      body: mockStream,
+      headers: new Headers({ 'Content-Type': 'text/event-stream' }),
+    });
+
+    const { result } = renderHook(() => useAgentSearch({ onProgressUpdate }));
+
+    await result.current.search('React articles');
+
+    await waitFor(() => {
+      expect(result.current.result).toBeDefined();
+      expect(result.current.result?.response).toBe('Found 3 articles');
+    });
+
+    expect(onProgressUpdate).toHaveBeenCalled();
+    expect(progressUpdates.length).toBeGreaterThan(0);
+    expect(progressUpdates[progressUpdates.length - 1]).toBe(100);
+  });
+
+  test('maintains JSON batch mode compatibility when SSE disabled', async () => {
+    const mockResult: AgentSearchResult = {
+      query: 'test',
+      response: 'Batch response',
+      toolCalls: [],
+      usage: { totalTokens: 50 },
+      cached: false,
+      fallback: false,
+    };
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResult,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+    });
+
+    const { result } = renderHook(() => useAgentSearch());
+
+    await result.current.search('test query');
+
+    await waitFor(() => {
+      expect(result.current.result).toEqual(mockResult);
+    });
+
+    expect(result.current.result?.response).toBe('Batch response');
+    expect(result.current.error).toBeNull();
+  });
 });
