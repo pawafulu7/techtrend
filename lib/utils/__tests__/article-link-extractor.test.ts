@@ -45,7 +45,10 @@ describe('extractArticlesFromToolCalls', () => {
     expect(result).toEqual([]);
   });
 
-  it('異常系: articlesが不正な構造の場合（console.warnログ出力）', () => {
+  it('異常系: articlesが不正な構造の場合（NEXT_PUBLIC_DEBUG=true時はconsole.warn出力）', () => {
+    const originalDebug = process.env.NEXT_PUBLIC_DEBUG;
+    process.env.NEXT_PUBLIC_DEBUG = 'true';
+
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
     const toolCalls = [
@@ -68,6 +71,33 @@ describe('extractArticlesFromToolCalls', () => {
     );
 
     consoleWarnSpy.mockRestore();
+    process.env.NEXT_PUBLIC_DEBUG = originalDebug;
+  });
+
+  it('異常系: articlesが不正な構造の場合（NEXT_PUBLIC_DEBUG未設定時はconsole.warn出力なし）', () => {
+    const originalDebug = process.env.NEXT_PUBLIC_DEBUG;
+    delete process.env.NEXT_PUBLIC_DEBUG;
+
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const toolCalls = [
+      {
+        name: RAG_TOOL_NAMES.SEMANTIC_SEARCH,
+        output: {
+          articles: [
+            { articleId: 1, title: 'Invalid', similarity: 'not a number' }, // 不正
+          ],
+        },
+      },
+    ];
+
+    const result = extractArticlesFromToolCalls(toolCalls);
+
+    expect(result).toEqual([]);
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
+
+    consoleWarnSpy.mockRestore();
+    process.env.NEXT_PUBLIC_DEBUG = originalDebug;
   });
 
   it('異常系: 複数のSemantic Search Tool呼び出し（flatMapで結合）', () => {
