@@ -7,7 +7,13 @@ import { extractArticlesFromToolCalls } from '@/lib/utils/article-link-extractor
 export interface AgentSearchResult {
   query: string;
   response: string;
-  toolCalls: Array<{ id: string; name: string; input: unknown; dynamic: boolean }>;
+  toolCalls: Array<{
+    id: string;
+    name: string;
+    input: unknown;
+    dynamic: boolean;
+    output?: unknown;
+  }>;
   usage: { totalTokens: number; promptTokens?: number; completionTokens?: number };
   cached: boolean;
   fallback: boolean;
