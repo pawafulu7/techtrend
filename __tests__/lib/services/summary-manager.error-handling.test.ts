@@ -21,7 +21,7 @@ jest.mock('@/lib/cache/cache-invalidator', () => ({
   }
 }));
 
-jest.mock('@/lib/utils/processing-status', () => ({
+jest.mock('@/scripts/utils/processing-status', () => ({
   getLastProcessedTime: jest.fn().mockResolvedValue(null),
   saveProcessingStatus: jest.fn().mockResolvedValue(undefined),
   hasContentUpdatesSince: jest.fn().mockResolvedValue(true),
@@ -70,9 +70,31 @@ describe('SummaryManager Error Handling', () => {
       const error503 = new Error('503 Service overloaded');
       mockSummaryService.generateSummary.mockRejectedValue(error503);
 
-      const result = await manager.generateSummaries({ limit: 1 });
+      // Mock Prisma to return one article with content
+      const mockPrismaWithArticle = {
+        article: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'test-1' }),
+          count: jest.fn().mockResolvedValue(1),
+          findMany: jest.fn().mockResolvedValue([{
+            id: 'test-1',
+            title: 'Test Article',
+            url: 'https://example.com/test',
+            content: 'This is test article content for summary generation.',
+            publishedAt: new Date(),
+            source: { id: 'src-1', name: 'Test Source' }
+          }]),
+          update: jest.fn().mockResolvedValue({})
+        },
+        source: {
+          findMany: jest.fn().mockResolvedValue([])
+        },
+        $disconnect: jest.fn().mockResolvedValue(undefined)
+      } as any;
 
-      const stats = manager.getStats();
+      const testManager = new SummaryManager(mockPrismaWithArticle);
+      const result = await testManager.generateSummaries({ limit: 1 });
+
+      const stats = testManager.getStats();
       expect(stats.failures).toBeGreaterThan(0);
       expect(result.errors).toBeGreaterThan(0);
     });
@@ -115,13 +137,24 @@ describe('SummaryManager Error Handling', () => {
       const manager1 = new SummaryManager(prisma);
       const manager2 = new SummaryManager(prisma);
 
+      // Get initial stats for manager2
+      const stats2Before = manager2.getStats();
+      const attempts2Before = stats2Before.attempts;
+
+      // Reset manager1's stats
       manager1.resetStats();
+      const stats1After = manager1.getStats();
 
-      const stats1 = manager1.getStats();
-      const stats2 = manager2.getStats();
+      // Get manager2's stats after manager1 reset
+      const stats2After = manager2.getStats();
 
-      // Different instances should have different startTime
-      expect(stats1.startTime).not.toBe(stats2.startTime);
+      // manager1 should be reset
+      expect(stats1After.attempts).toBe(0);
+      expect(stats1After.successes).toBe(0);
+      expect(stats1After.failures).toBe(0);
+
+      // manager2 should be unaffected by manager1's reset
+      expect(stats2After.attempts).toBe(attempts2Before);
     });
   });
 });
