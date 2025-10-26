@@ -6,8 +6,12 @@ const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase())
 
 test.describe('動的タグ検索機能', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForArticles(page, {
+      timeout: getTimeout('medium'),
+      waitForNetworkIdle: false,
+      allowEmpty: true,
+    });
   });
 
   test('タグ検索APIが正常に動作する', async ({ request, page }) => {
