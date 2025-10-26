@@ -77,15 +77,21 @@ export class SummaryManager {
 
     try {
       // Check for new articles (conditional processing)
-      const hasNewArticles = await this.checkNewArticles(options);
-      if (!hasNewArticles) {
-        console.error('No new articles found. Skipping summary generation.');
-        return { generated: 0, errors: 0, skipped: 0 };
+      // Skip check if force option is enabled
+      if (!options.force) {
+        const hasNewArticles = await this.checkNewArticles(options);
+        if (!hasNewArticles) {
+          console.error('No new articles found. Skipping summary generation.');
+          return { generated: 0, errors: 0, skipped: 0 };
+        }
       }
 
       // Query articles without summaries
       const whereCondition: Prisma.ArticleWhereInput = {
-        summary: null
+        OR: [
+          { summary: null },
+          { summary: '' }
+        ]
       };
 
       if (options.source) {
@@ -120,7 +126,7 @@ export class SummaryManager {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
               translatedTitle: result.translatedTitle,
-              summaryVersion: SUMMARY_VERSION,
+              summaryVersion: SUMMARY_VERSION.UNIFIED,
               summaryComputedAt: new Date(),
             }
           });
@@ -211,17 +217,21 @@ export class SummaryManager {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
               translatedTitle: result.translatedTitle,
+              summaryVersion: SUMMARY_VERSION.UNIFIED,
               summaryComputedAt: new Date()
             }
           });
 
           // Update tags
-          if (result.tags.length > 0) {
+          if (result.tags?.length > 0) {
             await this.updateArticleTags(article.id, result.tags);
           }
 
           console.error(`Regenerated: ${article.title.substring(0, 50)}...`);
           generated++;
+
+          // Invalidate cache
+          await cacheInvalidator.invalidateArticle(article.id);
 
           // Rate limiting
           await this.sleep(3000);
@@ -299,17 +309,21 @@ export class SummaryManager {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
               translatedTitle: result.translatedTitle,
+              summaryVersion: SUMMARY_VERSION.UNIFIED,
               summaryComputedAt: new Date()
             }
           });
 
           // Update tags
-          if (result.tags.length > 0) {
+          if (result.tags?.length > 0) {
             await this.updateArticleTags(article.id, result.tags);
           }
 
           console.error(`Generated: ${article.title.substring(0, 50)}...`);
           generated++;
+
+          // Invalidate cache
+          await cacheInvalidator.invalidateArticle(article.id);
 
           // Rate limiting
           await this.sleep(2000);
@@ -421,28 +435,15 @@ export class SummaryManager {
    * @private
    */
   private async updateArticleTags(articleId: string, tagNames: string[]): Promise<void> {
-    const tagRecords = await Promise.all(
-      tagNames.map(async (tagName) => {
-        const existingTag = await this.prisma.tag.findUnique({
-          where: { name: tagName }
-        });
-
-        if (existingTag) {
-          return existingTag;
-        }
-
-        return await this.prisma.tag.create({
-          data: { name: tagName }
-        });
-      })
-    );
-
     await this.prisma.article.update({
       where: { id: articleId },
       data: {
         tags: {
           set: [], // Clear existing tags
-          connect: tagRecords.map(tag => ({ id: tag.id }))
+          connectOrCreate: tagNames.map((name) => ({
+            where: { name },
+            create: { name }
+          }))
         }
       }
     });
