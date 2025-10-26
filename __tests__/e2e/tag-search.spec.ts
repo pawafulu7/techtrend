@@ -24,8 +24,8 @@ test.describe('動的タグ検索機能', () => {
     for (let i = 0; i < 3; i++) {
       emptyResponse = await request.get('/api/tags/search?q=', { timeout: 15000 });
       if (emptyResponse.ok()) break;
-      // リトライ前に少し待機（ネットワークアイドル待機）
-      await page.waitForLoadState('networkidle', { timeout: 2000 });
+      // リトライ前に少し待機
+      await page.waitForTimeout(500);
     }
     expect(emptyResponse.ok()).toBeTruthy();
     const emptyData = await emptyResponse.json();
@@ -37,8 +37,8 @@ test.describe('動的タグ検索機能', () => {
     for (let i = 0; i < 3; i++) {
       reactResponse = await request.get('/api/tags/search?q=React', { timeout: 15000 });
       if (reactResponse.ok()) break;
-      // リトライ前に少し待機（ネットワークアイドル待機）
-      await page.waitForLoadState('networkidle', { timeout: 2000 });
+      // リトライ前に少し待機
+      await page.waitForTimeout(500);
     }
     expect(reactResponse.ok()).toBeTruthy();
     const reactData = await reactResponse.json();
@@ -53,8 +53,8 @@ test.describe('動的タグ検索機能', () => {
     for (let i = 0; i < 3; i++) {
       gmoResponse = await request.get('/api/tags/search?q=GMO', { timeout: 15000 });
       if (gmoResponse.ok()) break;
-      // リトライ前に少し待機（ネットワークアイドル待機）
-      await page.waitForLoadState('networkidle', { timeout: 2000 });
+      // リトライ前に少し待機
+      await page.waitForTimeout(500);
     }
     expect(gmoResponse.ok()).toBeTruthy();
     const gmoData = await gmoResponse.json();
