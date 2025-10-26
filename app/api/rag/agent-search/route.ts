@@ -296,19 +296,21 @@ async function createStreamingResponse(
               input: chunk.input,
             });
           } else if (chunk.type === 'tool-result') {
+            const unwrappedOutput = chunk.output?.type === 'json' ? chunk.output.value : chunk.output;
+
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
                   type: 'tool-complete',
                   toolCallId: chunk.toolCallId,
-                  result: chunk.output,
+                  result: unwrappedOutput,
                 })}\n\n`
               )
             );
 
             const toolCall = toolCalls.find((tc) => tc.id === chunk.toolCallId);
             if (toolCall) {
-              toolCall.output = chunk.output;
+              toolCall.output = unwrappedOutput;
               toolCall.dynamic = false;
             }
           } else if (chunk.type === 'finish') {
@@ -495,6 +497,9 @@ async function handleBatchRequest(
     agentResponse = result.text.trim();
     toolCalls = allToolCalls.map((call) => {
       const toolResult = toolResultsMap.get(call.toolCallId);
+      const unwrappedOutput = toolResult?.output?.type === 'json'
+        ? toolResult.output.value
+        : toolResult?.output;
       console.log('[Mapping DEBUG]', {
         callId: call.toolCallId,
         resultFound: !!toolResult,
@@ -504,7 +509,7 @@ async function handleBatchRequest(
         id: call.toolCallId,
         name: call.toolName,
         input: call.input,
-        output: toolResult?.output,
+        output: unwrappedOutput,
         dynamic: call.dynamic ?? false,
       };
     });
