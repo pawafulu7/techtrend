@@ -7,7 +7,7 @@ import { detectPromptInjection, sanitizeQuery } from '@/lib/rag/security/prompt-
 import { VectorSearchService, SearchResult } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
-import { trace, SpanStatusCode, Span } from '@opentelemetry/api';
+import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api';
 import { ZodError, z } from 'zod';
 import { features } from '@/lib/config/env';
 import type { Session } from 'next-auth';
@@ -281,7 +281,7 @@ async function createStreamingResponse(
   const encoder = new TextEncoder();
   const responseCache = new AgentResponseCache();
   const tracer = trace.getTracer('rag-agent');
-  const streamSpan = tracer.startSpan('rag.agent-search.stream', {}, trace.setSpan(trace.context.active(), parentSpan));
+  const streamSpan = tracer.startSpan('rag.agent-search.stream', {}, trace.setSpan(context.active(), parentSpan));
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   const stream = new ReadableStream({
