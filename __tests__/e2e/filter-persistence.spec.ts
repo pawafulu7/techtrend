@@ -773,11 +773,10 @@ test.describe('ブラウザ間での動作確認', () => {
     await page.context().clearPermissions();
     
     await page.goto('/');
-    
-    // CI環境用の初期待機とネットワーク安定化
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+
+    // CI環境用の初期待機
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
+
     // 記事が表示されるまで待機（CI環境では長めのタイムアウト）
     await page.waitForSelector('[data-testid="article-card"]', {
       timeout: isCI ? getTimeout('medium') : getTimeout('short')
@@ -811,7 +810,7 @@ test.describe('ブラウザ間での動作確認', () => {
       
       // トップページに戻る
       await page.goto('/');
-      await waitForPageLoad(page, { waitForNetworkIdle: true });
+      await waitForPageLoad(page, { waitForNetworkIdle: false });
       await waitForArticles(page);
       
       // 検索ボックスが表示されるまで待機
