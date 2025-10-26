@@ -16,7 +16,7 @@ export function extractArticlesFromToolCalls(
 ): ArticleLink[] {
   try {
     const articles = toolCalls
-      .filter(tc => tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH)
+      .filter(tc => tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH || tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH_LEGACY)
       .flatMap(tc => {
         const parseResult = toolOutputSchema.safeParse(tc.output);
 
