@@ -28,11 +28,11 @@ const envSchema = z.object({
   AUTH_SECRET: z.string().min(32).optional(),
   NEXTAUTH_SECRET: z.string().min(32).optional(),
   
-  // OAuth Providers (optional)
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
-  GITHUB_CLIENT_ID: z.string().optional(),
-  GITHUB_CLIENT_SECRET: z.string().optional(),
+  // OAuth Providers (optional, but must be non-empty if provided)
+  GOOGLE_CLIENT_ID: z.string().trim().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().trim().min(1).optional(),
+  GITHUB_CLIENT_ID: z.string().trim().min(1).optional(),
+  GITHUB_CLIENT_SECRET: z.string().trim().min(1).optional(),
   
   // AI Services
   GEMINI_API_KEY: z.string().optional(),

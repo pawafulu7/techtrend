@@ -121,7 +121,10 @@ export class TechTermsManager {
         this.lastUpdated = new Date();
         await this.saveCustomTerms();
       }
-    } catch (_error) {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Failed to update tech terms from remote:', error);
+      }
     }
   }
   
