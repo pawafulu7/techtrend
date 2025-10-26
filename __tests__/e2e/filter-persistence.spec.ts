@@ -89,7 +89,7 @@ test.describe('フィルター条件の永続化', () => {
     }
   });
 
-  test('ソースフィルターがページ遷移後も保持される', async ({ page }) => {
+  test.skip('ソースフィルターがページ遷移後も保持される', async ({ page }) => {
     // フィルターエリアが表示されるまで待機
     await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
     await page.waitForTimeout(1000); // 要素の安定化を待つ

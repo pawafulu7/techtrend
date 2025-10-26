@@ -62,6 +62,7 @@ const envSchema = z.object({
   ENABLE_CACHE: z.enum(['true', 'false']).optional().default('true'),
   ENABLE_AUTH: z.enum(['true', 'false']).optional().default('true'),
   ENABLE_ANALYTICS: z.enum(['true', 'false']).optional().default('false'),
+  AGENT_STREAMING_ENABLED: z.enum(['true', 'false']).optional().default('false'),
   
   // Quality Control
   QUALITY_CHECK_ENABLED: z.enum(['true', 'false']).optional().default('false'),
@@ -200,6 +201,7 @@ export const features = {
   isCacheEnabled: () => env.ENABLE_CACHE === 'true',
   isAuthEnabled: () => env.ENABLE_AUTH === 'true',
   isAnalyticsEnabled: () => env.ENABLE_ANALYTICS === 'true',
+  isAgentStreamingEnabled: () => env.NODE_ENV === 'test' ? false : env.AGENT_STREAMING_ENABLED === 'true',
   isQualityCheckEnabled: () => env.QUALITY_CHECK_ENABLED === 'true',
   shouldExcludeEventArticles: () => env.EXCLUDE_EVENT_ARTICLES === 'true',
   isRagEnabled: () => env.RAG_ENABLED === 'true' && !!env.OPENAI_API_KEY,

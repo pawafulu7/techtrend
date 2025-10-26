@@ -129,8 +129,8 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
       .number()
       .min(0, 'Similarity threshold must be between 0 and 1')
       .max(1, 'Similarity threshold must be between 0 and 1')
-      .default(0.3)
-      .describe('Minimum similarity score (0-1, default: 0.3)'),
+      .default(0.55)
+      .describe('Minimum similarity score (0-1, default: 0.55)'),
 
     filters: z
       .object({

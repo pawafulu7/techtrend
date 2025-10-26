@@ -198,6 +198,7 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
                       }
                     >
                       <Link
+                        data-testid="agent-article-link"
                         href={`/articles/${encodeURIComponent(article.articleId)}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -216,37 +217,6 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
           </ReactMarkdown>
         </ListDepthContext.Provider>
       </div>
-
-      {/* 参照記事セクション */}
-      {result.articles && result.articles.length > 0 && (
-        <div className="mt-6 pt-6 border-t">
-          <h2 className="text-lg font-semibold mb-4">参照記事</h2>
-          <ul className="space-y-3">
-            {result.articles.map((article) => (
-              <li key={article.articleId} className="text-sm">
-                <a
-                  href={`/articles/${encodeURIComponent(article.articleId)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline font-medium"
-                >
-                  {article.translatedTitle?.trim() ? article.translatedTitle : article.title}
-                </a>
-                <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                  <span>一致度: {(article.similarity * 100).toFixed(1)}%</span>
-                  <time dateTime={article.publishedAt}>
-                    {new Date(article.publishedAt).toLocaleDateString('ja-JP', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </time>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <div className="flex items-center justify-between pt-4 border-t mt-4">
         <div className="text-xs text-muted-foreground">
