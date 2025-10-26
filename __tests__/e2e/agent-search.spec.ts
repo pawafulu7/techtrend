@@ -475,6 +475,20 @@ test.describe('AI Agent Search E2E', () => {
     // Mock API with article links
     const mockResponseWithArticles = {
       ...MOCK_SUCCESS_RESPONSE,
+      response: `Reactに関する記事を3件見つけました:
+
+1. React Server Components Guide (一致度: 92.0%)
+   - サーバーコンポーネントの導入手順を解説
+   - 公開日: 2025年10月20日 [#article-101]
+
+2. React Performance Optimization (一致度: 88.0%)
+   - レンダリング最適化テクニックを網羅
+   - 公開日: 2025年10月18日 [#article-102]
+
+3. React Hooks Complete Guide (一致度: 85.0%)
+   - Hooks APIのベストプラクティスを整理
+   - 公開日: 2025年10月15日 [#article-103]
+`,
       toolCalls: [
         {
           id: '1',
@@ -490,6 +504,11 @@ test.describe('AI Agent Search E2E', () => {
             count: 3,
           },
         },
+      ],
+      articles: [
+        { articleId: '101', title: 'React Server Components Guide', similarity: 0.92, publishedAt: '2025-10-20T00:00:00Z' },
+        { articleId: '102', title: 'React Performance Optimization', similarity: 0.88, publishedAt: '2025-10-18T00:00:00Z' },
+        { articleId: '103', title: 'React Hooks Complete Guide', similarity: 0.85, publishedAt: '2025-10-15T00:00:00Z' },
       ],
     };
 
