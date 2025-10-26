@@ -147,7 +147,7 @@ describe('Environment Configuration', () => {
       expect(features.isCacheEnabled()).toBe(true);
       expect(features.isAuthEnabled()).toBe(false);
       expect(features.isQualityCheckEnabled()).toBe(true);
-      expect(features.isAgentStreamingEnabled()).toBe(true);
+      expect(features.isAgentStreamingEnabled()).toBe(false);
     });
 
     it('uses defaults when flags are not set', () => {
@@ -360,7 +360,7 @@ describe('Environment Configuration - features', () => {
     expect(features.isCacheEnabled()).toBe(true);
     expect(features.isAuthEnabled()).toBe(false);
     expect(features.isQualityCheckEnabled()).toBe(true);
-    expect(features.isAgentStreamingEnabled()).toBe(true);
+    expect(features.isAgentStreamingEnabled()).toBe(false);
   });
 
   it('uses defaults when flags are not set', () => {
