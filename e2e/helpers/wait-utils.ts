@@ -803,3 +803,39 @@ export async function waitForCheckboxesCount(
     { timeout, polling }
   );
 }
+
+/**
+ * Wait for article filtering to complete after tag selection
+ * Uses deterministic signals instead of networkidle
+ */
+export async function waitForArticleFilter(
+  page: Page,
+  options?: {
+    tag?: string;
+    timeout?: number;
+  }
+) {
+  const tag = options?.tag;
+  const timeout = options?.timeout ?? getTimeout('medium');
+
+  const responsePromise = page
+    .waitForResponse(
+      (resp) => {
+        if (!resp.ok()) return false;
+        const url = resp.url();
+        if (!url.includes('/api/articles')) return false;
+        if (!tag) return true;
+        try {
+          const params = new URL(url).searchParams.get('tags') ?? '';
+          return params.split(',').includes(tag);
+        } catch {
+          return false;
+        }
+      },
+      { timeout }
+    )
+    .catch(() => null);
+
+  await responsePromise;
+  await waitForArticles(page, { timeout, waitForNetworkIdle: false, allowEmpty: true });
+}
