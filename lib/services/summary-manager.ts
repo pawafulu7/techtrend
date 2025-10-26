@@ -118,9 +118,14 @@ export class SummaryManager {
       // Process articles
       for (const article of articles) {
         try {
+          if (!article.content || article.content.trim().length === 0) {
+            console.error(`Skipping article ${article.id}: no content available`);
+            continue;
+          }
+
           const result = await this.generateSummaryAndTags(
             article.title,
-            article.content || '',
+            article.content,
             article.id
           );
 
@@ -211,10 +216,14 @@ export class SummaryManager {
 
       for (const article of articles) {
         try {
-          const content = article.content || '';
+          if (!article.content || article.content.trim().length === 0) {
+            console.error(`Skipping article ${article.id}: no content available`);
+            continue;
+          }
+
           const result = await this.generateSummaryAndTags(
             article.title,
-            content,
+            article.content,
             article.id
           );
 
