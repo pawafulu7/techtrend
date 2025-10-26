@@ -54,11 +54,10 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride(); // Prevent actual exit (CodexMCP)
 
-      await summariesCommand.parseAsync(['node', 'techtrend', 'generate']);
+      await summariesCommand.parseAsync(['node', 'summaries', 'generate']);
 
       expect(SummaryManager).toHaveBeenCalledWith(mockPrisma);
       expect(mockManager.generateSummaries).toHaveBeenCalledWith({
-        command: 'generate',
         source: undefined,
         limit: 100,
         batch: 10
@@ -73,7 +72,7 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'techtrend', 'generate']);
+      await summariesCommand.parseAsync(['node', 'summaries', 'generate']);
 
       expect(process.exitCode).toBe(1);
       expect(mockPrisma.$disconnect).toHaveBeenCalled();
@@ -85,7 +84,7 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'techtrend', 'generate']);
+      await summariesCommand.parseAsync(['node', 'summaries', 'generate']);
 
       expect(process.exitCode).toBe(1);
       expect(mockPrisma.$disconnect).toHaveBeenCalled(); // finally block
@@ -95,7 +94,7 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'techtrend', 'generate', '--limit', 'invalid']);
+      await summariesCommand.parseAsync(['node', 'summaries', 'generate', '--limit', 'invalid']);
 
       expect(mockManager.generateSummaries).not.toHaveBeenCalled(); // Stopped early (CodexMCP)
       expect(process.exitCode).toBe(1);
@@ -106,7 +105,7 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'techtrend', 'generate', '--source', 'Zenn']);
+      await summariesCommand.parseAsync(['node', 'summaries', 'generate', '--source', 'Zenn']);
 
       expect(mockManager.generateSummaries).toHaveBeenCalledWith(
         expect.objectContaining({ source: 'Zenn' })
@@ -119,11 +118,10 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'techtrend', 'regenerate']);
+      await summariesCommand.parseAsync(['node', 'summaries', 'regenerate']);
 
       expect(SummaryManager).toHaveBeenCalledWith(mockPrisma);
       expect(mockManager.regenerateSummaries).toHaveBeenCalledWith({
-        command: 'regenerate',
         source: undefined,
         days: 7,
         force: undefined,
@@ -139,7 +137,7 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'techtrend', 'regenerate']);
+      await summariesCommand.parseAsync(['node', 'summaries', 'regenerate']);
 
       expect(process.exitCode).toBe(1);
       expect(mockPrisma.$disconnect).toHaveBeenCalled();
@@ -149,7 +147,7 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'techtrend', 'regenerate', '--force', '--batch', '20']);
+      await summariesCommand.parseAsync(['node', 'summaries', 'regenerate', '--force', '--batch', '20']);
 
       expect(mockManager.regenerateSummaries).toHaveBeenCalledWith(
         expect.objectContaining({ force: true, batch: 20 })
@@ -162,7 +160,7 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'techtrend', 'check']);
+      await summariesCommand.parseAsync(['node', 'summaries', 'check']);
 
       expect(mockPrisma.$disconnect).toHaveBeenCalled();
     });

@@ -4,11 +4,11 @@
  */
 
 import { SummaryManager } from '@/lib/services/summary-manager';
-import { getPrismaClient } from '@/lib/utils/database';
+import { getPrismaClient } from '@/lib/cli/utils/database';
 
 // Mocks
 jest.mock('@/lib/services/summary-manager');
-jest.mock('@/lib/utils/database');
+jest.mock('@/lib/cli/utils/database');
 
 describe('manage-summaries script', () => {
   let mockPrisma: any;
@@ -17,9 +17,6 @@ describe('manage-summaries script', () => {
   let originalArgv: string[];
 
   beforeEach(() => {
-    // Reset modules (CodexMCP)
-    jest.resetModules();
-
     // Store originals
     originalExitCode = process.exitCode;
     originalArgv = process.argv;

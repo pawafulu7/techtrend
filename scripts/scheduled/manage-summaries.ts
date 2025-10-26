@@ -1,5 +1,5 @@
 import { SummaryManager } from '@/lib/services/summary-manager';
-import { getPrismaClient } from '@/lib/utils/database';
+import { getPrismaClient } from '@/lib/cli/utils/database';
 
 interface Options {
   command: 'generate' | 'regenerate' | 'missing';
@@ -13,17 +13,14 @@ interface Options {
 // コマンドライン引数を解析
 function parseArgs(args: string[]): Options {
   const options: Options = {
-    command: 'generate',
+    command: args.length > 0 ? (args[0] as 'generate' | 'regenerate' | 'missing') : 'generate',
     limit: 50,
     batch: 10,
     days: 7
   };
 
-  // デフォルトコマンドの判定
-  if (args.length === 0 || !['generate', 'regenerate', 'missing'].includes(args[0])) {
-    options.command = 'generate';
-  } else {
-    options.command = args[0] as 'generate' | 'regenerate' | 'missing';
+  // 最初の引数をコマンドとして扱う
+  if (args.length > 0) {
     args = args.slice(1); // コマンドを除去
   }
 
@@ -113,9 +110,6 @@ async function main() {
   const prisma = getPrismaClient();
 
   try {
-    const manager = new SummaryManager(prisma);
-    let result;
-
     // 安全なコマンドディスパッチ（CodexMCP指摘）
     const validCommands = ['generate', 'regenerate', 'missing'] as const;
     if (!validCommands.includes(options.command)) {
@@ -124,6 +118,9 @@ async function main() {
       process.exitCode = 1;
       return;
     }
+
+    const manager = new SummaryManager(prisma);
+    let result;
 
     switch (options.command) {
       case 'generate':
@@ -145,7 +142,9 @@ async function main() {
     console.error(`   失敗: ${stats.failures}`);
     console.error(`   503エラー: ${stats.overloadErrors}`);
 
-    process.exitCode = result.errors > 0 ? 1 : 0;
+    if (result.errors > 0) {
+      process.exitCode = 1;
+    }
   } catch (error) {
     console.error('実行エラー:', error);
     process.exitCode = 1;

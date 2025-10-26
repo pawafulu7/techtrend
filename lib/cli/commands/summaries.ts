@@ -32,7 +32,6 @@ summariesCommand
 
       const manager = new SummaryManager(prisma);
       const result = await manager.generateSummaries({
-        command: 'generate',
         source: options.source,
         limit,
         batch
@@ -77,7 +76,6 @@ summariesCommand
 
       const manager = new SummaryManager(prisma);
       const result = await manager.regenerateSummaries({
-        command: 'regenerate',
         source: options.source,
         days,
         force: options.force,
