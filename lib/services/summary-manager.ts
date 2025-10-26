@@ -5,18 +5,24 @@
  * Extracted from scripts/scheduled/manage-summaries.ts for better reusability and testability.
  */
 
-import { PrismaClient, Article, Source, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 import { cleanupText, finalCleanup } from '@/lib/services/summary-generation';
 import type { UnifiedSummaryService } from '@/lib/ai/service/unified-summary-service';
+import type { ArticleWithSource } from '@/types/models';
 
 export interface SummaryGenerationOptions {
+  /** Source filter by name */
   source?: string;
+  /** Maximum articles to process in generateSummaries (default: 50) */
   limit?: number;
+  /** Force processing regardless of checks */
   force?: boolean;
+  /** Maximum articles to process in regenerate/missing flows (default: 10) */
   batch?: number;
+  /** Days to look back for missing summaries (default: 7) */
   days?: number;
 }
 
@@ -41,7 +47,6 @@ interface ApiStats {
   startTime: number;
 }
 
-type ArticleWithSource = Article & { source: Source };
 
 /**
  * Summary Manager
@@ -132,7 +137,7 @@ export class SummaryManager {
           });
 
           // Update tags
-          if (result.tags && result.tags.length > 0) {
+          if (result.tags?.length > 0) {
             await this.updateArticleTags(article.id, result.tags);
           }
 
@@ -141,6 +146,9 @@ export class SummaryManager {
 
           // Invalidate cache
           await cacheInvalidator.invalidateArticle(article.id);
+
+          // Rate limiting
+          await this.sleep(2000);
 
         } catch (error) {
           console.error(`Error processing article ${article.id}:`, error);
@@ -295,10 +303,14 @@ export class SummaryManager {
 
       for (const article of articles) {
         try {
-          const content = article.content || article.title;
+          if (!article.content || article.content.trim().length === 0) {
+            console.error(`Skipping article ${article.id}: no content available`);
+            continue;
+          }
+
           const result = await this.generateSummaryAndTags(
             article.title,
-            content,
+            article.content,
             article.id
           );
 
