@@ -125,12 +125,12 @@ export class SummaryManager {
             }
           });
 
-          // Update tags if provided
+          // Update tags
           if (result.tags && result.tags.length > 0) {
-            // Tag update logic (simplified for now)
-            console.error(`Generated summary for: ${article.title.substring(0, 50)}...`);
+            await this.updateArticleTags(article.id, result.tags);
           }
 
+          console.error(`Generated summary for: ${article.title.substring(0, 50)}...`);
           generated++;
 
           // Invalidate cache
@@ -155,20 +155,179 @@ export class SummaryManager {
 
   /**
    * Regenerate existing summaries
-   * Placeholder for future implementation
    */
-  async regenerateSummaries(_options: SummaryGenerationOptions): Promise<SummaryGenerationResult> {
-    // To be implemented in next session
-    throw new Error('regenerateSummaries not yet implemented');
+  async regenerateSummaries(options: SummaryGenerationOptions): Promise<SummaryGenerationResult> {
+    console.error('Starting summary regeneration...');
+    const startTime = Date.now();
+
+    try {
+      const query: Prisma.ArticleFindManyArgs = {
+        include: { source: true },
+        orderBy: { publishedAt: 'desc' },
+        take: options.batch || 10
+      };
+
+      // If not force, only target problematic summaries
+      if (!options.force) {
+        query.where = {
+          OR: [
+            { summary: { endsWith: '...' } },
+            { summary: { contains: 'error' } },
+            { detailedSummary: null }
+          ]
+        };
+      }
+
+      if (options.source) {
+        query.where = query.where || {};
+        query.where.source = { name: options.source };
+      }
+
+      const articles = await this.prisma.article.findMany(query) as ArticleWithSource[];
+
+      if (articles.length === 0) {
+        console.error('No articles to regenerate');
+        return { generated: 0, errors: 0 };
+      }
+
+      console.error(`Found ${articles.length} articles to regenerate`);
+
+      let generated = 0;
+      let errors = 0;
+
+      for (const article of articles) {
+        try {
+          const content = article.content || '';
+          const result = await this.generateSummaryAndTags(
+            article.title,
+            content,
+            article.id
+          );
+
+          // Update article with regenerated summary
+          await this.prisma.article.update({
+            where: { id: article.id },
+            data: {
+              summary: result.summary,
+              detailedSummary: result.detailedSummary,
+              translatedTitle: result.translatedTitle,
+              summaryComputedAt: new Date()
+            }
+          });
+
+          // Update tags
+          if (result.tags.length > 0) {
+            await this.updateArticleTags(article.id, result.tags);
+          }
+
+          console.error(`Regenerated: ${article.title.substring(0, 50)}...`);
+          generated++;
+
+          // Rate limiting
+          await this.sleep(3000);
+
+        } catch (error) {
+          console.error(`Error processing article ${article.id}:`, error);
+          errors++;
+        }
+      }
+
+      const duration = Math.round((Date.now() - startTime) / 1000);
+      console.error(`Regeneration completed: ${generated} generated, ${errors} errors (${duration}s)`);
+
+      return { generated, errors };
+
+    } catch (error) {
+      console.error('Fatal error in regeneration:', error);
+      throw error;
+    }
   }
 
   /**
    * Generate summaries for articles with missing summaries
-   * Placeholder for future implementation
    */
-  async generateMissingSummaries(_options: SummaryGenerationOptions): Promise<SummaryGenerationResult> {
-    // To be implemented in next session
-    throw new Error('generateMissingSummaries not yet implemented');
+  async generateMissingSummaries(options: SummaryGenerationOptions): Promise<SummaryGenerationResult> {
+    console.error('Starting missing summaries generation...');
+
+    try {
+      const daysAgo = new Date();
+      daysAgo.setDate(daysAgo.getDate() - (options.days || 7));
+
+      const query: Prisma.ArticleFindManyArgs = {
+        where: {
+          OR: [
+            { summary: null },
+            { summary: '' }
+          ],
+          publishedAt: {
+            gte: daysAgo
+          }
+        },
+        include: { source: true },
+        orderBy: { publishedAt: 'desc' }
+      };
+
+      if (options.source) {
+        query.where.source = { name: options.source };
+      }
+
+      const articles = await this.prisma.article.findMany(query) as ArticleWithSource[];
+
+      console.error(`Found ${articles.length} articles with missing summaries (past ${options.days || 7} days)`);
+
+      if (articles.length === 0) {
+        console.error('No articles with missing summaries');
+        return { generated: 0, errors: 0 };
+      }
+
+      let generated = 0;
+      let errors = 0;
+
+      for (const article of articles) {
+        try {
+          const content = article.content || article.title;
+          const result = await this.generateSummaryAndTags(
+            article.title,
+            content,
+            article.id
+          );
+
+          // Update article
+          await this.prisma.article.update({
+            where: { id: article.id },
+            data: {
+              summary: result.summary,
+              detailedSummary: result.detailedSummary,
+              translatedTitle: result.translatedTitle,
+              summaryComputedAt: new Date()
+            }
+          });
+
+          // Update tags
+          if (result.tags.length > 0) {
+            await this.updateArticleTags(article.id, result.tags);
+          }
+
+          console.error(`Generated: ${article.title.substring(0, 50)}...`);
+          generated++;
+
+          // Rate limiting
+          await this.sleep(2000);
+
+        } catch (error) {
+          console.error(`Error processing article ${article.id}:`, error);
+          errors++;
+        }
+      }
+
+      console.error(`Missing summaries completed: ${generated} generated, ${errors} errors`);
+
+      return { generated, errors };
+
+    } catch (error) {
+      console.error('Fatal error in missing summaries generation:', error);
+      throw error;
+    }
   }
 
   /**
@@ -255,6 +414,46 @@ export class SummaryManager {
 
     console.error(`Found ${newArticlesCount} new articles to process`);
     return true;
+  }
+
+  /**
+   * Update article tags
+   * @private
+   */
+  private async updateArticleTags(articleId: string, tagNames: string[]): Promise<void> {
+    const tagRecords = await Promise.all(
+      tagNames.map(async (tagName) => {
+        const existingTag = await this.prisma.tag.findUnique({
+          where: { name: tagName }
+        });
+
+        if (existingTag) {
+          return existingTag;
+        }
+
+        return await this.prisma.tag.create({
+          data: { name: tagName }
+        });
+      })
+    );
+
+    await this.prisma.article.update({
+      where: { id: articleId },
+      data: {
+        tags: {
+          set: [], // Clear existing tags
+          connect: tagRecords.map(tag => ({ id: tag.id }))
+        }
+      }
+    });
+  }
+
+  /**
+   * Sleep for rate limiting
+   * @private
+   */
+  private async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
