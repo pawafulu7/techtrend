@@ -16,9 +16,6 @@ describe('summaries CLI command', () => {
   let originalExitCode: number | undefined;
 
   beforeEach(() => {
-    // Reset modules to get fresh commander instance (CodexMCP)
-    jest.resetModules();
-
     // Store and reset exitCode (CodexMCP)
     originalExitCode = process.exitCode;
     process.exitCode = undefined;
