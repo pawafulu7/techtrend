@@ -11,6 +11,7 @@ import { trace, SpanStatusCode, Span } from '@opentelemetry/api';
 import { ZodError, z } from 'zod';
 import { features } from '@/lib/config/env';
 import type { Session } from 'next-auth';
+import type { LanguageModelV2ToolResultOutput } from '@ai-sdk/provider';
 
 /**
  * RAG Agent Search API (Vercel AI SDK)
@@ -130,6 +131,34 @@ interface RateLimitInfo {
 
 interface ValidatedRequest {
   query: string;
+}
+
+/**
+ * Type guard for Language Model tool result output wrapper
+ */
+function isLanguageModelToolResultOutput(
+  output: unknown
+): output is LanguageModelV2ToolResultOutput {
+  return (
+    typeof output === 'object' &&
+    output !== null &&
+    'type' in output &&
+    'value' in output
+  );
+}
+
+/**
+ * Unwrap tool output from AI SDK wrapper
+ *
+ * AI SDK wraps tool results in { type: 'json', value: {...} } format.
+ * This function extracts the actual result value.
+ */
+function unwrapToolOutput(output: unknown): unknown {
+  if (!output) return output;
+  if (isLanguageModelToolResultOutput(output)) {
+    return output.value;
+  }
+  return output;
 }
 
 /**
@@ -296,7 +325,7 @@ async function createStreamingResponse(
               input: chunk.input,
             });
           } else if (chunk.type === 'tool-result') {
-            const unwrappedOutput = chunk.output?.type === 'json' ? chunk.output.value : chunk.output;
+            const unwrappedOutput = unwrapToolOutput(chunk.output);
 
             controller.enqueue(
               encoder.encode(
@@ -497,9 +526,7 @@ async function handleBatchRequest(
     agentResponse = result.text.trim();
     toolCalls = allToolCalls.map((call) => {
       const toolResult = toolResultsMap.get(call.toolCallId);
-      const unwrappedOutput = toolResult?.output?.type === 'json'
-        ? toolResult.output.value
-        : toolResult?.output;
+      const unwrappedOutput = unwrapToolOutput(toolResult?.output);
       console.log('[Mapping DEBUG]', {
         callId: call.toolCallId,
         resultFound: !!toolResult,
