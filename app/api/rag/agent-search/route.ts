@@ -280,13 +280,15 @@ async function createStreamingResponse(
 ): Promise<Response> {
   const encoder = new TextEncoder();
   const responseCache = new AgentResponseCache();
+  const tracer = trace.getTracer('rag-agent');
+  const streamSpan = tracer.startSpan('rag.agent-search.stream', {}, trace.setSpan(trace.context.active(), parentSpan));
+  let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   const stream = new ReadableStream({
     async start(controller) {
       let fullText = '';
       const toolCalls: any[] = [];
       let usage: any = {};
-      let heartbeatInterval: NodeJS.Timeout | null = null;
 
       try {
         const streamResult = await articleSearchAgent.stream({
@@ -349,18 +351,33 @@ async function createStreamingResponse(
 
             if (heartbeatInterval) {
               clearInterval(heartbeatInterval);
+              heartbeatInterval = null;
+            }
+
+            if (!fullText.trim()) {
+              try {
+                const searchService = new VectorSearchService(prisma);
+                const fallbackResults = await searchService.search(validatedRequest.query, { topK: 10 });
+                const queryLang = detectLang(validatedRequest.query);
+                const fallbackText = formatResultsAsText(fallbackResults, queryLang);
+
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'fallback', text: fallbackText, resultCount: fallbackResults.length })}\n\n`));
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'finish', text: fallbackText, usage: { totalTokens: 0 }, toolCalls: [], cached: false, fallback: true })}\n\n`));
+                controller.close();
+
+                streamSpan.setAttribute('streaming.fallbackEmptyText', true);
+                streamSpan.end();
+                return;
+              } catch (fallbackError) {
+                logger.error({ error: sanitizeError(fallbackError), userId: session.user.id }, 'Fallback failed for empty text');
+                throw fallbackError;
+              }
             }
 
             try {
               await responseCache.set(validatedRequest.query, fullText);
             } catch (cacheError) {
-              logger.warn(
-                {
-                  error: sanitizeError(cacheError),
-                  userId: session.user.id,
-                },
-                'Failed to cache streaming response'
-              );
+              logger.warn({ error: sanitizeError(cacheError), userId: session.user.id }, 'Failed to cache streaming response');
             }
 
             controller.enqueue(
@@ -378,9 +395,10 @@ async function createStreamingResponse(
 
             controller.close();
 
-            parentSpan.setAttribute('streaming.success', true);
-            parentSpan.setAttribute('streaming.textLength', fullText.length);
-            parentSpan.setAttribute('streaming.toolCallCount', toolCalls.length);
+            streamSpan.setAttribute('streaming.success', true);
+            streamSpan.setAttribute('streaming.textLength', fullText.length);
+            streamSpan.setAttribute('streaming.toolCallCount', toolCalls.length);
+            streamSpan.end();
 
             logger.info(
               {
@@ -397,10 +415,11 @@ async function createStreamingResponse(
       } catch (agentError) {
         if (heartbeatInterval) {
           clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
         }
 
-        parentSpan.setAttribute('streaming.failed', true);
-        parentSpan.recordException(agentError as Error);
+        streamSpan.setAttribute('streaming.failed', true);
+        streamSpan.recordException(agentError as Error);
 
         logger.warn(
           {
@@ -444,9 +463,18 @@ async function createStreamingResponse(
 
         controller.close();
 
-        parentSpan.setAttribute('streaming.fallback', true);
-        parentSpan.setAttribute('streaming.fallbackResultCount', fallbackResults.length);
+        streamSpan.setAttribute('streaming.fallback', true);
+        streamSpan.setAttribute('streaming.fallbackResultCount', fallbackResults.length);
+        streamSpan.end();
       }
+    },
+    cancel() {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
+      streamSpan.setAttribute('streaming.cancelled', true);
+      streamSpan.end();
     },
   });
 
