@@ -36,19 +36,11 @@ test.describe('タグフィルター機能', () => {
     const typeScriptOption = page.locator('[data-testid="tag-dropdown"]').locator('[data-testid*="tag-item"]').filter({ hasText: 'TypeScript' }).first();
     if (await typeScriptOption.count() > 0) {
       const tagName = 'TypeScript';
-      const urlPromise = page.waitForURL(
-        (url) => url.searchParams.get('tags')?.split(',').includes(tagName) ?? false,
-        { timeout }
-      );
-      const apiPromise = page.waitForResponse(
-        (resp) =>
-          resp.ok() &&
-          resp.url().includes('/api/articles') &&
-          (new URL(resp.url()).searchParams.get('tags')?.split(',').includes(tagName) ?? false),
-        { timeout }
-      ).catch(() => null);
 
-      await Promise.all([urlPromise, apiPromise, typeScriptOption.click()]);
+      await typeScriptOption.click();
+
+      // Wait for URL to update with tag
+      await expect(page).toHaveURL(new RegExp(`tags=.*${tagName}`), { timeout });
       await waitForArticles(page, { timeout, waitForNetworkIdle: false, allowEmpty: true });
 
       // 記事数が変化したか確認
@@ -77,21 +69,8 @@ test.describe('タグフィルター機能', () => {
       await reactTag.click();
       await typeScriptTag.click();
 
-      // Wait for URL to update with both tags
-      await page.waitForURL(
-        (url) => {
-          const tags = url.searchParams.get('tags')?.split(',') ?? [];
-          return tags.includes('React') || tags.includes('TypeScript');
-        },
-        { timeout }
-      );
-
-      // Wait for article API response
-      await page.waitForResponse(
-        (resp) => resp.ok() && resp.url().includes('/api/articles'),
-        { timeout }
-      ).catch(() => null);
-
+      // Wait for URL to update with tags (React OR TypeScript)
+      await expect(page).toHaveURL(/tags=.*(React|TypeScript)/, { timeout });
       await waitForArticles(page, { timeout, waitForNetworkIdle: false, allowEmpty: true });
 
       // 記事が表示されていることを確認
