@@ -200,45 +200,21 @@ test.describe('検索クリア機能', () => {
     await expect(searchBox).toHaveValue('');
     
     // ブラウザの戻るボタンで検索状態に戻る
-    const backUrlPromise = page.waitForURL(
-      (url) => url.searchParams.get('search') === 'JavaScript',
-      { timeout: getTimeout('medium') }
-    );
-    const backApiPromise = page.waitForResponse(
-      (resp) =>
-        resp.ok() &&
-        resp.url().includes('/api/articles') &&
-        new URL(resp.url()).searchParams.get('search') === 'JavaScript',
-      { timeout: getTimeout('medium') }
-    ).catch(() => null);
+    await page.goBack();
 
-    await Promise.all([backUrlPromise, backApiPromise, page.goBack()]);
-    await waitForArticles(page, { waitForNetworkIdle: false, allowEmpty: true });
-    
     // URLにsearchパラメータがあることを確認
-    await expect(page).toHaveURL(/search=JavaScript/);
+    await expect(page).toHaveURL(/search=JavaScript/, { timeout: getTimeout('medium') });
+    await waitForArticles(page, { waitForNetworkIdle: false, allowEmpty: true });
     // 検索ボックスの値も確認（再取得）
     const searchBoxAfterBack = page.locator('[data-testid="search-box-input"]');
     await expect(searchBoxAfterBack).toHaveValue('JavaScript');
     
     // ブラウザの進むボタンでクリア状態に戻る
-    const forwardUrlPromise = page.waitForURL(
-      (url) => !url.searchParams.has('search'),
-      { timeout: getTimeout('medium') }
-    );
-    const forwardApiPromise = page.waitForResponse(
-      (resp) =>
-        resp.ok() &&
-        resp.url().includes('/api/articles') &&
-        !new URL(resp.url()).searchParams.has('search'),
-      { timeout: getTimeout('medium') }
-    ).catch(() => null);
+    await page.goForward();
 
-    await Promise.all([forwardUrlPromise, forwardApiPromise, page.goForward()]);
-    await waitForArticles(page, { waitForNetworkIdle: false, allowEmpty: true });
-    
     // URLから検索パラメータが削除されていることを確認
-    await expect(page).not.toHaveURL(/search=/);
+    await expect(page).not.toHaveURL(/search=/, { timeout: getTimeout('medium') });
+    await waitForArticles(page, { waitForNetworkIdle: false, allowEmpty: true });
     // 検索ボックスが空であることを確認（再取得）
     const searchBoxAfterForward = page.locator('[data-testid="search-box-input"]');
     await expect(searchBoxAfterForward).toHaveValue('');
