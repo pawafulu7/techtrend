@@ -15,9 +15,6 @@ test.describe('動的タグ検索機能', () => {
   });
 
   test('タグ検索APIが正常に動作する', async ({ request, page }) => {
-    // CI環境での安定性のため、ページを先に読み込む
-    await page.goto('/');
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
     // データベース準備を待つ（記事が表示されるまで待機、エラーは無視）
     await waitForArticles(page, { timeout: getTimeout('short') }).catch(() => {
       // 記事がない場合でもテストを続行
@@ -75,9 +72,7 @@ test.describe('動的タグ検索機能', () => {
   test('タグフィルターで企業タグを検索できる', async ({ page }) => {
     // CI環境では企業タグデータが不足しているためスキップ
     test.skip(Boolean(isCI), 'CI環境では企業タグデータが不足');
-    
-    // 初期読み込み待機
-    await page.waitForLoadState('networkidle');
+
     // ページ完全読み込みを待機（エラーは無視）
     await waitForArticles(page, { timeout: getTimeout('short') }).catch(() => {
       // 記事がない場合でもテストを続行
@@ -174,10 +169,7 @@ test.describe('動的タグ検索機能', () => {
   test('企業タグを選択してフィルタリングできる', async ({ page }) => {
     // CI環境では企業タグデータが不安定なためスキップ
     test.skip(Boolean(isCI), 'CI環境では企業タグデータが不安定');
-    
-    // 初期読み込み待機
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
-    
+
     // タグフィルターボタンをクリック
     const tagButton = page.locator('[data-testid="tag-filter-button"]');
     const buttonCount = await tagButton.count();
@@ -243,9 +235,6 @@ test.describe('動的タグ検索機能', () => {
     // URLにタグパラメータが追加されることを確認（タイムアウト延長）
     await expect(page).toHaveURL(/tags=DeNA/, { timeout: 15000 });
 
-    // フィルタリングされた記事が表示されることを確認
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
-    
     // 記事の表示を待機
     await waitForArticles(page);
     
@@ -259,9 +248,6 @@ test.describe('動的タグ検索機能', () => {
   });
 
   test('検索時にローディングインジケーターが表示される', async ({ page }) => {
-    // 初期読み込み待機
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
-    
     // タグフィルターボタンをクリック
     const tagButton = page.locator('[data-testid="tag-filter-button"]');
     const buttonCount = await tagButton.count();
