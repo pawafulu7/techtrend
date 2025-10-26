@@ -493,13 +493,13 @@ test.describe('AI Agent Search E2E', () => {
       ],
     };
 
-    await page.route('**/api/rag/agent-search', async (route) => {
+    await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(mockResponseWithArticles),
-      });
-    });
+      })
+    );
 
     await page.goto('/search/agent');
     await page.waitForLoadState('networkidle');
@@ -515,14 +515,15 @@ test.describe('AI Agent Search E2E', () => {
     await page.waitForSelector('[role="article"]', { timeout: 10000 });
 
     const articleLinks = page.getByTestId('agent-article-link');
-
     await expect(articleLinks).toHaveCount(3, { timeout: 10000 });
-    await expect(articleLinks.first()).toHaveAttribute('target', '_blank');
-    await expect(articleLinks.first()).toHaveAttribute('rel', 'noopener noreferrer');
 
-    // Click link and verify navigation (new tab)
+    const firstLink = articleLinks.first();
+    await expect(firstLink).toHaveAttribute('target', '_blank');
+    await expect(firstLink).toHaveAttribute('rel', 'noopener noreferrer');
+
     const [newPage] = await Promise.all([
       page.context().waitForEvent('page'),
+      firstLink.click(),
       firstLink.click(),
     ]);
     await newPage.waitForLoadState('networkidle');
