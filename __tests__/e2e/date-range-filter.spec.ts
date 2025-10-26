@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForUrlParam, getTimeout } from '../../e2e/helpers/wait-utils';
+import { waitForUrlParam, getTimeout, waitForArticles } from '../../e2e/helpers/wait-utils';
 
 // Desktop viewport for sidebar visibility
 test.use({
@@ -55,8 +55,12 @@ test.describe('Date Range Filter', () => {
     // Navigate to home page
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-    // Wait for the page to be fully loaded
-    await page.waitForLoadState('networkidle');
+    // Wait for articles to load with deterministic waiting
+    await waitForArticles(page, {
+      timeout: getTimeout('medium'),
+      waitForNetworkIdle: false,
+      allowEmpty: true,
+    });
 
     // Wait for the filter area to be present
     await page.waitForSelector('[data-testid="filter-area"]', {
