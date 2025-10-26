@@ -520,7 +520,7 @@ async function handleBatchRequest(
       'Agent result received'
     );
 
-    agentResponse = result.text.trim();
+    agentResponse = (result.text ?? '').trim();
     toolCalls = allToolCalls.map((call) => {
       const toolResult = toolResultsMap.get(call.toolCallId);
       const unwrappedOutput = unwrapToolOutput(toolResult?.output);

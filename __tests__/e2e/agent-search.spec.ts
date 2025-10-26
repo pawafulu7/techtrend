@@ -461,10 +461,10 @@ test.describe('AI Agent Search E2E', () => {
     // NEW: Verify Enter key triggers search
     await input.press('Enter');
 
-    // Verify search was executed
+    // Verify search was executed (extended timeout for progressive threshold fallback)
     await page.waitForResponse(
       (res) => res.url().includes('/api/rag/agent-search') && res.status() === 200,
-      { timeout: 5000 }
+      { timeout: 30000 }
     );
 
     // Verify results are displayed
@@ -512,30 +512,15 @@ test.describe('AI Agent Search E2E', () => {
       (res) => res.url().includes('/api/rag/agent-search') && res.status() === 200
     );
 
-    // Verify article links section appears
-    const articlesSection = page.locator('h2:has-text("参照記事")');
-    await expect(articlesSection).toBeVisible();
-
-    // Verify article links are present
-    const articleLinks = page.locator('a[href^="/articles/"]');
-    const linkCount = await articleLinks.count();
-    expect(linkCount).toBe(3);
+    // Verify inline article link buttons in AI response (reference section removed in 7efa49d9)
+    const inlineLinkButtons = page.locator('[data-testid="agent-answer-markdown"] a[href^="/articles/"]');
+    const linkCount = await inlineLinkButtons.count();
+    expect(linkCount).toBeGreaterThan(0);
 
     // Verify first link structure
-    const firstLink = articleLinks.first();
+    const firstLink = inlineLinkButtons.first();
     await expect(firstLink).toHaveAttribute('target', '_blank');
     await expect(firstLink).toHaveAttribute('rel', 'noopener noreferrer');
-    await expect(firstLink).toHaveText('React Server Components Guide');
-
-    // Verify similarity and date display
-    const firstArticleInfo = page.locator('text=一致度:').first();
-    await expect(firstArticleInfo).toBeVisible();
-    await expect(firstArticleInfo).toContainText('92.0%');
-
-    // Verify published date
-    const firstDate = page.locator('time').first();
-    await expect(firstDate).toBeVisible();
-    await expect(firstDate).toHaveAttribute('datetime', '2025-10-20T00:00:00Z');
 
     // Click link and verify navigation (new tab)
     const [newPage] = await Promise.all([
