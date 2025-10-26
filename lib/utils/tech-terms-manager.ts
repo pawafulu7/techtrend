@@ -78,7 +78,11 @@ export class TechTermsManager {
         this.customTermsPath,
         JSON.stringify({ terms: customTerms, updated: new Date() }, null, 2)
       );
-    } catch (_error) {
+    } catch (error) {
+      // File write errors are non-critical for tech terms management
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Failed to save custom tech terms:', error);
+      }
     }
   }
   
@@ -88,9 +92,11 @@ export class TechTermsManager {
       const data = await fs.readFile(this.customTermsPath, 'utf-8');
       const { terms } = JSON.parse(data);
       this.addCustomTerms(terms);
-    } catch (_error) {
-      // ファイルが存在しない場合は無視
-      if ((error as unknown).code !== 'ENOENT') {
+    } catch (error) {
+      // File not found is expected on first run
+      const err = error as { code?: string };
+      if (err.code !== 'ENOENT' && process.env.NODE_ENV !== 'production') {
+        console.warn('Failed to load custom tech terms:', error);
       }
     }
   }

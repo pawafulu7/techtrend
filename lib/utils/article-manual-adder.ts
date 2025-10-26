@@ -99,9 +99,12 @@ async function fetchBasicMetadata(url: string) {
     // キーワードの取得（タグとして使用）
     const keywordsContent = $('meta[name="keywords"]').attr('content') || '';
     const keywords = keywordsContent ? keywordsContent.split(',').map(k => k.trim()).filter(k => k) : [];
-    
+
     return { title, thumbnail, description, content: description, keywords };
-  } catch (_error) {
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Failed to fetch basic metadata:', error);
+    }
     return { title: 'Untitled Article', thumbnail: null, description: '', content: '', keywords: [] };
   }
 }
