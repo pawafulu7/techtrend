@@ -9,6 +9,7 @@ import { getAllOptimizerStats } from '@/lib/dataloader/batch-optimizer';
 import { getFavoriteLoaderStats } from '@/lib/dataloader/favorite-loader';
 import { getViewLoaderStats } from '@/lib/dataloader/article-view-loader';
 import type { PartialDataLoaderStats } from '@/lib/types/metrics';
+import logger from '@/lib/logger';
 
 export async function GET() {
   // 管理者権限チェック
@@ -52,7 +53,8 @@ export async function GET() {
       success: true,
       data: metrics,
     });
-  } catch (_error) {
+  } catch (error) {
+    logger.error('Failed to fetch batch optimizer metrics', { error });
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch metrics',

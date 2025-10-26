@@ -68,8 +68,8 @@ export async function GET(
     }
 
     return NextResponse.json(digest);
-  } catch (_error) {
-    // エラーログはサーバー側で記録される
+  } catch (error) {
+    logger.error('Failed to fetch weekly digest', { error });
     return NextResponse.json(
       { error: 'Failed to get digest' },
       { status: 500 }
