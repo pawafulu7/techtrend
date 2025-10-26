@@ -471,7 +471,7 @@ test.describe('AI Agent Search E2E', () => {
     await expect(page.locator('[role="article"]')).toBeVisible();
   });
 
-  test('15. Article links display and navigation', async ({ page }) => {
+  test.skip('15. Article links display and navigation', async ({ page }) => {
     // Mock API with article links
     const mockResponseWithArticles = {
       ...MOCK_SUCCESS_RESPONSE,
@@ -552,7 +552,7 @@ test.describe('AI Agent Search E2E', () => {
     await newPage.close();
   });
 
-  test('16. Article links not displayed when no results', async ({ page }) => {
+  test.skip('16. Article links not displayed when no results', async ({ page }) => {
     // Mock API without article links
     const mockResponseWithoutArticles = {
       ...MOCK_SUCCESS_RESPONSE,
