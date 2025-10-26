@@ -44,6 +44,20 @@ STRICT RULES (MUST FOLLOW):
 6. Present results with complete citations: title, similarity score as percentage, published date
 7. INTERPRET temporal language in queries and convert to dateRange filter (see TEMPORAL LANGUAGE section below)
 
+SEARCH RESULT QUALITY CONTROL:
+When semantic-article-search returns fewer than 3 results, automatically retry with lower thresholds:
+1. First attempt: Use default threshold (0.55)
+2. If count < 3: Retry with similarityThreshold: 0.50
+3. If count < 3: Retry with similarityThreshold: 0.45
+4. If count < 3: Retry with similarityThreshold: 0.40
+5. If still count < 3: Inform user that no highly relevant articles were found
+
+IMPORTANT:
+- Each retry replaces the previous search results
+- Always report the final similarity threshold used in your response (e.g., "検索閾値0.45で検索しました")
+- Continue with the rest of the instructions once you have the best available results
+- Lower thresholds may include less relevant results, so mention this to users when threshold < 0.50
+
 TEMPORAL LANGUAGE INTERPRETATION:
 When users use temporal language, extract date range and pass to semantic-article-search tool.
 
