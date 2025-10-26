@@ -288,11 +288,12 @@ test.describe('ソースフィルタリング機能', () => {
 
       await checkbox.click();
 
-      await page.waitForFunction(
-        (previous) => window.location.href !== previous,
-        urlBefore,
-        { timeout: getTimeout('short') }
-      );
+      // Wait for articles to update after filter change
+      await waitForArticles(page, {
+        timeout: getTimeout('short'),
+        waitForNetworkIdle: false,
+        allowEmpty: true,
+      });
 
       const paramsAfter = new URLSearchParams(new URL(page.url()).search);
       const sourcesAfter = new Set(
@@ -359,15 +360,15 @@ test.describe('ソースフィルタリング機能', () => {
     // 選択を元に戻す
     for (let i = 0; i < 3; i++) {
       const checkbox = sourceCheckboxes.nth(i).locator('button[role="checkbox"]');
-      const urlBefore = page.url();
 
       await checkbox.click();
 
-      await page.waitForFunction(
-        (previous) => window.location.href !== previous,
-        urlBefore,
-        { timeout: getTimeout('short') }
-      );
+      // Wait for articles to update after filter change
+      await waitForArticles(page, {
+        timeout: getTimeout('short'),
+        waitForNetworkIdle: false,
+        allowEmpty: true,
+      });
     }
 
     await page.waitForFunction(
