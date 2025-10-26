@@ -67,11 +67,6 @@ test.describe('Multiple Source Filter', () => {
           waitForNetworkIdle: false,
           allowEmpty: true,
         });
-        
-        // Verify articles are displayed
-        const articles = page.locator('[data-testid="article-list"] article, article');
-        const articleCount = await articles.count();
-        expect(articleCount).toBeGreaterThanOrEqual(0);
       }
     }
   });
