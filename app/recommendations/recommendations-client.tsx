@@ -27,10 +27,13 @@ export function RecommendationsClient() {
       if (!response.ok) {
         throw new Error('Failed to fetch recommendations');
       }
-      
+
       const data = await response.json();
       setRecommendations(data);
-    } catch (_error) {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to fetch recommendations:', error);
+      }
       setError('推薦記事の取得に失敗しました');
     } finally {
       setLoading(false);

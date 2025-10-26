@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
 import { RedisCache } from '@/lib/cache';
+import logger from '@/lib/logger';
 
 // Initialize Redis cache with 1 hour TTL for category stats
 const cache = new RedisCache({
@@ -64,8 +65,8 @@ export async function GET(_request: NextRequest) {
     await cache.set(cacheKey, result);
 
     return NextResponse.json(result);
-  } catch (_error) {
-    // エラーログはサーバー側で記録されるため、クライアントには簡潔なメッセージのみ返す
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to fetch category stats');
     return NextResponse.json(
       { error: 'Failed to get category stats' },
       { status: 500 }

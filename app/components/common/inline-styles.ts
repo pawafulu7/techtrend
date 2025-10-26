@@ -116,8 +116,11 @@ export const themeInitScript = `
     if (activeTheme === 'dark') {
       document.documentElement.classList.add('dark');
     }
-  } catch (_error) {
-    // localStorageが使用できない場合は何もしない
+  } catch (error) {
+    // localStorage access may fail in private browsing mode
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('Failed to initialize theme from storage:', error);
+    }
   }
 })();
 `;

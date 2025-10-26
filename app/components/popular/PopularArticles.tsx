@@ -51,10 +51,13 @@ export function PopularArticles({
       if (!response.ok) {
         throw new Error('Failed to load popular articles');
       }
-      
+
       const data = await response.json();
       setArticles(data.articles);
-    } catch (_error) {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to load popular articles:', error);
+      }
     } finally {
       setLoading(false);
     }

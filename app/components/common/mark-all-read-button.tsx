@@ -58,7 +58,10 @@ export function MarkAllReadButton({
         type: 'success'
       });
       setShowConfirm(false);
-    } catch (_error) {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to mark all as read:', error);
+      }
       setNotification({
         message: '一括既読処理に失敗しました',
         type: 'error'

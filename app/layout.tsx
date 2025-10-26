@@ -108,7 +108,12 @@ export default async function RootLayout({
                     document.documentElement.classList.remove('light', 'dark');
                     document.documentElement.classList.add(activeTheme);
                   }
-                } catch (_error) {}
+                } catch (error) {
+                  // Theme initialization error is non-critical, suppress in production
+                  if (typeof console !== 'undefined' && console.warn) {
+                    console.warn('Failed to initialize theme:', error);
+                  }
+                }
               })();
             `,
           }}

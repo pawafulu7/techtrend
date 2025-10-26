@@ -81,8 +81,10 @@ export default function TrendsPage() {
         setTrendingKeywords(data.trending || []);
         setNewTags(data.newTags || []);
       }
-    } catch (_error) {
-      // エラー時はデフォルト値を設定
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to fetch trending keywords:', error);
+      }
       setTrendingKeywords([]);
       setNewTags([]);
     } finally {
@@ -98,7 +100,10 @@ export default function TrendsPage() {
       });
       const data = await response.json();
       setTrendAnalysis(data);
-    } catch (_error) {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to fetch trend analysis:', error);
+      }
     } finally {
       setLoadingAnalysis(false);
     }
@@ -137,10 +142,13 @@ export default function TrendsPage() {
             percentage: othersPercentage
           });
         }
-        
+
         setSourceData(sourceStats);
       }
-    } catch (_error) {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to fetch source stats:', error);
+      }
     } finally {
       setLoadingSource(false);
     }

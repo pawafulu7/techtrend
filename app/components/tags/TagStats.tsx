@@ -54,7 +54,10 @@ export function TagStats() {
         newTags: newData.count || 0,
         topGrowthTags: growthTags
       });
-    } catch (_error) {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to load tag stats:', error);
+      }
     } finally {
       setLoading(false);
     }

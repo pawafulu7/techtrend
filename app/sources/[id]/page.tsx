@@ -49,7 +49,10 @@ export default function SourceDetailPage() {
       }
       const data = await response.json();
       setData(data);
-    } catch (_error) {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to load source detail:', error);
+      }
     } finally {
       setLoading(false);
     }
