@@ -131,16 +131,7 @@ test.describe('ソースフィルタリング機能', () => {
     const selectAllButton = page.locator('[data-testid="select-all-button"]:visible');
     await expect(selectAllButton).toBeVisible();
 
-    const articlesRequest = page.waitForRequest((request) => {
-      if (request.method() !== 'GET') return false;
-      return request.url().includes('/api/articles');
-    });
-    const apiPromise = articlesRequest.then((request) => request.response());
-
-    await Promise.all([
-      apiPromise,
-      selectAllButton.click(),
-    ]);
+    await selectAllButton.click();
 
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
@@ -199,7 +190,9 @@ test.describe('ソースフィルタリング機能', () => {
     expect(articlesAfterDeselect).toBeLessThanOrEqual(initialArticles);
 
     // 全て選択ボタンを再度クリック
-    const urlPromise = page.waitForFunction(
+    await selectAllButton.click();
+
+    await page.waitForFunction(
       () => {
         const params = new URL(window.location.href).searchParams;
         return !params.has('sources') || params.get('sources') !== 'none';
@@ -207,18 +200,6 @@ test.describe('ソースフィルタリング機能', () => {
       undefined,
       { timeout: getTimeout('short') }
     );
-
-    const articlesRequest2 = page.waitForRequest((request) => {
-      if (request.method() !== 'GET') return false;
-      return request.url().includes('/api/articles');
-    });
-    const apiPromise2 = articlesRequest2.then((request) => request.response());
-
-    await Promise.all([
-      urlPromise,
-      apiPromise2,
-      selectAllButton.click(),
-    ]);
 
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
@@ -305,23 +286,13 @@ test.describe('ソースフィルタリング機能', () => {
           .filter(Boolean)
       );
 
-      const urlPromise = page.waitForFunction(
+      await checkbox.click();
+
+      await page.waitForFunction(
         (previous) => window.location.href !== previous,
         urlBefore,
         { timeout: getTimeout('short') }
       );
-
-      const requestPromise = page.waitForRequest((request) => {
-        if (request.method() !== 'GET') return false;
-        return request.url().includes('/api/articles');
-      });
-      const apiPromise = requestPromise.then((request) => request.response());
-
-      await Promise.all([
-        urlPromise,
-        apiPromise,
-        checkbox.click(),
-      ]);
 
       const paramsAfter = new URLSearchParams(new URL(page.url()).search);
       const sourcesAfter = new Set(
@@ -390,23 +361,13 @@ test.describe('ソースフィルタリング機能', () => {
       const checkbox = sourceCheckboxes.nth(i).locator('button[role="checkbox"]');
       const urlBefore = page.url();
 
-      const urlPromise = page.waitForFunction(
+      await checkbox.click();
+
+      await page.waitForFunction(
         (previous) => window.location.href !== previous,
         urlBefore,
         { timeout: getTimeout('short') }
       );
-
-      const requestPromise = page.waitForRequest((request) => {
-        if (request.method() !== 'GET') return false;
-        return request.url().includes('/api/articles');
-      });
-      const apiPromise = requestPromise.then((request) => request.response());
-
-      await Promise.all([
-        urlPromise,
-        apiPromise,
-        checkbox.click(),
-      ]);
     }
 
     await page.waitForFunction(
