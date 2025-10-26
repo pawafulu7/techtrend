@@ -135,23 +135,25 @@ interface ValidatedRequest {
 
 /**
  * Type guard for Language Model tool result output wrapper
+ *
+ * Checks for valid LanguageModelV2ToolResultOutput types:
+ * - 'json', 'text', 'error-json', 'error-text', 'content'
  */
 function isLanguageModelToolResultOutput(
   output: unknown
 ): output is LanguageModelV2ToolResultOutput {
-  return (
-    typeof output === 'object' &&
-    output !== null &&
-    'type' in output &&
-    'value' in output
-  );
+  if (typeof output !== 'object' || output === null || !('type' in output) || !('value' in output)) {
+    return false;
+  }
+  const validTypes = ['json', 'text', 'error-json', 'error-text', 'content'];
+  return validTypes.includes((output as any).type);
 }
 
 /**
  * Unwrap tool output from AI SDK wrapper
  *
- * AI SDK wraps tool results in { type: 'json', value: {...} } format.
- * This function extracts the actual result value.
+ * AI SDK wraps tool results in LanguageModelV2ToolResultOutput format.
+ * Extracts the value from wrapper types: json, text, error-json, error-text, content.
  */
 function unwrapToolOutput(output: unknown): unknown {
   if (!output) return output;
@@ -499,39 +501,29 @@ async function handleBatchRequest(
       messages: [{ role: 'user', content: validatedRequest.query }],
     });
 
-    // [DEBUG] Log raw agent result
     const allToolCalls = result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
     const allToolResults = result.steps?.flatMap((step) => step.toolResults ?? []) ?? [];
 
-    // Create toolResults map for efficient lookup
     const toolResultsMap = new Map(
       allToolResults.map((r) => [r.toolCallId, r])
     );
 
-    // [DEBUG] Log toolResults structure
-    console.log('[Tool Results DEBUG]', {
-      allToolResultsSample: allToolResults[0],
-      toolResultKeys: allToolResults[0] ? Object.keys(allToolResults[0]) : [],
-    });
-
-    console.log('[Agent Result DEBUG]', {
-      textPreview: result.text?.slice(0, 100),
-      stepsCount: result.steps?.length || 0,
-      allToolCallsCount: allToolCalls.length,
-      allToolResultsCount: allToolResults.length,
-      toolCallNames: allToolCalls.map((tc) => tc.toolName),
-      finishReason: result.finishReason,
-    });
+    logger.debug(
+      {
+        textPreview: result.text?.slice(0, 100),
+        stepsCount: result.steps?.length || 0,
+        toolCallsCount: allToolCalls.length,
+        toolResultsCount: allToolResults.length,
+        toolCallNames: allToolCalls.map((tc) => tc.toolName),
+        finishReason: result.finishReason,
+      },
+      'Agent result received'
+    );
 
     agentResponse = result.text.trim();
     toolCalls = allToolCalls.map((call) => {
       const toolResult = toolResultsMap.get(call.toolCallId);
       const unwrappedOutput = unwrapToolOutput(toolResult?.output);
-      console.log('[Mapping DEBUG]', {
-        callId: call.toolCallId,
-        resultFound: !!toolResult,
-        resultKeys: toolResult ? Object.keys(toolResult) : [],
-      });
       return {
         id: call.toolCallId,
         name: call.toolName,
