@@ -202,8 +202,11 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sources: sourceIds }),
         });
-      } catch (_error) {
-        // Silently fail cookie update - URL params are the primary source
+      } catch (error) {
+        // Cookie update is non-critical - URL params are the primary source
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Failed to update filter preferences cookie:', error);
+        }
       }
     }, 150); // 150ms のデバウンス
   };

@@ -53,7 +53,10 @@ export default function ArticleFavoritesPage() {
       }
       const data = await response.json();
       setFavorites(data.favorites);
-    } catch (_error) {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to fetch favorites:', error);
+      }
       setError('お気に入りの取得に失敗しました');
     } finally {
       setIsLoading(false);
@@ -69,7 +72,10 @@ export default function ArticleFavoritesPage() {
       if (response.ok) {
         setFavorites(prev => prev.filter(f => f.id !== articleId));
       }
-    } catch (_error) {
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to remove favorite:', error);
+      }
     }
   };
 
