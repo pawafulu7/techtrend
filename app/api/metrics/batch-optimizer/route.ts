@@ -54,7 +54,7 @@ export async function GET() {
       data: metrics,
     });
   } catch (error) {
-    logger.error('Failed to fetch batch optimizer metrics', { error });
+    logger.error({ err: error }, 'Failed to fetch batch optimizer metrics');
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch metrics',

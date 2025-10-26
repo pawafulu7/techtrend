@@ -69,7 +69,7 @@ export async function GET(
 
     return NextResponse.json(digest);
   } catch (error) {
-    logger.error('Failed to fetch weekly digest', { error });
+    logger.error({ err: error }, 'Failed to fetch weekly digest');
     return NextResponse.json(
       { error: 'Failed to get digest' },
       { status: 500 }

@@ -66,7 +66,7 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    logger.error('Failed to fetch category stats', { error });
+    logger.error({ err: error }, 'Failed to fetch category stats');
     return NextResponse.json(
       { error: 'Failed to get category stats' },
       { status: 500 }
