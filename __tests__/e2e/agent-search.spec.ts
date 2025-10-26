@@ -543,9 +543,8 @@ test.describe('AI Agent Search E2E', () => {
     const [newPage] = await Promise.all([
       page.context().waitForEvent('page'),
       firstLink.click(),
-      firstLink.click(),
     ]);
-    await newPage.waitForLoadState('networkidle');
+    await newPage.waitForLoadState('domcontentloaded');
 
     // Verify article detail page navigation
     expect(newPage.url()).toMatch(/\/articles\/101/);
