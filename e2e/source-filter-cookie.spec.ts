@@ -6,7 +6,7 @@ test.describe('Source Filter Cookie', () => {
     // Wait for initial page load with deterministic signals
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.getByTestId('source-filter').waitFor({ state: 'visible', timeout: 10000 });
+    await page.getByTestId('source-filter').first().waitFor({ state: 'visible', timeout: 10000 });
   });
 
   test('should persist source selection in cookie', async ({ page, context }) => {
