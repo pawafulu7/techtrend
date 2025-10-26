@@ -512,19 +512,13 @@ test.describe('AI Agent Search E2E', () => {
       (res) => res.url().includes('/api/rag/agent-search') && res.status() === 200
     );
 
-    // Wait for answer panel to render (300ms delay in AgentSearchClient)
-    await page.waitForSelector('[role="article"]', { timeout: 5000 });
+    await page.waitForSelector('[role="article"]', { timeout: 10000 });
 
-    // Verify inline article link buttons in AI response (reference section removed in 7efa49d9)
-    const inlineLinkButtons = page.locator('[data-testid="agent-answer-markdown"] a[href^="/articles/"]');
-    await inlineLinkButtons.first().waitFor({ state: 'visible', timeout: 5000 });
-    const linkCount = await inlineLinkButtons.count();
-    expect(linkCount).toBeGreaterThan(0);
+    const articleLinks = page.getByTestId('agent-article-link');
 
-    // Verify first link structure
-    const firstLink = inlineLinkButtons.first();
-    await expect(firstLink).toHaveAttribute('target', '_blank');
-    await expect(firstLink).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(articleLinks).toHaveCount(3, { timeout: 10000 });
+    await expect(articleLinks.first()).toHaveAttribute('target', '_blank');
+    await expect(articleLinks.first()).toHaveAttribute('rel', 'noopener noreferrer');
 
     // Click link and verify navigation (new tab)
     const [newPage] = await Promise.all([

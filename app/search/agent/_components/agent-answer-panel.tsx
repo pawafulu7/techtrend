@@ -198,6 +198,7 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
                       }
                     >
                       <Link
+                        data-testid="agent-article-link"
                         href={`/articles/${encodeURIComponent(article.articleId)}`}
                         target="_blank"
                         rel="noopener noreferrer"

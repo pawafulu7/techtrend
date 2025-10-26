@@ -15,23 +15,34 @@ export function extractArticlesFromToolCalls(
   toolCalls: Array<{ name: string; output?: unknown }>
 ): ArticleLink[] {
   try {
-    const articles = toolCalls
-      .filter(tc => tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH || tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH_LEGACY)
-      .flatMap(tc => {
-        const parseResult = toolOutputSchema.safeParse(tc.output);
+    const relevantToolCalls = toolCalls.filter(
+      tc => tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH || tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH_LEGACY
+    );
 
-        if (!parseResult.success) {
-          if (process.env.NEXT_PUBLIC_DEBUG) {
-            console.warn('[ArticleLinkExtractor] Invalid tool output structure:', {
-              toolName: tc.name,
-              error: parseResult.error,
-            });
-          }
-          return [];
+    if (process.env.NEXT_PUBLIC_DEBUG) {
+      console.debug('[ArticleLinkExtractor] toolCalls received', toolCalls.map(tc => ({ name: tc.name, hasOutput: !!tc.output })));
+      console.debug('[ArticleLinkExtractor] relevant toolCalls', relevantToolCalls.length);
+    }
+
+    const articles = relevantToolCalls.flatMap(tc => {
+      const parseResult = toolOutputSchema.safeParse(tc.output);
+
+      if (!parseResult.success) {
+        if (process.env.NEXT_PUBLIC_DEBUG) {
+          console.warn('[ArticleLinkExtractor] Invalid tool output structure:', {
+            toolName: tc.name,
+            error: parseResult.error,
+          });
         }
+        return [];
+      }
 
-        return parseResult.data.articles || [];
-      });
+      return parseResult.data.articles || [];
+    });
+
+    if (!articles.length && process.env.NEXT_PUBLIC_DEBUG) {
+      console.warn('[ArticleLinkExtractor] No articles extracted from tool calls');
+    }
 
     // 重複除去 (articleIdベース、最高similarityを優先) → similarity順でソート（降順）
     const byId = new Map<string, ArticleLink>();
