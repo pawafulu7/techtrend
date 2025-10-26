@@ -1,11 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { waitForUrlParam, getTimeout, waitForPageLoad } from './helpers/wait-utils';
+import { waitForUrlParam, getTimeout, waitForPageLoad, waitForArticles } from './helpers/wait-utils';
 
 test.describe('検索クリア機能', () => {
   test.beforeEach(async ({ page }) => {
     // Wait for initial page load
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForArticles(page, {
+      timeout: getTimeout('medium'),
+      waitForNetworkIdle: false,
+      allowEmpty: true,
+    });
   });
   
   test('検索クリアボタンが正常に動作する', async ({ page }) => {
@@ -196,8 +200,20 @@ test.describe('検索クリア機能', () => {
     await expect(searchBox).toHaveValue('');
     
     // ブラウザの戻るボタンで検索状態に戻る
-    await page.goBack();
-    await page.waitForLoadState('networkidle');
+    const backUrlPromise = page.waitForURL(
+      (url) => url.searchParams.get('search') === 'JavaScript',
+      { timeout: getTimeout('medium') }
+    );
+    const backApiPromise = page.waitForResponse(
+      (resp) =>
+        resp.ok() &&
+        resp.url().includes('/api/articles') &&
+        new URL(resp.url()).searchParams.get('search') === 'JavaScript',
+      { timeout: getTimeout('medium') }
+    ).catch(() => null);
+
+    await Promise.all([backUrlPromise, backApiPromise, page.goBack()]);
+    await waitForArticles(page, { waitForNetworkIdle: false, allowEmpty: true });
     
     // URLにsearchパラメータがあることを確認
     await expect(page).toHaveURL(/search=JavaScript/);
@@ -205,9 +221,21 @@ test.describe('検索クリア機能', () => {
     const searchBoxAfterBack = page.locator('[data-testid="search-box-input"]');
     await expect(searchBoxAfterBack).toHaveValue('JavaScript');
     
-    // ブラウザの進むボタンでクリア状態に戻る  
-    await page.goForward();
-    await page.waitForLoadState('networkidle');
+    // ブラウザの進むボタンでクリア状態に戻る
+    const forwardUrlPromise = page.waitForURL(
+      (url) => !url.searchParams.has('search'),
+      { timeout: getTimeout('medium') }
+    );
+    const forwardApiPromise = page.waitForResponse(
+      (resp) =>
+        resp.ok() &&
+        resp.url().includes('/api/articles') &&
+        !new URL(resp.url()).searchParams.has('search'),
+      { timeout: getTimeout('medium') }
+    ).catch(() => null);
+
+    await Promise.all([forwardUrlPromise, forwardApiPromise, page.goForward()]);
+    await waitForArticles(page, { waitForNetworkIdle: false, allowEmpty: true });
     
     // URLから検索パラメータが削除されていることを確認
     await expect(page).not.toHaveURL(/search=/);
