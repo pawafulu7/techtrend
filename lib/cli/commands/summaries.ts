@@ -3,8 +3,12 @@ import { logger } from '../utils/logger';
 import { getPrismaClient } from '../utils/database';
 import { SummaryManager } from '@/lib/services/summary-manager';
 
+// Root command
 export const summariesCommand = new Command('summaries')
-  .description('記事要約の管理')
+  .description('記事要約の管理');
+
+// generate subcommand
+summariesCommand
   .command('generate')
   .description('要約が未生成の記事に対して要約を生成')
   .option('-s, --source <source>', 'ソースを指定')
