@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForPageLoad } from '../utils/e2e-helpers';
-import { waitForArticles, getTimeout } from '../../../e2e/helpers/wait-utils';
+import { waitForPageLoad, waitForArticles, getTimeout } from '../../../e2e/helpers/wait-utils';
 
 // CI環境の検出
 const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
@@ -75,7 +74,11 @@ test.describe('ソースフィルタリング機能', () => {
       await checkbox.click();
 
       // 記事リストの更新完了を待つ
-      await page.waitForSelector('[data-testid="article-card"]', { state: 'attached' });
+      await waitForArticles(page, {
+        timeout: getTimeout('medium'),
+        waitForNetworkIdle: false,
+        allowEmpty: true
+      });
 
       // Dev.toの記事が表示されていないことを確認
       const articles = page.locator('[data-testid="article-card"]');
@@ -177,12 +180,12 @@ test.describe('ソースフィルタリング機能', () => {
       await expect(checkbox).toHaveAttribute('data-state', 'unchecked');
     }
 
-    // 記事フィルタリングの完了を待つ（状態ベースの待機）
-    await page.waitForFunction(() => {
-      // ネットワークリクエストが完了したか、またはローディング表示が消えたかを確認
-      const loadingElement = document.querySelector('[data-testid="loading"], .loading, .spinner');
-      return !loadingElement || loadingElement.style.display === 'none';
-    }, { timeout: 5000 });
+    // 記事フィルタリングの完了を待つ
+    await waitForArticles(page, {
+      timeout: getTimeout('medium'),
+      waitForNetworkIdle: false,
+      allowEmpty: true
+    });
 
     // 記事数が変化したことを確認（0件または減少）
     const articlesAfterDeselect = await page.locator('[data-testid="article-card"]').count();
@@ -192,12 +195,8 @@ test.describe('ソースフィルタリング機能', () => {
     // 全て選択ボタンを再度クリック
     await selectAllButton.click();
 
-    await page.waitForFunction(
-      () => {
-        const params = new URL(window.location.href).searchParams;
-        return !params.has('sources') || params.get('sources') !== 'none';
-      },
-      undefined,
+    await page.waitForURL(
+      url => !url.searchParams.has('sources') || url.searchParams.get('sources') !== 'none',
       { timeout: getTimeout('short') }
     );
 
@@ -317,13 +316,11 @@ test.describe('ソースフィルタリング機能', () => {
       }
     }
 
-    await page.waitForFunction(
-      () => {
-        const params = new URL(window.location.href).searchParams;
-        const value = params.get('sources');
+    await page.waitForURL(
+      url => {
+        const value = url.searchParams.get('sources');
         return !!value && value !== 'none';
       },
-      undefined,
       { timeout: getTimeout('short') }
     );
 
@@ -371,9 +368,8 @@ test.describe('ソースフィルタリング機能', () => {
       });
     }
 
-    await page.waitForFunction(
-      () => !new URL(window.location.href).searchParams.has('sources'),
-      undefined,
+    await page.waitForURL(
+      url => !url.searchParams.has('sources'),
       { timeout: getTimeout('short') }
     );
 

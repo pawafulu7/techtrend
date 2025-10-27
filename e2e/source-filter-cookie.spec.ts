@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForArticles } from './helpers/wait-utils';
+import { waitForArticles, getTimeout, waitForUrlParam } from './helpers/wait-utils';
 
 test.describe('Source Filter Cookie', () => {
   test.beforeEach(async ({ page }) => {
@@ -22,7 +22,13 @@ test.describe('Source Filter Cookie', () => {
       return;
     }
 
-    await awsCheckbox.first().click();
+    // Use setChecked for explicit state control
+    const awsInput = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"]').first();
+    if (await awsInput.count() > 0) {
+      await awsInput.setChecked(false);
+    } else {
+      await awsCheckbox.first().click();
+    }
 
     // Wait for navigation to complete
     await page.waitForURL(/sources=/);
@@ -113,7 +119,23 @@ test.describe('Source Filter Cookie', () => {
 
     // Click select all and wait for URL to update or clear
     await selectAllButton.click();
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForURL(
+      (url) => {
+        const params = url.searchParams;
+        const value = params.get('sources');
+        return value === null || value === 'all';
+      },
+      { timeout: getTimeout('short') },
+    ).catch(async () => {
+      // fallback for legacy builds that momentarily keep `sources=none`
+      await waitForUrlParam(page, 'sources', 'none', { timeout: getTimeout('short') });
+    });
+
+    await waitForArticles(page, {
+      timeout: getTimeout('medium'),
+      allowEmpty: true,
+      waitForNetworkIdle: false
+    });
 
     // Check final URL state
     const url = page.url();

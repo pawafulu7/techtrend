@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForArticles, getTimeout } from './helpers/wait-utils';
+import { waitForArticles, getTimeout, waitForUrlParam } from './helpers/wait-utils';
 
 // 環境別タイムアウト値
 const timeout = process.env.CI ? 30000 : 15000;
@@ -53,10 +53,14 @@ test.describe('Multiple Source Filter', () => {
         // Select first two sources
         await checkboxes.nth(0).check();
         await checkboxes.nth(1).check();
-        
-        // Wait for URL to update
-        await page.waitForFunction(() => window.location.search.includes('sources='));
-        
+
+        // Wait for URL to update with sources parameter
+        await waitForUrlParam(page, 'sources', undefined, {
+          timeout: getTimeout('short'),
+          retries: 3,
+          polling: 'fast',
+        });
+
         // Verify URL contains sources parameter
         const url = page.url();
         expect(url).toContain('sources=');
