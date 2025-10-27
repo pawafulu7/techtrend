@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { SELECTORS } from './constants/selectors';
+import { waitForPageLoad } from './utils/e2e-helpers';
 
 test.describe('関連記事のナビゲーション', () => {
   test.slow();
@@ -7,9 +8,10 @@ test.describe('関連記事のナビゲーション', () => {
   test.beforeEach(async ({ page }) => {
     // ホームページにアクセス
     await page.goto('/', {
-      waitUntil: 'networkidle',
+      waitUntil: 'domcontentloaded',
       timeout: 30000
     });
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // 記事が存在することを確認
     await page.waitForSelector(SELECTORS.ARTICLE_CARD, { timeout: 10000 });
@@ -25,7 +27,7 @@ test.describe('関連記事のナビゲーション', () => {
     // 詳細ページが完全に読み込まれるまで待機
     await page.waitForURL(/\/articles\/.+/, { timeout: 10000 });
     await page.waitForSelector('h1', { timeout: 10000 });
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
   });
 
   test('関連記事をクリックして詳細要約ページに遷移できる', async ({ page }) => {

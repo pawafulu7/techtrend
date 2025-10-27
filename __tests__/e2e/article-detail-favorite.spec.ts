@@ -1,31 +1,33 @@
 import { test, expect } from '@playwright/test';
 import { SELECTORS } from './constants/selectors';
+import { waitForPageLoad } from './utils/e2e-helpers';
 
 // Phase 3: CI最適化 - 長時間テストにマーク
 test.describe('Article Detail Favorite Button', () => {
   test.slow(); // このテストスイート全体を遅いテストとしてマーク（タイムアウト3倍）
   test.beforeEach(async ({ page }) => {
     // サーバーの準備完了を確認
-    await page.goto('/', { 
-      waitUntil: 'networkidle',
-      timeout: 30000 
+    await page.goto('/', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000
     });
-    
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
+
     // 記事が存在することを確認
     await page.waitForSelector(SELECTORS.ARTICLE_CARD, { timeout: 10000 });
     const articleCount = await page.locator(SELECTORS.ARTICLE_CARD).count();
     if (articleCount === 0) {
       throw new Error('No articles found. Test data may not be loaded.');
     }
-    
+
     // 最初の記事をクリック
     const firstArticle = page.locator('[data-testid="article-card"]').first();
     await firstArticle.click();
-    
+
     // 詳細ページが完全に読み込まれるまで待機
     await page.waitForURL(/\/articles\/.+/, { timeout: 10000 });
     await page.waitForSelector('h1', { timeout: 10000 });
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
   });
 
   test('should display favorite button in header area', async ({ page }) => {
