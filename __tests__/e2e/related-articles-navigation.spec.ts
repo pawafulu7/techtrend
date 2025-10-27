@@ -54,7 +54,7 @@ test.describe('関連記事のナビゲーション', () => {
 
     // 関連記事をクリック
     await firstRelatedLink.click();
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // 詳細要約ページに遷移したことを確認
     await expect(page).toHaveURL(/\/articles\/[^/]+$/);
@@ -117,7 +117,7 @@ test.describe('関連記事のナビゲーション', () => {
       firstRelatedLink.click({ button: 'middle' })
     ]);
 
-    await newPage.waitForLoadState('networkidle');
+    await waitForPageLoad(newPage, { waitForNetworkIdle: false });
 
     // 新しいタブで詳細要約ページが開いたことを確認
     await expect(newPage).toHaveURL(/\/articles\/[^/]+$/);
@@ -152,7 +152,7 @@ test.describe('関連記事のナビゲーション', () => {
       })
     ]);
 
-    await newPage.waitForLoadState('networkidle');
+    await waitForPageLoad(newPage, { waitForNetworkIdle: false });
 
     // 新しいタブで詳細要約ページが開いたことを確認
     await expect(newPage).toHaveURL(/\/articles\/[^/]+$/);
@@ -184,7 +184,7 @@ test.describe('関連記事のナビゲーション', () => {
 
     // Enterキーを押す
     await page.keyboard.press('Enter');
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // 詳細要約ページに遷移したことを確認
     await expect(page).toHaveURL(/\/articles\/[^/]+$/);

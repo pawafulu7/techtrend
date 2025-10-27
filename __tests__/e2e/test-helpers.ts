@@ -134,7 +134,7 @@ export async function loginTestUser(
     if (debug) console.log('🔍 Debug: Starting login process');
     
     // ログインページへ移動
-    await page.goto('/auth/login', { waitUntil: 'networkidle' });
+    await page.goto('/auth/login', { waitUntil: 'domcontentloaded' });
     if (debug) console.log('🔍 Debug: Navigated to login page');
     
     // フォームが表示されるまで待機
@@ -207,9 +207,9 @@ export async function loginTestUser(
         });
       }
       
-      // ネットワークが安定するまで待機
-      await page.waitForLoadState('networkidle');
-      if (debug) console.log('🔍 Debug: Network is idle');
+      // ページロードの完了を待機
+      await page.waitForLoadState('domcontentloaded');
+      if (debug) console.log('🔍 Debug: Page load completed');
     }
     
     // セッション確立のため少し待機
@@ -237,7 +237,7 @@ export async function loginTestUser(
 export async function openAccountTab(page: Page): Promise<boolean> {
   try {
     // プロフィールページへ移動
-    await page.goto('/profile', { waitUntil: 'networkidle' });
+    await page.goto('/profile', { waitUntil: 'domcontentloaded' });
     
     // ログインページにリダイレクトされた場合はエラー
     const currentUrl = page.url();

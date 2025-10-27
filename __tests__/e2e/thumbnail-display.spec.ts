@@ -79,9 +79,10 @@ test.describe('Custom Image Loader - Page Rendering', () => {
 
   test('should render page with custom image loader configured', async ({ page }) => {
     await page.goto('/', {
-      waitUntil: 'networkidle',
+      waitUntil: 'domcontentloaded',
       timeout: 30000,
     });
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // Verify page loads successfully
     await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
@@ -106,9 +107,10 @@ test.describe('Custom Image Loader - Page Rendering', () => {
 
   test('should not block page rendering for missing thumbnails', async ({ page }) => {
     await page.goto('/', {
-      waitUntil: 'networkidle',
+      waitUntil: 'domcontentloaded',
       timeout: 30000,
     });
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // Articles should be displayed even if some thumbnails are missing
     const articles = page.locator('[data-testid="article-card"]');
