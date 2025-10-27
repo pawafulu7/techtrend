@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForPageLoad } from '../e2e/helpers/wait-utils';
+import { waitForPageLoad } from '../../e2e/helpers/wait-utils';
 
 test.describe('スクロール機能のテスト', () => {
   test('トップページの3ペインレイアウトでスクロールが正常に動作する', async ({ page }) => {
