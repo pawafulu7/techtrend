@@ -225,7 +225,7 @@ test.describe('APIレスポンス構造とページネーション', () => {
     );
 
     // ページに移動
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // ページの読み込みが完了するまで待つ
     await page.waitForLoadState('domcontentloaded');

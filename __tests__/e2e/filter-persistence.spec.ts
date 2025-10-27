@@ -170,7 +170,7 @@ test.describe('フィルター条件の永続化', () => {
         }
         
         // ローディング状態の終了を待つ
-        await page.waitForLoadState('networkidle');
+        await waitForPageLoad(page, { waitForNetworkIdle: false });
 
         // 記事カードまたは「記事が見つかりませんでした」メッセージを待つ
         const articleOrEmpty = await Promise.race([
@@ -273,8 +273,7 @@ test.describe('フィルター条件の永続化', () => {
     
     // ページが完全に読み込まれるまで待機
     try {
-      await page.waitForLoadState('networkidle', { timeout: loadTimeout });
-      await waitForPageLoad(page, { waitForNetworkIdle: true });
+      await waitForPageLoad(page, { waitForNetworkIdle: false });
       await waitForArticles(page);
     } catch (error) {
       console.log('Failed to load page - skipping test');
@@ -447,10 +446,8 @@ test.describe('フィルター条件の永続化', () => {
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
     test.slow(); // CI環境でのタイムアウトを3倍に延長
     // CI環境用の初期待機とネットワーク安定化
-    const networkTimeout = isCI ? 15000 : 5000;
-    await page.waitForLoadState('networkidle', { timeout: networkTimeout });
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
+
     // CI環境では追加の待機
     if (isCI) {
       await page.waitForTimeout(2000);
@@ -540,9 +537,9 @@ test.describe('フィルター条件の永続化', () => {
       const active = await page.getByRole('button', { name: '人気' }).getAttribute('class');
       expect(active ?? '').toContain('bg-primary');
     }
-    
+
     // ネットワーク安定化待機
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // 2. 記事詳細ページへ遷移
     const firstArticle = page.locator('[data-testid="article-card"]').first();
@@ -669,7 +666,7 @@ test.describe('フィルター条件の永続化', () => {
     // 2. リセットボタンをクリック
     await page.click('[data-testid="filter-reset-button"]');
     // ページがリロードされるのを待つ
-    await page.waitForLoadState('networkidle');
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // 3. すべての条件がクリアされたことを確認
     // 複数の検索ボックスがある場合は最初の要素を使用
@@ -773,11 +770,10 @@ test.describe('ブラウザ間での動作確認', () => {
     await page.context().clearPermissions();
     
     await page.goto('/');
-    
-    // CI環境用の初期待機とネットワーク安定化
-    await page.waitForLoadState('networkidle', { timeout: 5000 });
-    await waitForPageLoad(page, { waitForNetworkIdle: true });
-    
+
+    // CI環境用の初期待機
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
+
     // 記事が表示されるまで待機（CI環境では長めのタイムアウト）
     await page.waitForSelector('[data-testid="article-card"]', {
       timeout: isCI ? getTimeout('medium') : getTimeout('short')
@@ -811,7 +807,7 @@ test.describe('ブラウザ間での動作確認', () => {
       
       // トップページに戻る
       await page.goto('/');
-      await waitForPageLoad(page, { waitForNetworkIdle: true });
+      await waitForPageLoad(page, { waitForNetworkIdle: false });
       await waitForArticles(page);
       
       // 検索ボックスが表示されるまで待機

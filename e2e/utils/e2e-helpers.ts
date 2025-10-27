@@ -65,15 +65,18 @@ export const TEST_USERS: Record<BrowserName, TestUser> = {
  * ページの読み込みが完了するまで待機
  * 注: 開発サーバーは常時起動（http://localhost:3000）
  */
-export async function waitForPageLoad(page: Page, options: { timeout?: number } = {}) {
-  const { timeout = 30000 } = options;
+export async function waitForPageLoad(page: Page, options: { timeout?: number; waitForNetworkIdle?: boolean } = {}) {
+  const { timeout = 30000, waitForNetworkIdle = true } = options;
   
-  // Prefer DOM ready; try networkidle best-effort
+  // Prefer DOM ready; try networkidle best-effort if requested
   await page.waitForLoadState('domcontentloaded', { timeout });
-  try {
-    await page.waitForLoadState('networkidle', { timeout: Math.min(5000, Math.floor(timeout / 2)) });
-  } catch {
-    // ignore - networkidle might not be reached with WebSocket/SSE
+  
+  if (waitForNetworkIdle) {
+    try {
+      await page.waitForLoadState('networkidle', { timeout: Math.min(5000, Math.floor(timeout / 2)) });
+    } catch {
+      // ignore - networkidle might not be reached with WebSocket/SSE
+    }
   }
   
   // Wait for main content area to be visible using SELECTORS
@@ -410,7 +413,7 @@ export async function openAccountTab(page: Page): Promise<boolean> {
       page.waitForURL('**/profile', { timeout: 5000 })
     ]);
     
-    await waitForPageLoad(page);
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
     
     // アカウントタブをクリック（共通セレクタ追加）
     const accountTab = page.locator('[role="tab"][data-value="account"], [data-testid="account-tab"], button:has-text("アカウント")').first();
@@ -559,7 +562,7 @@ export async function loginTestUser(
     
     // Navigate to login page with retry
     await page.goto('/auth/login', { waitUntil: 'domcontentloaded', timeout });
-    await waitForPageLoad(page, { timeout });
+    await waitForPageLoad(page, { timeout, waitForNetworkIdle: false });
     
     // Wait for form elements (fallback selectors)
     const emailInput = page.locator('input#email, input[name="email"], input[type="email"]').first();

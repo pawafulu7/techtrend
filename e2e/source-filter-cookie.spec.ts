@@ -1,33 +1,42 @@
 import { test, expect } from '@playwright/test';
+import { waitForArticles, getTimeout, waitForUrlParam } from './helpers/wait-utils';
 
 test.describe('Source Filter Cookie', () => {
   test.beforeEach(async ({ page }) => {
-    // Wait for initial page load
+    // Wait for initial page load with deterministic signals
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.getByTestId('source-filter').first().waitFor({ state: 'visible', timeout: 10000 });
   });
+
   test('should persist source selection in cookie', async ({ page, context }) => {
     // Wait for filters to load
     await page.waitForSelector('[data-testid="source-filter"]');
-    
+
     // Click on a specific source checkbox to deselect it
     const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"]');
-    
+
     // Check if AWS checkbox exists
     if (await awsCheckbox.count() === 0) {
       console.log('AWS checkbox not found, skipping test');
       return;
     }
-    
-    await awsCheckbox.first().click();
-    
+
+    // Use setChecked for explicit state control
+    const awsInput = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"]').first();
+    if (await awsInput.count() > 0) {
+      await awsInput.setChecked(false);
+    } else {
+      await awsCheckbox.first().click();
+    }
+
     // Wait for navigation to complete
     await page.waitForURL(/sources=/);
-    
+
     // Get cookies
     const cookies = await context.cookies();
     const sourceFilterCookie = cookies.find(c => c.name === 'source-filter');
-    
+
     // Cookie should be set
     expect(sourceFilterCookie).toBeDefined();
     expect(sourceFilterCookie?.value).not.toContain('aws');
@@ -36,25 +45,25 @@ test.describe('Source Filter Cookie', () => {
   test('should restore source selection from cookie on page reload', async ({ page }) => {
     // Navigate to home page with specific sources selected
     await page.goto('/?sources=devto,qiita');
-    
+
     // Wait for filters to load
     await page.waitForSelector('[data-testid="source-filter"]');
-    
+
     // Reload the page (without URL params)
     await page.goto('/');
     await page.waitForSelector('[data-testid="source-filter"]');
-    
+
     // Check that the selection is restored from cookie
     const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"] input').first();
     const devtoCheckbox = page.locator('[data-testid="source-checkbox-devto"] input[type="checkbox"], [data-testid="source-checkbox-devto"] input').first();
     const qiitaCheckbox = page.locator('[data-testid="source-checkbox-qiita"] input[type="checkbox"], [data-testid="source-checkbox-qiita"] input').first();
-    
+
     // Check if checkboxes exist
     if (await awsCheckbox.count() === 0) {
       console.log('Checkboxes not found, skipping test');
       return;
     }
-    
+
     // AWS should be unchecked, devto and qiita should be checked
     await expect(awsCheckbox).not.toBeChecked();
     await expect(devtoCheckbox).toBeChecked();
@@ -65,88 +74,71 @@ test.describe('Source Filter Cookie', () => {
     // First set a cookie by visiting with certain sources
     await page.goto('/?sources=devto');
     await page.waitForSelector('[data-testid="source-filter"]');
-    
+
     // Now visit with different URL params
     await page.goto('/?sources=aws,qiita');
     await page.waitForSelector('[data-testid="source-filter"]');
-    
+
     // Check that URL params take priority
     const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"] input').first();
     const devtoCheckbox = page.locator('[data-testid="source-checkbox-devto"] input[type="checkbox"], [data-testid="source-checkbox-devto"] input').first();
     const qiitaCheckbox = page.locator('[data-testid="source-checkbox-qiita"] input[type="checkbox"], [data-testid="source-checkbox-qiita"] input').first();
-    
+
     if (await awsCheckbox.count() === 0) {
       console.log('Checkboxes not found, skipping test');
       return;
     }
-    
+
     await expect(awsCheckbox).toBeChecked();
     await expect(devtoCheckbox).not.toBeChecked();
     await expect(qiitaCheckbox).toBeChecked();
   });
 
   test('should work with select all and deselect all buttons', async ({ page, context }) => {
-    // CI環境用の初期待機
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
-    
+    // Wait for source filter to be ready
     await page.waitForSelector('[data-testid="source-filter"]', { timeout: 10000 });
-    
+
     // Look for select/deselect buttons with longer timeout
     const deselectAllButton = page.locator('[data-testid="deselect-all-button"]:visible');
     const selectAllButton = page.locator('[data-testid="select-all-button"]:visible');
-    
-    // CI環境用に待機時間を延長
-    await page.waitForTimeout(1000);
-    
+
     // Check if buttons exist
     if (await deselectAllButton.count() === 0 || await selectAllButton.count() === 0) {
       console.log('Select/deselect buttons not found, skipping test');
       return;
     }
-    
-    // Click deselect all
-    await deselectAllButton.click();
-    
-    // CI環境用に長めの待機
-    await page.waitForTimeout(2000);
-    
-    // URLパラメータの更新を待機（より柔軟な方法）
-    try {
-      await page.waitForFunction(
-        () => {
-          const url = new URL(window.location.href);
-          // sources パラメータが存在するか、またはURLが変更されたかチェック
-          return url.searchParams.has('sources') || url.href !== 'http://localhost:3000/';
-        },
-        { timeout: 10000 }
-      );
-    } catch (error) {
-      // タイムアウトした場合、現在のURLを確認（クエリ文字列はマスク）
-      const currentUrl = page.url();
-      const safeUrl = currentUrl.replace(/\?.*$/, '?<redacted>');
-      console.log(`Current URL after deselect all: ${safeUrl}`);
-      // エラーを再スローせず、テストを続行
-    }
-    
+
+    // Click deselect all and wait for URL change
+    const urlPromise = page.waitForURL(/sources=/, { timeout: 10000 });
+    await Promise.all([urlPromise, deselectAllButton.click()]);
+
     // Check cookie is set to empty
     const cookies1 = await context.cookies();
     const cookie1 = cookies1.find(c => c.name === 'source-filter');
     // Cookie behavior may vary - it might be undefined or have a specific value
-    
-    // CI環境用に待機を追加
-    await page.waitForTimeout(1000);
-    
-    // Click select all
+
+    // Click select all and wait for URL to update or clear
     await selectAllButton.click();
-    
-    // CI環境用に長めの待機
-    await page.waitForTimeout(1500);
-    
-    // すべて選択の場合、URLにsourcesパラメータが含まれるか確認
-    // 実装によってはsources=allやsources=noneなどの値を持つ可能性がある
+    await page.waitForURL(
+      (url) => {
+        const params = url.searchParams;
+        const value = params.get('sources');
+        return value === null || value === 'all';
+      },
+      { timeout: getTimeout('short') },
+    ).catch(async () => {
+      // fallback for legacy builds that momentarily keep `sources=none`
+      await waitForUrlParam(page, 'sources', 'none', { timeout: getTimeout('short') });
+    });
+
+    await waitForArticles(page, {
+      timeout: getTimeout('medium'),
+      allowEmpty: true,
+      waitForNetworkIdle: false
+    });
+
+    // Check final URL state
     const url = page.url();
-    // すべて選択時の動作を確認（sources=がない、またはsources=allなど）
     const hasSourceParam = url.includes('sources=');
     if (hasSourceParam) {
       // sources=noneまたはsources=allの場合を許容
@@ -161,25 +153,25 @@ test.describe('Source Filter Cookie', () => {
     // Set initial selection
     await page.goto('/?sources=aws,devto');
     await page.waitForSelector('[data-testid="source-filter"]');
-    
+
     // Navigate to a different page (if available)
     // For now, just reload
     await page.reload();
     await page.waitForSelector('[data-testid="source-filter"]');
-    
+
     // Remove URL params by navigating to base
     await page.goto('/');
     await page.waitForSelector('[data-testid="source-filter"]');
-    
+
     // Check selection is maintained
     const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"] input').first();
     const devtoCheckbox = page.locator('[data-testid="source-checkbox-devto"] input[type="checkbox"], [data-testid="source-checkbox-devto"] input').first();
-    
+
     if (await awsCheckbox.count() === 0) {
       console.log('Checkboxes not found, skipping test');
       return;
     }
-    
+
     await expect(awsCheckbox).toBeChecked();
     await expect(devtoCheckbox).toBeChecked();
   });
@@ -189,11 +181,11 @@ test.describe('Source Filter Cookie', () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
-    
+    await page.waitForLoadState('domcontentloaded');
+
     // Try to find mobile filter button
     const mobileFilterButton = page.locator('button').filter({ hasText: /フィルター|filter/i }).first();
-    
+
     if (await mobileFilterButton.count() === 0) {
       // If no mobile filter button, check if filters are already visible
       const sourceFilter = page.locator('[data-testid="source-filter"]');
@@ -204,25 +196,24 @@ test.describe('Source Filter Cookie', () => {
     } else {
       // Open mobile filters
       await mobileFilterButton.click();
-      await page.waitForTimeout(500);
+      // Wait for filter panel to appear
+      await page.getByTestId('source-filter').last().waitFor({ state: 'visible', timeout: 5000 });
     }
-    
+
     // Wait for source filter to be visible - use last() for mobile sheet which appears on top
     const sourceFilter = page.locator('[data-testid="source-filter"]').last();
     await expect(sourceFilter).toBeVisible({ timeout: 5000 });
-    
+
     // Toggle a source
     const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"]').first();
-    
+
     if (await awsCheckbox.count() === 0) {
       console.log('AWS checkbox not found in mobile view, skipping test');
       return;
     }
-    
+
+    // Click and wait for URL to update
     await awsCheckbox.click();
-    await page.waitForTimeout(500);
-    
-    // Check URL updated
-    await expect(page).toHaveURL(/sources=/);
+    await page.waitForURL(/sources=/, { timeout: 5000 });
   });
 });

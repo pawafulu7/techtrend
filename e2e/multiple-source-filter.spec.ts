@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForArticles } from './helpers/wait-utils';
+import { waitForArticles, getTimeout, waitForUrlParam } from './helpers/wait-utils';
 
 // 環境別タイムアウト値
 const timeout = process.env.CI ? 30000 : 15000;
@@ -53,21 +53,24 @@ test.describe('Multiple Source Filter', () => {
         // Select first two sources
         await checkboxes.nth(0).check();
         await checkboxes.nth(1).check();
-        
-        // Wait for URL to update
-        await page.waitForFunction(() => window.location.search.includes('sources='));
-        
+
+        // Wait for URL to update with sources parameter
+        await waitForUrlParam(page, 'sources', undefined, {
+          timeout: getTimeout('short'),
+          retries: 3,
+          polling: 'fast',
+        });
+
         // Verify URL contains sources parameter
         const url = page.url();
         expect(url).toContain('sources=');
-        
+
         // Wait for articles to reload
-        await page.waitForLoadState('networkidle');
-        
-        // Verify articles are displayed
-        const articles = page.locator('[data-testid="article-list"] article, article');
-        const articleCount = await articles.count();
-        expect(articleCount).toBeGreaterThanOrEqual(0);
+        await waitForArticles(page, {
+          timeout: getTimeout('medium'),
+          waitForNetworkIdle: false,
+          allowEmpty: true,
+        });
       }
     }
   });
@@ -85,7 +88,11 @@ test.describe('Multiple Source Filter', () => {
         return;
       }
       await selectAllButton.click();
-      await page.waitForLoadState('networkidle');
+      await waitForArticles(page, {
+        timeout: getTimeout('medium'),
+        waitForNetworkIdle: false,
+        allowEmpty: true,
+      });
       
       // Check if all checkboxes are selected
       const checkboxes = filtersSection.locator('input[type="checkbox"]');
@@ -100,7 +107,11 @@ test.describe('Multiple Source Filter', () => {
         const deselectButton = page.locator('[data-testid="deselect-all-button"]:visible');
         if (await deselectButton.count() > 0) {
           await deselectButton.click();
-          await page.waitForLoadState('networkidle');
+          await waitForArticles(page, {
+            timeout: getTimeout('medium'),
+            waitForNetworkIdle: false,
+            allowEmpty: true,
+          });
           
           // Should still show all articles (no filter)
           const url2 = page.url();
@@ -129,7 +140,11 @@ test.describe('Multiple Source Filter', () => {
         
         // Reload page
         await page.reload();
-        await page.waitForLoadState('networkidle');
+        await waitForArticles(page, {
+          timeout: getTimeout('medium'),
+          waitForNetworkIdle: false,
+          allowEmpty: true,
+        });
         
         // Verify URL is preserved
         const urlAfter = page.url();
@@ -162,9 +177,13 @@ test.describe('Multiple Source Filter', () => {
       
       if (checkboxCount >= 1) {
         await checkboxes.nth(0).check();
-        
-        // Wait for network idle instead of fixed timeout
-        await page.waitForLoadState('networkidle');
+
+        // Wait for articles to update
+        await waitForArticles(page, {
+          timeout: getTimeout('medium'),
+          waitForNetworkIdle: false,
+          allowEmpty: true,
+        });
         
         // Check if count is displayed
         const countPattern = filtersSection.locator('text=/\\d+/');
@@ -197,7 +216,11 @@ test.describe('Multiple Source Filter', () => {
         if (await paginationNext.isVisible()) {
           // Click next page
           await paginationNext.click();
-          await page.waitForLoadState('networkidle');
+          await waitForArticles(page, {
+            timeout: getTimeout('medium'),
+            waitForNetworkIdle: false,
+            allowEmpty: true,
+          });
           
           // Verify sources parameter is preserved
           const url = page.url();
@@ -257,9 +280,13 @@ test.describe('Multiple Source Filter', () => {
         // Click outside
         await page.keyboard.press('Escape');
       }
-      
+
       // Wait for sheet to close and URL to update
-      await page.waitForLoadState('networkidle');
+      await waitForArticles(page, {
+        timeout: getTimeout('medium'),
+        waitForNetworkIdle: false,
+        allowEmpty: true,
+      });
       
       // Verify URL contains sources
       const url = page.url();

@@ -10,7 +10,7 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 import { cleanupText, finalCleanup } from '@/lib/services/summary-generation';
-import type { UnifiedSummaryService } from '@/lib/ai/service/unified-summary-service';
+import type { UnifiedSummaryServiceImpl } from '@/lib/ai/service/unified-summary-service';
 import type { ArticleWithSource } from '@/types/models';
 
 export interface SummaryGenerationOptions {
@@ -55,11 +55,11 @@ interface ApiStats {
  */
 export class SummaryManager {
   private apiStats: ApiStats;
-  private summaryService: UnifiedSummaryService;
+  private summaryService: UnifiedSummaryServiceImpl;
 
   constructor(
     private prisma: PrismaClient,
-    summaryService?: UnifiedSummaryService
+    summaryService?: UnifiedSummaryServiceImpl
   ) {
     this.apiStats = {
       attempts: 0,
@@ -150,7 +150,10 @@ export class SummaryManager {
           generated++;
 
           // Invalidate cache
-          await cacheInvalidator.invalidateArticle(article.id);
+          await cacheInvalidator.onArticleUpdated(article.id, {
+            summary: result.summary,
+            detailedSummary: result.detailedSummary
+          });
 
           // Rate limiting
           await this.sleep(2000);
@@ -248,7 +251,10 @@ export class SummaryManager {
           generated++;
 
           // Invalidate cache
-          await cacheInvalidator.invalidateArticle(article.id);
+          await cacheInvalidator.onArticleUpdated(article.id, {
+            summary: result.summary,
+            detailedSummary: result.detailedSummary
+          });
 
           // Rate limiting
           await this.sleep(3000);
@@ -280,23 +286,25 @@ export class SummaryManager {
       const daysAgo = new Date();
       daysAgo.setDate(daysAgo.getDate() - (options.days || 7));
 
-      const query: Prisma.ArticleFindManyArgs = {
-        where: {
-          OR: [
-            { summary: null },
-            { summary: '' }
-          ],
-          publishedAt: {
-            gte: daysAgo
-          }
-        },
-        include: { source: true },
-        orderBy: { publishedAt: 'desc' }
+      const where: Prisma.ArticleWhereInput = {
+        OR: [
+          { summary: null },
+          { summary: '' }
+        ],
+        publishedAt: {
+          gte: daysAgo
+        }
       };
 
       if (options.source) {
-        query.where.source = { name: options.source };
+        where.source = { name: options.source };
       }
+
+      const query: Prisma.ArticleFindManyArgs = {
+        where,
+        include: { source: true },
+        orderBy: { publishedAt: 'desc' }
+      };
 
       const articles = await this.prisma.article.findMany(query) as ArticleWithSource[];
 
@@ -344,7 +352,10 @@ export class SummaryManager {
           generated++;
 
           // Invalidate cache
-          await cacheInvalidator.invalidateArticle(article.id);
+          await cacheInvalidator.onArticleUpdated(article.id, {
+            summary: result.summary,
+            detailedSummary: result.detailedSummary
+          });
 
           // Rate limiting
           await this.sleep(2000);
@@ -390,7 +401,7 @@ export class SummaryManager {
         summary: cleanupText(result.summary),
         detailedSummary: finalCleanup(result.detailedSummary),
         translatedTitle: result.translatedTitle,
-        tags: result.tags
+        tags: result.tags || []
       };
     } catch (error) {
       this.apiStats.failures++;
