@@ -403,14 +403,13 @@ async function main() {
       default:
         console.error('不明なコマンド:', options.command);
         printHelp();
-        process.exit(1);
+        process.exitCode = 1;
+        return;
     }
-
-    process.exit(0);
 
   } catch (error) {
     console.error('実行エラー:', error);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
   }

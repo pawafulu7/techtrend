@@ -331,7 +331,9 @@ if (require.main === module) {
   }
 
   autoRegenerateLowQuality(options)
-    .then(() => process.exit(0))
+    .then((result) => {
+      process.exit(result.success ? 0 : 1);
+    })
     .catch((error) => {
       console.error(error);
       process.exit(1);
