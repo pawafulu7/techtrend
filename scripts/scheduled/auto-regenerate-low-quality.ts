@@ -330,7 +330,12 @@ if (require.main === module) {
     }
   }
 
-  autoRegenerateLowQuality(options).catch(console.error);
+  autoRegenerateLowQuality(options)
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
 }
 
 export { autoRegenerateLowQuality, AutoRegenerateOptions, RegenerationResult };
