@@ -155,7 +155,12 @@ async function main() {
 
 // 直接実行された場合
 if (require.main === module) {
-  main();
+  main()
+    .then(() => process.exit(process.exitCode || 0))
+    .catch((error) => {
+      console.error('Unhandled error:', error);
+      process.exit(1);
+    });
 }
 
 // エクスポート（scheduler-v2.tsから呼び出せるように）

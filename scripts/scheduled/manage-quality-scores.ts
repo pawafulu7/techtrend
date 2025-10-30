@@ -403,14 +403,13 @@ async function main() {
       default:
         console.error('不明なコマンド:', options.command);
         printHelp();
-        process.exit(1);
+        process.exitCode = 1;
+        return;
     }
-
-    process.exit(0);
 
   } catch (error) {
     console.error('実行エラー:', error);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
   }
@@ -418,7 +417,12 @@ async function main() {
 
 // 直接実行された場合
 if (require.main === module) {
-  main();
+  main()
+    .then(() => process.exit(process.exitCode || 0))
+    .catch((error) => {
+      console.error('Unhandled error:', error);
+      process.exit(1);
+    });
 }
 
 // エクスポート（scheduler-v2.tsから呼び出せるように）
