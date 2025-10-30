@@ -31,7 +31,7 @@ test.describe('Source Filter Cookie', () => {
     }
 
     // Wait for navigation to complete
-    await page.waitForURL(/sources=/);
+    await page.waitForURL(/sources=/, { waitUntil: 'commit' });
 
     // Get cookies
     const cookies = await context.cookies();
@@ -109,8 +109,10 @@ test.describe('Source Filter Cookie', () => {
     }
 
     // Click deselect all and wait for URL change
-    const urlPromise = page.waitForURL(/sources=/, { timeout: 10000 });
-    await Promise.all([urlPromise, deselectAllButton.click()]);
+    await Promise.all([
+      page.waitForURL(/sources=/, { timeout: 10000, waitUntil: 'commit' }),
+      deselectAllButton.click()
+    ]);
 
     // Check cookie is set to empty
     const cookies1 = await context.cookies();
@@ -214,6 +216,6 @@ test.describe('Source Filter Cookie', () => {
 
     // Click and wait for URL to update
     await awsCheckbox.click();
-    await page.waitForURL(/sources=/, { timeout: 5000 });
+    await page.waitForURL(/sources=/, { timeout: 5000, waitUntil: 'commit' });
   });
 });
