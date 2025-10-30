@@ -84,11 +84,11 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // Verify page loads successfully
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
-
-    // Verify articles are displayed
+    // Wait for first article card to be visible (handles async fetch)
     const articles = page.locator('[data-testid="article-card"]');
+    await expect(articles.first()).toBeVisible({ timeout: 15000 });
+
+    // Now count articles
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 
@@ -112,10 +112,12 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // Articles should be displayed even if some thumbnails are missing
+    // Wait for first article card to be visible (handles async fetch)
     const articles = page.locator('[data-testid="article-card"]');
-    const count = await articles.count();
+    await expect(articles.first()).toBeVisible({ timeout: 15000 });
 
+    // Now count articles
+    const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 
     // Page should be interactive
