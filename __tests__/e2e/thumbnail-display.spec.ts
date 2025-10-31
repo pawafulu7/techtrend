@@ -84,14 +84,19 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // Wait for first article card to be visible (handles async fetch)
+    // Wait for article cards with polling to handle SSR placeholder removal
     const articles = page.locator('[data-testid="article-card"]');
-    await expect(articles.first()).toBeVisible({ timeout: 15000 });
 
-    // Wait for data stability (SSR placeholder may be removed during hydration)
-    await expect(articles).not.toHaveCount(0, { timeout: 5000 });
+    // Poll continuously until count is stable and greater than 0
+    await expect.poll(async () => {
+      const count = await articles.count();
+      return count;
+    }, {
+      timeout: 20000,
+      intervals: [1000, 2000, 5000]
+    }).toBeGreaterThan(0);
 
-    // Now count articles
+    // Verify count is still valid
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 
@@ -115,14 +120,19 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // Wait for first article card to be visible (handles async fetch)
+    // Wait for article cards with polling to handle SSR placeholder removal
     const articles = page.locator('[data-testid="article-card"]');
-    await expect(articles.first()).toBeVisible({ timeout: 15000 });
 
-    // Wait for data stability (SSR placeholder may be removed during hydration)
-    await expect(articles).not.toHaveCount(0, { timeout: 5000 });
+    // Poll continuously until count is stable and greater than 0
+    await expect.poll(async () => {
+      const count = await articles.count();
+      return count;
+    }, {
+      timeout: 20000,
+      intervals: [1000, 2000, 5000]
+    }).toBeGreaterThan(0);
 
-    // Now count articles
+    // Verify count is still valid
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 
