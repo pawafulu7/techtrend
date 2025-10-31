@@ -84,17 +84,16 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // Wait for articles API response to ensure data is loaded
-    await page.waitForResponse(
-      response => response.url().includes('/api/articles') && response.status() === 200,
-      { timeout: 15000 }
-    );
-
-    // Wait for article cards to render after data arrives
+    // Wait for article cards with robust retry mechanism
     const articles = page.locator('[data-testid="article-card"]');
-    await expect(articles.first()).toBeVisible({ timeout: 10000 });
 
-    // Verify count is stable
+    // Poll count until stable and > 0 (handles SSR placeholder removal)
+    await expect(async () => {
+      const count = await articles.count();
+      expect(count).toBeGreaterThan(0);
+    }).toPass({ intervals: [500, 1000, 2000], timeout: 15000 });
+
+    // Final verification
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 
@@ -118,17 +117,16 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // Wait for articles API response to ensure data is loaded
-    await page.waitForResponse(
-      response => response.url().includes('/api/articles') && response.status() === 200,
-      { timeout: 15000 }
-    );
-
-    // Wait for article cards to render after data arrives
+    // Wait for article cards with robust retry mechanism
     const articles = page.locator('[data-testid="article-card"]');
-    await expect(articles.first()).toBeVisible({ timeout: 10000 });
 
-    // Verify count is stable
+    // Poll count until stable and > 0 (handles SSR placeholder removal)
+    await expect(async () => {
+      const count = await articles.count();
+      expect(count).toBeGreaterThan(0);
+    }).toPass({ intervals: [500, 1000, 2000], timeout: 15000 });
+
+    // Final verification
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 
