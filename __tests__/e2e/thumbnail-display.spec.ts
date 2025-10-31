@@ -81,32 +81,34 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     // Disable cache to avoid 304 responses affecting stability
     await context.setExtraHTTPHeaders({ 'Cache-Control': 'no-cache, no-store' });
 
-    await page.goto('/', {
-      waitUntil: 'domcontentloaded',
-      timeout: 30000,
-    });
-    await waitForPageLoad(page, { waitForNetworkIdle: false });
+    // Wait for API response AND navigation simultaneously
+    await Promise.all([
+      page.waitForResponse(
+        res => res.url().includes('/api/articles') && [200, 304].includes(res.status()),
+        { timeout: 15000 }
+      ).catch(() => {}), // Continue even if timeout
+      page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    ]);
 
-    // Wait for articles API response (200 or 304)
-    await page.waitForResponse(
-      res => res.url().includes('/api/articles') && [200, 304].includes(res.status()),
-      { timeout: 10000 }
-    ).catch(() => {}); // Ignore timeout - continue with DOM wait
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // Wait for article cards with detailed rendering check
     const articles = page.locator('[data-testid="article-card"]');
 
-    // Ensure first article is fully rendered (not just in DOM)
+    // Ensure first article is fully rendered
     await expect(articles.first()).toBeVisible({ timeout: 10000 });
 
     // Wait for network to stabilize (helps Chromium initial runs)
     await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
-    // Poll count until stable and > 0 (handles SSR placeholder removal)
-    await expect(async () => {
-      const count = await articles.count();
-      expect(count).toBeGreaterThan(0);
-    }).toPass({ intervals: [500, 1000], timeout: 10000 });
+    // Poll count until stable and > 0
+    await expect.poll(async () => {
+      return await articles.count();
+    }, {
+      intervals: [500, 1000],
+      timeout: 10000,
+      message: 'Article count should be > 0'
+    }).toBeGreaterThan(0);
 
     // Final verification
     const count = await articles.count();
@@ -129,32 +131,34 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     // Disable cache to avoid 304 responses affecting stability
     await context.setExtraHTTPHeaders({ 'Cache-Control': 'no-cache, no-store' });
 
-    await page.goto('/', {
-      waitUntil: 'domcontentloaded',
-      timeout: 30000,
-    });
-    await waitForPageLoad(page, { waitForNetworkIdle: false });
+    // Wait for API response AND navigation simultaneously
+    await Promise.all([
+      page.waitForResponse(
+        res => res.url().includes('/api/articles') && [200, 304].includes(res.status()),
+        { timeout: 15000 }
+      ).catch(() => {}), // Continue even if timeout
+      page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    ]);
 
-    // Wait for articles API response (200 or 304)
-    await page.waitForResponse(
-      res => res.url().includes('/api/articles') && [200, 304].includes(res.status()),
-      { timeout: 10000 }
-    ).catch(() => {}); // Ignore timeout - continue with DOM wait
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // Wait for article cards with detailed rendering check
     const articles = page.locator('[data-testid="article-card"]');
 
-    // Ensure first article is fully rendered (not just in DOM)
+    // Ensure first article is fully rendered
     await expect(articles.first()).toBeVisible({ timeout: 10000 });
 
     // Wait for network to stabilize (helps Chromium initial runs)
     await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
-    // Poll count until stable and > 0 (handles SSR placeholder removal)
-    await expect(async () => {
-      const count = await articles.count();
-      expect(count).toBeGreaterThan(0);
-    }).toPass({ intervals: [500, 1000], timeout: 10000 });
+    // Poll count until stable and > 0
+    await expect.poll(async () => {
+      return await articles.count();
+    }, {
+      intervals: [500, 1000],
+      timeout: 10000,
+      message: 'Article count should be > 0'
+    }).toBeGreaterThan(0);
 
     // Final verification
     const count = await articles.count();
