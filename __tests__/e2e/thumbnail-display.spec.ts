@@ -77,7 +77,10 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     expect(criticalErrors.length).toBe(0);
   });
 
-  test('should render page with custom image loader configured', async ({ page }) => {
+  test('should render page with custom image loader configured', async ({ page, context }) => {
+    // Disable cache to avoid 304 responses affecting stability
+    await context.setExtraHTTPHeaders({ 'Cache-Control': 'no-cache, no-store' });
+
     await page.goto('/', {
       waitUntil: 'domcontentloaded',
       timeout: 30000,
@@ -110,7 +113,10 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     }
   });
 
-  test('should not block page rendering for missing thumbnails', async ({ page }) => {
+  test('should not block page rendering for missing thumbnails', async ({ page, context }) => {
+    // Disable cache to avoid 304 responses affecting stability
+    await context.setExtraHTTPHeaders({ 'Cache-Control': 'no-cache, no-store' });
+
     await page.goto('/', {
       waitUntil: 'domcontentloaded',
       timeout: 30000,
