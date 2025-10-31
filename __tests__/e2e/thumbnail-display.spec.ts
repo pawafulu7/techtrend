@@ -84,19 +84,17 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // Wait for article cards with polling to handle SSR placeholder removal
+    // Wait for articles API response to ensure data is loaded
+    await page.waitForResponse(
+      response => response.url().includes('/api/articles') && response.status() === 200,
+      { timeout: 15000 }
+    );
+
+    // Wait for article cards to render after data arrives
     const articles = page.locator('[data-testid="article-card"]');
+    await expect(articles.first()).toBeVisible({ timeout: 10000 });
 
-    // Poll continuously until count is stable and greater than 0
-    await expect.poll(async () => {
-      const count = await articles.count();
-      return count;
-    }, {
-      timeout: 20000,
-      intervals: [1000, 2000, 5000]
-    }).toBeGreaterThan(0);
-
-    // Verify count is still valid
+    // Verify count is stable
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 
@@ -120,19 +118,17 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // Wait for article cards with polling to handle SSR placeholder removal
+    // Wait for articles API response to ensure data is loaded
+    await page.waitForResponse(
+      response => response.url().includes('/api/articles') && response.status() === 200,
+      { timeout: 15000 }
+    );
+
+    // Wait for article cards to render after data arrives
     const articles = page.locator('[data-testid="article-card"]');
+    await expect(articles.first()).toBeVisible({ timeout: 10000 });
 
-    // Poll continuously until count is stable and greater than 0
-    await expect.poll(async () => {
-      const count = await articles.count();
-      return count;
-    }, {
-      timeout: 20000,
-      intervals: [1000, 2000, 5000]
-    }).toBeGreaterThan(0);
-
-    // Verify count is still valid
+    // Verify count is stable
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 
