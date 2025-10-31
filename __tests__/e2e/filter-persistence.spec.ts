@@ -55,7 +55,7 @@ test.describe('フィルター条件の永続化', () => {
     if (articleCount > 0) {
       // 記事がある場合は記事詳細ページへ遷移
       await safeClick(firstArticle);
-      await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
+      await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium'), waitUntil: 'commit' });
       await waitForPageLoad(page, { waitForNetworkIdle: true });
       navigationPath = 'via article';
     } else {
@@ -218,7 +218,7 @@ test.describe('フィルター条件の永続化', () => {
       const articleCount = await firstArticle.count();
       if (articleCount > 0) {
         await firstArticle.click();
-        await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium') });
+        await page.waitForURL(/\/articles\/.+/, { timeout: getTimeout('medium'), waitUntil: 'commit' });
 
         // 4. トップページに戻る
         await page.goto('/');
@@ -546,11 +546,11 @@ test.describe('フィルター条件の永続化', () => {
     const articleCount = await firstArticle.count();
     if (articleCount > 0) {
       await firstArticle.click();
-      await page.waitForURL(/\/articles\/.+/);
+      await page.waitForURL(/\/articles\/.+/, { waitUntil: 'commit' });
 
       // 3. 記事一覧に戻るリンクをクリック
       await page.click('a:has-text("記事一覧に戻る")');
-      await page.waitForURL(url => url.pathname === '/', { timeout: getTimeout('long') });
+      await page.waitForURL(url => url.pathname === '/', { timeout: getTimeout('long'), waitUntil: 'commit' });
       
       // returningパラメータが削除されるのを待つ（CI環境では長めに待機）
       const returningTimeout = isCI ? 30000 : 10000;
