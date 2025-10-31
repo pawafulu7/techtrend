@@ -81,6 +81,10 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-test-secret-key-for-testing-only-32-chars}
       PRISMA_MIGRATION_ENGINE_SKIP_TRANSACTIONS: "1"
       NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"
+    volumes:
+      - ./__tests__:/app/__tests__:ro
+      - ./e2e:/app/e2e:ro
+      - ./playwright.config.ts:/app/playwright.config.ts:ro
     shm_size: "2gb"
     init: true
     depends_on:
