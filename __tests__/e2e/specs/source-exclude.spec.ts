@@ -197,7 +197,7 @@ test.describe('ソースフィルタリング機能', () => {
 
     await page.waitForURL(
       url => !url.searchParams.has('sources') || url.searchParams.get('sources') !== 'none',
-      { timeout: getTimeout('short') }
+      { timeout: getTimeout('short'), waitUntil: 'commit' }
     );
 
     await waitForArticles(page, {
@@ -321,7 +321,7 @@ test.describe('ソースフィルタリング機能', () => {
         const value = url.searchParams.get('sources');
         return !!value && value !== 'none';
       },
-      { timeout: getTimeout('short') }
+      { timeout: getTimeout('short'), waitUntil: 'commit' }
     );
 
     await waitForArticles(page, {
@@ -370,7 +370,7 @@ test.describe('ソースフィルタリング機能', () => {
 
     await page.waitForURL(
       url => !url.searchParams.has('sources'),
-      { timeout: getTimeout('short') }
+      { timeout: getTimeout('short'), waitUntil: 'commit' }
     );
 
     await waitForArticles(page, {
