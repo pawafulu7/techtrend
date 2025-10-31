@@ -31,7 +31,7 @@ test.describe('Source Filter Cookie', () => {
     }
 
     // Wait for navigation to complete
-    await page.waitForURL(/sources=/);
+    await page.waitForURL(/sources=/, { waitUntil: 'commit' });
 
     // Get cookies
     const cookies = await context.cookies();
@@ -109,8 +109,10 @@ test.describe('Source Filter Cookie', () => {
     }
 
     // Click deselect all and wait for URL change
-    const urlPromise = page.waitForURL(/sources=/, { timeout: 10000 });
-    await Promise.all([urlPromise, deselectAllButton.click()]);
+    await Promise.all([
+      page.waitForURL(/sources=/, { timeout: 10000, waitUntil: 'commit' }),
+      deselectAllButton.click()
+    ]);
 
     // Check cookie is set to empty
     const cookies1 = await context.cookies();
@@ -200,9 +202,9 @@ test.describe('Source Filter Cookie', () => {
       await page.getByTestId('source-filter').last().waitFor({ state: 'visible', timeout: 5000 });
     }
 
-    // Wait for source filter to be visible - use last() for mobile sheet which appears on top
-    const sourceFilter = page.locator('[data-testid="source-filter"]').last();
-    await expect(sourceFilter).toBeVisible({ timeout: 5000 });
+    // Wait for source filter to be visible - use :visible to target only rendered sheet
+    const sourceFilter = page.locator('[data-testid="source-filter"]:visible').last();
+    await expect(sourceFilter).toBeVisible({ timeout: 10000 });
 
     // Toggle a source
     const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"]').first();
@@ -214,6 +216,6 @@ test.describe('Source Filter Cookie', () => {
 
     // Click and wait for URL to update
     await awsCheckbox.click();
-    await page.waitForURL(/sources=/, { timeout: 5000 });
+    await page.waitForURL(/sources=/, { timeout: 5000, waitUntil: 'commit' });
   });
 });

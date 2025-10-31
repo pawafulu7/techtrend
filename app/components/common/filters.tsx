@@ -53,15 +53,27 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   
   const [selectedSources, setSelectedSources] = useState<string[]>(getInitialSources);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  
+  const prevSearchParamsRef = useRef<string>('');
+  const prevSourcesRef = useRef<Array<{ id: string; name: string }>>(sources);
+
   // ソースをカテゴリごとにグループ化
   const groupedSources = groupSourcesByCategory(sources);
-  
+
   // URLパラメータが変更されたときに選択状態を更新
   useEffect(() => {
+    const currentSearchString = searchParams.toString();
+
+    // Skip if both search params and sources haven't changed
+    if (prevSearchParamsRef.current === currentSearchString && prevSourcesRef.current === sources) {
+      return;
+    }
+
+    prevSearchParamsRef.current = currentSearchString;
+    prevSourcesRef.current = sources;
+
     const sourcesParam = searchParams.get('sources');
     const sourceIdParam = searchParams.get('sourceId');
-    
+
     if (sourcesParam === 'none') {
       setSelectedSources([]);
     } else if (sourcesParam) {
@@ -210,6 +222,15 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
       }
     }, 150); // 150ms のデバウンス
   };
+
+  // Cleanup pending timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (applySourceFilterRef.current) {
+        clearTimeout(applySourceFilterRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="space-y-3" data-testid="filter-area">
