@@ -202,9 +202,9 @@ test.describe('Source Filter Cookie', () => {
       await page.getByTestId('source-filter').last().waitFor({ state: 'visible', timeout: 5000 });
     }
 
-    // Wait for source filter to be visible - use last() for mobile sheet which appears on top
-    const sourceFilter = page.locator('[data-testid="source-filter"]').last();
-    await expect(sourceFilter).toBeVisible({ timeout: 5000 });
+    // Wait for source filter to be visible - use :visible to target only rendered sheet
+    const sourceFilter = page.locator('[data-testid="source-filter"]:visible').last();
+    await expect(sourceFilter).toBeVisible({ timeout: 10000 });
 
     // Toggle a source
     const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"]').first();

@@ -88,6 +88,9 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     const articles = page.locator('[data-testid="article-card"]');
     await expect(articles.first()).toBeVisible({ timeout: 15000 });
 
+    // Wait for data stability (SSR placeholder may be removed during hydration)
+    await expect(articles).not.toHaveCount(0, { timeout: 5000 });
+
     // Now count articles
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
@@ -115,6 +118,9 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     // Wait for first article card to be visible (handles async fetch)
     const articles = page.locator('[data-testid="article-card"]');
     await expect(articles.first()).toBeVisible({ timeout: 15000 });
+
+    // Wait for data stability (SSR placeholder may be removed during hydration)
+    await expect(articles).not.toHaveCount(0, { timeout: 5000 });
 
     // Now count articles
     const count = await articles.count();
