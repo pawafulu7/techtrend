@@ -1,6 +1,48 @@
 import { test, expect } from '@playwright/test';
 import { waitForPageLoad } from '../e2e/utils/e2e-helpers';
 
+// Mock article data for deterministic testing (matches /api/articles/list contract)
+const MOCK_ARTICLES_RESPONSE = {
+  data: {
+    items: [
+      {
+        id: 'test-1',
+        title: 'Test Article 1',
+        url: 'https://example.com/1',
+        publishedAt: new Date().toISOString(),
+        source: { id: 'test-source', name: 'Test Source' },
+        thumbnail: 'https://example.com/thumb1.jpg',
+        summary: 'Test summary 1',
+        tags: []
+      },
+      {
+        id: 'test-2',
+        title: 'Test Article 2',
+        url: 'https://example.com/2',
+        publishedAt: new Date().toISOString(),
+        source: { id: 'test-source', name: 'Test Source' },
+        thumbnail: null,
+        summary: 'Test summary 2',
+        tags: []
+      },
+      {
+        id: 'test-3',
+        title: 'Test Article 3',
+        url: 'https://example.com/3',
+        publishedAt: new Date().toISOString(),
+        source: { id: 'test-source', name: 'Test Source' },
+        thumbnail: 'https://example.com/thumb3.jpg',
+        summary: 'Test summary 3',
+        tags: []
+      }
+    ],
+    total: 3,
+    page: 1,
+    totalPages: 1,
+    limit: 20
+  }
+};
+
 test.describe('Custom Image Loader - Page Rendering', () => {
   test('should render article detail page without image errors', async ({ page }) => {
     // Navigate to article detail page
@@ -77,9 +119,15 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     expect(criticalErrors.length).toBe(0);
   });
 
-  test('should render page with custom image loader configured', async ({ page, context }) => {
-    // Disable cache to avoid 304 responses affecting stability
-    await context.setExtraHTTPHeaders({ 'Cache-Control': 'no-cache, no-store' });
+  test('should render page with custom image loader configured', async ({ page }) => {
+    // Mock articles API for deterministic testing
+    await page.route('**/api/articles*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_ARTICLES_RESPONSE),
+      })
+    );
 
     await page.goto('/', {
       waitUntil: 'domcontentloaded',
@@ -87,17 +135,9 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // UI-focused wait: poll count directly until stable
+    // Wait for article cards to render
     const articles = page.locator('[data-testid="article-card"]');
-
-    await expect.poll(
-      async () => await articles.count(),
-      {
-        intervals: [500, 1000, 2000],
-        timeout: 20000,
-        message: 'Article count should stabilize at > 0'
-      }
-    ).toBeGreaterThan(0);
+    await expect(articles.first()).toBeVisible({ timeout: 10000 });
 
     // Final verification
     const count = await articles.count();
@@ -116,9 +156,15 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     }
   });
 
-  test('should not block page rendering for missing thumbnails', async ({ page, context }) => {
-    // Disable cache to avoid 304 responses affecting stability
-    await context.setExtraHTTPHeaders({ 'Cache-Control': 'no-cache, no-store' });
+  test('should not block page rendering for missing thumbnails', async ({ page }) => {
+    // Mock articles API for deterministic testing
+    await page.route('**/api/articles*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_ARTICLES_RESPONSE),
+      })
+    );
 
     await page.goto('/', {
       waitUntil: 'domcontentloaded',
@@ -126,17 +172,9 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // UI-focused wait: poll count directly until stable
+    // Wait for article cards to render
     const articles = page.locator('[data-testid="article-card"]');
-
-    await expect.poll(
-      async () => await articles.count(),
-      {
-        intervals: [500, 1000, 2000],
-        timeout: 20000,
-        message: 'Article count should stabilize at > 0'
-      }
-    ).toBeGreaterThan(0);
+    await expect(articles.first()).toBeVisible({ timeout: 10000 });
 
     // Final verification
     const count = await articles.count();
