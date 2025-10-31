@@ -195,10 +195,14 @@ test.describe('ソースフィルタリング機能', () => {
     // 全て選択ボタンを再度クリック
     await selectAllButton.click();
 
-    await page.waitForURL(
-      url => !url.searchParams.has('sources') || url.searchParams.get('sources') !== 'none',
-      { timeout: getTimeout('short'), waitUntil: 'commit' }
-    );
+    // Poll URL directly for Firefox compatibility (waitUntil: 'commit' unreliable on same-document SPA)
+    await expect.poll(
+      async () => {
+        const url = new URL(page.url());
+        return !url.searchParams.has('sources') || url.searchParams.get('sources') !== 'none';
+      },
+      { timeout: getTimeout('short') }
+    ).toBeTruthy();
 
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
@@ -316,13 +320,15 @@ test.describe('ソースフィルタリング機能', () => {
       }
     }
 
-    await page.waitForURL(
-      url => {
+    // Poll URL directly for Firefox compatibility
+    await expect.poll(
+      async () => {
+        const url = new URL(page.url());
         const value = url.searchParams.get('sources');
         return !!value && value !== 'none';
       },
-      { timeout: getTimeout('short'), waitUntil: 'commit' }
-    );
+      { timeout: getTimeout('short') }
+    ).toBeTruthy();
 
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
@@ -368,10 +374,14 @@ test.describe('ソースフィルタリング機能', () => {
       });
     }
 
-    await page.waitForURL(
-      url => !url.searchParams.has('sources'),
-      { timeout: getTimeout('short'), waitUntil: 'commit' }
-    );
+    // Poll URL directly for Firefox compatibility
+    await expect.poll(
+      async () => {
+        const url = new URL(page.url());
+        return !url.searchParams.has('sources');
+      },
+      { timeout: getTimeout('short') }
+    ).toBeTruthy();
 
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
