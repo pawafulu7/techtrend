@@ -23,7 +23,7 @@ test.describe('ソースフィルタープリセット機能', () => {
 
     // URL更新またはフィルター適用を待つ（URLが変わらない場合もある）
     try {
-      await page.waitForURL(/sources=/, { timeout: 5000 });
+      await page.waitForURL(/sources=/, { timeout: 5000, waitUntil: 'commit' });
     } catch {
       // URLが変わらない場合もあるので、フィルター適用を待つ
       await page.waitForTimeout(1000);
@@ -54,7 +54,7 @@ test.describe('ソースフィルタープリセット機能', () => {
 
     // URL更新またはフィルター適用を待つ
     try {
-      await page.waitForURL(/sources=/, { timeout: 5000 });
+      await page.waitForURL(/sources=/, { timeout: 5000, waitUntil: 'commit' });
     } catch {
       await page.waitForTimeout(1000);
     }
@@ -81,7 +81,7 @@ test.describe('ソースフィルタープリセット機能', () => {
 
     // URL更新またはフィルター適用を待つ
     try {
-      await page.waitForURL(/sources=/, { timeout: 5000 });
+      await page.waitForURL(/sources=/, { timeout: 5000, waitUntil: 'commit' });
     } catch {
       await page.waitForTimeout(1000);
     }
@@ -108,7 +108,7 @@ test.describe('ソースフィルタープリセット機能', () => {
 
     // URL更新またはフィルター適用を待つ
     try {
-      await page.waitForURL(/sources=/, { timeout: 5000 });
+      await page.waitForURL(/sources=/, { timeout: 5000, waitUntil: 'commit' });
     } catch {
       await page.waitForTimeout(1000);
     }
@@ -135,7 +135,7 @@ test.describe('ソースフィルタープリセット機能', () => {
 
     // URL更新またはフィルター適用を待つ
     try {
-      await page.waitForURL(/sources=/, { timeout: 5000 });
+      await page.waitForURL(/sources=/, { timeout: 5000, waitUntil: 'commit' });
     } catch {
       await page.waitForTimeout(1000);
     }
@@ -180,7 +180,7 @@ test.describe('ソースフィルタープリセット機能', () => {
 
     // URL更新またはフィルター適用を待つ
     try {
-      await page.waitForURL(/sources=/, { timeout: 5000 });
+      await page.waitForURL(/sources=/, { timeout: 5000, waitUntil: 'commit' });
     } catch {
       await page.waitForTimeout(1000);
     }
