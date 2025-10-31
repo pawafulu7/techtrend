@@ -78,14 +78,14 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     await firstArticle.click();
     
     // 記事詳細ページが表示されるまで待機
-    await page.waitForURL(/\/articles\/[a-z0-9]+/, { timeout: 10000 });
+    await page.waitForURL(/\/articles\/[a-z0-9]+/, { timeout: 10000, waitUntil: 'commit' });
     await page.waitForSelector('h1', { timeout: 10000 });
     
     // 4. ブラウザの戻るボタンを使用
     await page.goBack();
     
     // 一覧ページが表示されるまで待機
-    await page.waitForURL(url => url.pathname === '/');
+    await page.waitForURL(url => url.pathname === '/', { waitUntil: 'commit' });
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. スクロール復元の完了を待つ
@@ -192,13 +192,13 @@ test.describe('スクロール復元時のトップボタン表示', () => {
     const firstArticle = page.locator('[data-testid="article-card"]').first();
     await firstArticle.click();
     
-    await page.waitForURL(/\/articles\/[a-z0-9]+/, { timeout: 10000 });
+    await page.waitForURL(/\/articles\/[a-z0-9]+/, { timeout: 10000, waitUntil: 'commit' });
     await page.waitForSelector('h1', { timeout: 10000 });
-    
+
     // 4. ブラウザの戻るボタンを使用（記事一覧に戻るリンクが存在しないため）
     await page.goBack();
-    
-    await page.waitForURL(url => url.pathname === '/');
+
+    await page.waitForURL(url => url.pathname === '/', { waitUntil: 'commit' });
     await page.waitForSelector('[data-testid="article-list"]', { timeout: 10000 });
     
     // 5. 復元ローディングが表示されたらキャンセルボタンをクリック
