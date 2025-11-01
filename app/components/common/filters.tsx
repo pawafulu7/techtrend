@@ -161,8 +161,6 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     });
   };
   
-  const applySourceFilterRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  
   const applySourceFilter = async (sourceIds: string[]) => {
     // 即座に状態を更新（UIの反応性を保つ）
     setSelectedSources(sourceIds);
@@ -190,55 +188,28 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     // URLを構築（パラメータがない場合は "/" のみ）
     const newURL = params.toString() ? `/?${params.toString()}` : '/';
 
-    // 重複ガード: URLが実際に変更された場合のみpush
-    const currentPath = typeof window !== 'undefined'
-      ? window.location.pathname + window.location.search
-      : '/';
-    if (newURL !== currentPath) {
-      router.push(newURL); // 即座に実行（デバウンスなし）
-    }
+    // URL更新を即座に実行
+    router.push(newURL);
 
-    // 前のCookieタイマーをクリア
-    if (applySourceFilterRef.current) {
-      clearTimeout(applySourceFilterRef.current);
-    }
+    // Cookie更新も即座に実行（デバウンスなし）
+    // バックグラウンドで非同期実行、エラーは無視
+    fetch('/api/source-filter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceIds }),
+    }).catch(() => {
+      // Cookie update failure is non-critical
+    });
 
-    // Cookie更新のみデバウンス処理（高速クリック対策）
-    applySourceFilterRef.current = setTimeout(async () => {
-      // Update both old source-filter cookie and new filter preferences
-      try {
-        // Update old cookie for backward compatibility
-        await fetch('/api/source-filter', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sourceIds }),
-        });
-
-        // Update filter preferences cookie
-        // 全選択の場合も実際のソースIDを保存（UIの状態を維持）
-        // 空配列の場合は空配列として保存（明示的な全解除）
-        await fetch('/api/filter-preferences', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sources: sourceIds }),
-        });
-      } catch (error) {
-        // Cookie update is non-critical - URL params are the primary source
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('Failed to update filter preferences cookie:', error);
-        }
-      }
-    }, 150); // 150ms のデバウンス
+    fetch('/api/filter-preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sources: sourceIds }),
+    }).catch(() => {
+      // Cookie update failure is non-critical
+    });
   };
 
-  // Cleanup pending timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (applySourceFilterRef.current) {
-        clearTimeout(applySourceFilterRef.current);
-      }
-    };
-  }, []);
 
   return (
     <div className="space-y-3" data-testid="filter-area">
