@@ -166,37 +166,45 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   const applySourceFilter = async (sourceIds: string[]) => {
     // 即座に状態を更新（UIの反応性を保つ）
     setSelectedSources(sourceIds);
-    
-    // 前のタイマーをクリア
+
+    // URL構築（即座に実行してアンマウント時のキャンセルを防ぐ）
+    const params = new URLSearchParams(searchParams.toString());
+
+    // Remove old params
+    params.delete('sourceId');
+    params.delete('sources');
+    params.delete('page'); // ページパラメータも削除
+
+    if (sourceIds.length === 0) {
+      // 明示的に「何も選択しない」状態を示す
+      params.set('sources', 'none');
+    } else if (sourceIds.length === sources.length) {
+      // 全選択の場合、明示的に'sources'パラメータを削除して
+      // デフォルト状態（全選択）にする
+      // パラメータは既に削除済みなので、何もしない
+    } else {
+      // 一部のソースが選択されている
+      params.set('sources', sourceIds.join(','));
+    }
+
+    // URLを構築（パラメータがない場合は "/" のみ）
+    const newURL = params.toString() ? `/?${params.toString()}` : '/';
+
+    // 重複ガード: URLが実際に変更された場合のみpush
+    const currentPath = typeof window !== 'undefined'
+      ? window.location.pathname + window.location.search
+      : '/';
+    if (newURL !== currentPath) {
+      router.push(newURL); // 即座に実行（デバウンスなし）
+    }
+
+    // 前のCookieタイマーをクリア
     if (applySourceFilterRef.current) {
       clearTimeout(applySourceFilterRef.current);
     }
-    
-    // デバウンス処理（高速クリック対策）
+
+    // Cookie更新のみデバウンス処理（高速クリック対策）
     applySourceFilterRef.current = setTimeout(async () => {
-      const params = new URLSearchParams(searchParams.toString());
-      
-      // Remove old params
-      params.delete('sourceId');
-      params.delete('sources');
-      params.delete('page'); // ページパラメータも削除
-      
-      if (sourceIds.length === 0) {
-        // 明示的に「何も選択しない」状態を示す
-        params.set('sources', 'none');
-      } else if (sourceIds.length === sources.length) {
-        // 全選択の場合、明示的に'sources'パラメータを削除して
-        // デフォルト状態（全選択）にする
-        // パラメータは既に削除済みなので、何もしない
-      } else {
-        // 一部のソースが選択されている
-        params.set('sources', sourceIds.join(','));
-      }
-      
-      // URLを構築（パラメータがない場合は "/" のみ）
-      const url = params.toString() ? `/?${params.toString()}` : '/';
-      router.push(url);
-      
       // Update both old source-filter cookie and new filter preferences
       try {
         // Update old cookie for backward compatibility
@@ -205,7 +213,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sourceIds }),
         });
-        
+
         // Update filter preferences cookie
         // 全選択の場合も実際のソースIDを保存（UIの状態を維持）
         // 空配列の場合は空配列として保存（明示的な全解除）
