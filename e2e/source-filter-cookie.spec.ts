@@ -109,10 +109,8 @@ test.describe('Source Filter Cookie', () => {
     }
 
     // Click deselect all and wait for URL change
-    await Promise.all([
-      page.waitForURL(/sources=/, { timeout: 10000, waitUntil: 'commit' }),
-      deselectAllButton.click()
-    ]);
+    await deselectAllButton.click();
+    await waitForUrlParam(page, 'sources', undefined, { timeout: getTimeout('short') });
 
     // Check cookie is set to empty
     const cookies1 = await context.cookies();
