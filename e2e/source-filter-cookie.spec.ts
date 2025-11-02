@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { waitForArticles, getTimeout, waitForUrlParam } from './helpers/wait-utils';
+import { waitForArticles, getTimeout, waitForUrlParam, isRunningInCI } from './helpers/wait-utils';
+
+const isCI = isRunningInCI();
 
 test.describe('Source Filter Cookie', () => {
+  // CI環境では30秒、ローカルでは15秒
+  test.describe.configure({ timeout: isCI ? 30000 : 15000 });
+
   test.beforeEach(async ({ page }) => {
     // Wait for initial page load with deterministic signals
     await page.goto('/');
@@ -110,7 +115,10 @@ test.describe('Source Filter Cookie', () => {
 
     // Click deselect all and wait for URL change
     await deselectAllButton.click();
-    await waitForUrlParam(page, 'sources', undefined, { timeout: getTimeout('short') });
+    // Wait for sources=none (nothing selected)
+    await waitForUrlParam(page, 'sources', 'none', { timeout: getTimeout('short') });
+    // Verify URL has sources=none
+    await expect(page).toHaveURL(/sources=none/);
 
     // Check cookie is set to empty
     const cookies1 = await context.cookies();
@@ -119,17 +127,10 @@ test.describe('Source Filter Cookie', () => {
 
     // Click select all and wait for URL to update or clear
     await selectAllButton.click();
-    await page.waitForURL(
-      (url) => {
-        const params = url.searchParams;
-        const value = params.get('sources');
-        return value === null || value === 'all';
-      },
-      { timeout: getTimeout('short') },
-    ).catch(async () => {
-      // fallback for legacy builds that momentarily keep `sources=none`
-      await waitForUrlParam(page, 'sources', 'none', { timeout: getTimeout('short') });
-    });
+    // Wait for sources parameter to be removed (all selected)
+    await waitForUrlParam(page, 'sources', null, { timeout: getTimeout('short') });
+    // Verify URL does not have sources parameter
+    await expect(page).not.toHaveURL(/sources=/);
 
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
