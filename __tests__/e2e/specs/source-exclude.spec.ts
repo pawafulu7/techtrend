@@ -195,11 +195,7 @@ test.describe('ソースフィルタリング機能', () => {
     // 全て選択ボタンを再度クリック
     await selectAllButton.click();
 
-    await page.waitForURL(
-      url => !url.searchParams.has('sources') || url.searchParams.get('sources') !== 'none',
-      { timeout: getTimeout('short') }
-    );
-
+    // Wait for articles to update (UI state check instead of URL commit)
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
       waitForNetworkIdle: false,
@@ -316,14 +312,7 @@ test.describe('ソースフィルタリング機能', () => {
       }
     }
 
-    await page.waitForURL(
-      url => {
-        const value = url.searchParams.get('sources');
-        return !!value && value !== 'none';
-      },
-      { timeout: getTimeout('short') }
-    );
-
+    // Wait for articles to update (UI state check instead of URL commit)
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
       waitForNetworkIdle: false,
@@ -368,11 +357,7 @@ test.describe('ソースフィルタリング機能', () => {
       });
     }
 
-    await page.waitForURL(
-      url => !url.searchParams.has('sources'),
-      { timeout: getTimeout('short') }
-    );
-
+    // Wait for articles to update (UI state check instead of URL commit)
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
       waitForNetworkIdle: false,

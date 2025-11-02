@@ -29,12 +29,12 @@ const categoryIcons: Record<string, React.ReactNode> = {
 export function Filters({ sources, initialSourceIds }: FiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // 初期値の決定
   const getInitialSources = () => {
     const sourcesParam = searchParams.get('sources');
     const sourceIdParam = searchParams.get('sourceId');
-    
+
     if (sourcesParam === 'none') {
       return [];
     } else if (sourcesParam) {
@@ -50,11 +50,13 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
       return sources.map(s => s.id);
     }
   };
-  
+
   const [selectedSources, setSelectedSources] = useState<string[]>(getInitialSources);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const prevSearchParamsRef = useRef<string>('');
   const prevSourcesRef = useRef<Array<{ id: string; name: string }>>(sources);
+  const cookieUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastQueuedSourcesRef = useRef<string[]>(getInitialSources());
 
   // ソースをカテゴリごとにグループ化
   const groupedSources = groupSourcesByCategory(sources);
@@ -85,6 +87,14 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
       setSelectedSources(sources.map(s => s.id));
     }
   }, [searchParams, sources]);
+
+  // アンマウント時に保留中のCookie更新をflush
+  useEffect(() => {
+    return () => {
+      flushCookieUpdate();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSourceToggle = (sourceId: string) => {
     const newSelection = selectedSources.includes(sourceId)
@@ -161,76 +171,80 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     });
   };
   
-  const applySourceFilterRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  
+  // Cookie更新を実行するヘルパー関数
+  const performCookieUpdate = (sourceIds: string[]) => {
+    fetch('/api/source-filter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceIds }),
+    }).catch((error) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[filters] /api/source-filter failed', { sourceIds, error });
+      }
+    });
+
+    fetch('/api/filter-preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sources: sourceIds }),
+    }).catch((error) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[filters] /api/filter-preferences failed', { sourceIds, error });
+      }
+    });
+  };
+
+  // 保留中のCookie更新を即座に実行（flush）
+  const flushCookieUpdate = () => {
+    if (cookieUpdateTimeoutRef.current) {
+      clearTimeout(cookieUpdateTimeoutRef.current);
+      cookieUpdateTimeoutRef.current = null;
+    }
+    if (lastQueuedSourcesRef.current) {
+      performCookieUpdate(lastQueuedSourcesRef.current);
+    }
+  };
+
   const applySourceFilter = async (sourceIds: string[]) => {
     // 即座に状態を更新（UIの反応性を保つ）
     setSelectedSources(sourceIds);
-    
-    // 前のタイマーをクリア
-    if (applySourceFilterRef.current) {
-      clearTimeout(applySourceFilterRef.current);
+
+    // URL構築（即座に実行してアンマウント時のキャンセルを防ぐ）
+    const params = new URLSearchParams(searchParams.toString());
+
+    // Remove old params
+    params.delete('sourceId');
+    params.delete('sources');
+    params.delete('page'); // ページパラメータも削除
+
+    if (sourceIds.length === 0) {
+      // 明示的に「何も選択しない」状態を示す
+      params.set('sources', 'none');
+    } else if (sourceIds.length === sources.length) {
+      // 全選択の場合、明示的に'sources'パラメータを削除して
+      // デフォルト状態（全選択）にする
+      // パラメータは既に削除済みなので、何もしない
+    } else {
+      // 一部のソースが選択されている
+      params.set('sources', sourceIds.join(','));
     }
-    
-    // デバウンス処理（高速クリック対策）
-    applySourceFilterRef.current = setTimeout(async () => {
-      const params = new URLSearchParams(searchParams.toString());
-      
-      // Remove old params
-      params.delete('sourceId');
-      params.delete('sources');
-      params.delete('page'); // ページパラメータも削除
-      
-      if (sourceIds.length === 0) {
-        // 明示的に「何も選択しない」状態を示す
-        params.set('sources', 'none');
-      } else if (sourceIds.length === sources.length) {
-        // 全選択の場合、明示的に'sources'パラメータを削除して
-        // デフォルト状態（全選択）にする
-        // パラメータは既に削除済みなので、何もしない
-      } else {
-        // 一部のソースが選択されている
-        params.set('sources', sourceIds.join(','));
-      }
-      
-      // URLを構築（パラメータがない場合は "/" のみ）
-      const url = params.toString() ? `/?${params.toString()}` : '/';
-      router.push(url);
-      
-      // Update both old source-filter cookie and new filter preferences
-      try {
-        // Update old cookie for backward compatibility
-        await fetch('/api/source-filter', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sourceIds }),
-        });
-        
-        // Update filter preferences cookie
-        // 全選択の場合も実際のソースIDを保存（UIの状態を維持）
-        // 空配列の場合は空配列として保存（明示的な全解除）
-        await fetch('/api/filter-preferences', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sources: sourceIds }),
-        });
-      } catch (error) {
-        // Cookie update is non-critical - URL params are the primary source
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('Failed to update filter preferences cookie:', error);
-        }
-      }
-    }, 150); // 150ms のデバウンス
+
+    // URLを構築（パラメータがない場合は "/" のみ）
+    const newURL = params.toString() ? `/?${params.toString()}` : '/';
+
+    // URL更新を即座に実行
+    router.push(newURL);
+
+    // Cookie更新は150msデバウンス
+    lastQueuedSourcesRef.current = sourceIds;
+    if (cookieUpdateTimeoutRef.current) {
+      clearTimeout(cookieUpdateTimeoutRef.current);
+    }
+    cookieUpdateTimeoutRef.current = setTimeout(() => {
+      performCookieUpdate(sourceIds);
+    }, 150);
   };
 
-  // Cleanup pending timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (applySourceFilterRef.current) {
-        clearTimeout(applySourceFilterRef.current);
-      }
-    };
-  }, []);
 
   return (
     <div className="space-y-3" data-testid="filter-area">
