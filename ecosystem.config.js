@@ -55,6 +55,28 @@ module.exports = {
       log_file: 'logs/quality-check-combined.log',
       time: true,
       merge_logs: true
+    },
+    {
+      name: 'techtrend-embedding-worker',
+      script: 'scripts/dev/run-embedding-worker.ts',
+      interpreter: './node_modules/.bin/tsx',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      watch: false,
+      cron_restart: '*/30 * * * *', // Every 30 minutes
+      env: {
+        NODE_ENV: 'production',
+        DATABASE_URL: process.env.DATABASE_URL,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        EMBEDDING_WORKER_TIMEOUT_MS: 300000,
+        EMBEDDING_WORKER_BATCH_SIZE: 500
+      },
+      error_file: 'logs/embedding-worker-error.log',
+      out_file: 'logs/embedding-worker-out.log',
+      log_file: 'logs/embedding-worker-combined.log',
+      time: true,
+      merge_logs: true
     }
   ]
 };
