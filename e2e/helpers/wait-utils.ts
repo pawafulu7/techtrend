@@ -411,11 +411,19 @@ export async function waitForInputValue(
 
 /**
  * URLパラメータが特定の値になるまで待機（ポーリング改善）
+ *
+ * @param page - Playwrightのページオブジェクト
+ * @param paramName - 監視するパラメータ名
+ * @param paramValue - 期待する値
+ *   - `null`: パラメータが削除されるまで待機
+ *   - `undefined`: パラメータが存在するまで待機（任意の値）
+ *   - `string`: パラメータが特定の値になるまで待機
+ * @param options - タイムアウト、ポーリング間隔、リトライ回数
  */
 export async function waitForUrlParam(
   page: Page,
   paramName: string,
-  paramValue?: string,
+  paramValue?: string | null,
   options?: {
     timeout?: number;
     polling?: 'fast' | 'normal' | 'slow';
@@ -495,19 +503,27 @@ export async function waitForUrlParam(
       }
 
       await page.waitForFunction(
-        ({ name, value, debugCI }) => {
+        ({ name, value, debug }) => {
           try {
             const url = new URL(window.location.href);
             const param = url.searchParams.get(name);
 
-            // デバッグ用：現在のパラメータを出力（CI環境のみ）
-            if (debugCI) {
+            // デバッグ用：現在のパラメータを出力
+            if (debug) {
               console.log(`[waitForUrlParam] Checking ${name}=${param}, expecting ${value}`);
             }
 
+            // null を渡した場合はパラメータが削除されるまで待機
+            if (value === null) {
+              return param === null;
+            }
+
+            // undefined を渡した場合はパラメータが存在するまで待機
             if (value === undefined) {
               return param !== null;
             }
+
+            // 特定の値を待機
             return param === value;
           } catch (e) {
             // URL解析エラーの場合はfalseを返す
@@ -515,7 +531,7 @@ export async function waitForUrlParam(
             return false;
           }
         },
-        { name: paramName, value: paramValue, debugCI: isCI },
+        { name: paramName, value: paramValue, debug: isCI || isDebugE2E },
         {
           timeout: retryTimeout,
           polling: isCI ? 100 : polling  // CI環境でも100msポーリングに
