@@ -31,7 +31,7 @@ const parseHeaders = () => {
 
   try {
     return JSON.parse(raw) as Record<string, string>;
-  } catch (error) {
+  } catch (_error) {
     const headers: Record<string, string> = {};
     raw.split(',').forEach((pair) => {
       const [key, ...valueParts] = pair.split('=');

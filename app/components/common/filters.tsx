@@ -29,12 +29,12 @@ const categoryIcons: Record<string, React.ReactNode> = {
 export function Filters({ sources, initialSourceIds }: FiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // 初期値の決定
   const getInitialSources = () => {
     const sourcesParam = searchParams.get('sources');
     const sourceIdParam = searchParams.get('sourceId');
-    
+
     if (sourcesParam === 'none') {
       return [];
     } else if (sourcesParam) {
@@ -50,11 +50,13 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
       return sources.map(s => s.id);
     }
   };
-  
+
   const [selectedSources, setSelectedSources] = useState<string[]>(getInitialSources);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const prevSearchParamsRef = useRef<string>('');
   const prevSourcesRef = useRef<Array<{ id: string; name: string }>>(sources);
+  const cookieUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastQueuedSourcesRef = useRef<string[]>(getInitialSources());
 
   // ソースをカテゴリごとにグループ化
   const groupedSources = groupSourcesByCategory(sources);
@@ -85,6 +87,14 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
       setSelectedSources(sources.map(s => s.id));
     }
   }, [searchParams, sources]);
+
+  // アンマウント時に保留中のCookie更新をflush
+  useEffect(() => {
+    return () => {
+      flushCookieUpdate();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSourceToggle = (sourceId: string) => {
     const newSelection = selectedSources.includes(sourceId)
@@ -161,6 +171,40 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     });
   };
   
+  // Cookie更新を実行するヘルパー関数
+  const performCookieUpdate = (sourceIds: string[]) => {
+    fetch('/api/source-filter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceIds }),
+    }).catch((error) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[filters] /api/source-filter failed', { sourceIds, error });
+      }
+    });
+
+    fetch('/api/filter-preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sources: sourceIds }),
+    }).catch((error) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[filters] /api/filter-preferences failed', { sourceIds, error });
+      }
+    });
+  };
+
+  // 保留中のCookie更新を即座に実行（flush）
+  const flushCookieUpdate = () => {
+    if (cookieUpdateTimeoutRef.current) {
+      clearTimeout(cookieUpdateTimeoutRef.current);
+      cookieUpdateTimeoutRef.current = null;
+    }
+    if (lastQueuedSourcesRef.current) {
+      performCookieUpdate(lastQueuedSourcesRef.current);
+    }
+  };
+
   const applySourceFilter = async (sourceIds: string[]) => {
     // 即座に状態を更新（UIの反応性を保つ）
     setSelectedSources(sourceIds);
@@ -191,23 +235,14 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     // URL更新を即座に実行
     router.push(newURL);
 
-    // Cookie更新も即座に実行（デバウンスなし）
-    // バックグラウンドで非同期実行、エラーは無視
-    fetch('/api/source-filter', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sourceIds }),
-    }).catch(() => {
-      // Cookie update failure is non-critical
-    });
-
-    fetch('/api/filter-preferences', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sources: sourceIds }),
-    }).catch(() => {
-      // Cookie update failure is non-critical
-    });
+    // Cookie更新は150msデバウンス
+    lastQueuedSourcesRef.current = sourceIds;
+    if (cookieUpdateTimeoutRef.current) {
+      clearTimeout(cookieUpdateTimeoutRef.current);
+    }
+    cookieUpdateTimeoutRef.current = setTimeout(() => {
+      performCookieUpdate(sourceIds);
+    }, 150);
   };
 
 
