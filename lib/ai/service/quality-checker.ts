@@ -32,7 +32,12 @@ export class SummaryQualityChecker implements QualityChecker {
   checkQuality(
     summary: string,
     detailedSummary: string,
-    contentAnalysis?: ContentAnalysis
+    contentAnalysis?: ContentAnalysis,
+    critique?: {
+      contextComparison: string;
+      recommendedAudience: string;
+      valueAssessment: string;
+    }
   ): QualityCheckResult {
     const issues: QualityIssue[] = [];
     let score = 100;
@@ -298,6 +303,46 @@ export class SummaryQualityChecker implements QualityChecker {
       }
     }
 
+    // Critique validation
+    let critiqueValid = true;
+    if (critique) {
+      const contextLen = critique.contextComparison.length;
+      const audienceLen = critique.recommendedAudience.length;
+      const valueLen = critique.valueAssessment.length;
+
+      if (contextLen < 120 || contextLen > 200) {
+        issues.push({
+          type: 'critique-context',
+          severity: 'major',
+          message: `トレンド・比較の文字数が範囲外: ${contextLen}文字（期待: 120-200文字）`,
+        });
+        critiqueValid = false;
+        score -= 10;
+      }
+
+      if (audienceLen < 80 || audienceLen > 140) {
+        issues.push({
+          type: 'critique-audience',
+          severity: 'major',
+          message: `推薦対象者の文字数が範囲外: ${audienceLen}文字（期待: 80-140文字）`,
+        });
+        critiqueValid = false;
+        score -= 10;
+      }
+
+      if (valueLen < 80 || valueLen > 140) {
+        issues.push({
+          type: 'critique-value',
+          severity: 'major',
+          message: `読む価値の文字数が範囲外: ${valueLen}文字（期待: 80-140文字）`,
+        });
+        critiqueValid = false;
+        score -= 10;
+      }
+    }
+
+    score = Math.max(0, score);
+
     return {
       isValid,
       issues,
@@ -306,6 +351,7 @@ export class SummaryQualityChecker implements QualityChecker {
       speculativeExpressions: speculativeResult,
       itemCount,
       itemCountValid: itemCount >= minItems,
+      critiqueValid,
     };
   }
 

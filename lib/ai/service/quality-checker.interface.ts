@@ -1,5 +1,5 @@
 export interface QualityIssue {
-  type: 'length' | 'format' | 'punctuation' | 'speculative' | 'duplicate' | 'itemCount';
+  type: 'length' | 'format' | 'punctuation' | 'speculative' | 'duplicate' | 'itemCount' | 'critique-context' | 'critique-audience' | 'critique-value';
   severity: 'critical' | 'major' | 'minor';
   message: string;
 }
@@ -18,6 +18,7 @@ export interface QualityCheckResult {
   speculativeExpressions?: SpeculativeExpressionResult;
   itemCount?: number;
   itemCountValid?: boolean;
+  critiqueValid?: boolean;
 }
 
 export interface ContentAnalysis {
@@ -32,7 +33,12 @@ export interface QualityChecker {
   checkQuality(
     summary: string,
     detailedSummary: string,
-    contentAnalysis?: ContentAnalysis
+    contentAnalysis?: ContentAnalysis,
+    critique?: {
+      contextComparison: string;
+      recommendedAudience: string;
+      valueAssessment: string;
+    }
   ): QualityCheckResult;
 
   calculateScore(

@@ -61,7 +61,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
           logger.debug({ requestId }, 'Critique generated');
         }
 
-        const qualityResult = this.qualityChecker.checkQuality(summary, detailedSummary);
+        const qualityResult = this.qualityChecker.checkQuality(summary, detailedSummary, undefined, critique);
 
         const threshold = params.qualityThreshold ?? this.config.qualityThreshold;
         if (qualityResult.score >= threshold) {
