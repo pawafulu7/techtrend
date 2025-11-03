@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { normalizeArticleCategory } from '@/lib/utils/article-category-normalizer';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
-export async function POST() {
+async function generateSummariesHandler(_request: NextRequest) {
   try {
     // 要約がない記事を取得（最大10件）
     const articlesWithoutSummary = await prisma.article.findMany({
@@ -119,3 +120,5 @@ export async function POST() {
     );
   }
 }
+
+export const POST = withRateLimit('ai:summary', generateSummariesHandler);
