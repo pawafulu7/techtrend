@@ -45,6 +45,13 @@ interface MockArticle {
   summaryComputedAt: Date | null;
   skipReason: SkipReason | null;
   summaryError: string | null;
+  critique: {
+    contextComparison: string;
+    recommendedAudience: string;
+    valueAssessment: string;
+    updatedAt: string;
+  } | null;
+  critiqueVersion: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -154,6 +161,8 @@ export function createMockArticle(overrides?: Partial<MockArticle>): MockArticle
     summaryComputedAt: now,
     skipReason: null,
     summaryError: null,
+    critique: null,
+    critiqueVersion: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -332,6 +341,8 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
     summaryComputedAt: now,
     skipReason: null,
     summaryError: null,
+    critique: null,
+    critiqueVersion: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,

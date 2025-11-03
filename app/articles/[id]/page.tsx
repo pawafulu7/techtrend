@@ -18,7 +18,7 @@ import { ArticleCritiqueDisplay } from '@/app/components/article/article-critiqu
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
-import type { ArticleCritique } from '@/types/critique';
+import { isArticleCritique } from '@/types/critique';
 
 interface PageProps {
   params: Promise<{
@@ -277,9 +277,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
           </Card>
 
           {/* AI評価表示（critique が存在する場合） */}
-          {article.critique && article.critiqueVersion && article.critiqueVersion >= 1 && (
+          {article.critique && article.critiqueVersion && article.critiqueVersion >= 1 && isArticleCritique(article.critique) && (
             <ArticleCritiqueDisplay
-              critique={article.critique as ArticleCritique}
+              critique={article.critique}
               defaultExpanded={false}
             />
           )}
