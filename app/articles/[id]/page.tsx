@@ -14,9 +14,11 @@ import { ReadTracker } from '@/components/article/read-tracker';
 import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summary-display';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
+import { ArticleCritiqueDisplay } from '@/app/components/article/article-critique-display';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
+import type { ArticleCritique } from '@/types/critique';
 
 interface PageProps {
   params: Promise<{
@@ -273,6 +275,14 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* AI評価表示（critique が存在する場合） */}
+          {article.critique && article.critiqueVersion && article.critiqueVersion >= 1 && (
+            <ArticleCritiqueDisplay
+              critique={article.critique as ArticleCritique}
+              defaultExpanded={false}
+            />
+          )}
         </div>
 
         <div className="lg:col-span-1">
