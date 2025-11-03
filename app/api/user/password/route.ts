@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import { changePassword } from '@/lib/auth/utils';
 import { z } from 'zod';
 import logger from '@/lib/logger';
@@ -18,11 +17,11 @@ const changePasswordSchema = z.object({
   path: ['confirmPassword'],
 });
 
-async function changePasswordHandler(request: NextRequest) {
+async function changePasswordHandler(request: NextRequest, context?: { session?: any }) {
   try {
-    // セッション確認
-    const session = await auth();
-    
+    // セッション確認（contextから取得、二重auth()呼び出しを回避）
+    const session = context?.session;
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },

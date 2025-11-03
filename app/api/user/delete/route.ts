@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import { verifyPassword, deleteUserAccountWithAudit } from '@/lib/auth/utils';
 import { prisma } from '@/lib/database';
 import logger from '@/lib/logger';
@@ -13,7 +12,10 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-async function deleteAccountHandler(request: NextRequest): Promise<NextResponse<DeleteAccountResponse | DeleteAccountError>> {
+async function deleteAccountHandler(
+  request: NextRequest,
+  context?: { session?: any }
+): Promise<NextResponse<DeleteAccountResponse | DeleteAccountError>> {
   try {
     // 1. Parse request body (handle JSON parse errors)
     let body: unknown;
@@ -45,8 +47,8 @@ async function deleteAccountHandler(request: NextRequest): Promise<NextResponse<
 
     const { password, confirmationWord, reason } = validationResult.data;
 
-    // 3. Verify session
-    const session = await auth();
+    // 3. Verify session (from context, avoid double auth() call)
+    const session = context?.session;
     if (!session?.user?.id) {
       return NextResponse.json(
         {
