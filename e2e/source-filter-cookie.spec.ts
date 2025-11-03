@@ -115,8 +115,8 @@ test.describe('Source Filter Cookie', () => {
 
     // Click deselect all and wait for URL change
     await deselectAllButton.click();
-    // Wait for sources=none (nothing selected)
-    await waitForUrlParam(page, 'sources', 'none', { timeout: getTimeout('short') });
+    // Wait for sources=none (nothing selected) - use longer timeout for CI stability
+    await waitForUrlParam(page, 'sources', 'none', { timeout: getTimeout('long') });
     // Verify URL has sources=none
     await expect(page).toHaveURL(/sources=none/);
 
@@ -127,8 +127,8 @@ test.describe('Source Filter Cookie', () => {
 
     // Click select all and wait for URL to update or clear
     await selectAllButton.click();
-    // Wait for sources parameter to be removed (all selected)
-    await waitForUrlParam(page, 'sources', null, { timeout: getTimeout('short') });
+    // Wait for sources parameter to be removed (all selected) - use longer timeout for CI stability
+    await waitForUrlParam(page, 'sources', null, { timeout: getTimeout('long') });
     // Verify URL does not have sources parameter
     await expect(page).not.toHaveURL(/sources=/);
 

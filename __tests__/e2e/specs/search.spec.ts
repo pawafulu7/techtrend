@@ -39,6 +39,7 @@ test.describe('検索機能', () => {
         searchTriggered = true;
         break;
       } catch {
+        if (page.isClosed()) break;
         await page.waitForTimeout(500);
       }
     }
