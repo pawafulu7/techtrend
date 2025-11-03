@@ -143,10 +143,18 @@ describe('Rate Limit Configuration', () => {
       expect(config.blockDuration).toBe(300);
     });
 
-    it('should default blockDuration to 0', () => {
-      const config = getRateLimitConfig('auth:login');
-      // blockDuration may be undefined in policy, default to 0 in usage
-      expect(config.blockDuration === undefined || config.blockDuration === 0).toBe(true);
+    it('should have blockDuration based on risk level', () => {
+      // Auth policies have 60s block for brute-force prevention
+      const authConfig = getRateLimitConfig('auth:login');
+      expect(authConfig.blockDuration).toBe(60);
+
+      // AI policies have 0s block (soft throttle only)
+      const aiConfig = getRateLimitConfig('ai:summary');
+      expect(aiConfig.blockDuration).toBe(0);
+
+      // Public endpoints have 0s block
+      const publicConfig = getRateLimitConfig('public:health');
+      expect(publicConfig.blockDuration).toBe(0);
     });
   });
 

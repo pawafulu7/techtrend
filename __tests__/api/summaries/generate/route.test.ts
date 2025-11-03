@@ -15,12 +15,16 @@ jest.mock('@/lib/database', () => ({
     },
   },
 }));
-jest.mock('@/lib/rate-limiter', () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true }),
-  createRateLimiterFromConfig: jest.fn().mockReturnValue({
-    consume: jest.fn().mockResolvedValue({}),
-  }),
-}));
+jest.mock('@/lib/rate-limiter', () => {
+  const actual = jest.requireActual('@/lib/rate-limiter');
+  return {
+    ...actual,
+    checkRateLimit: jest.fn().mockResolvedValue({ limit: 10, remaining: 9, reset: new Date() }),
+    createRateLimiterFromConfig: jest.fn().mockReturnValue({
+      consume: jest.fn().mockResolvedValue({}),
+    }),
+  };
+});
 
 describe('/api/summaries/generate', () => {
   beforeEach(() => {
