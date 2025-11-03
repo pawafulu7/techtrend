@@ -5,8 +5,9 @@ import { Prisma } from '@prisma/client';
 import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
-export async function POST(request: NextRequest) {
+async function summarizePostHandler(request: NextRequest) {
   try {
     const body = await request.json();
     const { articleId } = body;
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Batch summarization endpoint
-export async function PUT(request: NextRequest) {
+async function summarizePutHandler(request: NextRequest) {
   try {
     const body = await request.json();
     const { articleIds, regenerate = false } = body;
@@ -175,3 +176,6 @@ export async function PUT(request: NextRequest) {
     } as ApiResponse<never>, { status: 500 });
   }
 }
+
+export const POST = withRateLimit('ai:summary', summarizePostHandler);
+export const PUT = withRateLimit('ai:summary', summarizePutHandler);

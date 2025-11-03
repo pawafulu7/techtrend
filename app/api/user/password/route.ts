@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import { changePassword } from '@/lib/auth/utils';
 import { z } from 'zod';
 import logger from '@/lib/logger';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
 // パスワード変更リクエストのスキーマ
 const changePasswordSchema = z.object({
@@ -17,11 +17,11 @@ const changePasswordSchema = z.object({
   path: ['confirmPassword'],
 });
 
-export async function POST(request: NextRequest) {
+async function changePasswordHandler(request: NextRequest, context?: { session?: any }) {
   try {
-    // セッション確認
-    const session = await auth();
-    
+    // セッション確認（contextから取得、二重auth()呼び出しを回避）
+    const session = context?.session;
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -89,3 +89,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withRateLimit('write:password', changePasswordHandler);

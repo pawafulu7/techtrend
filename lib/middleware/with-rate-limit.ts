@@ -71,8 +71,8 @@ export function withRateLimit(
       // Check rate limit
       const rateLimitInfo = await checkRateLimit(limitKey, limiter);
 
-      // Success: Execute handler and set rate limit headers
-      const response = await handler(request, context);
+      // Success: Execute handler with session in context (avoid double auth() calls)
+      const response = await handler(request, { ...context, session });
       response.headers.set('X-RateLimit-Limit', rateLimitInfo.limit.toString());
       response.headers.set('X-RateLimit-Remaining', rateLimitInfo.remaining.toString());
       response.headers.set('X-RateLimit-Reset', rateLimitInfo.reset.toISOString());

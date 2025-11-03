@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
-export async function POST(request: Request) {
+async function autoLoginHandler(request: NextRequest) {
   try {
     const { email, loginToken } = await request.json();
 
@@ -56,3 +57,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withRateLimit('auth:auto-login', autoLoginHandler);

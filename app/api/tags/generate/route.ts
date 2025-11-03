@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
-export async function POST() {
+async function generateTagsHandler(_request: NextRequest) {
   try {
     // タグがない記事を取得（最大10件）
     const articlesWithoutTags = await prisma.article.findMany({
@@ -89,3 +90,5 @@ export async function POST() {
     );
   }
 }
+
+export const POST = withRateLimit('ai:tags', generateTagsHandler);
