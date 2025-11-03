@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/auth';
 import { changePassword } from '@/lib/auth/utils';
 import { z } from 'zod';
 import logger from '@/lib/logger';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
 // パスワード変更リクエストのスキーマ
 const changePasswordSchema = z.object({
@@ -17,7 +18,7 @@ const changePasswordSchema = z.object({
   path: ['confirmPassword'],
 });
 
-export async function POST(request: NextRequest) {
+async function changePasswordHandler(request: NextRequest) {
   try {
     // セッション確認
     const session = await auth();
@@ -89,3 +90,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withRateLimit('write:password', changePasswordHandler);
