@@ -303,15 +303,21 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     if (totalNewArticles > 0) {
       console.error('🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
-      
-      // 新規記事があれば要約生成を自動実行
-      console.error('\n📝 要約生成を自動実行します...');
+
+      // 新規記事があれば要約生成を自動実行（SummaryManager使用でcritiqueも生成）
+      console.error('\n📝 要約生成を自動実行します（批評含む）...');
       try {
-        const { generateSummaries } = await import('../maintenance/generate-summaries');
-        const result = await generateSummaries();
-        console.error(`✅ 要約生成完了: ${result.generated}件の要約を生成`);
+        const { SummaryManager } = await import('@/lib/services/summary-manager');
+        const { getPrismaClient } = await import('@/lib/cli/utils/database');
+
+        const prisma = getPrismaClient();
+        const manager = new SummaryManager(prisma);
+        const result = await manager.generateSummaries({ limit: 100 });
+        console.error(`✅ 要約生成完了: ${result.generated}件の要約・批評を生成`);
+
+        await prisma.$disconnect();
       } catch (error) {
-        console.error('⚠️ 要約生成でエラーが発生しましたが、記事収集は成功しています:', 
+        console.error('⚠️ 要約生成でエラーが発生しましたが、記事収集は成功しています:',
           error instanceof Error ? error.message : String(error));
       }
     }

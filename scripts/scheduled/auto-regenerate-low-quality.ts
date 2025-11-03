@@ -6,6 +6,7 @@
 import { PrismaClient } from '@prisma/client';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { calculateQualityScore } from '../../lib/utils/quality-score';
+import { critiqueToJson } from '../../lib/utils/critique-serialization';
 
 const prisma = new PrismaClient();
 const summaryService = new UnifiedSummaryService();
@@ -101,16 +102,24 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
         );
 
         if (result) {
-          // データベース更新
+          // データベース更新（批評も含む、ただし存在する場合のみ）
+          const updateData: any = {
+            summary: result.summary,
+            detailedSummary: result.detailedSummary,
+            translatedTitle: result.translatedTitle,
+            summaryVersion: 8,
+            articleType: 'unified',
+          };
+
+          // critiqueが生成された場合のみ更新（既存critiqueを保護）
+          if (result.critique) {
+            updateData.critique = critiqueToJson(result.critique);
+            updateData.critiqueVersion = result.critiqueVersion;
+          }
+
           await prisma.article.update({
             where: { id: article.id },
-            data: {
-              summary: result.summary,
-              detailedSummary: result.detailedSummary,
-              translatedTitle: result.translatedTitle,
-              summaryVersion: 8,
-              articleType: 'unified',
-            },
+            data: updateData,
           });
 
           // 新しい品質スコアを計算（sourceを含む完全なarticleオブジェクトを渡す）

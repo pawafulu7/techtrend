@@ -9,6 +9,7 @@ import { PrismaClient } from '@prisma/client';
 import { GeminiClient } from '@/lib/ai/gemini';
 import { calculateSummaryScore, needsRegeneration } from '@/lib/utils/quality-scorer';
 import { optimizeContentForSummary } from '@/lib/utils/content-extractor';
+import { critiqueToJson } from '@/lib/utils/critique-serialization';
 
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
@@ -188,17 +189,25 @@ async function regenerateArticles(articles: Array<{
         // 新しいタグと既存のタグをマージ（重複を除く）
         const mergedTags = [...new Set([...existingTagNames, ...tags])];
 
-        // データベースを更新
+        // データベースを更新（批評も含む、ただし存在する場合のみ）
+        const updateData: any = {
+          summary,
+          summaryVersion: SUMMARY_VERSION.UNIFIED, // 統一フォーマットバージョン
+          detailedSummary: result.detailedSummary,
+          translatedTitle: result.translatedTitle,
+          articleType: result.articleType,
+          updatedAt: new Date(),
+        };
+
+        // critiqueが生成された場合のみ更新（既存critiqueを保護）
+        if (result.critique) {
+          updateData.critique = critiqueToJson(result.critique);
+          updateData.critiqueVersion = result.critiqueVersion;
+        }
+
         await prisma.article.update({
           where: { id: article.id },
-          data: {
-            summary,
-            summaryVersion: SUMMARY_VERSION.UNIFIED, // 統一フォーマットバージョン
-            detailedSummary: result.detailedSummary,
-            translatedTitle: result.translatedTitle,
-            articleType: result.articleType,
-            updatedAt: new Date(),
-          },
+          data: updateData,
         });
 
         // タグを更新
