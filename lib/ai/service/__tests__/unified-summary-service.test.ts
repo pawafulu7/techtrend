@@ -101,7 +101,13 @@ describe('UnifiedSummaryServiceImpl', () => {
       expect(mockPostProcessor.formatTags).toHaveBeenCalledWith(['test', 'article']);
       expect(mockQualityChecker.checkQuality).toHaveBeenCalledWith(
         'Test Summary',
-        '・Item 1\n・Item 2\n・Item 3'
+        '・Item 1\n・Item 2\n・Item 3',
+        expect.objectContaining({
+          contentLength: expect.any(Number),
+          totalLength: expect.any(Number),
+          isThinContent: expect.any(Boolean),
+        }),
+        undefined
       );
     });
 
