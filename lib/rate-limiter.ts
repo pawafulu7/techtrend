@@ -1,9 +1,10 @@
 import { RateLimiterRedis, RateLimiterMemory, RateLimiterAbstract } from 'rate-limiter-flexible';
 import { getRedisClient } from '@/lib/redis/client';
 import { logger } from '@/lib/logger';
+import { getRateLimitConfig } from '@/lib/config/rate-limits';
 
 /**
- * Rate Limiter for RAG operations
+ * Rate Limiter for RAG operations and general API protection
  *
  * Uses rate-limiter-flexible with ioredis client for unified Redis architecture.
  * Uses fixed window algorithm for rate limiting (default behavior).
@@ -16,7 +17,14 @@ import { logger } from '@/lib/logger';
  * - Production with Redis: RateLimiterRedis (ioredis TCP connection)
  *
  * @see .claude/docs/plan/plan_20251019_104507_746_redis-unification-implementation.md
+ * @see .claude/docs/plan/plan_20251103_092156_765_rate-limiting-extension-plan.md
  */
+
+/**
+ * Memoization cache for rate limiter instances
+ * Prevents creating multiple limiter instances for the same config key
+ */
+const limiterCache = new Map<string, RateLimiterAbstract>();
 
 /**
  * Create rate limiter with fallback strategy
@@ -24,18 +32,21 @@ import { logger } from '@/lib/logger';
  * @param points - Number of points (requests) allowed
  * @param duration - Duration in seconds
  * @param keyPrefix - Key prefix for Redis storage
+ * @param blockDuration - Duration in seconds to block after limit exceeded (default: 0)
  * @returns RateLimiterRedis or RateLimiterMemory based on environment
  */
 function createRateLimiter(
   points: number,
   duration: number,
-  keyPrefix: string
+  keyPrefix: string,
+  blockDuration: number = 0
 ): RateLimiterAbstract {
   // Use memory-based limiter in test environment or when Redis URL is not configured
   if (process.env.NODE_ENV === 'test' || !process.env.REDIS_URL) {
     return new RateLimiterMemory({
       points,
       duration,
+      blockDuration,
       keyPrefix,
     });
   }
@@ -47,21 +58,60 @@ function createRateLimiter(
       storeClient: redisClient,
       points,
       duration,
-      blockDuration: 0,
+      blockDuration,
       keyPrefix,
     });
   } catch (error) {
     // Fallback to memory if Redis connection fails
-    logger.warn({
-      error: error instanceof Error ? error.message : 'Unknown error',
-      keyPrefix,
-    }, 'Rate limiter falling back to memory');
+    logger.warn(
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        keyPrefix,
+      },
+      'Rate limiter falling back to memory'
+    );
     return new RateLimiterMemory({
       points,
       duration,
+      blockDuration,
       keyPrefix,
     });
   }
+}
+
+/**
+ * Create rate limiter from config key (memoized)
+ *
+ * Retrieves rate limit config from lib/config/rate-limits.ts and creates
+ * a memoized limiter instance. Subsequent calls with the same key return
+ * the cached instance.
+ *
+ * @param configKey - Rate limit config key (e.g., 'auth:login')
+ * @returns Memoized RateLimiterAbstract instance
+ *
+ * @example
+ * ```typescript
+ * const limiter = createRateLimiterFromConfig('auth:login');
+ * await checkRateLimit('user:123', limiter);
+ * ```
+ */
+export function createRateLimiterFromConfig(configKey: string): RateLimiterAbstract {
+  if (limiterCache.has(configKey)) {
+    return limiterCache.get(configKey)!;
+  }
+
+  const config = getRateLimitConfig(configKey);
+
+  // CodexMCP fix: Pass blockDuration to createRateLimiter
+  const limiter = createRateLimiter(
+    config.points,
+    config.duration,
+    `ratelimit:${configKey}`,
+    config.blockDuration || 0
+  );
+
+  limiterCache.set(configKey, limiter);
+  return limiter;
 }
 
 /**

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createUser } from '@/lib/auth/utils';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
-export async function POST(request: NextRequest) {
+async function signupHandler(request: NextRequest) {
   try {
     let body;
     try {
@@ -61,3 +62,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withRateLimit('auth:register', signupHandler);

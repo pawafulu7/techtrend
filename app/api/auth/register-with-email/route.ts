@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import logger from '@/lib/logger';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
 // 確認メール送信用の関数をインポート
 async function sendVerificationEmail(email: string, token: string) {
@@ -121,7 +122,7 @@ function validatePasswordStrength(password: string): { isValid: boolean; message
   return { isValid: true };
 }
 
-export async function POST(request: Request) {
+async function registerHandler(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
@@ -199,3 +200,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withRateLimit('auth:register', registerHandler);
