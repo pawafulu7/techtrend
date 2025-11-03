@@ -19,6 +19,7 @@ export type SummaryServiceResult = {
     contextComparison: string;
     recommendedAudience: string;
     valueAssessment: string;
+    updatedAt: string;
   };
   critiqueVersion?: number;
 };

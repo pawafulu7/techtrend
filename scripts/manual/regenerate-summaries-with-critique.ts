@@ -1,5 +1,6 @@
 import { getPrismaClient } from '@/lib/cli/utils/database';
 import { SummaryManager } from '@/lib/services/summary-manager';
+import { critiqueToJson } from '@/lib/utils/critique-serialization';
 
 interface RegenerateOptions {
   limit?: number;
@@ -67,7 +68,7 @@ async function regenerateSummariesWithCritique(options: RegenerateOptions = {}) 
         }
 
         // Regenerate summary (critique will be generated automatically)
-        const result = await summaryManager['generateSummaryAndTags'](
+        const result = await summaryManager.regenerateArticleSummary(
           article.title,
           article.content!,
           article.id
@@ -81,7 +82,7 @@ async function regenerateSummariesWithCritique(options: RegenerateOptions = {}) 
             detailedSummary: result.detailedSummary,
             translatedTitle: result.translatedTitle,
             summaryComputedAt: new Date(),
-            critique: result.critique as any,
+            critique: critiqueToJson(result.critique),
             critiqueVersion: result.critiqueVersion,
           },
         });

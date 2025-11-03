@@ -83,6 +83,7 @@ model Article {
   @@index([qualityScoreComputedAt], map: "idx_article_quality_score_computed_at")
   @@index([summaryComputedAt], map: "idx_article_summary_computed_at")
   @@index([skipReason], map: "idx_article_skip_reason")
+  @@index([critiqueVersion], map: "idx_article_critique_version")
 }
 
 model Source {

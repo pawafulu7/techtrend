@@ -23,6 +23,7 @@ export type SummaryProviderOutput = {
     contextComparison: string;
     recommendedAudience: string;
     valueAssessment: string;
+    updatedAt: string;
   };
 };
 

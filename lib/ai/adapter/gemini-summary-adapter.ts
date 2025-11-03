@@ -246,8 +246,18 @@ export class GeminiSummaryAdapter implements SummaryProvider {
             contextComparison,
             recommendedAudience,
             valueAssessment,
+            updatedAt: new Date().toISOString(),
           }
         : undefined;
+
+    // Log if partial critique data detected
+    if (!critique && (contextComparison || recommendedAudience || valueAssessment)) {
+      console.warn('[Adapter] Partial critique data detected:', {
+        contextComparison: !!contextComparison,
+        recommendedAudience: !!recommendedAudience,
+        valueAssessment: !!valueAssessment,
+      });
+    }
 
     return {
       headline,

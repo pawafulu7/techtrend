@@ -52,13 +52,13 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
         const tags = this.postProcessor.formatTags(providerOutput.tags || []);
 
         // Process critique if present
-        let critique: { contextComparison: string; recommendedAudience: string; valueAssessment: string } | undefined;
+        let critique: { contextComparison: string; recommendedAudience: string; valueAssessment: string; updatedAt: string } | undefined;
         let critiqueVersion: number | undefined;
 
         if (providerOutput.critique) {
           critique = providerOutput.critique;
           critiqueVersion = 1;
-          console.log(`[Service] Critique generated for ${requestId}`);
+          logger.debug({ requestId }, 'Critique generated');
         }
 
         const qualityResult = this.qualityChecker.checkQuality(summary, detailedSummary);

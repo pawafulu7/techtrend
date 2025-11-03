@@ -10,6 +10,7 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 import { cleanupText, finalCleanup } from '@/lib/services/summary-generation';
+import { critiqueToJson } from '@/lib/utils/critique-serialization';
 import type { UnifiedSummaryServiceImpl } from '@/lib/ai/service/unified-summary-service';
 import type { ArticleWithSource } from '@/types/models';
 
@@ -41,6 +42,7 @@ interface SummaryAndTags {
     contextComparison: string;
     recommendedAudience: string;
     valueAssessment: string;
+    updatedAt: string;
   };
   critiqueVersion?: number;
 }
@@ -144,7 +146,7 @@ export class SummaryManager {
               translatedTitle: result.translatedTitle,
               summaryVersion: SUMMARY_VERSION.UNIFIED,
               summaryComputedAt: new Date(),
-              critique: result.critique as any,
+              critique: critiqueToJson(result.critique),
               critiqueVersion: result.critiqueVersion,
             }
           });
@@ -247,7 +249,7 @@ export class SummaryManager {
               translatedTitle: result.translatedTitle,
               summaryVersion: SUMMARY_VERSION.UNIFIED,
               summaryComputedAt: new Date(),
-              critique: result.critique as any,
+              critique: critiqueToJson(result.critique),
               critiqueVersion: result.critiqueVersion,
             }
           });
@@ -350,7 +352,7 @@ export class SummaryManager {
               translatedTitle: result.translatedTitle,
               summaryVersion: SUMMARY_VERSION.UNIFIED,
               summaryComputedAt: new Date(),
-              critique: result.critique as any,
+              critique: critiqueToJson(result.critique),
               critiqueVersion: result.critiqueVersion,
             }
           });
@@ -493,6 +495,20 @@ export class SummaryManager {
         }
       }
     });
+  }
+
+  /**
+   * Regenerate summary and tags for a single article (public API)
+   *
+   * This method is exposed for manual regeneration scripts that need to
+   * regenerate summaries with critique for existing articles.
+   */
+  async regenerateArticleSummary(
+    title: string,
+    content: string,
+    articleId: string
+  ): Promise<SummaryAndTags> {
+    return this.generateSummaryAndTags(title, content, articleId);
   }
 
   /**
