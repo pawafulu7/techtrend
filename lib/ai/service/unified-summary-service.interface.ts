@@ -15,6 +15,12 @@ export type SummaryServiceResult = {
   qualityScore: number;
   processingTimeMs: number;
   summaryVersion: number;
+  critique?: {
+    contextComparison: string;
+    recommendedAudience: string;
+    valueAssessment: string;
+  };
+  critiqueVersion?: number;
 };
 
 export interface UnifiedSummaryService {
