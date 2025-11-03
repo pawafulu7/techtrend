@@ -62,6 +62,8 @@ model Article {
   summaryComputedAt      DateTime?          @db.Timestamptz(6)
   skipReason             SkipReason? // スキップ理由（NULL = 正常生成）
   summaryError           String? // エラーメッセージ（NULL = エラーなし）
+  critique               Json? // AI評価（JSONB: {contextComparison, recommendedAudience, valueAssessment, updatedAt}）
+  critiqueVersion        Int? // 批評バージョン
   source                 Source             @relation(fields: [sourceId], references: [id])
   articleViews           ArticleView[]
   favorites              Favorite[]
