@@ -1,0 +1,213 @@
+import { z } from 'zod';
+
+/**
+ * Rate limit configuration schema
+ *
+ * Validates rate limit policy definitions and environment overrides.
+ */
+export const RateLimitConfigSchema = z.object({
+  points: z.number().int().positive(),
+  duration: z.number().int().positive(),
+  blockDuration: z.number().int().nonnegative().optional().default(0),
+  keyStrategy: z.enum(['user', 'session', 'ip', 'anonymous']).optional().default('ip'),
+  notes: z.string().optional(),
+  telemetryEvent: z.string().optional(),
+});
+
+export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
+
+/**
+ * Predefined rate limit policies
+ *
+ * Key format: <category>:<action>
+ * - Category: auth, ai, rag, write, read, public
+ * - Action: specific operation (login, summary, favorite, etc.)
+ *
+ * Key strategies:
+ * - 'user': Authenticated user ID (fallback to IP for anonymous)
+ * - 'session': Session token (cookie-based)
+ * - 'ip': Client IP address
+ * - 'anonymous': Single global key (for health checks)
+ */
+export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
+  // Authentication (High Security)
+  'auth:register': {
+    points: 5,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'Prevent account creation spam',
+    telemetryEvent: 'ratelimit.auth.register',
+  },
+  'auth:login': {
+    points: 5,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'Prevent brute force attacks',
+    telemetryEvent: 'ratelimit.auth.login',
+  },
+  'auth:verify': {
+    points: 10,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'Email verification attempts',
+    telemetryEvent: 'ratelimit.auth.verify',
+  },
+
+  // AI Generation (Cost Control)
+  'ai:summary': {
+    points: 10,
+    duration: 60,
+    keyStrategy: 'user',
+    notes: 'Gemini API cost control',
+    telemetryEvent: 'ratelimit.ai.summary',
+  },
+  'ai:tags': {
+    points: 10,
+    duration: 60,
+    keyStrategy: 'user',
+    notes: 'Gemini API cost control',
+    telemetryEvent: 'ratelimit.ai.tags',
+  },
+
+  // RAG (Existing Policies)
+  'rag:search': {
+    points: 10,
+    duration: 60,
+    keyStrategy: 'user',
+    notes: 'Vector search (low cost)',
+    telemetryEvent: 'ratelimit.rag.search',
+  },
+  'rag:agent': {
+    points: 5,
+    duration: 60,
+    keyStrategy: 'user',
+    notes: 'AI agent search (high cost)',
+    telemetryEvent: 'ratelimit.rag.agent',
+  },
+
+  // Write Operations (Spam Prevention)
+  'write:favorite': {
+    points: 20,
+    duration: 60,
+    keyStrategy: 'user',
+    notes: 'Prevent favorite spam',
+    telemetryEvent: 'ratelimit.write.favorite',
+  },
+  'write:profile': {
+    points: 10,
+    duration: 60,
+    keyStrategy: 'user',
+    notes: 'Profile update limit',
+    telemetryEvent: 'ratelimit.write.profile',
+  },
+  'write:password': {
+    points: 5,
+    duration: 300,
+    keyStrategy: 'user',
+    notes: 'Password change (5 per 5min)',
+    telemetryEvent: 'ratelimit.write.password',
+  },
+  'write:vote': {
+    points: 30,
+    duration: 60,
+    keyStrategy: 'user',
+    notes: 'Article voting limit',
+    telemetryEvent: 'ratelimit.write.vote',
+  },
+  'write:delete': {
+    points: 3,
+    duration: 3600,
+    keyStrategy: 'user',
+    notes: 'Account deletion (3 per hour)',
+    telemetryEvent: 'ratelimit.write.delete',
+  },
+
+  // Read Operations (General Protection)
+  'read:articles': {
+    points: 100,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'General article listing',
+    telemetryEvent: 'ratelimit.read.articles',
+  },
+  'read:search': {
+    points: 50,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'Search queries',
+    telemetryEvent: 'ratelimit.read.search',
+  },
+
+  // Public Endpoints (High Tolerance)
+  'public:stats': {
+    points: 200,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'Public statistics',
+    telemetryEvent: 'ratelimit.public.stats',
+  },
+  'public:health': {
+    points: 500,
+    duration: 60,
+    keyStrategy: 'anonymous',
+    notes: 'Health check (monitoring)',
+    telemetryEvent: 'ratelimit.public.health',
+  },
+
+  // Default Catch-All
+  'default': {
+    points: 100,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'Global default for unspecified endpoints',
+    telemetryEvent: 'ratelimit.default',
+  },
+};
+
+/**
+ * Get rate limit config by key
+ *
+ * Applies environment overrides if present and validates the merged result.
+ *
+ * Environment override format:
+ * RATE_LIMIT_OVERRIDES='{"auth:login":{"points":10}}'
+ *
+ * @param key - Rate limit policy key
+ * @returns Validated rate limit configuration
+ */
+export function getRateLimitConfig(key: string): RateLimitConfig {
+  const config = RATE_LIMIT_POLICIES[key] || RATE_LIMIT_POLICIES['default'];
+
+  // Apply environment overrides with validation
+  const overrides = process.env.RATE_LIMIT_OVERRIDES;
+  if (overrides) {
+    try {
+      const parsed = JSON.parse(overrides);
+      if (parsed[key]) {
+        const merged = { ...config, ...parsed[key] };
+        // Validate merged config with Zod (CodexMCP fix: prevent runtime errors)
+        return RateLimitConfigSchema.parse(merged);
+      }
+    } catch (error) {
+      console.error('Failed to parse/validate RATE_LIMIT_OVERRIDES', error);
+    }
+  }
+
+  return config;
+}
+
+/**
+ * Validate all rate limit configs at build time
+ *
+ * Throws if any predefined policy is invalid.
+ * Call this during application initialization.
+ */
+export function validateRateLimitConfigs(): void {
+  Object.entries(RATE_LIMIT_POLICIES).forEach(([key, config]) => {
+    try {
+      RateLimitConfigSchema.parse(config);
+    } catch (error) {
+      throw new Error(`Invalid rate limit config for "${key}": ${error}`);
+    }
+  });
+}
