@@ -11,6 +11,14 @@ jest.mock('@/lib/auth/utils', () => ({
   deleteUserAccountWithAudit: jest.fn(),
 }));
 
+// Mock rate limiter
+jest.mock('@/lib/rate-limiter', () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true }),
+  createRateLimiterFromConfig: jest.fn().mockReturnValue({
+    consume: jest.fn().mockResolvedValue({}),
+  }),
+}));
+
 // Import DELETE after mocks are set up
 const { DELETE } = require('@/app/api/user/delete/route');
 import { prisma } from '@/lib/database';

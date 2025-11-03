@@ -1,6 +1,7 @@
 import { POST } from '@/app/api/summaries/generate/route';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { prisma } from '@/lib/database';
+import { NextRequest } from 'next/server';
 
 jest.mock('@/lib/di/bootstrap');
 jest.mock('@/lib/database', () => ({
@@ -13,6 +14,12 @@ jest.mock('@/lib/database', () => ({
       upsert: jest.fn(),
     },
   },
+}));
+jest.mock('@/lib/rate-limiter', () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true }),
+  createRateLimiterFromConfig: jest.fn().mockReturnValue({
+    consume: jest.fn().mockResolvedValue({}),
+  }),
 }));
 
 describe('/api/summaries/generate', () => {
@@ -47,7 +54,8 @@ describe('/api/summaries/generate', () => {
     (prisma.tag.upsert as jest.Mock).mockResolvedValue({ id: 'tag-1' });
     (prisma.article.update as jest.Mock).mockResolvedValue({});
 
-    const response = await POST();
+    const request = new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' });
+    const response = await POST(request);
     const json = await response.json();
 
     expect(json.success).toBe(true);
@@ -92,7 +100,8 @@ describe('/api/summaries/generate', () => {
     (prisma.tag.upsert as jest.Mock).mockResolvedValue({ id: 'tag-new' });
     (prisma.article.update as jest.Mock).mockResolvedValue({});
 
-    await POST();
+    const request = new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' });
+    await POST(request);
 
     // 'new'は1回のみupsert（重複除外確認）
     expect(prisma.tag.upsert).toHaveBeenCalledTimes(1);
@@ -126,7 +135,8 @@ describe('/api/summaries/generate', () => {
 
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-    const response = await POST();
+    const request = new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' });
+    const response = await POST(request);
     const json = await response.json();
 
     expect(json.success).toBe(true);
@@ -163,7 +173,8 @@ describe('/api/summaries/generate', () => {
     (getAppDependencies as jest.Mock).mockReturnValue({ service: mockService });
     (prisma.article.update as jest.Mock).mockResolvedValue({});
 
-    const response = await POST();
+    const request = new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' });
+    const response = await POST(request);
     const json = await response.json();
 
     expect(json.success).toBe(true);
@@ -195,7 +206,8 @@ describe('/api/summaries/generate', () => {
     (getAppDependencies as jest.Mock).mockReturnValue({ service: mockService });
     (prisma.article.update as jest.Mock).mockResolvedValue({});
 
-    const response = await POST();
+    const request = new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' });
+    const response = await POST(request);
     const json = await response.json();
 
     expect(json.success).toBe(true);
@@ -227,7 +239,8 @@ describe('/api/summaries/generate', () => {
     (getAppDependencies as jest.Mock).mockReturnValue({ service: mockService });
     (prisma.article.update as jest.Mock).mockResolvedValue({});
 
-    const response = await POST();
+    const request = new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' });
+    const response = await POST(request);
     const json = await response.json();
 
     expect(json.success).toBe(true);

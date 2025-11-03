@@ -11,6 +11,14 @@ jest.mock('@/lib/auth/utils', () => ({
   changePassword: jest.fn()
 }));
 
+// Mock rate limiter
+jest.mock('@/lib/rate-limiter', () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true }),
+  createRateLimiterFromConfig: jest.fn().mockReturnValue({
+    consume: jest.fn().mockResolvedValue({}),
+  }),
+}));
+
 // Import POST after mocks are set up
 const { POST } = require('@/app/api/user/password/route');
 
