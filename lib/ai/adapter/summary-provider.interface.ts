@@ -19,6 +19,11 @@ export type SummaryProviderOutput = {
   tags?: string[];
   confidence: number;
   rawResponse?: Record<string, unknown>;
+  critique?: {
+    contextComparison: string;
+    recommendedAudience: string;
+    valueAssessment: string;
+  };
 };
 
 export interface SummaryProvider {

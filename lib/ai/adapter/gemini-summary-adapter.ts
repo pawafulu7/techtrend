@@ -86,6 +86,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         tags: parsed.tags,
         confidence: this.calculateConfidence(candidate),
         rawResponse: payload,
+        critique: parsed.critique,
       };
     } catch (error) {
       const err = error as Error;
@@ -99,6 +100,11 @@ export class GeminiSummaryAdapter implements SummaryProvider {
     detailedSummary: string;
     category?: string;
     tags?: string[];
+    critique?: {
+      contextComparison: string;
+      recommendedAudience: string;
+      valueAssessment: string;
+    };
   } {
     const lines = text.split('\n').map((line) => line.trim());
 
@@ -106,6 +112,9 @@ export class GeminiSummaryAdapter implements SummaryProvider {
     let detailedSummary = '';
     let category: string | undefined;
     let tags: string[] | undefined;
+    let contextComparison: string | undefined;
+    let recommendedAudience: string | undefined;
+    let valueAssessment: string | undefined;
 
     let currentSection = '';
     const detailedLines: string[] = [];
@@ -147,6 +156,37 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         continue;
       }
 
+      if (line.startsWith('AI評価:')) {
+        currentSection = 'critique';
+        continue;
+      }
+
+      if (line.startsWith('トレンド・比較：') || line.startsWith('トレンド・比較:')) {
+        const separator = line.includes('： ') ? '： ' : ': ';
+        const content = line.substring(line.indexOf(separator) + separator.length).trim();
+        if (content) {
+          contextComparison = content;
+        }
+        continue;
+      }
+
+      if (line.startsWith('推薦対象者：') || line.startsWith('推薦対象者:')) {
+        const separator = line.includes('： ') ? '： ' : ': ';
+        const content = line.substring(line.indexOf(separator) + separator.length).trim();
+        if (content) {
+          recommendedAudience = content;
+        }
+        continue;
+      }
+
+      if (line.startsWith('読む価値：') || line.startsWith('読む価値:')) {
+        const separator = line.includes('： ') ? '： ' : ': ';
+        const content = line.substring(line.indexOf(separator) + separator.length).trim();
+        if (content) {
+          valueAssessment = content;
+        }
+        continue;
+      }
 
       if (line.startsWith('【') || line === '') {
         continue;
@@ -200,11 +240,21 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       throw new Error('Detailed summary contains instruction markers - regeneration required');
     }
 
+    const critique =
+      contextComparison && recommendedAudience && valueAssessment
+        ? {
+            contextComparison,
+            recommendedAudience,
+            valueAssessment,
+          }
+        : undefined;
+
     return {
       headline,
       detailedSummary,
       category,
       tags,
+      critique,
     };
   }
 
