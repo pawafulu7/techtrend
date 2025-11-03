@@ -8,11 +8,12 @@ import {
   DeleteAccountResponse,
   DeleteAccountError,
 } from '@/types/api/delete-account';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteAccountResponse | DeleteAccountError>> {
+async function deleteAccountHandler(request: NextRequest): Promise<NextResponse<DeleteAccountResponse | DeleteAccountError>> {
   try {
     // 1. Parse request body (handle JSON parse errors)
     let body: unknown;
@@ -175,3 +176,5 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteA
     );
   }
 }
+
+export const DELETE = withRateLimit('write:delete', deleteAccountHandler);
