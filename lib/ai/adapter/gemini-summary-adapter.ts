@@ -104,6 +104,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       contextComparison: string;
       recommendedAudience: string;
       valueAssessment: string;
+      updatedAt: string;
     };
   } {
     const lines = text.split('\n').map((line) => line.trim());

@@ -9,13 +9,13 @@ export function critiqueToJson(
         updatedAt: string;
       }
     | undefined
-): Prisma.JsonValue | null {
-  if (!critique) return null;
+): Prisma.InputJsonValue | Prisma.NullTypes.DbNull {
+  if (!critique) return Prisma.DbNull;
 
   return {
     contextComparison: critique.contextComparison,
     recommendedAudience: critique.recommendedAudience,
     valueAssessment: critique.valueAssessment,
     updatedAt: critique.updatedAt,
-  } as Prisma.JsonValue;
+  } satisfies Prisma.InputJsonObject;
 }
