@@ -54,6 +54,13 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Email verification attempts',
     telemetryEvent: 'ratelimit.auth.verify',
   },
+  'auth:auto-login': {
+    points: 5,
+    duration: 300,
+    keyStrategy: 'ip',
+    notes: 'Auto-login token validation abuse prevention',
+    telemetryEvent: 'ratelimit.auth.auto-login',
+  },
 
   // AI Generation (Cost Control)
   'ai:summary': {
