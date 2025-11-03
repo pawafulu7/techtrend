@@ -71,14 +71,28 @@ export function SearchBox() {
     }
   }, [debouncedQuery, isComposing, handleSearch, searchParams]);
 
-  const handleClear = () => {
+  const handleClear = async () => {
     isInternalUpdate.current = true;
     setQuery('');
-    
+
     const params = new URLSearchParams(searchParams.toString());
     params.delete('search');
     params.delete('page');
-    router.push(`/?${params.toString()}`);
+
+    // Canonical URL builder: push "/" when no params remain
+    const nextUrl = params.toString() ? `/?${params.toString()}` : '/';
+    router.push(nextUrl);
+
+    // Update cookie with null to clear stored search
+    try {
+      await fetch('/api/filter-preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ search: null }),
+      });
+    } catch {
+      // Silent fail
+    }
   };
 
   return (

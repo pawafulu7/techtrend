@@ -209,8 +209,10 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     // 即座に状態を更新（UIの反応性を保つ）
     setSelectedSources(sourceIds);
 
-    // URL構築（即座に実行してアンマウント時のキャンセルを防ぐ）
-    const params = new URLSearchParams(searchParams.toString());
+    // URL構築: Use live location to avoid stale searchParams snapshot
+    const params = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams(searchParams.toString());
 
     // Remove old params
     params.delete('sourceId');
