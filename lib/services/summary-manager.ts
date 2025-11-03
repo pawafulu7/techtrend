@@ -37,6 +37,12 @@ interface SummaryAndTags {
   detailedSummary: string;
   translatedTitle?: string;
   tags: string[];
+  critique?: {
+    contextComparison: string;
+    recommendedAudience: string;
+    valueAssessment: string;
+  };
+  critiqueVersion?: number;
 }
 
 interface ApiStats {
@@ -138,6 +144,8 @@ export class SummaryManager {
               translatedTitle: result.translatedTitle,
               summaryVersion: SUMMARY_VERSION.UNIFIED,
               summaryComputedAt: new Date(),
+              critique: result.critique as any,
+              critiqueVersion: result.critiqueVersion,
             }
           });
 
@@ -238,7 +246,9 @@ export class SummaryManager {
               detailedSummary: result.detailedSummary,
               translatedTitle: result.translatedTitle,
               summaryVersion: SUMMARY_VERSION.UNIFIED,
-              summaryComputedAt: new Date()
+              summaryComputedAt: new Date(),
+              critique: result.critique as any,
+              critiqueVersion: result.critiqueVersion,
             }
           });
 
@@ -339,7 +349,9 @@ export class SummaryManager {
               detailedSummary: result.detailedSummary,
               translatedTitle: result.translatedTitle,
               summaryVersion: SUMMARY_VERSION.UNIFIED,
-              summaryComputedAt: new Date()
+              summaryComputedAt: new Date(),
+              critique: result.critique as any,
+              critiqueVersion: result.critiqueVersion,
             }
           });
 
@@ -401,7 +413,9 @@ export class SummaryManager {
         summary: cleanupText(result.summary),
         detailedSummary: finalCleanup(result.detailedSummary),
         translatedTitle: result.translatedTitle,
-        tags: result.tags || []
+        tags: result.tags || [],
+        critique: result.critique,
+        critiqueVersion: result.critiqueVersion,
       };
     } catch (error) {
       this.apiStats.failures++;
