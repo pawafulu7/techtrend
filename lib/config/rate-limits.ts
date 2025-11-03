@@ -5,7 +5,7 @@ import { z } from 'zod';
  *
  * Validates rate limit policy definitions and environment overrides.
  */
-export const RateLimitConfigSchema = z.object({
+const RateLimitConfigSchemaInternal = z.object({
   points: z.number().int().positive(),
   duration: z.number().int().positive(),
   blockDuration: z.number().int().nonnegative().optional().default(0),
@@ -14,7 +14,9 @@ export const RateLimitConfigSchema = z.object({
   telemetryEvent: z.string().optional(),
 });
 
-export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
+export const RateLimitConfigSchema = RateLimitConfigSchemaInternal;
+
+export type RateLimitConfig = z.input<typeof RateLimitConfigSchemaInternal>;
 
 /**
  * Predefined rate limit policies

@@ -147,8 +147,11 @@ export function withRateLimit(
  * For Node.js API Routes and tests, fallback to x-forwarded-for header.
  */
 function getClientIP(request: NextRequest): string {
+  // Type assertion needed: request.ip exists at runtime but not in type definition
+  const requestWithIp = request as NextRequest & { ip?: string };
+
   return (
-    request.ip ??
+    requestWithIp.ip ??
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
     'unknown'
   );
