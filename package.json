@@ -89,6 +89,8 @@
     "update:tech-terms": "tsx scripts/manual/update-tech-terms.ts",
     "report:quality-metrics": "tsx scripts/manual/generate-quality-report.ts",
     "regenerate:low-quality": "tsx scripts/manual/regenerate-low-quality-summaries.ts",
+    "regenerate:with-critique": "tsx scripts/manual/regenerate-summaries-with-critique.ts",
+    "regenerate:with-critique:dry": "tsx scripts/manual/regenerate-summaries-with-critique.ts --dry-run",
     "regenerate:quality-fallback": "tsx scripts/manual/regenerate-low-quality-with-fallback.ts",
     "regenerate:force-all": "tsx scripts/manual/force-regenerate-all.ts",
     "regenerate:under-40": "tsx scripts/manual/regenerate-under-40.ts",
