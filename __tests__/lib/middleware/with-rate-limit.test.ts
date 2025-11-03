@@ -98,7 +98,8 @@ describe('withRateLimit', () => {
     it('should return 429 when rate limit exceeded', async () => {
       mockAuth.mockResolvedValue(null);
 
-      const resetDate = new Date('2025-11-03T10:01:00Z');
+      // Use dynamic future date to avoid time-dependent test failures
+      const resetDate = new Date(Date.now() + 60000); // 60 seconds from now
       mockCheckRateLimit.mockRejectedValue(
         new RateLimitError('Rate limit exceeded', 10, 0, resetDate)
       );
@@ -115,6 +116,7 @@ describe('withRateLimit', () => {
       const body = await response.json();
       expect(body.error).toBe('rate_limited');
       expect(body.retryAfter).toBeGreaterThan(0);
+      expect(body.retryAfter).toBeLessThanOrEqual(60); // Should be within 60 seconds
       expect(body.limit).toBe(10);
 
       expect(response.headers.get('Retry-After')).toBeTruthy();
