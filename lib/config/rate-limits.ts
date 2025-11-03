@@ -32,10 +32,11 @@ export type RateLimitConfig = z.input<typeof RateLimitConfigSchemaInternal>;
  * - 'anonymous': Single global key (for health checks)
  */
 export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
-  // Authentication (High Security)
+  // Authentication (High Security) - 60s block for brute-force prevention
   'auth:register': {
     points: 5,
     duration: 60,
+    blockDuration: 60,
     keyStrategy: 'ip',
     notes: 'Prevent account creation spam',
     telemetryEvent: 'ratelimit.auth.register',
@@ -43,6 +44,7 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'auth:login': {
     points: 5,
     duration: 60,
+    blockDuration: 60,
     keyStrategy: 'ip',
     notes: 'Prevent brute force attacks',
     telemetryEvent: 'ratelimit.auth.login',
@@ -50,6 +52,7 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'auth:verify': {
     points: 10,
     duration: 60,
+    blockDuration: 60,
     keyStrategy: 'ip',
     notes: 'Email verification attempts',
     telemetryEvent: 'ratelimit.auth.verify',
@@ -57,15 +60,17 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'auth:auto-login': {
     points: 5,
     duration: 300,
+    blockDuration: 60,
     keyStrategy: 'ip',
     notes: 'Auto-login token validation abuse prevention',
     telemetryEvent: 'ratelimit.auth.auto-login',
   },
 
-  // AI Generation (Cost Control)
+  // AI Generation (Cost Control) - No block, soft throttle only
   'ai:summary': {
     points: 10,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'user',
     notes: 'Gemini API cost control',
     telemetryEvent: 'ratelimit.ai.summary',
@@ -73,15 +78,17 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'ai:tags': {
     points: 10,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'user',
     notes: 'Gemini API cost control',
     telemetryEvent: 'ratelimit.ai.tags',
   },
 
-  // RAG (Existing Policies)
+  // RAG (Existing Policies) - No block, soft throttle only
   'rag:search': {
     points: 10,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'user',
     notes: 'Vector search (low cost)',
     telemetryEvent: 'ratelimit.rag.search',
@@ -89,6 +96,7 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'rag:agent': {
     points: 5,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'user',
     notes: 'AI agent search (high cost)',
     telemetryEvent: 'ratelimit.rag.agent',
@@ -98,6 +106,7 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'write:favorite': {
     points: 20,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'user',
     notes: 'Prevent favorite spam',
     telemetryEvent: 'ratelimit.write.favorite',
@@ -105,6 +114,7 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'write:profile': {
     points: 10,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'user',
     notes: 'Profile update limit',
     telemetryEvent: 'ratelimit.write.profile',
@@ -112,6 +122,7 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'write:password': {
     points: 5,
     duration: 300,
+    blockDuration: 60,
     keyStrategy: 'user',
     notes: 'Password change (5 per 5min)',
     telemetryEvent: 'ratelimit.write.password',
@@ -119,6 +130,7 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'write:vote': {
     points: 30,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'user',
     notes: 'Article voting limit',
     telemetryEvent: 'ratelimit.write.vote',
@@ -126,15 +138,17 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'write:delete': {
     points: 3,
     duration: 3600,
+    blockDuration: 30,
     keyStrategy: 'user',
     notes: 'Account deletion (3 per hour)',
     telemetryEvent: 'ratelimit.write.delete',
   },
 
-  // Read Operations (General Protection)
+  // Read Operations (General Protection) - No block
   'read:articles': {
     points: 100,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'ip',
     notes: 'General article listing',
     telemetryEvent: 'ratelimit.read.articles',
@@ -142,15 +156,17 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'read:search': {
     points: 50,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'ip',
     notes: 'Search queries',
     telemetryEvent: 'ratelimit.read.search',
   },
 
-  // Public Endpoints (High Tolerance)
+  // Public Endpoints (High Tolerance) - No block
   'public:stats': {
     points: 200,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'ip',
     notes: 'Public statistics',
     telemetryEvent: 'ratelimit.public.stats',
@@ -158,15 +174,17 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
   'public:health': {
     points: 500,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'anonymous',
     notes: 'Health check (monitoring)',
     telemetryEvent: 'ratelimit.public.health',
   },
 
-  // Default Catch-All
+  // Default Catch-All - No block
   'default': {
     points: 100,
     duration: 60,
+    blockDuration: 0,
     keyStrategy: 'ip',
     notes: 'Global default for unspecified endpoints',
     telemetryEvent: 'ratelimit.default',
