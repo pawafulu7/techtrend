@@ -3,7 +3,7 @@ import {
   getRateLimitConfig,
   validateRateLimitConfigs,
   RateLimitConfigSchema,
-} from '../rate-limits';
+} from '@/lib/config/rate-limits';
 
 describe('Rate Limit Configuration', () => {
   describe('RATE_LIMIT_POLICIES', () => {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRateLimit } from '../with-rate-limit';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { RateLimitError } from '@/lib/rate-limiter';
 
 // Mock dependencies
