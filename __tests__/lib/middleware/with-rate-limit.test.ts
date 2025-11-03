@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { RateLimitError } from '@/lib/rate-limiter';
 
-// Mock dependencies
+// Mock dependencies (preserve RateLimitError class)
 jest.mock('@/lib/auth/auth');
-jest.mock('@/lib/rate-limiter');
+jest.mock('@/lib/rate-limiter', () => {
+  const actual = jest.requireActual('@/lib/rate-limiter');
+  return {
+    ...actual,
+    checkRateLimit: jest.fn(),
+    createRateLimiterFromConfig: jest.fn(),
+  };
+});
 jest.mock('@/lib/config/rate-limits');
 jest.mock('@opentelemetry/api');
 

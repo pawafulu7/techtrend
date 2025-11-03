@@ -140,16 +140,32 @@ export function withRateLimit(
  * @param session - Auth.js session (pre-fetched to avoid double auth() calls)
  * @returns Rate limit key string
  */
+/**
+ * Extract client IP from request
+ *
+ * Next.js 15 only populates request.ip in runtime (middleware/edge).
+ * For Node.js API Routes and tests, fallback to x-forwarded-for header.
+ */
+function getClientIP(request: NextRequest): string {
+  return (
+    request.ip ??
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
+  );
+}
+
 async function resolveDefaultKey(
   request: NextRequest,
   strategy: 'user' | 'session' | 'ip' | 'anonymous' | undefined,
   session: any
 ): Promise<string> {
+  const clientIP = getClientIP(request);
+
   switch (strategy) {
     case 'user': {
       if (!session?.user?.id) {
         // Fallback to IP for anonymous users
-        return `anon:${request.ip || 'unknown'}`;
+        return `anon:${clientIP}`;
       }
       return `user:${session.user.id}`;
     }
@@ -162,12 +178,12 @@ async function resolveDefaultKey(
     }
 
     case 'ip':
-      return `ip:${request.ip || 'unknown'}`;
+      return `ip:${clientIP}`;
 
     case 'anonymous':
       return 'anonymous';
 
     default:
-      return `ip:${request.ip || 'unknown'}`;
+      return `ip:${clientIP}`;
   }
 }
