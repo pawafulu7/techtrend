@@ -163,34 +163,40 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       }
 
       if (line.startsWith('トレンド・比較：') || line.startsWith('トレンド・比較:')) {
-        const separator = line.includes('： ') ? '： ' : ': ';
-        let content = line.substring(line.indexOf(separator) + separator.length).trim();
-        // Remove duplicate label if present (e.g., "トレンド・比較： トレンド・比較：actual content")
-        content = content.replace(/^トレンド・比較[：:]\s*/, '');
-        if (content) {
-          contextComparison = content;
+        const match = line.match(/^トレンド・比較[：:]\s*(.*)$/);
+        if (match) {
+          let content = match[1];
+          // Remove duplicate label if present (e.g., "トレンド・比較：actual content")
+          content = content.replace(/^トレンド・比較[：:]\s*/, '');
+          if (content) {
+            contextComparison = content;
+          }
         }
         continue;
       }
 
       if (line.startsWith('推薦対象者：') || line.startsWith('推薦対象者:')) {
-        const separator = line.includes('： ') ? '： ' : ': ';
-        let content = line.substring(line.indexOf(separator) + separator.length).trim();
-        // Remove duplicate label if present
-        content = content.replace(/^推薦対象者[：:]\s*/, '');
-        if (content) {
-          recommendedAudience = content;
+        const match = line.match(/^推薦対象者[：:]\s*(.*)$/);
+        if (match) {
+          let content = match[1];
+          // Remove duplicate label if present
+          content = content.replace(/^推薦対象者[：:]\s*/, '');
+          if (content) {
+            recommendedAudience = content;
+          }
         }
         continue;
       }
 
       if (line.startsWith('読む価値：') || line.startsWith('読む価値:')) {
-        const separator = line.includes('： ') ? '： ' : ': ';
-        let content = line.substring(line.indexOf(separator) + separator.length).trim();
-        // Remove duplicate label if present
-        content = content.replace(/^読む価値[：:]\s*/, '');
-        if (content) {
-          valueAssessment = content;
+        const match = line.match(/^読む価値[：:]\s*(.*)$/);
+        if (match) {
+          let content = match[1];
+          // Remove duplicate label if present
+          content = content.replace(/^読む価値[：:]\s*/, '');
+          if (content) {
+            valueAssessment = content;
+          }
         }
         continue;
       }
@@ -209,7 +215,10 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       } else if (currentSection === 'detailed' && line) {
         const isBullet = /^\s*(?:・|[-*•●]|[0-9０-９]+[.)\u3001\uff0e])/.test(line);
         if (isBullet) {
-          detailedLines.push(line.trimStart());
+          // Split if multiple bullets on same line, but skip middle dots in names (e.g., "ノア・スミス")
+          // Pattern: ・ followed by non-space, non-colon, non-middle-dot chars, then colon
+          const items = line.split(/(?=・[^\s：・]+[：:])/);
+          detailedLines.push(...items.map(item => item.trimStart()).filter(item => item));
         } else if (detailedLines.length > 0 && !/^\s*$/.test(line)) {
           // Merge continuation lines into the last bullet item
           const lastIndex = detailedLines.length - 1;

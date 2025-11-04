@@ -87,6 +87,20 @@ async function regenerateSummariesWithCritique(options: RegenerateOptions = {}) 
           },
         });
 
+        // Verify data was saved (CodexMCP: write-then-read verification)
+        const saved = await prisma.article.findUnique({
+          where: { id: article.id },
+          select: { summary: true, detailedSummary: true, critique: true, critiqueVersion: true },
+        });
+
+        if (verbose) {
+          console.log(`  Saved verification:`);
+          console.log(`    Summary: ${saved?.summary ? 'OK' : 'MISSING'}`);
+          console.log(`    DetailedSummary: ${saved?.detailedSummary ? 'OK' : 'MISSING'}`);
+          console.log(`    Critique: ${saved?.critique ? 'OK' : 'MISSING'}`);
+          console.log(`    CritiqueVersion: ${saved?.critiqueVersion ?? 'NULL'}`);
+        }
+
         // Update tags
         if (result.tags?.length > 0) {
           await prisma.article.update({
