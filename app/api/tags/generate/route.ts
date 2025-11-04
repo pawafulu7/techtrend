@@ -38,7 +38,10 @@ async function generateTagsHandler(_request: NextRequest) {
         // 統一フォーマットで要約とタグを生成（タグのみ使用）
         const result = await service.generate(
           article.title,
-          article.content
+          article.content,
+          undefined,
+          undefined,
+          article.id  // Schedule embedding job
         );
 
         // タグは既に正規化済み

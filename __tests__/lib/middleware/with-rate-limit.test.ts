@@ -98,7 +98,7 @@ describe('withRateLimit', () => {
     it('should return 429 when rate limit exceeded', async () => {
       mockAuth.mockResolvedValue(null);
 
-      const resetDate = new Date('2025-11-03T10:01:00Z');
+      const resetDate = new Date(Date.now() + 60_000); // 60 seconds in the future
       mockCheckRateLimit.mockRejectedValue(
         new RateLimitError('Rate limit exceeded', 10, 0, resetDate)
       );

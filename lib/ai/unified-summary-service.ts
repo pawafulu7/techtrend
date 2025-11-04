@@ -8,6 +8,8 @@ import { generateEnhancedUnifiedPrompt } from '../utils/article-type-prompts';
 import { parseUnifiedResponse, validateParsedResult, ParsedSummaryResult } from './unified-summary-parser';
 import { checkSummaryQuality } from '../utils/summary-quality-checker';
 import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { logger, sanitizeError } from '@/lib/logger';
 
 export interface UnifiedSummaryResult extends ParsedSummaryResult {
   articleType: 'unified';
@@ -37,6 +39,7 @@ export class UnifiedSummaryService {
 
   private apiKey: string;
   private apiUrl: string;
+  private embeddingScheduler: EmbeddingScheduler;
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.GEMINI_API_KEY || '';
@@ -45,16 +48,18 @@ export class UnifiedSummaryService {
     }
     const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
     this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
+    this.embeddingScheduler = new EmbeddingScheduler();
   }
 
   /**
    * 要約を生成
    */
   async generate(
-    title: string, 
-    content: string, 
+    title: string,
+    content: string,
     options?: GenerateOptions,
-    sourceInfo?: { sourceName?: string, url?: string }
+    sourceInfo?: { sourceName?: string, url?: string },
+    articleId?: string
   ): Promise<UnifiedSummaryResult> {
     const opts = { ...UnifiedSummaryService.DEFAULT_OPTIONS, ...options };
     
@@ -173,6 +178,23 @@ export class UnifiedSummaryService {
           throw new Error('品質基準未達');
         }
         
+        // Schedule embedding job if articleId provided
+        if (articleId) {
+          try {
+            await this.embeddingScheduler.enqueue(articleId);
+            logger.debug({ articleId }, 'Embedding job enqueued');
+          } catch (err) {
+            logger.error(
+              {
+                articleId,
+                error: sanitizeError(err),
+              },
+              'Failed to enqueue embedding job'
+            );
+            // Don't throw - summary generation should succeed even if enqueue fails
+          }
+        }
+
         // 結果を返す（postProcessSummariesで処理済みのテキストを使用）
         return {
           summary: processed.summary,
