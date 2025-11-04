@@ -111,7 +111,6 @@ export const TECH_ABBREVIATIONS: Record<string, string> = {
   'UX': 'User Experience',
 
   // Performance & Optimization
-  'CDN': 'Content Delivery Network',
   'LCP': 'Largest Contentful Paint',
   'FID': 'First Input Delay',
   'CLS': 'Cumulative Layout Shift',
