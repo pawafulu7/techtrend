@@ -74,6 +74,15 @@ async function regenerateSummariesWithCritique(options: RegenerateOptions = {}) 
           article.id
         );
 
+        // Log data before save (CodexMCP debug)
+        if (verbose) {
+          console.log(`  Data to save:`);
+          console.log(`    summary length: ${result.summary?.length ?? 0}`);
+          console.log(`    detailedSummary length: ${result.detailedSummary?.length ?? 0}`);
+          console.log(`    critique exists: ${!!result.critique}`);
+          console.log(`    critiqueVersion: ${result.critiqueVersion ?? 'NULL'}`);
+        }
+
         // Update article
         await prisma.article.update({
           where: { id: article.id },
@@ -115,6 +124,15 @@ async function regenerateSummariesWithCritique(options: RegenerateOptions = {}) 
               },
             },
           });
+
+          // Verify after tag update (CodexMCP: narrow the window)
+          const afterTags = await prisma.article.findUnique({
+            where: { id: article.id },
+            select: { detailedSummary: true },
+          });
+          if (verbose && !afterTags?.detailedSummary) {
+            console.log(`  WARNING: DetailedSummary disappeared after tag update!`);
+          }
         }
 
         processed++;
