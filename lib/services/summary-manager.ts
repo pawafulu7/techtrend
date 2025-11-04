@@ -413,7 +413,7 @@ export class SummaryManager {
 
       return {
         summary: cleanupText(result.summary),
-        detailedSummary: finalCleanup(result.detailedSummary),
+        detailedSummary: result.detailedSummary, // Keep line breaks for bullet items
         translatedTitle: result.translatedTitle,
         tags: result.tags || [],
         critique: result.critique,
