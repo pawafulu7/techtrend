@@ -57,11 +57,50 @@ const agentRequestSchema = z.object({
 });
 
 /**
- * Detect query language (Japanese or English)
+ * Determine preferred language based on request context
+ *
+ * Priority:
+ * 1. Query content (if contains Japanese characters)
+ * 2. Accept-Language header (user's browser preference)
+ * 3. Default to Japanese (primary user base)
+ *
+ * Rationale:
+ * - Short ASCII queries like "CTO" should respect user's locale
+ * - Japanese users expect Japanese responses even for English terms
+ * - Browser Accept-Language header is the most reliable indicator
+ *
+ * @param query - Search query text
+ * @param request - HTTP request with headers
+ * @returns Preferred language ('ja' or 'en')
  */
-function detectLang(query: string): 'ja' | 'en' {
-  // Check for Japanese characters (Hiragana, Katakana, Kanji)
-  return /[\u3000-\u303F\u3040-\u30FF\u4E00-\u9FFF]/.test(query) ? 'ja' : 'en';
+function getPreferredLanguage(query: string, request: NextRequest): 'ja' | 'en' {
+  // Priority 1: If query contains Japanese characters, use Japanese
+  if (/[\u3000-\u303F\u3040-\u30FF\u4E00-\u9FFF]/.test(query)) {
+    return 'ja';
+  }
+
+  // Priority 2: Check Accept-Language header
+  const acceptLanguage = request.headers.get('accept-language');
+  if (acceptLanguage) {
+    // Parse Accept-Language header (e.g., "ja,en-US;q=0.9,en;q=0.8")
+    const languages = acceptLanguage.split(',').map(lang => {
+      const [code] = lang.trim().split(';');
+      return code.toLowerCase();
+    });
+
+    // Check if Japanese is preferred
+    for (const lang of languages) {
+      if (lang.startsWith('ja')) {
+        return 'ja';
+      }
+      if (lang.startsWith('en')) {
+        return 'en';
+      }
+    }
+  }
+
+  // Priority 3: Default to Japanese (primary user base)
+  return 'ja';
 }
 
 /**
@@ -241,6 +280,7 @@ async function handleStreamingRequest(
   validatedRequest: ValidatedRequest,
   session: Session,
   parentSpan: Span,
+  request: NextRequest,
   rateLimitInfo?: RateLimitInfo
 ): Promise<Response> {
   // Check cache first
@@ -264,7 +304,7 @@ async function handleStreamingRequest(
   parentSpan.setAttribute('cache.hit', false);
 
   // Start streaming (implementation in createStreamingResponse)
-  return createStreamingResponse(validatedRequest, session, parentSpan, rateLimitInfo);
+  return createStreamingResponse(validatedRequest, session, parentSpan, request, rateLimitInfo);
 }
 
 /**
@@ -276,6 +316,7 @@ async function createStreamingResponse(
   validatedRequest: ValidatedRequest,
   session: Session,
   parentSpan: Span,
+  request: NextRequest,
   rateLimitInfo?: RateLimitInfo
 ): Promise<Response> {
   const encoder = new TextEncoder();
@@ -291,8 +332,17 @@ async function createStreamingResponse(
       let usage: any = {};
 
       try {
+        // Determine user's preferred language
+        const preferredLang = getPreferredLanguage(validatedRequest.query, request);
+        const localeInstruction = preferredLang === 'ja'
+          ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
+          : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
+
         const streamResult = await articleSearchAgent.stream({
-          messages: [{ role: 'user', content: validatedRequest.query }],
+          messages: [
+            { role: 'system', content: localeInstruction },
+            { role: 'user', content: validatedRequest.query },
+          ],
         });
 
         heartbeatInterval = setInterval(() => {
@@ -358,7 +408,7 @@ async function createStreamingResponse(
               try {
                 const searchService = new VectorSearchService(prisma);
                 const fallbackResults = await searchService.search(validatedRequest.query, { topK: 10 });
-                const queryLang = detectLang(validatedRequest.query);
+                const queryLang = getPreferredLanguage(validatedRequest.query, request);
                 const fallbackText = formatResultsAsText(fallbackResults, queryLang);
 
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'fallback', text: fallbackText, resultCount: fallbackResults.length })}\n\n`));
@@ -435,7 +485,7 @@ async function createStreamingResponse(
           topK: 10,
         });
 
-        const queryLang = detectLang(validatedRequest.query);
+        const queryLang = getPreferredLanguage(validatedRequest.query, request);
         const fallbackText = formatResultsAsText(fallbackResults, queryLang);
 
         controller.enqueue(
@@ -491,6 +541,7 @@ async function handleBatchRequest(
   validatedRequest: ValidatedRequest,
   session: Session,
   span: Span,
+  request: NextRequest,
   rateLimitInfo?: RateLimitInfo
 ): Promise<NextResponse> {
   // Layer 5: Response cache check
@@ -525,8 +576,17 @@ async function handleBatchRequest(
   let fallback = false;
 
   try {
+    // Determine user's preferred language
+    const preferredLang = getPreferredLanguage(validatedRequest.query, request);
+    const localeInstruction = preferredLang === 'ja'
+      ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
+      : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
+
     const result = await articleSearchAgent.generate({
-      messages: [{ role: 'user', content: validatedRequest.query }],
+      messages: [
+        { role: 'system', content: localeInstruction },
+        { role: 'user', content: validatedRequest.query },
+      ],
     });
 
     const allToolCalls = result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
@@ -603,7 +663,7 @@ async function handleBatchRequest(
       topK: 10,
     });
 
-    const queryLang = detectLang(validatedRequest.query);
+    const queryLang = getPreferredLanguage(validatedRequest.query, request);
     agentResponse = formatResultsAsText(fallbackResults, queryLang);
     fallback = true;
 
@@ -757,9 +817,9 @@ export async function POST(request: NextRequest) {
 
       // Router: Streaming vs. Batch based on feature flag
       if (features.isAgentStreamingEnabled()) {
-        return await handleStreamingRequest(validatedRequest, session, span, rateLimitInfo);
+        return await handleStreamingRequest(validatedRequest, session, span, request, rateLimitInfo);
       } else {
-        return await handleBatchRequest(validatedRequest, session, span, rateLimitInfo);
+        return await handleBatchRequest(validatedRequest, session, span, request, rateLimitInfo);
       }
     } catch (error) {
       span.setAttribute('error', true);
