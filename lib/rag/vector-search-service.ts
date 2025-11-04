@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { EmbeddingService } from './embedding-service';
 import { logger, sanitizeError } from '@/lib/logger';
 import { searchOptionsSchema, SearchOptionsInput } from './schemas';
+import { getDynamicThreshold } from './query-utils';
 
 /**
  * Vector Search Service
@@ -53,10 +54,16 @@ export class VectorSearchService {
 
       const { topK, similarityThreshold, sourceIds, tags, embeddingKey, dateRange, recencyBoost } = validated;
 
+      // Use dynamic threshold if not explicitly specified
+      // Explicit threshold takes priority (backward compatibility)
+      const effectiveThreshold = similarityThreshold ?? getDynamicThreshold(query);
+
       logger.info({
         query: query.substring(0, 50),
         topK,
-        similarityThreshold,
+        requestedThreshold: similarityThreshold,
+        effectiveThreshold,
+        thresholdSource: similarityThreshold !== undefined ? 'explicit' : 'dynamic',
         embeddingKey,
         hasSourceFilter: !!sourceIds,
         hasTagFilter: !!tags,
@@ -136,7 +143,7 @@ export class VectorSearchService {
         WHERE e.model = ${this.activeModel}
           AND e.version = ${this.activeVersion}
           ${embeddingKeyFilter}
-          AND 1 - (e.embedding <=> ${vectorString}::vector) >= ${similarityThreshold}
+          AND 1 - (e.embedding <=> ${vectorString}::vector) >= ${effectiveThreshold}
           ${sourceFilter}
           ${tagFilter}
           ${dateFilter}
