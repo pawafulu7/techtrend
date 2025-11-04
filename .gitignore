@@ -174,3 +174,5 @@ regenerate.log
 .regenerate-low-item-summaries-progress.json
 .archive/
 backups/
+# Claude Code internal documentation
+.claude/docs/
