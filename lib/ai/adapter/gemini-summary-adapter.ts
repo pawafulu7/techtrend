@@ -164,7 +164,9 @@ export class GeminiSummaryAdapter implements SummaryProvider {
 
       if (line.startsWith('トレンド・比較：') || line.startsWith('トレンド・比較:')) {
         const separator = line.includes('： ') ? '： ' : ': ';
-        const content = line.substring(line.indexOf(separator) + separator.length).trim();
+        let content = line.substring(line.indexOf(separator) + separator.length).trim();
+        // Remove duplicate label if present (e.g., "トレンド・比較： トレンド・比較：actual content")
+        content = content.replace(/^トレンド・比較[：:]\s*/, '');
         if (content) {
           contextComparison = content;
         }
@@ -173,7 +175,9 @@ export class GeminiSummaryAdapter implements SummaryProvider {
 
       if (line.startsWith('推薦対象者：') || line.startsWith('推薦対象者:')) {
         const separator = line.includes('： ') ? '： ' : ': ';
-        const content = line.substring(line.indexOf(separator) + separator.length).trim();
+        let content = line.substring(line.indexOf(separator) + separator.length).trim();
+        // Remove duplicate label if present
+        content = content.replace(/^推薦対象者[：:]\s*/, '');
         if (content) {
           recommendedAudience = content;
         }
@@ -182,7 +186,9 @@ export class GeminiSummaryAdapter implements SummaryProvider {
 
       if (line.startsWith('読む価値：') || line.startsWith('読む価値:')) {
         const separator = line.includes('： ') ? '： ' : ': ';
-        const content = line.substring(line.indexOf(separator) + separator.length).trim();
+        let content = line.substring(line.indexOf(separator) + separator.length).trim();
+        // Remove duplicate label if present
+        content = content.replace(/^読む価値[：:]\s*/, '');
         if (content) {
           valueAssessment = content;
         }
