@@ -28,7 +28,7 @@ export const searchOptionsSchema = z.object({
     .number()
     .min(0, 'Similarity threshold must be between 0 and 1')
     .max(1, 'Similarity threshold must be between 0 and 1')
-    .default(0.7),
+    .default(0.5),  // Lowered from 0.7 to improve recall for short queries
 
   sourceIds: z
     .array(

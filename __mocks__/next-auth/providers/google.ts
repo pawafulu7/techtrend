@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-export default jest.fn(() => ({
+export default jest.fn((options: any = {}) => ({
   id: 'google',
   name: 'Google',
   type: 'oauth',
@@ -8,6 +8,11 @@ export default jest.fn(() => ({
     params: {
       scope: 'openid email profile'
     }
+  },
+  options: {
+    clientId: options.clientId,
+    clientSecret: options.clientSecret,
+    ...options,
   },
   profile: jest.fn()
 }));

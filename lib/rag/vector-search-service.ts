@@ -2,6 +2,8 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { EmbeddingService } from './embedding-service';
 import { logger, sanitizeError } from '@/lib/logger';
 import { searchOptionsSchema, SearchOptionsInput } from './schemas';
+import { getDynamicThreshold } from './query-utils';
+import { QueryExpansionService } from './query-expansion-service';
 
 /**
  * Vector Search Service
@@ -29,12 +31,14 @@ export interface SearchResult {
 export class VectorSearchService {
   private prisma: PrismaClient;
   private embeddingService: EmbeddingService;
+  private queryExpansionService: QueryExpansionService;
   private activeModel: string;
   private activeVersion: number;
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
     this.embeddingService = new EmbeddingService();
+    this.queryExpansionService = new QueryExpansionService();
     this.activeModel = process.env.RAG_ACTIVE_MODEL || 'text-embedding-3-small';
     this.activeVersion = parseInt(process.env.RAG_ACTIVE_VERSION || '1', 10);
   }
@@ -48,15 +52,32 @@ export class VectorSearchService {
    */
   async search(query: string, options: SearchOptionsInput = {}): Promise<SearchResult[]> {
     try {
+      const thresholdProvided = options.similarityThreshold !== undefined;
+
       // Validate options with Zod schema
       const validated = searchOptionsSchema.parse(options);
 
       const { topK, similarityThreshold, sourceIds, tags, embeddingKey, dateRange, recencyBoost } = validated;
 
+      // Expand query before embedding generation (Phase 2)
+      const expansion = await this.queryExpansionService.expandQuery(query);
+      const effectiveQuery = expansion.expandedQuery;
+
+      // Use dynamic threshold if not explicitly specified
+      // Explicit threshold takes priority (backward compatibility)
+      const effectiveThreshold = thresholdProvided
+        ? similarityThreshold
+        : getDynamicThreshold(query);
+
       logger.info({
-        query: query.substring(0, 50),
+        originalQuery: query.substring(0, 50),
+        expandedQuery: effectiveQuery !== query ? effectiveQuery.substring(0, 50) : undefined,
+        expansionMethod: expansion.method,
+        expansionLatency: expansion.latencyMs,
         topK,
-        similarityThreshold,
+        requestedThreshold: thresholdProvided ? similarityThreshold : undefined,
+        effectiveThreshold,
+        thresholdSource: thresholdProvided ? 'explicit' : 'dynamic',
         embeddingKey,
         hasSourceFilter: !!sourceIds,
         hasTagFilter: !!tags,
@@ -64,8 +85,8 @@ export class VectorSearchService {
         recencyBoost,
       }, 'Vector search started');
 
-      // Generate query embedding
-      const queryEmbedding = await this.embeddingService.embedText(query);
+      // Generate query embedding (using expanded query)
+      const queryEmbedding = await this.embeddingService.embedText(effectiveQuery);
 
       // Serialize vector with toFixed for PostgreSQL compatibility
       const vectorString = `[${queryEmbedding.map(v => v.toFixed(8)).join(',')}]`;
@@ -136,7 +157,7 @@ export class VectorSearchService {
         WHERE e.model = ${this.activeModel}
           AND e.version = ${this.activeVersion}
           ${embeddingKeyFilter}
-          AND 1 - (e.embedding <=> ${vectorString}::vector) >= ${similarityThreshold}
+          AND 1 - (e.embedding <=> ${vectorString}::vector) >= ${effectiveThreshold}
           ${sourceFilter}
           ${tagFilter}
           ${dateFilter}

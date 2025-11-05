@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-export default jest.fn(() => ({
+export default jest.fn((options: any = {}) => ({
   id: 'github',
   name: 'GitHub',
   type: 'oauth',
@@ -8,6 +8,11 @@ export default jest.fn(() => ({
     params: {
       scope: 'read:user user:email'
     }
+  },
+  options: {
+    clientId: options.clientId,
+    clientSecret: options.clientSecret,
+    ...options,
   },
   profile: jest.fn()
 }));
