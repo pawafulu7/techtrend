@@ -1,0 +1,51 @@
+[
+  {
+    "id": "cmgu56v6b0003tejj2z5kshl4",
+    "title": "AI搭載ネックレスの地下鉄広告、大不評。｢監視資本主義！｣｢リア友つくれよ｣",
+    "category": "general",
+    "confidence": 0.6,
+    "reason": "Some technical tags (1) but low keyword density (2)"
+  },
+  {
+    "id": "cmgbqx8xu0007teyeygizvwr3",
+    "title": "アサヒグループHDシステム障害“ランサムウエアの攻撃受けた” | NHKニュース",
+    "category": "general",
+    "confidence": 0.6,
+    "reason": "Some technical tags (3) but low keyword density (2)"
+  },
+  {
+    "id": "cmgrcgazz0001te3p45qkulwj",
+    "title": "AIコードレビュー『CodeRabbit』をGitLabに導入してみた【体験レビュー】",
+    "category": "general",
+    "confidence": 0.6,
+    "reason": "Some technical tags (1) but low keyword density (2)"
+  },
+  {
+    "id": "cmgqgb1ca0001teqzwnce0juu",
+    "title": "IPAと経産省が「JC-STAR」を解説、取得機器の展示のほか、古いWi-Fiルーターの危険性を示すデモも【CEATEC 2025】",
+    "category": "general",
+    "confidence": 0.6,
+    "reason": "Some technical tags (1) but low keyword density (1)"
+  },
+  {
+    "id": "cmgheih0s000dtedfw24i1ucp",
+    "title": "熊本県警メールサーバー不正アクセス受け約12万件のメール送信 | NHKニュース",
+    "category": "general",
+    "confidence": 0.6,
+    "reason": "Some technical tags (2) but low keyword density (2)"
+  },
+  {
+    "id": "cmhcnsnvi0011teskwqerh4xd",
+    "title": "“ランサムウエアの攻撃リスクある機器 国内5万台余” セキュリティー会社の調査で判明 対策強化呼びかけ | NHKニュース",
+    "category": "general",
+    "confidence": 0.6,
+    "reason": "Some technical tags (4) but low keyword density (2)"
+  },
+  {
+    "id": "cmf9n6xis0001te02ohyucnxc",
+    "title": "セミの鳴き声 AIで種類特定する技術開発 国立環境研究所 | NHK",
+    "category": "general",
+    "confidence": 0.6,
+    "reason": "Some technical tags (1) but low keyword density (1)"
+  }
+]
