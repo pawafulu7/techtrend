@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 
 import { loadGoldenSet } from '@/lib/ai/testing/golden-set-loader';
-import type { GoldenSetMetadata } from '@/lib/ai/testing/types';
+import type { GoldenExample, GoldenSetMetadata } from '@/lib/ai/testing/types';
 import { percentiles } from '@/lib/ai/testing/stats';
 import {
   CalibrationCache,
@@ -31,22 +31,6 @@ interface RetryOptions {
   baseDelayMs: number;
   jitterMs: number;
   maxAttempts: number;
-}
-
-interface CalibrationMetrics {
-  summary: string;
-  detailedSummary: string;
-  semanticSimilarity: number;
-  qualityScore: number;
-  processingTimeMs: number;
-  completedAt: string;
-}
-
-interface CacheEntry {
-  promptHash: string;
-  modelVersion: string;
-  metrics: CalibrationMetrics;
-  updatedAt: string;
 }
 
 interface CalibrationExampleResult extends CalibrationMetrics {

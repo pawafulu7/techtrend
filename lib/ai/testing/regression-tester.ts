@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { performance } from 'node:perf_hooks';
 import { buildAppDependencies } from '@/lib/di/bootstrap';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
 import { cosineSimilarity } from '@/lib/utils/vector-math';
@@ -79,6 +80,16 @@ class PromisePool<T> {
   }
 }
 
+function withTimeout<T>(task: () => Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), timeoutMs);
+    task()
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timer));
+  });
+}
+
 export class GoldenSetRegressionTester {
   private config: Required<RegressionConfig>;
 
@@ -138,29 +149,32 @@ export class GoldenSetRegressionTester {
     const startTime = performance.now();
 
     try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), this.config.timeout)
+      const actual = await withTimeout(
+        () =>
+          summaryService.generateSummary({
+            title: example.article.title,
+            content: example.article.content,
+            url: example.article.url,
+            qualityThreshold: undefined,
+          }),
+        this.config.timeout
       );
 
-      const actual = await Promise.race([
-        summaryService.generateSummary({
-          title: example.article.title,
-          content: example.article.content,
-          url: example.article.url,
-          qualityThreshold: undefined,
-        }),
-        timeoutPromise,
-      ]);
+      const sanitize = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
+      const expectedText = [example.expectedOutput.summary, example.expectedOutput.detailedSummary]
+        .map(sanitize)
+        .filter(Boolean)
+        .join(' ');
+      const actualText = [actual.summary, actual.detailedSummary].map(sanitize).filter(Boolean).join(' ');
 
-      const expectedText = `${example.expectedOutput.summary} ${example.expectedOutput.detailedSummary}`;
-      const actualText = `${actual.summary} ${actual.detailedSummary}`;
-
-      const [expectedEmbedding, actualEmbedding] = await Promise.all([
-        embeddingService.embedText(expectedText),
-        embeddingService.embedText(actualText),
-      ]);
-
-      const semanticSimilarity = cosineSimilarity(expectedEmbedding, actualEmbedding);
+      let semanticSimilarity = 0;
+      if (expectedText && actualText) {
+        const [expectedEmbedding, actualEmbedding] = await Promise.all([
+          embeddingService.embedText(expectedText),
+          embeddingService.embedText(actualText),
+        ]);
+        semanticSimilarity = cosineSimilarity(expectedEmbedding, actualEmbedding);
+      }
 
       const qualityScore = actual.qualityScore;
 
