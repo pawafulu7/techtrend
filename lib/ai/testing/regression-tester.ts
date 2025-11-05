@@ -149,7 +149,7 @@ export class GoldenSetRegressionTester {
     const startTime = performance.now();
 
     try {
-      const actual = await withTimeout(
+      const actual: any = await withTimeout(
         () =>
           summaryService.generateSummary({
             title: example.article.title,
