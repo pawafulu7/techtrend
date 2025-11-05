@@ -100,7 +100,7 @@ describe('expandQueryWithDictionary', () => {
     });
 
     it('should handle multiple spaces between tokens', () => {
-      expect(expandQueryWithDictionary('CTO   role')).toBe('Chief Technology Officer role');
+      expect(expandQueryWithDictionary('CTO   role')).toBe('CTO Chief Technology Officer role');
     });
 
     it('should not expand queries with >5 tokens', () => {
@@ -122,7 +122,7 @@ describe('expandQueryWithDictionary', () => {
 
   describe('Partial expansion', () => {
     it('should expand only recognized tokens', () => {
-      expect(expandQueryWithDictionary('CTO at startup')).toBe('Chief Technology Officer at startup');
+      expect(expandQueryWithDictionary('CTO at startup')).toBe('CTO Chief Technology Officer at startup');
     });
 
     it('should not expand if no tokens match', () => {
@@ -130,7 +130,7 @@ describe('expandQueryWithDictionary', () => {
     });
 
     it('should expand mixed abbreviations and normal words', () => {
-      expect(expandQueryWithDictionary('API and GraphQL comparison')).toBe('Application Programming Interface and Graph Query Language comparison');
+      expect(expandQueryWithDictionary('API and GraphQL comparison')).toBe('API Application Programming Interface and GraphQL Graph Query Language comparison');
     });
   });
 });
