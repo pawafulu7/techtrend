@@ -3,6 +3,7 @@ import { performance } from 'node:perf_hooks';
 import { buildAppDependencies } from '@/lib/di/bootstrap';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
 import { cosineSimilarity } from '@/lib/utils/vector-math';
+import type { SummaryServiceResult } from '@/lib/ai/service/unified-summary-service.interface';
 import { percentiles } from './stats';
 import { loadGoldenExamples, loadGoldenMetadata } from './golden-set-loader';
 import type { GoldenExample, RegressionResult, RegressionReport } from './types';
@@ -149,7 +150,7 @@ export class GoldenSetRegressionTester {
     const startTime = performance.now();
 
     try {
-      const actual: any = await withTimeout(
+      const actual = await withTimeout<SummaryServiceResult>(
         () =>
           summaryService.generateSummary({
             title: example.article.title,
