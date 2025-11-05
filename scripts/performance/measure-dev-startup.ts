@@ -25,9 +25,10 @@ async function measureStartupTime(mode: 'turbopack' | 'webpack', runs: number = 
     });
 
     let resolved = false;
+    let timeoutId: NodeJS.Timeout | undefined;
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Timeout after 120 seconds')), 120000);
+      timeoutId = setTimeout(() => reject(new Error('Timeout after 120 seconds')), 120000);
     });
 
     const readyPromise = new Promise<void>((resolve) => {
@@ -37,6 +38,7 @@ async function measureStartupTime(mode: 'turbopack' | 'webpack', runs: number = 
         if (output.includes('Ready in') || output.includes('started server')) {
           if (!resolved) {
             resolved = true;
+            if (timeoutId) clearTimeout(timeoutId);
             const endTime = performance.now();
             const duration = endTime - startTime;
             times.push(duration);
@@ -64,6 +66,7 @@ async function measureStartupTime(mode: 'turbopack' | 'webpack', runs: number = 
       child.on('exit', () => {
         if (!resolved) {
           resolved = true;
+          if (timeoutId) clearTimeout(timeoutId);
           resolve();
         }
       });
@@ -74,6 +77,8 @@ async function measureStartupTime(mode: 'turbopack' | 'webpack', runs: number = 
     } catch (error) {
       console.error(`  Failed: ${(error as Error).message}`);
       child.kill('SIGKILL');
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
 
     if (i < runs - 1) {
