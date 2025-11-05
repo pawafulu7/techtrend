@@ -90,7 +90,7 @@ describe('loadGoldenSet', () => {
     mockReadFile.mockRejectedValue(error);
 
     await expect(loadGoldenSet()).rejects.toThrow(GoldenSetLoadError);
-    await expect(loadGoldenSet()).rejects.toThrow('File not found');
+    await expect(loadGoldenSet()).rejects.toThrow('Failed to load Golden Set');
   });
 
   it('should throw GoldenSetParseError for invalid JSON', async () => {
