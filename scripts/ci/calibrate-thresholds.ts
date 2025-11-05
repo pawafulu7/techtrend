@@ -1,11 +1,17 @@
 import { existsSync } from 'fs';
-import { mkdir, readFile, writeFile } from 'fs/promises';
-import { createHash } from 'crypto';
+import { mkdir, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 
 import { loadGoldenSet } from '@/lib/ai/testing/golden-set-loader';
-import type { GoldenExample, GoldenSetMetadata } from '@/lib/ai/testing/types';
+import type { GoldenSetMetadata } from '@/lib/ai/testing/types';
 import { percentiles } from '@/lib/ai/testing/stats';
+import {
+  CalibrationCache,
+  buildPrompt,
+  hashPrompt,
+  CACHE_PATH,
+  type CalibrationMetrics,
+} from '@/lib/ai/testing/calibration-cache';
 import { buildAppDependencies } from '@/lib/di/bootstrap';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
 import { cosineSimilarity } from '@/lib/utils/vector-math';
@@ -16,7 +22,6 @@ type CalibrationMode = 'apply' | 'dry-run';
 const DEFAULT_CONCURRENCY = 4;
 const DEFAULT_TIMEOUT_MS = 90_000;
 const MAX_ATTEMPTS = 3;
-const CACHE_PATH = join(process.cwd(), 'lib/ai/testing/calibration-cache.json');
 const SIDECAR_PATH = join(process.cwd(), 'lib/ai/testing/golden-set-calibrated.json');
 const GOLDEN_SET_PATH = join(process.cwd(), 'lib/ai/testing/golden-set.json');
 const PERCENTILES = [50, 90, 95] as const;
@@ -137,61 +142,6 @@ class PromisePool<T> {
   }
 }
 
-class CalibrationCache {
-  private readonly path: string;
-  private readonly entries: Map<string, CacheEntry>;
-  private dirty = false;
-
-  static async load(path: string): Promise<CalibrationCache> {
-    if (!existsSync(path)) {
-      return new CalibrationCache(path, new Map());
-    }
-
-    const raw = await readFile(path, 'utf-8');
-    const parsed: CacheEntry[] = JSON.parse(raw);
-    const map = new Map<string, CacheEntry>();
-
-    for (const entry of parsed) {
-      map.set(CalibrationCache.key(entry.promptHash, entry.modelVersion), entry);
-    }
-
-    return new CalibrationCache(path, map);
-  }
-
-  private static key(promptHash: string, modelVersion: string): string {
-    return `${promptHash}:${modelVersion}`;
-  }
-
-  private constructor(path: string, entries: Map<string, CacheEntry>) {
-    this.path = path;
-    this.entries = entries;
-  }
-
-  get(promptHash: string, modelVersion: string): CacheEntry | undefined {
-    return this.entries.get(CalibrationCache.key(promptHash, modelVersion));
-  }
-
-  set(entry: CacheEntry): void {
-    this.entries.set(CalibrationCache.key(entry.promptHash, entry.modelVersion), entry);
-    this.dirty = true;
-  }
-
-  async persist(): Promise<void> {
-    if (!this.dirty) {
-      return;
-    }
-
-    const serialized = JSON.stringify(Array.from(this.entries.values()), null, 2);
-    const directory = dirname(this.path);
-
-    if (!existsSync(directory)) {
-      await mkdir(directory, { recursive: true });
-    }
-
-    await writeFile(this.path, serialized, 'utf-8');
-    this.dirty = false;
-  }
-}
 
 async function withTimeout<T>(task: () => Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -257,21 +207,6 @@ function parseTimeout(): number {
 function parseMode(): CalibrationMode {
   const raw = (process.env.CALIBRATION_MODE || 'dry-run').toLowerCase();
   return raw === 'apply' ? 'apply' : 'dry-run';
-}
-
-function buildPrompt(example: GoldenExample): string {
-  const blocks = [
-    `Title: ${example.article.title}`,
-    `URL: ${example.article.url}`,
-    '---',
-    example.article.content,
-  ];
-
-  return blocks.join('\n');
-}
-
-function hashPrompt(prompt: string): string {
-  return createHash('sha256').update(prompt).digest('hex');
 }
 
 function sanitize(text: string | undefined | null): string {
@@ -418,25 +353,28 @@ function buildUpdatedGoldenSet(
   originalExamples: GoldenExample[],
   summary: CalibrationSummary
 ): { metadata: GoldenSetMetadata; examples: GoldenExample[] } {
-  const fallback = summary.percentiles.p95 ?? 0;
+  const SAFETY_MARGIN = 0.95;
+  const fallbackP90 = summary.percentiles.p90 ?? 0;
+  const applySafetyMargin = (value: number): number => value * SAFETY_MARGIN;
+  const defaultSemanticThreshold = applySafetyMargin(fallbackP90);
   const categoryThresholds = {
-    general: summary.byCategory.general?.p95 ?? fallback,
-    technical: summary.byCategory.technical?.p95 ?? fallback,
-    thin_content: summary.byCategory.thin_content?.p95 ?? fallback,
-    multilingual: summary.byCategory.multilingual?.p95 ?? fallback,
+    general: applySafetyMargin(summary.byCategory.general?.p90 ?? fallbackP90),
+    technical: applySafetyMargin(summary.byCategory.technical?.p90 ?? fallbackP90),
+    thin_content: applySafetyMargin(summary.byCategory.thin_content?.p90 ?? fallbackP90),
+    multilingual: applySafetyMargin(summary.byCategory.multilingual?.p90 ?? fallbackP90),
   };
 
   const updatedMetadata: GoldenSetMetadata = {
     ...originalMetadata,
     thresholdCalibration: {
-      percentile95: fallback,
+      percentile95: summary.percentiles.p95 ?? 0,
       byCategory: categoryThresholds,
     },
   };
 
   const updatedExamples = originalExamples.map((example) => {
-    const category = example.metadata.category;
-    const semanticThreshold = summary.byCategory[category]?.p95 ?? fallback;
+    const category = example.metadata.category as keyof typeof categoryThresholds;
+    const semanticThreshold = categoryThresholds[category] ?? defaultSemanticThreshold;
     return {
       ...example,
       acceptanceThreshold: {
