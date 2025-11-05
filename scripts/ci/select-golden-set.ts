@@ -4,14 +4,51 @@ import type { GoldenExample, GoldenSetMetadata } from '@/lib/ai/testing/types';
 
 const prisma = new PrismaClient();
 
+type Category = 'general' | 'technical' | 'thin_content' | 'multilingual';
+type TargetSize = 48 | 50 | 75 | 100;
+type CliTarget = Exclude<TargetSize, 48>;
+
 interface CategoryJudgment {
-  category: 'general' | 'technical' | 'thin_content' | 'multilingual';
+  category: Category;
   confidence: number;
   reason: string;
   needsHumanReview: boolean;
 }
 
-const TECHNICAL_KEYWORDS = {
+interface CliOptions {
+  target?: CliTarget;
+  minQuality?: 80 | 90;
+}
+
+interface CandidateArticle {
+  id: string | number;
+  title: string;
+  content: string | null;
+  enrichedContent: string | null;
+  url: string | null;
+  summary: string | null;
+  detailedSummary: string | null;
+  qualityScore: number;
+  publishedAt: Date | string | null;
+  tags: { name: string }[];
+}
+
+interface CandidateWithJudgment {
+  article: CandidateArticle;
+  judgment: CategoryJudgment;
+}
+
+type CategoryBuckets = Record<Category, CandidateWithJudgment[]>;
+type TargetDistribution = Record<Category, number>;
+
+class CliError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CliError';
+  }
+}
+
+const TECHNICAL_KEYWORDS: Record<string, string[]> = {
   infrastructure: [
     'kubernetes', 'k8s', 'docker', 'terraform', 'aws', 'gcp', 'azure',
     'cloud', 'serverless', 'lambda', 'vercel', 'netlify',
@@ -39,13 +76,101 @@ const TECHNICAL_KEYWORDS = {
 
 const ALL_TECHNICAL_KEYWORDS = Object.values(TECHNICAL_KEYWORDS).flat();
 
-function detectCategory(article: any): CategoryJudgment {
+const TARGET_DISTRIBUTIONS: Record<TargetSize, TargetDistribution> = {
+  48: { general: 24, technical: 14, thin_content: 8, multilingual: 2 },
+  50: { general: 20, technical: 13, thin_content: 12, multilingual: 5 },
+  75: { general: 37, technical: 22, thin_content: 13, multilingual: 3 },
+  100: { general: 50, technical: 30, thin_content: 15, multilingual: 5 },
+};
+
+function parseCliOptions(argv: string[]): { options: CliOptions; showHelp: boolean } {
+  const options: CliOptions = {};
+  let showHelp = false;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+
+    switch (arg) {
+      case '--help':
+      case '-h':
+        showHelp = true;
+        break;
+      case '--target':
+      case '-t': {
+        const value = argv[++i];
+        if (!value) {
+          throw new CliError('Missing value for --target.');
+        }
+        const parsed = Number(value);
+        const allowedTargets: CliTarget[] = [50, 75, 100];
+        if (!allowedTargets.includes(parsed as CliTarget)) {
+          throw new CliError('Invalid target size. Allowed values: 50, 75, 100.');
+        }
+        options.target = parsed as CliTarget;
+        break;
+      }
+      case '--min-quality':
+      case '--minQuality':
+      case '-q': {
+        const value = argv[++i];
+        if (!value) {
+          throw new CliError('Missing value for --min-quality.');
+        }
+        const parsed = Number(value);
+        if (![80, 90].includes(parsed)) {
+          throw new CliError('Invalid minimum quality. Allowed values: 80, 90.');
+        }
+        options.minQuality = parsed as 80 | 90;
+        break;
+      }
+      default:
+        if (arg.startsWith('-')) {
+          throw new CliError(`Unknown option: ${arg}`);
+        }
+        throw new CliError(`Unexpected argument: ${arg}`);
+    }
+  }
+
+  return { options, showHelp };
+}
+
+function printHelp(): void {
+  console.log('Usage: tsx scripts/ci/select-golden-set.ts [options]');
+  console.log('');
+  console.log('Options:');
+  console.log('  -t, --target <50|75|100>   Override target golden set size (default: 48)');
+  console.log('  -q, --min-quality <80|90>  Minimum qualityScore threshold (default: 90)');
+  console.log('  -h, --help                 Show this help message');
+}
+
+function toPublishedAtTime(value: CandidateArticle['publishedAt']): number {
+  if (!value) return 0;
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function selectFromCategory(candidates: CandidateWithJudgment[], target: number): CandidateWithJudgment[] {
+  return [...candidates]
+    .sort((a, b) => {
+      if (b.article.qualityScore !== a.article.qualityScore) {
+        return b.article.qualityScore - a.article.qualityScore;
+      }
+      if (b.judgment.confidence !== a.judgment.confidence) {
+        return b.judgment.confidence - a.judgment.confidence;
+      }
+      return toPublishedAtTime(a.article.publishedAt) - toPublishedAtTime(b.article.publishedAt);
+    })
+    .slice(0, target);
+}
+
+function detectCategory(article: CandidateArticle): CategoryJudgment {
   const contentLength = article.enrichedContent?.length || article.content?.length || 0;
   const title = article.title;
   const content = article.enrichedContent || article.content || '';
-  const tags = article.tags?.map((t: any) => t.name.toLowerCase()) || [];
+  const tags = article.tags?.map((t: { name: string }) => t.name.toLowerCase()) || [];
 
-  const isEnglishTitle = /^[a-zA-Z0-9\s\-:,\.()[\]]+$/.test(title);
+  const isEnglishTitle = /^[a-zA-Z0-9\s\-:,.()[\]]+$/.test(title);
   if (isEnglishTitle) {
     return {
       category: 'multilingual',
@@ -100,7 +225,7 @@ function detectCategory(article: any): CategoryJudgment {
   };
 }
 
-function detectDifficulty(article: any): 'easy' | 'medium' | 'hard' {
+function detectDifficulty(article: CandidateArticle): 'easy' | 'medium' | 'hard' {
   const contentLength = article.enrichedContent?.length || article.content?.length || 0;
   const tagCount = article.tags?.length || 0;
 
@@ -109,79 +234,95 @@ function detectDifficulty(article: any): 'easy' | 'medium' | 'hard' {
   return 'hard';
 }
 
-async function selectGoldenSet(): Promise<void> {
+async function selectGoldenSet(options: CliOptions): Promise<void> {
   console.log('='.repeat(60));
   console.log('Golden Set Selection');
   console.log('='.repeat(60));
   console.log('');
 
+  const targetSize: TargetSize = options.target ?? 48;
+  const targetDistribution = TARGET_DISTRIBUTIONS[targetSize];
+
+  if (!targetDistribution) {
+    throw new Error(`Unsupported target size: ${targetSize}. Allowed values: ${Object.keys(TARGET_DISTRIBUTIONS).join(', ')}.`);
+  }
+
+  const minQuality = options.minQuality ?? 90;
+
+  console.log(`Target size: ${targetSize} (min quality >= ${minQuality})`);
+  console.log('');
+
   const candidates = await prisma.article.findMany({
     where: {
-      qualityScore: { gte: 90 },
+      qualityScore: { gte: minQuality },
       summary: { not: null },
       detailedSummary: { not: null },
     },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      enrichedContent: true,
+      url: true,
+      summary: true,
+      detailedSummary: true,
+      qualityScore: true,
+      publishedAt: true,
       tags: { select: { name: true } },
     },
-    orderBy: { qualityScore: 'desc' },
   });
 
-  console.log(`Found ${candidates.length} high-quality articles (qualityScore >= 90)\n`);
+  console.log(`Found ${candidates.length} high-quality articles (qualityScore >= ${minQuality})\n`);
 
-  const categorized = {
-    general: [] as any[],
-    technical: [] as any[],
-    thin_content: [] as any[],
-    multilingual: [] as any[],
+  const categorized: CategoryBuckets = {
+    general: [],
+    technical: [],
+    thin_content: [],
+    multilingual: [],
   };
 
-  const needsReview: any[] = [];
+  const needsReview: CandidateWithJudgment[] = [];
 
   for (const article of candidates) {
     const judgment = detectCategory(article);
+    const candidate: CandidateWithJudgment = { article, judgment };
 
     if (judgment.needsHumanReview) {
-      needsReview.push({ article, judgment });
+      needsReview.push(candidate);
     }
 
-    categorized[judgment.category].push({
-      article,
-      judgment,
-    });
+    categorized[judgment.category].push(candidate);
   }
 
   console.log('Category distribution:');
-  console.log(`  General: ${categorized.general.length}`);
-  console.log(`  Technical: ${categorized.technical.length}`);
-  console.log(`  Thin Content: ${categorized.thin_content.length}`);
-  console.log(`  Multilingual: ${categorized.multilingual.length}`);
+  (Object.keys(categorized) as Category[]).forEach(category => {
+    console.log(`  ${category}: ${categorized[category].length}`);
+  });
   console.log(`\nNeeds human review: ${needsReview.length}\n`);
 
-  const targetDistribution = {
-    general: 24,
-    technical: 14,
-    thin_content: 8,
-    multilingual: 2,
-  };
-
   const selected: GoldenExample[] = [];
+  const qualityScoreMap = new Map<string, number>();
+  candidates.forEach(article => {
+    qualityScoreMap.set(String(article.id), article.qualityScore);
+  });
 
-  for (const [category, target] of Object.entries(targetDistribution)) {
-    const available = categorized[category as keyof typeof categorized];
-    const selectedCategoryExamples = available
-      .slice(0, target)
-      .map(({ article, judgment }) => ({
+  (Object.entries(targetDistribution) as [Category, number][]).forEach(([category, target]) => {
+    const available = categorized[category];
+    const selectedCandidates = selectFromCategory(available, target);
+    const selectedExamples = selectedCandidates.map(({ article, judgment }): GoldenExample => {
+      const content = article.enrichedContent ?? article.content ?? '';
+
+      return {
         id: `golden-${article.id}`,
         article: {
           title: article.title,
-          content: article.enrichedContent || article.content || '',
+          content,
           url: article.url,
         },
         expectedOutput: {
           summary: article.summary!,
           detailedSummary: article.detailedSummary!,
-          tags: article.tags.map((t: any) => t.name),
+          tags: article.tags.map(tag => tag.name),
         },
         metadata: {
           category: judgment.category,
@@ -197,36 +338,39 @@ async function selectGoldenSet(): Promise<void> {
           minimumQuality: 0.90,
         },
         sourceArticleId: article.id,
-      }));
+      };
+    });
 
-    selected.push(...selectedCategoryExamples);
+    selected.push(...selectedExamples);
 
-    console.log(`Selected ${selectedCategoryExamples.length}/${target} ${category} examples`);
+    console.log(`Selected ${selectedExamples.length}/${target} ${category} examples`);
 
-    if (selectedCategoryExamples.length < target) {
-      console.warn(`  WARNING: Only ${selectedCategoryExamples.length} available (target: ${target})`);
+    if (selectedExamples.length < target) {
+      console.warn(`  WARNING: Only ${selectedExamples.length} available (target: ${target})`);
     }
-  }
-
-  const qualityScores = selected.map(ex => {
-    const original = candidates.find(c => c.id === ex.sourceArticleId);
-    return original?.qualityScore || 0;
   });
+
+  const qualityScores = selected.map(example => qualityScoreMap.get(String(example.sourceArticleId)) ?? 0);
+  const qualityMin = qualityScores.length ? Math.min(...qualityScores) : 0;
+  const qualityMax = qualityScores.length ? Math.max(...qualityScores) : 0;
+  const qualityAvg = qualityScores.length
+    ? qualityScores.reduce((sum, score) => sum + score, 0) / qualityScores.length
+    : 0;
 
   const metadata: GoldenSetMetadata = {
     version: '1.0.0',
     createdAt: new Date().toISOString(),
     totalExamples: selected.length,
     categoryDistribution: {
-      general: selected.filter(ex => ex.metadata.category === 'general').length,
-      technical: selected.filter(ex => ex.metadata.category === 'technical').length,
-      thin_content: selected.filter(ex => ex.metadata.category === 'thin_content').length,
-      multilingual: selected.filter(ex => ex.metadata.category === 'multilingual').length,
+      general: selected.filter(example => example.metadata.category === 'general').length,
+      technical: selected.filter(example => example.metadata.category === 'technical').length,
+      thin_content: selected.filter(example => example.metadata.category === 'thin_content').length,
+      multilingual: selected.filter(example => example.metadata.category === 'multilingual').length,
     },
     qualityScoreRange: {
-      min: Math.min(...qualityScores),
-      max: Math.max(...qualityScores),
-      avg: qualityScores.reduce((a, b) => a + b, 0) / qualityScores.length,
+      min: qualityMin,
+      max: qualityMax,
+      avg: qualityAvg,
     },
     thresholdCalibration: {
       percentile95: 0.95,
@@ -245,7 +389,7 @@ async function selectGoldenSet(): Promise<void> {
   );
 
   console.log(`\nGolden Set created: ${selected.length} examples`);
-  console.log(`Output: lib/ai/testing/golden-set.json\n`);
+  console.log('Output: lib/ai/testing/golden-set.json\n');
 
   console.log('Metadata summary:');
   console.log(`  Version: ${metadata.version}`);
@@ -253,9 +397,12 @@ async function selectGoldenSet(): Promise<void> {
   console.log(`  Quality score range: ${metadata.qualityScoreRange.min}-${metadata.qualityScoreRange.max} (avg: ${metadata.qualityScoreRange.avg.toFixed(1)})`);
   console.log('');
   console.log('Category distribution:');
-  for (const [category, count] of Object.entries(metadata.categoryDistribution)) {
-    console.log(`  ${category}: ${count} (${((count / metadata.totalExamples) * 100).toFixed(1)}%)`);
-  }
+  Object.entries(metadata.categoryDistribution).forEach(([category, count]) => {
+    const percentage = metadata.totalExamples > 0
+      ? ((count / metadata.totalExamples) * 100).toFixed(1)
+      : '0.0';
+    console.log(`  ${category}: ${count} (${percentage}%)`);
+  });
 
   if (needsReview.length > 0) {
     const reviewList = needsReview.map(({ article, judgment }) => ({
@@ -272,7 +419,7 @@ async function selectGoldenSet(): Promise<void> {
     );
 
     console.log(`\nHuman review needed: ${reviewList.length} examples`);
-    console.log(`Output: lib/ai/testing/golden-set-review-needed.json`);
+    console.log('Output: lib/ai/testing/golden-set-review-needed.json');
   }
 
   console.log('\n' + '='.repeat(60));
@@ -281,9 +428,29 @@ async function selectGoldenSet(): Promise<void> {
   console.log('='.repeat(60));
 }
 
-selectGoldenSet()
-  .catch((error) => {
-    console.error('Error:', error);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+async function run(): Promise<void> {
+  try {
+    const { options, showHelp } = parseCliOptions(process.argv.slice(2));
+
+    if (showHelp) {
+      printHelp();
+      return;
+    }
+
+    await selectGoldenSet(options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Error:', message);
+
+    if (error instanceof CliError) {
+      console.log('');
+      printHelp();
+    }
+
+    process.exitCode = 1;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+void run();

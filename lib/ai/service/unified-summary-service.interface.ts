@@ -1,6 +1,7 @@
 export type SummaryServiceParams = {
   title: string;
   content: string;
+  url?: string;
   articleType?: 'technical' | 'news' | 'tutorial' | 'opinion';
   qualityThreshold?: number;
   articleId?: string; // Optional: Required for automatic embedding job creation
