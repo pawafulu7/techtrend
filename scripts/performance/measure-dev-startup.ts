@@ -26,12 +26,21 @@ async function measureStartupTime(mode: 'turbopack' | 'webpack', runs: number = 
 
     let resolved = false;
     let timeoutId: NodeJS.Timeout | undefined;
+    let killTimer: NodeJS.Timeout | undefined;
 
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => reject(new Error('Timeout after 120 seconds')), 120000);
     });
 
-    const readyPromise = new Promise<void>((resolve) => {
+    const readyPromise = new Promise<void>((resolve, reject) => {
+      child.once('error', (err) => {
+        if (!resolved) {
+          resolved = true;
+          if (timeoutId) clearTimeout(timeoutId);
+          reject(err);
+        }
+      });
+
       child.stdout?.on('data', (data) => {
         const output = data.toString();
 
@@ -45,8 +54,8 @@ async function measureStartupTime(mode: 'turbopack' | 'webpack', runs: number = 
             console.log(`  Startup time: ${(duration / 1000).toFixed(2)}s`);
 
             child.kill('SIGTERM');
-            setTimeout(() => {
-              if (!child.killed) {
+            killTimer = setTimeout(() => {
+              if (child.exitCode === null && child.signalCode === null) {
                 child.kill('SIGKILL');
               }
             }, 2000);
@@ -64,6 +73,9 @@ async function measureStartupTime(mode: 'turbopack' | 'webpack', runs: number = 
       });
 
       child.on('exit', () => {
+        if (killTimer) {
+          clearTimeout(killTimer);
+        }
         if (!resolved) {
           resolved = true;
           if (timeoutId) clearTimeout(timeoutId);
@@ -108,36 +120,44 @@ async function main() {
 
   if (mode === 'both' || mode === 'webpack') {
     const webpackTimes = await measureStartupTime('webpack', runs);
-    const avgWebpack = webpackTimes.reduce((a, b) => a + b, 0) / webpackTimes.length;
+    if (webpackTimes.length > 0) {
+      const avgWebpack = webpackTimes.reduce((a, b) => a + b, 0) / webpackTimes.length;
 
-    results.push({
-      mode: 'webpack',
-      startupTimeMs: avgWebpack,
-      timestamp: new Date().toISOString(),
-      nodeVersion: process.version,
-      nextVersion: '15.5.2',
-    });
+      results.push({
+        mode: 'webpack',
+        startupTimeMs: avgWebpack,
+        timestamp: new Date().toISOString(),
+        nodeVersion: process.version,
+        nextVersion: '15.5.2',
+      });
 
-    console.log(`\n[WEBPACK] Average: ${(avgWebpack / 1000).toFixed(2)}s`);
-    console.log(`  Min: ${(Math.min(...webpackTimes) / 1000).toFixed(2)}s`);
-    console.log(`  Max: ${(Math.max(...webpackTimes) / 1000).toFixed(2)}s`);
+      console.log(`\n[WEBPACK] Average: ${(avgWebpack / 1000).toFixed(2)}s (${webpackTimes.length}/${runs} runs)`);
+      console.log(`  Min: ${(Math.min(...webpackTimes) / 1000).toFixed(2)}s`);
+      console.log(`  Max: ${(Math.max(...webpackTimes) / 1000).toFixed(2)}s`);
+    } else {
+      console.warn('\n[WEBPACK] No valid measurements obtained. Please check the logs.');
+    }
   }
 
   if (mode === 'both' || mode === 'turbopack') {
     const turbopackTimes = await measureStartupTime('turbopack', runs);
-    const avgTurbopack = turbopackTimes.reduce((a, b) => a + b, 0) / turbopackTimes.length;
+    if (turbopackTimes.length > 0) {
+      const avgTurbopack = turbopackTimes.reduce((a, b) => a + b, 0) / turbopackTimes.length;
 
-    results.push({
-      mode: 'turbopack',
-      startupTimeMs: avgTurbopack,
-      timestamp: new Date().toISOString(),
-      nodeVersion: process.version,
-      nextVersion: '15.5.2',
-    });
+      results.push({
+        mode: 'turbopack',
+        startupTimeMs: avgTurbopack,
+        timestamp: new Date().toISOString(),
+        nodeVersion: process.version,
+        nextVersion: '15.5.2',
+      });
 
-    console.log(`\n[TURBOPACK] Average: ${(avgTurbopack / 1000).toFixed(2)}s`);
-    console.log(`  Min: ${(Math.min(...turbopackTimes) / 1000).toFixed(2)}s`);
-    console.log(`  Max: ${(Math.max(...turbopackTimes) / 1000).toFixed(2)}s`);
+      console.log(`\n[TURBOPACK] Average: ${(avgTurbopack / 1000).toFixed(2)}s (${turbopackTimes.length}/${runs} runs)`);
+      console.log(`  Min: ${(Math.min(...turbopackTimes) / 1000).toFixed(2)}s`);
+      console.log(`  Max: ${(Math.max(...turbopackTimes) / 1000).toFixed(2)}s`);
+    } else {
+      console.warn('\n[TURBOPACK] No valid measurements obtained. Please check the logs.');
+    }
   }
 
   if (results.length === 2) {
