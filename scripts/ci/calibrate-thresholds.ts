@@ -353,16 +353,20 @@ function buildUpdatedGoldenSet(
   originalExamples: GoldenExample[],
   summary: CalibrationSummary
 ): { metadata: GoldenSetMetadata; examples: GoldenExample[] } {
-  const SAFETY_MARGIN = 0.95;
-  const fallbackP90 = summary.percentiles.p90 ?? 0;
-  const applySafetyMargin = (value: number): number => value * SAFETY_MARGIN;
-  const defaultSemanticThreshold = applySafetyMargin(fallbackP90);
-  const categoryThresholds = {
-    general: applySafetyMargin(summary.byCategory.general?.p90 ?? fallbackP90),
-    technical: applySafetyMargin(summary.byCategory.technical?.p90 ?? fallbackP90),
-    thin_content: applySafetyMargin(summary.byCategory.thin_content?.p90 ?? fallbackP90),
-    multilingual: applySafetyMargin(summary.byCategory.multilingual?.p90 ?? fallbackP90),
+  const SAFETY_MARGINS = {
+    general: 0.90,
+    technical: 0.90,
+    thin_content: 0.85,
+    multilingual: 0.90,
   };
+  const fallbackP90 = summary.percentiles.p90 ?? 0;
+  const categoryThresholds = {
+    general: (summary.byCategory.general?.p90 ?? fallbackP90) * SAFETY_MARGINS.general,
+    technical: (summary.byCategory.technical?.p90 ?? fallbackP90) * SAFETY_MARGINS.technical,
+    thin_content: (summary.byCategory.thin_content?.p90 ?? fallbackP90) * SAFETY_MARGINS.thin_content,
+    multilingual: (summary.byCategory.multilingual?.p90 ?? fallbackP90) * SAFETY_MARGINS.multilingual,
+  };
+  const defaultSemanticThreshold = fallbackP90 * SAFETY_MARGINS.general;
 
   const updatedMetadata: GoldenSetMetadata = {
     ...originalMetadata,
