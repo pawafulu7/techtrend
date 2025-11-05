@@ -52,6 +52,8 @@ export class VectorSearchService {
    */
   async search(query: string, options: SearchOptionsInput = {}): Promise<SearchResult[]> {
     try {
+      const thresholdProvided = options.similarityThreshold !== undefined;
+
       // Validate options with Zod schema
       const validated = searchOptionsSchema.parse(options);
 
@@ -63,7 +65,9 @@ export class VectorSearchService {
 
       // Use dynamic threshold if not explicitly specified
       // Explicit threshold takes priority (backward compatibility)
-      const effectiveThreshold = similarityThreshold ?? getDynamicThreshold(query);
+      const effectiveThreshold = thresholdProvided
+        ? similarityThreshold
+        : getDynamicThreshold(query);
 
       logger.info({
         originalQuery: query.substring(0, 50),
@@ -71,9 +75,9 @@ export class VectorSearchService {
         expansionMethod: expansion.method,
         expansionLatency: expansion.latencyMs,
         topK,
-        requestedThreshold: similarityThreshold,
+        requestedThreshold: thresholdProvided ? similarityThreshold : undefined,
         effectiveThreshold,
-        thresholdSource: similarityThreshold !== undefined ? 'explicit' : 'dynamic',
+        thresholdSource: thresholdProvided ? 'explicit' : 'dynamic',
         embeddingKey,
         hasSourceFilter: !!sourceIds,
         hasTagFilter: !!tags,

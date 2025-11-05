@@ -13,6 +13,107 @@ jest.mock('@/lib/logger', () => ({
   sanitizeError: jest.fn((err) => err),
 }));
 
+const toNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  if (typeof value === 'bigint') {
+    return Number(value);
+  }
+
+  if (value && typeof value === 'object' && typeof (value as { toNumber?: () => number }).toNumber === 'function') {
+    return (value as { toNumber: () => number }).toNumber();
+  }
+
+  return undefined;
+};
+
+const extractThresholdParam = (captured: unknown): number | undefined => {
+  if (!Array.isArray(captured)) {
+    return undefined;
+  }
+
+  const [rawStrings, ...interpolations] = captured;
+
+  if (Array.isArray(rawStrings)) {
+    let thresholdSegmentIndex = -1;
+
+    for (let index = 0; index < rawStrings.length; index += 1) {
+      const segment = rawStrings[index];
+      if (typeof segment !== 'string' || !segment.includes('>= ')) {
+        continue;
+      }
+
+      const previous = typeof rawStrings[index - 1] === 'string' ? rawStrings[index - 1] : '';
+      const isThresholdSegment =
+        segment.includes('::vector) >=') ||
+        previous.includes('(e.embedding <=>') ||
+        previous.includes('(e."embedding <=>');
+
+      if (isThresholdSegment) {
+        thresholdSegmentIndex = index;
+        break;
+      }
+    }
+
+    if (thresholdSegmentIndex >= 0) {
+      const candidate = toNumber(interpolations[thresholdSegmentIndex]);
+      if (candidate !== undefined) {
+        return candidate;
+      }
+    }
+  }
+
+  // Fallback: deep traversal of the interpolations to locate last fractional value.
+  const numbers: number[] = [];
+  const stack: unknown[] = [interpolations];
+  const seen = new Set<object>();
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+
+    if (current == null) {
+      continue;
+    }
+
+    const numeric = toNumber(current);
+    if (numeric !== undefined) {
+      numbers.push(numeric);
+      continue;
+    }
+
+    if (Array.isArray(current)) {
+      for (let index = current.length - 1; index >= 0; index -= 1) {
+        stack.push(current[index]);
+      }
+      continue;
+    }
+
+    if (typeof current === 'object') {
+      const obj = current as Record<string, unknown>;
+      if (seen.has(obj)) {
+        continue;
+      }
+
+      seen.add(obj);
+      const values = Object.values(obj);
+      for (let index = values.length - 1; index >= 0; index -= 1) {
+        stack.push(values[index]);
+      }
+    }
+  }
+
+  for (let index = numbers.length - 1; index >= 0; index -= 1) {
+    const candidate = numbers[index];
+    if (candidate >= 0 && candidate <= 1) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+};
+
 describe('VectorSearchService - Dynamic Threshold Integration', () => {
   let mockPrisma: jest.Mocked<PrismaClient>;
   let service: VectorSearchService;
@@ -54,18 +155,7 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
       // Verify $queryRaw was called
       expect(mockPrisma.$queryRaw).toHaveBeenCalled();
 
-      // Extract SQL query (first argument is the template strings array)
-      const sqlTemplate = capturedSQL[0];
-      const sqlString = Array.isArray(sqlTemplate)
-        ? sqlTemplate.join('')
-        : String(sqlTemplate);
-
-      // Check that the SQL contains the dynamic threshold (0.5 for "CTO")
-      // The SQL should have: >= ${effectiveThreshold}
-      // We need to check the bound parameter values
-      const thresholdParam = capturedSQL.find((arg: any) =>
-        typeof arg === 'number' && arg >= 0 && arg <= 1
-      );
+      const thresholdParam = extractThresholdParam(capturedSQL);
 
       expect(thresholdParam).toBe(0.5);
     });
@@ -80,10 +170,7 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
       // Verify $queryRaw was called
       expect(mockPrisma.$queryRaw).toHaveBeenCalled();
 
-      // Find threshold parameter in captured SQL
-      const thresholdParam = capturedSQL.find((arg: any) =>
-        typeof arg === 'number' && arg >= 0 && arg <= 1
-      );
+      const thresholdParam = extractThresholdParam(capturedSQL);
 
       // Explicit threshold (0.9) should take precedence
       expect(thresholdParam).toBe(0.9);
@@ -97,9 +184,7 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
 
       expect(mockPrisma.$queryRaw).toHaveBeenCalled();
 
-      const thresholdParam = capturedSQL.find((arg: any) =>
-        typeof arg === 'number' && arg >= 0 && arg <= 1
-      );
+      const thresholdParam = extractThresholdParam(capturedSQL);
 
       expect(thresholdParam).toBe(0.6);
     });
@@ -112,9 +197,7 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
 
       expect(mockPrisma.$queryRaw).toHaveBeenCalled();
 
-      const thresholdParam = capturedSQL.find((arg: any) =>
-        typeof arg === 'number' && arg >= 0 && arg <= 1
-      );
+      const thresholdParam = extractThresholdParam(capturedSQL);
 
       expect(thresholdParam).toBe(0.65);
     });
@@ -130,9 +213,7 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
 
       expect(mockPrisma.$queryRaw).toHaveBeenCalled();
 
-      const thresholdParam = capturedSQL.find((arg: any) =>
-        typeof arg === 'number' && arg >= 0 && arg <= 1
-      );
+      const thresholdParam = extractThresholdParam(capturedSQL);
 
       // Agent search uses 0.4-0.55 range, should be preserved
       expect(thresholdParam).toBe(0.4);
@@ -148,9 +229,7 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
 
       expect(mockPrisma.$queryRaw).toHaveBeenCalled();
 
-      const thresholdParam = capturedSQL.find((arg: any) =>
-        typeof arg === 'number' && arg >= 0 && arg <= 1
-      );
+      const thresholdParam = extractThresholdParam(capturedSQL);
 
       // Dynamic threshold for 2-token query should be 0.6
       expect(thresholdParam).toBe(0.6);
@@ -166,9 +245,7 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
 
       expect(mockPrisma.$queryRaw).toHaveBeenCalled();
 
-      const thresholdParam = capturedSQL.find((arg: any) =>
-        typeof arg === 'number' && arg >= 0 && arg <= 1
-      );
+      const thresholdParam = extractThresholdParam(capturedSQL);
 
       // Empty query should use default 0.5 from getDynamicThreshold
       expect(thresholdParam).toBe(0.5);
@@ -182,9 +259,7 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
 
       expect(mockPrisma.$queryRaw).toHaveBeenCalled();
 
-      const thresholdParam = capturedSQL.find((arg: any) =>
-        typeof arg === 'number' && arg >= 0 && arg <= 1
-      );
+      const thresholdParam = extractThresholdParam(capturedSQL);
 
       expect(thresholdParam).toBe(0.5);
     });

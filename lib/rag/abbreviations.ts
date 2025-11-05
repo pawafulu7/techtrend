@@ -17,7 +17,11 @@
  * @see .claude/docs/plan/plan_20251105_002920_989_ai-search-query-expansion.md
  */
 
-export const TECH_ABBREVIATIONS: Record<string, string> = {
+/**
+ * Raw abbreviation dictionary with human-friendly casing
+ * Normalized to uppercase on export for consistent lookups
+ */
+const RAW_TECH_ABBREVIATIONS: Record<string, string> = {
   // Leadership & Roles
   'CTO': 'Chief Technology Officer',
   'CEO': 'Chief Executive Officer',
@@ -117,6 +121,16 @@ export const TECH_ABBREVIATIONS: Record<string, string> = {
   'TTI': 'Time to Interactive',
   'TTFB': 'Time to First Byte',
 };
+
+/**
+ * Normalized abbreviation dictionary (all keys uppercase)
+ *
+ * Ensures consistent lookups regardless of input casing.
+ * Generated from RAW_TECH_ABBREVIATIONS at module load time.
+ */
+export const TECH_ABBREVIATIONS: Record<string, string> = Object.fromEntries(
+  Object.entries(RAW_TECH_ABBREVIATIONS).map(([k, v]) => [k.toUpperCase(), v])
+);
 
 /**
  * Expand query using static dictionary
