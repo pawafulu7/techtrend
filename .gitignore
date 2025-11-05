@@ -83,6 +83,11 @@ docs/
 data/
 reports/
 
+# AI Testing
+lib/ai/testing/calibration-cache.json
+lib/ai/testing/golden-set-calibrated.json
+lib/ai/testing/calibration-thresholds.json
+
 # jest-dom snapshot output (should not be committed)
 .jest-dom-partial.json
 
