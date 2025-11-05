@@ -46,24 +46,24 @@ describe('expandQueryWithDictionary', () => {
   });
 
   describe('Token match (expand individual tokens)', () => {
-    it('should expand "CTO role"', () => {
-      expect(expandQueryWithDictionary('CTO role')).toBe('Chief Technology Officer role');
+    it('should expand "CTO role" and preserve original', () => {
+      expect(expandQueryWithDictionary('CTO role')).toBe('CTO Chief Technology Officer role');
     });
 
-    it('should expand "SRE practices"', () => {
-      expect(expandQueryWithDictionary('SRE practices')).toBe('Site Reliability Engineering practices');
+    it('should expand "SRE practices" and preserve original', () => {
+      expect(expandQueryWithDictionary('SRE practices')).toBe('SRE Site Reliability Engineering practices');
     });
 
-    it('should expand "API design patterns"', () => {
-      expect(expandQueryWithDictionary('API design patterns')).toBe('Application Programming Interface design patterns');
+    it('should expand "API design patterns" and preserve original', () => {
+      expect(expandQueryWithDictionary('API design patterns')).toBe('API Application Programming Interface design patterns');
     });
 
-    it('should expand multiple abbreviations', () => {
-      expect(expandQueryWithDictionary('SRE and DevOps')).toBe('Site Reliability Engineering and Development and Operations');
+    it('should expand multiple abbreviations and preserve originals', () => {
+      expect(expandQueryWithDictionary('SRE and DevOps')).toBe('SRE Site Reliability Engineering and DevOps Development and Operations');
     });
 
-    it('should preserve case for non-abbreviations', () => {
-      expect(expandQueryWithDictionary('CTO responsibilities')).toBe('Chief Technology Officer responsibilities');
+    it('should preserve case and expand "CTO responsibilities"', () => {
+      expect(expandQueryWithDictionary('CTO responsibilities')).toBe('CTO Chief Technology Officer responsibilities');
     });
   });
 
@@ -100,7 +100,7 @@ describe('expandQueryWithDictionary', () => {
     });
 
     it('should handle multiple spaces between tokens', () => {
-      expect(expandQueryWithDictionary('CTO   role')).toBe('Chief Technology Officer role');
+      expect(expandQueryWithDictionary('CTO   role')).toBe('CTO Chief Technology Officer role');
     });
 
     it('should not expand queries with >5 tokens', () => {
@@ -122,7 +122,7 @@ describe('expandQueryWithDictionary', () => {
 
   describe('Partial expansion', () => {
     it('should expand only recognized tokens', () => {
-      expect(expandQueryWithDictionary('CTO at startup')).toBe('Chief Technology Officer at startup');
+      expect(expandQueryWithDictionary('CTO at startup')).toBe('CTO Chief Technology Officer at startup');
     });
 
     it('should not expand if no tokens match', () => {
@@ -130,7 +130,7 @@ describe('expandQueryWithDictionary', () => {
     });
 
     it('should expand mixed abbreviations and normal words', () => {
-      expect(expandQueryWithDictionary('API and GraphQL comparison')).toBe('Application Programming Interface and Graph Query Language comparison');
+      expect(expandQueryWithDictionary('API and GraphQL comparison')).toBe('API Application Programming Interface and GraphQL Graph Query Language comparison');
     });
   });
 });

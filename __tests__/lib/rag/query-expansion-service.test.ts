@@ -43,7 +43,7 @@ describe('QueryExpansionService', () => {
       const result = await service.expandQuery('API design');
 
       expect(result.originalQuery).toBe('API design');
-      expect(result.expandedQuery).toBe('Application Programming Interface design');
+      expect(result.expandedQuery).toBe('API Application Programming Interface design');
       expect(result.method).toBe('dictionary');
     });
 
@@ -51,7 +51,7 @@ describe('QueryExpansionService', () => {
       const result = await service.expandQuery('SRE and DevOps');
 
       expect(result.originalQuery).toBe('SRE and DevOps');
-      expect(result.expandedQuery).toBe('Site Reliability Engineering and Development and Operations');
+      expect(result.expandedQuery).toBe('SRE Site Reliability Engineering and DevOps Development and Operations');
       expect(result.method).toBe('dictionary');
     });
   });
@@ -142,7 +142,7 @@ describe('QueryExpansionService', () => {
     it('should handle mixed case in multi-token queries', async () => {
       const result = await service.expandQuery('api Design');
 
-      expect(result.expandedQuery).toBe('Application Programming Interface Design');
+      expect(result.expandedQuery).toBe('api Application Programming Interface Design');
     });
   });
 });
