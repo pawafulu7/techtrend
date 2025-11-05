@@ -171,7 +171,10 @@ export function expandQueryWithDictionary(query: string): string {
     const expandedTokens = tokens.map(token => {
       // Preserve original case for non-abbreviations
       const upper = token.toUpperCase();
-      return TECH_ABBREVIATIONS[upper] || token;
+      const expansion = TECH_ABBREVIATIONS[upper];
+
+      // Preserve original + expansion for better matching
+      return expansion ? `${token} ${expansion}` : token;
     });
 
     // Only use expansion if at least one token was expanded
