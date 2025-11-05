@@ -57,10 +57,19 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const report = fs.readFileSync('regression-report.md', 'utf8');
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## AI Regression Test Failed\n\n${report}`
-            });
+            if (fs.existsSync('regression-report.md')) {
+              const report = fs.readFileSync('regression-report.md', 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## AI Regression Test Failed\n\n${report}`
+              });
+            } else {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## AI Regression Test Failed\n\nRegression report not available. See workflow logs for details.`
+              });
+            }
