@@ -104,6 +104,43 @@ npx prisma migrate deploy
 
 詳細な環境変数の説明は [.env.example](./.env.example) を参照してください。
 
+## Development Server
+
+### Turbopack (Default)
+
+```bash
+# Turbopack enabled (faster HMR, quicker startup)
+npm run dev
+```
+
+### Webpack (Fallback)
+
+```bash
+# Use webpack if Turbopack has issues
+npm run dev:webpack
+```
+
+### Performance Measurement
+
+```bash
+# Compare Turbopack vs Webpack startup times
+npx tsx scripts/performance/measure-dev-startup.ts
+
+# Measure specific mode only
+npx tsx scripts/performance/measure-dev-startup.ts --turbopack-only
+npx tsx scripts/performance/measure-dev-startup.ts --webpack-only
+
+# Custom number of runs (default: 3)
+npx tsx scripts/performance/measure-dev-startup.ts --runs=5
+```
+
+### Known Limitations
+
+- `@next/bundle-analyzer` does not work with Turbopack
+  - Use `npm run analyze` (uses webpack) for bundle analysis
+- Some webpack-specific plugins may not be supported
+- If you encounter issues, fallback to webpack: `npm run dev:webpack`
+
 ## OpenTelemetry統合
 
 ### Phase 1: CLI確認（最小構成）
