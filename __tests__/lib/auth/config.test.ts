@@ -25,10 +25,7 @@ describe('lib/auth/config', () => {
       expect(providerCount).toBe(expectedCount);
     });
 
-    it.skip('should not register providers with empty credentials', () => {
-      // SKIPPED: OAuth provider mock structure issue
-      // TODO: Fix mock to properly expose clientId/clientSecret
-      // Related: This test is unrelated to AI search accuracy PR
+    it('should not register providers with empty credentials', () => {
       const { authOptions } = require('@/lib/auth/config');
 
       authOptions.providers.forEach((provider: any) => {

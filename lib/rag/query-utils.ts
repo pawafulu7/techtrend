@@ -38,7 +38,12 @@ export function getDynamicThreshold(query: string): number {
   }
 
   const tokenCount = trimmed.split(/\s+/).length;
-  const charLength = trimmed.length;
+  const slugSegments =
+    tokenCount === 1 ? trimmed.split(/[\/_-]+/).filter(Boolean) : [];
+  const charLength =
+    tokenCount === 1 && slugSegments.length > 1
+      ? Math.max(...slugSegments.map((segment) => segment.length))
+      : trimmed.length;
 
   // Priority 1: Token count (semantic granularity)
   // Single token queries need lower threshold
@@ -47,7 +52,7 @@ export function getDynamicThreshold(query: string): number {
     if (charLength <= 3) {
       return 0.5;  // Very short: "CTO", "AI", "SRE"
     } else if (charLength <= 10) {
-      return 0.55; // Short: "React", "TypeScript"
+      return 0.55; // Short: "React", "TypeScript", "React/TypeScript"
     } else {
       return 0.6;  // Medium single token: "Authentication"
     }

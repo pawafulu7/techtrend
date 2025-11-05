@@ -109,13 +109,13 @@ describe('getDynamicThreshold', () => {
   describe('Special characters', () => {
     it('should handle queries with hyphens', () => {
       expect(getDynamicThreshold('Next.js')).toBe(0.55);
-      // "Server-side-rendering" is 21 chars, single token -> 0.6 (medium single token)
-      expect(getDynamicThreshold('Server-side-rendering')).toBe(0.6);
+      // "Server-side-rendering" splits to ["Server","side","rendering"], max length = 9 -> 0.55
+      expect(getDynamicThreshold('Server-side-rendering')).toBe(0.55);
     });
 
     it('should handle queries with slashes', () => {
-      // "React/TypeScript" is 16 chars, single token -> 0.6 (medium single token)
-      expect(getDynamicThreshold('React/TypeScript')).toBe(0.6);
+      // "React/TypeScript" splits to ["React","TypeScript"], max length = 10 -> 0.55
+      expect(getDynamicThreshold('React/TypeScript')).toBe(0.55);
     });
 
     it('should handle queries with underscores', () => {
