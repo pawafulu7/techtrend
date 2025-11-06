@@ -94,6 +94,42 @@ function withTimeout<T>(task: () => Promise<T>, timeoutMs: number): Promise<T> {
   });
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function assertSummaryServiceResult(value: unknown): asserts value is SummaryServiceResult {
+  const invalidResultError = new Error('Summary service returned an invalid result');
+
+  if (typeof value !== 'object' || value === null) {
+    throw invalidResultError;
+  }
+
+  const candidate = value as Partial<SummaryServiceResult>;
+
+  if (
+    typeof candidate.summary !== 'string' ||
+    typeof candidate.detailedSummary !== 'string' ||
+    typeof candidate.qualityScore !== 'number' ||
+    typeof candidate.processingTimeMs !== 'number' ||
+    typeof candidate.summaryVersion !== 'number'
+  ) {
+    throw invalidResultError;
+  }
+
+  if (candidate.translatedTitle !== undefined && typeof candidate.translatedTitle !== 'string') {
+    throw invalidResultError;
+  }
+
+  if (candidate.category !== undefined && typeof candidate.category !== 'string') {
+    throw invalidResultError;
+  }
+
+  if (candidate.tags !== undefined && !isStringArray(candidate.tags)) {
+    throw invalidResultError;
+  }
+}
+
 export class GoldenSetRegressionTester {
   private config: Required<RegressionConfig>;
 
@@ -153,7 +189,7 @@ export class GoldenSetRegressionTester {
     const startTime = performance.now();
 
     try {
-      const actual = await withTimeout<SummaryServiceResult>(
+      const actualResult = await withTimeout(
         () =>
           summaryService.generateSummary({
             title: example.article.title,
@@ -163,6 +199,9 @@ export class GoldenSetRegressionTester {
           }),
         this.config.timeout
       );
+
+      assertSummaryServiceResult(actualResult);
+      const actual: SummaryServiceResult = actualResult;
 
       const sanitize = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
       const expectedText = [example.expectedOutput.summary, example.expectedOutput.detailedSummary]
