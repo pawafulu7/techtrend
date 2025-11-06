@@ -25,6 +25,10 @@ export type AppConfig = {
     enabled: boolean;
     rateLimit: number;
   };
+  regression: {
+    enabled: boolean;
+    temperature: number;
+  };
 };
 
 export const defaultConfig: AppConfig = {
@@ -50,9 +54,16 @@ export const defaultConfig: AppConfig = {
     enabled: true,
     rateLimit: 30,
   },
+  regression: {
+    enabled: false,
+    temperature: 0,
+  },
 };
 
 export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
+  const regressionEnabled = process.env.REGRESSION_MODE === 'true';
+  const regressionTemperature = Number(process.env.REGRESSION_TEMPERATURE ?? defaultConfig.regression.temperature);
+
   const envConfig: Partial<AppConfig> = {
     gemini: {
       apiKey: process.env.GEMINI_API_KEY || defaultConfig.gemini.apiKey,
@@ -68,6 +79,10 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
     translation: {
       enabled: process.env.ENABLE_TITLE_TRANSLATION !== 'false',
       rateLimit: parseInt(process.env.TRANSLATION_RATE_LIMIT || String(defaultConfig.translation.rateLimit)),
+    },
+    regression: {
+      enabled: regressionEnabled,
+      temperature: regressionEnabled ? regressionTemperature : defaultConfig.regression.temperature,
     },
   };
 
@@ -94,6 +109,11 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
       ...defaultConfig.translation,
       ...envConfig.translation,
       ...overrides?.translation,
+    },
+    regression: {
+      ...defaultConfig.regression,
+      ...envConfig.regression,
+      ...overrides?.regression,
     },
   };
 }
