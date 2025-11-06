@@ -2,14 +2,24 @@ import { writeFile } from 'fs/promises';
 import { GoldenSetRegressionTester } from '@/lib/ai/testing/regression-tester';
 
 async function main() {
-  const concurrency = parseInt(process.env.REGRESSION_CONCURRENCY || '5', 10);
+  const regressionMode = process.env.REGRESSION_MODE === 'true';
+  const baseConcurrency = parseInt(process.env.REGRESSION_CONCURRENCY || '5', 10);
   const timeout = parseInt(process.env.REGRESSION_TIMEOUT || '60000', 10);
   const limit = process.env.REGRESSION_LIMIT
     ? parseInt(process.env.REGRESSION_LIMIT, 10)
     : undefined;
 
+  const parallel = regressionMode ? false : process.env.CI === 'true';
+  const concurrency = regressionMode ? 1 : baseConcurrency;
+
+  console.log(
+    `[GoldenSetRegression] Mode: ${
+      regressionMode ? 'serial regression (REGRESSION_MODE=true)' : 'default'
+    } | parallel=${parallel} | concurrency=${concurrency}`,
+  );
+
   const tester = new GoldenSetRegressionTester({
-    parallel: process.env.CI === 'true',
+    parallel,
     concurrency,
     timeout,
     limit,
