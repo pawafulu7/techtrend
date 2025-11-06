@@ -28,6 +28,8 @@ export type AppConfig = {
   regression: {
     enabled: boolean;
     temperature: number;
+    topP: number;
+    topK: number;
   };
 };
 
@@ -57,12 +59,16 @@ export const defaultConfig: AppConfig = {
   regression: {
     enabled: false,
     temperature: 0,
+    topP: 1e-8,
+    topK: 1,
   },
 };
 
 export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
   const regressionEnabled = process.env.REGRESSION_MODE === 'true';
   const regressionTemperature = Number(process.env.REGRESSION_TEMPERATURE ?? defaultConfig.regression.temperature);
+  const regressionTopP = Number(process.env.REGRESSION_TOP_P ?? defaultConfig.regression.topP);
+  const regressionTopK = Number(process.env.REGRESSION_TOP_K ?? defaultConfig.regression.topK);
 
   const envConfig: Partial<AppConfig> = {
     gemini: {
@@ -83,10 +89,12 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
     regression: {
       enabled: regressionEnabled,
       temperature: regressionEnabled ? regressionTemperature : defaultConfig.regression.temperature,
+      topP: regressionEnabled ? regressionTopP : defaultConfig.regression.topP,
+      topK: regressionEnabled ? regressionTopK : defaultConfig.regression.topK,
     },
   };
 
-  return {
+  const mergedConfig: AppConfig = {
     ...defaultConfig,
     ...envConfig,
     ...overrides,
@@ -116,4 +124,14 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
       ...overrides?.regression,
     },
   };
+
+  if (mergedConfig.regression.enabled) {
+    mergedConfig.regression = {
+      ...mergedConfig.regression,
+      topP: regressionTopP,
+      topK: regressionTopK,
+    };
+  }
+
+  return mergedConfig;
 }
