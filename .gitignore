@@ -87,6 +87,9 @@ reports/
 lib/ai/testing/calibration-cache.json
 lib/ai/testing/golden-set-calibrated.json
 lib/ai/testing/calibration-thresholds.json
+lib/ai/testing/coverage-report.json
+lib/ai/testing/candidate-pool-report.json
+lib/ai/testing/backups/
 regression-report.json
 regression-report.md
 
