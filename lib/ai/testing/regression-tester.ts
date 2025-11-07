@@ -286,7 +286,7 @@ export class GoldenSetRegressionTester {
   }
 
   // Phase 2-3: Multi-run evaluation with average-based judgment
-  // Phase 6: Parallel execution for 3x speedup
+  // Phase 6: Parallel execution for 3x speedup (respects config.parallel)
   private async testExample(
     example: GoldenExample,
     summaryService: UnifiedSummaryService,
@@ -295,31 +295,40 @@ export class GoldenSetRegressionTester {
     const runs = 3;
     const wallClockStart = performance.now();
 
+    // Helper: Execute one run with defensive error handling
+    const executeRun = async (): Promise<RegressionResult> => {
+      try {
+        return await this.testExampleOnce(example, summaryService, embeddingService);
+      } catch (error) {
+        // Defensive: Convert unexpected rejection into synthetic failure
+        // (testExampleOnce already handles expected errors)
+        return {
+          exampleId: example.id,
+          passed: false,
+          semanticSimilarity: 0,
+          qualityScore: 0,
+          issues: [`Unexpected execution error: ${(error as Error).message}`],
+          actualOutput: { summary: '', detailedSummary: '', tags: [] },
+          metadata: {
+            category: example.metadata.category,
+            difficulty: example.metadata.difficulty,
+            executionTimeMs: 0,
+          },
+        };
+      }
+    };
+
+    // Execute runs based on config.parallel setting
     let results: RegressionResult[];
-    try {
+    if (this.config.parallel !== false) {
       // PARALLEL: Run the test 3 times concurrently
-      results = await Promise.all([
-        this.testExampleOnce(example, summaryService, embeddingService),
-        this.testExampleOnce(example, summaryService, embeddingService),
-        this.testExampleOnce(example, summaryService, embeddingService),
-      ]);
-    } catch (error) {
-      // Defensive: Convert unexpected rejection into synthetic failure array
-      // (testExampleOnce already handles expected errors)
-      const syntheticFailure: RegressionResult = {
-        exampleId: example.id,
-        passed: false,
-        semanticSimilarity: 0,
-        qualityScore: 0,
-        issues: [`Unexpected parallel execution error: ${(error as Error).message}`],
-        actualOutput: { summary: '', detailedSummary: '', tags: [] },
-        metadata: {
-          category: example.metadata.category,
-          difficulty: example.metadata.difficulty,
-          executionTimeMs: 0,
-        },
-      };
-      results = [syntheticFailure, syntheticFailure, syntheticFailure];
+      results = await Promise.all(Array.from({ length: runs }, () => executeRun()));
+    } else {
+      // SEQUENTIAL: Run the test 3 times one by one (for rate limiting)
+      results = [];
+      for (let i = 0; i < runs; i++) {
+        results.push(await executeRun());
+      }
     }
 
     const wallClockTime = performance.now() - wallClockStart;
@@ -450,10 +459,12 @@ export class GoldenSetRegressionTester {
     lines.push(`- Failed: ${report.failed}`);
 
     // Add wall-clock time reporting (if available)
-    const hasWallClockTime = report.results.some(r => r.metadata.wallClockExecutionTimeMs !== undefined);
-    if (hasWallClockTime) {
-      const totalWallClock = report.results.reduce((sum, r) => sum + (r.metadata.wallClockExecutionTimeMs || 0), 0);
-      const avgWallClock = totalWallClock / report.results.length;
+    const wallClockValues = report.results
+      .map((r) => r.metadata.wallClockExecutionTimeMs)
+      .filter((value): value is number => value !== undefined);
+    if (wallClockValues.length > 0) {
+      const totalWallClock = wallClockValues.reduce((sum, value) => sum + value, 0);
+      const avgWallClock = totalWallClock / wallClockValues.length;
       lines.push(`- Avg Wall-Clock Time: ${(avgWallClock / 1000).toFixed(1)}s per example`);
       lines.push(`- Total Wall-Clock Time: ${(totalWallClock / 60000).toFixed(1)} minutes`);
     }
