@@ -25,7 +25,7 @@ const customJestConfig = {
     '^next/server$': '<rootDir>/__mocks__/next/server.ts',
     '^next/navigation$': '<rootDir>/__tests__/__mocks__/next-navigation.ts',
     // Mock ioredis
-    '^ioredis$': '<rootDir>/__tests__/__mocks__/ioredis.ts',
+    '^ioredis$': '<rootDir>/__mocks__/ioredis.ts',
     // Mock node-fetch
     '^node-fetch$': '<rootDir>/__tests__/__mocks__/node-fetch.ts',
     // Explicit helpers mapping for __tests__
