@@ -64,6 +64,7 @@ export interface RegressionResult {
     category: string;
     difficulty: string;
     executionTimeMs: number;
+    wallClockExecutionTimeMs?: number;
   };
 }
 
