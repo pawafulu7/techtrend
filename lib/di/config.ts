@@ -59,16 +59,31 @@ export const defaultConfig: AppConfig = {
   regression: {
     enabled: false,
     temperature: 0,
-    topP: 1e-8,
+    topP: 0,
     topK: 1,
   },
 };
 
 export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
+  const parseNumber = (envVar: string | undefined, defaultValue: number): number => {
+    if (envVar === undefined) return defaultValue;
+    const parsed = parseFloat(envVar);
+    return Number.isNaN(parsed) ? defaultValue : parsed;
+  };
+
+  const parseIntSafe = (envVar: string | undefined, defaultValue: number): number => {
+    if (envVar === undefined) return defaultValue;
+    const parsed = parseInt(envVar, 10);
+    return Number.isNaN(parsed) ? defaultValue : parsed;
+  };
+
   const regressionEnabled = process.env.REGRESSION_MODE === 'true';
-  const regressionTemperature = Number(process.env.REGRESSION_TEMPERATURE ?? defaultConfig.regression.temperature);
-  const regressionTopP = Number(process.env.REGRESSION_TOP_P ?? defaultConfig.regression.topP);
-  const regressionTopK = Number(process.env.REGRESSION_TOP_K ?? defaultConfig.regression.topK);
+  const regressionTemperature = parseNumber(
+    process.env.REGRESSION_TEMPERATURE,
+    defaultConfig.regression.temperature,
+  );
+  const regressionTopP = parseNumber(process.env.REGRESSION_TOP_P, defaultConfig.regression.topP);
+  const regressionTopK = parseIntSafe(process.env.REGRESSION_TOP_K, defaultConfig.regression.topK);
 
   const envConfig: Partial<AppConfig> = {
     gemini: {
@@ -124,14 +139,6 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
       ...overrides?.regression,
     },
   };
-
-  if (mergedConfig.regression.enabled) {
-    mergedConfig.regression = {
-      ...mergedConfig.regression,
-      topP: regressionTopP,
-      topK: regressionTopK,
-    };
-  }
 
   return mergedConfig;
 }
