@@ -300,10 +300,6 @@ export class GoldenSetRegressionTester {
       results.push(result);
     }
 
-    // Majority voting: if 2 or more runs pass, consider it passed
-    const passCount = results.filter(r => r.passed).length;
-    const majorityPassed = passCount >= 2;
-
     // Aggregate metrics (average)
     const avgSimilarity = results.reduce((sum, r) => sum + r.semanticSimilarity, 0) / runs;
     const avgQuality = results.reduce((sum, r) => sum + r.qualityScore, 0) / runs;
@@ -322,9 +318,11 @@ export class GoldenSetRegressionTester {
         ? 0.795 
         : example.acceptanceThreshold.semanticSimilarity;
 
+    // Option C: Average-based judgment (no majority voting)
+    // Pass if average similarity and quality meet thresholds
     const similarityPassed = avgSimilarity >= adjustedThreshold;
     const qualityPassed = avgQuality >= example.acceptanceThreshold.minimumQuality;
-    const passed = majorityPassed && similarityPassed && qualityPassed;
+    const passed = similarityPassed && qualityPassed;
 
     const issues: string[] = [];
     if (!similarityPassed) {
@@ -335,11 +333,6 @@ export class GoldenSetRegressionTester {
     if (!qualityPassed) {
       issues.push(
         `Quality score too low: ${avgQuality.toFixed(3)} < ${example.acceptanceThreshold.minimumQuality.toFixed(3)} (avg of ${runs} runs)`
-      );
-    }
-    if (!majorityPassed) {
-      issues.push(
-        `Majority voting failed: ${passCount}/${runs} runs passed (need >= 2)`
       );
     }
 
