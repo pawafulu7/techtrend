@@ -43,7 +43,11 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           NODE_ENV: test
-          REGRESSION_CONCURRENCY: 5
+          REGRESSION_MODE: 'true'
+          REGRESSION_TEMPERATURE: '0'
+          REGRESSION_TOP_P: '0'
+          REGRESSION_TOP_K: '1'
+          REGRESSION_CONCURRENCY: '1'
         run: npx tsx scripts/ci/run-golden-set-regression.ts
 
       - name: Upload regression report

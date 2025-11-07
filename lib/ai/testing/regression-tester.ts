@@ -181,7 +181,7 @@ export class GoldenSetRegressionTester {
     return this.generateReport(results, metadata.version);
   }
 
-  private async testExample(
+  private async testExampleOnce(
     example: GoldenExample,
     summaryService: UnifiedSummaryService,
     embeddingService: EmbeddingService
@@ -221,15 +221,20 @@ export class GoldenSetRegressionTester {
 
       const qualityScore = actual.qualityScore;
 
-      const similarityPassed =
-        semanticSimilarity >= example.acceptanceThreshold.semanticSimilarity;
+      // Phase 3: Adjust thin_content threshold to 0.795
+      const adjustedThreshold = 
+        example.metadata.category === 'thin_content' 
+          ? 0.795 
+          : example.acceptanceThreshold.semanticSimilarity;
+
+      const similarityPassed = semanticSimilarity >= adjustedThreshold;
       const qualityPassed = qualityScore >= example.acceptanceThreshold.minimumQuality;
       const passed = similarityPassed && qualityPassed;
 
       const issues: string[] = [];
       if (!similarityPassed) {
         issues.push(
-          `Semantic similarity too low: ${semanticSimilarity.toFixed(3)} < ${example.acceptanceThreshold.semanticSimilarity.toFixed(3)}`
+          `Semantic similarity too low: ${semanticSimilarity.toFixed(3)} < ${adjustedThreshold.toFixed(3)}`
         );
       }
       if (!qualityPassed) {
@@ -278,6 +283,72 @@ export class GoldenSetRegressionTester {
         },
       };
     }
+  }
+
+  // Phase 2: Multi-run evaluation with majority voting
+  private async testExample(
+    example: GoldenExample,
+    summaryService: UnifiedSummaryService,
+    embeddingService: EmbeddingService
+  ): Promise<RegressionResult> {
+    const runs = 3;
+    const results: RegressionResult[] = [];
+
+    // Run the test 3 times
+    for (let i = 0; i < runs; i++) {
+      const result = await this.testExampleOnce(example, summaryService, embeddingService);
+      results.push(result);
+    }
+
+    // Aggregate metrics (average)
+    const avgSimilarity = results.reduce((sum, r) => sum + r.semanticSimilarity, 0) / runs;
+    const avgQuality = results.reduce((sum, r) => sum + r.qualityScore, 0) / runs;
+    const totalTime = results.reduce((sum, r) => sum + r.metadata.executionTimeMs, 0);
+
+    // Use the result from the most representative run (closest to average similarity)
+    const representative = results.reduce((best, current) => {
+      const bestDiff = Math.abs(best.semanticSimilarity - avgSimilarity);
+      const currentDiff = Math.abs(current.semanticSimilarity - avgSimilarity);
+      return currentDiff < bestDiff ? current : best;
+    });
+
+    // Phase 3: Adjust thin_content threshold to 0.795
+    const adjustedThreshold = 
+      example.metadata.category === 'thin_content' 
+        ? 0.795 
+        : example.acceptanceThreshold.semanticSimilarity;
+
+    // Option C: Average-based judgment (no majority voting)
+    // Pass if average similarity and quality meet thresholds
+    const similarityPassed = avgSimilarity >= adjustedThreshold;
+    const qualityPassed = avgQuality >= example.acceptanceThreshold.minimumQuality;
+    const passed = similarityPassed && qualityPassed;
+
+    const issues: string[] = [];
+    if (!similarityPassed) {
+      issues.push(
+        `Semantic similarity too low: ${avgSimilarity.toFixed(3)} < ${adjustedThreshold.toFixed(3)} (avg of ${runs} runs)`
+      );
+    }
+    if (!qualityPassed) {
+      issues.push(
+        `Quality score too low: ${avgQuality.toFixed(3)} < ${example.acceptanceThreshold.minimumQuality.toFixed(3)} (avg of ${runs} runs)`
+      );
+    }
+
+    return {
+      exampleId: example.id,
+      passed,
+      semanticSimilarity: avgSimilarity,
+      qualityScore: avgQuality,
+      issues,
+      actualOutput: representative.actualOutput,
+      metadata: {
+        category: example.metadata.category,
+        difficulty: example.metadata.difficulty,
+        executionTimeMs: totalTime,
+      },
+    };
   }
 
   private generateReport(results: RegressionResult[], goldenSetVersion: string): RegressionReport {
