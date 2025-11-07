@@ -7,13 +7,30 @@ import { GeminiTransport, TransportRequest } from '../transport/gemini-transport
 import { PromptBuilder } from './prompt-builder';
 import { INSTRUCTION_PATTERNS } from '../constants';
 
+type GenerationConfig = {
+  temperature: number;
+  topK?: number;
+  topP?: number;
+  maxOutputTokens?: number;
+};
+
 export class GeminiSummaryAdapter implements SummaryProvider {
+  private readonly generationConfig: GenerationConfig;
 
   constructor(
     private readonly transport: GeminiTransport,
     private readonly promptBuilder: PromptBuilder,
-    private readonly model: string = 'gemini-2.0-flash-lite'
-  ) {}
+    private readonly model: string = 'gemini-2.0-flash-lite',
+    generationOverrides?: Partial<GenerationConfig>
+  ) {
+    this.generationConfig = {
+      temperature: 0.3,
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 8192,
+      ...generationOverrides,
+    };
+  }
 
   async summarize(input: SummaryProviderInput): Promise<SummaryProviderOutput> {
     const prompt = this.promptBuilder.buildPrompt(input);
@@ -26,12 +43,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
             parts: [{ text: prompt }],
           },
         ],
-        generationConfig: {
-          temperature: 0.3,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 8192,
-        },
+        generationConfig: this.generationConfig,
       },
       requestId: input.requestId,
       timeoutMs: 60000,

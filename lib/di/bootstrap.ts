@@ -33,7 +33,12 @@ export function buildAppDependencies(configOverrides?: DeepPartial<AppConfig>): 
   );
 
   const promptBuilder = new PromptBuilder();
-  const adapter = new GeminiSummaryAdapter(transport, promptBuilder, config.gemini.model);
+  const adapter = new GeminiSummaryAdapter(transport, promptBuilder, config.gemini.model, {
+    temperature: config.regression.enabled ? config.regression.temperature : config.gemini.temperature,
+    topP: config.regression.enabled ? config.regression.topP : config.gemini.topP,
+    topK: config.regression.enabled ? config.regression.topK : config.gemini.topK,
+    maxOutputTokens: config.gemini.maxOutputTokens,
+  });
 
   const translator = new GeminiTitleTranslator(transport, {
     enabled: config.translation.enabled,
