@@ -104,8 +104,8 @@ test.describe('AI Agent Search E2E', () => {
     await input.fill('test query');
     await input.press('Enter');
 
-    // Verify loading state
-    await expect(page.locator('text=AIが要約を生成中')).toBeVisible();
+    // Verify loading state (using role attribute for stability)
+    await expect(page.getByRole('status')).toBeVisible();
   });
 
   test('3. Successful search displays answer panel', async ({ page }) => {
