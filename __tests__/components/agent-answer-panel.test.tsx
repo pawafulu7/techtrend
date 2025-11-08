@@ -21,7 +21,7 @@ describe('AgentAnswerPanel', () => {
   });
 
   test('renders Markdown content correctly', () => {
-    render(<AgentAnswerPanel result={mockResult} />);
+    render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
 
     expect(screen.getByRole('heading', { level: 1, name: 'Test Response' })).toBeInTheDocument();
     expect(screen.getByText('bold')).toBeInTheDocument();
@@ -30,21 +30,21 @@ describe('AgentAnswerPanel', () => {
 
   test('shows cached badge when cached=true', () => {
     const cachedResult = { ...mockResult, cached: true };
-    render(<AgentAnswerPanel result={cachedResult} />);
+    render(<AgentAnswerPanel result={cachedResult} partialText={null} isStreaming={false} />);
 
     expect(screen.getByText('キャッシュ')).toBeInTheDocument();
   });
 
   test('shows fallback warning when fallback=true', () => {
     const fallbackResult = { ...mockResult, fallback: true };
-    render(<AgentAnswerPanel result={fallbackResult} />);
+    render(<AgentAnswerPanel result={fallbackResult} partialText={null} isStreaming={false} />);
 
     expect(screen.getByText('フォールバック')).toBeInTheDocument();
     expect(screen.getByText(/AI検索が一時的に利用できない/)).toBeInTheDocument();
   });
 
   test('copy button copies to clipboard', async () => {
-    render(<AgentAnswerPanel result={mockResult} />);
+    render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
 
     const copyButton = screen.getByLabelText('回答をコピー');
     fireEvent.click(copyButton);
@@ -54,7 +54,14 @@ describe('AgentAnswerPanel', () => {
 
   test('feedback buttons call onFeedback', () => {
     const mockOnFeedback = jest.fn();
-    render(<AgentAnswerPanel result={mockResult} onFeedback={mockOnFeedback} />);
+    render(
+      <AgentAnswerPanel
+        result={mockResult}
+        onFeedback={mockOnFeedback}
+        partialText={null}
+        isStreaming={false}
+      />
+    );
 
     fireEvent.click(screen.getByLabelText('良い'));
     expect(mockOnFeedback).toHaveBeenCalledWith(true);
@@ -64,7 +71,7 @@ describe('AgentAnswerPanel', () => {
   });
 
   test('renders external links with target="_blank"', () => {
-    render(<AgentAnswerPanel result={mockResult} />);
+    render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
 
     const link = screen.getByRole('link', { name: 'link' });
     expect(link).toHaveAttribute('target', '_blank');
@@ -72,12 +79,12 @@ describe('AgentAnswerPanel', () => {
   });
 
   test('displays token usage', () => {
-    render(<AgentAnswerPanel result={mockResult} />);
+    render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
     expect(screen.getByText('トークン使用: 1,234')).toBeInTheDocument();
   });
 
   test('hides feedback buttons when onFeedback not provided', () => {
-    render(<AgentAnswerPanel result={mockResult} />);
+    render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
 
     expect(screen.queryByLabelText('良い')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('悪い')).not.toBeInTheDocument();
