@@ -166,7 +166,10 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
       )}
 
       {isStreaming && (
-        <div className="mb-4 flex items-center gap-2">
+        <div
+          data-testid="streaming-indicator"
+          className="mb-4 flex items-center gap-2"
+        >
           <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
           <span className="text-sm text-muted-foreground">AI回答を生成中...</span>
         </div>

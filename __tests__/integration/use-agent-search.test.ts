@@ -271,4 +271,111 @@ describe('useAgentSearch Integration', () => {
     expect(result.current.result?.response).toBe('Batch response');
     expect(result.current.error).toBeNull();
   });
+
+  test('SSE streaming updates partialText progressively', async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        // Chunk 1
+        controller.enqueue(encoder.encode('data: {"type":"text-delta","textDelta":"Hello"}\n\n'));
+        await new Promise(resolve => queueMicrotask(resolve));
+
+        // Chunk 2
+        controller.enqueue(encoder.encode('data: {"type":"text-delta","textDelta":" World"}\n\n'));
+        await new Promise(resolve => queueMicrotask(resolve));
+
+        // Final chunk
+        controller.enqueue(encoder.encode('data: {"type":"done","result":{"query":"test","response":"Hello World","toolCalls":[],"usage":{"totalTokens":50},"cached":false,"fallback":false}}\n\n'));
+        controller.close();
+      }
+    });
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      body: stream,
+      headers: new Headers({ 'Content-Type': 'text/event-stream' }),
+    });
+
+    const { result } = renderHook(() => useAgentSearch());
+
+    await result.current.search('test query');
+
+    // Wait for first chunk
+    await waitFor(() => {
+      expect(result.current.partialText).toBe('Hello');
+    }, { timeout: 1000 });
+
+    // Wait for second chunk
+    await waitFor(() => {
+      expect(result.current.partialText).toBe('Hello World');
+    }, { timeout: 1000 });
+
+    // Wait for final result
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.result?.response).toBe('Hello World');
+      expect(result.current.partialText).toBe('');
+    }, { timeout: 1000 });
+  });
+
+  test('race guard ignores chunks from aborted requests', async () => {
+    const encoder = new TextEncoder();
+    let controller1!: ReadableStreamDefaultController<Uint8Array>;
+    let controller2!: ReadableStreamDefaultController<Uint8Array>;
+
+    // Request 1 (slow)
+    const stream1 = new ReadableStream({
+      start(controller) {
+        controller1 = controller;
+      }
+    });
+
+    // Request 2 (fast)
+    const stream2 = new ReadableStream({
+      async start(controller) {
+        controller2 = controller;
+        // Emit chunk immediately
+        controller.enqueue(encoder.encode('data: {"type":"text-delta","textDelta":"Fresh"}\n\n'));
+        await new Promise(resolve => queueMicrotask(resolve));
+        controller.enqueue(encoder.encode('data: {"type":"done","result":{"query":"test","response":"Fresh Result","toolCalls":[],"usage":{"totalTokens":50},"cached":false,"fallback":false}}\n\n'));
+        controller.close();
+      }
+    });
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        body: stream1,
+        headers: new Headers({ 'Content-Type': 'text/event-stream' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: stream2,
+        headers: new Headers({ 'Content-Type': 'text/event-stream' }),
+      });
+
+    const { result } = renderHook(() => useAgentSearch());
+
+    // Start request 1
+    const promise1 = result.current.search('query A');
+
+    // Wait briefly
+    await new Promise(resolve => queueMicrotask(resolve));
+
+    // Start request 2 (aborts request 1)
+    const promise2 = result.current.search('query B');
+
+    // Emit stale chunk from request 1 (should be ignored)
+    controller1.enqueue(encoder.encode('data: {"type":"text-delta","textDelta":"Stale"}\n\n'));
+
+    // Wait for request 2 to complete
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.result?.response).toBe('Fresh Result');
+    }, { timeout: 2000 });
+
+    // Assert stale chunk was ignored
+    expect(result.current.partialText).not.toContain('Stale');
+    expect(result.current.result?.response).not.toContain('Stale');
+  });
 });

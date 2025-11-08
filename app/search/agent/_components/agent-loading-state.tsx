@@ -15,6 +15,7 @@ export function AgentLoadingState({ className }: AgentLoadingStateProps) {
             {DOT_ANIMATION_DELAYS.map((delay) => (
               <span
                 key={delay}
+                data-testid="typing-dot"
                 className="w-2 h-2 bg-primary rounded-full animate-bounce"
                 style={{ animationDelay: `${delay}ms` }}
               />
