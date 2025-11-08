@@ -52,13 +52,17 @@ const DEFAULT_TIMEOUT = 30000;
  * @param callbacksRef - Callbacks reference (onSuccess, onError)
  * @param query - Original query for result metadata
  * @param setPartialText - State setter for partial text storage
+ * @param requestId - Unique identifier for the originating request
+ * @param getActiveRequestId - Getter for the currently active request id
  */
 async function parseSSEStream(
   response: Response,
   controller: AbortController,
   callbacksRef: React.MutableRefObject<UseAgentSearchOptions | undefined>,
   query: string,
-  setPartialText: (text: string | null) => void
+  setPartialText: (text: string | null) => void,
+  requestId: string,
+  getActiveRequestId: () => string | null
 ): Promise<AgentSearchResult> {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -83,6 +87,8 @@ async function parseSSEStream(
       throw new Error('Stream timeout - no chunks received');
     }
   };
+
+  const isStaleChunk = () => getActiveRequestId() !== requestId;
 
   try {
     let buffer = '';
@@ -111,10 +117,16 @@ async function parseSSEStream(
         const eventData = JSON.parse(line.slice(6));
 
         if (eventData.type === 'cached') {
+          if (isStaleChunk()) {
+            continue;
+          }
           accumulatedText = eventData.text;
           cached = true;
           setPartialText(accumulatedText);
         } else if (eventData.type === 'text-delta') {
+          if (isStaleChunk()) {
+            continue;
+          }
           const delta = eventData.delta ?? '';
           accumulatedText += delta;
           setPartialText(accumulatedText);
@@ -146,6 +158,9 @@ async function parseSSEStream(
             console.log('[SSE] Tool completed:', eventData.toolCallId);
           }
         } else if (eventData.type === 'fallback') {
+          if (isStaleChunk()) {
+            continue;
+          }
           accumulatedText = eventData.text;
           fallback = true;
           setPartialText(accumulatedText);
@@ -195,13 +210,19 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
   const [error, setError] = useState<AgentSearchError | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [partialText, setPartialText] = useState<string | null>(null);
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const callbacksRef = useRef(options);
+  const activeRequestIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     callbacksRef.current = options;
   }, [options]);
+
+  useEffect(() => {
+    activeRequestIdRef.current = activeRequestId;
+  }, [activeRequestId]);
 
   useEffect(() => {
     return () => {
@@ -227,9 +248,14 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
         abortControllerRef.current.abort();
       }
 
+      const requestId = `req-${Date.now()}-${Math.random()}`;
+      activeRequestIdRef.current = requestId;
+      setActiveRequestId(requestId);
+
       setIsLoading(true);
       setError(null);
       setResult(null);
+      setPartialText('');
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -310,7 +336,9 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
             controller,
             callbacksRef,
             query,
-            setPartialText
+            setPartialText,
+            requestId,
+            () => activeRequestIdRef.current
           );
 
           setResult(streamResult);
@@ -337,6 +365,9 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
         }
       } catch (err) {
         clearTimeout(timeoutId);
+        if (activeRequestIdRef.current === requestId) {
+          setPartialText('');
+        }
 
         if (err instanceof Error && err.name === 'AbortError') {
           if (didTimeout) {
@@ -362,6 +393,11 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
         if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
         }
+        if (activeRequestIdRef.current === requestId) {
+          activeRequestIdRef.current = null;
+          setActiveRequestId(null);
+          setPartialText('');
+        }
       }
     },
     []
@@ -371,10 +407,12 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+    activeRequestIdRef.current = null;
+    setActiveRequestId(null);
     setResult(null);
     setError(null);
     setIsLoading(false);
-    setPartialText(null);
+    setPartialText('');
   }, []);
 
   return {
