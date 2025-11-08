@@ -13,10 +13,12 @@ const mockResult: AgentSearchResult = {
 
 describe('AgentAnswerPanel', () => {
   beforeEach(() => {
-    Object.assign(navigator, {
-      clipboard: {
+    Object.defineProperty(window.navigator, 'clipboard', {
+      value: {
         writeText: jest.fn(() => Promise.resolve()),
       },
+      writable: true,
+      configurable: true,
     });
   });
 
@@ -49,7 +51,10 @@ describe('AgentAnswerPanel', () => {
     const copyButton = screen.getByLabelText('回答をコピー');
     fireEvent.click(copyButton);
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockResult.response);
+    // Component strips Markdown and converts to plain text
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      'Test Response\nSome bold text and a link.'
+    );
   });
 
   test('feedback buttons call onFeedback', () => {

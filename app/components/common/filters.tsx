@@ -205,7 +205,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     }
   };
 
-  const applySourceFilter = async (sourceIds: string[]) => {
+  const applySourceFilter = (sourceIds: string[]) => {
     // 即座に状態を更新（UIの反応性を保つ）
     setSelectedSources(sourceIds);
 
@@ -234,7 +234,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     // URLを構築（パラメータがない場合は "/" のみ）
     const newURL = params.toString() ? `/?${params.toString()}` : '/';
 
-    // URL更新を即座に実行
+    // URL更新（Next.jsが自動的に競合を制御）
     router.push(newURL);
 
     // Cookie更新は150msデバウンス
@@ -267,6 +267,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               className="h-7 text-xs justify-start flex-1 min-w-0 overflow-hidden"
               data-testid="select-all-button"
               type="button"
+              
             >
               <CheckSquare className="w-3 h-3 me-1 flex-shrink-0" />
               <span className="truncate">全て選択</span>
@@ -278,6 +279,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               className="h-7 text-xs justify-start flex-1 min-w-0 overflow-hidden"
               data-testid="deselect-all-button"
               type="button"
+              
             >
               <Square className="w-3 h-3 me-1 flex-shrink-0" />
               <span className="truncate">全て解除</span>
@@ -294,6 +296,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               data-testid="preset-company"
               type="button"
               title="日本企業の技術ブログのみ"
+              
             >
               <Building2 className="w-3 h-3 me-1" />
               国内企業
@@ -306,6 +309,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               data-testid="preset-ai-ml"
               type="button"
               title="AI・機械学習関連の情報のみ"
+              
             >
               <Brain className="w-3 h-3 me-1" />
               AI/ML
@@ -318,6 +322,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               data-testid="preset-foreign"
               type="button"
               title="海外の技術情報サイトのみ"
+              
             >
               <Globe className="w-3 h-3 me-1" />
               海外
@@ -330,6 +335,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               data-testid="preset-domestic-all"
               type="button"
               title="日本の技術情報全般（情報サイト+企業ブログ）"
+              
             >
               <Home className="w-3 h-3 me-1" />
               国内全般
@@ -383,6 +389,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             className="h-6 text-xs px-2 flex-1 min-w-0 overflow-hidden"
                             type="button"
                             data-testid={`category-${category.id}-select-all`}
+                            
                           >
                             <span className="truncate">全て選択</span>
                           </Button>
@@ -393,6 +400,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             className="h-6 text-xs px-2 flex-1 min-w-0 overflow-hidden"
                             type="button"
                             data-testid={`category-${category.id}-deselect-all`}
+                            
                           >
                             <span className="truncate">全て解除</span>
                           </Button>
@@ -417,6 +425,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                                 onCheckedChange={() => handleSourceToggle(source.id)}
                                 className="h-4 w-4"
                                 onClick={(e) => e.stopPropagation()}
+                                
                               />
                               <label className="text-xs cursor-pointer flex-1">
                                 {source.name}

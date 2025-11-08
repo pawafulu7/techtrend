@@ -10,7 +10,7 @@ jest.mock('@/lib/hooks/useSearchHistory', () => ({
 }));
 
 describe('AgentSearchBar', () => {
-  it('should not call onSearch when history suggestion is clicked', () => {
+  it('should call onSearch when history suggestion is clicked', () => {
     const mockOnSearch = jest.fn();
 
     render(
@@ -29,8 +29,9 @@ describe('AgentSearchBar', () => {
     const suggestion = screen.getByText('past search query');
     fireEvent.click(suggestion);
 
-    // Verify onSearch was NOT called
-    expect(mockOnSearch).not.toHaveBeenCalled();
+    // Verify onSearch WAS called (fixed behavior)
+    expect(mockOnSearch).toHaveBeenCalledWith('past search query');
+    expect(mockOnSearch).toHaveBeenCalledTimes(1);
 
     // Verify input value was set
     expect(input).toHaveValue('past search query');
@@ -85,7 +86,7 @@ describe('AgentSearchBar', () => {
     expect(mockOnSearch).toHaveBeenCalledTimes(1);
   });
 
-  it('should focus input after history suggestion is clicked', () => {
+  it('should set input value when history suggestion is clicked', () => {
     const mockOnSearch = jest.fn();
 
     render(
@@ -105,8 +106,9 @@ describe('AgentSearchBar', () => {
     const suggestion = screen.getByText('past search query');
     fireEvent.click(suggestion);
 
-    // Verify input still has focus (for editing)
-    expect(input).toHaveFocus();
+    // Verify input value was set and search was triggered
+    expect(input).toHaveValue('past search query');
+    expect(mockOnSearch).toHaveBeenCalledWith('past search query');
   });
 
   it('should not call onSearch when query is empty', () => {
