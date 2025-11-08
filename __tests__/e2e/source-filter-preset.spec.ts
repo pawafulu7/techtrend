@@ -11,10 +11,10 @@ test.describe('ソースフィルタープリセット機能', () => {
   });
 
   test('プリセットボタンが表示される', async ({ page }) => {
-    await expect(page.getByTestId('preset-company')).toBeVisible();
-    await expect(page.getByTestId('preset-ai-ml')).toBeVisible();
-    await expect(page.getByTestId('preset-foreign')).toBeVisible();
-    await expect(page.getByTestId('preset-domestic-all')).toBeVisible();
+    await expect(page.getByTestId('preset-company').first()).toBeVisible();
+    await expect(page.getByTestId('preset-ai-ml').first()).toBeVisible();
+    await expect(page.getByTestId('preset-foreign').first()).toBeVisible();
+    await expect(page.getByTestId('preset-domestic-all').first()).toBeVisible();
   });
 
   test('「国内企業」プリセットが正しく動作する', async ({ page }) => {

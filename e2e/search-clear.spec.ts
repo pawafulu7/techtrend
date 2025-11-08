@@ -64,11 +64,10 @@ test.describe('検索クリア機能', () => {
     await expect(page).not.toHaveURL(/search=/);
     
     // URLから検索パラメータが消えるまで待機
-    await page.waitForFunction(
-      () => !window.location.href.includes('search='),
-      undefined,
-      { timeout: getTimeout('short') }
-    );
+    await waitForUrlParam(page, 'search', null, {
+      timeout: getTimeout('medium'),
+      polling: 'fast',
+    });
     
     // ページリロード後の動作確認
     // 注: 現在の実装では、URLパラメータがない場合はリロード後も値がクリアされる
@@ -111,12 +110,11 @@ test.describe('検索クリア機能', () => {
     );
     await expect(searchBox).toHaveValue('');
     
-    // URLからsearchパラメータが消えたことを確認
-    await page.waitForFunction(
-      () => !window.location.href.includes('search=React'),
-      undefined,
-      { timeout: getTimeout('short') }
-    );
+    // URLからsearchパラメータが消えるまで待機
+    await waitForUrlParam(page, 'search', null, {
+      timeout: getTimeout('medium'),
+      polling: 'fast',
+    });
     const url1 = page.url();
     expect(url1).not.toContain('search=React');
     
@@ -158,11 +156,10 @@ test.describe('検索クリア機能', () => {
     // URLからsearchパラメータが消えたことを確認（CI環境では長めのタイムアウト）
     const clearWaitMs = process.env.CI ? 60000 : getTimeout('short');
     try {
-      await page.waitForFunction(
-        () => !window.location.href.includes('search=Vue'),
-        undefined,
-        { timeout: clearWaitMs, polling: process.env.CI ? 500 : 100 }
-      );
+      await waitForUrlParam(page, 'search', null, {
+        timeout: clearWaitMs,
+        polling: process.env.CI ? 'fast' : 'normal',
+      });
       const url2 = page.url();
       expect(url2).not.toContain('search=Vue');
     } catch (error) {

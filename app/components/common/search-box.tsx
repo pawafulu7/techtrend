@@ -64,12 +64,15 @@ export function SearchBox() {
   // デバウンスされた検索実行
   useEffect(() => {
     if (isComposing) return;
-    
+
+    // デバウンス値が実際の入力値と揃うまではURL更新を行わない
+    if (debouncedQuery !== query) return;
+
     const currentUrlSearch = searchParams.get('search') || '';
     if (debouncedQuery !== currentUrlSearch) {
       handleSearch(debouncedQuery);
     }
-  }, [debouncedQuery, isComposing, handleSearch, searchParams]);
+  }, [debouncedQuery, query, isComposing, handleSearch, searchParams]);
 
   const handleClear = async () => {
     isInternalUpdate.current = true;
