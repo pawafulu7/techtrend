@@ -1,38 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
-
-const STATUS_MESSAGES = [
-  'AIが要約を生成中...',
-  '関連資料を分析中...',
-  '結果をまとめています...',
-] as const;
-
-const STATUS_DURATIONS = [3000, 3000, 6000];
+const DOT_ANIMATION_DELAYS = [0, 150, 300];
 
 interface AgentLoadingStateProps {
   className?: string;
 }
 
 export function AgentLoadingState({ className }: AgentLoadingStateProps) {
-  const [statusIndex, setStatusIndex] = useState(0);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setStatusIndex((prev) => (prev + 1) % STATUS_MESSAGES.length);
-    }, STATUS_DURATIONS[statusIndex]);
-
-    return () => clearTimeout(timer);
-  }, [statusIndex]);
-
   return (
     <div className={className} role="status" aria-live="polite" aria-busy="true">
       <div className="flex items-center justify-center gap-3 mb-4">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        <span className="text-base font-medium">
-          {STATUS_MESSAGES[statusIndex]}
-        </span>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            {DOT_ANIMATION_DELAYS.map((delay) => (
+              <span
+                key={delay}
+                className="w-2 h-2 bg-primary rounded-full animate-bounce"
+                style={{ animationDelay: `${delay}ms` }}
+              />
+            ))}
+          </div>
+          <span className="ml-2 text-base font-medium text-muted-foreground">
+            AIが回答を生成中...
+          </span>
+        </div>
       </div>
 
       <div className="space-y-3">
