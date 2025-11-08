@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation, Brain, Cpu, Home } from 'lucide-react';
@@ -57,6 +57,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   const prevSourcesRef = useRef<Array<{ id: string; name: string }>>(sources);
   const cookieUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastQueuedSourcesRef = useRef<string[]>(getInitialSources());
+  const [isPending, startTransition] = useTransition();
 
   // ソースをカテゴリごとにグループ化
   const groupedSources = groupSourcesByCategory(sources);
@@ -97,6 +98,9 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   }, []);
 
   const handleSourceToggle = (sourceId: string) => {
+    if (isPending) {
+      return;
+    }
     const newSelection = selectedSources.includes(sourceId)
       ? selectedSources.filter(id => id !== sourceId)
       : [...selectedSources, sourceId];
@@ -105,17 +109,26 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   };
   
   const handleSelectAll = () => {
+    if (isPending) {
+      return;
+    }
     // Always select all sources
     applySourceFilter(sources.map(s => s.id));
   };
   
   const handleDeselectAll = () => {
+    if (isPending) {
+      return;
+    }
     // Clear all selections
     applySourceFilter([]);
   };
 
   // プリセット適用
   const applyPreset = (presetId: string) => {
+    if (isPending) {
+      return;
+    }
     // プリセットからソースIDを取得
     const presetSourceIds = getSourceIdsForPreset(presetId);
     if (presetSourceIds.length === 0) {
@@ -143,6 +156,9 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
 
   // カテゴリ単位の選択/解除
   const handleCategorySelectAll = (category: SourceCategory) => {
+    if (isPending) {
+      return;
+    }
     const categorySourceIds = category.sourceIds.filter(id => 
       sources.some(s => s.id === id)
     );
@@ -153,6 +169,9 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   };
   
   const handleCategoryDeselectAll = (category: SourceCategory) => {
+    if (isPending) {
+      return;
+    }
     const categorySourceIds = category.sourceIds;
     const newSelection = selectedSources.filter(id => !categorySourceIds.includes(id));
     applySourceFilter(newSelection);
@@ -205,7 +224,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     }
   };
 
-  const applySourceFilter = async (sourceIds: string[]) => {
+  const applySourceFilter = (sourceIds: string[]) => {
     // 即座に状態を更新（UIの反応性を保つ）
     setSelectedSources(sourceIds);
 
@@ -234,8 +253,10 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     // URLを構築（パラメータがない場合は "/" のみ）
     const newURL = params.toString() ? `/?${params.toString()}` : '/';
 
-    // URL更新を即座に実行
-    router.push(newURL);
+    // URL更新はトランジション内で実行し、連続クリック時の競合を防ぐ
+    startTransition(() => {
+      router.push(newURL);
+    });
 
     // Cookie更新は150msデバウンス
     lastQueuedSourcesRef.current = sourceIds;
@@ -267,6 +288,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               className="h-7 text-xs justify-start flex-1 min-w-0 overflow-hidden"
               data-testid="select-all-button"
               type="button"
+              disabled={isPending}
             >
               <CheckSquare className="w-3 h-3 me-1 flex-shrink-0" />
               <span className="truncate">全て選択</span>
@@ -278,6 +300,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               className="h-7 text-xs justify-start flex-1 min-w-0 overflow-hidden"
               data-testid="deselect-all-button"
               type="button"
+              disabled={isPending}
             >
               <Square className="w-3 h-3 me-1 flex-shrink-0" />
               <span className="truncate">全て解除</span>
@@ -294,6 +317,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               data-testid="preset-company"
               type="button"
               title="日本企業の技術ブログのみ"
+              disabled={isPending}
             >
               <Building2 className="w-3 h-3 me-1" />
               国内企業
@@ -306,6 +330,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               data-testid="preset-ai-ml"
               type="button"
               title="AI・機械学習関連の情報のみ"
+              disabled={isPending}
             >
               <Brain className="w-3 h-3 me-1" />
               AI/ML
@@ -318,6 +343,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               data-testid="preset-foreign"
               type="button"
               title="海外の技術情報サイトのみ"
+              disabled={isPending}
             >
               <Globe className="w-3 h-3 me-1" />
               海外
@@ -330,6 +356,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
               data-testid="preset-domestic-all"
               type="button"
               title="日本の技術情報全般（情報サイト+企業ブログ）"
+              disabled={isPending}
             >
               <Home className="w-3 h-3 me-1" />
               国内全般
@@ -383,6 +410,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             className="h-6 text-xs px-2 flex-1 min-w-0 overflow-hidden"
                             type="button"
                             data-testid={`category-${category.id}-select-all`}
+                            disabled={isPending}
                           >
                             <span className="truncate">全て選択</span>
                           </Button>
@@ -393,6 +421,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             className="h-6 text-xs px-2 flex-1 min-w-0 overflow-hidden"
                             type="button"
                             data-testid={`category-${category.id}-deselect-all`}
+                            disabled={isPending}
                           >
                             <span className="truncate">全て解除</span>
                           </Button>
@@ -417,6 +446,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                                 onCheckedChange={() => handleSourceToggle(source.id)}
                                 className="h-4 w-4"
                                 onClick={(e) => e.stopPropagation()}
+                                disabled={isPending}
                               />
                               <label className="text-xs cursor-pointer flex-1">
                                 {source.name}

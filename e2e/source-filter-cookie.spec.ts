@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForArticles, getTimeout, waitForUrlParam, isRunningInCI } from './helpers/wait-utils';
+import { waitForArticles, getTimeout, isRunningInCI } from './helpers/wait-utils';
 
 const isCI = isRunningInCI();
 
@@ -19,7 +19,7 @@ test.describe('Source Filter Cookie', () => {
     await page.waitForSelector('[data-testid="source-filter"]');
 
     // Click on a specific source checkbox to deselect it
-    const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"]');
+    const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] [role="checkbox"]');
 
     // Check if AWS checkbox exists
     if (await awsCheckbox.count() === 0) {
@@ -27,13 +27,7 @@ test.describe('Source Filter Cookie', () => {
       return;
     }
 
-    // Use setChecked for explicit state control
-    const awsInput = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"]').first();
-    if (await awsInput.count() > 0) {
-      await awsInput.setChecked(false);
-    } else {
-      await awsCheckbox.first().click();
-    }
+    await awsCheckbox.first().click();
 
     // Wait for navigation to complete
     await page.waitForURL(/sources=/, { waitUntil: 'commit' });
@@ -59,9 +53,9 @@ test.describe('Source Filter Cookie', () => {
     await page.waitForSelector('[data-testid="source-filter"]');
 
     // Check that the selection is restored from cookie
-    const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"] input').first();
-    const devtoCheckbox = page.locator('[data-testid="source-checkbox-devto"] input[type="checkbox"], [data-testid="source-checkbox-devto"] input').first();
-    const qiitaCheckbox = page.locator('[data-testid="source-checkbox-qiita"] input[type="checkbox"], [data-testid="source-checkbox-qiita"] input').first();
+    const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] [role="checkbox"]').first();
+    const devtoCheckbox = page.locator('[data-testid="source-checkbox-devto"] [role="checkbox"]').first();
+    const qiitaCheckbox = page.locator('[data-testid="source-checkbox-qiita"] [role="checkbox"]').first();
 
     // Check if checkboxes exist
     if (await awsCheckbox.count() === 0) {
@@ -85,9 +79,9 @@ test.describe('Source Filter Cookie', () => {
     await page.waitForSelector('[data-testid="source-filter"]');
 
     // Check that URL params take priority
-    const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"] input').first();
-    const devtoCheckbox = page.locator('[data-testid="source-checkbox-devto"] input[type="checkbox"], [data-testid="source-checkbox-devto"] input').first();
-    const qiitaCheckbox = page.locator('[data-testid="source-checkbox-qiita"] input[type="checkbox"], [data-testid="source-checkbox-qiita"] input').first();
+    const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] [role="checkbox"]').first();
+    const devtoCheckbox = page.locator('[data-testid="source-checkbox-devto"] [role="checkbox"]').first();
+    const qiitaCheckbox = page.locator('[data-testid="source-checkbox-qiita"] [role="checkbox"]').first();
 
     if (await awsCheckbox.count() === 0) {
       console.log('Checkboxes not found, skipping test');
@@ -113,24 +107,32 @@ test.describe('Source Filter Cookie', () => {
       return;
     }
 
-    // Click deselect all and wait for URL change
+    const sourceCount = page.locator('[data-testid="source-count"]');
+    const sourceCountText = (await sourceCount.innerText()).trim();
+    const countMatch = sourceCountText.match(/(\d+)\s*\/\s*(\d+)/);
+    expect(countMatch).not.toBeNull();
+    const totalSources = Number(countMatch?.[2] ?? 0);
+    expect(totalSources).toBeGreaterThan(0);
+    const shortTimeout = getTimeout('short');
+
+    // Click deselect all and wait for UI to confirm (use source-count, not checkboxes which may be hidden in collapsed categories)
     await deselectAllButton.click();
-    // Wait for sources=none (nothing selected)
-    await waitForUrlParam(page, 'sources', 'none', { timeout: getTimeout('short') });
-    // Verify URL has sources=none
-    await expect(page).toHaveURL(/sources=none/);
+    await expect(sourceCount).toHaveText(new RegExp(`^0\\s*/\\s*${totalSources}$`), { timeout: shortTimeout });
+
+    await waitForArticles(page, {
+      timeout: getTimeout('medium'),
+      allowEmpty: true,
+      waitForNetworkIdle: false
+    });
 
     // Check cookie is set to empty
     const cookies1 = await context.cookies();
     const cookie1 = cookies1.find(c => c.name === 'source-filter');
     // Cookie behavior may vary - it might be undefined or have a specific value
 
-    // Click select all and wait for URL to update or clear
+    // Click select all and wait for UI to confirm all sources are on again (use source-count, not checkboxes which may be hidden in collapsed categories)
     await selectAllButton.click();
-    // Wait for sources parameter to be removed (all selected)
-    await waitForUrlParam(page, 'sources', null, { timeout: getTimeout('short') });
-    // Verify URL does not have sources parameter
-    await expect(page).not.toHaveURL(/sources=/);
+    await expect(sourceCount).toHaveText(new RegExp(`^${totalSources}\\s*/\\s*${totalSources}$`), { timeout: shortTimeout });
 
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
@@ -152,21 +154,16 @@ test.describe('Source Filter Cookie', () => {
 
   test('should persist selection across page navigation', async ({ page }) => {
     // Set initial selection
-    await page.goto('/?sources=aws,devto');
+    await page.goto('/?sources=aws,devto', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-testid="source-filter"]');
 
-    // Navigate to a different page (if available)
-    // For now, just reload
-    await page.reload();
-    await page.waitForSelector('[data-testid="source-filter"]');
-
-    // Remove URL params by navigating to base
-    await page.goto('/');
+    // Navigate away to trigger cookie flush (no reload needed)
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-testid="source-filter"]');
 
     // Check selection is maintained
-    const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"] input').first();
-    const devtoCheckbox = page.locator('[data-testid="source-checkbox-devto"] input[type="checkbox"], [data-testid="source-checkbox-devto"] input').first();
+    const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] [role="checkbox"]').first();
+    const devtoCheckbox = page.locator('[data-testid="source-checkbox-devto"] [role="checkbox"]').first();
 
     if (await awsCheckbox.count() === 0) {
       console.log('Checkboxes not found, skipping test');
@@ -206,7 +203,7 @@ test.describe('Source Filter Cookie', () => {
     await expect(sourceFilter).toBeVisible({ timeout: 10000 });
 
     // Toggle a source
-    const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] input[type="checkbox"], [data-testid="source-checkbox-aws"]').first();
+    const awsCheckbox = page.locator('[data-testid="source-checkbox-aws"] [role="checkbox"]').first();
 
     if (await awsCheckbox.count() === 0) {
       console.log('AWS checkbox not found in mobile view, skipping test');

@@ -172,8 +172,8 @@ test.describe('ソースフィルタープリセット機能', () => {
   });
 
   test('プリセット適用後、ソースカウントが正しく表示される', async ({ page }) => {
-    // プリセット適用前のカウントを取得
-    const countBefore = await page.getByTestId('source-count').textContent();
+    // プリセット適用前のカウントを取得（モバイル/デスクトップ両方存在する可能性があるため.first()を使用）
+    const countBefore = await page.getByTestId('source-count').first().textContent();
 
     // 「国内企業」プリセット適用（複数存在する可能性があるため.first()を使用）
     await page.getByTestId('preset-company').first().click();
@@ -199,8 +199,8 @@ test.describe('ソースフィルタープリセット機能', () => {
       // カウントが変わらない場合もある（全選択状態など）
     }
 
-    // プリセット適用後のカウントを取得
-    const countAfter = await page.getByTestId('source-count').textContent();
+    // プリセット適用後のカウントを取得（モバイル/デスクトップ両方存在する可能性があるため.first()を使用）
+    const countAfter = await page.getByTestId('source-count').first().textContent();
 
     // カウントが正しい形式で表示されていることを確認
     expect(countAfter).toBeTruthy();
