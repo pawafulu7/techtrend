@@ -7,10 +7,12 @@ import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 
+const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI === 'true';
+
 export function AgentSearchClient() {
   const [lastQuery, setLastQuery] = useState('');
   const [showResult, setShowResult] = useState(false);
-  const { search, result, error, isLoading, reset } = useAgentSearch();
+  const { search, result, error, isLoading, partialText, reset } = useAgentSearch();
 
   const handleSearch = async (query: string) => {
     setLastQuery(query);
@@ -47,10 +49,15 @@ export function AgentSearchClient() {
       <AgentSearchBar onSearch={handleSearch} isLoading={isLoading} />
 
       <div className="mt-8">
-        {isLoading && <AgentLoadingState />}
+        {isLoading && !(ENABLE_STREAMING_UI && partialText) && <AgentLoadingState />}
         {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
-        {!isLoading && showResult && result && !error && (
-          <AgentAnswerPanel result={result} onFeedback={handleFeedback} />
+        {showResult && (result || (ENABLE_STREAMING_UI && partialText)) && !error && (
+          <AgentAnswerPanel
+            result={result}
+            partialText={ENABLE_STREAMING_UI ? partialText : null}
+            isStreaming={ENABLE_STREAMING_UI && Boolean(partialText && !result)}
+            onFeedback={handleFeedback}
+          />
         )}
       </div>
     </div>
