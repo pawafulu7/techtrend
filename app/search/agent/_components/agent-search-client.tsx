@@ -22,7 +22,18 @@ export function AgentSearchClient() {
   };
 
   useEffect(() => {
+    if (!ENABLE_STREAMING_UI) return;
+    if (!partialText) return;
+    setShowResult(true);
+  }, [partialText]);
+
+  useEffect(() => {
     if (!isLoading && (result || error)) {
+      if (ENABLE_STREAMING_UI) {
+        setShowResult(true);
+        return;
+      }
+
       const timer = setTimeout(() => {
         setShowResult(true);
       }, 300);
