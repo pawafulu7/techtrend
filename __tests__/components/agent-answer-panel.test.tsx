@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 
@@ -88,5 +88,57 @@ describe('AgentAnswerPanel', () => {
 
     expect(screen.queryByLabelText('良い')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('悪い')).not.toBeInTheDocument();
+  });
+
+  test('shows streaming indicator while isStreaming=true', () => {
+    render(
+      <AgentAnswerPanel
+        partialText="Analyzing..."
+        isStreaming={true}
+        result={null}
+      />
+    );
+
+    const indicator = screen.getByTestId('streaming-indicator');
+    expect(indicator).toBeVisible();
+    expect(indicator).toHaveTextContent('AI回答を生成中...');
+  });
+
+  test('hides streaming indicator when isStreaming=false', () => {
+    render(
+      <AgentAnswerPanel
+        partialText="chunk"
+        isStreaming={false}
+        result={null}
+      />
+    );
+
+    expect(screen.queryByTestId('streaming-indicator')).not.toBeInTheDocument();
+  });
+
+  test('renders partial text immediately and updates on rerender', async () => {
+    const { rerender } = render(
+      <AgentAnswerPanel
+        partialText="Hello"
+        isStreaming={true}
+        result={null}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Hello')).toBeVisible();
+    });
+
+    rerender(
+      <AgentAnswerPanel
+        partialText="Hello World"
+        isStreaming={true}
+        result={null}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Hello World')).toBeVisible();
+    });
   });
 });

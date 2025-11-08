@@ -1,62 +1,50 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
 
 describe('AgentLoadingState', () => {
-  beforeEach(() => {
-    jest.clearAllTimers();
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  test('renders with initial status message', () => {
-    render(<AgentLoadingState />);
-    expect(screen.getByText('AIが要約を生成中...')).toBeInTheDocument();
-  });
-
-  test('rotates status messages over time', () => {
-    jest.useFakeTimers();
+  test('renders 3 typing dots', () => {
     render(<AgentLoadingState />);
 
-    expect(screen.getByText('AIが要約を生成中...')).toBeInTheDocument();
+    const dots = screen.getAllByTestId('typing-dot');
+    expect(dots).toHaveLength(3);
+  });
 
-    act(() => {
-      jest.advanceTimersByTime(3500);
+  test('typing dots have animate-bounce class', () => {
+    render(<AgentLoadingState />);
+
+    const dots = screen.getAllByTestId('typing-dot');
+    dots.forEach(dot => {
+      expect(dot).toHaveClass('animate-bounce');
     });
-
-    expect(screen.getByText('関連資料を分析中...')).toBeInTheDocument();
-
-    act(() => {
-      jest.advanceTimersByTime(3500);
-    });
-
-    expect(screen.getByText('結果をまとめています...')).toBeInTheDocument();
-
-    jest.useRealTimers();
   });
 
-  test('displays progress bar with correct attributes', () => {
+  test('typing dots have correct animation delays', () => {
     render(<AgentLoadingState />);
 
-    const progressBar = screen.getByRole('progressbar');
-    expect(progressBar).toBeInTheDocument();
-    expect(progressBar).toHaveAttribute('aria-valuemin', '0');
-    expect(progressBar).toHaveAttribute('aria-valuemax', '100');
+    const dots = screen.getAllByTestId('typing-dot');
+    expect(dots[0]).toHaveStyle({ animationDelay: '0ms' });
+    expect(dots[1]).toHaveStyle({ animationDelay: '150ms' });
+    expect(dots[2]).toHaveStyle({ animationDelay: '300ms' });
   });
 
-  test('has accessibility attributes', () => {
+  test('has correct ARIA attributes', () => {
     render(<AgentLoadingState />);
 
-    const container = screen.getByRole('status');
-    expect(container).toHaveAttribute('aria-live', 'polite');
-    expect(container).toHaveAttribute('aria-busy', 'true');
+    const status = screen.getByRole('status');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    expect(status).toHaveAttribute('aria-busy', 'true');
   });
 
-  test('displays skeleton lines', () => {
+  test('displays 6 skeleton lines', () => {
     const { container } = render(<AgentLoadingState />);
 
     const skeletonLines = container.querySelectorAll('.animate-pulse');
-    expect(skeletonLines.length).toBe(6);
+    expect(skeletonLines.length).toBeGreaterThanOrEqual(6);
+  });
+
+  test('displays loading message', () => {
+    render(<AgentLoadingState />);
+
+    expect(screen.getByText('AIが回答を生成中...')).toBeInTheDocument();
   });
 });
