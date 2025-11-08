@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -20,14 +20,16 @@ import { Badge } from '@/components/ui/badge';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 
 interface AgentAnswerPanelProps {
-  result: AgentSearchResult;
+  result: AgentSearchResult | null;
+  partialText: string | null;
+  isStreaming: boolean;
   onFeedback?: (positive: boolean) => void;
 }
 
 // トップレベル制御用の Context（0: ルート、1以上: ネスト）
 const ListDepthContext = React.createContext(0);
 
-export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) {
+export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback }: AgentAnswerPanelProps) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -36,15 +38,22 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
     return () => clearTimeout(timer);
   }, [copied]);
 
+  const displayText = useMemo(() => {
+    if (partialText && !result) return partialText;
+    return result?.response || '';
+  }, [partialText, result]);
+
+  const deferredDisplayText = useDeferredValue(displayText);
+
   const handleCopy = async () => {
     try {
       // レンダリング後のテキスト（トークン除去済み）を取得
       const root = document.querySelector('[data-testid="agent-answer-markdown"]') as HTMLElement | null;
-      let copyText = result.response;
+      let copyText = displayText;
       if (root) {
         const clone = root.cloneNode(true) as HTMLElement;
         clone.querySelectorAll('[data-copy-exclude]').forEach((el) => el.remove());
-        copyText = (clone.textContent ?? result.response).trim();
+        copyText = (clone.textContent ?? displayText).trim();
       }
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -69,13 +78,18 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
     }
   };
 
+  const articles = result?.articles;
+
   const articleMap = useMemo(() => {
-    const articles = result.articles ?? [];
-    return new Map(articles.map((article) => [article.articleId, article]));
-  }, [result.articles]);
+    const safeArticles = articles ?? [];
+    return new Map(safeArticles.map((article) => [article.articleId, article]));
+  }, [articles]);
+
+  const resultResponse = result?.response ?? '';
+  const totalTokens = result?.usage?.totalTokens;
 
   // 応答に [#...] トークンが含まれるか（通常は true、フォールバック時は false）
-  const hasEmbeddedIds = useMemo(() => /\[#\S+?\]/.test(result.response), [result.response]);
+  const hasEmbeddedIds = useMemo(() => /\[#\S+?\]/.test(resultResponse), [resultResponse]);
 
   type MarkdownLi = React.ReactElement<
     React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
@@ -112,13 +126,13 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
           <h2 id="answer-heading" className="text-lg font-semibold">
             AI回答
           </h2>
-          {result.cached && (
+          {result?.cached && (
             <Badge variant="secondary" className="text-xs">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               キャッシュ
             </Badge>
           )}
-          {result.fallback && (
+          {result?.fallback && (
             <Badge variant="destructive" className="text-xs">
               <AlertTriangle className="h-3 w-3 mr-1" />
               フォールバック
@@ -143,11 +157,18 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
         </div>
       </div>
 
-      {result.fallback && (
+      {result?.fallback && (
         <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
           <p className="text-sm text-yellow-800 dark:text-yellow-200">
             AI検索が一時的に利用できないため、通常の検索結果を表示しています
           </p>
+        </div>
+      )}
+
+      {isStreaming && (
+        <div className="mb-4 flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+          <span className="text-sm text-muted-foreground">AI回答を生成中...</span>
         </div>
       )}
 
@@ -159,69 +180,69 @@ export function AgentAnswerPanel({ result, onFeedback }: AgentAnswerPanelProps) 
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
             components={{
-            a: ({ node: _node, ...props }) => (
-              <a {...props} target="_blank" rel="noopener noreferrer" />
-            ),
-            ol: OlComponent,
-            li: ({ node: _node, children, ...props }) => {
-              const articleId = props['data-article-id'] as string | undefined;
-              const indexAttr = props['data-article-index'] as string | number | undefined;
+              a: ({ node: _node, ...props }) => (
+                <a {...props} target="_blank" rel="noopener noreferrer" />
+              ),
+              ol: OlComponent,
+              li: ({ node: _node, children, ...props }) => {
+                const articleId = props['data-article-id'] as string | undefined;
+                const indexAttr = props['data-article-index'] as string | number | undefined;
 
-              const articleFromId = articleId ? articleMap.get(articleId) : undefined;
-              const index =
-                typeof indexAttr === 'number'
-                  ? indexAttr
-                  : indexAttr !== undefined
-                    ? Number(indexAttr)
+                const articleFromId = articleId ? articleMap.get(articleId) : undefined;
+                const index =
+                  typeof indexAttr === 'number'
+                    ? indexAttr
+                    : indexAttr !== undefined
+                      ? Number(indexAttr)
+                      : undefined;
+                // indexフォールバックはIDトークン不在時のみ有効化（誤リンク防止）
+                const articleFromIndex =
+                  !articleId &&
+                  !hasEmbeddedIds &&
+                  typeof index === 'number' &&
+                  Number.isInteger(index)
+                    ? articles?.[index]
                     : undefined;
-              // indexフォールバックはIDトークン不在時のみ有効化（誤リンク防止）
-              const articleFromIndex =
-                !articleId &&
-                !hasEmbeddedIds &&
-                typeof index === 'number' &&
-                Number.isInteger(index)
-                  ? result.articles?.[index]
-                  : undefined;
-              const article = articleFromId ?? articleFromIndex ?? null;
+                const article = articleFromId ?? articleFromIndex ?? null;
 
-              return (
-                <li {...props}>
-                  {children}
-                  {article && (
-                    <Button
-                      asChild
-                      size="sm"
-                      data-copy-exclude
-                      className="ml-2 h-7 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors inline-flex items-center"
-                      title={
-                        article.translatedTitle?.trim() ? article.translatedTitle : article.title
-                      }
-                    >
-                      <Link
-                        data-testid="agent-article-link"
-                        href={`/articles/${encodeURIComponent(article.articleId)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                return (
+                  <li {...props}>
+                    {children}
+                    {article && (
+                      <Button
+                        asChild
+                        size="sm"
+                        data-copy-exclude
+                        className="ml-2 h-7 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors inline-flex items-center"
+                        title={
+                          article.translatedTitle?.trim() ? article.translatedTitle : article.title
+                        }
                       >
-                        <Link2 className="mr-1 h-3 w-3" />
-                        {article.translatedTitle?.trim() ? article.translatedTitle : article.title}
-                      </Link>
-                    </Button>
-                  )}
-                </li>
-              );
-            },
+                        <Link
+                          data-testid="agent-article-link"
+                          href={`/articles/${encodeURIComponent(article.articleId)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Link2 className="mr-1 h-3 w-3" />
+                          {article.translatedTitle?.trim() ? article.translatedTitle : article.title}
+                        </Link>
+                      </Button>
+                    )}
+                  </li>
+                );
+              },
             }}
           >
-            {result.response}
+            {deferredDisplayText}
           </ReactMarkdown>
         </ListDepthContext.Provider>
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t mt-4">
         <div className="text-xs text-muted-foreground">
-          {result.usage?.totalTokens && (
-            <span>トークン使用: {result.usage.totalTokens.toLocaleString()}</span>
+          {typeof totalTokens === 'number' && (
+            <span>トークン使用: {totalTokens.toLocaleString()}</span>
           )}
         </div>
 
