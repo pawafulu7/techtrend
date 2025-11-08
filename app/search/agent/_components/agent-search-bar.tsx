@@ -170,7 +170,8 @@ export function AgentSearchBar({
                   setQuery(suggestion);
                   setShowSuggestions(false);
                   skipNextFocusRef.current = true;
-                  inputRef.current?.focus();
+                  saveToHistory(suggestion);
+                  onSearch(suggestion);
                 }}
               >
                 <Search className="h-3 w-3 text-muted-foreground" />

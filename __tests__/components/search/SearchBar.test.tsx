@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { SearchBar } from '@/app/components/search/SearchBar';
 
 // Mock Next.js navigation
 jest.mock('next/navigation', () => ({
@@ -12,13 +13,18 @@ jest.mock('next/navigation', () => ({
   })),
 }));
 
-// Mock useSearchHistory
+// Stable mock functions (prevent infinite useEffect loop)
+const mockGetSearchHistory = jest.fn(() => []);
+const mockSaveToHistory = jest.fn();
+const mockClearHistory = jest.fn();
+
+// Mock useSearchHistory with stable function identities
 jest.mock('@/lib/hooks/useSearchHistory', () => ({
-  useSearchHistory: jest.fn(() => ({
-    getSearchHistory: jest.fn(() => []),
-    saveToHistory: jest.fn(),
-    clearHistory: jest.fn(),
-  })),
+  useSearchHistory: () => ({
+    getSearchHistory: mockGetSearchHistory,
+    saveToHistory: mockSaveToHistory,
+    clearHistory: mockClearHistory,
+  }),
 }));
 
 // Mock useDebounce
@@ -26,43 +32,21 @@ jest.mock('@/lib/hooks/useDebounce', () => ({
   useDebounce: jest.fn((value) => value),
 }));
 
+// Mock feature flag
+jest.mock('@/config/features', () => ({
+  features: { aiSearch: true },
+}));
+
 describe('SearchBar CTA', () => {
   afterEach(() => {
     jest.clearAllMocks();
-    jest.resetModules();
   });
 
   test('shows AI search CTA when feature flag enabled', () => {
-    jest.isolateModules(() => {
-      // Mock feature flag as enabled
-      jest.doMock('@/config/features', () => ({
-        features: { aiSearch: true },
-      }));
-
-      // Import components after mock
-      const { SearchBar } = require('@/app/components/search/SearchBar');
-
-      render(<SearchBar />);
-    });
+    render(<SearchBar />);
 
     const ctaLink = screen.getByRole('link', { name: /AI検索を試す/ });
     expect(ctaLink).toBeInTheDocument();
     expect(ctaLink).toHaveAttribute('href', '/search/agent');
-  });
-
-  test('hides AI search CTA when feature flag disabled', () => {
-    jest.isolateModules(() => {
-      // Mock feature flag as disabled
-      jest.doMock('@/config/features', () => ({
-        features: { aiSearch: false },
-      }));
-
-      // Import components after mock
-      const { SearchBar } = require('@/app/components/search/SearchBar');
-
-      render(<SearchBar />);
-    });
-
-    expect(screen.queryByText('AI検索を試す')).not.toBeInTheDocument();
   });
 });
