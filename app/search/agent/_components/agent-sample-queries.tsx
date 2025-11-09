@@ -21,18 +21,17 @@ export function AgentSampleQueries({ onSelectQuery, className }: AgentSampleQuer
 
   return (
     <div className={className}>
-      <p className="text-sm text-muted-foreground mb-3">よくある質問:</p>
-      <div className="space-y-3">
+      <div className="space-y-3 max-w-3xl mx-auto">
         {CATEGORY_ORDER.map((category) => {
           const queries = groupedQueries[category];
           if (!queries || queries.length === 0) return null;
 
           return (
             <div key={category}>
-              <p className="text-xs text-muted-foreground mb-1.5" data-testid="category-label">
+              <p className="text-xs text-muted-foreground mb-1.5 text-center" data-testid="category-label">
                 {CATEGORY_LABELS[category]}
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {queries.map((query) => (
                   <Button
                     key={query.id}
