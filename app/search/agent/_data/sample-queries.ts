@@ -12,7 +12,7 @@ export const SAMPLE_QUERIES: readonly SampleQuery[] = [
   { id: 'q5', text: 'KubernetesのPod起動が遅いときの調査方法は？', category: 'infrastructure' },
   { id: 'q6', text: 'Rustで高パフォーマンスAPIを作る際の設計指針', category: 'backend' },
   { id: 'q7', text: '生成AIセキュリティの最新動向を知りたい', category: 'security' },
-  { id: 'q8', text: 'フロントエンド監視(Sentry/Playwright)の導入手順', category: 'frontend' },
+  { id: 'q8', text: 'フロントエンドの包括的なテスト戦略を教えて', category: 'frontend' },
   { id: 'q9', text: 'LLMエージェントのプロダクション運用チェックリスト', category: 'ai' },
   { id: 'q10', text: 'PostgreSQLで時系列データを扱う最適化方法', category: 'backend' },
 ] as const;
