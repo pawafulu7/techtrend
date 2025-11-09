@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
   compress: true,
   productionBrowserSourceMaps: false,
 
+  // Server external packages
+  // jsdom and parse5 must be unbundled due to ESM/CJS compatibility
+  serverExternalPackages: ['jsdom', 'parse5', '@mozilla/readability'],
+
   // 実験的機能で最適化
   experimental: {
     optimizeCss: true,
