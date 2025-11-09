@@ -544,7 +544,7 @@ test.describe('AI Agent Search E2E', () => {
         new ReadableStream({
           start(controller) {
             const enqueue = (payload: Record<string, unknown>) => {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\\n\\n`));
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
             };
 
             enqueue({ type: 'text-delta', delta: 'Next.jsに関するストリーミング回答を生成中です。' });
@@ -561,10 +561,10 @@ test.describe('AI Agent Search E2E', () => {
           },
         });
 
-      const originalFetch = window.fetch.bind(window);
+      let realFetch = window.fetch.bind(window);
 
-      window.fetch = (input, init) => {
-        const url = typeof input === 'string' ? input : input?.url;
+      const streamingFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' || input instanceof URL ? String(input) : input?.url;
         if (url && url.includes('/api/rag/agent-search')) {
           return Promise.resolve(
             new Response(buildStream(), {
@@ -575,8 +575,18 @@ test.describe('AI Agent Search E2E', () => {
             })
           );
         }
-        return originalFetch(input, init);
+        return realFetch(input as RequestInfo, init);
       };
+
+      Object.defineProperty(window, 'fetch', {
+        configurable: true,
+        get() {
+          return streamingFetch;
+        },
+        set(value) {
+          realFetch = value.bind(window);
+        },
+      });
     });
 
     await page.goto('/search/agent');

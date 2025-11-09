@@ -54,14 +54,10 @@ describe('AgentSampleQueries', () => {
       <AgentSampleQueries onSelectQuery={mockOnSelectQuery} />
     );
 
-    const categoryLabels = container.querySelectorAll('.text-xs.text-muted-foreground');
+    const categoryLabels = container.querySelectorAll('.text-xs.text-muted-foreground.mb-1\\.5');
     const expectedOrder = ['インフラ', 'AI', 'フロントエンド', 'バックエンド', 'セキュリティ'];
 
-    categoryLabels.forEach((label, index) => {
-      if (index > 0) {
-        expect(label.textContent).toBe(expectedOrder[index - 1]);
-      }
-    });
+    expect([...categoryLabels].map((el) => el.textContent)).toEqual(expectedOrder);
   });
 
   test('should support keyboard interaction (Enter and Space)', () => {
