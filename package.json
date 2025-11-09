@@ -35,6 +35,7 @@
     "docker:test:up": "docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test",
     "docker:test:run": "docker compose -f docker-compose.test.yml run --rm node-ci sh -c 'npx prisma migrate deploy && npx tsx prisma/seed-test.ts && npm test'",
     "docker:test:file": "docker compose -f docker-compose.test.yml run --rm -e TEST_FILE node-ci sh -c 'npx prisma migrate deploy && npx tsx prisma/seed-test.ts && npx jest -c jest.config.node.js \"$TEST_FILE\"'",
+    "docker:test:react:file": "docker compose -f docker-compose.test.yml run --rm -e TEST_FILE node-ci sh -c 'npx jest -c jest.config.dom.js \"$TEST_FILE\"'",
     "docker:test:down": "docker compose -f docker-compose.test.yml down",
     "docker:test": "npm run docker:test:up && npm run docker:test:run",
     "docker:test:spec": "bash -lc 'set -euo pipefail; if [ -z \"$TEST_FILE\" ]; then echo \"Usage: TEST_FILE=\\\"<path-to-test>\\\" npm run docker:test:spec\" >&2; exit 2; fi; npm run docker:test:up && npm run docker:test:file'",

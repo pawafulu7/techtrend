@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 
@@ -145,5 +146,100 @@ describe('AgentAnswerPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('Hello World')).toBeVisible();
     });
+  });
+});
+
+describe('AgentAnswerPanel - Empty State', () => {
+  const renderEmptyState = (props?: Partial<ComponentProps<typeof AgentAnswerPanel>>) => {
+    return render(
+      <AgentAnswerPanel
+        result={null}
+        partialText={null}
+        isStreaming={false}
+        {...props}
+      />
+    );
+  };
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('shows empty message after 150ms delay when no content is available', () => {
+    renderEmptyState();
+
+    expect(
+      screen.queryByText('該当する記事が見つかりませんでした')
+    ).not.toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(150);
+    });
+
+    expect(screen.getByText('該当する記事が見つかりませんでした')).toBeInTheDocument();
+  });
+
+  test('does not show empty message while streaming', () => {
+    renderEmptyState({ isStreaming: true });
+
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(
+      screen.queryByText('該当する記事が見つかりませんでした')
+    ).not.toBeInTheDocument();
+  });
+
+  test('shows fallback-specific empty message when result is in fallback mode', () => {
+    const fallbackResult = { ...mockResult, response: '', fallback: true, articles: [] };
+
+    renderEmptyState({ result: fallbackResult });
+
+    act(() => {
+      jest.advanceTimersByTime(150);
+    });
+
+    expect(screen.getByText('関連する記事が見つかりませんでした')).toBeInTheDocument();
+  });
+
+  test('hides markdown rendering when empty state is active', () => {
+    renderEmptyState();
+
+    act(() => {
+      jest.advanceTimersByTime(150);
+    });
+
+    expect(screen.queryByTestId('agent-answer-markdown')).not.toBeInTheDocument();
+    expect(screen.getByText('該当する記事が見つかりませんでした')).toBeVisible();
+  });
+
+  test('clears empty state once a result arrives', async () => {
+    const { rerender } = renderEmptyState();
+
+    act(() => {
+      jest.advanceTimersByTime(150);
+    });
+
+    expect(screen.getByText('該当する記事が見つかりませんでした')).toBeInTheDocument();
+
+    rerender(
+      <AgentAnswerPanel
+        result={mockResult}
+        partialText={null}
+        isStreaming={false}
+      />
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('該当する記事が見つかりませんでした')
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('heading', { level: 1, name: 'Test Response' })).toBeInTheDocument();
   });
 });
