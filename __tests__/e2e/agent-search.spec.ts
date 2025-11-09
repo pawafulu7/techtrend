@@ -367,7 +367,7 @@ test.describe('AI Agent Search E2E', () => {
     await expect(input).toBeFocused();
   });
 
-  test.skip('13. Search history suggestions display and allow editing before search', async ({ page }) => {
+  test('13. Search history suggestions display and allow editing before search', async ({ page }) => {
     // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
