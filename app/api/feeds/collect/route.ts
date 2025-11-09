@@ -6,6 +6,10 @@ import { normalizeTagInput, isValidTagArray } from '@/lib/utils/tag-normalizer';
 import type { ApiResponse, CollectResult } from '@/types/api';
 import { distributedLock } from '@/lib/cache/distributed-lock';
 
+// Force dynamic to prevent Next.js 16 build-time page data collection
+// This route uses jsdom (ESM-only) which fails during static analysis
+export const dynamic = 'force-dynamic';
+
 function isAuthorized(req: NextRequest): boolean {
   // Accept either our CRON_TOKEN or Vercel's CRON_SECRET (added to Authorization header by Vercel Cron)
   const token = process.env.CRON_TOKEN || process.env.CRON_SECRET || '';
