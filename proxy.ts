@@ -42,7 +42,7 @@ const protectedApiPaths = [
   // '/api/article-views', // 未認証ユーザーも記録できるようにするため除外
 ];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Site-wide Basic Auth

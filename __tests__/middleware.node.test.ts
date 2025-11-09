@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { middleware } from '../middleware';
+import { proxy } from '../proxy';
 
 describe('middleware - security headers', () => {
   const originalEnv = process.env.NODE_ENV;
@@ -13,7 +13,7 @@ describe('middleware - security headers', () => {
   describe('Security headers設定', () => {
     it('should set Content-Security-Policy header', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('Content-Security-Policy')).toBeDefined();
       expect(response.headers.get('Content-Security-Policy')).toContain("default-src 'self'");
@@ -21,28 +21,28 @@ describe('middleware - security headers', () => {
 
     it('should set X-Frame-Options header', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('X-Frame-Options')).toBe('DENY');
     });
 
     it('should set X-Content-Type-Options header', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
     });
 
     it('should set Referrer-Policy header', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
     });
 
     it('should set Permissions-Policy header', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('Permissions-Policy')).toBeDefined();
       expect(response.headers.get('Permissions-Policy')).toContain('camera=()');
@@ -51,14 +51,14 @@ describe('middleware - security headers', () => {
 
     it('should set Cross-Origin-Opener-Policy header', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
     });
 
     it('should set Cross-Origin-Embedder-Policy header', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('Cross-Origin-Embedder-Policy')).toBe('unsafe-none');
     });
@@ -68,7 +68,7 @@ describe('middleware - security headers', () => {
     it('should set HSTS header for HTTPS in production', async () => {
       process.env.NODE_ENV = 'production';
       const request = new NextRequest(new URL('https://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('Strict-Transport-Security')).toBeDefined();
       expect(response.headers.get('Strict-Transport-Security')).toContain('max-age=31536000');
@@ -78,7 +78,7 @@ describe('middleware - security headers', () => {
     it('should NOT set HSTS header for HTTP', async () => {
       process.env.NODE_ENV = 'production';
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('Strict-Transport-Security')).toBeFalsy();
     });
@@ -86,7 +86,7 @@ describe('middleware - security headers', () => {
     it('should NOT set HSTS header in development', async () => {
       process.env.NODE_ENV = 'development';
       const request = new NextRequest(new URL('https://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('Strict-Transport-Security')).toBeFalsy();
     });
@@ -96,7 +96,7 @@ describe('middleware - security headers', () => {
     it('should use development CSP with unsafe-eval', async () => {
       process.env.NODE_ENV = 'development';
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       const csp = response.headers.get('Content-Security-Policy');
       expect(csp).toContain("'unsafe-eval'");
@@ -107,7 +107,7 @@ describe('middleware - security headers', () => {
     it('should use production CSP without unsafe-eval', async () => {
       process.env.NODE_ENV = 'production';
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       const csp = response.headers.get('Content-Security-Policy');
       expect(csp).not.toContain("'unsafe-eval'");
@@ -119,7 +119,7 @@ describe('middleware - security headers', () => {
   describe('既存機能との統合', () => {
     it('should maintain existing theme cookie functionality', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.headers.get('x-theme')).toBeDefined();
     });
@@ -129,7 +129,7 @@ describe('middleware - security headers', () => {
       process.env.BASIC_AUTH_PASS = 'secret';
 
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.status).toBe(401);
       expect(response.headers.get('WWW-Authenticate')).toBeTruthy();
@@ -141,7 +141,7 @@ describe('middleware - security headers', () => {
 
       const request = new NextRequest(new URL('http://localhost:3000/'));
       request.headers.set('x-vercel-cron', '1');
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.status).not.toBe(401);
       expect(response.headers.get('Content-Security-Policy')).toBeDefined();
@@ -149,7 +149,7 @@ describe('middleware - security headers', () => {
 
     it('should redirect to login for protected paths without session', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/profile'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       expect(response.status).toBe(307);
       expect(response.headers.get('location')).toContain('/auth/login');
@@ -159,7 +159,7 @@ describe('middleware - security headers', () => {
   describe('セキュリティヘッダの順序', () => {
     it('should set security headers before theme header', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await middleware(request);
+      const response = await proxy(request);
 
       // Verify both headers are set
       expect(response.headers.get('content-security-policy')).toBeDefined();

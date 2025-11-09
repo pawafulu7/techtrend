@@ -86,6 +86,8 @@ const esmAllowList = [
   'decode-named-character-reference',
   'character-entities.*',
   'escape-string-regexp',
+  'jsdom',
+  'parse5',
 ];
 const esmPattern = esmAllowList.join('|');
 
