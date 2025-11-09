@@ -459,13 +459,15 @@ test.describe('AI Agent Search E2E', () => {
     await expect(suggestionList).not.toBeVisible();
 
     // NEW: Verify Enter key triggers search
-    await input.press('Enter');
-
-    // Verify search was executed (extended timeout for progressive threshold fallback)
-    await page.waitForResponse(
+    const agentSearchResponse = page.waitForResponse(
       (res) => res.url().includes('/api/rag/agent-search') && res.status() === 200,
       { timeout: 30000 }
     );
+
+    await input.press('Enter');
+
+    // Verify search was executed (extended timeout for progressive threshold fallback)
+    await agentSearchResponse;
 
     // Verify results are displayed
     await expect(page.locator('[role="article"]')).toBeVisible();
