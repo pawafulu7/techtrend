@@ -195,7 +195,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
           </h3>
           <p className="text-sm text-muted-foreground mb-4">以下を試してみてください:</p>
           <ul className="text-sm text-muted-foreground mb-4 text-left max-w-md mx-auto space-y-1">
-            <li>• キーワードをより具体的にする（例: "React" → "React 19のServer Components"）</li>
+            <li>• キーワードをより具体的にする（例: &quot;React&quot; → &quot;React 19のServer Components&quot;）</li>
             <li>• 技術名やバージョンを追加する</li>
             <li>• 検索期間を調整する</li>
           </ul>
