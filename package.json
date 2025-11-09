@@ -134,6 +134,8 @@
     "docker:e2e:down": "docker compose -f docker-compose.test.yml down",
     "docker:e2e": "npm run docker:e2e:up && npm run docker:e2e:run",
     "docker:e2e:fast": "npm run docker:e2e:up && npm run docker:e2e:run:fast",
+    "docker:e2e:rebuild": "npm run docker:build:e2e && npm run docker:e2e",
+    "docker:e2e:rebuild:fast": "npm run docker:build:e2e && npm run docker:e2e:fast",
     "docker:e2e:spec": "bash -lc 'set -euo pipefail; if [ -z \"$E2E_FILE\" ]; then echo \"Usage: E2E_FILE=\\\"<spec>\\\" npm run docker:e2e:spec\" >&2; exit 2; fi; npm run docker:e2e:up && npm run docker:e2e:file'",
     "migrate:version6": "tsx scripts/manual/migrate-to-version6.ts",
     "migrate:version6:critical": "tsx scripts/manual/migrate-to-version6.ts --priority=critical",
