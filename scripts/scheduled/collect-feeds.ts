@@ -140,6 +140,8 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     let totalDuplicates = 0;
 
     for (const source of sources) {
+      const sourceStart = Date.now();
+
       const FetcherClass = fetchers[source.name];
       if (!FetcherClass) {
         console.error(`⚠️  ${source.name}: フェッチャーが見つかりません`);
@@ -287,12 +289,17 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
         if (newCount > 0 || duplicateCount > 0) {
           console.error(`   ✅ 新規: ${newCount}件, 重複: ${duplicateCount}件`);
         }
-        
+
         totalNewArticles += newCount;
         totalDuplicates += duplicateCount;
 
+        const sourceDuration = Math.round((Date.now() - sourceStart) / 1000);
+        console.error(`   [${source.name}] Duration: ${sourceDuration}s, Articles: ${articles.length}, New: ${newCount}`);
+
       } catch (error) {
         console.error(`❌ ${source.name} のフェッチエラー:`, error instanceof Error ? error.message : String(error));
+        const sourceDuration = Math.round((Date.now() - sourceStart) / 1000);
+        console.error(`   [${source.name}] Duration: ${sourceDuration}s (failed)`);
       }
     }
 
@@ -303,17 +310,6 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     if (totalNewArticles > 0) {
       console.error('🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
-      
-      // 新規記事があれば要約生成を自動実行
-      console.error('\n📝 要約生成を自動実行します...');
-      try {
-        const { generateSummaries } = await import('../maintenance/generate-summaries');
-        const result = await generateSummaries();
-        console.error(`✅ 要約生成完了: ${result.generated}件の要約を生成`);
-      } catch (error) {
-        console.error('⚠️ 要約生成でエラーが発生しましたが、記事収集は成功しています:', 
-          error instanceof Error ? error.message : String(error));
-      }
     }
 
     return { newArticles: totalNewArticles, duplicates: totalDuplicates };

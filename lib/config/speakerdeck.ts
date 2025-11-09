@@ -7,14 +7,14 @@ export const speakerDeckConfig = {
   maxAge: 365,               // 最大日数（1年以内の記事のみ）
   
   // 取得設定
-  maxArticles: 100,          // 最大取得件数（全カテゴリー合計）
+  maxArticles: 50,           // 最大取得件数（全カテゴリー合計、100から削減）
   maxPages: 10,              // 最大ページ数（安全のため）
   articlesPerPage: 18,       // 1ページあたりの記事数（参考値）
-  
+
   // パフォーマンス設定
   parallelLimit: 5,          // 並列処理数（個別ページ取得時）
   retryLimit: 2,             // リトライ回数
-  requestDelay: 1500,        // リクエスト間隔（ミリ秒）※レート制限対策で増加
+  requestDelay: 1000,        // リクエスト間隔（ミリ秒、1500から削減）
   timeout: 10000,            // タイムアウト（ミリ秒）
   
   // 機能フラグ
@@ -45,5 +45,5 @@ export const speakerDeckConfig = {
       weight: 1
     }
   ],
-  maxArticlesPerCategory: 35,  // 各カテゴリーからの最大取得数
+  maxArticlesPerCategory: 20,  // 各カテゴリーからの最大取得数（35から削減）
 };

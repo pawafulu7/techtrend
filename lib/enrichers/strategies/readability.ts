@@ -27,8 +27,16 @@ export async function extractWithReadability(
 
   const extractionPromise = (async (): Promise<ReadabilityResult | null> => {
     try {
-      const { JSDOM } = await loadJsdom();
-      const dom = new JSDOM(html, { url });
+      const { JSDOM, VirtualConsole } = await loadJsdom();
+
+      // Suppress noisy CSS parse warnings while keeping genuine errors
+      const virtualConsole = new VirtualConsole();
+      virtualConsole.on('error', (msg) => {
+        if (/Could not parse CSS stylesheet/i.test(String(msg))) return;
+        console.error('[jsdom]', msg);
+      });
+
+      const dom = new JSDOM(html, { url, virtualConsole });
       const reader = new Readability(dom.window.document);
       const article = reader.parse();
 
