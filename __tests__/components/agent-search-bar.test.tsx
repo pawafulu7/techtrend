@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 
 const mockSaveToHistory = jest.fn();
@@ -144,5 +144,162 @@ describe('AgentSearchBar', () => {
     // 6. Verify search called with edited query
     expect(mockOnSearch).toHaveBeenCalledWith('query 1 edited');
     expect(mockOnSearch).toHaveBeenCalledTimes(1);
+  });
+
+  describe('AgentSearchBar - Prefill', () => {
+    test('registers onPrefillQuery callback on mount', () => {
+      const mockPrefill = jest.fn();
+      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockPrefill} />);
+
+      expect(mockPrefill).toHaveBeenCalledTimes(1);
+      expect(typeof mockPrefill.mock.calls[0][0]).toBe('function');
+    });
+
+    test('prefill callback updates query value immediately', () => {
+      const mockPrefill = jest.fn();
+      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockPrefill} />);
+      const input = screen.getByLabelText('AI検索クエリ入力') as HTMLInputElement;
+
+      const capturedCallback = mockPrefill.mock.calls[0][0] as (query: string) => void;
+      act(() => {
+        capturedCallback('prefilled query from parent');
+      });
+
+      expect(input.value).toBe('prefilled query from parent');
+      expect(input).toHaveFocus();
+    });
+
+    test('prefill focus does not immediately reopen suggestions due to skipNextFocusRef', () => {
+      const mockPrefill = jest.fn();
+      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockPrefill} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+
+      const capturedCallback = mockPrefill.mock.calls[0][0] as (query: string) => void;
+      act(() => {
+        capturedCallback('prefilled query');
+      });
+
+      expect(screen.queryByTestId('search-history-suggestions')).not.toBeInTheDocument();
+
+      fireEvent.blur(input);
+      fireEvent.focus(input);
+
+      expect(screen.getByTestId('search-history-suggestions')).toBeInTheDocument();
+    });
+
+    test('allows editing and submitting after prefill', () => {
+      const mockPrefill = jest.fn();
+      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockPrefill} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+      const capturedCallback = mockPrefill.mock.calls[0][0] as (query: string) => void;
+
+      act(() => {
+        capturedCallback('prefilled base');
+      });
+
+      fireEvent.change(input, { target: { value: 'prefilled base edited' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+      expect(mockOnSearch).toHaveBeenCalledWith('prefilled base edited');
+    });
+
+    test('history selections and prefills share the same applyQueryFromExternal behavior', () => {
+      const mockPrefill = jest.fn();
+      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockPrefill} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+      const capturedCallback = mockPrefill.mock.calls[0][0] as (query: string) => void;
+
+      // History selection path
+      fireEvent.focus(input);
+      const suggestion = screen.getByText('query 1');
+      fireEvent.click(suggestion);
+      expect(input).toHaveValue('query 1');
+      expect(input).toHaveFocus();
+
+      // External prefill path
+      act(() => {
+        capturedCallback('prefilled from parent');
+      });
+      expect(input).toHaveValue('prefilled from parent');
+      expect(input).toHaveFocus();
+
+      expect(mockOnSearch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('AgentSearchBar - Prefill', () => {
+    test('should call onPrefillQuery callback on mount with prefill handler', () => {
+      const mockOnPrefillQuery = jest.fn();
+      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockOnPrefillQuery} />);
+
+      expect(mockOnPrefillQuery).toHaveBeenCalledTimes(1);
+      expect(typeof mockOnPrefillQuery.mock.calls[0][0]).toBe('function');
+    });
+
+    test('should prefill query when callback is invoked', () => {
+      let prefillHandler: ((query: string) => void) | null = null;
+      const mockOnPrefillQuery = jest.fn((callback: (query: string) => void) => {
+        prefillHandler = callback;
+      });
+
+      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockOnPrefillQuery} />);
+
+      const input = screen.getByLabelText('AI検索クエリ入力') as HTMLInputElement;
+      expect(input.value).toBe('');
+
+      act(() => {
+        prefillHandler!('Prefilled query text');
+      });
+
+      expect(input.value).toBe('Prefilled query text');
+      expect(input).toHaveFocus();
+    });
+
+    test('should allow manual edit after prefill', () => {
+      let prefillHandler: ((query: string) => void) | null = null;
+      const mockOnPrefillQuery = jest.fn((callback: (query: string) => void) => {
+        prefillHandler = callback;
+      });
+
+      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockOnPrefillQuery} />);
+
+      const input = screen.getByLabelText('AI検索クエリ入力');
+
+      act(() => {
+        prefillHandler!('Sample query');
+      });
+      expect(input).toHaveValue('Sample query');
+
+      fireEvent.change(input, { target: { value: 'Sample query edited' } });
+      expect(input).toHaveValue('Sample query edited');
+
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(mockOnSearch).toHaveBeenCalledWith('Sample query edited');
+    });
+
+    test('should reuse applyQueryFromExternal for both history and prefill', () => {
+      let prefillHandler: ((query: string) => void) | null = null;
+      const mockOnPrefillQuery = jest.fn((callback: (query: string) => void) => {
+        prefillHandler = callback;
+      });
+
+      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockOnPrefillQuery} />);
+
+      const input = screen.getByLabelText('AI検索クエリ入力');
+
+      fireEvent.focus(input);
+      const suggestion = screen.getByText('query 1');
+      fireEvent.click(suggestion);
+      expect(input).toHaveValue('query 1');
+      expect(input).toHaveFocus();
+
+      fireEvent.change(input, { target: { value: '' } });
+
+      act(() => {
+        prefillHandler!('Prefilled from chip');
+      });
+      expect(input).toHaveValue('Prefilled from chip');
+      expect(input).toHaveFocus();
+    });
   });
 });
