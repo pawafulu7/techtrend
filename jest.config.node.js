@@ -78,9 +78,16 @@ module.exports = async () => {
   const config = await nextJestConfig();
   return {
     ...config,
+    extensionsToTreatAsEsm: Array.from(
+      new Set([...(config.extensionsToTreatAsEsm ?? []), '.ts', '.tsx'])
+    ),
+    // Keep Next.js default transform (DO NOT override)
+    transform: config.transform,
     transformIgnorePatterns: [
       `/node_modules/(?!(?:${esmPattern})/)`,
-      '^.+\\.module\\.(css|sass|scss)$',
+      ...config.transformIgnorePatterns.filter(
+        (pattern) => !pattern.includes('node_modules')
+      ),
     ],
   };
 };
