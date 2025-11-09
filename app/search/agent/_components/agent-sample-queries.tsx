@@ -1,31 +1,23 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { SAMPLE_QUERIES, CATEGORY_LABELS, type SampleQuery } from '../_data/sample-queries';
+import { SAMPLE_QUERIES, CATEGORY_LABELS, CATEGORY_ORDER, type SampleQuery } from '../_data/sample-queries';
 
 interface AgentSampleQueriesProps {
   onSelectQuery: (query: string) => void;
   className?: string;
 }
 
-// Explicit category order for consistent rendering
-const CATEGORY_ORDER: SampleQuery['category'][] = [
-  'infrastructure',
-  'ai',
-  'frontend',
-  'backend',
-  'security',
-];
-
 export function AgentSampleQueries({ onSelectQuery, className }: AgentSampleQueriesProps) {
   // Group by category with proper typing
+  const initialGrouped: Partial<Record<SampleQuery['category'], SampleQuery[]>> = {};
   const groupedQueries = SAMPLE_QUERIES.reduce((acc, query) => {
     if (!acc[query.category]) {
       acc[query.category] = [];
     }
     acc[query.category].push(query);
     return acc;
-  }, {} as Record<SampleQuery['category'], SampleQuery[]>);
+  }, initialGrouped) as Record<SampleQuery['category'], SampleQuery[]>;
 
   return (
     <div className={className}>
@@ -37,7 +29,7 @@ export function AgentSampleQueries({ onSelectQuery, className }: AgentSampleQuer
 
           return (
             <div key={category}>
-              <p className="text-xs text-muted-foreground mb-1.5">
+              <p className="text-xs text-muted-foreground mb-1.5" data-testid="category-label">
                 {CATEGORY_LABELS[category]}
               </p>
               <div className="flex flex-wrap gap-2">

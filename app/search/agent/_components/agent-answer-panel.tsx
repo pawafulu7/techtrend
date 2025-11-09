@@ -187,7 +187,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
       )}
 
       {showEmptyState && (
-        <div className="bg-muted/50 border rounded-md p-6 text-center">
+        <div className="bg-muted/50 border rounded-md p-6 text-center" role="status" aria-live="polite">
           <h3 className="text-lg font-semibold mb-2">
             {result?.fallback
               ? '関連する記事が見つかりませんでした'

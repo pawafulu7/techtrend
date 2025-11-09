@@ -50,14 +50,12 @@ describe('AgentSampleQueries', () => {
   });
 
   test('should render categories in CATEGORY_ORDER', () => {
-    const { container } = render(
-      <AgentSampleQueries onSelectQuery={mockOnSelectQuery} />
-    );
+    render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
 
-    const categoryLabels = container.querySelectorAll('.text-xs.text-muted-foreground.mb-1\\.5');
+    const categoryLabels = screen.getAllByTestId('category-label');
     const expectedOrder = ['インフラ', 'AI', 'フロントエンド', 'バックエンド', 'セキュリティ'];
 
-    expect([...categoryLabels].map((el) => el.textContent)).toEqual(expectedOrder);
+    expect(categoryLabels.map((el) => el.textContent)).toEqual(expectedOrder);
   });
 
   test('should support keyboard interaction (Enter and Space)', () => {

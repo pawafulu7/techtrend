@@ -24,3 +24,11 @@ export const CATEGORY_LABELS: Record<SampleQuery['category'], string> = {
   backend: 'バックエンド',
   security: 'セキュリティ',
 };
+
+export const CATEGORY_ORDER: SampleQuery['category'][] = [
+  'infrastructure',
+  'ai',
+  'frontend',
+  'backend',
+  'security',
+];
