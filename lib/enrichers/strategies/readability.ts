@@ -1,6 +1,14 @@
 import { Readability } from '@mozilla/readability';
-import { JSDOM } from 'jsdom';
 import logger from '@/lib/logger';
+
+let jsdomModulePromise: Promise<typeof import('jsdom')> | null = null;
+
+async function loadJsdom() {
+  if (!jsdomModulePromise) {
+    jsdomModulePromise = import('jsdom'); // Lazy import keeps ESM-only jsdom external to Next's CJS bundle
+  }
+  return jsdomModulePromise;
+}
 
 export interface ReadabilityResult {
   content: string;
@@ -19,6 +27,7 @@ export async function extractWithReadability(
 
   const extractionPromise = (async (): Promise<ReadabilityResult | null> => {
     try {
+      const { JSDOM } = await loadJsdom();
       const dom = new JSDOM(html, { url });
       const reader = new Readability(dom.window.document);
       const article = reader.parse();
