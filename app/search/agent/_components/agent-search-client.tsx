@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentSampleQueries } from './agent-sample-queries';
 import { AgentLoadingState } from './agent-loading-state';
@@ -55,15 +55,15 @@ export function AgentSearchClient() {
     console.log('[Feedback]', positive ? 'positive' : 'negative', 'for query:', result?.query || lastQuery);
   };
 
-  const handlePrefillQuery = (query: string) => {
+  const handlePrefillQuery = useCallback((query: string) => {
     if (prefillQueryRef.current) {
       prefillQueryRef.current(query);
     }
-  };
+  }, []);
 
-  const handleSetPrefillCallback = (callback: (query: string) => void) => {
+  const handleSetPrefillCallback = useCallback((callback: (query: string) => void) => {
     prefillQueryRef.current = callback;
-  };
+  }, []);
 
   const isStreamingWithPartialText = ENABLE_STREAMING_UI && Boolean(partialText);
   const shouldShowStreamingResult = ENABLE_STREAMING_UI && Boolean(partialText && !result);
