@@ -494,11 +494,14 @@ test.describe('AI Agent Search E2E', () => {
 
     await page.goto('/search/agent');
 
-    const sampleChip = page.getByRole('button', { name: /Terraformで始めるIaCのベストプラクティスを教えて/ });
+    // Open collapsible to reveal sample queries
+    await page.getByRole('button', { name: 'よくある質問を見る' }).click();
+
+    const sampleChip = page.getByRole('button', { name: /AWS最新機能アップデート速報/ });
     await sampleChip.click();
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
-    await expect(input).toHaveValue('Terraformで始めるIaCのベストプラクティスを教えて');
+    await expect(input).toHaveValue('AWS最新機能アップデート速報');
 
     await page.getByRole('button', { name: '検索' }).click();
 
