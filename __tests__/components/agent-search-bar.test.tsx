@@ -93,7 +93,7 @@ describe('AgentSearchBar', () => {
     expect(searchButton).toBeDisabled();
   });
 
-  test('calls onSearch when clicking suggestion', () => {
+  test('does NOT call onSearch when clicking suggestion (allows editing)', () => {
     render(<AgentSearchBar onSearch={mockOnSearch} />);
 
     const input = screen.getByLabelText('AI検索クエリ入力');
@@ -102,8 +102,13 @@ describe('AgentSearchBar', () => {
     const suggestion = screen.getByText('query 1');
     fireEvent.click(suggestion);
 
-    expect(mockOnSearch).toHaveBeenCalledWith('query 1');
-    expect(mockSaveToHistory).toHaveBeenCalledWith('query 1');
+    // Verify search NOT triggered (user can edit before searching)
+    expect(mockOnSearch).not.toHaveBeenCalled();
+    expect(mockSaveToHistory).not.toHaveBeenCalled();
+
+    // Verify input value set and focused
+    expect(input).toHaveValue('query 1');
+    expect(input).toHaveFocus();
   });
 
   test('renders initial query', () => {
@@ -111,5 +116,33 @@ describe('AgentSearchBar', () => {
 
     const input = screen.getByLabelText('AI検索クエリ入力') as HTMLInputElement;
     expect(input.value).toBe('initial test');
+  });
+
+  test('allows editing after history selection before search', () => {
+    render(<AgentSearchBar onSearch={mockOnSearch} />);
+
+    const input = screen.getByLabelText('AI検索クエリ入力');
+
+    // 1. Focus input to show suggestions
+    fireEvent.focus(input);
+
+    // 2. Click history suggestion
+    const suggestion = screen.getByText('query 1');
+    fireEvent.click(suggestion);
+
+    // 3. Verify input value set, NO search triggered
+    expect(input).toHaveValue('query 1');
+    expect(mockOnSearch).not.toHaveBeenCalled();
+    expect(input).toHaveFocus();
+
+    // 4. Edit the query
+    fireEvent.change(input, { target: { value: 'query 1 edited' } });
+
+    // 5. Press Enter
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    // 6. Verify search called with edited query
+    expect(mockOnSearch).toHaveBeenCalledWith('query 1 edited');
+    expect(mockOnSearch).toHaveBeenCalledTimes(1);
   });
 });

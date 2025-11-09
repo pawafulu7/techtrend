@@ -367,7 +367,7 @@ test.describe('AI Agent Search E2E', () => {
     await expect(input).toBeFocused();
   });
 
-  test.skip('13. Search history suggestions display and allow editing before search', async ({ page }) => {
+  test('13. Search history suggestions display and allow editing before search', async ({ page }) => {
     // Setup route BEFORE navigation
     await page.route('**/api/rag/agent-search', (route) =>
       route.fulfill({
@@ -459,13 +459,15 @@ test.describe('AI Agent Search E2E', () => {
     await expect(suggestionList).not.toBeVisible();
 
     // NEW: Verify Enter key triggers search
-    await input.press('Enter');
-
-    // Verify search was executed (extended timeout for progressive threshold fallback)
-    await page.waitForResponse(
+    const agentSearchResponse = page.waitForResponse(
       (res) => res.url().includes('/api/rag/agent-search') && res.status() === 200,
       { timeout: 30000 }
     );
+
+    await input.press('Enter');
+
+    // Verify search was executed (extended timeout for progressive threshold fallback)
+    await agentSearchResponse;
 
     // Verify results are displayed
     await expect(page.locator('[role="article"]')).toBeVisible();
