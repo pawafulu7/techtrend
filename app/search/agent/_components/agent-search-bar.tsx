@@ -167,11 +167,14 @@ export function AgentSearchBar({
                 aria-selected={false}
                 className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground text-sm"
                 onClick={() => {
+                  // UX Design: History selection fills the input without triggering search,
+                  // allowing users to edit conceptual queries before submission.
+                  // This differs from main SearchBox where immediate search is acceptable.
+                  // See PR #158 for original UX fix rationale.
                   setQuery(suggestion);
                   setShowSuggestions(false);
                   skipNextFocusRef.current = true;
-                  saveToHistory(suggestion);
-                  onSearch(suggestion);
+                  inputRef.current?.focus();
                 }}
               >
                 <Search className="h-3 w-3 text-muted-foreground" />
