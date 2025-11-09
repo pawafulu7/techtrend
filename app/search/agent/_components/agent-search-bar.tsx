@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, KeyboardEvent } from 'react';
 import { Search, X, Loader2, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ interface AgentSearchBarProps {
   isLoading?: boolean;
   disabled?: boolean;
   initialQuery?: string;
+  onPrefillQuery?: (callback: (query: string) => void) => void;
 }
 
 export function AgentSearchBar({
@@ -19,6 +20,7 @@ export function AgentSearchBar({
   isLoading = false,
   disabled = false,
   initialQuery = '',
+  onPrefillQuery,
 }: AgentSearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -72,6 +74,20 @@ export function AgentSearchBar({
     setQuery('');
     inputRef.current?.focus();
   };
+
+  // Shared logic for applying query from external sources (history, sample chips)
+  const applyQueryFromExternal = useCallback((text: string) => {
+    setQuery(text);
+    skipNextFocusRef.current = true;
+    inputRef.current?.focus();
+  }, []);
+
+  // Expose prefill handler to parent
+  useEffect(() => {
+    if (onPrefillQuery) {
+      onPrefillQuery(applyQueryFromExternal);
+    }
+  }, [onPrefillQuery, applyQueryFromExternal]);
 
   const suggestions = getSearchHistory().slice(0, 5);
 
@@ -171,10 +187,8 @@ export function AgentSearchBar({
                   // allowing users to edit conceptual queries before submission.
                   // This differs from main SearchBox where immediate search is acceptable.
                   // See PR #158 for original UX fix rationale.
-                  setQuery(suggestion);
+                  applyQueryFromExternal(suggestion);
                   setShowSuggestions(false);
-                  skipNextFocusRef.current = true;
-                  inputRef.current?.focus();
                 }}
               >
                 <Search className="h-3 w-3 text-muted-foreground" />

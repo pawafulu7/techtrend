@@ -1,0 +1,63 @@
+'use client';
+
+import { Button } from '@/components/ui/button';
+import { SAMPLE_QUERIES, CATEGORY_LABELS, type SampleQuery } from '../_data/sample-queries';
+
+interface AgentSampleQueriesProps {
+  onSelectQuery: (query: string) => void;
+  className?: string;
+}
+
+// Explicit category order for consistent rendering
+const CATEGORY_ORDER: SampleQuery['category'][] = [
+  'infrastructure',
+  'ai',
+  'frontend',
+  'backend',
+  'security',
+];
+
+export function AgentSampleQueries({ onSelectQuery, className }: AgentSampleQueriesProps) {
+  // Group by category with proper typing
+  const groupedQueries = SAMPLE_QUERIES.reduce((acc, query) => {
+    if (!acc[query.category]) {
+      acc[query.category] = [];
+    }
+    acc[query.category].push(query);
+    return acc;
+  }, {} as Record<SampleQuery['category'], SampleQuery[]>);
+
+  return (
+    <div className={className}>
+      <p className="text-sm text-muted-foreground mb-3">よくある質問:</p>
+      <div className="space-y-3">
+        {CATEGORY_ORDER.map((category) => {
+          const queries = groupedQueries[category];
+          if (!queries || queries.length === 0) return null;
+
+          return (
+            <div key={category}>
+              <p className="text-xs text-muted-foreground mb-1.5">
+                {CATEGORY_LABELS[category]}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {queries.map((query) => (
+                  <Button
+                    key={query.id}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSelectQuery(query.text)}
+                    className="text-xs h-7 whitespace-normal text-left max-w-xs"
+                    aria-label={query.text}
+                  >
+                    {query.text}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

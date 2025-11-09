@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AgentSearchBar } from './agent-search-bar';
+import { AgentSampleQueries } from './agent-sample-queries';
 import { AgentLoadingState } from './agent-loading-state';
 import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
@@ -13,6 +14,7 @@ export function AgentSearchClient() {
   const [lastQuery, setLastQuery] = useState('');
   const [showResult, setShowResult] = useState(false);
   const { search, result, error, isLoading, partialText, reset } = useAgentSearch();
+  const prefillQueryRef = useRef<((query: string) => void) | null>(null);
 
   const handleSearch = async (query: string) => {
     setLastQuery(query);
@@ -53,14 +55,34 @@ export function AgentSearchClient() {
     console.log('[Feedback]', positive ? 'positive' : 'negative', 'for query:', result?.query || lastQuery);
   };
 
+  const handlePrefillQuery = (query: string) => {
+    if (prefillQueryRef.current) {
+      prefillQueryRef.current(query);
+    }
+  };
+
+  const handleSetPrefillCallback = (callback: (query: string) => void) => {
+    prefillQueryRef.current = callback;
+  };
+
   const isStreamingWithPartialText = ENABLE_STREAMING_UI && Boolean(partialText);
   const shouldShowStreamingResult = ENABLE_STREAMING_UI && Boolean(partialText && !result);
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">AI記事検索</h1>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">AI記事検索</h1>
+        <p className="text-muted-foreground mb-4">
+          AIがTechTrendの記事を横断検索し、要約と参考リンクで回答します。気になるテーマを自然言語で質問してください。
+        </p>
+        <AgentSampleQueries onSelectQuery={handlePrefillQuery} className="mb-4" />
+      </div>
 
-      <AgentSearchBar onSearch={handleSearch} isLoading={isLoading} />
+      <AgentSearchBar
+        onSearch={handleSearch}
+        isLoading={isLoading}
+        onPrefillQuery={handleSetPrefillCallback}
+      />
 
       <div className="mt-8">
         {isLoading && !isStreamingWithPartialText && <AgentLoadingState />}
