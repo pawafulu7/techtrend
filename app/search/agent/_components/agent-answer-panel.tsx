@@ -31,6 +31,7 @@ const ListDepthContext = React.createContext(0);
 
 export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback }: AgentAnswerPanelProps) {
   const [copied, setCopied] = useState(false);
+  const [showEmptyState, setShowEmptyState] = useState(false);
 
   useEffect(() => {
     if (!copied) return;
@@ -42,6 +43,16 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
     if (partialText && !result) return partialText;
     return result?.response || '';
   }, [partialText, result]);
+
+  // Empty state delay logic (150ms to prevent flicker)
+  useEffect(() => {
+    if (!isStreaming && !displayText?.trim() && !result?.articles?.length) {
+      const timer = setTimeout(() => setShowEmptyState(true), 150);
+      return () => clearTimeout(timer);
+    } else {
+      setShowEmptyState(false);
+    }
+  }, [isStreaming, displayText, result?.articles]);
 
   const deferredDisplayText = useDeferredValue(displayText);
 
@@ -175,10 +186,32 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
         </div>
       )}
 
-      <div
-        className="prose prose-sm dark:prose-invert w-full max-w-none md:max-w-3xl xl:max-w-4xl mb-4"
-        data-testid="agent-answer-markdown"
-      >
+      {showEmptyState && (
+        <div className="bg-muted/50 border rounded-md p-6 text-center">
+          <h3 className="text-lg font-semibold mb-2">
+            {result?.fallback
+              ? '関連する記事が見つかりませんでした'
+              : '該当する記事が見つかりませんでした'}
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">以下を試してみてください:</p>
+          <ul className="text-sm text-muted-foreground mb-4 text-left max-w-md mx-auto space-y-1">
+            <li>• キーワードをより具体的にする（例: "React" → "React 19のServer Components"）</li>
+            <li>• 技術名やバージョンを追加する</li>
+            <li>• 検索期間を調整する</li>
+          </ul>
+          <div className="flex gap-2 justify-center">
+            <Button asChild variant="outline">
+              <Link href="/search">通常検索を試す</Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!showEmptyState && (
+        <div
+          className="prose prose-sm dark:prose-invert w-full max-w-none md:max-w-3xl xl:max-w-4xl mb-4"
+          data-testid="agent-answer-markdown"
+        >
         <ListDepthContext.Provider value={0}>
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
@@ -240,7 +273,8 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
             {deferredDisplayText}
           </ReactMarkdown>
         </ListDepthContext.Provider>
-      </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between pt-4 border-t mt-4">
         <div className="text-xs text-muted-foreground">
