@@ -32,6 +32,16 @@ const MOCK_FALLBACK_RESPONSE = {
   fallback: true,
 };
 
+const MOCK_EMPTY_RESPONSE = {
+  query: 'xyzabc123nonsense',
+  response: '',
+  toolCalls: [],
+  usage: { totalTokens: 0, promptTokens: 0, completionTokens: 0 },
+  cached: false,
+  fallback: false,
+  articles: [],
+};
+
 test.describe('AI Agent Search E2E', () => {
   test.beforeEach(async ({ page, context }) => {
     // Login with test user to obtain real session cookies
@@ -473,7 +483,117 @@ test.describe('AI Agent Search E2E', () => {
     await expect(page.locator('[role="article"]')).toBeVisible();
   });
 
-  test.skip('15. Article links display and navigation', async ({ page }) => {
+  test('14. Sample query chip prefills input and runs search', async ({ page }) => {
+    await page.route('**/api/rag/agent-search', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_SUCCESS_RESPONSE),
+      })
+    );
+
+    await page.goto('/search/agent');
+
+    const sampleChip = page.getByRole('button', { name: /Terraformで始めるIaCのベストプラクティスを教えて/ });
+    await sampleChip.click();
+
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await expect(input).toHaveValue('Terraformで始めるIaCのベストプラクティスを教えて');
+
+    await page.getByRole('button', { name: '検索' }).click();
+
+    await expect(page.getByRole('heading', { name: 'AI回答' })).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('[role="article"]')).toContainText('テスト記事1');
+  });
+
+  test('15. Empty state guides users and links to regular search', async ({ page }) => {
+    await page.route('**/api/rag/agent-search', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_EMPTY_RESPONSE),
+      })
+    );
+
+    await page.goto('/search/agent');
+
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('xyzabc123nonsense');
+    await page.getByRole('button', { name: '検索' }).click();
+
+    await expect(page.getByText('該当する記事が見つかりませんでした')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('以下を試してみてください:')).toBeVisible();
+
+    const searchLink = page.getByRole('link', { name: '通常検索を試す' });
+    await expect(searchLink).toBeVisible();
+
+    await searchLink.click();
+    await expect(page).toHaveURL('/search');
+  });
+
+  test('16. Streaming indicator suppresses empty state during generation', async ({ page }) => {
+    await page.addInitScript(() => {
+      if ((window as any).__agentStreamingMockInstalled) {
+        return;
+      }
+      (window as any).__agentStreamingMockInstalled = true;
+
+      const encoder = new TextEncoder();
+
+      const buildStream = () =>
+        new ReadableStream({
+          start(controller) {
+            const enqueue = (payload: Record<string, unknown>) => {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\\n\\n`));
+            };
+
+            enqueue({ type: 'text-delta', delta: 'Next.jsに関するストリーミング回答を生成中です。' });
+
+            setTimeout(() => {
+              enqueue({
+                type: 'finish',
+                usage: { totalTokens: 256, promptTokens: 128, completionTokens: 128 },
+                cached: false,
+                fallback: false,
+              });
+              controller.close();
+            }, 800);
+          },
+        });
+
+      const originalFetch = window.fetch.bind(window);
+
+      window.fetch = (input, init) => {
+        const url = typeof input === 'string' ? input : input?.url;
+        if (url && url.includes('/api/rag/agent-search')) {
+          return Promise.resolve(
+            new Response(buildStream(), {
+              status: 200,
+              headers: {
+                'Content-Type': 'text/event-stream',
+              },
+            })
+          );
+        }
+        return originalFetch(input, init);
+      };
+    });
+
+    await page.goto('/search/agent');
+
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await input.fill('Next.js streaming guard');
+    await page.getByRole('button', { name: '検索' }).click();
+
+    const streamingIndicator = page.getByTestId('streaming-indicator');
+    await expect(streamingIndicator).toBeVisible({ timeout: 5000 });
+
+    await expect(page.getByText('該当する記事が見つかりませんでした')).not.toBeVisible();
+
+    await expect(page.getByRole('heading', { name: 'AI回答' })).toBeVisible({ timeout: 15000 });
+  });
+
+  test.skip('17. Article links display and navigation', async ({ page }) => {
     // Mock API with article links
     const mockResponseWithArticles = {
       ...MOCK_SUCCESS_RESPONSE,
@@ -554,7 +674,7 @@ test.describe('AI Agent Search E2E', () => {
     await newPage.close();
   });
 
-  test.skip('16. Article links not displayed when no results', async ({ page }) => {
+  test.skip('18. Article links not displayed when no results', async ({ page }) => {
     // Mock API without article links
     const mockResponseWithoutArticles = {
       ...MOCK_SUCCESS_RESPONSE,
