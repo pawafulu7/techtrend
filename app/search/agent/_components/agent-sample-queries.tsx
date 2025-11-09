@@ -10,14 +10,13 @@ interface AgentSampleQueriesProps {
 
 export function AgentSampleQueries({ onSelectQuery, className }: AgentSampleQueriesProps) {
   // Group by category with proper typing
-  const initialGrouped: Partial<Record<SampleQuery['category'], SampleQuery[]>> = {};
   const groupedQueries = SAMPLE_QUERIES.reduce((acc, query) => {
     if (!acc[query.category]) {
       acc[query.category] = [];
     }
     acc[query.category].push(query);
     return acc;
-  }, initialGrouped) as Record<SampleQuery['category'], SampleQuery[]>;
+  }, {} as Record<SampleQuery['category'], SampleQuery[]>);
 
   return (
     <div className={className}>
