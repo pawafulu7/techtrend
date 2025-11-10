@@ -27,8 +27,9 @@ export const articleSearchAgent = new Agent({
   model: openai(process.env.AGENT_MODEL || 'gpt-4o-mini'),
 
   // Allow multiple reasoning steps: tool call + retry logic + text response generation
-  // Increased to 6 to support progressive threshold fallback (up to 4 retries + final response)
-  stopWhen: stepCountIs(6),
+  // Increased to 24 to support 2D fallback (temporal relaxation + threshold ladder)
+  // Max: Phase 1 (4 thresholds) + Phase 2 (3 temporal levels x 4 thresholds) + response steps
+  stopWhen: stepCountIs(24),
 
   system: `
 You are a technical article search assistant for TechTrend, a platform for discovering technical articles.
@@ -54,17 +55,49 @@ Examples of concepts to ALWAYS search:
 - Practices: "Agile", "TDD", "Code Review"
 
 SEARCH RESULT QUALITY CONTROL (MANDATORY):
-You MUST implement progressive threshold fallback before responding to user:
+You MUST implement progressive 2D fallback (threshold + temporal relaxation) before responding to user.
 
-Step 1: Call semantic-article-search with similarityThreshold: 0.55
-Step 2: If result count < 3, immediately call semantic-article-search again with similarityThreshold: 0.50
-Step 3: If result count < 3, immediately call semantic-article-search again with similarityThreshold: 0.45
-Step 4: If result count < 3, immediately call semantic-article-search again with similarityThreshold: 0.40
-Step 5: Only after trying all thresholds, respond to user with best available results
+ALGORITHM (You MUST iterate levels in order):
+
+Phase 1: Threshold Fallback with Original Temporal Constraint
+FOR each threshold in [0.55, 0.50, 0.45, 0.40]:
+  - Call semantic-article-search with current threshold and original dateRange (if provided)
+  - Log attempt: (phase=1, threshold={value}, resultCount={count})
+  - IF resultCount >= 3: Proceed to response immediately (skip remaining steps)
+  - ELSE: Continue to next threshold
+END FOR
+
+Phase 2: Temporal Relaxation (ONLY if Phase 1 failed AND original dateRange was provided)
+
+TEMPORAL RELAXATION POLICY:
+- Detect strict keywords in user query: "のみ", "だけ", "限定", "only", "exactly"
+- IF strict keywords detected: STOP (do not proceed to Phase 2, respond with Phase 1 results)
+- ELSE: Proceed with temporal relaxation
+
+Determine temporal ladder based on original dateRange:
+- IF original range <= 7 days (short-term): ladder = [30 days, 90 days, unlimited]
+- ELSE IF original range <= 60 days (mid-term): ladder = [60 days, 180 days, unlimited]
+- ELSE (long-term): ladder = [180 days, unlimited]
+
+FOR each temporalLevel in ladder:
+  - Update dateRange to current temporal level
+  - IF temporalLevel is "unlimited": Remove dateRange filter, keep recencyBoost (if originally set)
+  - FOR each threshold in [0.55, 0.50, 0.45, 0.40]:
+    - Call semantic-article-search with current threshold and updated dateRange
+    - Log attempt: (phase=2, temporalLevel={level}, threshold={value}, resultCount={count})
+    - IF resultCount >= 3: Proceed to response immediately (skip remaining steps)
+    - ELSE: Continue to next threshold
+  END FOR
+END FOR
+
+Phase 3: Final Response
+- Use best available results from last successful search (even if < 3)
 
 MANDATORY REPORTING:
-- In your response, ALWAYS mention the final similarity threshold used (e.g., "一致度閾値0.45で検索した結果、以下の記事が見つかりました")
-- If final threshold < 0.50, add note: "閾値を下げているため、関連性がやや低い記事も含まれている可能性があります"
+- ALWAYS mention the final conditions used (threshold + temporal relaxation if any)
+- IF Phase 2 was used, explain: "直近{original}日では見つからなかったため、直近{relaxed}日に範囲を広げました"
+- IF unlimited search was used, note: "全期間から検索しました（新しい記事を優先）"
+- IF final threshold < 0.50, add note: "閾値を下げているため、関連性がやや低い記事も含まれている可能性があります"
 - Each retry REPLACES previous results; only use the final search results in your response
 
 TEMPORAL LANGUAGE INTERPRETATION:
