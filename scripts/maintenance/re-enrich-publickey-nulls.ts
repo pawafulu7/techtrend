@@ -58,8 +58,13 @@ interface Options {
 // 進捗を読み込み
 function loadProgress(): Progress {
   if (fs.existsSync(PROGRESS_FILE)) {
-    const data = fs.readFileSync(PROGRESS_FILE, 'utf-8');
-    return JSON.parse(data);
+    try {
+      const data = fs.readFileSync(PROGRESS_FILE, 'utf-8');
+      return JSON.parse(data);
+    } catch (error) {
+      console.error(`⚠️ 進捗ファイルの読み込みに失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('新しい進捗で開始します');
+    }
   }
   return {
     processedIds: [],
@@ -135,6 +140,8 @@ async function enrichWithRetry(
   return null;
 }
 
+let currentProgress: Progress | null = null;
+
 async function main() {
   const options = parseArgs();
 
@@ -153,7 +160,7 @@ async function main() {
   console.error('');
 
   const factory = new ContentEnricherFactory();
-  const progress = loadProgress();
+  const progress = currentProgress = loadProgress();
   const processedIdsSet = new Set(progress.processedIds);
 
   // Publickey sourceを取得
@@ -193,14 +200,22 @@ async function main() {
     return;
   }
 
-  // stats.total を初回のみ設定、2回目以降は再計算
-  if (progress.stats.processed === 0) {
-    progress.stats.total = articles.length;
-  } else {
-    progress.stats.total = progress.stats.processed + articles.length;
+  // stats.total を初回のみDB問い合わせで設定（真の総数を取得）
+  if (progress.stats.total === 0) {
+    const totalCount = await prisma.article.count({
+      where: {
+        sourceId: publickeySource.id,
+        OR: [
+          { content: null },
+          { content: '' },
+        ],
+      },
+    });
+    progress.stats.total = totalCount;
   }
 
-  console.error(`対象記事数: ${articles.length}件\n`);
+  console.error(`対象記事数（今回）: ${articles.length}件`);
+  console.error(`対象記事数（全体）: ${progress.stats.total}件\n`);
 
   let batchCount = 0;
 
@@ -221,7 +236,8 @@ async function main() {
             where: { id: article.id },
             data: {
               content: enriched.content,
-              thumbnail: enriched.thumbnail || article.thumbnail,
+              thumbnail: enriched.thumbnail ?? article.thumbnail,
+              contentUpdatedAt: new Date(),
               updatedAt: new Date(),
             },
           });
@@ -309,6 +325,10 @@ async function main() {
 // SIGINT handling
 process.on('SIGINT', () => {
   console.error('\n\nReceived SIGINT, saving progress...');
+  if (currentProgress) {
+    saveProgress(currentProgress);
+    console.error('Progress saved successfully');
+  }
   process.exit(0);
 });
 

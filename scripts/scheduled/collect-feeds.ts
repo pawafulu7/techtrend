@@ -192,7 +192,8 @@ async function processSource({
 
         if (existing) {
           // content=null/empty の場合は更新を許可（全ソース共通の自己修復メカニズム）
-          if (!existing.content || existing.content.length === 0) {
+          if ((!existing.content || existing.content.length === 0) &&
+              article.content && article.content.length > 0) {
             await prisma.article.update({
               where: { id: existing.id },
               data: {
