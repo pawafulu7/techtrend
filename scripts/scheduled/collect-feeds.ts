@@ -164,6 +164,16 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
         let newCount = 0;
         let duplicateCount = 0;
 
+        // タイトル類似性チェック用: 過去7日間の記事タイトルを1回だけ取得（O(N²)回避）
+        const recentArticles = await prisma.article.findMany({
+          where: {
+            publishedAt: {
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            }
+          },
+          select: { title: true }
+        });
+
         for (const article of articles) {
           try {
             // URLで重複チェック
@@ -177,16 +187,8 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
             }
 
             // タイトルの類似性チェック（過去7日間の記事と比較）
-            const recentArticles = await prisma.article.findMany({
-              where: {
-                publishedAt: {
-                  gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-                }
-              },
-              select: { title: true }
-            });
-
-            const hasSimilarTitle = recentArticles.some(existingArticle => 
+            // recentArticlesはループ外で1回だけ取得済み（O(N²)回避）
+            const hasSimilarTitle = recentArticles.some(existingArticle =>
               isDuplicate(existingArticle.title, article.title, 0.85)
             );
 
@@ -237,42 +239,46 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
             });
 
             // エンリッチメント処理（ContentEnricherFactoryで適切なエンリッチャーを取得）
-            const enricher = enricherFactory.getEnricher(article.url);
-            if (enricher) {
-              try {
-                console.error(`   🔍 エンリッチメント実行: ${article.title.substring(0, 40)}...`);
-                const enrichedData = await enricher.enrich(article.url);
+            // NOTE: Most fetchers already enrich content, so this is often redundant.
+            // Set SKIP_POST_SAVE_ENRICHMENT=1 to skip this expensive double-enrichment.
+            if (process.env.SKIP_POST_SAVE_ENRICHMENT !== '1') {
+              const enricher = enricherFactory.getEnricher(article.url);
+              if (enricher) {
+                try {
+                  console.error(`   🔍 エンリッチメント実行: ${article.title.substring(0, 40)}...`);
+                  const enrichedData = await enricher.enrich(article.url);
 
-                if (enrichedData && enrichedData.content) {
-                  // エンリッチメント結果の検証
-                  const originalContentLength = article.content?.length || 0;
-                  const enrichedContentLength = enrichedData.content.length;
+                  if (enrichedData && enrichedData.content) {
+                    // エンリッチメント結果の検証
+                    const originalContentLength = article.content?.length || 0;
+                    const enrichedContentLength = enrichedData.content.length;
 
-                  // RSSコンテンツより短い場合は採用しない、かつ最低500文字の閾値を設定
-                  if (enrichedContentLength > originalContentLength && enrichedContentLength >= 500) {
-                    // エンリッチメントしたコンテンツで更新
-                    await prisma.article.update({
-                      where: { id: savedArticle.id },
-                      data: {
-                        content: enrichedData.content,
-                        contentUpdatedAt: new Date(),  // コンテンツ更新時刻を記録
-                        ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
-                      }
-                    });
-                    console.error(`   ✅ エンリッチメント成功: ${enrichedData.content.length}文字`);
+                    // RSSコンテンツより短い場合は採用しない、かつ最低500文字の閾値を設定
+                    if (enrichedContentLength > originalContentLength && enrichedContentLength >= 500) {
+                      // エンリッチメントしたコンテンツで更新
+                      await prisma.article.update({
+                        where: { id: savedArticle.id },
+                        data: {
+                          content: enrichedData.content,
+                          contentUpdatedAt: new Date(),  // コンテンツ更新時刻を記録
+                          ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
+                        }
+                      });
+                      console.error(`   ✅ エンリッチメント成功: ${enrichedData.content.length}文字`);
+                    } else {
+                      console.warn(`   ⚠️ エンリッチメント結果が不十分: ${enrichedContentLength}文字（元: ${originalContentLength}文字）`);
+                    }
                   } else {
-                    console.warn(`   ⚠️ エンリッチメント結果が不十分: ${enrichedContentLength}文字（元: ${originalContentLength}文字）`);
+                    console.error(`   ⚠️ エンリッチメント失敗: コンテンツなし`);
                   }
-                } else {
-                  console.error(`   ⚠️ エンリッチメント失敗: コンテンツなし`);
+                } catch (enrichError) {
+                  console.error(`   ⚠️ エンリッチメントエラー:`, enrichError instanceof Error ? enrichError.message : String(enrichError));
+                  // エンリッチメントが失敗しても記事保存は成功とする
                 }
-              } catch (enrichError) {
-                console.error(`   ⚠️ エンリッチメントエラー:`, enrichError instanceof Error ? enrichError.message : String(enrichError));
-                // エンリッチメントが失敗しても記事保存は成功とする
-              }
 
-              // Rate limit対策：エンリッチメント後は2秒待機
-              await new Promise(resolve => setTimeout(resolve, 2000));
+                // Rate limit対策：エンリッチメント後は2秒待機
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
             }
 
             newCount++;

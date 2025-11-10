@@ -77,10 +77,11 @@ async function executeUpdatePipeline(
     // 1. フィード収集
     console.error('📡 フィード収集中...');
     const sourceArgs = sources.map(s => `"${s}"`).join(' ');
-    const { stdout: collectOutput }: ExecutionResult = await execAsync(
+    const { stdout: collectOutput, stderr: collectError }: ExecutionResult = await execAsync(
       `npx tsx scripts/scheduled/collect-feeds.ts ${sourceArgs}`
     );
-    console.error(collectOutput);
+    if (collectOutput) console.error(collectOutput);
+    if (collectError) console.error(collectError);
     
     // 2. Google Developers Blogのコンテンツエンリッチメント
     if (sources.includes('Google Developers Blog')) {
