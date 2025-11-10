@@ -24,7 +24,8 @@ module.exports = {
         DATABASE_URL: process.env.DATABASE_URL,
         REDIS_URL: process.env.REDIS_URL,
         NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET
+        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+        SKIP_POST_SAVE_ENRICHMENT: '1' // Skip duplicate enrichment (56min->15-20min)
       },
       error_file: 'logs/scheduler-error.log',
       out_file: 'logs/scheduler-out.log',
