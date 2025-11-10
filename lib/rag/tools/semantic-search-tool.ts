@@ -163,6 +163,7 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
   outputSchema: toolOutputSchema,
 
   execute: async ({ query, topK, similarityThreshold, filters }) => {
+    const startTime = Date.now();
     try {
       logger.debug(
         {
@@ -171,6 +172,8 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
           similarityThreshold,
           hasFilters: !!filters,
           hasDateFilter: !!(filters?.dateRange && (filters.dateRange.from || filters.dateRange.to)),
+          dateRangeFrom: filters?.dateRange?.from,
+          dateRangeTo: filters?.dateRange?.to,
           recencyBoost: filters?.recencyBoost ?? 0,
         },
         'Tool: semantic-article-search executing'
@@ -188,16 +191,25 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
         embeddingKey: 'summary', // Default to summary search
       });
 
+      const elapsedMs = Date.now() - startTime;
+      const avgSimilarity =
+        results.length > 0
+          ? (results.reduce((sum, r) => sum + r.similarity, 0) / results.length).toFixed(4)
+          : 0;
+
       logger.info(
         {
           query: query.substring(0, 50),
           resultCount: results.length,
+          threshold: similarityThreshold,
           hasDateFilter: !!(filters?.dateRange && (filters.dateRange.from || filters.dateRange.to)),
+          dateRangeFrom: filters?.dateRange?.from,
+          dateRangeTo: filters?.dateRange?.to,
           recencyBoost: filters?.recencyBoost ?? 0,
-          avgSimilarity:
-            results.length > 0
-              ? (results.reduce((sum, r) => sum + r.similarity, 0) / results.length).toFixed(4)
-              : 0,
+          avgSimilarity,
+          elapsedMs,
+          isLowRecall: results.length < 3,
+          likelyConstraint: results.length < 3 && filters?.dateRange ? 'temporal' : results.length < 3 ? 'threshold' : 'none',
         },
         'Tool: semantic-article-search completed'
       );
