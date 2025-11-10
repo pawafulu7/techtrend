@@ -79,6 +79,7 @@ export class HackerNewsFetcher extends BaseFetcher {
           let thumbnail: string | undefined;
 
           // URLからコンテンツを取得（フォールバック機能付き）
+          const MIN_CONTENT_LENGTH = 100;
           try {
             const enrichedData = await enricherFactory.trySequential(story.url);
             if (enrichedData?.content) {
@@ -91,35 +92,97 @@ export class HackerNewsFetcher extends BaseFetcher {
                 content = enrichedData.content;
                 thumbnail = enrichedData.thumbnail || undefined;
               } else {
-                // Enriched content too short - use fallback
+                // Enriched content too short - try fallback
+                const storyTextLength = story.text?.length || 0;
                 logger.warn(
                   {
                     url: story.url,
                     title: story.title,
                     enrichedLength: enrichedData.content.length,
                     paragraphCount: enrichedData.content.split('\n\n').length,
-                    fallbackLength: story.text?.length || 0,
+                    storyTextLength,
+                    skipThreshold: MIN_CONTENT_LENGTH,
                   },
-                  '[HackerNews] Enriched content insufficient, using fallback'
+                  '[HackerNews] Enriched content insufficient'
                 );
-                content = story.text || '';
+
+                if (story.text && storyTextLength >= MIN_CONTENT_LENGTH) {
+                  content = story.text;
+                } else {
+                  // Enrichment failed and fallback insufficient - skip article
+                  logger.warn(
+                    {
+                      url: story.url,
+                      title: story.title,
+                      reason: 'enrichment_quality_low_and_no_fallback',
+                      storyTextLength,
+                      skipThreshold: MIN_CONTENT_LENGTH,
+                    },
+                    '[HackerNews] Skipping article due to insufficient content'
+                  );
+                  continue; // Skip this article
+                }
               }
             } else {
-              // エンリッチメント失敗の明示的ログ
+              // All enrichers failed - try fallback
+              const storyTextLength = story.text?.length || 0;
               logger.warn(
                 {
                   url: story.url,
                   title: story.title,
-                  fallbackLength: story.text?.length || 0,
+                  storyTextLength,
+                  skipThreshold: MIN_CONTENT_LENGTH,
                 },
-                '[HackerNews] All enrichers failed, using fallback'
+                '[HackerNews] All enrichers failed'
               );
-              content = story.text || '';
+
+              if (story.text && storyTextLength >= MIN_CONTENT_LENGTH) {
+                content = story.text;
+              } else {
+                // All enrichers failed and fallback insufficient - skip article
+                logger.warn(
+                  {
+                    url: story.url,
+                    title: story.title,
+                    reason: 'all_enrichers_failed_and_no_fallback',
+                    storyTextLength,
+                    skipThreshold: MIN_CONTENT_LENGTH,
+                  },
+                  '[HackerNews] Skipping article due to enrichment failure'
+                );
+                continue; // Skip this article
+              }
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error({ error }, `[Hacker News] Enrichment error: ${story.url}: ${errorMessage}`);
-            content = story.text || '';
+            const storyTextLength = story.text?.length || 0;
+            logger.error(
+              {
+                error,
+                url: story.url,
+                title: story.title,
+                storyTextLength,
+              },
+              `[Hacker News] Enrichment error: ${errorMessage}`
+            );
+
+            if (story.text && storyTextLength >= MIN_CONTENT_LENGTH) {
+              content = story.text;
+            } else {
+              // Enrichment error and fallback insufficient - skip article
+              logger.warn(
+                {
+                  url: story.url,
+                  title: story.title,
+                  reason: 'enrichment_error_and_no_fallback',
+                  error: errorMessage,
+                  storyTextLength,
+                  skipThreshold: MIN_CONTENT_LENGTH,
+                },
+                '[HackerNews] Skipping article due to enrichment error'
+              );
+              continue; // Skip this article
+            }
           }
           
           // タグの生成
