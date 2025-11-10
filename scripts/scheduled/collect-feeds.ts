@@ -117,6 +117,7 @@ interface CollectResult {
 
 async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
   console.error('📡 フィード収集を開始します...');
+  console.error(`   SKIP_POST_SAVE_ENRICHMENT: ${process.env.SKIP_POST_SAVE_ENRICHMENT || 'not set'}`);
   if (sourceTypes && sourceTypes.length > 0) {
     console.error(`   対象ソース: ${sourceTypes.join(', ')}`);
   }

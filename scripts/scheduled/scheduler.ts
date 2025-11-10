@@ -167,30 +167,56 @@ console.error('   - 要約生成: 毎日10:30（午前）');
 console.error('   - タグ生成: 8:30・20:30');
 console.error('   - クリーンアップ: 毎日22時');
 
+// Job lock to prevent concurrent executions
+let rssJobRunning = false;
+let scrapingJobRunning = false;
+let qiitaJobRunning = false;
+
 // RSS系ソースの更新（毎時0分）
 cron.schedule('0 * * * *', async () => {
+  if (rssJobRunning) {
+    console.error('⚠️ RSS job already running, skipping this execution');
+    return;
+  }
+  rssJobRunning = true;
   try {
     await executeUpdatePipeline(RSS_SOURCES, 'RSS系記事');
   } catch (error) {
     // エラーは関数内でログ出力済み
+  } finally {
+    rssJobRunning = false;
   }
 });
 
 // スクレイピング系ソースの更新（0時と12時）
 cron.schedule('0 0,12 * * *', async () => {
+  if (scrapingJobRunning) {
+    console.error('⚠️ Scraping job already running, skipping this execution');
+    return;
+  }
+  scrapingJobRunning = true;
   try {
     await executeUpdatePipeline(SCRAPING_SOURCES, 'スクレイピング系記事');
   } catch (error) {
     // エラーは関数内でログ出力済み
+  } finally {
+    scrapingJobRunning = false;
   }
 });
 
 // Qiita人気記事の更新（5:05と17:05）
 cron.schedule('5 5,17 * * *', async () => {
+  if (qiitaJobRunning) {
+    console.error('⚠️ Qiita job already running, skipping this execution');
+    return;
+  }
+  qiitaJobRunning = true;
   try {
     await executeUpdatePipeline(QIITA_POPULAR_SOURCE, 'Qiita人気記事');
   } catch (error) {
     // エラーは関数内でログ出力済み
+  } finally {
+    qiitaJobRunning = false;
   }
 });
 
