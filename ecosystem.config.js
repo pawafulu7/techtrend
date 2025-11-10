@@ -11,7 +11,9 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        GEMINI_API_KEY: process.env.GEMINI_API_KEY
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+        SKIP_POST_SAVE_ENRICHMENT: '1', // Skip duplicate enrichment (125min->15-20min)
+        COLLECT_FEEDS_CONCURRENCY: '5' // Parallel source processing (30min->10-15min)
       },
       error_file: 'logs/scheduler-error.log',
       out_file: 'logs/scheduler-out.log',
