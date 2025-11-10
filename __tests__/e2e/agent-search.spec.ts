@@ -493,11 +493,21 @@ test.describe('AI Agent Search E2E', () => {
     );
 
     await page.goto('/search/agent');
+    await page.waitForLoadState('networkidle');
 
-    // Open collapsible to reveal sample queries
-    await page.getByRole('button', { name: 'よくある質問を見る' }).click();
+    // Wait for page to fully render
+    await page.waitForTimeout(1000);
+
+    // Open collapsible to reveal sample queries (with extended timeout)
+    const collapsibleButton = page.getByRole('button', { name: 'よくある質問を見る' });
+    await collapsibleButton.waitFor({ state: 'visible', timeout: 15000 });
+    await collapsibleButton.click();
+
+    // Wait for collapsible content to expand
+    await page.waitForTimeout(500);
 
     const sampleChip = page.getByRole('button', { name: /AWS最新機能アップデート速報/ });
+    await sampleChip.waitFor({ state: 'visible', timeout: 10000 });
     await sampleChip.click();
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
