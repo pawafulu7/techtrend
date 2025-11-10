@@ -1,5 +1,6 @@
 import { PrismaClient, Source } from '@prisma/client';
 import pLimit from 'p-limit';
+import { Mutex } from 'async-mutex';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { adjustTimezoneForArticle } from '@/lib/utils/date';
@@ -120,7 +121,8 @@ const DEFAULT_COLLECT_CONCURRENCY = 5;
 
 interface ProcessSourceContext {
   source: Source;
-  recentArticles: Array<{ title: string }>;
+  recentTitlesSet: Set<string>;
+  recentTitlesMutex: Mutex;
   enricherFactory: ContentEnricherFactory;
 }
 
@@ -146,7 +148,8 @@ function resolveCollectConcurrency(): number {
 
 async function processSource({
   source,
-  recentArticles,
+  recentTitlesSet,
+  recentTitlesMutex,
   enricherFactory
 }: ProcessSourceContext): Promise<ProcessSourceResult> {
   const result: ProcessSourceResult = { newArticles: 0, duplicates: 0 };
@@ -189,11 +192,17 @@ async function processSource({
           continue;
         }
 
-        const hasSimilarTitle = recentArticles.some(existingArticle =>
-          isDuplicate(existingArticle.title, article.title, 0.85)
-        );
+        // Mutex-protected duplicate check and reservation
+        const shouldSkip = await recentTitlesMutex.runExclusive(() => {
+          const dup = [...recentTitlesSet].some(existing =>
+            isDuplicate(existing, article.title, 0.85)
+          );
+          if (dup) return true;
+          recentTitlesSet.add(article.title); // Reserve immediately
+          return false;
+        });
 
-        if (hasSimilarTitle) {
+        if (shouldSkip) {
           console.error(`   重複記事を検出: ${article.title.substring(0, 50)}...`);
           duplicateCount++;
           continue;
@@ -271,9 +280,14 @@ async function processSource({
           }
         }
 
-        recentArticles.push({ title: article.title });
+        // Title already added to Set in Mutex-protected section above
         newCount++;
       } catch (error: any) {
+        // Rollback title reservation on error
+        await recentTitlesMutex.runExclusive(() => {
+          recentTitlesSet.delete(article.title);
+        });
+
         if (error?.code === 'P2002' && error?.meta?.target?.includes('url')) {
           duplicateCount++;
         } else {
@@ -334,9 +348,13 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
         })
       : [];
 
+    // Convert to Set for O(1) lookups and thread-safe mutations
+    const recentTitlesSet = new Set(recentArticles.map(a => a.title));
+    const recentTitlesMutex = new Mutex();
+
     const limit = pLimit(concurrency);
     const tasks = sources.map(source =>
-      limit(() => processSource({ source, recentArticles, enricherFactory }))
+      limit(() => processSource({ source, recentTitlesSet, recentTitlesMutex, enricherFactory }))
     );
 
     const settledResults = await Promise.allSettled(tasks);
