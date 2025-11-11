@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, use, useState, useEffect } from 'react';
+import { Suspense, use, useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Network } from 'lucide-react';
@@ -49,9 +49,11 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
+  const [linkMap, setLinkMap] = useState<Map<string, any>>(new Map());
+  const graphRef = useRef<any>(null);
 
   useEffect(() => {
-    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=tag&maxNodes=30&minSimilarity=0.15`)
+    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=tag&maxNodes=30&minSimilarity=0.2`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch graph data');
         return res.json();
@@ -59,12 +61,39 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
       .then(data => {
         setGraphData(data);
         setLoading(false);
+
+        // CodexMCP: Create stable map for tooltip lookup (before force-graph mutates links)
+        const map = new Map();
+        data.links.forEach((link: any) => {
+          map.set(link.target, {
+            similarity: link.value,
+            commonTags: link.commonTags,
+            type: link.type,
+          });
+        });
+        setLinkMap(map);
       })
       .catch(err => {
         setError(err);
         setLoading(false);
       });
   }, [articleId]);
+
+  // CodexMCP: Configure force parameters via ref
+  useEffect(() => {
+    if (!graphRef.current) return;
+
+    const charge = graphRef.current.d3Force('charge');
+    if (charge) charge.strength(-120);
+
+    const link = graphRef.current.d3Force('link');
+    if (link) {
+      link.distance(100);
+      link.strength(0.8);
+    }
+
+    graphRef.current.d3ReheatSimulation();
+  }, [graphData]);
 
   if (loading) return <GraphSkeleton />;
   if (error) return <GraphError error={error} />;
@@ -77,12 +106,13 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
     <div className="relative h-screen w-full bg-slate-950">
       <ForceGraph2D
         graphData={graphData}
+        ref={graphRef}
         nodeLabel={(node: any) => {
-          // CodexMCP: Rich tooltip with why this is related
+          // CodexMCP: Use stable map (before force-graph mutation)
           const isCenter = node.id === graphData.metadata.centerArticleId;
-          const link = graphData.links.find((l: any) => l.target === node.id || l.source === node.id);
-          const commonTags = link?.commonTags || 0;
-          const similarity = link?.value ? Math.round(link.value * 100) : 0;
+          const linkData = linkMap.get(node.id);
+          const commonTags = linkData?.commonTags || 0;
+          const similarity = linkData?.similarity ? Math.round(linkData.similarity * 100) : 0;
 
           return `
 ${node.label}
@@ -132,14 +162,11 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         onNodeHover={(node: any) => setHoveredNode(node)}
         backgroundColor="#020617"
         linkColor={() => 'rgba(148, 163, 184, 0.4)'}
-        // CodexMCP: Critical layout parameters to prevent node overlap
-        warmupTicks={40}
-        cooldownTicks={300}
-        d3AlphaDecay={0.01}
-        d3VelocityDecay={0.15}
-        linkDistance={80}
-        linkStrength={0.8}
-        d3ForceCharge={(force: any) => force.strength(-80)}
+        // CodexMCP: Layout parameters (supported props only)
+        warmupTicks={60}
+        cooldownTicks={400}
+        d3AlphaDecay={0.008}
+        d3VelocityDecay={0.12}
         width={typeof window !== 'undefined' ? window.innerWidth : 1920}
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
