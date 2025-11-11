@@ -133,8 +133,6 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           const label = node.label;
           const fontSize = 12 / globalScale;
           ctx.font = `${fontSize}px Sans-Serif`;
-          const textWidth = ctx.measureText(label).width;
-          const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.4);
 
           // Draw circle
           ctx.fillStyle = node.color;
