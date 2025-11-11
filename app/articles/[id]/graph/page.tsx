@@ -3,6 +3,7 @@
 import { Suspense, use, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import { Network } from 'lucide-react';
 
 /**
  * Article Relationship Graph Page
@@ -47,9 +48,10 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
   const [graphData, setGraphData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<any>(null);
 
   useEffect(() => {
-    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=tag&maxNodes=20`)
+    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=tag&maxNodes=30&minSimilarity=0.15`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch graph data');
         return res.json();
@@ -68,18 +70,68 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
   if (error) return <GraphError error={error} />;
   if (!graphData) return null;
 
+  // Find center article for display
+  const centerNode = graphData.nodes.find((n: any) => n.id === graphData.metadata.centerArticleId);
+
   return (
     <div className="relative h-screen w-full bg-slate-950">
       <ForceGraph2D
         graphData={graphData}
-        nodeLabel="label"
+        nodeLabel={(node: any) => {
+          // CodexMCP: Rich tooltip with why this is related
+          const isCenter = node.id === graphData.metadata.centerArticleId;
+          const link = graphData.links.find((l: any) => l.target === node.id || l.source === node.id);
+          const commonTags = link?.commonTags || 0;
+          const similarity = link?.value ? Math.round(link.value * 100) : 0;
+
+          return `
+${node.label}
+
+${isCenter ? '[この記事を中心に関連記事を表示]' : `
+関連度: ${similarity}%
+共通タグ数: ${commonTags}個
+カテゴリ: ${node.category}
+`}
+${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
+`.trim();
+        }}
         nodeVal="val"
         nodeColor="color"
-        linkWidth={(link: any) => link.value * 5}
-        linkDirectionalParticles={2}
+        nodeCanvasObject={(node: any, ctx: any, globalScale: number) => {
+          // CodexMCP: Draw center node with special border
+          const isCenter = node.id === graphData.metadata.centerArticleId;
+          const label = node.label;
+          const fontSize = 12 / globalScale;
+          ctx.font = `${fontSize}px Sans-Serif`;
+          const textWidth = ctx.measureText(label).width;
+          const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.4);
+
+          // Draw circle
+          ctx.fillStyle = node.color;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, Math.sqrt(node.val) * 4, 0, 2 * Math.PI, false);
+          ctx.fill();
+
+          // CodexMCP: Draw border for center node
+          if (isCenter) {
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 3 / globalScale;
+            ctx.stroke();
+          }
+
+          // Draw label
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillText(label.replace('[中心] ', ''), node.x, node.y + Math.sqrt(node.val) * 4 + fontSize);
+        }}
+        linkWidth={(link: any) => Math.max(link.value * 8, 1)}
+        linkDirectionalParticles={3}
+        linkDirectionalParticleWidth={4}
         onNodeClick={(node: any) => router.push(node.url)}
+        onNodeHover={(node: any) => setHoveredNode(node)}
         backgroundColor="#020617"
-        linkColor={() => 'rgba(148, 163, 184, 0.3)'}
+        linkColor={() => 'rgba(148, 163, 184, 0.4)'}
         d3AlphaDecay={0.02}
         d3VelocityDecay={0.3}
         cooldownTicks={100}
@@ -87,15 +139,87 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
 
-      <div className="absolute top-4 left-4 bg-slate-900/90 p-4 rounded-lg shadow-lg">
-        <h2 className="text-lg font-bold text-white mb-2">Article Relationship Graph</h2>
-        <p className="text-sm text-slate-300">
-          Nodes: {graphData.nodes.length} | Links: {graphData.links.length}
-        </p>
-        <p className="text-sm text-slate-400 mt-1">
-          Algorithm: {graphData.metadata.algorithm}
-        </p>
+      {/* CodexMCP: Legend card (always visible) */}
+      <div className="absolute top-4 left-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-xs">
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+          <Network className="h-4 w-4" />
+          グラフの見方
+        </h3>
+        <div className="space-y-2 text-xs text-slate-300">
+          <div className="flex items-start gap-2">
+            <div className="w-4 h-4 rounded-full bg-amber-400 border-2 border-white shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium text-white">中心ノード（大・黄色・白枠）</div>
+              <div className="text-slate-400">現在の記事</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <div className="w-3 h-3 rounded-full bg-indigo-500 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">関連記事（小・色付き）</div>
+              <div className="text-slate-400">色 = カテゴリ、大きさ = 品質</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <div className="w-8 h-0.5 bg-slate-400 shrink-0 mt-2" />
+            <div>
+              <div className="font-medium">線の太さ = 関連度</div>
+              <div className="text-slate-400">太いほど関連性が高い</div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 pt-3 border-t border-slate-700 text-xs text-slate-400">
+          クリック: 記事を開く | ホバー: 詳細表示
+        </div>
       </div>
+
+      {/* Center article info */}
+      <div className="absolute top-4 right-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-sm">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-3 h-3 rounded-full bg-amber-400 border-2 border-white" />
+          <h3 className="text-sm font-bold text-white">中心記事</h3>
+        </div>
+        {centerNode && (
+          <div className="space-y-1">
+            <p className="text-sm text-white font-medium">{centerNode.label.replace('[中心] ', '')}</p>
+            <p className="text-xs text-slate-400">
+              カテゴリ: {centerNode.category} | 品質: {Math.round(centerNode.val / 3)}
+            </p>
+          </div>
+        )}
+        <div className="mt-2 pt-2 border-t border-slate-700">
+          <p className="text-xs text-slate-300">
+            関連記事: {graphData.nodes.length - 1}件表示
+          </p>
+        </div>
+      </div>
+
+      {/* Hovered node tooltip */}
+      {hoveredNode && hoveredNode.id !== graphData.metadata.centerArticleId && (
+        <div className="absolute bottom-4 left-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-md">
+          <h4 className="text-sm font-bold text-white mb-2">{hoveredNode.label}</h4>
+          {hoveredNode.summary && (
+            <p className="text-xs text-slate-300 mb-2">{hoveredNode.summary.substring(0, 120)}...</p>
+          )}
+          <div className="space-y-1 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400">カテゴリ:</span>
+              <span className="text-white">{hoveredNode.category}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400">品質スコア:</span>
+              <span className="text-white">{Math.round(hoveredNode.val)}</span>
+            </div>
+            {hoveredNode.primaryTag && (
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">主要タグ:</span>
+                <span className="text-white">{hoveredNode.primaryTag}</span>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mt-2">クリックで記事を開く</p>
+        </div>
+      )}
     </div>
   );
 }

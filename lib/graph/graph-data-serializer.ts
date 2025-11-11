@@ -183,9 +183,9 @@ export class GraphDataSerializer {
 
     return {
       id: input.id,
-      label: input.title,
-      val: input.qualityScore,
-      color: isCenter ? this.adjustColorForCenter(color) : color,
+      label: isCenter ? `[中心] ${input.title}` : input.title,  // CodexMCP: Badge for center node
+      val: isCenter ? input.qualityScore * 3 : input.qualityScore,  // CodexMCP: 3x size for center
+      color: isCenter ? '#FBBF24' : color,  // CodexMCP: Special color (Amber) for center
       category,
       publishedAt: this.toISOString(input.publishedAt),
       url: input.url || `/articles/${input.id}`,
