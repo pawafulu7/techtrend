@@ -4,6 +4,8 @@ import { GraphDataSerializer } from '@/lib/graph/graph-data-serializer';
 import { graphOptionsSchema } from '@/lib/types/graph';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { logger, sanitizeError } from '@/lib/logger';
+import { VectorSearchService } from '@/lib/rag/vector-search-service';  // Phase 2
+import { prisma } from '@/lib/prisma';  // Phase 2
 
 /**
  * Article Relationship Graph API
@@ -57,18 +59,18 @@ export async function GET(
       span.setAttribute('maxNodes', options.maxNodes);
       span.setAttribute('minSimilarity', options.minSimilarity);
 
-      // Phase 1: Only tag-based algorithm is supported
-      if (options.algorithm !== 'tag') {
+      // Phase 2: Support tag and embedding algorithms
+      if (options.algorithm !== 'tag' && options.algorithm !== 'embedding') {
         span.setStatus({
           code: SpanStatusCode.ERROR,
-          message: 'Only tag algorithm supported in Phase 1',
+          message: 'Unsupported algorithm',
         });
         span.end();
 
         return NextResponse.json(
           {
-            error: 'Only tag-based algorithm is supported in Phase 1',
-            supportedAlgorithms: ['tag'],
+            error: 'Unsupported algorithm',
+            supportedAlgorithms: ['tag', 'embedding'],
           },
           { status: 400 }
         );
@@ -87,8 +89,8 @@ export async function GET(
         return NextResponse.json({ error: 'Article not found' }, { status: 404 });
       }
 
-      // Early return if article has no tags
-      if (targetArticle.tags.length === 0) {
+      // Early return if article has no tags (tag algorithm only)
+      if (targetArticle.tags.length === 0 && options.algorithm === 'tag') {
         const emptyGraphData = {
           nodes: [
             {
@@ -124,64 +126,120 @@ export async function GET(
         return NextResponse.json(emptyGraphData);
       }
 
-      // Get tag IDs
-      const tagIds = targetArticle.tags.map(tag => tag.id);
+      // Phase 2: Algorithm-specific processing
+      let graphData;
 
-      // Fetch related articles (tag-based, uses cache)
-      const relatedArticlesRaw = await articleDetailCache.getRelatedArticles(articleId, tagIds);
+      if (options.algorithm === 'tag') {
+        // Tag-based algorithm (Phase 1)
+        const tagIds = targetArticle.tags.map(tag => tag.id);
 
-      // Helper: Parse tags from concatenated string
-      const parseTags = (tagsString: string | null): Array<{ id: string; name: string }> => {
-        if (!tagsString) return [];
+        // Fetch related articles (tag-based, uses cache)
+        const relatedArticlesRaw = await articleDetailCache.getRelatedArticles(articleId, tagIds);
 
-        return tagsString
-          .split('||')
-          .filter(tag => tag && tag.includes('::'))
-          .map(tag => {
-            const [id, name] = tag.split('::', 2);
-            return { id, name };
-          });
-      };
+        // Helper: Parse tags from concatenated string
+        const parseTags = (tagsString: string | null): Array<{ id: string; name: string }> => {
+          if (!tagsString) return [];
 
-      // Calculate Jaccard similarity for each related article
-      const targetTagSet = new Set(tagIds);
-
-      const relatedArticlesWithSimilarity = relatedArticlesRaw.map(article => {
-        const articleTags = parseTags(article.tags as string | null);
-        const articleTagIds = new Set(articleTags.map(t => t.id));
-        const intersection = new Set([...targetTagSet].filter(x => articleTagIds.has(x)));
-        const union = new Set([...targetTagSet, ...articleTagIds]);
-        const similarity = union.size > 0 ? intersection.size / union.size : 0;
-
-        return {
-          id: article.id,
-          title: article.title,
-          summary: article.summary || '',
-          url: article.url,
-          sourceName: article.sourceName as string,
-          publishedAt: article.publishedAt,
-          qualityScore: article.qualityScore,
-          tags: articleTags,
-          similarity: Math.round(similarity * 100) / 100,
-          commonTags: Number(article.commonTags),
-          thumbnail: (article as any).thumbnail || undefined,
+          return tagsString
+            .split('||')
+            .filter(tag => tag && tag.includes('::'))
+            .map(tag => {
+              const [id, name] = tag.split('::', 2);
+              return { id, name };
+            });
         };
-      });
 
-      // Sort by commonTags first, then similarity (match existing related API behavior)
-      // CodexMCP: commonTags as primary key ensures tag-sharing articles come first
-      const sortedArticles = relatedArticlesWithSimilarity
-        .sort((a, b) => {
-          if (b.commonTags !== a.commonTags) {
-            return b.commonTags - a.commonTags;
-          }
-          return b.similarity - a.similarity;
-        })
-        .filter(a => a.similarity >= options.minSimilarity)
-        .slice(0, options.maxNodes);
+        // Calculate Jaccard similarity for each related article
+        const targetTagSet = new Set(tagIds);
 
-      // Serialize to GraphData format (CodexMCP: server-side transformation)
-      const graphData = GraphDataSerializer.serializeTagBased(targetArticle, sortedArticles);
+        const relatedArticlesWithSimilarity = relatedArticlesRaw.map(article => {
+          const articleTags = parseTags(article.tags as string | null);
+          const articleTagIds = new Set(articleTags.map(t => t.id));
+          const intersection = new Set([...targetTagSet].filter(x => articleTagIds.has(x)));
+          const union = new Set([...targetTagSet, ...articleTagIds]);
+          const similarity = union.size > 0 ? intersection.size / union.size : 0;
+
+          return {
+            id: article.id,
+            title: article.title,
+            summary: article.summary || '',
+            url: article.url,
+            sourceName: article.sourceName as string,
+            publishedAt: article.publishedAt,
+            qualityScore: article.qualityScore,
+            tags: articleTags,
+            similarity: Math.round(similarity * 100) / 100,
+            commonTags: Number(article.commonTags),
+            thumbnail: (article as any).thumbnail || undefined,
+          };
+        });
+
+        // Sort by commonTags first, then similarity (match existing related API behavior)
+        // CodexMCP: commonTags as primary key ensures tag-sharing articles come first
+        const sortedArticles = relatedArticlesWithSimilarity
+          .sort((a, b) => {
+            if (b.commonTags !== a.commonTags) {
+              return b.commonTags - a.commonTags;
+            }
+            return b.similarity - a.similarity;
+          })
+          .filter(a => a.similarity >= options.minSimilarity)
+          .slice(0, options.maxNodes);
+
+        // Serialize to GraphData format (CodexMCP: server-side transformation)
+        graphData = GraphDataSerializer.serializeTagBased(targetArticle, sortedArticles);
+
+      } else if (options.algorithm === 'embedding') {
+        // Embedding-based algorithm (Phase 2)
+        const vectorSearch = new VectorSearchService(prisma);
+
+        const embeddingResults = await vectorSearch.searchByArticleId(articleId, {
+          topK: options.maxNodes,
+          similarityThreshold: options.minSimilarity,
+        });
+
+        // Short-circuit if no embedding found (CodexMCP: graceful degradation)
+        if (embeddingResults.length === 0) {
+          logger.warn({ articleId }, 'No embedding results, returning empty graph');
+
+          const emptyGraphData = {
+            nodes: [
+              {
+                id: targetArticle.id,
+                label: targetArticle.title,
+                val: targetArticle.qualityScore,
+                color: '#6B7280',
+                category: 'Other',
+                publishedAt: targetArticle.publishedAt.toISOString(),
+                url: `/articles/${targetArticle.id}`,
+              },
+            ],
+            links: [],
+            metadata: {
+              centerArticleId: targetArticle.id,
+              algorithm: 'embedding' as const,
+              nodeCount: 1,
+              linkCount: 0,
+              timestamp: new Date().toISOString(),
+              options,
+              resultStats: {
+                maxSimilarity: 0,
+                minSimilarity: 0,
+                avgSimilarity: 0,
+                categoryCounts: { Other: 1 },
+              },
+            },
+          };
+
+          span.setStatus({ code: SpanStatusCode.OK });
+          span.end();
+
+          return NextResponse.json(emptyGraphData);
+        }
+
+        // Serialize to GraphData format (Phase 2: embedding-based)
+        graphData = GraphDataSerializer.serializeEmbeddingBased(targetArticle, embeddingResults);
+      }
 
       const elapsedMs = Date.now() - startTime;
 
