@@ -99,7 +99,7 @@ export class GraphDataSerializer {
         commonTags: this.findArticleCommonTags(relatedArticles, node.id),
       }));
 
-      // Calculate result stats
+      // Calculate result stats (CodexMCP: guard against empty arrays)
       const similarities = links.map(l => l.value);
       const categoryCounts = this.countCategories([centerNode, ...relatedNodes]);
 
@@ -115,12 +115,14 @@ export class GraphDataSerializer {
           options: {
             algorithm: 'tag',
             maxNodes: relatedArticles.length,
-            minSimilarity: Math.min(...similarities),
+            minSimilarity: similarities.length > 0 ? Math.min(...similarities) : 0,
           },
           resultStats: {
-            maxSimilarity: Math.max(...similarities),
-            minSimilarity: Math.min(...similarities),
-            avgSimilarity: similarities.reduce((sum, val) => sum + val, 0) / similarities.length,
+            maxSimilarity: similarities.length > 0 ? Math.max(...similarities) : 0,
+            minSimilarity: similarities.length > 0 ? Math.min(...similarities) : 0,
+            avgSimilarity: similarities.length > 0
+              ? similarities.reduce((sum, val) => sum + val, 0) / similarities.length
+              : 0,
             categoryCounts,
           },
         },

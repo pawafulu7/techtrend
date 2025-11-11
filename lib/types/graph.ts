@@ -116,15 +116,15 @@ export const graphOptionsSchema = z.object({
     .int()
     .min(5, 'Minimum 5 nodes for meaningful graph')
     .max(150, 'Maximum 150 nodes for performance')
-    .default(20)
+    .default(30)
     .describe('Maximum number of related articles to include'),
 
   minSimilarity: z
     .number()
     .min(0, 'Similarity must be between 0 and 1')
     .max(1, 'Similarity must be between 0 and 1')
-    .default(0.3)
-    .describe('Minimum similarity threshold for edges'),
+    .default(0.15)
+    .describe('Minimum similarity threshold for edges (Jaccard coefficient)'),
 
   depth: z
     .number()

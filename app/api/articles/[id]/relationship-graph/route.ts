@@ -168,9 +168,15 @@ export async function GET(
         };
       });
 
-      // Sort by similarity desc (CodexMCP: best results first)
+      // Sort by commonTags first, then similarity (match existing related API behavior)
+      // CodexMCP: commonTags as primary key ensures tag-sharing articles come first
       const sortedArticles = relatedArticlesWithSimilarity
-        .sort((a, b) => b.similarity - a.similarity)
+        .sort((a, b) => {
+          if (b.commonTags !== a.commonTags) {
+            return b.commonTags - a.commonTags;
+          }
+          return b.similarity - a.similarity;
+        })
         .filter(a => a.similarity >= options.minSimilarity)
         .slice(0, options.maxNodes);
 
