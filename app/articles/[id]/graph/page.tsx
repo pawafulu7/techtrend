@@ -84,12 +84,12 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
     if (!graphRef.current) return;
 
     const charge = graphRef.current.d3Force('charge');
-    if (charge) charge.strength(-120);
+    if (charge) charge.strength(-200);  // Stronger repulsion for less crowding
 
     const link = graphRef.current.d3Force('link');
     if (link) {
-      link.distance(100);
-      link.strength(0.8);
+      link.distance(150);  // Longer links for more space
+      link.strength(0.6);  // Slightly weaker to allow spreading
     }
 
     graphRef.current.d3ReheatSimulation();
