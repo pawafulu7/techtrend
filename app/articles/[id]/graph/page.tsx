@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, use, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import type { ComponentType } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Network } from 'lucide-react';
 import type { GraphData } from '@/lib/types/graph';
 
@@ -31,20 +31,18 @@ const ForceGraph2D = dynamic<any>(
   { ssr: false, loading: () => <GraphSkeleton /> }
 );
 
-export default function ArticleRelationshipGraphPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function ArticleRelationshipGraphPage() {
   return (
     <Suspense fallback={<GraphSkeleton />}>
-      <GraphContainer params={params} />
+      <GraphContainer />
     </Suspense>
   );
 }
 
-function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
-  const { id: articleId } = use(params);
+function GraphContainer() {
+  // P1 Fix: Use useParams() instead of use() on params
+  const params = useParams();
+  const articleId = params.id as string;
   const router = useRouter();
 
   // Fetch graph data
