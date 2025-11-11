@@ -26,6 +26,11 @@ export interface SearchResult {
   publishedAt: Date;
   sourceId: string;
   embeddingKey: string;
+  // Phase 2: Optional fields for graph visualization
+  qualityScore?: number;
+  sourceName?: string;
+  tags?: Array<{ id: string; name: string }>;
+  thumbnail?: string | null;
 }
 
 export class VectorSearchService {
