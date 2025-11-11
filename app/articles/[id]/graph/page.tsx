@@ -132,9 +132,14 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         onNodeHover={(node: any) => setHoveredNode(node)}
         backgroundColor="#020617"
         linkColor={() => 'rgba(148, 163, 184, 0.4)'}
-        d3AlphaDecay={0.02}
-        d3VelocityDecay={0.3}
-        cooldownTicks={100}
+        // CodexMCP: Critical layout parameters to prevent node overlap
+        warmupTicks={40}
+        cooldownTicks={300}
+        d3AlphaDecay={0.01}
+        d3VelocityDecay={0.15}
+        linkDistance={80}
+        linkStrength={0.8}
+        d3ForceCharge={(force: any) => force.strength(-80)}
         width={typeof window !== 'undefined' ? window.innerWidth : 1920}
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
