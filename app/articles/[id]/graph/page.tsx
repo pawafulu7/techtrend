@@ -1,7 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
-import { use} from 'react';
+import { Suspense, use, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 
@@ -23,8 +22,8 @@ import { useRouter } from 'next/navigation';
  */
 
 // CodexMCP: Dynamic import to avoid SSR issues
-const ForceGraph2D = dynamic(
-  () => import('react-force-graph').then(m => m.ForceGraph2D as any),
+const ForceGraph2D = dynamic<any>(
+  () => import('react-force-graph').then(m => m.ForceGraph2D),
   { ssr: false, loading: () => <GraphSkeleton /> }
 );
 
@@ -45,11 +44,11 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
 
   // Fetch graph data
-  const [graphData, setGraphData] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<Error | null>(null);
+  const [graphData, setGraphData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetch(`/api/articles/${articleId}/relationship-graph?algorithm=tag&maxNodes=20`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch graph data');
