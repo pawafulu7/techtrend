@@ -1,11 +1,16 @@
 'use client';
 
 import { Suspense, useState, useEffect, useRef } from 'react';
-import type { ComponentType } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useParams } from 'next/navigation';
 import { Network } from 'lucide-react';
-import type { GraphData } from '@/lib/types/graph';
+import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
+
+interface LinkMetadata {
+  similarity: number;
+  commonTags?: number;
+  type: GraphLink['type'];
+}
 
 /**
  * Article Relationship Graph Page
@@ -49,8 +54,8 @@ function GraphContainer() {
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<any>(null);
-  const [linkMap, setLinkMap] = useState<Map<string, any>>(new Map());
+  const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
+  const [linkMap, setLinkMap] = useState<Map<string, LinkMetadata>>(new Map());
   const graphRef = useRef<any>(null);
 
   useEffect(() => {
@@ -222,7 +227,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           <div className="space-y-1">
             <p className="text-sm text-white font-medium">{centerNode.label.replace('[中心] ', '')}</p>
             <p className="text-xs text-slate-400">
-              カテゴリ: {centerNode.category} | 品質: {Math.round(centerNode.val / 3)}
+              カテゴリ: {centerNode.category} | 品質: {Math.round(centerNode.val)}
             </p>
           </div>
         )}
