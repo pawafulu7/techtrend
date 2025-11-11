@@ -115,6 +115,7 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
 interface CollectResult {
   newArticles: number;
   duplicates: number;
+  updated: number;
 }
 
 const DEFAULT_COLLECT_CONCURRENCY = 5;
@@ -129,6 +130,7 @@ interface ProcessSourceContext {
 interface ProcessSourceResult {
   newArticles: number;
   duplicates: number;
+  updated: number;
 }
 
 function resolveCollectConcurrency(): number {
@@ -152,10 +154,11 @@ async function processSource({
   recentTitlesMutex,
   enricherFactory
 }: ProcessSourceContext): Promise<ProcessSourceResult> {
-  const result: ProcessSourceResult = { newArticles: 0, duplicates: 0 };
+  const result: ProcessSourceResult = { newArticles: 0, duplicates: 0, updated: 0 };
   const sourceStart = Date.now();
   let newCount = 0;
   let duplicateCount = 0;
+  let updatedCount = 0;
   let fetchedArticlesCount = 0;
   let failed = false;
 
@@ -188,7 +191,23 @@ async function processSource({
         });
 
         if (existing) {
-          duplicateCount++;
+          // content=null/empty の場合は更新を許可（全ソース共通の自己修復メカニズム）
+          if ((!existing.content || existing.content.length === 0) &&
+              article.content && article.content.length > 0) {
+            await prisma.article.update({
+              where: { id: existing.id },
+              data: {
+                content: article.content,
+                thumbnail: article.thumbnail ?? existing.thumbnail,
+                contentUpdatedAt: new Date(),
+                updatedAt: new Date(),
+              },
+            });
+            updatedCount++;
+            console.error(`   既存記事を更新（content補完）: ${article.title.substring(0, 50)}...`);
+          } else {
+            duplicateCount++;
+          }
           continue;
         }
 
@@ -296,12 +315,13 @@ async function processSource({
       }
     }
 
-    if (newCount > 0 || duplicateCount > 0) {
-      console.error(`   ✅ 新規: ${newCount}件, 重複: ${duplicateCount}件`);
+    if (newCount > 0 || duplicateCount > 0 || updatedCount > 0) {
+      console.error(`   ✅ 新規: ${newCount}件, 更新: ${updatedCount}件, 重複: ${duplicateCount}件`);
     }
 
     result.newArticles = newCount;
     result.duplicates = duplicateCount;
+    result.updated = updatedCount;
     return result;
   } catch (error) {
     failed = true;
@@ -361,18 +381,20 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
 
     let totalNewArticles = 0;
     let totalDuplicates = 0;
+    let totalUpdated = 0;
 
     settledResults.forEach(result => {
       if (result.status === 'fulfilled') {
         totalNewArticles += result.value.newArticles;
         totalDuplicates += result.value.duplicates;
+        totalUpdated += result.value.updated;
       } else {
         console.error('⚠️ ソース処理で未処理の例外が発生しました:', result.reason);
       }
     });
 
     const duration = Math.round((Date.now() - startTime) / 1000);
-    console.error(`\n📊 収集完了: 新規${totalNewArticles}件, 重複${totalDuplicates}件 (${duration}秒)`);
+    console.error(`\n📊 収集完了: 新規${totalNewArticles}件, 更新${totalUpdated}件, 重複${totalDuplicates}件 (${duration}秒)`);
 
     if (totalNewArticles > 0) {
       console.error('🔄 キャッシュを無効化中...');
@@ -389,7 +411,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       }
     }
 
-    return { newArticles: totalNewArticles, duplicates: totalDuplicates };
+    return { newArticles: totalNewArticles, duplicates: totalDuplicates, updated: totalUpdated };
 
   } catch (error) {
     console.error('❌ フィード収集エラー:', error);
