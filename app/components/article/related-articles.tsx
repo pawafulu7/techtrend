@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LinkIcon, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { LinkIcon, TrendingUp, ChevronDown, ChevronUp, Network } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
 import { useRelatedArticles } from '@/hooks/use-related-articles';
 
@@ -74,10 +74,22 @@ export function RelatedArticles({
   return (
     <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <LinkIcon className="h-5 w-5" />
-          関連記事
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <LinkIcon className="h-5 w-5" />
+            関連記事
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+          >
+            <Link href={`/articles/${articleId}/graph`} className="flex items-center gap-1.5">
+              <Network className="h-4 w-4" />
+              グラフで見る
+            </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-2 max-h-[600px] overflow-y-auto scrollbar-thin">
         {displayArticles.map((article) => {
