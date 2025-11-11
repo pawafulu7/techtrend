@@ -12,6 +12,14 @@ interface LinkMetadata {
   type: GraphLink['type'];
 }
 
+interface ForceGraphRef {
+  d3Force: (forceName: string) => any;
+  d3ReheatSimulation: () => void;
+}
+
+// Utility function for safe label prefix removal
+const removeCenterPrefix = (label: string) => label.replace(/^\[中心\]\s*/, '');
+
 /**
  * Article Relationship Graph Page
  *
@@ -56,7 +64,7 @@ function GraphContainer() {
   const [error, setError] = useState<Error | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [linkMap, setLinkMap] = useState<Map<string, LinkMetadata>>(new Map());
-  const graphRef = useRef<any>(null);
+  const graphRef = useRef<ForceGraphRef | null>(null);
 
   useEffect(() => {
     // CodeRabbit: AbortController for cleanup
@@ -74,9 +82,10 @@ function GraphContainer() {
         setLoading(false);
 
         // CodexMCP: Create stable map for tooltip lookup (before force-graph mutates links)
-        const map = new Map();
-        data.links.forEach((link: any) => {
-          map.set(link.target, {
+        const map = new Map<string, LinkMetadata>();
+        data.links.forEach((link: GraphLink) => {
+          const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+          map.set(targetId, {
             similarity: link.value,
             commonTags: link.commonTags,
             type: link.type,
@@ -121,7 +130,7 @@ function GraphContainer() {
       <ForceGraph2D
         graphData={graphData}
         ref={graphRef}
-        nodeLabel={(node: any) => {
+        nodeLabel={(node: GraphNode) => {
           // CodexMCP: Use stable map (before force-graph mutation)
           const isCenter = node.id === graphData.metadata?.centerArticleId;
           const linkData = linkMap.get(node.id);
@@ -141,7 +150,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         }}
         nodeVal="val"
         nodeColor="color"
-        nodeCanvasObject={(node: any, ctx: any, globalScale: number) => {
+        nodeCanvasObject={(node: GraphNode & { x: number; y: number }, ctx: CanvasRenderingContext2D, globalScale: number) => {
           // CodexMCP: Draw center node with special border
           const isCenter = node.id === graphData.metadata?.centerArticleId;
           const label = node.label;
@@ -161,17 +170,17 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
             ctx.stroke();
           }
 
-          // Draw label
+          // Draw label (safe prefix removal)
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = '#FFFFFF';
-          ctx.fillText(label.replace('[中心] ', ''), node.x, node.y + Math.sqrt(node.val) * 4 + fontSize);
+          ctx.fillText(removeCenterPrefix(label), node.x, node.y + Math.sqrt(node.val) * 4 + fontSize);
         }}
-        linkWidth={(link: any) => Math.max(link.value * 8, 1)}
+        linkWidth={(link: GraphLink) => Math.max(link.value * 8, 1)}
         linkDirectionalParticles={3}
         linkDirectionalParticleWidth={4}
-        onNodeClick={(node: any) => router.push(node.url)}
-        onNodeHover={(node: any) => setHoveredNode(node)}
+        onNodeClick={(node: GraphNode) => router.push(node.url)}
+        onNodeHover={(node: GraphNode | null) => setHoveredNode(node)}
         backgroundColor="#020617"
         linkColor={() => 'rgba(148, 163, 184, 0.4)'}
         // CodexMCP: Layout parameters (supported props only)
@@ -225,7 +234,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         </div>
         {centerNode && (
           <div className="space-y-1">
-            <p className="text-sm text-white font-medium">{centerNode.label.replace('[中心] ', '')}</p>
+            <p className="text-sm text-white font-medium">{removeCenterPrefix(centerNode.label)}</p>
             <p className="text-xs text-slate-400">
               カテゴリ: {centerNode.category} | 品質: {Math.round(centerNode.val)}
             </p>
