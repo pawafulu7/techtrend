@@ -21,9 +21,9 @@ import { useRouter } from 'next/navigation';
  * @see Plan: .claude/docs/plan/plan_20251111_233131_021_article-relationship-graph.md
  */
 
-// CodexMCP: Dynamic import to avoid SSR issues
+// CodexMCP: Use react-force-graph-2d to avoid AFRAME dependency
 const ForceGraph2D = dynamic<any>(
-  () => import('react-force-graph').then(m => m.ForceGraph2D),
+  () => import('react-force-graph-2d'),
   { ssr: false, loading: () => <GraphSkeleton /> }
 );
 
