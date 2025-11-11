@@ -1,9 +1,11 @@
 'use client';
 
 import { Suspense, use, useState, useEffect, useRef } from 'react';
+import type { ComponentType } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Network } from 'lucide-react';
+import type { GraphData } from '@/lib/types/graph';
 
 /**
  * Article Relationship Graph Page
@@ -23,6 +25,7 @@ import { Network } from 'lucide-react';
  */
 
 // CodexMCP: Use react-force-graph-2d to avoid AFRAME dependency
+// Note: Using 'any' type due to complex FCwithRef type from library
 const ForceGraph2D = dynamic<any>(
   () => import('react-force-graph-2d'),
   { ssr: false, loading: () => <GraphSkeleton /> }
@@ -45,7 +48,7 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
 
   // Fetch graph data
-  const [graphData, setGraphData] = useState<any>(null);
+  const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
@@ -53,7 +56,12 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
   const graphRef = useRef<any>(null);
 
   useEffect(() => {
-    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=tag&maxNodes=30&minSimilarity=0.2`)
+    // CodeRabbit: AbortController for cleanup
+    const abortController = new AbortController();
+
+    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=tag&maxNodes=30&minSimilarity=0.2`, {
+      signal: abortController.signal,
+    })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch graph data');
         return res.json();
@@ -74,9 +82,12 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
         setLinkMap(map);
       })
       .catch(err => {
+        if (err.name === 'AbortError') return;  // CodeRabbit: Ignore abort errors
         setError(err);
         setLoading(false);
       });
+
+    return () => abortController.abort();  // CodeRabbit: Cleanup on unmount
   }, [articleId]);
 
   // CodexMCP: Configure force parameters via ref
@@ -100,7 +111,7 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
   if (!graphData) return null;
 
   // Find center article for display
-  const centerNode = graphData.nodes.find((n: any) => n.id === graphData.metadata.centerArticleId);
+  const centerNode = graphData.nodes.find((n: any) => n.id === graphData.metadata?.centerArticleId);
 
   return (
     <div className="relative h-screen w-full bg-slate-950">
@@ -109,7 +120,7 @@ function GraphContainer({ params }: { params: Promise<{ id: string }> }) {
         ref={graphRef}
         nodeLabel={(node: any) => {
           // CodexMCP: Use stable map (before force-graph mutation)
-          const isCenter = node.id === graphData.metadata.centerArticleId;
+          const isCenter = node.id === graphData.metadata?.centerArticleId;
           const linkData = linkMap.get(node.id);
           const commonTags = linkData?.commonTags || 0;
           const similarity = linkData?.similarity ? Math.round(linkData.similarity * 100) : 0;
@@ -129,7 +140,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         nodeColor="color"
         nodeCanvasObject={(node: any, ctx: any, globalScale: number) => {
           // CodexMCP: Draw center node with special border
-          const isCenter = node.id === graphData.metadata.centerArticleId;
+          const isCenter = node.id === graphData.metadata?.centerArticleId;
           const label = node.label;
           const fontSize = 12 / globalScale;
           ctx.font = `${fontSize}px Sans-Serif`;
@@ -225,7 +236,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
       </div>
 
       {/* Hovered node tooltip */}
-      {hoveredNode && hoveredNode.id !== graphData.metadata.centerArticleId && (
+      {hoveredNode && hoveredNode.id !== graphData.metadata?.centerArticleId && (
         <div className="absolute bottom-4 left-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-md">
           <h4 className="text-sm font-bold text-white mb-2">{hoveredNode.label}</h4>
           {hoveredNode.summary && (
