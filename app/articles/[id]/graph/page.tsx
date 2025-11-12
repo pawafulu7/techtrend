@@ -70,7 +70,7 @@ function GraphContainer() {
     // CodeRabbit: AbortController for cleanup
     const abortController = new AbortController();
 
-    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=30&minSimilarity=0.3`, {
+    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=12&minSimilarity=0.4`, {
       signal: abortController.signal,
     })
       .then(res => {
@@ -111,20 +111,20 @@ function GraphContainer() {
       if (!graphRef.current) return;
 
       const charge = graphRef.current.d3Force('charge');
-      if (charge) charge.strength(-250);  // Stronger repulsion
+      if (charge) charge.strength(-400);  // Much stronger repulsion
 
       const link = graphRef.current.d3Force('link');
       if (link) {
-        link.distance(180);  // Longer links for more space
-        link.strength(0.6);
+        link.distance(250);  // Much longer links
+        link.strength(0.4);  // Weaker to allow more spreading
       }
 
       // CodexMCP Phase 2: Configure collision force to prevent node overlap
       // Note: react-force-graph-2d provides d3 forces internally
       const collide = graphRef.current.d3Force('collide');
       if (collide && typeof collide.radius === 'function') {
-        // Radius = sqrt(val) * 6 (larger than visual radius * 4)
-        collide.radius((node: any) => Math.sqrt(node.val || 25) * 6);
+        // Larger radius for more spacing
+        collide.radius((node: any) => Math.sqrt(node.val || 25) * 8);
       }
 
       graphRef.current.d3ReheatSimulation();
@@ -200,10 +200,10 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         backgroundColor="#020617"
         linkColor={() => 'rgba(148, 163, 184, 0.4)'}
         // CodexMCP: Layout parameters (supported props only)
-        warmupTicks={60}
-        cooldownTicks={400}
-        d3AlphaDecay={0.008}
-        d3VelocityDecay={0.12}
+        warmupTicks={100}
+        cooldownTicks={600}
+        d3AlphaDecay={0.005}
+        d3VelocityDecay={0.08}
         width={typeof window !== 'undefined' ? window.innerWidth : 1920}
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
