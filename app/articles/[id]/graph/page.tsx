@@ -1,9 +1,10 @@
 'use client';
 
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useParams } from 'next/navigation';
 import { Network } from 'lucide-react';
+import { forceCollide } from 'd3-force';
 import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
 
 interface LinkMetadata {
@@ -102,37 +103,47 @@ function GraphContainer() {
     return () => abortController.abort();  // CodeRabbit: Cleanup on unmount
   }, [articleId]);
 
-  // CodexMCP: Configure force parameters via ref (wait for mount)
-  useEffect(() => {
-    if (!graphData) return;
+  // CodexMCP: Configure force parameters (useLayoutEffect for sync)
+  useLayoutEffect(() => {
+    if (!graphData || !graphRef.current) return;
 
-    const id = requestAnimationFrame(() => {
-      const instance = graphRef.current;
-      if (!instance) return;
+    const fg = graphRef.current;
 
-      const charge = instance.d3Force('charge');
-      if (charge) charge.strength(-200);
+    // Set charge force
+    const chargeForce = fg.d3Force('charge');
+    if (chargeForce) chargeForce.strength(-240);
 
-      const link = instance.d3Force('link');
-      if (link) {
-        link.distance(150);
-        link.strength(0.6);
-      }
+    // Set link force
+    const linkForce = fg.d3Force('link');
+    if (linkForce) {
+      linkForce.distance(140);
+      linkForce.strength(0.8);
+    }
 
-      // CodexMCP: Add collide force to prevent overlap
-      import('d3-force').then((d3) => {
-        if (instance) {
-          const collideForce = d3.forceCollide((node: any) => Math.sqrt(node.val) * 4 + 12);
-          (instance as any).d3Force('collide', collideForce);
-          instance.d3ReheatSimulation();
-        }
-      }).catch(() => {
-        // Fallback: reheat without collide
-        instance.d3ReheatSimulation();
+    // CodexMCP: Add collide force to prevent overlap
+    const collide = forceCollide<GraphNode>()
+      .radius((node) => Math.sqrt(node.val ?? 1) * 6 + 16)
+      .strength(1)
+      .iterations(2);
+
+    (fg as any).d3Force('collide', collide);
+    fg.d3ReheatSimulation();
+
+    // DEBUG: Log force values (CodexMCP recommendation)
+    if (process.env.NODE_ENV === 'development') {
+      console.table({
+        chargeStrength: chargeForce?.strength?.(),
+        linkDistance: linkForce?.distance?.(),
+        linkStrength: linkForce?.strength?.(),
+        collideRadius: collide.radius()(graphData.nodes[1] || graphData.nodes[0]),
+        collideStrength: collide.strength(),
       });
-    });
+    }
 
-    return () => cancelAnimationFrame(id);
+    return () => {
+      // Cleanup: remove collide force
+      (fg as any).d3Force('collide', null);
+    };
   }, [graphData]);
 
   if (loading) return <GraphSkeleton />;
