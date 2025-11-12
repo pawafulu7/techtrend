@@ -105,6 +105,13 @@ function GraphContainer() {
 
   // CodexMCP: Configure force parameters (useLayoutEffect for sync)
   useLayoutEffect(() => {
+    console.count('layout effect');
+    console.log({
+      graphDataReady: !!graphData,
+      refReady: !!graphRef.current,
+      nodeCount: graphData?.nodes?.length
+    });
+
     if (!graphData || !graphRef.current) return;
 
     const fg = graphRef.current;
@@ -130,15 +137,14 @@ function GraphContainer() {
     fg.d3ReheatSimulation();
 
     // DEBUG: Log force values (CodexMCP recommendation)
-    if (process.env.NODE_ENV === 'development') {
-      console.table({
-        chargeStrength: chargeForce?.strength?.(),
-        linkDistance: linkForce?.distance?.(),
-        linkStrength: linkForce?.strength?.(),
-        collideRadius: collide.radius()(graphData.nodes[1] || graphData.nodes[0]),
-        collideStrength: collide.strength(),
-      });
-    }
+    console.table({
+      chargeStrength: chargeForce?.strength?.(),
+      linkDistance: linkForce?.distance?.(),
+      linkStrength: linkForce?.strength?.(),
+      collideRadius: collide.radius()(graphData.nodes[1] || graphData.nodes[0]),
+      collideStrength: collide.strength(),
+      nodeCount: graphData.nodes.length,
+    });
 
     return () => {
       // Cleanup: remove collide force
