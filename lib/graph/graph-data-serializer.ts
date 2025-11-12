@@ -317,7 +317,7 @@ export class GraphDataSerializer {
     return {
       id: input.id,
       label: isCenter ? `[中心] ${input.title}` : input.title,  // CodexMCP: Badge for center node
-      val: isCenter ? qualityScore * 3 : qualityScore,  // CodexMCP: 3x size for center
+      val: isCenter ? qualityScore * 2 : qualityScore,  // CodexMCP Phase 2: 3x → 2x for smaller center
       color: isCenter ? '#FBBF24' : color,  // CodexMCP: Special color (Amber) for center
       category,
       publishedAt: this.toISOString(input.publishedAt),
