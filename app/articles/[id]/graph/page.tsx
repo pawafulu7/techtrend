@@ -102,20 +102,36 @@ function GraphContainer() {
     return () => abortController.abort();  // CodeRabbit: Cleanup on unmount
   }, [articleId]);
 
-  // CodexMCP: Configure force parameters via ref
+  // CodexMCP Phase 2: Configure force parameters via ref
   useEffect(() => {
-    if (!graphRef.current) return;
+    if (!graphRef.current || !graphData) return;
 
-    const charge = graphRef.current.d3Force('charge');
-    if (charge) charge.strength(-200);  // Stronger repulsion for less crowding
+    // Retry force config until ref is ready (CodexMCP: timing issue fix)
+    const configureForces = () => {
+      if (!graphRef.current) return;
 
-    const link = graphRef.current.d3Force('link');
-    if (link) {
-      link.distance(150);  // Longer links for more space
-      link.strength(0.6);  // Slightly weaker to allow spreading
-    }
+      const charge = graphRef.current.d3Force('charge');
+      if (charge) charge.strength(-250);  // Stronger repulsion
 
-    graphRef.current.d3ReheatSimulation();
+      const link = graphRef.current.d3Force('link');
+      if (link) {
+        link.distance(180);  // Longer links for more space
+        link.strength(0.6);
+      }
+
+      // CodexMCP Phase 2: Configure collision force to prevent node overlap
+      // Note: react-force-graph-2d provides d3 forces internally
+      const collide = graphRef.current.d3Force('collide');
+      if (collide && typeof collide.radius === 'function') {
+        // Radius = sqrt(val) * 6 (larger than visual radius * 4)
+        collide.radius((node: any) => Math.sqrt(node.val || 25) * 6);
+      }
+
+      graphRef.current.d3ReheatSimulation();
+    };
+
+    // CodexMCP: requestAnimationFrame to ensure ref is ready
+    requestAnimationFrame(configureForces);
   }, [graphData]);
 
   if (loading) return <GraphSkeleton />;

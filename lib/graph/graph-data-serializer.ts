@@ -310,8 +310,9 @@ export class GraphDataSerializer {
     const category = input.category ?? this.getCategory(input.tags || []);
     const color = this.getCategoryColor(category);
     
-    // Phase 2: Default qualityScore to 0
-    const qualityScore = input.qualityScore ?? 0;
+    // CodexMCP Phase 2: Clamp qualityScore to minimum baseline
+    // Prevents zero-radius nodes that collapse inward
+    const qualityScore = Math.max(input.qualityScore ?? 0, 4);
 
     return {
       id: input.id,
