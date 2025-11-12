@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useParams } from 'next/navigation';
 import { Network } from 'lucide-react';
@@ -66,6 +66,14 @@ function GraphContainer() {
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [linkMap, setLinkMap] = useState<Map<string, LinkMetadata>>(new Map());
   const graphRef = useRef<ForceGraphRef | null>(null);
+  const [graphInstance, setGraphInstance] = useState<ForceGraphRef | null>(null);
+
+  // CodexMCP: Callback ref to track when ForceGraph mounts
+  const handleGraphRef = useCallback((instance: ForceGraphRef | null) => {
+    graphRef.current = instance;
+    setGraphInstance(instance);
+    console.log('ForceGraph ref set', !!instance);
+  }, []);
 
   useEffect(() => {
     // CodeRabbit: AbortController for cleanup
@@ -103,18 +111,18 @@ function GraphContainer() {
     return () => abortController.abort();  // CodeRabbit: Cleanup on unmount
   }, [articleId]);
 
-  // CodexMCP: Configure force parameters (useLayoutEffect for sync)
+  // CodexMCP: Configure force parameters (wait for both graphData and ref)
   useLayoutEffect(() => {
     console.count('layout effect');
     console.log({
       graphDataReady: !!graphData,
-      refReady: !!graphRef.current,
+      refReady: !!graphInstance,
       nodeCount: graphData?.nodes?.length
     });
 
-    if (!graphData || !graphRef.current) return;
+    if (!graphData || !graphInstance) return;
 
-    const fg = graphRef.current;
+    const fg = graphInstance;
 
     // Set charge force
     const chargeForce = fg.d3Force('charge');
@@ -150,7 +158,7 @@ function GraphContainer() {
       // Cleanup: remove collide force
       (fg as any).d3Force('collide', null);
     };
-  }, [graphData]);
+  }, [graphData, graphInstance]);
 
   if (loading) return <GraphSkeleton />;
   if (error) return <GraphError error={error} />;
@@ -163,7 +171,7 @@ function GraphContainer() {
     <div className="relative h-screen w-full bg-slate-950">
       <ForceGraph2D
         graphData={graphData}
-        ref={graphRef}
+        ref={handleGraphRef}
         nodeLabel={(node: GraphNode) => {
           // CodexMCP: Use stable map (before force-graph mutation)
           const isCenter = node.id === graphData.metadata?.centerArticleId;
