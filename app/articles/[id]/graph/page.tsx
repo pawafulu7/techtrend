@@ -70,7 +70,7 @@ function GraphContainer() {
     // CodeRabbit: AbortController for cleanup
     const abortController = new AbortController();
 
-    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=12&minSimilarity=0.4`, {
+    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=10&minSimilarity=0.50`, {
       signal: abortController.signal,
     })
       .then(res => {
@@ -102,36 +102,20 @@ function GraphContainer() {
     return () => abortController.abort();  // CodeRabbit: Cleanup on unmount
   }, [articleId]);
 
-  // CodexMCP Phase 2: Configure force parameters via ref
+  // CodexMCP: Configure force parameters via ref (Phase 1 settings)
   useEffect(() => {
-    if (!graphRef.current || !graphData) return;
+    if (!graphRef.current) return;
 
-    // Retry force config until ref is ready (CodexMCP: timing issue fix)
-    const configureForces = () => {
-      if (!graphRef.current) return;
+    const charge = graphRef.current.d3Force('charge');
+    if (charge) charge.strength(-200);  // Stronger repulsion for less crowding
 
-      const charge = graphRef.current.d3Force('charge');
-      if (charge) charge.strength(-400);  // Much stronger repulsion
+    const link = graphRef.current.d3Force('link');
+    if (link) {
+      link.distance(150);  // Longer links for more space
+      link.strength(0.6);  // Slightly weaker to allow spreading
+    }
 
-      const link = graphRef.current.d3Force('link');
-      if (link) {
-        link.distance(250);  // Much longer links
-        link.strength(0.4);  // Weaker to allow more spreading
-      }
-
-      // CodexMCP Phase 2: Configure collision force to prevent node overlap
-      // Note: react-force-graph-2d provides d3 forces internally
-      const collide = graphRef.current.d3Force('collide');
-      if (collide && typeof collide.radius === 'function') {
-        // Larger radius for more spacing
-        collide.radius((node: any) => Math.sqrt(node.val || 25) * 8);
-      }
-
-      graphRef.current.d3ReheatSimulation();
-    };
-
-    // CodexMCP: requestAnimationFrame to ensure ref is ready
-    requestAnimationFrame(configureForces);
+    graphRef.current.d3ReheatSimulation();
   }, [graphData]);
 
   if (loading) return <GraphSkeleton />;
@@ -200,10 +184,10 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         backgroundColor="#020617"
         linkColor={() => 'rgba(148, 163, 184, 0.4)'}
         // CodexMCP: Layout parameters (supported props only)
-        warmupTicks={100}
-        cooldownTicks={600}
-        d3AlphaDecay={0.005}
-        d3VelocityDecay={0.08}
+        warmupTicks={60}
+        cooldownTicks={400}
+        d3AlphaDecay={0.008}
+        d3VelocityDecay={0.12}
         width={typeof window !== 'undefined' ? window.innerWidth : 1920}
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
