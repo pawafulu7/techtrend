@@ -164,9 +164,9 @@ export class VectorSearchService {
 
     try {
       // 1. Fetch article embedding via $queryRaw (Unsupported type)
-      // CodexMCP: Prisma findFirst cannot select Unsupported columns
-      const rows = await this.prisma.$queryRaw<Array<{ embedding: number[] }>>`
-        SELECT embedding
+      // CodexMCP: Cast to ::text to get string representation
+      const rows = await this.prisma.$queryRaw<Array<{ embedding: string }>>`
+        SELECT embedding::text AS embedding
         FROM "ArticleEmbedding"
         WHERE "articleId" = ${articleId}
           AND "embeddingKey" = ${embeddingKey}::"EmbeddingKey"
@@ -181,11 +181,28 @@ export class VectorSearchService {
         return [];
       }
 
-      // 2. Serialize vector (same format as search())
-      const embeddingArray = rows[0].embedding;
+      // 2. Parse embedding string to array (pgvector returns "[v1,v2,...]")
+      const embeddingString = rows[0].embedding;
+      const embeddingArray = embeddingString
+        .slice(1, -1)  // Remove brackets
+        .split(',')
+        .map(value => Number(value.trim()));
+
+      // Validate dimension (safety check)
+      if (embeddingArray.length !== 1536) {
+        logger.error({
+          articleId,
+          embeddingKey,
+          actualDim: embeddingArray.length,
+          expectedDim: 1536,
+        }, 'Invalid embedding dimension');
+        return [];
+      }
+
+      // 3. Serialize vector (same format as search())
       const vectorString = `[${embeddingArray.map(v => v.toFixed(8)).join(',')}]`;
 
-      // 3. Execute search using shared helper
+      // 4. Execute search using shared helper
       const results = await this.executeVectorSearch(vectorString, {
         topK,
         similarityThreshold,
