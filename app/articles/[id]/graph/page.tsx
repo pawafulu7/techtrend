@@ -70,7 +70,7 @@ function GraphContainer() {
     // CodeRabbit: AbortController for cleanup
     const abortController = new AbortController();
 
-    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=8&minSimilarity=0.50`, {
+    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=1&minSimilarity=0.50`, {
       signal: abortController.signal,
     })
       .then(res => {
@@ -102,20 +102,37 @@ function GraphContainer() {
     return () => abortController.abort();  // CodeRabbit: Cleanup on unmount
   }, [articleId]);
 
-  // CodexMCP: Configure force parameters via ref (Phase 1 settings)
+  // CodexMCP: Configure force parameters via ref (wait for mount)
   useEffect(() => {
-    if (!graphRef.current) return;
+    if (!graphData) return;
 
-    const charge = graphRef.current.d3Force('charge');
-    if (charge) charge.strength(-200);  // Stronger repulsion for less crowding
+    const id = requestAnimationFrame(() => {
+      const instance = graphRef.current;
+      if (!instance) return;
 
-    const link = graphRef.current.d3Force('link');
-    if (link) {
-      link.distance(150);  // Longer links for more space
-      link.strength(0.6);  // Slightly weaker to allow spreading
-    }
+      const charge = instance.d3Force('charge');
+      if (charge) charge.strength(-200);
 
-    graphRef.current.d3ReheatSimulation();
+      const link = instance.d3Force('link');
+      if (link) {
+        link.distance(150);
+        link.strength(0.6);
+      }
+
+      // CodexMCP: Add collide force to prevent overlap
+      import('d3-force').then((d3) => {
+        if (instance) {
+          const collideForce = d3.forceCollide((node: any) => Math.sqrt(node.val) * 4 + 12);
+          (instance as any).d3Force('collide', collideForce);
+          instance.d3ReheatSimulation();
+        }
+      }).catch(() => {
+        // Fallback: reheat without collide
+        instance.d3ReheatSimulation();
+      });
+    });
+
+    return () => cancelAnimationFrame(id);
   }, [graphData]);
 
   if (loading) return <GraphSkeleton />;
