@@ -21,6 +21,23 @@ interface ForceGraphRef {
 // Utility function for safe label prefix removal
 const removeCenterPrefix = (label: string) => label.replace(/^\[中心\]\s*/, '');
 
+// Helper function to darken a HEX color by factor (0-1)
+const darkenColor = (hexColor: string, factor: number): string => {
+  if (!/^#[0-9A-Fa-f]{6}$/.test(hexColor)) return hexColor;
+
+  const r = parseInt(hexColor.slice(1, 3), 16);
+  const g = parseInt(hexColor.slice(3, 5), 16);
+  const b = parseInt(hexColor.slice(5, 7), 16);
+
+  const rDark = Math.round(r * factor);
+  const gDark = Math.round(g * factor);
+  const bDark = Math.round(b * factor);
+
+  return `#${rDark.toString(16).padStart(2, '0')}${gDark.toString(16).padStart(2, '0')}${bDark
+    .toString(16)
+    .padStart(2, '0')}`;
+};
+
 /**
  * Article Relationship Graph Page
  *
@@ -67,6 +84,7 @@ function GraphContainer() {
   const [linkMap, setLinkMap] = useState<Map<string, LinkMetadata>>(new Map());
   const graphRef = useRef<ForceGraphRef | null>(null);
   const [graphInstance, setGraphInstance] = useState<ForceGraphRef | null>(null);
+  const [currentDepth, setCurrentDepth] = useState<1 | 2>(1);
 
   // CodexMCP: Callback ref to track when ForceGraph mounts
   const handleGraphRef = useCallback((instance: ForceGraphRef | null) => {
@@ -77,17 +95,22 @@ function GraphContainer() {
   useEffect(() => {
     // CodeRabbit: AbortController for cleanup
     const abortController = new AbortController();
+    let isActive = true;
+    setLoading(true);
+    setError(null);
 
-    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=8&minSimilarity=0.50`, {
-      signal: abortController.signal,
-    })
+    fetch(
+      `/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=8&minSimilarity=0.50&depth=${currentDepth}`,
+      {
+        signal: abortController.signal,
+      }
+    )
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch graph data');
         return res.json();
       })
       .then(data => {
         setGraphData(data);
-        setLoading(false);
 
         // CodexMCP: Create stable map for tooltip lookup (before force-graph mutates links)
         const map = new Map<string, LinkMetadata>();
@@ -104,26 +127,33 @@ function GraphContainer() {
       .catch(err => {
         if (err.name === 'AbortError') return;  // CodeRabbit: Ignore abort errors
         setError(err);
-        setLoading(false);
+      })
+      .finally(() => {
+        if (isActive) setLoading(false);
       });
 
-    return () => abortController.abort();  // CodeRabbit: Cleanup on unmount
-  }, [articleId]);
+    return () => {
+      isActive = false;
+      abortController.abort();  // CodeRabbit: Cleanup on unmount
+    };
+  }, [articleId, currentDepth]);
 
   // CodexMCP: Configure force parameters (wait for both graphData and ref)
   useLayoutEffect(() => {
     if (!graphData || !graphInstance) return;
 
     const fg = graphInstance;
+    const charge = currentDepth === 2 ? -300 : -240;
+    const linkDistance = currentDepth === 2 ? 170 : 140;
 
     // Set charge force
     const chargeForce = fg.d3Force('charge');
-    if (chargeForce) chargeForce.strength(-240);
+    if (chargeForce) chargeForce.strength(charge);
 
     // Set link force
     const linkForce = fg.d3Force('link');
     if (linkForce) {
-      linkForce.distance(140);
+      linkForce.distance(linkDistance);
       linkForce.strength(0.8);
     }
 
@@ -141,7 +171,7 @@ function GraphContainer() {
       // Cleanup: remove collide force
       (fg as any).d3Force('collide', null);
     };
-  }, [graphData, graphInstance]);
+  }, [graphData, graphInstance, currentDepth]);
 
   if (loading) return <GraphSkeleton />;
   if (error) return <GraphError error={error} />;
@@ -180,12 +210,18 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           const isCenter = node.id === graphData.metadata?.centerArticleId;
           const label = node.label;
           const fontSize = 12 / globalScale;
+          const depthSizeFactor = node.depth === 2 ? 0.7 : 1;
+          const radius = Math.sqrt(node.val) * 4 * depthSizeFactor;
+          let fillColor = node.color;
+          if (node.depth === 2) {
+            fillColor = darkenColor(node.color, 0.8);
+          }
           ctx.font = `${fontSize}px Sans-Serif`;
 
           // Draw circle (CodexMCP: *3 → *4 for better visibility)
-          ctx.fillStyle = node.color;
+          ctx.fillStyle = fillColor;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, Math.sqrt(node.val) * 4, 0, 2 * Math.PI, false);
+          ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
           ctx.fill();
 
           // CodexMCP: Draw border for center node
@@ -199,7 +235,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = '#FFFFFF';
-          ctx.fillText(removeCenterPrefix(label), node.x, node.y + Math.sqrt(node.val) * 4 + fontSize);
+          ctx.fillText(removeCenterPrefix(label), node.x, node.y + radius + fontSize);
         }}
         linkWidth={(link: GraphLink) => Math.max((link.value ** 2) * 18, 1.5)}
         linkDirectionalParticles={3}
@@ -239,6 +275,13 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
             </div>
           </div>
           <div className="flex items-start gap-2">
+            <div className="w-2 h-2 rounded-full bg-indigo-300 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">関連記事 第2層（小・暗め）</div>
+              <div className="text-slate-400">第1層記事に関連</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
             <div className="w-8 h-0.5 bg-slate-400 shrink-0 mt-2" />
             <div>
               <div className="font-medium">線の太さ = 関連度</div>
@@ -250,6 +293,14 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           クリック: 記事を開く | ホバー: 詳細表示
         </div>
       </div>
+
+      {/* Depth toggle */}
+      <button
+        onClick={() => setCurrentDepth(d => (d === 1 ? 2 : 1))}
+        className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-xl border border-indigo-500 text-sm font-medium transition-colors"
+      >
+        {currentDepth === 1 ? '関連をさらに表示（depth=2）' : '関連を折りたたむ（depth=1）'}
+      </button>
 
       {/* Center article info */}
       <div className="absolute top-4 right-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-sm">

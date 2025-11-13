@@ -216,18 +216,25 @@ export async function GET(
         graphData = GraphDataSerializer.serializeTagBased(targetArticle, sortedArticles);
 
       } else if (options.algorithm === 'embedding') {
-        // Embedding-based algorithm (Phase 2)
         const vectorSearch = new VectorSearchService(prisma);
+        const requestedDepth = options.depth ?? 1;
 
-        const embeddingResults = await vectorSearch.searchByArticleId(articleId, {
+        const layer1 = await vectorSearch.searchByArticleId(articleId, {
           topK: options.maxNodes,
           similarityThreshold: options.minSimilarity,
         });
 
+        const layer1Count = layer1.length;
+
+        span.setAttribute('depth', requestedDepth);
+        span.setAttribute('layer1Count', layer1Count);
+        span.setAttribute('layer2Count', 0);
+
         // Short-circuit if no embedding found (CodexMCP: graceful degradation)
         // CodeRabbit: Single-node graph (no similar articles found)
-        if (embeddingResults.length === 0) {
-          logger.warn({ articleId }, 'No similar articles found, returning single-node graph');
+        if (layer1Count === 0) {
+          span.setAttribute('depth', 1);
+          logger.warn({ articleId, requestedDepth }, 'No similar articles found, returning single-node graph');
 
           const emptyGraphData = {
             nodes: [
@@ -264,8 +271,50 @@ export async function GET(
           return NextResponse.json(emptyGraphData);
         }
 
-        // Serialize to GraphData format (Phase 2: embedding-based)
-        graphData = GraphDataSerializer.serializeEmbeddingBased(targetArticle, embeddingResults);
+        if (requestedDepth === 1) {
+          span.setAttribute('depth', 1);
+          graphData = GraphDataSerializer.serializeEmbeddingBased(targetArticle, layer1);
+        } else {
+          const layer2Promises = layer1.map(async parent => {
+            const children = await vectorSearch.searchByArticleId(parent.articleId, {
+              topK: options.layer2PerParent,
+              similarityThreshold: options.minSimilarity,
+            });
+
+            return children.map(child => ({
+              ...child,
+              parentId: parent.articleId,
+            }));
+          });
+
+          const layer2Raw = (await Promise.all(layer2Promises)).flat();
+          const layer2 = GraphDataSerializer.selectTopLayer2(
+            layer2Raw,
+            layer1,
+            targetArticle,
+            options.layer2Limit
+          );
+          const layer2Count = layer2.length;
+          const effectiveDepth = layer2Count > 0 ? 2 : 1;
+
+          span.setAttribute('depth', effectiveDepth);
+          span.setAttribute('layer2Count', layer2Count);
+
+          logger.info({
+            articleId,
+            depth: effectiveDepth,
+            layer1Count,
+            layer2RawCount: layer2Raw.length,
+            layer2Count,
+          }, 'Phase 3 embedding graph generation with depth=2');
+
+          graphData = GraphDataSerializer.serializeWithDepth(
+            targetArticle,
+            layer1,
+            layer2,
+            'embedding'
+          );
+        }
       }
 
       const elapsedMs = Date.now() - startTime;
