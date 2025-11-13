@@ -53,7 +53,28 @@ export async function GET(
       };
 
       // Zod validation (CodexMCP: enforce safe ranges)
-      const options = graphOptionsSchema.parse(rawOptions);
+      const parseResult = graphOptionsSchema.safeParse(rawOptions);
+
+      if (!parseResult.success) {
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: 'Invalid query parameters',
+        });
+        span.end();
+
+        return NextResponse.json(
+          {
+            error: 'Invalid query parameters',
+            details: parseResult.error.issues.map((issue) => ({
+              path: issue.path.join('.') || 'unknown',
+              message: issue.message,
+            })),
+          },
+          { status: 400 }
+        );
+      }
+
+      const options = parseResult.data;
 
       span.setAttribute('algorithm', options.algorithm);
       span.setAttribute('maxNodes', options.maxNodes);

@@ -114,7 +114,7 @@ export const graphOptionsSchema = z.object({
   maxNodes: z
     .number()
     .int()
-    .min(5, 'Minimum 5 nodes for meaningful graph')
+    .min(1, 'Minimum 1 node to allow smallest graphs')
     .max(150, 'Maximum 150 nodes for performance')
     .default(30)
     .describe('Maximum number of related articles to include'),
