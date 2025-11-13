@@ -59,6 +59,13 @@ export class VectorSearchService {
   }
 
   /**
+   * Check if EmbeddingService is configured and ready
+   */
+  isEmbeddingServiceAvailable(): boolean {
+    return this.embeddingService !== null && this.embeddingService !== undefined;
+  }
+
+  /**
    * Perform semantic search
    *
    * @param query - Search query text
