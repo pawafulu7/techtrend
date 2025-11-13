@@ -364,11 +364,17 @@ function GraphSkeleton() {
 }
 
 function GraphError({ error }: { error: Error }) {
+  console.error('[GraphError]', error);
+
   return (
     <div className="flex items-center justify-center h-screen w-full bg-slate-950">
       <div className="text-center">
         <p className="text-red-400 text-lg mb-2">Failed to load graph</p>
-        <p className="text-slate-400 text-sm">{error.message}</p>
+        {process.env.NODE_ENV === 'development' && (
+          <p className="text-slate-400 text-sm" data-testid="graph-error-message">
+            {error.message}
+          </p>
+        )}
       </div>
     </div>
   );
