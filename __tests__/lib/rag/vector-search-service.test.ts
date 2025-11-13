@@ -273,7 +273,7 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
     });
 
     it('should search by article ID and return similar articles', async () => {
-      const mockEmbedding = '[0.1,0.2,0.3]';
+      const mockEmbedding = '[' + Array(1536).fill(0.1).join(',') + ']';
       const mockResults = [
         {
           articleId: 'article-2',
