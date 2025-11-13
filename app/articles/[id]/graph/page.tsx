@@ -136,9 +136,9 @@ function GraphContainer() {
     }
 
     // CodexMCP: Add collide force to prevent overlap
-    // Radius matches visual radius (*3) + padding
+    // Radius matches visual radius (*4) + padding
     const collide = forceCollide<GraphNode>()
-      .radius((node) => Math.sqrt(node.val ?? 1) * 4.5 + 12)
+      .radius((node) => Math.sqrt(node.val ?? 1) * 6 + 16)
       .strength(1)
       .iterations(2);
 
@@ -200,10 +200,10 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           const fontSize = 12 / globalScale;
           ctx.font = `${fontSize}px Sans-Serif`;
 
-          // Draw circle (CodexMCP: *4 → *3 for smaller nodes)
+          // Draw circle (CodexMCP: *3 → *4 for better visibility)
           ctx.fillStyle = node.color;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, Math.sqrt(node.val) * 3, 0, 2 * Math.PI, false);
+          ctx.arc(node.x, node.y, Math.sqrt(node.val) * 4, 0, 2 * Math.PI, false);
           ctx.fill();
 
           // CodexMCP: Draw border for center node
@@ -217,7 +217,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = '#FFFFFF';
-          ctx.fillText(removeCenterPrefix(label), node.x, node.y + Math.sqrt(node.val) * 3 + fontSize);
+          ctx.fillText(removeCenterPrefix(label), node.x, node.y + Math.sqrt(node.val) * 4 + fontSize);
         }}
         linkWidth={(link: GraphLink) => Math.max((link.value ** 2) * 18, 1.5)}
         linkDirectionalParticles={3}
