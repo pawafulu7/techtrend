@@ -72,7 +72,6 @@ function GraphContainer() {
   const handleGraphRef = useCallback((instance: ForceGraphRef | null) => {
     graphRef.current = instance;
     setGraphInstance(instance);
-    console.log('ForceGraph ref set', !!instance);
   }, []);
 
   useEffect(() => {
@@ -113,13 +112,6 @@ function GraphContainer() {
 
   // CodexMCP: Configure force parameters (wait for both graphData and ref)
   useLayoutEffect(() => {
-    console.count('layout effect');
-    console.log({
-      graphDataReady: !!graphData,
-      refReady: !!graphInstance,
-      nodeCount: graphData?.nodes?.length
-    });
-
     if (!graphData || !graphInstance) return;
 
     const fg = graphInstance;
@@ -144,16 +136,6 @@ function GraphContainer() {
 
     (fg as any).d3Force('collide', collide);
     fg.d3ReheatSimulation();
-
-    // DEBUG: Log force values (CodexMCP recommendation)
-    console.table({
-      chargeStrength: chargeForce?.strength?.(),
-      linkDistance: linkForce?.distance?.(),
-      linkStrength: linkForce?.strength?.(),
-      collideRadius: collide.radius()(graphData.nodes[1] || graphData.nodes[0]),
-      collideStrength: collide.strength(),
-      nodeCount: graphData.nodes.length,
-    });
 
     return () => {
       // Cleanup: remove collide force
