@@ -308,8 +308,11 @@ export class GraphDataSerializer {
 
     // Phase 2: Use pre-computed category or calculate
     const category = input.category ?? this.getCategory(input.tags || []);
-    const color = this.getCategoryColor(category);
-    
+    const baseColor = this.getCategoryColor(category);
+
+    // CodexMCP Phase 2: Adjust color brightness by similarity
+    const color = isCenter ? '#FBBF24' : this.adjustColorForSimilarity(baseColor, input.similarity);
+
     // CodexMCP Phase 2: Clamp qualityScore to minimum baseline
     // Prevents zero-radius nodes that collapse inward
     const qualityScore = Math.max(input.qualityScore ?? 0, 4);
@@ -318,7 +321,7 @@ export class GraphDataSerializer {
       id: input.id,
       label: isCenter ? `[中心] ${input.title}` : input.title,  // CodexMCP: Badge for center node
       val: isCenter ? qualityScore * 2 : qualityScore,  // CodexMCP Phase 2: 3x → 2x for smaller center
-      color: isCenter ? '#FBBF24' : color,  // CodexMCP: Special color (Amber) for center
+      color,  // CodexMCP: Similarity-adjusted color
       category,
       publishedAt: this.toISOString(input.publishedAt),
       url: input.url || `/articles/${input.id}`,
@@ -390,6 +393,27 @@ export class GraphDataSerializer {
     const set1 = new Set(tags1);
     const set2 = new Set(tags2);
     return [...set1].filter(t => set2.has(t)).length;
+  }
+
+  /**
+   * Adjust color brightness based on similarity (Phase 2)
+   *
+   * CodexMCP: Hybrid - category (hue) + similarity (lightness)
+   */
+  private static adjustColorForSimilarity(baseColor: string, similarity?: number): string {
+    if (!similarity) return baseColor;
+
+    const r = parseInt(baseColor.slice(1, 3), 16);
+    const g = parseInt(baseColor.slice(3, 5), 16);
+    const b = parseInt(baseColor.slice(5, 7), 16);
+
+    const factor = 0.7 + similarity * 0.6;
+
+    const rAdj = Math.min(Math.round(r * factor), 255);
+    const gAdj = Math.min(Math.round(g * factor), 255);
+    const bAdj = Math.min(Math.round(b * factor), 255);
+
+    return `#${rAdj.toString(16).padStart(2, '0')}${gAdj.toString(16).padStart(2, '0')}${bAdj.toString(16).padStart(2, '0')}`;
   }
 
   /**
