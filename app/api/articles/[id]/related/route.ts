@@ -164,7 +164,7 @@ export async function GET(
           source: article.sourceName,
           publishedAt: article.publishedAt.toISOString(),
           qualityScore: article.qualityScore,
-          difficulty: article.difficulty,
+          difficulty: null,  // CodeRabbit: Consistent with embedding-based results
           tags: articleTags,
           similarity: Math.round(similarity * 100) / 100,
           commonTags,
@@ -249,9 +249,13 @@ function parseTags(tagsString: string | null): Array<{ id: string; name: string 
 
   return tagsString
     .split('||')
+    .map(tag => tag?.trim())
     .filter(tag => tag && tag.includes('::'))
     .map(tag => {
-      const [id, name] = tag.split('::', 2);
+      const [idRaw, nameRaw] = tag.split('::', 2);
+      const id = idRaw?.trim();
+      const name = nameRaw?.trim();
       return { id, name };
-    });
+    })
+    .filter(tag => tag.id && tag.name);  // CodeRabbit: Filter out empty id/name
 }
