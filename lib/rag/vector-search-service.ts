@@ -189,13 +189,9 @@ export class VectorSearchService {
         .map(value => Number(value.trim()));
 
       // Validate dimension (safety check)
-      if (embeddingArray.length !== 1536) {
-        logger.error({
-          articleId,
-          embeddingKey,
-          actualDim: embeddingArray.length,
-          expectedDim: 1536,
-        }, 'Invalid embedding dimension');
+      // CodeRabbit: Don't hardcode 1536, support model switching
+      if (embeddingArray.length === 0) {
+        logger.error({ articleId, embeddingKey }, 'Embedding vector is empty');
         return [];
       }
 

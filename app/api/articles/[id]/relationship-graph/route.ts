@@ -173,6 +173,9 @@ export async function GET(
         // Calculate Jaccard similarity for each related article
         const targetTagSet = new Set(tagIds);
 
+        // Type for related articles with optional thumbnail
+        type RelatedArticleWithThumbnail = typeof relatedArticlesRaw[0] & { thumbnail?: string | null };
+
         const relatedArticlesWithSimilarity = relatedArticlesRaw.map(article => {
           const articleTags = parseTags(article.tags as string | null);
           const articleTagIds = new Set(articleTags.map(t => t.id));
@@ -191,7 +194,7 @@ export async function GET(
             tags: articleTags,
             similarity: Math.round(similarity * 100) / 100,
             commonTags: Number(article.commonTags),
-            thumbnail: (article as any).thumbnail || undefined,
+            thumbnail: (article as RelatedArticleWithThumbnail).thumbnail || undefined,
           };
         });
 
