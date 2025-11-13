@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Network } from 'lucide-react';
 import { forceCollide } from 'd3-force';
 import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
+import { darkenColor, truncateLabel } from '@/lib/utils/graph-helpers';
 
 interface LinkMetadata {
   similarity: number;
@@ -67,6 +68,7 @@ function GraphContainer() {
   const [linkMap, setLinkMap] = useState<Map<string, LinkMetadata>>(new Map());
   const graphRef = useRef<ForceGraphRef | null>(null);
   const [graphInstance, setGraphInstance] = useState<ForceGraphRef | null>(null);
+  const [currentDepth, setCurrentDepth] = useState<1 | 2>(1);
 
   // CodexMCP: Callback ref to track when ForceGraph mounts
   const handleGraphRef = useCallback((instance: ForceGraphRef | null) => {
@@ -77,17 +79,23 @@ function GraphContainer() {
   useEffect(() => {
     // CodeRabbit: AbortController for cleanup
     const abortController = new AbortController();
+    let isActive = true;
+    setLoading(true);
+    setError(null);
 
-    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=8&minSimilarity=0.50`, {
-      signal: abortController.signal,
-    })
+    fetch(
+      `/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=8&minSimilarity=0.50&depth=${currentDepth}`,
+      {
+        signal: abortController.signal,
+      }
+    )
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch graph data');
         return res.json();
       })
       .then(data => {
+        if (!isActive) return;
         setGraphData(data);
-        setLoading(false);
 
         // CodexMCP: Create stable map for tooltip lookup (before force-graph mutates links)
         const map = new Map<string, LinkMetadata>();
@@ -103,34 +111,50 @@ function GraphContainer() {
       })
       .catch(err => {
         if (err.name === 'AbortError') return;  // CodeRabbit: Ignore abort errors
+        if (!isActive) return;
         setError(err);
-        setLoading(false);
+      })
+      .finally(() => {
+        if (isActive) setLoading(false);
       });
 
-    return () => abortController.abort();  // CodeRabbit: Cleanup on unmount
-  }, [articleId]);
+    return () => {
+      isActive = false;
+      abortController.abort();  // CodeRabbit: Cleanup on unmount
+    };
+  }, [articleId, currentDepth]);
 
   // CodexMCP: Configure force parameters (wait for both graphData and ref)
   useLayoutEffect(() => {
     if (!graphData || !graphInstance) return;
 
     const fg = graphInstance;
+    const nodeCount = graphData.nodes.length;
+    const isExpandedDepth = currentDepth === 2 || nodeCount > 10;
+    const charge = isExpandedDepth ? -400 : -240;
+    const linkDistance = isExpandedDepth ? 200 : 140;
 
     // Set charge force
     const chargeForce = fg.d3Force('charge');
-    if (chargeForce) chargeForce.strength(-240);
+    if (chargeForce) chargeForce.strength(charge);
 
     // Set link force
     const linkForce = fg.d3Force('link');
     if (linkForce) {
-      linkForce.distance(140);
+      linkForce.distance(linkDistance);
       linkForce.strength(0.8);
     }
 
     // CodexMCP: Add collide force to prevent overlap
     // Radius matches visual radius (*4) + padding
     const collide = forceCollide<GraphNode>()
-      .radius((node) => Math.sqrt(node.val ?? 1) * 6 + 16)
+      .radius((node) => {
+        const depthSizeFactor = node.depth === 2 ? 0.7 : 1;
+        const visualRadius = Math.sqrt(node.val ?? 1) * 4 * depthSizeFactor;
+        const fontSize = 12;
+        const padding = 10;
+        return visualRadius + fontSize + padding;
+      })
       .strength(1)
       .iterations(2);
 
@@ -141,7 +165,7 @@ function GraphContainer() {
       // Cleanup: remove collide force
       (fg as any).d3Force('collide', null);
     };
-  }, [graphData, graphInstance]);
+  }, [graphData, graphInstance, currentDepth]);
 
   if (loading) return <GraphSkeleton />;
   if (error) return <GraphError error={error} />;
@@ -180,12 +204,18 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           const isCenter = node.id === graphData.metadata?.centerArticleId;
           const label = node.label;
           const fontSize = 12 / globalScale;
+          const depthSizeFactor = node.depth === 2 ? 0.7 : 1;
+          const radius = Math.sqrt(node.val) * 4 * depthSizeFactor;
+          let fillColor = node.color;
+          if (node.depth === 2) {
+            fillColor = darkenColor(node.color, 0.8);
+          }
           ctx.font = `${fontSize}px Sans-Serif`;
 
           // Draw circle (CodexMCP: *3 → *4 for better visibility)
-          ctx.fillStyle = node.color;
+          ctx.fillStyle = fillColor;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, Math.sqrt(node.val) * 4, 0, 2 * Math.PI, false);
+          ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
           ctx.fill();
 
           // CodexMCP: Draw border for center node
@@ -199,7 +229,9 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = '#FFFFFF';
-          ctx.fillText(removeCenterPrefix(label), node.x, node.y + Math.sqrt(node.val) * 4 + fontSize);
+          const maxLength = isCenter ? 40 : 20;
+          const displayLabel = truncateLabel(removeCenterPrefix(label), maxLength);
+          ctx.fillText(displayLabel, node.x, node.y + radius + fontSize);
         }}
         linkWidth={(link: GraphLink) => Math.max((link.value ** 2) * 18, 1.5)}
         linkDirectionalParticles={3}
@@ -209,10 +241,10 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         backgroundColor="#020617"
         linkColor={() => 'rgba(148, 163, 184, 0.4)'}
         // CodexMCP: Layout parameters (supported props only)
-        warmupTicks={60}
+        warmupTicks={100}
         cooldownTicks={400}
         d3AlphaDecay={0.008}
-        d3VelocityDecay={0.12}
+        d3VelocityDecay={0.35}
         width={typeof window !== 'undefined' ? window.innerWidth : 1920}
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
@@ -239,6 +271,13 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
             </div>
           </div>
           <div className="flex items-start gap-2">
+            <div className="w-2 h-2 rounded-full bg-indigo-300 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">関連記事 第2層（小・暗め）</div>
+              <div className="text-slate-400">第1層記事に関連</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
             <div className="w-8 h-0.5 bg-slate-400 shrink-0 mt-2" />
             <div>
               <div className="font-medium">線の太さ = 関連度</div>
@@ -250,6 +289,15 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           クリック: 記事を開く | ホバー: 詳細表示
         </div>
       </div>
+
+      {/* Depth toggle */}
+      <button
+        data-testid="depth-toggle-button"
+        onClick={() => setCurrentDepth(d => (d === 1 ? 2 : 1))}
+        className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-xl border border-indigo-500 text-sm font-medium transition-colors"
+      >
+        {currentDepth === 1 ? '関連をさらに表示（depth=2）' : '関連を折りたたむ（depth=1）'}
+      </button>
 
       {/* Center article info */}
       <div className="absolute top-4 right-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-sm">
@@ -266,7 +314,11 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           </div>
         )}
         <div className="mt-2 pt-2 border-t border-slate-700">
-          <p className="text-xs text-slate-300">
+          <p
+            className="text-xs text-slate-300"
+            data-testid="related-count"
+            aria-live="polite"
+          >
             関連記事: {graphData.nodes.length - 1}件表示
           </p>
         </div>
@@ -314,11 +366,17 @@ function GraphSkeleton() {
 }
 
 function GraphError({ error }: { error: Error }) {
+  console.error('[GraphError]', error);
+
   return (
     <div className="flex items-center justify-center h-screen w-full bg-slate-950">
       <div className="text-center">
         <p className="text-red-400 text-lg mb-2">Failed to load graph</p>
-        <p className="text-slate-400 text-sm">{error.message}</p>
+        {process.env.NODE_ENV === 'development' && (
+          <p className="text-slate-400 text-sm" data-testid="graph-error-message">
+            {error.message}
+          </p>
+        )}
       </div>
     </div>
   );

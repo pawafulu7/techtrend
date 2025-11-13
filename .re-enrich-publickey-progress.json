@@ -1,0 +1,28 @@
+{
+  "processedIds": [
+    "cmgjjpqmo0001tezs2uqyryt8",
+    "cmgi6ejqv0003teqhkoumi0vf",
+    "cmgi49j33000jteiwhdm9z6kz",
+    "cmf5h6iyj0005te9ov7f8ou5o",
+    "cmf43vvxg0007tertodpdfq4p",
+    "cmf2og2k60007tezrt3j06mbc",
+    "cmf1906n50009tebqxt4yzdr8",
+    "cmf1906m90007tebqk7ash6dv",
+    "cmf1906kx0005tebqizcb0krq",
+    "cmeztkgi90007teojlh8jkz06",
+    "cmeztkggv0005teojo059gmla",
+    "cmeu1q7e10001te1tt4di8p11",
+    "cmesmaypf0001teijhwxek16c",
+    "cmer901x80003tegko1zxe5af",
+    "cmeprgpgo0001tesrs8a9n7wa"
+  ],
+  "lastProcessedAt": "2025-11-11T00:29:43.201Z",
+  "stats": {
+    "total": 15,
+    "processed": 15,
+    "enriched": 15,
+    "failed": 0,
+    "skipped": 0
+  },
+  "failedArticles": []
+}

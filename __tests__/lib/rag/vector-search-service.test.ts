@@ -118,6 +118,7 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
   let mockPrisma: jest.Mocked<PrismaClient>;
   let service: VectorSearchService;
   let capturedSQL: any;
+  let mockEmbeddingService: { embedText: jest.Mock };
 
   beforeEach(() => {
     // Reset mocks
@@ -134,15 +135,12 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
       return Promise.resolve([]);
     });
 
-    // Mock EmbeddingService
-    const { EmbeddingService } = require('@/lib/rag/embedding-service');
-    EmbeddingService.prototype.embedText = jest.fn().mockResolvedValue(
-      // Return deterministic 1536-dimensional vector (all 0.1)
-      new Array(1536).fill(0.1)
-    );
+    mockEmbeddingService = {
+      embedText: jest.fn().mockResolvedValue(new Array(1536).fill(0.1)),
+    };
 
     // Create service instance
-    service = new VectorSearchService(mockPrisma);
+    service = new VectorSearchService(mockPrisma, mockEmbeddingService as any);
   });
 
   describe('Dynamic threshold selection', () => {
@@ -262,6 +260,24 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
       const thresholdParam = extractThresholdParam(capturedSQL);
 
       expect(thresholdParam).toBe(0.5);
+    });
+  });
+
+  describe('Embedding service availability', () => {
+    it('should throw when search is invoked without an embedding service', async () => {
+      const serviceWithoutEmbedding = new VectorSearchService(mockPrisma, null);
+
+      await expect(serviceWithoutEmbedding.search('query')).rejects.toThrow(
+        'Vector search is unavailable because no EmbeddingService is configured'
+      );
+    });
+
+    it('should return an empty array from searchByArticleId when embedding service is missing', async () => {
+      const serviceWithoutEmbedding = new VectorSearchService(mockPrisma, null);
+
+      const results = await serviceWithoutEmbedding.searchByArticleId('article-1');
+
+      expect(results).toEqual([]);
     });
   });
 

@@ -35,14 +35,24 @@ export interface SearchResult {
 
 export class VectorSearchService {
   private prisma: PrismaClient;
-  private embeddingService: EmbeddingService;
+  private embeddingService: EmbeddingService | null;
   private queryExpansionService: QueryExpansionService;
   private activeModel: string;
   private activeVersion: number;
 
-  constructor(prisma: PrismaClient) {
+  constructor(prisma: PrismaClient, embeddingService?: EmbeddingService | null) {
     this.prisma = prisma;
-    this.embeddingService = new EmbeddingService();
+    if (embeddingService !== undefined) {
+      this.embeddingService = embeddingService;
+    } else if (process.env.OPENAI_API_KEY) {
+      this.embeddingService = new EmbeddingService();
+    } else {
+      this.embeddingService = null;
+    }
+
+    if (!this.embeddingService) {
+      logger.warn('EmbeddingService unavailable (missing OPENAI_API_KEY); vector search will be limited');
+    }
     this.queryExpansionService = new QueryExpansionService();
     this.activeModel = process.env.RAG_ACTIVE_MODEL || 'text-embedding-3-small';
     this.activeVersion = parseInt(process.env.RAG_ACTIVE_VERSION || '1', 10);
@@ -57,6 +67,12 @@ export class VectorSearchService {
    */
   async search(query: string, options: SearchOptionsInput = {}): Promise<SearchResult[]> {
     try {
+      if (!this.embeddingService) {
+        logger.warn('Vector search requested but EmbeddingService is not configured (missing OPENAI_API_KEY)');
+        throw new Error('Vector search is unavailable because no EmbeddingService is configured');
+      }
+
+      const embeddingService = this.embeddingService;
       const thresholdProvided = options.similarityThreshold !== undefined;
 
       // Validate options with Zod schema
@@ -91,7 +107,7 @@ export class VectorSearchService {
       }, 'Vector search started');
 
       // Generate query embedding (using expanded query)
-      const queryEmbedding = await this.embeddingService.embedText(effectiveQuery);
+      const queryEmbedding = await embeddingService.embedText(effectiveQuery);
 
       // Serialize vector with toFixed for PostgreSQL compatibility
       const vectorString = `[${queryEmbedding.map(v => v.toFixed(8)).join(',')}]`;
@@ -161,6 +177,11 @@ export class VectorSearchService {
       topK = 20,
       similarityThreshold = 0.3,
     } = options;
+
+    if (!this.embeddingService) {
+      logger.warn({ articleId, embeddingKey }, 'EmbeddingService unavailable (no OPENAI_API_KEY), returning empty results');
+      return [];
+    }
 
     try {
       // 1. Fetch article embedding via $queryRaw (Unsupported type)
