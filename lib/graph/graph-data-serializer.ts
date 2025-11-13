@@ -256,6 +256,7 @@ export class GraphDataSerializer {
             algorithm: 'embedding',
             maxNodes: embeddingResults.length,
             minSimilarity: similarities.length > 0 ? Math.min(...similarities) : 0,
+            depth: 1,
           },
           resultStats: {
             maxSimilarity: similarities.length > 0 ? Math.max(...similarities) : 0,

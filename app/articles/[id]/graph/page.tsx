@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Network } from 'lucide-react';
 import { forceCollide } from 'd3-force';
 import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
+import { darkenColor, truncateLabel } from '@/lib/utils/graph-helpers';
 
 interface LinkMetadata {
   similarity: number;
@@ -20,28 +21,6 @@ interface ForceGraphRef {
 
 // Utility function for safe label prefix removal
 const removeCenterPrefix = (label: string) => label.replace(/^\[中心\]\s*/, '');
-
-// Helper function to darken a HEX color by factor (0-1)
-const darkenColor = (hexColor: string, factor: number): string => {
-  if (!/^#[0-9A-Fa-f]{6}$/.test(hexColor)) return hexColor;
-
-  const r = parseInt(hexColor.slice(1, 3), 16);
-  const g = parseInt(hexColor.slice(3, 5), 16);
-  const b = parseInt(hexColor.slice(5, 7), 16);
-
-  const rDark = Math.round(r * factor);
-  const gDark = Math.round(g * factor);
-  const bDark = Math.round(b * factor);
-
-  return `#${rDark.toString(16).padStart(2, '0')}${gDark.toString(16).padStart(2, '0')}${bDark
-    .toString(16)
-    .padStart(2, '0')}`;
-};
-
-const truncateLabel = (label: string, maxLength: number): string => {
-  if (label.length <= maxLength) return label;
-  return label.substring(0, maxLength) + '...';
-};
 
 /**
  * Article Relationship Graph Page
@@ -311,6 +290,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
 
       {/* Depth toggle */}
       <button
+        data-testid="depth-toggle-button"
         onClick={() => setCurrentDepth(d => (d === 1 ? 2 : 1))}
         className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-xl border border-indigo-500 text-sm font-medium transition-colors"
       >
@@ -332,7 +312,11 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           </div>
         )}
         <div className="mt-2 pt-2 border-t border-slate-700">
-          <p className="text-xs text-slate-300">
+          <p
+            className="text-xs text-slate-300"
+            data-testid="related-count"
+            aria-live="polite"
+          >
             関連記事: {graphData.nodes.length - 1}件表示
           </p>
         </div>
