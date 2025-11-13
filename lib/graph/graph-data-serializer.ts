@@ -319,7 +319,7 @@ export class GraphDataSerializer {
     // CodexMCP Phase 2: Hybrid node size (quality * similarity)
     let val: number;
     if (isCenter) {
-      val = qualityScore * 1.4;  // Center: smaller for better balance
+      val = qualityScore * 1.4;  // Center: enhanced visibility (larger than related nodes)
     } else if (input.similarity) {
       // Related: hybrid (quality * similarity * factor)
       const hybridSize = input.similarity * qualityScore * 0.85;

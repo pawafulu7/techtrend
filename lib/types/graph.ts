@@ -101,13 +101,13 @@ export interface GraphOptions {
  * Enforces safe ranges to prevent unbounded payloads and performance issues.
  *
  * CodexMCP recommendations:
- * - maxNodes: 5-150 (below 5 is sparse, ~150 is manageable for ForceGraph2D/3D)
+ * - maxNodes: 1-150 (embedding-based small graphs supported, ~150 is manageable)
  * - minSimilarity: 0-1 (cosine similarity semantics)
  * - depth: 1-2 (keeps API fan-out predictable)
  */
 export const graphOptionsSchema = z.object({
   algorithm: z
-    .enum(['tag', 'embedding', 'hybrid'])
+    .enum(['tag', 'embedding'])
     .default('tag')
     .describe('Relationship detection algorithm'),
 

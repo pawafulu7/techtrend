@@ -74,6 +74,16 @@ describe('GraphDataSerializer', () => {
       expect(graphData.links).toHaveLength(2);
       expect(graphData.metadata.algorithm).toBe('embedding');
       expect(graphData.metadata.centerArticleId).toBe('center-1');
+
+      // Verify link values match similarity
+      const link1 = graphData.links.find(l => l.target === 'article-1');
+      const link2 = graphData.links.find(l => l.target === 'article-2');
+      expect(link1?.value).toBe(0.75);
+      expect(link2?.value).toBe(0.55);
+
+      // Verify metadata stats
+      expect(graphData.metadata.resultStats?.maxSimilarity).toBe(0.75);
+      expect(graphData.metadata.resultStats?.minSimilarity).toBe(0.55);
     });
 
     it('should handle empty embedding results', () => {
