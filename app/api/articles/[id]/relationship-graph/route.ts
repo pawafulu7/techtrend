@@ -111,7 +111,9 @@ export async function GET(
       }
 
       // Early return if article has no tags (tag algorithm only)
+      // CodeRabbit: Single-node graph (no relationships found)
       if (targetArticle.tags.length === 0 && options.algorithm === 'tag') {
+        logger.warn({ articleId }, 'No tags found, returning single-node graph');
         const emptyGraphData = {
           nodes: [
             {
@@ -223,8 +225,9 @@ export async function GET(
         });
 
         // Short-circuit if no embedding found (CodexMCP: graceful degradation)
+        // CodeRabbit: Single-node graph (no similar articles found)
         if (embeddingResults.length === 0) {
-          logger.warn({ articleId }, 'No embedding results, returning empty graph');
+          logger.warn({ articleId }, 'No similar articles found, returning single-node graph');
 
           const emptyGraphData = {
             nodes: [

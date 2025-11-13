@@ -426,6 +426,12 @@ export class GraphDataSerializer {
   private static adjustColorForSimilarity(baseColor: string, similarity?: number): string {
     if (!similarity) return baseColor;
 
+    // Validate hex format (CodeRabbit: prevent parseInt issues)
+    if (!/^#[0-9A-Fa-f]{6}$/.test(baseColor)) {
+      logger.warn({ baseColor }, 'Invalid color format, using as-is');
+      return baseColor;
+    }
+
     const r = parseInt(baseColor.slice(1, 3), 16);
     const g = parseInt(baseColor.slice(3, 5), 16);
     const b = parseInt(baseColor.slice(5, 7), 16);
