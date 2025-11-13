@@ -57,6 +57,17 @@ const CATEGORY_RULES: Array<{
 ];
 
 export class GraphDataSerializer {
+  // Node sizing constants (Phase 2: hybrid quality × similarity)
+  private static readonly MIN_QUALITY_SCORE = 4;
+  private static readonly CENTER_NODE_SCALE = 1.4;
+  private static readonly RELATED_NODE_SCALE = 0.85;
+  private static readonly MIN_NODE_SIZE = 30;
+  private static readonly MAX_NODE_SIZE = 140;
+
+  // Color brightness adjustment constants (Phase 2)
+  private static readonly MIN_BRIGHTNESS_FACTOR = 0.7;  // Low similarity dimming
+  private static readonly BRIGHTNESS_RANGE = 0.6;       // Similarity impact range [0.7, 1.3]
+
   /**
    * Serialize tag-based relationships to GraphData
    *
@@ -314,16 +325,16 @@ export class GraphDataSerializer {
     const color = isCenter ? '#FBBF24' : this.adjustColorForSimilarity(baseColor, input.similarity);
 
     // CodexMCP Phase 2: Clamp qualityScore to minimum baseline
-    const qualityScore = Math.max(input.qualityScore ?? 0, 4);
+    const qualityScore = Math.max(input.qualityScore ?? 0, this.MIN_QUALITY_SCORE);
 
     // CodexMCP Phase 2: Hybrid node size (quality * similarity)
     let val: number;
     if (isCenter) {
-      val = qualityScore * 1.4;  // Center: enhanced visibility (larger than related nodes)
+      val = qualityScore * this.CENTER_NODE_SCALE;  // Center: enhanced visibility (larger than related nodes)
     } else if (input.similarity) {
       // Related: hybrid (quality * similarity * factor)
-      const hybridSize = input.similarity * qualityScore * 0.85;
-      val = Math.min(Math.max(hybridSize, 30), 140);  // Clamp to 30-140
+      const hybridSize = input.similarity * qualityScore * this.RELATED_NODE_SCALE;
+      val = Math.min(Math.max(hybridSize, this.MIN_NODE_SIZE), this.MAX_NODE_SIZE);  // Clamp to 30-140
     } else {
       // Fallback: quality-based
       val = qualityScore;
@@ -419,7 +430,8 @@ export class GraphDataSerializer {
     const g = parseInt(baseColor.slice(3, 5), 16);
     const b = parseInt(baseColor.slice(5, 7), 16);
 
-    const factor = 0.7 + similarity * 0.6;
+    // Brightness factor: [0.7, 1.3] for similarity [0, 1]
+    const factor = this.MIN_BRIGHTNESS_FACTOR + similarity * this.BRIGHTNESS_RANGE;
 
     const rAdj = Math.min(Math.round(r * factor), 255);
     const gAdj = Math.min(Math.round(g * factor), 255);

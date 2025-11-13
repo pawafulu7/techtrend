@@ -45,7 +45,7 @@ export interface GraphLink {
   source: string | GraphNode;
   target: string | GraphNode;
   value: number;  // Similarity score (0-1), affects link width
-  type: 'tag' | 'embedding' | 'hybrid';
+  type: 'tag' | 'embedding';
 
   // CodexMCP: Additional fields for explaining edges
   commonTags?: number;
@@ -66,7 +66,7 @@ export interface GraphData {
   links: GraphLink[];
   metadata: {
     centerArticleId: string;
-    algorithm: 'tag' | 'embedding' | 'hybrid';
+    algorithm: 'tag' | 'embedding';
     nodeCount: number;
     linkCount: number;
     timestamp: string;  // ISO 8601 format
@@ -88,7 +88,7 @@ export interface GraphData {
  * Configuration options for graph generation.
  */
 export interface GraphOptions {
-  algorithm?: 'tag' | 'embedding' | 'hybrid';
+  algorithm?: 'tag' | 'embedding';
   maxNodes?: number;
   minSimilarity?: number;
   depth?: number;
@@ -166,5 +166,4 @@ export const CATEGORY_COLORS: Record<string, string> = {
 export const LINK_TYPE_COLORS: Record<string, string> = {
   tag: 'rgba(148, 163, 184, 0.5)',       // Slate (semi-transparent)
   embedding: 'rgba(59, 130, 246, 0.5)',  // Blue (semi-transparent)
-  hybrid: 'rgba(168, 85, 247, 0.5)',     // Purple (semi-transparent)
 };

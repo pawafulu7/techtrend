@@ -183,15 +183,37 @@ export class VectorSearchService {
 
       // 2. Parse embedding string to array (pgvector returns "[v1,v2,...]")
       const embeddingString = rows[0].embedding;
-      const embeddingArray = embeddingString
-        .slice(1, -1)  // Remove brackets
-        .split(',')
-        .map(value => Number(value.trim()));
 
-      // Validate dimension (safety check)
-      // CodeRabbit: Don't hardcode 1536, support model switching
-      if (embeddingArray.length === 0) {
-        logger.error({ articleId, embeddingKey }, 'Embedding vector is empty');
+      // Validate format (CodeRabbit: handle malformed data)
+      if (!embeddingString.startsWith('[') || !embeddingString.endsWith(']')) {
+        logger.error({
+          articleId,
+          embeddingKey,
+          format: embeddingString.substring(0, 50),
+        }, 'Invalid embedding format');
+        return [];
+      }
+
+      const embeddingArray = embeddingString
+        .slice(1, -1)
+        .split(',')
+        .map(value => {
+          const num = Number(value.trim());
+          if (isNaN(num)) {
+            throw new Error(`Invalid embedding value: ${value}`);
+          }
+          return num;
+        });
+
+      // Validate dimension (CodeRabbit: detect data corruption)
+      const MIN_EMBEDDING_DIM = 10;  // Most models have at least 10 dimensions
+      if (embeddingArray.length === 0 || embeddingArray.length < MIN_EMBEDDING_DIM) {
+        logger.error({
+          articleId,
+          embeddingKey,
+          actualDim: embeddingArray.length,
+          model: this.activeModel,
+        }, 'Invalid embedding dimension');
         return [];
       }
 
