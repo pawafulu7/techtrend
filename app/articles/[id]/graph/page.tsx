@@ -1,9 +1,10 @@
 'use client';
 
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useParams } from 'next/navigation';
 import { Network } from 'lucide-react';
+import { forceCollide } from 'd3-force';
 import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
 
 interface LinkMetadata {
@@ -65,12 +66,19 @@ function GraphContainer() {
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [linkMap, setLinkMap] = useState<Map<string, LinkMetadata>>(new Map());
   const graphRef = useRef<ForceGraphRef | null>(null);
+  const [graphInstance, setGraphInstance] = useState<ForceGraphRef | null>(null);
+
+  // CodexMCP: Callback ref to track when ForceGraph mounts
+  const handleGraphRef = useCallback((instance: ForceGraphRef | null) => {
+    graphRef.current = instance;
+    setGraphInstance(instance);
+  }, []);
 
   useEffect(() => {
     // CodeRabbit: AbortController for cleanup
     const abortController = new AbortController();
 
-    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=tag&maxNodes=30&minSimilarity=0.2`, {
+    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=8&minSimilarity=0.50`, {
       signal: abortController.signal,
     })
       .then(res => {
@@ -102,21 +110,38 @@ function GraphContainer() {
     return () => abortController.abort();  // CodeRabbit: Cleanup on unmount
   }, [articleId]);
 
-  // CodexMCP: Configure force parameters via ref
-  useEffect(() => {
-    if (!graphRef.current) return;
+  // CodexMCP: Configure force parameters (wait for both graphData and ref)
+  useLayoutEffect(() => {
+    if (!graphData || !graphInstance) return;
 
-    const charge = graphRef.current.d3Force('charge');
-    if (charge) charge.strength(-200);  // Stronger repulsion for less crowding
+    const fg = graphInstance;
 
-    const link = graphRef.current.d3Force('link');
-    if (link) {
-      link.distance(150);  // Longer links for more space
-      link.strength(0.6);  // Slightly weaker to allow spreading
+    // Set charge force
+    const chargeForce = fg.d3Force('charge');
+    if (chargeForce) chargeForce.strength(-240);
+
+    // Set link force
+    const linkForce = fg.d3Force('link');
+    if (linkForce) {
+      linkForce.distance(140);
+      linkForce.strength(0.8);
     }
 
-    graphRef.current.d3ReheatSimulation();
-  }, [graphData]);
+    // CodexMCP: Add collide force to prevent overlap
+    // Radius matches visual radius (*4) + padding
+    const collide = forceCollide<GraphNode>()
+      .radius((node) => Math.sqrt(node.val ?? 1) * 6 + 16)
+      .strength(1)
+      .iterations(2);
+
+    (fg as any).d3Force('collide', collide);
+    fg.d3ReheatSimulation();
+
+    return () => {
+      // Cleanup: remove collide force
+      (fg as any).d3Force('collide', null);
+    };
+  }, [graphData, graphInstance]);
 
   if (loading) return <GraphSkeleton />;
   if (error) return <GraphError error={error} />;
@@ -129,7 +154,7 @@ function GraphContainer() {
     <div className="relative h-screen w-full bg-slate-950">
       <ForceGraph2D
         graphData={graphData}
-        ref={graphRef}
+        ref={handleGraphRef}
         nodeLabel={(node: GraphNode) => {
           // CodexMCP: Use stable map (before force-graph mutation)
           const isCenter = node.id === graphData.metadata?.centerArticleId;
@@ -157,7 +182,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           const fontSize = 12 / globalScale;
           ctx.font = `${fontSize}px Sans-Serif`;
 
-          // Draw circle
+          // Draw circle (CodexMCP: *3 → *4 for better visibility)
           ctx.fillStyle = node.color;
           ctx.beginPath();
           ctx.arc(node.x, node.y, Math.sqrt(node.val) * 4, 0, 2 * Math.PI, false);
@@ -176,7 +201,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           ctx.fillStyle = '#FFFFFF';
           ctx.fillText(removeCenterPrefix(label), node.x, node.y + Math.sqrt(node.val) * 4 + fontSize);
         }}
-        linkWidth={(link: GraphLink) => Math.max(link.value * 8, 1)}
+        linkWidth={(link: GraphLink) => Math.max((link.value ** 2) * 18, 1.5)}
         linkDirectionalParticles={3}
         linkDirectionalParticleWidth={4}
         onNodeClick={(node: GraphNode) => router.push(node.url)}

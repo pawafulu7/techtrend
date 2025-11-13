@@ -45,7 +45,7 @@ export interface GraphLink {
   source: string | GraphNode;
   target: string | GraphNode;
   value: number;  // Similarity score (0-1), affects link width
-  type: 'tag' | 'embedding' | 'hybrid';
+  type: 'tag' | 'embedding';
 
   // CodexMCP: Additional fields for explaining edges
   commonTags?: number;
@@ -66,7 +66,7 @@ export interface GraphData {
   links: GraphLink[];
   metadata: {
     centerArticleId: string;
-    algorithm: 'tag' | 'embedding' | 'hybrid';
+    algorithm: 'tag' | 'embedding';
     nodeCount: number;
     linkCount: number;
     timestamp: string;  // ISO 8601 format
@@ -88,7 +88,7 @@ export interface GraphData {
  * Configuration options for graph generation.
  */
 export interface GraphOptions {
-  algorithm?: 'tag' | 'embedding' | 'hybrid';
+  algorithm?: 'tag' | 'embedding';
   maxNodes?: number;
   minSimilarity?: number;
   depth?: number;
@@ -101,20 +101,20 @@ export interface GraphOptions {
  * Enforces safe ranges to prevent unbounded payloads and performance issues.
  *
  * CodexMCP recommendations:
- * - maxNodes: 5-150 (below 5 is sparse, ~150 is manageable for ForceGraph2D/3D)
+ * - maxNodes: 1-150 (embedding-based small graphs supported, ~150 is manageable)
  * - minSimilarity: 0-1 (cosine similarity semantics)
  * - depth: 1-2 (keeps API fan-out predictable)
  */
 export const graphOptionsSchema = z.object({
   algorithm: z
-    .enum(['tag', 'embedding', 'hybrid'])
+    .enum(['tag', 'embedding'])
     .default('tag')
     .describe('Relationship detection algorithm'),
 
   maxNodes: z
     .number()
     .int()
-    .min(5, 'Minimum 5 nodes for meaningful graph')
+    .min(1, 'Minimum 1 node to allow smallest graphs')
     .max(150, 'Maximum 150 nodes for performance')
     .default(30)
     .describe('Maximum number of related articles to include'),
@@ -166,5 +166,4 @@ export const CATEGORY_COLORS: Record<string, string> = {
 export const LINK_TYPE_COLORS: Record<string, string> = {
   tag: 'rgba(148, 163, 184, 0.5)',       // Slate (semi-transparent)
   embedding: 'rgba(59, 130, 246, 0.5)',  // Blue (semi-transparent)
-  hybrid: 'rgba(168, 85, 247, 0.5)',     // Purple (semi-transparent)
 };

@@ -26,6 +26,11 @@ export interface SearchResult {
   publishedAt: Date;
   sourceId: string;
   embeddingKey: string;
+  // Phase 2: Optional fields for graph visualization
+  qualityScore?: number;
+  sourceName?: string;
+  tags?: Array<{ id: string; name: string }>;
+  thumbnail?: string | null;
 }
 
 export class VectorSearchService {
@@ -91,79 +96,16 @@ export class VectorSearchService {
       // Serialize vector with toFixed for PostgreSQL compatibility
       const vectorString = `[${queryEmbedding.map(v => v.toFixed(8)).join(',')}]`;
 
-      // Build embedding key filter using Prisma.sql (SECURE)
-      const embeddingKeyFilter =
-        embeddingKey === 'both'
-          ? Prisma.sql`AND e."embeddingKey" IN ('title', 'summary')`
-          : Prisma.sql`AND e."embeddingKey" = ${embeddingKey}::"EmbeddingKey"`;
-
-      // Build source filter (SECURE: parameter binding)
-      const sourceFilter =
-        sourceIds && sourceIds.length > 0
-          ? Prisma.sql`AND a."sourceId" = ANY(${sourceIds})`
-          : Prisma.empty;
-
-      // Build tag filter (SECURE: subquery with parameter binding)
-      const tagFilter =
-        tags && tags.length > 0
-          ? Prisma.sql`
-              AND EXISTS (
-                SELECT 1 FROM "_ArticleToTag" at
-                INNER JOIN "Tag" t ON t.id = at."B"
-                WHERE at."A" = a.id
-                AND t.name = ANY(${tags})
-              )
-            `
-          : Prisma.empty;
-
-      // Build date filter (index-friendly; compare as timestamptz without functions on column)
-      const dateFilter =
-        dateRange && (dateRange.from || dateRange.to)
-          ? Prisma.sql`
-              ${dateRange.from ? Prisma.sql`AND a."publishedAt" >= ${dateRange.from}::timestamptz` : Prisma.empty}
-              ${dateRange.to ? Prisma.sql`AND a."publishedAt" <= ${dateRange.to}::timestamptz` : Prisma.empty}
-            `
-          : Prisma.empty;
-
-      // Execute search with Prisma.sql (SECURE - parameter binding)
-      // Cosine similarity: 1 - (embedding <=> query_vector)
-      // Recency boost (exponential decay, half-life = 30 days):
-      //   time_decay = exp(-ln(2) * days_since / 30)
-      //   finalScore = similarity * (1 + recencyBoost * time_decay)
-      //   Optionally clamp finalScore to <= 1.0 if downstream assumes [0,1].
-      const results = await this.prisma.$queryRaw<SearchResult[]>`
-        SELECT
-          a.id as "articleId",
-          a.title,
-          a.summary,
-          a."translatedTitle",
-          a."publishedAt",
-          a."sourceId",
-          e."embeddingKey",
-          CASE
-            WHEN ${recencyBoost} > 0 THEN
-              LEAST(
-                (1 - (e.embedding <=> ${vectorString}::vector)) *
-                (1 + ${recencyBoost} *
-                  exp(-ln(2) * EXTRACT(EPOCH FROM (NOW() - a."publishedAt")) / (30 * 24 * 3600))
-                ),
-                1.0
-              )
-            ELSE
-              1 - (e.embedding <=> ${vectorString}::vector)
-          END as similarity
-        FROM "ArticleEmbedding" e
-        INNER JOIN "Article" a ON a.id = e."articleId"
-        WHERE e.model = ${this.activeModel}
-          AND e.version = ${this.activeVersion}
-          ${embeddingKeyFilter}
-          AND 1 - (e.embedding <=> ${vectorString}::vector) >= ${effectiveThreshold}
-          ${sourceFilter}
-          ${tagFilter}
-          ${dateFilter}
-        ORDER BY similarity DESC
-        LIMIT ${topK}
-      `;
+      // Execute search using shared helper (Phase 2: refactored)
+      const results = await this.executeVectorSearch(vectorString, {
+        topK,
+        similarityThreshold: effectiveThreshold,
+        embeddingKey,
+        sourceIds,
+        tags,
+        dateRange,
+        recencyBoost,
+      });
 
       logger.info({
         query: query.substring(0, 50),
@@ -194,5 +136,241 @@ export class VectorSearchService {
 
       throw error;
     }
+  }
+
+  /**
+   * Search for similar articles by article ID (Phase 2)
+   *
+   * Uses the article's stored embedding to find semantically similar articles
+   * via pgvector cosine similarity
+   *
+   * @param articleId - Article ID to find similar articles for
+   * @param options - Search options (embeddingKey, topK, threshold)
+   * @returns Array of similar articles ranked by similarity
+   */
+  async searchByArticleId(
+    articleId: string,
+    options: {
+      embeddingKey?: 'title' | 'summary';
+      topK?: number;
+      similarityThreshold?: number;
+    } = {}
+  ): Promise<SearchResult[]> {
+    const {
+      embeddingKey = 'summary',
+      topK = 20,
+      similarityThreshold = 0.3,
+    } = options;
+
+    try {
+      // 1. Fetch article embedding via $queryRaw (Unsupported type)
+      // CodexMCP: Cast to ::text to get string representation
+      const rows = await this.prisma.$queryRaw<Array<{ embedding: string }>>`
+        SELECT embedding::text AS embedding
+        FROM "ArticleEmbedding"
+        WHERE "articleId" = ${articleId}
+          AND "embeddingKey" = ${embeddingKey}::"EmbeddingKey"
+          AND model = ${this.activeModel}
+          AND version = ${this.activeVersion}
+        LIMIT 1
+      `;
+
+      // Short-circuit if no embedding (CodexMCP: return empty + log)
+      if (rows.length === 0) {
+        logger.warn({ articleId, embeddingKey }, 'No embedding found for article');
+        return [];
+      }
+
+      // 2. Parse embedding string to array (pgvector returns "[v1,v2,...]")
+      const embeddingString = rows[0].embedding;
+
+      // Validate format (CodeRabbit: handle malformed data)
+      if (!embeddingString.startsWith('[') || !embeddingString.endsWith(']')) {
+        logger.error({
+          articleId,
+          embeddingKey,
+          format: embeddingString.substring(0, 50),
+        }, 'Invalid embedding format');
+        return [];
+      }
+
+      const embeddingArray = embeddingString
+        .slice(1, -1)
+        .split(',')
+        .map(value => {
+          const num = Number(value.trim());
+          if (isNaN(num)) {
+            throw new Error(`Invalid embedding value: ${value}`);
+          }
+          return num;
+        });
+
+      // Validate dimension (CodeRabbit: detect data corruption)
+      const MIN_EMBEDDING_DIM = 10;  // Most models have at least 10 dimensions
+      if (embeddingArray.length === 0 || embeddingArray.length < MIN_EMBEDDING_DIM) {
+        logger.error({
+          articleId,
+          embeddingKey,
+          actualDim: embeddingArray.length,
+          model: this.activeModel,
+        }, 'Invalid embedding dimension');
+        return [];
+      }
+
+      // 3. Serialize vector (same format as search())
+      const vectorString = `[${embeddingArray.map(v => v.toFixed(8)).join(',')}]`;
+
+      // 4. Execute search using shared helper
+      const results = await this.executeVectorSearch(vectorString, {
+        topK,
+        similarityThreshold,
+        embeddingKey,
+        excludeArticleId: articleId,  // Exclude self from results
+      });
+
+      logger.info({
+        articleId,
+        embeddingKey,
+        resultCount: results.length,
+        avgSimilarity:
+          results.length > 0
+            ? (results.reduce((sum, r) => sum + r.similarity, 0) / results.length).toFixed(4)
+            : 0,
+      }, 'Article similarity search completed');
+
+      return results;
+    } catch (error) {
+      logger.error({
+        error: sanitizeError(error),
+        articleId,
+        embeddingKey,
+      }, 'Article similarity search failed');
+
+      throw error;
+    }
+  }
+
+  /**
+   * Execute vector search with precomputed vector string
+   *
+   * Shared helper for search() and searchByArticleId() (Phase 2)
+   * Performs pgvector cosine similarity search with filters
+   *
+   * @param vectorString - Serialized vector string "[v1,v2,...]"
+   * @param options - Search options
+   * @returns Array of articles ranked by similarity
+   */
+  private async executeVectorSearch(
+    vectorString: string,
+    options: {
+      topK: number;
+      similarityThreshold: number;
+      embeddingKey: 'title' | 'summary' | 'both';
+      sourceIds?: string[];
+      tags?: string[];
+      dateRange?: { from?: string; to?: string };
+      recencyBoost?: number;
+      excludeArticleId?: string;
+    }
+  ): Promise<SearchResult[]> {
+    const {
+      topK,
+      similarityThreshold,
+      embeddingKey,
+      sourceIds,
+      tags,
+      dateRange,
+      recencyBoost = 0,
+      excludeArticleId,
+    } = options;
+
+    // Build embedding key filter
+    const embeddingKeyFilter =
+      embeddingKey === 'both'
+        ? Prisma.sql`AND e."embeddingKey" IN ('title', 'summary')`
+        : Prisma.sql`AND e."embeddingKey" = ${embeddingKey}::"EmbeddingKey"`;
+
+    // Build source filter (SECURE: parameter binding)
+    const sourceFilter =
+      sourceIds && sourceIds.length > 0
+        ? Prisma.sql`AND a."sourceId" = ANY(${sourceIds})`
+        : Prisma.empty;
+
+    // Build tag filter (SECURE: subquery with parameter binding)
+    const tagFilter =
+      tags && tags.length > 0
+        ? Prisma.sql`
+            AND EXISTS (
+              SELECT 1 FROM "_ArticleToTag" at
+              INNER JOIN "Tag" t ON t.id = at."B"
+              WHERE at."A" = a.id
+              AND t.name = ANY(${tags})
+            )
+          `
+        : Prisma.empty;
+
+    // Build date filter (index-friendly)
+    const dateFilter =
+      dateRange && (dateRange.from || dateRange.to)
+        ? Prisma.sql`
+            ${dateRange.from ? Prisma.sql`AND a."publishedAt" >= ${dateRange.from}::timestamptz` : Prisma.empty}
+            ${dateRange.to ? Prisma.sql`AND a."publishedAt" <= ${dateRange.to}::timestamptz` : Prisma.empty}
+          `
+        : Prisma.empty;
+
+    // Build exclude filter (Phase 2: for searchByArticleId)
+    const excludeFilter = excludeArticleId
+      ? Prisma.sql`AND a.id != ${excludeArticleId}`
+      : Prisma.empty;
+
+    // Execute search with LATERAL JOIN for tags (Phase 2)
+    // JSONB will be auto-decoded by Prisma driver
+    const results = await this.prisma.$queryRaw<SearchResult[]>`
+      SELECT
+        a.id as "articleId",
+        a.title,
+        a.summary,
+        a."translatedTitle",
+        a."publishedAt",
+        a."sourceId",
+        a."qualityScore",
+        s.name AS "sourceName",
+        a.thumbnail,
+        e."embeddingKey",
+        CASE
+          WHEN ${recencyBoost} > 0 THEN
+            LEAST(
+              (1 - (e.embedding <=> ${vectorString}::vector)) *
+              (1 + ${recencyBoost} *
+                exp(-ln(2) * EXTRACT(EPOCH FROM (NOW() - a."publishedAt")) / (30 * 24 * 3600))
+              ),
+              1.0
+            )
+          ELSE
+            1 - (e.embedding <=> ${vectorString}::vector)
+        END as similarity,
+        COALESCE(tags.tag_list, '[]'::jsonb) AS tags
+      FROM "ArticleEmbedding" e
+      INNER JOIN "Article" a ON a.id = e."articleId"
+      LEFT JOIN "Source" s ON s.id = a."sourceId"
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object('id', t.id, 'name', t.name)) AS tag_list
+        FROM "_ArticleToTag" at
+        JOIN "Tag" t ON t.id = at."B"
+        WHERE at."A" = a.id
+      ) tags ON TRUE
+      WHERE e.model = ${this.activeModel}
+        AND e.version = ${this.activeVersion}
+        ${embeddingKeyFilter}
+        AND 1 - (e.embedding <=> ${vectorString}::vector) >= ${similarityThreshold}
+        ${sourceFilter}
+        ${tagFilter}
+        ${dateFilter}
+        ${excludeFilter}
+      ORDER BY similarity DESC
+      LIMIT ${topK}
+    `;
+
+    return results;
   }
 }

@@ -25,15 +25,16 @@ import { logger } from '@/lib/logger';
 interface GraphNodeInput {
   id: string;
   title: string;
-  tags?: Array<{ id: string; name: string }>;
+  tags?: Array<{ id?: string; name: string }>;  // Phase 2: id optional
   url?: string;
-  qualityScore: number;
+  qualityScore?: number;  // Phase 2: optional (default 0)
   publishedAt: Date | string;
   summary?: string;
   thumbnail?: string;
   sourceName?: string;
   similarity?: number;
   commonTags?: number;
+  category?: string;  // Phase 2: pre-computed category (avoid re-calculation)
 }
 
 /**
@@ -56,6 +57,17 @@ const CATEGORY_RULES: Array<{
 ];
 
 export class GraphDataSerializer {
+  // Node sizing constants (Phase 2: hybrid quality × similarity)
+  private static readonly MIN_QUALITY_SCORE = 4;
+  private static readonly CENTER_NODE_SCALE = 1.4;
+  private static readonly RELATED_NODE_SCALE = 0.85;
+  private static readonly MIN_NODE_SIZE = 30;
+  private static readonly MAX_NODE_SIZE = 140;
+
+  // Color brightness adjustment constants (Phase 2)
+  private static readonly MIN_BRIGHTNESS_FACTOR = 0.7;  // Low similarity dimming
+  private static readonly BRIGHTNESS_RANGE = 0.6;       // Similarity impact range [0.7, 1.3]
+
   /**
    * Serialize tag-based relationships to GraphData
    *
@@ -148,6 +160,133 @@ export class GraphDataSerializer {
   }
 
   /**
+   * Serialize embedding-based graph data (Phase 2)
+   *
+   * Converts embedding search results to GraphData format
+   *
+   * @param centerArticle - Center article
+   * @param embeddingResults - Similar articles from VectorSearchService
+   * @returns GraphData for visualization
+   */
+  static serializeEmbeddingBased(
+    centerArticle: Article & { tags: Array<{ id: string; name: string }> },
+    embeddingResults: Array<{
+      articleId: string;
+      title: string;
+      summary: string | null;
+      publishedAt: Date;
+      qualityScore?: number;
+      sourceName?: string;
+      tags?: Array<{ id: string; name: string }>;
+      thumbnail?: string | null;
+      similarity: number;
+    }>
+  ): GraphData {
+    try {
+      // Convert SearchResult to GraphNodeInput
+      const centerTags = centerArticle.tags.map(t => t.name);
+      
+      const relatedInputs: GraphNodeInput[] = embeddingResults.map(result => {
+        const resultTags = result.tags?.map(t => t.name) || [];
+        
+        return {
+          id: result.articleId,
+          title: result.title,
+          tags: result.tags || [],
+          url: `/articles/${result.articleId}`,
+          qualityScore: result.qualityScore ?? 0,
+          publishedAt: result.publishedAt,
+          summary: result.summary || '',
+          thumbnail: result.thumbnail || undefined,
+          sourceName: result.sourceName,
+          similarity: result.similarity,
+          commonTags: this.countCommonTags(centerTags, resultTags),
+          category: this.getCategory(result.tags || []),  // Pre-compute
+        };
+      });
+
+      // Normalize center article
+      const centerNode = this.toGraphNode(
+        this.toGraphNodeInput(centerArticle),
+        true  // isCenter
+      );
+
+      // Normalize related articles
+      const relatedNodes = relatedInputs
+        .map(input => {
+          try {
+            return this.toGraphNode(input, false);
+          } catch (error) {
+            // CodexMCP: Best-effort, skip invalid nodes
+            logger.warn({
+              articleId: input.id,
+              error: error instanceof Error ? error.message : String(error),
+            }, 'Skipping invalid node in graph serialization');
+            return null;
+          }
+        })
+        .filter((node): node is GraphNode => node !== null);
+
+      // Generate links (center → related)
+      const links: GraphLink[] = relatedInputs
+        .filter(input => relatedNodes.some(node => node.id === input.id))
+        .map(input => ({
+          source: centerNode.id,
+          target: input.id,
+          value: input.similarity || 0,
+          type: 'embedding',
+          commonTags: input.commonTags,
+        }));
+
+      // Calculate result stats (CodexMCP: guard against empty arrays)
+      const similarities = links.map(l => l.value);
+      const categoryCounts = this.countCategories([centerNode, ...relatedNodes]);
+
+      const graphData: GraphData = {
+        nodes: [centerNode, ...relatedNodes],
+        links,
+        metadata: {
+          centerArticleId: centerNode.id,
+          algorithm: 'embedding',
+          nodeCount: relatedNodes.length + 1,
+          linkCount: links.length,
+          timestamp: new Date().toISOString(),
+          options: {
+            algorithm: 'embedding',
+            maxNodes: embeddingResults.length,
+            minSimilarity: similarities.length > 0 ? Math.min(...similarities) : 0,
+          },
+          resultStats: {
+            maxSimilarity: similarities.length > 0 ? Math.max(...similarities) : 0,
+            minSimilarity: similarities.length > 0 ? Math.min(...similarities) : 0,
+            avgSimilarity: similarities.length > 0
+              ? similarities.reduce((sum, val) => sum + val, 0) / similarities.length
+              : 0,
+            categoryCounts,
+          },
+        },
+      };
+
+      logger.info({
+        centerArticleId: centerNode.id,
+        nodeCount: graphData.nodes.length,
+        linkCount: graphData.links.length,
+        algorithm: 'embedding',
+      }, 'Graph data serialized (embedding-based)');
+
+      return graphData;
+
+    } catch (error) {
+      logger.error({
+        centerArticleId: centerArticle.id,
+        error: error instanceof Error ? error.message : String(error),
+      }, 'Failed to serialize graph data (embedding)');
+
+      throw error;
+    }
+  }
+
+  /**
    * Normalize Article to GraphNodeInput
    *
    * CodexMCP: Conversion layer for full Article objects
@@ -178,14 +317,34 @@ export class GraphDataSerializer {
       throw new Error(`Missing required fields: id=${input.id}, title=${input.title}`);
     }
 
-    const category = this.getCategory(input.tags || []);
-    const color = this.getCategoryColor(category);
+    // Phase 2: Use pre-computed category or calculate
+    const category = input.category ?? this.getCategory(input.tags || []);
+    const baseColor = this.getCategoryColor(category);
+
+    // CodexMCP Phase 2: Adjust color brightness by similarity
+    const color = isCenter ? '#FBBF24' : this.adjustColorForSimilarity(baseColor, input.similarity);
+
+    // CodexMCP Phase 2: Clamp qualityScore to minimum baseline
+    const qualityScore = Math.max(input.qualityScore ?? 0, this.MIN_QUALITY_SCORE);
+
+    // CodexMCP Phase 2: Hybrid node size (quality * similarity)
+    let val: number;
+    if (isCenter) {
+      val = qualityScore * this.CENTER_NODE_SCALE;  // Center: enhanced visibility (larger than related nodes)
+    } else if (input.similarity) {
+      // Related: hybrid (quality * similarity * factor)
+      const hybridSize = input.similarity * qualityScore * this.RELATED_NODE_SCALE;
+      val = Math.min(Math.max(hybridSize, this.MIN_NODE_SIZE), this.MAX_NODE_SIZE);  // Clamp to 30-140
+    } else {
+      // Fallback: quality-based
+      val = qualityScore;
+    }
 
     return {
       id: input.id,
       label: isCenter ? `[中心] ${input.title}` : input.title,  // CodexMCP: Badge for center node
-      val: isCenter ? input.qualityScore * 3 : input.qualityScore,  // CodexMCP: 3x size for center
-      color: isCenter ? '#FBBF24' : color,  // CodexMCP: Special color (Amber) for center
+      val,  // CodexMCP Phase 2: Hybrid size (quality * similarity)
+      color,  // CodexMCP: Similarity-adjusted color
       category,
       publishedAt: this.toISOString(input.publishedAt),
       url: input.url || `/articles/${input.id}`,
@@ -244,6 +403,47 @@ export class GraphDataSerializer {
    */
   private static toISOString(date: Date | string): string {
     return date instanceof Date ? date.toISOString() : new Date(date).toISOString();
+  }
+
+  /**
+   * Count common tags between two tag lists (Phase 2)
+   *
+   * @param tags1 - First tag list (tag names)
+   * @param tags2 - Second tag list (tag names)
+   * @returns Number of common tags
+   */
+  private static countCommonTags(tags1: string[], tags2: string[]): number {
+    const set1 = new Set(tags1);
+    const set2 = new Set(tags2);
+    return [...set1].filter(t => set2.has(t)).length;
+  }
+
+  /**
+   * Adjust color brightness based on similarity (Phase 2)
+   *
+   * CodexMCP: Hybrid - category (hue) + similarity (lightness)
+   */
+  private static adjustColorForSimilarity(baseColor: string, similarity?: number): string {
+    if (!similarity) return baseColor;
+
+    // Validate hex format (CodeRabbit: prevent parseInt issues)
+    if (!/^#[0-9A-Fa-f]{6}$/.test(baseColor)) {
+      logger.warn({ baseColor }, 'Invalid color format, using as-is');
+      return baseColor;
+    }
+
+    const r = parseInt(baseColor.slice(1, 3), 16);
+    const g = parseInt(baseColor.slice(3, 5), 16);
+    const b = parseInt(baseColor.slice(5, 7), 16);
+
+    // Brightness factor: [0.7, 1.3] for similarity [0, 1]
+    const factor = this.MIN_BRIGHTNESS_FACTOR + similarity * this.BRIGHTNESS_RANGE;
+
+    const rAdj = Math.min(Math.round(r * factor), 255);
+    const gAdj = Math.min(Math.round(g * factor), 255);
+    const bAdj = Math.min(Math.round(b * factor), 255);
+
+    return `#${rAdj.toString(16).padStart(2, '0')}${gAdj.toString(16).padStart(2, '0')}${bAdj.toString(16).padStart(2, '0')}`;
   }
 
   /**

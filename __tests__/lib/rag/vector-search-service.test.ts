@@ -264,4 +264,53 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
       expect(thresholdParam).toBe(0.5);
     });
   });
+
+  // Phase 2: searchByArticleId() tests
+  describe('searchByArticleId', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      capturedSQL = [];
+    });
+
+    it('should search by article ID and return similar articles', async () => {
+      const mockEmbedding = '[' + Array(1536).fill(0.1).join(',') + ']';
+      const mockResults = [
+        {
+          articleId: 'article-2',
+          title: 'Related Article',
+          summary: 'Summary',
+          translatedTitle: null,
+          similarity: 0.75,
+          publishedAt: new Date('2023-01-01'),
+          sourceId: 'source-1',
+          embeddingKey: 'summary',
+          qualityScore: 80,
+          sourceName: 'Test Source',
+          tags: [{ id: 'tag-1', name: 'React' }],
+          thumbnail: null,
+        },
+      ];
+
+      mockPrisma.$queryRaw.mockResolvedValueOnce([{ embedding: mockEmbedding }]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce(mockResults);
+
+      const results = await service.searchByArticleId('article-1', {
+        embeddingKey: 'summary',
+        topK: 10,
+        similarityThreshold: 0.5,
+      });
+
+      expect(results).toEqual(mockResults);
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return empty array if no embedding found', async () => {
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
+
+      const results = await service.searchByArticleId('article-without-embedding');
+
+      expect(results).toEqual([]);
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    });
+  });
 });
