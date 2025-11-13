@@ -40,12 +40,17 @@ export class VectorSearchService {
   private activeModel: string;
   private activeVersion: number;
 
-  constructor(prisma: PrismaClient) {
+  constructor(prisma: PrismaClient, embeddingService?: EmbeddingService | null) {
     this.prisma = prisma;
-    if (process.env.OPENAI_API_KEY) {
+    if (embeddingService !== undefined) {
+      this.embeddingService = embeddingService;
+    } else if (process.env.OPENAI_API_KEY) {
       this.embeddingService = new EmbeddingService();
     } else {
       this.embeddingService = null;
+    }
+
+    if (!this.embeddingService) {
       logger.warn('EmbeddingService unavailable (missing OPENAI_API_KEY); vector search will be limited');
     }
     this.queryExpansionService = new QueryExpansionService();
