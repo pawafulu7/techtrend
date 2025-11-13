@@ -314,13 +314,25 @@ export class GraphDataSerializer {
     const color = isCenter ? '#FBBF24' : this.adjustColorForSimilarity(baseColor, input.similarity);
 
     // CodexMCP Phase 2: Clamp qualityScore to minimum baseline
-    // Prevents zero-radius nodes that collapse inward
     const qualityScore = Math.max(input.qualityScore ?? 0, 4);
+
+    // CodexMCP Phase 2: Hybrid node size (quality * similarity)
+    let val: number;
+    if (isCenter) {
+      val = qualityScore * 2;  // Center: quality-based
+    } else if (input.similarity) {
+      // Related: hybrid (quality * similarity * factor)
+      const hybridSize = input.similarity * qualityScore * 0.6;
+      val = Math.min(Math.max(hybridSize, 20), 100);  // Clamp to 20-100
+    } else {
+      // Fallback: quality-based
+      val = qualityScore;
+    }
 
     return {
       id: input.id,
       label: isCenter ? `[中心] ${input.title}` : input.title,  // CodexMCP: Badge for center node
-      val: isCenter ? qualityScore * 2 : qualityScore,  // CodexMCP Phase 2: 3x → 2x for smaller center
+      val,  // CodexMCP Phase 2: Hybrid size (quality * similarity)
       color,  // CodexMCP: Similarity-adjusted color
       category,
       publishedAt: this.toISOString(input.publishedAt),

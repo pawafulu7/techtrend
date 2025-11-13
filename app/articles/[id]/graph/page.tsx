@@ -79,7 +79,7 @@ function GraphContainer() {
     // CodeRabbit: AbortController for cleanup
     const abortController = new AbortController();
 
-    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=12&minSimilarity=0.50`, {
+    fetch(`/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=8&minSimilarity=0.50`, {
       signal: abortController.signal,
     })
       .then(res => {
