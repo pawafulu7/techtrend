@@ -38,6 +38,11 @@ const darkenColor = (hexColor: string, factor: number): string => {
     .padStart(2, '0')}`;
 };
 
+const truncateLabel = (label: string, maxLength: number): string => {
+  if (label.length <= maxLength) return label;
+  return label.substring(0, maxLength) + '...';
+};
+
 /**
  * Article Relationship Graph Page
  *
@@ -143,8 +148,10 @@ function GraphContainer() {
     if (!graphData || !graphInstance) return;
 
     const fg = graphInstance;
-    const charge = currentDepth === 2 ? -300 : -240;
-    const linkDistance = currentDepth === 2 ? 170 : 140;
+    const nodeCount = graphData.nodes.length;
+    const isExpandedDepth = currentDepth === 2 || nodeCount > 10;
+    const charge = isExpandedDepth ? -400 : -240;
+    const linkDistance = isExpandedDepth ? 200 : 140;
 
     // Set charge force
     const chargeForce = fg.d3Force('charge');
@@ -160,7 +167,13 @@ function GraphContainer() {
     // CodexMCP: Add collide force to prevent overlap
     // Radius matches visual radius (*4) + padding
     const collide = forceCollide<GraphNode>()
-      .radius((node) => Math.sqrt(node.val ?? 1) * 6 + 16)
+      .radius((node) => {
+        const depthSizeFactor = node.depth === 2 ? 0.7 : 1;
+        const visualRadius = Math.sqrt(node.val ?? 1) * 4 * depthSizeFactor;
+        const fontSize = 12;
+        const padding = 10;
+        return visualRadius + fontSize + padding;
+      })
       .strength(1)
       .iterations(2);
 
@@ -235,7 +248,9 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = '#FFFFFF';
-          ctx.fillText(removeCenterPrefix(label), node.x, node.y + radius + fontSize);
+          const maxLength = isCenter ? 40 : 20;
+          const displayLabel = truncateLabel(removeCenterPrefix(label), maxLength);
+          ctx.fillText(displayLabel, node.x, node.y + radius + fontSize);
         }}
         linkWidth={(link: GraphLink) => Math.max((link.value ** 2) * 18, 1.5)}
         linkDirectionalParticles={3}
@@ -245,10 +260,10 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         backgroundColor="#020617"
         linkColor={() => 'rgba(148, 163, 184, 0.4)'}
         // CodexMCP: Layout parameters (supported props only)
-        warmupTicks={60}
+        warmupTicks={100}
         cooldownTicks={400}
         d3AlphaDecay={0.008}
-        d3VelocityDecay={0.12}
+        d3VelocityDecay={0.35}
         width={typeof window !== 'undefined' ? window.innerWidth : 1920}
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
