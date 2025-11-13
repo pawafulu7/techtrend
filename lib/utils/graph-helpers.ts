@@ -9,9 +9,11 @@ export function darkenColor(hexColor: string, factor: number): string {
   const g = parseInt(hexColor.slice(3, 5), 16);
   const b = parseInt(hexColor.slice(5, 7), 16);
 
-  const rDark = Math.round(r * factor);
-  const gDark = Math.round(g * factor);
-  const bDark = Math.round(b * factor);
+  const clampChannel = (value: number) => Math.min(255, Math.max(0, Math.round(value)));
+
+  const rDark = clampChannel(r * factor);
+  const gDark = clampChannel(g * factor);
+  const bDark = clampChannel(b * factor);
 
   return `#${rDark.toString(16).padStart(2, '0')}${gDark.toString(16).padStart(2, '0')}${bDark
     .toString(16)

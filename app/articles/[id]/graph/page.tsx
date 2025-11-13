@@ -94,6 +94,7 @@ function GraphContainer() {
         return res.json();
       })
       .then(data => {
+        if (!isActive) return;
         setGraphData(data);
 
         // CodexMCP: Create stable map for tooltip lookup (before force-graph mutates links)
@@ -110,6 +111,7 @@ function GraphContainer() {
       })
       .catch(err => {
         if (err.name === 'AbortError') return;  // CodeRabbit: Ignore abort errors
+        if (!isActive) return;
         setError(err);
       })
       .finally(() => {
