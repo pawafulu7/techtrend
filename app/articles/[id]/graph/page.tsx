@@ -219,7 +219,7 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
           ctx.fillStyle = '#FFFFFF';
           ctx.fillText(removeCenterPrefix(label), node.x, node.y + Math.sqrt(node.val) * 3 + fontSize);
         }}
-        linkWidth={(link: GraphLink) => Math.max(link.value * 8, 1)}
+        linkWidth={(link: GraphLink) => Math.max((link.value ** 2) * 18, 1.5)}
         linkDirectionalParticles={3}
         linkDirectionalParticleWidth={4}
         onNodeClick={(node: GraphNode) => router.push(node.url)}
