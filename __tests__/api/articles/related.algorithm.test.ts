@@ -50,6 +50,7 @@ describe('GET /api/articles/[id]/related - algorithm switching', () => {
   const tagBasedResult = {
     id: 'related-tag-1',
     title: 'Tag Related Article',
+    translatedTitle: 'タグ関連記事',
     summary: 'Tag summary',
     url: '/articles/related-tag-1',
     sourceName: 'Dev.to',
@@ -81,6 +82,7 @@ describe('GET /api/articles/[id]/related - algorithm switching', () => {
     expect(body.metadata.algorithm).toBe('tag');
     expect(body.articles).toHaveLength(1);
     expect(body.articles[0].id).toBe(tagBasedResult.id);
+    expect(body.articles[0].translatedTitle).toBe('タグ関連記事');
     expect(mockedArticleCache.getRelatedArticles).toHaveBeenCalledWith(articleId, [
       'tag-react',
       'tag-node',
@@ -117,6 +119,7 @@ describe('GET /api/articles/[id]/related - algorithm switching', () => {
     expect(body.metadata.algorithm).toBe('embedding');
     expect(body.articles).toHaveLength(1);
     expect(body.articles[0].id).toBe('embedding-1');
+    expect(body.articles[0].translatedTitle).toBeNull();
     expect(mockedArticleCache.getRelatedArticles).not.toHaveBeenCalled();
   });
 
@@ -176,5 +179,34 @@ describe('GET /api/articles/[id]/related - algorithm switching', () => {
     expect(response.status).toBe(400);
     expect(body.error).toBe('Invalid query parameters');
     expect(mockedArticleCache.getArticleWithRelations).not.toHaveBeenCalled();
+  });
+
+  test('returns embedding results with Japanese translatedTitle', async () => {
+    const embeddingResults: SearchResult[] = [
+      {
+        articleId: 'embedding-ja',
+        title: 'English Title',
+        summary: 'Summary',
+        translatedTitle: '日本語タイトル',
+        similarity: 0.85,
+        publishedAt: new Date('2025-01-05T00:00:00Z'),
+        sourceId: 'source-3',
+        sourceName: 'JP Source',
+        embeddingKey: 'summary',
+        qualityScore: 90,
+        tags: [{ id: 'tag-react', name: 'React' }],
+        thumbnail: null,
+      },
+    ];
+
+    mockedVectorSearch.searchByArticleId.mockResolvedValueOnce(embeddingResults);
+
+    const response = await GET(createRequest('?algorithm=embedding'), {
+      params: Promise.resolve({ id: articleId }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.articles[0].translatedTitle).toBe('日本語タイトル');
   });
 });

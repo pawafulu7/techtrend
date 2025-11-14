@@ -118,7 +118,7 @@ export async function GET(
           nodes: [
             {
               id: targetArticle.id,
-              label: targetArticle.title,
+              label: targetArticle.translatedTitle ?? targetArticle.title,
               val: targetArticle.qualityScore,
               color: '#6B7280',
               category: 'Other',
@@ -188,6 +188,7 @@ export async function GET(
           return {
             id: article.id,
             title: article.title,
+            translatedTitle: article.translatedTitle ?? null,
             summary: article.summary || '',
             url: article.url,
             sourceName: article.sourceName as string,
@@ -240,7 +241,7 @@ export async function GET(
             nodes: [
               {
                 id: targetArticle.id,
-                label: targetArticle.title,
+                label: targetArticle.translatedTitle ?? targetArticle.title,
                 val: targetArticle.qualityScore,
                 color: '#6B7280',
                 category: 'Other',

@@ -2,9 +2,11 @@
 
 import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
-import { Network } from 'lucide-react';
+import { Network, ArrowLeft } from 'lucide-react';
 import { forceCollide } from 'd3-force';
+import { Button } from '@/components/ui/button';
 import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
 import { darkenColor, truncateLabel } from '@/lib/utils/graph-helpers';
 
@@ -21,6 +23,48 @@ interface ForceGraphRef {
 
 // Utility function for safe label prefix removal
 const removeCenterPrefix = (label: string) => label.replace(/^\[中心\]\s*/, '');
+
+// Utility function for formatting published date (hybrid: relative for recent, absolute for old)
+const formatPublishedDate = (isoDate: string): string => {
+  try {
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return '配信日不明';
+
+    const diffMs = Date.now() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    // Recent articles: relative time
+    if (diffHours < 24) return `${diffHours}時間前`;
+    if (diffDays < 7) return `${diffDays}日前`;
+
+    // Older articles: absolute date
+    return date.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
+  } catch {
+    return '配信日不明';
+  }
+};
+
+// Utility function for getting freshness indicator (border color and style)
+const getFreshnessBorder = (publishedAt: string): { color: string; width: number } | null => {
+  try {
+    const date = new Date(publishedAt);
+    if (isNaN(date.getTime())) return null;
+
+    const diffDays = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Fresh (within 7 days): green border
+    if (diffDays < 7) return { color: '#10B981', width: 2.5 };
+
+    // Recent (within 30 days): yellow border
+    if (diffDays < 30) return { color: '#FBBF24', width: 2 };
+
+    // Old (30+ days): no border
+    return null;
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Article Relationship Graph Page
@@ -189,12 +233,13 @@ function GraphContainer() {
           return `
 ${node.label}
 
+配信: ${formatPublishedDate(node.publishedAt)}
 ${isCenter ? '[この記事を中心に関連記事を表示]' : `
 関連度: ${similarity}%
 共通タグ数: ${commonTags}個
 カテゴリ: ${node.category}
 `}
-${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
+${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 `.trim();
         }}
         nodeVal="val"
@@ -225,6 +270,16 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
             ctx.stroke();
           }
 
+          // Draw freshness border (for non-center nodes)
+          if (!isCenter) {
+            const freshnessBorder = getFreshnessBorder(node.publishedAt);
+            if (freshnessBorder) {
+              ctx.strokeStyle = freshnessBorder.color;
+              ctx.lineWidth = freshnessBorder.width / globalScale;
+              ctx.stroke();
+            }
+          }
+
           // Draw label (safe prefix removal)
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -249,8 +304,18 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
 
+      {/* Back button */}
+      <div className="absolute top-4 left-4">
+        <Button variant="ghost" asChild className="text-white hover:bg-slate-800">
+          <Link href={`/articles/${articleId}`} className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            記事詳細に戻る
+          </Link>
+        </Button>
+      </div>
+
       {/* CodexMCP: Legend card (always visible) */}
-      <div className="absolute top-4 left-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-xs">
+      <div className="absolute top-16 left-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-xs">
         <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
           <Network className="h-4 w-4" />
           グラフの見方
@@ -282,6 +347,13 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
             <div>
               <div className="font-medium">線の太さ = 関連度</div>
               <div className="text-slate-400">太いほど関連性が高い</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <div className="w-3 h-3 rounded-full bg-indigo-500 border-2 border-green-500 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">枠線の色 = 配信日時</div>
+              <div className="text-slate-400">緑=1週間以内、黄=1ヶ月以内</div>
             </div>
           </div>
         </div>

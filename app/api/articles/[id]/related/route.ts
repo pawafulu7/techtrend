@@ -159,6 +159,7 @@ export async function GET(
         return {
           id: article.id,
           title: article.title,
+          translatedTitle: article.translatedTitle ?? null,
           summary: article.summary || '',
           url: article.url,
           source: article.sourceName,
@@ -219,6 +220,7 @@ function mapSearchResultToRelatedArticle(
     return {
       id: result.articleId,
       title: result.title,
+      translatedTitle: result.translatedTitle ?? null,
       summary: result.summary ?? '',
       url: `/articles/${result.articleId}`,
       source: result.sourceName || '',

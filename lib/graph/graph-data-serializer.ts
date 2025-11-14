@@ -26,6 +26,7 @@ import { SearchResult } from '@/lib/rag/vector-search-service';
 interface GraphNodeInput {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   tags?: Array<{ id?: string; name: string }>;  // Phase 2: id optional
   url?: string;
   qualityScore?: number;  // Phase 2: optional (default 0)
@@ -174,6 +175,7 @@ export class GraphDataSerializer {
     embeddingResults: Array<{
       articleId: string;
       title: string;
+      translatedTitle?: string | null;
       summary: string | null;
       publishedAt: Date;
       qualityScore?: number;
@@ -189,10 +191,11 @@ export class GraphDataSerializer {
       
       const relatedInputs: GraphNodeInput[] = embeddingResults.map(result => {
         const resultTags = result.tags?.map(t => t.name) || [];
-        
+
         return {
           id: result.articleId,
           title: result.title,
+          translatedTitle: result.translatedTitle ?? null,
           tags: result.tags || [],
           url: `/articles/${result.articleId}`,
           qualityScore: result.qualityScore ?? 0,
@@ -311,6 +314,7 @@ export class GraphDataSerializer {
         return {
           id: result.articleId,
           title: result.title,
+          translatedTitle: result.translatedTitle ?? null,
           tags,
           url: `/articles/${result.articleId}`,
           qualityScore: result.qualityScore ?? 0,
@@ -340,6 +344,7 @@ export class GraphDataSerializer {
           input: {
             id: candidate.articleId,
             title: candidate.title,
+            translatedTitle: candidate.translatedTitle ?? null,
             tags,
             url: `/articles/${candidate.articleId}`,
             qualityScore: candidate.qualityScore ?? 0,
@@ -682,6 +687,7 @@ export class GraphDataSerializer {
     return {
       id: article.id,
       title: article.title,
+      translatedTitle: article.translatedTitle ?? null,
       tags: article.tags || [],
       url: article.url,
       qualityScore: article.qualityScore,
@@ -725,9 +731,11 @@ export class GraphDataSerializer {
       val = qualityScore;
     }
 
+    const displayTitle = input.translatedTitle ?? input.title;
+
     return {
       id: input.id,
-      label: isCenter ? `[中心] ${input.title}` : input.title,  // CodexMCP: Badge for center node
+      label: isCenter ? `[中心] ${displayTitle}` : displayTitle,  // CodexMCP: Badge for center node
       val,  // CodexMCP Phase 2: Hybrid size (quality * similarity)
       color,  // CodexMCP: Similarity-adjusted color
       category,

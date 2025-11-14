@@ -42,6 +42,7 @@ describe('GraphDataSerializer', () => {
     {
       articleId: 'layer1-1',
       title: 'Layer 1 Article 1',
+      translatedTitle: null,
       summary: 'Summary 1',
       publishedAt: new Date('2023-01-02'),
       qualityScore: 75,
@@ -53,6 +54,7 @@ describe('GraphDataSerializer', () => {
     {
       articleId: 'layer1-2',
       title: 'Layer 1 Article 2',
+      translatedTitle: null,
       summary: 'Summary 2',
       publishedAt: new Date('2023-01-05'),
       qualityScore: 72,
@@ -67,6 +69,7 @@ describe('GraphDataSerializer', () => {
     {
       articleId: 'layer2-1',
       title: 'Layer 2 Article 1',
+      translatedTitle: null,
       summary: 'Summary 2-1',
       publishedAt: new Date('2023-01-03'),
       qualityScore: 70,
@@ -79,6 +82,7 @@ describe('GraphDataSerializer', () => {
     {
       articleId: 'layer2-2',
       title: 'Layer 2 Article 2',
+      translatedTitle: null,
       summary: 'Summary 2-2',
       publishedAt: new Date('2023-01-04'),
       qualityScore: 68,
@@ -96,6 +100,7 @@ describe('GraphDataSerializer', () => {
         {
           articleId: 'article-1',
           title: 'Related Article 1',
+          translatedTitle: null,
           summary: 'Summary 1',
           publishedAt: new Date('2023-01-02'),
           qualityScore: 75,
@@ -107,6 +112,7 @@ describe('GraphDataSerializer', () => {
         {
           articleId: 'article-2',
           title: 'Related Article 2',
+          translatedTitle: null,
           summary: null,
           publishedAt: new Date('2023-01-03'),
           qualityScore: 60,
@@ -540,6 +546,67 @@ describe('GraphDataSerializer', () => {
       }, {});
       expect(countsByParent['layer1-a']).toBe(2);  // perParentCap = ceil(3 / 2)
       expect(countsByParent['layer1-b']).toBe(1);
+    });
+  });
+
+  describe('translatedTitle support', () => {
+    it('should use translatedTitle for node label when available', () => {
+      const mockArticleWithTranslation: Article & { tags: Array<{ id: string; name: string }> } = {
+        ...mockCenterArticle,
+        title: 'English Title',
+        translatedTitle: '日本語タイトル',
+      };
+
+      const mockResultsWithTranslation = [
+        {
+          articleId: 'article-ja',
+          title: 'English Article',
+          translatedTitle: '日本語記事',
+          summary: 'Summary',
+          publishedAt: new Date('2023-01-02'),
+          qualityScore: 80,
+          sourceName: 'JP Source',
+          tags: [{ id: 'tag-1', name: 'React' }],
+          thumbnail: null,
+          similarity: 0.8,
+        },
+      ];
+
+      const graphData = GraphDataSerializer.serializeEmbeddingBased(
+        mockArticleWithTranslation,
+        mockResultsWithTranslation
+      );
+
+      const centerNode = graphData.nodes.find(n => n.id === mockCenterArticle.id);
+      const relatedNode = graphData.nodes.find(n => n.id === 'article-ja');
+
+      expect(centerNode?.label).toBe('[中心] 日本語タイトル');
+      expect(relatedNode?.label).toBe('日本語記事');
+    });
+
+    it('should fallback to title when translatedTitle is null', () => {
+      const mockResultsWithoutTranslation = [
+        {
+          articleId: 'article-en',
+          title: 'English Only Article',
+          translatedTitle: null,
+          summary: 'Summary',
+          publishedAt: new Date('2023-01-02'),
+          qualityScore: 80,
+          sourceName: 'EN Source',
+          tags: [{ id: 'tag-1', name: 'React' }],
+          thumbnail: null,
+          similarity: 0.8,
+        },
+      ];
+
+      const graphData = GraphDataSerializer.serializeEmbeddingBased(
+        mockCenterArticle,
+        mockResultsWithoutTranslation
+      );
+
+      const relatedNode = graphData.nodes.find(n => n.id === 'article-en');
+      expect(relatedNode?.label).toBe('English Only Article');
     });
   });
 });
