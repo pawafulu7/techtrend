@@ -175,6 +175,7 @@ export class GraphDataSerializer {
     embeddingResults: Array<{
       articleId: string;
       title: string;
+      translatedTitle?: string | null;
       summary: string | null;
       publishedAt: Date;
       qualityScore?: number;
@@ -190,10 +191,11 @@ export class GraphDataSerializer {
       
       const relatedInputs: GraphNodeInput[] = embeddingResults.map(result => {
         const resultTags = result.tags?.map(t => t.name) || [];
-        
+
         return {
           id: result.articleId,
           title: result.title,
+          translatedTitle: result.translatedTitle ?? null,
           tags: result.tags || [],
           url: `/articles/${result.articleId}`,
           qualityScore: result.qualityScore ?? 0,
@@ -312,6 +314,7 @@ export class GraphDataSerializer {
         return {
           id: result.articleId,
           title: result.title,
+          translatedTitle: result.translatedTitle ?? null,
           tags,
           url: `/articles/${result.articleId}`,
           qualityScore: result.qualityScore ?? 0,
@@ -341,6 +344,7 @@ export class GraphDataSerializer {
           input: {
             id: candidate.articleId,
             title: candidate.title,
+            translatedTitle: candidate.translatedTitle ?? null,
             tags,
             url: `/articles/${candidate.articleId}`,
             qualityScore: candidate.qualityScore ?? 0,
@@ -683,6 +687,7 @@ export class GraphDataSerializer {
     return {
       id: article.id,
       title: article.title,
+      translatedTitle: article.translatedTitle ?? null,
       tags: article.tags || [],
       url: article.url,
       qualityScore: article.qualityScore,
