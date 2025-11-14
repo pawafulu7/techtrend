@@ -40,7 +40,7 @@ export class DatabaseCompanySourceProvider implements CompanySourceProvider {
     // }));
   }
 
-  async getSourcesByCategory(categoryId: string): Promise<CompanySource[]> {
+  async getSourcesByCategory(_categoryId: string): Promise<CompanySource[]> {
     throw new Error('DatabaseCompanySourceProvider not implemented yet (Phase 2)');
   }
 }

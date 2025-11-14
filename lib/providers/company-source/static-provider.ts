@@ -9,20 +9,22 @@ export class StaticCompanySourceProvider implements CompanySourceProvider {
   constructor(private readonly sourceIds: string[]) {}
 
   async getSources(): Promise<CompanySource[]> {
-    return this.sourceIds
-      .map((id) => {
-        const entry = sourceRegistry[id];
-        if (!entry) return null;
+    const results: CompanySource[] = [];
 
-        return {
+    for (const id of this.sourceIds) {
+      const entry = sourceRegistry[id];
+      if (entry) {
+        results.push({
           id: entry.id,
           name: entry.name,
           slug: entry.slug,
           siteUrl: entry.siteUrl,
           isActive: true,
-        } satisfies CompanySource;
-      })
-      .filter((source): source is CompanySource => source !== null);
+        });
+      }
+    }
+
+    return results;
   }
 
   async getSourcesByCategory(categoryId: string): Promise<CompanySource[]> {
