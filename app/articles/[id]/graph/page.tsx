@@ -45,6 +45,27 @@ const formatPublishedDate = (isoDate: string): string => {
   }
 };
 
+// Utility function for getting freshness indicator (border color and style)
+const getFreshnessBorder = (publishedAt: string): { color: string; width: number } | null => {
+  try {
+    const date = new Date(publishedAt);
+    if (isNaN(date.getTime())) return null;
+
+    const diffDays = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Fresh (within 7 days): green border
+    if (diffDays < 7) return { color: '#10B981', width: 2.5 };
+
+    // Recent (within 30 days): yellow border
+    if (diffDays < 30) return { color: '#FBBF24', width: 2 };
+
+    // Old (30+ days): no border
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Article Relationship Graph Page
  *
@@ -249,6 +270,16 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
             ctx.stroke();
           }
 
+          // Draw freshness border (for non-center nodes)
+          if (!isCenter) {
+            const freshnessBorder = getFreshnessBorder(node.publishedAt);
+            if (freshnessBorder) {
+              ctx.strokeStyle = freshnessBorder.color;
+              ctx.lineWidth = freshnessBorder.width / globalScale;
+              ctx.stroke();
+            }
+          }
+
           // Draw label (safe prefix removal)
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -316,6 +347,13 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
             <div>
               <div className="font-medium">線の太さ = 関連度</div>
               <div className="text-slate-400">太いほど関連性が高い</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <div className="w-3 h-3 rounded-full bg-indigo-500 border-2 border-green-500 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">枠線の色 = 配信日時</div>
+              <div className="text-slate-400">緑=1週間以内、黄=1ヶ月以内</div>
             </div>
           </div>
         </div>
