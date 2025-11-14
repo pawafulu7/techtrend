@@ -24,6 +24,27 @@ interface ForceGraphRef {
 // Utility function for safe label prefix removal
 const removeCenterPrefix = (label: string) => label.replace(/^\[中心\]\s*/, '');
 
+// Utility function for formatting published date (hybrid: relative for recent, absolute for old)
+const formatPublishedDate = (isoDate: string): string => {
+  try {
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return '配信日不明';
+
+    const diffMs = Date.now() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    // Recent articles: relative time
+    if (diffHours < 24) return `${diffHours}時間前`;
+    if (diffDays < 7) return `${diffDays}日前`;
+
+    // Older articles: absolute date
+    return date.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
+  } catch {
+    return '配信日不明';
+  }
+};
+
 /**
  * Article Relationship Graph Page
  *
@@ -191,12 +212,13 @@ function GraphContainer() {
           return `
 ${node.label}
 
+配信: ${formatPublishedDate(node.publishedAt)}
 ${isCenter ? '[この記事を中心に関連記事を表示]' : `
 関連度: ${similarity}%
 共通タグ数: ${commonTags}個
 カテゴリ: ${node.category}
 `}
-${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
+${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 `.trim();
         }}
         nodeVal="val"
