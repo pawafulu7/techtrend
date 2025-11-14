@@ -92,6 +92,11 @@ Object.defineProperty(window, 'matchMedia', {
 // scrollToのモック
 window.scrollTo = jest.fn();
 
+// scrollIntoViewのモック（cmdkコンポーネントで使用）
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = jest.fn();
+}
+
 // indexedDBのモック
 global.indexedDB = {
   open: jest.fn(() => ({

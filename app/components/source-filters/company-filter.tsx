@@ -1,0 +1,161 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Building2, ChevronDown, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { CompanySelectionDialog } from './company-selection-dialog';
+import type { CompanySource } from '@/lib/providers/company-source';
+
+export interface CompanyFilterProps {
+  sources: CompanySource[];
+  visibleSources: CompanySource[];
+  selectedSourceIds: string[];
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  onSourceToggle: (sourceId: string) => void;
+  onBatchSelect: (sourceIds: string[]) => void;
+  isExpanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
+}
+
+/**
+ * Company filter component
+ * Sidebar filter for company blog sources with search and modal dialog
+ */
+export function CompanyFilter({
+  sources,
+  visibleSources,
+  selectedSourceIds,
+  searchValue,
+  onSearchChange,
+  onSourceToggle,
+  onBatchSelect,
+  isExpanded,
+  onExpandedChange,
+}: CompanyFilterProps) {
+  // UI-only local state
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Controlled or uncontrolled expansion
+  const expanded = isExpanded ?? internalExpanded;
+  const toggleExpanded = () => {
+    const next = !expanded;
+    onExpandedChange?.(next);
+    if (isExpanded === undefined) {
+      setInternalExpanded(next);
+    }
+  };
+
+  const selectedCount = selectedSourceIds.length;
+  const totalCount = sources.length;
+
+  const commandEmpty = useMemo(() => {
+    return searchValue.length > 0
+      ? '該当企業がありません'
+      : '企業が登録されていません';
+  }, [searchValue]);
+
+  return (
+    <>
+      <div className="border rounded-md" data-testid="company-filter">
+        <button
+          className="w-full text-left"
+          onClick={toggleExpanded}
+          type="button"
+          data-testid="company-filter-trigger"
+        >
+          <div className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800">
+            <div className="flex items-center gap-2">
+              {expanded ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
+              <Building2 className="w-3 h-3" />
+              <span className="text-xs font-medium">企業ブログ</span>
+              <span
+                className="text-xs text-gray-500"
+                data-testid="company-filter-count"
+              >
+                ({selectedCount}/{totalCount})
+              </span>
+            </div>
+          </div>
+        </button>
+
+        {expanded && (
+          <div className="px-2 pb-2" data-testid="company-filter-content">
+            {/* Command search */}
+            <Command className="rounded-md border">
+              <CommandInput
+                placeholder="企業名で検索..."
+                value={searchValue}
+                onValueChange={onSearchChange}
+                aria-label="企業名検索"
+              />
+              <CommandList className="max-h-44 overflow-y-auto">
+                <CommandEmpty>{commandEmpty}</CommandEmpty>
+                {visibleSources.map((source) => {
+                  const checked = selectedSourceIds.includes(source.id);
+                  return (
+                    <CommandItem
+                      key={source.id}
+                      value={source.id}
+                      onSelect={() => onSourceToggle(source.id)}
+                      className={cn(
+                        'flex items-center gap-2 cursor-pointer',
+                        checked && 'bg-muted/40'
+                      )}
+                      data-testid={`company-item-${source.id}`}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => onSourceToggle(source.id)}
+                        aria-label={`${source.name}を選択`}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span className="text-xs flex-1">{source.name}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandList>
+            </Command>
+
+            {/* Footer with selection count and modal trigger */}
+            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground px-1">
+              <span>{selectedCount} 件選択中</span>
+              <Button
+                variant="link"
+                size="sm"
+                className="px-0 h-auto"
+                onClick={() => setDialogOpen(true)}
+                data-testid="company-filter-manage-all"
+              >
+                すべて管理...
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Company selection dialog */}
+      <CompanySelectionDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        sources={sources}
+        selectedSources={selectedSourceIds}
+        onApply={onBatchSelect}
+      />
+    </>
+  );
+}
