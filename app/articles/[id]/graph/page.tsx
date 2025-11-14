@@ -280,12 +280,46 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
             }
           }
 
-          // Draw label (safe prefix removal)
+          // Draw NEW badge for articles within 24 hours (non-center only)
+          if (!isCenter) {
+            // Skip badge for very small nodes to avoid overwhelming them
+            const screenRadius = radius * globalScale;
+            if (screenRadius >= 8) {
+              // Ensure publishedAt has timezone info (append 'Z' if missing)
+              const publishedAtNormalized = node.publishedAt.endsWith('Z')
+                ? node.publishedAt
+                : node.publishedAt + 'Z';
+              const timestamp = Date.parse(publishedAtNormalized);
+
+              if (!isNaN(timestamp)) {
+                const diffHours = Math.floor((Date.now() - timestamp) / (1000 * 60 * 60));
+                if (diffHours < 24) {
+                  ctx.save();
+                  const badgeRadius = 6 / globalScale;
+                  const badgeOffset = radius * 0.7;
+                  ctx.fillStyle = '#EF4444'; // Red
+                  ctx.beginPath();
+                  ctx.arc(node.x + badgeOffset, node.y - badgeOffset, badgeRadius, 0, 2 * Math.PI);
+                  ctx.fill();
+                  ctx.restore();
+                }
+              }
+            }
+          }
+
+          // Draw label with outline (safe prefix removal)
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#FFFFFF';
           const maxLength = isCenter ? 40 : 20;
           const displayLabel = truncateLabel(removeCenterPrefix(label), maxLength);
+
+          // Draw black outline for readability
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 3 / globalScale;
+          ctx.strokeText(displayLabel, node.x, node.y + radius + fontSize);
+
+          // Draw white text
+          ctx.fillStyle = '#FFFFFF';
           ctx.fillText(displayLabel, node.x, node.y + radius + fontSize);
         }}
         linkWidth={(link: GraphLink) => Math.max((link.value ** 2) * 18, 1.5)}
@@ -294,7 +328,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
         onNodeClick={(node: GraphNode) => router.push(node.url)}
         onNodeHover={(node: GraphNode | null) => setHoveredNode(node)}
         backgroundColor="#020617"
-        linkColor={() => 'rgba(148, 163, 184, 0.4)'}
+        linkColor={() => 'rgba(148, 163, 184, 0.6)'}
         // CodexMCP: Layout parameters (supported props only)
         warmupTicks={100}
         cooldownTicks={400}
@@ -354,6 +388,13 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
             <div>
               <div className="font-medium">枠線の色 = 配信日時</div>
               <div className="text-slate-400">緑=1週間以内、黄=1ヶ月以内</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">NEWバッジ（赤丸）</div>
+              <div className="text-slate-400">24時間以内に配信</div>
             </div>
           </div>
         </div>
