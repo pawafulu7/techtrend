@@ -282,18 +282,27 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 
           // Draw NEW badge for articles within 24 hours (non-center only)
           if (!isCenter) {
-            const date = new Date(node.publishedAt);
-            if (!isNaN(date.getTime())) {
-              const diffHours = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60));
-              if (diffHours < 24) {
-                ctx.save();
-                const badgeRadius = Math.min(radius * 0.45, 6 / globalScale);
-                const badgeOffset = radius * 0.7;
-                ctx.fillStyle = '#EF4444'; // Red
-                ctx.beginPath();
-                ctx.arc(node.x + badgeOffset, node.y - badgeOffset, badgeRadius, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.restore();
+            // Skip badge for very small nodes to avoid overwhelming them
+            const screenRadius = radius * globalScale;
+            if (screenRadius >= 8) {
+              // Ensure publishedAt has timezone info (append 'Z' if missing)
+              const publishedAtNormalized = node.publishedAt.endsWith('Z')
+                ? node.publishedAt
+                : node.publishedAt + 'Z';
+              const timestamp = Date.parse(publishedAtNormalized);
+
+              if (!isNaN(timestamp)) {
+                const diffHours = Math.floor((Date.now() - timestamp) / (1000 * 60 * 60));
+                if (diffHours < 24) {
+                  ctx.save();
+                  const badgeRadius = 6 / globalScale;
+                  const badgeOffset = radius * 0.7;
+                  ctx.fillStyle = '#EF4444'; // Red
+                  ctx.beginPath();
+                  ctx.arc(node.x + badgeOffset, node.y - badgeOffset, badgeRadius, 0, 2 * Math.PI);
+                  ctx.fill();
+                  ctx.restore();
+                }
               }
             }
           }
