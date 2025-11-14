@@ -26,6 +26,7 @@ import { SearchResult } from '@/lib/rag/vector-search-service';
 interface GraphNodeInput {
   id: string;
   title: string;
+  translatedTitle?: string | null;
   tags?: Array<{ id?: string; name: string }>;  // Phase 2: id optional
   url?: string;
   qualityScore?: number;  // Phase 2: optional (default 0)
@@ -725,9 +726,11 @@ export class GraphDataSerializer {
       val = qualityScore;
     }
 
+    const displayTitle = input.translatedTitle ?? input.title;
+
     return {
       id: input.id,
-      label: isCenter ? `[中心] ${input.title}` : input.title,  // CodexMCP: Badge for center node
+      label: isCenter ? `[中心] ${displayTitle}` : displayTitle,  // CodexMCP: Badge for center node
       val,  // CodexMCP Phase 2: Hybrid size (quality * similarity)
       color,  // CodexMCP: Similarity-adjusted color
       category,
