@@ -2,9 +2,11 @@
 
 import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
-import { Network } from 'lucide-react';
+import { Network, ArrowLeft } from 'lucide-react';
 import { forceCollide } from 'd3-force';
+import { Button } from '@/components/ui/button';
 import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
 import { darkenColor, truncateLabel } from '@/lib/utils/graph-helpers';
 
@@ -249,8 +251,18 @@ ${node.summary ? `\n${node.summary.substring(0, 80)}...` : ''}
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
 
+      {/* Back button */}
+      <div className="absolute top-4 left-4">
+        <Button variant="ghost" asChild className="text-white hover:bg-slate-800">
+          <Link href={`/articles/${articleId}`} className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            記事詳細に戻る
+          </Link>
+        </Button>
+      </div>
+
       {/* CodexMCP: Legend card (always visible) */}
-      <div className="absolute top-4 left-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-xs">
+      <div className="absolute top-16 left-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-xs">
         <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
           <Network className="h-4 w-4" />
           グラフの見方
