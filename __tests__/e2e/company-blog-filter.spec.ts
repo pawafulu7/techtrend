@@ -19,7 +19,7 @@ async function openCompanyFilter(page) {
 }
 
 async function getCompanyCheckbox(page, sourceId: string) {
-  return page.getByTestId(`company-item-${sourceId}`).locator('input[type="checkbox"]');
+  return page.getByTestId(`company-item-${sourceId}`).getByRole('checkbox');
 }
 
 test.describe('Company blog filter', () => {
@@ -27,10 +27,10 @@ test.describe('Company blog filter', () => {
     await context.clearCookies();
     await page.goto('/');
     await waitForSourceFilter(page);
-    await openCompanyFilter(page);
   });
 
   test('should expand and collapse company filter', async ({ page }) => {
+    await openCompanyFilter(page);
     // Already expanded in beforeEach
     await expect(page.getByTestId('company-filter-content')).toBeVisible();
     await expect(page.getByPlaceholderText('企業名で検索...')).toBeVisible();
@@ -45,6 +45,8 @@ test.describe('Company blog filter', () => {
   });
 
   test('should search and filter companies', async ({ page }) => {
+    await openCompanyFilter(page);
+
     const searchInput = page.getByPlaceholderText('企業名で検索...');
 
     // Search for "Cyber"
@@ -65,6 +67,8 @@ test.describe('Company blog filter', () => {
   });
 
   test('should toggle company selection and persist to URL/Cookie', async ({ page, context }) => {
+    await openCompanyFilter(page);
+
     const cyberCheckbox = await getCompanyCheckbox(page, COMPANY_IDS.cyber);
 
     // Toggle selection
@@ -91,6 +95,8 @@ test.describe('Company blog filter', () => {
   });
 
   test('should persist selection across page reload', async ({ page }) => {
+    await openCompanyFilter(page);
+
     const cyberCheckbox = await getCompanyCheckbox(page, COMPANY_IDS.cyber);
     const deNACheckbox = await getCompanyCheckbox(page, COMPANY_IDS.dena);
 
@@ -114,6 +120,8 @@ test.describe('Company blog filter', () => {
   });
 
   test('should open modal via "すべて管理..." button', async ({ page }) => {
+    await openCompanyFilter(page);
+
     const manageButton = page.getByTestId('company-filter-manage-all');
     await manageButton.click();
 
@@ -124,6 +132,8 @@ test.describe('Company blog filter', () => {
   });
 
   test('should select all companies in modal and apply', async ({ page }) => {
+    await openCompanyFilter(page);
+
     // Open modal
     await page.getByTestId('company-filter-manage-all').click();
     const dialog = page.getByRole('dialog', { name: '企業ブログを選択' });
@@ -147,6 +157,8 @@ test.describe('Company blog filter', () => {
   });
 
   test('should clear all companies in modal and apply', async ({ page }) => {
+    await openCompanyFilter(page);
+
     // First, select some companies
     const cyberCheckbox = await getCompanyCheckbox(page, COMPANY_IDS.cyber);
     await cyberCheckbox.click();
@@ -172,6 +184,8 @@ test.describe('Company blog filter', () => {
   });
 
   test('should search in modal and select filtered company', async ({ page }) => {
+    await openCompanyFilter(page);
+
     // Open modal
     await page.getByTestId('company-filter-manage-all').click();
     const dialog = page.getByRole('dialog', { name: '企業ブログを選択' });
@@ -197,6 +211,8 @@ test.describe('Company blog filter', () => {
   });
 
   test('should discard changes on cancel', async ({ page }) => {
+    await openCompanyFilter(page);
+
     // Open modal
     await page.getByTestId('company-filter-manage-all').click();
     const dialog = page.getByRole('dialog', { name: '企業ブログを選択' });
@@ -225,6 +241,8 @@ test.describe('Company blog filter', () => {
   });
 
   test('should discard changes on Escape', async ({ page }) => {
+    await openCompanyFilter(page);
+
     // Open modal
     await page.getByTestId('company-filter-manage-all').click();
     const dialog = page.getByRole('dialog', { name: '企業ブログを選択' });
@@ -270,6 +288,7 @@ test.describe('Company blog filter', () => {
 
   test('should maintain other category selections when company filter is used', async ({ page }) => {
     // First, select a foreign source (e.g., Dev.to)
+    // Company filter is not opened yet
     const foreignTrigger = page.getByTestId('category-foreign-header');
     await foreignTrigger.click();
     await expect(page.getByTestId('category-foreign-content')).toBeVisible();
@@ -281,6 +300,8 @@ test.describe('Company blog filter', () => {
     await waitForFilterApplication(page);
 
     // Now use company filter
+    await openCompanyFilter(page);
+
     const cyberCheckbox = await getCompanyCheckbox(page, COMPANY_IDS.cyber);
     await cyberCheckbox.click();
 

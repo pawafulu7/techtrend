@@ -221,6 +221,76 @@ async function createSources() {
     'https://developers.cyberagent.co.jp/blog/feed/'
   ));
 
+  sources.push(await ensureSource(
+    'dena_tech_blog',
+    'DeNA Engineering',
+    'RSS',
+    'https://engineering.dena.com/blog/index.xml'
+  ));
+
+  sources.push(await ensureSource(
+    'gmo_tech_blog',
+    'GMO Developers',
+    'RSS',
+    'https://developers.gmo.jp/feed/'
+  ));
+
+  sources.push(await ensureSource(
+    'hatena_tech_blog',
+    'Hatena Developer Blog',
+    'RSS',
+    'https://developer.hatenastaff.com/rss'
+  ));
+
+  sources.push(await ensureSource(
+    'lycorp_tech_blog',
+    'LY Corporation Tech Blog',
+    'RSS',
+    'https://techblog.lycorp.co.jp/ja/feed/index.xml'
+  ));
+
+  sources.push(await ensureSource(
+    'moneyforward_tech_blog',
+    'Money Forward Developers Blog',
+    'RSS',
+    'https://moneyforward-dev.jp/rss'
+  ));
+
+  sources.push(await ensureSource(
+    'pepabo_tech_blog',
+    'ペパボテックブログ',
+    'RSS',
+    'https://tech.pepabo.com/feed/'
+  ));
+
+  sources.push(await ensureSource(
+    'sansan_tech_blog',
+    'Sansan Builders Box',
+    'RSS',
+    'https://buildersbox.corp-sansan.com/rss'
+  ));
+
+  sources.push(await ensureSource(
+    'smarthr_tech_blog',
+    'SmartHR Tech Blog',
+    'RSS',
+    'https://tech.smarthr.jp/feed'
+  ));
+
+  sources.push(await ensureSource(
+    'zozo_tech_blog',
+    'ZOZO TECH BLOG',
+    'RSS',
+    'https://techblog.zozo.com/rss'
+  ));
+
+  sources.push(await ensureSource(
+    'cookpad_tech_blog',
+    'Cookpad Tech Life',
+    'RSS',
+    'https://techlife.cookpad.com/rss'
+  ));
+
   // 国内情報サイト
   sources.push(await ensureSource(
     'cmdq440c90000tewuti7ng0un',
