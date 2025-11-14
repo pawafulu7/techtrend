@@ -305,9 +305,8 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
           const displayLabel = truncateLabel(removeCenterPrefix(label), maxLength);
 
           // Draw black outline for readability
-          const outlineWidth = Math.min(3, 2.5 / globalScale);
           ctx.strokeStyle = '#000000';
-          ctx.lineWidth = outlineWidth;
+          ctx.lineWidth = 3 / globalScale;
           ctx.strokeText(displayLabel, node.x, node.y + radius + fontSize);
 
           // Draw white text
