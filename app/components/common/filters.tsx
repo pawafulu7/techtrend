@@ -94,9 +94,20 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
       groupedSources.forEach(({ group, sources: groupSources }) => {
         // Convert GroupedSources to SourceCategory format for compatibility
         // Use reverse mapping to get semantic category ID (not opaque group UUID)
-        const categoryId = getPrimaryCategoryByGroupId(group.id) || group.id;
+        const categoryId = getPrimaryCategoryByGroupId(group.id);
+
+        // Skip groups without a primary category mapping
+        if (!categoryId) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn(
+              `[Filters] No primary category mapping for group ${group.id} (${group.name}). Skipping.`
+            );
+          }
+          return;
+        }
+
         const category: SourceCategory = {
-          id: categoryId as any,
+          id: categoryId,
           name: group.name,
           description: '',  // Not used in UI
           sourceIds: groupSources.map(s => s.id),
