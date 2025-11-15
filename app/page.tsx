@@ -17,7 +17,6 @@ import { RecommendationToggle } from '@/components/recommendation/recommendation
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
 import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
 import { getFilterPreferencesFromCookies } from '@/lib/filter-preferences-cookie';
-import { getSourceCache } from '@/lib/cache/source-cache';
 import { tagCache } from '@/lib/cache/tag-cache';
 
 interface PageProps {

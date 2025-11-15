@@ -6,7 +6,7 @@
  */
 
 import { prisma } from '@/lib/database';
-import type { SourceGroupPlain, GroupedSources } from '@/lib/types/source-grouping';
+import type { GroupedSources } from '@/lib/types/source-grouping';
 
 /**
  * Group sources by their SourceGroup
