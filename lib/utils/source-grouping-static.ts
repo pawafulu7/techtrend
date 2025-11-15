@@ -10,16 +10,17 @@ import { SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
 
 /**
  * Category ordering (for UI consistency)
+ *
+ * Note: Keys must match SourceCategoryId defined in source-categories.ts
+ * ('foreign', 'domestic', 'company', 'presentation', 'ai', 'llm')
  */
 const CATEGORY_ORDER: Record<string, number> = {
   company: 1,
   foreign: 2,
-  community: 3,
-  academic: 4,
-  curated_domestic: 5,
-  presentation: 6,
-  ai: 7,
-  llm: 8,
+  domestic: 3,
+  presentation: 4,
+  ai: 5,
+  llm: 6,
 };
 
 /**

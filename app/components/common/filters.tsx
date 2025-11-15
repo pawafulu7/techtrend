@@ -93,8 +93,10 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
       const map = new Map<SourceCategory, Array<{ id: string; name: string }>>();
       groupedSources.forEach(({ group, sources: groupSources }) => {
         // Convert GroupedSources to SourceCategory format for compatibility
+        // Use reverse mapping to get semantic category ID (not opaque group UUID)
+        const categoryId = getPrimaryCategoryByGroupId(group.id) || group.id;
         const category: SourceCategory = {
-          id: group.id as any,
+          id: categoryId as any,
           name: group.name,
           description: '',  // Not used in UI
           sourceIds: groupSources.map(s => s.id),
