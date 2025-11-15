@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation, Brain, Cpu, Home } from 'lucide-react';
 import { DateRangeFilter } from './date-range-filter';
-import { groupSourcesByCategory, SourceCategory } from '@/lib/constants/source-categories';
+import { groupSourcesByCategory, SourceCategory, type SourceCategoryId } from '@/lib/constants/source-categories';
 import { getSourceIdsForPreset } from '@/lib/constants/source-presets';
 import CategoryFilter from '@/components/filters/CategoryFilter';
 import { CompanyFilter } from '@/app/components/source-filters/company-filter';
@@ -93,17 +93,24 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
       const map = new Map<SourceCategory, Array<{ id: string; name: string }>>();
       groupedSources.forEach(({ group, sources: groupSources }) => {
         // Convert GroupedSources to SourceCategory format for compatibility
-        // Use reverse mapping to get semantic category ID (not opaque group UUID)
-        const categoryId = getPrimaryCategoryByGroupId(group.id);
+        // Try reverse mapping first (for DB-backed groups like 'group_company_japan')
+        let categoryId = getPrimaryCategoryByGroupId(group.id);
 
-        // Skip groups without a primary category mapping
+        // If no mapping found, check if group.id is already a valid SourceCategoryId
+        // (for static grouping where group.id = categoryId like 'foreign', 'domestic')
         if (!categoryId) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn(
-              `[Filters] No primary category mapping for group ${group.id} (${group.name}). Skipping.`
-            );
+          const validCategoryIds: SourceCategoryId[] = ['foreign', 'domestic', 'company', 'presentation', 'ai', 'llm'];
+          if (validCategoryIds.includes(group.id as SourceCategoryId)) {
+            categoryId = group.id as SourceCategoryId;
+          } else {
+            // Skip groups without valid category mapping
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(
+                `[Filters] No primary category mapping for group ${group.id} (${group.name}). Skipping.`
+              );
+            }
+            return;
           }
-          return;
         }
 
         const category: SourceCategory = {
