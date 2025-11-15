@@ -27,4 +27,9 @@ export interface CompanySourceProvider {
    * Get sources by category (optional)
    */
   getSourcesByCategory?(categoryId: string): Promise<CompanySource[]>;
+
+  /**
+   * Get sources by tag ID (optional, for tag-based filtering)
+   */
+  getSourcesByTag?(tagId: string): Promise<CompanySource[]>;
 }

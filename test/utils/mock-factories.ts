@@ -61,6 +61,7 @@ interface MockSource {
   type: SourceType;
   url: string;
   enabled: boolean;
+  groupId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -180,13 +181,14 @@ export function createMockTag(overrides?: Partial<MockTag>): MockTag {
 export function createMockSource(overrides?: Partial<MockSource>): MockSource {
   const id = sourceIdCounter++;
   const now = new Date(REFERENCE_DATE);
-  
+
   return {
     id: `source-${id}`,
     name: `Test Source ${id}`,
     type: 'rss' as SourceType,
     url: `https://source${id}.com`,
     enabled: true,
+    groupId: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -344,13 +346,14 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
 export function mockSource(overrides: Partial<MockSource> = {}): MockSource {
   const selectedSource = faker.helpers.arrayElement(MOCK_SOURCES);
   const now = new Date(REFERENCE_DATE);
-  
+
   return {
     id: overrides.id ?? faker.string.uuid(),
     name: selectedSource.name,
     type: faker.helpers.arrayElement<SourceType>(['rss', 'api', 'scraping']),
     url: selectedSource.url,
     enabled: true,
+    groupId: null,
     createdAt: faker.date.past({ refDate: REFERENCE_DATE }),
     updatedAt: now,
     ...overrides,
