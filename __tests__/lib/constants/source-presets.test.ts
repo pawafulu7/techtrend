@@ -6,7 +6,13 @@ import {
 } from '@/lib/constants/source-presets';
 import { getSourceIdsByCategory } from '@/lib/constants/source-categories';
 import type { GroupedSources } from '@/lib/types/source-grouping';
-import { FEATURE_FLAGS } from '@/lib/config/feature-flags';
+
+// Mock FEATURE_FLAGS module
+jest.mock('@/lib/config/feature-flags', () => ({
+  FEATURE_FLAGS: {
+    USE_DATABASE_PROVIDER: false,
+  },
+}));
 
 describe('source-presets', () => {
   describe('SOURCE_FILTER_PRESETS', () => {
@@ -150,53 +156,89 @@ describe('source-presets', () => {
         },
       ];
 
-      it('should return source IDs for company preset using groupedSources', () => {
-        if (FEATURE_FLAGS.USE_DATABASE_PROVIDER) {
+      describe('with USE_DATABASE_PROVIDER=true', () => {
+        beforeEach(() => {
+          // Mock FEATURE_FLAGS.USE_DATABASE_PROVIDER = true
+          jest.resetModules();
+          jest.doMock('@/lib/config/feature-flags', () => ({
+            FEATURE_FLAGS: {
+              USE_DATABASE_PROVIDER: true,
+            },
+          }));
+        });
+
+        afterEach(() => {
+          jest.resetModules();
+        });
+
+        it('should return source IDs for company preset using groupedSources', async () => {
+          const { getSourceIdsForPreset } = await import('@/lib/constants/source-presets');
           const sourceIds = getSourceIdsForPreset('company', mockGroupedSources);
           // company category maps to group_company_japan
           expect(sourceIds).toEqual(['source_company_1', 'source_company_2']);
-        }
-      });
+        });
 
-      it('should return source IDs for foreign preset using groupedSources', () => {
-        if (FEATURE_FLAGS.USE_DATABASE_PROVIDER) {
+        it('should return source IDs for foreign preset using groupedSources', async () => {
+          const { getSourceIdsForPreset } = await import('@/lib/constants/source-presets');
           const sourceIds = getSourceIdsForPreset('foreign', mockGroupedSources);
           // foreign category maps to group_company_global
           expect(sourceIds).toContain('source_global_1');
           expect(sourceIds).toContain('source_global_2');
-        }
-      });
+        });
 
-      it('should return source IDs for ai-ml preset using groupedSources', () => {
-        if (FEATURE_FLAGS.USE_DATABASE_PROVIDER) {
+        it('should return source IDs for ai-ml preset using groupedSources', async () => {
+          const { getSourceIdsForPreset } = await import('@/lib/constants/source-presets');
           const sourceIds = getSourceIdsForPreset('ai-ml', mockGroupedSources);
           // ai/llm categories map to group_company_global, group_academic, group_curated_domestic
           expect(sourceIds).toContain('source_global_1');
           expect(sourceIds).toContain('source_global_2');
           expect(sourceIds).toContain('source_academic_1');
           expect(sourceIds).toContain('source_curated_1');
-        }
-      });
+        });
 
-      it('should remove duplicates when multiple categories map to same groups', () => {
-        if (FEATURE_FLAGS.USE_DATABASE_PROVIDER) {
+        it('should remove duplicates when multiple categories map to same groups', async () => {
+          const { getSourceIdsForPreset } = await import('@/lib/constants/source-presets');
           const sourceIds = getSourceIdsForPreset('ai-ml', mockGroupedSources);
           // ai and llm map to the same groups, so duplicates should be removed
           const uniqueIds = Array.from(new Set(sourceIds));
           expect(sourceIds).toEqual(uniqueIds);
-        }
+        });
+
+        it('should fallback to legacy path when groupedSources is empty', async () => {
+          const { getSourceIdsForPreset } = await import('@/lib/constants/source-presets');
+          const sourceIds = getSourceIdsForPreset('company', []);
+          // Should use static SOURCE_CATEGORIES
+          expect(sourceIds.length).toBeGreaterThan(0);
+        });
       });
 
-      it('should fallback to legacy path when groupedSources is not provided', () => {
-        const sourceIds = getSourceIdsForPreset('company');
-        // Should use static SOURCE_CATEGORIES
-        expect(sourceIds.length).toBeGreaterThan(0);
-      });
+      describe('with USE_DATABASE_PROVIDER=false', () => {
+        beforeEach(() => {
+          jest.resetModules();
+          jest.doMock('@/lib/config/feature-flags', () => ({
+            FEATURE_FLAGS: {
+              USE_DATABASE_PROVIDER: false,
+            },
+          }));
+        });
 
-      it('should fallback to legacy path when groupedSources is empty', () => {
-        const sourceIds = getSourceIdsForPreset('company', []);
-        // Should use static SOURCE_CATEGORIES
-        expect(sourceIds.length).toBeGreaterThan(0);
+        afterEach(() => {
+          jest.resetModules();
+        });
+
+        it('should fallback to legacy path when groupedSources is not provided', async () => {
+          const { getSourceIdsForPreset } = await import('@/lib/constants/source-presets');
+          const sourceIds = getSourceIdsForPreset('company');
+          // Should use static SOURCE_CATEGORIES
+          expect(sourceIds.length).toBeGreaterThan(0);
+        });
+
+        it('should use legacy path even when groupedSources is provided', async () => {
+          const { getSourceIdsForPreset } = await import('@/lib/constants/source-presets');
+          const sourceIds = getSourceIdsForPreset('company', mockGroupedSources);
+          // Should still use static SOURCE_CATEGORIES (flag is false)
+          expect(sourceIds.length).toBeGreaterThan(0);
+        });
       });
     });
   });

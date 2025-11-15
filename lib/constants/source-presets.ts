@@ -56,8 +56,12 @@ export function getSourceIdsForPreset(
   const preset = SOURCE_FILTER_PRESETS[presetId];
   if (!preset) return [];
 
-  // DB-backed path: Use groupedSources
-  if (FEATURE_FLAGS.USE_DATABASE_PROVIDER && groupedSources) {
+  // DB-backed path: Use groupedSources (only if non-empty)
+  if (
+    FEATURE_FLAGS.USE_DATABASE_PROVIDER &&
+    groupedSources &&
+    groupedSources.length > 0
+  ) {
     const targetGroupIds = getGroupIdsForCategories(preset.categories);
     const sourceIds = groupedSources
       .filter(gs => targetGroupIds.includes(gs.group.id))
