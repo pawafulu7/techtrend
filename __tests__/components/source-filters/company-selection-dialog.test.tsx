@@ -374,7 +374,7 @@ describe('CompanySelectionDialog', () => {
   });
 
   describe('backdrop and escape', () => {
-    it('should not call onApply when dialog closed via backdrop', async () => {
+    it('should not call onApply when dialog closed via Escape key', async () => {
       const user = userEvent.setup();
 
       render(
@@ -393,13 +393,11 @@ describe('CompanySelectionDialog', () => {
 
       expect(screen.getByText('選択中: 2 / 5')).toBeInTheDocument();
 
-      // User presses Escape (simulated via onOpenChange(false))
       mockOnOpenChange.mockClear();
       mockOnApply.mockClear();
 
-      // Simulate dialog close (escape or backdrop)
-      const cancelButton = screen.getByText('キャンセル');
-      await user.click(cancelButton);
+      // Press Escape to close dialog
+      await user.keyboard('{Escape}');
 
       expect(mockOnApply).not.toHaveBeenCalled();
       expect(mockOnOpenChange).toHaveBeenCalledWith(false);

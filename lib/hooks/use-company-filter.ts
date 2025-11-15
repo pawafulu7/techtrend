@@ -34,6 +34,12 @@ export function useCompanyFilter({
   const [selected, setSelected] = useState<string[]>(initialSelected);
   const [searchValue, setSearchValue] = useState('');
 
+  // Note: selected state is initialized once from initialSelected.
+  // If parent needs to sync external changes (e.g., URL params),
+  // consider adding:
+  // useEffect(() => { setSelected(initialSelected); }, [initialSelected]);
+  // Phase 2: Evaluate if bidirectional sync is needed.
+
   // Debounce search to avoid re-rendering on every keystroke
   const debouncedSearch = useDebounce(searchValue, SEARCH_DEBOUNCE_MS);
 

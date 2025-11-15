@@ -36,7 +36,10 @@ export function CompanySelectionDialog({
   const [tempSelected, setTempSelected] = useState<string[]>(selectedSources);
   const [searchValue, setSearchValue] = useState('');
 
-  // Sync tempSelected when dialog opens
+  // Sync tempSelected when dialog opens or selectedSources changes
+  // Design intent: Always prioritize parent state (selectedSources) over local edits
+  // when dialog reopens or external updates occur. This ensures consistency
+  // with the source of truth managed by Filters component.
   useEffect(() => {
     if (open) {
       setTempSelected(selectedSources);

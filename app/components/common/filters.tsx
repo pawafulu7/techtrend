@@ -198,7 +198,9 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     const nonCompanySelected = selectedSources.filter(
       (id) => !companySourceIds.has(id)
     );
-    applySourceFilter([...nonCompanySelected, ...companyIds]);
+    const nextSelection = [...nonCompanySelected, ...companyIds];
+    // Remove duplicates to ensure unique IDs
+    applySourceFilter(Array.from(new Set(nextSelection)));
   };
 
   // カテゴリの展開/折りたたみ

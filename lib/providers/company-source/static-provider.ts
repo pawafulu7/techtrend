@@ -13,15 +13,21 @@ export class StaticCompanySourceProvider implements CompanySourceProvider {
 
     for (const id of this.sourceIds) {
       const entry = sourceRegistry[id];
-      if (entry) {
-        results.push({
-          id: entry.id,
-          name: entry.name,
-          slug: entry.slug,
-          siteUrl: entry.siteUrl,
-          isActive: true,
-        });
+      if (!entry) {
+        // Phase 2: Consider logging or throwing error for missing IDs
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`[StaticCompanySourceProvider] Source ID not found in registry: ${id}`);
+        }
+        continue;
       }
+
+      results.push({
+        id: entry.id,
+        name: entry.name,
+        slug: entry.slug,
+        siteUrl: entry.siteUrl,
+        isActive: true,
+      });
     }
 
     return results;

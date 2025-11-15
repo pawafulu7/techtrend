@@ -291,6 +291,15 @@ describe('CompanyFilter', () => {
       expect(cyberCheckbox).toBeChecked();
       expect(deNACheckbox).toBeChecked();
       expect(layerXCheckbox).not.toBeChecked();
+
+      // Verify visual highlight class is applied to checked items
+      const cyberItem = screen.getByTestId('company-item-cyberagent');
+      const deNAItem = screen.getByTestId('company-item-dena');
+      const layerXItem = screen.getByTestId('company-item-layerx');
+
+      expect(cyberItem).toHaveClass('bg-muted/40');
+      expect(deNAItem).toHaveClass('bg-muted/40');
+      expect(layerXItem).not.toHaveClass('bg-muted/40');
     });
   });
 
