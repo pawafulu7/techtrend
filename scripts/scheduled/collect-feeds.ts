@@ -1,4 +1,4 @@
-import { PrismaClient, Source } from '@prisma/client';
+import { PrismaClient, Source, Prisma } from '@prisma/client';
 import pLimit from 'p-limit';
 import { Mutex } from 'async-mutex';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
@@ -6,6 +6,7 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { adjustTimezoneForArticle } from '@/lib/utils/date';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
 import { normalizeTag } from '@/lib/utils/tag-normalizer';
+import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
 
 const prisma = new PrismaClient();
 
@@ -191,20 +192,36 @@ async function processSource({
         });
 
         if (existing) {
+          const updates: Prisma.ArticleUpdateInput = {};
+
+          // はてぶ経由 → 企業ブログの場合、sourceIdを更新
+          if (existing.sourceId === HATENA_SOURCE_ID && source.id !== HATENA_SOURCE_ID) {
+            updates.sourceId = source.id;
+            console.error(`   ✅ sourceId更新: ${source.name} <- Hatena`);
+          }
+
           // content=null/empty の場合は更新を許可（全ソース共通の自己修復メカニズム）
           if ((!existing.content || existing.content.length === 0) &&
               article.content && article.content.length > 0) {
+            Object.assign(updates, {
+              content: article.content,
+              thumbnail: article.thumbnail ?? existing.thumbnail,
+              contentUpdatedAt: new Date(),
+            });
+          }
+
+          // まとめて更新
+          if (Object.keys(updates).length > 0) {
             await prisma.article.update({
               where: { id: existing.id },
-              data: {
-                content: article.content,
-                thumbnail: article.thumbnail ?? existing.thumbnail,
-                contentUpdatedAt: new Date(),
-                updatedAt: new Date(),
-              },
+              data: updates,
             });
             updatedCount++;
-            console.error(`   既存記事を更新（content補完）: ${article.title.substring(0, 50)}...`);
+            if (updates.sourceId) {
+              console.error(`   既存記事を更新（sourceId + content）: ${article.title.substring(0, 50)}...`);
+            } else {
+              console.error(`   既存記事を更新（content補完）: ${article.title.substring(0, 50)}...`);
+            }
           } else {
             duplicateCount++;
           }
