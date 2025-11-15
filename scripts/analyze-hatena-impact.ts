@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
 
 const prisma = new PrismaClient();
 
@@ -17,8 +18,6 @@ const domainToSourceMap: Record<string, string> = {
   'tech.pepabo.com': 'pepabo_tech_blog',
   'techlife.cookpad.com': 'cookpad_tech_blog',
 };
-
-const HATENA_SOURCE_ID = 'cmdq3nww60000tegxi8ruki95';
 
 async function analyzeImpact() {
   console.log('=== はてなブックマーク経由の企業ブログ記事影響分析 ===\n');
