@@ -74,6 +74,7 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
         const category: SourceCategory = {
           id: group.id as any,
           name: group.name,
+          description: '',  // Not used in UI
           sourceIds: groupSources.map(s => s.id),
         };
         map.set(category, groupSources);
