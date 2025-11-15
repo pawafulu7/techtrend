@@ -64,15 +64,34 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
   const lastQueuedSourcesRef = useRef<string[]>(getInitialSources());
 
   // ソースをカテゴリごとにグループ化
-  const groupedSources = groupSourcesByCategory(sources);
+  // Phase 2-A: Use server-provided groupedSources or fallback to static grouping
+  const groupedSourcesMap = useMemo(() => {
+    if (groupedSources && groupedSources.length > 0) {
+      // NEW: Use server-provided grouped sources (Phase 2-A)
+      const map = new Map<SourceCategory, Array<{ id: string; name: string }>>();
+      groupedSources.forEach(({ group, sources: groupSources }) => {
+        // Convert GroupedSources to SourceCategory format for compatibility
+        const category: SourceCategory = {
+          id: group.id as any,
+          name: group.name,
+          sourceIds: groupSources.map(s => s.id),
+        };
+        map.set(category, groupSources);
+      });
+      return map;
+    }
+
+    // Fallback: Legacy static grouping
+    return groupSourcesByCategory(sources);
+  }, [groupedSources, sources]);
 
   // 企業ブログカテゴリーの分離
   const companySources = useMemo(() => {
-    const companyEntry = Array.from(groupedSources.entries()).find(
+    const companyEntry = Array.from(groupedSourcesMap.entries()).find(
       ([category]) => category.id === 'company'
     );
     return companyEntry ? companyEntry[1] : [];
-  }, [groupedSources]);
+  }, [groupedSourcesMap]);
 
   const companySourceIds = useMemo(
     () => new Set(companySources.map((s) => s.id)),
@@ -417,7 +436,7 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
             )}
 
             {/* Other categories (existing rendering) */}
-            {Array.from(groupedSources.entries()).map(([category, categorySources]) => {
+            {Array.from(groupedSourcesMap.entries()).map(([category, categorySources]) => {
               // Skip company category (already rendered above)
               if (category.id === 'company') {
                 return null;
