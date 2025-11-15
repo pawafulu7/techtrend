@@ -47,8 +47,12 @@ export function CompanyFilter({
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Filter selectedSourceIds to only company blog sources
+  // Performance: Use Set for O(n+m) instead of O(n×m) with some()
   const selectedCompanySourceIds = useMemo(
-    () => selectedSourceIds.filter((id) => sources.some((s) => s.id === id)),
+    () => {
+      const sourceIdSet = new Set(sources.map((s) => s.id));
+      return selectedSourceIds.filter((id) => sourceIdSet.has(id));
+    },
     [selectedSourceIds, sources]
   );
 
@@ -113,7 +117,7 @@ export function CompanyFilter({
               <CommandList className="max-h-44 overflow-y-auto">
                 <CommandEmpty>{commandEmpty}</CommandEmpty>
                 {visibleSources.map((source) => {
-                  const checked = selectedSourceIds.includes(source.id);
+                  const checked = selectedCompanySourceIds.includes(source.id);
                   return (
                     <CommandItem
                       key={source.id}
