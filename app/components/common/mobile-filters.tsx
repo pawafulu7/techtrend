@@ -14,14 +14,16 @@ import {
 import { Filters } from './filters';
 import { TagFilter } from './tag-filter';
 import type { Source } from '@prisma/client';
+import type { GroupedSources } from '@/lib/types/source-grouping';
 
 interface MobileFiltersProps {
   sources: (Source & { _count: { articles: number } })[];
+  groupedSources?: GroupedSources[];
   tags: { id: string; name: string; count: number }[];
   initialSourceIds?: string[];
 }
 
-export function MobileFilters({ sources, tags, initialSourceIds }: MobileFiltersProps) {
+export function MobileFilters({ sources, groupedSources, tags, initialSourceIds }: MobileFiltersProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -44,7 +46,7 @@ export function MobileFilters({ sources, tags, initialSourceIds }: MobileFilters
           </SheetDescription>
         </SheetHeader>
         <div className="mt-6 space-y-4">
-          <Filters sources={sources} tags={tags} initialSourceIds={initialSourceIds} />
+          <Filters sources={sources} groupedSources={groupedSources} tags={tags} initialSourceIds={initialSourceIds} />
           {/* モバイル用TagFilter */}
           {tags.length > 0 && (
             <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-white/20 shadow-sm rounded-lg p-3">

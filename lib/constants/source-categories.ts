@@ -1,5 +1,20 @@
 export type SourceCategoryId = 'foreign' | 'domestic' | 'company' | 'presentation' | 'ai' | 'llm';
 
+/**
+ * Valid category IDs (readonly array)
+ *
+ * Single source of truth for SourceCategoryId validation.
+ * Used for runtime checks in compatibility layer.
+ */
+export const VALID_CATEGORY_IDS: readonly SourceCategoryId[] = [
+  'foreign',
+  'domestic',
+  'company',
+  'presentation',
+  'ai',
+  'llm',
+] as const;
+
 export interface SourceCategory {
   id: SourceCategoryId;
   name: string;

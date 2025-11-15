@@ -6,20 +6,23 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation, Brain, Cpu, Home } from 'lucide-react';
 import { DateRangeFilter } from './date-range-filter';
-import { groupSourcesByCategory, SourceCategory } from '@/lib/constants/source-categories';
+import { groupSourcesByCategory, SourceCategory, type SourceCategoryId, VALID_CATEGORY_IDS } from '@/lib/constants/source-categories';
 import { getSourceIdsForPreset } from '@/lib/constants/source-presets';
 import CategoryFilter from '@/components/filters/CategoryFilter';
 import { CompanyFilter } from '@/app/components/source-filters/company-filter';
 import { useCompanyFilter } from '@/lib/hooks/use-company-filter';
 import type { CompanySource } from '@/lib/providers/company-source';
+import type { GroupedSources } from '@/lib/types/source-grouping';
+import { getPrimaryCategoryByGroupId } from '@/lib/compatibility/category-group-mapping';
 
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;
+  groupedSources?: GroupedSources[];
   tags: Array<{ id: string; name: string; count: number }>;
   initialSourceIds?: string[];
 }
 
-// カテゴリごとのアイコンマッピング
+// カテゴリごとのアイコンマッピング（Legacy categories only）
 const categoryIcons: Record<string, React.ReactNode> = {
   foreign: <Globe className="w-3 h-3" />,
   domestic: <FileText className="w-3 h-3" />,
@@ -29,7 +32,28 @@ const categoryIcons: Record<string, React.ReactNode> = {
   llm: <Cpu className="w-3 h-3" />
 };
 
-export function Filters({ sources, initialSourceIds }: FiltersProps) {
+/**
+ * Get category icon for a category or group ID
+ *
+ * Phase 2-A: Supports both legacy category IDs and new group IDs via reverse mapping
+ */
+function getCategoryIcon(categoryOrGroupId: string): React.ReactNode {
+  // Try direct lookup first (legacy categories)
+  if (categoryIcons[categoryOrGroupId]) {
+    return categoryIcons[categoryOrGroupId];
+  }
+
+  // Fallback: Try reverse mapping (group → primary category)
+  const primaryCategory = getPrimaryCategoryByGroupId(categoryOrGroupId);
+  if (primaryCategory && categoryIcons[primaryCategory]) {
+    return categoryIcons[primaryCategory];
+  }
+
+  // Default icon
+  return <FileText className="w-3 h-3" />;
+}
+
+export function Filters({ sources, groupedSources, initialSourceIds }: FiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -62,15 +86,54 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   const lastQueuedSourcesRef = useRef<string[]>(getInitialSources());
 
   // ソースをカテゴリごとにグループ化
-  const groupedSources = groupSourcesByCategory(sources);
+  // Phase 2-A: Use server-provided groupedSources or fallback to static grouping
+  const groupedSourcesMap = useMemo(() => {
+    if (groupedSources && groupedSources.length > 0) {
+      // NEW: Use server-provided grouped sources (Phase 2-A)
+      const map = new Map<SourceCategory, Array<{ id: string; name: string }>>();
+      groupedSources.forEach(({ group, sources: groupSources }) => {
+        // Convert GroupedSources to SourceCategory format for compatibility
+        // Try reverse mapping first (for DB-backed groups like 'group_company_japan')
+        let categoryId = getPrimaryCategoryByGroupId(group.id);
+
+        // If no mapping found, check if group.id is already a valid SourceCategoryId
+        // (for static grouping where group.id = categoryId like 'foreign', 'domestic')
+        if (!categoryId) {
+          if (VALID_CATEGORY_IDS.includes(group.id as SourceCategoryId)) {
+            categoryId = group.id as SourceCategoryId;
+          } else {
+            // Skip groups without valid category mapping
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(
+                `[Filters] No primary category mapping for group ${group.id} (${group.name}). Skipping.`
+              );
+            }
+            return;
+          }
+        }
+
+        const category: SourceCategory = {
+          id: categoryId,
+          name: group.name,
+          description: '',  // Not used in UI
+          sourceIds: groupSources.map(s => s.id),
+        };
+        map.set(category, groupSources);
+      });
+      return map;
+    }
+
+    // Fallback: Legacy static grouping
+    return groupSourcesByCategory(sources);
+  }, [groupedSources, sources]);
 
   // 企業ブログカテゴリーの分離
   const companySources = useMemo(() => {
-    const companyEntry = Array.from(groupedSources.entries()).find(
+    const companyEntry = Array.from(groupedSourcesMap.entries()).find(
       ([category]) => category.id === 'company'
     );
     return companyEntry ? companyEntry[1] : [];
-  }, [groupedSources]);
+  }, [groupedSourcesMap]);
 
   const companySourceIds = useMemo(
     () => new Set(companySources.map((s) => s.id)),
@@ -152,7 +215,8 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
   // プリセット適用
   const applyPreset = (presetId: string) => {
     // プリセットからソースIDを取得
-    const presetSourceIds = getSourceIdsForPreset(presetId);
+    // Phase 2-A: Pass groupedSources for DB-backed presets
+    const presetSourceIds = getSourceIdsForPreset(presetId, groupedSources);
     if (presetSourceIds.length === 0) {
       if (process.env.NODE_ENV === 'development') {
         console.warn(`Preset ${presetId} has no sources`);
@@ -415,7 +479,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
             )}
 
             {/* Other categories (existing rendering) */}
-            {Array.from(groupedSources.entries()).map(([category, categorySources]) => {
+            {Array.from(groupedSourcesMap.entries()).map(([category, categorySources]) => {
               // Skip company category (already rendered above)
               if (category.id === 'company') {
                 return null;
@@ -445,7 +509,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                         ) : (
                           <ChevronRight className="w-3 h-3" />
                         )}
-                        {categoryIcons[category.id]}
+                        {getCategoryIcon(category.id)}
                         <span className="text-xs font-medium">{category.name}</span>
                         <span className="text-xs text-gray-500" data-testid={`category-${category.id}-count`}>
                           ({categorySelectedCount}/{categorySources.length})
