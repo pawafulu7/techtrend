@@ -58,6 +58,33 @@ describe('CompanyFilter', () => {
 
       expect(screen.getByText(`(2/${mockSources.length})`)).toBeInTheDocument();
     });
+
+    it('should count only company blog sources in selection', () => {
+      // selectedSourceIds includes non-company sources (41 total)
+      const allSelectedIds = [
+        'cyberagent',
+        'dena',
+        'layerx',
+        'foreign-source-1', // Not in mockSources
+        'foreign-source-2', // Not in mockSources
+        'domestic-source-1', // Not in mockSources
+      ];
+
+      render(
+        <CompanyFilter
+          sources={mockSources}
+          visibleSources={mockVisibleSources}
+          selectedSourceIds={allSelectedIds}
+          searchValue=""
+          onSearchChange={mockOnSearchChange}
+          onSourceToggle={mockOnSourceToggle}
+          onBatchSelect={mockOnBatchSelect}
+        />
+      );
+
+      // Should count only 3 company sources (cyberagent, dena, layerx)
+      expect(screen.getByText(`(3/${mockSources.length})`)).toBeInTheDocument();
+    });
   });
 
   describe('expansion', () => {

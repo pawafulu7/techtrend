@@ -56,7 +56,10 @@ export function CompanyFilter({
     }
   };
 
-  const selectedCount = selectedSourceIds.length;
+  // Count only company blog sources that are selected
+  const selectedCount = sources.filter((s) =>
+    selectedSourceIds.includes(s.id)
+  ).length;
   const totalCount = sources.length;
 
   const commandEmpty = useMemo(() => {
