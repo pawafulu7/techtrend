@@ -327,7 +327,7 @@ export class SourceCache {
    * 企業ブログソースを取得（DatabaseProvider用）
    * TTL: 5分
    */
-  async getCompanySources(): Promise<import('./providers/company-source/interface').CompanySource[]> {
+  async getCompanySources(): Promise<import('@/lib/providers/company-source/interface').CompanySource[]> {
     const { sourceInclude, toCompanySource } = await import('@/lib/providers/company-source/transforms');
 
     return this.cache.getOrSet('company-sources', async () => {
@@ -341,14 +341,14 @@ export class SourceCache {
         orderBy: { name: 'asc' },
       });
       return rows.map(toCompanySource);
-    }, { ttl: 300 });  // 5分
+    }, 300);  // 5分
   }
 
   /**
    * グループ別企業ブログソースを取得
    * TTL: 5分
    */
-  async getCompanySourcesByGroup(groupId: string): Promise<import('./providers/company-source/interface').CompanySource[]> {
+  async getCompanySourcesByGroup(groupId: string): Promise<import('@/lib/providers/company-source/interface').CompanySource[]> {
     const { sourceInclude, toCompanySource } = await import('@/lib/providers/company-source/transforms');
 
     return this.cache.getOrSet(`company-sources:group:${groupId}`, async () => {
@@ -361,14 +361,14 @@ export class SourceCache {
         orderBy: { name: 'asc' },
       });
       return rows.map(toCompanySource);
-    }, { ttl: 300 });  // 5分
+    }, 300);  // 5分
   }
 
   /**
    * タグ別企業ブログソースを取得
    * TTL: 5分
    */
-  async getCompanySourcesByTag(tagId: string): Promise<import('./providers/company-source/interface').CompanySource[]> {
+  async getCompanySourcesByTag(tagId: string): Promise<import('@/lib/providers/company-source/interface').CompanySource[]> {
     const { sourceInclude, toCompanySource } = await import('@/lib/providers/company-source/transforms');
 
     return this.cache.getOrSet(`company-sources:tag:${tagId}`, async () => {
@@ -381,7 +381,7 @@ export class SourceCache {
         orderBy: { name: 'asc' },
       });
       return rows.map(toCompanySource);
-    }, { ttl: 300 });  // 5分
+    }, 300);  // 5分
   }
 }
 
