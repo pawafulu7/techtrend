@@ -46,6 +46,12 @@ export function CompanyFilter({
   const [internalExpanded, setInternalExpanded] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // Filter selectedSourceIds to only company blog sources
+  const selectedCompanySourceIds = useMemo(
+    () => selectedSourceIds.filter((id) => sources.some((s) => s.id === id)),
+    [selectedSourceIds, sources]
+  );
+
   // Controlled or uncontrolled expansion
   const expanded = isExpanded ?? internalExpanded;
   const toggleExpanded = () => {
@@ -57,9 +63,7 @@ export function CompanyFilter({
   };
 
   // Count only company blog sources that are selected
-  const selectedCount = sources.filter((s) =>
-    selectedSourceIds.includes(s.id)
-  ).length;
+  const selectedCount = selectedCompanySourceIds.length;
   const totalCount = sources.length;
 
   const commandEmpty = useMemo(() => {
@@ -156,7 +160,7 @@ export function CompanyFilter({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         sources={sources}
-        selectedSources={selectedSourceIds}
+        selectedSources={selectedCompanySourceIds}
         onApply={onBatchSelect}
       />
     </>

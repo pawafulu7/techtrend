@@ -287,17 +287,24 @@ test.describe('Company blog filter', () => {
   });
 
   test('should maintain other category selections when company filter is used', async ({ page }) => {
-    // First, select a foreign source (e.g., Dev.to)
+    // First, select a foreign source (e.g., Hacker News)
     // Company filter is not opened yet
     const foreignTrigger = page.getByTestId('category-foreign-header');
     await foreignTrigger.click();
     await expect(page.getByTestId('category-foreign-content')).toBeVisible();
 
-    // Select Dev.to (if exists)
-    const devToCheckbox = page.locator('[data-testid^="source-checkbox-"]').first();
-    await devToCheckbox.click();
+    // Select first foreign source and capture its ID
+    const firstForeignCheckbox = page.locator('[data-testid^="source-checkbox-"]').first();
+    const firstForeignTestId = await firstForeignCheckbox.getAttribute('data-testid');
+    const foreignSourceId = firstForeignTestId?.replace('source-checkbox-', '') || '';
 
+    await firstForeignCheckbox.click();
     await waitForFilterApplication(page);
+
+    // Verify foreign source is selected in URL
+    let url = new URL(page.url());
+    let sourcesParam = url.searchParams.get('sources');
+    expect(sourcesParam).toContain(foreignSourceId);
 
     // Now use company filter
     await openCompanyFilter(page);
@@ -308,12 +315,19 @@ test.describe('Company blog filter', () => {
     await waitForFilterApplication(page);
 
     // Foreign category selection should still be active
-    // (verify by checking URL params contain both)
-    const url = new URL(page.url());
-    const sourcesParam = url.searchParams.get('sources');
+    // Verify URL params contain BOTH foreign and company sources
+    url = new URL(page.url());
+    sourcesParam = url.searchParams.get('sources');
 
-    // Should contain both foreign and company sources
     expect(sourcesParam).toBeTruthy();
     expect(sourcesParam).toContain(COMPANY_IDS.cyber);
+    expect(sourcesParam).toContain(foreignSourceId);
+
+    // Also verify by reopening foreign category
+    await page.getByTestId('category-foreign-header').click();
+    await expect(page.getByTestId('category-foreign-content')).toBeVisible();
+
+    const foreignCheckboxAfter = page.locator(`[data-testid="source-checkbox-${foreignSourceId}"]`).locator('input[type="checkbox"]');
+    await expect(foreignCheckboxAfter).toBeChecked();
   });
 });
