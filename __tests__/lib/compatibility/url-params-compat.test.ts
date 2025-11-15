@@ -10,12 +10,7 @@ describe('url-params-compat', () => {
       // Assuming FEATURE_FLAGS.USE_DATABASE_PROVIDER is true
       if (FEATURE_FLAGS.USE_DATABASE_PROVIDER) {
         const result = convertCategoryToGroupParams(['company', 'foreign']);
-        expect(result).toEqual([
-          'group_company_japan',
-          'group_company_global',
-          'group_community',
-          'group_academic',
-        ]);
+        expect(result).toEqual(['group_company_japan', 'group_company_global']);
       }
     });
 

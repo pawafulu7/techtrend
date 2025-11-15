@@ -161,11 +161,9 @@ describe('source-presets', () => {
       it('should return source IDs for foreign preset using groupedSources', () => {
         if (FEATURE_FLAGS.USE_DATABASE_PROVIDER) {
           const sourceIds = getSourceIdsForPreset('foreign', mockGroupedSources);
-          // foreign category maps to group_company_global, group_community, group_academic
-          // Only group_company_global and group_academic are in mockGroupedSources
+          // foreign category maps to group_company_global
           expect(sourceIds).toContain('source_global_1');
           expect(sourceIds).toContain('source_global_2');
-          expect(sourceIds).toContain('source_academic_1');
         }
       });
 

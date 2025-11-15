@@ -14,12 +14,8 @@ describe('category-group-mapping', () => {
       expect(CATEGORY_TO_GROUPS.company).toEqual(['group_company_japan']);
     });
 
-    it('should map foreign to multiple groups', () => {
-      expect(CATEGORY_TO_GROUPS.foreign).toEqual([
-        'group_company_global',
-        'group_community',
-        'group_academic',
-      ]);
+    it('should map foreign to group_company_global', () => {
+      expect(CATEGORY_TO_GROUPS.foreign).toEqual(['group_company_global']);
     });
 
     it('should map ai to multiple groups', () => {
@@ -48,16 +44,16 @@ describe('category-group-mapping', () => {
       expect(GROUP_TO_PRIMARY_CATEGORY.group_company_global).toBe('foreign');
     });
 
-    it('should map group_community to community', () => {
-      expect(GROUP_TO_PRIMARY_CATEGORY.group_community).toBe('community');
+    it('should map group_community to domestic', () => {
+      expect(GROUP_TO_PRIMARY_CATEGORY.group_community).toBe('domestic');
     });
 
-    it('should map group_academic to academic', () => {
-      expect(GROUP_TO_PRIMARY_CATEGORY.group_academic).toBe('academic');
+    it('should map group_academic to domestic', () => {
+      expect(GROUP_TO_PRIMARY_CATEGORY.group_academic).toBe('domestic');
     });
 
-    it('should map group_curated_domestic to curated_domestic', () => {
-      expect(GROUP_TO_PRIMARY_CATEGORY.group_curated_domestic).toBe('curated_domestic');
+    it('should map group_curated_domestic to domestic', () => {
+      expect(GROUP_TO_PRIMARY_CATEGORY.group_curated_domestic).toBe('domestic');
     });
 
     it('should map group_presentation to presentation', () => {
@@ -73,11 +69,7 @@ describe('category-group-mapping', () => {
 
     it('should return group IDs for foreign category', () => {
       const result = getGroupIdsByCategoryId('foreign' as SourceCategoryId);
-      expect(result).toEqual([
-        'group_company_global',
-        'group_community',
-        'group_academic',
-      ]);
+      expect(result).toEqual(['group_company_global']);
     });
 
     it('should return empty array for unknown category', () => {
@@ -109,12 +101,7 @@ describe('category-group-mapping', () => {
         'company' as SourceCategoryId,
         'foreign' as SourceCategoryId,
       ]);
-      expect(result).toEqual([
-        'group_company_japan',
-        'group_company_global',
-        'group_community',
-        'group_academic',
-      ]);
+      expect(result).toEqual(['group_company_japan', 'group_company_global']);
     });
 
     it('should remove duplicates', () => {
@@ -151,7 +138,7 @@ describe('category-group-mapping', () => {
         'unknown_group',
         'group_community',
       ]);
-      expect(result).toEqual(['company', 'community']);
+      expect(result).toEqual(['company', 'domestic']);
     });
 
     it('should return empty array for empty input', () => {

@@ -11,12 +11,15 @@ import type { SourceCategoryId } from '@/lib/constants/source-categories';
  * Legacy Category → Group IDs (one-to-many)
  *
  * Examples:
- * - foreign: split across group_company_global, group_community, group_academic
- * - domestic: split across group_community, group_academic, group_curated_domestic
+ * - foreign: maps to group_company_global
+ * - domestic: maps to group_community (primary) + others
  * - ai/llm: span group_company_global, group_academic, group_curated_domestic
+ *
+ * Note: This mapping is based on the actual SourceCategoryId type from source-categories.ts
+ * which only includes: 'foreign', 'domestic', 'company', 'presentation', 'ai', 'llm'
  */
 export const CATEGORY_TO_GROUPS: Record<SourceCategoryId, string[]> = {
-  foreign: ['group_company_global', 'group_community', 'group_academic'],
+  foreign: ['group_company_global'],
   domestic: ['group_community', 'group_academic', 'group_curated_domestic'],
   company: ['group_company_japan'],
   presentation: ['group_presentation'],
