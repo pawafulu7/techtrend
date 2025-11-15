@@ -13,6 +13,7 @@ import { CompanyFilter } from '@/app/components/source-filters/company-filter';
 import { useCompanyFilter } from '@/lib/hooks/use-company-filter';
 import type { CompanySource } from '@/lib/providers/company-source';
 import type { GroupedSources } from '@/lib/types/source-grouping';
+import { getPrimaryCategoryByGroupId } from '@/lib/compatibility/category-group-mapping';
 
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;
@@ -21,7 +22,7 @@ interface FiltersProps {
   initialSourceIds?: string[];
 }
 
-// カテゴリごとのアイコンマッピング
+// カテゴリごとのアイコンマッピング（Legacy categories only）
 const categoryIcons: Record<string, React.ReactNode> = {
   foreign: <Globe className="w-3 h-3" />,
   domestic: <FileText className="w-3 h-3" />,
@@ -30,6 +31,27 @@ const categoryIcons: Record<string, React.ReactNode> = {
   ai: <Brain className="w-3 h-3" />,
   llm: <Cpu className="w-3 h-3" />
 };
+
+/**
+ * Get category icon for a category or group ID
+ *
+ * Phase 2-A: Supports both legacy category IDs and new group IDs via reverse mapping
+ */
+function getCategoryIcon(categoryOrGroupId: string): React.ReactNode {
+  // Try direct lookup first (legacy categories)
+  if (categoryIcons[categoryOrGroupId]) {
+    return categoryIcons[categoryOrGroupId];
+  }
+
+  // Fallback: Try reverse mapping (group → primary category)
+  const primaryCategory = getPrimaryCategoryByGroupId(categoryOrGroupId);
+  if (primaryCategory && categoryIcons[primaryCategory]) {
+    return categoryIcons[primaryCategory];
+  }
+
+  // Default icon
+  return <FileText className="w-3 h-3" />;
+}
 
 export function Filters({ sources, groupedSources, initialSourceIds }: FiltersProps) {
   const router = useRouter();
@@ -174,7 +196,8 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
   // プリセット適用
   const applyPreset = (presetId: string) => {
     // プリセットからソースIDを取得
-    const presetSourceIds = getSourceIdsForPreset(presetId);
+    // Phase 2-A: Pass groupedSources for DB-backed presets
+    const presetSourceIds = getSourceIdsForPreset(presetId, groupedSources);
     if (presetSourceIds.length === 0) {
       if (process.env.NODE_ENV === 'development') {
         console.warn(`Preset ${presetId} has no sources`);
@@ -467,7 +490,7 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
                         ) : (
                           <ChevronRight className="w-3 h-3" />
                         )}
-                        {categoryIcons[category.id]}
+                        {getCategoryIcon(category.id)}
                         <span className="text-xs font-medium">{category.name}</span>
                         <span className="text-xs text-gray-500" data-testid={`category-${category.id}-count`}>
                           ({categorySelectedCount}/{categorySources.length})
