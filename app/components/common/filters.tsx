@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation, Brain, Cpu, Home } from 'lucide-react';
@@ -9,6 +9,9 @@ import { DateRangeFilter } from './date-range-filter';
 import { groupSourcesByCategory, SourceCategory } from '@/lib/constants/source-categories';
 import { getSourceIdsForPreset } from '@/lib/constants/source-presets';
 import CategoryFilter from '@/components/filters/CategoryFilter';
+import { CompanyFilter } from '@/app/components/source-filters/company-filter';
+import { useCompanyFilter } from '@/lib/hooks/use-company-filter';
+import type { CompanySource } from '@/lib/providers/company-source';
 
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;
@@ -60,6 +63,38 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
 
   // ソースをカテゴリごとにグループ化
   const groupedSources = groupSourcesByCategory(sources);
+
+  // 企業ブログカテゴリーの分離
+  const companySources = useMemo(() => {
+    const companyEntry = Array.from(groupedSources.entries()).find(
+      ([category]) => category.id === 'company'
+    );
+    return companyEntry ? companyEntry[1] : [];
+  }, [groupedSources]);
+
+  const companySourceIds = useMemo(
+    () => new Set(companySources.map((s) => s.id)),
+    [companySources]
+  );
+
+  // CompanySource型への変換
+  const companySourcesTyped: CompanySource[] = useMemo(
+    () =>
+      companySources.map((s) => ({
+        id: s.id,
+        name: s.name,
+        isActive: true,
+      })),
+    [companySources]
+  );
+
+  // Company filter hook
+  const companyFilter = useCompanyFilter({
+    sources: companySourcesTyped,
+    initialSelected: selectedSources.filter((id) =>
+      companySourceIds.has(id)
+    ),
+  });
 
   // URLパラメータが変更されたときに選択状態を更新
   useEffect(() => {
@@ -157,7 +192,17 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
     const newSelection = selectedSources.filter(id => !categorySourceIds.includes(id));
     applySourceFilter(newSelection);
   };
-  
+
+  // Company-specific batch selection handler
+  const handleCompanyBatchSelect = (companyIds: string[]) => {
+    const nonCompanySelected = selectedSources.filter(
+      (id) => !companySourceIds.has(id)
+    );
+    const nextSelection = [...nonCompanySelected, ...companyIds];
+    // Remove duplicates to ensure unique IDs
+    applySourceFilter(Array.from(new Set(nextSelection)));
+  };
+
   // カテゴリの展開/折りたたみ
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev => {
@@ -344,19 +389,50 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
 
           {/* Categories */}
           <div className="space-y-2">
+            {/* Company blog filter (special UI) */}
+            {companySources.length > 0 && (
+              <CompanyFilter
+                sources={companySourcesTyped}
+                visibleSources={companyFilter.visibleSidebarSources}
+                selectedSourceIds={selectedSources}
+                searchValue={companyFilter.searchValue}
+                onSearchChange={companyFilter.setSearchValue}
+                onSourceToggle={handleSourceToggle}
+                onBatchSelect={handleCompanyBatchSelect}
+                isExpanded={expandedCategories.has('company')}
+                onExpandedChange={(open) => {
+                  setExpandedCategories((prev) => {
+                    const next = new Set(prev);
+                    if (open) {
+                      next.add('company');
+                    } else {
+                      next.delete('company');
+                    }
+                    return next;
+                  });
+                }}
+              />
+            )}
+
+            {/* Other categories (existing rendering) */}
             {Array.from(groupedSources.entries()).map(([category, categorySources]) => {
+              // Skip company category (already rendered above)
+              if (category.id === 'company') {
+                return null;
+              }
+
               const isExpanded = expandedCategories.has(category.id);
-              const categorySelectedCount = categorySources.filter(s => 
+              const categorySelectedCount = categorySources.filter(s =>
                 selectedSources.includes(s.id)
               ).length;
-              
+
               return (
                 <div
                   key={category.id}
                   className="border rounded-md"
                   data-testid={`category-${category.id}`}
                 >
-                  <button 
+                  <button
                     className="w-full text-left"
                     onClick={() => toggleCategory(category.id)}
                     type="button"
@@ -377,7 +453,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                       </div>
                     </div>
                   </button>
-                  
+
                   {isExpanded && (
                     <div className="px-2 pb-2" data-testid={`category-${category.id}-content`}>
                         {/* Category Actions */}
@@ -389,7 +465,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             className="h-6 text-xs px-2 flex-1 min-w-0 overflow-hidden"
                             type="button"
                             data-testid={`category-${category.id}-select-all`}
-                            
+
                           >
                             <span className="truncate">全て選択</span>
                           </Button>
@@ -400,12 +476,12 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                             className="h-6 text-xs px-2 flex-1 min-w-0 overflow-hidden"
                             type="button"
                             data-testid={`category-${category.id}-deselect-all`}
-                            
+
                           >
                             <span className="truncate">全て解除</span>
                           </Button>
                         </div>
-                        
+
                         {/* Source Items */}
                         <div className="space-y-1 pl-6">
                           {categorySources.map((source) => (
@@ -425,7 +501,7 @@ export function Filters({ sources, initialSourceIds }: FiltersProps) {
                                 onCheckedChange={() => handleSourceToggle(source.id)}
                                 className="h-4 w-4"
                                 onClick={(e) => e.stopPropagation()}
-                                
+
                               />
                               <label className="text-xs cursor-pointer flex-1">
                                 {source.name}
