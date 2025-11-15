@@ -322,6 +322,67 @@ export class SourceCache {
     // 関連するキャッシュも無効化
     await this.invalidate();
   }
+
+  /**
+   * 企業ブログソースを取得（DatabaseProvider用）
+   * TTL: 5分
+   */
+  async getCompanySources(): Promise<import('./providers/company-source/interface').CompanySource[]> {
+    const { sourceInclude, toCompanySource } = await import('@/lib/providers/company-source/transforms');
+
+    return this.cache.getOrSet('company-sources', async () => {
+      const rows = await prisma.source.findMany({
+        where: {
+          enabled: true,
+          groupId: { not: null },
+          group: { type: 'company_blog' },
+        },
+        include: sourceInclude,
+        orderBy: { name: 'asc' },
+      });
+      return rows.map(toCompanySource);
+    }, { ttl: 300 });  // 5分
+  }
+
+  /**
+   * グループ別企業ブログソースを取得
+   * TTL: 5分
+   */
+  async getCompanySourcesByGroup(groupId: string): Promise<import('./providers/company-source/interface').CompanySource[]> {
+    const { sourceInclude, toCompanySource } = await import('@/lib/providers/company-source/transforms');
+
+    return this.cache.getOrSet(`company-sources:group:${groupId}`, async () => {
+      const rows = await prisma.source.findMany({
+        where: {
+          enabled: true,
+          groupId,
+        },
+        include: sourceInclude,
+        orderBy: { name: 'asc' },
+      });
+      return rows.map(toCompanySource);
+    }, { ttl: 300 });  // 5分
+  }
+
+  /**
+   * タグ別企業ブログソースを取得
+   * TTL: 5分
+   */
+  async getCompanySourcesByTag(tagId: string): Promise<import('./providers/company-source/interface').CompanySource[]> {
+    const { sourceInclude, toCompanySource } = await import('@/lib/providers/company-source/transforms');
+
+    return this.cache.getOrSet(`company-sources:tag:${tagId}`, async () => {
+      const rows = await prisma.source.findMany({
+        where: {
+          enabled: true,
+          tagAssignments: { some: { tagId } },
+        },
+        include: sourceInclude,
+        orderBy: { name: 'asc' },
+      });
+      return rows.map(toCompanySource);
+    }, { ttl: 300 });  // 5分
+  }
 }
 
 // シングルトンインスタンスをエクスポート
