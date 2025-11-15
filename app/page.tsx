@@ -36,12 +36,26 @@ interface PageProps {
 // getArticles function removed - now handled by client component
 
 async function getSources() {
-  // Redis-backed cache使用（150-250ms短縮）
-  const sourceCache = getSourceCache();
-  const sources = await sourceCache.getAllSources();
+  const { FEATURE_FLAGS } = await import('@/lib/config/feature-flags');
+  const { getSourceCache } = await import('@/lib/cache/source-cache');
 
-  // 記事が1件以上あるソースのみを返す
-  return sources.filter(source => source._count.articles > 0);
+  // Get all sources (Redis-backed cache)
+  const sourceCache = getSourceCache();
+  const allSources = await sourceCache.getAllSources();
+  const sources = allSources.filter(source => source._count.articles > 0);
+
+  // Group sources based on Feature Flag
+  if (FEATURE_FLAGS.USE_DATABASE_PROVIDER) {
+    // NEW: Database-backed grouping
+    const { groupSourcesByGroupId } = await import('@/lib/utils/source-grouping');
+    const groupedSources = await groupSourcesByGroupId(sources);
+    return { sources, groupedSources };
+  }
+
+  // Legacy: Static grouping
+  const { groupSourcesStatic } = await import('@/lib/utils/source-grouping-static');
+  const groupedSources = groupSourcesStatic(sources);
+  return { sources, groupedSources };
 }
 
 async function getPopularTags() {
@@ -59,12 +73,14 @@ async function getPopularTags() {
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
   
-  // Parallel execution of cookies, sources, and tags
-  const [cookieStore, sources, tags] = await Promise.all([
+  // Parallel execution of cookies, sources/groups, and tags
+  const [cookieStore, sourceData, tags] = await Promise.all([
     cookies(),
     getSources(),
     getPopularTags(),
   ]);
+
+  const { sources, groupedSources } = sourceData;
   
   // Get filter preferences from cookie
   const filterPreferences = getFilterPreferencesFromCookies(cookieStore);
@@ -106,7 +122,7 @@ export default async function Home({ searchParams }: PageProps) {
         {/* サイドバー - デスクトップのみ */}
         <aside className="hidden lg:block lg:w-64 lg:flex-shrink-0 lg:bg-gray-50 dark:lg:bg-gray-900/50 lg:border-r lg:border-gray-200 dark:lg:border-gray-700 lg:overflow-y-auto">
           <div className="p-4">
-            <Filters sources={sources} tags={tags} initialSourceIds={initialSourceIds} />
+            <Filters sources={sources} groupedSources={groupedSources} tags={tags} initialSourceIds={initialSourceIds} />
           </div>
         </aside>
 
@@ -116,7 +132,7 @@ export default async function Home({ searchParams }: PageProps) {
           <div className="flex-shrink-0 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <MobileFilters sources={sources} tags={tags} initialSourceIds={initialSourceIds} />
+                <MobileFilters sources={sources} groupedSources={groupedSources} tags={tags} initialSourceIds={initialSourceIds} />
                 <Suspense fallback={<div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />}>
                   <ArticleCount />
                 </Suspense>

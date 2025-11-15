@@ -12,9 +12,11 @@ import CategoryFilter from '@/components/filters/CategoryFilter';
 import { CompanyFilter } from '@/app/components/source-filters/company-filter';
 import { useCompanyFilter } from '@/lib/hooks/use-company-filter';
 import type { CompanySource } from '@/lib/providers/company-source';
+import type { GroupedSources } from '@/lib/types/source-grouping';
 
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;
+  groupedSources?: GroupedSources[];
   tags: Array<{ id: string; name: string; count: number }>;
   initialSourceIds?: string[];
 }
@@ -29,7 +31,7 @@ const categoryIcons: Record<string, React.ReactNode> = {
   llm: <Cpu className="w-3 h-3" />
 };
 
-export function Filters({ sources, initialSourceIds }: FiltersProps) {
+export function Filters({ sources, groupedSources, initialSourceIds }: FiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
