@@ -84,14 +84,19 @@ model Article {
 }
 
 model Source {
-  id        String    @id @default(cuid())
-  name      String    @unique
-  type      String
-  url       String
-  enabled   Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  articles  Article[]
+  id             String                @id @default(cuid())
+  name           String                @unique
+  type           String
+  url            String
+  enabled        Boolean               @default(true)
+  groupId        String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  articles       Article[]
+  group          SourceGroup?          @relation(fields: [groupId], references: [id])
+  tagAssignments SourceTagAssignment[]
+
+  @@index([groupId], map: "idx_source_group_id")
 }
 
 model Tag {
@@ -276,4 +281,43 @@ model ArticleChunk {
 
   @@unique([articleId, chunkIndex, model, version])
   @@index([articleId, chunkIndex], map: "idx_article_chunk_article_index")
+}
+
+model SourceGroup {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  type        String
+  description String?
+  ordering    Int      @default(0)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  sources     Source[]
+
+  @@index([type], map: "idx_source_group_type")
+  @@index([ordering], map: "idx_source_group_ordering")
+}
+
+model SourceTag {
+  id          String                @id @default(cuid())
+  name        String                @unique
+  category    String?
+  description String?
+  createdAt   DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime              @updatedAt @db.Timestamptz(6)
+  assignments SourceTagAssignment[]
+
+  @@index([category], map: "idx_source_tag_category")
+}
+
+model SourceTagAssignment {
+  id        String    @id @default(cuid())
+  sourceId  String
+  tagId     String
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  source    Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  tag       SourceTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, tagId], map: "uq_source_tag_assignment")
+  @@index([sourceId], map: "idx_source_tag_assignment_source")
+  @@index([tagId], map: "idx_source_tag_assignment_tag")
 }
