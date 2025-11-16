@@ -325,6 +325,9 @@ jobs:
           CI: 'true'  # CI環境フラグ
           PORT: 3000
           NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"  # AI Agent Search UI feature flag
+          # Phase 2-A: Enable DB-backed provider for CI testing
+          # This ensures CI environment matches production after migration
+          USE_DATABASE_PROVIDER: "true"
         run: |
           # ビルドフェーズ
           echo "Building application..."
