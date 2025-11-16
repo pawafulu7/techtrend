@@ -92,6 +92,10 @@ export function buildSourceGroup(overrides?: Partial<SourceGroupPlain>): SourceG
  *
  * Wires mockSourceGroups and mockSources into prismaMock.sourceGroup.findMany,
  * prismaMock.source.findMany, etc.
+ *
+ * Note: Currently uses mockResolvedValue (query arguments like where/orderBy are ignored).
+ * Future consideration: If tests need argument-dependent behavior (e.g., filtering by category),
+ * switch to mockImplementation to inspect args and return filtered results.
  */
 export function seedPrismaWithSourceFixtures(prismaMock: DeepMockProxy<PrismaClient>): void {
   // Seed SourceGroup.findMany
@@ -175,6 +179,10 @@ export function createInMemoryCompanyProvider(options?: {
  *     const result = getSourceIdsForPreset('company');
  *     expect(result).toBe(...);
  *   });
+ *
+ * Note: jest.resetModules() is called in multiple places (withFeatureFlag, cleanupPhase2ATests,
+ * test beforeEach/afterEach). This redundancy is intentional for safety but could be consolidated
+ * to cleanupPhase2ATests() in future refactoring for easier maintenance.
  */
 export async function withFeatureFlag<T>(
   flag: boolean,
