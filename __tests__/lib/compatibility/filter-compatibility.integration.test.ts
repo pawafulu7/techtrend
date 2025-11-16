@@ -309,9 +309,9 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
     it('should have consistent source IDs between DB provider and legacy paths', async () => {
       // DB provider path (Feature Flag=true)
       const dbSourceIds = await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        return jest.isolateModules(async () => {
           const { createInMemoryCompanyProvider } = await import(
-            '../helpers/phase2a-test-fixtures'
+            '../../helpers/phase2a-test-fixtures'
           );
 
           const groupedSources = createInMemoryCompanyProvider();
@@ -321,7 +321,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
 
       // Legacy path (Feature Flag=false)
       const legacySourceIds = await withFeatureFlag(false, async () => {
-        jest.isolateModules(async () => {
+        return jest.isolateModules(async () => {
           const { SOURCE_CATEGORIES } = await import(
             '@/lib/constants/source-categories'
           );

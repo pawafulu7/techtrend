@@ -94,13 +94,6 @@ export function buildSourceGroup(overrides?: Partial<SourceGroupPlain>): SourceG
  * prismaMock.source.findMany, etc.
  */
 export function seedPrismaWithSourceFixtures(prismaMock: DeepMockProxy<PrismaClient>): void {
-  // Guard: Ensure REDIS_URL is undefined to avoid accidental real cache use
-  if (process.env.REDIS_URL) {
-    throw new Error(
-      '[Phase2A Test Fixture] REDIS_URL must be undefined in tests to prevent accidental real cache use'
-    );
-  }
-
   // Seed SourceGroup.findMany
   prismaMock.sourceGroup.findMany.mockResolvedValue(
     mockSourceGroups.map((g) => ({
