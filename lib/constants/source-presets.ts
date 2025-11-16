@@ -33,6 +33,20 @@ export const SOURCE_FILTER_PRESETS: Record<string, SourceFilterPreset> = {
     icon: 'Globe',
     categories: ['foreign']
   },
+  domestic: {
+    id: 'domestic',
+    name: '国内コミュニティ',
+    description: '国内のコミュニティ/アカデミック系ソースのみ',
+    icon: 'Users',
+    categories: ['domestic']
+  },
+  presentation: {
+    id: 'presentation',
+    name: 'プレゼンテーション',
+    description: 'スライド・プレゼン資料のみ',
+    icon: 'Presentation',
+    categories: ['presentation']
+  },
   'domestic-all': {
     id: 'domestic-all',
     name: '国内全般',
