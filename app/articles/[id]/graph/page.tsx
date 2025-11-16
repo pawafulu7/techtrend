@@ -128,7 +128,7 @@ function GraphContainer() {
     setError(null);
 
     fetch(
-      `/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=8&minSimilarity=0.50&depth=${currentDepth}`,
+      `/api/articles/${articleId}/relationship-graph?algorithm=embedding&maxNodes=8&minSimilarity=0.25&depth=${currentDepth}`,
       {
         signal: abortController.signal,
       }

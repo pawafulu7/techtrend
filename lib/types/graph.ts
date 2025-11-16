@@ -150,8 +150,8 @@ export const graphOptionsSchema = z.object({
     .number()
     .min(0, 'Similarity must be between 0 and 1')
     .max(1, 'Similarity must be between 0 and 1')
-    .default(0.2)
-    .describe('Minimum similarity threshold for edges (Jaccard coefficient)'),
+    .default(0.25)
+    .describe('Minimum similarity threshold for edges (Jaccard for tag algorithm, cosine for embedding algorithm)'),
 
   depth: z
     .number()
