@@ -48,7 +48,7 @@ export async function GET(
         maxNodes: searchParams.get('maxNodes') ? parseInt(searchParams.get('maxNodes')!, 10) : 20,
         minSimilarity: searchParams.get('minSimilarity')
           ? parseFloat(searchParams.get('minSimilarity')!)
-          : 0.3,
+          : 0.25,
         depth: searchParams.get('depth') ? parseInt(searchParams.get('depth')!, 10) : 1,
       };
 
