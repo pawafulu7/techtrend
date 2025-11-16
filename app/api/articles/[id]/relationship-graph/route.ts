@@ -45,11 +45,11 @@ export async function GET(
       const searchParams = request.nextUrl.searchParams;
       const rawOptions = {
         algorithm: searchParams.get('algorithm') || 'tag',
-        maxNodes: searchParams.get('maxNodes') ? parseInt(searchParams.get('maxNodes')!, 10) : 20,
+        maxNodes: searchParams.get('maxNodes') ? parseInt(searchParams.get('maxNodes')!, 10) : undefined,
         minSimilarity: searchParams.get('minSimilarity')
           ? parseFloat(searchParams.get('minSimilarity')!)
-          : 0.25,
-        depth: searchParams.get('depth') ? parseInt(searchParams.get('depth')!, 10) : 1,
+          : undefined,
+        depth: searchParams.get('depth') ? parseInt(searchParams.get('depth')!, 10) : undefined,
       };
 
       // Zod validation (CodexMCP: enforce safe ranges)
