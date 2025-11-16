@@ -252,7 +252,7 @@ describe('API Response Time (/api/sources)', () => {
 
       // Use seeded sources (not mockSources from fixtures)
       // seedPerformanceData() generated sources with matching groupIds
-      const testSources = prismaMock.source.findMany.mock.results[0]?.value || [];
+      const testSources = (await prismaMock.source.findMany()) ?? [];
 
       logPerfMetadata({
         testName: 'source-group-latency',

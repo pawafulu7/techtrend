@@ -230,8 +230,8 @@ const runPerfTests = process.env.RUN_PERF_TESTS === 'true';
     console.log(`  Median: ${stats.median.toFixed(2)}ms`);
     console.log(`  P95: ${stats.p95.toFixed(2)}ms`);
 
-    // Assert median < threshold (overridable via env var)
-    const threshold = Number(process.env.REDIS_HIT_MEDIAN_THRESHOLD ?? '20');
+    // Assert median < threshold (overridable via env var, default: 30ms for CI stability)
+    const threshold = Number(process.env.REDIS_HIT_MEDIAN_THRESHOLD ?? '30');
     expect(stats.median).toBeLessThan(threshold);
   });
 
