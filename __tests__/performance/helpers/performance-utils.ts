@@ -260,18 +260,27 @@ export async function resetSourceCache(): Promise<void> {
 /**
  * Reset RedisCache for tests
  *
- * For mock Redis: clears the in-memory map
- * For real Redis: invalidates all patterns and resets stats
+ * Clears the TestRedisClient store used by SourceCache and other caches.
+ * This ensures cache MISS scenarios work correctly in tests.
  */
 export async function resetRedisCache(): Promise<void> {
-  // Mock Redis: phase2a-test-fixtures.ts provides mockRedisCache()
-  // Real Redis: use RedisCache.invalidatePattern('*') + resetStats()
+  // Get the TestRedisClient instance used by SourceCache
+  const { getRedisClient } = await import('@/lib/redis/client');
+  const redis = getRedisClient();
 
-  // For now, assume mock Redis (in-memory map)
-  // If RUN_PERF_TESTS=true, this would need real Redis handling
-  const { mockRedisCache } = await import('../../helpers/phase2a-test-fixtures');
-  const cache = mockRedisCache();
-  cache.clear();
+  // TestRedisClient supports flushall() to clear all keys
+  if (typeof (redis as any).flushall === 'function') {
+    await (redis as any).flushall();
+  } else if (typeof (redis as any).clear === 'function') {
+    // Fallback to clear() if flushall is not available
+    await (redis as any).clear();
+  } else {
+    // Last resort: use keys() + del() pattern
+    const keys = await redis.keys('*');
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  }
 }
 
 /**
@@ -320,15 +329,42 @@ export async function seedPerformanceData(
 
   // Generate sources (reuse mockSources, clone for larger counts)
   const sources = [];
+  const tagNames = ['JavaScript', 'TypeScript', 'React', 'Node.js', 'AI/ML', 'Database', 'Security'];
+  const now = new Date();
+
   for (let i = 0; i < sourceCount; i++) {
     const baseSource = mockSources[i % mockSources.length];
     const groupId = groups[i % groups.length].id;
-    sources.push(buildSource({
+    const articleCount = 10 + (i % 20);
+
+    // Generate articles array for calculateSourceStats
+    const articles = [];
+    for (let j = 0; j < articleCount; j++) {
+      const daysAgo = j * 3; // Stagger publishedAt over 90 days
+      const publishedAt = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+      const qualityScore = 60 + (j % 40); // Vary quality scores (60-99)
+      const tags = [
+        { name: tagNames[j % tagNames.length] },
+        { name: tagNames[(j + 1) % tagNames.length] },
+      ];
+
+      articles.push({
+        qualityScore,
+        publishedAt,
+        tags,
+      });
+    }
+
+    sources.push({
       id: `${baseSource.id}_${Math.floor(i / mockSources.length)}`,
       name: `${baseSource.name} ${Math.floor(i / mockSources.length)}`,
       groupId,
-      _count: { articles: 10 + (i % 20) }, // Vary article counts
-    }));
+      type: 'RSS',
+      url: `https://example.com/${i}`,
+      enabled: true,
+      _count: { articles: articleCount },
+      articles, // Add articles array for calculateSourceStats
+    });
   }
 
   // Mock Prisma responses
