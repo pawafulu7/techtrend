@@ -114,7 +114,7 @@ describe('API Response Time (/api/sources)', () => {
         const responseTimeHeader = lastResponse.headers.get('X-Response-Time');
         expect(responseTimeHeader).toBeDefined();
         const responseTime = parseInt(responseTimeHeader || '0');
-        expect(responseTime).toBeGreaterThan(0);
+        expect(responseTime).toBeGreaterThanOrEqual(0); // Allow 0ms (very fast responses)
         expect(responseTime).toBeLessThan(400);
       });
 
