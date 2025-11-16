@@ -195,7 +195,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
   describe('Preset Selection Integration', () => {
     it('should get source IDs for company preset using DB-backed path', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -218,7 +218,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
 
     it('should get source IDs for foreign preset using DB-backed path', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -241,7 +241,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
 
     it('should get source IDs for ai-ml preset using DB-backed path', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -271,7 +271,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
 
     it('should fallback to legacy path when groupedSources is not provided', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -287,7 +287,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
 
     it('should use legacy path when feature flag is false', async () => {
       await withFeatureFlag(false, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -309,7 +309,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
     it('should have consistent source IDs between DB provider and legacy paths', async () => {
       // DB provider path (Feature Flag=true)
       const dbSourceIds = await withFeatureFlag(true, async () => {
-        return jest.isolateModules(async () => {
+        return await jest.isolateModulesAsync(async () => {
           const { createInMemoryCompanyProvider } = await import(
             '../../helpers/phase2a-test-fixtures'
           );
@@ -321,7 +321,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
 
       // Legacy path (Feature Flag=false)
       const legacySourceIds = await withFeatureFlag(false, async () => {
-        return jest.isolateModules(async () => {
+        return await jest.isolateModulesAsync(async () => {
           const { SOURCE_CATEGORIES } = await import(
             '@/lib/constants/source-categories'
           );
@@ -349,7 +349,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
   describe('Provider Factory Integration', () => {
     it('should return DatabaseCompanySourceProvider when feature flag is true', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { createCompanySourceProvider } = await import(
             '@/lib/providers/company-source/factory'
           );
@@ -365,7 +365,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
 
     it('should return StaticCompanySourceProvider when feature flag is false', async () => {
       await withFeatureFlag(false, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { createCompanySourceProvider } = await import(
             '@/lib/providers/company-source/factory'
           );

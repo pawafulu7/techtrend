@@ -41,12 +41,12 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
   describe('Company Preset', () => {
     it('should get correct source IDs for company preset with DB-backed path', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
           const { createInMemoryCompanyProvider: createProvider } = await import(
-            '../helpers/phase2a-test-fixtures'
+            '../../helpers/phase2a-test-fixtures'
           );
 
           const groupedSources = createProvider();
@@ -64,12 +64,12 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
     it('should get correct source IDs for company preset with legacy path', async () => {
       await withFeatureFlag(false, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
           const { makeLegacyPresetFixture: makeLegacy } = await import(
-            '../helpers/phase2a-test-fixtures'
+            '../../helpers/phase2a-test-fixtures'
           );
 
           const sourceIds = getSourceIdsForPreset('company');
@@ -84,7 +84,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
     it('should have consistent source IDs between DB-backed and legacy paths for company preset', async () => {
       // DB-backed path
       const dbSourceIds = await withFeatureFlag(true, async () => {
-        return jest.isolateModules(async () => {
+        return await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -95,7 +95,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
       // Legacy path
       const legacySourceIds = await withFeatureFlag(false, async () => {
-        return jest.isolateModules(async () => {
+        return await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -114,7 +114,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
   describe('Foreign Preset', () => {
     it('should get correct source IDs for foreign preset with DB-backed path', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -133,7 +133,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
     it('should get correct source IDs for foreign preset with legacy path', async () => {
       await withFeatureFlag(false, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -150,7 +150,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
   describe('Domestic Preset', () => {
     it('should get correct source IDs for domestic preset with DB-backed path', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -176,7 +176,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
     it('should get correct source IDs for domestic preset with legacy path', async () => {
       await withFeatureFlag(false, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -193,7 +193,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
   describe('Presentation Preset', () => {
     it('should get correct source IDs for presentation preset with DB-backed path', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -212,7 +212,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
     it('should get correct source IDs for presentation preset with legacy path', async () => {
       await withFeatureFlag(false, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -229,7 +229,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
   describe('AI-ML Preset', () => {
     it('should get correct source IDs for ai-ml preset with DB-backed path', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -255,7 +255,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
     it('should get correct source IDs for ai-ml preset with legacy path', async () => {
       await withFeatureFlag(false, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -270,7 +270,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
     it('should remove duplicates when multiple categories map to same groups', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -288,7 +288,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
   describe('Fallback Behavior', () => {
     it('should fallback to legacy path when groupedSources is not provided (Feature Flag=true)', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -305,7 +305,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
     it('should fallback to legacy path when groupedSources is empty array (Feature Flag=true)', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -322,7 +322,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
     it('should always use legacy path when Feature Flag=false regardless of groupedSources', async () => {
       await withFeatureFlag(false, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
@@ -342,7 +342,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
   describe('Duplicate Removal', () => {
     it('should remove duplicates when multiple categories map to overlapping groups', async () => {
       await withFeatureFlag(true, async () => {
-        jest.isolateModules(async () => {
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
