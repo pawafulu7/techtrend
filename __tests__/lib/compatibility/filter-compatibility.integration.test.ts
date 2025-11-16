@@ -200,7 +200,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
             '@/lib/constants/source-presets'
           );
           const { createInMemoryCompanyProvider } = await import(
-            '../helpers/phase2a-test-fixtures'
+            '../../helpers/phase2a-test-fixtures'
           );
 
           const groupedSources = createInMemoryCompanyProvider();
@@ -223,7 +223,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
             '@/lib/constants/source-presets'
           );
           const { createInMemoryCompanyProvider } = await import(
-            '../helpers/phase2a-test-fixtures'
+            '../../helpers/phase2a-test-fixtures'
           );
 
           const groupedSources = createInMemoryCompanyProvider();
@@ -246,7 +246,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
             '@/lib/constants/source-presets'
           );
           const { createInMemoryCompanyProvider } = await import(
-            '../helpers/phase2a-test-fixtures'
+            '../../helpers/phase2a-test-fixtures'
           );
 
           const groupedSources = createInMemoryCompanyProvider();
@@ -292,7 +292,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
             '@/lib/constants/source-presets'
           );
           const { createInMemoryCompanyProvider } = await import(
-            '../helpers/phase2a-test-fixtures'
+            '../../helpers/phase2a-test-fixtures'
           );
 
           const groupedSources = createInMemoryCompanyProvider();
