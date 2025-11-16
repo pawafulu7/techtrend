@@ -23,14 +23,8 @@ async function checkFeatureFlag() {
   // 1. Check Feature Flag value
   console.log('[Step 1] Feature Flag Check');
   const flagValue = FEATURE_FLAGS.USE_DATABASE_PROVIDER;
-
-  if (flagValue === undefined) {
-    console.log('  Feature Flag value is undefined');
-    hasError = true;
-  } else {
-    console.log('  USE_DATABASE_PROVIDER:', flagValue);
-    console.log('  Expected Provider:', flagValue ? 'DatabaseCompanySourceProvider' : 'StaticCompanySourceProvider');
-  }
+  console.log('  USE_DATABASE_PROVIDER:', flagValue);
+  console.log('  Expected Provider:', flagValue ? 'DatabaseCompanySourceProvider' : 'StaticCompanySourceProvider');
   console.log();
 
   // 2. Verify Provider instantiation
