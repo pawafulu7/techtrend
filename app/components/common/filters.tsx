@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CheckSquare, Square, ChevronDown, ChevronRight, Globe, Building2, FileText, Presentation, Brain, Cpu, Home } from 'lucide-react';
 import { DateRangeFilter } from './date-range-filter';
-import { groupSourcesByCategory, SourceCategory, type SourceCategoryId, VALID_CATEGORY_IDS } from '@/lib/constants/source-categories';
+import { groupSourcesByCategory, SourceCategory, type SourceCategoryId, VALID_CATEGORY_IDS, SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
 import { getSourceIdsForPreset } from '@/lib/constants/source-presets';
 import CategoryFilter from '@/components/filters/CategoryFilter';
 import { CompanyFilter } from '@/app/components/source-filters/company-filter';
@@ -90,7 +90,9 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
   const groupedSourcesMap = useMemo(() => {
     if (groupedSources && groupedSources.length > 0) {
       // NEW: Use server-provided grouped sources (Phase 2-A)
-      const map = new Map<SourceCategory, Array<{ id: string; name: string }>>();
+      // Step 1: Merge groups with the same categoryId
+      const mergedMap = new Map<string, { categoryName: string; sources: Array<{ id: string; name: string }> }>();
+
       groupedSources.forEach(({ group, sources: groupSources }) => {
         // Convert GroupedSources to SourceCategory format for compatibility
         // Try reverse mapping first (for DB-backed groups like 'group_company_japan')
@@ -112,14 +114,31 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
           }
         }
 
-        const category: SourceCategory = {
-          id: categoryId,
-          name: group.name,
-          description: '',  // Not used in UI
-          sourceIds: groupSources.map(s => s.id),
-        };
-        map.set(category, groupSources);
+        // Merge sources for the same categoryId
+        if (mergedMap.has(categoryId)) {
+          const existing = mergedMap.get(categoryId)!;
+          existing.sources.push(...groupSources);
+        } else {
+          mergedMap.set(categoryId, {
+            categoryName: group.name,
+            sources: [...groupSources],
+          });
+        }
       });
+
+      // Step 2: Convert to Map<SourceCategory, Sources[]>
+      const map = new Map<SourceCategory, Array<{ id: string; name: string }>>();
+      for (const [categoryId, { sources: categorySources }] of mergedMap.entries()) {
+        // Use canonical category name from SOURCE_CATEGORIES
+        const canonicalCategory = SOURCE_CATEGORIES[categoryId as SourceCategoryId];
+        const category: SourceCategory = {
+          id: categoryId as SourceCategoryId,
+          name: canonicalCategory?.name || categoryId,  // Fallback to categoryId if not found
+          description: canonicalCategory?.description || '',
+          sourceIds: categorySources.map(s => s.id),
+        };
+        map.set(category, categorySources);
+      }
       return map;
     }
 

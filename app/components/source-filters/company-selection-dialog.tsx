@@ -95,16 +95,10 @@ export function CompanySelectionDialog({
       open={open}
       onOpenChange={(next) => !next && handleClose('cancel')}
     >
-      <DialogContent
-        aria-labelledby="company-dialog-title"
-        aria-describedby="company-dialog-description"
-        className="max-w-4xl max-h-[80vh] flex flex-col"
-      >
+      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle id="company-dialog-title">
-            企業ブログを選択
-          </DialogTitle>
-          <DialogDescription id="company-dialog-description">
+          <DialogTitle>企業ブログを選択</DialogTitle>
+          <DialogDescription>
             フィルタリングする企業を選択してください
           </DialogDescription>
         </DialogHeader>
