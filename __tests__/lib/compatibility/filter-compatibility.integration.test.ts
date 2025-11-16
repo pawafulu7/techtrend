@@ -19,7 +19,7 @@
 jest.mock('@/lib/prisma');
 jest.mock('@/lib/cache/redis-cache');
 
-import { prismaMock } from '../__mocks__/prisma';
+import { prismaMock } from '../../__mocks__/prisma';
 import {
   seedPrismaWithSourceFixtures,
   withFeatureFlag,
@@ -27,7 +27,7 @@ import {
   mockSourceGroups,
   cleanupPhase2ATests,
   validateFixtureConsistency,
-} from '../helpers/phase2a-test-fixtures';
+} from '../../helpers/phase2a-test-fixtures';
 
 describe('[Phase2A][Integration] Filter Compatibility', () => {
   beforeEach(() => {

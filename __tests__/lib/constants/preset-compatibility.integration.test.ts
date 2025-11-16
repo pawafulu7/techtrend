@@ -17,7 +17,7 @@
 jest.mock('@/lib/prisma');
 jest.mock('@/lib/cache/redis-cache');
 
-import { prismaMock } from '../__mocks__/prisma';
+import { prismaMock } from '../../__mocks__/prisma';
 import {
   seedPrismaWithSourceFixtures,
   withFeatureFlag,
@@ -25,7 +25,7 @@ import {
   createInMemoryCompanyProvider,
   cleanupPhase2ATests,
   mockSources,
-} from '../helpers/phase2a-test-fixtures';
+} from '../../helpers/phase2a-test-fixtures';
 
 describe('[Phase2A][Integration] Preset Compatibility', () => {
   beforeEach(() => {
