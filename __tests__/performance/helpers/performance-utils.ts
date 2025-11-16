@@ -163,6 +163,10 @@ export async function measureMultipleRuns<T>(
 /**
  * Calculate percentile using linear interpolation
  *
+ * NOTE: This is a performance-test-specific implementation.
+ * Uses linear interpolation for smooth percentile values across sample sizes.
+ * Different from lib/ai/testing/stats.ts (ceil-based) which is optimized for AI metrics.
+ *
  * @param values - Array of numbers
  * @param percentile - Percentile (0-100)
  * @returns Percentile value
@@ -246,6 +250,8 @@ export function assertPercentileUnder(
 // ============================================================================
 
 /**
+ * TEST HELPER ONLY - DO NOT IMPORT FROM RUNTIME MODULES
+ *
  * Reset SourceCache for tests
  *
  * Calls __resetSourceCacheForTests() and invalidates all caches.
@@ -258,10 +264,14 @@ export async function resetSourceCache(): Promise<void> {
 }
 
 /**
+ * TEST HELPER ONLY - DO NOT IMPORT FROM RUNTIME MODULES
+ *
  * Reset RedisCache for tests
  *
  * Clears the TestRedisClient store used by SourceCache and other caches.
  * This ensures cache MISS scenarios work correctly in tests.
+ *
+ * WARNING: Uses flushall() which clears ALL Redis keys in test environment.
  */
 export async function resetRedisCache(): Promise<void> {
   // Get the TestRedisClient instance used by SourceCache
@@ -284,7 +294,12 @@ export async function resetRedisCache(): Promise<void> {
 }
 
 /**
+ * TEST HELPER ONLY - DO NOT IMPORT FROM RUNTIME MODULES
+ *
  * Reset all caches (SourceCache + RedisCache)
+ *
+ * WARNING: Clears ALL Redis keys in test environment via flushall().
+ * Never call this from production code or shared E2E environments.
  */
 export async function resetAllCaches(): Promise<void> {
   await Promise.all([

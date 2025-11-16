@@ -44,8 +44,8 @@ describe('Cache Hit Rate Logic (Mock Redis)', () => {
         await cache.getOrSet(key, async () => `value-${key}`);
       }
 
-      // Calculate hit rate
-      const { hits, misses } = (cache as any).stats;
+      // Calculate hit rate using getStats() API
+      const { hits, misses } = cache.getStats();
       const total = hits + misses;
       const hitRate = total > 0 ? hits / total : 0;
 
@@ -72,18 +72,18 @@ describe('Cache Hit Rate Logic (Mock Redis)', () => {
 
       // First access: MISS
       await cache.getOrSet('key1', async () => 'value1');
-      expect((cache as any).stats.misses).toBe(1);
-      expect((cache as any).stats.hits).toBe(0);
+      expect(cache.getStats().misses).toBe(1);
+      expect(cache.getStats().hits).toBe(0);
 
       // Second access: HIT
       await cache.getOrSet('key1', async () => 'value1');
-      expect((cache as any).stats.hits).toBe(1);
-      expect((cache as any).stats.misses).toBe(1);
+      expect(cache.getStats().hits).toBe(1);
+      expect(cache.getStats().misses).toBe(1);
 
       // Third access: HIT
       await cache.getOrSet('key1', async () => 'value1');
-      expect((cache as any).stats.hits).toBe(2);
-      expect((cache as any).stats.misses).toBe(1);
+      expect(cache.getStats().hits).toBe(2);
+      expect(cache.getStats().misses).toBe(1);
     });
   });
 
@@ -160,7 +160,7 @@ describe('Cache Hit Rate Logic (Mock Redis)', () => {
         // Initial access: HIT
         let result = await cache.get('ttl-key');
         expect(result).toBe('ttl-value');
-        expect((cache as any).stats.hits).toBe(1);
+        expect(cache.getStats().hits).toBe(1);
 
         // Advance time by 2 seconds (TTL expired)
         jest.advanceTimersByTime(2000);
@@ -169,7 +169,7 @@ describe('Cache Hit Rate Logic (Mock Redis)', () => {
         // Access after TTL: MISS
         result = await cache.get('ttl-key');
         expect(result).toBeNull();
-        expect((cache as any).stats.misses).toBe(1);
+        expect(cache.getStats().misses).toBe(1);
       } finally {
         jest.useRealTimers();
       }
@@ -198,9 +198,9 @@ const runPerfTests = process.env.RUN_PERF_TESTS === 'true';
   });
 
   afterAll(async () => {
-    // Clean up test namespace
+    // Clean up test namespace (match namespace prefix pattern)
     const redis = getRedisClient();
-    const keys = await redis.keys('perf-test:*');
+    const keys = await redis.keys('perf-test*');
     if (keys.length > 0) {
       await redis.del(...keys);
     }
@@ -230,8 +230,9 @@ const runPerfTests = process.env.RUN_PERF_TESTS === 'true';
     console.log(`  Median: ${stats.median.toFixed(2)}ms`);
     console.log(`  P95: ${stats.p95.toFixed(2)}ms`);
 
-    // Assert median < 20ms
-    expect(stats.median).toBeLessThan(20);
+    // Assert median < threshold (overridable via env var)
+    const threshold = Number(process.env.REDIS_HIT_MEDIAN_THRESHOLD ?? '20');
+    expect(stats.median).toBeLessThan(threshold);
   });
 
   it('should measure actual hit rate in production-like scenario', async () => {
@@ -249,8 +250,8 @@ const runPerfTests = process.env.RUN_PERF_TESTS === 'true';
       await cache.getOrSet(key, async () => `scenario-value-${key}`);
     }
 
-    // Calculate hit rate
-    const { hits, misses } = (cache as any).stats;
+    // Calculate hit rate using getStats() API
+    const { hits, misses } = cache.getStats();
     const total = hits + misses;
     const hitRate = total > 0 ? hits / total : 0;
 
