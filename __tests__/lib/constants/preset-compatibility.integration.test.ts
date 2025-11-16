@@ -84,23 +84,37 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
     it('should have consistent source IDs between DB-backed and legacy paths for company preset', async () => {
       // DB-backed path
       const dbSourceIds = await withFeatureFlag(true, async () => {
-        return await jest.isolateModulesAsync(async () => {
+        let ids: string[] | undefined;
+
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
           const groupedSources = createInMemoryCompanyProvider();
-          return getSourceIdsForPreset('company', groupedSources);
+          ids = getSourceIdsForPreset('company', groupedSources);
         });
+
+        if (!ids) {
+          throw new Error('Unable to resolve DB source IDs inside isolateModules');
+        }
+        return ids;
       });
 
       // Legacy path
       const legacySourceIds = await withFeatureFlag(false, async () => {
-        return await jest.isolateModulesAsync(async () => {
+        let ids: string[] | undefined;
+
+        await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
             '@/lib/constants/source-presets'
           );
-          return getSourceIdsForPreset('company');
+          ids = getSourceIdsForPreset('company');
         });
+
+        if (!ids) {
+          throw new Error('Unable to resolve legacy source IDs inside isolateModules');
+        }
+        return ids;
       });
 
       // DB source IDs should be a subset of legacy source IDs

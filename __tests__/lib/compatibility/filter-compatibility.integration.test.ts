@@ -309,19 +309,28 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
     it('should have consistent source IDs between DB provider and legacy paths', async () => {
       // DB provider path (Feature Flag=true)
       const dbSourceIds = await withFeatureFlag(true, async () => {
-        return await jest.isolateModulesAsync(async () => {
+        let ids: string[] | undefined;
+
+        await jest.isolateModulesAsync(async () => {
           const { createInMemoryCompanyProvider } = await import(
             '../../helpers/phase2a-test-fixtures'
           );
 
           const groupedSources = createInMemoryCompanyProvider();
-          return groupedSources.flatMap((gs) => gs.sources.map((s) => s.id));
+          ids = groupedSources.flatMap((gs) => gs.sources.map((s) => s.id));
         });
+
+        if (!ids) {
+          throw new Error('Unable to resolve DB source IDs inside isolateModules');
+        }
+        return ids;
       });
 
       // Legacy path (Feature Flag=false)
       const legacySourceIds = await withFeatureFlag(false, async () => {
-        return await jest.isolateModulesAsync(async () => {
+        let ids: string[] | undefined;
+
+        await jest.isolateModulesAsync(async () => {
           const { SOURCE_CATEGORIES } = await import(
             '@/lib/constants/source-categories'
           );
@@ -330,8 +339,13 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
             (category) => category.sourceIds
           );
 
-          return Array.from(new Set(allSourceIds));
+          ids = Array.from(new Set(allSourceIds));
         });
+
+        if (!ids) {
+          throw new Error('Unable to resolve legacy source IDs inside isolateModules');
+        }
+        return ids;
       });
 
       // Both paths should return the same source IDs (subset check)
