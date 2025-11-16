@@ -83,40 +83,55 @@ async function checkFeatureFlag() {
   }
 
   // 4. API endpoint test (if BASE_URL provided)
-  const baseUrl = process.env.BASE_URL || process.env.NEXTAUTH_URL;
+  const baseUrl = process.env.BASE_URL;
   console.log('[Step 4] API Endpoint Check');
-  if (baseUrl) {
+  if (!baseUrl) {
+    console.log('  Status: SKIPPED (BASE_URL not set)');
+    console.log('  Note: Set BASE_URL environment variable to test API endpoints');
+  } else {
     const testUrl = `${baseUrl}/api/sources?category=company`;
     console.log('  Testing:', testUrl);
 
     try {
       const response = await fetch(testUrl);
-      const data = await response.json();
 
-      if (response.ok) {
-        // Validate response structure
-        if (Array.isArray(data.sources)) {
-          console.log('  Status: PASS (API endpoint responding)');
-          console.log('    HTTP Status:', response.status);
-          console.log('    Source count:', data.sources.length);
-        } else {
-          console.log('  Status: WARN (API response schema unexpected)');
-          console.log('    HTTP Status:', response.status);
-          console.log('    Expected "sources" array, got:', typeof data.sources);
-        }
-      } else {
-        console.log('  Status: FAIL (API endpoint error)');
+      // Parse JSON with explicit error handling
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.log('  Status: FAIL (Invalid JSON response)');
         console.log('    HTTP Status:', response.status);
-        console.log('    Error:', data.error || 'Unknown error');
+        console.log('    Parse Error:', parseError instanceof Error ? parseError.message : String(parseError));
         hasError = true;
+        console.log();
+        // Continue to summary (do not return here)
+      }
+
+      if (data) {
+        if (response.ok) {
+          // Validate response structure
+          if (Array.isArray(data.sources)) {
+            console.log('  Status: PASS (API endpoint responding)');
+            console.log('    HTTP Status:', response.status);
+            console.log('    Source count:', data.sources.length);
+          } else {
+            console.log('  Status: WARN (API response schema unexpected)');
+            console.log('    HTTP Status:', response.status);
+            console.log('    Expected "sources" array, got:', typeof data.sources);
+          }
+        } else {
+          console.log('  Status: FAIL (API endpoint error)');
+          console.log('    HTTP Status:', response.status);
+          console.log('    Error:', data.error || 'Unknown error');
+          hasError = true;
+        }
       }
     } catch (error) {
       console.log('  Status: WARN (API endpoint not reachable)');
       console.log('    Error:', error instanceof Error ? error.message : String(error));
       console.log('    Note: This is expected if server is not running');
     }
-  } else {
-    console.log('  Status: SKIPPED (BASE_URL not set)');
   }
   console.log();
 
