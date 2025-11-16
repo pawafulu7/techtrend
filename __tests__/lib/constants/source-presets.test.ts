@@ -16,12 +16,14 @@ jest.mock('@/lib/config/feature-flags', () => ({
 
 describe('source-presets', () => {
   describe('SOURCE_FILTER_PRESETS', () => {
-    it('should have 4 presets defined', () => {
+    it('should have 6 presets defined', () => {
       const presets = Object.keys(SOURCE_FILTER_PRESETS);
-      expect(presets).toHaveLength(4);
+      expect(presets).toHaveLength(6);
       expect(presets).toContain('company');
       expect(presets).toContain('ai-ml');
       expect(presets).toContain('foreign');
+      expect(presets).toContain('domestic');
+      expect(presets).toContain('presentation');
       expect(presets).toContain('domestic-all');
     });
 
@@ -77,6 +79,22 @@ describe('source-presets', () => {
       const foreignSourceIds = getSourceIdsByCategory('foreign');
 
       expect(sourceIds).toEqual(foreignSourceIds);
+      expect(sourceIds.length).toBeGreaterThan(0);
+    });
+
+    it('should return source IDs for domestic preset', () => {
+      const sourceIds = getSourceIdsForPreset('domestic');
+      const domesticSourceIds = getSourceIdsByCategory('domestic');
+
+      expect(sourceIds).toEqual(domesticSourceIds);
+      expect(sourceIds.length).toBeGreaterThan(0);
+    });
+
+    it('should return source IDs for presentation preset', () => {
+      const sourceIds = getSourceIdsForPreset('presentation');
+      const presentationSourceIds = getSourceIdsByCategory('presentation');
+
+      expect(sourceIds).toEqual(presentationSourceIds);
       expect(sourceIds.length).toBeGreaterThan(0);
     });
 
@@ -246,10 +264,12 @@ describe('source-presets', () => {
   describe('getAllPresets', () => {
     it('should return all presets', () => {
       const presets = getAllPresets();
-      expect(presets).toHaveLength(4);
+      expect(presets).toHaveLength(6);
       expect(presets.map(p => p.id)).toContain('company');
       expect(presets.map(p => p.id)).toContain('ai-ml');
       expect(presets.map(p => p.id)).toContain('foreign');
+      expect(presets.map(p => p.id)).toContain('domestic');
+      expect(presets.map(p => p.id)).toContain('presentation');
       expect(presets.map(p => p.id)).toContain('domestic-all');
     });
   });

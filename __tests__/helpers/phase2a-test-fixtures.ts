@@ -40,8 +40,8 @@ export const mockSources: Array<{
   _count?: { articles: number };
 }> = [
   // company category -> group_company_japan
-  { id: 'source_company_1', name: 'サイバーエージェント', groupId: 'group_company_japan', _count: { articles: 10 } },
-  { id: 'source_company_2', name: 'メルカリ', groupId: 'group_company_japan', _count: { articles: 15 } },
+  { id: 'cyberagent_tech_blog', name: 'サイバーエージェント', groupId: 'group_company_japan', _count: { articles: 10 } },
+  { id: 'mercari_tech_blog', name: 'メルカリ', groupId: 'group_company_japan', _count: { articles: 15 } },
 
   // foreign category -> group_company_global
   { id: 'cmdq3nww70003tegxm78oydnb', name: 'Dev.to', groupId: 'group_company_global', _count: { articles: 20 } },
@@ -54,11 +54,11 @@ export const mockSources: Array<{
   { id: 'cmdq3nww60000tegxi8ruki95', name: 'はてなブックマーク', groupId: 'group_curated_domestic', _count: { articles: 28 } },
 
   // presentation category -> group_presentation
-  { id: 'speakerdeck_202508', name: 'Speaker Deck', groupId: 'group_presentation', _count: { articles: 12 } },
+  { id: 'speakerdeck_8a450c43f9418ff6', name: 'Speaker Deck', groupId: 'group_presentation', _count: { articles: 12 } },
 
   // ai/llm category -> group_company_global + group_academic + group_curated_domestic
-  { id: 'openai_blog_202508', name: 'OpenAI Blog', groupId: 'group_company_global', _count: { articles: 16 } },
-  { id: 'arxiv_cs_ai_202508', name: 'arXiv CS.AI', groupId: 'group_academic', _count: { articles: 14 } },
+  { id: 'cmfwpq7dc0000te8m6fd12f0x', name: 'OpenAI Blog', groupId: 'group_company_global', _count: { articles: 16 } },
+  { id: 'cmfxa7efs0001teo0kjt70c5k', name: 'arXiv CS.AI', groupId: 'group_academic', _count: { articles: 14 } },
 ];
 
 /**
