@@ -91,7 +91,7 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
     if (groupedSources && groupedSources.length > 0) {
       // NEW: Use server-provided grouped sources (Phase 2-A)
       // Step 1: Merge groups with the same categoryId
-      const mergedMap = new Map<string, { categoryName: string; sources: Array<{ id: string; name: string }> }>();
+      const mergedMap = new Map<string, Array<{ id: string; name: string }>>();
 
       groupedSources.forEach(({ group, sources: groupSources }) => {
         // Convert GroupedSources to SourceCategory format for compatibility
@@ -117,18 +117,15 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
         // Merge sources for the same categoryId
         if (mergedMap.has(categoryId)) {
           const existing = mergedMap.get(categoryId)!;
-          existing.sources.push(...groupSources);
+          existing.push(...groupSources);
         } else {
-          mergedMap.set(categoryId, {
-            categoryName: group.name,
-            sources: [...groupSources],
-          });
+          mergedMap.set(categoryId, [...groupSources]);
         }
       });
 
       // Step 2: Convert to Map<SourceCategory, Sources[]>
       const map = new Map<SourceCategory, Array<{ id: string; name: string }>>();
-      for (const [categoryId, { sources: categorySources }] of mergedMap.entries()) {
+      for (const [categoryId, categorySources] of mergedMap.entries()) {
         // Use canonical category name from SOURCE_CATEGORIES
         const canonicalCategory = SOURCE_CATEGORIES[categoryId as SourceCategoryId];
         const category: SourceCategory = {
