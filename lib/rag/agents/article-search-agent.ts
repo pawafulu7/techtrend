@@ -27,9 +27,9 @@ export const articleSearchAgent = new Agent({
   model: openai(process.env.AGENT_MODEL || 'gpt-4o-mini'),
 
   // Allow multiple reasoning steps: tool call + retry logic + text response generation
-  // Increased to 24 to support 2D fallback (temporal relaxation + threshold ladder)
-  // Max: Phase 1 (4 thresholds) + Phase 2 (3 temporal levels x 4 thresholds) + response steps
-  stopWhen: stepCountIs(24),
+  // Increased to 32 to support 2D fallback with extended threshold ladder
+  // Max: Phase 1 (6 thresholds) + Phase 2 (3 temporal levels x 6 thresholds) + response steps
+  stopWhen: stepCountIs(32),
 
   system: `
 You are a technical article search assistant for TechTrend, a platform for discovering technical articles.
@@ -60,7 +60,7 @@ You MUST implement progressive 2D fallback (threshold + temporal relaxation) bef
 ALGORITHM (You MUST iterate levels in order):
 
 Phase 1: Threshold Fallback with Original Temporal Constraint
-FOR each threshold in [0.55, 0.50, 0.45, 0.40]:
+FOR each threshold in [0.55, 0.50, 0.45, 0.40, 0.375, 0.35]:
   - Call semantic-article-search with current threshold and original dateRange (if provided)
   - Log attempt: (phase=1, threshold={value}, resultCount={count})
   - IF resultCount >= 3: Proceed to response immediately (skip remaining steps)
@@ -82,7 +82,7 @@ Determine temporal ladder based on original dateRange:
 FOR each temporalLevel in ladder:
   - Update dateRange to current temporal level
   - IF temporalLevel is "unlimited": Remove dateRange filter, keep recencyBoost (if originally set)
-  - FOR each threshold in [0.55, 0.50, 0.45, 0.40]:
+  - FOR each threshold in [0.55, 0.50, 0.45, 0.40, 0.375, 0.35]:
     - Call semantic-article-search with current threshold and updated dateRange
     - Log attempt: (phase=2, temporalLevel={level}, threshold={value}, resultCount={count})
     - IF resultCount >= 3: Proceed to response immediately (skip remaining steps)
