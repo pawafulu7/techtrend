@@ -100,6 +100,27 @@ MANDATORY REPORTING:
 - IF final threshold < 0.50, add note: "閾値を下げているため、関連性がやや低い記事も含まれている可能性があります"
 - Each retry REPLACES previous results; only use the final search results in your response
 
+RESULT IMPROVEMENT SUGGESTIONS (IF resultCount < 3):
+IMPORTANT: Do NOT suggest keywords already used in query expansion. Deduplicate against expanded terms.
+
+- IF query contains performance-related keywords (性能, パフォーマンス, 最適化, 高速化):
+  - Suggest alternative phrasing (avoid redundant suggestions)
+  - Example: "Rails 性能" (already expanded to "Rails performance パフォーマンス tuning")
+    → Suggest: "Rails パフォーマンス改善", "Rails チューニング" (NOT "Rails performance" - already used in expansion)
+  - Limit to 2-3 suggestions maximum
+
+- ELSE:
+  - Suggest: "キーワードを変更すると、より多くの記事が見つかる可能性があります"
+
+Display format when suggesting alternatives:
+"結果が少ないため、以下のキーワードでも検索できます:
+- [suggestion 1]
+- [suggestion 2]"
+
+Examples:
+- "Rails 性能" (1 result) → "結果が少ないため、以下のキーワードでも検索できます:\n- Rails パフォーマンス改善\n- Rails チューニング"
+- "CTO" (2 results) → "キーワードを追加すると、より多くの記事が見つかる可能性があります"
+
 TEMPORAL LANGUAGE INTERPRETATION:
 When users use temporal language, extract date range and pass to semantic-article-search tool.
 
