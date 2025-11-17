@@ -114,12 +114,32 @@ const RAW_TECH_ABBREVIATIONS: Record<string, string> = {
   'UI': 'User Interface',
   'UX': 'User Experience',
 
-  // Performance & Optimization
+  // Performance & Optimization (Web Metrics)
   'LCP': 'Largest Contentful Paint',
   'FID': 'First Input Delay',
   'CLS': 'Cumulative Layout Shift',
   'TTI': 'Time to Interactive',
   'TTFB': 'Time to First Byte',
+
+  // Performance & Optimization (Framework-specific)
+  'Rails 性能': 'Rails performance Rails パフォーマンス Rails tuning',
+  'Rails パフォーマンス': 'Rails performance Rails 性能 Rails optimization',
+  'Rails 最適化': 'Rails optimization Rails performance Rails tuning',
+  'Rails 高速化': 'Rails performance Rails optimization Rails speed',
+  'React 性能': 'React performance React パフォーマンス React optimization',
+  'React パフォーマンス': 'React performance React optimization',
+  'Next.js 性能': 'Next.js performance Next.js パフォーマンス',
+  'Next.js パフォーマンス': 'Next.js performance Next.js optimization',
+
+  // Performance & Optimization (Generic with context)
+  'アプリ 性能': 'application performance アプリ パフォーマンス',
+  'Web アプリ 性能': 'web application performance Web performance',
+  '性能改善': 'performance improvement optimization',
+  'パフォーマンス改善': 'performance improvement optimization tuning',
+
+  // Performance & Optimization (Core terms, limited scope)
+  '性能': 'performance パフォーマンス',
+  'パフォーマンス': 'performance',
 };
 
 /**
