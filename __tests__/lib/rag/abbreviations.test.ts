@@ -136,20 +136,14 @@ describe('expandQueryWithDictionary', () => {
 
   describe('Performance & Optimization expansion (Phase 2)', () => {
     describe('Framework-specific performance', () => {
-      it('should expand "Rails 性能" with scoped synonyms', () => {
+      it('should expand "Rails 性能" to full expansion (Strategy 1: Direct match)', () => {
         const result = expandQueryWithDictionary('Rails 性能');
-        expect(result).toContain('Rails');
-        expect(result).toContain('performance');
-        expect(result).toContain('パフォーマンス');
-        expect(result).toContain('tuning');
+        expect(result).toBe('Rails performance Rails パフォーマンス Rails tuning');
       });
 
-      it('should expand "Rails パフォーマンス" with scoped synonyms', () => {
+      it('should expand "Rails パフォーマンス" to full expansion (Strategy 1: Direct match)', () => {
         const result = expandQueryWithDictionary('Rails パフォーマンス');
-        expect(result).toContain('Rails');
-        expect(result).toContain('performance');
-        expect(result).toContain('性能');
-        expect(result).toContain('optimization');
+        expect(result).toBe('Rails performance Rails 性能 Rails optimization');
       });
 
       it('should expand "React 性能" with scoped synonyms', () => {
@@ -196,19 +190,6 @@ describe('expandQueryWithDictionary', () => {
       });
     });
 
-    describe('Direct match expansion for framework-specific performance', () => {
-      it('should expand "Rails 性能" to full expansion (Strategy 1: Direct match)', () => {
-        const result = expandQueryWithDictionary('Rails 性能');
-        // Strategy 1: Direct match replaces entire query
-        // Expected: "Rails performance Rails パフォーマンス Rails tuning"
-        expect(result).toBe('Rails performance Rails パフォーマンス Rails tuning');
-      });
-
-      it('should expand "Rails パフォーマンス" to full expansion', () => {
-        const result = expandQueryWithDictionary('Rails パフォーマンス');
-        expect(result).toBe('Rails performance Rails 性能 Rails optimization');
-      });
-    });
 
     describe('Preserves non-performance queries', () => {
       it('should not expand "React hooks" (no performance keywords)', () => {

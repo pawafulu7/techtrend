@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { VectorSearchService, SearchResult } from '../vector-search-service';
+import { VectorSearchService } from '../vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 
@@ -50,6 +50,7 @@ function toIsoDate(input: Date | string): string {
  * Tool output schema (for agent consumption)
  *
  * Simplified version of SearchResult for agent responses.
+ * Includes query expansion metadata for deduplication in agent prompts.
  */
 const toolOutputSchema = z.object({
   articles: z.array(
@@ -64,6 +65,9 @@ const toolOutputSchema = z.object({
     })
   ),
   count: z.number(),
+  originalQuery: z.string(),
+  expandedQuery: z.string(),
+  expansionMethod: z.enum(['none', 'dictionary', 'ai']),
 });
 
 /**
@@ -181,7 +185,7 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
 
       const searchService = getSearchService();
 
-      const results: SearchResult[] = await searchService.search(query, {
+      const { results, expansion, originalQuery } = await searchService.searchWithExpansion(query, {
         topK,
         similarityThreshold,
         sourceIds: filters?.sources,
@@ -226,6 +230,9 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
           sourceId: r.sourceId,
         })),
         count: results.length,
+        originalQuery,
+        expandedQuery: expansion.expandedQuery,
+        expansionMethod: expansion.method,
       };
     } catch (error) {
       logger.error(

@@ -3,7 +3,7 @@ import { EmbeddingService } from './embedding-service';
 import { logger, sanitizeError } from '@/lib/logger';
 import { searchOptionsSchema, SearchOptionsInput } from './schemas';
 import { getDynamicThreshold } from './query-utils';
-import { QueryExpansionService } from './query-expansion-service';
+import { QueryExpansionService, QueryExpansionResult } from './query-expansion-service';
 
 /**
  * Vector Search Service
@@ -66,13 +66,20 @@ export class VectorSearchService {
   }
 
   /**
-   * Perform semantic search
+   * Perform semantic search with expansion metadata
    *
    * @param query - Search query text
    * @param options - Search options (topK, filters, etc.)
-   * @returns Array of articles ranked by similarity
+   * @returns Search results with expansion metadata
    */
-  async search(query: string, options: SearchOptionsInput = {}): Promise<SearchResult[]> {
+  async searchWithExpansion(
+    query: string,
+    options: SearchOptionsInput = {}
+  ): Promise<{
+    results: SearchResult[];
+    expansion: QueryExpansionResult;
+    originalQuery: string;
+  }> {
     try {
       if (!this.embeddingService) {
         logger.warn('Vector search requested but EmbeddingService is not configured (missing OPENAI_API_KEY)');
@@ -144,7 +151,7 @@ export class VectorSearchService {
             : 0,
       }, 'Vector search completed');
 
-      return results;
+      return { results, expansion, originalQuery: query };
     } catch (error) {
       logger.error({
         error: sanitizeError(error),
@@ -159,6 +166,18 @@ export class VectorSearchService {
 
       throw error;
     }
+  }
+
+  /**
+   * Perform semantic search
+   *
+   * @param query - Search query text
+   * @param options - Search options (topK, filters, etc.)
+   * @returns Array of articles ranked by similarity
+   */
+  async search(query: string, options: SearchOptionsInput = {}): Promise<SearchResult[]> {
+    const { results } = await this.searchWithExpansion(query, options);
+    return results;
   }
 
   /**
