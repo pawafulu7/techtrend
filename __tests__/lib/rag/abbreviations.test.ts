@@ -133,4 +133,72 @@ describe('expandQueryWithDictionary', () => {
       expect(expandQueryWithDictionary('API and GraphQL comparison')).toBe('API Application Programming Interface and GraphQL Graph Query Language comparison');
     });
   });
+
+  describe('Performance & Optimization expansion (Phase 2)', () => {
+    describe('Framework-specific performance', () => {
+      it('should expand "Rails 性能" to full expansion (Strategy 1: Direct match)', () => {
+        const result = expandQueryWithDictionary('Rails 性能');
+        expect(result).toBe('Rails performance Rails パフォーマンス Rails tuning');
+      });
+
+      it('should expand "Rails パフォーマンス" to full expansion (Strategy 1: Direct match)', () => {
+        const result = expandQueryWithDictionary('Rails パフォーマンス');
+        expect(result).toBe('Rails performance Rails 性能 Rails optimization');
+      });
+
+      it('should expand "React 性能" with scoped synonyms', () => {
+        const result = expandQueryWithDictionary('React 性能');
+        expect(result).toContain('React');
+        expect(result).toContain('performance');
+        expect(result).toContain('パフォーマンス');
+        expect(result).toContain('optimization');
+      });
+
+      it('should expand "Next.js パフォーマンス" with scoped synonyms', () => {
+        const result = expandQueryWithDictionary('Next.js パフォーマンス');
+        expect(result).toContain('Next.js');
+        expect(result).toContain('performance');
+        expect(result).toContain('optimization');
+      });
+    });
+
+    describe('Generic performance with context', () => {
+      it('should expand "アプリ 性能" with application context', () => {
+        const result = expandQueryWithDictionary('アプリ 性能');
+        expect(result).toContain('application');
+        expect(result).toContain('performance');
+        expect(result).toContain('パフォーマンス');
+      });
+
+      it('should expand "性能改善" with improvement context', () => {
+        const result = expandQueryWithDictionary('性能改善');
+        expect(result).toContain('performance');
+        expect(result).toContain('improvement');
+        expect(result).toContain('optimization');
+      });
+    });
+
+    describe('Core performance terms (limited scope)', () => {
+      it('should expand "性能" to basic synonyms only', () => {
+        const result = expandQueryWithDictionary('性能');
+        expect(result).toBe('performance パフォーマンス');
+      });
+
+      it('should expand "パフォーマンス" to English equivalent', () => {
+        const result = expandQueryWithDictionary('パフォーマンス');
+        expect(result).toBe('performance');
+      });
+    });
+
+
+    describe('Preserves non-performance queries', () => {
+      it('should not expand "React hooks" (no performance keywords)', () => {
+        expect(expandQueryWithDictionary('React hooks')).toBe('React hooks');
+      });
+
+      it('should not expand "Next.js routing" (no performance keywords)', () => {
+        expect(expandQueryWithDictionary('Next.js routing')).toBe('Next.js routing');
+      });
+    });
+  });
 });
