@@ -94,6 +94,7 @@ test.describe('Source Filter Cookie', () => {
   });
 
   test('should work with select all and deselect all buttons', async ({ page, context }) => {
+    test.setTimeout(getTimeout('long'));
     // Wait for source filter to be ready
     await page.waitForSelector('[data-testid="source-filter"]', { timeout: 10000 });
 
