@@ -101,8 +101,21 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
   if (!detailedSummary) return [];
 
   let sections: SummarySection[] = [];
-  const lines = detailedSummary.split('\n');
-  
+  let lines = detailedSummary.split('\n');
+
+  // Fallback: sometimes everything comes in one line like "・title：content ・title：content"
+  if (lines.length === 1 && detailedSummary.includes('・')) {
+    const bulletPattern = /\s+(?=・[^\s:：]+[:：])/g;
+    const fallbackLines = detailedSummary
+      .split(bulletPattern)
+      .map(part => part.trim())
+      .filter(part => part.length > 0);
+
+    if (fallbackLines.length > 1) {
+      lines = fallbackLines;
+    }
+  }
+
   // summaryVersion 7または8の処理（AIが自由に項目を設定）
   if (options?.summaryVersion === 7 || options?.summaryVersion === 8) {
     let currentMainSection: SummarySection | null = null;

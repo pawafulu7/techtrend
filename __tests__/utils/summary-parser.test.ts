@@ -179,3 +179,69 @@ describe('parseSummary with summaryVersion 7', () => {
     expect(detailSections).toHaveLength(0);
   });
 });
+
+describe('parseSummary - Fallback for flattened bullet data', () => {
+  it('splits flattened data with no newlines correctly', () => {
+    // Simulates data that lost newlines during finalCleanup
+    const flattenedSummary = '・項目1:内容1 ・項目2:内容2 ・項目3:内容3';
+    const result = parseSummary(flattenedSummary, { summaryVersion: 8 });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].title).toBe('項目1');
+    expect(result[0].content).toBe('内容1');
+    expect(result[1].title).toBe('項目2');
+    expect(result[1].content).toBe('内容2');
+    expect(result[2].title).toBe('項目3');
+    expect(result[2].content).toBe('内容3');
+  });
+
+  it('does not split middle dots within prose', () => {
+    // Middle dot appears in the content, not as a bullet marker
+    const summary = '・比較結果:GPU ・ CPU の性能差は顕著';
+    const result = parseSummary(summary, { summaryVersion: 8 });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('比較結果');
+    expect(result[0].content).toContain('GPU ・ CPU');
+  });
+
+  it('uses normal parsing when newlines are present', () => {
+    const normalSummary = '・項目1:内容1\n・項目2:内容2\n・項目3:内容3';
+    const result = parseSummary(normalSummary, { summaryVersion: 8 });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].title).toBe('項目1');
+    expect(result[1].title).toBe('項目2');
+    expect(result[2].title).toBe('項目3');
+  });
+
+  it('handles real flattened data from production', () => {
+    // Actual example from cmhpkash4001yte1zr0pl5jz4
+    const flattenedSummary = '・Kiro導入の準備:GitHubリポジトリとZenn CLIの連携、Kiroの初期設定、UIの日本語化 ・Kiroの主要機能:Agent SteeringによるZenn知識のインプット、MCPサーバーによる外部リソースへのアクセス設定 ・Agent Steeringの設定:product.mdでプロジェクトの目的を定義、structure.mdでファイル構造を把握、tech.mdで技術詳細を記述';
+    const result = parseSummary(flattenedSummary, { summaryVersion: 8 });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].title).toBe('Kiro導入の準備');
+    expect(result[0].content).toContain('GitHubリポジトリとZenn CLIの連携');
+    expect(result[1].title).toBe('Kiroの主要機能');
+    expect(result[1].content).toContain('Agent Steering');
+    expect(result[2].title).toBe('Agent Steeringの設定');
+    expect(result[2].content).toContain('product.md');
+  });
+
+  it('returns empty array when detailedSummary is empty', () => {
+    const result = parseSummary('', { summaryVersion: 8 });
+    expect(result).toEqual([]);
+  });
+
+  it('handles mixed flattened and normal data gracefully', () => {
+    // Some bullets with colon, some without
+    const mixedSummary = '・項目1:内容1 ・項目2 without colon ・項目3:内容3';
+    const result = parseSummary(mixedSummary, { summaryVersion: 8 });
+
+    // Should still parse the valid bullets
+    expect(result.length).toBeGreaterThan(0);
+    const validSections = result.filter(s => s.title !== '詳細');
+    expect(validSections.length).toBeGreaterThanOrEqual(2);
+  });
+});
