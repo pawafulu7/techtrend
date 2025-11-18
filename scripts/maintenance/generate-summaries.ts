@@ -16,6 +16,7 @@ import {
 } from '@/lib/utils/summary-quality-checker';
 import { generateSummaryWithRetry } from '@/lib/ai/summary-generator';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
+import { normalizeDetailedSummary } from '@/lib/services/summary-generation';
 
 import { SUMMARY_VERSION } from '@/types/article';
 import { INSTRUCTION_PATTERNS } from '@/lib/ai/constants';
@@ -365,7 +366,7 @@ function parseSummaryAndTags(text: string, title: string = '', content: string =
   
   // 最終クリーンアップ
   summary = finalCleanup(summary);
-  detailedSummary = finalCleanup(detailedSummary);
+  detailedSummary = normalizeDetailedSummary(detailedSummary);
   
   // 冒頭に「要約:」が残っている場合は削除（改行を含む場合も対応）
   summary = summary.replace(/^要約[:：]\s*\n?/, '').trim();

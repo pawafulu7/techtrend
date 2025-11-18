@@ -9,7 +9,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
-import { cleanupText, finalCleanup } from '@/lib/services/summary-generation';
+import { cleanupText, finalCleanup, normalizeDetailedSummary } from '@/lib/services/summary-generation';
 import type { UnifiedSummaryServiceImpl } from '@/lib/ai/service/unified-summary-service';
 import type { ArticleWithSource } from '@/types/models';
 
@@ -399,7 +399,9 @@ export class SummaryManager {
 
       return {
         summary: cleanupText(result.summary),
-        detailedSummary: finalCleanup(result.detailedSummary),
+        detailedSummary: result.detailedSummary
+          ? normalizeDetailedSummary(result.detailedSummary)
+          : '',
         translatedTitle: result.translatedTitle,
         tags: result.tags || []
       };
