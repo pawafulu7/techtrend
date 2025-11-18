@@ -105,7 +105,8 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
 
   // Fallback: sometimes everything comes in one line like "・title：content ・title：content"
   if (lines.length === 1 && detailedSummary.includes('・')) {
-    const bulletPattern = /\s+(?=・[^\s:：]+[:：])/g;
+    // Allow spaces in the bullet title (e.g. "Agent Steering") while still requiring a colon.
+    const bulletPattern = /\s+(?=・[^:：]+[:：])/g;
     const fallbackLines = detailedSummary
       .split(bulletPattern)
       .map(part => part.trim())
