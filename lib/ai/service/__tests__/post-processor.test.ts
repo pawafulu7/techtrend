@@ -126,6 +126,27 @@ describe('SummaryPostProcessor', () => {
       expect(result).not.toMatch(/：\s*\n/);
     });
 
+    it('should merge bullet headers that end with a half-width colon', () => {
+      const input = '・タグ:\n内容が次の行にある';
+      const result = processor.cleanupDetailedSummary(input);
+
+      expect(result).toBe('・タグ: 内容が次の行にある');
+    });
+
+    it('should merge headers that contain additional colons inside the title', () => {
+      const input = '・顧客固有のセキュリティ：動的ベースライン：\n説明テキスト';
+      const result = processor.cleanupDetailedSummary(input);
+
+      expect(result).toBe('・顧客固有のセキュリティ：動的ベースライン： 説明テキスト');
+    });
+
+    it('should merge continuation lines for alternate bullet markers', () => {
+      const input = '- 補足情報:\n追加の説明\n- 次の項目: そのまま';
+      const result = processor.cleanupDetailedSummary(input);
+
+      expect(result).toBe('- 補足情報: 追加の説明\n- 次の項目: そのまま');
+    });
+
     it('should not affect normal bullets with content on same line', () => {
       const input = '・項目名： 内容が同じ行にある';
       const result = processor.cleanupDetailedSummary(input);

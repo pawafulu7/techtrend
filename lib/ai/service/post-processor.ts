@@ -17,15 +17,23 @@ export class SummaryPostProcessor implements PostProcessor {
       .filter((line) => line.length > 0 && line !== '・');
 
     // Defensive processing: merge bullet headers with continuation lines
+    const bulletLinePattern = /^(?:・|[-*•]|\d+[\.．、)]|[A-Za-z]\)|\([0-9]+\)|\([a-z]\))/i;
+    const hasTrailingColon = (value: string) => /[:：]\s*$/.test(value);
+    const isBulletLine = (value: string) => bulletLinePattern.test(value);
+
     const normalized: string[] = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      // If a bullet line ends with colon and next line is not a bullet, merge them
-      if (/^・[^：\n]+：\s*$/.test(line) &&
-          i + 1 < lines.length &&
-          !/^・/.test(lines[i + 1])) {
-        normalized.push(line + ' ' + lines[i + 1]);
-        i++; // Skip the next line
+      const nextLine = lines[i + 1] ?? '';
+
+      if (
+        hasTrailingColon(line) &&
+        isBulletLine(line) &&
+        i + 1 < lines.length &&
+        !isBulletLine(nextLine)
+      ) {
+        normalized.push(`${line.replace(/\s+$/, '')} ${nextLine}`);
+        i++; // Skip the next line because it has been merged
       } else {
         normalized.push(line);
       }
