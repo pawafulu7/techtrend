@@ -68,6 +68,12 @@ const toolOutputSchema = z.object({
   originalQuery: z.string(),
   expandedQuery: z.string(),
   expansionMethod: z.enum(['none', 'dictionary', 'ai']),
+  fallbackMetadata: z.object({
+    phase: z.union([z.literal(1), z.null()]),
+    finalThreshold: z.number(),
+    attemptCount: z.number(),
+    usedFallback: z.boolean(),
+  }).optional(),
 });
 
 /**
@@ -136,6 +142,11 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
       .default(0.55)
       .describe('Minimum similarity score (0-1, default: 0.55)'),
 
+    enableFallback: z
+      .boolean()
+      .default(true)
+      .describe('Enable automatic threshold fallback to improve recall'),
+
     filters: z
       .object({
         sources: z
@@ -166,7 +177,7 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
 
   outputSchema: toolOutputSchema,
 
-  execute: async ({ query, topK, similarityThreshold, filters }) => {
+  execute: async ({ query, topK, similarityThreshold, enableFallback, filters }) => {
     const startTime = Date.now();
     try {
       logger.debug(
@@ -174,6 +185,7 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
           query: query.substring(0, 50),
           topK,
           similarityThreshold,
+          enableFallback,
           hasFilters: !!filters,
           hasDateFilter: !!(filters?.dateRange && (filters.dateRange.from || filters.dateRange.to)),
           dateRangeFrom: filters?.dateRange?.from,
@@ -185,15 +197,19 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
 
       const searchService = getSearchService();
 
-      const { results, expansion, originalQuery } = await searchService.searchWithExpansion(query, {
+      const { results, metadata } = await searchService.searchWithFallback(query, {
         topK,
         similarityThreshold,
+        enableFallback,
         sourceIds: filters?.sources,
         tags: filters?.tags,
         dateRange: filters?.dateRange,
         recencyBoost: filters?.recencyBoost,
-        embeddingKey: 'summary', // Default to summary search
+        embeddingKey: 'summary',
       });
+
+      const expansion = { method: 'none' as const, expandedQuery: query, latencyMs: 0 };
+      const originalQuery = query;
 
       const elapsedMs = Date.now() - startTime;
       const avgSimilarity =
@@ -233,6 +249,7 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
         originalQuery,
         expandedQuery: expansion.expandedQuery,
         expansionMethod: expansion.method,
+        fallbackMetadata: metadata,
       };
     } catch (error) {
       logger.error(
