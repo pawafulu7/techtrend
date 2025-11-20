@@ -40,13 +40,12 @@ export class EmbeddingScheduler {
         },
       });
 
-      logger.info({ articleId }, 'Embedding job enqueued/re-queued');
+      logger.debug({ articleId }, 'Embedding job enqueued/re-queued');
     } catch (error) {
       logger.error(
         {
           articleId,
           error: sanitizeError(error),
-          stack: error instanceof Error ? error.stack : undefined,
           errorCode: (error as any)?.code,
         },
         'CRITICAL: Failed to enqueue embedding job'
