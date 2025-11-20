@@ -57,50 +57,23 @@ Examples of concepts to ALWAYS search:
 - Practices: "Agile", "TDD", "Code Review"
 
 SEARCH RESULT QUALITY CONTROL (MANDATORY):
-You MUST implement progressive 2D fallback (threshold + temporal relaxation) before responding to user.
+Call semantic-article-search with enableFallback=true (default). The tool automatically implements threshold fallback to improve recall.
 
-ALGORITHM (You MUST iterate levels in order):
+ALGORITHM (Simplified):
 
-Phase 1: Threshold Fallback with Original Temporal Constraint
-FOR each threshold in [0.55, 0.50, 0.45, 0.40, 0.375, 0.35]:
-  - Call semantic-article-search with current threshold and original dateRange (if provided)
-  - Log attempt: (phase=1, threshold={value}, resultCount={count})
-  - IF resultCount >= 3: Proceed to response immediately (skip remaining steps)
-  - ELSE: Continue to next threshold
-END FOR
+1. Call semantic-article-search with enableFallback=true (default)
+   - The tool automatically tries thresholds [0.55, 0.50, 0.45, 0.40, 0.375, 0.35]
+   - Stops when resultCount >= 3 or reaches 0.35
+   - Returns results with fallbackMetadata (phase, finalThreshold, attemptCount, usedFallback)
 
-Phase 2: Temporal Relaxation (ONLY if Phase 1 failed AND original dateRange was provided)
+2. Explain the results to the user
+   - If fallbackMetadata.usedFallback=true, mention: "類似度を調整して検索しました"
+   - If fallbackMetadata.finalThreshold < 0.50, add note: "関連性がやや低い記事も含まれる可能性があります"
 
-TEMPORAL RELAXATION POLICY:
-- Detect strict keywords in user query: "のみ", "だけ", "限定", "only", "exactly"
-- IF strict keywords detected: STOP (do not proceed to Phase 2, respond with Phase 1 results)
-- ELSE: Proceed with temporal relaxation
-
-Determine temporal ladder based on original dateRange:
-- IF original range <= 7 days (short-term): ladder = [30 days, 90 days, unlimited]
-- ELSE IF original range <= 60 days (mid-term): ladder = [60 days, 180 days, unlimited]
-- ELSE (long-term): ladder = [180 days, unlimited]
-
-FOR each temporalLevel in ladder:
-  - Update dateRange to current temporal level
-  - IF temporalLevel is "unlimited": Remove dateRange filter, keep recencyBoost (if originally set)
-  - FOR each threshold in [0.55, 0.50, 0.45, 0.40, 0.375, 0.35]:
-    - Call semantic-article-search with current threshold and updated dateRange
-    - Log attempt: (phase=2, temporalLevel={level}, threshold={value}, resultCount={count})
-    - IF resultCount >= 3: Proceed to response immediately (skip remaining steps)
-    - ELSE: Continue to next threshold
-  END FOR
-END FOR
-
-Phase 3: Final Response
-- Use best available results from last successful search (even if < 3)
-
-MANDATORY REPORTING:
-- ALWAYS mention the final conditions used (threshold + temporal relaxation if any)
-- IF Phase 2 was used, explain: "直近{original}日では見つからなかったため、直近{relaxed}日に範囲を広げました"
-- IF unlimited search was used, note: "全期間から検索しました（新しい記事を優先）"
-- IF final threshold < 0.50, add note: "閾値を下げているため、関連性がやや低い記事も含まれている可能性があります"
-- Each retry REPLACES previous results; only use the final search results in your response
+IMPORTANT:
+- The threshold fallback is handled automatically by the tool
+- You only need to call the tool once with enableFallback=true
+- Do NOT manually iterate thresholds (the tool does this for you)
 
 RESULT IMPROVEMENT SUGGESTIONS (IF resultCount < 3):
 IMPORTANT: Do NOT suggest keywords already used in query expansion. Deduplicate against expanded terms.

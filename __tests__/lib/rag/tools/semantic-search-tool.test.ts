@@ -6,12 +6,14 @@ jest.mock('@/lib/rag/vector-search-service');
 
 const mockSearch = jest.fn();
 const mockSearchWithExpansion = jest.fn();
+const mockSearchWithFallback = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
   (VectorSearchService as jest.Mock).mockImplementation(() => ({
     search: mockSearch,
     searchWithExpansion: mockSearchWithExpansion,
+    searchWithFallback: mockSearchWithFallback,
   }));
 });
 
@@ -41,30 +43,32 @@ describe('SemanticSearchTool', () => {
         },
       ];
 
-      mockSearchWithExpansion.mockResolvedValue({
+      mockSearchWithFallback.mockResolvedValue({
         results: mockResults,
-        expansion: {
-          originalQuery: 'React performance',
-          expandedQuery: 'React performance',
-          method: 'none',
-          cacheHit: false,
-          latencyMs: 5,
+        metadata: {
+          phase: 1,
+          finalThreshold: 0.55,
+          attemptCount: 1,
+          usedFallback: false,
         },
-        originalQuery: 'React performance',
       });
 
       const result = await semanticSearchTool.execute({
         query: 'React performance',
         topK: 5,
         similarityThreshold: 0.7,
+        enableFallback: true,
       });
 
       expect(result.articles).toBeInstanceOf(Array);
       expect(result.articles.length).toBe(2);
       expect(result.count).toBe(2);
-      expect(result.originalQuery).toBe('React performance');
-      expect(result.expandedQuery).toBe('React performance');
-      expect(result.expansionMethod).toBe('none');
+      expect(result.fallbackMetadata).toEqual({
+        phase: 1,
+        finalThreshold: 0.55,
+        attemptCount: 1,
+        usedFallback: false,
+      });
 
       expect(result.articles[0]).toMatchObject({
         articleId: 'article1',
@@ -72,95 +76,87 @@ describe('SemanticSearchTool', () => {
         similarity: 0.92,
       });
 
-      expect(mockSearchWithExpansion).toHaveBeenCalledWith('React performance', expect.objectContaining({
+      expect(mockSearchWithFallback).toHaveBeenCalledWith('React performance', expect.objectContaining({
         topK: 5,
         similarityThreshold: 0.7,
+        enableFallback: true,
         embeddingKey: 'summary',
       }));
     });
 
     it('should use default parameters when called by SDK', async () => {
-      // Note: When called by Vercel AI SDK (agent), defaults are applied by SDK
-      // When called directly, parameters may be undefined
-      mockSearchWithExpansion.mockResolvedValue({
+      mockSearchWithFallback.mockResolvedValue({
         results: [],
-        expansion: {
-          originalQuery: 'TypeScript',
-          expandedQuery: 'TypeScript TS',
-          method: 'dictionary',
-          cacheHit: false,
-          latencyMs: 3,
+        metadata: {
+          phase: 1,
+          finalThreshold: 0.35,
+          attemptCount: 6,
+          usedFallback: true,
         },
-        originalQuery: 'TypeScript',
       });
 
       const result = await semanticSearchTool.execute({
         query: 'TypeScript',
-        topK: 10, // Explicitly provide default
+        topK: 10,
         similarityThreshold: 0.7,
+        enableFallback: true,
       });
 
       expect(result.count).toBe(0);
-      expect(result.originalQuery).toBe('TypeScript');
-      expect(result.expandedQuery).toBe('TypeScript TS');
-      expect(result.expansionMethod).toBe('dictionary');
-
-      expect(mockSearchWithExpansion).toHaveBeenCalledWith('TypeScript', expect.objectContaining({
+      expect(mockSearchWithFallback).toHaveBeenCalledWith('TypeScript', expect.objectContaining({
         topK: 10,
         similarityThreshold: 0.7,
+        enableFallback: true,
         embeddingKey: 'summary',
       }));
     });
 
     it('should pass filters to search service', async () => {
-      mockSearchWithExpansion.mockResolvedValue({
+      mockSearchWithFallback.mockResolvedValue({
         results: [],
-        expansion: {
-          originalQuery: 'Next.js',
-          expandedQuery: 'Next.js',
-          method: 'none',
-          cacheHit: false,
-          latencyMs: 2,
+        metadata: {
+          phase: null,
+          finalThreshold: 0.55,
+          attemptCount: 1,
+          usedFallback: false,
         },
-        originalQuery: 'Next.js',
       });
 
       await semanticSearchTool.execute({
         query: 'Next.js',
+        enableFallback: false,
         filters: {
           sources: ['source1', 'source2'],
           tags: ['Next.js', 'Performance'],
         },
       });
 
-      expect(mockSearchWithExpansion).toHaveBeenCalledWith('Next.js', expect.objectContaining({
+      expect(mockSearchWithFallback).toHaveBeenCalledWith('Next.js', expect.objectContaining({
         sourceIds: ['source1', 'source2'],
         tags: ['Next.js', 'Performance'],
+        enableFallback: false,
       }));
     });
 
     it('should handle empty results gracefully', async () => {
-      mockSearchWithExpansion.mockResolvedValue({
+      mockSearchWithFallback.mockResolvedValue({
         results: [],
-        expansion: {
-          originalQuery: 'xyzqwertyuiopasdfghjkl',
-          expandedQuery: 'xyzqwertyuiopasdfghjkl',
-          method: 'none',
-          cacheHit: false,
-          latencyMs: 1,
+        metadata: {
+          phase: 1,
+          finalThreshold: 0.35,
+          attemptCount: 6,
+          usedFallback: true,
         },
-        originalQuery: 'xyzqwertyuiopasdfghjkl',
       });
 
       const result = await semanticSearchTool.execute({
-        query: 'xyzqwertyuiopasdfghjkl', // Unlikely match
+        query: 'xyzqwertyuiopasdfghjkl',
         similarityThreshold: 0.99,
+        enableFallback: true,
       });
 
       expect(result.articles).toEqual([]);
       expect(result.count).toBe(0);
-      expect(result.originalQuery).toBe('xyzqwertyuiopasdfghjkl');
-      expect(result.expandedQuery).toBe('xyzqwertyuiopasdfghjkl');
     });
 
     // Note: Validation tests for schema should test the schema itself
@@ -168,11 +164,12 @@ describe('SemanticSearchTool', () => {
     // For direct execute() calls, validation behavior depends on SDK implementation
 
     it('should propagate search service errors', async () => {
-      mockSearchWithExpansion.mockRejectedValue(new Error('Database connection failed'));
+      mockSearchWithFallback.mockRejectedValue(new Error('Database connection failed'));
 
       await expect(
         semanticSearchTool.execute({
           query: 'React',
+          enableFallback: true,
         })
       ).rejects.toThrow('Database connection failed');
     });
@@ -191,24 +188,22 @@ describe('SemanticSearchTool', () => {
         },
       ];
 
-      mockSearchWithExpansion.mockResolvedValue({
+      mockSearchWithFallback.mockResolvedValue({
         results: mockResults,
-        expansion: {
-          originalQuery: 'Test',
-          expandedQuery: 'Test',
-          method: 'none',
-          cacheHit: false,
-          latencyMs: 4,
+        metadata: {
+          phase: 1,
+          finalThreshold: 0.55,
+          attemptCount: 1,
+          usedFallback: false,
         },
-        originalQuery: 'Test',
       });
 
       const result = await semanticSearchTool.execute({
-        query: 'test',
+        query: 'Test',
+        enableFallback: true,
       });
 
       expect(result.articles[0].publishedAt).toBe('2025-10-15T10:30:00.000Z');
-      expect(typeof result.articles[0].publishedAt).toBe('string');
     });
   });
 });
