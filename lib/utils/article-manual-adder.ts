@@ -291,7 +291,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     if (!skipSummary && content && content.length > 100) {
       try {
         const summaryService = new UnifiedSummaryService();
-        const result = await summaryService.generate(finalTitle, content);
+        const result = await summaryService.generate(finalTitle, content, {}, {}, article.id);
         
         // resultが正常に返ってきた場合
         summary = result.summary;

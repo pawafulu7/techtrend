@@ -64,7 +64,7 @@ export class ArticleSummarizer {
         const result = await service.generate(item.title, item.content, {
           maxRetries: 3,
           minQualityScore: 40
-        });
+        }, {}, item.id);
         
         item.resolve(result);
       } catch (error) {
