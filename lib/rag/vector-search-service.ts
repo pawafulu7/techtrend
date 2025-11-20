@@ -169,6 +169,98 @@ export class VectorSearchService {
   }
 
   /**
+   * Search with automatic threshold fallback
+   *
+   * Implements progressive threshold relaxation to improve recall:
+   * - Phase 1: Try thresholds [0.55, 0.50, 0.45, 0.40, 0.375, 0.35]
+   * - Stop when resultCount >= 3
+   * - Return results with metadata (phase, finalThreshold, attemptCount)
+   *
+   * @param query - Search query
+   * @param options - Search options with enableFallback flag
+   * @returns Results and fallback metadata
+   */
+  async searchWithFallback(
+    query: string,
+    options: SearchOptionsInput & { enableFallback?: boolean } = {}
+  ): Promise<{
+    results: SearchResult[];
+    metadata: {
+      phase: 1 | null;
+      finalThreshold: number;
+      attemptCount: number;
+      usedFallback: boolean;
+    };
+  }> {
+    const { enableFallback = false, ...searchOptions } = options;
+
+    if (!enableFallback) {
+      const { results } = await this.searchWithExpansion(query, searchOptions);
+      return {
+        results,
+        metadata: {
+          phase: null,
+          finalThreshold: searchOptions.similarityThreshold ?? 0.55,
+          attemptCount: 1,
+          usedFallback: false,
+        },
+      };
+    }
+
+    const thresholds = [0.55, 0.50, 0.45, 0.40, 0.375, 0.35];
+    let attemptCount = 0;
+
+    for (const threshold of thresholds) {
+      attemptCount++;
+      const { results } = await this.searchWithExpansion(query, {
+        ...searchOptions,
+        similarityThreshold: threshold,
+      });
+
+      logger.info({
+        phase: 1,
+        attempt: attemptCount,
+        threshold,
+        resultCount: results.length,
+        query: query.substring(0, 50),
+      }, 'Threshold fallback attempt');
+
+      if (results.length >= 3) {
+        return {
+          results,
+          metadata: {
+            phase: 1,
+            finalThreshold: threshold,
+            attemptCount,
+            usedFallback: attemptCount > 1,
+          },
+        };
+      }
+    }
+
+    logger.warn({
+      query: query.substring(0, 50),
+      attemptCount,
+      finalThreshold: 0.35,
+    }, 'Threshold fallback completed but result count < 3');
+
+    const { results } = await this.searchWithExpansion(query, {
+      ...searchOptions,
+      similarityThreshold: 0.35,
+    });
+
+    return {
+      results,
+      metadata: {
+        phase: 1,
+        finalThreshold: 0.35,
+        attemptCount,
+        usedFallback: true,
+      },
+    };
+  }
+
+  /**
    * Perform semantic search
    *
    * @param query - Search query text
