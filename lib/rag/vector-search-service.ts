@@ -195,12 +195,15 @@ export class VectorSearchService {
     const { enableFallback = false, ...searchOptions } = options;
 
     if (!enableFallback) {
+      const thresholdProvided = searchOptions.similarityThreshold !== undefined;
       const { results } = await this.searchWithExpansion(query, searchOptions);
       return {
         results,
         metadata: {
           phase: null,
-          finalThreshold: searchOptions.similarityThreshold ?? 0.55,
+          finalThreshold: thresholdProvided
+            ? (searchOptions.similarityThreshold as number)
+            : getDynamicThreshold(query),
           attemptCount: 1,
           usedFallback: false,
         },
@@ -209,6 +212,7 @@ export class VectorSearchService {
 
     const thresholds = [0.55, 0.50, 0.45, 0.40, 0.375, 0.35];
     let attemptCount = 0;
+    let lastResults: SearchResult[] = [];
 
     for (const threshold of thresholds) {
       attemptCount++;
@@ -216,6 +220,8 @@ export class VectorSearchService {
         ...searchOptions,
         similarityThreshold: threshold,
       });
+
+      lastResults = results;
 
       logger.info({
         phase: 1,
@@ -244,13 +250,8 @@ export class VectorSearchService {
       finalThreshold: 0.35,
     }, 'Threshold fallback completed but result count < 3');
 
-    const { results } = await this.searchWithExpansion(query, {
-      ...searchOptions,
-      similarityThreshold: 0.35,
-    });
-
     return {
-      results,
+      results: lastResults,
       metadata: {
         phase: 1,
         finalThreshold: 0.35,
