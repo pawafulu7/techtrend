@@ -97,7 +97,10 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
         // 要約再生成
         const result = await summaryService.generate(
           article.title,
-          article.content || article.url
+          article.content || article.url,
+          {},
+          {},
+          article.id
         );
 
         if (result) {

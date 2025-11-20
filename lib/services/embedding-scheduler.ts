@@ -46,8 +46,9 @@ export class EmbeddingScheduler {
         {
           articleId,
           error: sanitizeError(error),
+          errorCode: (error as any)?.code,
         },
-        'Failed to enqueue embedding job'
+        'CRITICAL: Failed to enqueue embedding job'
       );
 
       // Don't throw - fire-and-forget pattern
