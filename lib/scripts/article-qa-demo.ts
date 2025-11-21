@@ -20,6 +20,10 @@ import { ArticleQACache } from '@/lib/cache/article-qa-cache';
 /**
  * Normalize query for cache key (matches ArticleQACache.normalizeQuery)
  *
+ * NOTE: This duplicates ArticleQACache's private normalizeQuery logic.
+ * If ArticleQACache normalization changes, update this function to match.
+ * This duplication is intentional for demo script independence.
+ *
  * @param query - Raw query
  * @returns Normalized query
  */

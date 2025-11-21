@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { articleSearchAgent } from '@/lib/rag/agents/article-search-agent';
-import { articleQaAgent } from '@/lib/rag/agents/article-qa-agent';
+import { articleQaAgent as _articleQaAgent } from '@/lib/rag/agents/article-qa-agent';
 import { checkRateLimit, ragAgentSearchRateLimit, articleQaRateLimit, RateLimitError } from '@/lib/rate-limiter';
 import { AgentResponseCache } from '@/lib/cache/agent-response-cache';
-import { ArticleQACache } from '@/lib/cache/article-qa-cache';
+import { ArticleQACache as _ArticleQACache } from '@/lib/cache/article-qa-cache';
 import { detectPromptInjection, sanitizeQuery } from '@/lib/rag/security/prompt-injection-detector';
 import { VectorSearchService, SearchResult } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
@@ -182,11 +182,13 @@ function formatResultsAsText(results: SearchResult[], lang: 'ja' | 'en'): string
  * Retrieves article metadata and generates snippet for context chunk.
  * TODO: Enforce article visibility once visibility model is finalized.
  *
+ * Note: Prefixed with _ to satisfy ESLint (intentionally unused until Phase 3).
+ *
  * @param articleId - Article ID
  * @returns Article context with snippet
  * @throws Error if article not found
  */
-async function fetchQaContext(articleId: string): Promise<{
+async function _fetchQaContext(articleId: string): Promise<{
   article: {
     id: string;
     title: string;

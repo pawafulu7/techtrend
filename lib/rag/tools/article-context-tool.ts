@@ -362,6 +362,11 @@ DO NOT use this tool for:
               const chunkHtml = chunk.text; // Already sanitized
               const chunkText = stripHtmlTags(chunkHtml);
 
+              // Skip empty chunks to avoid embedding failures
+              if (chunkText.trim().length === 0) {
+                continue;
+              }
+
               rawChunks.push({
                 chunkId: `${articleId}:${chunk.chunkIndex}`,
                 chunkIndex: chunk.chunkIndex,
@@ -377,16 +382,26 @@ DO NOT use this tool for:
             // Small content: treat as single chunk
             const chunkText = stripHtmlTags(sanitizedContent);
 
-            rawChunks.push({
-              chunkId: `${articleId}:0`,
-              chunkIndex: 0,
-              html: sanitizedContent,
-              text: chunkText,
-              tokenCount: contentTokens,
-              score: 0.7, // Higher score for single chunk
-              startToken: 0,
-              endToken: contentTokens,
-            });
+            // Skip empty content
+            if (chunkText.trim().length === 0) {
+              logger.debug(
+                {
+                  articleId,
+                },
+                'article-context: content is empty after sanitization'
+              );
+            } else {
+              rawChunks.push({
+                chunkId: `${articleId}:0`,
+                chunkIndex: 0,
+                html: sanitizedContent,
+                text: chunkText,
+                tokenCount: contentTokens,
+                score: 0.7, // Higher score for single chunk
+                startToken: 0,
+                endToken: contentTokens,
+              });
+            }
           }
         } catch (error) {
           logger.warn(
