@@ -1070,21 +1070,22 @@ async function handleBatchRequest(
   }
 
   // Cache successful responses
-  // Note: Fallback results ARE cached in batch mode (differs from streaming)
-  // Streaming: Fallback NOT cached (intentional, avoid low-quality cache)
-  // Batch: Fallback cached (for consistency, user may retry)
-  // TODO: Consider aligning policies if this causes confusion
+  // Note: Fallback results are NOT cached (both streaming and batch modes)
+  // Rationale: Avoid caching low-quality fallback responses
+  // Agent failures may be temporary; retry may succeed
   try {
-    if (modeContext.isArticleQa) {
-      await articleQaCache!.set(
-        qaContext!.articleId,
-        validatedRequest.query,
-        modeContext.preferredLang,
-        qaContext!.updatedAt,
-        agentResponse
-      );
-    } else {
-      await responseCache!.set(validatedRequest.query, agentResponse);
+    if (!fallback) {
+      if (modeContext.isArticleQa) {
+        await articleQaCache!.set(
+          qaContext!.articleId,
+          validatedRequest.query,
+          modeContext.preferredLang,
+          qaContext!.updatedAt,
+          agentResponse
+        );
+      } else {
+        await responseCache!.set(validatedRequest.query, agentResponse);
+      }
     }
   } catch (cacheError) {
     logger.warn(
@@ -1093,6 +1094,7 @@ async function handleBatchRequest(
         userId: session.user.id,
         queryPreview: validatedRequest.query.substring(0, 50),
         mode: modeContext.agentType,
+        fallback,
       },
       'Failed to cache batch response'
     );
