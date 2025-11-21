@@ -19,14 +19,21 @@ import type { LanguageModelV2ToolResultOutput } from '@ai-sdk/provider';
  * Custom error for article not found (404)
  */
 class ArticleNotFoundError extends Error {
+  public readonly articleId: string;
+
   constructor(articleId: string) {
     super(`Article ${articleId} not found`);
     this.name = 'ArticleNotFoundError';
+    this.articleId = articleId;
   }
 }
 
 /**
  * Custom error for mode context resolution failures (400)
+ *
+ * Note: Reserved for future mode resolution validation failures.
+ * Currently not thrown by resolveModeContext (fetchQaContext throws ArticleNotFoundError).
+ * May be used for invalid mode configuration, missing required fields, etc.
  */
 class ModeContextError extends Error {
   constructor(message: string) {
@@ -253,13 +260,13 @@ async function fetchQaContext(articleId: string): Promise<{
  * Determines agent, cache strategy, and system message based on request type.
  *
  * Error handling:
- * - Throws Error if article not found (_fetchQaContext fails)
- * - Throws Error if invalid mode configuration
+ * - article-qa mode: May throw ArticleNotFoundError if article not found
+ * - article-search mode: No errors (always succeeds)
  *
  * @param validatedRequest - Validated request
  * @param request - HTTP request
  * @returns Mode context with agent, lang, and system message
- * @throws Error if article not found or invalid configuration
+ * @throws ArticleNotFoundError if article not found in QA mode
  */
 async function resolveModeContext(
   validatedRequest: ValidatedRequest,
@@ -1276,7 +1283,7 @@ export async function POST(request: NextRequest) {
         logger.warn(
           {
             userId: session?.user?.id,
-            articleId: (error as any).articleId,
+            articleId: error.articleId,
           },
           'Article not found'
         );
