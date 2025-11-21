@@ -230,6 +230,74 @@ async function _fetchQaContext(articleId: string): Promise<{
 }
 
 /**
+ * Resolve mode context based on agentType
+ *
+ * Determines agent, cache strategy, and system message based on request type.
+ *
+ * Error handling:
+ * - Throws Error if article not found (_fetchQaContext fails)
+ * - Throws Error if invalid mode configuration
+ *
+ * @param validatedRequest - Validated request
+ * @param request - HTTP request
+ * @returns Mode context with agent, lang, and system message
+ * @throws Error if article not found or invalid configuration
+ */
+async function resolveModeContext(
+  validatedRequest: ValidatedRequest,
+  request: NextRequest
+): Promise<ModeContext> {
+  const isArticleQa = validatedRequest.agentType === 'article-qa';
+  const preferredLang = getPreferredLanguage(validatedRequest.query, request);
+
+  const localeInstruction = preferredLang === 'ja'
+    ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
+    : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
+
+  if (isArticleQa) {
+    // Article QA mode
+    const qaContext = await _fetchQaContext(validatedRequest.articleId!);
+
+    const systemMessage = `${localeInstruction}
+
+Active article: ${qaContext.article.title} (#${qaContext.article.id}, updated ${qaContext.article.updatedAt.toISOString()}).
+You MUST restrict all answers to this article.`;
+
+    return {
+      agentType: 'article-qa',
+      isArticleQa: true,
+      agent: _articleQaAgent,
+      preferredLang,
+      systemMessage,
+      qaContext: {
+        articleId: qaContext.article.id,
+        title: qaContext.article.title,
+        updatedAt: qaContext.article.updatedAt,
+        snippet: qaContext.snippet,
+      },
+      traceAttributes: {
+        'mode.type': 'article-qa',
+        'mode.articleId': qaContext.article.id,
+      },
+      metricsTag: 'article-qa',
+    };
+  } else {
+    // Article Search mode (existing)
+    return {
+      agentType: 'article-search',
+      isArticleQa: false,
+      agent: articleSearchAgent,
+      preferredLang,
+      systemMessage: localeInstruction,
+      traceAttributes: {
+        'mode.type': 'article-search',
+      },
+      metricsTag: 'article-search',
+    };
+  }
+}
+
+/**
  * Attach rate limit headers to response
  *
  * Also sets Cache-Control to prevent intermediary caching.
@@ -270,6 +338,36 @@ interface ValidatedRequest {
   agentType: 'article-search' | 'article-qa';
   query: string;
   articleId?: string;
+}
+
+/**
+ * Mode context for agent selection and cache management
+ *
+ * Encapsulates all mode-specific configuration for request handling.
+ */
+interface ModeContext {
+  // Mode identification
+  agentType: 'article-search' | 'article-qa';
+  isArticleQa: boolean;
+
+  // Agent & execution
+  agent: typeof articleSearchAgent | typeof _articleQaAgent;
+  systemMessage: string;
+
+  // Language & locale
+  preferredLang: 'ja' | 'en';
+
+  // QA-specific context (only when isArticleQa=true)
+  qaContext?: {
+    articleId: string;
+    title: string;
+    updatedAt: Date;
+    snippet: string;
+  };
+
+  // Observability (future extension)
+  traceAttributes?: Record<string, string | number | boolean>;
+  metricsTag?: string;
 }
 
 /**
