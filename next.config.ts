@@ -13,7 +13,8 @@ const nextConfig: NextConfig = {
 
   // Server external packages
   // jsdom and parse5 must be unbundled due to ESM/CJS compatibility
-  serverExternalPackages: ['jsdom', 'parse5', '@mozilla/readability'],
+  // @dqbd/tiktoken must be unbundled due to WASM dependency (tiktoken_bg.wasm)
+  serverExternalPackages: ['jsdom', 'parse5', '@mozilla/readability', '@dqbd/tiktoken'],
 
   // 実験的機能で最適化
   experimental: {
