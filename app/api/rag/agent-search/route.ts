@@ -845,26 +845,105 @@ async function handleBatchRequest(
   request: NextRequest,
   rateLimitInfo?: RateLimitInfo
 ): Promise<NextResponse> {
-  // Layer 5: Response cache check
-  const responseCache = new AgentResponseCache();
-  const cachedResponse = await responseCache.get(validatedRequest.query);
+  let modeContext: ModeContext;
+  try {
+    modeContext = await resolveModeContext(validatedRequest, request);
+  } catch (error) {
+    span.setAttribute('mode.resolve.failed', true);
+    span.recordException(error as Error);
+    span.setStatus({ code: SpanStatusCode.ERROR, message: 'Failed to resolve mode context' });
+    throw error;
+  }
+
+  if (modeContext.isArticleQa && !modeContext.qaContext) {
+    const contextError = new Error('Article QA mode requires qaContext');
+    span.recordException(contextError);
+    span.setStatus({ code: SpanStatusCode.ERROR, message: contextError.message });
+    throw contextError;
+  }
+
+  span.setAttributes({
+    'mode.agentType': modeContext.agentType,
+    'mode.preferredLang': modeContext.preferredLang,
+    'mode.isArticleQa': modeContext.isArticleQa,
+  });
+
+  if (modeContext.traceAttributes) {
+    span.setAttributes(modeContext.traceAttributes);
+  }
+
+  if (modeContext.metricsTag) {
+    span.setAttribute('mode.metricsTag', modeContext.metricsTag);
+  }
+
+  if (modeContext.qaContext) {
+    span.setAttribute('mode.articleId', modeContext.qaContext.articleId);
+  }
+
+  const qaContext = modeContext.qaContext;
+  const responseCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
+  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
+  const cacheStrategy = modeContext.isArticleQa ? 'article-qa' : 'agent-response';
+  span.setAttribute('cache.strategy', cacheStrategy);
+
+  const contextPayload = modeContext.isArticleQa && qaContext
+    ? {
+        articleId: qaContext.articleId,
+        title: qaContext.title,
+        snippet: qaContext.snippet,
+        updatedAt: qaContext.updatedAt.toISOString(),
+      }
+    : undefined;
+
+  let cachedResponse: string | null = null;
+
+  if (modeContext.isArticleQa) {
+    cachedResponse = await articleQaCache!.get(
+      qaContext!.articleId,
+      validatedRequest.query,
+      modeContext.preferredLang,
+      qaContext!.updatedAt
+    );
+  } else {
+    cachedResponse = await responseCache!.get(validatedRequest.query);
+  }
+
+  const cacheLogBase = {
+    userId: session.user.id,
+    queryPreview: validatedRequest.query.substring(0, 50),
+    mode: modeContext.agentType,
+  };
 
   if (cachedResponse) {
     span.setAttribute('cache.hit', true);
-    logger.debug(
-      {
-        userId: session.user.id,
-        queryPreview: validatedRequest.query.substring(0, 50),
-      },
-      'Agent cache hit'
-    );
 
-    const response = NextResponse.json({
+    if (modeContext.isArticleQa) {
+      logger.debug(
+        {
+          ...cacheLogBase,
+          articleId: qaContext!.articleId,
+          locale: modeContext.preferredLang,
+        },
+        'Article QA cache hit (batch mode)'
+      );
+    } else {
+      logger.debug(cacheLogBase, 'Agent cache hit (batch mode)');
+    }
+
+    const cachedPayload: Record<string, unknown> = {
       query: validatedRequest.query,
       response: cachedResponse,
       cached: true,
-    });
+      fallback: false,
+      toolCalls: [],
+      usage: {},
+    };
 
+    if (contextPayload) {
+      cachedPayload.context = contextPayload;
+    }
+
+    const response = NextResponse.json(cachedPayload);
     return attachRateLimitHeaders(response, rateLimitInfo);
   }
 
@@ -877,15 +956,9 @@ async function handleBatchRequest(
   let fallback = false;
 
   try {
-    // Determine user's preferred language
-    const preferredLang = getPreferredLanguage(validatedRequest.query, request);
-    const localeInstruction = preferredLang === 'ja'
-      ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
-      : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
-
-    const result = await articleSearchAgent.generate({
+    const result = await modeContext.agent.generate({
       messages: [
-        { role: 'system', content: localeInstruction },
+        { role: 'system', content: modeContext.systemMessage },
         { role: 'user', content: validatedRequest.query },
       ],
     });
@@ -893,9 +966,7 @@ async function handleBatchRequest(
     const allToolCalls = result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
     const allToolResults = result.steps?.flatMap((step) => step.toolResults ?? []) ?? [];
 
-    const toolResultsMap = new Map(
-      allToolResults.map((r) => [r.toolCallId, r])
-    );
+    const toolResultsMap = new Map(allToolResults.map((r) => [r.toolCallId, r]));
 
     logger.debug(
       {
@@ -905,8 +976,9 @@ async function handleBatchRequest(
         toolResultsCount: allToolResults.length,
         toolCallNames: allToolCalls.map((tc) => tc.toolName),
         finishReason: result.finishReason,
+        mode: modeContext.agentType,
       },
-      'Agent result received'
+      'Agent result received (batch)'
     );
 
     agentResponse = (result.text ?? '').trim();
@@ -923,7 +995,6 @@ async function handleBatchRequest(
     });
     usage = result.usage;
 
-    // Handle empty response as agent failure (tool-only response with no text)
     if (!agentResponse) {
       throw new Error('Agent returned empty response (tool-only mode detected)');
     }
@@ -931,8 +1002,8 @@ async function handleBatchRequest(
     span.setAttributes({
       'agent.toolCallCount': toolCalls.length,
       'agent.responseLength': agentResponse.length,
-      'agent.promptTokens': usage.promptTokens || 0,
-      'agent.completionTokens': usage.completionTokens || 0,
+      'agent.promptTokens': usage?.promptTokens || 0,
+      'agent.completionTokens': usage?.completionTokens || 0,
     });
 
     logger.info(
@@ -940,10 +1011,11 @@ async function handleBatchRequest(
         userId: session.user.id,
         queryPreview: validatedRequest.query.substring(0, 50),
         toolCalls: toolCalls.length,
-        promptTokens: usage.promptTokens,
-        completionTokens: usage.completionTokens,
+        promptTokens: usage?.promptTokens,
+        completionTokens: usage?.completionTokens,
+        mode: modeContext.agentType,
       },
-      'Agent search completed'
+      'Agent search completed (batch)'
     );
   } catch (agentError) {
     span.setAttribute('agent.failed', true);
@@ -954,29 +1026,48 @@ async function handleBatchRequest(
         error: sanitizeError(agentError),
         userId: session.user.id,
         queryPreview: validatedRequest.query.substring(0, 50),
+        mode: modeContext.agentType,
       },
       'Agent failed, using fallback'
     );
 
-    // Fallback: Direct vector search
     const searchService = new VectorSearchService(prisma);
     const fallbackResults = await searchService.search(validatedRequest.query, {
       topK: 10,
     });
 
-    const queryLang = getPreferredLanguage(validatedRequest.query, request);
-    agentResponse = formatResultsAsText(fallbackResults, queryLang);
+    agentResponse = formatResultsAsText(fallbackResults, modeContext.preferredLang);
     fallback = true;
 
     span.setAttribute('fallback.used', true);
     span.setAttribute('fallback.resultCount', fallbackResults.length);
   }
 
-  // Cache successful responses (both agent and fallback)
-  await responseCache.set(validatedRequest.query, agentResponse);
+  try {
+    if (modeContext.isArticleQa) {
+      await articleQaCache!.set(
+        qaContext!.articleId,
+        validatedRequest.query,
+        modeContext.preferredLang,
+        qaContext!.updatedAt,
+        agentResponse
+      );
+    } else {
+      await responseCache!.set(validatedRequest.query, agentResponse);
+    }
+  } catch (cacheError) {
+    logger.warn(
+      {
+        error: sanitizeError(cacheError),
+        userId: session.user.id,
+        queryPreview: validatedRequest.query.substring(0, 50),
+        mode: modeContext.agentType,
+      },
+      'Failed to cache batch response'
+    );
+  }
 
-  // Return response with metadata
-  const responseData = {
+  const responseData: Record<string, unknown> = {
     query: validatedRequest.query,
     response: agentResponse,
     toolCalls,
@@ -984,6 +1075,10 @@ async function handleBatchRequest(
     fallback,
     cached: false,
   };
+
+  if (contextPayload) {
+    responseData.context = contextPayload;
+  }
 
   const responseObject = NextResponse.json(responseData);
 
