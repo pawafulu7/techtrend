@@ -103,6 +103,12 @@ function calculatePositionBoost(chunkIndex: number, isSummary: boolean, totalChu
  * Combines semantic similarity, keyword matching, and position boost.
  * Final score = semanticScore * 0.8 + keywordBoost + positionBoost
  *
+ * Performance note:
+ * Currently generates embeddings for all chunks on every request.
+ * TODO: Cache chunk embeddings in Redis/DB keyed by (articleId, chunkIndex, updatedAt)
+ * to reduce OpenAI API calls (1 + N → 1 per request) and improve latency.
+ * Invalidate on article.updatedAt change.
+ *
  * @param options - Scoring options
  * @returns Scored chunks sorted by relevance
  */

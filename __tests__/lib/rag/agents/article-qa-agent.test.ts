@@ -23,4 +23,12 @@ describe('ArticleQaAgent', () => {
     expect(typeof articleQaAgent.generate).toBe('function');
     expect(typeof articleQaAgent.stream).toBe('function');
   });
+
+  it('should expose expected tools', () => {
+    // Verify tool keys to prevent accidental removal during refactoring
+    const tools: unknown = (articleQaAgent as any).tools;
+    expect(tools).toBeDefined();
+    expect(tools).toHaveProperty('article-context');
+    expect(tools).toHaveProperty('semantic-article-search');
+  });
 });

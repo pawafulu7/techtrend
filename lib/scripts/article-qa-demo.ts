@@ -126,7 +126,7 @@ async function main() {
   if (args.length < 2) {
     console.error('Usage: npx tsx lib/scripts/article-qa-demo.ts <articleId> "<question>"');
     console.error('Example: npx tsx lib/scripts/article-qa-demo.ts cm123abc "この記事の前提となる概念を教えて"');
-    process.exit(1);
+    throw new Error('Invalid arguments');
   }
 
   const [articleId, question] = args;
@@ -176,18 +176,18 @@ async function main() {
 
     console.log('Demo completed successfully!');
     console.log();
-  } catch (error) {
-    console.error('='.repeat(80));
-    console.error('ERROR');
-    console.error('='.repeat(80));
-    console.error();
-    console.error(error instanceof Error ? error.message : 'Unknown error');
-    console.error();
-    console.error(error);
-    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main();
+main().catch((error) => {
+  console.error('='.repeat(80));
+  console.error('ERROR');
+  console.error('='.repeat(80));
+  console.error();
+  console.error(error instanceof Error ? error.message : 'Unknown error');
+  console.error();
+  console.error(error);
+  process.exit(1);
+});

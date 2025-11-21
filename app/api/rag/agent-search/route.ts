@@ -373,6 +373,12 @@ function createCachedSSEResponse(
  *
  * Uses articleSearchAgent.stream() for real-time progress updates.
  * Emits SSE events: cached, text-delta, tool-start, tool-complete, fallback, finish, error.
+ *
+ * TODO (Phase 3): Add agent selection based on validatedRequest.agentType
+ * - article-search: articleSearchAgent (existing)
+ * - article-qa: articleQaAgent (new)
+ * Also update cache selection (AgentResponseCache vs ArticleQACache) and
+ * send initial context chunk for article-qa mode.
  */
 async function handleStreamingRequest(
   validatedRequest: ValidatedRequest,
@@ -634,6 +640,11 @@ async function createStreamingResponse(
  *
  * This is the original generate() implementation, extracted for dual-path support.
  * Used when AGENT_STREAMING_ENABLED=false or as fallback.
+ *
+ * TODO (Phase 3): Add agent selection based on validatedRequest.agentType
+ * - article-search: articleSearchAgent (existing)
+ * - article-qa: articleQaAgent (new)
+ * Also update cache selection (AgentResponseCache vs ArticleQACache).
  */
 async function handleBatchRequest(
   validatedRequest: ValidatedRequest,

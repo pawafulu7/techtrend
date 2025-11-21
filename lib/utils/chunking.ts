@@ -37,8 +37,19 @@ function getEncodingInstance(): Tiktoken {
  * Falls back to character-based estimation if tiktoken fails.
  * Estimation: 1 token ≈ 4 characters (conservative estimate).
  *
+ * NOTE: Fallback estimation is approximate and may have higher error for CJK text.
+ * This is acceptable for:
+ * - Cache key generation (soft limits)
+ * - Token budget guards (conservative estimates)
+ * - Performance monitoring (rough metrics)
+ *
+ * NOT suitable for:
+ * - Strict token limits (use actual tiktoken encoding)
+ * - Billing calculations (always use tiktoken)
+ * - Precise quota enforcement
+ *
  * @param text - Text to count tokens
- * @returns Number of tokens
+ * @returns Number of tokens (accurate via tiktoken, or conservative estimate on fallback)
  */
 export function countTokens(text: string): number {
   if (!text) return 0;
@@ -48,6 +59,8 @@ export function countTokens(text: string): number {
     return encoding.encode(text).length;
   } catch (_error) {
     // Fallback to character-based estimation
+    // Conservative estimate: 1 token ≈ 4 characters
+    // May overestimate for CJK text (acceptable for soft limits)
     return Math.ceil(text.length / 4);
   }
 }
@@ -158,6 +171,20 @@ export function chunkByTokens(
  *
  * Call this when the encoding instance is no longer needed
  * to free up memory.
+ *
+ * WARNING: This should only be called at process shutdown or after long-running
+ * batch jobs. DO NOT call this during normal request handling as it will cause
+ * race conditions when multiple concurrent requests use countTokens/chunkByTokens.
+ *
+ * Intended use cases:
+ * - Process cleanup before exit
+ * - After completing large batch operations
+ * - Test cleanup (afterAll hooks)
+ *
+ * NOT for use in:
+ * - API request handlers
+ * - Concurrent request processing
+ * - Regular application flow
  */
 export function freeEncodingResources(): void {
   if (encodingInstance) {

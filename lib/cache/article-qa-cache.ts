@@ -192,6 +192,7 @@ export class ArticleQACache {
    * Invalidate all cache entries for a specific article
    *
    * Useful when article content is updated.
+   * Uses SCAN instead of KEYS to avoid blocking Redis.
    *
    * @param articleId - Article ID
    */
@@ -200,16 +201,25 @@ export class ArticleQACache {
       const redis = await getRedisClient();
       if (!redis) return;
 
-      // Find all keys for this article
+      // Use SCAN instead of KEYS to avoid blocking Redis
       const pattern = `${this.prefix}${articleId}:*`;
-      const keys = await redis.keys(pattern);
+      let cursor = '0';
+      const keysToDelete: string[] = [];
 
-      if (keys.length > 0) {
-        await redis.del(...keys);
+      do {
+        const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        cursor = nextCursor;
+        if (keys.length > 0) {
+          keysToDelete.push(...keys);
+        }
+      } while (cursor !== '0');
+
+      if (keysToDelete.length > 0) {
+        await redis.del(...keysToDelete);
         logger.debug(
           {
             articleId,
-            keysDeleted: keys.length,
+            keysDeleted: keysToDelete.length,
           },
           'Article QA cache invalidated for article'
         );

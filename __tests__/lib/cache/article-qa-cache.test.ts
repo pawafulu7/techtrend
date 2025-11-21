@@ -8,7 +8,7 @@ const mockRedis = {
   get: jest.fn(),
   setex: jest.fn(),
   del: jest.fn(),
-  keys: jest.fn(),
+  scan: jest.fn(),
   quit: jest.fn(),
 };
 
@@ -155,23 +155,24 @@ describe('ArticleQACache', () => {
   });
 
   describe('invalidateArticle', () => {
-    it('should delete all cache entries for an article', async () => {
+    it('should delete all cache entries for an article using SCAN', async () => {
       const keys = [
         'article-qa:article123:query1:ja:123456789',
         'article-qa:article123:query2:en:123456789',
         'article-qa:article123:query3:ja:987654321',
       ];
 
-      mockRedis.keys.mockResolvedValue(keys);
+      // Mock SCAN to return all keys in one iteration
+      mockRedis.scan.mockResolvedValue(['0', keys]);
 
       await cache.invalidateArticle(articleId);
 
-      expect(mockRedis.keys).toHaveBeenCalledWith('article-qa:article123:*');
+      expect(mockRedis.scan).toHaveBeenCalledWith('0', 'MATCH', 'article-qa:article123:*', 'COUNT', 100);
       expect(mockRedis.del).toHaveBeenCalledWith(...keys);
     });
 
     it('should handle no keys found', async () => {
-      mockRedis.keys.mockResolvedValue([]);
+      mockRedis.scan.mockResolvedValue(['0', []]);
 
       await cache.invalidateArticle(articleId);
 
@@ -179,9 +180,26 @@ describe('ArticleQACache', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      mockRedis.keys.mockRejectedValue(new Error('Keys failed'));
+      mockRedis.scan.mockRejectedValue(new Error('Scan failed'));
 
       await expect(cache.invalidateArticle(articleId)).resolves.not.toThrow();
+    });
+
+    it('should handle multiple SCAN iterations', async () => {
+      const keys1 = ['article-qa:article123:query1:ja:123456789'];
+      const keys2 = ['article-qa:article123:query2:en:123456789'];
+      const keys3 = ['article-qa:article123:query3:ja:987654321'];
+
+      // Mock SCAN to return keys across multiple iterations
+      mockRedis.scan
+        .mockResolvedValueOnce(['1', keys1])
+        .mockResolvedValueOnce(['2', keys2])
+        .mockResolvedValueOnce(['0', keys3]); // cursor '0' indicates end
+
+      await cache.invalidateArticle(articleId);
+
+      expect(mockRedis.scan).toHaveBeenCalledTimes(3);
+      expect(mockRedis.del).toHaveBeenCalledWith(...keys1, ...keys2, ...keys3);
     });
   });
 
