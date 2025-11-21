@@ -17,6 +17,20 @@ import { prisma } from '@/lib/prisma';
 import { articleQaAgent } from '@/lib/rag/agents/article-qa-agent';
 import { ArticleQACache } from '@/lib/cache/article-qa-cache';
 
+/**
+ * Normalize query for cache key (matches ArticleQACache.normalizeQuery)
+ *
+ * @param query - Raw query
+ * @returns Normalized query
+ */
+function normalizeQuery(query: string): string {
+  return query
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[!?。、；：！？、]/g, '');
+}
+
 interface DemoResult {
   question: string;
   answer: string;
@@ -55,6 +69,7 @@ async function runArticleQA(articleId: string, question: string): Promise<DemoRe
 
   if (cachedResponse) {
     const elapsedMs = Date.now() - startTime;
+    const normalizedQuestion = normalizeQuery(question);
     return {
       question,
       answer: cachedResponse,
@@ -64,7 +79,7 @@ async function runArticleQA(articleId: string, question: string): Promise<DemoRe
       elapsedMs,
       cacheInfo: {
         hit: true,
-        key: `article-qa:${articleId}:${question}:${locale}:${article.updatedAt.getTime()}`,
+        key: `article-qa:${articleId}:${normalizedQuestion}:${locale}:${article.updatedAt.getTime()}`,
       },
     };
   }
@@ -89,6 +104,7 @@ async function runArticleQA(articleId: string, question: string): Promise<DemoRe
   await cache.set(articleId, question, locale, article.updatedAt, answer);
 
   const elapsedMs = Date.now() - startTime;
+  const normalizedQuestion = normalizeQuery(question);
 
   return {
     question,
@@ -99,7 +115,7 @@ async function runArticleQA(articleId: string, question: string): Promise<DemoRe
     elapsedMs,
     cacheInfo: {
       hit: false,
-      key: `article-qa:${articleId}:${question}:${locale}:${article.updatedAt.getTime()}`,
+      key: `article-qa:${articleId}:${normalizedQuestion}:${locale}:${article.updatedAt.getTime()}`,
     },
   };
 }

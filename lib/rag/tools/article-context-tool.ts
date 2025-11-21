@@ -13,6 +13,7 @@ import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import { sanitizeArticleHtml, stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import { countTokens, chunkByTokens } from '@/lib/utils/chunking';
+import { cosineSimilarity } from '@/lib/utils/vector-math';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
 
 /**
@@ -181,32 +182,6 @@ async function scoreChunks(options: {
       .filter((c) => c.score >= minScore)
       .sort((a, b) => b.score - a.score);
   }
-}
-
-/**
- * Simple cosine similarity implementation
- *
- * @param vecA - Vector A
- * @param vecB - Vector B
- * @returns Cosine similarity (0-1)
- */
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  if (vecA.length !== vecB.length) return 0;
-
-  let dotProduct = 0;
-  let magA = 0;
-  let magB = 0;
-
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    magA += vecA[i] * vecA[i];
-    magB += vecB[i] * vecB[i];
-  }
-
-  const magnitude = Math.sqrt(magA) * Math.sqrt(magB);
-  if (magnitude === 0) return 0;
-
-  return dotProduct / magnitude;
 }
 
 /**

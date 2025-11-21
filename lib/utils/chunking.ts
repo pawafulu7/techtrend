@@ -87,6 +87,10 @@ export function chunkByTokens(
 ): TextChunk[] {
   if (!text) return [];
 
+  // Defensive clamping to prevent infinite loops
+  const safeTargetTokens = Math.max(1, Math.floor(targetTokens || 0));
+  const safeOverlapTokens = Math.max(0, Math.min(Math.floor(overlapTokens || 0), safeTargetTokens - 1));
+
   try {
     const encoding = getEncodingInstance();
     const tokens = encoding.encode(text);
@@ -97,8 +101,8 @@ export function chunkByTokens(
 
     while (currentPosition < tokens.length) {
       // Calculate start position with overlap
-      const startToken = Math.max(0, currentPosition - overlapTokens);
-      const endToken = Math.min(tokens.length, currentPosition + targetTokens);
+      const startToken = Math.max(0, currentPosition - safeOverlapTokens);
+      const endToken = Math.min(tokens.length, currentPosition + safeTargetTokens);
 
       // Extract chunk tokens
       const chunkTokens = tokens.slice(startToken, endToken);
@@ -120,8 +124,8 @@ export function chunkByTokens(
     return chunks;
   } catch (_error) {
     // Fallback: Character-based chunking (4 chars ≈ 1 token)
-    const targetChars = targetTokens * 4;
-    const overlapChars = overlapTokens * 4;
+    const targetChars = safeTargetTokens * 4;
+    const overlapChars = safeOverlapTokens * 4;
     const chunks: TextChunk[] = [];
 
     let currentPosition = 0;

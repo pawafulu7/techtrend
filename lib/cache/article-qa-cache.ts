@@ -255,6 +255,7 @@ export class ArticleQACache {
    * - Trim whitespace
    * - Collapse multiple spaces to single space
    * - Remove punctuation (!?。、；：etc.)
+   * - Preserve ASCII dot (.) to avoid version number collisions (e.g., v1.0 vs v10)
    *
    * @param query - Raw query
    * @returns Normalized query
@@ -264,6 +265,6 @@ export class ArticleQACache {
       .toLowerCase()
       .trim()
       .replace(/\s+/g, ' ')
-      .replace(/[!?。、；：！？、.]/g, '');
+      .replace(/[!?。、；：！？、]/g, '');
   }
 }
