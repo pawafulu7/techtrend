@@ -259,8 +259,15 @@ interface RateLimitInfo {
   reset: Date;
 }
 
+/**
+ * Validated request type
+ *
+ * Note: articleId is required when agentType='article-qa' (enforced by superRefine)
+ */
 interface ValidatedRequest {
+  agentType: 'article-search' | 'article-qa';
   query: string;
+  articleId?: string;
 }
 
 /**
