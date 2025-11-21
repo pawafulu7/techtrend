@@ -16,6 +16,33 @@ import type { Session } from 'next-auth';
 import type { LanguageModelV2ToolResultOutput } from '@ai-sdk/provider';
 
 /**
+ * Custom error for article not found (404)
+ */
+class ArticleNotFoundError extends Error {
+  public readonly articleId: string;
+
+  constructor(articleId: string) {
+    super(`Article ${articleId} not found`);
+    this.name = 'ArticleNotFoundError';
+    this.articleId = articleId;
+  }
+}
+
+/**
+ * Custom error for mode context resolution failures (400)
+ *
+ * Note: Reserved for future mode resolution validation failures.
+ * Currently not thrown by resolveModeContext (fetchQaContext throws ArticleNotFoundError).
+ * May be used for invalid mode configuration, missing required fields, etc.
+ */
+class ModeContextError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ModeContextError';
+  }
+}
+
+/**
  * RAG Agent Search API (Vercel AI SDK)
  *
  * POST /api/rag/agent-search
@@ -182,13 +209,11 @@ function formatResultsAsText(results: SearchResult[], lang: 'ja' | 'en'): string
  * Retrieves article metadata and generates snippet for context chunk.
  * TODO: Enforce article visibility once visibility model is finalized.
  *
- * Note: Prefixed with _ to satisfy ESLint (intentionally unused until Phase 3).
- *
  * @param articleId - Article ID
  * @returns Article context with snippet
- * @throws Error if article not found
+ * @throws ArticleNotFoundError if article not found
  */
-async function _fetchQaContext(articleId: string): Promise<{
+async function fetchQaContext(articleId: string): Promise<{
   article: {
     id: string;
     title: string;
@@ -208,7 +233,7 @@ async function _fetchQaContext(articleId: string): Promise<{
   });
 
   if (!article) {
-    throw new Error(`Article ${articleId} not found`);
+    throw new ArticleNotFoundError(articleId);
   }
 
   // TODO: Enforce article.visibility once visibility model is finalized
@@ -227,6 +252,74 @@ async function _fetchQaContext(articleId: string): Promise<{
     },
     snippet,
   };
+}
+
+/**
+ * Resolve mode context based on agentType
+ *
+ * Determines agent, cache strategy, and system message based on request type.
+ *
+ * Error handling:
+ * - article-qa mode: May throw ArticleNotFoundError if article not found
+ * - article-search mode: No errors (always succeeds)
+ *
+ * @param validatedRequest - Validated request
+ * @param request - HTTP request
+ * @returns Mode context with agent, lang, and system message
+ * @throws ArticleNotFoundError if article not found in QA mode
+ */
+async function resolveModeContext(
+  validatedRequest: ValidatedRequest,
+  request: NextRequest
+): Promise<ModeContext> {
+  const isArticleQa = validatedRequest.agentType === 'article-qa';
+  const preferredLang = getPreferredLanguage(validatedRequest.query, request);
+
+  const localeInstruction = preferredLang === 'ja'
+    ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
+    : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
+
+  if (isArticleQa) {
+    // Article QA mode
+    const qaContext = await fetchQaContext(validatedRequest.articleId!);
+
+    const systemMessage = `${localeInstruction}
+
+Active article: ${qaContext.article.title} (#${qaContext.article.id}, updated ${qaContext.article.updatedAt.toISOString()}).
+You MUST restrict all answers to this article.`;
+
+    return {
+      agentType: 'article-qa',
+      isArticleQa: true,
+      agent: _articleQaAgent,
+      preferredLang,
+      systemMessage,
+      qaContext: {
+        articleId: qaContext.article.id,
+        title: qaContext.article.title,
+        updatedAt: qaContext.article.updatedAt,
+        snippet: qaContext.snippet,
+      },
+      traceAttributes: {
+        'mode.type': 'article-qa',
+        'mode.articleId': qaContext.article.id,
+      },
+      metricsTag: 'article-qa',
+    };
+  } else {
+    // Article Search mode (existing)
+    return {
+      agentType: 'article-search',
+      isArticleQa: false,
+      agent: articleSearchAgent,
+      preferredLang,
+      systemMessage: localeInstruction,
+      traceAttributes: {
+        'mode.type': 'article-search',
+      },
+      metricsTag: 'article-search',
+    };
+  }
 }
 
 /**
@@ -270,6 +363,36 @@ interface ValidatedRequest {
   agentType: 'article-search' | 'article-qa';
   query: string;
   articleId?: string;
+}
+
+/**
+ * Mode context for agent selection and cache management
+ *
+ * Encapsulates all mode-specific configuration for request handling.
+ */
+interface ModeContext {
+  // Mode identification
+  agentType: 'article-search' | 'article-qa';
+  isArticleQa: boolean;
+
+  // Agent & execution
+  agent: typeof articleSearchAgent | typeof _articleQaAgent;
+  systemMessage: string;
+
+  // Language & locale
+  preferredLang: 'ja' | 'en';
+
+  // QA-specific context (only when isArticleQa=true)
+  qaContext?: {
+    articleId: string;
+    title: string;
+    updatedAt: Date;
+    snippet: string;
+  };
+
+  // Observability (future extension)
+  traceAttributes?: Record<string, string | number | boolean>;
+  metricsTag?: string;
 }
 
 /**
@@ -373,14 +496,11 @@ function createCachedSSEResponse(
 /**
  * Handle streaming agent search request
  *
- * Uses articleSearchAgent.stream() for real-time progress updates.
- * Emits SSE events: cached, text-delta, tool-start, tool-complete, fallback, finish, error.
+ * Resolves mode-specific context (agent, system prompt, cache strategy) prior to
+ * streaming and emits SSE events: cached, text-delta, tool-start, tool-complete,
+ * fallback, finish, error.
  *
- * TODO (Phase 3): Add agent selection based on validatedRequest.agentType
- * - article-search: articleSearchAgent (existing)
- * - article-qa: articleQaAgent (new)
- * Also update cache selection (AgentResponseCache vs ArticleQACache) and
- * send initial context chunk for article-qa mode.
+ * TODO (Phase 3): Send initial context chunk for article-qa mode.
  */
 async function handleStreamingRequest(
   validatedRequest: ValidatedRequest,
@@ -389,28 +509,98 @@ async function handleStreamingRequest(
   request: NextRequest,
   rateLimitInfo?: RateLimitInfo
 ): Promise<Response> {
-  // Check cache first
-  const responseCache = new AgentResponseCache();
-  const cachedResponse = await responseCache.get(validatedRequest.query);
+  let modeContext: ModeContext;
+  try {
+    modeContext = await resolveModeContext(validatedRequest, request);
+  } catch (error) {
+    parentSpan.setAttribute('mode.resolve.failed', true);
+    parentSpan.recordException(error as Error);
+    parentSpan.setStatus({ code: SpanStatusCode.ERROR, message: 'Failed to resolve mode context' });
+    throw error;
+  }
+
+  if (modeContext.isArticleQa && !modeContext.qaContext) {
+    const contextError = new Error('Article QA mode requires qaContext');
+    parentSpan.recordException(contextError);
+    parentSpan.setStatus({ code: SpanStatusCode.ERROR, message: contextError.message });
+    throw contextError;
+  }
+
+  parentSpan.setAttributes({
+    'mode.agentType': modeContext.agentType,
+    'mode.preferredLang': modeContext.preferredLang,
+    'mode.isArticleQa': modeContext.isArticleQa,
+  });
+
+  if (modeContext.traceAttributes) {
+    parentSpan.setAttributes(modeContext.traceAttributes);
+  }
+
+  if (modeContext.metricsTag) {
+    parentSpan.setAttribute('mode.metricsTag', modeContext.metricsTag);
+  }
+
+  if (modeContext.qaContext) {
+    parentSpan.setAttribute('mode.articleId', modeContext.qaContext.articleId);
+  }
+
+  const cacheStrategy = modeContext.isArticleQa ? 'article-qa' : 'agent-response';
+  parentSpan.setAttribute('cache.strategy', cacheStrategy);
+
+  const agentCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
+  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
+  let cachedResponse: string | null = null;
+
+  if (modeContext.isArticleQa) {
+    const qaContext = modeContext.qaContext!;
+    cachedResponse = await articleQaCache!.get(
+      qaContext.articleId,
+      validatedRequest.query,
+      modeContext.preferredLang,
+      qaContext.updatedAt
+    );
+  } else {
+    cachedResponse = await agentCache!.get(validatedRequest.query);
+  }
 
   if (cachedResponse) {
     parentSpan.setAttribute('cache.hit', true);
     parentSpan.setAttribute('streaming.cached', true);
-    logger.debug(
-      {
-        userId: session.user.id,
-        queryPreview: validatedRequest.query.substring(0, 50),
-      },
-      'Agent cache hit (streaming mode)'
-    );
+
+    const logBase = {
+      userId: session.user.id,
+      queryPreview: validatedRequest.query.substring(0, 50),
+      mode: modeContext.agentType,
+    };
+
+    if (modeContext.isArticleQa) {
+      logger.debug(
+        {
+          ...logBase,
+          articleId: modeContext.qaContext!.articleId,
+          locale: modeContext.preferredLang,
+        },
+        'Article QA cache hit (streaming mode)'
+      );
+    } else {
+      logger.debug(logBase, 'Agent cache hit (streaming mode)');
+    }
 
     return createCachedSSEResponse(cachedResponse, rateLimitInfo);
   }
 
   parentSpan.setAttribute('cache.hit', false);
+  parentSpan.setAttribute('streaming.cached', false);
 
   // Start streaming (implementation in createStreamingResponse)
-  return createStreamingResponse(validatedRequest, session, parentSpan, request, rateLimitInfo);
+  return createStreamingResponse(
+    validatedRequest,
+    session,
+    parentSpan,
+    request,
+    modeContext,
+    rateLimitInfo
+  );
 }
 
 /**
@@ -422,13 +612,36 @@ async function createStreamingResponse(
   validatedRequest: ValidatedRequest,
   session: Session,
   parentSpan: Span,
-  request: NextRequest,
+  _request: NextRequest,
+  modeContext: ModeContext,
   rateLimitInfo?: RateLimitInfo
 ): Promise<Response> {
   const encoder = new TextEncoder();
-  const responseCache = new AgentResponseCache();
+  const responseCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
+  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
   const tracer = trace.getTracer('rag-agent');
   const streamSpan = tracer.startSpan('rag.agent-search.stream', {}, trace.setSpan(context.active(), parentSpan));
+  const qaContext = modeContext.qaContext;
+
+  if (modeContext.isArticleQa && !qaContext) {
+    const contextError = new Error('Article QA mode requires qaContext');
+    streamSpan.recordException(contextError);
+    streamSpan.setStatus({ code: SpanStatusCode.ERROR, message: contextError.message });
+    streamSpan.end();
+    throw contextError;
+  }
+
+  streamSpan.setAttributes({
+    'mode.agentType': modeContext.agentType,
+    'mode.preferredLang': modeContext.preferredLang,
+  });
+
+  streamSpan.setAttribute('cache.strategy', modeContext.isArticleQa ? 'article-qa' : 'agent-response');
+
+  if (modeContext.traceAttributes) {
+    streamSpan.setAttributes(modeContext.traceAttributes);
+  }
+
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   const stream = new ReadableStream({
@@ -438,15 +651,9 @@ async function createStreamingResponse(
       let usage: any = {};
 
       try {
-        // Determine user's preferred language
-        const preferredLang = getPreferredLanguage(validatedRequest.query, request);
-        const localeInstruction = preferredLang === 'ja'
-          ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
-          : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
-
-        const streamResult = await articleSearchAgent.stream({
+        const streamResult = await modeContext.agent.stream({
           messages: [
-            { role: 'system', content: localeInstruction },
+            { role: 'system', content: modeContext.systemMessage },
             { role: 'user', content: validatedRequest.query },
           ],
         });
@@ -511,12 +718,16 @@ async function createStreamingResponse(
             }
 
             if (!fullText.trim()) {
+              // Fallback: Vector search across all articles (both article-search and article-qa modes)
+              // Note: QA mode fallback is NOT restricted to the target article
+              // This provides broader results when agent fails to respond
               try {
                 const searchService = new VectorSearchService(prisma);
                 const fallbackResults = await searchService.search(validatedRequest.query, { topK: 10 });
-                const queryLang = getPreferredLanguage(validatedRequest.query, request);
-                const fallbackText = formatResultsAsText(fallbackResults, queryLang);
+                const fallbackText = formatResultsAsText(fallbackResults, modeContext.preferredLang);
 
+                // Note: Fallback results are NOT cached (intentional)
+                // Avoids caching low-quality fallback responses
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'fallback', text: fallbackText, resultCount: fallbackResults.length })}\n\n`));
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'finish', text: fallbackText, usage: { totalTokens: 0 }, toolCalls: [], cached: false, fallback: true })}\n\n`));
                 controller.close();
@@ -531,7 +742,17 @@ async function createStreamingResponse(
             }
 
             try {
-              await responseCache.set(validatedRequest.query, fullText);
+              if (modeContext.isArticleQa) {
+                await articleQaCache!.set(
+                  qaContext!.articleId,
+                  validatedRequest.query,
+                  modeContext.preferredLang,
+                  qaContext!.updatedAt,
+                  fullText
+                );
+              } else {
+                await responseCache!.set(validatedRequest.query, fullText);
+              }
             } catch (cacheError) {
               logger.warn({ error: sanitizeError(cacheError), userId: session.user.id }, 'Failed to cache streaming response');
             }
@@ -591,8 +812,7 @@ async function createStreamingResponse(
           topK: 10,
         });
 
-        const queryLang = getPreferredLanguage(validatedRequest.query, request);
-        const fallbackText = formatResultsAsText(fallbackResults, queryLang);
+        const fallbackText = formatResultsAsText(fallbackResults, modeContext.preferredLang);
 
         controller.enqueue(
           encoder.encode(
@@ -655,26 +875,105 @@ async function handleBatchRequest(
   request: NextRequest,
   rateLimitInfo?: RateLimitInfo
 ): Promise<NextResponse> {
-  // Layer 5: Response cache check
-  const responseCache = new AgentResponseCache();
-  const cachedResponse = await responseCache.get(validatedRequest.query);
+  let modeContext: ModeContext;
+  try {
+    modeContext = await resolveModeContext(validatedRequest, request);
+  } catch (error) {
+    span.setAttribute('mode.resolve.failed', true);
+    span.recordException(error as Error);
+    span.setStatus({ code: SpanStatusCode.ERROR, message: 'Failed to resolve mode context' });
+    throw error;
+  }
+
+  if (modeContext.isArticleQa && !modeContext.qaContext) {
+    const contextError = new Error('Article QA mode requires qaContext');
+    span.recordException(contextError);
+    span.setStatus({ code: SpanStatusCode.ERROR, message: contextError.message });
+    throw contextError;
+  }
+
+  span.setAttributes({
+    'mode.agentType': modeContext.agentType,
+    'mode.preferredLang': modeContext.preferredLang,
+    'mode.isArticleQa': modeContext.isArticleQa,
+  });
+
+  if (modeContext.traceAttributes) {
+    span.setAttributes(modeContext.traceAttributes);
+  }
+
+  if (modeContext.metricsTag) {
+    span.setAttribute('mode.metricsTag', modeContext.metricsTag);
+  }
+
+  if (modeContext.qaContext) {
+    span.setAttribute('mode.articleId', modeContext.qaContext.articleId);
+  }
+
+  const qaContext = modeContext.qaContext;
+  const responseCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
+  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
+  const cacheStrategy = modeContext.isArticleQa ? 'article-qa' : 'agent-response';
+  span.setAttribute('cache.strategy', cacheStrategy);
+
+  const contextPayload = modeContext.isArticleQa && qaContext
+    ? {
+        articleId: qaContext.articleId,
+        title: qaContext.title,
+        snippet: qaContext.snippet,
+        updatedAt: qaContext.updatedAt.toISOString(),
+      }
+    : undefined;
+
+  let cachedResponse: string | null = null;
+
+  if (modeContext.isArticleQa) {
+    cachedResponse = await articleQaCache!.get(
+      qaContext!.articleId,
+      validatedRequest.query,
+      modeContext.preferredLang,
+      qaContext!.updatedAt
+    );
+  } else {
+    cachedResponse = await responseCache!.get(validatedRequest.query);
+  }
+
+  const cacheLogBase = {
+    userId: session.user.id,
+    queryPreview: validatedRequest.query.substring(0, 50),
+    mode: modeContext.agentType,
+  };
 
   if (cachedResponse) {
     span.setAttribute('cache.hit', true);
-    logger.debug(
-      {
-        userId: session.user.id,
-        queryPreview: validatedRequest.query.substring(0, 50),
-      },
-      'Agent cache hit'
-    );
 
-    const response = NextResponse.json({
+    if (modeContext.isArticleQa) {
+      logger.debug(
+        {
+          ...cacheLogBase,
+          articleId: qaContext!.articleId,
+          locale: modeContext.preferredLang,
+        },
+        'Article QA cache hit (batch mode)'
+      );
+    } else {
+      logger.debug(cacheLogBase, 'Agent cache hit (batch mode)');
+    }
+
+    const cachedPayload: Record<string, unknown> = {
       query: validatedRequest.query,
       response: cachedResponse,
       cached: true,
-    });
+      fallback: false,
+      toolCalls: [],
+      usage: {},
+    };
 
+    if (contextPayload) {
+      cachedPayload.context = contextPayload;
+    }
+
+    const response = NextResponse.json(cachedPayload);
     return attachRateLimitHeaders(response, rateLimitInfo);
   }
 
@@ -687,15 +986,9 @@ async function handleBatchRequest(
   let fallback = false;
 
   try {
-    // Determine user's preferred language
-    const preferredLang = getPreferredLanguage(validatedRequest.query, request);
-    const localeInstruction = preferredLang === 'ja'
-      ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
-      : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
-
-    const result = await articleSearchAgent.generate({
+    const result = await modeContext.agent.generate({
       messages: [
-        { role: 'system', content: localeInstruction },
+        { role: 'system', content: modeContext.systemMessage },
         { role: 'user', content: validatedRequest.query },
       ],
     });
@@ -703,9 +996,7 @@ async function handleBatchRequest(
     const allToolCalls = result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
     const allToolResults = result.steps?.flatMap((step) => step.toolResults ?? []) ?? [];
 
-    const toolResultsMap = new Map(
-      allToolResults.map((r) => [r.toolCallId, r])
-    );
+    const toolResultsMap = new Map(allToolResults.map((r) => [r.toolCallId, r]));
 
     logger.debug(
       {
@@ -715,8 +1006,9 @@ async function handleBatchRequest(
         toolResultsCount: allToolResults.length,
         toolCallNames: allToolCalls.map((tc) => tc.toolName),
         finishReason: result.finishReason,
+        mode: modeContext.agentType,
       },
-      'Agent result received'
+      'Agent result received (batch)'
     );
 
     agentResponse = (result.text ?? '').trim();
@@ -733,7 +1025,6 @@ async function handleBatchRequest(
     });
     usage = result.usage;
 
-    // Handle empty response as agent failure (tool-only response with no text)
     if (!agentResponse) {
       throw new Error('Agent returned empty response (tool-only mode detected)');
     }
@@ -741,8 +1032,8 @@ async function handleBatchRequest(
     span.setAttributes({
       'agent.toolCallCount': toolCalls.length,
       'agent.responseLength': agentResponse.length,
-      'agent.promptTokens': usage.promptTokens || 0,
-      'agent.completionTokens': usage.completionTokens || 0,
+      'agent.promptTokens': usage?.promptTokens || 0,
+      'agent.completionTokens': usage?.completionTokens || 0,
     });
 
     logger.info(
@@ -750,10 +1041,11 @@ async function handleBatchRequest(
         userId: session.user.id,
         queryPreview: validatedRequest.query.substring(0, 50),
         toolCalls: toolCalls.length,
-        promptTokens: usage.promptTokens,
-        completionTokens: usage.completionTokens,
+        promptTokens: usage?.promptTokens,
+        completionTokens: usage?.completionTokens,
+        mode: modeContext.agentType,
       },
-      'Agent search completed'
+      'Agent search completed (batch)'
     );
   } catch (agentError) {
     span.setAttribute('agent.failed', true);
@@ -764,29 +1056,58 @@ async function handleBatchRequest(
         error: sanitizeError(agentError),
         userId: session.user.id,
         queryPreview: validatedRequest.query.substring(0, 50),
+        mode: modeContext.agentType,
       },
       'Agent failed, using fallback'
     );
 
-    // Fallback: Direct vector search
+    // Fallback: Vector search across all articles (both article-search and article-qa modes)
+    // Note: QA mode fallback is NOT restricted to the target article
+    // This provides broader results when agent fails to respond
     const searchService = new VectorSearchService(prisma);
     const fallbackResults = await searchService.search(validatedRequest.query, {
       topK: 10,
     });
 
-    const queryLang = getPreferredLanguage(validatedRequest.query, request);
-    agentResponse = formatResultsAsText(fallbackResults, queryLang);
+    agentResponse = formatResultsAsText(fallbackResults, modeContext.preferredLang);
     fallback = true;
 
     span.setAttribute('fallback.used', true);
     span.setAttribute('fallback.resultCount', fallbackResults.length);
   }
 
-  // Cache successful responses (both agent and fallback)
-  await responseCache.set(validatedRequest.query, agentResponse);
+  // Cache successful responses
+  // Note: Fallback results are NOT cached (both streaming and batch modes)
+  // Rationale: Avoid caching low-quality fallback responses
+  // Agent failures may be temporary; retry may succeed
+  try {
+    if (!fallback) {
+      if (modeContext.isArticleQa) {
+        await articleQaCache!.set(
+          qaContext!.articleId,
+          validatedRequest.query,
+          modeContext.preferredLang,
+          qaContext!.updatedAt,
+          agentResponse
+        );
+      } else {
+        await responseCache!.set(validatedRequest.query, agentResponse);
+      }
+    }
+  } catch (cacheError) {
+    logger.warn(
+      {
+        error: sanitizeError(cacheError),
+        userId: session.user.id,
+        queryPreview: validatedRequest.query.substring(0, 50),
+        mode: modeContext.agentType,
+        fallback,
+      },
+      'Failed to cache batch response'
+    );
+  }
 
-  // Return response with metadata
-  const responseData = {
+  const responseData: Record<string, unknown> = {
     query: validatedRequest.query,
     response: agentResponse,
     toolCalls,
@@ -794,6 +1115,10 @@ async function handleBatchRequest(
     fallback,
     cached: false,
   };
+
+  if (contextPayload) {
+    responseData.context = contextPayload;
+  }
 
   const responseObject = NextResponse.json(responseData);
 
@@ -952,6 +1277,44 @@ export async function POST(request: NextRequest) {
       span.setAttribute('error', true);
       span.recordException(error as Error);
       span.setStatus({ code: SpanStatusCode.ERROR });
+
+      // Article not found errors (404)
+      if (error instanceof ArticleNotFoundError) {
+        logger.warn(
+          {
+            userId: session?.user?.id,
+            articleId: error.articleId,
+          },
+          'Article not found'
+        );
+
+        return NextResponse.json(
+          {
+            error: 'Article not found',
+            details: error.message,
+          },
+          { status: 404 }
+        );
+      }
+
+      // Mode context errors (400)
+      if (error instanceof ModeContextError) {
+        logger.warn(
+          {
+            userId: session?.user?.id,
+            error: error.message,
+          },
+          'Mode context resolution failed'
+        );
+
+        return NextResponse.json(
+          {
+            error: 'Invalid request configuration',
+            details: error.message,
+          },
+          { status: 400 }
+        );
+      }
 
       // Zod validation errors
       if (error instanceof ZodError) {
