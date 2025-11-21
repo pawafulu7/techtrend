@@ -846,7 +846,7 @@ export async function POST(request: NextRequest) {
       try {
         const typeValidation = agentTypeSchema.parse(body);
         agentType = typeValidation.agentType;
-      } catch (error) {
+      } catch (_error) {
         // Default to article-search on parsing error
         agentType = 'article-search';
       }

@@ -46,7 +46,7 @@ export function countTokens(text: string): number {
   try {
     const encoding = getEncodingInstance();
     return encoding.encode(text).length;
-  } catch (error) {
+  } catch (_error) {
     // Fallback to character-based estimation
     return Math.ceil(text.length / 4);
   }
@@ -118,7 +118,7 @@ export function chunkByTokens(
     }
 
     return chunks;
-  } catch (error) {
+  } catch (_error) {
     // Fallback: Character-based chunking (4 chars ≈ 1 token)
     const targetChars = targetTokens * 4;
     const overlapChars = overlapTokens * 4;

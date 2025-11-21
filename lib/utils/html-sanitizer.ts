@@ -194,7 +194,7 @@ export function sanitizeArticleHtml(html: string): string {
     });
 
     return sanitized.trim();
-  } catch (error) {
+  } catch (_error) {
     // Fallback to text-only on sanitization failure
     return stripHtmlTags(html);
   }
