@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { articleSearchAgent } from '@/lib/rag/agents/article-search-agent';
-import { checkRateLimit, ragAgentSearchRateLimit, RateLimitError } from '@/lib/rate-limiter';
+import { articleQaAgent as _articleQaAgent } from '@/lib/rag/agents/article-qa-agent';
+import { checkRateLimit, ragAgentSearchRateLimit, articleQaRateLimit, RateLimitError } from '@/lib/rate-limiter';
 import { AgentResponseCache } from '@/lib/cache/agent-response-cache';
+import { ArticleQACache as _ArticleQACache } from '@/lib/cache/article-qa-cache';
 import { detectPromptInjection, sanitizeQuery } from '@/lib/rag/security/prompt-injection-detector';
 import { VectorSearchService, SearchResult } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
@@ -43,9 +45,32 @@ export const runtime = 'nodejs'; // Required for Prisma
 const tracer = trace.getTracer('rag-agent');
 
 /**
+ * Agent type schema for pre-validation
+ *
+ * Used to determine rate limit before full validation.
+ * Lightweight schema to prevent DoS attacks.
+ */
+const agentTypeSchema = z.object({
+  agentType: z
+    .enum(['article-search', 'article-qa'])
+    .optional()
+    .default('article-search'),
+});
+
+/**
  * Request validation schema
+ *
+ * Supports two agent types:
+ * - article-search: Search across all articles (default)
+ * - article-qa: Answer questions about a specific article (requires articleId)
  */
 const agentRequestSchema = z.object({
+  agentType: z
+    .enum(['article-search', 'article-qa'])
+    .optional()
+    .default('article-search')
+    .describe('Agent type: article-search (default) or article-qa'),
+
   query: z
     .string()
     .min(1, 'Query cannot be empty')
@@ -54,6 +79,21 @@ const agentRequestSchema = z.object({
     .refine((q) => q.length > 0, {
       message: 'Query cannot be empty after sanitization',
     }),
+
+  articleId: z
+    .string()
+    .cuid()
+    .optional()
+    .describe('Article ID (required for article-qa mode)'),
+}).superRefine((data, ctx) => {
+  // articleId is required for article-qa mode
+  if (data.agentType === 'article-qa' && !data.articleId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['articleId'],
+      message: 'articleId is required for article-qa mode',
+    });
+  }
 });
 
 /**
@@ -137,6 +177,59 @@ function formatResultsAsText(results: SearchResult[], lang: 'ja' | 'en'): string
 }
 
 /**
+ * Fetch article context for QA mode
+ *
+ * Retrieves article metadata and generates snippet for context chunk.
+ * TODO: Enforce article visibility once visibility model is finalized.
+ *
+ * Note: Prefixed with _ to satisfy ESLint (intentionally unused until Phase 3).
+ *
+ * @param articleId - Article ID
+ * @returns Article context with snippet
+ * @throws Error if article not found
+ */
+async function _fetchQaContext(articleId: string): Promise<{
+  article: {
+    id: string;
+    title: string;
+    updatedAt: Date;
+  };
+  snippet: string;
+}> {
+  const article = await prisma.article.findUnique({
+    where: { id: articleId },
+    select: {
+      id: true,
+      title: true,
+      updatedAt: true,
+      summary: true,
+      detailedSummary: true,
+    },
+  });
+
+  if (!article) {
+    throw new Error(`Article ${articleId} not found`);
+  }
+
+  // TODO: Enforce article.visibility once visibility model is finalized
+  // if (article.visibility !== 'public') {
+  //   throw new Error(`Article ${articleId} is not accessible`);
+  // }
+
+  // Generate snippet (first 100 characters of summary)
+  const snippet = (article.detailedSummary || article.summary || article.title).substring(0, 100);
+
+  return {
+    article: {
+      id: article.id,
+      title: article.title,
+      updatedAt: article.updatedAt,
+    },
+    snippet,
+  };
+}
+
+/**
  * Attach rate limit headers to response
  *
  * Also sets Cache-Control to prevent intermediary caching.
@@ -168,8 +261,15 @@ interface RateLimitInfo {
   reset: Date;
 }
 
+/**
+ * Validated request type
+ *
+ * Note: articleId is required when agentType='article-qa' (enforced by superRefine)
+ */
 interface ValidatedRequest {
+  agentType: 'article-search' | 'article-qa';
   query: string;
+  articleId?: string;
 }
 
 /**
@@ -275,6 +375,12 @@ function createCachedSSEResponse(
  *
  * Uses articleSearchAgent.stream() for real-time progress updates.
  * Emits SSE events: cached, text-delta, tool-start, tool-complete, fallback, finish, error.
+ *
+ * TODO (Phase 3): Add agent selection based on validatedRequest.agentType
+ * - article-search: articleSearchAgent (existing)
+ * - article-qa: articleQaAgent (new)
+ * Also update cache selection (AgentResponseCache vs ArticleQACache) and
+ * send initial context chunk for article-qa mode.
  */
 async function handleStreamingRequest(
   validatedRequest: ValidatedRequest,
@@ -536,6 +642,11 @@ async function createStreamingResponse(
  *
  * This is the original generate() implementation, extracted for dual-path support.
  * Used when AGENT_STREAMING_ENABLED=false or as fallback.
+ *
+ * TODO (Phase 3): Add agent selection based on validatedRequest.agentType
+ * - article-search: articleSearchAgent (existing)
+ * - article-qa: articleQaAgent (new)
+ * Also update cache selection (AgentResponseCache vs ArticleQACache).
  */
 async function handleBatchRequest(
   validatedRequest: ValidatedRequest,
@@ -719,49 +830,10 @@ export async function POST(request: NextRequest) {
 
       span.setAttribute('auth.userId', session.user.id);
 
-      // Layer 2: Rate limiting
-      let rateLimitInfo: { limit: number; remaining: number; reset: Date } | undefined;
-
-      try {
-        rateLimitInfo = await checkRateLimit(
-          `rag:agent:${session.user.id}`,
-          ragAgentSearchRateLimit
-        );
-        span.setAttribute('rateLimit.remaining', rateLimitInfo.remaining);
-      } catch (error) {
-        if (error instanceof RateLimitError) {
-          span.setAttribute('rateLimit.exceeded', true);
-          logger.warn(
-            {
-              userId: session.user.id,
-              limit: error.limit,
-            },
-            'Agent rate limit exceeded'
-          );
-
-          return NextResponse.json(
-            {
-              error: 'Rate limit exceeded',
-              limit: error.limit,
-              remaining: error.remaining,
-              reset: error.reset.toISOString(),
-            },
-            {
-              status: 429,
-              headers: {
-                'X-RateLimit-Limit': error.limit.toString(),
-                'X-RateLimit-Remaining': '0',
-                'X-RateLimit-Reset': Math.floor(error.reset.getTime() / 1000).toString(),
-                'Retry-After': Math.ceil((error.reset.getTime() - Date.now()) / 1000).toString(),
-              },
-            }
-          );
-        }
-        throw error;
-      }
-
-      // Layer 3: Input validation
+      // Layer 2: Pre-parse agentType for rate limiting
       let body;
+      let agentType: 'article-search' | 'article-qa';
+
       try {
         body = await request.json();
       } catch (error) {
@@ -783,9 +855,64 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Stage 1: Parse agentType only (lightweight, DoS-safe)
+      try {
+        const typeValidation = agentTypeSchema.parse(body);
+        agentType = typeValidation.agentType;
+      } catch (_error) {
+        // Default to article-search on parsing error
+        agentType = 'article-search';
+      }
+
+      span.setAttribute('agent.type', agentType);
+
+      // Layer 3: Rate limiting (agent-type-specific)
+      const rateLimit = agentType === 'article-qa' ? articleQaRateLimit : ragAgentSearchRateLimit;
+      const rateKey = `rag:agent:${agentType}:${session.user.id}`;
+      let rateLimitInfo: { limit: number; remaining: number; reset: Date } | undefined;
+
+      try {
+        rateLimitInfo = await checkRateLimit(rateKey, rateLimit);
+        span.setAttribute('rateLimit.remaining', rateLimitInfo.remaining);
+        span.setAttribute('rateLimit.limit', rateLimitInfo.limit);
+      } catch (error) {
+        if (error instanceof RateLimitError) {
+          span.setAttribute('rateLimit.exceeded', true);
+          logger.warn(
+            {
+              userId: session.user.id,
+              agentType,
+              limit: error.limit,
+            },
+            'Agent rate limit exceeded'
+          );
+
+          return NextResponse.json(
+            {
+              error: 'Rate limit exceeded',
+              agentType,
+              limit: error.limit,
+              remaining: error.remaining,
+              reset: error.reset.toISOString(),
+            },
+            {
+              status: 429,
+              headers: {
+                'X-RateLimit-Limit': error.limit.toString(),
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': Math.floor(error.reset.getTime() / 1000).toString(),
+                'Retry-After': Math.ceil((error.reset.getTime() - Date.now()) / 1000).toString(),
+              },
+            }
+          );
+        }
+        throw error;
+      }
+
+      // Layer 4: Full input validation (Stage 2)
       const validatedRequest = agentRequestSchema.parse(body);
 
-      // Layer 4: Prompt injection detection
+      // Layer 5: Prompt injection detection
       if (detectPromptInjection(validatedRequest.query)) {
         span.setAttribute('security.promptInjection', true);
         logger.warn(

@@ -140,6 +140,22 @@ export const ragSearchRateLimit = createRateLimiter(10, 60, 'ratelimit:rag:searc
 export const ragAgentSearchRateLimit = createRateLimiter(5, 60, 'ratelimit:rag:agent');
 
 /**
+ * Article QA Rate Limiter
+ * - 10 requests per minute per user
+ *
+ * More permissive than article-search to support multi-turn Q&A sessions.
+ * Users typically ask 2-5 follow-up questions per article.
+ *
+ * Rationale:
+ * - Higher limit supports conversational flow
+ * - Per-article caching reduces actual agent calls
+ * - 6-second intervals maintain cost control
+ *
+ * @see Plan: plan_20251121_085951_509_conversational-learning-coach.md
+ */
+export const articleQaRateLimit = createRateLimiter(10, 60, 'ratelimit:rag:article-qa');
+
+/**
  * Embedding Generation Rate Limiter
  * - 100 requests per hour per user
  * - Fixed window algorithm (default)

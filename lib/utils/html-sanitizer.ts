@@ -158,6 +158,57 @@ export function cleanHtml(html: string): string {
 }
 
 /**
+ * Sanitize article HTML content for AI context
+ *
+ * Preserves safe formatting tags while removing dangerous elements.
+ * Used for article content in Conversational Learning Coach.
+ *
+ * Current policy:
+ * - Allowed: p, ul, ol, li, strong, em, code, pre, a, blockquote, br
+ * - Removed: h1-h6, img, script, style, iframe, object
+ *
+ * TODO: Consider adding heading tags (h1-h3) if heading structure is needed for context.
+ * TODO: Consider scheme restrictions (http/https only) via allowedSchemes config.
+ * TODO: Consider internal link handling (different target policy for same-origin links).
+ *
+ * @param html - HTML string from article content
+ * @returns Sanitized HTML with safe tags preserved
+ */
+export function sanitizeArticleHtml(html: string): string {
+  if (!html) return '';
+
+  try {
+    const sanitized = sanitizeHtmlLib(html, {
+      allowedTags: ['p', 'ul', 'ol', 'li', 'strong', 'em', 'code', 'pre', 'a', 'blockquote', 'br'],
+      allowedAttributes: {
+        a: ['href', 'title', 'rel'],
+        code: ['class'],
+      },
+      transformTags: {
+        a: (tagName, attribs) => {
+          return {
+            tagName: 'a',
+            attribs: {
+              ...attribs,
+              rel: 'nofollow noopener',
+              target: '_blank',
+            },
+          };
+        },
+      },
+      exclusiveFilter: (frame) => {
+        return frame.tag === 'script' || frame.tag === 'style' || frame.tag === 'iframe' || frame.tag === 'object';
+      },
+    });
+
+    return sanitized.trim();
+  } catch (_error) {
+    // Fallback to text-only on sanitization failure
+    return stripHtmlTags(html);
+  }
+}
+
+/**
  * Escape HTML special characters
  *
  * Converts special characters to their HTML entity equivalents
