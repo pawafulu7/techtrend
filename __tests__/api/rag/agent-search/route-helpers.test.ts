@@ -9,9 +9,9 @@
 import { describe, it, expect } from '@jest/globals';
 
 describe('Route Helpers', () => {
-  it('placeholder test', () => {
-    // resolveModeContext is internal to route.ts
-    // Will be tested via API integration tests
-    expect(true).toBe(true);
+  it.skip('resolveModeContext will be tested via API integration tests', () => {
+    // resolveModeContext is internal to route.ts (not exported)
+    // Will be tested indirectly via API integration tests
+    // TODO: Extract to separate module if direct testing is needed
   });
 });

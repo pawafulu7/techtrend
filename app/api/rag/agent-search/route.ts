@@ -16,6 +16,26 @@ import type { Session } from 'next-auth';
 import type { LanguageModelV2ToolResultOutput } from '@ai-sdk/provider';
 
 /**
+ * Custom error for article not found (404)
+ */
+class ArticleNotFoundError extends Error {
+  constructor(articleId: string) {
+    super(`Article ${articleId} not found`);
+    this.name = 'ArticleNotFoundError';
+  }
+}
+
+/**
+ * Custom error for mode context resolution failures (400)
+ */
+class ModeContextError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ModeContextError';
+  }
+}
+
+/**
  * RAG Agent Search API (Vercel AI SDK)
  *
  * POST /api/rag/agent-search
@@ -182,13 +202,11 @@ function formatResultsAsText(results: SearchResult[], lang: 'ja' | 'en'): string
  * Retrieves article metadata and generates snippet for context chunk.
  * TODO: Enforce article visibility once visibility model is finalized.
  *
- * Note: Prefixed with _ to satisfy ESLint (intentionally unused until Phase 3).
- *
  * @param articleId - Article ID
  * @returns Article context with snippet
- * @throws Error if article not found
+ * @throws ArticleNotFoundError if article not found
  */
-async function _fetchQaContext(articleId: string): Promise<{
+async function fetchQaContext(articleId: string): Promise<{
   article: {
     id: string;
     title: string;
@@ -208,7 +226,7 @@ async function _fetchQaContext(articleId: string): Promise<{
   });
 
   if (!article) {
-    throw new Error(`Article ${articleId} not found`);
+    throw new ArticleNotFoundError(articleId);
   }
 
   // TODO: Enforce article.visibility once visibility model is finalized
@@ -256,7 +274,7 @@ async function resolveModeContext(
 
   if (isArticleQa) {
     // Article QA mode
-    const qaContext = await _fetchQaContext(validatedRequest.articleId!);
+    const qaContext = await fetchQaContext(validatedRequest.articleId!);
 
     const systemMessage = `${localeInstruction}
 
@@ -693,11 +711,16 @@ async function createStreamingResponse(
             }
 
             if (!fullText.trim()) {
+              // Fallback: Vector search across all articles (both article-search and article-qa modes)
+              // Note: QA mode fallback is NOT restricted to the target article
+              // This provides broader results when agent fails to respond
               try {
                 const searchService = new VectorSearchService(prisma);
                 const fallbackResults = await searchService.search(validatedRequest.query, { topK: 10 });
                 const fallbackText = formatResultsAsText(fallbackResults, modeContext.preferredLang);
 
+                // Note: Fallback results are NOT cached (intentional)
+                // Avoids caching low-quality fallback responses
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'fallback', text: fallbackText, resultCount: fallbackResults.length })}\n\n`));
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'finish', text: fallbackText, usage: { totalTokens: 0 }, toolCalls: [], cached: false, fallback: true })}\n\n`));
                 controller.close();
@@ -1031,6 +1054,9 @@ async function handleBatchRequest(
       'Agent failed, using fallback'
     );
 
+    // Fallback: Vector search across all articles (both article-search and article-qa modes)
+    // Note: QA mode fallback is NOT restricted to the target article
+    // This provides broader results when agent fails to respond
     const searchService = new VectorSearchService(prisma);
     const fallbackResults = await searchService.search(validatedRequest.query, {
       topK: 10,
@@ -1043,6 +1069,11 @@ async function handleBatchRequest(
     span.setAttribute('fallback.resultCount', fallbackResults.length);
   }
 
+  // Cache successful responses
+  // Note: Fallback results ARE cached in batch mode (differs from streaming)
+  // Streaming: Fallback NOT cached (intentional, avoid low-quality cache)
+  // Batch: Fallback cached (for consistency, user may retry)
+  // TODO: Consider aligning policies if this causes confusion
   try {
     if (modeContext.isArticleQa) {
       await articleQaCache!.set(
@@ -1237,6 +1268,44 @@ export async function POST(request: NextRequest) {
       span.setAttribute('error', true);
       span.recordException(error as Error);
       span.setStatus({ code: SpanStatusCode.ERROR });
+
+      // Article not found errors (404)
+      if (error instanceof ArticleNotFoundError) {
+        logger.warn(
+          {
+            userId: session?.user?.id,
+            articleId: (error as any).articleId,
+          },
+          'Article not found'
+        );
+
+        return NextResponse.json(
+          {
+            error: 'Article not found',
+            details: error.message,
+          },
+          { status: 404 }
+        );
+      }
+
+      // Mode context errors (400)
+      if (error instanceof ModeContextError) {
+        logger.warn(
+          {
+            userId: session?.user?.id,
+            error: error.message,
+          },
+          'Mode context resolution failed'
+        );
+
+        return NextResponse.json(
+          {
+            error: 'Invalid request configuration',
+            details: error.message,
+          },
+          { status: 400 }
+        );
+      }
 
       // Zod validation errors
       if (error instanceof ZodError) {
