@@ -471,14 +471,11 @@ function createCachedSSEResponse(
 /**
  * Handle streaming agent search request
  *
- * Uses articleSearchAgent.stream() for real-time progress updates.
- * Emits SSE events: cached, text-delta, tool-start, tool-complete, fallback, finish, error.
+ * Resolves mode-specific context (agent, system prompt, cache strategy) prior to
+ * streaming and emits SSE events: cached, text-delta, tool-start, tool-complete,
+ * fallback, finish, error.
  *
- * TODO (Phase 3): Add agent selection based on validatedRequest.agentType
- * - article-search: articleSearchAgent (existing)
- * - article-qa: articleQaAgent (new)
- * Also update cache selection (AgentResponseCache vs ArticleQACache) and
- * send initial context chunk for article-qa mode.
+ * TODO (Phase 3): Send initial context chunk for article-qa mode.
  */
 async function handleStreamingRequest(
   validatedRequest: ValidatedRequest,
@@ -487,28 +484,98 @@ async function handleStreamingRequest(
   request: NextRequest,
   rateLimitInfo?: RateLimitInfo
 ): Promise<Response> {
-  // Check cache first
-  const responseCache = new AgentResponseCache();
-  const cachedResponse = await responseCache.get(validatedRequest.query);
+  let modeContext: ModeContext;
+  try {
+    modeContext = await resolveModeContext(validatedRequest, request);
+  } catch (error) {
+    parentSpan.setAttribute('mode.resolve.failed', true);
+    parentSpan.recordException(error as Error);
+    parentSpan.setStatus({ code: SpanStatusCode.ERROR, message: 'Failed to resolve mode context' });
+    throw error;
+  }
+
+  if (modeContext.isArticleQa && !modeContext.qaContext) {
+    const contextError = new Error('Article QA mode requires qaContext');
+    parentSpan.recordException(contextError);
+    parentSpan.setStatus({ code: SpanStatusCode.ERROR, message: contextError.message });
+    throw contextError;
+  }
+
+  parentSpan.setAttributes({
+    'mode.agentType': modeContext.agentType,
+    'mode.preferredLang': modeContext.preferredLang,
+    'mode.isArticleQa': modeContext.isArticleQa,
+  });
+
+  if (modeContext.traceAttributes) {
+    parentSpan.setAttributes(modeContext.traceAttributes);
+  }
+
+  if (modeContext.metricsTag) {
+    parentSpan.setAttribute('mode.metricsTag', modeContext.metricsTag);
+  }
+
+  if (modeContext.qaContext) {
+    parentSpan.setAttribute('mode.articleId', modeContext.qaContext.articleId);
+  }
+
+  const cacheStrategy = modeContext.isArticleQa ? 'article-qa' : 'agent-response';
+  parentSpan.setAttribute('cache.strategy', cacheStrategy);
+
+  const agentCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
+  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
+  let cachedResponse: string | null = null;
+
+  if (modeContext.isArticleQa) {
+    const qaContext = modeContext.qaContext!;
+    cachedResponse = await articleQaCache!.get(
+      qaContext.articleId,
+      validatedRequest.query,
+      modeContext.preferredLang,
+      qaContext.updatedAt
+    );
+  } else {
+    cachedResponse = await agentCache!.get(validatedRequest.query);
+  }
 
   if (cachedResponse) {
     parentSpan.setAttribute('cache.hit', true);
     parentSpan.setAttribute('streaming.cached', true);
-    logger.debug(
-      {
-        userId: session.user.id,
-        queryPreview: validatedRequest.query.substring(0, 50),
-      },
-      'Agent cache hit (streaming mode)'
-    );
+
+    const logBase = {
+      userId: session.user.id,
+      queryPreview: validatedRequest.query.substring(0, 50),
+      mode: modeContext.agentType,
+    };
+
+    if (modeContext.isArticleQa) {
+      logger.debug(
+        {
+          ...logBase,
+          articleId: modeContext.qaContext!.articleId,
+          locale: modeContext.preferredLang,
+        },
+        'Article QA cache hit (streaming mode)'
+      );
+    } else {
+      logger.debug(logBase, 'Agent cache hit (streaming mode)');
+    }
 
     return createCachedSSEResponse(cachedResponse, rateLimitInfo);
   }
 
   parentSpan.setAttribute('cache.hit', false);
+  parentSpan.setAttribute('streaming.cached', false);
 
   // Start streaming (implementation in createStreamingResponse)
-  return createStreamingResponse(validatedRequest, session, parentSpan, request, rateLimitInfo);
+  return createStreamingResponse(
+    validatedRequest,
+    session,
+    parentSpan,
+    request,
+    modeContext,
+    rateLimitInfo
+  );
 }
 
 /**
@@ -520,13 +587,36 @@ async function createStreamingResponse(
   validatedRequest: ValidatedRequest,
   session: Session,
   parentSpan: Span,
-  request: NextRequest,
+  _request: NextRequest,
+  modeContext: ModeContext,
   rateLimitInfo?: RateLimitInfo
 ): Promise<Response> {
   const encoder = new TextEncoder();
-  const responseCache = new AgentResponseCache();
+  const responseCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
+  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
   const tracer = trace.getTracer('rag-agent');
   const streamSpan = tracer.startSpan('rag.agent-search.stream', {}, trace.setSpan(context.active(), parentSpan));
+  const qaContext = modeContext.qaContext;
+
+  if (modeContext.isArticleQa && !qaContext) {
+    const contextError = new Error('Article QA mode requires qaContext');
+    streamSpan.recordException(contextError);
+    streamSpan.setStatus({ code: SpanStatusCode.ERROR, message: contextError.message });
+    streamSpan.end();
+    throw contextError;
+  }
+
+  streamSpan.setAttributes({
+    'mode.agentType': modeContext.agentType,
+    'mode.preferredLang': modeContext.preferredLang,
+  });
+
+  streamSpan.setAttribute('cache.strategy', modeContext.isArticleQa ? 'article-qa' : 'agent-response');
+
+  if (modeContext.traceAttributes) {
+    streamSpan.setAttributes(modeContext.traceAttributes);
+  }
+
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   const stream = new ReadableStream({
@@ -536,15 +626,9 @@ async function createStreamingResponse(
       let usage: any = {};
 
       try {
-        // Determine user's preferred language
-        const preferredLang = getPreferredLanguage(validatedRequest.query, request);
-        const localeInstruction = preferredLang === 'ja'
-          ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
-          : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
-
-        const streamResult = await articleSearchAgent.stream({
+        const streamResult = await modeContext.agent.stream({
           messages: [
-            { role: 'system', content: localeInstruction },
+            { role: 'system', content: modeContext.systemMessage },
             { role: 'user', content: validatedRequest.query },
           ],
         });
@@ -612,8 +696,7 @@ async function createStreamingResponse(
               try {
                 const searchService = new VectorSearchService(prisma);
                 const fallbackResults = await searchService.search(validatedRequest.query, { topK: 10 });
-                const queryLang = getPreferredLanguage(validatedRequest.query, request);
-                const fallbackText = formatResultsAsText(fallbackResults, queryLang);
+                const fallbackText = formatResultsAsText(fallbackResults, modeContext.preferredLang);
 
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'fallback', text: fallbackText, resultCount: fallbackResults.length })}\n\n`));
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'finish', text: fallbackText, usage: { totalTokens: 0 }, toolCalls: [], cached: false, fallback: true })}\n\n`));
@@ -629,7 +712,17 @@ async function createStreamingResponse(
             }
 
             try {
-              await responseCache.set(validatedRequest.query, fullText);
+              if (modeContext.isArticleQa) {
+                await articleQaCache!.set(
+                  qaContext!.articleId,
+                  validatedRequest.query,
+                  modeContext.preferredLang,
+                  qaContext!.updatedAt,
+                  fullText
+                );
+              } else {
+                await responseCache!.set(validatedRequest.query, fullText);
+              }
             } catch (cacheError) {
               logger.warn({ error: sanitizeError(cacheError), userId: session.user.id }, 'Failed to cache streaming response');
             }
@@ -689,8 +782,7 @@ async function createStreamingResponse(
           topK: 10,
         });
 
-        const queryLang = getPreferredLanguage(validatedRequest.query, request);
-        const fallbackText = formatResultsAsText(fallbackResults, queryLang);
+        const fallbackText = formatResultsAsText(fallbackResults, modeContext.preferredLang);
 
         controller.enqueue(
           encoder.encode(
