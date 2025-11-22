@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ChevronDown, X, MessageSquare } from 'lucide-react';
+import { ArrowUpRight, MessageSquare, Sparkles, Tag, X } from 'lucide-react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
-import { AgentSampleQueries } from '@/app/search/agent/_components/agent-sample-queries';
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
 import { AgentErrorDisplay } from '@/app/search/agent/_components/agent-error-display';
 import { useArticleQA } from '@/lib/hooks/useArticleQA';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
@@ -213,85 +212,155 @@ export function ArticleQAClient({
     );
 
   return (
-    <div>
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground mb-1">TechTrend Article QA</p>
-          <h1 className="text-2xl font-bold">{displayTitle}</h1>
-          {displaySnippet && (
-            <p className="text-sm text-muted-foreground mt-2 line-clamp-2" data-testid="article-snippet">
-              {displaySnippet}
-            </p>
+    <section className="space-y-6">
+      <div className="relative isolate overflow-hidden rounded-[32px] border border-slate-100 bg-gradient-to-br from-indigo-50 via-white to-sky-50 px-5 py-7 shadow-[0_45px_90px_-50px_rgba(15,23,42,0.7)] sm:px-8">
+        <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-sky-200/60 blur-[120px]" />
+        <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-indigo-100/70 blur-[120px]" />
+
+        <div className="relative z-10 space-y-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600 shadow-sm">
+                <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                TechTrend Article QA
+              </div>
+              <h1 className="text-3xl font-bold leading-tight text-slate-900">{displayTitle}</h1>
+              {displaySnippet ? (
+                <p className="text-sm text-slate-600 md:text-base" data-testid="article-snippet">
+                  {displaySnippet}
+                </p>
+              ) : (
+                <p className="text-sm text-slate-600 md:text-base">
+                  記事に関する疑問を入力すると、該当箇所を引用した丁寧な回答が得られます。
+                </p>
+              )}
+            </div>
+            {onClose && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-start rounded-full border-white/70 bg-white/80 text-slate-600 shadow-sm transition hover:shadow"
+                onClick={onClose}
+                aria-label="記事QAパネルを閉じる"
+              >
+                <X className="h-4 w-4 mr-2" />
+                {locale === 'ja' ? '閉じる' : 'Close'}
+              </Button>
+            )}
+          </div>
+
+          {normalizedTopics.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {normalizedTopics.map((topic) => (
+                <Badge
+                  key={topic}
+                  variant="secondary"
+                  className="gap-1 rounded-full border border-white/60 bg-white/80 px-3 py-1 text-xs font-medium text-slate-600"
+                >
+                  <Tag className="h-3 w-3 text-indigo-500" />
+                  {topic}
+                </Badge>
+              ))}
+            </div>
           )}
-          {!displaySnippet && (
-            <p className="text-sm text-muted-foreground mt-2">
-              記事について知りたいことを自然言語で質問してください。AIが文脈に沿って回答します。
-            </p>
-          )}
-        </div>
-        {onClose && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="self-end md:self-start"
-            onClick={onClose}
-            aria-label="記事QAパネルを閉じる"
-          >
-            <X className="h-4 w-4 mr-2" />
-            閉じる
-          </Button>
-        )}
-      </div>
 
-      <AgentSearchBar
-        onSearch={handleSearch}
-        isLoading={isLoading}
-        onPrefillQuery={handleSetPrefillCallback}
-        badgeLabel={locale === 'ja' ? '記事Q&A' : 'Article Q&A'}
-        badgeIcon={<MessageSquare className="h-3 w-3 mr-1" />}
-        helperText={helperText}
-        placeholder={placeholder}
-        submitLabel={locale === 'ja' ? '質問' : 'Ask'}
-        loadingLabel={locale === 'ja' ? '回答中' : 'Answering'}
-        historyEnabled={false}
-        inputLabel={locale === 'ja' ? '記事QA質問入力' : 'Article QA question input'}
-        shortcutHint={shortcutHint}
-      />
+          <div className="rounded-[28px] border border-white/60 bg-white/80 p-4 shadow-[0_40px_100px_-70px_rgba(15,23,42,0.8)] backdrop-blur-sm sm:p-6">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+              <MessageSquare className="h-4 w-4 text-indigo-500" />
+              {locale === 'ja' ? 'この記事に質問する' : 'Ask this article'}
+            </div>
+            <div className="mt-4">
+              <AgentSearchBar
+                onSearch={handleSearch}
+                isLoading={isLoading}
+                onPrefillQuery={handleSetPrefillCallback}
+                badgeLabel={locale === 'ja' ? '記事Q&A' : 'Article Q&A'}
+                badgeIcon={<MessageSquare className="h-3 w-3 mr-1" />}
+                helperText={helperText}
+                placeholder={placeholder}
+                submitLabel={locale === 'ja' ? '質問' : 'Ask'}
+                loadingLabel={locale === 'ja' ? '回答中' : 'Answering'}
+                historyEnabled={false}
+                inputLabel={locale === 'ja' ? '記事QA質問入力' : 'Article QA question input'}
+                shortcutHint={shortcutHint}
+              />
+            </div>
 
-      <Collapsible className="mt-4">
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="w-full justify-center gap-2">
-            <span className="text-sm">質問例を見てみる</span>
-            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-4">
-          <AgentSampleQueries onSelectQuery={handlePrefillQuery} queries={sampleQueries} />
-        </CollapsibleContent>
-      </Collapsible>
-
-      <div className="mt-8 space-y-4">
-        {conversation
-          .filter((message) => message.role === 'user')
-          .map((message) => (
-            <div key={message.id} className="flex justify-end">
-              <div className="max-w-2xl rounded-2xl bg-primary text-primary-foreground px-4 py-3 text-sm shadow">
-                {message.content}
+            <div className="mt-6">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">
+                <Sparkles className="h-4 w-4 text-indigo-500" />
+                {locale === 'ja' ? '質問のヒント' : 'Sample questions'}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-3">
+                {sampleQueries.map((query) => (
+                  <button
+                    key={query}
+                    type="button"
+                    aria-label={query}
+                    onClick={() => handlePrefillQuery(query)}
+                    className="group inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
+                  >
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 transition group-hover:bg-indigo-100">
+                      Q
+                    </span>
+                    <span className="text-left">{query}</span>
+                    <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-indigo-400" />
+                  </button>
+                ))}
               </div>
             </div>
-          ))}
-
-        {isLoading && !isStreamingWithPartialText && <AgentLoadingState />}
-        {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
-        {showResult && (result || isStreamingWithPartialText) && !error && (
-          <AgentAnswerPanel
-            result={result}
-            partialText={ENABLE_STREAMING_UI ? partialText : null}
-            isStreaming={shouldShowStreamingResult}
-            onFeedback={handleFeedback}
-          />
-        )}
+          </div>
+        </div>
       </div>
-    </div>
+
+      <div className="rounded-[32px] border border-slate-100 bg-white px-4 py-6 shadow-[0_40px_90px_-60px_rgba(15,23,42,0.85)] sm:px-8 sm:py-8">
+        <div className="mb-6 flex flex-col gap-1">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+            <MessageSquare className="h-4 w-4 text-indigo-500" />
+            {locale === 'ja' ? 'チャットタイムライン' : 'Conversation'}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {locale === 'ja'
+              ? '質問内容とAIの回答がカード形式で表示されます。引用には記事ソースが含まれます。'
+              : 'Your prompts and grounded answers render below with contextual citations.'}
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {conversation
+            .filter((message) => message.role === 'user')
+            .map((message) => (
+              <div key={message.id} className="flex justify-end">
+                <div className="max-w-2xl rounded-3xl bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-500 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-200/60">
+                  {message.content}
+                </div>
+              </div>
+            ))}
+
+          {isLoading && !isStreamingWithPartialText && (
+            <div className="rounded-2xl border border-slate-100/80 bg-slate-50/80 p-4">
+              <AgentLoadingState />
+            </div>
+          )}
+
+          {!isLoading && showResult && error && (
+            <div className="rounded-2xl border border-red-100 bg-red-50/80 p-4">
+              <AgentErrorDisplay error={error} onRetry={handleRetry} />
+            </div>
+          )}
+
+          {showResult && (result || isStreamingWithPartialText) && !error && (
+            <div className="rounded-[28px] border border-slate-100/80 bg-gradient-to-b from-white to-slate-50/70 p-1.5 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)]">
+              <AgentAnswerPanel
+                result={result}
+                partialText={ENABLE_STREAMING_UI ? partialText : null}
+                isStreaming={shouldShowStreamingResult}
+                onFeedback={handleFeedback}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }

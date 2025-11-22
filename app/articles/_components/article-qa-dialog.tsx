@@ -33,19 +33,21 @@ export function ArticleQADialog({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent
         aria-label={`${articleTitle}の記事について質問するダイアログ`}
-        className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="w-[96vw] max-w-5xl max-h-[92vh] overflow-hidden border-none bg-transparent p-0 shadow-none"
       >
-        <DialogHeader>
-          <DialogTitle className="sr-only">{articleTitle}の記事について質問する</DialogTitle>
+        <DialogHeader className="sr-only">
+          <DialogTitle>{articleTitle}の記事について質問する</DialogTitle>
           <DialogDescription>AIアシスタントに記事内容の疑問を質問できます。</DialogDescription>
         </DialogHeader>
-        <ArticleQAClient
-          articleId={articleId}
-          articleTitle={articleTitle}
-          articleSummary={articleSummary ?? undefined}
-          articleTopics={articleTopics}
-          onClose={() => setOpen(false)}
-        />
+        <div className="max-h-[92vh] overflow-y-auto rounded-[40px] bg-white/70 p-3 sm:p-6">
+          <ArticleQAClient
+            articleId={articleId}
+            articleTitle={articleTitle}
+            articleSummary={articleSummary ?? undefined}
+            articleTopics={articleTopics}
+            onClose={() => setOpen(false)}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );
