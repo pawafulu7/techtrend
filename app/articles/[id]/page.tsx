@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ArrowLeft, ExternalLink, TrendingUp, GraduationCap } from 'lucide-react';
+import { ArrowLeft, ExternalLink, TrendingUp, GraduationCap, MessageSquare } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,7 @@ import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
+import { ArticleQADialog } from '@/app/articles/_components/article-qa-dialog';
 
 interface PageProps {
   params: Promise<{
@@ -273,6 +274,13 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
               </div>
             </CardContent>
           </Card>
+
+          <ArticleQADialog articleId={article.id} articleTitle={article.translatedTitle || article.title}>
+            <Button variant="outline" size="lg" className="w-full sm:w-auto">
+              <MessageSquare className="h-5 w-5 mr-2" />
+              記事について質問する
+            </Button>
+          </ArticleQADialog>
         </div>
 
         <div className="lg:col-span-1">
