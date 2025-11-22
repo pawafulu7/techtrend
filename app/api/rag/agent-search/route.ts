@@ -12,6 +12,7 @@ import { logger, sanitizeError } from '@/lib/logger';
 import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api';
 import { ZodError, z } from 'zod';
 import { features } from '@/lib/config/env';
+import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import type { Session } from 'next-auth';
 import type { LanguageModelV2ToolResultOutput } from '@ai-sdk/provider';
 
@@ -242,7 +243,13 @@ async function fetchQaContext(articleId: string): Promise<{
   // }
 
   // Generate snippet (first 100 characters of summary)
-  const snippet = (article.detailedSummary || article.summary || article.title).substring(0, 100);
+  const detailedSummary =
+    article.detailedSummary && article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__'
+      ? stripHtmlTags(article.detailedSummary)
+      : '';
+  const summarySource = detailedSummary || stripHtmlTags(article.summary ?? '') || '';
+  const snippetSource = summarySource || article.title;
+  const snippet = snippetSource.slice(0, 160);
 
   return {
     article: {
@@ -283,9 +290,20 @@ async function resolveModeContext(
     // Article QA mode
     const qaContext = await fetchQaContext(validatedRequest.articleId!);
 
+    const summaryLine = qaContext.snippet ? `- Summary preview: ${qaContext.snippet}` : '- Summary preview: (not available)';
     const systemMessage = `${localeInstruction}
 
-Active article: ${qaContext.article.title} (#${qaContext.article.id}, updated ${qaContext.article.updatedAt.toISOString()}).
+Active article metadata:
+- Title: ${qaContext.article.title}
+- Article ID: ${qaContext.article.id}
+- Last updated: ${qaContext.article.updatedAt.toISOString()}
+${summaryLine}
+
+Article QA protocol:
+1. ALWAYS call the article-context tool first with { articleId: ${qaContext.article.id}, includeSummary: true } before replying.
+2. Include the user's question keywords plus helpful context terms (e.g., "概要", "メリット", "implementation caveats") in the tool query.
+3. If article-context returns no high-score chunks, retry once with a broader query and summarize the best chunk even if the score is low.
+4. Do NOT ask the user to repeat the question; interpret it using the article context.
 You MUST restrict all answers to this article.`;
 
     return {

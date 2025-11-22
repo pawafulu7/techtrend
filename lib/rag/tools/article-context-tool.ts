@@ -118,7 +118,7 @@ async function scoreChunks(options: {
   articleId: string;
   minScore: number;
 }): Promise<ScoredChunk[]> {
-  const { chunks, query, minScore } = options;
+  const { chunks, query, minScore: _minScore } = options;
 
   if (chunks.length === 0) {
     return [];
@@ -158,10 +158,8 @@ async function scoreChunks(options: {
       })
     );
 
-    // Filter by minScore and sort by score
-    return scoredChunks
-      .filter((c) => c.score >= minScore)
-      .sort((a, b) => b.score - a.score);
+    // Sort by score (filtering handled by caller to allow fallback logic)
+    return scoredChunks.sort((a, b) => b.score - a.score);
   } catch (error) {
     logger.warn(
       {
@@ -172,7 +170,7 @@ async function scoreChunks(options: {
       'article-context scoreChunks failed, using keyword-only scoring'
     );
 
-    // Fallback: keyword-only scoring
+    // Fallback: keyword-only scoring (unfiltered, caller will handle thresholds)
     return chunks
       .map((chunk) => {
         const keywordBoost = calculateKeywordBoost(chunk.html, query);
@@ -185,7 +183,6 @@ async function scoreChunks(options: {
 
         return { ...chunk, score };
       })
-      .filter((c) => c.score >= minScore)
       .sort((a, b) => b.score - a.score);
   }
 }
@@ -448,8 +445,24 @@ DO NOT use this tool for:
         minScore,
       });
 
+      let filteredChunks = scoredChunks.filter((c) => c.score >= minScore);
+      let relaxedThreshold: number | null = null;
+      let relaxedToFirstChunk = false;
+
+      if (filteredChunks.length === 0 && scoredChunks.length > 0) {
+        const loweredThreshold = Math.max(0.15, Math.min(0.3, minScore * 0.7));
+        filteredChunks = scoredChunks.filter((c) => c.score >= loweredThreshold);
+        if (filteredChunks.length > 0) {
+          relaxedThreshold = loweredThreshold;
+        } else {
+          filteredChunks = [scoredChunks[0]];
+          relaxedThreshold = 0;
+          relaxedToFirstChunk = true;
+        }
+      }
+
       // Select top chunks
-      const topChunks = scoredChunks.slice(0, maxChunks);
+      const topChunks = filteredChunks.slice(0, maxChunks);
 
       const elapsedMs = Date.now() - startTime;
       const avgScore =
@@ -466,6 +479,9 @@ DO NOT use this tool for:
           avgScore,
           elapsedMs,
           detailedSummaryUsed: rawChunks.some((c) => c.isSummary),
+          scoreRelaxed: relaxedThreshold !== null,
+          relaxedThreshold: relaxedThreshold ?? undefined,
+          relaxedToFirstChunk,
         },
         'Tool: article-context completed'
       );

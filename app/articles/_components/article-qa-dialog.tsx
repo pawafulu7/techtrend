@@ -14,10 +14,18 @@ import { ArticleQAClient } from './article-qa-client';
 export interface ArticleQADialogProps {
   articleId: string;
   articleTitle: string;
+  articleSummary?: string | null;
+  articleTopics?: string[];
   children: ReactNode;
 }
 
-export function ArticleQADialog({ articleId, articleTitle, children }: ArticleQADialogProps) {
+export function ArticleQADialog({
+  articleId,
+  articleTitle,
+  articleSummary,
+  articleTopics,
+  children,
+}: ArticleQADialogProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -31,7 +39,13 @@ export function ArticleQADialog({ articleId, articleTitle, children }: ArticleQA
           <DialogTitle className="sr-only">{articleTitle}の記事について質問する</DialogTitle>
           <DialogDescription>AIアシスタントに記事内容の疑問を質問できます。</DialogDescription>
         </DialogHeader>
-        <ArticleQAClient articleId={articleId} articleTitle={articleTitle} onClose={() => setOpen(false)} />
+        <ArticleQAClient
+          articleId={articleId}
+          articleTitle={articleTitle}
+          articleSummary={articleSummary ?? undefined}
+          articleTopics={articleTopics}
+          onClose={() => setOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   );

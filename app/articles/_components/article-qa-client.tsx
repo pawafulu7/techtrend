@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronDown, X } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { ChevronDown, X, MessageSquare } from 'lucide-react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 import { AgentSampleQueries } from '@/app/search/agent/_components/agent-sample-queries';
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
@@ -13,17 +13,11 @@ import { Button } from '@/components/ui/button';
 
 const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
-const SAMPLE_QUERIES = [
-  'この記事の要点を簡単に教えて',
-  'この記事の前提となる概念を教えて',
-  'この手法の代替案は？',
-  '実装時の注意点は？',
-  'この技術の最新動向は？',
-] as const;
-
 export interface ArticleQAClientProps {
   articleId: string;
   articleTitle: string;
+  articleSummary?: string;
+  articleTopics?: string[];
   locale?: 'ja' | 'en';
   onClose?: () => void;
 }
@@ -34,7 +28,75 @@ interface ChatMessage {
   content: string;
 }
 
-export function ArticleQAClient({ articleId, articleTitle, locale = 'ja', onClose }: ArticleQAClientProps) {
+function normalizeText(value?: string): string {
+  return value ? value.replace(/\s+/g, ' ').trim() : '';
+}
+
+function selectSummaryFocus(summary?: string): string | null {
+  const normalized = normalizeText(summary);
+  if (!normalized) return null;
+  const sentences = normalized
+    .split(/[。.!?]/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+  if (sentences.length === 0) {
+    return normalized.slice(0, 80);
+  }
+  const preferred = sentences.find((sentence) => sentence.length >= 12 && sentence.length <= 80);
+  return (preferred ?? sentences[0]).slice(0, 80);
+}
+
+function buildArticleSampleQueries(options: {
+  title: string;
+  summary?: string;
+  topics: string[];
+  locale: 'ja' | 'en';
+}): string[] {
+  const { title, summary, topics, locale } = options;
+  const sampleQueries = new Set<string>();
+  const focus = selectSummaryFocus(summary);
+  const safeTitle = title.trim();
+  const [primaryTopic, secondaryTopic] = topics;
+
+  if (locale === 'en') {
+    sampleQueries.add(`Give me the key takeaways from "${safeTitle}".`);
+    sampleQueries.add(`What prerequisites should I know before reading "${safeTitle}"?`);
+    if (focus) {
+      sampleQueries.add(`The article mentions "${focus}". Can you explain that section in detail?`);
+    }
+    if (primaryTopic) {
+      sampleQueries.add(`Why is ${primaryTopic} considered useful in this article?`);
+    }
+    if (secondaryTopic) {
+      sampleQueries.add(`What are the implementation cautions for ${secondaryTopic}?`);
+    }
+    sampleQueries.add(`Summarize the benefits and trade-offs discussed in "${safeTitle}".`);
+    return Array.from(sampleQueries).slice(0, 5);
+  }
+
+  sampleQueries.add(`「${safeTitle}」の要点を3行で教えて`);
+  sampleQueries.add(`「${safeTitle}」を理解するための前提知識は？`);
+  if (focus) {
+    sampleQueries.add(`要約で触れられていた「${focus}」について詳しく教えて`);
+  }
+  if (primaryTopic) {
+    sampleQueries.add(`この記事で${primaryTopic}が便利になる理由は？`);
+  }
+  if (secondaryTopic) {
+    sampleQueries.add(`${secondaryTopic}を実装する際の注意点は？`);
+  }
+  sampleQueries.add(`この記事で提案されている課題と解決策を整理して`);
+  return Array.from(sampleQueries).slice(0, 5);
+}
+
+export function ArticleQAClient({
+  articleId,
+  articleTitle,
+  articleSummary,
+  articleTopics,
+  locale = 'ja',
+  onClose,
+}: ArticleQAClientProps) {
   const [lastQuery, setLastQuery] = useState('');
   const [showResult, setShowResult] = useState(false);
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
@@ -101,8 +163,54 @@ export function ArticleQAClient({ articleId, articleTitle, locale = 'ja', onClos
 
   const isStreamingWithPartialText = ENABLE_STREAMING_UI && Boolean(partialText);
   const shouldShowStreamingResult = ENABLE_STREAMING_UI && Boolean(partialText && !result);
+  const normalizedTopics = useMemo(
+    () => (articleTopics ?? []).filter((topic): topic is string => Boolean(topic && topic.trim())),
+    [articleTopics]
+  );
   const displayTitle = contextChunk?.title ?? articleTitle;
-  const displaySnippet = contextChunk?.snippet;
+  const displaySnippet = contextChunk?.snippet ?? articleSummary;
+
+  const helperText =
+    locale === 'ja'
+      ? '記事の内容について気になる点を質問してください。AIが該当箇所を引用して回答します。'
+      : 'Ask any question about this article. The assistant will answer with grounded citations.';
+
+  const placeholder = useMemo(() => {
+    const primaryTopic = normalizedTopics[0];
+    if (locale === 'en') {
+      return primaryTopic
+        ? `e.g. What benefits does ${primaryTopic} provide in this article?`
+        : `e.g. What benefits does "${articleTitle}" highlight?`;
+    }
+    if (primaryTopic) {
+      return `例: ${primaryTopic}の利点や導入効果は？`;
+    }
+    return `例: 「${articleTitle}」で紹介されているメリットは？`;
+  }, [articleTitle, normalizedTopics, locale]);
+
+  const sampleQueries = useMemo(
+    () =>
+      buildArticleSampleQueries({
+        title: articleTitle,
+        summary: articleSummary,
+        topics: normalizedTopics,
+        locale,
+      }),
+    [articleTitle, articleSummary, normalizedTopics, locale]
+  );
+
+  const shortcutHint =
+    locale === 'ja' ? (
+      <>
+        ショートカット: <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+Shift+K</kbd> または{' '}
+        <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+Shift+K</kbd> で質問欄を開く
+      </>
+    ) : (
+      <>
+        Shortcut: <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+Shift+K</kbd> or{' '}
+        <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+Shift+K</kbd> to focus the question box
+      </>
+    );
 
   return (
     <div>
@@ -135,7 +243,20 @@ export function ArticleQAClient({ articleId, articleTitle, locale = 'ja', onClos
         )}
       </div>
 
-      <AgentSearchBar onSearch={handleSearch} isLoading={isLoading} onPrefillQuery={handleSetPrefillCallback} />
+      <AgentSearchBar
+        onSearch={handleSearch}
+        isLoading={isLoading}
+        onPrefillQuery={handleSetPrefillCallback}
+        badgeLabel={locale === 'ja' ? '記事Q&A' : 'Article Q&A'}
+        badgeIcon={<MessageSquare className="h-3 w-3 mr-1" />}
+        helperText={helperText}
+        placeholder={placeholder}
+        submitLabel={locale === 'ja' ? '質問' : 'Ask'}
+        loadingLabel={locale === 'ja' ? '回答中' : 'Answering'}
+        historyEnabled={false}
+        inputLabel={locale === 'ja' ? '記事QA質問入力' : 'Article QA question input'}
+        shortcutHint={shortcutHint}
+      />
 
       <Collapsible className="mt-4">
         <CollapsibleTrigger asChild>
@@ -145,7 +266,7 @@ export function ArticleQAClient({ articleId, articleTitle, locale = 'ja', onClos
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-4">
-          <AgentSampleQueries onSelectQuery={handlePrefillQuery} queries={SAMPLE_QUERIES} />
+          <AgentSampleQueries onSelectQuery={handlePrefillQuery} queries={sampleQueries} />
         </CollapsibleContent>
       </Collapsible>
 
