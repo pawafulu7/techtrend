@@ -1,6 +1,18 @@
 // DOM/React環境用のセットアップ
 import '@testing-library/jest-dom';
 
+// Polyfill for Web Streams API and Fetch API (for SSE testing)
+const { ReadableStream, WritableStream, TransformStream } = require('web-streams-polyfill');
+const { Request, Response, Headers, fetch } = require('undici');
+
+global.ReadableStream = ReadableStream;
+global.WritableStream = WritableStream;
+global.TransformStream = TransformStream;
+global.Request = Request;
+global.Response = Response;
+global.Headers = Headers;
+global.fetch = fetch;
+
 // Next.jsのuseRouterモック
 jest.mock('next/router', () => ({
   useRouter: () => ({

@@ -43,8 +43,8 @@ const customJestConfig = {
     '\\.node\\.test\\.(t|j)sx?$',
   ],
   testMatch: [
-    '**/__tests__/**/*.test.tsx',
-    '**/tests/**/*.test.tsx',
+    '**/__tests__/**/*.test.{ts,tsx}',
+    '**/tests/**/*.test.{ts,tsx}',
   ],
   collectCoverageFrom: [
     'app/**/*.tsx',
