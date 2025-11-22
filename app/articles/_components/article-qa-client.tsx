@@ -21,7 +21,7 @@ export interface ArticleQAClientProps {
   articleTopics?: string[];
   locale?: 'ja' | 'en';
   onClose?: () => void;
-  scrollContainerRef?: RefObject<HTMLDivElement>;
+  scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
 
 interface QAExchange {
