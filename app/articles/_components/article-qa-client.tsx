@@ -6,7 +6,7 @@ import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar'
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
 import { AgentErrorDisplay } from '@/app/search/agent/_components/agent-error-display';
-import { useArticleQA } from '@/lib/hooks/useArticleQA';
+import { useArticleQA, type ArticleQAResult, type ArticleQAError } from '@/lib/hooks/useArticleQA';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -21,10 +21,12 @@ export interface ArticleQAClientProps {
   onClose?: () => void;
 }
 
-interface ChatMessage {
+interface QAExchange {
   id: string;
-  role: 'user' | 'assistant';
-  content: string;
+  question: string;
+  answer: ArticleQAResult | null;
+  error?: ArticleQAError | null;
+  timestamp: number;
 }
 
 function normalizeText(value?: string): string {
@@ -98,21 +100,35 @@ export function ArticleQAClient({
 }: ArticleQAClientProps) {
   const [lastQuery, setLastQuery] = useState('');
   const [showResult, setShowResult] = useState(false);
-  const [conversation, setConversation] = useState<ChatMessage[]>([]);
+  const [chatHistory, setChatHistory] = useState<QAExchange[]>([]);
+  const [activeExchangeId, setActiveExchangeId] = useState<string | null>(null);
   const { search, result, error, isLoading, partialText, contextChunk, reset } = useArticleQA({
     articleId,
     articleTitle,
     locale,
   });
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   const handleSearch = useCallback(
     async (query: string) => {
+      const trimmed = query.trim();
+      if (!trimmed) return;
+
       setLastQuery(query);
       setShowResult(false);
-      setConversation([
-        { id: `user-${Date.now()}`, role: 'user', content: query },
-        { id: `assistant-${Date.now()}`, role: 'assistant', content: '' },
+      const timestamp = Date.now();
+      const exchangeId = `qa-${timestamp}`;
+      setActiveExchangeId(exchangeId);
+      setChatHistory((previous) => [
+        ...previous,
+        {
+          id: exchangeId,
+          question: query,
+          answer: null,
+          error: null,
+          timestamp,
+        },
       ]);
       reset();
       await search(query);
@@ -141,13 +157,37 @@ export function ArticleQAClient({
     }
   }, [isLoading, result, error]);
 
-  const handleRetry = () => {
-    if (!lastQuery) return;
-    void handleSearch(lastQuery);
-  };
+  useEffect(() => {
+    const container = chatScrollRef.current;
+    if (!container) return;
+    const behavior: ScrollBehavior = chatHistory.length > 1 ? 'smooth' : 'auto';
+    requestAnimationFrame(() => {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+    });
+  }, [chatHistory, partialText, showResult, isLoading, error]);
 
-  const handleFeedback = (positive: boolean) => {
-    console.log('[Article QA Feedback]', positive ? 'positive' : 'negative', result?.query || lastQuery);
+  useEffect(() => {
+    if (!result || !activeExchangeId) return;
+    setChatHistory((previous) =>
+      previous.map((exchange) =>
+        exchange.id === activeExchangeId ? { ...exchange, answer: result, error: null } : exchange
+      )
+    );
+  }, [result, activeExchangeId]);
+
+  useEffect(() => {
+    if (!error || !activeExchangeId) return;
+    setChatHistory((previous) =>
+      previous.map((exchange) => (exchange.id === activeExchangeId ? { ...exchange, error } : exchange))
+    );
+  }, [error, activeExchangeId]);
+
+  const handleFeedback = (positive: boolean, queryOverride?: string) => {
+    const originQuery = queryOverride ?? result?.query ?? lastQuery;
+    console.log('[Article QA Feedback]', positive ? 'positive' : 'negative', originQuery);
   };
 
   const handlePrefillQuery = useCallback((query: string) => {
@@ -264,52 +304,6 @@ export function ArticleQAClient({
             </div>
           )}
 
-          <div className="rounded-[28px] border border-white/60 bg-white/80 p-4 shadow-[0_40px_100px_-70px_rgba(15,23,42,0.8)] backdrop-blur-sm sm:p-6">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-              <MessageSquare className="h-4 w-4 text-indigo-500" />
-              {locale === 'ja' ? 'この記事に質問する' : 'Ask this article'}
-            </div>
-            <div className="mt-4">
-              <AgentSearchBar
-                onSearch={handleSearch}
-                isLoading={isLoading}
-                onPrefillQuery={handleSetPrefillCallback}
-                badgeLabel={locale === 'ja' ? '記事Q&A' : 'Article Q&A'}
-                badgeIcon={<MessageSquare className="h-3 w-3 mr-1" />}
-                helperText={helperText}
-                placeholder={placeholder}
-                submitLabel={locale === 'ja' ? '質問' : 'Ask'}
-                loadingLabel={locale === 'ja' ? '回答中' : 'Answering'}
-                historyEnabled={false}
-                inputLabel={locale === 'ja' ? '記事QA質問入力' : 'Article QA question input'}
-                shortcutHint={shortcutHint}
-              />
-            </div>
-
-            <div className="mt-6">
-              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">
-                <Sparkles className="h-4 w-4 text-indigo-500" />
-                {locale === 'ja' ? '質問のヒント' : 'Sample questions'}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-3">
-                {sampleQueries.map((query) => (
-                  <button
-                    key={query}
-                    type="button"
-                    aria-label={query}
-                    onClick={() => handlePrefillQuery(query)}
-                    className="group inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
-                  >
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 transition group-hover:bg-indigo-100">
-                      Q
-                    </span>
-                    <span className="text-left">{query}</span>
-                    <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-indigo-400" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -326,39 +320,121 @@ export function ArticleQAClient({
           </p>
         </div>
 
-        <div className="space-y-4">
-          {conversation
-            .filter((message) => message.role === 'user')
-            .map((message) => (
-              <div key={message.id} className="flex justify-end">
-                <div className="max-w-2xl rounded-3xl bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-500 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-200/60">
-                  {message.content}
+        <div className="relative flex flex-col gap-6">
+          <div
+            ref={chatScrollRef}
+            className="flex-1 space-y-5 overflow-y-auto pr-1 max-h-[65vh] pb-36"
+          >
+            {chatHistory.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-slate-200/80 bg-slate-50/80 p-6 text-sm text-slate-500">
+                {locale === 'ja'
+                  ? '質問を入力すると、ここにチャット履歴が表示されます。'
+                  : 'Start asking questions to build your chat history here.'}
+              </div>
+            ) : (
+              chatHistory.map((exchange) => {
+                const isActive = exchange.id === activeExchangeId;
+                const exchangeResult = isActive ? result ?? exchange.answer : exchange.answer;
+                const showAnswerPanel = Boolean(
+                  exchangeResult ||
+                    (isActive &&
+                      (shouldShowStreamingResult ||
+                        (showResult && (result || (ENABLE_STREAMING_UI ? partialText : null)))))
+                );
+                const streamingPartial = isActive && ENABLE_STREAMING_UI ? partialText : null;
+                const showLoading = isActive && isLoading && !isStreamingWithPartialText;
+
+                return (
+                  <div key={exchange.id} className="space-y-3">
+                    <div className="flex justify-end">
+                      <div className="max-w-2xl rounded-3xl bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-500 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-200/60">
+                        {exchange.question}
+                      </div>
+                    </div>
+
+                    {showLoading && (
+                      <div className="rounded-2xl border border-slate-100/80 bg-slate-50/80 p-4">
+                        <AgentLoadingState />
+                      </div>
+                    )}
+
+                    {exchange.error && (
+                      <div className="rounded-2xl border border-red-100 bg-red-50/80 p-4">
+                        <AgentErrorDisplay
+                          error={exchange.error}
+                          onRetry={() => {
+                            void handleSearch(exchange.question);
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {!exchange.error && showAnswerPanel && (
+                      <div className="rounded-[28px] border border-slate-100/80 bg-gradient-to-b from-white to-slate-50/70 p-1.5 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)]">
+                        <AgentAnswerPanel
+                          result={exchangeResult}
+                          partialText={streamingPartial}
+                          isStreaming={isActive && shouldShowStreamingResult}
+                          onFeedback={(positive) =>
+                            handleFeedback(positive, exchangeResult?.query ?? exchange.question)
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-b from-transparent via-white to-white pt-6">
+            <div className="rounded-[28px] border border-slate-100/80 bg-white/90 p-4 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)] backdrop-blur-sm sm:p-6">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                <MessageSquare className="h-4 w-4 text-indigo-500" />
+                {locale === 'ja' ? 'この記事に質問する' : 'Ask this article'}
+              </div>
+              <div className="mt-4">
+                <AgentSearchBar
+                  onSearch={handleSearch}
+                  isLoading={isLoading}
+                  onPrefillQuery={handleSetPrefillCallback}
+                  badgeLabel={locale === 'ja' ? '記事Q&A' : 'Article Q&A'}
+                  badgeIcon={<MessageSquare className="h-3 w-3 mr-1" />}
+                  helperText={helperText}
+                  placeholder={placeholder}
+                  submitLabel={locale === 'ja' ? '質問' : 'Ask'}
+                  loadingLabel={locale === 'ja' ? '回答中' : 'Answering'}
+                  historyEnabled={false}
+                  inputLabel={locale === 'ja' ? '記事QA質問入力' : 'Article QA question input'}
+                  shortcutHint={shortcutHint}
+                />
+              </div>
+
+              <div className="mt-6">
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">
+                  <Sparkles className="h-4 w-4 text-indigo-500" />
+                  {locale === 'ja' ? '質問のヒント' : 'Sample questions'}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {sampleQueries.map((query) => (
+                    <button
+                      key={query}
+                      type="button"
+                      aria-label={query}
+                      onClick={() => handlePrefillQuery(query)}
+                      className="group inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
+                    >
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 transition group-hover:bg-indigo-100">
+                        Q
+                      </span>
+                      <span className="text-left">{query}</span>
+                      <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-indigo-400" />
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
-
-          {isLoading && !isStreamingWithPartialText && (
-            <div className="rounded-2xl border border-slate-100/80 bg-slate-50/80 p-4">
-              <AgentLoadingState />
             </div>
-          )}
-
-          {!isLoading && showResult && error && (
-            <div className="rounded-2xl border border-red-100 bg-red-50/80 p-4">
-              <AgentErrorDisplay error={error} onRetry={handleRetry} />
-            </div>
-          )}
-
-          {showResult && (result || isStreamingWithPartialText) && !error && (
-            <div className="rounded-[28px] border border-slate-100/80 bg-gradient-to-b from-white to-slate-50/70 p-1.5 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)]">
-              <AgentAnswerPanel
-                result={result}
-                partialText={ENABLE_STREAMING_UI ? partialText : null}
-                isStreaming={shouldShowStreamingResult}
-                onFeedback={handleFeedback}
-              />
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </section>
