@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
 import { ArrowUpRight, ChevronDown, MessageSquare, Sparkles, Tag, X } from 'lucide-react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
@@ -21,6 +21,7 @@ export interface ArticleQAClientProps {
   articleTopics?: string[];
   locale?: 'ja' | 'en';
   onClose?: () => void;
+  scrollContainerRef?: RefObject<HTMLDivElement>;
 }
 
 interface QAExchange {
@@ -99,6 +100,7 @@ export function ArticleQAClient({
   articleTopics,
   locale = 'ja',
   onClose,
+  scrollContainerRef,
 }: ArticleQAClientProps) {
   const [lastQuery, setLastQuery] = useState('');
   const [showResult, setShowResult] = useState(false);
@@ -112,6 +114,19 @@ export function ArticleQAClient({
   });
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior) => {
+      if (scrollContainerRef?.current) {
+        scrollContainerRef.current.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior,
+        });
+        return;
+      }
+      chatEndRef.current?.scrollIntoView({ behavior, block: 'nearest' });
+    },
+    [scrollContainerRef]
+  );
 
   const handleSearch = useCallback(
     async (query: string) => {
@@ -164,9 +179,9 @@ export function ArticleQAClient({
     if (!chatEndRef.current) return;
     const behavior: ScrollBehavior = chatHistory.length > 1 ? 'smooth' : 'auto';
     requestAnimationFrame(() => {
-      chatEndRef.current?.scrollIntoView({ behavior, block: 'end' });
+      scrollToBottom(behavior);
     });
-  }, [chatHistory, partialText, showResult, isLoading, error]);
+  }, [chatHistory, partialText, showResult, isLoading, error, scrollToBottom]);
 
   useEffect(() => {
     if (!result || !activeExchangeId) return;
