@@ -227,7 +227,9 @@ describe('useArticleQA', () => {
 
   it('should handle errors', async () => {
     const mockResponse = {
+      ok: false,
       status: 404,
+      statusText: 'Not Found',
       headers: {
         get: () => 'application/json',
       },
