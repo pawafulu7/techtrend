@@ -221,4 +221,38 @@ describe('AgentSearchBar', () => {
       expect(input).toHaveFocus();
     });
   });
+
+  test('can disable history suggestions when historyEnabled=false', () => {
+    render(<AgentSearchBar onSearch={mockOnSearch} historyEnabled={false} />);
+
+    const input = screen.getByLabelText('AI検索クエリ入力');
+    fireEvent.focus(input);
+    expect(screen.queryByText('最近の検索')).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'direct question' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockOnSearch).toHaveBeenCalledWith('direct question');
+    expect(mockSaveToHistory).not.toHaveBeenCalled();
+  });
+
+  test('supports custom labels and helper text', () => {
+    render(
+      <AgentSearchBar
+        onSearch={mockOnSearch}
+        badgeLabel="記事Q&A"
+        helperText="記事の内容に関する質問を入力"
+        submitLabel="質問"
+        loadingLabel="回答中"
+        placeholder="例: このアプローチの効果は？"
+        inputLabel="記事QA質問入力"
+        shortcutHint={null}
+      />
+    );
+
+    expect(screen.getByText('記事Q&A')).toBeInTheDocument();
+    expect(screen.getByText('記事の内容に関する質問を入力')).toBeInTheDocument();
+    expect(screen.queryByText(/キーボードショートカット/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('記事QA質問入力')).toBeInTheDocument();
+  });
 });

@@ -35,6 +35,19 @@ const nextConfig: NextConfig = {
     loader: 'custom',
     loaderFile: './lib/image-loader.js',
   },
+
+  // Webpack configuration for development environment
+  webpack(config, { dev, isServer }) {
+    // Externalize @dqbd/tiktoken in development mode (for WASM support)
+    // serverExternalPackages only works in production build
+    if (dev && isServer) {
+      config.externals ??= [];
+      if (!config.externals.includes('@dqbd/tiktoken')) {
+        config.externals.push('@dqbd/tiktoken');
+      }
+    }
+    return config;
+  },
 };
 
 export default withBundleAnalyzer(nextConfig);

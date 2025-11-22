@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode, KeyboardEvent } from 'react';
 import { Search, X, Loader2, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,16 @@ interface AgentSearchBarProps {
   disabled?: boolean;
   initialQuery?: string;
   onPrefillQuery?: (callback: (query: string) => void) => void;
+  badgeLabel?: string;
+  badgeIcon?: ReactNode;
+  helperText?: string;
+  placeholder?: string;
+  submitLabel?: string;
+  loadingLabel?: string;
+  shortcutHint?: ReactNode | null;
+  historyEnabled?: boolean;
+  historyLabel?: string;
+  inputLabel?: string;
 }
 
 export function AgentSearchBar({
@@ -21,6 +31,16 @@ export function AgentSearchBar({
   disabled = false,
   initialQuery = '',
   onPrefillQuery,
+  badgeLabel = 'AI検索',
+  badgeIcon,
+  helperText = '自然言語で記事を検索できます',
+  placeholder = '例: terraformについての記事をおすすめ5件教えて',
+  submitLabel = '検索',
+  loadingLabel = '検索中',
+  shortcutHint,
+  historyEnabled = true,
+  historyLabel = '最近の検索',
+  inputLabel = 'AI検索クエリ入力',
 }: AgentSearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -55,7 +75,9 @@ export function AgentSearchBar({
 
   const handleSearch = () => {
     if (!query.trim()) return;
-    saveToHistory(query);
+    if (historyEnabled) {
+      saveToHistory(query);
+    }
     onSearch(query);
     setShowSuggestions(false);
   };
@@ -89,19 +111,21 @@ export function AgentSearchBar({
     }
   }, [onPrefillQuery, applyQueryFromExternal]);
 
-  const suggestions = getSearchHistory().slice(0, 5);
+  const suggestions = historyEnabled ? getSearchHistory().slice(0, 5) : [];
 
   return (
     <div ref={searchRef} className="relative w-full max-w-3xl mx-auto">
-      <div className="flex items-center gap-2 mb-2">
-        <Badge variant="secondary" className="text-xs">
-          <Sparkles className="h-3 w-3 mr-1" />
-          AI検索
-        </Badge>
-        <span className="text-xs text-muted-foreground">
-          自然言語で記事を検索できます
-        </span>
-      </div>
+      {(badgeLabel || helperText) && (
+        <div className="flex items-center gap-2 mb-2">
+          {badgeLabel && (
+            <Badge variant="secondary" className="text-xs">
+              {badgeIcon ?? <Sparkles className="h-3 w-3 mr-1" />}
+              {badgeLabel}
+            </Badge>
+          )}
+          {helperText && <span className="text-xs text-muted-foreground">{helperText}</span>}
+        </div>
+      )}
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -109,7 +133,7 @@ export function AgentSearchBar({
         <Input
           ref={inputRef}
           type="text"
-          placeholder="例: terraformについての記事をおすすめ5件教えて"
+          placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -118,13 +142,15 @@ export function AgentSearchBar({
               skipNextFocusRef.current = false;
               return;
             }
-            setShowSuggestions(true);
+            if (historyEnabled) {
+              setShowSuggestions(true);
+            }
           }}
           className="pl-10 pr-24 py-6 text-base bg-card border-2 border-border shadow-sm focus:border-primary focus:shadow-md transition-all duration-200"
           autoComplete="off"
           spellCheck={false}
           disabled={disabled || isLoading}
-          aria-label="AI検索クエリ入力"
+          aria-label={inputLabel}
           data-testid="agent-search-input"
           aria-autocomplete="list"
           aria-controls="search-history-suggestions"
@@ -155,16 +181,16 @@ export function AgentSearchBar({
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                検索中
+                {loadingLabel}
               </>
             ) : (
-              '検索'
+              submitLabel
             )}
           </Button>
         </div>
       </div>
 
-      {showSuggestions && suggestions.length > 0 && (
+      {historyEnabled && showSuggestions && suggestions.length > 0 && (
         <div
           id="search-history-suggestions"
           data-testid="search-history-suggestions"
@@ -173,7 +199,7 @@ export function AgentSearchBar({
           className="absolute top-full left-0 right-0 mt-2 bg-card border-2 border-border rounded-md shadow-md z-50"
         >
           <div className="py-1">
-            <div className="px-3 py-2 text-xs text-muted-foreground">最近の検索</div>
+            <div className="px-3 py-2 text-xs text-muted-foreground">{historyLabel}</div>
             {suggestions.map((suggestion) => (
               <button
                 key={suggestion}
@@ -199,9 +225,16 @@ export function AgentSearchBar({
         </div>
       )}
 
-      <div className="mt-2 text-xs text-muted-foreground text-center">
-        キーボードショートカット: <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+Shift+K</kbd> または <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+Shift+K</kbd>
-      </div>
+      {shortcutHint === null ? null : (
+        <div className="mt-2 text-xs text-muted-foreground text-center">
+          {shortcutHint ?? (
+            <>
+              キーボードショートカット: <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+Shift+K</kbd> または{' '}
+              <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+Shift+K</kbd>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

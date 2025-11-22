@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ArrowLeft, ExternalLink, TrendingUp, GraduationCap } from 'lucide-react';
+import { ArrowLeft, ExternalLink, TrendingUp, GraduationCap, MessageSquare } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,8 @@ import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
+import { ArticleQADialog } from '@/app/articles/_components/article-qa-dialog';
+import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 
 interface PageProps {
   params: Promise<{
@@ -116,6 +118,17 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   // 短い記事（500文字以下）の判定
   const isShortArticle = article.detailedSummary === '__SKIP_DETAILED_SUMMARY__' || 
                          (article.content && article.content.length <= 500);
+
+  const detailedSummaryText =
+    article.detailedSummary && article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__'
+      ? stripHtmlTags(article.detailedSummary)
+      : '';
+  const qaSummarySource = detailedSummaryText || article.summary || '';
+  const qaSummary = qaSummarySource ? qaSummarySource.slice(0, 280) : null;
+  const qaTopics = (article.tags?.map((tag) => tag.name).filter((name): name is string => Boolean(name)) ?? []).slice(
+    0,
+    4
+  );
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -273,6 +286,18 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
               </div>
             </CardContent>
           </Card>
+
+          <ArticleQADialog
+            articleId={article.id}
+            articleTitle={article.translatedTitle || article.title}
+            articleSummary={qaSummary}
+            articleTopics={qaTopics}
+          >
+            <Button variant="outline" size="lg" className="w-full sm:w-auto">
+              <MessageSquare className="h-5 w-5 mr-2" />
+              記事について質問する
+            </Button>
+          </ArticleQADialog>
         </div>
 
         <div className="lg:col-span-1">

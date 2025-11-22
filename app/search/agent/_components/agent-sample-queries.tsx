@@ -6,9 +6,31 @@ import { SAMPLE_QUERIES, CATEGORY_LABELS, CATEGORY_ORDER, type SampleQuery } fro
 interface AgentSampleQueriesProps {
   onSelectQuery: (query: string) => void;
   className?: string;
+  queries?: readonly string[];
 }
 
-export function AgentSampleQueries({ onSelectQuery, className }: AgentSampleQueriesProps) {
+export function AgentSampleQueries({ onSelectQuery, className, queries }: AgentSampleQueriesProps) {
+  if (queries && queries.length > 0) {
+    return (
+      <div className={className}>
+        <div className="flex flex-wrap gap-2 justify-center max-w-3xl mx-auto">
+          {queries.map((query, index) => (
+            <Button
+              key={`${query}-${index}`}
+              variant="outline"
+              size="sm"
+              onClick={() => onSelectQuery(query)}
+              className="text-xs h-7 whitespace-normal text-left max-w-xs"
+              aria-label={query}
+            >
+              {query}
+            </Button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   // Group by category with proper typing
   const groupedQueries = SAMPLE_QUERIES.reduce<Record<SampleQuery['category'], SampleQuery[]>>(
     (acc, query) => {
@@ -24,8 +46,8 @@ export function AgentSampleQueries({ onSelectQuery, className }: AgentSampleQuer
     <div className={className}>
       <div className="space-y-3 max-w-3xl mx-auto">
         {CATEGORY_ORDER.map((category) => {
-          const queries = groupedQueries[category];
-          if (!queries || queries.length === 0) return null;
+          const categoryQueries = groupedQueries[category];
+          if (!categoryQueries || categoryQueries.length === 0) return null;
 
           return (
             <div key={category}>
@@ -33,7 +55,7 @@ export function AgentSampleQueries({ onSelectQuery, className }: AgentSampleQuer
                 {CATEGORY_LABELS[category]}
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
-                {queries.map((query) => (
+                {categoryQueries.map((query) => (
                   <Button
                     key={query.id}
                     variant="outline"

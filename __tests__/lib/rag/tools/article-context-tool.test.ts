@@ -237,6 +237,38 @@ describe('ArticleContextTool', () => {
       expect(result.chunks.length).toBeLessThan(3);
     });
 
+    it('should relax score threshold when no chunks meet requirement', async () => {
+      const mockArticle = {
+        id: 'article10',
+        title: 'Edge Case Article',
+        url: 'https://example.com/edge',
+        sourceId: 'source10',
+        publishedAt: new Date('2025-10-07T02:00:00Z'),
+        content: '<p>Edge case content block.</p>',
+        detailedSummary: '<p>Edge summary</p>',
+      };
+
+      mockFindUnique.mockResolvedValue(mockArticle);
+
+      mockEmbedText.mockImplementation(async (text: string) => {
+        if (text === 'very unrelated question') {
+          return new Array(4).fill(1);
+        }
+        return new Array(4).fill(0);
+      });
+
+      const result = await articleContextTool.execute({
+        articleId: 'article10',
+        query: 'very unrelated question',
+        maxChunks: 3,
+        minScore: 0.95,
+        includeSummary: true,
+      });
+
+      expect(result.chunks.length).toBeGreaterThan(0);
+      expect(result.chunks[0].chunkId).toContain('article10');
+    });
+
     it('should handle sanitization errors gracefully', async () => {
       const mockArticle = {
         id: 'article7',
