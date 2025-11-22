@@ -350,7 +350,7 @@ export function ArticleQAClient({
           </div>
 
           <div className="relative flex flex-1 flex-col gap-6">
-            <div className="flex flex-1 flex-col space-y-5 pr-1 pb-36">
+            <div className="flex flex-1 flex-col space-y-5 pr-1 pb-6">
               {chatHistory.length === 0 ? (
                 <div className="rounded-3xl border border-dashed border-slate-200/80 bg-slate-50/80 p-6 text-sm text-slate-500">
                   {locale === 'ja'
