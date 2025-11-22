@@ -462,11 +462,28 @@ function createSSEResponse(
  */
 function createCachedSSEResponse(
   cachedText: string,
+  qaContext?: ModeContext['qaContext'],
   rateLimitInfo?: RateLimitInfo
 ): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
+      if (qaContext) {
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'qa-context',
+              context: {
+                articleId: qaContext.articleId,
+                title: qaContext.title,
+                snippet: qaContext.snippet,
+                updatedAt: qaContext.updatedAt.toISOString(),
+              },
+            })}\n\n`
+          )
+        );
+      }
+
       controller.enqueue(
         encoder.encode(
           `data: ${JSON.stringify({
@@ -497,10 +514,8 @@ function createCachedSSEResponse(
  * Handle streaming agent search request
  *
  * Resolves mode-specific context (agent, system prompt, cache strategy) prior to
- * streaming and emits SSE events: cached, text-delta, tool-start, tool-complete,
- * fallback, finish, error.
- *
- * TODO (Phase 3): Send initial context chunk for article-qa mode.
+ * streaming and emits SSE events: qa-context (when available), cached, text-delta,
+ * tool-start, tool-complete, fallback, finish, error.
  */
 async function handleStreamingRequest(
   validatedRequest: ValidatedRequest,
@@ -586,7 +601,7 @@ async function handleStreamingRequest(
       logger.debug(logBase, 'Agent cache hit (streaming mode)');
     }
 
-    return createCachedSSEResponse(cachedResponse, rateLimitInfo);
+    return createCachedSSEResponse(cachedResponse, modeContext.qaContext, rateLimitInfo);
   }
 
   parentSpan.setAttribute('cache.hit', false);
@@ -622,6 +637,15 @@ async function createStreamingResponse(
   const tracer = trace.getTracer('rag-agent');
   const streamSpan = tracer.startSpan('rag.agent-search.stream', {}, trace.setSpan(context.active(), parentSpan));
   const qaContext = modeContext.qaContext;
+  const qaContextPayload =
+    modeContext.isArticleQa && qaContext
+      ? {
+          articleId: qaContext.articleId,
+          title: qaContext.title,
+          snippet: qaContext.snippet,
+          updatedAt: qaContext.updatedAt.toISOString(),
+        }
+      : undefined;
 
   if (modeContext.isArticleQa && !qaContext) {
     const contextError = new Error('Article QA mode requires qaContext');
@@ -657,6 +681,17 @@ async function createStreamingResponse(
             { role: 'user', content: validatedRequest.query },
           ],
         });
+
+        if (qaContextPayload) {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: 'qa-context',
+                context: qaContextPayload,
+              })}\n\n`
+            )
+          );
+        }
 
         heartbeatInterval = setInterval(() => {
           controller.enqueue(encoder.encode(':\n\n'));
