@@ -142,7 +142,7 @@ function resolveCollectConcurrency(): number {
 
   const parsed = Number.parseInt(rawValue, 10);
   if (Number.isNaN(parsed)) {
-    console.error(`⚠️  COLLECT_FEEDS_CONCURRENCYの値が不正です (${rawValue})。デフォルト${DEFAULT_COLLECT_CONCURRENCY}を使用します。`);
+    console.error(`[WARN] COLLECT_FEEDS_CONCURRENCYの値が不正です (${rawValue})。デフォルト${DEFAULT_COLLECT_CONCURRENCY}を使用します。`);
     return DEFAULT_COLLECT_CONCURRENCY;
   }
 
@@ -155,19 +155,19 @@ async function processSource({
   recentTitlesMutex,
   enricherFactory
 }: ProcessSourceContext): Promise<ProcessSourceResult> {
+  const startTime = Date.now();
+  const sourceName = source.name;
   const result: ProcessSourceResult = { newArticles: 0, duplicates: 0, updated: 0 };
-  const sourceStart = Date.now();
   let newCount = 0;
   let duplicateCount = 0;
   let updatedCount = 0;
   let fetchedArticlesCount = 0;
-  let failed = false;
 
   const FetcherClass = fetchers[source.name];
   if (!FetcherClass) {
-    console.error(`⚠️  ${source.name}: フェッチャーが見つかりません`);
-    const duration = Math.round((Date.now() - sourceStart) / 1000);
-    console.error(`   [${source.name}] Duration: ${duration}s, Articles: 0, New: 0 (skipped)`);
+    console.error(`[WARN] ${sourceName}: フェッチャーが見つかりません`);
+    const duration = Math.round((Date.now() - startTime) / 1000);
+    console.log(`[${sourceName}] Duration: ${duration}s`);
     return result;
   }
 
@@ -182,6 +182,8 @@ async function processSource({
     fetchedArticlesCount = articles?.length ?? 0;
 
     if (!articles || articles.length === 0) {
+      const duration = Math.round((Date.now() - startTime) / 1000);
+      console.log(`[${sourceName}] Duration: ${duration}s`);
       return result;
     }
 
@@ -197,7 +199,7 @@ async function processSource({
           // はてぶ経由 → 企業ブログの場合、sourceIdを更新
           if (existing.sourceId === HATENA_SOURCE_ID && source.id !== HATENA_SOURCE_ID) {
             updates.sourceId = source.id;
-            console.error(`   ✅ sourceId更新: ${source.name} <- Hatena`);
+            console.error(`   [INFO] sourceId更新: ${source.name} <- Hatena`);
           }
 
           // content=null/empty の場合は更新を許可（全ソース共通の自己修復メカニズム）
@@ -285,7 +287,7 @@ async function processSource({
           const enricher = enricherFactory.getEnricher(article.url);
           if (enricher) {
             try {
-              console.error(`   🔍 エンリッチメント実行: ${article.title.substring(0, 40)}...`);
+              console.error(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}...`);
               const enrichedData = await enricher.enrich(article.url);
 
               if (enrichedData && enrichedData.content) {
@@ -301,15 +303,15 @@ async function processSource({
                       ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
                     }
                   });
-                  console.error(`   ✅ エンリッチメント成功: ${enrichedData.content.length}文字`);
+                  console.error(`   [INFO] エンリッチメント成功: ${enrichedData.content.length}文字`);
                 } else {
-                  console.warn(`   ⚠️ エンリッチメント結果が不十分: ${enrichedContentLength}文字（元: ${originalContentLength}文字）`);
+                  console.warn(`   [WARN] エンリッチメント結果が不十分: ${enrichedContentLength}文字（元: ${originalContentLength}文字）`);
                 }
               } else {
-                console.error('   ⚠️ エンリッチメント失敗: コンテンツなし');
+                console.error('   [WARN] エンリッチメント失敗: コンテンツなし');
               }
             } catch (enrichError) {
-              console.error('   ⚠️ エンリッチメントエラー:', enrichError instanceof Error ? enrichError.message : String(enrichError));
+              console.error('   [WARN] エンリッチメントエラー:', enrichError instanceof Error ? enrichError.message : String(enrichError));
             }
 
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -318,13 +320,22 @@ async function processSource({
 
         // Title already added to Set in Mutex-protected section above
         newCount++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Rollback title reservation on error
         await recentTitlesMutex.runExclusive(() => {
           recentTitlesSet.delete(article.title);
         });
 
-        if (error?.code === 'P2002' && error?.meta?.target?.includes('url')) {
+        const metaTarget = (error as { meta?: { target?: unknown } }).meta?.target;
+        const isPrismaDuplicateUrlError =
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          (error as { code?: string }).code === 'P2002' &&
+          Array.isArray(metaTarget) &&
+          metaTarget.includes('url');
+
+        if (isPrismaDuplicateUrlError) {
           duplicateCount++;
         } else {
           console.error(`   記事保存エラー: ${article.title}`, error instanceof Error ? error.message : String(error));
@@ -333,26 +344,31 @@ async function processSource({
     }
 
     if (newCount > 0 || duplicateCount > 0 || updatedCount > 0) {
-      console.error(`   ✅ 新規: ${newCount}件, 更新: ${updatedCount}件, 重複: ${duplicateCount}件`);
+      console.error(`   [INFO] 新規: ${newCount}件, 更新: ${updatedCount}件, 重複: ${duplicateCount}件`);
     }
 
     result.newArticles = newCount;
     result.duplicates = duplicateCount;
     result.updated = updatedCount;
+    {
+      const duration = Math.round((Date.now() - startTime) / 1000);
+      console.log(
+        `[${sourceName}] Duration: ${duration}s, Articles: ${fetchedArticlesCount}, New: ${newCount}, Updated: ${updatedCount}, Duplicates: ${duplicateCount}`
+      );
+    }
     return result;
   } catch (error) {
-    failed = true;
-    console.error(`❌ ${source.name} のフェッチエラー:`, error instanceof Error ? error.message : String(error));
-    return result;
-  } finally {
-    const sourceDuration = Math.round((Date.now() - sourceStart) / 1000);
-    const suffix = failed ? ' (failed)' : '';
-    console.error(`   [${source.name}] Duration: ${sourceDuration}s, Articles: ${fetchedArticlesCount}, New: ${newCount}${suffix}`);
+    const duration = Math.round((Date.now() - startTime) / 1000);
+    console.error(
+      `[${sourceName}] Failed after ${duration}s:`,
+      error instanceof Error ? error.message : String(error)
+    );
+    throw error;
   }
 }
 
 async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
-  console.error('📡 フィード収集を開始します...');
+  console.error('[INFO] フィード収集を開始します...');
   console.error(`   SKIP_POST_SAVE_ENRICHMENT: ${process.env.SKIP_POST_SAVE_ENRICHMENT || 'not set'}`);
   if (sourceTypes && sourceTypes.length > 0) {
     console.error(`   対象ソース: ${sourceTypes.join(', ')}`);
@@ -406,7 +422,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
         totalDuplicates += result.value.duplicates;
         totalUpdated += result.value.updated;
       } else {
-        console.error('⚠️ ソース処理で未処理の例外が発生しました:', result.reason);
+        console.error('[WARN] ソース処理で未処理の例外が発生しました:', result.reason);
       }
     });
 
@@ -414,24 +430,32 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     console.error(`\n📊 収集完了: 新規${totalNewArticles}件, 更新${totalUpdated}件, 重複${totalDuplicates}件 (${duration}秒)`);
 
     if (totalNewArticles > 0) {
-      console.error('🔄 キャッシュを無効化中...');
+      console.error('[INFO] キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
 
-      console.error('\n📝 要約生成を自動実行します...');
-      try {
-        const { generateSummaries } = await import('../maintenance/generate-summaries');
-        const result = await generateSummaries();
-        console.error(`✅ 要約生成完了: ${result.generated}件の要約を生成`);
-      } catch (error) {
-        console.error('⚠️ 要約生成でエラーが発生しましたが、記事収集は成功しています:',
-          error instanceof Error ? error.message : String(error));
+      if (process.env.SKIP_POST_SAVE_ENRICHMENT === '1') {
+        console.log('Skipping auto summary generation (SKIP_POST_SAVE_ENRICHMENT=1)');
+        console.log(`New articles created: ${totalNewArticles}`);
+        console.log('Summary generation will run separately via scheduler');
+      } else {
+        console.error('\n[INFO] 要約生成を自動実行します...');
+        try {
+          const { generateSummaries } = await import('../maintenance/generate-summaries');
+          const result = await generateSummaries();
+          console.error(`[INFO] 要約生成完了: ${result.generated}件の要約を生成`);
+        } catch (error) {
+          console.error(
+            '[WARN] 要約生成でエラーが発生しましたが、記事収集は成功しています:',
+            error instanceof Error ? error.message : String(error)
+          );
+        }
       }
     }
 
     return { newArticles: totalNewArticles, duplicates: totalDuplicates, updated: totalUpdated };
 
   } catch (error) {
-    console.error('❌ フィード収集エラー:', error);
+    console.error('[ERROR] フィード収集エラー:', error);
     throw error;
   } finally {
     await prisma.$disconnect();
