@@ -170,11 +170,15 @@ export function ArticleCard({
                 </BadgeV2>
               )}
               {!isRead && (
-                <Eye
-                  className="h-4 w-4 text-blue-600 dark:text-blue-400"
-                  data-testid="unread-icon"
-                  aria-label="未読"
-                />
+                <BadgeV2
+                  variant="outline"
+                  className="text-xs flex items-center gap-1 bg-blue-600 text-white border-blue-600 hover:bg-blue-700 hover:border-blue-700"
+                  data-testid="unread-badge"
+                >
+                  <Eye className="h-3 w-3" />
+                  <span className="hidden sm:inline">未読</span>
+                  <span className="sm:hidden">未</span>
+                </BadgeV2>
               )}
             </div>
             <h3 className={cn(
