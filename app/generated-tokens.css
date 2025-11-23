@@ -1,0 +1,109 @@
+/**
+ * Auto-generated from lib/design-tokens.ts
+ * DO NOT EDIT BY HAND - Run `npm run generate:tokens` instead
+ */
+
+:root {
+  /* Colors - Light Mode */
+  --tt-color-border: #E5E7EB;
+  --tt-color-border-hover: #D1D5DB;
+  --tt-color-info: #3B82F6;
+  --tt-color-negative: #EF4444;
+  --tt-color-on-primary: #FFFFFF;
+  --tt-color-positive: #22C55E;
+  --tt-color-primary: #16A34A;
+  --tt-color-primary-accent: #22C55E;
+  --tt-color-primary-hover: #15803D;
+  --tt-color-secondary: #F97316;
+  --tt-color-secondary-hover: #EA580C;
+  --tt-color-surface: #FFFFFF;
+  --tt-color-surface-hover: #F1F5F9;
+  --tt-color-surface-muted: #F8FAFC;
+  --tt-color-text: #0F172A;
+  --tt-color-text-muted: #64748B;
+  --tt-color-warning: #F97316;
+
+  /* Typography */
+  --tt-font-body: 'Inter', system-ui, sans-serif;
+  --tt-font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --tt-font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --tt-text-2xl: 1.5rem;
+  --tt-text-3xl: 1.875rem;
+  --tt-text-4xl: 2.25rem;
+  --tt-text-5xl: 3rem;
+  --tt-text-base: 1rem;
+  --tt-text-lg: 1.125rem;
+  --tt-text-sm: 0.875rem;
+  --tt-text-xl: 1.25rem;
+  --tt-text-xs: 0.75rem;
+  --tt-font-weight-bold: 700;
+  --tt-font-weight-medium: 500;
+  --tt-font-weight-normal: 400;
+  --tt-font-weight-semibold: 600;
+  --tt-leading-loose: 2;
+  --tt-leading-normal: 1.5;
+  --tt-leading-relaxed: 1.625;
+  --tt-leading-tight: 1.25;
+  --tt-tracking-normal: 0;
+  --tt-tracking-tight: -0.01em;
+  --tt-tracking-wide: 0.01em;
+  --tt-tracking-wider: 0.02em;
+
+  /* Shadows */
+  --tt-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --tt-shadow-card-focus: 0 0 0 2px var(--tt-color-primary);
+  --tt-shadow-card-hover: 0 8px 16px -4px rgb(0 0 0 / 0.12), 0 4px 8px -2px rgb(0 0 0 / 0.08);
+  --tt-shadow-card-rest: 0 2px 8px -2px rgb(0 0 0 / 0.08);
+  --tt-shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --tt-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --tt-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --tt-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --tt-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Spacing */
+  --tt-space-0: 0;
+  --tt-space-1: 0.25rem;
+  --tt-space-10: 2.5rem;
+  --tt-space-12: 3rem;
+  --tt-space-16: 4rem;
+  --tt-space-2: 0.5rem;
+  --tt-space-20: 5rem;
+  --tt-space-24: 6rem;
+  --tt-space-3: 0.75rem;
+  --tt-space-32: 8rem;
+  --tt-space-4: 1rem;
+  --tt-space-5: 1.25rem;
+  --tt-space-6: 1.5rem;
+  --tt-space-8: 2rem;
+
+  /* Border Radius */
+  --tt-radius-2xl: 1rem;
+  --tt-radius-3xl: 1.5rem;
+  --tt-radius-full: 9999px;
+  --tt-radius-lg: 0.5rem;
+  --tt-radius-md: 0.375rem;
+  --tt-radius-none: 0;
+  --tt-radius-sm: 0.25rem;
+  --tt-radius-xl: 0.75rem;
+}
+
+.dark {
+  /* Colors - Dark Mode */
+  --tt-color-border: #1F2937;
+  --tt-color-border-hover: #374151;
+  --tt-color-info: #3B82F6;
+  --tt-color-negative: #EF4444;
+  --tt-color-on-primary: #000000;
+  --tt-color-positive: #22C55E;
+  --tt-color-primary: #22C55E;
+  --tt-color-primary-accent: #4ADE80;
+  --tt-color-primary-hover: #16A34A;
+  --tt-color-secondary: #F97316;
+  --tt-color-secondary-hover: #EA580C;
+  --tt-color-surface: #111827;
+  --tt-color-surface-hover: #1F2937;
+  --tt-color-surface-muted: #0B1220;
+  --tt-color-text: #E5E7EB;
+  --tt-color-text-muted: #94A3B8;
+  --tt-color-warning: #F97316;
+}
