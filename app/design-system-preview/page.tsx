@@ -62,7 +62,7 @@ export default function DesignSystemPreviewPage() {
               <p className="text-xs text-muted-foreground mt-1">16px / Regular / Line height: normal</p>
             </div>
             <div>
-              <code className="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+              <code className="text-sm bg-[var(--tt-color-surface-hover)] px-2 py-1 rounded">
                 const code = &apos;JetBrains Mono&apos;;
               </code>
               <p className="text-xs text-muted-foreground mt-1">14px / Regular / Monospace</p>
@@ -161,7 +161,7 @@ export default function DesignSystemPreviewPage() {
             <div>
               <h3 className="text-xl font-semibold mb-4">Card Hover Effect</h3>
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="card-hover p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div className="card-hover p-6 bg-[var(--tt-color-surface)] border border-[var(--tt-color-border)] rounded-lg">
                   <p className="text-sm">Hover over this card to see the lift effect</p>
                 </div>
               </div>
@@ -184,13 +184,13 @@ export default function DesignSystemPreviewPage() {
             <div>
               <h3 className="text-xl font-semibold mb-4">Staggered Animation</h3>
               <div className="space-y-2">
-                <div className="animate-stagger animate-stagger-delay-1 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div className="animate-stagger animate-stagger-delay-1 p-4 bg-[var(--tt-color-surface)] border border-[var(--tt-color-border)] rounded-lg">
                   Item 1 (0.1s delay)
                 </div>
-                <div className="animate-stagger animate-stagger-delay-2 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div className="animate-stagger animate-stagger-delay-2 p-4 bg-[var(--tt-color-surface)] border border-[var(--tt-color-border)] rounded-lg">
                   Item 2 (0.2s delay)
                 </div>
-                <div className="animate-stagger animate-stagger-delay-3 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div className="animate-stagger animate-stagger-delay-3 p-4 bg-[var(--tt-color-surface)] border border-[var(--tt-color-border)] rounded-lg">
                   Item 3 (0.3s delay)
                 </div>
               </div>

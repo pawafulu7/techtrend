@@ -15,8 +15,7 @@ const BadgeV2 = forwardRef<HTMLSpanElement, BadgeV2Props>(
           'badge-pill',
           'transition-colors duration-150',
           variant === 'default' && [
-            'bg-gray-100 text-gray-700',
-            'dark:bg-gray-800 dark:text-gray-300',
+            'bg-[var(--tt-color-surface-hover)] text-[var(--tt-color-text-muted)]',
           ],
           variant === 'primary' && [
             'bg-[var(--tt-color-primary)] text-[var(--tt-color-on-primary)]',
@@ -27,9 +26,9 @@ const BadgeV2 = forwardRef<HTMLSpanElement, BadgeV2Props>(
             'hover:bg-[var(--tt-color-secondary-hover)]',
           ],
           variant === 'outline' && [
-            'border border-gray-300 dark:border-gray-600',
-            'bg-transparent text-gray-700 dark:text-gray-300',
-            'hover:bg-gray-100 dark:hover:bg-gray-800',
+            'border border-[var(--tt-color-border)]',
+            'bg-transparent text-[var(--tt-color-text)]',
+            'hover:bg-[var(--tt-color-surface-hover)]',
           ],
           disabled && [
             'opacity-50 cursor-not-allowed',

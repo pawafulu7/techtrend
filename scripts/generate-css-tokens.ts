@@ -25,10 +25,20 @@ function toKebabCase(str: string): string {
  */
 function toVars(
   obj: Record<string, string | number>,
-  prefix: string
+  prefix: string,
+  numericSort = false
 ): string {
-  return Object.entries(obj)
-    .sort(([a], [b]) => a.localeCompare(b))
+  const entries = Object.entries(obj);
+
+  const sorted = numericSort
+    ? entries.sort(([a], [b]) => {
+        const numA = parseInt(a, 10);
+        const numB = parseInt(b, 10);
+        return isNaN(numA) || isNaN(numB) ? a.localeCompare(b) : numA - numB;
+      })
+    : entries.sort(([a], [b]) => a.localeCompare(b));
+
+  return sorted
     .map(([k, v]) => {
       const kebabKey = toKebabCase(k);
       return `  --tt-${prefix}-${kebabKey}: ${v};`;
@@ -81,7 +91,7 @@ function buildCSS(): string {
     toVars(designTokens.shadows, 'shadow'),
     '',
     '  /* Spacing */',
-    toVars(designTokens.spacing, 'space'),
+    toVars(designTokens.spacing, 'space', true),
     '',
     '  /* Border Radius */',
     toVars(designTokens.radius, 'radius'),

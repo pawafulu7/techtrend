@@ -12,14 +12,14 @@ const CardV2 = forwardRef<HTMLDivElement, CardV2Props>(
         ref={ref}
         className={cn(
           'rounded-lg border transition-all duration-200',
-          variant === 'default' && 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700',
+          variant === 'default' && [
+            'bg-[var(--tt-color-surface)] border-[var(--tt-color-border)]',
+          ],
           variant === 'hover' && [
-            'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700',
+            'bg-[var(--tt-color-surface)] border-[var(--tt-color-border)]',
             'card-hover',
           ],
           variant === 'ghost' && 'border-none shadow-none',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-          'focus-visible:ring-[var(--tt-color-primary)]',
           className
         )}
         {...props}

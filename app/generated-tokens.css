@@ -63,18 +63,18 @@
   /* Spacing */
   --tt-space-0: 0;
   --tt-space-1: 0.25rem;
-  --tt-space-10: 2.5rem;
-  --tt-space-12: 3rem;
-  --tt-space-16: 4rem;
   --tt-space-2: 0.5rem;
-  --tt-space-20: 5rem;
-  --tt-space-24: 6rem;
   --tt-space-3: 0.75rem;
-  --tt-space-32: 8rem;
   --tt-space-4: 1rem;
   --tt-space-5: 1.25rem;
   --tt-space-6: 1.5rem;
   --tt-space-8: 2rem;
+  --tt-space-10: 2.5rem;
+  --tt-space-12: 3rem;
+  --tt-space-16: 4rem;
+  --tt-space-20: 5rem;
+  --tt-space-24: 6rem;
+  --tt-space-32: 8rem;
 
   /* Border Radius */
   --tt-radius-2xl: 1rem;

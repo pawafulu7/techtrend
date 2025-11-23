@@ -7,7 +7,6 @@ export interface ButtonV2Props extends React.ButtonHTMLAttributes<HTMLButtonElem
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   iconOnly?: boolean;
-  asChild?: boolean;
 }
 
 const ButtonV2 = forwardRef<HTMLButtonElement, ButtonV2Props>(
@@ -20,6 +19,7 @@ const ButtonV2 = forwardRef<HTMLButtonElement, ButtonV2Props>(
       disabled,
       className,
       children,
+      type = 'button',
       ...props
     },
     ref
@@ -29,6 +29,7 @@ const ButtonV2 = forwardRef<HTMLButtonElement, ButtonV2Props>(
     return (
       <button
         ref={ref}
+        type={type}
         disabled={isDisabled}
         className={cn(
           'inline-flex items-center justify-center font-medium transition-all',
@@ -38,10 +39,9 @@ const ButtonV2 = forwardRef<HTMLButtonElement, ButtonV2Props>(
 
           // Variants
           variant === 'default' && [
-            'bg-white dark:bg-gray-800',
-            'text-gray-900 dark:text-gray-100',
-            'border border-gray-300 dark:border-gray-600',
-            'hover:bg-gray-50 dark:hover:bg-gray-700',
+            'bg-[var(--tt-color-surface)] text-[var(--tt-color-text)]',
+            'border border-[var(--tt-color-border)]',
+            'hover:bg-[var(--tt-color-surface-hover)] hover:border-[var(--tt-color-border-hover)]',
           ],
           variant === 'primary' && [
             'bg-[var(--tt-color-primary)] text-[var(--tt-color-on-primary)]',
@@ -54,14 +54,14 @@ const ButtonV2 = forwardRef<HTMLButtonElement, ButtonV2Props>(
             'shadow-sm hover:shadow-md',
           ],
           variant === 'ghost' && [
-            'hover:bg-gray-100 dark:hover:bg-gray-800',
-            'text-gray-700 dark:text-gray-300',
+            'hover:bg-[var(--tt-color-surface-hover)]',
+            'text-[var(--tt-color-text)]',
           ],
           variant === 'outline' && [
-            'border border-gray-300 dark:border-gray-600',
+            'border border-[var(--tt-color-border)]',
             'bg-transparent',
-            'hover:bg-gray-100 dark:hover:bg-gray-800',
-            'text-gray-700 dark:text-gray-300',
+            'hover:bg-[var(--tt-color-surface-hover)] hover:border-[var(--tt-color-border-hover)]',
+            'text-[var(--tt-color-text)]',
           ],
 
           // Sizes
