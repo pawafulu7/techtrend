@@ -122,7 +122,7 @@ export function ArticleCard({
               if (onTagClick) {
                 onTagClick(tag.name);
               } else {
-                window.location.href = `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`;
+                router.push(`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`);
               }
             }}
           >
@@ -154,29 +154,27 @@ export function ArticleCard({
             <div className="flex-1 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2 text-[12px]">
                 {isNew && (
-                  <BadgeV2 className="bg-green-50 text-green-700 border border-green-100 px-2 py-[2px]">
+                  <BadgeV2 variant="primary" className="text-xs">
                     NEW
                   </BadgeV2>
                 )}
                 {!isRead && (
                   <BadgeV2
-                    variant="outline"
-                    className="text-[11px] bg-blue-50 text-blue-700 border-blue-100"
+                    variant="secondary"
+                    className="text-xs"
                     data-testid="unread-badge"
                   >
-                    <div className="flex items-center gap-1">
-                      <span className="block h-2 w-2 rounded-full bg-blue-600" />
-                      <span>未読</span>
-                    </div>
+                    未読
                   </BadgeV2>
                 )}
                 {showSource && (
-                  <span
-                    className="rounded-full bg-muted px-2 py-[3px] text-[11px] text-muted-foreground"
+                  <BadgeV2
+                    variant="secondary"
+                    className="text-xs"
                     data-testid="article-source"
                   >
                     {article.source?.name || 'Unknown'}
-                  </span>
+                  </BadgeV2>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">

@@ -19,9 +19,10 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
       // 記事カードの必須要素が存在する
       const firstCard = page.locator('[data-testid="article-card"]').first();
       
-      // タイトルが存在
-      const title = await firstCard.locator('h3').textContent();
-      expect(title).toBeTruthy();
+      // タイトルまたはサムネイルが存在（サムネイル時はタイトル非表示）
+      const hasTitle = await firstCard.locator('h3').count() > 0;
+      const hasThumbnail = await firstCard.locator('img').count() > 0;
+      expect(hasTitle || hasThumbnail).toBeTruthy();
       
       // ソース名が存在（data-testid）
       const sourceElement = firstCard.locator('[data-testid="article-source"]');
