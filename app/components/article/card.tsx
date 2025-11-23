@@ -169,7 +169,7 @@ export function ArticleCard({
                 )}
                 {showSource && (
                   <BadgeV2
-                    variant="secondary"
+                    variant="outline"
                     className="text-xs"
                     data-testid="article-source"
                   >
