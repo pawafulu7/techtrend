@@ -168,9 +168,15 @@ export function ArticleCard({
                   </BadgeV2>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-                <span>📅 配信日 {formatDateWithTime(article.publishedAt)}</span>
-                <span>📥 取込日 {formatDateWithTime(article.createdAt)}</span>
+              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span>📅</span>
+                  <span>{formatDateWithTime(article.publishedAt)}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span>📥</span>
+                  <span>{formatDateWithTime(article.createdAt)}</span>
+                </span>
               </div>
             </div>
             <ShareButton title={article.title} url={article.url} size="sm" variant="ghost" />
