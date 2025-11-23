@@ -161,7 +161,7 @@ export function ArticleCard({
       <CardHeader className="pb-1 px-2.5 sm:px-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
-            <div className="flex items-center gap-1 mb-1">
+            <div className="flex items-center gap-1.5 mb-1">
               {isNew && (
                 <BadgeV2 variant="primary" className="text-xs flex items-center gap-1">
                   <TrendingUp className="h-3 w-3" />
@@ -170,15 +170,11 @@ export function ArticleCard({
                 </BadgeV2>
               )}
               {!isRead && (
-                <BadgeV2
-                  variant="secondary"
-                  className="text-xs flex items-center gap-1"
-                  data-testid="unread-badge"
-                >
-                  <Eye className="h-3 w-3" />
-                  <span className="hidden sm:inline">未読</span>
-                  <span className="sm:hidden">未</span>
-                </BadgeV2>
+                <Eye
+                  className="h-4 w-4 text-blue-600 dark:text-blue-400"
+                  data-testid="unread-icon"
+                  aria-label="未読"
+                />
               )}
             </div>
             <h3 className={cn(
