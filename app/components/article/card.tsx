@@ -171,7 +171,7 @@ export function ArticleCard({
               )}
               {!isRead && (
                 <BadgeV2
-                  variant="primary"
+                  variant="secondary"
                   className="text-xs flex items-center gap-1"
                   data-testid="unread-badge"
                 >
