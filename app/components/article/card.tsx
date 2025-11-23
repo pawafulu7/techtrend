@@ -194,13 +194,16 @@ export function ArticleCard({
 
       <div className="w-full">
         {showThumbnail ? (
-          <div className="relative w-full overflow-hidden rounded-md aspect-[3/2] bg-gray-100 dark:bg-gray-800">
+          <div
+            className="relative isolate w-full overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800"
+            style={{ aspectRatio: '3 / 2', minHeight: '160px' }}
+          >
             <OptimizedImage
               src={article.thumbnail!}
               alt={article.title}
               fill
               priority={false}
-              className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
+              className="object-contain p-3 transition-transform duration-300 ease-out group-hover:scale-[1.01]"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           </div>
