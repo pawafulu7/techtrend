@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useDebounce } from '@/hooks/use-debounce';
 import { features } from '@/config/features';
 
-export function SearchBox() {
+export function SearchBox({ className }: { className?: string } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status } = useSession();
@@ -99,7 +99,7 @@ export function SearchBox() {
   };
 
   return (
-    <div className="flex flex-col" style={{ width: '24rem' }}>
+    <div className={className || "flex flex-col w-96"}>
       {features.aiSearch && status === 'authenticated' && (
         <Link
           href="/search/agent"

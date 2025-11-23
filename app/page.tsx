@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
+import { HeroSection } from '@/app/components/home/hero-section';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
 import { SearchBox } from '@/app/components/common/search-box';
@@ -116,6 +117,9 @@ export default async function Home({ searchParams }: PageProps) {
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
+        {/* Hero Section */}
+        <HeroSection popularTags={tags} />
+
         {/* メインエリア */}
         <div className="flex-1 lg:flex lg:overflow-hidden">
         {/* サイドバー - デスクトップのみ */}
