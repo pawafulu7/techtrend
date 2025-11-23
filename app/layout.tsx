@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import { Header } from "@/app/components/layout/header";
 import { NoTransitions } from "@/app/components/layout/no-transitions";
 import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
@@ -14,17 +14,44 @@ import "./globals.css";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-  display: "optional", // swapからoptionalに変更: FOUTを防ぐ
+  display: "optional",
   preload: true,
-  adjustFontFallback: true, // フォールバックフォントの調整
+  adjustFontFallback: true,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-  display: "optional", // swapからoptionalに変更: FOUTを防ぐ
+  display: "optional",
   preload: true,
-  adjustFontFallback: true, // フォールバックフォントの調整
+  adjustFontFallback: true,
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+  preload: true,
+  adjustFontFallback: true,
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+  preload: true,
+  adjustFontFallback: true,
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600"],
+  preload: true,
+  adjustFontFallback: true,
 });
 
 export const metadata: Metadata = {
@@ -53,7 +80,11 @@ export default async function RootLayout({
 }>) {
 
   return (
-    <html lang="ja" className="h-full no-transitions" suppressHydrationWarning>
+    <html
+      lang="ja"
+      className={`h-full no-transitions ${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${inter.variable} ${jetBrainsMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <style
           dangerouslySetInnerHTML={{
