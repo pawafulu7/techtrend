@@ -1,4 +1,4 @@
-import { CardV2, CardV2Header, CardV2Title, CardV2Content, CardV2Footer } from '@/components/ui-v2';
+import { CardV2, CardV2Header, CardV2Title, CardV2Content } from '@/components/ui-v2';
 import { BadgeV2 } from '@/components/ui-v2';
 import { ButtonV2 } from '@/components/ui-v2';
 
@@ -63,7 +63,7 @@ export default function DesignSystemPreviewPage() {
             </div>
             <div>
               <code className="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                const code = 'JetBrains Mono';
+                const code = &apos;JetBrains Mono&apos;;
               </code>
               <p className="text-xs text-muted-foreground mt-1">14px / Regular / Monospace</p>
             </div>
