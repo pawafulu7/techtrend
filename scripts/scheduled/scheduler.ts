@@ -1,25 +1,190 @@
 import * as cron from 'node-cron';
-import { exec } from 'child_process';
+import { exec, spawn, ExecException, ExecOptions } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
+const DEFAULT_MAX_BUFFER = 1024 * 1024 * 10; // 10MB
 
 interface ExecutionResult {
   stdout: string;
   stderr: string;
 }
 
+type ExecError = ExecException & {
+  stdout?: string;
+  stderr?: string;
+  killed?: boolean;
+  signal?: NodeJS.Signals | null;
+};
+
+const isExecError = (error: unknown): error is ExecError =>
+  typeof error === 'object' && error !== null && 'message' in error;
+
+async function runCommandWithTimeout(
+  stepName: string,
+  command: string,
+  timeoutMs: number,
+  options: ExecOptions = {}
+): Promise<ExecutionResult> {
+  const startedAt = Date.now();
+  const maxBuffer = options.maxBuffer ?? DEFAULT_MAX_BUFFER;
+  const killSignal = options.killSignal ?? 'SIGTERM';
+  const durationSeconds = () => Math.round((Date.now() - startedAt) / 1000);
+  const { timeout: _ignoredTimeout, maxBuffer: _ignoredMaxBuffer, ...spawnableOptions } = options;
+
+  console.error(`[INFO] ${stepName} started (timeout ${Math.round(timeoutMs / 1000)}s)`);
+
+  return await new Promise<ExecutionResult>((resolve, reject) => {
+    const child = spawn(command, {
+      ...spawnableOptions,
+      shell: spawnableOptions.shell ?? true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
+    let timedOut = false;
+    let bufferExceeded = false;
+    let settled = false;
+
+    const timeoutTimer = setTimeout(() => {
+      timedOut = true;
+      child.kill(killSignal);
+    }, timeoutMs);
+
+    const maybeReject = (err: ExecError) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutTimer);
+      reject(err);
+    };
+
+    const maybeResolve = (result: ExecutionResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutTimer);
+      resolve(result);
+    };
+
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
+
+    child.stdout?.on('data', (chunk: string) => {
+      stdout += chunk;
+      stdoutBytes += Buffer.byteLength(chunk, 'utf8');
+      process.stderr.write(chunk);
+
+      if (stdoutBytes > maxBuffer) {
+        bufferExceeded = true;
+        child.kill(killSignal);
+      }
+    });
+
+    child.stderr?.on('data', (chunk: string) => {
+      stderr += chunk;
+      stderrBytes += Buffer.byteLength(chunk, 'utf8');
+      process.stderr.write(chunk);
+
+      if (stderrBytes > maxBuffer) {
+        bufferExceeded = true;
+        child.kill(killSignal);
+      }
+    });
+
+    child.on('error', (error) => {
+      const execError: ExecError = Object.assign(error, {
+        stdout,
+        stderr,
+        killed: child.killed,
+        cmd: command,
+        signal: null as NodeJS.Signals | null,
+      });
+      maybeReject(execError);
+    });
+
+    child.on('close', (code, signal) => {
+      const durationSec = durationSeconds();
+
+      if (timedOut) {
+        const error = new Error(`Command timed out after ${Math.round(timeoutMs / 1000)}s`) as ExecError;
+        error.killed = true;
+        error.signal = signal;
+        error.code = null;
+        error.cmd = command;
+        error.stdout = stdout;
+        error.stderr = stderr;
+        return maybeReject(error);
+      }
+
+      if (bufferExceeded) {
+        const error = new Error(`maxBuffer exceeded (${Math.round(maxBuffer / (1024 * 1024))}MB)`) as ExecError;
+        error.killed = child.killed;
+        error.signal = signal;
+        error.code = null;
+        error.cmd = command;
+        error.stdout = stdout;
+        error.stderr = stderr;
+        return maybeReject(error);
+      }
+
+      if (code !== 0) {
+        const error = new Error(`Command failed: ${command} (exit code ${code})`) as ExecError;
+        error.code = code ?? null;
+        error.cmd = command;
+        error.killed = child.killed;
+        error.signal = signal;
+        error.stdout = stdout;
+        error.stderr = stderr;
+        return maybeReject(error);
+      }
+
+      console.error(`[INFO] ${stepName} completed in ${durationSec}s`);
+
+      return maybeResolve({ stdout, stderr });
+    });
+  }).catch((error) => {
+    const durationSec = Math.round((Date.now() - startedAt) / 1000);
+    if (isExecError(error)) {
+      if (error.killed || error.signal === 'SIGTERM' || /timed out/i.test(error.message)) {
+        console.error(`[ERROR] ${stepName} timed out after ${Math.round(timeoutMs / 1000)}s (ran ${durationSec}s)`);
+      } else if (/maxBuffer/i.test(error.message)) {
+        console.error(
+          `[ERROR] ${stepName} failed: output exceeded maxBuffer (${Math.round(maxBuffer / (1024 * 1024))}MB) after ${durationSec}s`
+        );
+      } else {
+        console.error(`[ERROR] ${stepName} failed after ${durationSec}s: ${error.message}`);
+      }
+
+      if (error.stdout) {
+        console.error(`[STDOUT] ${error.stdout}`);
+      }
+      if (error.stderr) {
+        console.error(`[STDERR] ${error.stderr}`);
+      }
+    } else {
+      console.error(
+        `[ERROR] ${stepName} failed after ${durationSec}s: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    throw error;
+  });
+}
+
 // RSS系ソース（1時間ごとに更新）
+// Temporarily disabled sources that timeout (external site issues):
+// - はてなブックマーク, Dev.to, Stack Overflow Blog (timeout after 30s)
 const RSS_SOURCES = [
-  'はてなブックマーク',
+  // 'はてなブックマーク',  // DISABLED: timeout
   'Zenn',
-  'Dev.to',
+  // 'Dev.to',  // DISABLED: timeout
   'Publickey',
-  'Stack Overflow Blog',
+  // 'Stack Overflow Blog',  // DISABLED: timeout
   'Think IT',
   'Rails Releases',
   'AWS',
-  'SRE',
+  // 'SRE',  // Testing: may timeout
   'Google Developers Blog',
   'Hugging Face Blog',
   'Google AI Blog',
@@ -27,12 +192,12 @@ const RSS_SOURCES = [
   'GitHub Blog',
   'Cloudflare Blog',
   'Mozilla Hacks',
-  'Hacker News',
+  // 'Hacker News',  // Testing: may timeout
   'Medium Engineering',
   // AI/LLM専門ソース
   'OpenAI Blog',
-  'Hugging Face Papers',
-  'arXiv AI',
+  // 'Hugging Face Papers',  // Testing: may timeout
+  // 'arXiv AI',  // Testing: may timeout
   'Zenn AI',
   'Qiita AI',
   'NVIDIA Developer Blog',
@@ -71,35 +236,36 @@ async function executeUpdatePipeline(
   }
 ): Promise<void> {
   const startTime = new Date();
-  console.error(`\n🔄 ${label}更新開始: ${startTime.toLocaleString('ja-JP')}`);
+  console.error(`\n[INFO] ${label}更新開始: ${startTime.toLocaleString('ja-JP')}`);
   
   try {
-    // 1. フィード収集
-    console.error('📡 フィード収集中...');
     const sourceArgs = sources.map(s => `"${s}"`).join(' ');
-    const { stdout: collectOutput, stderr: collectError }: ExecutionResult = await execAsync(
-      `npx tsx scripts/scheduled/collect-feeds.ts ${sourceArgs}`
+    await runCommandWithTimeout(
+      'フィード収集',
+      `npx tsx scripts/scheduled/collect-feeds.ts ${sourceArgs}`,
+      15 * 60 * 1000
     );
-    if (collectOutput) console.error(collectOutput);
-    if (collectError) console.error(collectError);
     
     // 2. Google Developers Blogのコンテンツエンリッチメント
     if (sources.includes('Google Developers Blog')) {
-      console.error('🔧 Google Developers Blogのコンテンツをエンリッチ中...');
+      console.error('[INFO] Google Developers Blogのコンテンツをエンリッチ中...');
       try {
         const { stdout: enrichOutput }: ExecutionResult = await execAsync(
           'npx tsx scripts/maintenance/enrich-google-dev-content.ts'
         );
         console.error(enrichOutput);
       } catch (error) {
-        console.error('⚠️ Google Dev Blogエンリッチメントでエラー（続行）:', error instanceof Error ? error.message : String(error));
+        console.error(
+          '[WARN] Google Dev Blogエンリッチメントでエラー（続行）:',
+          error instanceof Error ? error.message : String(error)
+        );
         // エラーが発生しても他の処理は続行
       }
     }
     
     // 2.5. AWSのコンテンツエンリッチメント
     if (sources.includes('AWS')) {
-      console.error('🔧 AWS記事のコンテンツをエンリッチ中...');
+      console.error('[INFO] AWS記事のコンテンツをエンリッチ中...');
       try {
         const { stdout: enrichOutput, stderr: enrichError }: ExecutionResult = await execAsync(
           'npx tsx scripts/maintenance/enrich-aws-content.ts',
@@ -114,52 +280,54 @@ async function executeUpdatePipeline(
           console.error(enrichOutput);
         }
         if (enrichError) {
-          console.error('⚠️ AWS enrichment stderr:', enrichError);
+          console.error('[WARN] AWS enrichment stderr:', enrichError);
         }
       } catch (error) {
-        console.error('⚠️ AWSエンリッチメントでエラー（続行）:', error instanceof Error ? error.message : String(error));
+        console.error('[WARN] AWSエンリッチメントでエラー（続行）:', error instanceof Error ? error.message : String(error));
         // エラーが発生しても他の処理は続行
       }
     }
     
     // 3. 要約生成（オプション）
     if (!options?.skipSummaries) {
-      console.error('📝 要約・タグ生成中...');
-      const { stdout: summaryOutput, stderr: summaryError }: ExecutionResult = await execAsync(
-        'npx tsx scripts/scheduled/manage-summaries.ts generate'
+      await runCommandWithTimeout(
+        '要約・タグ生成',
+        'npx tsx scripts/scheduled/manage-summaries.ts generate',
+        10 * 60 * 1000
       );
-      if (summaryOutput) console.error(summaryOutput);
-      if (summaryError) console.error(summaryError);
     }
     
     // 4. 品質スコア計算
-    console.error('📊 品質スコア計算中...');
-    const { stdout: qualityOutput }: ExecutionResult = await execAsync(
-      'npx tsx scripts/scheduled/manage-quality-scores.ts calculate'
+    await runCommandWithTimeout(
+      '品質スコア計算',
+      'npx tsx scripts/scheduled/manage-quality-scores.ts calculate',
+      5 * 60 * 1000
     );
-    console.error(qualityOutput);
     
     // 5. 難易度レベル判定
-    console.error('📈 難易度レベル判定中...');
-    const { stdout: difficultyOutput }: ExecutionResult = await execAsync(
-      'npx tsx scripts/scheduled/calculate-difficulty-levels.ts'
+    await runCommandWithTimeout(
+      '難易度レベル判定',
+      'npx tsx scripts/scheduled/calculate-difficulty-levels.ts',
+      5 * 60 * 1000
     );
-    console.error(difficultyOutput);
     
     
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.error(`✅ ${label}更新完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
+    console.error(`[INFO] ${label}更新完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
     
   } catch (error) {
-    console.error(`❌ ${label}更新でエラーが発生しました:`, error instanceof Error ? error.message : String(error));
+    console.error(
+      `[ERROR] ${label}更新でエラーが発生しました:`,
+      error instanceof Error ? error.message : String(error)
+    );
     throw error; // 上位でハンドリング可能にする
   }
 }
 
-console.error('📅 TechTrend Scheduler V2 Started');
-console.error(`⏰ 現在時刻: ${new Date().toLocaleString('ja-JP')}`);
-console.error('📊 更新スケジュール:');
+console.error('[INFO] TechTrend Scheduler V2 Started');
+console.error(`[INFO] 現在時刻: ${new Date().toLocaleString('ja-JP')}`);
+console.error('[INFO] 更新スケジュール:');
 console.error('   - RSS系: 毎時0分');
 console.error('   - スクレイピング系: 0時・12時');
 console.error('   - Qiita Popular: 5:05・17:05');
@@ -175,7 +343,7 @@ let qiitaJobRunning = false;
 // RSS系ソースの更新（毎時0分）
 cron.schedule('0 * * * *', async () => {
   if (rssJobRunning) {
-    console.error('⚠️ RSS job already running, skipping this execution');
+    console.error('[WARN] RSS job already running, skipping this execution');
     return;
   }
   rssJobRunning = true;
@@ -191,7 +359,7 @@ cron.schedule('0 * * * *', async () => {
 // スクレイピング系ソースの更新（0時と12時）
 cron.schedule('0 0,12 * * *', async () => {
   if (scrapingJobRunning) {
-    console.error('⚠️ Scraping job already running, skipping this execution');
+    console.error('[WARN] Scraping job already running, skipping this execution');
     return;
   }
   scrapingJobRunning = true;
@@ -207,7 +375,7 @@ cron.schedule('0 0,12 * * *', async () => {
 // Qiita人気記事の更新（5:05と17:05）
 cron.schedule('5 5,17 * * *', async () => {
   if (qiitaJobRunning) {
-    console.error('⚠️ Qiita job already running, skipping this execution');
+    console.error('[WARN] Qiita job already running, skipping this execution');
     return;
   }
   qiitaJobRunning = true;
@@ -223,69 +391,69 @@ cron.schedule('5 5,17 * * *', async () => {
 // 定期的なクリーンアップ（毎日22時）
 cron.schedule('0 22 * * *', async () => {
   const startTime = new Date();
-  console.error(`\n🧹 定期クリーンアップ開始: ${startTime.toLocaleString('ja-JP')}`);
+  console.error(`\n[INFO] 定期クリーンアップ開始: ${startTime.toLocaleString('ja-JP')}`);
   
   try {
     // 低品質記事のクリーンアップ
-    console.error('🗑️ 低品質記事のクリーンアップ中...');
+    console.error('[INFO] 低品質記事のクリーンアップ中...');
     const { stdout: cleanupOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/delete-low-quality-articles.ts');
     console.error(cleanupOutput);
     
     // 空のタグや重複タグのクリーンアップ
-    console.error('🏷️ タグのクリーンアップ中...');
+    console.error('[INFO] タグのクリーンアップ中...');
     const { stdout: tagCleanupOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/clean-tags.ts');
     console.error(tagCleanupOutput);
     
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.error(`✅ クリーンアップ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
+    console.error(`[INFO] クリーンアップ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
     
   } catch (error) {
-    console.error('❌ クリーンアップでエラーが発生しました:', error instanceof Error ? error.message : String(error));
+    console.error('[ERROR] クリーンアップでエラーが発生しました:', error instanceof Error ? error.message : String(error));
   }
 });
 
 // 週次クリーンアップ（毎週日曜日の深夜2時）
 cron.schedule('0 2 * * 0', async () => {
   const startTime = new Date();
-  console.error(`\n🧹 週次クリーンアップを開始: ${startTime.toLocaleString('ja-JP')}`);
+  console.error(`\n[INFO] 週次クリーンアップを開始: ${startTime.toLocaleString('ja-JP')}`);
   
   try {
     // 低品質記事の削除
-    console.error('🗑️ 低品質記事を削除中...');
+    console.error('[INFO] 低品質記事を削除中...');
     const { stdout: deleteOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/delete-low-quality-articles.ts');
     console.error(deleteOutput);
     
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.error(`✅ 週次クリーンアップ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
+    console.error(`[INFO] 週次クリーンアップ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
   } catch (error) {
-    console.error('❌ 週次クリーンアップでエラーが発生しました:', error instanceof Error ? error.message : String(error));
+    console.error('[ERROR] 週次クリーンアップでエラーが発生しました:', error instanceof Error ? error.message : String(error));
   }
 });
 
 // 毎日午後3時30分に品質チェックと自動再生成を実行
 cron.schedule('30 15 * * *', async () => {
   const startTime = new Date();
-  console.error(`\n🔍 品質チェックと自動再生成を開始: ${startTime.toLocaleString('ja-JP')}`);
+  console.error(`\n[INFO] 品質チェックと自動再生成を開始: ${startTime.toLocaleString('ja-JP')}`);
   
   try {
     // まず品質チェックを実行
-    console.error('📊 品質チェックを実行中...');
+    console.error('[INFO] 品質チェックを実行中...');
     const { stdout: qualityOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/quality-check.ts --days 7 --auto-regenerate');
     console.error(qualityOutput);
     
     // 次に低品質記事の自動再生成を実行
-    console.error('♻️ 低品質記事の自動再生成を実行中...');
+    console.error('[INFO] 低品質記事の自動再生成を実行中...');
     const { stdout: regenerateOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/auto-regenerate-low-quality.ts --threshold 70 --limit 10');
     console.error(regenerateOutput);
     
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.error(`✅ 品質チェックと自動再生成が完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
+    console.error(`[INFO] 品質チェックと自動再生成が完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
     
   } catch (error) {
-    console.error('❌ 品質チェック・自動再生成でエラーが発生しました:', 
+    console.error('[ERROR] 品質チェック・自動再生成でエラーが発生しました:', 
       error instanceof Error ? error.message : String(error));
   }
 });
@@ -294,7 +462,7 @@ cron.schedule('30 15 * * *', async () => {
 // タグ生成バッチ（8:30）の後に実行
 cron.schedule('30 10 * * *', async () => {
   const startTime = new Date();
-  console.error(`\n📝 要約生成を開始: ${startTime.toLocaleString('ja-JP')}`);
+  console.error(`\n[INFO] 要約生成を開始: ${startTime.toLocaleString('ja-JP')}`);
   
   try {
     const { stdout: summaryOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/manage-summaries.ts generate --batch 5 --limit 30');
@@ -305,9 +473,9 @@ cron.schedule('30 10 * * *', async () => {
     if (summaryOutput.includes('成功率:') && successRateMatch) {
       const successRate = parseInt(successRateMatch[1]);
       if (successRate < 50) {
-        console.error('⏰ 30分後に再試行します...');
+        console.error('[INFO] 30分後に再試行します...');
         setTimeout(async () => {
-          console.error('\n🔁 要約生成を再試行中...');
+          console.error('\n[INFO] 要約生成を再試行中...');
           const { stdout: retryOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/manage-summaries.ts generate --batch 5 --limit 30');
           console.error(retryOutput);
         }, 30 * 60 * 1000);
@@ -316,10 +484,10 @@ cron.schedule('30 10 * * *', async () => {
     
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.error(`✅ 要約生成完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
+    console.error(`[INFO] 要約生成完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
     
   } catch (error) {
-    console.error('❌ 要約生成でエラーが発生しました:', error instanceof Error ? error.message : String(error));
+    console.error('[ERROR] 要約生成でエラーが発生しました:', error instanceof Error ? error.message : String(error));
   }
 });
 
@@ -327,7 +495,7 @@ cron.schedule('30 10 * * *', async () => {
 // RSS取得バッチとの競合を避けるため、30分ずらして実行
 cron.schedule('30 8,20 * * *', async () => {
   const startTime = new Date();
-  console.error(`\n🏷️ タグ生成バッチを開始: ${startTime.toLocaleString('ja-JP')}`);
+  console.error(`\n[INFO] タグ生成バッチを開始: ${startTime.toLocaleString('ja-JP')}`);
   
   try {
     const { stdout: tagOutput }: ExecutionResult = await execAsync(
@@ -337,17 +505,17 @@ cron.schedule('30 8,20 * * *', async () => {
     
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.error(`✅ タグ生成バッチ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
+    console.error(`[INFO] タグ生成バッチ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
     
   } catch (error) {
-    console.error('❌ タグ生成バッチでエラーが発生しました:', 
+    console.error('[ERROR] タグ生成バッチでエラーが発生しました:', 
       error instanceof Error ? error.message : String(error));
   }
 });
 
 // 初回実行（起動時） - 全ソース（要約生成はスキップ）
 (async () => {
-  console.error('\n🚀 初回実行を開始します（全ソース）...');
+  console.error('\n[INFO] 初回実行を開始します（全ソース）...');
   try {
     // 全ソースを結合
     const allSources = [...RSS_SOURCES, ...SCRAPING_SOURCES];
@@ -355,10 +523,10 @@ cron.schedule('30 8,20 * * *', async () => {
     // 要約生成も含めて実行
     await executeUpdatePipeline(allSources, '初回実行');
     
-    console.error('💡 要約生成は午前10:30に実行されます');
+    console.error('[INFO] 要約生成は午前10:30に実行されます');
     
-    console.error('✅ 初回実行が完了しました\n');
-    console.error('⏳ 次回の更新:');
+    console.error('[INFO] 初回実行が完了しました\n');
+    console.error('[INFO] 次回の更新:');
     console.error('   - RSS系: 毎時0分');
     console.error('   - スクレイピング系: 0時・12時');
     console.error('   - Qiita Popular: 5:05・17:05');
@@ -368,12 +536,12 @@ cron.schedule('30 8,20 * * *', async () => {
     console.error('   - クリーンアップ: 毎日22時');
     console.error('   - 週次クリーンアップ: 毎週日曜日2時');
   } catch (error) {
-    console.error('❌ 初回実行でエラーが発生しました:', error instanceof Error ? error.message : String(error));
+    console.error('[ERROR] 初回実行でエラーが発生しました:', error instanceof Error ? error.message : String(error));
   }
 })();
 
 // プロセス終了時の処理
 process.on('SIGINT', () => {
-  console.error('\n👋 スケジューラーを停止します...');
+  console.error('\n[INFO] スケジューラーを停止します...');
   process.exit(0);
 });
