@@ -1,19 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, X, Sparkles } from 'lucide-react';
-import { useSession } from 'next-auth/react';
-import Link from 'next/link';
+import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDebounce } from '@/hooks/use-debounce';
-import { features } from '@/config/features';
 
 export function SearchBox() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { status } = useSession();
 
   // URLパラメータから初期値を取得
   const [query, setQuery] = useState(() => {
