@@ -181,12 +181,10 @@ export function ArticleCard({
                   <span>📅</span>
                   <span>{formatDateWithTime(article.publishedAt)}</span>
                 </span>
-                {!isTextOnly && (
-                  <span className="flex items-center gap-1.5">
-                    <span>📥</span>
-                    <span>{formatDateWithTime(article.createdAt)}</span>
-                  </span>
-                )}
+                <span className="flex items-center gap-1.5">
+                  <span>📥</span>
+                  <span>{formatDateWithTime(article.createdAt)}</span>
+                </span>
               </div>
             </div>
             <ShareButton title={article.title} url={article.url} size="sm" variant="ghost" />
