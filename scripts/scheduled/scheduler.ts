@@ -1,5 +1,5 @@
 import * as cron from 'node-cron';
-import { exec, ExecException, ExecOptions } from 'child_process';
+import { exec, spawn, ExecException, ExecOptions } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
@@ -28,22 +28,123 @@ async function runCommandWithTimeout(
 ): Promise<ExecutionResult> {
   const startedAt = Date.now();
   const maxBuffer = options.maxBuffer ?? DEFAULT_MAX_BUFFER;
+  const killSignal = options.killSignal ?? 'SIGTERM';
+  const durationSeconds = () => Math.round((Date.now() - startedAt) / 1000);
+  const { timeout: _ignoredTimeout, maxBuffer: _ignoredMaxBuffer, ...spawnableOptions } = options;
+
   console.error(`[INFO] ${stepName} started (timeout ${Math.round(timeoutMs / 1000)}s)`);
 
-  try {
-    const result = await execAsync(command, { ...options, timeout: timeoutMs, maxBuffer });
-    const durationSec = Math.round((Date.now() - startedAt) / 1000);
-    console.error(`[INFO] ${stepName} completed in ${durationSec}s`);
+  return await new Promise<ExecutionResult>((resolve, reject) => {
+    const child = spawn(command, {
+      ...spawnableOptions,
+      shell: spawnableOptions.shell ?? true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
 
-    if (result.stdout) {
-      console.error(result.stdout);
-    }
-    if (result.stderr) {
-      console.error(result.stderr);
-    }
+    let stdout = '';
+    let stderr = '';
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
+    let timedOut = false;
+    let bufferExceeded = false;
+    let settled = false;
 
-    return result;
-  } catch (error) {
+    const timeoutTimer = setTimeout(() => {
+      timedOut = true;
+      child.kill(killSignal);
+    }, timeoutMs);
+
+    const maybeReject = (err: ExecError) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutTimer);
+      reject(err);
+    };
+
+    const maybeResolve = (result: ExecutionResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutTimer);
+      resolve(result);
+    };
+
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
+
+    child.stdout?.on('data', (chunk: string) => {
+      stdout += chunk;
+      stdoutBytes += Buffer.byteLength(chunk, 'utf8');
+      process.stderr.write(chunk);
+
+      if (stdoutBytes > maxBuffer) {
+        bufferExceeded = true;
+        child.kill(killSignal);
+      }
+    });
+
+    child.stderr?.on('data', (chunk: string) => {
+      stderr += chunk;
+      stderrBytes += Buffer.byteLength(chunk, 'utf8');
+      process.stderr.write(chunk);
+
+      if (stderrBytes > maxBuffer) {
+        bufferExceeded = true;
+        child.kill(killSignal);
+      }
+    });
+
+    child.on('error', (error) => {
+      const execError: ExecError = Object.assign(error, {
+        stdout,
+        stderr,
+        killed: child.killed,
+        cmd: command,
+        signal: null as NodeJS.Signals | null,
+      });
+      maybeReject(execError);
+    });
+
+    child.on('close', (code, signal) => {
+      const durationSec = durationSeconds();
+
+      if (timedOut) {
+        const error = new Error(`Command timed out after ${Math.round(timeoutMs / 1000)}s`) as ExecError;
+        error.killed = true;
+        error.signal = signal;
+        error.code = null;
+        error.cmd = command;
+        error.stdout = stdout;
+        error.stderr = stderr;
+        return maybeReject(error);
+      }
+
+      if (bufferExceeded) {
+        const error = new Error(`maxBuffer exceeded (${Math.round(maxBuffer / (1024 * 1024))}MB)`) as ExecError;
+        error.killed = child.killed;
+        error.signal = signal;
+        error.code = null;
+        error.cmd = command;
+        error.stdout = stdout;
+        error.stderr = stderr;
+        return maybeReject(error);
+      }
+
+      if (code !== 0) {
+        const error = new Error(`Command failed: ${command} (exit code ${code})`) as ExecError;
+        error.code = code ?? null;
+        error.cmd = command;
+        error.killed = child.killed;
+        error.signal = signal;
+        error.stdout = stdout;
+        error.stderr = stderr;
+        return maybeReject(error);
+      }
+
+      console.error(`[INFO] ${stepName} completed in ${durationSec}s`);
+
+      return maybeResolve({ stdout, stderr });
+    });
+  }).catch((error) => {
     const durationSec = Math.round((Date.now() - startedAt) / 1000);
     if (isExecError(error)) {
       if (error.killed || error.signal === 'SIGTERM' || /timed out/i.test(error.message)) {
@@ -68,7 +169,7 @@ async function runCommandWithTimeout(
       );
     }
     throw error;
-  }
+  });
 }
 
 // RSS系ソース（1時間ごとに更新）
