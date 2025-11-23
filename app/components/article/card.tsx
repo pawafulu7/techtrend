@@ -192,22 +192,24 @@ export function ArticleCard({
         </div>
       </div>
 
-      {showThumbnail ? (
-        <div className="relative w-full overflow-hidden rounded-md aspect-[3/2] bg-gray-100 dark:bg-gray-800">
-          <OptimizedImage
-            src={article.thumbnail!}
-            alt={article.title}
-            fill
-            priority={false}
-            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-        </div>
-      ) : article.summary ? (
-        <p className="text-[14px] leading-5 text-gray-600 dark:text-gray-300">
-          {article.summary}
-        </p>
-      ) : null}
+      <div className="w-full">
+        {showThumbnail ? (
+          <div className="relative w-full overflow-hidden rounded-md aspect-[3/2] bg-gray-100 dark:bg-gray-800">
+            <OptimizedImage
+              src={article.thumbnail!}
+              alt={article.title}
+              fill
+              priority={false}
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            />
+          </div>
+        ) : article.summary ? (
+          <p className="text-[14px] leading-5 text-gray-600 dark:text-gray-300">
+            {article.summary}
+          </p>
+        ) : null}
+      </div>
 
       {renderTags()}
 
