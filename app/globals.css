@@ -257,6 +257,46 @@ html.no-transitions *::after {
   }
 }
 
+@layer components {
+  /* Card Hover Effect */
+  .card-hover {
+    transition: all 200ms ease-out;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: var(--tt-shadow-card-hover);
+  }
+
+  /* Text Gradient */
+  .text-gradient {
+    background: linear-gradient(to right, var(--tt-color-primary), var(--tt-color-secondary));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Glassmorphic Effect */
+  .glassmorphic {
+    backdrop-filter: blur(12px);
+    background-color: rgb(255 255 255 / 0.8);
+    border: 1px solid rgb(255 255 255 / 0.2);
+  }
+  .dark .glassmorphic {
+    background-color: rgb(17 24 39 / 0.8);
+    border-color: rgb(31 41 55 / 0.2);
+  }
+
+  /* Badge Pill */
+  .badge-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -264,6 +304,20 @@ html.no-transitions *::after {
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Staggered Animation Helpers */
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-stagger {
+      animation: fadeInUp 0.5s ease-out forwards;
+      opacity: 0;
+    }
+
+    .animate-stagger-delay-1 { animation-delay: 0.1s; }
+    .animate-stagger-delay-2 { animation-delay: 0.2s; }
+    .animate-stagger-delay-3 { animation-delay: 0.3s; }
+    .animate-stagger-delay-4 { animation-delay: 0.4s; }
+    .animate-stagger-delay-5 { animation-delay: 0.5s; }
   }
 }
 
@@ -345,12 +399,27 @@ html.no-transitions *::after {
   animation-delay: 450ms;
 }
 
+/* fadeInUp keyframe for staggered animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .fade-in-content,
   .animate-in,
-  .animate-shimmer {
-    animation: none;
+  .animate-shimmer,
+  .animate-stagger,
+  .card-hover {
+    animation: none !important;
+    transition: none !important;
     opacity: 1;
     transform: none;
   }
