@@ -171,7 +171,7 @@ export function ArticleCard({
               )}
               {!isRead && (
                 <BadgeV2
-                  variant="secondary"
+                  variant="primary"
                   className="text-xs flex items-center gap-1"
                   data-testid="unread-badge"
                 >
@@ -193,7 +193,7 @@ export function ArticleCard({
         
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
           <BadgeV2
-            variant="secondary"
+            variant="outline"
             className="text-xs font-medium"
           >
             {article.source?.name || 'Unknown'}
@@ -210,10 +210,11 @@ export function ArticleCard({
               {CategoryClassifier.getCategoryLabel(article.category)}
             </BadgeV2>
           )}
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <span>📅 {formatDateWithTime(article.publishedAt)}</span>
-            <span>📥 {formatDateWithTime(article.createdAt)}</span>
-          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-1">
+          <span>📅 {formatDateWithTime(article.publishedAt)}</span>
+          <span>📥 {formatDateWithTime(article.createdAt)}</span>
         </div>
       </CardHeader>
 
