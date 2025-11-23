@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { TrendingUp, ThumbsUp, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui/button';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
@@ -163,21 +163,22 @@ export function ArticleCard({
           <div className="flex-1">
             <div className="flex items-center gap-1 mb-1">
               {isNew && (
-                <Badge className="text-xs" variant="destructive">
-                  <TrendingUp className="h-3 w-3 mr-0.5 sm:mr-1" />
+                <BadgeV2 variant="primary" className="text-xs flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" />
                   <span className="hidden sm:inline">New</span>
                   <span className="sm:hidden">新</span>
-                </Badge>
+                </BadgeV2>
               )}
               {!isRead && (
-                <Badge 
-                  className="text-xs bg-blue-500 hover:bg-blue-600 text-white"
+                <BadgeV2
+                  variant="secondary"
+                  className="text-xs flex items-center gap-1"
                   data-testid="unread-badge"
                 >
-                  <Eye className="h-3 w-3 mr-0.5" />
+                  <Eye className="h-3 w-3" />
                   <span className="hidden sm:inline">未読</span>
                   <span className="sm:hidden">未</span>
-                </Badge>
+                </BadgeV2>
               )}
             </div>
             <h3 className={cn(
@@ -191,23 +192,23 @@ export function ArticleCard({
         </div>
         
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-          <Badge 
-            variant="secondary" 
-            className={cn("text-xs font-medium", sourceColor.tag)}
+          <BadgeV2
+            variant="secondary"
+            className="text-xs font-medium"
           >
             {article.source?.name || 'Unknown'}
-          </Badge>
+          </BadgeV2>
           {article.category && (
-            <Badge 
-              variant="outline" 
-              className="text-xs font-medium cursor-pointer hover:bg-secondary"
+            <BadgeV2
+              variant="outline"
+              className="text-xs font-medium cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
                 window.location.href = `/?category=${encodeURIComponent(article.category!)}`;
               }}
             >
               {CategoryClassifier.getCategoryLabel(article.category)}
-            </Badge>
+            </BadgeV2>
           )}
           <div className="flex items-center gap-1.5 text-[11px]">
             <span>📅 {formatDateWithTime(article.publishedAt)}</span>
@@ -237,17 +238,17 @@ export function ArticleCard({
         {article.tags && article.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {article.tags.slice(0, 2).map((tag) => (
-              <Badge
+              <BadgeV2
                 key={tag.id}
                 variant="outline"
-                className="text-xs px-2 py-0 h-5 cursor-pointer hover:bg-secondary"
+                className="text-xs cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
                   window.location.href = `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`;
                 }}
               >
                 {tag.name}
-              </Badge>
+              </BadgeV2>
             ))}
             {article.tags.length > 2 && (
               <span className="text-xs text-muted-foreground">+{article.tags.length - 2}</span>
