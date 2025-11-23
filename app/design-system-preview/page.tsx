@@ -1,6 +1,11 @@
-import { CardV2, CardV2Header, CardV2Title, CardV2Content } from '@/components/ui-v2';
-import { BadgeV2 } from '@/components/ui-v2';
-import { ButtonV2 } from '@/components/ui-v2';
+import {
+  CardV2,
+  CardV2Header,
+  CardV2Title,
+  CardV2Content,
+  BadgeV2,
+  ButtonV2,
+} from '@/components/ui-v2';
 
 export default function DesignSystemPreviewPage() {
   return (

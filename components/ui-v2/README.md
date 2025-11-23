@@ -189,7 +189,7 @@ npm run generate:tokens
 ```
 
 ### Preview Components
-Visit: http://localhost:3000/design-system-preview
+Visit: [Design System Preview](http://localhost:3000/design-system-preview)
 
 ### Testing
 ```bash
