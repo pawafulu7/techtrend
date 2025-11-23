@@ -16,7 +16,7 @@ export function HeroSection({ popularTags }: HeroSectionProps) {
   return (
     <section
       className="relative isolate w-full overflow-hidden"
-      style={{ minHeight: 'clamp(220px, 34vw, 420px)' }}
+      style={{ minHeight: 'clamp(180px, 28vw, 340px)' }}
     >
       {/* Gradient background layer */}
       <div
@@ -31,7 +31,7 @@ export function HeroSection({ popularTags }: HeroSectionProps) {
       />
 
       {/* Content */}
-      <div className="relative mx-auto flex h-full w-full max-w-6xl flex-col items-start gap-4 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
+      <div className="relative mx-auto flex h-full w-full max-w-6xl flex-col items-start gap-4 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
         <p className="text-sm font-medium text-blue-600 dark:text-blue-300">
           TechTrend / 39メディア横断
         </p>
