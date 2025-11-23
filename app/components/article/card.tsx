@@ -171,7 +171,10 @@ export function ArticleCard({
                   </BadgeV2>
                 )}
                 {showSource && (
-                  <span className="rounded-full bg-muted px-2 py-[3px] text-[11px] text-muted-foreground">
+                  <span
+                    className="rounded-full bg-muted px-2 py-[3px] text-[11px] text-muted-foreground"
+                    data-testid="article-source"
+                  >
                     {article.source?.name || 'Unknown'}
                   </span>
                 )}

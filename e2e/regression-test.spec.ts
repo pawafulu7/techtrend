@@ -23,9 +23,8 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
       const title = await firstCard.locator('h3').textContent();
       expect(title).toBeTruthy();
       
-      // ソース名が存在（badgeクラスまたはdata-testid）
-      // Source badge is now BadgeV2 or span with specific class
-      const sourceElement = firstCard.locator('span, [class*="badge"]').filter({ hasText: /Zenn|Hacker News|Dev\.to|Qiita|Speaker Deck/ }).first();
+      // ソース名が存在（data-testid）
+      const sourceElement = firstCard.locator('[data-testid="article-source"]');
       const sourceText = await sourceElement.textContent();
       expect(sourceText).toBeTruthy();
     });
