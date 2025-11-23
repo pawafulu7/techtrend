@@ -226,10 +226,22 @@ html.no-transitions *::after {
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* Typography Base Styles */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  }
+
   body {
     @apply text-foreground bg-background;
+    font-family: var(--font-inter), system-ui, sans-serif;
   }
-  /* よりシンプルで軽量な背景グラデーション */
+
+  code, pre {
+    font-family: var(--font-jetbrains-mono), 'Courier New', monospace;
+  }
+
+  /* Background gradient */
   body::before {
     content: "";
     position: fixed;
@@ -245,7 +257,7 @@ html.no-transitions *::after {
     );
     pointer-events: none;
     z-index: -1;
-    will-change: auto; /* パフォーマンス最適化 */
+    will-change: auto;
   }
   .dark body::before {
     background: linear-gradient(
