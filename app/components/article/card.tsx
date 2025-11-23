@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ThumbsUp } from 'lucide-react';
+import { ThumbsUp, ExternalLink } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
@@ -235,6 +235,18 @@ export function ArticleCard({
           onToggleFavorite={onToggleFavorite}
         />
         <div className="flex items-center gap-2">
+          <ButtonV2
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(article.url, '_blank', 'noopener,noreferrer');
+            }}
+            className="h-9 px-3 text-xs"
+          >
+            <ExternalLink className="h-4 w-4 mr-1" />
+            元記事
+          </ButtonV2>
           {votes > 0 && <span className="text-xs text-muted-foreground">{votes}</span>}
           <ButtonV2
             variant={hasVoted ? 'primary' : 'outline'}
