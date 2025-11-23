@@ -72,7 +72,7 @@ test.describe('AI Agent Search E2E', () => {
     await expect(page).toHaveURL('/');
 
     // Verify CTA is visible (feature flag ON)
-    const ctaLink = page.getByRole('link', { name: /AI検索を試す/ });
+    const ctaLink = page.getByRole('link', { name: /AI検索/ });
     await expect(ctaLink).toBeVisible();
     await expect(ctaLink).toHaveAttribute('href', '/search/agent');
 
