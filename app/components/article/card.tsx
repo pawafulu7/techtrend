@@ -221,12 +221,7 @@ export function ArticleCard({
             />
           </div>
         ) : article.summary ? (
-          <p
-            className={cn(
-              'text-[14px] leading-6 text-gray-600 dark:text-gray-300',
-              isTextOnly && 'line-clamp-3 text-muted-foreground'
-            )}
-          >
+          <p className="text-[14px] leading-6 text-gray-600 dark:text-gray-300">
             {article.summary}
           </p>
         ) : null}
