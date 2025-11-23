@@ -6,6 +6,7 @@ import {
   BadgeV2,
   ButtonV2,
 } from '@/components/ui-v2';
+import { designTokens } from '@/lib/design-tokens';
 
 export default function DesignSystemPreviewPage() {
   return (
@@ -24,22 +25,22 @@ export default function DesignSystemPreviewPage() {
             <div className="space-y-2">
               <div className="h-20 rounded-lg bg-[var(--tt-color-primary)]" />
               <p className="text-sm font-medium">Primary</p>
-              <p className="text-xs text-muted-foreground">#16A34A</p>
+              <p className="text-xs text-muted-foreground">{designTokens.colors.light.primary}</p>
             </div>
             <div className="space-y-2">
               <div className="h-20 rounded-lg bg-[var(--tt-color-secondary)]" />
               <p className="text-sm font-medium">Secondary</p>
-              <p className="text-xs text-muted-foreground">#F97316</p>
+              <p className="text-xs text-muted-foreground">{designTokens.colors.light.secondary}</p>
             </div>
             <div className="space-y-2">
               <div className="h-20 rounded-lg bg-[var(--tt-color-positive)]" />
               <p className="text-sm font-medium">Positive</p>
-              <p className="text-xs text-muted-foreground">#22C55E</p>
+              <p className="text-xs text-muted-foreground">{designTokens.colors.light.positive}</p>
             </div>
             <div className="space-y-2">
               <div className="h-20 rounded-lg bg-[var(--tt-color-negative)]" />
               <p className="text-sm font-medium">Negative</p>
-              <p className="text-xs text-muted-foreground">#EF4444</p>
+              <p className="text-xs text-muted-foreground">{designTokens.colors.light.negative}</p>
             </div>
           </div>
         </section>
