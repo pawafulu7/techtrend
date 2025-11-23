@@ -117,6 +117,7 @@ interface CollectResult {
   newArticles: number;
   duplicates: number;
   updated: number;
+  newArticleIds: string[];
 }
 
 const DEFAULT_COLLECT_CONCURRENCY = 5;
@@ -132,6 +133,7 @@ interface ProcessSourceResult {
   newArticles: number;
   duplicates: number;
   updated: number;
+  newArticleIds: string[];
 }
 
 async function runWithTimeout<T>(
@@ -183,7 +185,7 @@ async function processSource({
 }: ProcessSourceContext): Promise<ProcessSourceResult> {
   const startTime = Date.now();
   const sourceName = source.name;
-  const result: ProcessSourceResult = { newArticles: 0, duplicates: 0, updated: 0 };
+  const result: ProcessSourceResult = { newArticles: 0, duplicates: 0, updated: 0, newArticleIds: [] };
   let newCount = 0;
   let duplicateCount = 0;
   let updatedCount = 0;
@@ -321,6 +323,8 @@ async function processSource({
           }
         });
 
+        result.newArticleIds.push(savedArticle.id);
+
         if (process.env.SKIP_POST_SAVE_ENRICHMENT !== '1') {
           const enricher = enricherFactory.getEnricher(article.url);
           if (enricher) {
@@ -453,12 +457,14 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     let totalNewArticles = 0;
     let totalDuplicates = 0;
     let totalUpdated = 0;
+    const newArticleIds: string[] = [];
 
     settledResults.forEach(result => {
       if (result.status === 'fulfilled') {
         totalNewArticles += result.value.newArticles;
         totalDuplicates += result.value.duplicates;
         totalUpdated += result.value.updated;
+        newArticleIds.push(...result.value.newArticleIds);
       } else {
         console.error('[WARN] ソース処理で未処理の例外が発生しました:', result.reason);
       }
@@ -474,7 +480,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       console.error('\n[INFO] 要約生成を自動実行します...');
       try {
         const { generateSummaries } = await import('../maintenance/generate-summaries');
-        const result = await generateSummaries();
+        const result = await generateSummaries({ articleIds: newArticleIds });
         console.error(`[INFO] 要約生成完了: ${result.generated}件の要約を生成`);
       } catch (error) {
         console.error(
@@ -484,7 +490,12 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       }
     }
 
-    return { newArticles: totalNewArticles, duplicates: totalDuplicates, updated: totalUpdated };
+    return {
+      newArticles: totalNewArticles,
+      duplicates: totalDuplicates,
+      updated: totalUpdated,
+      newArticleIds
+    };
 
   } catch (error) {
     console.error('[ERROR] フィード収集エラー:', error);

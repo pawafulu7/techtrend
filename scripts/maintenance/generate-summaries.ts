@@ -403,14 +403,23 @@ async function sleep(ms: number): Promise<void> {
 
 type ArticleWithSource = Article & { source: Source; description?: string | null };
 
-async function generateSummaries(): Promise<GenerateResult> {
+async function generateSummaries(params: { articleIds?: string[] } = {}): Promise<GenerateResult> {
+  const { articleIds } = params;
+  const hasTargetIds = Array.isArray(articleIds) && articleIds.length > 0;
+
   console.error('📝 要約とタグの生成を開始します...');
+  if (hasTargetIds) {
+    console.error(`   対象記事ID: ${articleIds?.length ?? 0}件（新規のみを優先処理）`);
+  }
   const startTime = Date.now();
 
   try {
     // 1. 要約がない記事を取得
     const articlesWithoutSummary = await prisma.article.findMany({
-      where: { summary: null },
+      where: {
+        summary: null,
+        ...(hasTargetIds && { id: { in: articleIds } })
+      },
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
       take: 100
@@ -431,7 +440,8 @@ async function generateSummaries(): Promise<GenerateResult> {
       const articles = await prisma.article.findMany({
         where: {
           sourceId: source.id,
-          summary: { not: null }
+          summary: { not: null },
+          ...(hasTargetIds && { id: { in: articleIds } })
         },
         include: { source: true },
         take: 50
@@ -450,7 +460,8 @@ async function generateSummaries(): Promise<GenerateResult> {
     // 3. 途切れた要約を持つ記事を取得
     const allArticlesWithSummary = await prisma.article.findMany({
       where: {
-        summary: { not: null }
+        summary: { not: null },
+        ...(hasTargetIds && { id: { in: articleIds } })
       },
       include: { source: true },
       take: 200
@@ -473,7 +484,8 @@ async function generateSummaries(): Promise<GenerateResult> {
       where: {
         tags: {
           none: {}
-        }
+        },
+        ...(hasTargetIds && { id: { in: articleIds } })
       },
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
