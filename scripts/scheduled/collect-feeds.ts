@@ -134,6 +134,33 @@ interface ProcessSourceResult {
   updated: number;
 }
 
+async function runWithTimeout<T>(
+  task: () => Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string
+): Promise<T> {
+  let timeoutId: NodeJS.Timeout | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      console.error(`[TIMEOUT] ${timeoutMessage}`);
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+    timeoutId.unref?.();
+  });
+
+  try {
+    // Call the task in a microtask so the timeout is armed even if the task body
+    // does heavy synchronous work before its first await.
+    const taskPromise = Promise.resolve().then(task);
+    return await Promise.race([taskPromise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 function resolveCollectConcurrency(): number {
   const rawValue = process.env.COLLECT_FEEDS_CONCURRENCY;
   if (!rawValue) {
@@ -178,12 +205,12 @@ async function processSource({
 
     // Add per-source timeout to prevent infinite hang
     const fetchTimeoutMs = Number(process.env.FETCHER_TIMEOUT_MS) || 120_000; // 2 minutes default
-    const fetchPromise = fetcher.fetch();
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Fetcher timeout after ${fetchTimeoutMs}ms for ${sourceName}`)), fetchTimeoutMs)
+    const timeoutMessage = `Fetcher timeout after ${fetchTimeoutMs}ms for ${sourceName}`;
+    const { articles, errors } = await runWithTimeout(
+      () => fetcher.fetch(),
+      fetchTimeoutMs,
+      timeoutMessage
     );
-
-    const { articles, errors } = await Promise.race([fetchPromise, timeoutPromise]);
 
     console.error(`[DONE] ${sourceName} - ${new Date().toISOString()} - Fetched ${articles?.length ?? 0} articles`);
 
