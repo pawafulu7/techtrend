@@ -181,14 +181,16 @@ export function ArticleCard({
             </div>
             <ShareButton title={article.title} url={article.url} size="sm" variant="ghost" />
           </div>
-          <h3
-            className={cn(
-              'text-[17px] font-semibold leading-6 line-clamp-2 text-(--tt-color-text)',
-              isRead && 'opacity-70'
-            )}
-          >
-            {article.translatedTitle || article.title}
-          </h3>
+          {!showThumbnail && (
+            <h3
+              className={cn(
+                'text-[17px] font-semibold leading-6 line-clamp-2 text-(--tt-color-text)',
+                isRead && 'opacity-70'
+              )}
+            >
+              {article.translatedTitle || article.title}
+            </h3>
+          )}
         </div>
       </div>
 
