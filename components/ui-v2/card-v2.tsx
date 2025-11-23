@@ -13,10 +13,10 @@ const CardV2 = forwardRef<HTMLDivElement, CardV2Props>(
         className={cn(
           'rounded-lg border transition-all duration-200',
           variant === 'default' && [
-            'bg-[var(--tt-color-surface)] border-[var(--tt-color-border)]',
+            'bg-(--tt-color-surface) border-(--tt-color-border)',
           ],
           variant === 'hover' && [
-            'bg-[var(--tt-color-surface)] border-[var(--tt-color-border)]',
+            'bg-(--tt-color-surface) border-(--tt-color-border)',
             'card-hover',
           ],
           variant === 'ghost' && 'border-none shadow-none',

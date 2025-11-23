@@ -34,34 +34,34 @@ const ButtonV2 = forwardRef<HTMLButtonElement, ButtonV2Props>(
         className={cn(
           'inline-flex items-center justify-center font-medium transition-all',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-          'focus-visible:ring-[var(--tt-color-primary)]',
+          'focus-visible:ring-(--tt-color-primary)',
           'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
 
           // Variants
           variant === 'default' && [
-            'bg-[var(--tt-color-surface)] text-[var(--tt-color-text)]',
-            'border border-[var(--tt-color-border)]',
-            'hover:bg-[var(--tt-color-surface-hover)] hover:border-[var(--tt-color-border-hover)]',
+            'bg-(--tt-color-surface) text-(--tt-color-text)',
+            'border border-(--tt-color-border)',
+            'hover:bg-(--tt-color-surface-hover) hover:border-(--tt-color-border-hover)',
           ],
           variant === 'primary' && [
-            'bg-[var(--tt-color-primary)] text-[var(--tt-color-on-primary)]',
-            'hover:bg-[var(--tt-color-primary-hover)]',
+            'bg-(--tt-color-primary) text-(--tt-color-on-primary)',
+            'hover:bg-(--tt-color-primary-hover)',
             'shadow-sm hover:shadow-md',
           ],
           variant === 'secondary' && [
-            'bg-[var(--tt-color-secondary)] text-white',
-            'hover:bg-[var(--tt-color-secondary-hover)]',
+            'bg-(--tt-color-secondary) text-white',
+            'hover:bg-(--tt-color-secondary-hover)',
             'shadow-sm hover:shadow-md',
           ],
           variant === 'ghost' && [
-            'hover:bg-[var(--tt-color-surface-hover)]',
-            'text-[var(--tt-color-text)]',
+            'hover:bg-(--tt-color-surface-hover)',
+            'text-(--tt-color-text)',
           ],
           variant === 'outline' && [
-            'border border-[var(--tt-color-border)]',
+            'border border-(--tt-color-border)',
             'bg-transparent',
-            'hover:bg-[var(--tt-color-surface-hover)] hover:border-[var(--tt-color-border-hover)]',
-            'text-[var(--tt-color-text)]',
+            'hover:bg-(--tt-color-surface-hover) hover:border-(--tt-color-border-hover)',
+            'text-(--tt-color-text)',
           ],
 
           // Sizes
