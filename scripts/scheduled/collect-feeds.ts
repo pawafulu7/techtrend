@@ -433,22 +433,16 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       console.error('[INFO] キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
 
-      if (process.env.SKIP_POST_SAVE_ENRICHMENT === '1') {
-        console.log('Skipping auto summary generation (SKIP_POST_SAVE_ENRICHMENT=1)');
-        console.log(`New articles created: ${totalNewArticles}`);
-        console.log('Summary generation will run separately via scheduler');
-      } else {
-        console.error('\n[INFO] 要約生成を自動実行します...');
-        try {
-          const { generateSummaries } = await import('../maintenance/generate-summaries');
-          const result = await generateSummaries();
-          console.error(`[INFO] 要約生成完了: ${result.generated}件の要約を生成`);
-        } catch (error) {
-          console.error(
-            '[WARN] 要約生成でエラーが発生しましたが、記事収集は成功しています:',
-            error instanceof Error ? error.message : String(error)
-          );
-        }
+      console.error('\n[INFO] 要約生成を自動実行します...');
+      try {
+        const { generateSummaries } = await import('../maintenance/generate-summaries');
+        const result = await generateSummaries();
+        console.error(`[INFO] 要約生成完了: ${result.generated}件の要約を生成`);
+      } catch (error) {
+        console.error(
+          '[WARN] 要約生成でエラーが発生しましたが、記事収集は成功しています:',
+          error instanceof Error ? error.message : String(error)
+        );
       }
     }
 
