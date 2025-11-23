@@ -146,7 +146,6 @@ async function runWithTimeout<T>(
       console.error(`[TIMEOUT] ${timeoutMessage}`);
       reject(new Error(timeoutMessage));
     }, timeoutMs);
-    timeoutId.unref?.();
   });
 
   try {
