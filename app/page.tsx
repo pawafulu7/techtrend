@@ -1,5 +1,7 @@
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
+import Link from 'next/link';
+import { Sparkles } from 'lucide-react';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
 import { SearchBox } from '@/app/components/common/search-box';
@@ -10,6 +12,8 @@ import { SortButtons } from '@/app/components/common/sort-buttons';
 import { FilterResetButton } from '@/app/components/common/filter-reset-button';
 import { UnreadFilterWithData } from '@/app/components/common/unread-filter-with-data';
 import { MarkAllReadWrapper } from '@/app/components/common/mark-all-read-wrapper';
+import { auth } from '@/lib/auth/auth';
+import { features } from '@/config/features';
 import { HomeClient } from '@/app/components/home/home-client';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
@@ -71,12 +75,13 @@ async function getPopularTags() {
 
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
-  
-  // Parallel execution of cookies, sources/groups, and tags
-  const [cookieStore, sourceData, tags] = await Promise.all([
+
+  // Parallel execution of cookies, sources/groups, tags, and session
+  const [cookieStore, sourceData, tags, session] = await Promise.all([
     cookies(),
     getSources(),
     getPopularTags(),
+    auth(),
   ]);
 
   const { sources, groupedSources } = sourceData;
@@ -143,6 +148,19 @@ export default async function Home({ searchParams }: PageProps) {
                   <div className="hidden lg:block">
                     <SearchBox />
                   </div>
+                  {features.aiSearch && session?.user && (
+                    <>
+                      <Link
+                        href="/search/agent"
+                        className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-md transition-colors"
+                        title="AI検索"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        <span>AI検索</span>
+                      </Link>
+                      <div className="w-px h-5 bg-border" />
+                    </>
+                  )}
                   <div className="hidden lg:block">
                     <TagFilterDropdown tags={tags} />
                   </div>
