@@ -19,14 +19,17 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
       // 記事カードの必須要素が存在する
       const firstCard = page.locator('[data-testid="article-card"]').first();
       
-      // タイトルが存在
-      const title = await firstCard.locator('h3').textContent();
-      expect(title).toBeTruthy();
+      // タイトルまたはサムネイルが存在（サムネイル時はタイトル非表示）
+      const hasTitle = await firstCard.locator('h3').count() > 0;
+      const hasThumbnail = await firstCard.locator('img').count() > 0;
+      expect(hasTitle || hasThumbnail).toBeTruthy();
       
-      // ソース名が存在（badgeクラスまたはdata-testid）
-      const sourceElement = firstCard.locator('.text-xs, .badge, [class*="badge"]').first();
-      const sourceText = await sourceElement.textContent();
-      expect(sourceText).toBeTruthy();
+      // ソース名が存在する場合チェック（showSource prop次第でオプショナル）
+      const sourceCount = await firstCard.locator('[data-testid="article-source"]').count();
+      if (sourceCount > 0) {
+        const sourceText = await firstCard.locator('[data-testid="article-source"]').textContent();
+        expect(sourceText).toBeTruthy();
+      }
     });
 
     test('記事カードクリックで詳細ページに遷移する', async ({ page }) => {

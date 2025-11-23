@@ -2,33 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { TrendingUp, ThumbsUp, ExternalLink } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { ThumbsUp, ExternalLink } from 'lucide-react';
+import { CardV2 } from '@/components/ui-v2/card-v2';
+import { BadgeV2 } from '@/components/ui-v2/badge-v2';
+import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import { formatDateWithTime } from '@/lib/utils/date';
-import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
-import { Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { ShareButton } from '@/app/components/article/share-button';
-import { ArticleThumbnail } from '@/app/components/common/optimized-image';
-import { CategoryClassifier } from '@/lib/services/category-classifier';
+import { OptimizedImage } from '@/app/components/common/optimized-image';
 
 export function ArticleCard({
   article,
   onArticleClick,
   isRead: initialIsRead = false,
   isFavorited,
-  onToggleFavorite
+  onToggleFavorite,
+  showSource = true,
+  showTags = true,
+  onTagClick,
 }: ArticleCardProps & { isRead?: boolean }) {
   const [votes, setVotes] = useState(article.userVotes || 0);
   const [hasVoted, setHasVoted] = useState(false);
   const [isRead, setIsRead] = useState(initialIsRead);
   const router = useRouter();
 
-  // Listen for read status changes
   useEffect(() => {
     const handleReadStatusChange = (event: CustomEvent) => {
       if (event.detail.articleId === article.id) {
@@ -37,74 +36,50 @@ export function ArticleCard({
     };
 
     window.addEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
-
     return () => {
       window.removeEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
     };
   }, [article.id]);
 
-  // Update isRead when prop changes
   useEffect(() => {
     setIsRead(initialIsRead);
   }, [initialIsRead]);
-  
-  // サムネイル表示判定ロジック
-  // スライドサービス（Speaker Deck, Docswell）または薄いコンテンツ（300文字未満）の場合のみサムネイル優先
+
   const shouldShowThumbnail = (): boolean => {
-    // sourceが存在しない場合は早期リターン
     if (!article.source) {
       return false;
     }
-
-    // Speaker DeckとDocswellは常にサムネイル表示（スライドサービス）
     if (article.source.name === 'Speaker Deck' || article.source.name === 'Docswell') {
       return !!article.thumbnail;
     }
-
-    // 薄いコンテンツ（300文字未満）でサムネイルがある場合
     if (article.content && article.content.length < 300 && article.thumbnail) {
       return true;
     }
-
-    // qualityScore条件は削除: 品質スコアは表示形式ではなく記事の価値を示す指標
-    // 要約が存在する記事では、qualityScoreに関わらず要約を優先表示
-
     return false;
   };
 
   const showThumbnail = shouldShowThumbnail();
+  const isTextOnly = !showThumbnail;
 
   const searchParams = useSearchParams();
-  const sourceColor = getSourceColor(article.source?.name || 'Unknown');
   const publishedDate = new Date(article.publishedAt);
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // ボタンクリックの場合は無視
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
-
-    // 親コンポーネントのコールバックを実行（スクロール位置保存）
     if (onArticleClick) {
       onArticleClick(article.id);
     }
 
-    // URLパラメータを保持して記事詳細ページに遷移
     const params = new URLSearchParams(searchParams.toString());
-
-    // returningパラメータは除外（記事詳細からの戻りを示すパラメータなので）
     params.delete('returning');
-
-    // 記事一覧に戻る時用にreturningパラメータを追加
     params.set('returning', '1');
 
-    // 現在のフィルター状態を保持したURLを生成
     const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
-
-    // 遷移を実行
     router.push(articleUrl);
   };
 
@@ -123,182 +98,171 @@ export function ArticleCard({
         setHasVoted(true);
       }
     } catch {
+      // noop: silent fail to keep card interaction lightweight
     }
   };
 
+  const renderTags = () => {
+    if (!showTags || !article.tags || article.tags.length === 0) {
+      return null;
+    }
+
+    const visibleTags = article.tags.slice(0, 2);
+    const remainingCount = article.tags.length - visibleTags.length;
+
+    return (
+      <div className="flex flex-wrap items-center gap-1 pt-1">
+        {visibleTags.map((tag) => (
+          <BadgeV2
+            key={tag.id}
+            variant="outline"
+            className="text-xs cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onTagClick) {
+                onTagClick(tag.name);
+              } else {
+                router.push(`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`);
+              }
+            }}
+          >
+            {tag.name}
+          </BadgeV2>
+        ))}
+        {remainingCount > 0 && (
+          <span className="text-xs text-muted-foreground">+{remainingCount}</span>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <Card 
+    <CardV2
+      variant="hover"
       id={`article-${article.id}`}
       data-testid="article-card"
       data-article-id={article.id}
       onClick={handleCardClick}
       className={cn(
-        "group relative overflow-hidden cursor-pointer",
-        "transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out",
-        "hover:shadow-lg hover:-translate-y-0.5",
-        "shadow-sm backdrop-blur-sm",
-        "border border-border/20 hover:border-border/40",
-        // ダークモード対応の背景色
-        "bg-white/98 dark:bg-gray-800/98",
-        "hover:bg-white dark:hover:bg-gray-750",
-        // ダークモード対応のシャドウ
-        "shadow-[0_2px_8px_rgba(100,100,200,0.15)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]",
-        "hover:shadow-[0_8px_24px_rgba(100,100,200,0.25)] dark:hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]",
-        // ダークモード対応のボーダー
-        "border-blue-200/20 dark:border-gray-700/40",
-        "hover:border-blue-200/40 dark:hover:border-gray-600/60",
-        sourceColor.border,
-        sourceColor.hover
+        'group relative flex h-full flex-col gap-3 p-4 cursor-pointer',
+        isTextOnly && 'border border-muted/40 shadow-sm'
       )}
     >
-      {/* グラデーション背景 */}
-      <div className={cn(
-        "absolute inset-0 opacity-[0.08] group-hover:opacity-[0.15] transition-opacity duration-300 pointer-events-none",
-        "bg-gradient-to-br",
-        sourceColor.gradient
-      )} />
-      
-      <CardHeader className="pb-1 px-2.5 sm:px-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1">
-            <div className="flex items-center gap-1 mb-1">
-              {isNew && (
-                <Badge className="text-xs" variant="destructive">
-                  <TrendingUp className="h-3 w-3 mr-0.5 sm:mr-1" />
-                  <span className="hidden sm:inline">New</span>
-                  <span className="sm:hidden">新</span>
-                </Badge>
-              )}
-              {!isRead && (
-                <Badge 
-                  className="text-xs bg-blue-500 hover:bg-blue-600 text-white"
-                  data-testid="unread-badge"
-                >
-                  <Eye className="h-3 w-3 mr-0.5" />
-                  <span className="hidden sm:inline">未読</span>
-                  <span className="sm:hidden">未</span>
-                </Badge>
-              )}
+      <div className="flex items-start gap-2">
+        <div className="flex-1 space-y-2.5">
+          <div className="flex items-start gap-2">
+            <div className="flex-1 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2 text-[12px]">
+                {isNew && (
+                  <BadgeV2 variant="primary" className="text-xs">
+                    NEW
+                  </BadgeV2>
+                )}
+                {!isRead && (
+                  <BadgeV2
+                    variant="secondary"
+                    className="text-xs"
+                    data-testid="unread-badge"
+                  >
+                    未読
+                  </BadgeV2>
+                )}
+                {showSource && (
+                  <BadgeV2
+                    variant="outline"
+                    className="text-xs"
+                    data-testid="article-source"
+                  >
+                    {article.source?.name || 'Unknown'}
+                  </BadgeV2>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <span>📅</span>
+                  <span>{formatDateWithTime(article.publishedAt)}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span>📥</span>
+                  <span>{formatDateWithTime(article.createdAt)}</span>
+                </span>
+              </div>
             </div>
-            <h3 className={cn(
-              "text-base font-bold leading-tight line-clamp-2 transition-colors",
-              "text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400",
-              isRead && "opacity-70"
-            )}>
+            <ShareButton title={article.title} url={article.url} size="sm" variant="ghost" />
+          </div>
+          {!showThumbnail && (
+            <h3
+              className={cn(
+                'text-[17px] font-semibold leading-6 text-(--tt-color-text)',
+                isRead && 'opacity-70',
+                isTextOnly ? 'leading-7 text-[18px]' : 'line-clamp-2'
+              )}
+            >
               {article.translatedTitle || article.title}
             </h3>
-          </div>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-          <Badge 
-            variant="secondary" 
-            className={cn("text-xs font-medium", sourceColor.tag)}
-          >
-            {article.source?.name || 'Unknown'}
-          </Badge>
-          {article.category && (
-            <Badge 
-              variant="outline" 
-              className="text-xs font-medium cursor-pointer hover:bg-secondary"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.location.href = `/?category=${encodeURIComponent(article.category!)}`;
-              }}
-            >
-              {CategoryClassifier.getCategoryLabel(article.category)}
-            </Badge>
           )}
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <span>📅 {formatDateWithTime(article.publishedAt)}</span>
-            <span>📥 {formatDateWithTime(article.createdAt)}</span>
-          </div>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="flex-1 py-2 px-2.5 sm:px-3 space-y-2">
-        {/* サムネイル表示条件に基づいて表示を切り替え */}
+      <div className="w-full">
         {showThumbnail ? (
-          <ArticleThumbnail 
-            src={article.thumbnail!} 
-            alt={article.title}
-            priority={false}
-            className="rounded-md hover:scale-105 transition-transform duration-300"
-          />
-        ) : article.summary ? (
-          <div className="relative group/summary">
-            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-300 to-purple-300 rounded-full opacity-50"></div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed pl-3 group-hover/summary:text-gray-700 dark:group-hover/summary:text-gray-200 transition-colors">
-              {article.summary}
-            </p>
-          </div>
-        ) : null}
-        
-        {article.tags && article.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {article.tags.slice(0, 2).map((tag) => (
-              <Badge
-                key={tag.id}
-                variant="outline"
-                className="text-xs px-2 py-0 h-5 cursor-pointer hover:bg-secondary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.location.href = `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`;
-                }}
-              >
-                {tag.name}
-              </Badge>
-            ))}
-            {article.tags.length > 2 && (
-              <span className="text-xs text-muted-foreground">+{article.tags.length - 2}</span>
-            )}
-          </div>
-        )}
-        
-        {/* アクションボタン */}
-        <div className="flex items-center justify-between pt-1">
-          <FavoriteButton
-            articleId={article.id}
-            className="h-8 px-3"
-            isFavorited={isFavorited}
-            onToggleFavorite={onToggleFavorite}
-          />
-          <div className="flex items-center gap-1">
-            <ShareButton
-              title={article.title}
-              url={article.url}
-              size="sm"
-              variant="ghost"
+          <div
+            className="relative isolate w-full overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800"
+            style={{ aspectRatio: '3 / 2', minHeight: '160px' }}
+          >
+            <OptimizedImage
+              src={article.thumbnail!}
+              alt={article.title}
+              fill
+              priority={false}
+              className="object-contain p-3 transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(article.url, '_blank', 'noopener,noreferrer');
-              }}
-              className="h-5 px-1.5 text-xs hover:bg-secondary"
-              title="元記事を開く"
-            >
-              <ExternalLink className="h-3 w-3" />
-            </Button>
-            <Button
-              variant={hasVoted ? "default" : "outline"}
-              size="sm"
-              onClick={handleVote}
-              disabled={hasVoted}
-              data-testid="vote-button"
-              className={cn(
-                "h-5 px-1.5 text-xs",
-                hasVoted && "bg-green-600 hover:bg-green-600"
-              )}
-            >
-              <ThumbsUp className={cn("h-3 w-3", votes > 0 && "mr-1")} />
-              {votes > 0 && votes}
-            </Button>
           </div>
+        ) : article.summary ? (
+          <p className="text-[14px] leading-6 text-gray-600 dark:text-gray-300">
+            {article.summary}
+          </p>
+        ) : null}
+      </div>
+
+      {renderTags()}
+
+      <div className="mt-auto flex items-center justify-between pt-1">
+        <FavoriteButton
+          articleId={article.id}
+          className="h-9 px-3"
+          isFavorited={isFavorited}
+          onToggleFavorite={onToggleFavorite}
+        />
+        <div className="flex items-center gap-2">
+          <ButtonV2
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(article.url, '_blank', 'noopener,noreferrer');
+            }}
+            className="h-9 px-3 text-xs"
+          >
+            <ExternalLink className="h-4 w-4 mr-1" />
+            元記事
+          </ButtonV2>
+          {votes > 0 && <span className="text-xs text-muted-foreground">{votes}</span>}
+          <ButtonV2
+            variant={hasVoted ? 'primary' : 'outline'}
+            size="sm"
+            iconOnly
+            onClick={handleVote}
+            disabled={hasVoted}
+            data-testid="vote-button"
+            aria-pressed={hasVoted}
+            className="h-9 w-9"
+          >
+            <ThumbsUp className="h-4 w-4" />
+          </ButtonV2>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </CardV2>
   );
 }
