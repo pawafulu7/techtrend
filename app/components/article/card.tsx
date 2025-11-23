@@ -187,7 +187,7 @@ export function ArticleCard({
       </div>
 
       {showThumbnail ? (
-        <div className="relative overflow-hidden rounded-md aspect-[3/2] bg-gray-100">
+        <div className="relative w-full overflow-hidden rounded-md aspect-[3/2] bg-gray-100 dark:bg-gray-800">
           <OptimizedImage
             src={article.thumbnail!}
             alt={article.title}
@@ -198,7 +198,7 @@ export function ArticleCard({
           />
         </div>
       ) : article.summary ? (
-        <p className="text-[14px] leading-5 line-clamp-3 text-gray-600 dark:text-gray-300">
+        <p className="text-[14px] leading-5 text-gray-600 dark:text-gray-300">
           {article.summary}
         </p>
       ) : null}
