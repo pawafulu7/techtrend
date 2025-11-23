@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Eye, ThumbsUp } from 'lucide-react';
+import { ThumbsUp } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
@@ -59,6 +59,7 @@ export function ArticleCard({
   };
 
   const showThumbnail = shouldShowThumbnail();
+  const isTextOnly = !showThumbnail;
 
   const searchParams = useSearchParams();
   const publishedDate = new Date(article.publishedAt);
@@ -142,41 +143,50 @@ export function ArticleCard({
       data-testid="article-card"
       data-article-id={article.id}
       onClick={handleCardClick}
-      className="group relative flex h-full flex-col gap-2 p-4 cursor-pointer"
+      className={cn(
+        'group relative flex h-full flex-col gap-3 p-4 cursor-pointer',
+        isTextOnly && 'border border-muted/40 shadow-sm'
+      )}
     >
       <div className="flex items-start gap-2">
-        <div className="flex-1 space-y-2">
+        <div className="flex-1 space-y-2.5">
           <div className="flex items-start gap-2">
-            <div className="flex-1 space-y-1">
-              <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+            <div className="flex-1 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2 text-[12px]">
                 {isNew && (
-                  <BadgeV2 className="bg-green-100 text-green-800 border border-green-200">NEW</BadgeV2>
+                  <BadgeV2 className="bg-green-50 text-green-700 border border-green-100 px-2 py-[2px]">
+                    NEW
+                  </BadgeV2>
                 )}
                 {!isRead && (
                   <BadgeV2
                     variant="outline"
-                    className="text-[11px] bg-blue-600 text-white border-blue-600"
+                    className="text-[11px] bg-blue-50 text-blue-700 border-blue-100"
                     data-testid="unread-badge"
                   >
-                    <Eye className="mr-1 h-3 w-3" />
-                    未読
+                    <div className="flex items-center gap-1">
+                      <span className="block h-2 w-2 rounded-full bg-blue-600" />
+                      <span>未読</span>
+                    </div>
                   </BadgeV2>
                 )}
                 {showSource && (
-                  <BadgeV2 variant="outline" className="text-[11px] font-medium">
+                  <span className="rounded-full bg-muted px-2 py-[3px] text-[11px] text-muted-foreground">
                     {article.source?.name || 'Unknown'}
-                  </BadgeV2>
+                  </span>
                 )}
               </div>
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1.5">
                   <span>📅</span>
                   <span>{formatDateWithTime(article.publishedAt)}</span>
                 </span>
-                <span className="flex items-center gap-1">
-                  <span>📥</span>
-                  <span>{formatDateWithTime(article.createdAt)}</span>
-                </span>
+                {!isTextOnly && (
+                  <span className="flex items-center gap-1.5">
+                    <span>📥</span>
+                    <span>{formatDateWithTime(article.createdAt)}</span>
+                  </span>
+                )}
               </div>
             </div>
             <ShareButton title={article.title} url={article.url} size="sm" variant="ghost" />
@@ -184,8 +194,9 @@ export function ArticleCard({
           {!showThumbnail && (
             <h3
               className={cn(
-                'text-[17px] font-semibold leading-6 line-clamp-2 text-(--tt-color-text)',
-                isRead && 'opacity-70'
+                'text-[17px] font-semibold leading-6 text-(--tt-color-text)',
+                isRead && 'opacity-70',
+                isTextOnly ? 'leading-7 text-[18px]' : 'line-clamp-2'
               )}
             >
               {article.translatedTitle || article.title}
@@ -210,7 +221,12 @@ export function ArticleCard({
             />
           </div>
         ) : article.summary ? (
-          <p className="text-[14px] leading-5 text-gray-600 dark:text-gray-300">
+          <p
+            className={cn(
+              'text-[14px] leading-6 text-gray-600 dark:text-gray-300',
+              isTextOnly && 'line-clamp-3 text-muted-foreground'
+            )}
+          >
             {article.summary}
           </p>
         ) : null}
