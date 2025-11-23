@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
-import { HeroSection } from '@/app/components/home/hero-section';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
+import { SearchBox } from '@/app/components/common/search-box';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { ArticleCount } from '@/app/components/common/article-count';
@@ -116,9 +116,6 @@ export default async function Home({ searchParams }: PageProps) {
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
-        {/* Hero Section */}
-        <HeroSection popularTags={tags} />
-
         {/* メインエリア */}
         <div className="flex-1 lg:flex lg:overflow-hidden">
         {/* サイドバー - デスクトップのみ */}
@@ -143,6 +140,9 @@ export default async function Home({ searchParams }: PageProps) {
               </div>
                 
                 <div className="flex items-center gap-2">
+                  <div className="hidden lg:block">
+                    <SearchBox />
+                  </div>
                   <div className="hidden lg:block">
                     <TagFilterDropdown tags={tags} />
                   </div>
