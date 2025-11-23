@@ -172,8 +172,20 @@ async function processSource({
   }
 
   try {
+    console.error(`[START] ${sourceName} - ${new Date().toISOString()}`);
+
     const fetcher = new FetcherClass(source);
-    const { articles, errors } = await fetcher.fetch();
+
+    // Add per-source timeout to prevent infinite hang
+    const fetchTimeoutMs = Number(process.env.FETCHER_TIMEOUT_MS) || 120_000; // 2 minutes default
+    const fetchPromise = fetcher.fetch();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Fetcher timeout after ${fetchTimeoutMs}ms for ${sourceName}`)), fetchTimeoutMs)
+    );
+
+    const { articles, errors } = await Promise.race([fetchPromise, timeoutPromise]);
+
+    console.error(`[DONE] ${sourceName} - ${new Date().toISOString()} - Fetched ${articles?.length ?? 0} articles`);
 
     if (errors.length > 0) {
       errors.forEach(err => console.error(`   エラー: ${err.message}`));
