@@ -1,8 +1,10 @@
 /**
  * 修正後の要約を検証するスクリプト
  *
- * summary, detailedSummary, headline の3フィールドをスキャンし、
+ * summary, detailedSummary の2フィールドをスキャンし、
  * プロンプト指示文の混入がないことを確認する。
+ *
+ * Note: headline フィールドは Article テーブルに存在しないため対象外
  *
  * Usage:
  *   npx tsx scripts/verify-fixed-summaries.ts
@@ -11,14 +13,14 @@
 import { PrismaClient } from '@prisma/client';
 import { CONTAMINATION_SEARCH_TERMS } from '../lib/ai/constants';
 
-async function main() {
+async function main(): Promise<number> {
   const prisma = new PrismaClient();
 
   try {
-    console.log('[Verify] Checking for prompt contamination across 3 fields...');
+    console.log('[Verify] Checking for prompt contamination across 2 fields...');
     console.log(`[Verify] Search terms: ${CONTAMINATION_SEARCH_TERMS.length}`);
 
-    // 3フィールドをスキャン（OR条件）
+    // 2フィールドをスキャン（OR条件）
     const contaminatedSummary = await prisma.article.findMany({
       where: {
         OR: CONTAMINATION_SEARCH_TERMS.flatMap(term => [
@@ -70,6 +72,7 @@ async function main() {
     if (uniqueArticles.length === 0) {
       console.log('[Verify] ✓ No contamination found!');
       console.log('[Verify] All fields are clean.');
+      return 0;
     } else {
       console.log(`[Verify] ✗ Found ${uniqueArticles.length} contaminated articles:`);
       console.log(`[Verify]   - summary field: ${results.summary.length}`);
@@ -96,15 +99,18 @@ async function main() {
         console.log(`  ... and ${uniqueArticles.length - 10} more`);
       }
 
-      // 終了コード
-      process.exit(1);
+      return 1;
     }
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main().catch((error) => {
-  console.error('[Verify] Error:', error);
-  process.exit(1);
-});
+main()
+  .then((code) => {
+    process.exit(code);
+  })
+  .catch((error) => {
+    console.error('[Verify] Error:', error);
+    process.exit(1);
+  });

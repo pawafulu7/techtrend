@@ -26,10 +26,6 @@ export interface SummaryGenerationOptions {
   days?: number;
   /** Specific article IDs to regenerate */
   articleIds?: string[];
-  /** Skip summary regeneration */
-  skipSummary?: boolean;
-  /** Skip detailed summary regeneration */
-  skipDetailedSummary?: boolean;
 }
 
 export interface SummaryGenerationResult {
