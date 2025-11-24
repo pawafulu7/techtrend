@@ -83,7 +83,8 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('very long article');
       expect(prompt).toContain('1200-1500 characters');
-      expect(prompt).toContain('Minimum 7 items');
+      expect(prompt).toContain('7-9 items only');
+      expect(prompt).toContain('do not exceed 9 items');
     });
 
     it('should generate instructions for long content (5000-9999 chars)', () => {
@@ -103,7 +104,8 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('long article');
       expect(prompt).toContain('900-1500 characters');
-      expect(prompt).toContain('Minimum 5 items');
+      expect(prompt).toContain('5-7 items only');
+      expect(prompt).toContain('do not exceed 7 items');
     });
 
     it('should generate instructions for medium content (3000-4999 chars)', () => {
@@ -123,7 +125,8 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('4000 characters');
       expect(prompt).toContain('600-1000 characters');
-      expect(prompt).toContain('Minimum 4 items');
+      expect(prompt).toContain('4-5 items only');
+      expect(prompt).toContain('do not exceed 5 items');
     });
 
     it('should generate instructions for short content (1000-2999 chars)', () => {
@@ -143,11 +146,33 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('1500 characters');
       expect(prompt).toContain('400-700 characters');
-      expect(prompt).toContain('Minimum 3 items');
+      expect(prompt).toContain('3-4 items only');
+      expect(prompt).toContain('do not exceed 4 items');
     });
 
-    it('should generate instructions for very short content (<1000 chars)', () => {
-      const veryShortContent = 'a'.repeat(500);
+    it('should generate instructions for short-medium content (400-999 chars)', () => {
+      const shortMediumContent = 'a'.repeat(500);
+      const input: SummaryProviderInput = {
+        title: 'Short Medium',
+        content: shortMediumContent,
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'test-short-medium',
+      };
+
+      const prompt = builder.buildPrompt(input);
+
+      expect(prompt).toContain('INTERNAL METADATA');
+      expect(prompt).toContain('short article');
+      expect(prompt).toContain('200-400 characters');
+      expect(prompt).toContain('2-3 items only');
+      expect(prompt).toContain('do not exceed 3 items');
+    });
+
+    it('should generate instructions for very short content (<400 chars)', () => {
+      const veryShortContent = 'a'.repeat(200);
       const input: SummaryProviderInput = {
         title: 'Very Short',
         content: veryShortContent,
@@ -155,15 +180,16 @@ describe('PromptBuilder', () => {
           maxHeadlineChars: 200,
           detailPolicy: 'medium',
         },
-        requestId: 'test-short',
+        requestId: 'test-very-short',
       };
 
       const prompt = builder.buildPrompt(input);
 
       expect(prompt).toContain('INTERNAL METADATA');
-      expect(prompt).toContain('short article');
-      expect(prompt).toContain('300-500 characters');
-      expect(prompt).toContain('Minimum 3 items');
+      expect(prompt).toContain('very short article');
+      expect(prompt).toContain('Plain text format ONLY');
+      expect(prompt).toContain('NO bullet points');
+      expect(prompt).toContain('Maximum length: 300 characters');
     });
   });
 
@@ -182,7 +208,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('Minimum 6 items');
+      expect(prompt).toContain('6-8 items only');
+      expect(prompt).toContain('do not exceed 8 items');
     });
 
     it('should adjust item count for short policy', () => {
@@ -199,7 +226,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('Minimum 5 items');
+      expect(prompt).toContain('5-5 items only');
+      expect(prompt).toContain('do not exceed 5 items');
     });
 
     it('should use default multiplier for medium policy', () => {
@@ -216,7 +244,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('Minimum 5 items');
+      expect(prompt).toContain('5-7 items only');
+      expect(prompt).toContain('do not exceed 7 items');
     });
   });
 
@@ -423,7 +452,8 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('【記事タイプ】技術解説');
       expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('long article');
-      expect(prompt).toContain('Minimum 6 items');
+      expect(prompt).toContain('6-8 items only');
+      expect(prompt).toContain('do not exceed 8 items');
     });
   });
 });

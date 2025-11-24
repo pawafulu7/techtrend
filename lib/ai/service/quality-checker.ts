@@ -120,6 +120,28 @@ export class SummaryQualityChecker implements QualityChecker {
       score = 0; // 自動Fail
     }
 
+    // 短文（<400字）で詳細要約が元記事の1.5倍を超える場合はcritical
+    if (contentLength > 0 && contentLength < 400 && detailedLength > contentLength * 1.5) {
+      const ratio = Math.round((detailedLength / contentLength) * 10) / 10;
+      issues.push({
+        type: 'length',
+        severity: 'critical',
+        message: `短文で詳細要約が長すぎる: ${detailedLength}文字（元記事${contentLength}文字の${ratio}倍、上限は1.5倍）`,
+      });
+      score = 0; // 自動Fail
+    }
+
+    // 短文（<400字）で箇条書きがある場合は不適切
+    const bulletCount = (detailedSummary.match(/・/g) || []).length;
+    if (contentLength > 0 && contentLength < 400 && bulletCount > 0) {
+      issues.push({
+        type: 'format',
+        severity: 'major',
+        message: `短文（${contentLength}字）に箇条書き（${bulletCount}項目）は不適切。平文1-2文で要約すべき`,
+      });
+      score -= 20;
+    }
+
     if (detailedLength < minDetailedLength) {
       issues.push({
         type: 'length',
@@ -168,6 +190,18 @@ export class SummaryQualityChecker implements QualityChecker {
       recommendedItems = '4-5';
     }
 
+    // 項目数上限の設定
+    let maxItems = 4;
+    if (contentLength >= 10000) {
+      maxItems = 9;
+    } else if (contentLength >= 5000) {
+      maxItems = 7;
+    } else if (contentLength >= 3000) {
+      maxItems = 5;
+    } else if (contentLength >= 1000) {
+      maxItems = 4;
+    }
+
     if (!contentAnalysis?.isThinContent && contentLength >= 3000) {
       if (itemCount < minItems) {
         issues.push({
@@ -184,6 +218,16 @@ export class SummaryQualityChecker implements QualityChecker {
         });
         score -= 10;
       }
+    }
+
+    // 項目数上限チェック（短文以外、1000字以上のコンテンツ）
+    if (!contentAnalysis?.isThinContent && contentLength >= 1000 && itemCount > maxItems) {
+      issues.push({
+        type: 'itemCount',
+        severity: 'major',
+        message: `項目数超過: ${itemCount}個（上限${maxItems}個）`,
+      });
+      score -= 15;
     }
 
     if (!contentAnalysis?.isThinContent) {
