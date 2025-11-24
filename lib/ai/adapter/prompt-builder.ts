@@ -31,6 +31,11 @@ const SYSTEM_INSTRUCTIONS = `
 4. 1行完結の厳守
    - 各箇条書き項目は、「・」から内容の最後まで、途中で改行せず1行で完結
 
+5. 短い記事（400文字未満）の特別ルール
+   - 箇条書き形式は使用しない
+   - 1-2文の平文で簡潔に要約
+   - 元記事の長さを超える詳細要約は生成しない
+
 【項目名の設定ルール】
 - 記事の内容を具体的に表すタイトルにする
 - 汎用的なカテゴリ名（技術概要、詳細、背景、概要、実装、効果等）は禁止
@@ -146,9 +151,28 @@ ${OUTPUT_SCHEMA}
   private buildItemCountInstruction(contentLength: number, policy: 'short' | 'medium' | 'long'): string {
     const policyMultiplier = policy === 'long' ? 1.2 : policy === 'short' ? 0.8 : 1.0;
 
+    // Very short article: plain text only, no bullet points
+    if (contentLength < 400) {
+      const maxLength = Math.floor(contentLength * 1.5);
+      return `
+
+INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
+Article content length: ${contentLength} characters
+This is a very short article.
+
+Summary requirements:
+- Detailed summary: Plain text format ONLY (1-2 sentences, NO bullet points)
+- Maximum length: ${maxLength} characters (strict limit, do not exceed)
+- Do NOT expand beyond the source content
+- If source content is insufficient, keep the detailed summary minimal and factual
+
+${METADATA_WARNING}`;
+    }
+
     if (contentLength >= 10000) {
-      const minItems = Math.max(7, Math.floor(7 * policyMultiplier));
-      const maxItems = Math.max(9, Math.floor(9 * policyMultiplier));
+      const baseMin = 7, baseMax = 9;
+      const minItems = Math.max(baseMin, Math.floor(baseMin * policyMultiplier));
+      const maxItems = Math.max(minItems, Math.floor(baseMax * policyMultiplier));
       return `
 
 INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
@@ -157,13 +181,14 @@ This is a very long article requiring detailed summarization.
 
 Summary requirements:
 - Detailed summary: 1200-1500 characters (strict requirement)
-- Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
+- Number of items: ${minItems}-${maxItems} items only (strict requirement, do not exceed ${maxItems} items)
 - Length per item: 170-200 characters each
 - Include specific numbers, dates, technical terms, product names, and command examples
 ${METADATA_WARNING}`;
     } else if (contentLength >= 5000) {
-      const minItems = Math.max(5, Math.floor(5 * policyMultiplier));
-      const maxItems = Math.max(7, Math.floor(7 * policyMultiplier));
+      const baseMin = 5, baseMax = 7;
+      const minItems = Math.max(baseMin, Math.floor(baseMin * policyMultiplier));
+      const maxItems = Math.max(minItems, Math.floor(baseMax * policyMultiplier));
       return `
 
 INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
@@ -172,14 +197,15 @@ This is a long article.
 
 Summary requirements:
 - Detailed summary: 900-1500 characters (strict requirement)
-- Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
+- Number of items: ${minItems}-${maxItems} items only (strict requirement, do not exceed ${maxItems} items)
 - Length per item: 150-200 characters each
 - Include specific technical details
 
 ${METADATA_WARNING}`;
     } else if (contentLength >= 3000) {
-      const minItems = Math.max(4, Math.floor(4 * policyMultiplier));
-      const maxItems = Math.max(5, Math.floor(5 * policyMultiplier));
+      const baseMin = 4, baseMax = 5;
+      const minItems = Math.max(baseMin, Math.floor(baseMin * policyMultiplier));
+      const maxItems = Math.max(minItems, Math.floor(baseMax * policyMultiplier));
       return `
 
 INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
@@ -187,13 +213,14 @@ Article content length: ${contentLength} characters
 
 Summary requirements:
 - Detailed summary: 600-1000 characters
-- Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
+- Number of items: ${minItems}-${maxItems} items only (strict requirement, do not exceed ${maxItems} items)
 - Length per item: Minimum 150 characters each
 
 ${METADATA_WARNING}`;
     } else if (contentLength >= 1000) {
-      const minItems = Math.max(3, Math.floor(3 * policyMultiplier));
-      const maxItems = Math.max(4, Math.floor(4 * policyMultiplier));
+      const baseMin = 3, baseMax = 4;
+      const minItems = Math.max(baseMin, Math.floor(baseMin * policyMultiplier));
+      const maxItems = Math.max(minItems, Math.floor(baseMax * policyMultiplier));
       return `
 
 INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
@@ -201,12 +228,15 @@ Article content length: ${contentLength} characters
 
 Summary requirements:
 - Detailed summary: 400-700 characters
-- Number of items: Minimum ${minItems} items (recommended: ${minItems}-${maxItems} items)
+- Number of items: ${minItems}-${maxItems} items only (strict requirement, do not exceed ${maxItems} items)
 - Length per item: Minimum 130 characters each
 
 ${METADATA_WARNING}`;
     } else {
-      const minItems = Math.max(3, Math.floor(3 * policyMultiplier));
+      // 400-999 characters
+      const baseMin = 2, baseMax = 3;
+      const minItems = Math.max(baseMin, Math.floor(baseMin * policyMultiplier));
+      const maxItems = Math.max(minItems, Math.floor(baseMax * policyMultiplier));
       return `
 
 INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
@@ -214,9 +244,9 @@ Article content length: ${contentLength} characters
 This is a short article.
 
 Summary requirements:
-- Detailed summary: 300-500 characters
-- Number of items: Minimum ${minItems} items
-- Length per item: Minimum 100 characters each
+- Detailed summary: 200-400 characters
+- Number of items: ${minItems}-${maxItems} items only (strict requirement, do not exceed ${maxItems} items)
+- Length per item: Minimum 80 characters each
 
 ${METADATA_WARNING}`;
     }
