@@ -189,8 +189,15 @@ export class SummaryManager {
         take: options.batch || 10
       };
 
+      // If articleIds are specified, only target those articles
+      if (options.articleIds && options.articleIds.length > 0) {
+        query.where = {
+          id: { in: options.articleIds }
+        };
+        query.take = options.articleIds.length;
+      }
       // If not force, only target problematic summaries
-      if (!options.force) {
+      else if (!options.force) {
         query.where = {
           OR: [
             { summary: { endsWith: '...' } },
