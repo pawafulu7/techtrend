@@ -39,7 +39,6 @@ interface PageProps {
 // getArticles function removed - now handled by client component
 
 async function getSources() {
-  const { FEATURE_FLAGS } = await import('@/lib/config/feature-flags');
   const { getSourceCache } = await import('@/lib/cache/source-cache');
 
   // Get all sources (Redis-backed cache)
@@ -48,14 +47,9 @@ async function getSources() {
   const sources = allSources.filter(source => source._count.articles > 0);
 
   // Group sources based on Feature Flag
-  if (FEATURE_FLAGS.USE_DATABASE_PROVIDER) {
-    // NEW: Database-backed grouping
-    const { groupSourcesByGroupId } = await import('@/lib/utils/source-grouping');
-    const groupedSources = await groupSourcesByGroupId(sources);
-    return { sources, groupedSources };
-  }
-
-  // Legacy: Static grouping
+  // NOTE: Currently both paths use static grouping for production parity
+  // DB-backed grouping (groupSourcesByGroupId) is temporarily disabled
+  // until multi-category support is implemented
   const { groupSourcesStatic } = await import('@/lib/utils/source-grouping-static');
   const groupedSources = groupSourcesStatic(sources);
   return { sources, groupedSources };
