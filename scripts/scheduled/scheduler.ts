@@ -173,7 +173,7 @@ async function runCommandWithTimeout(
 }
 
 // RSS系ソース（1時間ごとに更新）
-// All sources re-enabled with timeout protection (FETCHER_TIMEOUT_MS=60s)
+// All sources re-enabled with timeout protection (FETCHER_TIMEOUT_MS=60s via ecosystem.config.js, default 120s)
 const RSS_SOURCES = [
   'はてなブックマーク',
   'Zenn',
