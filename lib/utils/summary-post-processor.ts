@@ -2,6 +2,8 @@
  * 要約の後処理を行い、文字数制約と形式を強制的に適用
  */
 
+import { SummaryPostProcessor } from '@/lib/ai/service/post-processor';
+
 /**
  * 文字数を指定範囲内に強制調整
  * @param text 調整対象テキスト
@@ -190,9 +192,14 @@ export function postProcessSummaries(
   summary: string,
   detailedSummary: string
 ): { summary: string; detailedSummary: string } {
+  const processor = new SummaryPostProcessor();
+
+  // 行結合・トリム処理（Phase 1）
+  const cleanedDetailedSummary = processor.cleanupDetailedSummary(detailedSummary);
+
   // Geminiが生成した要約をそのまま使用（不要な文字数制限をかけない）
-  // 句点の除去のみ行う
-  const processedDetailedSummary = removeBulletPointPeriods(detailedSummary);
+  // 句点の除去のみ行う（Phase 2）
+  const processedDetailedSummary = removeBulletPointPeriods(cleanedDetailedSummary);
   
   return {
     summary: summary, // そのまま返す

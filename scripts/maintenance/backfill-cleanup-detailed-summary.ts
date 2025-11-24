@@ -8,12 +8,11 @@ async function backfillCleanup() {
   try {
     console.log('=== DetailedSummary Cleanup Backfill ===\n');
     
-    // 1. 対象記事を取得
-    const articles = await prisma.$queryRaw<Array<{ id: string; detailedSummary: string }>>`
-      SELECT id, "detailedSummary"
+    // 1. 対象記事を取得（全バージョン対象、regexでフィルタ）
+    const articles = await prisma.$queryRaw<Array<{ id: string; detailedSummary: string; summaryVersion: number }>>`
+      SELECT id, "detailedSummary", "summaryVersion"
       FROM "Article"
-      WHERE "summaryVersion" = 8
-      AND "detailedSummary" ~ '(^|\\n)(?:・|[-*•]|\\d+[\\).．、])[^\\n]*[:：]\\s*\\n(?!\\s*(?:・|[-*•]|\\d+[\\).．、]))'
+      WHERE "detailedSummary" ~ '(^|\\n)(?:・|[-*•]|\\d+[\\).．、])[^\\n]*[:：]\\s*\\n(?!\\s*(?:・|[-*•]|\\d+[\\).．、]))'
     `;
     
     console.log(`対象記事: ${articles.length}件\n`);
@@ -37,20 +36,19 @@ async function backfillCleanup() {
         });
         
         processed++;
-        console.log(`${processed}/${articles.length} 処理: ${article.id}`);
+        console.log(`${processed}/${articles.length} 処理: ${article.id} (v${article.summaryVersion})`);
       } else {
-        console.log(`スキップ: ${article.id} (変更なし)`);
+        console.log(`スキップ: ${article.id} (v${article.summaryVersion}, 変更なし)`);
       }
     }
     
     console.log(`\n完了: ${processed}件を更新しました`);
     
-    // 3. 検証
+    // 3. 検証（全バージョン対象）
     const remaining = await prisma.$queryRaw<Array<{ count: bigint }>>`
       SELECT COUNT(*) as count
       FROM "Article"
-      WHERE "summaryVersion" = 8
-      AND "detailedSummary" ~ '(^|\\n)(?:・|[-*•]|\\d+[\\).．、])[^\\n]*[:：]\\s*\\n(?!\\s*(?:・|[-*•]|\\d+[\\).．、]))'
+      WHERE "detailedSummary" ~ '(^|\\n)(?:・|[-*•]|\\d+[\\).．、])[^\\n]*[:：]\\s*\\n(?!\\s*(?:・|[-*•]|\\d+[\\).．、]))'
     `;
     
     const remainingCount = Number(remaining[0].count);
