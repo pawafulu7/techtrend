@@ -173,18 +173,19 @@ async function runCommandWithTimeout(
 }
 
 // RSS系ソース（1時間ごとに更新）
+// Phase A: Re-enabled 4 low-risk sources (SRE, Dev.to, Stack Overflow Blog, arXiv AI)
 // Temporarily disabled sources that timeout (external site issues):
-// - はてなブックマーク, Dev.to, Stack Overflow Blog (timeout after 30s)
+// - はてなブックマーク, Hacker News, Hugging Face Papers (timeout after 30s)
 const RSS_SOURCES = [
   // 'はてなブックマーク',  // DISABLED: timeout
   'Zenn',
-  // 'Dev.to',  // DISABLED: timeout
+  'Dev.to',
   'Publickey',
-  // 'Stack Overflow Blog',  // DISABLED: timeout
+  'Stack Overflow Blog',
   'Think IT',
   'Rails Releases',
   'AWS',
-  // 'SRE',  // Testing: may timeout
+  'SRE',
   'Google Developers Blog',
   'Hugging Face Blog',
   'Google AI Blog',
@@ -197,7 +198,7 @@ const RSS_SOURCES = [
   // AI/LLM専門ソース
   'OpenAI Blog',
   // 'Hugging Face Papers',  // Testing: may timeout
-  // 'arXiv AI',  // Testing: may timeout
+  'arXiv AI',
   'Zenn AI',
   'Qiita AI',
   'NVIDIA Developer Blog',
