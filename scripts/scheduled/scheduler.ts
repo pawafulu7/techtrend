@@ -173,18 +173,17 @@ async function runCommandWithTimeout(
 }
 
 // RSS系ソース（1時間ごとに更新）
-// Temporarily disabled sources that timeout (external site issues):
-// - はてなブックマーク, Dev.to, Stack Overflow Blog (timeout after 30s)
+// All sources re-enabled with timeout protection (FETCHER_TIMEOUT_MS=60s via ecosystem.config.js, default 120s)
 const RSS_SOURCES = [
-  // 'はてなブックマーク',  // DISABLED: timeout
+  'はてなブックマーク',
   'Zenn',
-  // 'Dev.to',  // DISABLED: timeout
+  'Dev.to',
   'Publickey',
-  // 'Stack Overflow Blog',  // DISABLED: timeout
+  'Stack Overflow Blog',
   'Think IT',
   'Rails Releases',
   'AWS',
-  // 'SRE',  // Testing: may timeout
+  'SRE',
   'Google Developers Blog',
   'Hugging Face Blog',
   'Google AI Blog',
@@ -192,12 +191,12 @@ const RSS_SOURCES = [
   'GitHub Blog',
   'Cloudflare Blog',
   'Mozilla Hacks',
-  // 'Hacker News',  // Testing: may timeout
+  'Hacker News',
   'Medium Engineering',
   // AI/LLM専門ソース
   'OpenAI Blog',
-  // 'Hugging Face Papers',  // Testing: may timeout
-  // 'arXiv AI',  // Testing: may timeout
+  'Hugging Face Papers',
+  'arXiv AI',
   'Zenn AI',
   'Qiita AI',
   'NVIDIA Developer Blog',
