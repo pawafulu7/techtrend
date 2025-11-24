@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { validateSummary, validateDetailedSummary } from '../../lib/utils/summary-validator';
+import { postProcessSummaries } from '../../lib/utils/summary-post-processor';
 
 const prisma = new PrismaClient();
 
@@ -111,10 +112,12 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
         article.title,
         content
       );
-      
+
+      const processed = postProcessSummaries(result.summary, result.detailedSummary);
+
       // 要約の検証
-      const summaryValidation = validateSummary(result.summary);
-      const detailedValidation = validateDetailedSummary(result.detailedSummary);
+      const summaryValidation = validateSummary(processed.summary);
+      const detailedValidation = validateDetailedSummary(processed.detailedSummary);
       
       if (!summaryValidation.isValid) {
         console.warn('  ⚠️ 生成された要約に問題があります:', summaryValidation.errors);
@@ -128,8 +131,8 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
       await prisma.article.update({
         where: { id: article.id },
         data: {
-          summary: result.summary,
-          detailedSummary: result.detailedSummary,
+          summary: processed.summary,
+          detailedSummary: processed.detailedSummary,
           summaryVersion: { increment: 1 }
         }
       });
@@ -162,9 +165,9 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
           }
         }
       }
-      
+
       console.error('  ✅ 再生成完了');
-      console.error(`  新要約: ${result.summary.substring(0, 50)}...`);
+      console.error(`  新要約: ${processed.summary.substring(0, 50)}...`);
       successCount++;
       
     } catch (error) {
