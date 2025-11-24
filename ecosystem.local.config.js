@@ -25,9 +25,11 @@ module.exports = {
         REDIS_URL: process.env.REDIS_URL,
         NEXTAUTH_URL: process.env.NEXTAUTH_URL,
         NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-        SKIP_POST_SAVE_ENRICHMENT: '1', // Skip duplicate enrichment (56min->15-20min)
+        SKIP_POST_SAVE_ENRICHMENT: '0', // Enable post-save enrichment (required for Phase 2)
         COLLECT_FEEDS_CONCURRENCY: '5', // Parallel source processing (30min->10-15min)
-        FETCHER_TIMEOUT_MS: process.env.FETCHER_TIMEOUT_MS || '120000' // Per-source fetch timeout (ms)
+        FETCHER_TIMEOUT_MS: process.env.FETCHER_TIMEOUT_MS || '60000', // Per-source fetch timeout (ms)
+        POST_SAVE_ENRICH_TIMEOUT_MS: '10000', // Post-save enrichment timeout (10s)
+        POST_SAVE_ENRICH_SLEEP_MS: '0' // No sleep between enrichments (was 2000ms)
       },
       error_file: 'logs/scheduler-error.log',
       out_file: 'logs/scheduler-out.log',
