@@ -72,8 +72,8 @@ function highlightContent(content: string): React.ReactNode {
   const patterns = [
     { regex: /問題は(.+?)である/g, style: 'font-semibold text-destructive' },
     { regex: /解決策は(.+?)である/g, style: 'font-semibold text-primary' },
-    { regex: /効果は(.+?)である/g, style: 'font-semibold text-green-600 dark:text-green-500' },
-    { regex: /注意点は(.+?)である/g, style: 'font-semibold text-orange-600 dark:text-orange-500' }
+    { regex: /効果は(.+?)である/g, style: 'font-semibold text-green-800 dark:text-green-500' },
+    { regex: /注意点は(.+?)である/g, style: 'font-semibold text-orange-700 dark:text-orange-500' }
   ];
   
   const parts: React.ReactNode[] = [];
