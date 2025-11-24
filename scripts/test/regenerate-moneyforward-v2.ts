@@ -3,6 +3,7 @@
 import { PrismaClient } from '@prisma/client';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
+import { postProcessSummaries } from '../../lib/utils/summary-post-processor';
 
 const prisma = new PrismaClient();
 
@@ -54,17 +55,17 @@ async function regenerateWithNewFormat() {
     const detailedResult = await gemini.generateDetailedSummary(article.title, article.content);
     console.error('✅ 詳細要約生成完了\n');
 
-    const detailedSummary = detailedResult.detailedSummary;
+    const processed = postProcessSummaries(summary, detailedResult.detailedSummary);
 
     // 詳細要約の形式確認
     console.error('📝 詳細要約プレビュー（最初の500文字）:');
-    console.error(detailedSummary.substring(0, 500));
+    console.error(processed.detailedSummary.substring(0, 500));
     console.error('...\n');
 
     // 固定項目が含まれていないか確認
-    const hasFixedItems = detailedSummary.includes('主要トピック') || 
-                         detailedSummary.includes('課題・問題点') ||
-                         detailedSummary.includes('技術的詳細');
+    const hasFixedItems = processed.detailedSummary.includes('主要トピック') || 
+                         processed.detailedSummary.includes('課題・問題点') ||
+                         processed.detailedSummary.includes('技術的詳細');
     
     if (hasFixedItems) {
       console.error('⚠️ 警告: 固定項目が検出されました。再生成が必要かもしれません。');
@@ -77,8 +78,8 @@ async function regenerateWithNewFormat() {
     const updated = await prisma.article.update({
       where: { id: articleId },
       data: {
-        summary,
-        detailedSummary,
+        summary: processed.summary,
+        detailedSummary: processed.detailedSummary,
         summaryVersion: 7, // 最新バージョン
         articleType: 'unified'
       }
