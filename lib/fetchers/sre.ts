@@ -39,6 +39,7 @@ export class SREFetcher extends BaseFetcher {
   constructor(source: Source) {
     super(source);
     this.parser = new Parser({
+      timeout: Number(process.env.FETCHER_TIMEOUT_MS ?? 120_000),
       customFields: {
         item: [
           ['dc:creator', 'dcCreator'],

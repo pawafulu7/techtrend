@@ -4,7 +4,6 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
-import { ContentEnricherFactory } from '../enrichers';
 import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 interface HatenaItem {
@@ -97,41 +96,10 @@ export class HatenaExtendedFetcher extends BaseFetcher {
   }
 
   // Qiita記事のコンテンツをフェッチ（簡易版）
-  private async fetchQiitaContent(url: string): Promise<string | null> {
-    try {
-      // URLからQiita記事IDを抽出
-      const match = url.match(/qiita\.com\/[^\/]+\/items\/([a-z0-9]+)/);
-      if (!match) return null;
-
-      // 記事が実際に存在するかの簡易チェック
-      // 実際のコンテンツ取得は要約生成時に行われるため、
-      // ここでは最小限の情報（記事の存在確認）のみ
-      const response = await fetch(url, {
-        method: 'HEAD',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        }
-      });
-      
-      if (response.ok) {
-        // 記事が存在する場合、簡易的な説明を返す
-        // 実際のコンテンツは要約生成時に取得される
-        return `Qiita記事: ${url}`;
-      }
-      
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
   async fetch(): Promise<FetchResult> {
     const allArticles: CreateArticleInput[] = [];
     const allErrors: Error[] = [];
     const seenUrls = new Set<string>();
-
-    // ContentEnricherFactory のインスタンス作成
-    const enricherFactory = new ContentEnricherFactory();
 
     // 各RSSフィードから記事を取得
     for (const rssUrl of this.rssUrls) {
@@ -146,41 +114,15 @@ export class HatenaExtendedFetcher extends BaseFetcher {
             if (seenUrls.has(item.link)) continue;
             
             // コンテンツの取得と検証
-            let content = item.content || item.description || item.contentSnippet || '';
-            let thumbnail: string | undefined;
+            const content = item.content || item.description || item.contentSnippet || '';
+            const thumbnail = undefined;
             
             // Qiita記事の場合の特別処理
             if (this.isQiitaArticle(item.link)) {
               // コンテンツが削除メッセージの場合
               if (!this.validateContent(content)) {
-                // 実際のコンテンツを取得
-                const qiitaContent = await this.fetchQiitaContent(item.link);
-                if (qiitaContent) {
-                  content = qiitaContent;
-                } else {
-                  // コンテンツが取得できない場合はスキップ
-                  continue;
-                }
-              }
-            }
-            
-            // エンリッチメント処理を追加
-            if (item.link) {
-              const enricher = enricherFactory.getEnricher(item.link);
-              if (enricher) {
-                try {
-                  const enrichedData = await enricher.enrich(item.link);
-                  
-                  if (enrichedData && enrichedData.content) {
-                    // エンリッチメントが成功し、より長いコンテンツが取得できた場合
-                    if (enrichedData.content.length > content.length) {
-                      content = enrichedData.content;
-                      thumbnail = enrichedData.thumbnail || undefined;
-                    }
-                  }
-                } catch (_error) {
-                  // エンリッチメント失敗時は元のコンテンツを使用
-                }
+                // コンテンツが取得できない場合はスキップ
+                continue;
               }
             }
             

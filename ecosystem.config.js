@@ -13,7 +13,9 @@ module.exports = {
         NODE_ENV: 'production',
         GEMINI_API_KEY: process.env.GEMINI_API_KEY,
         COLLECT_FEEDS_CONCURRENCY: '5', // Parallel source processing (30min->10-15min)
-        FETCHER_TIMEOUT_MS: process.env.FETCHER_TIMEOUT_MS || '120000' // Per-source fetch timeout (ms)
+        FETCHER_TIMEOUT_MS: process.env.FETCHER_TIMEOUT_MS || '60000', // Per-source fetch timeout (ms)
+        POST_SAVE_ENRICH_TIMEOUT_MS: '10000', // Post-save enrichment timeout (10s)
+        POST_SAVE_ENRICH_SLEEP_MS: '0' // No sleep between enrichments (was 2000ms)
       },
       error_file: 'logs/scheduler-error.log',
       out_file: 'logs/scheduler-out.log',

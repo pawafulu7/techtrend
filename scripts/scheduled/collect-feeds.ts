@@ -121,6 +121,10 @@ interface CollectResult {
 }
 
 const DEFAULT_COLLECT_CONCURRENCY = 5;
+const POST_SAVE_ENRICH_TIMEOUT_MS =
+  Number(process.env.POST_SAVE_ENRICH_TIMEOUT_MS ?? '') || 10_000; // 10s default
+const POST_SAVE_ENRICH_SLEEP_MS =
+  Number(process.env.POST_SAVE_ENRICH_SLEEP_MS ?? '') || 0;
 
 interface ProcessSourceContext {
   source: Source;
@@ -330,7 +334,11 @@ async function processSource({
           if (enricher) {
             try {
               console.error(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}...`);
-              const enrichedData = await enricher.enrich(article.url);
+              const enrichedData = await runWithTimeout(
+                () => enricher.enrich(article.url),
+                POST_SAVE_ENRICH_TIMEOUT_MS,
+                `Post-save enrichment timeout after ${POST_SAVE_ENRICH_TIMEOUT_MS}ms for ${sourceName}`
+              );
 
               if (enrichedData && enrichedData.content) {
                 const originalContentLength = article.content?.length || 0;
@@ -356,7 +364,9 @@ async function processSource({
               console.error('   [WARN] エンリッチメントエラー:', enrichError instanceof Error ? enrichError.message : String(enrichError));
             }
 
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            if (POST_SAVE_ENRICH_SLEEP_MS > 0) {
+              await new Promise(resolve => setTimeout(resolve, POST_SAVE_ENRICH_SLEEP_MS));
+            }
           }
         }
 

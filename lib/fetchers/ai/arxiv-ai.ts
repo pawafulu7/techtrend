@@ -37,7 +37,9 @@ export class ArxivAIFetcher extends BaseFetcher {
 
   constructor(source: Source) {
     super(source);
-    this.parser = new Parser();
+    this.parser = new Parser({
+      timeout: Number(process.env.FETCHER_TIMEOUT_MS ?? 120_000),
+    });
     this.enricher = new ArxivAIEnricher();
   }
 
@@ -46,9 +48,9 @@ export class ArxivAIFetcher extends BaseFetcher {
     const errors: Error[] = [];
     const processedUrls = new Set<string>(); // 重複除去用
 
-    // 7日前を基準日とする（論文は最新のものだけ）
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // 30日前を基準日とする（論文は最新のものだけ）
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     for (const category of this.categories) {
       try {
@@ -80,8 +82,8 @@ export class ArxivAIFetcher extends BaseFetcher {
           const publishedAt = item.pubDate ?
             parseRSSDate(item.pubDate) : new Date();
 
-          // 7日以内の記事のみ
-          if (publishedAt < sevenDaysAgo) {
+          // 30日以内の記事のみ
+          if (publishedAt < thirtyDaysAgo) {
             continue;
           }
 
