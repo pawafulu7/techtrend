@@ -1,8 +1,6 @@
 import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types';
 import Parser from 'rss-parser';
-import type { ContentEnricherFactory } from '../enrichers';
-import logger from '@/lib/logger';
 
 interface StackOverflowBlogItem {
   title?: string;
@@ -35,16 +33,12 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
         };
       }
       
-      // ContentEnricherFactory を動的インポート
-      const { ContentEnricherFactory } = await import('../enrichers');
-      const enricherFactory = new ContentEnricherFactory();
-      
       const articles: CreateArticleInput[] = [];
       
       for (const item of feed.items) {
         if (!item.title || !item.link) continue;
         
-        const article = await this.parseItem(item, enricherFactory);
+        const article = await this.parseItem(item);
         if (article) {
           articles.push(article);
         }
@@ -63,32 +57,12 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
     }
   }
   
-  private async parseItem(item: StackOverflowBlogItem, enricherFactory: ContentEnricherFactory): Promise<CreateArticleInput | null> {
+  private async parseItem(item: StackOverflowBlogItem): Promise<CreateArticleInput | null> {
     if (!item.title || !item.link) return null;
     
     // コンテンツの取得（HTMLタグを含む場合がある）
-    let content = item.content || item.contentSnippet || '';
-    let thumbnail: string | undefined;
-    
-    // コンテンツエンリッチメント（2000文字未満の場合のみ実行）
-    if (content && content.length < 2000) {
-      const enricher = enricherFactory.getEnricher(item.link);
-      if (enricher) {
-        try {
-          const enrichedData = await enricher.enrich(item.link);
-          if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-            content = enrichedData.content;
-            thumbnail = enrichedData.thumbnail || undefined;
-          } else {
-          }
-        } catch (_error) {
-          logger.error({ error: _error }, `[StackOverflow Blog] Enrichment failed for ${item.link}`);
-          // エラー時は元のコンテンツを使用
-        }
-      } else {
-      }
-    } else if (content && content.length >= 2000) {
-    }
+    const content = item.content || item.contentSnippet || '';
+    const thumbnail = undefined;
     
     // 要約は generate-summaries.ts で日本語生成するため undefined を設定
     const summary = undefined;

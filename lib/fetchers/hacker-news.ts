@@ -1,8 +1,6 @@
 import { BaseFetcher } from './base';
 import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
-import { ContentEnricherFactory } from '@/lib/enrichers';
-import logger from '@/lib/logger';
 import { isUrlFromDomain } from '@/lib/utils/url-validator';
 
 interface HackerNewsStory {
@@ -43,9 +41,6 @@ export class HackerNewsFetcher extends BaseFetcher {
       // 最初の30件のみ処理
       const storyIdsToFetch = topStoryIds.slice(0, 30);
       
-      // ContentEnricherFactoryのインスタンス作成
-      const enricherFactory = new ContentEnricherFactory();
-
       // 各ストーリーの詳細を取得
       for (const storyId of storyIdsToFetch) {
         try {
@@ -74,116 +69,8 @@ export class HackerNewsFetcher extends BaseFetcher {
             continue;
           }
           
-          // コンテンツエンリッチメント
-          let content = story.text || '';
-          let thumbnail: string | undefined;
-
-          // URLからコンテンツを取得（フォールバック機能付き）
-          const MIN_CONTENT_LENGTH = 100;
-          try {
-            const enrichedData = await enricherFactory.trySequential(story.url);
-            if (enrichedData?.content) {
-              // Validate enriched content quality
-              const isValidContent =
-                enrichedData.content.length >= 500 &&
-                enrichedData.content.split('\n\n').length >= 3;
-
-              if (isValidContent) {
-                content = enrichedData.content;
-                thumbnail = enrichedData.thumbnail || undefined;
-              } else {
-                // Enriched content too short - try fallback
-                const storyTextLength = story.text?.length || 0;
-                logger.warn(
-                  {
-                    url: story.url,
-                    title: story.title,
-                    enrichedLength: enrichedData.content.length,
-                    paragraphCount: enrichedData.content.split('\n\n').length,
-                    storyTextLength,
-                    skipThreshold: MIN_CONTENT_LENGTH,
-                  },
-                  '[HackerNews] Enriched content insufficient'
-                );
-
-                if (story.text && storyTextLength >= MIN_CONTENT_LENGTH) {
-                  content = story.text;
-                } else {
-                  // Enrichment failed and fallback insufficient - skip article
-                  logger.warn(
-                    {
-                      url: story.url,
-                      title: story.title,
-                      reason: 'enrichment_quality_low_and_no_fallback',
-                      storyTextLength,
-                      skipThreshold: MIN_CONTENT_LENGTH,
-                    },
-                    '[HackerNews] Skipping article due to insufficient content'
-                  );
-                  continue; // Skip this article
-                }
-              }
-            } else {
-              // All enrichers failed - try fallback
-              const storyTextLength = story.text?.length || 0;
-              logger.warn(
-                {
-                  url: story.url,
-                  title: story.title,
-                  storyTextLength,
-                  skipThreshold: MIN_CONTENT_LENGTH,
-                },
-                '[HackerNews] All enrichers failed'
-              );
-
-              if (story.text && storyTextLength >= MIN_CONTENT_LENGTH) {
-                content = story.text;
-              } else {
-                // All enrichers failed and fallback insufficient - skip article
-                logger.warn(
-                  {
-                    url: story.url,
-                    title: story.title,
-                    reason: 'all_enrichers_failed_and_no_fallback',
-                    storyTextLength,
-                    skipThreshold: MIN_CONTENT_LENGTH,
-                  },
-                  '[HackerNews] Skipping article due to enrichment failure'
-                );
-                continue; // Skip this article
-              }
-            }
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            const storyTextLength = story.text?.length || 0;
-            logger.error(
-              {
-                error,
-                url: story.url,
-                title: story.title,
-                storyTextLength,
-              },
-              `[Hacker News] Enrichment error: ${errorMessage}`
-            );
-
-            if (story.text && storyTextLength >= MIN_CONTENT_LENGTH) {
-              content = story.text;
-            } else {
-              // Enrichment error and fallback insufficient - skip article
-              logger.warn(
-                {
-                  url: story.url,
-                  title: story.title,
-                  reason: 'enrichment_error_and_no_fallback',
-                  error: errorMessage,
-                  storyTextLength,
-                  skipThreshold: MIN_CONTENT_LENGTH,
-                },
-                '[HackerNews] Skipping article due to enrichment error'
-              );
-              continue; // Skip this article
-            }
-          }
+          const content = story.text || '';
+          const thumbnail = undefined;
           
           // タグの生成
           const tags = this.generateHackerNewsTags(story.title, story.url);
