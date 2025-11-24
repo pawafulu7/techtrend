@@ -33,28 +33,28 @@ export function DetailedSummaryStructured({
   // パース失敗時のフォールバック
   if (sections.length === 0) {
     return (
-      <div className="p-4 bg-muted rounded-lg">
-        <p className="text-sm font-medium mb-2">記事の要約</p>
-        <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+      <div className="p-4 bg-card text-card-foreground rounded-lg shadow-sm">
+        <p className="text-sm font-semibold mb-3">記事の要約</p>
+        <div className="text-sm text-card-foreground/80 whitespace-pre-wrap">
           {detailedSummary}
         </div>
       </div>
     );
   }
-  
+
   return (
-    <div className="p-4 bg-muted rounded-lg">
-      <p className="text-sm font-medium mb-4">記事の要約</p>
+    <div className="p-4 bg-card text-card-foreground rounded-lg shadow-sm hover:shadow-md transition-shadow">
+      <p className="text-sm font-semibold mb-4">記事の要約</p>
       <div className="space-y-4">
         {sections.map((section, index) => (
-          <div key={index} className="border-l-2 border-muted-foreground/20 pl-4">
-            <h4 className="font-semibold text-sm mb-1 flex items-center gap-2">
-              <span className="text-base">{section.icon}</span>
+          <div key={index} className="border-l-2 border pb-2 pl-3 md:pl-4 space-y-2">
+            <h4 className="text-sm md:text-base font-semibold flex items-center gap-3">
+              <span className="text-xl md:text-2xl">{section.icon}</span>
               {section.title}
             </h4>
-            <div className="text-sm text-muted-foreground leading-relaxed">
+            <div className="text-sm text-card-foreground/80 leading-relaxed space-y-2">
               {section.content.split('\n').map((line, lineIndex) => (
-                <p key={lineIndex} className={lineIndex > 0 ? 'mt-2' : ''}>
+                <p key={lineIndex}>
                   {highlightContent(line)}
                 </p>
               ))}
@@ -72,8 +72,8 @@ function highlightContent(content: string): React.ReactNode {
   const patterns = [
     { regex: /問題は(.+?)である/g, style: 'font-semibold text-destructive' },
     { regex: /解決策は(.+?)である/g, style: 'font-semibold text-primary' },
-    { regex: /効果は(.+?)である/g, style: 'font-semibold text-green-700 dark:text-green-400' },
-    { regex: /注意点は(.+?)である/g, style: 'font-semibold text-orange-600 dark:text-orange-400' }
+    { regex: /効果は(.+?)である/g, style: 'font-semibold text-green-800 dark:text-green-500' },
+    { regex: /注意点は(.+?)である/g, style: 'font-semibold text-orange-700 dark:text-orange-500' }
   ];
   
   const parts: React.ReactNode[] = [];

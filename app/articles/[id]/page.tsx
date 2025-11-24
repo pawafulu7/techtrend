@@ -253,8 +253,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   )}
                 </div>
               ) : article.detailedSummary && article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__' ? (
-                <DetailedSummaryDisplay 
-                  articleId={article.id} 
+                <DetailedSummaryDisplay
                   detailedSummary={article.detailedSummary}
                   articleType={article.articleType as "release" | "problem-solving" | "tutorial" | "tech-intro" | "implementation" | undefined}
                   summaryVersion={article.summaryVersion}
