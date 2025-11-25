@@ -119,7 +119,7 @@ describe('useCompanyFilter', () => {
   });
 
   describe('sidebar vs modal sources', () => {
-    it('should limit sidebar sources to 7 items', () => {
+    it('should show all sources in sidebar (no limit)', () => {
       const manySources: CompanySource[] = Array.from({ length: 20 }, (_, i) => ({
         id: `company${i}`,
         name: `Company ${i}`,
@@ -133,7 +133,8 @@ describe('useCompanyFilter', () => {
         })
       );
 
-      expect(result.current.visibleSidebarSources).toHaveLength(7);
+      // サイドバーも全件表示（以前は7件制限があった）
+      expect(result.current.visibleSidebarSources).toHaveLength(20);
       expect(result.current.visibleModalSources).toHaveLength(20);
     });
 
