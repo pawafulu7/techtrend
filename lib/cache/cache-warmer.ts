@@ -152,12 +152,8 @@ export class CacheWarmer {
    * 統計データのウォーミング
    */
   private async warmStats(): Promise<void> {
-    
-    try {
-      const stats = await this.fetchStats();
-      await statsCache.set('overall-stats', stats);
-    } catch (_error) {
-    }
+    const stats = await this.fetchStats();
+    await statsCache.set('overall-stats', stats);
   }
 
   /**
@@ -172,7 +168,6 @@ export class CacheWarmer {
         const key = `${config.days}:${config.tag || 'all'}`;
         const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
         await trendsCache.set(key, data);
-        return key;
       })
     );
 
@@ -189,33 +184,34 @@ export class CacheWarmer {
    * キーワードデータのウォーミング
    */
   private async warmKeywords(): Promise<void> {
-    
-    try {
-      const data = await this.fetchKeywords();
-      await trendsCache.set('keywords:trending', data);
-    } catch (_error) {
-    }
+    const data = await this.fetchKeywords();
+    await trendsCache.set('keywords:trending', data);
   }
 
   /**
-   * 検索クエリのウォーミング（並列実行、同時実行数制限付き）
+   * 検索クエリのウォーミング（並列実行、同時実行数制限付き、部分失敗を許容）
    */
   private async warmSearchQueries(): Promise<void> {
+    const limit = pLimit(3); // DBアクセスを伴うため同時実行を3に制限
+    const searchQueries = this.warmingConfig.search.queries;
 
-    try {
-      const limit = pLimit(3); // DBアクセスを伴うため同時実行を3に制限
-      await Promise.all(
-        this.warmingConfig.search.queries.map((query) =>
-          limit(async () => {
-            const key = searchCache.generateQueryKey(query);
-            const data = await this.fetchSearchResults(query);
-            await searchCache.set(key, data);
-          })
-        )
-      );
-    } catch (error) {
-      logger.error({ error }, '[CacheWarmer] search queries warming failed');
-    }
+    const results = await Promise.allSettled(
+      searchQueries.map((query) =>
+        limit(async () => {
+          const key = searchCache.generateQueryKey(query);
+          const data = await this.fetchSearchResults(query);
+          await searchCache.set(key, data);
+        })
+      )
+    );
+
+    // 失敗したクエリをログ出力
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const query = searchQueries[index];
+        logger.error({ error: result.reason }, `[CacheWarmer] search warming failed for query: ${query.q}`);
+      }
+    });
   }
 
   /**
