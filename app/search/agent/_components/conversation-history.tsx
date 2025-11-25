@@ -57,9 +57,8 @@ export function ConversationHistory({
       className={cn('space-y-4 md:space-y-6', className)}
       data-testid="conversation-history"
     >
-      {turns.map((turn, index) => {
+      {turns.map((turn) => {
         const isCurrentTurn = turn.id === currentTurnId;
-        const isLastTurn = index === turns.length - 1;
         const showLoading = isCurrentTurn && isStreaming && !turn.result && !turn.error && !partialText;
 
         return (

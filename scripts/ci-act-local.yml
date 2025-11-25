@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:55432/techtrend_test
+      # Use service hostname inside the runner container. Host port is mapped to 55432 to avoid clashes on the host.
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/techtrend_test
       NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
       NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"
       NODE_ENV: test
@@ -30,8 +31,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          - 55432:5432
 
     steps:
       - name: Checkout code
@@ -53,9 +52,9 @@ jobs:
 
       - name: Enable pgvector extension
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+          PGPASSWORD=postgres psql -h postgres -U postgres -d techtrend_test \
             -c "CREATE EXTENSION IF NOT EXISTS vector;"
-          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+          PGPASSWORD=postgres psql -h postgres -U postgres -d techtrend_test \
             -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
 
       - name: Setup test database
@@ -69,7 +68,7 @@ jobs:
           npx tsx prisma/seed-test.ts
           echo "Seed completed successfully"
           echo "Verifying seed data..."
-          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+          PGPASSWORD=postgres psql -h postgres -U postgres -d techtrend_test \
             -c "SELECT COUNT(*) as source_count FROM \"Source\";"
 
       - name: Run tests

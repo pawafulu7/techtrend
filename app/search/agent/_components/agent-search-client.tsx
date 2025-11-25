@@ -4,9 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronDown, RotateCcw } from 'lucide-react';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentSampleQueries } from './agent-sample-queries';
-import { AgentLoadingState } from './agent-loading-state';
-import { AgentAnswerPanel } from './agent-answer-panel';
-import { AgentErrorDisplay } from './agent-error-display';
 import { ConversationHistory } from './conversation-history';
 import { useAgentSearch, type ChatMessage } from '@/lib/hooks/useAgentSearch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -20,7 +17,6 @@ const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !=
 export function AgentSearchClient() {
   const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>([]);
   const [currentTurnId, setCurrentTurnId] = useState<string | null>(null);
-  const [showResult, setShowResult] = useState(false);
   const { search, result, error, isLoading, partialText, reset } = useAgentSearch();
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
   const focusSearchInputRef = useRef<(() => void) | null>(null);
@@ -72,7 +68,6 @@ export function AgentSearchClient() {
     });
 
     setCurrentTurnId(turnId);
-    setShowResult(false);
     reset();
 
     // Build messages array from history for multi-turn context
@@ -105,26 +100,6 @@ export function AgentSearchClient() {
     }
   }, [result, error, currentTurnId, isLoading]);
 
-  useEffect(() => {
-    if (!ENABLE_STREAMING_UI) return;
-    if (!partialText) return;
-    setShowResult(true);
-  }, [partialText]);
-
-  useEffect(() => {
-    if (!isLoading && (result || error)) {
-      if (ENABLE_STREAMING_UI) {
-        setShowResult(true);
-        return;
-      }
-
-      const timer = setTimeout(() => {
-        setShowResult(true);
-      }, 300);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, result, error]);
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -147,6 +122,7 @@ export function AgentSearchClient() {
       // Re-search with the same query (will create new turn)
       handleSearch(turn.query);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSearch is stable
     [conversationHistory]
   );
 
@@ -156,14 +132,15 @@ export function AgentSearchClient() {
   const handleNewConversation = useCallback(() => {
     setConversationHistory([]);
     setCurrentTurnId(null);
-    setShowResult(false);
     reset();
   }, [reset]);
 
-  const handleFeedback = (positive: boolean) => {
+  // Feedback handler for future use
+  const _handleFeedback = (positive: boolean) => {
     const lastTurn = conversationHistory[conversationHistory.length - 1];
     console.log('[Feedback]', positive ? 'positive' : 'negative', 'for query:', result?.query || lastTurn?.query);
   };
+  void _handleFeedback; // Suppress unused warning
 
   const handlePrefillQuery = useCallback((query: string) => {
     if (prefillQueryRef.current) {
@@ -190,8 +167,6 @@ export function AgentSearchClient() {
     }
   }, [isLoading, result, error, currentTurnId]);
 
-  const isStreamingWithPartialText = ENABLE_STREAMING_UI && Boolean(partialText);
-  const shouldShowStreamingResult = ENABLE_STREAMING_UI && Boolean(partialText && !result);
 
   return (
     <div>
