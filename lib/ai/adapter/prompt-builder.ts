@@ -1,4 +1,7 @@
 import { SummaryProviderInput } from './summary-provider.interface';
+// 項目数ルールは lib/ai/constants.ts の ITEM_COUNT_RULES と同期
+// 詳細要約の文字数やポリシー調整があるため、ここでは直接使用せず
+// 定数の変更時は両ファイルの整合性を確認すること
 
 const SYSTEM_INSTRUCTIONS = `
 あなたは技術記事の要約を生成する専門AIです。以下のルールを厳守してください：

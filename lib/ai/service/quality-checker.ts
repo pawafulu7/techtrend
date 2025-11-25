@@ -5,6 +5,7 @@ import {
   ContentAnalysis,
   SpeculativeExpressionResult,
 } from './quality-checker.interface';
+import { getItemCountRule } from '../constants';
 
 const SPECULATIVE_PATTERNS = [
   'と考えられます',
@@ -114,8 +115,9 @@ export class SummaryQualityChecker implements QualityChecker {
       }
     }
 
-    // 薄いコンテンツで詳細要約が元記事の2倍を超える場合はcritical
-    if (contentAnalysis?.isThinContent === true && detailedLength > contentLength * 2) {
+    // 薄いコンテンツ（非短文）で詳細要約が元記事の2倍を超える場合はcritical
+    // 短文は1.5倍ルールで判定するため除外
+    if (contentAnalysis?.isThinContent === true && !isShortContent && detailedLength > contentLength * 2) {
       issues.push({
         type: 'length',
         severity: 'critical',
@@ -125,7 +127,8 @@ export class SummaryQualityChecker implements QualityChecker {
     }
 
     // 短文（<400字）で詳細要約が元記事の1.5倍を超える場合はcritical
-    if (contentLength > 0 && contentLength < 400 && detailedLength > contentLength * 1.5) {
+    // isShortContentフラグを使用して条件を統一
+    if (isShortContent && detailedLength > contentLength * 1.5) {
       const ratio = Math.round((detailedLength / contentLength) * 10) / 10;
       issues.push({
         type: 'length',
@@ -183,31 +186,11 @@ export class SummaryQualityChecker implements QualityChecker {
     // bulletCountを再利用（上部で計算済み）
     const itemCount = bulletCount;
 
-    let minItems = 3;
-    let recommendedItems = '3-4';
-
-    if (contentLength >= 10000) {
-      minItems = 7;
-      recommendedItems = '8-9';
-    } else if (contentLength >= 5000) {
-      minItems = 5;
-      recommendedItems = '5-7';
-    } else if (contentLength >= 3000) {
-      minItems = 4;
-      recommendedItems = '4-5';
-    }
-
-    // 項目数上限の設定（prompt-builder.tsと同期）
-    let maxItems = 3; // デフォルト: 400-999字
-    if (contentLength >= 10000) {
-      maxItems = 9;
-    } else if (contentLength >= 5000) {
-      maxItems = 7;
-    } else if (contentLength >= 3000) {
-      maxItems = 5;
-    } else if (contentLength >= 1000) {
-      maxItems = 4;
-    }
+    // 共通定数から項目数ルールを取得（prompt-builder.tsと同期）
+    const itemCountRule = getItemCountRule(contentLength);
+    const minItems = itemCountRule.minItems;
+    const maxItems = itemCountRule.maxItems;
+    const recommendedItems = itemCountRule.recommendedItems;
 
     if (!contentAnalysis?.isThinContent && contentLength >= 3000) {
       if (itemCount < minItems) {
