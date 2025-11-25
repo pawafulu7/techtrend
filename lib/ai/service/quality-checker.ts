@@ -233,20 +233,20 @@ export class SummaryQualityChecker implements QualityChecker {
       score -= 15;
     }
 
-    if (!contentAnalysis?.isThinContent) {
-      const bulletPoints = (detailedSummary.match(/・/g) || []).length;
-      if (bulletPoints === 0) {
+    // 短文（<400字）は箇条書き不要なので除外
+    if (!contentAnalysis?.isThinContent && contentLength >= 400) {
+      if (bulletCount === 0) {
         issues.push({
           type: 'format',
           severity: 'major',
           message: '詳細要約に箇条書き（・）が含まれていない',
         });
         score -= 15;
-      } else if (bulletPoints < 3 && contentLength < 3000) {
+      } else if (bulletCount < 3 && contentLength < 3000) {
         issues.push({
           type: 'format',
           severity: 'minor',
-          message: `詳細要約の項目数が少ない: ${bulletPoints}項目（理想は3-5項目）`,
+          message: `詳細要約の項目数が少ない: ${bulletCount}項目（理想は3-5項目）`,
         });
         score -= 5;
       }
@@ -317,7 +317,8 @@ export class SummaryQualityChecker implements QualityChecker {
         }
       }
 
-      if (!contentAnalysis?.isThinContent && !detailedSummary.includes('・')) {
+      // 短文（<400字）は箇条書き不要なので除外
+      if (!contentAnalysis?.isThinContent && contentLength >= 400 && !detailedSummary.includes('・')) {
         issues.push({
           type: 'format',
           severity: 'major',
