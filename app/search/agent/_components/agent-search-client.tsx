@@ -10,6 +10,8 @@ import { AgentErrorDisplay } from './agent-error-display';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
+import { CardV2 } from '@/components/ui-v2/card-v2';
+import { ButtonV2 } from '@/components/ui-v2/button-v2';
 
 const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
@@ -73,28 +75,41 @@ export function AgentSearchClient() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">AI記事検索</h1>
-        <p className="text-muted-foreground mb-4">
-          AIがTechTrendの記事を横断検索し、要約と参考リンクで回答します。気になるテーマを自然言語で質問してください。
-        </p>
-      </div>
+      <CardV2
+        variant="default"
+        className="bg-(--tt-color-surface-muted) shadow-[var(--tt-shadow-card-rest)] p-6 mb-6"
+        data-testid="agent-search-card"
+      >
+        <div className="text-center mb-4">
+          <h1 className="text-2xl font-heading mb-2">AI記事検索</h1>
+          <p className="text-sm text-(--tt-color-text-muted)">
+            AIがTechTrendの記事を横断検索し、要約と参考リンクで回答します。気になるテーマを自然言語で質問してください。
+          </p>
+        </div>
 
-      <AgentSearchBar
-        onSearch={handleSearch}
-        isLoading={isLoading}
-        onPrefillQuery={handleSetPrefillCallback}
-      />
+        <AgentSearchBar
+          onSearch={handleSearch}
+          isLoading={isLoading}
+          onPrefillQuery={handleSetPrefillCallback}
+        />
+      </CardV2>
 
       <Collapsible className="mt-4">
         <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="w-full justify-center gap-2">
+          <ButtonV2
+            variant="ghost"
+            size="sm"
+            className="w-full justify-center gap-2"
+            data-testid="agent-sample-query-trigger"
+          >
             <span className="text-sm">よくある質問を見る</span>
             <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-          </Button>
+          </ButtonV2>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-4">
-          <AgentSampleQueries onSelectQuery={handlePrefillQuery} />
+          <CardV2 variant="ghost" className="p-4">
+            <AgentSampleQueries onSelectQuery={handlePrefillQuery} />
+          </CardV2>
         </CollapsibleContent>
       </Collapsible>
 
