@@ -87,18 +87,34 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
     entries: HatenaBlogEntry[];
     hasNextPage: boolean;
   } {
-    // パターン1: window.__URQL_DATA__
+    // パターン1: __NEXT_DATA__ (Next.js SSR) - 実際のサイトで使用されている形式
+    const nextDataMatch = html.match(
+      /<script id="__NEXT_DATA__"[^>]*>(\{[\s\S]+?\})<\/script>/
+    );
+    if (nextDataMatch) {
+      try {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        const urqlState = nextData?.props?.pageProps?.urqlState;
+        if (urqlState) {
+          return this.parseUrqlStateFromNextData(urqlState);
+        }
+      } catch {
+        // パース失敗、他のパターンを試す
+      }
+    }
+
+    // パターン2: window.__URQL_DATA__
     // Note: [\s\S] is used instead of 's' flag for ES2017 compatibility
     let match = html.match(
       /<script[^>]*>\s*window\.__URQL_DATA__\s*=\s*(\{[\s\S]+?\});\s*<\/script>/
     );
 
-    // パターン2: urqlState = {...}
+    // パターン3: urqlState = {...}
     if (!match) {
       match = html.match(/urqlState\s*=\s*(\{[\s\S]+?\});\s*<\/script>/);
     }
 
-    // パターン3: JSON.parse("...")
+    // パターン4: JSON.parse("...")
     if (!match) {
       const encodedMatch = html.match(
         /window\.__URQL_DATA__\s*=\s*JSON\.parse\("([^"]+)"\)/
@@ -118,6 +134,41 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
     }
 
     return this.parseUrqlState(match[1]);
+  }
+
+  /**
+   * __NEXT_DATA__内のurqlStateをパース（dataが二重JSON化されている場合に対応）
+   */
+  private parseUrqlStateFromNextData(urqlState: Record<string, unknown>): {
+    entries: HatenaBlogEntry[];
+    hasNextPage: boolean;
+  } {
+    for (const value of Object.values(urqlState)) {
+      const stateValue = value as { data?: string | UrqlPageData };
+      if (!stateValue?.data) continue;
+
+      // dataがJSON文字列の場合はパースする
+      let pageData: UrqlPageData | undefined;
+      if (typeof stateValue.data === 'string') {
+        try {
+          pageData = JSON.parse(stateValue.data) as UrqlPageData;
+        } catch {
+          continue;
+        }
+      } else {
+        pageData = stateValue.data as UrqlPageData;
+      }
+
+      if (this.isValidPageData(pageData)) {
+        return {
+          entries: pageData.recentEntries.entries.filter((e) =>
+            this.isValidEntry(e)
+          ),
+          hasNextPage: pageData.recentEntries.hasNextPage,
+        };
+      }
+    }
+    return { entries: [], hasNextPage: false };
   }
 
   /**
