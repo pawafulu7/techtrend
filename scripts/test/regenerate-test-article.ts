@@ -35,8 +35,8 @@ async function main() {
   const result = await service.generate(
     article.title,
     article.content || '',
-    article.url,
-    article.source.name
+    undefined,
+    { sourceName: article.source.name, url: article.url }
   );
 
   console.log('=== 新しい詳細要約 ===');
@@ -54,7 +54,7 @@ async function main() {
       data: {
         summary: result.summary,
         detailedSummary: result.detailedSummary,
-        summaryVersion: 8,
+        summaryVersion: result.summaryVersion,
         summaryComputedAt: new Date()
       }
     });
