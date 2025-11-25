@@ -186,3 +186,4 @@ regenerate.log
 backups/
 # Claude Code internal documentation
 .claude/docs/
+scripts/ci-act-local.yml

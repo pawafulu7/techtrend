@@ -169,7 +169,7 @@ export function AgentSearchClient() {
 
 
   return (
-    <div className="flex flex-col min-h-[60vh]">
+    <div className={`flex flex-col ${conversationHistory.length === 0 ? 'min-h-[50vh] justify-center' : 'min-h-[60vh]'}`}>
       {/* Header */}
       <div className="text-center mb-6">
         <h1 className="text-3xl font-bold">AI記事検索</h1>
@@ -191,13 +191,9 @@ export function AgentSearchClient() {
         </div>
       )}
 
-      {/* Conversation History - grows to fill space */}
-      <div className="flex-1 mb-6 pb-20">
-        {conversationHistory.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] p-6 text-sm text-[var(--tt-color-text-muted)] text-center">
-            質問を入力すると、ここに会話履歴が表示されます。
-          </div>
-        ) : (
+      {/* Conversation History - grows to fill space when history exists */}
+      {conversationHistory.length > 0 && (
+        <div className="flex-1 mb-6">
           <ConversationHistory
             turns={conversationHistory}
             currentTurnId={currentTurnId}
@@ -205,16 +201,16 @@ export function AgentSearchClient() {
             isStreaming={isLoading}
             onRetry={handleRetry}
           />
-        )}
-        {/* Scroll anchor */}
-        <div ref={conversationEndRef} />
-      </div>
+          {/* Scroll anchor */}
+          <div ref={conversationEndRef} />
+        </div>
+      )}
 
       {/* Input Area - sticky at bottom */}
-      <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-[var(--tt-color-surface)] via-[var(--tt-color-surface)] to-transparent pt-4 pb-2">
+      <div className="sticky bottom-0 left-0 right-0 pt-4 pb-2">
         <CardV2
           variant="default"
-          className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-4 md:p-6"
+          className="bg-[var(--tt-color-surface)] shadow-[var(--tt-shadow-card-rest)] p-4 md:p-6"
           data-testid="agent-search-card"
         >
           <AgentSearchBar
