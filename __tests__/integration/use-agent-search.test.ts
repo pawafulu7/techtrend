@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
-import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
+import type { AgentSearchResult, ChatMessage } from '@/lib/hooks/useAgentSearch';
 
 global.fetch = jest.fn();
 
@@ -377,5 +377,97 @@ describe('useAgentSearch Integration', () => {
     // Assert stale chunk was ignored
     expect(result.current.partialText).not.toContain('Stale');
     expect(result.current.result?.response).not.toContain('Stale');
+  });
+
+  describe('Multi-turn conversation support', () => {
+    test('search accepts ChatMessage array for multi-turn', async () => {
+      const mockResult: AgentSearchResult = {
+        query: 'Follow up question',
+        response: 'Based on our previous discussion...',
+        toolCalls: [],
+        usage: { totalTokens: 150 },
+        cached: false,
+        fallback: false,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResult,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      });
+
+      const { result } = renderHook(() => useAgentSearch());
+
+      const messages: ChatMessage[] = [
+        { role: 'user', content: 'What is React?' },
+        { role: 'assistant', content: 'React is a JavaScript library for building UIs.' },
+        { role: 'user', content: 'Follow up question' },
+      ];
+
+      await result.current.search(messages);
+
+      await waitFor(() => {
+        expect(result.current.result).toEqual(mockResult);
+      });
+
+      // Verify fetch was called with messages array
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/rag/agent-search',
+        expect.objectContaining({
+          body: JSON.stringify({ messages }),
+        })
+      );
+    });
+
+    test('search sends query parameter for single-turn (backward compat)', async () => {
+      const mockResult: AgentSearchResult = {
+        query: 'test',
+        response: 'Answer',
+        toolCalls: [],
+        usage: { totalTokens: 100 },
+        cached: false,
+        fallback: false,
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResult,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      });
+
+      const { result } = renderHook(() => useAgentSearch());
+
+      await result.current.search('test');
+
+      await waitFor(() => {
+        expect(result.current.result).toEqual(mockResult);
+      });
+
+      // Verify fetch was called with query string
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/rag/agent-search',
+        expect.objectContaining({
+          body: JSON.stringify({ query: 'test' }),
+        })
+      );
+    });
+
+    test('multi-turn with last message empty triggers error', async () => {
+      const { result } = renderHook(() => useAgentSearch());
+
+      const messages: ChatMessage[] = [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi!' },
+        { role: 'user', content: '' }, // Empty last message
+      ];
+
+      await result.current.search(messages);
+
+      expect(result.current.error).toEqual({
+        status: 400,
+        message: 'Query cannot be empty',
+      });
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
   });
 });

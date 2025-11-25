@@ -1,0 +1,76 @@
+name: Local CI (act)
+
+# This workflow is intended for local execution with `act` only.
+# Example:
+#   act workflow_dispatch -W scripts/ci-act-local.yml -j test \
+#     -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test (local, port 55432)
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:55432/techtrend_test
+      NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
+      NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"
+      NODE_ENV: test
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: techtrend_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 55432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Postgres client (psql)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Enable pgvector extension
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+            -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
+
+      - name: Setup test database
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy || npx prisma db push
+
+      - name: Seed test database
+        run: |
+          echo "Seeding test database..."
+          npx tsx prisma/seed-test.ts
+          echo "Seed completed successfully"
+          echo "Verifying seed data..."
+          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+            -c "SELECT COUNT(*) as source_count FROM \"Source\";"
+
+      - name: Run tests
+        run: npm run test:coverage
