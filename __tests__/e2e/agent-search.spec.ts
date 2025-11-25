@@ -474,8 +474,8 @@ test.describe('AI Agent Search E2E', () => {
     // Verify search was executed (extended timeout for progressive threshold fallback)
     await agentSearchResponse;
 
-    // Verify results are displayed
-    await expect(page.locator('[role="article"]')).toBeVisible();
+    // Verify results are displayed (use .first() as multi-turn creates multiple articles)
+    await expect(page.locator('[role="article"]').first()).toBeVisible();
   });
 
   test('14. Sample query chip prefills input and runs search', async ({ page }) => {
