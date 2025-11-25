@@ -37,6 +37,39 @@ export interface AddArticleResult {
 }
 
 /**
+ * Batch upsert tags (N+1 → 2-3 queries)
+ * Creates missing tags and returns IDs for all requested tag names.
+ */
+async function upsertTagsBatch(tagNames: string[]): Promise<{ id: string }[]> {
+  if (!tagNames.length) return [];
+
+  // 1) Fetch existing tags once
+  const existing = await prisma.tag.findMany({
+    where: { name: { in: tagNames } },
+    select: { id: true, name: true },
+  });
+
+  const existingNames = new Set(existing.map(t => t.name));
+  const toCreate = tagNames.filter(name => !existingNames.has(name));
+
+  // 2) Insert missing tags in bulk (duplicates ignored if concurrent insert)
+  if (toCreate.length) {
+    await prisma.tag.createMany({
+      data: toCreate.map(name => ({ name })),
+      skipDuplicates: true,
+    });
+  }
+
+  // 3) Return all IDs for the requested names
+  const allTags = await prisma.tag.findMany({
+    where: { name: { in: tagNames } },
+    select: { id: true },
+  });
+
+  return allTags.map(t => ({ id: t.id }));
+}
+
+/**
  * テキストから技術タグを抽出（最小限のタグのみ）
  */
 function extractTags(text: string, sourceName: string): string[] {
@@ -246,18 +279,8 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
       };
     }
     
-    // タグの処理（既存のcollect-feeds.tsと同じパターン）
-    const tagConnections = [];
-    if (tagNames && tagNames.length > 0) {
-      for (const tagName of tagNames) {
-        const tag = await prisma.tag.upsert({
-          where: { name: tagName },
-          update: {},
-          create: { name: tagName }
-        });
-        tagConnections.push({ id: tag.id });
-      }
-    }
+    // タグの処理（バッチ処理でN+1解消）
+    const tagConnections = await upsertTagsBatch(tagNames || []);
     
     // 記事の保存
     const article = await prisma.article.create({
@@ -309,23 +332,15 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
           }
         });
         
-        // Geminiが生成したタグを記事に追加
+        // Geminiが生成したタグを記事に追加（バッチ処理でN+1解消）
         if (generatedTags.length > 0) {
-          const tagConnections = [];
-          for (const tagName of generatedTags) {
-            const tag = await prisma.tag.upsert({
-              where: { name: tagName },
-              update: {},
-              create: { name: tagName }
-            });
-            tagConnections.push({ id: tag.id });
-          }
-          
+          const generatedTagConnections = await upsertTagsBatch(generatedTags);
+
           await prisma.article.update({
             where: { id: article.id },
             data: {
               tags: {
-                connect: tagConnections
+                connect: generatedTagConnections
               }
             }
           });
