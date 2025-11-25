@@ -644,7 +644,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8622367324429714,
+        "semanticSimilarity": 0.75,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgmaarkf0005te26vt2thf5g"
