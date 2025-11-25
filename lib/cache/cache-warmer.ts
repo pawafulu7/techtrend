@@ -163,10 +163,11 @@ export class CacheWarmer {
    * トレンドデータのウォーミング（並列実行、部分失敗を許容）
    */
   private async warmTrends(): Promise<void> {
+    const trendKeys = this.warmingConfig.trends.keys;
 
     // Promise.allSettledで部分的な失敗を許容（1つ失敗しても他は継続）
     const results = await Promise.allSettled(
-      this.warmingConfig.trends.keys.map(async (config) => {
+      trendKeys.map(async (config) => {
         const key = `${config.days}:${config.tag || 'all'}`;
         const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
         await trendsCache.set(key, data);
@@ -177,7 +178,7 @@ export class CacheWarmer {
     // 失敗したタスクをログ出力
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
-        const config = this.warmingConfig.trends.keys[index];
+        const config = trendKeys[index];
         console.error(`[CacheWarmer] trends warming failed for ${config.days} days:`, result.reason);
       }
     });
@@ -211,7 +212,8 @@ export class CacheWarmer {
           })
         )
       );
-    } catch (_error) {
+    } catch (error) {
+      console.error('[CacheWarmer] search queries warming failed:', error);
     }
   }
 

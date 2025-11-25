@@ -105,18 +105,19 @@ summariesCommand
     try {
       logger.info('要約状態のチェックを開始します');
 
-      // 全体統計
-      const totalArticles = await prisma.article.count();
-      const withSummary = await prisma.article.count({
-        where: { summary: { not: null } }
-      });
-      const withoutSummary = await prisma.article.count({
-        where: { summary: null }
-      });
+      // 全体統計（並列実行で高速化）
+      const [totalArticles, withSummary, withoutSummary] = await Promise.all([
+        prisma.article.count(),
+        prisma.article.count({ where: { summary: { not: null } } }),
+        prisma.article.count({ where: { summary: null } })
+      ]);
 
       logger.info(`全記事数: ${totalArticles.toLocaleString()}`);
-      logger.info(`要約あり: ${withSummary.toLocaleString()} (${Math.round(withSummary / totalArticles * 100)}%)`);
-      logger.info(`要約なし: ${withoutSummary.toLocaleString()} (${Math.round(withoutSummary / totalArticles * 100)}%)`);
+      // ゼロ除算対策
+      const withSummaryPct = totalArticles > 0 ? Math.round(withSummary / totalArticles * 100) : 0;
+      const withoutSummaryPct = totalArticles > 0 ? Math.round(withoutSummary / totalArticles * 100) : 0;
+      logger.info(`要約あり: ${withSummary.toLocaleString()} (${withSummaryPct}%)`);
+      logger.info(`要約なし: ${withoutSummary.toLocaleString()} (${withoutSummaryPct}%)`);
 
 
       // ソース別の統計 (N+1解消: groupByで1回のクエリに集約)
@@ -141,13 +142,13 @@ summariesCommand
         }
       });
 
+      logger.info('\nソース別統計:');
       for (const source of sources) {
         const withSummaryCount = summaryCountBySource[source.id] ?? 0;
-
-        const _percentage = source._count.articles > 0
+        const percentage = source._count.articles > 0
           ? Math.round(withSummaryCount / source._count.articles * 100)
           : 0;
-
+        logger.info(`  ${source.name}: ${withSummaryCount}/${source._count.articles} (${percentage}%)`);
       }
 
       logger.success('チェックが完了しました');
