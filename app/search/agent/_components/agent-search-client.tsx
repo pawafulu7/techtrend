@@ -1,31 +1,108 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, RotateCcw } from 'lucide-react';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentSampleQueries } from './agent-sample-queries';
 import { AgentLoadingState } from './agent-loading-state';
 import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
-import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
+import { ConversationHistory } from './conversation-history';
+import { useAgentSearch, type ChatMessage } from '@/lib/hooks/useAgentSearch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
+import type { ConversationTurn } from '../types';
+import { MAX_CONVERSATION_TURNS } from '../types';
 
 const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
 export function AgentSearchClient() {
-  const [lastQuery, setLastQuery] = useState('');
+  const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>([]);
+  const [currentTurnId, setCurrentTurnId] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const { search, result, error, isLoading, partialText, reset } = useAgentSearch();
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
+  const conversationEndRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Build ChatMessage array from conversation history for API request
+   */
+  const buildMessagesFromHistory = useCallback(
+    (newQuery: string): ChatMessage[] => {
+      const messages: ChatMessage[] = [];
+
+      // Add previous turns (excluding error turns)
+      for (const turn of conversationHistory) {
+        if (turn.error) continue; // Skip error turns
+        messages.push({ role: 'user', content: turn.query });
+        if (turn.result?.response) {
+          messages.push({ role: 'assistant', content: turn.result.response });
+        }
+      }
+
+      // Add new user query
+      messages.push({ role: 'user', content: newQuery });
+
+      return messages;
+    },
+    [conversationHistory]
+  );
 
   const handleSearch = async (query: string) => {
-    setLastQuery(query);
+    // Create new turn
+    const turnId = crypto.randomUUID();
+    const newTurn: ConversationTurn = {
+      id: turnId,
+      query,
+      result: null,
+      error: null,
+      timestamp: new Date(),
+    };
+
+    // Add to history with trim (keep max turns)
+    setConversationHistory((prev) => {
+      const updated = [...prev, newTurn];
+      // Trim oldest turns if exceeding max
+      if (updated.length > MAX_CONVERSATION_TURNS) {
+        return updated.slice(updated.length - MAX_CONVERSATION_TURNS);
+      }
+      return updated;
+    });
+
+    setCurrentTurnId(turnId);
     setShowResult(false);
     reset();
-    await search(query);
+
+    // Build messages array from history for multi-turn context
+    const messages = buildMessagesFromHistory(query);
+
+    // Use single query for first message (backward compat), messages array for multi-turn
+    if (messages.length === 1) {
+      await search(query);
+    } else {
+      await search(messages);
+    }
   };
+
+  // Update conversation history when result or error arrives
+  useEffect(() => {
+    if (!currentTurnId) return;
+    if (!result && !error) return;
+
+    setConversationHistory((prev) =>
+      prev.map((turn) =>
+        turn.id === currentTurnId
+          ? { ...turn, result: result ?? turn.result, error: error ?? turn.error }
+          : turn
+      )
+    );
+
+    // Clear current turn when complete
+    if (!isLoading) {
+      setCurrentTurnId(null);
+    }
+  }, [result, error, currentTurnId, isLoading]);
 
   useEffect(() => {
     if (!ENABLE_STREAMING_UI) return;
@@ -48,15 +125,43 @@ export function AgentSearchClient() {
     }
   }, [isLoading, result, error]);
 
-  const handleRetry = () => {
-    if (!lastQuery) return;
+  // Auto-scroll to latest message
+  useEffect(() => {
+    if (conversationHistory.length > 0) {
+      conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [conversationHistory.length, partialText]);
+
+  /**
+   * Retry a failed turn
+   */
+  const handleRetry = useCallback(
+    (turnId: string) => {
+      const turn = conversationHistory.find((t) => t.id === turnId);
+      if (!turn) return;
+
+      // Remove the failed turn and retry with same query
+      setConversationHistory((prev) => prev.filter((t) => t.id !== turnId));
+
+      // Re-search with the same query (will create new turn)
+      handleSearch(turn.query);
+    },
+    [conversationHistory]
+  );
+
+  /**
+   * Start a new conversation (clear history)
+   */
+  const handleNewConversation = useCallback(() => {
+    setConversationHistory([]);
+    setCurrentTurnId(null);
     setShowResult(false);
     reset();
-    search(lastQuery);
-  };
+  }, [reset]);
 
   const handleFeedback = (positive: boolean) => {
-    console.log('[Feedback]', positive ? 'positive' : 'negative', 'for query:', result?.query || lastQuery);
+    const lastTurn = conversationHistory[conversationHistory.length - 1];
+    console.log('[Feedback]', positive ? 'positive' : 'negative', 'for query:', result?.query || lastTurn?.query);
   };
 
   const handlePrefillQuery = useCallback((query: string) => {
@@ -112,17 +217,33 @@ export function AgentSearchClient() {
         </CollapsibleContent>
       </Collapsible>
 
+      {/* New Conversation Button - shown when history exists */}
+      {conversationHistory.length > 0 && (
+        <div className="mt-4 flex justify-end">
+          <ButtonV2
+            variant="outline"
+            size="sm"
+            onClick={handleNewConversation}
+            className="gap-2"
+            data-testid="new-conversation-button"
+          >
+            <RotateCcw className="h-4 w-4" />
+            <span>新しい会話を始める</span>
+          </ButtonV2>
+        </div>
+      )}
+
+      {/* Conversation History */}
       <div className="mt-8">
-        {isLoading && !isStreamingWithPartialText && <AgentLoadingState />}
-        {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
-        {showResult && (result || isStreamingWithPartialText) && !error && (
-          <AgentAnswerPanel
-            result={result}
-            partialText={ENABLE_STREAMING_UI ? partialText : null}
-            isStreaming={shouldShowStreamingResult}
-            onFeedback={handleFeedback}
-          />
-        )}
+        <ConversationHistory
+          turns={conversationHistory}
+          currentTurnId={currentTurnId}
+          partialText={ENABLE_STREAMING_UI ? partialText : null}
+          isStreaming={isLoading}
+          onRetry={handleRetry}
+        />
+        {/* Scroll anchor */}
+        <div ref={conversationEndRef} />
       </div>
     </div>
   );

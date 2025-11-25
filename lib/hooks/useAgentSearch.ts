@@ -27,6 +27,14 @@ export interface AgentSearchError {
   retryAfter?: number;
 }
 
+/**
+ * Chat message format for multi-turn conversations
+ */
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface UseAgentSearchOptions {
   onSuccess?: (data: AgentSearchResult) => void;
   onError?: (error: AgentSearchError) => void;
@@ -34,7 +42,8 @@ export interface UseAgentSearchOptions {
 }
 
 export interface UseAgentSearchReturn {
-  search: (query: string) => Promise<void>;
+  /** Search with a single query string or multi-turn messages array */
+  search: (queryOrMessages: string | ChatMessage[]) => Promise<void>;
   result: AgentSearchResult | null;
   error: AgentSearchError | null;
   isLoading: boolean;
@@ -233,7 +242,17 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
   }, []);
 
   const search = useCallback(
-    async (query: string) => {
+    async (queryOrMessages: string | ChatMessage[]) => {
+      // Normalize input to messages array
+      const isMessagesArray = Array.isArray(queryOrMessages);
+      const messages: ChatMessage[] = isMessagesArray
+        ? queryOrMessages
+        : [{ role: 'user', content: queryOrMessages }];
+
+      // Get the latest user query for validation and result metadata
+      const latestUserMessage = messages.filter(m => m.role === 'user').pop();
+      const query = latestUserMessage?.content || '';
+
       if (!query.trim()) {
         const emptyError: AgentSearchError = {
           status: 400,
@@ -268,10 +287,15 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
       }, timeout);
 
       try {
+        // Send messages array for multi-turn, or query for single-turn (backward compat)
+        const requestBody = isMessagesArray
+          ? { messages }
+          : { query };
+
         const response = await fetch('/api/rag/agent-search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal,
         });
 
