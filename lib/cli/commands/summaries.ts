@@ -114,7 +114,18 @@ summariesCommand
       });
 
 
-      // ソース別の統計
+      // ソース別の統計 (N+1解消: groupByで1回のクエリに集約)
+      const sourcesWithSummaryCounts = await prisma.article.groupBy({
+        by: ['sourceId'],
+        where: { summary: { not: null } },
+        _count: { _all: true }
+      });
+
+      // 名前→サマリー数のマップを作成
+      const summaryCountBySource = Object.fromEntries(
+        sourcesWithSummaryCounts.map(row => [row.sourceId, row._count._all])
+      );
+
       const sources = await prisma.source.findMany({
         select: {
           name: true,
@@ -125,12 +136,7 @@ summariesCommand
       });
 
       for (const source of sources) {
-        const withSummaryCount = await prisma.article.count({
-          where: {
-            sourceId: source.name,
-            summary: { not: null }
-          }
-        });
+        const withSummaryCount = summaryCountBySource[source.name] ?? 0;
 
         const _percentage = source._count.articles > 0
           ? Math.round(withSummaryCount / source._count.articles * 100)
