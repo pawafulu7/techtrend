@@ -60,11 +60,16 @@ jobs:
             -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
 
       - name: Setup test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:55432/techtrend_test
         run: |
           npx prisma generate
           npx prisma migrate deploy || npx prisma db push
 
       - name: Seed test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:55432/techtrend_test
+          E2E_SEED_FORCE: "1"
         run: |
           echo "Seeding test database..."
           npx tsx prisma/seed-test.ts
