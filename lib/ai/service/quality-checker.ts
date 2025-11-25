@@ -38,6 +38,10 @@ export class SummaryQualityChecker implements QualityChecker {
     let score = 100;
 
     const contentLength = contentAnalysis?.totalLength || contentAnalysis?.contentLength || 0;
+    // contentLengthが提供されているかどうか（0は未提供を意味する）
+    const hasContentLength = contentLength > 0;
+    // 短文判定: contentLengthが提供されている場合のみ短文とみなす（未提供時は通常コンテンツ扱い）
+    const isShortContent = hasContentLength && contentLength < 400;
 
     const absoluteMinSummaryLength = contentAnalysis?.isThinContent ? 40 : 50;
     const minSummaryLength = contentAnalysis?.isThinContent
@@ -135,7 +139,7 @@ export class SummaryQualityChecker implements QualityChecker {
     const bulletCount = (detailedSummary.match(/・/g) || []).length;
 
     // 短文（<400字）で箇条書きがある場合は不適切
-    if (contentLength > 0 && contentLength < 400 && bulletCount > 0) {
+    if (isShortContent && bulletCount > 0) {
       issues.push({
         type: 'format',
         severity: 'major',
@@ -223,8 +227,8 @@ export class SummaryQualityChecker implements QualityChecker {
       }
     }
 
-    // 項目数上限チェック（短文以外、400字以上のコンテンツ）
-    if (!contentAnalysis?.isThinContent && contentLength >= 400 && bulletCount > maxItems) {
+    // 項目数上限チェック（短文以外、400字以上のコンテンツまたはcontentLength未提供）
+    if (!contentAnalysis?.isThinContent && !isShortContent && bulletCount > maxItems) {
       issues.push({
         type: 'itemCount',
         severity: 'major',
@@ -233,8 +237,8 @@ export class SummaryQualityChecker implements QualityChecker {
       score -= 15;
     }
 
-    // 短文（<400字）は箇条書き不要なので除外
-    if (!contentAnalysis?.isThinContent && contentLength >= 400) {
+    // 短文（<400字）は箇条書き不要なので除外（contentLength未提供時は箇条書き必須）
+    if (!contentAnalysis?.isThinContent && !isShortContent) {
       if (bulletCount === 0) {
         issues.push({
           type: 'format',
@@ -317,8 +321,8 @@ export class SummaryQualityChecker implements QualityChecker {
         }
       }
 
-      // 短文（<400字）は箇条書き不要なので除外
-      if (!contentAnalysis?.isThinContent && contentLength >= 400 && !detailedSummary.includes('・')) {
+      // 短文（<400字）は箇条書き不要なので除外（contentLength未提供時は箇条書き必須）
+      if (!contentAnalysis?.isThinContent && !isShortContent && !detailedSummary.includes('・')) {
         issues.push({
           type: 'format',
           severity: 'major',
@@ -332,7 +336,7 @@ export class SummaryQualityChecker implements QualityChecker {
 
     const minQualityScore = parseInt(process.env.QUALITY_MIN_SCORE || '70');
     const requiresRegeneration =
-      score < minQualityScore ||
+      score <= minQualityScore ||
       issues.some((issue) => issue.severity === 'critical') ||
       (contentLength >= 5000 && itemCount < minItems);
 
