@@ -101,12 +101,12 @@ export function AgentSearchClient() {
   }, [result, error, currentTurnId, isLoading]);
 
 
-  // Auto-scroll to latest message
+  // Auto-scroll to latest message (only when new turn added, not during streaming)
   useEffect(() => {
-    if (conversationHistory.length > 0) {
+    if (conversationHistory.length > 0 && !isLoading) {
       conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [conversationHistory.length, partialText]);
+  }, [conversationHistory.length, isLoading]);
 
   /**
    * Retry a failed turn
@@ -116,11 +116,15 @@ export function AgentSearchClient() {
       const turn = conversationHistory.find((t) => t.id === turnId);
       if (!turn) return;
 
-      // Remove the failed turn and retry with same query
+      const queryToRetry = turn.query;
+
+      // Remove the failed turn first
       setConversationHistory((prev) => prev.filter((t) => t.id !== turnId));
 
-      // Re-search with the same query (will create new turn)
-      handleSearch(turn.query);
+      // Execute search after state update to ensure correct history context
+      setTimeout(() => {
+        void handleSearch(queryToRetry);
+      }, 0);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSearch is stable
     [conversationHistory]
@@ -133,6 +137,8 @@ export function AgentSearchClient() {
     setConversationHistory([]);
     setCurrentTurnId(null);
     reset();
+    // Focus input for immediate next query
+    focusSearchInputRef.current?.();
   }, [reset]);
 
   // Feedback handler for future use
