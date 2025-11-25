@@ -69,15 +69,22 @@ export class CacheWarmer {
     try {
       this.isWarming = true;
 
-      // 並列ウォーミング（4つのタスクを同時実行）
-      await Promise.all([
+      // 並列ウォーミング（4つのタスクを同時実行、部分失敗を許容）
+      const results = await Promise.allSettled([
         this.warmStats(),
         this.warmTrends(),
         this.warmKeywords(),
         this.warmSearchQueries(),
       ]);
 
-    } catch (_error) {
+      // 失敗したタスクをログ出力
+      const taskNames = ['stats', 'trends', 'keywords', 'search'];
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.error(`[CacheWarmer] ${taskNames[index]} warming failed:`, result.reason);
+        }
+      });
+
     } finally {
       this.isWarming = false;
       await distributedLock.release('cache:warming:startup', lockToken);
@@ -158,13 +165,22 @@ export class CacheWarmer {
   private async warmTrends(): Promise<void> {
 
     // Promise.allSettledで部分的な失敗を許容（1つ失敗しても他は継続）
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       this.warmingConfig.trends.keys.map(async (config) => {
         const key = `${config.days}:${config.tag || 'all'}`;
         const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
         await trendsCache.set(key, data);
+        return key;
       })
     );
+
+    // 失敗したタスクをログ出力
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const config = this.warmingConfig.trends.keys[index];
+        console.error(`[CacheWarmer] trends warming failed for ${config.days} days:`, result.reason);
+      }
+    });
   }
 
   /**
