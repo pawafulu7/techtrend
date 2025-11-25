@@ -131,8 +131,10 @@ export class SummaryQualityChecker implements QualityChecker {
       score = 0; // 自動Fail
     }
 
-    // 短文（<400字）で箇条書きがある場合は不適切
+    // 箇条書きカウント（複数箇所で使用）
     const bulletCount = (detailedSummary.match(/・/g) || []).length;
+
+    // 短文（<400字）で箇条書きがある場合は不適切
     if (contentLength > 0 && contentLength < 400 && bulletCount > 0) {
       issues.push({
         type: 'format',
@@ -174,7 +176,8 @@ export class SummaryQualityChecker implements QualityChecker {
       score -= 5;
     }
 
-    const itemCount = (detailedSummary.match(/・/g) || []).length;
+    // bulletCountを再利用（上部で計算済み）
+    const itemCount = bulletCount;
 
     let minItems = 3;
     let recommendedItems = '3-4';
@@ -190,8 +193,8 @@ export class SummaryQualityChecker implements QualityChecker {
       recommendedItems = '4-5';
     }
 
-    // 項目数上限の設定
-    let maxItems = 4;
+    // 項目数上限の設定（prompt-builder.tsと同期）
+    let maxItems = 3; // デフォルト: 400-999字
     if (contentLength >= 10000) {
       maxItems = 9;
     } else if (contentLength >= 5000) {
@@ -220,12 +223,12 @@ export class SummaryQualityChecker implements QualityChecker {
       }
     }
 
-    // 項目数上限チェック（短文以外、1000字以上のコンテンツ）
-    if (!contentAnalysis?.isThinContent && contentLength >= 1000 && itemCount > maxItems) {
+    // 項目数上限チェック（短文以外、400字以上のコンテンツ）
+    if (!contentAnalysis?.isThinContent && contentLength >= 400 && bulletCount > maxItems) {
       issues.push({
         type: 'itemCount',
         severity: 'major',
-        message: `項目数超過: ${itemCount}個（上限${maxItems}個）`,
+        message: `項目数超過: ${bulletCount}個（上限${maxItems}個）`,
       });
       score -= 15;
     }
