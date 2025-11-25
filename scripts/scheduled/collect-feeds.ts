@@ -115,8 +115,8 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'CyberAgent Developers Blog': CyberAgentFetcher,
   'GMO Developers': GMOFetcher,
 
-  // Hatena Blog Dev（企業技術ブログ一覧ページからの取得）
-  'Hatena Blog Dev': HatenaBlogDevFetcher,
+  // 企業技術ブログ（hatena.blog/dev/entries からの取得）
+  '企業技術ブログ': HatenaBlogDevFetcher,
 };
 
 interface CollectResult {

@@ -1,10 +1,10 @@
 /**
  * Hatena Blog Dev Entries Fetcher
  * hatena.blog/dev/entries から企業技術ブログ記事を取得
+ * GraphQL APIを使用してページネーションをサポート
  */
 
 import { BaseFetcher } from './base';
-import { WebFetcher } from '../utils/web-fetcher';
 import type { FetchResult, CreateArticleInput } from '@/types/fetchers';
 
 /**
@@ -21,13 +21,16 @@ interface HatenaBlogEntry {
 }
 
 /**
- * urqlState内のページデータ構造
+ * GraphQL APIレスポンスの型
  */
-interface UrqlPageData {
-  recentEntries: {
-    entries: HatenaBlogEntry[];
-    hasNextPage: boolean;
+interface GraphQLResponse {
+  data?: {
+    recentEntries: {
+      entries: HatenaBlogEntry[];
+      hasNextPage: boolean;
+    };
   };
+  errors?: Array<{ message: string }>;
 }
 
 /**
@@ -35,29 +38,49 @@ interface UrqlPageData {
  * 企業技術ブログの新着記事一覧を取得
  */
 export class HatenaBlogDevFetcher extends BaseFetcher {
-  private readonly baseUrl = 'https://hatena.blog/dev/entries';
+  private readonly graphqlEndpoint = 'https://hatena.blog/dev/api/graphql';
+  private readonly pageSize = 20;
   private readonly maxPages: number;
+  private readonly timeout: number;
+
+  // GraphQLクエリ（ユーザー提供の実際のクエリを簡略化）
+  private readonly graphqlQuery = `
+    query RecentEntries($limit: Int!, $skip: Int!) {
+      recentEntries(limit: $limit, skip: $skip) {
+        entries {
+          title
+          url
+          created
+          blog {
+            title
+            companyName
+          }
+        }
+        hasNextPage
+      }
+    }
+  `;
 
   constructor(source: import('@prisma/client').Source) {
     super(source);
     this.maxPages = parseInt(process.env.HATENA_BLOG_DEV_MAX_PAGES || '3', 10);
+    this.timeout = parseInt(process.env.HATENA_BLOG_DEV_TIMEOUT || '30000', 10);
   }
 
   /**
-   * 記事一覧を取得
+   * 記事一覧を取得（GraphQL API使用）
    */
   async fetch(): Promise<FetchResult> {
     const articles: CreateArticleInput[] = [];
     const errors: Error[] = [];
     const seenUrls = new Set<string>();
-    const webFetcher = new WebFetcher(30000); // 30秒タイムアウト
 
-    for (let page = 1; page <= this.maxPages; page++) {
+    for (let page = 0; page < this.maxPages; page++) {
       try {
-        const url = page === 1 ? this.baseUrl : `${this.baseUrl}?page=${page}`;
-        const html = await this.retry(() => webFetcher.fetch(url));
-
-        const { entries, hasNextPage } = this.extractEntriesFromPage(html);
+        const skip = page * this.pageSize;
+        const { entries, hasNextPage } = await this.retry(() =>
+          this.fetchPage(skip)
+        );
 
         for (const entry of entries) {
           if (!seenUrls.has(entry.url)) {
@@ -70,7 +93,7 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
       } catch (error) {
         errors.push(
           new Error(
-            `[page=${page}] ${error instanceof Error ? error.message : String(error)}`
+            `[page=${page + 1}] ${error instanceof Error ? error.message : String(error)}`
           )
         );
         // ページ取得エラーでも継続（fail-open）
@@ -81,133 +104,55 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
   }
 
   /**
-   * HTMLからurqlStateを抽出してエントリを取得
+   * GraphQL APIで1ページ分のエントリを取得
    */
-  private extractEntriesFromPage(html: string): {
+  private async fetchPage(skip: number): Promise<{
     entries: HatenaBlogEntry[];
     hasNextPage: boolean;
-  } {
-    // パターン1: __NEXT_DATA__ (Next.js SSR) - 実際のサイトで使用されている形式
-    const nextDataMatch = html.match(
-      /<script id="__NEXT_DATA__"[^>]*>(\{[\s\S]+?\})<\/script>/
-    );
-    if (nextDataMatch) {
-      try {
-        const nextData = JSON.parse(nextDataMatch[1]);
-        const urqlState = nextData?.props?.pageProps?.urqlState;
-        if (urqlState) {
-          return this.parseUrqlStateFromNextData(urqlState);
-        }
-      } catch {
-        // パース失敗、他のパターンを試す
-      }
-    }
+  }> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
-    // パターン2: window.__URQL_DATA__
-    // Note: [\s\S] is used instead of 's' flag for ES2017 compatibility
-    let match = html.match(
-      /<script[^>]*>\s*window\.__URQL_DATA__\s*=\s*(\{[\s\S]+?\});\s*<\/script>/
-    );
-
-    // パターン3: urqlState = {...}
-    if (!match) {
-      match = html.match(/urqlState\s*=\s*(\{[\s\S]+?\});\s*<\/script>/);
-    }
-
-    // パターン4: JSON.parse("...")
-    if (!match) {
-      const encodedMatch = html.match(
-        /window\.__URQL_DATA__\s*=\s*JSON\.parse\("([^"]+)"\)/
-      );
-      if (encodedMatch) {
-        try {
-          const decoded = JSON.parse(`"${encodedMatch[1]}"`);
-          return this.parseUrqlState(decoded);
-        } catch {
-          // デコード失敗
-        }
-      }
-    }
-
-    if (!match) {
-      return { entries: [], hasNextPage: false };
-    }
-
-    return this.parseUrqlState(match[1]);
-  }
-
-  /**
-   * __NEXT_DATA__内のurqlStateをパース（dataが二重JSON化されている場合に対応）
-   */
-  private parseUrqlStateFromNextData(urqlState: Record<string, unknown>): {
-    entries: HatenaBlogEntry[];
-    hasNextPage: boolean;
-  } {
-    for (const value of Object.values(urqlState)) {
-      const stateValue = value as { data?: string | UrqlPageData };
-      if (!stateValue?.data) continue;
-
-      // dataがJSON文字列の場合はパースする
-      let pageData: UrqlPageData | undefined;
-      if (typeof stateValue.data === 'string') {
-        try {
-          pageData = JSON.parse(stateValue.data) as UrqlPageData;
-        } catch {
-          continue;
-        }
-      } else {
-        pageData = stateValue.data as UrqlPageData;
-      }
-
-      if (this.isValidPageData(pageData)) {
-        return {
-          entries: pageData.recentEntries.entries.filter((e) =>
-            this.isValidEntry(e)
-          ),
-          hasNextPage: pageData.recentEntries.hasNextPage,
-        };
-      }
-    }
-    return { entries: [], hasNextPage: false };
-  }
-
-  /**
-   * urqlStateのJSONをパースしてエントリを抽出
-   */
-  private parseUrqlState(jsonStr: string): {
-    entries: HatenaBlogEntry[];
-    hasNextPage: boolean;
-  } {
     try {
-      const state = JSON.parse(jsonStr);
+      const response = await fetch(this.graphqlEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          query: this.graphqlQuery,
+          variables: {
+            limit: this.pageSize,
+            skip,
+          },
+        }),
+        signal: controller.signal,
+      });
 
-      // キーは動的なので、recentEntriesを持つエントリを探す
-      for (const value of Object.values(state)) {
-        const pageData = value as { data?: UrqlPageData };
-        if (this.isValidPageData(pageData?.data)) {
-          return {
-            entries: pageData.data!.recentEntries.entries.filter(
-              (e) => this.isValidEntry(e)
-            ),
-            hasNextPage: pageData.data!.recentEntries.hasNextPage,
-          };
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-    } catch {
-      // JSONパースエラー
-    }
-    return { entries: [], hasNextPage: false };
-  }
 
-  /**
-   * ページデータが期待する構造を持つかチェック
-   */
-  private isValidPageData(data: unknown): data is UrqlPageData {
-    if (!data || typeof data !== 'object') return false;
-    const d = data as {
-      recentEntries?: { entries?: unknown[]; hasNextPage?: boolean };
-    };
-    return Array.isArray(d.recentEntries?.entries);
+      const json = (await response.json()) as GraphQLResponse;
+
+      if (json.errors && json.errors.length > 0) {
+        throw new Error(`GraphQL errors: ${json.errors.map((e) => e.message).join(', ')}`);
+      }
+
+      if (!json.data?.recentEntries) {
+        throw new Error('Invalid response: missing recentEntries');
+      }
+
+      return {
+        entries: json.data.recentEntries.entries.filter((e) =>
+          this.isValidEntry(e)
+        ),
+        hasNextPage: json.data.recentEntries.hasNextPage,
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**

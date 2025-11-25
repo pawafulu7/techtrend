@@ -173,7 +173,7 @@ export function ArticleCard({
                     className="text-xs"
                     data-testid="article-source"
                   >
-                    {article.source?.name || 'Unknown'}
+                    {(article as { companyName?: string }).companyName ?? article.source?.name ?? 'Unknown'}
                   </BadgeV2>
                 )}
               </div>

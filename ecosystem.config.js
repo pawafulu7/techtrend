@@ -81,6 +81,25 @@ module.exports = {
       log_file: 'logs/embedding-worker-combined.log',
       time: true,
       merge_logs: true
+    },
+    {
+      name: 'techtrend-title-translator',
+      script: 'scripts/maintenance/fix-missing-translations.ts',
+      interpreter: './node_modules/.bin/tsx',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      watch: false,
+      cron_restart: '0 * * * *', // Every hour at minute 0
+      env: {
+        NODE_ENV: 'production',
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY
+      },
+      error_file: 'logs/title-translator-error.log',
+      out_file: 'logs/title-translator-out.log',
+      log_file: 'logs/title-translator-combined.log',
+      time: true,
+      merge_logs: true
     }
   ]
 };
