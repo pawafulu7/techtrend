@@ -156,7 +156,7 @@ ${OUTPUT_SCHEMA}
 
     // Very short article: plain text only, no bullet points
     if (contentLength < 400) {
-      const maxLength = contentLength > 0 ? Math.floor(contentLength) : 200;
+      const maxLength = contentLength > 0 ? Math.floor(contentLength * 1.5) : 200;
       return `
 
 INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
@@ -165,7 +165,7 @@ This is a very short article.
 
 Summary requirements:
 - Detailed summary: Plain text format ONLY (1-2 sentences, NO bullet points)
-- Maximum length: ${maxLength} characters (strict limit, do not exceed source length)
+- Maximum length: ${maxLength} characters (strict limit, do not exceed 1.5x source length)
 - Do NOT expand beyond the source content
 - If source content is insufficient, keep the detailed summary minimal and factual
 
