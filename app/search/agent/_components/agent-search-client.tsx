@@ -192,7 +192,7 @@ export function AgentSearchClient() {
       )}
 
       {/* Conversation History - grows to fill space */}
-      <div className="flex-1 mb-6 pb-48">
+      <div className="flex-1 mb-6 pb-20">
         {conversationHistory.length === 0 ? (
           <div className="rounded-lg border border-dashed border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] p-6 text-sm text-[var(--tt-color-text-muted)] text-center">
             質問を入力すると、ここに会話履歴が表示されます。
