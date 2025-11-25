@@ -76,12 +76,12 @@ export function AgentSearchClient() {
     <div>
       <CardV2
         variant="default"
-        className="bg-(--tt-color-surface-muted) shadow-[var(--tt-shadow-card-rest)] p-6 mb-6"
+        className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-6 mb-6"
         data-testid="agent-search-card"
       >
         <div className="text-center mb-4">
           <h1 className="text-2xl font-heading mb-2">AI記事検索</h1>
-          <p className="text-sm text-(--tt-color-text-muted)">
+          <p className="text-sm text-[color:var(--tt-color-text-muted)]">
             AIがTechTrendの記事を横断検索し、要約と参考リンクで回答します。気になるテーマを自然言語で質問してください。
           </p>
         </div>
@@ -98,11 +98,11 @@ export function AgentSearchClient() {
           <ButtonV2
             variant="ghost"
             size="sm"
-            className="w-full justify-center gap-2"
+            className="w-full justify-center gap-2 data-[state=open]:text-primary"
             data-testid="agent-sample-query-trigger"
           >
             <span className="text-sm">よくある質問を見る</span>
-            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+            <ChevronDown className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-180" />
           </ButtonV2>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-4">
