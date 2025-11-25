@@ -90,6 +90,14 @@ async function main() {
         enabled: true,
       },
     }),
+    prisma.source.create({
+      data: {
+        name: 'Hatena Blog Dev',
+        type: 'SCRAPING',
+        url: 'https://hatena.blog/dev/entries',
+        enabled: true,
+      },
+    }),
   ]);
 
 }
