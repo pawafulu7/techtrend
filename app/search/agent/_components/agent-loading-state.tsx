@@ -1,5 +1,8 @@
 'use client';
 
+import { CardV2 } from '@/components/ui-v2/card-v2';
+import { cn } from '@/lib/utils';
+
 const DOT_ANIMATION_DELAYS = [0, 150, 300];
 
 interface AgentLoadingStateProps {
@@ -8,7 +11,14 @@ interface AgentLoadingStateProps {
 
 export function AgentLoadingState({ className }: AgentLoadingStateProps) {
   return (
-    <div className={className} role="status" aria-live="polite" aria-busy="true">
+    <CardV2
+      variant="ghost"
+      className={cn('py-6 md:py-8 text-center', className)}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      data-testid="agent-loading-state"
+    >
       <div className="flex items-center justify-center gap-3 mb-4">
         <div className="flex items-center gap-2">
           <div className="flex gap-1">
@@ -29,12 +39,10 @@ export function AgentLoadingState({ className }: AgentLoadingStateProps) {
 
       <div className="space-y-3">
         <div className="h-4 bg-muted rounded animate-pulse" style={{ width: '90%' }} />
-        <div className="h-4 bg-muted rounded animate-pulse" style={{ width: '85%' }} />
-        <div className="h-4 bg-muted rounded animate-pulse" style={{ width: '70%' }} />
-        <div className="h-4 bg-muted rounded animate-pulse mt-6" style={{ width: '40%' }} />
-        <div className="h-4 bg-muted rounded animate-pulse" style={{ width: '95%' }} />
-        <div className="h-4 bg-muted rounded animate-pulse" style={{ width: '80%' }} />
+        <div className="h-4 bg-muted rounded animate-pulse" style={{ width: '75%' }} />
+        <div className="h-4 bg-muted rounded animate-pulse" style={{ width: '60%' }} />
+        <div className="h-4 bg-muted rounded animate-pulse" style={{ width: '40%' }} />
       </div>
-    </div>
+    </CardV2>
   );
 }
