@@ -3,6 +3,7 @@ import { trendsCache } from './trends-cache';
 import { searchCache } from './search-cache';
 import { prisma } from '@/lib/database';
 import { distributedLock } from './distributed-lock';
+import { logger } from '@/lib/logger';
 import type { Prisma } from '@prisma/client';
 import pLimit from 'p-limit';
 
@@ -81,7 +82,7 @@ export class CacheWarmer {
       const taskNames = ['stats', 'trends', 'keywords', 'search'];
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
-          console.error(`[CacheWarmer] ${taskNames[index]} warming failed:`, result.reason);
+          logger.error(`[CacheWarmer] ${taskNames[index]} warming failed`, { error: result.reason });
         }
       });
 
@@ -179,7 +180,7 @@ export class CacheWarmer {
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
         const config = trendKeys[index];
-        console.error(`[CacheWarmer] trends warming failed for ${config.days} days:`, result.reason);
+        logger.error(`[CacheWarmer] trends warming failed for ${config.days} days`, { error: result.reason });
       }
     });
   }
@@ -213,7 +214,7 @@ export class CacheWarmer {
         )
       );
     } catch (error) {
-      console.error('[CacheWarmer] search queries warming failed:', error);
+      logger.error('[CacheWarmer] search queries warming failed', { error });
     }
   }
 
