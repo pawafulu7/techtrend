@@ -5,6 +5,7 @@ import {
   ContentAnalysis,
   SpeculativeExpressionResult,
 } from './quality-checker.interface';
+import { getItemCountRule } from '../constants';
 
 const SPECULATIVE_PATTERNS = [
   'と考えられます',
@@ -38,6 +39,10 @@ export class SummaryQualityChecker implements QualityChecker {
     let score = 100;
 
     const contentLength = contentAnalysis?.totalLength || contentAnalysis?.contentLength || 0;
+    // contentLengthが提供されているかどうか（0は未提供を意味する）
+    const hasContentLength = contentLength > 0;
+    // 短文判定: contentLengthが提供されている場合のみ短文とみなす（未提供時は通常コンテンツ扱い）
+    const isShortContent = hasContentLength && contentLength < 400;
 
     const absoluteMinSummaryLength = contentAnalysis?.isThinContent ? 40 : 50;
     const minSummaryLength = contentAnalysis?.isThinContent
@@ -110,14 +115,45 @@ export class SummaryQualityChecker implements QualityChecker {
       }
     }
 
-    // 薄いコンテンツで詳細要約が元記事の2倍を超える場合はcritical
-    if (contentAnalysis?.isThinContent === true && detailedLength > contentLength * 2) {
+    // 薄いコンテンツ（非短文）で詳細要約が元記事の2倍を超える場合はcritical
+    // 短文は1.5倍ルールで判定するため除外
+    if (
+      hasContentLength &&
+      contentAnalysis?.isThinContent === true &&
+      !isShortContent &&
+      detailedLength > contentLength * 2
+    ) {
       issues.push({
         type: 'length',
         severity: 'critical',
         message: `薄いコンテンツで詳細要約が長すぎる: ${detailedLength}文字（元記事${contentLength}文字の${Math.round(detailedLength / contentLength)}倍）`,
       });
       score = 0; // 自動Fail
+    }
+
+    // 短文（<400字）で詳細要約が元記事の1.5倍を超える場合はcritical
+    // isShortContentフラグを使用して条件を統一
+    if (isShortContent && detailedLength > contentLength * 1.5) {
+      const ratio = Math.round((detailedLength / contentLength) * 10) / 10;
+      issues.push({
+        type: 'length',
+        severity: 'critical',
+        message: `短文で詳細要約が長すぎる: ${detailedLength}文字（元記事${contentLength}文字の${ratio}倍、上限は1.5倍）`,
+      });
+      score = 0; // 自動Fail
+    }
+
+    // 箇条書きカウント（複数箇所で使用）
+    const bulletCount = (detailedSummary.match(/・/g) || []).length;
+
+    // 短文（<400字）で箇条書きがある場合は不適切
+    if (isShortContent && bulletCount > 0) {
+      issues.push({
+        type: 'format',
+        severity: 'major',
+        message: `短文（${contentLength}字）に箇条書き（${bulletCount}項目）は不適切。平文1-2文で要約すべき`,
+      });
+      score -= 20;
     }
 
     if (detailedLength < minDetailedLength) {
@@ -152,21 +188,14 @@ export class SummaryQualityChecker implements QualityChecker {
       score -= 5;
     }
 
-    const itemCount = (detailedSummary.match(/・/g) || []).length;
+    // bulletCountを再利用（上部で計算済み）
+    const itemCount = bulletCount;
 
-    let minItems = 3;
-    let recommendedItems = '3-4';
-
-    if (contentLength >= 10000) {
-      minItems = 7;
-      recommendedItems = '8-9';
-    } else if (contentLength >= 5000) {
-      minItems = 5;
-      recommendedItems = '5-7';
-    } else if (contentLength >= 3000) {
-      minItems = 4;
-      recommendedItems = '4-5';
-    }
+    // 共通定数から項目数ルールを取得（prompt-builder.tsと同期）
+    const itemCountRule = getItemCountRule(contentLength);
+    const minItems = itemCountRule.minItems;
+    const maxItems = itemCountRule.maxItems;
+    const recommendedItems = itemCountRule.recommendedItems;
 
     if (!contentAnalysis?.isThinContent && contentLength >= 3000) {
       if (itemCount < minItems) {
@@ -186,20 +215,30 @@ export class SummaryQualityChecker implements QualityChecker {
       }
     }
 
-    if (!contentAnalysis?.isThinContent) {
-      const bulletPoints = (detailedSummary.match(/・/g) || []).length;
-      if (bulletPoints === 0) {
+    // 項目数上限チェック（contentLength提供時のみ、短文以外）
+    if (hasContentLength && !contentAnalysis?.isThinContent && !isShortContent && bulletCount > maxItems) {
+      issues.push({
+        type: 'itemCount',
+        severity: 'major',
+        message: `項目数超過: ${bulletCount}個（上限${maxItems}個）`,
+      });
+      score -= 15;
+    }
+
+    // 短文（<400字）は箇条書き不要なので除外（contentLength未提供時は箇条書き必須）
+    if (!contentAnalysis?.isThinContent && !isShortContent) {
+      if (bulletCount === 0) {
         issues.push({
           type: 'format',
           severity: 'major',
           message: '詳細要約に箇条書き（・）が含まれていない',
         });
         score -= 15;
-      } else if (bulletPoints < 3 && contentLength < 3000) {
+      } else if (bulletCount < 3 && contentLength < 3000) {
         issues.push({
           type: 'format',
           severity: 'minor',
-          message: `詳細要約の項目数が少ない: ${bulletPoints}項目（理想は3-5項目）`,
+          message: `詳細要約の項目数が少ない: ${bulletCount}項目（推奨${recommendedItems}項目）`,
         });
         score -= 5;
       }
@@ -269,22 +308,13 @@ export class SummaryQualityChecker implements QualityChecker {
           score -= 30;
         }
       }
-
-      if (!contentAnalysis?.isThinContent && !detailedSummary.includes('・')) {
-        issues.push({
-          type: 'format',
-          severity: 'major',
-          message: '詳細要約に箇条書き形式がない',
-        });
-        score -= 20;
-      }
     }
 
     score = Math.max(0, score);
 
     const minQualityScore = parseInt(process.env.QUALITY_MIN_SCORE || '70');
     const requiresRegeneration =
-      score < minQualityScore ||
+      score <= minQualityScore ||
       issues.some((issue) => issue.severity === 'critical') ||
       (contentLength >= 5000 && itemCount < minItems);
 

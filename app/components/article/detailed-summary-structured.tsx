@@ -34,7 +34,7 @@ export function DetailedSummaryStructured({
   if (sections.length === 0) {
     return (
       <div className="p-4 bg-card text-card-foreground rounded-lg shadow-sm">
-        <p className="text-sm font-semibold mb-3">記事の要約</p>
+        <p className="text-sm font-semibold mb-3">詳細要約</p>
         <div className="text-sm text-card-foreground/80 whitespace-pre-wrap">
           {detailedSummary}
         </div>
@@ -44,7 +44,7 @@ export function DetailedSummaryStructured({
 
   return (
     <div className="p-4 bg-card text-card-foreground rounded-lg shadow-sm hover:shadow-md transition-shadow">
-      <p className="text-sm font-semibold mb-4">記事の要約</p>
+      <p className="text-sm font-semibold mb-4">詳細要約</p>
       <div className="space-y-4">
         {sections.map((section, index) => (
           <div key={index} className="border-l-2 border pb-2 pl-3 md:pl-4 space-y-2">

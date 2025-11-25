@@ -119,3 +119,37 @@ export const CONTAMINATION_SEARCH_TERMS = [
   '【注意事項】',
   '【注意点】',
 ];
+
+/**
+ * コンテンツ長に基づく項目数ルール
+ * prompt-builder.ts と quality-checker.ts で共有
+ * 変更時は両ファイルの整合性を保つこと
+ */
+export interface ItemCountRule {
+  minLength: number;      // このルールが適用されるコンテンツ長の下限
+  minItems: number;       // 最小項目数
+  maxItems: number;       // 最大項目数
+  recommendedItems: string; // 推奨表示用文字列
+}
+
+// コンテンツ長の降順でソート（大きいものから評価）
+export const ITEM_COUNT_RULES: ItemCountRule[] = [
+  { minLength: 10000, minItems: 7, maxItems: 9, recommendedItems: '7-9' },
+  { minLength: 5000,  minItems: 5, maxItems: 7, recommendedItems: '5-7' },
+  { minLength: 3000,  minItems: 4, maxItems: 5, recommendedItems: '4-5' },
+  { minLength: 1000,  minItems: 3, maxItems: 4, recommendedItems: '3-4' },
+  { minLength: 400,   minItems: 2, maxItems: 3, recommendedItems: '2-3' },
+  { minLength: 0,     minItems: 0, maxItems: 0, recommendedItems: '0' }, // 短文は箇条書き不要
+];
+
+/**
+ * コンテンツ長から適用されるルールを取得
+ */
+export function getItemCountRule(contentLength: number): ItemCountRule {
+  for (const rule of ITEM_COUNT_RULES) {
+    if (contentLength >= rule.minLength) {
+      return rule;
+    }
+  }
+  return ITEM_COUNT_RULES[ITEM_COUNT_RULES.length - 1];
+}
