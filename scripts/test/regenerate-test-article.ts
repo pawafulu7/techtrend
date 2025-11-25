@@ -55,6 +55,8 @@ async function main() {
         summary: result.summary,
         detailedSummary: result.detailedSummary,
         summaryVersion: result.summaryVersion,
+        articleType: result.articleType,
+        qualityScore: result.qualityScore,
         summaryComputedAt: new Date()
       }
     });
