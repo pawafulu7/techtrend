@@ -320,16 +320,6 @@ export class SummaryQualityChecker implements QualityChecker {
           score -= 30;
         }
       }
-
-      // 短文（<400字）は箇条書き不要なので除外（contentLength未提供時は箇条書き必須）
-      if (!contentAnalysis?.isThinContent && !isShortContent && !detailedSummary.includes('・')) {
-        issues.push({
-          type: 'format',
-          severity: 'major',
-          message: '詳細要約に箇条書き形式がない',
-        });
-        score -= 20;
-      }
     }
 
     score = Math.max(0, score);
