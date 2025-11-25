@@ -172,7 +172,7 @@ export function AgentSearchClient() {
     <div className="flex flex-col min-h-[60vh]">
       {/* Header */}
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-heading mb-2">AI記事検索</h1>
+        <h1 className="text-3xl font-bold mb-2">AI記事検索</h1>
         <p className="text-sm text-[color:var(--tt-color-text-muted)]">
           AIがTechTrendの記事を横断検索し、要約と参考リンクで回答します。気になるテーマを自然言語で質問してください。
         </p>
