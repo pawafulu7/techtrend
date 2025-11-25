@@ -227,8 +227,8 @@ export class SummaryQualityChecker implements QualityChecker {
       }
     }
 
-    // 項目数上限チェック（短文以外、400字以上のコンテンツまたはcontentLength未提供）
-    if (!contentAnalysis?.isThinContent && !isShortContent && bulletCount > maxItems) {
+    // 項目数上限チェック（contentLength提供時のみ、短文以外）
+    if (hasContentLength && !contentAnalysis?.isThinContent && !isShortContent && bulletCount > maxItems) {
       issues.push({
         type: 'itemCount',
         severity: 'major',
