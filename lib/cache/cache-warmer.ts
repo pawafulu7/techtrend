@@ -82,7 +82,7 @@ export class CacheWarmer {
       const taskNames = ['stats', 'trends', 'keywords', 'search'];
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
-          logger.error(`[CacheWarmer] ${taskNames[index]} warming failed`, { error: result.reason });
+          logger.error({ error: result.reason }, `[CacheWarmer] ${taskNames[index]} warming failed`);
         }
       });
 
@@ -180,7 +180,7 @@ export class CacheWarmer {
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
         const config = trendKeys[index];
-        logger.error(`[CacheWarmer] trends warming failed for ${config.days} days`, { error: result.reason });
+        logger.error({ error: result.reason }, `[CacheWarmer] trends warming failed for ${config.days} days`);
       }
     });
   }
@@ -214,7 +214,7 @@ export class CacheWarmer {
         )
       );
     } catch (error) {
-      logger.error('[CacheWarmer] search queries warming failed', { error });
+      logger.error({ error }, '[CacheWarmer] search queries warming failed');
     }
   }
 
