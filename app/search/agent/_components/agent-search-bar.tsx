@@ -53,7 +53,6 @@ export function AgentSearchBar({
   const { getSearchHistory, saveToHistory } = useSearchHistory();
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const skipNextFocusRef = useRef(false);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -106,7 +105,6 @@ export function AgentSearchBar({
   // Shared logic for applying query from external sources (history, sample chips)
   const applyQueryFromExternal = useCallback((text: string) => {
     setQuery(text);
-    skipNextFocusRef.current = true;
     inputRef.current?.focus();
   }, []);
 
@@ -161,11 +159,7 @@ export function AgentSearchBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => {
-            if (skipNextFocusRef.current) {
-              skipNextFocusRef.current = false;
-              return;
-            }
+          onDoubleClick={() => {
             if (historyEnabled) {
               setShowSuggestions(true);
             }
