@@ -9,7 +9,6 @@ import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Button } from '@/components/ui/button';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 
