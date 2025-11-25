@@ -169,50 +169,18 @@ export function AgentSearchClient() {
 
 
   return (
-    <div>
-      <CardV2
-        variant="default"
-        className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-6 mb-6"
-        data-testid="agent-search-card"
-      >
-        <div className="text-center mb-4">
-          <h1 className="text-2xl font-heading mb-2">AI記事検索</h1>
-          <p className="text-sm text-[color:var(--tt-color-text-muted)]">
-            AIがTechTrendの記事を横断検索し、要約と参考リンクで回答します。気になるテーマを自然言語で質問してください。
-          </p>
-        </div>
-
-        <AgentSearchBar
-          onSearch={handleSearch}
-          isLoading={isLoading}
-          onPrefillQuery={handleSetPrefillCallback}
-          onFocusRef={handleSetFocusCallback}
-          conversationTurns={conversationHistory.length}
-        />
-      </CardV2>
-
-      <Collapsible className="mt-4">
-        <CollapsibleTrigger asChild>
-          <ButtonV2
-            variant="ghost"
-            size="sm"
-            className="w-full justify-center gap-2 data-[state=open]:text-primary"
-            data-testid="agent-sample-query-trigger"
-          >
-            <span className="text-sm">よくある質問を見る</span>
-            <ChevronDown className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-180" />
-          </ButtonV2>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-4">
-          <CardV2 variant="ghost" className="p-4">
-            <AgentSampleQueries onSelectQuery={handlePrefillQuery} />
-          </CardV2>
-        </CollapsibleContent>
-      </Collapsible>
+    <div className="flex flex-col min-h-[60vh]">
+      {/* Header */}
+      <div className="text-center mb-6">
+        <h1 className="text-2xl font-heading mb-2">AI記事検索</h1>
+        <p className="text-sm text-[color:var(--tt-color-text-muted)]">
+          AIがTechTrendの記事を横断検索し、要約と参考リンクで回答します。気になるテーマを自然言語で質問してください。
+        </p>
+      </div>
 
       {/* New Conversation Button - shown when history exists */}
       {conversationHistory.length > 0 && (
-        <div className="mt-4 flex justify-end">
+        <div className="mb-4 flex justify-end">
           <ButtonV2
             variant="outline"
             size="sm"
@@ -226,17 +194,57 @@ export function AgentSearchClient() {
         </div>
       )}
 
-      {/* Conversation History */}
-      <div className="mt-8">
-        <ConversationHistory
-          turns={conversationHistory}
-          currentTurnId={currentTurnId}
-          partialText={ENABLE_STREAMING_UI ? partialText : null}
-          isStreaming={isLoading}
-          onRetry={handleRetry}
-        />
+      {/* Conversation History - grows to fill space */}
+      <div className="flex-1 mb-6">
+        {conversationHistory.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] p-6 text-sm text-[var(--tt-color-text-muted)] text-center">
+            質問を入力すると、ここに会話履歴が表示されます。
+          </div>
+        ) : (
+          <ConversationHistory
+            turns={conversationHistory}
+            currentTurnId={currentTurnId}
+            partialText={ENABLE_STREAMING_UI ? partialText : null}
+            isStreaming={isLoading}
+            onRetry={handleRetry}
+          />
+        )}
         {/* Scroll anchor */}
         <div ref={conversationEndRef} />
+      </div>
+
+      {/* Input Area - sticky at bottom */}
+      <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-[var(--tt-color-surface)] via-[var(--tt-color-surface)] to-transparent pt-4 pb-2">
+        <CardV2
+          variant="default"
+          className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-4 md:p-6"
+          data-testid="agent-search-card"
+        >
+          <AgentSearchBar
+            onSearch={handleSearch}
+            isLoading={isLoading}
+            onPrefillQuery={handleSetPrefillCallback}
+            onFocusRef={handleSetFocusCallback}
+            conversationTurns={conversationHistory.length}
+          />
+
+          <Collapsible className="mt-4">
+            <CollapsibleTrigger asChild>
+              <ButtonV2
+                variant="ghost"
+                size="sm"
+                className="w-full justify-center gap-2 data-[state=open]:text-primary"
+                data-testid="agent-sample-query-trigger"
+              >
+                <span className="text-sm">よくある質問を見る</span>
+                <ChevronDown className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-180" />
+              </ButtonV2>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4">
+              <AgentSampleQueries onSelectQuery={handlePrefillQuery} />
+            </CollapsibleContent>
+          </Collapsible>
+        </CardV2>
       </div>
     </div>
   );
