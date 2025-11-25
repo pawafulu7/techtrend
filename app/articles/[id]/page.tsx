@@ -36,8 +36,8 @@ async function getArticle(id: string) {
   return await articleDetailCache.getArticleWithRelations(id);
 }
 
-// ISR: Revalidate every 60 seconds for article content
-// User-specific data (favorites) is fetched client-side
+// ISR: Revalidate every 60 seconds
+// Article updates trigger revalidatePath via articleDetailCache.invalidate()
 export const revalidate = 60;
 
 export default async function ArticlePage({ params, searchParams }: PageProps) {
