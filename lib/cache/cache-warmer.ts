@@ -153,20 +153,18 @@ export class CacheWarmer {
   }
 
   /**
-   * トレンドデータのウォーミング（並列実行）
+   * トレンドデータのウォーミング（並列実行、部分失敗を許容）
    */
   private async warmTrends(): Promise<void> {
 
-    try {
-      await Promise.all(
-        this.warmingConfig.trends.keys.map(async (config) => {
-          const key = `${config.days}:${config.tag || 'all'}`;
-          const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
-          await trendsCache.set(key, data);
-        })
-      );
-    } catch (_error) {
-    }
+    // Promise.allSettledで部分的な失敗を許容（1つ失敗しても他は継続）
+    await Promise.allSettled(
+      this.warmingConfig.trends.keys.map(async (config) => {
+        const key = `${config.days}:${config.tag || 'all'}`;
+        const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
+        await trendsCache.set(key, data);
+      })
+    );
   }
 
   /**

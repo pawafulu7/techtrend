@@ -280,7 +280,7 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
     }
     
     // タグの処理（バッチ処理でN+1解消）
-    const tagConnections = await upsertTagsBatch(tagNames || []);
+    const tagConnections = await upsertTagsBatch(tagNames);
     
     // 記事の保存
     const article = await prisma.article.create({

@@ -121,13 +121,14 @@ summariesCommand
         _count: { _all: true }
       });
 
-      // 名前→サマリー数のマップを作成
+      // sourceId→サマリー数のマップを作成
       const summaryCountBySource = Object.fromEntries(
         sourcesWithSummaryCounts.map(row => [row.sourceId, row._count._all])
       );
 
       const sources = await prisma.source.findMany({
         select: {
+          id: true,
           name: true,
           _count: {
             select: { articles: true }
@@ -136,7 +137,7 @@ summariesCommand
       });
 
       for (const source of sources) {
-        const withSummaryCount = summaryCountBySource[source.name] ?? 0;
+        const withSummaryCount = summaryCountBySource[source.id] ?? 0;
 
         const _percentage = source._count.articles > 0
           ? Math.round(withSummaryCount / source._count.articles * 100)
