@@ -4,6 +4,7 @@ import { searchCache } from './search-cache';
 import { prisma } from '@/lib/database';
 import { distributedLock } from './distributed-lock';
 import type { Prisma } from '@prisma/client';
+import pLimit from 'p-limit';
 
 /**
  * キャッシュウォーミング機能
@@ -67,13 +68,15 @@ export class CacheWarmer {
 
     try {
       this.isWarming = true;
-      
-      // 優先度順にウォーミング
-      await this.warmStats();
-      await this.warmTrends();
-      await this.warmKeywords();
-      await this.warmSearchQueries();
-      
+
+      // 並列ウォーミング（4つのタスクを同時実行）
+      await Promise.all([
+        this.warmStats(),
+        this.warmTrends(),
+        this.warmKeywords(),
+        this.warmSearchQueries(),
+      ]);
+
     } catch (_error) {
     } finally {
       this.isWarming = false;
@@ -150,16 +153,18 @@ export class CacheWarmer {
   }
 
   /**
-   * トレンドデータのウォーミング
+   * トレンドデータのウォーミング（並列実行）
    */
   private async warmTrends(): Promise<void> {
-    
+
     try {
-      for (const config of this.warmingConfig.trends.keys) {
-        const key = `${config.days}:${config.tag || 'all'}`;
-        const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
-        await trendsCache.set(key, data);
-      }
+      await Promise.all(
+        this.warmingConfig.trends.keys.map(async (config) => {
+          const key = `${config.days}:${config.tag || 'all'}`;
+          const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
+          await trendsCache.set(key, data);
+        })
+      );
     } catch (_error) {
     }
   }
@@ -177,16 +182,21 @@ export class CacheWarmer {
   }
 
   /**
-   * 検索クエリのウォーミング
+   * 検索クエリのウォーミング（並列実行、同時実行数制限付き）
    */
   private async warmSearchQueries(): Promise<void> {
-    
+
     try {
-      for (const query of this.warmingConfig.search.queries) {
-        const key = searchCache.generateQueryKey(query);
-        const data = await this.fetchSearchResults(query);
-        await searchCache.set(key, data);
-      }
+      const limit = pLimit(3); // DBアクセスを伴うため同時実行を3に制限
+      await Promise.all(
+        this.warmingConfig.search.queries.map((query) =>
+          limit(async () => {
+            const key = searchCache.generateQueryKey(query);
+            const data = await this.fetchSearchResults(query);
+            await searchCache.set(key, data);
+          })
+        )
+      );
     } catch (_error) {
     }
   }
