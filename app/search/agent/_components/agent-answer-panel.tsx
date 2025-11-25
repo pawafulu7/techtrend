@@ -16,7 +16,9 @@ import {
   Link2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { CardV2 } from '@/components/ui-v2/card-v2';
+import { BadgeV2 } from '@/components/ui-v2/badge-v2';
+import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 
 interface AgentAnswerPanelProps {
@@ -131,32 +133,33 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
   };
 
   return (
-    <div className="bg-card border rounded-lg shadow-sm p-6" role="article" aria-labelledby="answer-heading">
+    <CardV2 variant="hover" className="p-6" role="article" aria-labelledby="answer-heading" data-testid="agent-result-card">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2">
           <h2 id="answer-heading" className="text-lg font-semibold">
             AI回答
           </h2>
           {result?.cached && (
-            <Badge variant="secondary" className="text-xs">
+            <BadgeV2 variant="secondary" className="text-xs">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               キャッシュ
-            </Badge>
+            </BadgeV2>
           )}
           {result?.fallback && (
-            <Badge variant="destructive" className="text-xs">
+            <BadgeV2 variant="outline" className="text-xs text-[var(--tt-color-warning)] border-[var(--tt-color-warning)]">
               <AlertTriangle className="h-3 w-3 mr-1" />
               フォールバック
-            </Badge>
+            </BadgeV2>
           )}
         </div>
 
         <div className="flex items-center gap-1">
-          <Button
+          <ButtonV2
             variant="ghost"
             size="sm"
             onClick={handleCopy}
-            className="h-8 w-8 p-0"
+            iconOnly={true}
+            className="h-7 w-7"
             aria-label="回答をコピー"
           >
             {copied ? (
@@ -164,7 +167,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
             ) : (
               <Copy className="h-4 w-4" />
             )}
-          </Button>
+          </ButtonV2>
         </div>
       </div>
 
@@ -200,6 +203,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
             <li>• 検索期間を調整する</li>
           </ul>
           <div className="flex gap-2 justify-center">
+            {/* shadcn/ui ButtonをasChildで維持: ButtonV2がasChildプロップをサポートしていないため */}
             <Button asChild variant="outline">
               <Link href="/search">通常検索を試す</Link>
             </Button>
@@ -245,6 +249,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
                   <li {...props}>
                     {children}
                     {article && (
+                      // shadcn/ui ButtonをasChildで維持: ButtonV2がasChildプロップをサポートしていないため
                       <Button
                         asChild
                         size="sm"
@@ -286,27 +291,29 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
         {onFeedback && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground mr-2">この回答は役立ちましたか？</span>
-            <Button
+            <ButtonV2
               variant="ghost"
               size="sm"
               onClick={() => onFeedback(true)}
-              className="h-7 w-7 p-0"
+              iconOnly={true}
+              className="h-7 w-7"
               aria-label="良い"
             >
               <ThumbsUp className="h-3 w-3" />
-            </Button>
-            <Button
+            </ButtonV2>
+            <ButtonV2
               variant="ghost"
               size="sm"
               onClick={() => onFeedback(false)}
-              className="h-7 w-7 p-0"
+              iconOnly={true}
+              className="h-7 w-7"
               aria-label="悪い"
             >
               <ThumbsDown className="h-3 w-3" />
-            </Button>
+            </ButtonV2>
           </div>
         )}
       </div>
-    </div>
+    </CardV2>
   );
 }
