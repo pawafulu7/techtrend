@@ -13,7 +13,7 @@ export function AgentSampleQueries({ onSelectQuery, className, queries }: AgentS
   if (queries && queries.length > 0) {
     return (
       <div className={className}>
-        <div className="flex flex-wrap gap-2 justify-center max-w-3xl mx-auto">
+        <div className="flex flex-wrap gap-4 justify-center max-w-3xl mx-auto">
           {queries.map((query, index) => (
             <Button
               key={`${query}-${index}`}
@@ -44,7 +44,7 @@ export function AgentSampleQueries({ onSelectQuery, className, queries }: AgentS
 
   return (
     <div className={className}>
-      <div className="space-y-3 max-w-3xl mx-auto">
+      <div className="space-y-4 max-w-3xl mx-auto">
         {CATEGORY_ORDER.map((category) => {
           const categoryQueries = groupedQueries[category];
           if (!categoryQueries || categoryQueries.length === 0) return null;
@@ -54,7 +54,7 @@ export function AgentSampleQueries({ onSelectQuery, className, queries }: AgentS
               <p className="text-xs text-muted-foreground mb-1.5 text-center" data-testid="category-label">
                 {CATEGORY_LABELS[category]}
               </p>
-              <div className="flex flex-wrap gap-2 justify-center">
+              <div className="flex flex-wrap gap-4 justify-center">
                 {categoryQueries.map((query) => (
                   <Button
                     key={query.id}

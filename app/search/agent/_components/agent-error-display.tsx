@@ -2,6 +2,7 @@
 
 import { AlertTriangle, RefreshCw, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CardV2 } from '@/components/ui-v2/card-v2';
 import { useRouter } from 'next/navigation';
 import type { AgentSearchError } from '@/lib/hooks/useAgentSearch';
 
@@ -21,7 +22,7 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
           message: 'AI検索を使用するにはログインが必要です。',
           action: (
             <Button onClick={() => router.push('/auth/login?callbackUrl=/search/agent')}>
-              <LogIn className="h-4 w-4 mr-2" />
+              <LogIn className="h-4 w-4 mr-2" aria-hidden="true" />
               ログイン
             </Button>
           ),
@@ -34,7 +35,7 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
             : '少し時間を置いてから再試行してください。',
           action: onRetry && (
             <Button onClick={onRetry} disabled={!!error.retryAfter}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
               再試行
             </Button>
           ),
@@ -51,7 +52,7 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
           message: 'サーバーで問題が発生しました。しばらくしてから再試行してください。',
           action: onRetry && (
             <Button onClick={onRetry}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
               再試行
             </Button>
           ),
@@ -62,7 +63,7 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
           message: 'リクエストがタイムアウトしました。ネットワーク接続を確認してください。',
           action: onRetry && (
             <Button onClick={onRetry}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
               再試行
             </Button>
           ),
@@ -73,7 +74,7 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
           message: 'ネットワーク接続を確認してください。',
           action: onRetry && (
             <Button onClick={onRetry}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
               再試行
             </Button>
           ),
@@ -84,7 +85,7 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
           message: error.message || '不明なエラーが発生しました。',
           action: onRetry && (
             <Button onClick={onRetry}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
               再試行
             </Button>
           ),
@@ -95,15 +96,30 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
   const { title, message, action } = getErrorMessage();
 
   return (
-    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6">
-      <div className="flex items-start gap-4">
-        <AlertTriangle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-destructive mb-2">{title}</h3>
-          <p className="text-sm text-destructive/80 mb-4">{message}</p>
-          {action}
-        </div>
+    <CardV2
+      variant="ghost"
+      className="py-6 md:py-8 border-2 border-[var(--tt-color-negative)]"
+      role="alert"
+      aria-live="assertive"
+      data-testid="agent-error-display"
+    >
+      <div className="mx-auto max-w-xl flex flex-col items-center text-center gap-3">
+        <AlertTriangle
+          className="h-8 w-8 text-destructive"
+          aria-hidden="true"
+        />
+        <h3 className="text-xl md:text-2xl font-semibold text-destructive">
+          {title}
+        </h3>
+        <p className="text-sm text-destructive/80">
+          {message}
+        </p>
+        {action && (
+          <div className="mt-2">
+            {action}
+          </div>
+        )}
       </div>
-    </div>
+    </CardV2>
   );
 }

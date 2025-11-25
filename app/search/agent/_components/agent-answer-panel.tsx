@@ -136,7 +136,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
     <CardV2 variant="hover" className="p-6" role="article" aria-labelledby="answer-heading" data-testid="agent-result-card">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h2 id="answer-heading" className="text-lg font-semibold">
+          <h2 id="answer-heading" className="text-xl md:text-2xl font-semibold">
             AI回答
           </h2>
           {result?.cached && (
@@ -190,17 +190,23 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
       )}
 
       {showEmptyState && (
-        <div className="bg-muted/50 border rounded-md p-6 text-center" role="status" aria-live="polite">
-          <h3 className="text-lg font-semibold mb-2">
+        <CardV2
+          variant="ghost"
+          className="py-6 md:py-8 text-center"
+          role="status"
+          aria-live="polite"
+          data-testid="agent-empty-state"
+        >
+          <h3 className="text-xl md:text-2xl font-semibold mb-2">
             {result?.fallback
               ? '関連する記事が見つかりませんでした'
               : '該当する記事が見つかりませんでした'}
           </h3>
           <p className="text-sm text-muted-foreground mb-4">以下を試してみてください:</p>
           <ul className="text-sm text-muted-foreground mb-4 text-left max-w-md mx-auto space-y-1">
-            <li>• キーワードをより具体的にする（例: &quot;React&quot; → &quot;React 19のServer Components&quot;）</li>
-            <li>• 技術名やバージョンを追加する</li>
-            <li>• 検索期間を調整する</li>
+            <li>- キーワードをより具体的にする（例: &quot;React&quot; → &quot;React 19のServer Components&quot;）</li>
+            <li>- 技術名やバージョンを追加する</li>
+            <li>- 検索期間を調整する</li>
           </ul>
           <div className="flex gap-2 justify-center">
             {/* shadcn/ui ButtonをasChildで維持: ButtonV2がasChildプロップをサポートしていないため */}
@@ -208,7 +214,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
               <Link href="/search">通常検索を試す</Link>
             </Button>
           </div>
-        </div>
+        </CardV2>
       )}
 
       {!showEmptyState && (

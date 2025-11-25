@@ -35,11 +35,19 @@ describe('AgentLoadingState', () => {
     expect(status).toHaveAttribute('aria-busy', 'true');
   });
 
-  test('displays 6 skeleton lines', () => {
+  test('displays 4 skeleton lines', () => {
     const { container } = render(<AgentLoadingState />);
 
     const skeletonLines = container.querySelectorAll('.animate-pulse');
-    expect(skeletonLines.length).toBeGreaterThanOrEqual(6);
+    expect(skeletonLines.length).toBe(4);
+  });
+
+  test('is wrapped in CardV2 ghost variant', () => {
+    render(<AgentLoadingState />);
+
+    const card = screen.getByTestId('agent-loading-state');
+    expect(card).toBeInTheDocument();
+    expect(card).toHaveClass('border-none', 'shadow-none');
   });
 
   test('displays loading message', () => {
