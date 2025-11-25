@@ -13,6 +13,8 @@ interface AgentSearchBarProps {
   disabled?: boolean;
   initialQuery?: string;
   onPrefillQuery?: (callback: (query: string) => void) => void;
+  /** Expose focus method to parent */
+  onFocusRef?: (focusFn: () => void) => void;
   badgeLabel?: string;
   badgeIcon?: ReactNode;
   helperText?: string;
@@ -23,6 +25,8 @@ interface AgentSearchBarProps {
   historyEnabled?: boolean;
   historyLabel?: string;
   inputLabel?: string;
+  /** Number of conversation turns (for multi-turn UI) */
+  conversationTurns?: number;
 }
 
 export function AgentSearchBar({
@@ -31,6 +35,7 @@ export function AgentSearchBar({
   disabled = false,
   initialQuery = '',
   onPrefillQuery,
+  onFocusRef,
   badgeLabel = 'AI検索',
   badgeIcon,
   helperText = '自然言語で記事を検索できます',
@@ -41,6 +46,7 @@ export function AgentSearchBar({
   historyEnabled = true,
   historyLabel = '最近の検索',
   inputLabel = 'AI検索クエリ入力',
+  conversationTurns = 0,
 }: AgentSearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -111,16 +117,34 @@ export function AgentSearchBar({
     }
   }, [onPrefillQuery, applyQueryFromExternal]);
 
+  // Expose focus method to parent for post-search focus restoration
+  useEffect(() => {
+    if (onFocusRef) {
+      onFocusRef(() => {
+        inputRef.current?.focus();
+      });
+    }
+  }, [onFocusRef]);
+
   const suggestions = historyEnabled ? getSearchHistory().slice(0, 5) : [];
 
   return (
     <div ref={searchRef} className="relative w-full max-w-3xl mx-auto">
-      {(badgeLabel || helperText) && (
+      {(badgeLabel || helperText || conversationTurns > 0) && (
         <div className="flex items-center gap-2 mb-2">
           {badgeLabel && (
             <Badge variant="secondary" className="text-xs">
               {badgeIcon ?? <Sparkles className="h-3 w-3 mr-1" />}
               {badgeLabel}
+            </Badge>
+          )}
+          {conversationTurns > 0 && (
+            <Badge
+              variant="outline"
+              className="text-xs"
+              data-testid="conversation-turns-badge"
+            >
+              会話: {conversationTurns}ターン
             </Badge>
           )}
           {helperText && <span className="text-xs text-muted-foreground">{helperText}</span>}

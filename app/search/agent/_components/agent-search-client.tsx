@@ -23,6 +23,7 @@ export function AgentSearchClient() {
   const [showResult, setShowResult] = useState(false);
   const { search, result, error, isLoading, partialText, reset } = useAgentSearch();
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
+  const focusSearchInputRef = useRef<(() => void) | null>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
 
   /**
@@ -174,6 +175,21 @@ export function AgentSearchClient() {
     prefillQueryRef.current = callback;
   }, []);
 
+  const handleSetFocusCallback = useCallback((focusFn: () => void) => {
+    focusSearchInputRef.current = focusFn;
+  }, []);
+
+  // Restore focus to search input after response completes
+  useEffect(() => {
+    if (!isLoading && (result || error) && currentTurnId === null) {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        focusSearchInputRef.current?.();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, result, error, currentTurnId]);
+
   const isStreamingWithPartialText = ENABLE_STREAMING_UI && Boolean(partialText);
   const shouldShowStreamingResult = ENABLE_STREAMING_UI && Boolean(partialText && !result);
 
@@ -195,6 +211,8 @@ export function AgentSearchClient() {
           onSearch={handleSearch}
           isLoading={isLoading}
           onPrefillQuery={handleSetPrefillCallback}
+          onFocusRef={handleSetFocusCallback}
+          conversationTurns={conversationHistory.length}
         />
       </CardV2>
 
