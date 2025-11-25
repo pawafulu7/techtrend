@@ -86,11 +86,44 @@ const agentTypeSchema = z.object({
 });
 
 /**
+ * Chat message schema for multi-turn conversation
+ *
+ * Used in messages array for conversation history.
+ * Content is sanitized to prevent prompt injection.
+ */
+const chatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z
+    .string()
+    .min(1, 'Message content cannot be empty')
+    .max(10000, 'Message content too long (max 10000 characters)')
+    .transform((c) => sanitizeQuery(c))
+    .refine((c) => c.length > 0, {
+      message: 'Message content cannot be empty after sanitization',
+    }),
+});
+
+/**
+ * Chat message type for API responses and internal use
+ */
+type ChatMessage = z.infer<typeof chatMessageSchema>;
+
+/**
+ * Maximum number of messages in conversation history
+ * 20 turns = 40 messages (user + assistant) + 1 new user message = 41
+ */
+const MAX_CONVERSATION_MESSAGES = 41;
+
+/**
  * Request validation schema
  *
  * Supports two agent types:
  * - article-search: Search across all articles (default)
  * - article-qa: Answer questions about a specific article (requires articleId)
+ *
+ * Supports two input modes:
+ * - query: Single query string (backward compatible)
+ * - messages: Multi-turn conversation history (new)
  */
 const agentRequestSchema = z.object({
   agentType: z
@@ -99,6 +132,7 @@ const agentRequestSchema = z.object({
     .default('article-search')
     .describe('Agent type: article-search (default) or article-qa'),
 
+  // Single query (backward compatible) - optional when messages provided
   query: z
     .string()
     .min(1, 'Query cannot be empty')
@@ -106,7 +140,15 @@ const agentRequestSchema = z.object({
     .transform((q) => sanitizeQuery(q))
     .refine((q) => q.length > 0, {
       message: 'Query cannot be empty after sanitization',
-    }),
+    })
+    .optional(),
+
+  // Multi-turn conversation history (new)
+  messages: z
+    .array(chatMessageSchema)
+    .max(MAX_CONVERSATION_MESSAGES, `Too many messages (max ${MAX_CONVERSATION_MESSAGES})`)
+    .optional()
+    .describe('Conversation history for multi-turn chat'),
 
   articleId: z
     .string()
@@ -114,6 +156,27 @@ const agentRequestSchema = z.object({
     .optional()
     .describe('Article ID (required for article-qa mode)'),
 }).superRefine((data, ctx) => {
+  // Either query or messages must be provided
+  if (!data.query && (!data.messages || data.messages.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['query'],
+      message: 'Either query or messages must be provided',
+    });
+  }
+
+  // Last message must be from user (for multi-turn)
+  if (data.messages && data.messages.length > 0) {
+    const lastMessage = data.messages[data.messages.length - 1];
+    if (lastMessage.role !== 'user') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['messages'],
+        message: 'Last message must be from user',
+      });
+    }
+  }
+
   // articleId is required for article-qa mode
   if (data.agentType === 'article-qa' && !data.articleId) {
     ctx.addIssue({
@@ -280,7 +343,7 @@ async function resolveModeContext(
   request: NextRequest
 ): Promise<ModeContext> {
   const isArticleQa = validatedRequest.agentType === 'article-qa';
-  const preferredLang = getPreferredLanguage(validatedRequest.query, request);
+  const preferredLang = getPreferredLanguage(getLatestQuery(validatedRequest), request);
 
   const localeInstruction = preferredLang === 'ja'
     ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
@@ -379,8 +442,96 @@ interface RateLimitInfo {
  */
 interface ValidatedRequest {
   agentType: 'article-search' | 'article-qa';
-  query: string;
+  query?: string;
+  messages?: ChatMessage[];
   articleId?: string;
+}
+
+/**
+ * Check if request is multi-turn conversation
+ */
+function isMultiTurnRequest(request: ValidatedRequest): boolean {
+  return !!(request.messages && request.messages.length > 1);
+}
+
+/**
+ * Get the latest user query from request
+ *
+ * For single query: returns query
+ * For multi-turn: returns the last user message content
+ */
+function getLatestQuery(request: ValidatedRequest): string {
+  if (request.query) {
+    return request.query;
+  }
+  if (request.messages && request.messages.length > 0) {
+    const lastUserMessage = request.messages.filter(m => m.role === 'user').pop();
+    return lastUserMessage?.content || '';
+  }
+  return '';
+}
+
+/**
+ * Normalize request to messages array for agent execution
+ *
+ * Converts single query to messages format for unified handling.
+ * System message is prepended by the caller.
+ *
+ * @param request - Validated request with query or messages
+ * @returns Array of chat messages (without system message)
+ */
+function normalizeToUserMessages(request: ValidatedRequest): ChatMessage[] {
+  if (request.messages && request.messages.length > 0) {
+    return request.messages;
+  }
+  if (request.query) {
+    return [{ role: 'user', content: request.query }];
+  }
+  return [];
+}
+
+/**
+ * Build full messages array for agent execution
+ *
+ * Prepends system message to user messages.
+ *
+ * @param request - Validated request
+ * @param systemMessage - System prompt for the agent
+ * @returns Full messages array including system message
+ */
+function buildAgentMessages(
+  request: ValidatedRequest,
+  systemMessage: string
+): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
+  const userMessages = normalizeToUserMessages(request);
+  return [
+    { role: 'system', content: systemMessage },
+    ...userMessages,
+  ];
+}
+
+/**
+ * Check all messages for prompt injection
+ *
+ * @param request - Validated request
+ * @returns true if any message contains prompt injection
+ */
+function detectPromptInjectionInMessages(request: ValidatedRequest): boolean {
+  // Check single query
+  if (request.query && detectPromptInjection(request.query)) {
+    return true;
+  }
+
+  // Check all messages
+  if (request.messages) {
+    for (const message of request.messages) {
+      if (detectPromptInjection(message.content)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -542,6 +693,8 @@ async function handleStreamingRequest(
   request: NextRequest,
   rateLimitInfo?: RateLimitInfo
 ): Promise<Response> {
+  const latestQuery = getLatestQuery(validatedRequest);
+  const isMultiTurn = isMultiTurnRequest(validatedRequest);
   let modeContext: ModeContext;
   try {
     modeContext = await resolveModeContext(validatedRequest, request);
@@ -579,21 +732,24 @@ async function handleStreamingRequest(
 
   const cacheStrategy = modeContext.isArticleQa ? 'article-qa' : 'agent-response';
   parentSpan.setAttribute('cache.strategy', cacheStrategy);
+  parentSpan.setAttribute('cache.disabled', isMultiTurn);
 
-  const agentCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
-  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
+  const agentCache = !modeContext.isArticleQa && !isMultiTurn ? new AgentResponseCache() : undefined;
+  const articleQaCache = modeContext.isArticleQa && !isMultiTurn ? new _ArticleQACache() : undefined;
   let cachedResponse: string | null = null;
 
-  if (modeContext.isArticleQa) {
-    const qaContext = modeContext.qaContext!;
-    cachedResponse = await articleQaCache!.get(
-      qaContext.articleId,
-      validatedRequest.query,
-      modeContext.preferredLang,
-      qaContext.updatedAt
-    );
-  } else {
-    cachedResponse = await agentCache!.get(validatedRequest.query);
+  if (!isMultiTurn) {
+    if (modeContext.isArticleQa) {
+      const qaContext = modeContext.qaContext!;
+      cachedResponse = await articleQaCache!.get(
+        qaContext.articleId,
+        latestQuery,
+        modeContext.preferredLang,
+        qaContext.updatedAt
+      );
+    } else {
+      cachedResponse = await agentCache!.get(latestQuery);
+    }
   }
 
   if (cachedResponse) {
@@ -602,7 +758,7 @@ async function handleStreamingRequest(
 
     const logBase = {
       userId: session.user.id,
-      queryPreview: validatedRequest.query.substring(0, 50),
+      queryPreview: latestQuery.substring(0, 50),
       mode: modeContext.agentType,
     };
 
@@ -649,9 +805,12 @@ async function createStreamingResponse(
   modeContext: ModeContext,
   rateLimitInfo?: RateLimitInfo
 ): Promise<Response> {
+  const isMultiTurn = isMultiTurnRequest(validatedRequest);
+  const latestQuery = getLatestQuery(validatedRequest);
   const encoder = new TextEncoder();
-  const responseCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
-  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
+  const responseCache =
+    !modeContext.isArticleQa && !isMultiTurn ? new AgentResponseCache() : undefined;
+  const articleQaCache = modeContext.isArticleQa && !isMultiTurn ? new _ArticleQACache() : undefined;
   const tracer = trace.getTracer('rag-agent');
   const streamSpan = tracer.startSpan('rag.agent-search.stream', {}, trace.setSpan(context.active(), parentSpan));
   const qaContext = modeContext.qaContext;
@@ -679,6 +838,7 @@ async function createStreamingResponse(
   });
 
   streamSpan.setAttribute('cache.strategy', modeContext.isArticleQa ? 'article-qa' : 'agent-response');
+  streamSpan.setAttribute('cache.disabled', isMultiTurn);
 
   if (modeContext.traceAttributes) {
     streamSpan.setAttributes(modeContext.traceAttributes);
@@ -694,10 +854,7 @@ async function createStreamingResponse(
 
       try {
         const streamResult = await modeContext.agent.stream({
-          messages: [
-            { role: 'system', content: modeContext.systemMessage },
-            { role: 'user', content: validatedRequest.query },
-          ],
+          messages: buildAgentMessages(validatedRequest, modeContext.systemMessage),
         });
 
         if (qaContextPayload) {
@@ -776,7 +933,7 @@ async function createStreamingResponse(
               // This provides broader results when agent fails to respond
               try {
                 const searchService = new VectorSearchService(prisma);
-                const fallbackResults = await searchService.search(validatedRequest.query, { topK: 10 });
+                const fallbackResults = await searchService.search(latestQuery, { topK: 10 });
                 const fallbackText = formatResultsAsText(fallbackResults, modeContext.preferredLang);
 
                 // Note: Fallback results are NOT cached (intentional)
@@ -794,20 +951,22 @@ async function createStreamingResponse(
               }
             }
 
-            try {
-              if (modeContext.isArticleQa) {
-                await articleQaCache!.set(
-                  qaContext!.articleId,
-                  validatedRequest.query,
-                  modeContext.preferredLang,
-                  qaContext!.updatedAt,
-                  fullText
-                );
-              } else {
-                await responseCache!.set(validatedRequest.query, fullText);
+            if (!isMultiTurn) {
+              try {
+                if (modeContext.isArticleQa) {
+                  await articleQaCache!.set(
+                    qaContext!.articleId,
+                    latestQuery,
+                    modeContext.preferredLang,
+                    qaContext!.updatedAt,
+                    fullText
+                  );
+                } else {
+                  await responseCache!.set(latestQuery, fullText);
+                }
+              } catch (cacheError) {
+                logger.warn({ error: sanitizeError(cacheError), userId: session.user.id }, 'Failed to cache streaming response');
               }
-            } catch (cacheError) {
-              logger.warn({ error: sanitizeError(cacheError), userId: session.user.id }, 'Failed to cache streaming response');
             }
 
             controller.enqueue(
@@ -833,7 +992,7 @@ async function createStreamingResponse(
             logger.info(
               {
                 userId: session.user.id,
-                queryPreview: validatedRequest.query.substring(0, 50),
+                queryPreview: latestQuery.substring(0, 50),
                 toolCalls: toolCalls.length,
                 textLength: fullText.length,
                 totalTokens: usage?.totalTokens || 0,
@@ -855,13 +1014,13 @@ async function createStreamingResponse(
           {
             error: sanitizeError(agentError),
             userId: session.user.id,
-            queryPreview: validatedRequest.query.substring(0, 50),
+            queryPreview: latestQuery.substring(0, 50),
           },
           'Agent streaming failed, using fallback'
         );
 
         const searchService = new VectorSearchService(prisma);
-        const fallbackResults = await searchService.search(validatedRequest.query, {
+        const fallbackResults = await searchService.search(latestQuery, {
           topK: 10,
         });
 
@@ -928,6 +1087,8 @@ async function handleBatchRequest(
   request: NextRequest,
   rateLimitInfo?: RateLimitInfo
 ): Promise<NextResponse> {
+  const latestQuery = getLatestQuery(validatedRequest);
+  const isMultiTurn = isMultiTurnRequest(validatedRequest);
   let modeContext: ModeContext;
   try {
     modeContext = await resolveModeContext(validatedRequest, request);
@@ -964,10 +1125,12 @@ async function handleBatchRequest(
   }
 
   const qaContext = modeContext.qaContext;
-  const responseCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
-  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
+  const responseCache =
+    !modeContext.isArticleQa && !isMultiTurn ? new AgentResponseCache() : undefined;
+  const articleQaCache = modeContext.isArticleQa && !isMultiTurn ? new _ArticleQACache() : undefined;
   const cacheStrategy = modeContext.isArticleQa ? 'article-qa' : 'agent-response';
   span.setAttribute('cache.strategy', cacheStrategy);
+  span.setAttribute('cache.disabled', isMultiTurn);
 
   const contextPayload = modeContext.isArticleQa && qaContext
     ? {
@@ -980,20 +1143,22 @@ async function handleBatchRequest(
 
   let cachedResponse: string | null = null;
 
-  if (modeContext.isArticleQa) {
-    cachedResponse = await articleQaCache!.get(
-      qaContext!.articleId,
-      validatedRequest.query,
-      modeContext.preferredLang,
-      qaContext!.updatedAt
-    );
-  } else {
-    cachedResponse = await responseCache!.get(validatedRequest.query);
+  if (!isMultiTurn) {
+    if (modeContext.isArticleQa) {
+      cachedResponse = await articleQaCache!.get(
+        qaContext!.articleId,
+        latestQuery,
+        modeContext.preferredLang,
+        qaContext!.updatedAt
+      );
+    } else {
+      cachedResponse = await responseCache!.get(latestQuery);
+    }
   }
 
   const cacheLogBase = {
     userId: session.user.id,
-    queryPreview: validatedRequest.query.substring(0, 50),
+    queryPreview: latestQuery.substring(0, 50),
     mode: modeContext.agentType,
   };
 
@@ -1014,7 +1179,7 @@ async function handleBatchRequest(
     }
 
     const cachedPayload: Record<string, unknown> = {
-      query: validatedRequest.query,
+      query: latestQuery,
       response: cachedResponse,
       cached: true,
       fallback: false,
@@ -1040,10 +1205,7 @@ async function handleBatchRequest(
 
   try {
     const result = await modeContext.agent.generate({
-      messages: [
-        { role: 'system', content: modeContext.systemMessage },
-        { role: 'user', content: validatedRequest.query },
-      ],
+      messages: buildAgentMessages(validatedRequest, modeContext.systemMessage),
     });
 
     const allToolCalls = result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
@@ -1092,7 +1254,7 @@ async function handleBatchRequest(
     logger.info(
       {
         userId: session.user.id,
-        queryPreview: validatedRequest.query.substring(0, 50),
+        queryPreview: latestQuery.substring(0, 50),
         toolCalls: toolCalls.length,
         promptTokens: usage?.promptTokens,
         completionTokens: usage?.completionTokens,
@@ -1108,7 +1270,7 @@ async function handleBatchRequest(
       {
         error: sanitizeError(agentError),
         userId: session.user.id,
-        queryPreview: validatedRequest.query.substring(0, 50),
+        queryPreview: latestQuery.substring(0, 50),
         mode: modeContext.agentType,
       },
       'Agent failed, using fallback'
@@ -1118,7 +1280,7 @@ async function handleBatchRequest(
     // Note: QA mode fallback is NOT restricted to the target article
     // This provides broader results when agent fails to respond
     const searchService = new VectorSearchService(prisma);
-    const fallbackResults = await searchService.search(validatedRequest.query, {
+    const fallbackResults = await searchService.search(latestQuery, {
       topK: 10,
     });
 
@@ -1134,17 +1296,17 @@ async function handleBatchRequest(
   // Rationale: Avoid caching low-quality fallback responses
   // Agent failures may be temporary; retry may succeed
   try {
-    if (!fallback) {
+    if (!fallback && !isMultiTurn) {
       if (modeContext.isArticleQa) {
         await articleQaCache!.set(
           qaContext!.articleId,
-          validatedRequest.query,
+          latestQuery,
           modeContext.preferredLang,
           qaContext!.updatedAt,
           agentResponse
         );
       } else {
-        await responseCache!.set(validatedRequest.query, agentResponse);
+        await responseCache!.set(latestQuery, agentResponse);
       }
     }
   } catch (cacheError) {
@@ -1152,7 +1314,7 @@ async function handleBatchRequest(
       {
         error: sanitizeError(cacheError),
         userId: session.user.id,
-        queryPreview: validatedRequest.query.substring(0, 50),
+        queryPreview: latestQuery.substring(0, 50),
         mode: modeContext.agentType,
         fallback,
       },
@@ -1161,7 +1323,7 @@ async function handleBatchRequest(
   }
 
   const responseData: Record<string, unknown> = {
-    query: validatedRequest.query,
+    query: latestQuery,
     response: agentResponse,
     toolCalls,
     usage,
@@ -1289,14 +1451,16 @@ export async function POST(request: NextRequest) {
 
       // Layer 4: Full input validation (Stage 2)
       const validatedRequest = agentRequestSchema.parse(body);
+      const latestQuery = getLatestQuery(validatedRequest);
+      const isMultiTurn = isMultiTurnRequest(validatedRequest);
 
       // Layer 5: Prompt injection detection
-      if (detectPromptInjection(validatedRequest.query)) {
+      if (detectPromptInjectionInMessages(validatedRequest)) {
         span.setAttribute('security.promptInjection', true);
         logger.warn(
           {
             userId: session.user.id,
-            queryPreview: validatedRequest.query.substring(0, 50),
+            queryPreview: latestQuery.substring(0, 50),
           },
           'Prompt injection detected'
         );
@@ -1308,14 +1472,15 @@ export async function POST(request: NextRequest) {
       }
 
       span.setAttributes({
-        'query.length': validatedRequest.query.length,
-        'query.preview': validatedRequest.query.substring(0, 50),
+        'query.length': latestQuery.length,
+        'query.preview': latestQuery.substring(0, 50),
+        'query.multiTurn': isMultiTurn,
       });
 
       logger.info(
         {
           userId: session.user.id,
-          queryPreview: validatedRequest.query.substring(0, 50),
+          queryPreview: latestQuery.substring(0, 50),
         },
         'Agent search request'
       );
