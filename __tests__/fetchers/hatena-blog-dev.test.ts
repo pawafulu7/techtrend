@@ -1,17 +1,6 @@
 import { HatenaBlogDevFetcher } from '@/lib/fetchers/hatena-blog-dev';
 import { BaseFetcher } from '@/lib/fetchers/base';
 import { Source } from '@prisma/client';
-import * as fs from 'fs';
-import * as path from 'path';
-
-// WebFetcherをモック
-jest.mock('@/lib/utils/web-fetcher', () => ({
-  WebFetcher: jest.fn().mockImplementation(() => ({
-    fetch: jest.fn(),
-  })),
-}));
-
-import { WebFetcher } from '@/lib/utils/web-fetcher';
 
 // Mock BaseFetcher's retry to avoid waiting for retryDelay
 jest.spyOn(BaseFetcher.prototype as unknown as { retry: <T>(fn: () => Promise<T>) => Promise<T> }, 'retry')
@@ -21,7 +10,7 @@ jest.spyOn(BaseFetcher.prototype as unknown as { retry: <T>(fn: () => Promise<T>
 
 describe('HatenaBlogDevFetcher', () => {
   let fetcher: HatenaBlogDevFetcher;
-  let mockWebFetcherInstance: { fetch: jest.Mock };
+  let mockFetch: jest.SpyInstance;
 
   const mockSource: Source = {
     id: 'hatena_blog_dev_test',
@@ -33,28 +22,77 @@ describe('HatenaBlogDevFetcher', () => {
     updatedAt: new Date(),
   };
 
+  // GraphQL response fixtures
+  const createGraphQLResponse = (entries: unknown[], hasNextPage: boolean) => ({
+    data: {
+      recentEntries: {
+        entries,
+        hasNextPage,
+      },
+    },
+  });
+
+  const mockEntries = {
+    page1: [
+      {
+        title: 'Microsoft Ignite 2025 News',
+        url: 'https://blogs.example.com/entry/2025/11/24/174325',
+        created: '2025-11-24T17:43:25.000Z',
+        blog: { title: 'Example Tech Blog', companyName: 'Example Corp' },
+      },
+      {
+        title: 'Building Scalable APIs with Go',
+        url: 'https://tech.example.org/entry/go-apis',
+        created: '2025-11-24T16:00:00.000Z',
+        blog: { title: 'TechBlog', companyName: 'Tech Inc' },
+      },
+      {
+        title: 'Cloud Native Development Best Practices',
+        url: 'https://developer.example.io/entry/cloud-native',
+        created: '2025-11-24T12:04:04.000Z',
+        blog: { title: 'Developer Blog', companyName: 'Cloud Company' },
+      },
+    ],
+    page2: [
+      {
+        title: 'Machine Learning Pipeline Design',
+        url: 'https://ml.example.com/entry/ml-pipeline',
+        created: '2025-11-23T10:00:00.000Z',
+        blog: { title: 'AI Blog', companyName: 'AI Company' },
+      },
+      {
+        title: 'Kubernetes Security Hardening',
+        url: 'https://k8s.example.com/entry/security',
+        created: '2025-11-23T08:00:00.000Z',
+        blog: { title: 'K8s Blog', companyName: 'Cloud Company' },
+      },
+    ],
+  };
+
+  const createMockResponse = (body: unknown, status = 200) => {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
-    mockWebFetcherInstance = {
-      fetch: jest.fn(),
-    };
-    (WebFetcher as jest.Mock).mockImplementation(() => mockWebFetcherInstance);
-    // Set maxPages to 1 for most tests to avoid retry delays
+    mockFetch = jest.spyOn(global, 'fetch');
+    // Set maxPages to 1 for most tests
     process.env.HATENA_BLOG_DEV_MAX_PAGES = '1';
     fetcher = new HatenaBlogDevFetcher(mockSource);
   });
 
   afterEach(() => {
+    mockFetch.mockRestore();
     delete process.env.HATENA_BLOG_DEV_MAX_PAGES;
   });
 
   describe('fetch', () => {
-    it('should extract entries from valid HTML with urqlState', async () => {
-      const fixture = fs.readFileSync(
-        path.join(__dirname, 'fixtures/hatena-blog-dev-page1.html'),
-        'utf-8'
-      );
-      mockWebFetcherInstance.fetch.mockResolvedValue(fixture);
+    it('should extract entries from valid GraphQL response', async () => {
+      const response = createGraphQLResponse(mockEntries.page1, false);
+      mockFetch.mockResolvedValue(createMockResponse(response));
 
       const result = await fetcher.fetch();
 
@@ -77,18 +115,12 @@ describe('HatenaBlogDevFetcher', () => {
       process.env.HATENA_BLOG_DEV_MAX_PAGES = '3';
       const paginationFetcher = new HatenaBlogDevFetcher(mockSource);
 
-      const page1 = fs.readFileSync(
-        path.join(__dirname, 'fixtures/hatena-blog-dev-page1.html'),
-        'utf-8'
-      );
-      const page2 = fs.readFileSync(
-        path.join(__dirname, 'fixtures/hatena-blog-dev-page2.html'),
-        'utf-8'
-      );
+      const page1Response = createGraphQLResponse(mockEntries.page1, true);
+      const page2Response = createGraphQLResponse(mockEntries.page2, false);
 
-      mockWebFetcherInstance.fetch
-        .mockResolvedValueOnce(page1)
-        .mockResolvedValueOnce(page2);
+      mockFetch
+        .mockResolvedValueOnce(createMockResponse(page1Response))
+        .mockResolvedValueOnce(createMockResponse(page2Response));
 
       const result = await paginationFetcher.fetch();
 
@@ -109,35 +141,14 @@ describe('HatenaBlogDevFetcher', () => {
       process.env.HATENA_BLOG_DEV_MAX_PAGES = '3';
       const dedupFetcher = new HatenaBlogDevFetcher(mockSource);
 
-      const fixture = fs.readFileSync(
-        path.join(__dirname, 'fixtures/hatena-blog-dev-page1.html'),
-        'utf-8'
-      );
-      // Return same page twice (simulating duplicate URLs)
-      // Third call returns empty to stop pagination
-      const emptyPage = `
-        <!DOCTYPE html>
-        <html>
-        <body>
-        <script>
-        window.__URQL_DATA__ = {
-          "key": {
-            "data": {
-              "recentEntries": {
-                "entries": [],
-                "hasNextPage": false
-              }
-            }
-          }
-        };
-        </script>
-        </body>
-        </html>
-      `;
-      mockWebFetcherInstance.fetch
-        .mockResolvedValueOnce(fixture)
-        .mockResolvedValueOnce(fixture)
-        .mockResolvedValueOnce(emptyPage);
+      const page1Response = createGraphQLResponse(mockEntries.page1, true);
+      const emptyResponse = createGraphQLResponse([], false);
+
+      // Return same entries twice (simulating duplicate URLs), then empty to stop
+      mockFetch
+        .mockResolvedValueOnce(createMockResponse(page1Response))
+        .mockResolvedValueOnce(createMockResponse(page1Response))
+        .mockResolvedValueOnce(createMockResponse(emptyResponse));
 
       const result = await dedupFetcher.fetch();
 
@@ -145,18 +156,9 @@ describe('HatenaBlogDevFetcher', () => {
       expect(result.articles).toHaveLength(3);
     });
 
-    it('should handle empty urqlState gracefully', async () => {
-      const emptyHtml = `
-        <!DOCTYPE html>
-        <html>
-        <body>
-        <script>
-        window.__URQL_DATA__ = {};
-        </script>
-        </body>
-        </html>
-      `;
-      mockWebFetcherInstance.fetch.mockResolvedValue(emptyHtml);
+    it('should handle empty entries gracefully', async () => {
+      const emptyResponse = createGraphQLResponse([], false);
+      mockFetch.mockResolvedValue(createMockResponse(emptyResponse));
 
       const result = await fetcher.fetch();
 
@@ -164,47 +166,32 @@ describe('HatenaBlogDevFetcher', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('should handle missing urqlState gracefully', async () => {
-      const noDataHtml = `
-        <!DOCTYPE html>
-        <html>
-        <body>
-        <p>No data</p>
-        </body>
-        </html>
-      `;
-      mockWebFetcherInstance.fetch.mockResolvedValue(noDataHtml);
+    it('should handle missing recentEntries gracefully', async () => {
+      const invalidResponse = { data: {} };
+      mockFetch.mockResolvedValue(createMockResponse(invalidResponse));
 
       const result = await fetcher.fetch();
 
       expect(result.articles).toHaveLength(0);
-      expect(result.errors).toHaveLength(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toContain('missing recentEntries');
     });
 
-    it('should handle malformed JSON gracefully', async () => {
-      const malformedHtml = `
-        <!DOCTYPE html>
-        <html>
-        <body>
-        <script>
-        window.__URQL_DATA__ = { invalid json here };
-        </script>
-        </body>
-        </html>
-      `;
-      mockWebFetcherInstance.fetch.mockResolvedValue(malformedHtml);
+    it('should handle GraphQL errors gracefully', async () => {
+      const errorResponse = {
+        errors: [{ message: 'Query validation failed' }],
+      };
+      mockFetch.mockResolvedValue(createMockResponse(errorResponse));
 
       const result = await fetcher.fetch();
 
       expect(result.articles).toHaveLength(0);
-      expect(result.errors).toHaveLength(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toContain('GraphQL errors');
     });
 
     it('should handle fetch errors gracefully (fail-open)', async () => {
-      // For error case, we expect one error per failed page
-      mockWebFetcherInstance.fetch.mockRejectedValue(
-        new Error('Network error')
-      );
+      mockFetch.mockRejectedValue(new Error('Network error'));
 
       const result = await fetcher.fetch();
 
@@ -214,26 +201,44 @@ describe('HatenaBlogDevFetcher', () => {
       expect(result.errors[0].message).toContain('Network error');
     });
 
-    it('should continue fetching despite individual page errors', async () => {
-      // This test uses maxPages=1 (set in beforeEach), so we test that
-      // errors are captured and returned in the errors array
-      mockWebFetcherInstance.fetch.mockRejectedValue(
-        new Error('Connection refused')
+    it('should handle HTTP errors gracefully', async () => {
+      mockFetch.mockResolvedValue(
+        new Response('Internal Server Error', {
+          status: 500,
+          statusText: 'Internal Server Error',
+        })
       );
 
       const result = await fetcher.fetch();
 
       expect(result.articles).toHaveLength(0);
       expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toContain('HTTP 500');
+    });
+
+    it('should continue fetching despite individual page errors', async () => {
+      process.env.HATENA_BLOG_DEV_MAX_PAGES = '2';
+      const multiFetcher = new HatenaBlogDevFetcher(mockSource);
+
+      const page2Response = createGraphQLResponse(mockEntries.page2, false);
+
+      // First page fails, second succeeds
+      mockFetch
+        .mockRejectedValueOnce(new Error('Connection refused'))
+        .mockResolvedValueOnce(createMockResponse(page2Response));
+
+      const result = await multiFetcher.fetch();
+
+      // Should have articles from page2
+      expect(result.articles).toHaveLength(2);
+      // Should have error from page1
+      expect(result.errors).toHaveLength(1);
       expect(result.errors[0].message).toContain('Connection refused');
     });
 
     it('should include company name as tag', async () => {
-      const fixture = fs.readFileSync(
-        path.join(__dirname, 'fixtures/hatena-blog-dev-page1.html'),
-        'utf-8'
-      );
-      mockWebFetcherInstance.fetch.mockResolvedValue(fixture);
+      const response = createGraphQLResponse(mockEntries.page1, false);
+      mockFetch.mockResolvedValue(createMockResponse(response));
 
       const result = await fetcher.fetch();
 
@@ -243,11 +248,8 @@ describe('HatenaBlogDevFetcher', () => {
     });
 
     it('should set sourceId correctly', async () => {
-      const fixture = fs.readFileSync(
-        path.join(__dirname, 'fixtures/hatena-blog-dev-page1.html'),
-        'utf-8'
-      );
-      mockWebFetcherInstance.fetch.mockResolvedValue(fixture);
+      const response = createGraphQLResponse(mockEntries.page1, false);
+      mockFetch.mockResolvedValue(createMockResponse(response));
 
       const result = await fetcher.fetch();
 
@@ -255,93 +257,124 @@ describe('HatenaBlogDevFetcher', () => {
         expect(article.sourceId).toBe(mockSource.id);
       });
     });
+
+    it('should call GraphQL endpoint with correct parameters', async () => {
+      const response = createGraphQLResponse(mockEntries.page1, false);
+      mockFetch.mockResolvedValue(createMockResponse(response));
+
+      await fetcher.fetch();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://hatena.blog/dev/api/graphql',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+
+      // Verify request body contains query and variables
+      const callArgs = mockFetch.mock.calls[0][1] as RequestInit;
+      const body = JSON.parse(callArgs.body as string);
+      expect(body.query).toContain('query RecentEntries');
+      expect(body.variables).toEqual({ limit: 20, skip: 0 });
+    });
   });
 
-  describe('extractEntriesFromPage (private method via fetch)', () => {
-    it('should handle urqlState pattern', async () => {
-      const alternativeHtml = `
-        <!DOCTYPE html>
-        <html>
-        <body>
-        <script>
-        urqlState = {
-          "key123": {
-            "data": {
-              "recentEntries": {
-                "entries": [
-                  {
-                    "title": "Alternative Pattern Test",
-                    "url": "https://test.example.com/entry",
-                    "created": "2025-11-25T00:00:00.000Z",
-                    "blog": {
-                      "title": "Test Blog",
-                      "companyName": "Test Company"
-                    }
-                  }
-                ],
-                "hasNextPage": false
-              }
-            }
-          }
-        };
-        </script>
-        </body>
-        </html>
-      `;
-      mockWebFetcherInstance.fetch.mockResolvedValue(alternativeHtml);
-
-      const result = await fetcher.fetch();
-
-      expect(result.articles).toHaveLength(1);
-      expect(result.articles[0].title).toBe('Alternative Pattern Test');
-    });
-
+  describe('entry validation', () => {
     it('should skip entries with missing required fields', async () => {
-      const incompleteHtml = `
-        <!DOCTYPE html>
-        <html>
-        <body>
-        <script>
-        window.__URQL_DATA__ = {
-          "key": {
-            "data": {
-              "recentEntries": {
-                "entries": [
-                  {
-                    "title": "Valid Entry",
-                    "url": "https://valid.example.com",
-                    "created": "2025-11-25T00:00:00.000Z",
-                    "blog": { "title": "Blog", "companyName": "Company" }
-                  },
-                  {
-                    "title": "Missing URL",
-                    "created": "2025-11-25T00:00:00.000Z",
-                    "blog": { "title": "Blog" }
-                  },
-                  {
-                    "url": "https://missing-title.example.com",
-                    "created": "2025-11-25T00:00:00.000Z",
-                    "blog": { "title": "Blog" }
-                  },
-                  null,
-                  "invalid"
-                ],
-                "hasNextPage": false
-              }
-            }
-          }
-        };
-        </script>
-        </body>
-        </html>
-      `;
-      mockWebFetcherInstance.fetch.mockResolvedValue(incompleteHtml);
+      const mixedEntries = [
+        // Valid entry
+        {
+          title: 'Valid Entry',
+          url: 'https://valid.example.com',
+          created: '2025-11-25T00:00:00.000Z',
+          blog: { title: 'Blog', companyName: 'Company' },
+        },
+        // Missing URL
+        {
+          title: 'Missing URL',
+          created: '2025-11-25T00:00:00.000Z',
+          blog: { title: 'Blog' },
+        },
+        // Missing title
+        {
+          url: 'https://missing-title.example.com',
+          created: '2025-11-25T00:00:00.000Z',
+          blog: { title: 'Blog' },
+        },
+        // Null entry
+        null,
+        // Invalid type
+        'invalid',
+      ];
+
+      const response = createGraphQLResponse(mixedEntries, false);
+      mockFetch.mockResolvedValue(createMockResponse(response));
 
       const result = await fetcher.fetch();
 
       // Only the valid entry should be included
       expect(result.articles).toHaveLength(1);
       expect(result.articles[0].title).toBe('Valid Entry');
+    });
+
+    it('should handle entries without company name', async () => {
+      const entriesWithoutCompany = [
+        {
+          title: 'No Company Entry',
+          url: 'https://no-company.example.com',
+          created: '2025-11-25T00:00:00.000Z',
+          blog: { title: 'Blog' }, // No companyName
+        },
+      ];
+
+      const response = createGraphQLResponse(entriesWithoutCompany, false);
+      mockFetch.mockResolvedValue(createMockResponse(response));
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].tagNames).toEqual([]);
+    });
+  });
+
+  describe('environment variable configuration', () => {
+    it('should respect HATENA_BLOG_DEV_MAX_PAGES', async () => {
+      process.env.HATENA_BLOG_DEV_MAX_PAGES = '2';
+      const configuredFetcher = new HatenaBlogDevFetcher(mockSource);
+
+      const page1Response = createGraphQLResponse(mockEntries.page1, true);
+      const page2Response = createGraphQLResponse(mockEntries.page2, true);
+
+      mockFetch
+        .mockResolvedValueOnce(createMockResponse(page1Response))
+        .mockResolvedValueOnce(createMockResponse(page2Response));
+
+      const result = await configuredFetcher.fetch();
+
+      // Should stop after 2 pages even though hasNextPage is true
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(result.articles).toHaveLength(5);
+    });
+
+    it('should default to 3 pages when env var is not set', async () => {
+      delete process.env.HATENA_BLOG_DEV_MAX_PAGES;
+      const defaultFetcher = new HatenaBlogDevFetcher(mockSource);
+
+      const pageResponse = createGraphQLResponse(mockEntries.page1, true);
+      const emptyResponse = createGraphQLResponse([], false);
+
+      mockFetch
+        .mockResolvedValueOnce(createMockResponse(pageResponse))
+        .mockResolvedValueOnce(createMockResponse(pageResponse))
+        .mockResolvedValueOnce(createMockResponse(emptyResponse));
+
+      await defaultFetcher.fetch();
+
+      // Should fetch up to 3 pages (stops at 3rd because empty)
+      expect(mockFetch).toHaveBeenCalledTimes(3);
     });
   });
 });

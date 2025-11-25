@@ -5,8 +5,9 @@ import { ArticleWithRelations, ArticleWithUserData, SourceWithCount, TagWithCoun
 export type ViewMode = 'card' | 'list';
 
 // 記事カード
+// Note: article can have companyName field when fetched from API (for hatena_blog_dev articles)
 export interface ArticleCardProps {
-  article: ArticleWithRelations;
+  article: ArticleWithRelations & { companyName?: string };
   showSource?: boolean;
   showTags?: boolean;
   onTagClick?: (tagName: string) => void;

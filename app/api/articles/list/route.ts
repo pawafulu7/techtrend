@@ -501,8 +501,12 @@ export async function GET(request: NextRequest) {
       const [total, articles] = await Promise.all([countPromise, articlesPromise]);
 
       // Fetch company names for hatena_blog_dev articles (batch query)
+      // Note: This requires a separate query to load tags for company name extraction.
+      // Only hatena_blog_dev articles need this, and we limit to the page size to avoid
+      // fetching tags for the extra cursor record.
       const companyNameMap: Map<string, string> = new Map();
       const hatenaArticleIds = articles
+        .slice(0, limit)  // Only process articles within the page limit
         .filter(a => a.sourceId === 'hatena_blog_dev')
         .map(a => a.id);
 

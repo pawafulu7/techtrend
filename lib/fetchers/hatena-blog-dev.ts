@@ -63,8 +63,11 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
 
   constructor(source: import('@prisma/client').Source) {
     super(source);
-    this.maxPages = parseInt(process.env.HATENA_BLOG_DEV_MAX_PAGES || '3', 10);
-    this.timeout = parseInt(process.env.HATENA_BLOG_DEV_TIMEOUT || '30000', 10);
+    // Validate environment variable parsing (handle NaN and negative values)
+    const parsedMaxPages = parseInt(process.env.HATENA_BLOG_DEV_MAX_PAGES || '3', 10);
+    this.maxPages = Number.isNaN(parsedMaxPages) || parsedMaxPages < 1 ? 3 : parsedMaxPages;
+    const parsedTimeout = parseInt(process.env.HATENA_BLOG_DEV_TIMEOUT || '30000', 10);
+    this.timeout = Number.isNaN(parsedTimeout) || parsedTimeout < 1000 ? 30000 : parsedTimeout;
   }
 
   /**
@@ -172,10 +175,17 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
    * エントリをCreateArticleInput形式に変換
    */
   private toArticleInput(entry: HatenaBlogEntry): CreateArticleInput {
+    // Validate date format
+    const publishedAt = new Date(entry.created);
+    if (Number.isNaN(publishedAt.getTime())) {
+      // Fall back to current time if date is invalid
+      console.warn(`[HatenaBlogDevFetcher] Invalid date format: ${entry.created}, using current time`);
+    }
+
     return {
       title: entry.title,
       url: entry.url,
-      publishedAt: new Date(entry.created),
+      publishedAt: Number.isNaN(publishedAt.getTime()) ? new Date() : publishedAt,
       sourceId: this.source.id,
       thumbnail: null,
       content: null, // Enricherで取得
