@@ -15,8 +15,6 @@ import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summar
 import { OptimizedImage } from '@/app/components/common/optimized-image';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
-import { auth } from '@/lib/auth/auth';
-import { prisma } from '@/lib/prisma';
 import { ArticleQADialog } from '@/app/articles/_components/article-qa-dialog';
 import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 
@@ -29,61 +27,33 @@ interface PageProps {
 }>;
 }
 
-async function getArticleWithFavoriteStatus(id: string, userId?: string) {
-  // キャッシュを使用して記事を取得
-  const article = await articleDetailCache.getArticleWithRelations(id);
-
-  if (!article || !userId) {
-    return { article, isFavorited: false };
-  }
-
-  // お気に入り状態を確認
-  try {
-    const favorite = await prisma.favorite.findUnique({
-      where: {
-        userId_articleId: {
-          userId,
-          articleId: id,
-        },
-      },
-    });
-
-    return {
-      article,
-      isFavorited: !!favorite,
-    };
-  } catch (error) {
-    // エラーが発生した場合はデフォルトでfalseを返す
-    console.error('Failed to fetch favorite status:', error);
-    return { article, isFavorited: false };
-  }
+/**
+ * Get article with relations from cache
+ * Note: Favorite status is now fetched client-side via FavoriteButton
+ * to enable ISR caching of article content
+ */
+async function getArticle(id: string) {
+  return await articleDetailCache.getArticleWithRelations(id);
 }
 
-// Next.jsのキャッシュを無効化
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// ISR: Revalidate every 60 seconds for article content
+// User-specific data (favorites) is fetched client-side
+export const revalidate = 60;
 
 export default async function ArticlePage({ params, searchParams }: PageProps) {
-  // Parallel execution of params, searchParams, and session
-  const [
-    { id },
-    { from },
-    session
-  ] = await Promise.all([
-    params,
-    searchParams,
-    auth()
-  ]);
+  // Parallel execution of params and searchParams
+  // Note: Session is not needed here as favorites are fetched client-side
+  const [{ id }, { from }] = await Promise.all([params, searchParams]);
 
   // セキュリティ: fromパラメータの検証
-  const getReturnUrl = (from: string | undefined): string => {
-    if (!from) return '/';
+  const getReturnUrl = (fromParam: string | undefined): string => {
+    if (!fromParam) return '/';
 
     // 特定のキーワードから適切なURLへマッピング
-    if (from === 'digest') return '/digest';
+    if (fromParam === 'digest') return '/digest';
 
     try {
-      const decodedUrl = decodeURIComponent(from);
+      const decodedUrl = decodeURIComponent(fromParam);
       // 相対パスまたは同一オリジンのみ許可
       if (decodedUrl.startsWith('/') && !decodedUrl.startsWith('//')) {
         return decodedUrl;
@@ -97,11 +67,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   const returnUrl = getReturnUrl(from);
   const returnLabel = from === 'digest' ? 'ダイジェストに戻る' : '記事一覧に戻る';
 
-  // 記事とお気に入り状態を取得
-  const { article, isFavorited } = await getArticleWithFavoriteStatus(
-    id,
-    session?.user?.id
-  );
+  // 記事を取得（お気に入り状態はクライアントサイドで取得）
+  const article = await getArticle(id);
 
   if (!article) {
     notFound();
@@ -193,7 +160,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   <FavoriteButton
                     articleId={article.id}
                     className="h-9"
-                    isFavorited={isFavorited}
+                    fetchInitialStatus={true}
                   />
                 </div>
 

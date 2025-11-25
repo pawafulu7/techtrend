@@ -16,6 +16,8 @@ interface FavoriteButtonProps {
   compact?: boolean;
   isFavorited?: boolean;
   onToggleFavorite?: () => void;
+  /** If true, fetch initial favorite status from API on mount (for ISR pages) */
+  fetchInitialStatus?: boolean;
 }
 
 export function FavoriteButton({
@@ -25,20 +27,55 @@ export function FavoriteButton({
   showText = false,
   compact = false,
   isFavorited: initialFavorited = false,
-  onToggleFavorite
+  onToggleFavorite,
+  fetchInitialStatus = false
 }: FavoriteButtonProps) {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isToggling, setIsToggling] = useState(false);
   const [isFavorited, setIsFavorited] = useState(initialFavorited);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(fetchInitialStatus);
 
-  // プロップスの変更を反映
+  // Fetch initial status from API if fetchInitialStatus is true (for ISR pages)
   useEffect(() => {
-    setIsFavorited(initialFavorited);
-  }, [initialFavorited]);
+    if (!fetchInitialStatus) return;
+    if (sessionStatus === 'loading') return;
+
+    // If not authenticated, no need to fetch
+    if (!session?.user?.id) {
+      setIsLoadingInitial(false);
+      return;
+    }
+
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch(`/api/favorites/${articleId}`, {
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setIsFavorited(data.isFavorited);
+        }
+      } catch (error) {
+        console.error('Failed to fetch favorite status:', error);
+      } finally {
+        setIsLoadingInitial(false);
+      }
+    };
+
+    fetchStatus();
+  }, [articleId, fetchInitialStatus, session?.user?.id, sessionStatus]);
+
+  // Update state when prop changes (for non-ISR pages)
+  useEffect(() => {
+    if (!fetchInitialStatus) {
+      setIsFavorited(initialFavorited);
+    }
+  }, [initialFavorited, fetchInitialStatus]);
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -87,12 +124,13 @@ export function FavoriteButton({
     return (
       <button
         onClick={handleClick}
-        disabled={isToggling}
+        disabled={isToggling || isLoadingInitial}
         className={cn(
           "p-1.5 rounded-full transition-all",
           "hover:bg-red-50 dark:hover:bg-red-950",
           isAnimating && "scale-110",
           isFavorited ? "text-red-500 hover:text-red-600" : "text-gray-500 hover:text-red-500",
+          isLoadingInitial && "opacity-50",
           className
         )}
         aria-label={isFavorited ? "お気に入りから削除" : "お気に入りに追加"}
@@ -102,7 +140,7 @@ export function FavoriteButton({
           className={cn(
             "h-4 w-4 transition-colors",
             isFavorited && "fill-red-500",
-            isToggling && "opacity-50"
+            (isToggling || isLoadingInitial) && "opacity-50"
           )}
         />
       </button>
@@ -114,11 +152,12 @@ export function FavoriteButton({
       variant={isFavorited ? "destructive" : "outline"}
       size={size}
       onClick={handleClick}
-      disabled={isToggling}
+      disabled={isToggling || isLoadingInitial}
       className={cn(
         "transition-all",
         isAnimating && "scale-110",
         isFavorited ? "bg-red-500 hover:bg-red-600 text-white" : "hover:text-red-500",
+        isLoadingInitial && "opacity-50",
         className
       )}
       data-testid="favorite-button"
@@ -128,7 +167,7 @@ export function FavoriteButton({
           "h-4 w-4 transition-colors",
           isFavorited ? "fill-white" : "fill-none",
           showText && "mr-2",
-          isToggling && "opacity-50"
+          (isToggling || isLoadingInitial) && "opacity-50"
         )}
       />
       {showText && (

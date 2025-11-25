@@ -3,7 +3,9 @@ import { trendsCache } from './trends-cache';
 import { searchCache } from './search-cache';
 import { prisma } from '@/lib/database';
 import { distributedLock } from './distributed-lock';
+import { logger } from '@/lib/logger';
 import type { Prisma } from '@prisma/client';
+import pLimit from 'p-limit';
 
 /**
  * キャッシュウォーミング機能
@@ -67,14 +69,23 @@ export class CacheWarmer {
 
     try {
       this.isWarming = true;
-      
-      // 優先度順にウォーミング
-      await this.warmStats();
-      await this.warmTrends();
-      await this.warmKeywords();
-      await this.warmSearchQueries();
-      
-    } catch (_error) {
+
+      // 並列ウォーミング（4つのタスクを同時実行、部分失敗を許容）
+      const results = await Promise.allSettled([
+        this.warmStats(),
+        this.warmTrends(),
+        this.warmKeywords(),
+        this.warmSearchQueries(),
+      ]);
+
+      // 失敗したタスクをログ出力
+      const taskNames = ['stats', 'trends', 'keywords', 'search'];
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          logger.error({ error: result.reason }, `[CacheWarmer] ${taskNames[index]} warming failed`);
+        }
+      });
+
     } finally {
       this.isWarming = false;
       await distributedLock.release('cache:warming:startup', lockToken);
@@ -141,54 +152,66 @@ export class CacheWarmer {
    * 統計データのウォーミング
    */
   private async warmStats(): Promise<void> {
-    
-    try {
-      const stats = await this.fetchStats();
-      await statsCache.set('overall-stats', stats);
-    } catch (_error) {
-    }
+    const stats = await this.fetchStats();
+    await statsCache.set('overall-stats', stats);
   }
 
   /**
-   * トレンドデータのウォーミング
+   * トレンドデータのウォーミング（並列実行、部分失敗を許容）
    */
   private async warmTrends(): Promise<void> {
-    
-    try {
-      for (const config of this.warmingConfig.trends.keys) {
+    const trendKeys = this.warmingConfig.trends.keys;
+
+    // Promise.allSettledで部分的な失敗を許容（1つ失敗しても他は継続）
+    const results = await Promise.allSettled(
+      trendKeys.map(async (config) => {
         const key = `${config.days}:${config.tag || 'all'}`;
         const data = await this.fetchTrends(config.days || 30, config.tag || undefined);
         await trendsCache.set(key, data);
+      })
+    );
+
+    // 失敗したタスクをログ出力
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const config = trendKeys[index];
+        logger.error({ error: result.reason }, `[CacheWarmer] trends warming failed for ${config.days} days`);
       }
-    } catch (_error) {
-    }
+    });
   }
 
   /**
    * キーワードデータのウォーミング
    */
   private async warmKeywords(): Promise<void> {
-    
-    try {
-      const data = await this.fetchKeywords();
-      await trendsCache.set('keywords:trending', data);
-    } catch (_error) {
-    }
+    const data = await this.fetchKeywords();
+    await trendsCache.set('keywords:trending', data);
   }
 
   /**
-   * 検索クエリのウォーミング
+   * 検索クエリのウォーミング（並列実行、同時実行数制限付き、部分失敗を許容）
    */
   private async warmSearchQueries(): Promise<void> {
-    
-    try {
-      for (const query of this.warmingConfig.search.queries) {
-        const key = searchCache.generateQueryKey(query);
-        const data = await this.fetchSearchResults(query);
-        await searchCache.set(key, data);
+    const limit = pLimit(3); // DBアクセスを伴うため同時実行を3に制限
+    const searchQueries = this.warmingConfig.search.queries;
+
+    const results = await Promise.allSettled(
+      searchQueries.map((query) =>
+        limit(async () => {
+          const key = searchCache.generateQueryKey(query);
+          const data = await this.fetchSearchResults(query);
+          await searchCache.set(key, data);
+        })
+      )
+    );
+
+    // 失敗したクエリをログ出力
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const query = searchQueries[index];
+        logger.error({ error: result.reason }, `[CacheWarmer] search warming failed for query: ${query.q}`);
       }
-    } catch (_error) {
-    }
+    });
   }
 
   /**

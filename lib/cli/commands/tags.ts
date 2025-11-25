@@ -142,17 +142,13 @@ tagsCommand
       
       
       if (!dryRun) {
-        const progress = new ProgressBar(emptyTags.length, '削除中');
-        
-        for (let i = 0; i < emptyTags.length; i++) {
-          await prisma.tag.delete({
-            where: { id: emptyTags[i].id }
-          });
-          progress.update(i + 1);
-        }
-        
-        progress.complete('✅ 削除完了');
-        logger.success(`${emptyTags.length} 件の空のタグを削除しました`);
+        // Batch delete (1 query instead of N queries)
+        const tagIds = emptyTags.map(t => t.id);
+        const { count } = await prisma.tag.deleteMany({
+          where: { id: { in: tagIds } }
+        });
+
+        logger.success(`${count} 件の空のタグを削除しました`);
       } else {
         logger.info('--dry-run モードのため、実際の削除は行いませんでした');
       }
