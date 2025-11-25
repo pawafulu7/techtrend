@@ -70,6 +70,7 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'zozo_tech_blog',             // ZOZO TECH BLOG
       'moneyforward_tech_blog',     // Money Forward Developers Blog
       'hatena_tech_blog',           // Hatena Developer Blog
+      'hatena_blog_dev',            // 企業技術ブログ（hatena.blog/dev/entries）
       'pepabo_tech_blog',           // ペパボテックブログ
       'cookpad_tech_blog',          // Cookpad Tech Life
       // 旧統合ソース（2025年10月10日無効化済み、将来的に削除予定）

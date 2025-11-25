@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback } from 'react';
 import { useDebounce } from './use-debounce';
 import type { CompanySource } from '@/lib/providers/company-source';
 
-const MAX_SIDEBAR_ITEMS = 7;
 const SEARCH_DEBOUNCE_MS = 300;
 
 export interface UseCompanyFilterOptions {
@@ -58,9 +57,9 @@ export function useCompanyFilter({
     return [...filteredSources].sort((a, b) => a.name.localeCompare(b.name));
   }, [filteredSources]);
 
-  // Sidebar sources (max 7 items)
+  // Sidebar sources (all items - previously limited to 7)
   const visibleSidebarSources = useMemo(() => {
-    return sortedSources.slice(0, MAX_SIDEBAR_ITEMS);
+    return sortedSources;
   }, [sortedSources]);
 
   // Modal sources (all items)

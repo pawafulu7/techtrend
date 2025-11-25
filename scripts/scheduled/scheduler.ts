@@ -215,6 +215,8 @@ const RSS_SOURCES = [
   'Sansan Builders Box',
   'GMO Developers',
   'ペパボテックブログ',
+  // 企業技術ブログ一覧（hatena.blog/dev/entries）
+  '企業技術ブログ',
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）

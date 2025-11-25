@@ -37,6 +37,8 @@ interface LightweightArticle {
   // User-specific data (when includeUserData=true)
   isFavorited?: boolean;
   isRead?: boolean;
+  // Company name for hatena_blog_dev articles
+  companyName?: string;
 }
 
 // Initialize Redis cache with 30 minutes TTL for lightweight articles
@@ -498,6 +500,35 @@ export async function GET(request: NextRequest) {
       // Execute count and articles in parallel
       const [total, articles] = await Promise.all([countPromise, articlesPromise]);
 
+      // Fetch company names for hatena_blog_dev articles (batch query)
+      // Note: This requires a separate query to load tags for company name extraction.
+      // Only hatena_blog_dev articles need this, and we limit to the page size to avoid
+      // fetching tags for the extra cursor record.
+      const companyNameMap: Map<string, string> = new Map();
+      const hatenaArticleIds = articles
+        .slice(0, limit)  // Only process articles within the page limit
+        .filter(a => a.sourceId === 'hatena_blog_dev')
+        .map(a => a.id);
+
+      if (hatenaArticleIds.length > 0) {
+        const hatenaArticlesWithTags = await prisma.article.findMany({
+          where: { id: { in: hatenaArticleIds } },
+          select: {
+            id: true,
+            tags: { select: { name: true } }
+          }
+        });
+
+        // Extract company name from tags (pattern: 株式会社/合同会社/有限会社)
+        const companyPattern = /株式会社|合同会社|有限会社/;
+        for (const article of hatenaArticlesWithTags) {
+          const companyTag = article.tags.find(t => companyPattern.test(t.name));
+          if (companyTag) {
+            companyNameMap.set(article.id, companyTag.name);
+          }
+        }
+      }
+
       if (useCursor && cursorPayload) {
         if (isBackwardCursor) {
           // Backward navigation reaches the beginning when we no longer fetch an extra record
@@ -592,6 +623,12 @@ export async function GET(request: NextRequest) {
             normalized.isRead = readStatusMap.get(article.id) || false;
           }
 
+          // Add company name for hatena_blog_dev articles
+          const companyName = companyNameMap.get(article.id);
+          if (companyName) {
+            normalized.companyName = companyName;
+          }
+
           return normalized;
         });
         
@@ -619,6 +656,12 @@ export async function GET(request: NextRequest) {
           if (includeUserData && userId) {
             normalized.isFavorited = favoritesMap.get(article.id) || false;
             normalized.isRead = readStatusMap.get(article.id) || false;
+          }
+
+          // Add company name for hatena_blog_dev articles
+          const companyName = companyNameMap.get(article.id);
+          if (companyName) {
+            normalized.companyName = companyName;
           }
 
           return normalized;

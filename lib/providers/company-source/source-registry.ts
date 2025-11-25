@@ -44,6 +44,11 @@ export const sourceRegistry: Record<string, SourceRegistryEntry> = {
     name: 'Hatena Developer Blog',
     siteUrl: 'https://developer.hatenastaff.com/rss',
   },
+  hatena_blog_dev: {
+    id: 'hatena_blog_dev',
+    name: '企業技術ブログ',
+    siteUrl: 'https://hatena.blog/dev/entries',
+  },
   lycorp_tech_blog: {
     id: 'lycorp_tech_blog',
     name: 'LY Corporation Tech Blog',

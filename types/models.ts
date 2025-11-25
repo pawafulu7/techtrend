@@ -43,6 +43,7 @@ export type ArticleWithUserData = ArticleWithRelations & {
   isFavorited?: boolean;
   isRead?: boolean;
   onToggleFavorite?: () => void;
+  companyName?: string;  // Company name for hatena_blog_dev articles
 };
 
 // CreateとUpdate用の入力型

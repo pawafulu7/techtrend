@@ -58,6 +58,9 @@ import { CookpadFetcher } from '@/lib/fetchers/corporate-blogs/cookpad-fetcher';
 import { CyberAgentFetcher } from '@/lib/fetchers/corporate-blogs/cyberagent-fetcher';
 import { GMOFetcher } from '@/lib/fetchers/corporate-blogs/gmo-fetcher';
 
+// Hatena Blog Dev（企業技術ブログ一覧）
+import { HatenaBlogDevFetcher } from '@/lib/fetchers/hatena-blog-dev';
+
 import { BaseFetcher } from '@/lib/fetchers/base';
 
 // エンリッチャーをインポート
@@ -111,6 +114,9 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'Cookpad Tech Life': CookpadFetcher,
   'CyberAgent Developers Blog': CyberAgentFetcher,
   'GMO Developers': GMOFetcher,
+
+  // 企業技術ブログ（hatena.blog/dev/entries からの取得）
+  '企業技術ブログ': HatenaBlogDevFetcher,
 };
 
 interface CollectResult {

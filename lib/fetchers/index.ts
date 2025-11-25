@@ -34,6 +34,7 @@ import {
 } from './ai';
 import { NVIDIADeveloperBlogFetcher } from './nvidia-developer-blog';
 import { DeepMindBlogFetcher } from './deepmind-blog';
+import { HatenaBlogDevFetcher } from './hatena-blog-dev';
 
 export function createFetcher(source: Source): BaseFetcher {
   switch (source.name) {
@@ -99,6 +100,8 @@ export function createFetcher(source: Source): BaseFetcher {
       return new NVIDIADeveloperBlogFetcher(source);
     case 'DeepMind Blog':
       return new DeepMindBlogFetcher(source);
+    case 'Hatena Blog Dev':
+      return new HatenaBlogDevFetcher(source);
 
     default:
       throw new Error(`Unsupported source: ${source.name}`);
@@ -136,6 +139,7 @@ export {
   ZennAIFetcher,
   QiitaAIFetcher,
   NVIDIADeveloperBlogFetcher,
-  DeepMindBlogFetcher
+  DeepMindBlogFetcher,
+  HatenaBlogDevFetcher
 };
 export type { FetchResult } from '@/types/fetchers';
