@@ -158,7 +158,8 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
             variant="ghost"
             size="sm"
             onClick={handleCopy}
-            iconOnly
+            iconOnly={true}
+            className="h-7 w-7"
             aria-label="回答をコピー"
           >
             {copied ? (
@@ -294,7 +295,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
               variant="ghost"
               size="sm"
               onClick={() => onFeedback(true)}
-              iconOnly
+              iconOnly={true}
               className="h-7 w-7"
               aria-label="良い"
             >
@@ -304,7 +305,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
               variant="ghost"
               size="sm"
               onClick={() => onFeedback(false)}
-              iconOnly
+              iconOnly={true}
               className="h-7 w-7"
               aria-label="悪い"
             >
