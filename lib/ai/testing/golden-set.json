@@ -911,37 +911,6 @@
       "sourceArticleId": "cmgiu3wu3000otea0q45xetc6"
     },
     {
-      "id": "golden-cmejbtrjx0003tedbirm3me4a",
-      "article": {
-        "title": "ノア・スミス「AI が仕事を奪ってるようには見えない」（2025年8月12日）",
-        "content": "タイラー・コーエン 翻訳記事 タイラー・コーエン 「ノーベル賞と研究費助成」(2010年2月21日） byHicksian Mark Thoma 翻訳記事 マーク・ソーマ 「『運』 vs.『スキル』 ～人生での『成功』の背後にある要因とは？～」（2012年8月4日） byHicksian タイラー・コーエン 翻訳記事 タイラー・コーエン 「科学者を敬え」（2016年12月29日）／「アポロの月面着陸＝共産主義の最大の成果」（2011年10月3日） byHicksian ノア・スミス 翻訳記事 ノア・スミス「中国，マクロ経済の現実に目覚める」（2024年9月30日） byoptical_frog",
-        "url": "https://econ101.jp/noah-smith_it-doesnt-look-like-ai-is-taking-jobs-yet/"
-      },
-      "expectedOutput": {
-        "summary": "ノア・スミスの記事は、AIが仕事を奪っているという一般的な懸念に対して、現状ではその兆候が見られないと論じている。記事は、過去の経済的変化と比較し、AI技術の進展が労働市場に与える影響を分析し、楽観的な見方を示唆している。",
-        "detailedSummary": "・記事の主題：ノア・スミスは、AIが仕事を奪っているという見方に懐疑的で、その兆候はまだ見られないと主張している\n・記事の比較対象：過去の経済的変化と比較し、AI技術の進展が労働市場に与える影響を分析している\n・記事の結論：AI技術の進展に対して、楽観的な見方を示唆している",
-        "tags": [
-          "AI",
-          "労働市場",
-          "経済"
-        ]
-      },
-      "metadata": {
-        "category": "thin_content",
-        "difficulty": "easy",
-        "categoryConfidence": 0.9,
-        "needsHumanReview": false,
-        "categoryReason": "Content length < 500 (300 chars)",
-        "createdAt": "2025-11-05T10:37:57.587Z",
-        "updatedAt": "2025-11-05T10:37:57.587Z"
-      },
-      "acceptanceThreshold": {
-        "semanticSimilarity": 0.8082603374454405,
-        "minimumQuality": 0.9
-      },
-      "sourceArticleId": "cmejbtrjx0003tedbirm3me4a"
-    },
-    {
       "id": "golden-cmf4kztxa000fte1a5vf59vhu",
       "article": {
         "title": "【生成AI×サイバー犯罪】楽天モバイルの行政指導から読み解く「攻撃の新しい当たり前」",

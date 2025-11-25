@@ -117,7 +117,12 @@ export class SummaryQualityChecker implements QualityChecker {
 
     // 薄いコンテンツ（非短文）で詳細要約が元記事の2倍を超える場合はcritical
     // 短文は1.5倍ルールで判定するため除外
-    if (contentAnalysis?.isThinContent === true && !isShortContent && detailedLength > contentLength * 2) {
+    if (
+      hasContentLength &&
+      contentAnalysis?.isThinContent === true &&
+      !isShortContent &&
+      detailedLength > contentLength * 2
+    ) {
       issues.push({
         type: 'length',
         severity: 'critical',
@@ -233,7 +238,7 @@ export class SummaryQualityChecker implements QualityChecker {
         issues.push({
           type: 'format',
           severity: 'minor',
-          message: `詳細要約の項目数が少ない: ${bulletCount}項目（理想は3-5項目）`,
+          message: `詳細要約の項目数が少ない: ${bulletCount}項目（推奨${recommendedItems}項目）`,
         });
         score -= 5;
       }

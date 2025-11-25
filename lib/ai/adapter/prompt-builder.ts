@@ -37,7 +37,7 @@ const SYSTEM_INSTRUCTIONS = `
 5. 短い記事（400文字未満）の特別ルール
    - 箇条書き形式は使用しない
    - 1-2文の平文で簡潔に要約
-   - 元記事の長さを超える詳細要約は生成しない
+   - 元記事の長さの1.5倍を超える詳細要約は生成しない
 
 【項目名の設定ルール】
 - 記事の内容を具体的に表すタイトルにする
@@ -156,7 +156,7 @@ ${OUTPUT_SCHEMA}
 
     // Very short article: plain text only, no bullet points
     if (contentLength < 400) {
-      const maxLength = Math.floor(contentLength * 1.5);
+      const maxLength = contentLength > 0 ? Math.floor(contentLength) : 200;
       return `
 
 INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
@@ -165,7 +165,7 @@ This is a very short article.
 
 Summary requirements:
 - Detailed summary: Plain text format ONLY (1-2 sentences, NO bullet points)
-- Maximum length: ${maxLength} characters (strict limit, do not exceed)
+- Maximum length: ${maxLength} characters (strict limit, do not exceed source length)
 - Do NOT expand beyond the source content
 - If source content is insufficient, keep the detailed summary minimal and factual
 
