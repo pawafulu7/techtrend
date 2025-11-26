@@ -361,7 +361,7 @@ describe('ArticleCard', () => {
     }
   });
 
-  it('applies correct styling for dark mode', () => {
+  it('applies design system card-hover styling', () => {
     renderWithProviders(<ArticleCard article={mockArticle} />);
 
     const card = screen.getByTestId('article-card');

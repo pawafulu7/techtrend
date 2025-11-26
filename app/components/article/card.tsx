@@ -66,6 +66,7 @@ export function ArticleCard({
   const publishedDate = new Date(article.publishedAt);
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
+  const sourceColor = article.source ? getSourceColor(article.source.name) : null;
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) {
@@ -168,14 +169,14 @@ export function ArticleCard({
                     未読
                   </BadgeV2>
                 )}
-                {showSource && article.source && (
+                {showSource && article.source && sourceColor && (
                   <BadgeV2
                     variant="outline"
                     className={cn(
                       "text-xs",
-                      getSourceColor(article.source.name).tag,
-                      getSourceColor(article.source.name).border,
-                      getSourceColor(article.source.name).hover
+                      sourceColor.tag,
+                      sourceColor.border,
+                      sourceColor.hover
                     )}
                     data-testid="article-source"
                   >
