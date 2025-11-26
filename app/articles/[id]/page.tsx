@@ -1,9 +1,10 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ArrowLeft, ExternalLink, TrendingUp, GraduationCap, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ExternalLink, GraduationCap, MessageSquare } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
@@ -119,17 +120,16 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 flex-wrap">
                     {isNew && (
-                      <Badge className="text-xs" variant="destructive">
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                        New
-                      </Badge>
+                      <BadgeV2 variant="primary" className="text-xs">
+                        NEW
+                      </BadgeV2>
                     )}
-                    <Badge 
-                      variant="secondary" 
-                      className={cn("text-xs font-medium", sourceColor.tag)}
+                    <BadgeV2
+                      variant="outline"
+                      className={cn("text-xs font-medium", sourceColor.tag, sourceColor.border, sourceColor.hover)}
                     >
                       {article.source.name}
-                    </Badge>
+                    </BadgeV2>
                     <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <span>📅 配信:</span>
