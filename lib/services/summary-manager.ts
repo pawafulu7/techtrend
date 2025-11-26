@@ -83,9 +83,12 @@ export class SummaryManager {
     const startTime = Date.now();
 
     try {
+      const hasTargetArticleIds = Array.isArray(options.articleIds) && options.articleIds.length > 0;
+
       // Check for new articles (conditional processing)
       // Skip check if force option is enabled
-      if (!options.force) {
+      // Also skip when specific articleIds are provided (explicit target list)
+      if (!options.force && !hasTargetArticleIds) {
         const hasNewArticles = await this.checkNewArticles(options);
         if (!hasNewArticles) {
           console.error('No new articles found. Skipping summary generation.');
@@ -101,6 +104,10 @@ export class SummaryManager {
         ]
       };
 
+      if (hasTargetArticleIds) {
+        whereCondition.id = { in: options.articleIds };
+      }
+
       if (options.source) {
         whereCondition.source = { name: options.source };
       }
@@ -109,10 +116,15 @@ export class SummaryManager {
         where: whereCondition,
         include: { source: true },
         orderBy: { publishedAt: 'desc' },
-        take: options.limit || 50
+        take: hasTargetArticleIds
+          ? options.articleIds!.length
+          : options.limit || 50
       }) as ArticleWithSource[];
 
-      console.error(`Found ${articles.length} articles without summaries`);
+      console.error(
+        `Found ${articles.length} articles without summaries` +
+        (hasTargetArticleIds ? ` (filtered by ${options.articleIds!.length} articleIds)` : '')
+      );
 
       let generated = 0;
       let errors = 0;
