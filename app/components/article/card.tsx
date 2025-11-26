@@ -7,6 +7,7 @@ import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import { formatDateWithTime } from '@/lib/utils/date';
+import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
@@ -65,6 +66,7 @@ export function ArticleCard({
   const publishedDate = new Date(article.publishedAt);
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
+  const sourceColor = article.source ? getSourceColor(article.source.name) : null;
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) {
@@ -167,13 +169,18 @@ export function ArticleCard({
                     未読
                   </BadgeV2>
                 )}
-                {showSource && (
+                {showSource && article.source && sourceColor && (
                   <BadgeV2
                     variant="outline"
-                    className="text-xs"
+                    className={cn(
+                      "text-xs",
+                      sourceColor.tag,
+                      sourceColor.border,
+                      sourceColor.hover
+                    )}
                     data-testid="article-source"
                   >
-                    {article.companyName ?? article.source?.name ?? 'Unknown'}
+                    {article.companyName ?? article.source.name}
                   </BadgeV2>
                 )}
               </div>
