@@ -1,6 +1,7 @@
 import { RedisCache } from './redis-cache';
 import { prisma } from '@/lib/database';
 import type { Prisma } from '@prisma/client';
+import { revalidatePath } from 'next/cache';
 
 /**
  * 記事詳細ページ用のキャッシュクラス
@@ -172,13 +173,19 @@ export class ArticleDetailCache {
 
   /**
    * 記事更新時のキャッシュ無効化
+   * Redis + Next.js ISRキャッシュの両方を無効化
    */
   async invalidateArticle(articleId: string): Promise<void> {
-    // 記事詳細のキャッシュを削除（新しいキー形式）
+    // Redisキャッシュを削除
     await this.cache.delete(`article:${articleId}:with-relations`);
-
-    // 関連記事のキャッシュも削除（パターンマッチング）
     await this.cache.deleteByPattern(`related:${articleId}:*`);
+
+    // Next.js ISRキャッシュを無効化
+    try {
+      revalidatePath(`/articles/${articleId}`);
+    } catch {
+      // スクリプト実行時など、Next.jsコンテキスト外では無視
+    }
   }
 
   /**
