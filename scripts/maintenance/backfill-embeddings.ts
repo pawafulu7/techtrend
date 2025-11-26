@@ -28,7 +28,7 @@ async function backfillEmbeddings(options: { dryRun?: boolean; batchSize?: numbe
       where: {
         AND: [
           {
-            OR: [
+            AND: [
               { summary: { not: null } },
               { summary: { not: '' } }
             ]
@@ -73,7 +73,6 @@ async function backfillEmbeddings(options: { dryRun?: boolean; batchSize?: numbe
 
     // Process in batches
     let enqueued = 0;
-    let skipped = 0;
     let errors = 0;
 
     for (let i = 0; i < total; i += batchSize) {
@@ -82,17 +81,7 @@ async function backfillEmbeddings(options: { dryRun?: boolean; batchSize?: numbe
 
       for (const article of batch) {
         try {
-          // Check if job already exists
-          const existingJob = await prisma.embeddingJob.findUnique({
-            where: { articleId: article.id }
-          });
-
-          if (existingJob) {
-            skipped++;
-            continue;
-          }
-
-          // Enqueue embedding job
+          // Enqueue embedding job (UPSERT handles existing jobs)
           await embeddingScheduler.enqueue(article.id);
           enqueued++;
 
@@ -116,12 +105,11 @@ async function backfillEmbeddings(options: { dryRun?: boolean; batchSize?: numbe
     console.error('Backfill Complete');
     console.error('==================================================');
     console.error(`Total articles: ${total}`);
-    console.error(`Jobs created: ${enqueued}`);
-    console.error(`Skipped (existing): ${skipped}`);
+    console.error(`Jobs created/updated: ${enqueued}`);
     console.error(`Errors: ${errors}`);
     console.error('==================================================');
 
-    return { total, enqueued, skipped, errors };
+    return { total, enqueued, skipped: 0, errors };
 
   } catch (error) {
     console.error('Fatal error in backfill:', error instanceof Error ? error.message : String(error));
@@ -134,7 +122,8 @@ async function backfillEmbeddings(options: { dryRun?: boolean; batchSize?: numbe
 // CLI execution
 const isDryRun = process.argv.includes('--dry-run');
 const batchSizeArg = process.argv.find(arg => arg.startsWith('--batch-size='));
-const batchSize = batchSizeArg ? parseInt(batchSizeArg.split('=')[1], 10) : undefined;
+const parsedBatchSize = batchSizeArg ? parseInt(batchSizeArg.split('=')[1], 10) : NaN;
+const batchSize = !isNaN(parsedBatchSize) && parsedBatchSize > 0 ? parsedBatchSize : undefined;
 
 backfillEmbeddings({ dryRun: isDryRun, batchSize })
   .then(result => {
