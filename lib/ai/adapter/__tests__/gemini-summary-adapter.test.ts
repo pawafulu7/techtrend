@@ -851,6 +851,98 @@ React, TypeScript`,
     });
   });
 
+  describe('プレーンテキストフォールバック', () => {
+    it('should accept short plain text detailed summary when no bullets are present', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Short Plain Text',
+        content: 'Very short content',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'short',
+        },
+        requestId: 'plain-text-short',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約:
+短い記事の要約
+
+詳細要約:
+これは短い詳細要約です。
+続きも同じ形式です。`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      });
+
+      const result = await adapter.summarize(input);
+
+      expect(result.headline).toBe('短い記事の要約');
+      expect(result.detailedSummary).toBe('これは短い詳細要約です。 続きも同じ形式です。');
+    });
+
+    it('should reject long non-bullet detailed summary that should have been bulletized', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Long Plain Text Should Fail',
+        content: 'Long content expected to require bullets',
+        constraints: {
+          maxHeadlineChars: 200,
+          detailPolicy: 'medium',
+        },
+        requestId: 'plain-text-long',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      const longDetail = '長いテキストです。'.repeat(80); // > 400 chars
+
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        httpStatus: 200,
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `要約:
+長文記事の要約
+
+詳細要約:
+${longDetail}`,
+                  },
+                ],
+              },
+              finishReason: 'STOP',
+            },
+          ],
+        },
+        latencyMs: 500,
+        headers: {},
+      });
+
+      await expect(adapter.summarize(input)).rejects.toThrow(
+        'Detailed summary missing bullet format and exceeds plain text limit'
+      );
+    });
+  });
+
   describe('改行処理', () => {
     it('should merge continuation lines into bullet items', async () => {
       const input: SummaryProviderInput = {
