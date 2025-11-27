@@ -157,12 +157,21 @@ export class SummaryQualityChecker implements QualityChecker {
     }
 
     if (detailedLength < minDetailedLength) {
+      // Strict bins (contentLength >= 5000) have "strict requirement" in prompt
+      const isStrictBin = hasContentLength && contentLength >= 5000;
+      const severity = isStrictBin ? 'critical' : 'major';
+
       issues.push({
         type: 'length',
-        severity: 'major',
+        severity,
         message: `詳細要約が短すぎる: ${detailedLength}文字（最小${minDetailedLength}文字）`,
       });
-      score -= 10;
+
+      if (isStrictBin) {
+        score = 0; // Critical violation: automatic fail
+      } else {
+        score -= 10;
+      }
     } else if (detailedLength < idealMinDetailedLength) {
       issues.push({
         type: 'length',
