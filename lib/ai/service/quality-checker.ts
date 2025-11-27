@@ -97,13 +97,13 @@ export class SummaryQualityChecker implements QualityChecker {
       maxDetailedLength = 200;
     } else {
       if (contentLength >= 10000) {
-        minDetailedLength = 1200;
-        idealMinDetailedLength = 1200;
+        minDetailedLength = 900;
+        idealMinDetailedLength = 1000;
         maxDetailedLength = 1500;
       } else if (contentLength >= 5000) {
-        minDetailedLength = 900;
-        idealMinDetailedLength = 900;
-        maxDetailedLength = 1500;
+        minDetailedLength = 600;
+        idealMinDetailedLength = 700;
+        maxDetailedLength = 1200;
       } else if (contentLength >= 3000) {
         minDetailedLength = 600;
         idealMinDetailedLength = 600;
@@ -157,12 +157,21 @@ export class SummaryQualityChecker implements QualityChecker {
     }
 
     if (detailedLength < minDetailedLength) {
+      // Strict bins (contentLength >= 5000) have "strict requirement" in prompt
+      const isStrictBin = hasContentLength && contentLength >= 5000;
+      const severity = isStrictBin ? 'critical' : 'major';
+
       issues.push({
         type: 'length',
-        severity: 'major',
+        severity,
         message: `詳細要約が短すぎる: ${detailedLength}文字（最小${minDetailedLength}文字）`,
       });
-      score -= 10;
+
+      if (isStrictBin) {
+        score = 0; // Critical violation: automatic fail
+      } else {
+        score -= 10;
+      }
     } else if (detailedLength < idealMinDetailedLength) {
       issues.push({
         type: 'length',

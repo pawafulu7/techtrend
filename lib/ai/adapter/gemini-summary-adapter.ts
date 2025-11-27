@@ -20,7 +20,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
   constructor(
     private readonly transport: GeminiTransport,
     private readonly promptBuilder: PromptBuilder,
-    private readonly model: string = 'gemini-2.0-flash-lite',
+    private readonly model: string = 'gemini-2.5-flash-lite',
     generationOverrides?: Partial<GenerationConfig>
   ) {
     this.generationConfig = {

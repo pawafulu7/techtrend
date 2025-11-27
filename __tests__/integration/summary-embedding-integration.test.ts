@@ -39,12 +39,12 @@ describe('Summary-Embedding Integration', () => {
     const apiKey = process.env.GEMINI_API_KEY || 'test-key';
     const transport = new GeminiTransportImpl(apiKey, 'https://generativelanguage.googleapis.com/v1beta', 3, 3);
     const promptBuilder = new PromptBuilder();
-    const adapter = new GeminiSummaryAdapter(transport, promptBuilder, 'gemini-2.0-flash-lite');
+    const adapter = new GeminiSummaryAdapter(transport, promptBuilder, 'gemini-2.5-flash-lite');
     const qualityChecker = new SummaryQualityChecker();
     const postProcessor = new SummaryPostProcessor();
     const translator = new GeminiTitleTranslator(transport, {
       enabled: false,
-      model: 'gemini-2.0-flash-lite',
+      model: 'gemini-2.5-flash-lite',
       temperature: 0.3,
       topP: 0.95,
       topK: 40,

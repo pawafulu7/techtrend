@@ -12,7 +12,7 @@ describe('GeminiTitleTranslator', () => {
 
     translator = new GeminiTitleTranslator(mockTransport, {
       enabled: true,
-      model: 'gemini-2.0-flash-lite',
+      model: 'gemini-2.5-flash-lite',
       temperature: 0.3,
       topP: 0.8,
       topK: 40,
@@ -24,7 +24,7 @@ describe('GeminiTitleTranslator', () => {
     it('should return null when translation is disabled', async () => {
       const disabledTranslator = new GeminiTitleTranslator(mockTransport, {
         enabled: false,
-        model: 'gemini-2.0-flash-lite',
+        model: 'gemini-2.5-flash-lite',
         temperature: 0.3,
         topP: 0.8,
         topK: 40,

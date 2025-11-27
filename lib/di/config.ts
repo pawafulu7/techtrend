@@ -36,7 +36,7 @@ export type AppConfig = {
 export const defaultConfig: AppConfig = {
   gemini: {
     apiKey: '',
-    model: 'gemini-2.0-flash-lite',
+    model: 'gemini-2.5-flash-lite',
     baseUrl: 'https://generativelanguage.googleapis.com',
     temperature: 0.3,
     maxOutputTokens: 2500,
