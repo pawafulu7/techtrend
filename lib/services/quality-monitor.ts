@@ -5,6 +5,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import logger from '@/lib/logger';
+import { SUMMARY_VERSION } from '@/types/article';
 
 const prisma = new PrismaClient();
 

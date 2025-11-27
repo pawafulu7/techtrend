@@ -4,6 +4,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { SUMMARY_VERSION } from '@/types/article';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { calculateQualityScore } from '../../lib/utils/quality-score';
 
