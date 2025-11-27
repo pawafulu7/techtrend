@@ -249,7 +249,7 @@ async function getLowQualityArticles(
         // summaryVersionが最新でない
         {
           summaryVersion: {
-            lt: 8,
+            lt: SUMMARY_VERSION.CURRENT,
           },
         },
       ],
