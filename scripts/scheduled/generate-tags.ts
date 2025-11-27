@@ -21,7 +21,7 @@ async function generateTags(title: string, content: string): Promise<string[]> {
     throw new Error('GEMINI_API_KEY is not set');
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const prompt = `以下の技術記事から適切なタグを生成してください。

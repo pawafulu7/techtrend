@@ -42,9 +42,9 @@ async function main() {
   console.log('  - regression-report.json');
   console.log('  - regression-report.md');
 
-  if (report.passRate < 70.0) {
+  if (report.passRate < 78.0) {
     console.error(
-      `\nERROR: Regression test failed. Pass rate: ${report.passRate.toFixed(1)}% < 70.0%`
+      `\nERROR: Regression test failed. Pass rate: ${report.passRate.toFixed(1)}% < 78.0%`
     );
     process.exit(1);
   }

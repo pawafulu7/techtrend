@@ -14,7 +14,7 @@ describe('Summary and Translation Integration', () => {
     config = {
       transport: {
         apiKey: 'test-api-key',
-        model: 'gemini-2.0-flash-lite',
+        model: 'gemini-2.5-flash-lite',
         baseUrl: 'https://api.gemini.com',
         timeout: 30000,
         maxRetries: 3,
@@ -39,7 +39,7 @@ describe('Summary and Translation Integration', () => {
     mockTransport = {
       invoke: jest.fn(),
     } as any;
-    adapter = new GeminiSummaryAdapter(mockTransport, promptBuilder, 'gemini-2.0-flash-lite');
+    adapter = new GeminiSummaryAdapter(mockTransport, promptBuilder, 'gemini-2.5-flash-lite');
   });
 
   describe('Translation Feature in Summary Process', () => {
@@ -184,7 +184,7 @@ React Server Componentsの実装方法解説
     it('should handle translation disabled in config', async () => {
       config.translation.enabled = false;
       promptBuilder = new PromptBuilder();
-      adapter = new GeminiSummaryAdapter(mockTransport, promptBuilder, 'gemini-2.0-flash-lite');
+      adapter = new GeminiSummaryAdapter(mockTransport, promptBuilder, 'gemini-2.5-flash-lite');
 
       const article = {
         id: 'test-4',
