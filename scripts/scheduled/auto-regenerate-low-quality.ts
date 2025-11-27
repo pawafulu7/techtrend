@@ -111,7 +111,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
               translatedTitle: result.translatedTitle,
-              summaryVersion: 8,
+              summaryVersion: SUMMARY_VERSION.CURRENT,
               articleType: 'unified',
             },
           });

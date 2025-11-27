@@ -17,7 +17,7 @@ try {
   });
   
   console.log('\n🔍 Testing SUMMARY_VERSION constant...');
-  console.log('✅ SUMMARY_VERSION.UNIFIED:', SUMMARY_VERSION.UNIFIED);
+  console.log('✅ SUMMARY_VERSION.CURRENT:', SUMMARY_VERSION.CURRENT);
   
   console.log('\n✅ All DI checks passed!');
   process.exit(0);

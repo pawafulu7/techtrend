@@ -193,7 +193,7 @@ async function regenerateArticles(articles: Array<{
           where: { id: article.id },
           data: {
             summary,
-            summaryVersion: SUMMARY_VERSION.UNIFIED, // 統一フォーマットバージョン
+            summaryVersion: SUMMARY_VERSION.CURRENT, // 統一フォーマットバージョン
             detailedSummary: result.detailedSummary,
             translatedTitle: result.translatedTitle,
             articleType: result.articleType,

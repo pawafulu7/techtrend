@@ -90,7 +90,7 @@ describe('UnifiedSummaryServiceImpl', () => {
         tags: ['test', 'article'],
         qualityScore: 85,
         processingTimeMs: expect.any(Number),
-        summaryVersion: SUMMARY_VERSION.UNIFIED,
+        summaryVersion: SUMMARY_VERSION.CURRENT,
       });
 
       expect(mockSummaryProvider.summarize).toHaveBeenCalledTimes(1);

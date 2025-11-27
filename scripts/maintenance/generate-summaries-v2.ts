@@ -48,7 +48,7 @@ async function generateSummariesForArticles(
         { summary: '' },
         { detailedSummary: null },
         { detailedSummary: '' },
-        { summaryVersion: { lt: SUMMARY_VERSION.UNIFIED } },
+        { summaryVersion: { lt: SUMMARY_VERSION.CURRENT } },
       ],
     };
 
@@ -96,7 +96,7 @@ async function generateSummariesForArticles(
             summary: summaryResult.summary,
             detailedSummary: summaryResult.detailedSummary,
             translatedTitle: summaryResult.translatedTitle,
-            summaryVersion: SUMMARY_VERSION.UNIFIED,
+            summaryVersion: SUMMARY_VERSION.CURRENT,
             articleType: 'unified',
             summaryComputedAt: new Date(),
           },

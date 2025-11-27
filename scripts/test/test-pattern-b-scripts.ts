@@ -11,7 +11,7 @@ try {
   
   // Test 2: SUMMARY_VERSION定数使用（auto-regenerate.tsと同じパターン）
   console.log('\nTest 2: SUMMARY_VERSION constant usage');
-  const summaryVersion = SUMMARY_VERSION.UNIFIED;
+  const summaryVersion = SUMMARY_VERSION.CURRENT;
   console.log('✅ summaryVersion:', summaryVersion);
   
   // Test 3: サービスメソッド存在確認
