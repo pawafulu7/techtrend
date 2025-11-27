@@ -16,7 +16,7 @@ const summaryGenerator = new GeminiSummaryGenerator();
 
 const PROCESS_NAME = 'summary_generation_batch';
 const BATCH_SIZE = 50;
-const TARGET_SUMMARY_VERSION = SUMMARY_VERSION.UNIFIED;
+const TARGET_SUMMARY_VERSION = SUMMARY_VERSION.CURRENT;
 
 /**
  * 差分処理による要約生成バッチ

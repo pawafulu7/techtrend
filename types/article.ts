@@ -21,8 +21,27 @@ export const SUMMARY_VERSION = {
   V5: 5,          // バージョン5
   V6: 6,          // バージョン6
   V7: 7,          // バージョン7
-  UNIFIED: 8,     // 統一バージョン（最新）
+  V8: 8,          // バージョン8（統一プロンプト）
+  V9: 9,          // バージョン9（品質改善：項目統合、厳格な検証）
+  /**
+   * CURRENT: Always points to the latest summary version.
+   * All summary writers should use this constant to ensure automatic version tracking.
+   * When upgrading to a new version (e.g., V10), only update this value.
+   *
+   * Example V10 upgrade:
+   *   V10: 10,
+   *   CURRENT: 10 as const,  // <- Change only this line
+   */
+  CURRENT: 9 as const,
+  /**
+   * @deprecated Use SUMMARY_VERSION.CURRENT instead.
+   * UNIFIED is kept for backward compatibility only.
+   */
+  UNIFIED: 8,
 } as const;
+
+// Type for summary version values
+export type SummaryVersion = typeof SUMMARY_VERSION[keyof typeof SUMMARY_VERSION];
 
 // 記事品質スコアの閾値
 export const QUALITY_SCORE = {

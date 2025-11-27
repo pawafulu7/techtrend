@@ -112,7 +112,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
             tags,
             qualityScore: qualityResult.score,
             processingTimeMs: Date.now() - startTime,
-            summaryVersion: SUMMARY_VERSION.UNIFIED,
+            summaryVersion: SUMMARY_VERSION.CURRENT,
           };
 
           // Schedule embedding job (fire-and-forget)

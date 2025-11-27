@@ -4,6 +4,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { SUMMARY_VERSION } from '@/types/article';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { calculateQualityScore } from '../../lib/utils/quality-score';
 
@@ -111,7 +112,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
               translatedTitle: result.translatedTitle,
-              summaryVersion: 8,
+              summaryVersion: SUMMARY_VERSION.CURRENT,
               articleType: 'unified',
             },
           });
@@ -248,7 +249,7 @@ async function getLowQualityArticles(
         // summaryVersionが最新でない
         {
           summaryVersion: {
-            lt: 8,
+            lt: SUMMARY_VERSION.CURRENT,
           },
         },
       ],

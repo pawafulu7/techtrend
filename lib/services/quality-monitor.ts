@@ -5,6 +5,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import logger from '@/lib/logger';
+import { SUMMARY_VERSION } from '@/types/article';
 
 const prisma = new PrismaClient();
 
@@ -84,7 +85,7 @@ export class QualityMonitor {
     const highQualityCount = distribution.excellent + distribution.good;
     const needsRegenerationCount = articles.filter(a => 
       (a.qualityScore === null || a.qualityScore < 70) &&
-      (a.summaryVersion === null || a.summaryVersion < 8)
+      (a.summaryVersion === null || a.summaryVersion < SUMMARY_VERSION.CURRENT)
     ).length;
 
     return {
@@ -250,7 +251,7 @@ export class QualityMonitor {
       const highQualityCount = distribution.excellent + distribution.good;
       const needsRegenerationCount = source.articles.filter(a =>
         (a.qualityScore === null || a.qualityScore < 70) &&
-        (a.summaryVersion === null || a.summaryVersion < 8)
+        (a.summaryVersion === null || a.summaryVersion < SUMMARY_VERSION.CURRENT)
       ).length;
 
       statsBySource.set(source.name, {

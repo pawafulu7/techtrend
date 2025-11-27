@@ -117,8 +117,8 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
     }
   }
 
-  // summaryVersion 7または8の処理（AIが自由に項目を設定）
-  if (options?.summaryVersion === 7 || options?.summaryVersion === 8) {
+  // summaryVersion 7以上の処理（AIが自由に項目を設定）
+  if (options?.summaryVersion && options.summaryVersion >= 7) {
     let currentMainSection: SummarySection | null = null;
 
     for (const line of lines) {

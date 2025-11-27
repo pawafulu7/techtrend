@@ -150,7 +150,7 @@ export class SummaryManager {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
               translatedTitle: result.translatedTitle,
-              summaryVersion: SUMMARY_VERSION.UNIFIED,
+              summaryVersion: SUMMARY_VERSION.CURRENT,
               summaryComputedAt: new Date(),
             }
           });
@@ -258,7 +258,7 @@ export class SummaryManager {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
               translatedTitle: result.translatedTitle,
-              summaryVersion: SUMMARY_VERSION.UNIFIED,
+              summaryVersion: SUMMARY_VERSION.CURRENT,
               summaryComputedAt: new Date()
             }
           });
@@ -359,7 +359,7 @@ export class SummaryManager {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
               translatedTitle: result.translatedTitle,
-              summaryVersion: SUMMARY_VERSION.UNIFIED,
+              summaryVersion: SUMMARY_VERSION.CURRENT,
               summaryComputedAt: new Date()
             }
           });
