@@ -41,6 +41,12 @@ const customJestConfig = {
     '<rootDir>/app/components/article/__tests__/ArticleListItem.test.tsx',
     // Node環境専用テスト（.node.test.ts）をDOM環境では除外（CodexMCP推奨）
     '\\.node\\.test\\.(t|j)sx?$',
+    // Enricher/Fetcherテスト: Cheerio（Node専用）使用のためDOM環境では除外
+    '<rootDir>/__tests__/enrichers/',
+    '<rootDir>/lib/enrichers/__tests__/',
+    '<rootDir>/__tests__/fetchers/',
+    '<rootDir>/lib/fetchers/__tests__/',
+    '<rootDir>/__tests__/manual/',
   ],
   testMatch: [
     '**/__tests__/**/*.test.{ts,tsx}',
