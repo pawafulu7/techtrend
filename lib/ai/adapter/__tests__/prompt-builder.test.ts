@@ -82,7 +82,8 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('very long article');
-      expect(prompt).toContain('1200-1500 characters');
+      expect(prompt).toContain('target 1000-1300 characters');
+      expect(prompt).toContain('ABSOLUTE MINIMUM 900');
       expect(prompt).toContain('7-9 items only');
       expect(prompt).toContain('do not exceed 9 items');
     });
@@ -103,7 +104,8 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('long article');
-      expect(prompt).toContain('900-1500 characters');
+      expect(prompt).toContain('target 700-1000 characters');
+      expect(prompt).toContain('ABSOLUTE MINIMUM 600');
       expect(prompt).toContain('5-7 items only');
       expect(prompt).toContain('do not exceed 7 items');
     });
