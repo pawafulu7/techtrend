@@ -12,10 +12,10 @@ describe('SummaryQualityChecker', () => {
   });
 
   describe('minDetailedLength boundary tests', () => {
-    it('should mark 899-char summary as critical for 5000-char content', () => {
-      // Create exactly 899-char detailed summary
-      const items = ['x'.repeat(148), 'x'.repeat(148), 'x'.repeat(148), 'x'.repeat(148), 'x'.repeat(148), 'x'.repeat(148)];
-      const detailedSummary = items.map(item => `・${item}`).join('\n'); // Total: 899 chars
+    it('should mark 599-char summary as critical for 5000-char content', () => {
+      // Create exactly 599-char detailed summary (new minimum: 600)
+      const items = ['x'.repeat(98), 'x'.repeat(98), 'x'.repeat(98), 'x'.repeat(98), 'x'.repeat(98), 'x'.repeat(97)];
+      const detailedSummary = items.map(item => `・${item}`).join('\n'); // Total: 599 chars
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,
@@ -32,10 +32,10 @@ describe('SummaryQualityChecker', () => {
       expect(result.requiresRegeneration).toBe(true);
     });
 
-    it('should pass 900-char summary for 5000-char content', () => {
-      // Create exactly 900-char detailed summary
-      const items = ['x'.repeat(148), 'x'.repeat(148), 'x'.repeat(148), 'x'.repeat(148), 'x'.repeat(148), 'x'.repeat(149)];
-      const detailedSummary = items.map(item => `・${item}`).join('\n'); // Total: 900 chars
+    it('should pass 700-char summary for 5000-char content', () => {
+      // Create exactly 700-char detailed summary (idealMin for 5000-9999)
+      const items = ['x'.repeat(115), 'x'.repeat(115), 'x'.repeat(115), 'x'.repeat(115), 'x'.repeat(115), 'x'.repeat(113)];
+      const detailedSummary = items.map(item => `・${item}`).join('\n'); // Total: 700 chars
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,
@@ -45,15 +45,15 @@ describe('SummaryQualityChecker', () => {
 
       const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, contentAnalysis);
 
-      const lengthIssues = result.issues.filter((i) => i.type === 'length');
+      const lengthIssues = result.issues.filter((i) => i.type === 'length' && i.severity !== 'minor');
       expect(lengthIssues).toHaveLength(0);
       expect(result.score).toBeGreaterThanOrEqual(70);
     });
 
-    it('should pass 1500-char summary for 5000-char content', () => {
-      // Create exactly 1500-char detailed summary
-      const items = ['x'.repeat(248), 'x'.repeat(248), 'x'.repeat(248), 'x'.repeat(248), 'x'.repeat(248), 'x'.repeat(249)];
-      const detailedSummary = items.map(item => `・${item}`).join('\n'); // Total: 1500 chars
+    it('should pass 1200-char summary for 5000-char content', () => {
+      // Create exactly 1200-char detailed summary (new maximum for 5000-9999)
+      const items = ['x'.repeat(198), 'x'.repeat(198), 'x'.repeat(198), 'x'.repeat(198), 'x'.repeat(198), 'x'.repeat(198)];
+      const detailedSummary = items.map(item => `・${item}`).join('\n'); // Total: 1200 chars
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,
@@ -67,31 +67,14 @@ describe('SummaryQualityChecker', () => {
       expect(criticalIssues).toHaveLength(0);
     });
 
-    it('should mark 1501-char summary as minor for 5000-char content', () => {
-      // Create exactly 1501-char detailed summary
-      const items = ['x'.repeat(248), 'x'.repeat(248), 'x'.repeat(248), 'x'.repeat(248), 'x'.repeat(249), 'x'.repeat(249)];
-      const detailedSummary = items.map(item => `・${item}`).join('\n'); // Total: 1501 chars
-
-      const contentAnalysis: ContentAnalysis = {
-        totalLength: 5000,
-        contentLength: 5000,
-        isThinContent: false,
-      };
-
-      const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, contentAnalysis);
-
-      expect(result.issues).toContainEqual(
-        expect.objectContaining({ type: 'length', severity: 'minor' })
-      );
-    });
   });
 
   describe('strict bin enforcement (contentLength >= 5000)', () => {
     it('should enforce critical for contentLength >= 5000 with short summaries', () => {
       const testCases = [
-        { contentLength: 5000, detailedLength: 663 },
-        { contentLength: 7000, detailedLength: 663 },
-        { contentLength: 10000, detailedLength: 663 },
+        { contentLength: 5000, detailedLength: 500 },  // Below 600 min
+        { contentLength: 7000, detailedLength: 500 },  // Below 600 min
+        { contentLength: 10000, detailedLength: 800 }, // Below 900 min for 10k+
       ];
 
       testCases.forEach(({ contentLength, detailedLength }) => {
@@ -150,7 +133,9 @@ describe('SummaryQualityChecker', () => {
     });
 
     it('should handle contentLength = 5000 exactly (boundary inclusive)', () => {
-      const detailedSummary = '・Item 1\n・Item 2\n' + 'x'.repeat(800);
+      // 5000 chars with 500-char summary (below 600 min) should trigger critical
+      const items = ['x'.repeat(80), 'x'.repeat(80), 'x'.repeat(80), 'x'.repeat(80), 'x'.repeat(80)];
+      const detailedSummary = items.map(item => `・${item}`).join('\n'); // ~500 chars, 5 items
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,

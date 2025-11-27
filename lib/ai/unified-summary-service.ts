@@ -46,7 +46,7 @@ export class UnifiedSummaryService {
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
     this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
     this.embeddingScheduler = new EmbeddingScheduler();
   }

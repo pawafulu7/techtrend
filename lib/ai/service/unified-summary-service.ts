@@ -51,7 +51,19 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
         );
         const tags = this.postProcessor.formatTags(providerOutput.tags || []);
 
-        const qualityResult = this.qualityChecker.checkQuality(summary, detailedSummary);
+        // Build contentAnalysis for quality checker to enable strict bin enforcement
+        const contentLength = params.content.length;
+        const contentAnalysis = {
+          totalLength: contentLength,
+          contentLength,
+          isThinContent: contentLength < 1000,
+        };
+
+        const qualityResult = this.qualityChecker.checkQuality(
+          summary,
+          detailedSummary,
+          contentAnalysis
+        );
 
         const threshold = params.qualityThreshold ?? this.config.qualityThreshold;
         if (qualityResult.score >= threshold) {

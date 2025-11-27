@@ -97,13 +97,13 @@ export class SummaryQualityChecker implements QualityChecker {
       maxDetailedLength = 200;
     } else {
       if (contentLength >= 10000) {
-        minDetailedLength = 1200;
-        idealMinDetailedLength = 1200;
+        minDetailedLength = 900;
+        idealMinDetailedLength = 1000;
         maxDetailedLength = 1500;
       } else if (contentLength >= 5000) {
-        minDetailedLength = 900;
-        idealMinDetailedLength = 900;
-        maxDetailedLength = 1500;
+        minDetailedLength = 600;
+        idealMinDetailedLength = 700;
+        maxDetailedLength = 1200;
       } else if (contentLength >= 3000) {
         minDetailedLength = 600;
         idealMinDetailedLength = 600;

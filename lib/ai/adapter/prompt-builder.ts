@@ -189,10 +189,12 @@ Article content length: ${contentLength} characters
 This is a very long article requiring detailed summarization.
 
 Summary requirements:
-- Detailed summary: 1200-1500 characters (strict requirement)
+- Detailed summary: target 1000-1300 characters; ABSOLUTE MINIMUM 900; NEVER return <900 characters
 - Number of items: ${minItems}-${maxItems} items only (strict requirement, do not exceed ${maxItems} items)
-- Length per item: 170-200 characters each
-- Include specific numbers, dates, technical terms, product names, and command examples
+- Each item MUST be 150-220 characters and include concrete technical details (numbers, names, versions, metrics, examples)
+- Include specific numbers, dates, technical terms, product names, command examples, metrics, timelines, architectures
+- If you cannot meet these requirements, reply: "unable to comply"
+
 ${METADATA_WARNING}`;
     } else if (contentLength >= 5000) {
       const baseMin = 5, baseMax = 7;
@@ -205,10 +207,11 @@ Article content length: ${contentLength} characters
 This is a long article.
 
 Summary requirements:
-- Detailed summary: 900-1500 characters (strict requirement)
+- Detailed summary: target 700-1000 characters; ABSOLUTE MINIMUM 600; NEVER return <600 characters
 - Number of items: ${minItems}-${maxItems} items only (strict requirement, do not exceed ${maxItems} items)
-- Length per item: 150-200 characters each
-- Include specific technical details
+- Each item MUST be 120-200 characters and include concrete technical details (numbers, names, versions, metrics, examples)
+- Include specific technical details: metrics, timelines, architectures, failure modes, benchmarks
+- If you cannot meet these requirements, reply: "unable to comply"
 
 ${METADATA_WARNING}`;
     } else if (contentLength >= 3000) {
