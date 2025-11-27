@@ -1,4 +1,5 @@
 import { BaseContentEnricher } from '../base';
+import logger from '@/lib/logger';
 
 // NOTE: fetchの「グローバルモック」は行わない。必要なテスト（例: リトライ）ではケース単位で局所的にstubする。
 
@@ -301,6 +302,54 @@ describe('BaseContentEnricher', () => {
       enricher.setMockHtml(html);
       const result = await enricher.enrich(testUrl);
       expect(result).toBeNull();
+    });
+  });
+
+  describe('logEnrichmentError', () => {
+    it('should log error when enrichment fails', async () => {
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+      enricher.setShouldFail(true);
+
+      const result = await enricher.enrich(testUrl);
+
+      expect(result).toBeNull();
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: testUrl,
+          enricher: 'TestContentEnricher',
+          error: expect.any(Error),
+          status: 'failed'
+        }),
+        '[Enrichment] failed'
+      );
+
+      loggerSpy.mockRestore();
+    });
+
+    it('should preserve error stack trace', async () => {
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+      enricher.setShouldFail(true);
+
+      await enricher.enrich(testUrl);
+
+      expect(loggerSpy).toHaveBeenCalled();
+      const loggedError = loggerSpy.mock.calls[0][0].error;
+      expect(loggedError).toBeInstanceOf(Error);
+      expect(loggedError.stack).toBeDefined();
+
+      loggerSpy.mockRestore();
+    });
+
+    it('should call logger.error with correct message', async () => {
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+      enricher.setShouldFail(true);
+
+      await enricher.enrich(testUrl);
+
+      expect(loggerSpy).toHaveBeenCalledTimes(1);
+      expect(loggerSpy.mock.calls[0][1]).toBe('[Enrichment] failed');
+
+      loggerSpy.mockRestore();
     });
   });
 });

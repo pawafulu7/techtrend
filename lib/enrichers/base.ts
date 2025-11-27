@@ -4,6 +4,7 @@
  */
 
 import * as cheerio from 'cheerio';
+import logger from '@/lib/logger';
 
 /**
  * エンリッチされたコンテンツのデータ構造
@@ -76,7 +77,8 @@ export abstract class BaseContentEnricher implements IContentEnricher {
 
       const thumbnail = this.extractThumbnail(html);
       return { content: text || null, thumbnail: thumbnail ?? null };
-    } catch {
+    } catch (error) {
+      this.logEnrichmentError(url, error);
       return null;
     }
   }
@@ -236,7 +238,22 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         // JSON解析エラーは無視
       }
     }
-    
+
     return null;
+  }
+
+  /**
+   * Enrichment失敗時のエラーログ
+   */
+  protected logEnrichmentError(url: string, error: unknown): void {
+    logger.error(
+      {
+        url,
+        enricher: this.constructor.name,
+        error: error instanceof Error ? error : new Error(String(error)),
+        status: 'failed'
+      },
+      '[Enrichment] failed'
+    );
   }
 }
