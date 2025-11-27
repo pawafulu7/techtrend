@@ -2,11 +2,11 @@
   "metadata": {
     "version": "1.0.0",
     "createdAt": "2025-11-27T22:40:36.514Z",
-    "totalExamples": 27,
+    "totalExamples": 22,
     "categoryDistribution": {
-      "general": 13,
-      "technical": 7,
-      "thin_content": 5,
+      "general": 11,
+      "technical": 6,
+      "thin_content": 3,
       "multilingual": 2
     },
     "qualityScoreRange": {
@@ -15,12 +15,12 @@
       "avg": 95.71875
     },
     "thresholdCalibration": {
-      "percentile95": 0.9960871310021845,
+      "percentile95": 0.9866603289220708,
       "byCategory": {
-        "general": 0.8892995289449788,
-        "technical": 0.886156337690869,
-        "thin_content": 0.8466740613518567,
-        "multilingual": 0.8486770576428332
+        "general": 0.8812141734181059,
+        "technical": 0.8865226409263047,
+        "thin_content": 0.8472028307778849,
+        "multilingual": 0.8545951028515402
       }
     }
   },
@@ -53,7 +53,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg6ibip80007te8uzuh2fm8t"
@@ -86,7 +86,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgu56v6b0003tejj2z5kshl4"
@@ -119,76 +119,10 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgs0140m0001teq9asa672j4"
-    },
-    {
-      "id": "golden-cmgiy8q2c0003te9tac8xlfc4",
-      "article": {
-        "title": "ここ数年で、我が家で発生した最大のハッキング案件…スペースを聞いていたら、スピーカーの人が『Alexa、電気を消して』と言った瞬間、我が家も真っ暗になった",
-        "content": "大貫剛🇺🇦🇯🇵З Україною\n@ohnuki_tsuyoshi\n\nここ数年で、我が家で発生した最大のハッキング案件は、\n\n「スペースを聞いてたら、スピーカーの人が『Alexa、電気消して』と言った瞬間、我が家も真っ暗になった」\n\nです。\n\n\n\n2025-10-08 21:22:08\n\n\n\n\n\n\n\n児玉“SONY”研司\n@SONY74383228\n\n@ohnuki_tsuyoshi 🤣🤣🤣\n\n\n\n2025-10-08 23:00:37\n\n\n\n\n\n\n\n大貫剛🇺🇦🇯🇵З Україною\n@ohnuki_tsuyoshi\n\n@SONY74383228 いきなり部屋が真っ暗になったので、唖然としましたね…\n\n\n\n2025-10-09 00:16:29\n\n\n\n\n\n\n\n児玉“SONY”研司\n@SONY74383228\n\n@ohnuki_tsuyoshi いや、そういう事態ってホントにあるんですね！\n\n\n\n2025-10-09 01:05:44\n\n\n\n\n\n目次\n\n通話相手の声に反応してしまうAlexa\nこれ、実は結構怖い事なのでは？\n何か対策はないの？\n\n\n通話相手の声に反応してしまうAlexa\n\n\n\n\n希紗\n@kisaragineko020\n\nそんな事あるの？(´꒳`;)\n\n\n\n2025-10-09 10:44:20\n\n\n\n\n\n\n\nSAI✨💫🌕\n@Sai_MMD\n\nゲーム実況流してたら実況者がアレクサー！て叫んでFireタブレットのAlexaが起動したなあｗ\n\n\n\n2025-10-09 10:25:38\n\n\n\n\n\n\n\nばるばす@手を洗いましょー\n@Bulbous_B\n\nコロナの頃、リモート飲み会で「Alexaに言えばラジオ体操すぐできるよ。今やってみるね」で、画面の向こうの数名から、♪ちゃーんちゃーんかちゃんちゃんちゃんちゃんが始まったのを思い出した x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 08:35:09\n\n\n\n\n\n\n\n力ワイ🍥ㄘくわ🤖 【not for me】\n@tarosatyan\n\nテレビからのセリフに反応して音楽流し出したわ。www x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 09:44:22\n\n\n\n\n\n\n\n芳賀 有一郎\n@Yuichiro_Junior\n\nこれ、うちでも時々ある。\nDiscordとかで音声チャットしてるときに、誰かがAlexa操作するとこっちのAlexaも反応するとか、TVで「アレックスは」というセリフが出たときに反応するとか。 x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 06:59:02\n\n\n\n\n\n\n\nどろぼうかささぎ\n@dorobokasa32501\n\nWOWWOWでテニスみてたら急にアレクサが「はい？」って返事した。\n\n答えはアレクサンダーズべレフが試合してたんだ x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 11:23:52\n\n\n\n\n\n\n\nエメフラちゃん\n@tohkage3_10_\n\n割とすぐやられるやつだよね。これ使っちゃえば相手のお家のエアコンの温度を極寒にも灼熱にも出来てしまうんだよな、\n\n\n\n2025-10-09 09:51:53\n\n\n\n\n\n\n\nポイズン\n@poison50887416\n\nドリブンズの園田賢が牌譜検討の配信中に同じように冷房の温度を下げるように命じたら、寝落ちしてた人が風邪をひいたのかチャンネル登録者数が激減した話を思い出した x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 11:22:29\n\n\n\n\n\n\n\nネコ先生🐱\n@kimu5j_bwcat\n\n割と最近、TBSのドラマの中でも起こりました。\nどうせなら\n「アレクサ、TVを消して」\nと言って欲しかったデス\n\nnikkansports.com/entertainment/… x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 10:15:10\n\n\n\n\n\n\n\n\n\nリンク\n\nnikkansports.com\n\n\n\n話題の「19番目のカルテ」生瀬勝久の最終回セリフにＸ騒然「うちのアレクサも反応してた」 - ドラマ : 日刊スポーツ\n\n\n嵐の松本潤（42）主演のTBS系ドラマ、日曜劇場「19番目のカルテ」最終回が7日、放送され、番組内のセリフにX（旧ツイッター）がざわめく一幕があった。（※以下… - 日刊スポーツ新聞社のニュースサイト、ニッカンスポーツ・コム（nikkansports.com）\n\n\n2\n\n\n\n\n\n\n紫外線\n@saint_uv\n\n数年前に「子供がAlexaに話しかけて高額の購入をした」…がテレビのニュースに出て、その時のフレーズ \"alexa please order _____\"が流れて意図せぬ注文を引き起こした…なんてのがあったな。 x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 10:45:24\n\n\n\n\n\n\n\n\n\nリンク\n\nwww.cbsnews.com\n\n\n\nTV news anchor's report accidentally sets off viewers' Amazon's Echo Dots\n\n\nAmazon Alexa devices order unwanted dollhouses across San Diego after \"hearing\" news report\n\n\n26\n\n\n\n\nこれ、実は結構怖い事なのでは？\n\n\n\n\n\nロニ【公式プロカレーヤー】\n@RonielYamato\n\n😱これは笑い話やけど、よく考えると怖い x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 10:45:51\n\n\n\n\n\n\n\nニコチュー🚬\n@niconicotintinn\n\nこれ微妙に問題になりそうな気がしてて\n自動車の音声入力とかも増えてるからラジオやらブルートゥースなんかハッキングできると簡単な操作の介入できるんじゃないかと\n\nそれこそ拡声器くらいでもいけそうだし x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 11:07:39\n\n\n\n\n\n\n\nファニィ💉×５\n@fanybot\n\nこれ、テロ行為としてありうるかもしれないんだよねえ・・・「Alexa 画像検索 〇〇〇」とか。 x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 10:42:54\n\n\n\n\n\n\n\nタキ\n@tuxeta\n\nこれは笑い事で済んでるけど、本当にやばいのは通話相手からの「Alexa、住所を教えて」 x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 09:25:19\n\n\n\n\n\n\n\n押井徳馬\n@osito_kuma\n\nスペースでスピーカーになったら「アレクサ、ここの住所を教えて」と誰かが言ってアレクサが住所をバラすハッキングはもっと怖い（十分あり得るので要注意）\n※イヤホンを付けて他のスピーカーの声をアレクサが聞けなくするのが簡単な対策 x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 02:46:04\n\n\n\n\n\n\n\nむと＠睦月\n@t_mutsuki\n\nうろ覚えなんだけど、この手の話で、一人がお手洗いか何かで席を立ったタイミングで他の人が「アレクサ、住所と電話番号教えて」みたいに話しかけて個人情報抜き取るツイートを数年前に見たような覚えがある…＜RP\n\n\n\n2025-10-09 08:50:52\n\n\n\n\n\n\n\nダレルタイター\n@DaTa_jp\n\nそういえば、ボイチャとかで「明日の天気を教えて！」とか叫ぶことで相手のスマートスピーカーに居住住所を喋らせるみたいなテクニックもあったらしいですね x.com/ohnuki_tsuyosh…\n\n\n\n2025-10-09 09:17:37\n\n\n\n\n1\n2\n次へ",
-        "url": "https://togetter.com/li/2613257"
-      },
-      "expectedOutput": {
-        "summary": "スマートスピーカーが通話相手の声に誤反応し、意図せず家電操作や情報漏洩に繋がる事例が報告されており、セキュリティ上の懸念が浮上しています。この現象は、テレビ番組やゲーム実況など様々な状況で発生し、悪用されればテロ行為や個人情報窃盗のリスクも指摘されています。",
-        "detailedSummary": "・スマートスピーカーの誤作動による家電操作：通話相手の声やテレビ番組のセリフにスマートスピーカーが反応し、照明を消したりエアコンを操作したりする事例が報告されており、意図しない家電操作が発生する危険性が示唆されています。\n・誤作動が引き起こすセキュリティリスク：スマートスピーカーの誤作動は、単なる家電操作に留まらず、「Alexa、住所を教えて」といった指示に反応して個人情報が漏洩する可能性や、悪意のある第三者によるテロ行為に悪用されるリスクも指摘されており、セキュリティ上の懸念が高まっています。\n・誤作動発生の多様なシナリオ：ゲーム実況中の叫び声、リモート飲み会での会話、テレビドラマのセリフ、スポーツ中継の選手名など、様々な音声コンテンツや通話内容がスマートスピーカーの誤作動を引き起こすトリガーとなり得ることが示されています。\n・過去の類似事例と対策の必要性：過去には、テレビのニュース報道で流れたフレーズが原因で意図しない商品購入が発生した事例もあり、スマートスピーカーの音声認識技術の課題と、誤作動を防ぐための対策の必要性が改めて浮き彫りになっています。",
-        "tags": [
-          "スマートスピーカー",
-          "セキュリティ",
-          "AI",
-          "音声認識",
-          "プライバシー"
-        ]
-      },
-      "metadata": {
-        "category": "general",
-        "difficulty": "easy",
-        "categoryConfidence": 0.8,
-        "needsHumanReview": false,
-        "categoryReason": "No technical tags, general content",
-        "createdAt": "2025-11-05T10:37:57.587Z",
-        "updatedAt": "2025-11-27T22:40:36.514Z"
-      },
-      "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
-        "minimumQuality": 0.9
-      },
-      "sourceArticleId": "cmgiy8q2c0003te9tac8xlfc4"
-    },
-    {
-      "id": "golden-cmg8pmdtp0005teer3575yw5i",
-      "article": {
-        "title": "AI就職氷河期が米Z世代を直撃している",
-        "content": "HOME コラム プリンストン発 日本／アメリカ 新時代 AI就職氷河期が米Z世代を直撃している コラム 1 2 Next 冷泉彰彦 プリンストン発 日本／アメリカ 新時代 AI就職氷河期が米Z世代を直撃している 2025年10月01日（水）12時00分 大学新卒レベルの職種がAIに奪われている可能性がある USA TODAY Network-REUTERS ＜新卒者の失業率が異常に高い統計データに米社会が衝撃＞ アメリカの雇用統計が低迷しています。7月から8月にかけて新規雇用数も失業率も予想を下回っており、8月の失業率は4.3％まで悪化、この4年間で最悪となっています。コロナ禍後に回復した際の最低値3.5％（23年7月）と比較すると、悪化傾向は顕著です。 通常ですと、このような雇用の悪化はダイレクトに景気後退と直結します。また株価の低迷を伴うことになります。トランプ政権がFRB（連邦準備制度理事会）に対して強く利下げを要求しているのは、そうした景気後退や株価の下落を防止しようという意図であり、それならばアメリカの政権としては特に変わったことをしているとは言えません。ですが、実際のところは景気がスローダウンしているかどうかは、良く分かっていないのです。というのは、株価は史上最高値圏にあって安定しているからです。 雇用統計の中で、特に悪化しているのが新卒の雇用だと言われています。実際に新卒者の失業率が異常に高くなっているというニューヨーク連銀の指摘は社会に衝撃を与えました。 そこで、話題になっているのがAIによる雇用カットが進んでいるという見方です。2022年暮にChatGPTが公開されてから、アメリカでは猛烈な勢いでAIの実用化が進んでいます。シリコンバレーの各社は巨額のAI投資を行って性能向上に突っ走っていますし、同時に大手から中小まで企業向けのコンサルは、AIの活用による効率化をあらゆる産業にプレゼンし続けています。 大卒レベルのホワイトカラー職がAIに置き換わっている？ つまり、景気が悪くなっているのではなく、人間の仕事がどんどんAIに置き換わっているので雇用統計が悪化しているという見方です。そんな中で、一般的に言われているのが大卒レベルの知的職務について、その初級職がどんどんAIに置き換わっているという説です。例えば、会計、法務、監査などの文書管理、CS（カスタマーサービス）の現場管理などで、自動化が進む中では人間のポジションを減らす動きがあるというのです。 最もインパクトがあるのが、ソフトウェア技術者であり、初級プログラマーの仕事は、どんどんAIに置き換わっています。AIそのものやデータサイエンスなど大量のデータを扱う仕事も同じで、従来は100人単位の人力で対応していた業務が、人間は1人で済むようになったというような話も聞きます。経営者たちもAI化に熱心であり、メーカー各社は本社の事務職を一気に削減するように動いていますし、小売の大手はAIが管理するロボットなどの導入を進めようとしています。 つまり、Z世代という若者たちを、AIによる就職難が直撃しているというわけです。前回の2024年の大統領選では、それこそZ世代によるトランプ支持が話題になったわけで、その背景にはまさにAIが人間に取って代わるような将来への不安感があったわけですが、1年も経たないうちにその不安がどんどん現実のものになってきた、そのようなムードがアメリカでは広がっています。 では、こうした急速な時代の変化に対して、政治はどのように対応していくのかと言うと、まず現在のトランプ政権のシナリオはとりあえず筋が通っているように見えます。移民へのビザ手数料を高額にしたりして、国内の雇用を優先させるとか、エリート大学への補助金を削減する代わり、ブルーカラーを育てる職業訓練に投資しようというのは、初級の知的労働がAIに置き換わる時代の流れとの整合性はあるからです。 次のページ必要なのは時代に即した高度な技術を持った人材 1 2 次のページ この筆者のコラム AI就職氷河期が米Z世代を直撃している 2025.10.01 クールジャパン戦略は破綻したのか 2025.09.24 日本の新政権が向き合うべき、安全保障の「ねじれ」というアキレス腱 2025.09.17 「物価高対策と財政規律の間の最適解」──ポスト石破に求められる最重要課題 2025.09.10 アメリカのストーカー対策、日本との違いを考える 2025.09.03 「体験格差」という言葉に覚える強烈な違和感 2025.08.27 日本の核武装コストは、どのように計算すれば良いのか 2025.08.20 記事一覧へ プロフィール 冷泉彰彦 （れいぜい あきひこ）ニュージャージー州在住。作家・ジャーナリスト。プリンストン日本語学校高等部主任。1959年東京生まれ。東京大学文学部卒業。コロンビア大学大学院修士（日本語教授法）。福武書店（現ベネッセコーポレーション）勤務を経て93年に渡米。 最新刊『自動運転「戦場」ルポ ウーバー、グーグル、日本勢――クルマの近未来』（朝日新書）が7月13日に発売。近著に『アイビーリーグの入り方 アメリカ大学入試の知られざる実態と名門大学の合格基準』（CCCメディアハウス）など。メールマガジンＪMM（村上龍編集長）で「ＦＲＯＭ９１１、ＵＳＡレポート」(www.jmm.co.jp/)を連載中。週刊メルマガ（有料）「冷泉彰彦のプリンストン通信」配信中。 冷泉彰彦のプリンストン通信 関連ワード #AI#アメリカ社会#アメリカ経済#雇用 あわせて読みたい キャリア情報 外資系企業の「労務スタッフ」土日祝休/フレックス/リモートOK VISTRA Japan株式会社 東京都 月給27万5,000円～45万8,000円 正社員 外資系製造業大手の総務アウトソーシングのアシスタン 永田町駅 株式会社スタッフサービス ITソリューション 東京都 月給23万5,000円～ 正社員 生成AI商材/大手外資系「インサイドセールス「SV候補」」/その他コンサルティング系 ブリッジインターナショナル株式会社 東京都 年収340万円～450万円 正社員 経理事務/外資系資産運用会社@神谷町にて経理 マンパワーグループ株式会社 東京都 年収450万円～500万円 正社員 Sponsored by 求人ボックス ニュース速報 ワールドインド製造業ＰＭＩ、9月改定値は4カ月ぶり低水準 2025.10.02ビジネス日経平均は反発で寄り付く、4万5000円回復 半導2025.10.02ワールド米、ウクライナにロシアのエネ施設攻撃情報を提供へ＝2025.10.02ビジネスアジアに1000億ドル資本流入、米国から分散＝ゴー2025.10.02 ニュース速報一覧 WorldVoice 木村菜穂子｜トルコ／エジプト トレッキング大国としてのヨルダン - 新たな客層を… 2025/05/01 ヨシヒロミウラ｜ベトナム ベトナム南部解放記念50周年のパレードじゃなく、前… 2025/05/02 シュピッツナーゲル典子｜ドイツ 戦後80年、ドイツとヨーロッパの思いー記憶の継承と… 2025/05/15 松尾彩香｜スペイン 電気が止まったスペイン 筆者が体験し感じた生活の盲… 2025/05/01 WorldVoiceへ あわせて読みたい PICK UP サステナビリティ 「ZOZOらしさ」で便利さと環境保全を両立 持続可能なファッションECを目指して 2025.09.12PR 座談会 「アフリカでビジネスをする」の理想と現実...国際協力銀行（JBIC）若手職員が語る体験談 2025.09.11 国立西洋美術館「オルセー美術館所蔵 印象派―室内をめぐる物語」鑑賞チケット2組4名様プレゼント 2025.09.25PR がん検診 がんの早期発見を阻む「金額の壁」を取り払う──相互扶助の仕組みで「医療格差の是正」へ 2025.09.30 新着 アメリカ 【随時更新】トランプ2.0（10月2日の動き） 2025.10.02 ライフ&ヘルス 「犬に謝って！」叱られたゴールデンレトリバーの反応に思わず同情してしまう人続出 ＜彼氏の犬を叱った女性が、申し訳なさそうにする犬の動画を投稿したところ、ユーザーたちから猛省を促される事態となっている＞ 2025.10.02 ライフ&ヘルス 【動画】壁に向かって微動だにせず...叱られたゴールデンレトリバーの哀愁漂う背中 ＜飼い主の彼女から「うるさい」と叱られたゴールデンレトリバーのリアクションが、SNSで話題となっている＞ @inbo 2025.10.02 最新記事一覧へ",
-        "url": "https://www.newsweekjapan.jp/reizei/2025/10/aiz.php"
-      },
-      "expectedOutput": {
-        "summary": "アメリカではAIの急速な普及により、特に大卒レベルの初級ホワイトカラー職で雇用が奪われ、Z世代を中心に就職難が深刻化している。これは景気後退ではなく、AIによる仕事の代替が原因と見られており、政治もこの変化に対応する必要に迫られている。",
-        "detailedSummary": "・AIによる雇用代替とZ世代への影響：アメリカではChatGPT公開以降、AIの実用化が急速に進み、企業はAI活用による効率化を推進している。これにより、会計、法務、カスタマーサービス、ソフトウェア開発などの大卒レベル初級職がAIに置き換わる可能性が高まり、Z世代を中心に就職難が深刻化している。\n・雇用統計の悪化と景気後退の見解：8月の米失業率は4.3%まで悪化し、新規雇用数も予想を下回るなど雇用統計は低迷している。これは景気後退の兆候とも取れるが、株価が史上最高値圏で安定していることから、AIによる人間の仕事の代替が雇用悪化の主因であるとの見方が有力視されている。\n・AIが代替する職務の具体例：ソフトウェア技術者、特に初級プログラマーの仕事はAIに代替されつつある。また、大量のデータを扱うAIやデータサイエンス分野でも、従来複数人で行っていた業務がAIにより一人で済むようになるケースも報告されている。メーカーの本社事務職や小売業でのロボット導入なども進んでいる。\n・政治の対応と今後の展望：AIによる雇用代替が進む中、トランプ政権は移民ビザ手数料の引き上げやブルーカラー育成への投資など、国内雇用優先や職業訓練へのシフトを打ち出している。これはAIに代替される初級知的労働の時代の流れと整合性がある。今後は時代に即した高度な技術を持った人材育成が求められる。",
-        "tags": [
-          "AI",
-          "雇用",
-          "Z世代",
-          "アメリカ経済",
-          "就職難"
-        ]
-      },
-      "metadata": {
-        "category": "general",
-        "difficulty": "easy",
-        "categoryConfidence": 0.8,
-        "needsHumanReview": false,
-        "categoryReason": "No technical tags, general content",
-        "createdAt": "2025-11-05T10:37:57.587Z",
-        "updatedAt": "2025-11-27T22:40:36.514Z"
-      },
-      "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
-        "minimumQuality": 0.9
-      },
-      "sourceArticleId": "cmg8pmdtp0005teer3575yw5i"
     },
     {
       "id": "golden-cmg8lcss5000dtett73drpluk",
@@ -218,7 +152,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg8lcss5000dtett73drpluk"
@@ -251,7 +185,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgbqx8xu0007teyeygizvwr3"
@@ -284,7 +218,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgrcgazz0001te3p45qkulwj"
@@ -317,7 +251,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgqgb1ca0001teqzwnce0juu"
@@ -350,7 +284,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgheih0s000dtedfw24i1ucp"
@@ -383,7 +317,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmghp8ar20001teiltq4lvfrh"
@@ -415,7 +349,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmhcnsnvi0011teskwqerh4xd"
@@ -448,7 +382,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8892995289449788,
+        "semanticSimilarity": 0.8812141734181059,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmf9n6xis0001te02ohyucnxc"
@@ -480,42 +414,10 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.886156337690869,
+        "semanticSimilarity": 0.8865226409263047,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgut0uz2000dtelqb62u8gpt"
-    },
-    {
-      "id": "golden-cmgahx7wf0027teqltsfehs71",
-      "article": {
-        "title": "MySQLのGIS機能について学ぼう",
-        "content": "データベースで地理情報を扱う\n大量のデータを扱う際に、リレーショナルデータベース管理システム(RDBMS)はよく使われます。当初は文字列や数値、日付時刻といった基本的な型の情報を中心に扱っていたRDBMSも、最近ではより応用的な様々なデータを扱えるようにと進化しています。その1つが「空間データ型」です。英語では「Spatial data type」と呼びます。Specialに綴りが似ているので、初めて目にする人には「スペシャルなデータですか?」と言われることもあります。Spatialは、Space(空間)に関連する単語で「スペイシャル」と発音します。\n\nMySQLでは、2018年にリリースされたMySQL 8.0から、実際の地球の球面を考慮した実用的な空間データ(スペイシャルなデータ)を取り扱う機能が実装されました。",
-        "url": "https://thinkit.co.jp/article/38551"
-      },
-      "expectedOutput": {
-        "summary": "MySQL 8.0以降では、空間データ型により地理情報をデータベースで効率的に扱えるようになり、リレーショナルデータベースの応用範囲が広がっています。",
-        "detailedSummary": "・MySQL 8.0からの空間データ型実装： MySQL 8.0以降では、地球の球面を考慮した実用的な空間データ（スペイシャルデータ）を扱う機能が実装され、リレーショナルデータベース管理システム(RDBMS)の応用範囲が拡大しました。",
-        "tags": [
-          "MySQL",
-          "データベース",
-          "GIS",
-          "Spatial Data Type"
-        ]
-      },
-      "metadata": {
-        "category": "technical",
-        "difficulty": "easy",
-        "categoryConfidence": 0.85,
-        "needsHumanReview": false,
-        "categoryReason": "2 technical tag(s), 3 keyword density (database)",
-        "createdAt": "2025-11-05T10:37:57.587Z",
-        "updatedAt": "2025-11-27T22:40:36.514Z"
-      },
-      "acceptanceThreshold": {
-        "semanticSimilarity": 0.886156337690869,
-        "minimumQuality": 0.9
-      },
-      "sourceArticleId": "cmgahx7wf0027teqltsfehs71"
     },
     {
       "id": "golden-cmguk79br0007teygw6vx5jat",
@@ -545,7 +447,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.886156337690869,
+        "semanticSimilarity": 0.8865226409263047,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmguk79br0007teygw6vx5jat"
@@ -577,7 +479,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.886156337690869,
+        "semanticSimilarity": 0.8865226409263047,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg8twg580005tepj91zab19q"
@@ -610,7 +512,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.886156337690869,
+        "semanticSimilarity": 0.8865226409263047,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgmaarkf0005te26vt2thf5g"
@@ -643,7 +545,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.886156337690869,
+        "semanticSimilarity": 0.8865226409263047,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgaqhzp70009te4otbt64r3q"
@@ -676,7 +578,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.886156337690869,
+        "semanticSimilarity": 0.8865226409263047,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgh82yux0001te0uus9brlev"
@@ -708,42 +610,10 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8466740613518567,
+        "semanticSimilarity": 0.8472028307778849,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmebcn2560003tenni47ulnfd"
-    },
-    {
-      "id": "golden-cme1ad7as0005tehbyna7a09m",
-      "article": {
-        "title": "【転載】【マサカリ求む】高さ対直径が1:1な円柱の空気抵抗について完全に理解したかもしれない",
-        "content": "投稿テストを兼ねて、qiitaの自記事からの転載です。\n\n 何故にそんなことを考えたの？\n当初の目的は、「空気抵抗を最小限にするにはどんな断面がいいの？」という疑問に対する答えでした。\nそのためにこの記事を参考にジューコフスキー翼を作ってみて、その抗力を調べようと思ったのですが、\n「抗力係数が分からねぇ…」という根本的な問題にぶち当たりました(当然ですが)。\n\n で、それじゃあどうやって抗力を求めるの？\nそこで色々とGoogle先生に聞いてみるも、ほぼ答えは\n\nD[N] = \\frac{ 1 }{ 2 } \\rho v^2 S C_d [kg/m^3]･[(m/s)^2]･[m^2]\n(...",
-        "url": "https://zenn.dev/onlinsanity/articles/2c62f247c6525e"
-      },
-      "expectedOutput": {
-        "summary": "高さと直径が1:1の円柱の空気抵抗について、抗力係数Cdの算出方法を解説。ジューコフスキー翼の抗力測定を試みるも、Cd不明という問題に直面し、空気抵抗の基本式からCdを求めるアプローチを提示する。",
-        "detailedSummary": "・円柱の空気抵抗とCd算出の課題：高さ対直径が1:1の円柱の空気抵抗を最小化する断面形状を模索する中で、抗力係数Cdの算出が根本的な課題となった。空気抵抗の基本式D = 1/2 * ρ * v^2 * S * Cdに基づき、Cdを求めるアプローチを解説する。",
-        "tags": [
-          "空気抵抗",
-          "Cd",
-          "流体力学",
-          "物理学"
-        ]
-      },
-      "metadata": {
-        "category": "thin_content",
-        "difficulty": "easy",
-        "categoryConfidence": 0.9,
-        "needsHumanReview": false,
-        "categoryReason": "Content length < 500 (300 chars)",
-        "createdAt": "2025-11-05T10:37:57.587Z",
-        "updatedAt": "2025-11-27T22:40:36.514Z"
-      },
-      "acceptanceThreshold": {
-        "semanticSimilarity": 0.8466740613518567,
-        "minimumQuality": 0.9
-      },
-      "sourceArticleId": "cme1ad7as0005tehbyna7a09m"
     },
     {
       "id": "golden-cmginiz9g000vteso783cdhz0",
@@ -773,43 +643,10 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8466740613518567,
+        "semanticSimilarity": 0.8472028307778849,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmginiz9g000vteso783cdhz0"
-    },
-    {
-      "id": "golden-cmf4kztxa000fte1a5vf59vhu",
-      "article": {
-        "title": "【生成AI×サイバー犯罪】楽天モバイルの行政指導から読み解く「攻撃の新しい当たり前」",
-        "content": "はじめに\n\n本連載では、生成AIコミュニティ「IKIGAI lab.」に所属する各分野の専門家が、それぞれの視点から最新のAIトレンドとビジネスへの示唆を発信しています。本記事を通じて、皆さまが“半歩先の未来”に思いを馳せ、異なる価値観や視座に触れていただければ幸いです。\n\n前回の記事では、新しく登場したGPT-5の特徴や可能性について取り上げました。今や生成AIは、私たちの生活や仕事に深く入り込み、「もうなかった時代には戻れない」と言えるほど便利で、しかも日々進化を続けている存在です。\n\nただ、その光の裏には影もあります。生成AIは新しい価値を生む一方で、不正利用や犯罪の加速といった負の側面も抱えているのです。本記事では、国内外で生成AIが悪用された犯罪事例と、その対策について解説します。",
-        "url": "https://thinkit.co.jp/article/38462"
-      },
-      "expectedOutput": {
-        "summary": "生成AIは生活や仕事に不可欠な存在となる一方、不正利用や犯罪加速といった負の側面も抱えています。楽天モバイルへの行政指導を例に、生成AIが悪用された国内外の犯罪事例とその対策について解説します。",
-        "detailedSummary": "・生成AIの普及と影：生成AIは生活や仕事に深く浸透し、日々進化しているが、不正利用や犯罪加速といった負の側面も抱えている。\n・生成AI悪用事例と対策：楽天モバイルへの行政指導を例に、生成AIが悪用された国内外の犯罪事例と、その対策について解説する。",
-        "tags": [
-          "生成AI",
-          "サイバー犯罪",
-          "AI",
-          "セキュリティ",
-          "GPT"
-        ]
-      },
-      "metadata": {
-        "category": "thin_content",
-        "difficulty": "easy",
-        "categoryConfidence": 0.9,
-        "needsHumanReview": false,
-        "categoryReason": "Content length < 500 (350 chars)",
-        "createdAt": "2025-11-05T10:37:57.587Z",
-        "updatedAt": "2025-11-27T22:40:36.514Z"
-      },
-      "acceptanceThreshold": {
-        "semanticSimilarity": 0.8466740613518567,
-        "minimumQuality": 0.9
-      },
-      "sourceArticleId": "cmf4kztxa000fte1a5vf59vhu"
     },
     {
       "id": "golden-cmg8lctyx000vtett2po242wz",
@@ -839,7 +676,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8466740613518567,
+        "semanticSimilarity": 0.8472028307778849,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg8lctyx000vtett2po242wz"
@@ -872,7 +709,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8486770576428332,
+        "semanticSimilarity": 0.8545951028515402,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmewhs858000hte47d5cmcd7h"
@@ -905,7 +742,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8486770576428332,
+        "semanticSimilarity": 0.8545951028515402,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg7759na009btewp73fbkipx"
