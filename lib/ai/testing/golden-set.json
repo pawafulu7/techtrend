@@ -15,12 +15,12 @@
       "avg": 95.71875
     },
     "thresholdCalibration": {
-      "percentile95": 0.9580408138255238,
+      "percentile95": 0.9901840752526926,
       "byCategory": {
-        "general": 0.8545204984863184,
-        "technical": 0.8622367324429714,
-        "thin_content": 0.8082603374454405,
-        "multilingual": 0.8438671688267351
+        "general": 0.8767265221147654,
+        "technical": 0.8911656677274233,
+        "thin_content": 0.85,
+        "multilingual": 0.8652081674777489
       }
     }
   },
@@ -53,7 +53,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg6ibip80007te8uzuh2fm8t"
@@ -86,7 +86,7 @@
         "updatedAt": "2025-11-25T23:03:35.665Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgu56v6b0003tejj2z5kshl4"
@@ -119,7 +119,7 @@
         "updatedAt": "2025-11-25T23:03:35.665Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgs0140m0001teq9asa672j4"
@@ -152,7 +152,7 @@
         "updatedAt": "2025-11-25T23:03:35.665Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgiy8q2c0003te9tac8xlfc4"
@@ -185,7 +185,7 @@
         "updatedAt": "2025-11-25T23:03:35.665Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg8pmdtp0005teer3575yw5i"
@@ -212,7 +212,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg8lcss5000dtett73drpluk"
@@ -245,7 +245,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgbqx8xu0007teyeygizvwr3"
@@ -278,7 +278,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgrcgazz0001te3p45qkulwj"
@@ -311,7 +311,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgqgb1ca0001teqzwnce0juu"
@@ -344,7 +344,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgheih0s000dtedfw24i1ucp"
@@ -377,7 +377,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmghp8ar20001teiltq4lvfrh"
@@ -409,7 +409,7 @@
         "updatedAt": "2025-11-25T23:39:35.230Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmhcnsnvi0011teskwqerh4xd"
@@ -442,7 +442,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545204984863184,
+        "semanticSimilarity": 0.8767265221147654,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmf9n6xis0001te02ohyucnxc"
@@ -475,7 +475,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8622367324429714,
+        "semanticSimilarity": 0.8911656677274233,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgut0uz2000dtelqb62u8gpt"
@@ -507,7 +507,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8622367324429714,
+        "semanticSimilarity": 0.8911656677274233,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgahx7wf0027teqltsfehs71"
@@ -540,7 +540,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8622367324429714,
+        "semanticSimilarity": 0.8911656677274233,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmguk79br0007teygw6vx5jat"
@@ -572,7 +572,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8622367324429714,
+        "semanticSimilarity": 0.8911656677274233,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg8twg580005tepj91zab19q"
@@ -605,7 +605,7 @@
         "updatedAt": "2025-11-25T17:19:03.557Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8622367324429714,
+        "semanticSimilarity": 0.8911656677274233,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgmaarkf0005te26vt2thf5g"
@@ -638,7 +638,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8622367324429714,
+        "semanticSimilarity": 0.8911656677274233,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgaqhzp70009te4otbt64r3q"
@@ -671,7 +671,7 @@
         "updatedAt": "2025-11-25T23:30:51.335Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8622367324429714,
+        "semanticSimilarity": 0.8911656677274233,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgh82yux0001te0uus9brlev"
@@ -703,7 +703,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8082603374454405,
+        "semanticSimilarity": 0.85,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmebcn2560003tenni47ulnfd"
@@ -736,7 +736,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8082603374454405,
+        "semanticSimilarity": 0.85,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cme1ad7as0005tehbyna7a09m"
@@ -769,7 +769,7 @@
         "updatedAt": "2025-11-25T23:39:35.230Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8082603374454405,
+        "semanticSimilarity": 0.85,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmginiz9g000vteso783cdhz0"
@@ -801,7 +801,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8082603374454405,
+        "semanticSimilarity": 0.85,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgiu3wu3000otea0q45xetc6"
@@ -834,7 +834,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8082603374454405,
+        "semanticSimilarity": 0.85,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmf4kztxa000fte1a5vf59vhu"
@@ -867,7 +867,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8082603374454405,
+        "semanticSimilarity": 0.85,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg8lctyx000vtett2po242wz"
@@ -900,7 +900,7 @@
         "updatedAt": "2025-11-25T23:30:51.335Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8438671688267351,
+        "semanticSimilarity": 0.8652081674777489,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmewhs858000hte47d5cmcd7h"
@@ -933,7 +933,7 @@
         "updatedAt": "2025-11-05T10:37:57.587Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8438671688267351,
+        "semanticSimilarity": 0.8652081674777489,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg7759na009btewp73fbkipx"
