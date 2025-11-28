@@ -59,8 +59,11 @@ const customJestConfig = {
     '<rootDir>/__tests__/middleware.node.test.ts',
   ],
   testMatch: [
-    '**/__tests__/**/*.test.{ts,tsx}',
-    '**/tests/**/*.test.{ts,tsx}',
+    '**/__tests__/**/*.test.tsx',
+    '**/app/components/**/__tests__/**/*.test.tsx',
+    '**/components/**/__tests__/**/*.test.tsx',
+    '**/__tests__/components/**/*.test.tsx',
+    '**/__tests__/hooks/**/*.test.tsx',
   ],
   collectCoverageFrom: [
     'app/**/*.tsx',
