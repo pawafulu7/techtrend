@@ -65,6 +65,7 @@ import { BaseFetcher } from '@/lib/fetchers/base';
 
 // エンリッチャーをインポート
 import { ContentEnricherFactory } from '@/lib/enrichers';
+import { isHighQuality } from '@/lib/enrichers/strategies/quality';
 
 const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   'はてなブックマーク': HatenaExtendedFetcher,
@@ -350,16 +351,24 @@ async function processSource({
                 const originalContentLength = article.content?.length || 0;
                 const enrichedContentLength = enrichedData.content.length;
 
-                if (enrichedContentLength > originalContentLength && enrichedContentLength >= 500) {
-                  await prisma.article.update({
-                    where: { id: savedArticle.id },
-                    data: {
-                      content: enrichedData.content,
-                      contentUpdatedAt: new Date(),
-                      ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
-                    }
-                  });
-                  console.error(`   [INFO] エンリッチメント成功: ${enrichedData.content.length}文字`);
+                if (enrichedContentLength > originalContentLength && enrichedContentLength >= 250) {
+                  // 250-499 chars: require quality check
+                  const needsQualityCheck = enrichedContentLength < 500;
+                  const passesQualityCheck = !needsQualityCheck || isHighQuality(enrichedData.content);
+
+                  if (passesQualityCheck) {
+                    await prisma.article.update({
+                      where: { id: savedArticle.id },
+                      data: {
+                        content: enrichedData.content,
+                        contentUpdatedAt: new Date(),
+                        ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
+                      }
+                    });
+                    console.error(`   [INFO] エンリッチメント成功: ${enrichedData.content.length}文字`);
+                  } else {
+                    console.warn(`   [WARN] エンリッチメント結果が品質基準未達: ${enrichedContentLength}文字`);
+                  }
                 } else {
                   console.warn(`   [WARN] エンリッチメント結果が不十分: ${enrichedContentLength}文字（元: ${originalContentLength}文字）`);
                 }
