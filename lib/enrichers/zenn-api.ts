@@ -72,8 +72,8 @@ export class ZennApiEnricher extends BaseContentEnricher {
     // 不要な要素を削除
     $('script, style, noscript, iframe').remove();
 
-    // bodyのテキストを取得
-    const text = $('body').text();
+    // 全てのテキストを取得（bodyタグの有無に関わらず）
+    const text = $.text();
 
     // テキストのクリーンアップ
     return text
