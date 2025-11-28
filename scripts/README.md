@@ -90,7 +90,15 @@ Scripts that are no longer actively used but preserved for reference:
 
 ## Cleanup History
 
-- 2024-11-28: Major cleanup
+- 2025-11-28: Root directory organization
+  - Moved 28 scripts from root to appropriate directories
+  - db/: Test user scripts, export-db-to-seed.ts
+  - dev/: generate-css-tokens.ts, compare-providers.ts, health-check-*.ts
+  - maintenance/: analyze-*, check-*, enrich-*, regenerate-*, etc.
+  - manual/: add-*, fetch-and-save-*, save-* scripts
+  - Updated 4 package.json paths
+
+- 2025-11-28: Major cleanup (Phase 1)
   - Archived 92 unused test scripts
   - Archived 6 legacy migration scripts (V6-V8)
   - Archived 15 completed fix scripts
