@@ -9,6 +9,7 @@ import { GMOContentEnricher } from './gmo';
 import { FreeeContentEnricher } from './freee';
 import { HatenaContentEnricher } from './hatena';
 import { ZennContentEnricher } from './zenn';
+import { ZennApiEnricher } from './zenn-api';
 import { ThinkITContentEnricher } from './thinkit';
 import { GoogleAIEnricher } from './google-ai';
 import { GoogleDevEnricher } from './google-dev';
@@ -37,6 +38,7 @@ export { GMOContentEnricher } from './gmo';
 export { FreeeContentEnricher } from './freee';
 export { HatenaContentEnricher } from './hatena';
 export { ZennContentEnricher } from './zenn';
+export { ZennApiEnricher } from './zenn-api';
 export { ThinkITContentEnricher } from './thinkit';
 export { GoogleAIEnricher } from './google-ai';
 export { GoogleDevEnricher } from './google-dev';
@@ -70,7 +72,8 @@ export class ContentEnricherFactory {
     this.enrichers = [
       new GMOContentEnricher(),
       new FreeeContentEnricher(),
-      new ZennContentEnricher(),
+      new ZennApiEnricher(),  // Zenn API優先（2025年11月追加）
+      new ZennContentEnricher(),  // Zenn HTMLフォールバック
       new ThinkITContentEnricher(),
       new GoogleAIEnricher(),
       new GoogleDevEnricher(),
