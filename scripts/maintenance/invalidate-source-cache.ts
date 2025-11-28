@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 
-import { sourceCache } from '../lib/cache/source-cache';
+import { sourceCache } from '../../lib/cache/source-cache';
 
 async function main() {
   console.error('Invalidating source cache...');

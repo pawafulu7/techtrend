@@ -9,7 +9,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { designTokens } from '../lib/design-tokens';
+import { designTokens } from '../../lib/design-tokens';
 
 const outPath = path.join(process.cwd(), 'app/generated-tokens.css');
 

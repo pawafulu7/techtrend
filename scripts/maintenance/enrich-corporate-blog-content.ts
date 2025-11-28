@@ -14,7 +14,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { ContentEnricherFactory } from '../lib/enrichers';
+import { ContentEnricherFactory } from '../../lib/enrichers';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 

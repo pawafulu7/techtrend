@@ -14,7 +14,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import fetch from 'node-fetch';
-import { stripHtmlTags } from '../lib/utils/html-sanitizer';
+import { stripHtmlTags } from '../../lib/utils/html-sanitizer';
 
 const prisma = new PrismaClient();
 

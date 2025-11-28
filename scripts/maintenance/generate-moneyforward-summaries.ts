@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { UnifiedSummaryService } from '../lib/ai/unified-summary-service';
+import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 
 async function generateMoneyForwardSummaries() {
   const prisma = new PrismaClient();
