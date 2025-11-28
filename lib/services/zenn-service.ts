@@ -53,7 +53,7 @@ class RateLimiter {
 
       if (elapsed < 1000) {
         // Check if we've hit the limit
-        if (this.requestCount > this.MAX_RPS) {
+        if (this.requestCount >= this.MAX_RPS) {
           const wait = 1000 - elapsed;
           const jitter = Math.floor(Math.random() * 200) + 100; // 100-300ms jitter
           await new Promise(resolve => setTimeout(resolve, wait + jitter));
