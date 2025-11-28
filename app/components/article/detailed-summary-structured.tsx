@@ -49,7 +49,7 @@ export function DetailedSummaryStructured({
 
   return (
     <section
-      className="p-[var(--tt-space-5)] bg-card text-card-foreground rounded-[var(--tt-radius-xl)] shadow-[var(--tt-shadow-card-rest)] hover:shadow-[var(--tt-shadow-card-hover)] transition-shadow duration-200 border border-foreground/10 focus-visible:outline-none focus-visible:shadow-[var(--tt-shadow-card-focus)]"
+      className="p-[var(--tt-space-5)] bg-card text-card-foreground rounded-[var(--tt-radius-xl)] shadow-[var(--tt-shadow-card-rest)] hover:shadow-[var(--tt-shadow-card-hover)] transition-shadow duration-200 border border-foreground/10"
       aria-label="詳細要約"
       data-testid="detailed-summary-container"
     >
@@ -73,9 +73,9 @@ export function DetailedSummaryStructured({
               }}
               data-testid={`detailed-summary-section-${index}`}
             >
-              {/* Timeline dot */}
+              {/* Timeline dot - adjusted for mobile */}
               <span
-                className="absolute left-[-5px] top-[var(--tt-space-3)] h-[10px] w-[10px] rounded-full border-2 border-card"
+                className="absolute left-[-4px] md:left-[-5px] top-[var(--tt-space-3)] h-[10px] w-[10px] rounded-full border-2 border-card"
                 style={{ backgroundColor: accentColor }}
                 aria-hidden="true"
               />
@@ -83,7 +83,6 @@ export function DetailedSummaryStructured({
               <h4 className="text-[var(--tt-text-sm)] md:text-[var(--tt-text-base)] font-[var(--tt-font-heading)] font-semibold tracking-[var(--tt-tracking-tight)] flex items-center gap-[var(--tt-space-3)]">
                 <span
                   className="text-xl md:text-2xl flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-muted/60 group-hover:bg-muted transition-colors duration-200"
-                  role="img"
                   aria-hidden="true"
                 >
                   {section.icon}
@@ -108,12 +107,12 @@ export function DetailedSummaryStructured({
 
 // Highlight important parts of the content
 function highlightContent(content: string): React.ReactNode {
-  // Important keyword patterns
+  // Important keyword patterns with text decoration for WCAG 1.4.1 compliance
   const patterns = [
-    { regex: /\u554f\u984c\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-destructive' },
-    { regex: /\u89e3\u6c7a\u7b56\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-primary' },
-    { regex: /\u52b9\u679c\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-green-800 dark:text-green-500' },
-    { regex: /\u6ce8\u610f\u70b9\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-orange-700 dark:text-orange-500' }
+    { regex: /\u554f\u984c\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-destructive underline decoration-wavy decoration-1' },
+    { regex: /\u89e3\u6c7a\u7b56\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-primary underline decoration-2' },
+    { regex: /\u52b9\u679c\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-green-800 dark:text-green-500 underline decoration-dotted decoration-1' },
+    { regex: /\u6ce8\u610f\u70b9\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-orange-700 dark:text-orange-500 underline decoration-dashed decoration-1' }
   ];
 
   const parts: React.ReactNode[] = [];
