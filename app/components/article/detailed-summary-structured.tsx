@@ -64,12 +64,11 @@ export function DetailedSummaryStructured({
           return (
             <article
               key={index}
-              className="group relative pl-[var(--tt-space-4)] md:pl-[var(--tt-space-5)] pb-[var(--tt-space-2)] space-y-[var(--tt-space-2)] rounded-[var(--tt-radius-lg)] transition-colors duration-200 hover:bg-[var(--tt-color-surface-hover)]/50 min-h-[44px] motion-safe:animate-[fadeInUp_0.4s_ease_forwards] motion-reduce:animate-none"
+              className="group relative pl-[var(--tt-space-4)] md:pl-[var(--tt-space-5)] pb-[var(--tt-space-2)] space-y-[var(--tt-space-2)] rounded-[var(--tt-radius-lg)] transition-colors duration-200 hover:bg-[var(--tt-color-surface-hover)]/50 min-h-[44px] motion-safe:opacity-0 motion-safe:animate-[fadeInUp_0.4s_ease_forwards]"
               style={{
                 borderLeftWidth: '2px',
                 borderLeftColor: accentColor,
                 animationDelay: `${index * 60}ms`,
-                opacity: 0,
               }}
               data-testid={`detailed-summary-section-${index}`}
             >
@@ -109,10 +108,10 @@ export function DetailedSummaryStructured({
 function highlightContent(content: string): React.ReactNode {
   // Important keyword patterns with text decoration for WCAG 1.4.1 compliance
   const patterns = [
-    { regex: /\u554f\u984c\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-destructive underline decoration-wavy decoration-1' },
-    { regex: /\u89e3\u6c7a\u7b56\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-primary underline decoration-2' },
-    { regex: /\u52b9\u679c\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-green-800 dark:text-green-500 underline decoration-dotted decoration-1' },
-    { regex: /\u6ce8\u610f\u70b9\u306f(.+?)\u3067\u3042\u308b/g, style: 'font-semibold text-orange-700 dark:text-orange-500 underline decoration-dashed decoration-1' }
+    { regex: /問題は(.+?)である/g, style: 'font-semibold text-destructive underline decoration-wavy decoration-1' },
+    { regex: /解決策は(.+?)である/g, style: 'font-semibold text-primary underline decoration-2' },
+    { regex: /効果は(.+?)である/g, style: 'font-semibold text-green-800 dark:text-green-500 underline decoration-dotted decoration-1' },
+    { regex: /注意点は(.+?)である/g, style: 'font-semibold text-orange-700 dark:text-orange-500 underline decoration-dashed decoration-1' }
   ];
 
   const parts: React.ReactNode[] = [];
@@ -138,6 +137,11 @@ function highlightContent(content: string): React.ReactNode {
 
   // Split text and highlight
   matches.forEach((match, index) => {
+    // Skip overlapping matches
+    if (match.start < lastIndex) {
+      return;
+    }
+
     // Text before match
     if (match.start > lastIndex) {
       parts.push(content.substring(lastIndex, match.start));
