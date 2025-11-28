@@ -29,11 +29,11 @@ describe('ContentEnricherFactory', () => {
       expect(enricher?.constructor.name).toBe('CloudflareBlogEnricher');
     });
 
-    it('should return ZennContentEnricher for Zenn URLs', () => {
+    it('should return ZennApiEnricher for Zenn article URLs', () => {
       const enricher = factory.getEnricher('https://zenn.dev/user/articles/sample');
-      
+
       expect(enricher).not.toBeNull();
-      expect(enricher?.constructor.name).toBe('ZennContentEnricher');
+      expect(enricher?.constructor.name).toBe('ZennApiEnricher');
     });
 
     it('should return MoneyForwardContentEnricher for Money Forward URLs', () => {
@@ -106,7 +106,7 @@ describe('ContentEnricherFactory', () => {
     const testCases = [
       { url: 'https://developers.gmo.jp/123', expected: 'GMOContentEnricher' },
       { url: 'https://developers.freee.co.jp/entry', expected: 'FreeeContentEnricher' },
-      { url: 'https://zenn.dev/user/articles/abc', expected: 'ZennContentEnricher' },
+      { url: 'https://zenn.dev/user/articles/abc', expected: 'ZennApiEnricher' },
       { url: 'https://thinkit.co.jp/article/123', expected: 'ThinkITContentEnricher' },
       // { url: 'https://ai.googleblog.com/post', expected: 'GoogleAIEnricher' }, // TODO: Fix enricher
       { url: 'https://developers.googleblog.com/post', expected: 'GoogleDevEnricher' },
