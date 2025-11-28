@@ -96,13 +96,13 @@ export class ZennService {
       const match = cleanUrl.match(/zenn\.dev\/[^/]+\/articles\/([a-z0-9_-]+)(?:[?#].*)?$/i);
 
       if (!match) {
-        logger.debug('Failed to extract slug from URL', { url });
+        logger.debug({ url }, 'Failed to extract slug from URL');
         return null;
       }
 
       return match[1];
     } catch (error) {
-      logger.error('Error extracting slug from URL', { url, error });
+      logger.error({ url, error }, 'Error extracting slug from URL');
       return null;
     }
   }
@@ -153,12 +153,12 @@ export class ZennService {
         throw new Error('Invalid response: missing article.body_html');
       }
 
-      logger.info('Successfully fetched Zenn article', {
+      logger.info({
         slug,
         status: response.status,
         duration_ms: duration,
         content_length: data.article.body_html.length,
-      });
+      }, 'Successfully fetched Zenn article');
 
       return data;
     } catch (error: any) {
@@ -201,11 +201,11 @@ export class ZennService {
       // Check overall timeout budget
       const elapsed = Date.now() - overallStartTime;
       if (elapsed >= this.MAX_TOTAL_DURATION) {
-        logger.error('Total timeout budget exceeded for Zenn article fetch', {
+        logger.error({
           slug,
           elapsed_ms: elapsed,
           max_duration_ms: this.MAX_TOTAL_DURATION,
-        });
+        }, 'Total timeout budget exceeded for Zenn article fetch');
         throw new Error(`Total timeout exceeded: ${elapsed}ms > ${this.MAX_TOTAL_DURATION}ms`);
       }
 
@@ -213,11 +213,11 @@ export class ZennService {
         const data = await this.fetchArticleContent(slug);
 
         if (attempt > 1) {
-          logger.info('Zenn article fetch succeeded after retry', {
+          logger.info({
             slug,
             attempt,
             total_duration_ms: Date.now() - overallStartTime,
-          });
+          }, 'Zenn article fetch succeeded after retry');
         }
 
         return data;
@@ -242,18 +242,18 @@ export class ZennService {
           // Non-retryable errors: 4xx (except 429), invalid JSON, etc.
           // Use warn/info for expected errors (404/410)
           const logLevel = status === 404 || status === 410 ? 'info' : 'warn';
-          logger[logLevel]('Non-retryable error fetching Zenn article', {
+          logger[logLevel]({
             slug,
             status,
             error: error.message,
             attempt,
             duration_ms: error.duration,
-          });
+          }, 'Non-retryable error fetching Zenn article');
           throw error;
         }
 
         // Log retry attempt
-        logger.warn('Retryable error fetching Zenn article', {
+        logger.warn({
           slug,
           status,
           error: error.message,
@@ -261,7 +261,7 @@ export class ZennService {
           max_retries: this.MAX_RETRIES,
           will_retry: attempt < this.MAX_RETRIES,
           duration_ms: error.duration,
-        });
+        }, 'Retryable error fetching Zenn article');
 
         // Don't wait after last attempt
         if (attempt >= this.MAX_RETRIES) {
@@ -278,10 +278,10 @@ export class ZennService {
             const retryAfterMs = parseInt(retryAfter, 10) * 1000;
             if (!isNaN(retryAfterMs)) {
               delay = retryAfterMs;
-              logger.info('Using Retry-After header for backoff', {
+              logger.info({
                 slug,
                 retry_after_ms: delay,
-              });
+              }, 'Using Retry-After header for backoff');
             }
           }
         }
@@ -294,31 +294,31 @@ export class ZennService {
         const elapsedSoFar = Date.now() - overallStartTime;
         const remainingBudget = this.MAX_TOTAL_DURATION - elapsedSoFar;
         if (totalDelay >= remainingBudget) {
-          logger.warn('Retry delay would exceed total budget, aborting', {
+          logger.warn({
             slug,
             delay_ms: totalDelay,
             remaining_budget_ms: remainingBudget,
-          });
+          }, 'Retry delay would exceed total budget, aborting');
           break;
         }
 
-        logger.debug('Waiting before retry', {
+        logger.debug({
           slug,
           attempt,
           delay_ms: totalDelay,
-        });
+        }, 'Waiting before retry');
 
         await new Promise(resolve => setTimeout(resolve, totalDelay));
       }
     }
 
     // All retries exhausted
-    logger.error('All retries exhausted for Zenn article fetch', {
+    logger.error({
       slug,
       attempts: this.MAX_RETRIES,
       last_error: lastError?.message,
       total_duration_ms: Date.now() - overallStartTime,
-    });
+    }, 'All retries exhausted for Zenn article fetch');
 
     throw new Error(`All retries exhausted: ${lastError?.message ?? 'unknown error'}`);
   }
