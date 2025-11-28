@@ -143,14 +143,18 @@ export class ZennService {
       // Validate Content-Type
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        throw new Error(`Invalid Content-Type: ${contentType}`);
+        const err: any = new Error(`Invalid Content-Type: ${contentType}`);
+        err.nonRetryable = true;
+        throw err;
       }
 
       const data: ZennArticleResponse = await response.json();
 
       // Validate response structure
       if (!data.article || !data.article.body_html) {
-        throw new Error('Invalid response: missing article.body_html');
+        const err: any = new Error('Invalid response: missing article.body_html');
+        err.nonRetryable = true;
+        throw err;
       }
 
       logger.info({
@@ -225,18 +229,20 @@ export class ZennService {
         lastError = error;
         const status = error.status;
         const isTimeout = error.isTimeout;
+        const isNonRetryableValidationError = error.nonRetryable;
         const isNetworkError =
           ['ENOTFOUND', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'].includes(error.code) ||
           error.name === 'FetchError' ||
           (error.cause && ['ENOTFOUND', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'].includes(error.cause.code)) ||
-          (!status && !error.isTimeout); // No status + not timeout = likely network error
+          (!status && !error.isTimeout && !isNonRetryableValidationError); // No status + not timeout + not validation error = likely network error
 
         // Determine if we should retry
         const shouldRetry =
-          status === 429 ||
-          (status >= 500 && status < 600) ||
-          isTimeout ||
-          isNetworkError;
+          !isNonRetryableValidationError &&
+          (status === 429 ||
+            (status >= 500 && status < 600) ||
+            isTimeout ||
+            isNetworkError);
 
         if (!shouldRetry) {
           // Non-retryable errors: 4xx (except 429), invalid JSON, etc.
