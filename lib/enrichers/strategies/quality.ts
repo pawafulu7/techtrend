@@ -7,7 +7,7 @@ export interface QualityMetrics {
 
 export function evaluateQuality(content: string): QualityMetrics {
   const length = content.length;
-  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const sentences = content.split(/[.!?。！？]+/).filter(s => s.trim().length > 10);
   const whitespaceCount = (content.match(/\s/g) || []).length;
   const whitespaceRatio = whitespaceCount / length;
   const avgSentenceLength = sentences.length > 0 ? length / sentences.length : 0;
