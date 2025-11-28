@@ -44,26 +44,32 @@ class RateLimiter {
    * Thread-safe implementation using mutex
    */
   static async waitIfNeeded(): Promise<void> {
-    await this.mutex;
-
+    const prev = this.mutex;
     this.mutex = (async () => {
+      await prev;
+
       const now = Date.now();
       const elapsed = now - this.lastRequestTime;
 
       if (elapsed < 1000) {
-        this.requestCount++;
-        if (this.requestCount >= this.MAX_RPS) {
+        // Check if we've hit the limit
+        if (this.requestCount > this.MAX_RPS) {
           const wait = 1000 - elapsed;
           const jitter = Math.floor(Math.random() * 200) + 100; // 100-300ms jitter
           await new Promise(resolve => setTimeout(resolve, wait + jitter));
-          this.requestCount = 1; // Count the request that triggered the wait
+          this.requestCount = 1; // Reset and count current request
+        } else {
+          this.requestCount++;
         }
       } else {
+        // New window, reset counter
         this.requestCount = 1;
       }
 
       this.lastRequestTime = Date.now();
     })();
+
+    await this.mutex;
   }
 }
 
@@ -219,7 +225,11 @@ export class ZennService {
         lastError = error;
         const status = error.status;
         const isTimeout = error.isTimeout;
-        const isNetworkError = ['ENOTFOUND', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'].includes(error.code);
+        const isNetworkError =
+          ['ENOTFOUND', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'].includes(error.code) ||
+          error.name === 'FetchError' ||
+          (error.cause && ['ENOTFOUND', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'].includes(error.cause.code)) ||
+          (!status && !error.isTimeout); // No status + not timeout = likely network error
 
         // Determine if we should retry
         const shouldRetry =
@@ -279,6 +289,18 @@ export class ZennService {
         // Add jitter (100-300ms)
         const jitter = Math.floor(Math.random() * 200) + 100;
         const totalDelay = delay + jitter;
+
+        // Check if delay would exceed total budget
+        const elapsedSoFar = Date.now() - overallStartTime;
+        const remainingBudget = this.MAX_TOTAL_DURATION - elapsedSoFar;
+        if (totalDelay >= remainingBudget) {
+          logger.warn('Retry delay would exceed total budget, aborting', {
+            slug,
+            delay_ms: totalDelay,
+            remaining_budget_ms: remainingBudget,
+          });
+          break;
+        }
 
         logger.debug('Waiting before retry', {
           slug,
