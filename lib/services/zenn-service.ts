@@ -56,7 +56,7 @@ class RateLimiter {
           const wait = 1000 - elapsed;
           const jitter = Math.floor(Math.random() * 200) + 100; // 100-300ms jitter
           await new Promise(resolve => setTimeout(resolve, wait + jitter));
-          this.requestCount = 0;
+          this.requestCount = 1; // Count the request that triggered the wait
         }
       } else {
         this.requestCount = 1;
@@ -130,6 +130,7 @@ export class ZennService {
         (error as any).status = response.status;
         (error as any).statusText = response.statusText;
         (error as any).duration = duration;
+        (error as any).headers = response.headers; // Attach headers for Retry-After
         throw error;
       }
 
@@ -218,7 +219,7 @@ export class ZennService {
         lastError = error;
         const status = error.status;
         const isTimeout = error.isTimeout;
-        const isNetworkError = ['ENOTFOUND', 'ECONNRESET', 'ETIMEDOUT'].includes(error.code);
+        const isNetworkError = ['ENOTFOUND', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'].includes(error.code);
 
         // Determine if we should retry
         const shouldRetry =
@@ -229,7 +230,9 @@ export class ZennService {
 
         if (!shouldRetry) {
           // Non-retryable errors: 4xx (except 429), invalid JSON, etc.
-          logger.error('Non-retryable error fetching Zenn article', {
+          // Use warn/info for expected errors (404/410)
+          const logLevel = status === 404 || status === 410 ? 'info' : 'warn';
+          logger[logLevel]('Non-retryable error fetching Zenn article', {
             slug,
             status,
             error: error.message,

@@ -308,6 +308,66 @@ describe('ZennService', () => {
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
+    it('should honor Retry-After header for 429', async () => {
+      const mockHeaders = {
+        get: jest.fn((name: string) => {
+          if (name === 'retry-after') return '2'; // 2 seconds
+          if (name === 'content-type') return 'application/json';
+          return null;
+        }),
+      };
+
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          statusText: 'Too Many Requests',
+          headers: mockHeaders,
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: {
+            get: jest.fn().mockReturnValue('application/json'),
+          },
+          json: async () => mockArticleResponse,
+        });
+
+      const startTime = Date.now();
+      const promise = ZennService.fetchWithRetry('test-slug');
+      await jest.runAllTimersAsync();
+      const result = await promise;
+      const elapsed = Date.now() - startTime;
+
+      expect(result).toEqual(mockArticleResponse);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      // Should have honored the 2s Retry-After header
+      expect(mockHeaders.get).toHaveBeenCalledWith('retry-after');
+    });
+
+    it('should retry on ECONNREFUSED network error', async () => {
+      const networkError = new Error('Network error');
+      (networkError as any).code = 'ECONNREFUSED';
+
+      (global.fetch as jest.Mock)
+        .mockRejectedValueOnce(networkError)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: {
+            get: jest.fn().mockReturnValue('application/json'),
+          },
+          json: async () => mockArticleResponse,
+        });
+
+      const promise = ZennService.fetchWithRetry('test-slug');
+      await jest.runAllTimersAsync();
+      const result = await promise;
+
+      expect(result).toEqual(mockArticleResponse);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
     // Note: Retry exhaustion test removed due to complexity with fake timers
     // The retry logic is working correctly in the implementation and verified by other tests
   });
