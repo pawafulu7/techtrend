@@ -47,11 +47,11 @@ export class ZennApiEnricher extends BaseContentEnricher {
       }
 
       // サムネイルURLを取得（OGP画像など）
-      const thumbnail = this.extractThumbnailFromHtml(data.article.body_html);
+      const thumbnail = this.extractThumbnail(data.article.body_html);
 
       return {
         content: plainText,
-        thumbnail: thumbnail ?? null,
+        thumbnail,
       };
     } catch (error) {
       this.logEnrichmentError(url, error);
@@ -80,17 +80,5 @@ export class ZennApiEnricher extends BaseContentEnricher {
       .replace(/[ \t]+/g, ' ')      // 連続するスペース/タブを1つに
       .replace(/\n{3,}/g, '\n\n')   // 3つ以上の改行を2つに
       .trim();
-  }
-
-  /**
-   * HTMLからサムネイルURLを抽出
-   * OGP画像やTwitter画像を優先的に取得
-   *
-   * @param html - HTMLコンテンツ
-   * @returns サムネイルURL or null
-   */
-  private extractThumbnailFromHtml(html: string): string | null {
-    // BaseContentEnricherのextractThumbnailメソッドを再利用
-    return this.extractThumbnail(html);
   }
 }
