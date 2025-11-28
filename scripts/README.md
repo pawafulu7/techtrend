@@ -1,132 +1,98 @@
-# Scripts ディレクトリ管理ガイドライン
+# Scripts Directory Management Guidelines
 
-## ディレクトリ構造
+## Directory Structure
 
 ```
 scripts/
-├── scheduled/     # 定期実行スクリプト（恒久的）
-├── manual/        # 手動実行スクリプト（恒久的）
-├── maintenance/   # メンテナンススクリプト（恒久的）
-├── utils/         # ユーティリティスクリプト（恒久的）
-└── temp/          # 一時的スクリプト（.gitignore対象）
-    ├── fixes/     # 修正系スクリプト
-    ├── checks/    # 検証系スクリプト
-    ├── tests/     # テスト系スクリプト
-    └── misc/      # その他の一時的スクリプト
+├── scheduled/     # Scheduled scripts (PM2/CI) - permanent
+├── manual/        # Manual execution scripts - permanent
+├── maintenance/   # Maintenance scripts - permanent
+├── ci/            # CI/CD scripts - permanent
+├── dev/           # Development utilities - permanent
+├── rag/           # RAG-related scripts - permanent
+├── utils/         # Shell utilities - permanent
+├── db/            # Database scripts - permanent
+├── migration/
+│   ├── archive/   # Legacy migrations (V6-V8)
+│   └── (current)  # Active migration scripts
+├── test/
+│   ├── _archive/  # Archived test scripts (2024-11-28)
+│   └── (active)   # Active test utilities
+├── fix/
+│   └── _archive/  # Completed fix scripts
+├── _archive/      # Other archived scripts
+└── temp/          # Temporary scripts (.gitignore)
 ```
 
-## スクリプト管理ルール
+## Script Classification
 
-### 1. スクリプトの分類
+### Permanent Scripts
 
-#### 恒久的スクリプト
-- **定期実行（scheduled/）**: PM2やcronで定期実行されるスクリプト
-- **手動実行（manual/）**: 必要時に手動で実行するツール
-- **メンテナンス（maintenance/）**: システムメンテナンス用のスクリプト
-- **ユーティリティ（utils/）**: シェルスクリプトや補助ツール
+| Directory | Purpose | Example |
+|-----------|---------|---------|
+| scheduled/ | PM2/cron scheduled jobs | collect-feeds.ts |
+| manual/ | On-demand tools | compare-summaries.ts |
+| maintenance/ | System maintenance | generate-summaries.ts |
+| ci/ | CI/CD pipelines | run-golden-set-regression.ts |
+| dev/ | Development utilities | run-embedding-worker.ts |
+| rag/ | RAG/embedding operations | backfill-embeddings.ts |
 
-#### 一時的スクリプト（temp/）
-- **修正系（fixes/）**: 一時的な修正・パッチ適用スクリプト
-- **検証系（checks/）**: デバッグや検証用スクリプト
-- **テスト系（tests/）**: 実験的なテストスクリプト
-- **その他（misc/）**: 上記に分類されない一時的なスクリプト
+### Archived Scripts
 
-### 2. 作成時のルール
+Scripts that are no longer actively used but preserved for reference:
 
-#### 恒久的スクリプトの作成
-1. 適切なディレクトリ（scheduled/、manual/、maintenance/、utils/）に配置
-2. 機能を表す明確な名前を付ける（例: `collect-feeds.ts`、`generate-summaries.ts`）
-3. スクリプトの用途と使用方法をコメントで記載
-4. package.jsonにスクリプトコマンドを追加（必要に応じて）
+- `test/_archive/` - 92 ad-hoc test scripts (archived 2024-11-28)
+- `migration/archive/` - V6/V7/V8 migration scripts (current: V9)
+- `fix/_archive/` - 15 completed one-time fixes
+- `_archive/` - Other superseded scripts
 
-#### 一時的スクリプトの作成
-1. **必ず** temp/配下の適切なサブディレクトリに配置
-2. プレフィックスを付けた名前にする
-   - 修正系: `fix-*.ts`
-   - 検証系: `check-*.ts`
-   - テスト系: `test-*.ts`
-3. スクリプト冒頭に作成日と削除予定日をコメントで記載
+**Archive Policy:**
+- Archived scripts are preserved for 2 weeks minimum
+- After verification period, may be permanently deleted
+- Git history preserves all changes
 
-### 3. 削除タイミング
+### Temporary Scripts (temp/)
 
-#### 一時的スクリプト
-- 作業完了後、即座に削除することを推奨
-- 最長でも1ヶ月以内に削除
-- 定期的なクリーンアップ（月1回）を実施
+- Not tracked in Git
+- For debugging, experiments, one-time fixes
+- Delete after use
 
-#### 恒久的スクリプト
-- 使用されなくなった場合は、削除前に十分な検討を行う
-- 削除時は関連するpackage.jsonのコマンドも更新
+## Naming Conventions
 
-### 4. 命名規則
+- Use kebab-case: `collect-feeds.ts`
+- Start with verb: `generate-`, `fix-`, `test-`
+- Be specific: `regenerate-low-quality-summaries.ts`
 
-#### 恒久的スクリプト
-- ケバブケース（kebab-case）を使用
-- 動詞で始まる（例: `collect-`, `generate-`, `clean-`）
-- 対象を明確にする（例: `collect-feeds.ts`、`generate-tags.ts`）
+## Key Scripts
 
-#### 一時的スクリプト
-- プレフィックス + 具体的な内容
-- 例: `fix-short-summaries.ts`、`check-article-quality.ts`
+### scheduled/ - Scheduled Jobs
+- `scheduler.ts` - PM2 scheduler entry point
+- `collect-feeds.ts` - RSS/API feed collection
+- `manage-summaries.ts` - Summary generation
+- `manage-quality-scores.ts` - Quality score calculation
+- `delete-low-quality-articles.ts` - Cleanup
 
-### 5. Git管理
+### ci/ - CI/CD
+- `run-golden-set-regression.ts` - AI regression tests
+- `calibrate-thresholds.ts` - Threshold calibration
 
-#### 恒久的スクリプト
-- 通常通りGit管理
-- 変更時は適切なコミットメッセージを記載
+### test/ - Test Utilities (Active)
+- `reset-test-db.ts` - Test database reset
+- `setup-test-db.ts` - Test database setup
+- `seed-test.sql` - Test seed data
 
-#### 一時的スクリプト（temp/）
-- .gitignoreで除外されているため、Git管理されない
-- 重要な修正内容は、恒久的スクリプトに反映後に削除
+## Adding New Scripts
 
-## 主要スクリプト一覧
+1. Choose appropriate directory (scheduled/, manual/, maintenance/, etc.)
+2. Follow naming conventions
+3. Add package.json command if needed
+4. Document purpose in file header
 
-### scheduled/ - 定期実行
-- `collect-feeds.ts` - 各種フィードの収集
-- `generate-tags.ts` - タグの自動生成
-- `quality-check.ts` - 記事品質のチェック
-- `auto-regenerate.ts` - 自動再生成処理
-- `delete-low-quality-articles.ts` - 低品質記事の削除
+## Cleanup History
 
-### manual/ - 手動実行
-- `generate-summaries-claude.ts` - Claude APIを使用した要約生成
-- `compare-summaries.ts` - 要約の比較ツール
-- `generate-tags-claude-batch.ts` - Claude APIでのバッチタグ生成
-
-### maintenance/ - メンテナンス
-- `generate-summaries.ts` - 通常の要約生成処理
-
-### utils/ - ユーティリティ
-- `docker-dev.sh` - Docker開発環境セットアップ
-- `cleanup-db.sh` - データベースクリーンアップ
-- `backup.sh` - バックアップスクリプト
-
-## package.json スクリプトコマンド
-
-主要なスクリプトコマンド:
-```json
-{
-  "scripts:collect": "tsx scripts/scheduled/collect-feeds.ts",
-  "scripts:summarize": "tsx scripts/maintenance/generate-summaries.ts",
-  "claude:summarize": "tsx scripts/manual/generate-summaries-claude.ts",
-  "claude:compare": "tsx scripts/manual/compare-summaries.ts"
-}
-```
-
-## 注意事項
-
-1. **temp/ディレクトリの内容はGit管理されません**
-   - 重要な変更は恒久的スクリプトに反映してください
-
-2. **定期的なクリーンアップ**
-   - 月1回、temp/ディレクトリをクリーンアップしてください
-
-3. **ドキュメント更新**
-   - 新しい恒久的スクリプトを追加した際は、このREADMEを更新してください
-
-4. **依存関係の確認**
-   - スクリプトを移動・削除する際は、他のスクリプトやpackage.jsonとの依存関係を確認してください
-
-## 問い合わせ
-
-スクリプト管理に関する質問や提案がある場合は、プロジェクトリーダーまでご連絡ください。
+- 2024-11-28: Major cleanup
+  - Archived 92 unused test scripts
+  - Archived 6 legacy migration scripts (V6-V8)
+  - Archived 15 completed fix scripts
+  - Deleted 3 one-time scripts
+  - Removed 5 deprecated package.json commands
