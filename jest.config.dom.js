@@ -41,10 +41,29 @@ const customJestConfig = {
     '<rootDir>/app/components/article/__tests__/ArticleListItem.test.tsx',
     // Node環境専用テスト（.node.test.ts）をDOM環境では除外（CodexMCP推奨）
     '\\.node\\.test\\.(t|j)sx?$',
+    // API/Server/Integration tests: Node環境専用のためDOM環境では除外
+    '<rootDir>/__tests__/api/',
+    '<rootDir>/app/api/__tests__/',
+    '<rootDir>/__tests__/integration/',
+    '<rootDir>/__tests__/performance/',
+    // Enricher/Fetcherテスト: Cheerio（Node専用）使用のためDOM環境では除外
+    '<rootDir>/__tests__/enrichers/',
+    '<rootDir>/lib/enrichers/__tests__/',
+    '<rootDir>/__tests__/fetchers/',
+    '<rootDir>/lib/fetchers/__tests__/',
+    '<rootDir>/__tests__/manual/',
+    // Service/DB/Cacheテスト: Node環境専用
+    '<rootDir>/__tests__/services/',
+    '<rootDir>/lib/services/__tests__/',
+    '<rootDir>/__tests__/security/',
+    '<rootDir>/__tests__/middleware.node.test.ts',
   ],
   testMatch: [
-    '**/__tests__/**/*.test.{ts,tsx}',
-    '**/tests/**/*.test.{ts,tsx}',
+    '**/__tests__/**/*.test.tsx',
+    '**/app/components/**/__tests__/**/*.test.tsx',
+    '**/components/**/__tests__/**/*.test.tsx',
+    '**/__tests__/components/**/*.test.tsx',
+    '**/__tests__/hooks/**/*.test.tsx',
   ],
   collectCoverageFrom: [
     'app/**/*.tsx',
