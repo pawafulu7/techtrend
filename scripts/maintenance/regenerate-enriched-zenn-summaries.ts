@@ -5,7 +5,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { UnifiedSummaryService } from '../lib/ai/unified-summary-service';
+import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 
 const prisma = new PrismaClient();
 

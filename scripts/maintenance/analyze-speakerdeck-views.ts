@@ -1,4 +1,4 @@
-import { speakerDeckConfig } from '../lib/config/speakerdeck';
+import { speakerDeckConfig } from '../../lib/config/speakerdeck';
 import * as cheerio from 'cheerio';
 
 // 一時的に設定を変更
