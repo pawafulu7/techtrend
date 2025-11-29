@@ -232,7 +232,7 @@ export function ArticleCard({
             />
           </div>
         ) : article.summary ? (
-          <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-200">
+          <p className="text-sm leading-relaxed text-(--tt-color-text)/90">
             {article.summary}
           </p>
         ) : null}
