@@ -29,6 +29,7 @@ import { MozillaHacksEnricher } from './mozilla-hacks';
 import { HackerNewsEnricher } from './hacker-news';
 import { MediumEngineeringEnricher } from './medium-engineering';
 import { AWSEnricher } from './aws';
+import { SpeakerDeckEnricher } from './speakerdeck';
 import { GenericContentEnricher } from './generic';
 
 export { BaseContentEnricher } from './base';
@@ -58,6 +59,7 @@ export { MozillaHacksEnricher } from './mozilla-hacks';
 export { HackerNewsEnricher } from './hacker-news';
 export { MediumEngineeringEnricher } from './medium-engineering';
 export { AWSEnricher } from './aws';
+export { SpeakerDeckEnricher } from './speakerdeck';
 
 /**
  * エンリッチャーファクトリークラス
@@ -96,6 +98,8 @@ export class ContentEnricherFactory {
       new MediumEngineeringEnricher(),
       // 新規追加（2025年9月2日）AWSソース
       new AWSEnricher(),
+      // 新規追加（2025年11月29日）Speaker Deck専用
+      new SpeakerDeckEnricher(),
       new HatenaContentEnricher(),  // 汎用HTMLパーサー
       new GenericContentEnricher(),  // 最後のフォールバック（すべてのURLに対応）
       // 将来的に他の企業のエンリッチャーを追加
