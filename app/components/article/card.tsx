@@ -205,9 +205,8 @@ export function ArticleCard({
           {!showThumbnail && (
             <h3
               className={cn(
-                'font-heading text-lg font-semibold leading-snug text-(--tt-color-text)',
-                isRead && 'opacity-70',
-                !isTextOnly && 'line-clamp-2'
+                'font-heading text-lg font-semibold leading-snug text-foreground line-clamp-2',
+                isRead && 'opacity-70'
               )}
             >
               {article.translatedTitle || article.title}
@@ -232,7 +231,7 @@ export function ArticleCard({
             />
           </div>
         ) : article.summary ? (
-          <p className="text-sm leading-relaxed text-(--tt-color-text)">
+          <p className="text-sm leading-relaxed text-foreground">
             {article.summary}
           </p>
         ) : null}
