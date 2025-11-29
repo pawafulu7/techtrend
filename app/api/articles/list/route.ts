@@ -34,6 +34,8 @@ interface LightweightArticle {
   userVotes: number;
   createdAt: Date | string;
   updatedAt: Date | string;
+  // Content length for reading time calculation (content itself excluded for performance)
+  contentLength?: number | null;
   // User-specific data (when includeUserData=true)
   isFavorited?: boolean;
   isRead?: boolean;
@@ -485,8 +487,8 @@ export async function GET(request: NextRequest) {
           userVotes: true,
           createdAt: true,
           updatedAt: true,
+          content: true, // For contentLength calculation, stripped before response
           // No tags relation selected (performance optimization)
-          // No content field selected (reduces data transfer)
           // No detailedSummary field selected (reduces data transfer)
         },
         orderBy: [
@@ -610,11 +612,14 @@ export async function GET(request: NextRequest) {
         
         // Normalize dates and add user data for actual page items
         normalizedArticles = pageData.items.map(article => {
+          // Extract content for length calculation, then exclude from response
+          const { content, ...articleWithoutContent } = article as typeof article & { content?: string | null };
           const normalized: LightweightArticle = {
-            ...article,
+            ...articleWithoutContent,
             publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
             createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
             updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
+            contentLength: typeof content === 'string' ? content.length : null,
           };
 
           // Add user-specific data if requested
@@ -645,11 +650,14 @@ export async function GET(request: NextRequest) {
       } else {
         // Traditional offset pagination - but generate cursor info for transition
         normalizedArticles = articles.map(article => {
+          // Extract content for length calculation, then exclude from response
+          const { content, ...articleWithoutContent } = article as typeof article & { content?: string | null };
           const normalized: LightweightArticle = {
-            ...article,
+            ...articleWithoutContent,
             publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
             createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
             updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
+            contentLength: typeof content === 'string' ? content.length : null,
           };
 
           // Add user-specific data if requested

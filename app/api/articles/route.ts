@@ -444,6 +444,7 @@ export async function GET(request: NextRequest) {
         selectFields = {
           id: true,
           title: true,
+          translatedTitle: true,
           url: true,
           summary: true,
           thumbnail: true,
@@ -458,7 +459,8 @@ export async function GET(request: NextRequest) {
           summaryVersion: true,
           articleType: true,
           category: true,
-          // Exclude: content, detailedSummary for performance
+          content: true, // Included for contentLength calculation, stripped before response
+          // Exclude: detailedSummary for performance
         };
       }
 
@@ -547,15 +549,33 @@ export async function GET(request: NextRequest) {
     // We can't distinguish between HIT/MISS/STALE without API changes
     // Temporarily removing misleading cache status to avoid metrics confusion
     // TODO: Enhance getOrFetch to return { data, status } for accurate tracking
-    
+
+    // Transform content to contentLength for performance (avoid sending full content to client)
+    const transformedItems = result?.items?.map((article) => {
+      if (typeof article === 'object' && article !== null) {
+        const { content, ...rest } = article as Record<string, unknown>;
+        return {
+          ...rest,
+          contentLength: typeof content === 'string' ? content.length : null,
+        };
+      }
+      return article;
+    }) ?? [];
+
+    const transformedResult = result ? {
+      ...result,
+      items: transformedItems,
+    } : result;
+
     // Create response with performance headers
+    // Note: transformedResult has contentLength instead of content for performance
     const response = NextResponse.json({
       success: true,
-      data: result,
+      data: transformedResult,
       meta: {
         userDataIncluded: includeUserData && userId ? true : false
       }
-    } as ApiResponse<PaginatedResponse<ArticleWithRelations>>);
+    });
 
     // Add performance metrics to headers
     metrics.addMetricsToHeaders(response.headers);
