@@ -182,6 +182,7 @@
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-email/render": "^1.4.0",
+    "@slack/webhook": "^7.0.6",
     "@tanstack/react-query": "^5.87.4",
     "@tanstack/react-query-devtools": "^5.87.4",
     "@types/bcryptjs": "^2.4.6",
