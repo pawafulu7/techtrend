@@ -241,21 +241,19 @@ export function ArticleCard({
       {renderTags()}
 
       <div className="mt-auto flex items-center justify-between pt-1">
+        <FavoriteButton
+          articleId={article.id}
+          className="h-9 px-3"
+          isFavorited={isFavorited}
+          onToggleFavorite={onToggleFavorite}
+        />
         <div className="flex items-center gap-2">
-          <FavoriteButton
-            articleId={article.id}
-            className="h-9 px-3"
-            isFavorited={isFavorited}
-            onToggleFavorite={onToggleFavorite}
-          />
           {readingTime && contentLength > 0 && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
-              <span>{readingTime}min</span>
+              <span>{readingTime}min / {contentLength.toLocaleString('ja-JP')}字</span>
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-2">
           <ButtonV2
             variant="ghost"
             size="sm"
