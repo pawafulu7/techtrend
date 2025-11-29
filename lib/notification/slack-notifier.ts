@@ -41,7 +41,7 @@ export class SlackNotifier implements Notifier {
   /**
    * Sends a notification to Slack
    *
-   * Implements retry with exponential backoff on failure.
+   * Implements retry with linear backoff on failure.
    * Reports are sent even when newArticles is 0 (operational monitoring).
    *
    * @param payload - Collection result data
@@ -116,7 +116,7 @@ export class SlackNotifier implements Notifier {
         SlackNotifier.MAX_DISPLAY_ARTICLES
       );
       const articleListText = displayArticles
-        .map((a) => `- <${a.url}|${this.escapeSlackText(a.title)}> (${a.sourceName})`)
+        .map((a) => `- <${a.url}|${this.escapeSlackText(a.title)}> (${this.escapeSlackText(a.sourceName)})`)
         .join('\n');
 
       blocks.push({
