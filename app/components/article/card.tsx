@@ -227,7 +227,7 @@ export function ArticleCard({
             />
           </div>
         ) : article.summary ? (
-          <p className="text-[14px] leading-6 text-gray-600 dark:text-gray-300">
+          <p className="text-sm leading-relaxed text-(--tt-color-text-muted)">
             {article.summary}
           </p>
         ) : null}
