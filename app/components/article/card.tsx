@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ThumbsUp, ExternalLink } from 'lucide-react';
+import { ThumbsUp, ExternalLink, Calendar, Download, Clock } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
@@ -67,6 +67,10 @@ export function ArticleCard({
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
   const sourceColor = article.source ? getSourceColor(article.source.name) : null;
+
+  // Reading time calculation (~500 chars/min for Japanese content)
+  const contentLength = article.content?.length || 0;
+  const readingTime = contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) {
@@ -185,14 +189,20 @@ export function ArticleCard({
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <span>📅</span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
                   <span>{formatDateWithTime(article.publishedAt)}</span>
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <span>📥</span>
+                <span className="flex items-center gap-1">
+                  <Download className="h-3 w-3" />
                   <span>{formatDateWithTime(article.createdAt)}</span>
                 </span>
+                {readingTime && contentLength > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    <span>{readingTime}min / {contentLength.toLocaleString('ja-JP')}chars</span>
+                  </span>
+                )}
               </div>
             </div>
             <ShareButton title={article.title} url={article.url} size="sm" variant="ghost" />
