@@ -106,10 +106,10 @@ export function PopularArticles({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Popular Articles</CardTitle>
+            <CardTitle className="text-lg">人気記事</CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/popular">
-                View More
+                もっと見る
               </Link>
             </Button>
           </div>
@@ -155,14 +155,14 @@ export function PopularArticles({
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Popular Articles Ranking</CardTitle>
+          <CardTitle>人気記事ランキング</CardTitle>
           <div className="flex items-center gap-2">
             <Tabs value={period} onValueChange={handlePeriodChange}>
               <TabsList className="h-8">
-                <TabsTrigger value="today" className="text-xs">Today</TabsTrigger>
-                <TabsTrigger value="week" className="text-xs">Week</TabsTrigger>
-                <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
-                <TabsTrigger value="all" className="text-xs">All Time</TabsTrigger>
+                <TabsTrigger value="today" className="text-xs">今日</TabsTrigger>
+                <TabsTrigger value="week" className="text-xs">週間</TabsTrigger>
+                <TabsTrigger value="month" className="text-xs">月間</TabsTrigger>
+                <TabsTrigger value="all" className="text-xs">全期間</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -180,19 +180,19 @@ export function PopularArticles({
           <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="combined">
               <TrendingUp className="h-4 w-4 mr-1" />
-              Combined
+              総合
             </TabsTrigger>
             <TabsTrigger value="bookmarks">
               <Bookmark className="h-4 w-4 mr-1" />
-              Saved
+              保存
             </TabsTrigger>
             <TabsTrigger value="votes">
               <ThumbsUp className="h-4 w-4 mr-1" />
-              Votes
+              投票
             </TabsTrigger>
             <TabsTrigger value="quality">
               <Star className="h-4 w-4 mr-1" />
-              Quality
+              品質
             </TabsTrigger>
           </TabsList>
 
@@ -204,7 +204,7 @@ export function PopularArticles({
             </div>
           ) : articles.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No ranking data available
+              ランキングデータがありません
             </div>
           ) : (
             <div className="space-y-3">
@@ -248,9 +248,9 @@ export function PopularArticles({
                             article.difficulty === 'advanced' && "border-[var(--tt-color-warning)]"
                           )}
                         >
-                          {article.difficulty === 'beginner' && 'Beginner'}
-                          {article.difficulty === 'intermediate' && 'Intermediate'}
-                          {article.difficulty === 'advanced' && 'Advanced'}
+                          {article.difficulty === 'beginner' && '初級'}
+                          {article.difficulty === 'intermediate' && '中級'}
+                          {article.difficulty === 'advanced' && '上級'}
                         </Badge>
                       )}
                     </div>

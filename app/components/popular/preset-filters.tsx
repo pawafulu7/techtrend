@@ -16,9 +16,9 @@ interface PresetFiltersProps {
 }
 
 const presets = [
-  { id: 'hot', label: 'Trending', period: 'today' as PeriodType, metric: 'combined' as MetricType },
-  { id: 'quality', label: 'High Quality', period: 'week' as PeriodType, metric: 'quality' as MetricType },
-  { id: 'popular', label: 'Most Saved', period: 'month' as PeriodType, metric: 'bookmarks' as MetricType },
+  { id: 'hot', label: 'トレンド', period: 'today' as PeriodType, metric: 'combined' as MetricType },
+  { id: 'quality', label: '高品質', period: 'week' as PeriodType, metric: 'quality' as MetricType },
+  { id: 'popular', label: '人気', period: 'month' as PeriodType, metric: 'bookmarks' as MetricType },
 ] as const;
 
 export function PresetFilters({
@@ -45,7 +45,7 @@ export function PresetFilters({
       value={selectedPreset || ''}
       onValueChange={handleValueChange}
       className={cn('flex flex-wrap gap-2', className)}
-      aria-label="Quick filter presets"
+      aria-label="クイックフィルタープリセット"
     >
       {presets.map((preset) => (
         <ToggleGroupItem
