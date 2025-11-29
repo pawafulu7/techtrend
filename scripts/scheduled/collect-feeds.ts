@@ -515,6 +515,27 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       }
     }
 
+    // Send Slack notification (if configured)
+    try {
+      const { createNotifierFromEnv } = await import('../../lib/notification');
+      const notifier = createNotifierFromEnv();
+      if (notifier) {
+        await notifier.send({
+          newArticles: totalNewArticles,
+          duplicates: totalDuplicates,
+          updated: totalUpdated,
+          newArticleIds,
+          durationSeconds: duration
+        });
+        console.error('[INFO] Slack notification sent successfully');
+      }
+    } catch (error) {
+      console.error(
+        '[WARN] Slack notification failed, but collection completed successfully:',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
     return {
       newArticles: totalNewArticles,
       duplicates: totalDuplicates,
