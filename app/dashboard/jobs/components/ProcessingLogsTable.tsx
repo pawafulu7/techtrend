@@ -11,11 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import type { ProcessingLogsResponse, ProcessingLogEntry } from '../types';
@@ -77,6 +72,7 @@ function formatDate(isoString: string): string {
 
 /**
  * Processing Log Row with expandable metadata
+ * Uses native state control instead of Collapsible to avoid hydration errors
  */
 function ProcessingLogRow({ log }: { log: ProcessingLogEntry }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -84,7 +80,7 @@ function ProcessingLogRow({ log }: { log: ProcessingLogEntry }) {
   const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0;
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <>
       <TableRow className="hover:bg-muted/50">
         <TableCell className="font-medium">{log.processName}</TableCell>
         <TableCell>
@@ -101,40 +97,38 @@ function ProcessingLogRow({ log }: { log: ProcessingLogEntry }) {
         </TableCell>
         <TableCell>
           {hasMetadata && (
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                aria-label={isOpen ? 'Collapse metadata' : 'Expand metadata'}
-              >
-                {isOpen ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              aria-expanded={isOpen}
+              aria-label={isOpen ? 'Collapse metadata' : 'Expand metadata'}
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              {isOpen ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
           )}
         </TableCell>
       </TableRow>
-      {hasMetadata && (
-        <CollapsibleContent asChild>
-          <TableRow className="bg-muted/30">
-            <TableCell colSpan={5} className="py-2">
-              <div className="rounded-md bg-muted p-3">
-                <p className="text-xs font-medium text-muted-foreground mb-2">
-                  Metadata
-                </p>
-                <pre className="text-xs overflow-x-auto whitespace-pre-wrap break-words">
-                  {JSON.stringify(log.metadata, null, 2)}
-                </pre>
-              </div>
-            </TableCell>
-          </TableRow>
-        </CollapsibleContent>
+      {hasMetadata && isOpen && (
+        <TableRow className="bg-muted/30">
+          <TableCell colSpan={5} className="py-2">
+            <div className="rounded-md bg-muted p-3">
+              <p className="text-xs font-medium text-muted-foreground mb-2">
+                Metadata
+              </p>
+              <pre className="text-xs overflow-x-auto whitespace-pre-wrap break-words">
+                {JSON.stringify(log.metadata, null, 2)}
+              </pre>
+            </div>
+          </TableCell>
+        </TableRow>
       )}
-    </Collapsible>
+    </>
   );
 }
 
