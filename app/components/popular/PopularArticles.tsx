@@ -13,6 +13,9 @@ import { cn } from '@/lib/utils';
 import type { ArticleWithRelations } from '@/types/models';
 import { RankBadge } from './rank-badge';
 import { TrendIndicator } from './trend-indicator';
+import { ScoreTooltip } from './score-tooltip';
+import { ShareButton } from './share-button';
+import { PresetFilters, type PeriodType, type MetricType } from './preset-filters';
 
 interface RankedArticle extends ArticleWithRelations {
   rank: number;
@@ -22,22 +25,25 @@ interface RankedArticle extends ArticleWithRelations {
 }
 
 interface PopularArticlesProps {
-  initialPeriod?: 'today' | 'week' | 'month' | 'all';
-  initialMetric?: 'bookmarks' | 'votes' | 'quality' | 'combined';
+  initialPeriod?: PeriodType;
+  initialMetric?: MetricType;
   limit?: number;
   compact?: boolean;
+  showPresetFilters?: boolean;
 }
 
-export function PopularArticles({ 
+export function PopularArticles({
   initialPeriod = 'week',
   initialMetric = 'combined',
   limit = 10,
-  compact = false
+  compact = false,
+  showPresetFilters = true
 }: PopularArticlesProps) {
   const [articles, setArticles] = useState<RankedArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState(initialPeriod);
-  const [metric, setMetric] = useState(initialMetric);
+  const [period, setPeriod] = useState<PeriodType>(initialPeriod);
+  const [metric, setMetric] = useState<MetricType>(initialMetric);
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
 
   const loadArticles = useCallback(async () => {
     setLoading(true);
@@ -45,7 +51,7 @@ export function PopularArticles({
       const response = await fetch(
         `/api/articles/popular?period=${period}&metric=${metric}&limit=${limit}`
       );
-      
+
       if (!response.ok) {
         throw new Error('Failed to load popular articles');
       }
@@ -65,8 +71,24 @@ export function PopularArticles({
     loadArticles();
   }, [loadArticles]);
 
-  const getMetricIcon = (metric: string) => {
-    switch (metric) {
+  const handlePresetChange = useCallback((preset: string | null, newPeriod: PeriodType, newMetric: MetricType) => {
+    setSelectedPreset(preset);
+    setPeriod(newPeriod);
+    setMetric(newMetric);
+  }, []);
+
+  const handlePeriodChange = useCallback((value: string) => {
+    setSelectedPreset(null); // Clear preset when manually changing
+    setPeriod(value as PeriodType);
+  }, []);
+
+  const handleMetricChange = useCallback((value: string) => {
+    setSelectedPreset(null); // Clear preset when manually changing
+    setMetric(value as MetricType);
+  }, []);
+
+  const getMetricIcon = (metricType: MetricType) => {
+    switch (metricType) {
       case 'bookmarks':
         return <Bookmark className="h-4 w-4" />;
       case 'votes':
@@ -116,7 +138,7 @@ export function PopularArticles({
                     </p>
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <span>{article.source.name}</span>
-                      <span>•</span>
+                      <span aria-hidden="true">-</span>
                       <span>{formatDate(article.publishedAt)}</span>
                     </div>
                   </div>
@@ -132,10 +154,10 @@ export function PopularArticles({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>人気記事ランキング</CardTitle>
           <div className="flex items-center gap-2">
-            <Tabs value={period} onValueChange={(v) => setPeriod(v as 'today' | 'week' | 'month' | 'all')}>
+            <Tabs value={period} onValueChange={handlePeriodChange}>
               <TabsList className="h-8">
                 <TabsTrigger value="today" className="text-xs">今日</TabsTrigger>
                 <TabsTrigger value="week" className="text-xs">週間</TabsTrigger>
@@ -145,9 +167,16 @@ export function PopularArticles({
             </Tabs>
           </div>
         </div>
+        {showPresetFilters && (
+          <PresetFilters
+            selectedPreset={selectedPreset}
+            onPresetChange={handlePresetChange}
+            className="mt-4"
+          />
+        )}
       </CardHeader>
       <CardContent>
-        <Tabs value={metric} onValueChange={(v) => setMetric(v as 'bookmarks' | 'votes' | 'quality' | 'combined')}>
+        <Tabs value={metric} onValueChange={handleMetricChange}>
           <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="combined">
               <TrendingUp className="h-4 w-4 mr-1" />
@@ -183,7 +212,7 @@ export function PopularArticles({
                 <div
                   key={article.id}
                   className={cn(
-                    "flex items-start gap-3 p-3 rounded-lg border transition-colors",
+                    "group relative flex items-start gap-3 p-3 rounded-lg border transition-colors",
                     "hover:bg-accent hover:border-accent-foreground/20",
                     article.rank <= 3 && "border-primary/20 bg-primary/5"
                   )}
@@ -200,7 +229,7 @@ export function PopularArticles({
                     >
                       {article.translatedTitle || article.title}
                     </Link>
-                    
+
                     <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -227,13 +256,20 @@ export function PopularArticles({
                     </div>
 
                     <div className="flex items-center gap-4 mt-2">
-                      <span className="flex items-center gap-1 text-sm">
-                        {getMetricIcon(metric)}
-                        <span className="font-medium">
-                          {Math.round(article.score)}
+                      <ScoreTooltip
+                        score={article.score}
+                        bookmarks={article.bookmarks}
+                        votes={article.userVotes || 0}
+                        qualityScore={article.qualityScore}
+                      >
+                        <span className="flex items-center gap-1 text-sm">
+                          {getMetricIcon(metric)}
+                          <span className="font-medium">
+                            {Math.round(article.score)}
+                          </span>
                         </span>
-                      </span>
-                      
+                      </ScoreTooltip>
+
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Bookmark className="h-3 w-3" />
@@ -266,18 +302,36 @@ export function PopularArticles({
                     )}
                   </div>
 
-                  <Button variant="ghost" size="sm" asChild className="h-11 w-11">
-                    <a
-                      href={article.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label={`${article.translatedTitle || article.title} を新しいタブで開く`}
-                      className="flex h-11 w-11 items-center justify-center"
+                  {/* Action Buttons Overlay */}
+                  <div
+                    className={cn(
+                      "absolute top-2 right-2 flex gap-1 z-10",
+                      "opacity-0 transition-opacity duration-200",
+                      "group-hover:opacity-100 group-focus-within:opacity-100",
+                      "motion-reduce:transition-none"
+                    )}
+                  >
+                    <ShareButton
+                      url={article.url}
+                      title={article.translatedTitle || article.title}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      asChild
+                      className="h-11 w-11 p-0 flex items-center justify-center"
                     >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
+                      <a
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Open ${article.translatedTitle || article.title} in new tab`}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

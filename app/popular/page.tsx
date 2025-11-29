@@ -1,6 +1,7 @@
 import { PopularArticles } from '@/app/components/popular/PopularArticles';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, Info } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { TrendingUp, Info, Clock } from 'lucide-react';
 
 export default function PopularPage() {
   return (
@@ -19,7 +20,7 @@ export default function PopularPage() {
         <div className="lg:col-span-2">
           <PopularArticles limit={20} />
         </div>
-        
+
         <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader>
@@ -27,31 +28,35 @@ export default function PopularPage() {
                 <Info className="h-5 w-5" />
                 ランキングについて
               </CardTitle>
+              <Badge variant="secondary" className="w-fit mt-2">
+                <Clock className="h-3 w-3 mr-1" />
+                毎時更新
+              </Badge>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h3 className="font-medium mb-2">総合ランキング</h3>
+                <h3 className="text-base font-medium mb-2">総合ランキング</h3>
                 <p className="text-sm text-muted-foreground">
                   ブックマーク数、投票数、品質スコア、新しさを総合的に評価したランキングです。
                 </p>
               </div>
-              
+
               <div>
-                <h3 className="font-medium mb-2">ブックマーク</h3>
+                <h3 className="text-base font-medium mb-2">ブックマーク</h3>
                 <p className="text-sm text-muted-foreground">
                   読者が保存した回数に基づくランキング。長期的に参照される記事が上位に来ます。
                 </p>
               </div>
-              
+
               <div>
-                <h3 className="font-medium mb-2">投票</h3>
+                <h3 className="text-base font-medium mb-2">投票</h3>
                 <p className="text-sm text-muted-foreground">
                   読者の評価投票に基づくランキング。記事の有用性を直接反映します。
                 </p>
               </div>
-              
+
               <div>
-                <h3 className="font-medium mb-2">品質スコア</h3>
+                <h3 className="text-base font-medium mb-2">品質スコア</h3>
                 <p className="text-sm text-muted-foreground">
                   記事の内容、構成、技術的深さを総合的に評価したスコアです。
                 </p>
