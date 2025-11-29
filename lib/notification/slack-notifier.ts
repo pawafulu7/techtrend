@@ -79,44 +79,32 @@ export class SlackNotifier implements Notifier {
    * Builds Slack Block Kit message from payload
    */
   private buildMessage(payload: NotificationPayload): object {
-    const { newArticles, duplicates, updated, durationSeconds, articles } =
-      payload;
+    const { newArticles, articles } = payload;
 
     // Choose emoji based on results
     const emoji = newArticles > 0 ? ':newspaper:' : ':white_check_mark:';
     const statusText =
-      newArticles > 0 ? `${newArticles} new articles` : 'No new articles';
+      newArticles > 0 ? `${newArticles}件の新着記事` : '新着記事なし';
 
     const blocks: object[] = [
       {
         type: 'header',
         text: {
           type: 'plain_text',
-          text: `${emoji} TechTrend Article Collection Report`,
+          text: `${emoji} ${statusText}`,
           emoji: true,
         },
-      },
-      {
-        type: 'section',
-        fields: [
-          { type: 'mrkdwn', text: `*New Articles*\n${newArticles}` },
-          { type: 'mrkdwn', text: `*Updated*\n${updated}` },
-          { type: 'mrkdwn', text: `*Duplicates Skipped*\n${duplicates}` },
-          { type: 'mrkdwn', text: `*Duration*\n${durationSeconds}s` },
-        ],
       },
     ];
 
     // Add article list if there are new articles
     if (articles && articles.length > 0) {
-      blocks.push({ type: 'divider' });
-
       const displayArticles = articles.slice(
         0,
         SlackNotifier.MAX_DISPLAY_ARTICLES
       );
       const articleListText = displayArticles
-        .map((a) => `- <${a.url}|${this.escapeSlackText(a.title)}> (${this.escapeSlackText(a.sourceName)})`)
+        .map((a) => `• <${a.url}|${this.escapeSlackText(a.title)}>`)
         .join('\n');
 
       blocks.push({
@@ -134,25 +122,15 @@ export class SlackNotifier implements Notifier {
           elements: [
             {
               type: 'mrkdwn',
-              text: `... and ${articles.length - SlackNotifier.MAX_DISPLAY_ARTICLES} more articles`,
+              text: `他 ${articles.length - SlackNotifier.MAX_DISPLAY_ARTICLES}件`,
             },
           ],
         });
       }
     }
 
-    blocks.push({
-      type: 'context',
-      elements: [
-        {
-          type: 'mrkdwn',
-          text: `Processed at ${new Date().toISOString()}`,
-        },
-      ],
-    });
-
     return {
-      text: `[TechTrend] Collection complete: ${statusText}`,
+      text: `[TechTrend] ${statusText}`,
       blocks,
     };
   }
