@@ -42,14 +42,10 @@ describe('createNotifierFromEnv', () => {
   });
 
   it('should return null when URL is invalid', () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
     process.env.SLACK_NOTIFICATION_ENABLED = 'true';
     process.env.SLACK_WEBHOOK_URL = 'https://invalid-url.com';
 
     const notifier = createNotifierFromEnv();
     expect(notifier).toBeNull();
-
-    consoleSpy.mockRestore();
   });
 });

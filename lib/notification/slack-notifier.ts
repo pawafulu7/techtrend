@@ -59,11 +59,10 @@ export class SlackNotifier implements Notifier {
         lastError = error instanceof Error ? error : new Error(String(error));
         if (attempt < this.maxRetries) {
           const delayMs = 1000 * (attempt + 1); // 1s, 2s backoff
-          logger.warn('Slack notification failed, retrying', {
-            attempt: attempt + 1,
-            maxRetries: this.maxRetries,
-            error: lastError.message,
-          });
+          logger.warn(
+            { attempt: attempt + 1, maxRetries: this.maxRetries, error: lastError.message },
+            'Slack notification failed, retrying'
+          );
           await this.delay(delayMs);
         }
       }

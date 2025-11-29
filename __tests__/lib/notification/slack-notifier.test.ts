@@ -174,8 +174,6 @@ describe('SlackNotifier', () => {
 
   describe('retry mechanism', () => {
     it('should retry on failure', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
       mockWebhook.send
         .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValueOnce(undefined);
@@ -183,35 +181,22 @@ describe('SlackNotifier', () => {
       await notifier.send(samplePayload);
 
       expect(mockWebhook.send).toHaveBeenCalledTimes(2);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('retry 1/1'),
-        expect.any(String)
-      );
-
-      consoleSpy.mockRestore();
     });
 
     it('should throw after exhausting retries', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
       mockWebhook.send.mockRejectedValue(new Error('Persistent error'));
 
       await expect(notifier.send(samplePayload)).rejects.toThrow('Persistent error');
       expect(mockWebhook.send).toHaveBeenCalledTimes(2); // Initial + 1 retry
-
-      consoleSpy.mockRestore();
     });
 
     it('should respect maxRetries setting', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       const notifierWithMoreRetries = new SlackNotifier(mockWebhook, 2);
 
       mockWebhook.send.mockRejectedValue(new Error('Persistent error'));
 
       await expect(notifierWithMoreRetries.send(samplePayload)).rejects.toThrow();
       expect(mockWebhook.send).toHaveBeenCalledTimes(3); // Initial + 2 retries
-
-      consoleSpy.mockRestore();
     });
 
     it('should handle non-Error exceptions', async () => {

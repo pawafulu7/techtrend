@@ -57,8 +57,8 @@ export function loadNotificationConfig(): NotificationConfig {
   // Validate URL format
   if (!validateSlackWebhookUrl(slackWebhookUrl)) {
     logger.warn(
-      'SLACK_WEBHOOK_URL format is invalid. Notification is disabled.',
-      { expectedFormat: 'https://hooks.slack.com/services/TXXXXX/BXXXXX/xxxxxxxx' }
+      { expectedFormat: 'https://hooks.slack.com/services/TXXXXX/BXXXXX/xxxxxxxx' },
+      'SLACK_WEBHOOK_URL format is invalid. Notification is disabled.'
     );
     return { enabled: false, slackWebhookUrl: null };
   }

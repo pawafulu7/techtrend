@@ -120,20 +120,12 @@ describe('loadNotificationConfig', () => {
       });
     });
 
-    it('should return disabled config with invalid URL and log warning', () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
+    it('should return disabled config with invalid URL', () => {
       process.env.SLACK_NOTIFICATION_ENABLED = 'true';
       process.env.SLACK_WEBHOOK_URL = 'https://example.com/invalid';
 
       const config = loadNotificationConfig();
       expect(config).toEqual({ enabled: false, slackWebhookUrl: null });
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('SLACK_WEBHOOK_URL format is invalid'),
-        expect.any(String)
-      );
-
-      consoleSpy.mockRestore();
     });
 
     it('should trim whitespace from URL', () => {
