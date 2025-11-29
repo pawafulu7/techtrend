@@ -2,6 +2,7 @@
  * Processing Logs API Tests
  */
 
+import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/admin/jobs/processing-logs/route';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
@@ -19,6 +20,16 @@ jest.mock('@/lib/prisma', () => ({
 const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockFindMany = prisma.processingLog.findMany as jest.Mock;
 
+function createMockRequest(searchParams?: Record<string, string>): NextRequest {
+  const url = new URL('http://localhost/api/admin/jobs/processing-logs');
+  if (searchParams) {
+    Object.entries(searchParams).forEach(([key, value]) => {
+      url.searchParams.set(key, value);
+    });
+  }
+  return new NextRequest(url);
+}
+
 describe('GET /api/admin/jobs/processing-logs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -28,7 +39,8 @@ describe('GET /api/admin/jobs/processing-logs', () => {
     it('should return 401 if not authenticated', async () => {
       mockAuth.mockResolvedValue(null);
 
-      const response = await GET();
+      const request = createMockRequest();
+      const response = await GET(request);
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -41,7 +53,8 @@ describe('GET /api/admin/jobs/processing-logs', () => {
         expires: '2099-01-01',
       });
 
-      const response = await GET();
+      const request = createMockRequest();
+      const response = await GET(request);
       const data = await response.json();
 
       expect(response.status).toBe(403);
@@ -79,7 +92,8 @@ describe('GET /api/admin/jobs/processing-logs', () => {
 
       mockFindMany.mockResolvedValue(mockLogs);
 
-      const response = await GET();
+      const request = createMockRequest();
+      const response = await GET(request);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -93,7 +107,8 @@ describe('GET /api/admin/jobs/processing-logs', () => {
     it('should return empty logs array when no logs exist', async () => {
       mockFindMany.mockResolvedValue([]);
 
-      const response = await GET();
+      const request = createMockRequest();
+      const response = await GET(request);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -120,7 +135,8 @@ describe('GET /api/admin/jobs/processing-logs', () => {
 
       mockFindMany.mockResolvedValue(mockLogs);
 
-      const response = await GET();
+      const request = createMockRequest();
+      const response = await GET(request);
       const data = await response.json();
 
       expect(data.logs[0].metadata).not.toHaveProperty('apiKey');
@@ -128,10 +144,75 @@ describe('GET /api/admin/jobs/processing-logs', () => {
       expect(data.logs[0].metadata.normalField).toBe('visible');
     });
 
+    it('should sanitize nested sensitive fields', async () => {
+      const mockLogs = [
+        {
+          id: 'log-1',
+          processName: 'test-process',
+          status: 'success',
+          processedCount: 10,
+          lastProcessedAt: new Date(),
+          metadata: {
+            auth: { token: 'secret' },
+            config: {
+              API_KEY: 'hidden',
+              endpoint: 'https://api.example.com',
+            },
+            normalField: 'visible',
+          },
+        },
+      ];
+
+      mockFindMany.mockResolvedValue(mockLogs);
+
+      const request = createMockRequest();
+      const response = await GET(request);
+      const data = await response.json();
+
+      // Top-level auth key should be removed
+      expect(data.logs[0].metadata).not.toHaveProperty('auth');
+      // Nested API_KEY should be removed
+      expect(data.logs[0].metadata.config).not.toHaveProperty('API_KEY');
+      // Non-sensitive fields should remain
+      expect(data.logs[0].metadata.config.endpoint).toBe('https://api.example.com');
+      expect(data.logs[0].metadata.normalField).toBe('visible');
+    });
+
+    it('should respect days and limit query parameters', async () => {
+      mockFindMany.mockResolvedValue([]);
+
+      const request = createMockRequest({ days: '14', limit: '50' });
+      await GET(request);
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            lastProcessedAt: expect.objectContaining({ gte: expect.any(Date) }),
+          }),
+          take: 50,
+        })
+      );
+    });
+
+    it('should use default values for invalid parameters', async () => {
+      mockFindMany.mockResolvedValue([]);
+
+      const request = createMockRequest({ days: '-5', limit: '1000' });
+      await GET(request);
+
+      // Invalid days (-5) should default to 7, limit (1000) should be capped at 500
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 500,
+        })
+      );
+    });
+
     it('should include Cache-Control header', async () => {
       mockFindMany.mockResolvedValue([]);
 
-      const response = await GET();
+      const request = createMockRequest();
+      const response = await GET(request);
 
       expect(response.headers.get('Cache-Control')).toBe(
         'private, no-cache, no-store, must-revalidate'
