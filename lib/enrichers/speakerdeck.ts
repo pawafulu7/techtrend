@@ -193,7 +193,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
 
     // Even if content is minimal, return with thumbnail if available
     if (thumbnail) {
-      return { content: content || null, thumbnail };
+      return { content, thumbnail };
     }
 
     logger.debug({ url }, '[SpeakerDeckEnricher] Insufficient content');

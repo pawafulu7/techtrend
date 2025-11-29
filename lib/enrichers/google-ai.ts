@@ -67,7 +67,6 @@ export class GoogleAIEnricher extends BaseContentEnricher {
           '.post-content',
           '.blog-post-content',
           '.rich-text',
-          'article [itemprop="articleBody"]',
           '.blogv2-content',
           'main article',
           'article main',

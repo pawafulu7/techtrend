@@ -114,13 +114,7 @@ export class ContentEnricherFactory {
    * @returns 対応するエンリッチャー、またはnull
    */
   getEnricher(url: string): IContentEnricher | null {
-    const enricher = this.enrichers.find(e => e.canHandle(url));
-    
-    if (enricher) {
-    } else {
-    }
-    
-    return enricher || null;
+    return this.enrichers.find(e => e.canHandle(url)) || null;
   }
 
   /**

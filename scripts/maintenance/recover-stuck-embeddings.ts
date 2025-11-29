@@ -131,6 +131,8 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const options = parseArgs(args);
 
+  let exitCode = 0;
+
   try {
     const result = await recoverStuckEmbeddings(options);
 
@@ -140,14 +142,15 @@ async function main(): Promise<void> {
     // Exit code:
     // 0 = success (jobs reset or no stuck jobs)
     // 1 = found stuck jobs but none were reset (dry-run or all skipped)
-    const exitCode = result.reset > 0 || result.found === 0 ? 0 : 1;
-    process.exit(exitCode);
+    exitCode = result.reset > 0 || result.found === 0 ? 0 : 1;
   } catch (error) {
     console.error('Error during recovery:', error);
-    process.exit(1);
+    exitCode = 1;
   } finally {
     await prisma.$disconnect();
   }
+
+  process.exit(exitCode);
 }
 
 main();
