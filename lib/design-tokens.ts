@@ -26,6 +26,9 @@ export type ColorModeTokens = {
   warning: string;
   negative: string;
   info: string;
+  rankGold: string;
+  rankSilver: string;
+  rankBronze: string;
 };
 
 export type ShadowTokens = {
@@ -130,6 +133,9 @@ export const lightColors: ColorModeTokens = {
   warning: '#F97316',           // Orange (warning)
   negative: '#EF4444',          // Red (error)
   info: '#3B82F6',              // Blue (info)
+  rankGold: '#B45309',          // Amber-800 (AA-compliant: 5.0:1 on white)
+  rankSilver: '#64748B',        // Slate-500 (AA-compliant: 4.76:1 on white)
+  rankBronze: '#C2410C',        // Orange-800 (AA-compliant: 5.0:1 on white)
 };
 
 /**
@@ -157,6 +163,9 @@ export const darkColors: ColorModeTokens = {
   warning: '#F97316',           // Orange
   negative: '#EF4444',          // Red
   info: '#3B82F6',              // Blue
+  rankGold: '#D97706',          // Amber-700 (AA-compliant: 5.57:1 on dark bg)
+  rankSilver: '#94A3B8',        // Slate-400 (AA-compliant: 6.92:1 on dark bg)
+  rankBronze: '#EA580C',        // Orange-700 (AA-compliant: 4.98:1 on dark bg)
 };
 
 export const colors = {

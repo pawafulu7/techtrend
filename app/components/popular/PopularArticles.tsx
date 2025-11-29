@@ -6,15 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  TrendingUp, Minus, Award, 
-  Bookmark, ThumbsUp, Star, Zap, ChevronUp,
-  ChevronDown, Calendar, ExternalLink
-} from 'lucide-react';
+import { TrendingUp, Bookmark, ThumbsUp, Star, Calendar, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils';
 import type { ArticleWithRelations } from '@/types/models';
+import { RankBadge } from './rank-badge';
+import { TrendIndicator } from './trend-indicator';
 
 interface RankedArticle extends ArticleWithRelations {
   rank: number;
@@ -67,32 +65,6 @@ export function PopularArticles({
     loadArticles();
   }, [loadArticles]);
 
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return <Award className="h-5 w-5 text-yellow-500" />;
-      case 2:
-        return <Award className="h-5 w-5 text-gray-400" />;
-      case 3:
-        return <Award className="h-5 w-5 text-amber-600" />;
-      default:
-        return null;
-    }
-  };
-
-  const getTrendIcon = (trend: 'up' | 'down' | 'stable' | 'new') => {
-    switch (trend) {
-      case 'up':
-        return <ChevronUp className="h-4 w-4 text-green-600" />;
-      case 'down':
-        return <ChevronDown className="h-4 w-4 text-red-600" />;
-      case 'new':
-        return <Zap className="h-4 w-4 text-yellow-600" />;
-      default:
-        return <Minus className="h-4 w-4 text-gray-400" />;
-    }
-  };
-
   const getMetricIcon = (metric: string) => {
     switch (metric) {
       case 'bookmarks':
@@ -122,7 +94,7 @@ export function PopularArticles({
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="space-y-2">
+            <div className="space-y-2" aria-live="polite">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
@@ -196,7 +168,7 @@ export function PopularArticles({
           </TabsList>
 
           {loading ? (
-            <div className="space-y-3">
+            <div className="space-y-3" aria-live="polite">
               {Array.from({ length: limit }).map((_, i) => (
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
@@ -217,12 +189,8 @@ export function PopularArticles({
                   )}
                 >
                   <div className="flex flex-col items-center gap-1">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-background border-2">
-                      {getRankIcon(article.rank) || (
-                        <span className="text-lg font-bold">{article.rank}</span>
-                      )}
-                    </div>
-                    {getTrendIcon(article.trend)}
+                    <RankBadge rank={article.rank} />
+                    <TrendIndicator trend={article.trend} />
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -242,13 +210,13 @@ export function PopularArticles({
                         {article.source.name}
                       </Badge>
                       {article.difficulty && (
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className={cn(
                             "text-xs",
-                            article.difficulty === 'beginner' && "border-green-200",
-                            article.difficulty === 'intermediate' && "border-blue-200",
-                            article.difficulty === 'advanced' && "border-purple-200"
+                            article.difficulty === 'beginner' && "border-[var(--tt-color-positive)]",
+                            article.difficulty === 'intermediate' && "border-[var(--tt-color-info)]",
+                            article.difficulty === 'advanced' && "border-[var(--tt-color-warning)]"
                           )}
                         >
                           {article.difficulty === 'beginner' && '初級'}
@@ -298,12 +266,14 @@ export function PopularArticles({
                     )}
                   </div>
 
-                  <Button variant="ghost" size="sm" asChild>
+                  <Button variant="ghost" size="sm" asChild className="h-11 w-11">
                     <a
                       href={article.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
+                      aria-label={`${article.translatedTitle || article.title} を新しいタブで開く`}
+                      className="flex h-11 w-11 items-center justify-center"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </a>

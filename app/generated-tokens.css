@@ -14,6 +14,9 @@
   --tt-color-primary: #16A34A;
   --tt-color-primary-accent: #22C55E;
   --tt-color-primary-hover: #15803D;
+  --tt-color-rank-bronze: #C2410C;
+  --tt-color-rank-gold: #B45309;
+  --tt-color-rank-silver: #64748B;
   --tt-color-secondary: #F97316;
   --tt-color-secondary-hover: #EA580C;
   --tt-color-surface: #FFFFFF;
@@ -98,6 +101,9 @@
   --tt-color-primary: #22C55E;
   --tt-color-primary-accent: #4ADE80;
   --tt-color-primary-hover: #16A34A;
+  --tt-color-rank-bronze: #EA580C;
+  --tt-color-rank-gold: #D97706;
+  --tt-color-rank-silver: #94A3B8;
   --tt-color-secondary: #F97316;
   --tt-color-secondary-hover: #EA580C;
   --tt-color-surface: #111827;
