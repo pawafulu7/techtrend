@@ -14,6 +14,11 @@ describe('SlackNotifier', () => {
     duplicates: 5,
     updated: 2,
     newArticleIds: ['id1', 'id2', 'id3'],
+    articles: [
+      { title: 'TypeScript Best Practices', url: 'https://example.com/ts', sourceName: 'Zenn' },
+      { title: 'React 19 Features', url: 'https://example.com/react', sourceName: 'Qiita' },
+      { title: 'Next.js 16 Guide', url: 'https://example.com/next', sourceName: 'Dev.to' },
+    ],
     durationSeconds: 120,
   };
 
@@ -66,6 +71,7 @@ describe('SlackNotifier', () => {
       const zeroPayload: NotificationPayload = {
         ...samplePayload,
         newArticles: 0,
+        articles: [],
       };
 
       await notifier.send(zeroPayload);
@@ -82,6 +88,7 @@ describe('SlackNotifier', () => {
       const zeroPayload: NotificationPayload = {
         ...samplePayload,
         newArticles: 0,
+        articles: [],
       };
 
       await notifier.send(zeroPayload);
@@ -107,6 +114,61 @@ describe('SlackNotifier', () => {
       );
 
       expect(headerBlock?.text?.text).toContain(':newspaper:');
+    });
+
+    it('should include article list in message', async () => {
+      await notifier.send(samplePayload);
+
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
+        blocks: Array<{ type: string; text?: { text: string } }>;
+      };
+
+      // Find section blocks with article list (after divider)
+      const dividerIndex = sentMessage.blocks.findIndex(b => b.type === 'divider');
+      expect(dividerIndex).toBeGreaterThan(0);
+
+      const articleSection = sentMessage.blocks[dividerIndex + 1];
+      expect(articleSection.type).toBe('section');
+      expect(articleSection.text?.text).toContain('TypeScript Best Practices');
+      expect(articleSection.text?.text).toContain('https://example.com/ts');
+      expect(articleSection.text?.text).toContain('Zenn');
+    });
+
+    it('should escape special characters in titles', async () => {
+      const payloadWithSpecialChars: NotificationPayload = {
+        ...samplePayload,
+        articles: [
+          { title: 'Test <script> & "quotes"', url: 'https://example.com/test', sourceName: 'Test' },
+        ],
+      };
+
+      await notifier.send(payloadWithSpecialChars);
+
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
+        blocks: Array<{ type: string; text?: { text: string } }>;
+      };
+      const dividerIndex = sentMessage.blocks.findIndex(b => b.type === 'divider');
+      const articleSection = sentMessage.blocks[dividerIndex + 1];
+
+      expect(articleSection.text?.text).toContain('&lt;script&gt;');
+      expect(articleSection.text?.text).toContain('&amp;');
+    });
+
+    it('should not include article list when articles is empty', async () => {
+      const emptyPayload: NotificationPayload = {
+        ...samplePayload,
+        newArticles: 0,
+        articles: [],
+      };
+
+      await notifier.send(emptyPayload);
+
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
+        blocks: Array<{ type: string }>;
+      };
+
+      const dividerIndex = sentMessage.blocks.findIndex(b => b.type === 'divider');
+      expect(dividerIndex).toBe(-1);
     });
   });
 
