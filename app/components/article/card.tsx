@@ -200,9 +200,9 @@ export function ArticleCard({
           {!showThumbnail && (
             <h3
               className={cn(
-                'text-[17px] font-semibold leading-6 text-(--tt-color-text)',
+                'font-heading text-lg font-semibold leading-snug text-(--tt-color-text)',
                 isRead && 'opacity-70',
-                isTextOnly ? 'leading-7 text-[18px]' : 'line-clamp-2'
+                !isTextOnly && 'line-clamp-2'
               )}
             >
               {article.translatedTitle || article.title}
