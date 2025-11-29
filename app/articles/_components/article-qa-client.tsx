@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
-import { ArrowUpRight, ChevronDown, MessageSquare, Sparkles, Tag, X } from 'lucide-react';
+import { ArrowUpRight, Bot, MessageSquare, Sparkles, Tag, User, X } from 'lucide-react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
@@ -10,7 +10,6 @@ import { useArticleQA, type ArticleQAResult, type ArticleQAError } from '@/lib/h
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DialogTitle } from '@/components/ui/dialog';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
@@ -107,6 +106,7 @@ export function ArticleQAClient({
   const [chatHistory, setChatHistory] = useState<QAExchange[]>([]);
   const [activeExchangeId, setActiveExchangeId] = useState<string | null>(null);
   const [sampleQueriesOpen, setSampleQueriesOpen] = useState(true);
+  const [hasSentFirstMessage, setHasSentFirstMessage] = useState(false);
   const { search, result, error, isLoading, partialText, contextChunk, reset } = useArticleQA({
     articleId,
     articleTitle,
@@ -199,6 +199,14 @@ export function ArticleQAClient({
     );
   }, [error, activeExchangeId]);
 
+  // Auto-collapse sample queries after first message is sent
+  useEffect(() => {
+    if (!hasSentFirstMessage && chatHistory.length > 0) {
+      setSampleQueriesOpen(false);
+      setHasSentFirstMessage(true);
+    }
+  }, [chatHistory.length, hasSentFirstMessage]);
+
   const handleFeedback = (positive: boolean, queryOverride?: string) => {
     const originQuery = queryOverride ?? result?.query ?? lastQuery;
     console.log('[Article QA Feedback]', positive ? 'positive' : 'negative', originQuery);
@@ -281,65 +289,10 @@ export function ArticleQAClient({
           </Button>
         )}
 
-        <Collapsible
-          open={sampleQueriesOpen}
-          onOpenChange={setSampleQueriesOpen}
-          className="rounded-[28px] border border-slate-100/90 bg-slate-50/70 p-4 sm:p-5"
-        >
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center justify-between text-left text-sm font-semibold uppercase tracking-[0.25em] text-slate-600"
-            >
-              <span className="inline-flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-indigo-500" />
-                {locale === 'ja' ? '質問のヒント' : 'Sample questions'}
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 text-slate-400 transition-transform ${sampleQueriesOpen ? 'rotate-180' : ''}`}
-                aria-hidden="true"
-              />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-3">
-            {normalizedTopics.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {normalizedTopics.map((topic) => (
-                  <Badge
-                    key={topic}
-                    variant="secondary"
-                    className="gap-1 rounded-full border border-slate-100 bg-white px-3 py-1 text-[11px] font-medium text-slate-600"
-                  >
-                    <Tag className="h-3 w-3 text-indigo-500" />
-                    {topic}
-                  </Badge>
-                ))}
-              </div>
-            )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {sampleQueries.map((query) => (
-                <button
-                  key={query}
-                  type="button"
-                  aria-label={query}
-                  onClick={() => handlePrefillQuery(query)}
-                  className="group inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/90 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
-                >
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-50 text-[11px] font-semibold text-indigo-600 transition group-hover:bg-indigo-100">
-                    Q
-                  </span>
-                  <span className="text-left text-sm font-medium">{query}</span>
-                  <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-indigo-400" />
-                </button>
-              ))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        <div className="mt-6 flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col">
           <div className="mb-6 flex flex-col gap-1">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-              <MessageSquare className="h-4 w-4 text-indigo-500" />
+              <MessageSquare className="h-4 w-4 text-primary" />
               {locale === 'ja' ? 'チャットタイムライン' : 'Conversation'}
             </div>
             <p className="text-sm text-muted-foreground">
@@ -372,10 +325,12 @@ export function ArticleQAClient({
 
                   return (
                     <div key={exchange.id} className="space-y-3">
-                      <div className="flex justify-end">
-                        <div className="max-w-2xl rounded-3xl bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-500 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-200/60">
+                      {/* User question bubble with User icon for color-blind accessibility */}
+                      <div className="flex items-start justify-end gap-3">
+                        <div className="max-w-2xl rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-medium text-slate-900 shadow-sm">
                           {exchange.question}
                         </div>
+                        <User className="mt-3 h-5 w-5 flex-shrink-0 text-slate-500" aria-hidden="true" />
                       </div>
 
                       {showLoading && (
@@ -396,15 +351,18 @@ export function ArticleQAClient({
                       )}
 
                       {!exchange.error && showAnswerPanel && (
-                        <div className="rounded-[28px] border border-slate-100/80 bg-gradient-to-b from-white to-slate-50/70 p-1.5 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)]">
-                          <AgentAnswerPanel
-                            result={exchangeResult}
-                            partialText={streamingPartial}
-                            isStreaming={isActive && shouldShowStreamingResult}
-                            onFeedback={(positive) =>
-                              handleFeedback(positive, exchangeResult?.query ?? exchange.question)
-                            }
-                          />
+                        <div className="flex items-start gap-3">
+                          <Bot className="mt-4 h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
+                          <div className="flex-1 rounded-[28px] border border-slate-100/80 bg-gradient-to-b from-white to-slate-50/70 p-1.5 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)]">
+                            <AgentAnswerPanel
+                              result={exchangeResult}
+                              partialText={streamingPartial}
+                              isStreaming={isActive && shouldShowStreamingResult}
+                              onFeedback={(positive) =>
+                                handleFeedback(positive, exchangeResult?.query ?? exchange.question)
+                              }
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -415,9 +373,71 @@ export function ArticleQAClient({
             </div>
 
             <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-b from-transparent via-white to-white pt-6">
+              {/* Sample queries section - positioned above input for better task-completion UX */}
+              <div className="mb-3 space-y-2">
+                {sampleQueriesOpen ? (
+                  <div
+                    id="sample-queries-panel"
+                    role="region"
+                    aria-labelledby="sample-queries-toggle"
+                    className="space-y-3"
+                  >
+                    {/* Topic tags */}
+                    {normalizedTopics.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {normalizedTopics.map((topic) => (
+                          <Badge
+                            key={topic}
+                            variant="secondary"
+                            className="gap-1 rounded-full border border-slate-100 bg-white px-3 py-1 text-[11px] font-medium text-slate-600"
+                          >
+                            <Tag className="h-3 w-3 text-primary" />
+                            {topic}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    {/* Sample query buttons - horizontal scroll on mobile, wrap on desktop */}
+                    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 scrollbar-hide lg:flex-wrap lg:overflow-visible">
+                      {sampleQueries.map((query) => (
+                        <button
+                          key={query}
+                          type="button"
+                          aria-label={
+                            locale === 'ja'
+                              ? `サンプル質問を入力: ${query.slice(0, 20)}...`
+                              : `Insert sample: ${query.slice(0, 20)}...`
+                          }
+                          onClick={() => handlePrefillQuery(query)}
+                          className="group inline-flex flex-shrink-0 items-center gap-2 rounded-full border border-slate-200/70 bg-white/90 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:text-primary hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:flex-shrink"
+                        >
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary transition group-hover:bg-primary/20">
+                            Q
+                          </span>
+                          <span className="whitespace-nowrap text-left text-sm font-medium lg:whitespace-normal">{query}</span>
+                          <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-primary" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    id="sample-queries-toggle"
+                    type="button"
+                    onClick={() => setSampleQueriesOpen(true)}
+                    aria-expanded={sampleQueriesOpen}
+                    aria-controls="sample-queries-panel"
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/90 px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary/50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    {locale === 'ja' ? 'サンプル質問を表示' : 'Show sample questions'}
+                  </button>
+                )}
+              </div>
+
               <div className="rounded-[28px] border border-slate-100/80 bg-white/90 p-4 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)] backdrop-blur-sm sm:p-6">
                 <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                  <MessageSquare className="h-4 w-4 text-indigo-500" />
+                  <MessageSquare className="h-4 w-4 text-primary" />
                   {locale === 'ja' ? 'この記事に質問する' : 'Ask this article'}
                 </div>
                 <div className="mt-4">
