@@ -1,6 +1,14 @@
 import * as cron from 'node-cron';
 import { exec, spawn, ExecException, ExecOptions } from 'child_process';
 import { promisify } from 'util';
+import * as dotenv from 'dotenv';
+import * as fs from 'fs';
+
+// Load .env.local for local development (pm2 environment)
+// In production (GHA), environment variables are set via workflow
+if (process.env.NODE_ENV !== 'production' && fs.existsSync('.env.local')) {
+  dotenv.config({ path: '.env.local' });
+}
 
 const execAsync = promisify(exec);
 const DEFAULT_MAX_BUFFER = 1024 * 1024 * 10; // 10MB
