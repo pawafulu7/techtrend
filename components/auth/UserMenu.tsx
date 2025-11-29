@@ -13,12 +13,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  User, 
-  Heart, 
-  History, 
-  LogOut, 
-  Loader2 
+import {
+  User,
+  Heart,
+  History,
+  LogOut,
+  Loader2,
+  BarChart3,
+  Cog,
 } from 'lucide-react';
 
 export function UserMenu() {
@@ -108,6 +110,26 @@ export function UserMenu() {
             閲覧履歴
           </Link>
         </DropdownMenuItem>
+        {session.user?.role === 'admin' && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              管理者メニュー
+            </DropdownMenuLabel>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/performance" className="cursor-pointer">
+                <BarChart3 className="mr-2 h-4 w-4" />
+                パフォーマンス
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/jobs" className="cursor-pointer">
+                <Cog className="mr-2 h-4 w-4" />
+                ジョブ管理
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleSignOut}
