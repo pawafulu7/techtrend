@@ -6,6 +6,18 @@
  */
 
 /**
+ * Article information for notification display
+ */
+export interface ArticleInfo {
+  /** Article title */
+  title: string;
+  /** Article URL */
+  url: string;
+  /** Source name (e.g., "Zenn", "Qiita") */
+  sourceName: string;
+}
+
+/**
  * Payload sent to notification services after article collection
  */
 export interface NotificationPayload {
@@ -17,6 +29,8 @@ export interface NotificationPayload {
   updated: number;
   /** IDs of newly collected articles */
   newArticleIds: string[];
+  /** Detailed information about new articles */
+  articles: ArticleInfo[];
   /** Duration of the collection process in seconds */
   durationSeconds: number;
 }
