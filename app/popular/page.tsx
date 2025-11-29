@@ -9,10 +9,10 @@ export default function PopularPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
           <TrendingUp className="h-8 w-8" />
-          Popular Articles Ranking
+          人気記事ランキング
         </h1>
         <p className="text-muted-foreground">
-          Discover the most read articles by our readers
+          読者に最も読まれている記事をチェック
         </p>
       </div>
 
@@ -26,39 +26,39 @@ export default function PopularPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-5 w-5" />
-                About Rankings
+                ランキングについて
               </CardTitle>
               <Badge variant="secondary" className="w-fit mt-2">
                 <Clock className="h-3 w-3 mr-1" />
-                Updated hourly
+                毎時更新
               </Badge>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h3 className="text-base font-medium mb-2">Combined Ranking</h3>
+                <h3 className="text-base font-medium mb-2">総合ランキング</h3>
                 <p className="text-sm text-muted-foreground">
-                  A comprehensive ranking that evaluates bookmark count, votes, quality score, and recency.
+                  ブックマーク数、投票数、品質スコア、新しさを総合的に評価したランキングです。
                 </p>
               </div>
 
               <div>
-                <h3 className="text-base font-medium mb-2">Saved</h3>
+                <h3 className="text-base font-medium mb-2">ブックマーク</h3>
                 <p className="text-sm text-muted-foreground">
-                  Ranking based on reader saves. Articles that are referenced long-term rank higher.
+                  読者が保存した回数に基づくランキング。長期的に参照される記事が上位に来ます。
                 </p>
               </div>
 
               <div>
-                <h3 className="text-base font-medium mb-2">Votes</h3>
+                <h3 className="text-base font-medium mb-2">投票</h3>
                 <p className="text-sm text-muted-foreground">
-                  Ranking based on reader votes. Directly reflects article usefulness.
+                  読者の評価投票に基づくランキング。記事の有用性を直接反映します。
                 </p>
               </div>
 
               <div>
-                <h3 className="text-base font-medium mb-2">Quality Score</h3>
+                <h3 className="text-base font-medium mb-2">品質スコア</h3>
                 <p className="text-sm text-muted-foreground">
-                  A comprehensive score evaluating article content, structure, and technical depth.
+                  記事の内容、構成、技術的深さを総合的に評価したスコアです。
                 </p>
               </div>
             </CardContent>
@@ -66,20 +66,20 @@ export default function PopularPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Time Periods</CardTitle>
+              <CardTitle>期間について</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>
-                <span className="font-medium text-foreground">Today:</span> Past 24 hours
+                <span className="font-medium text-foreground">今日:</span> 過去24時間
               </p>
               <p>
-                <span className="font-medium text-foreground">Week:</span> Past 7 days
+                <span className="font-medium text-foreground">週間:</span> 過去7日間
               </p>
               <p>
-                <span className="font-medium text-foreground">Month:</span> Past 30 days
+                <span className="font-medium text-foreground">月間:</span> 過去30日間
               </p>
               <p>
-                <span className="font-medium text-foreground">All Time:</span> All periods
+                <span className="font-medium text-foreground">全期間:</span> すべての期間
               </p>
             </CardContent>
           </Card>
