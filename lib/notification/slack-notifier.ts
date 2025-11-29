@@ -9,6 +9,7 @@
  */
 
 import { IncomingWebhook } from '@slack/webhook';
+import logger from '@/lib/logger';
 import type { Notifier, NotificationPayload, SlackWebhookClient } from './types';
 
 export class SlackNotifier implements Notifier {
@@ -58,10 +59,11 @@ export class SlackNotifier implements Notifier {
         lastError = error instanceof Error ? error : new Error(String(error));
         if (attempt < this.maxRetries) {
           const delayMs = 1000 * (attempt + 1); // 1s, 2s backoff
-          console.error(
-            `[WARN] Slack notification failed (retry ${attempt + 1}/${this.maxRetries}):`,
-            lastError.message
-          );
+          logger.warn('Slack notification failed, retrying', {
+            attempt: attempt + 1,
+            maxRetries: this.maxRetries,
+            error: lastError.message,
+          });
           await this.delay(delayMs);
         }
       }

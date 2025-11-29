@@ -4,6 +4,8 @@
  * Handles loading and validation of notification settings from environment variables.
  */
 
+import logger from '@/lib/logger';
+
 export interface NotificationConfig {
   /** Whether Slack notification is enabled */
   enabled: boolean;
@@ -54,9 +56,9 @@ export function loadNotificationConfig(): NotificationConfig {
 
   // Validate URL format
   if (!validateSlackWebhookUrl(slackWebhookUrl)) {
-    console.error(
-      '[WARN] SLACK_WEBHOOK_URL format is invalid. Notification is disabled.',
-      'Expected format: https://hooks.slack.com/services/TXXXXX/BXXXXX/xxxxxxxx'
+    logger.warn(
+      'SLACK_WEBHOOK_URL format is invalid. Notification is disabled.',
+      { expectedFormat: 'https://hooks.slack.com/services/TXXXXX/BXXXXX/xxxxxxxx' }
     );
     return { enabled: false, slackWebhookUrl: null };
   }
