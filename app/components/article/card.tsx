@@ -69,7 +69,8 @@ export function ArticleCard({
   const sourceColor = article.source ? getSourceColor(article.source.name) : null;
 
   // Reading time calculation (~500 chars/min for Japanese content)
-  const contentLength = article.content?.length || 0;
+  // Use contentLength from API (pre-calculated) or fallback to content.length
+  const contentLength = article.contentLength ?? article.content?.length ?? 0;
   const readingTime = contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
 
   const handleCardClick = (e: React.MouseEvent) => {
