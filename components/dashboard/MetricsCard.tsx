@@ -46,11 +46,25 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
   isIncreaseGood = true,
   className = '',
 }) => {
+  /**
+   * Get text color class for trend indicator
+   */
   const getTrendColor = () => {
     if (trend === 'up') return isIncreaseGood ? 'text-green-500' : 'text-red-500';
     if (trend === 'down')
       return isIncreaseGood ? 'text-red-500' : 'text-green-500';
     return 'text-gray-500';
+  };
+
+  /**
+   * Get darker text color for trend value text (600 shade)
+   * Uses explicit mapping instead of fragile string replacement
+   */
+  const getTrendTextColor = () => {
+    if (trend === 'up') return isIncreaseGood ? 'text-green-600' : 'text-red-600';
+    if (trend === 'down')
+      return isIncreaseGood ? 'text-red-600' : 'text-green-600';
+    return 'text-gray-600';
   };
 
   const getTrendIcon = () => {
@@ -92,6 +106,13 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
     }
   };
 
+  /**
+   * Format the display value based on unit type
+   * - '%': Format as percentage with 1 decimal place
+   * - 'ms': Format as milliseconds with 1 decimal place
+   * - 'MB': Convert from bytes to megabytes (value expected in bytes)
+   * - other: Use locale-formatted number
+   */
   const formatValue = () => {
     if (typeof value === 'number') {
       if (unit === '%') {
@@ -99,6 +120,7 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
       } else if (unit === 'ms') {
         return `${value.toFixed(1)}ms`;
       } else if (unit === 'MB') {
+        // Note: value is expected to be in bytes; converts to MB
         return `${(value / 1024 / 1024).toFixed(1)}MB`;
       }
       return value.toLocaleString();
@@ -133,13 +155,7 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
             {trendValue && (
               <div className="flex items-center gap-1 mt-1">
                 {getTrendIcon()}
-                <span
-                  className={`text-xs ${
-                    trend === 'stable'
-                      ? 'text-gray-600'
-                      : getTrendColor().replace('500', '600')
-                  }`}
-                >
+                <span className={`text-xs ${getTrendTextColor()}`}>
                   {trendValue}
                 </span>
               </div>

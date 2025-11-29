@@ -12,6 +12,7 @@ interface SummaryCardsSectionProps {
   embeddingSummary: EmbeddingSummaryResponse | null;
   articleStats: ArticleStatsResponse | null;
   loading?: boolean;
+  error?: boolean;
 }
 
 /**
@@ -55,8 +56,10 @@ export function SummaryCardsSection({
   embeddingSummary,
   articleStats,
   loading,
+  error,
 }: SummaryCardsSectionProps) {
-  if (loading) {
+  // Show loading skeleton only during initial load (no data yet)
+  if (loading && !processingLogs && !embeddingSummary && !articleStats) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
@@ -69,18 +72,34 @@ export function SummaryCardsSection({
     );
   }
 
+  // Show error state only if all data is missing and there's an error
+  if (error && !processingLogs && !embeddingSummary && !articleStats) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={i}
+            className="min-h-[120px] bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg flex items-center justify-center text-muted-foreground text-sm"
+          >
+            Failed to load
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Processing Logs Success Rate */}
       <MetricsCard
         title="Process Success Rate"
         value={
-          processingLogs?.summary.successRate.toFixed(1) ?? '-'
+          processingLogs?.summary?.successRate?.toFixed(1) ?? '-'
         }
         unit="%"
-        description={`${processingLogs?.summary.successCount ?? 0} / ${processingLogs?.summary.total ?? 0} processes succeeded`}
+        description={`${processingLogs?.summary?.successCount ?? 0} / ${processingLogs?.summary?.total ?? 0} processes succeeded`}
         status={
-          processingLogs
+          processingLogs?.summary
             ? getSuccessRateStatus(processingLogs.summary.successRate)
             : undefined
         }
@@ -90,12 +109,12 @@ export function SummaryCardsSection({
       <MetricsCard
         title="Embedding Completion"
         value={
-          embeddingSummary?.completionRate.toFixed(1) ?? '-'
+          embeddingSummary?.completionRate?.toFixed(1) ?? '-'
         }
         unit="%"
-        description={`${embeddingSummary?.statusCounts.COMPLETED.toLocaleString() ?? 0} completed jobs`}
+        description={`${embeddingSummary?.statusCounts?.COMPLETED?.toLocaleString() ?? 0} completed jobs`}
         status={
-          embeddingSummary
+          embeddingSummary?.completionRate !== undefined
             ? getCompletionRateStatus(embeddingSummary.completionRate)
             : undefined
         }
@@ -105,19 +124,19 @@ export function SummaryCardsSection({
       <MetricsCard
         title="Jobs in Queue"
         value={
-          embeddingSummary
+          embeddingSummary?.statusCounts
             ? (
-                embeddingSummary.statusCounts.PENDING +
-                embeddingSummary.statusCounts.PROCESSING
+                (embeddingSummary.statusCounts.PENDING ?? 0) +
+                (embeddingSummary.statusCounts.PROCESSING ?? 0)
               ).toLocaleString()
             : '-'
         }
-        description={`${embeddingSummary?.statusCounts.PENDING ?? 0} pending, ${embeddingSummary?.statusCounts.PROCESSING ?? 0} processing`}
+        description={`${embeddingSummary?.statusCounts?.PENDING ?? 0} pending, ${embeddingSummary?.statusCounts?.PROCESSING ?? 0} processing`}
         status={
-          embeddingSummary
+          embeddingSummary?.statusCounts
             ? getPendingStatus(
-                embeddingSummary.statusCounts.PENDING +
-                  embeddingSummary.statusCounts.PROCESSING
+                (embeddingSummary.statusCounts.PENDING ?? 0) +
+                  (embeddingSummary.statusCounts.PROCESSING ?? 0)
               )
             : undefined
         }
@@ -128,12 +147,12 @@ export function SummaryCardsSection({
       <MetricsCard
         title="Article Summary Rate"
         value={
-          articleStats?.totals.overallRate.toFixed(1) ?? '-'
+          articleStats?.totals?.overallRate?.toFixed(1) ?? '-'
         }
         unit="%"
-        description={`${articleStats?.totals.summaries.toLocaleString() ?? 0} / ${articleStats?.totals.articles.toLocaleString() ?? 0} articles have summaries`}
+        description={`${articleStats?.totals?.summaries?.toLocaleString() ?? 0} / ${articleStats?.totals?.articles?.toLocaleString() ?? 0} articles have summaries`}
         status={
-          articleStats
+          articleStats?.totals?.overallRate !== undefined
             ? getSuccessRateStatus(articleStats.totals.overallRate)
             : undefined
         }

@@ -44,10 +44,10 @@ describe('GET /api/admin/jobs/article-stats', () => {
       const data = await response.json();
 
       expect(response.status).toBe(401);
-      expect(data.error).toBe('Unauthorized. Admin access required.');
+      expect(data.error).toBe('Unauthorized. Authentication required.');
     });
 
-    it('should return 401 if user is not admin', async () => {
+    it('should return 403 if user is not admin', async () => {
       mockAuth.mockResolvedValue({
         user: { id: '1', email: 'user@example.com', role: 'user' },
         expires: '2099-01-01',
@@ -57,8 +57,8 @@ describe('GET /api/admin/jobs/article-stats', () => {
       const response = await GET(request);
       const data = await response.json();
 
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Unauthorized. Admin access required.');
+      expect(response.status).toBe(403);
+      expect(data.error).toBe('Forbidden. Admin access required.');
     });
   });
 

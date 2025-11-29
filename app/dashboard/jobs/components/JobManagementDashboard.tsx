@@ -134,6 +134,7 @@ export default function JobManagementDashboard() {
         embeddingSummary={embeddingSummary}
         articleStats={articleStats}
         loading={loading && !processingLogs}
+        error={!!error}
       />
 
       {/* Main Content Grid */}

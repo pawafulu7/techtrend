@@ -46,10 +46,10 @@ describe('GET /api/admin/jobs/embedding-summary', () => {
       const data = await response.json();
 
       expect(response.status).toBe(401);
-      expect(data.error).toBe('Unauthorized. Admin access required.');
+      expect(data.error).toBe('Unauthorized. Authentication required.');
     });
 
-    it('should return 401 if user is not admin', async () => {
+    it('should return 403 if user is not admin', async () => {
       mockAuth.mockResolvedValue({
         user: { id: '1', email: 'user@example.com', role: 'user' },
         expires: '2099-01-01',
@@ -59,8 +59,8 @@ describe('GET /api/admin/jobs/embedding-summary', () => {
       const response = await GET(request);
       const data = await response.json();
 
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Unauthorized. Admin access required.');
+      expect(response.status).toBe(403);
+      expect(data.error).toBe('Forbidden. Admin access required.');
     });
   });
 
@@ -167,8 +167,16 @@ describe('GET /api/admin/jobs/embedding-summary', () => {
       const request = createMockRequest({ stuckThreshold: '60' });
       await GET(request);
 
-      // Verify the findMany was called (stuck jobs query)
+      // Verify the findMany was called with correct cutoff time (60 minutes ago)
       expect(mockFindMany).toHaveBeenCalled();
+      const stuckJobsCall = mockFindMany.mock.calls[0][0];
+      expect(stuckJobsCall.where.status).toBe('PROCESSING');
+      expect(stuckJobsCall.where.queuedAt.lt).toBeDefined();
+
+      // Verify the cutoff is approximately 60 minutes ago (within 1 minute tolerance)
+      const cutoffTime = stuckJobsCall.where.queuedAt.lt.getTime();
+      const expectedCutoff = Date.now() - 60 * 60 * 1000;
+      expect(Math.abs(cutoffTime - expectedCutoff)).toBeLessThan(60 * 1000);
     });
   });
 });

@@ -25,12 +25,24 @@ export interface ProcessingLogsResponse {
 }
 
 // Embedding Summary Types
+
+/**
+ * Represents a job that has been stuck in PROCESSING state for too long
+ */
 export interface StuckJob {
   id: string;
   articleId: string;
+  /** When the job was added to the queue (ISO 8601) */
   queuedAt: string;
+  /**
+   * When the job started processing (ISO 8601)
+   * Note: Currently uses queuedAt as startedAt is not tracked in schema.
+   * This represents the earliest possible processing start time.
+   */
   processingSince: string;
+  /** How long the job has been in queue/processing (in minutes) */
   durationMinutes: number;
+  /** Number of processing attempts */
   attempts: number;
 }
 

@@ -7,26 +7,22 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
+import type {
+  ProcessingLogEntry,
+  ProcessingLogsResponse,
+} from '@/app/dashboard/jobs/types';
 
-export interface ProcessingLogEntry {
-  id: string;
-  processName: string;
-  status: 'success' | 'failed' | 'partial';
-  processedCount: number;
-  lastProcessedAt: string;
-  metadata: Record<string, unknown> | null;
-}
+/**
+ * Valid status values for processing logs
+ */
+const VALID_STATUSES = ['success', 'failed', 'partial'] as const;
+type ProcessingStatus = (typeof VALID_STATUSES)[number];
 
-export interface ProcessingLogsResponse {
-  logs: ProcessingLogEntry[];
-  summary: {
-    total: number;
-    successCount: number;
-    failedCount: number;
-    partialCount: number;
-    successRate: number;
-  };
-  lastUpdated: string;
+/**
+ * Type guard to validate status value
+ */
+function isValidStatus(status: unknown): status is ProcessingStatus {
+  return typeof status === 'string' && VALID_STATUSES.includes(status as ProcessingStatus);
 }
 
 /**
@@ -58,12 +54,20 @@ function sanitizeMetadata(
 }
 
 export async function GET() {
-  // Admin authorization check
+  // Authentication check
   const session = await auth();
-  if (!session?.user || session.user.role !== 'admin') {
+  if (!session?.user) {
     return NextResponse.json(
-      { error: 'Unauthorized. Admin access required.' },
+      { error: 'Unauthorized. Authentication required.' },
       { status: 401 }
+    );
+  }
+
+  // Authorization check (admin only)
+  if (session.user.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Forbidden. Admin access required.' },
+      { status: 403 }
     );
   }
 
@@ -81,7 +85,8 @@ export async function GET() {
     };
 
     const formattedLogs: ProcessingLogEntry[] = logs.map((log) => {
-      const status = log.status as 'success' | 'failed' | 'partial';
+      // Validate status with type guard, default to 'failed' for unknown values
+      const status: ProcessingStatus = isValidStatus(log.status) ? log.status : 'failed';
       statusCounts[status]++;
 
       return {

@@ -7,59 +7,49 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
-
-export interface StuckJob {
-  id: string;
-  articleId: string;
-  queuedAt: string;
-  processingSince: string;
-  durationMinutes: number;
-  attempts: number;
-}
-
-export interface HighRetryJob {
-  id: string;
-  articleId: string;
-  attempts: number;
-  maxAttempts: number;
-  retriesRemaining: number;
-  error: string | null;
-}
-
-export interface EmbeddingSummaryResponse {
-  statusCounts: {
-    PENDING: number;
-    PROCESSING: number;
-    COMPLETED: number;
-    FAILED: number;
-    total: number;
-  };
-  completionRate: number;
-  stuckJobs: StuckJob[];
-  highRetryJobs: HighRetryJob[];
-  lastUpdated: string;
-}
+import type {
+  StuckJob,
+  HighRetryJob,
+  EmbeddingSummaryResponse,
+} from '@/app/dashboard/jobs/types';
 
 const DEFAULT_STUCK_THRESHOLD_MINUTES = 30;
+const MIN_STUCK_THRESHOLD_MINUTES = 1;
+const MAX_STUCK_THRESHOLD_MINUTES = 1440; // 24 hours
 const HIGH_RETRY_THRESHOLD = 2;
 
 export async function GET(request: NextRequest) {
-  // Admin authorization check
+  // Authentication check
   const session = await auth();
-  if (!session?.user || session.user.role !== 'admin') {
+  if (!session?.user) {
     return NextResponse.json(
-      { error: 'Unauthorized. Admin access required.' },
+      { error: 'Unauthorized. Authentication required.' },
       { status: 401 }
     );
   }
 
-  try {
-    // Parse query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const stuckThreshold = parseInt(
-      searchParams.get('stuckThreshold') || String(DEFAULT_STUCK_THRESHOLD_MINUTES),
-      10
+  // Authorization check (admin only)
+  if (session.user.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Forbidden. Admin access required.' },
+      { status: 403 }
     );
+  }
+
+  try {
+    // Parse and validate query parameters
+    const searchParams = request.nextUrl.searchParams;
+    const stuckThresholdParam = searchParams.get('stuckThreshold');
+    const parsedThreshold = stuckThresholdParam
+      ? parseInt(stuckThresholdParam, 10)
+      : DEFAULT_STUCK_THRESHOLD_MINUTES;
+
+    // Validate threshold is within acceptable range (1-1440 minutes)
+    const stuckThreshold = Number.isNaN(parsedThreshold)
+      || parsedThreshold < MIN_STUCK_THRESHOLD_MINUTES
+      || parsedThreshold > MAX_STUCK_THRESHOLD_MINUTES
+        ? DEFAULT_STUCK_THRESHOLD_MINUTES
+        : parsedThreshold;
 
     // Calculate cutoff time for stuck jobs
     const stuckCutoff = new Date(Date.now() - stuckThreshold * 60 * 1000);

@@ -7,45 +7,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
-
-export interface SourceStats {
-  source: string;
-  count: number;
-  percentage: number;
-}
-
-export interface DailyStats {
-  date: string;
-  total: number;
-  withSummary: number;
-  summaryRate: number;
-}
-
-export interface ArticleStatsResponse {
-  bySource: SourceStats[];
-  byDate: DailyStats[];
-  totals: {
-    articles: number;
-    summaries: number;
-    overallRate: number;
-  };
-  period: {
-    start: string;
-    end: string;
-    days: number;
-  };
-  lastUpdated: string;
-}
+import type {
+  SourceStats,
+  DailyStats,
+  ArticleStatsResponse,
+} from '@/app/dashboard/jobs/types';
 
 const DEFAULT_RANGE_DAYS = 7;
+const MIN_RANGE_DAYS = 1;
+const MAX_RANGE_DAYS = 90;
+
+/**
+ * Check if an article has a valid (non-empty) summary
+ */
+function hasValidSummary(summary: string | null | undefined): boolean {
+  return typeof summary === 'string' && summary.trim().length > 0;
+}
 
 export async function GET(request: NextRequest) {
-  // Admin authorization check
+  // Authentication check
   const session = await auth();
-  if (!session?.user || session.user.role !== 'admin') {
+  if (!session?.user) {
     return NextResponse.json(
-      { error: 'Unauthorized. Admin access required.' },
+      { error: 'Unauthorized. Authentication required.' },
       { status: 401 }
+    );
+  }
+
+  // Authorization check (admin only)
+  if (session.user.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Forbidden. Admin access required.' },
+      { status: 403 }
     );
   }
 
@@ -53,7 +46,11 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
     const rangeParam = searchParams.get('range') || `${DEFAULT_RANGE_DAYS}d`;
-    const rangeDays = parseInt(rangeParam.replace('d', ''), 10) || DEFAULT_RANGE_DAYS;
+    const parsedDays = parseInt(rangeParam.replace('d', ''), 10);
+    // Validate range: must be between MIN and MAX, default to DEFAULT if invalid
+    const rangeDays = Number.isNaN(parsedDays) || parsedDays < MIN_RANGE_DAYS || parsedDays > MAX_RANGE_DAYS
+      ? DEFAULT_RANGE_DAYS
+      : parsedDays;
 
     // Calculate date range (JST-based)
     const endDate = new Date();
@@ -101,7 +98,7 @@ export async function GET(request: NextRequest) {
       const dateKey = article.createdAt.toISOString().split('T')[0];
       const existing = dailyMap.get(dateKey) || { total: 0, withSummary: 0 };
       existing.total++;
-      if (article.summary && article.summary.trim().length > 0) {
+      if (hasValidSummary(article.summary)) {
         existing.withSummary++;
       }
       dailyMap.set(dateKey, existing);
@@ -128,9 +125,7 @@ export async function GET(request: NextRequest) {
     byDate.sort((a, b) => b.date.localeCompare(a.date));
 
     // Calculate totals
-    const totalWithSummary = articles.filter(
-      (a) => a.summary && a.summary.trim().length > 0
-    ).length;
+    const totalWithSummary = articles.filter((a) => hasValidSummary(a.summary)).length;
 
     const response: ArticleStatsResponse = {
       bySource,

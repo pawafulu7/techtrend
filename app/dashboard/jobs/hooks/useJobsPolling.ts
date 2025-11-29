@@ -52,8 +52,8 @@ export function useJobsPolling(
       setLoading(true);
       setError(null);
 
-      // Fetch all APIs in parallel
-      const [logsRes, embeddingRes, statsRes] = await Promise.all([
+      // Fetch all APIs in parallel using allSettled for partial failure handling
+      const results = await Promise.allSettled([
         fetch('/api/admin/jobs/processing-logs', {
           signal: abortControllerRef.current.signal,
         }),
@@ -65,24 +65,60 @@ export function useJobsPolling(
         }),
       ]);
 
-      // Check for auth errors
-      if (logsRes.status === 401 || embeddingRes.status === 401 || statsRes.status === 401) {
-        throw new Error('Unauthorized. Admin access required.');
+      const [logsResult, embeddingResult, statsResult] = results;
+
+      // Check for auth errors (401 or 403 indicates auth issues)
+      const responses = results
+        .filter((r): r is PromiseFulfilledResult<Response> => r.status === 'fulfilled')
+        .map((r) => r.value);
+
+      const authError = responses.find((r) => r.status === 401 || r.status === 403);
+      if (authError) {
+        throw new Error(
+          authError.status === 401
+            ? 'Unauthorized. Authentication required.'
+            : 'Forbidden. Admin access required.'
+        );
       }
 
-      if (!logsRes.ok || !embeddingRes.ok || !statsRes.ok) {
-        throw new Error('Failed to fetch job data');
+      // Process each result independently
+      const errors: string[] = [];
+
+      if (logsResult.status === 'fulfilled' && logsResult.value.ok) {
+        const logsData = await logsResult.value.json();
+        setProcessingLogs(logsData);
+      } else {
+        errors.push('processing-logs');
+        // Keep previous data on partial failure
       }
 
-      const [logsData, embeddingData, statsData] = await Promise.all([
-        logsRes.json(),
-        embeddingRes.json(),
-        statsRes.json(),
-      ]);
+      if (embeddingResult.status === 'fulfilled' && embeddingResult.value.ok) {
+        const embeddingData = await embeddingResult.value.json();
+        setEmbeddingSummary(embeddingData);
+      } else {
+        errors.push('embedding-summary');
+      }
 
-      setProcessingLogs(logsData);
-      setEmbeddingSummary(embeddingData);
-      setArticleStats(statsData);
+      if (statsResult.status === 'fulfilled' && statsResult.value.ok) {
+        const statsData = await statsResult.value.json();
+        setArticleStats(statsData);
+      } else {
+        errors.push('article-stats');
+      }
+
+      // Set partial error if some APIs failed
+      if (errors.length > 0 && errors.length < 3) {
+        setError({
+          message: `Partial failure: ${errors.join(', ')} API(s) failed`,
+          timestamp: new Date().toISOString(),
+        });
+      } else if (errors.length === 3) {
+        throw new Error('Failed to fetch all job data');
+      } else {
+        setError(null);
+      }
+
+      // Use Japanese locale for admin dashboard (internal tool)
       setLastUpdated(new Date().toLocaleString('ja-JP'));
       setLoading(false);
     } catch (err: unknown) {

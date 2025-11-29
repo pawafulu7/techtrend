@@ -58,9 +58,14 @@ function getStatusBadge(status: ProcessingLogEntry['status']) {
 
 /**
  * Format date for display
+ * Uses Japanese locale for admin dashboard (internal tool)
  */
 function formatDate(isoString: string): string {
   const date = new Date(isoString);
+  // Handle invalid dates gracefully
+  if (Number.isNaN(date.getTime())) {
+    return '-';
+  }
   return date.toLocaleString('ja-JP', {
     year: 'numeric',
     month: '2-digit',
@@ -171,7 +176,7 @@ export function ProcessingLogsTable({ data, loading }: ProcessingLogsTableProps)
               variant="default"
               className="bg-[var(--tt-color-positive)] tabular-nums"
             >
-              {data.summary.successRate}% success
+              {data.summary.successRate.toFixed(1)}% success
             </Badge>
           </div>
         </CardTitle>

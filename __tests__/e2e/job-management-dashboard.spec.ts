@@ -21,9 +21,10 @@ test.describe('Job Management Dashboard', () => {
   // These tests are currently skipped until proper admin test fixtures are available
   test.describe('Admin dashboard UI elements', () => {
     // Skip admin tests in CI since they require admin user setup
-    test.skip(({ }, testInfo) => {
-      return process.env.CI === 'true';
-    }, 'Admin tests require admin user fixtures');
+    test.skip(
+      () => process.env.CI === 'true',
+      'Admin tests require admin user fixtures'
+    );
 
     test('dashboard page loads without errors', async ({ page }) => {
       // This test verifies the dashboard page structure without requiring login
