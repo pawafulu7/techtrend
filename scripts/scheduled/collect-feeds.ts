@@ -120,11 +120,18 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   '企業技術ブログ': HatenaBlogDevFetcher,
 };
 
+interface ArticleInfo {
+  title: string;
+  url: string;
+  sourceName: string;
+}
+
 interface CollectResult {
   newArticles: number;
   duplicates: number;
   updated: number;
   newArticleIds: string[];
+  articles: ArticleInfo[];
 }
 
 const DEFAULT_COLLECT_CONCURRENCY = 5;
@@ -145,6 +152,7 @@ interface ProcessSourceResult {
   duplicates: number;
   updated: number;
   newArticleIds: string[];
+  articles: ArticleInfo[];
 }
 
 async function runWithTimeout<T>(
@@ -196,7 +204,7 @@ async function processSource({
 }: ProcessSourceContext): Promise<ProcessSourceResult> {
   const startTime = Date.now();
   const sourceName = source.name;
-  const result: ProcessSourceResult = { newArticles: 0, duplicates: 0, updated: 0, newArticleIds: [] };
+  const result: ProcessSourceResult = { newArticles: 0, duplicates: 0, updated: 0, newArticleIds: [], articles: [] };
   let newCount = 0;
   let duplicateCount = 0;
   let updatedCount = 0;
@@ -335,6 +343,11 @@ async function processSource({
         });
 
         result.newArticleIds.push(savedArticle.id);
+        result.articles.push({
+          title: savedArticle.title,
+          url: savedArticle.url,
+          sourceName: sourceName
+        });
 
         if (process.env.SKIP_POST_SAVE_ENRICHMENT !== '1') {
           const enricher = enricherFactory.getEnricher(article.url);
@@ -483,6 +496,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     let totalDuplicates = 0;
     let totalUpdated = 0;
     const newArticleIds: string[] = [];
+    const allArticles: ArticleInfo[] = [];
 
     settledResults.forEach(result => {
       if (result.status === 'fulfilled') {
@@ -490,6 +504,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
         totalDuplicates += result.value.duplicates;
         totalUpdated += result.value.updated;
         newArticleIds.push(...result.value.newArticleIds);
+        allArticles.push(...result.value.articles);
       } else {
         console.error('[WARN] ソース処理で未処理の例外が発生しました:', result.reason);
       }
@@ -515,11 +530,34 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       }
     }
 
+    // Send Slack notification (if configured)
+    try {
+      const { createNotifierFromEnv } = await import('../../lib/notification');
+      const notifier = createNotifierFromEnv();
+      if (notifier) {
+        await notifier.send({
+          newArticles: totalNewArticles,
+          duplicates: totalDuplicates,
+          updated: totalUpdated,
+          newArticleIds,
+          articles: allArticles,
+          durationSeconds: duration
+        });
+        console.error('[INFO] Slack notification sent successfully');
+      }
+    } catch (error) {
+      console.error(
+        '[WARN] Slack notification failed, but collection completed successfully:',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
     return {
       newArticles: totalNewArticles,
       duplicates: totalDuplicates,
       updated: totalUpdated,
-      newArticleIds
+      newArticleIds,
+      articles: allArticles
     };
 
   } catch (error) {
