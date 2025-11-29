@@ -87,7 +87,7 @@ export function PopularArticles({
     setMetric(value as MetricType);
   }, []);
 
-  const getMetricIcon = (metricType: string) => {
+  const getMetricIcon = (metricType: MetricType) => {
     switch (metricType) {
       case 'bookmarks':
         return <Bookmark className="h-4 w-4" />;
@@ -319,7 +319,7 @@ export function PopularArticles({
                       variant="ghost"
                       size="sm"
                       asChild
-                      className="h-11 w-11 p-0"
+                      className="h-11 w-11 p-0 flex items-center justify-center"
                     >
                       <a
                         href={article.url}
@@ -327,7 +327,6 @@ export function PopularArticles({
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         aria-label={`Open ${article.translatedTitle || article.title} in new tab`}
-                        className="flex h-11 w-11 items-center justify-center"
                       >
                         <ExternalLink className="h-4 w-4" />
                       </a>

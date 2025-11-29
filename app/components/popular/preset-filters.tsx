@@ -6,6 +6,9 @@ import { cn } from '@/lib/utils';
 type PeriodType = 'today' | 'week' | 'month' | 'all';
 type MetricType = 'bookmarks' | 'votes' | 'quality' | 'combined';
 
+export const DEFAULT_PERIOD: PeriodType = 'week';
+export const DEFAULT_METRIC: MetricType = 'combined';
+
 interface PresetFiltersProps {
   selectedPreset: string | null;
   onPresetChange: (preset: string | null, period: PeriodType, metric: MetricType) => void;
@@ -26,7 +29,7 @@ export function PresetFilters({
   const handleValueChange = (value: string) => {
     if (!value) {
       // Deselected - reset to default
-      onPresetChange(null, 'week', 'combined');
+      onPresetChange(null, DEFAULT_PERIOD, DEFAULT_METRIC);
       return;
     }
 
