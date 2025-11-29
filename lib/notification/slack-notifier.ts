@@ -76,7 +76,7 @@ export class SlackNotifier implements Notifier {
   private static readonly MAX_DISPLAY_ARTICLES = 50;
 
   /**
-   * Builds Slack Block Kit message from payload
+   * Builds plain text message from payload (full width, no Block Kit)
    */
   private buildMessage(payload: NotificationPayload): object {
     const { newArticles, articles } = payload;
@@ -86,16 +86,7 @@ export class SlackNotifier implements Notifier {
     const statusText =
       newArticles > 0 ? `${newArticles}件の新着記事` : '新着記事なし';
 
-    const blocks: object[] = [
-      {
-        type: 'header',
-        text: {
-          type: 'plain_text',
-          text: `${emoji} ${statusText}`,
-          emoji: true,
-        },
-      },
-    ];
+    let text = `${emoji} *${statusText}*\n`;
 
     // Add article list if there are new articles
     if (articles && articles.length > 0) {
@@ -107,32 +98,15 @@ export class SlackNotifier implements Notifier {
         .map((a) => `• <${a.url}|${this.escapeSlackText(a.title)}>`)
         .join('\n');
 
-      blocks.push({
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: articleListText,
-        },
-      });
+      text += `\n${articleListText}`;
 
       // Add truncation notice if there are more articles
       if (articles.length > SlackNotifier.MAX_DISPLAY_ARTICLES) {
-        blocks.push({
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: `他 ${articles.length - SlackNotifier.MAX_DISPLAY_ARTICLES}件`,
-            },
-          ],
-        });
+        text += `\n\n_他 ${articles.length - SlackNotifier.MAX_DISPLAY_ARTICLES}件_`;
       }
     }
 
-    return {
-      text: `[TechTrend] ${statusText}`,
-      blocks,
-    };
+    return { text };
   }
 
   /**
