@@ -88,16 +88,14 @@ export function CategoryCard({
       )}
       data-testid={`category-card-${category.slug}`}
     >
-      {/* Checkbox */}
+      {/* Checkbox - visual only, parent handles toggle */}
       <Checkbox
         id={`category-${category.id}`}
         checked={selected}
-        onCheckedChange={() => onToggle(category.id)}
         disabled={disabled}
-        className="mt-0.5 h-5 w-5 sm:h-4 sm:w-4 shrink-0"
+        className="mt-0.5 h-5 w-5 sm:h-4 sm:w-4 shrink-0 pointer-events-none"
         aria-hidden="true"
         tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
       />
 
       {/* Icon */}
@@ -115,15 +113,14 @@ export function CategoryCard({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <label
-            htmlFor={`category-${category.id}`}
+          <span
             className={cn(
-              'text-sm font-medium cursor-pointer',
+              'text-sm font-medium',
               selected && 'text-primary'
             )}
           >
             {category.name}
-          </label>
+          </span>
           <span className="text-xs text-muted-foreground">
             ({category.articleCount.toLocaleString()}
           </span>

@@ -57,17 +57,24 @@ export function CategoryPreferenceDialog({
   // Local state for editing (committed on save)
   const [tempCategories, setTempCategories] = useState<string[]>(selectedCategories);
   const [tempPeriod, setTempPeriod] = useState<PeriodPreset>(selectedPeriod);
+  const [hasEdited, setHasEdited] = useState(false);
 
   // Reset local state when dialog opens or parent state changes
   useEffect(() => {
     if (open) {
-      setTempCategories(selectedCategories);
-      setTempPeriod(selectedPeriod);
+      setHasEdited(false);
     }
-  }, [open, selectedCategories, selectedPeriod]);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || hasEdited) return;
+    setTempCategories(selectedCategories);
+    setTempPeriod(selectedPeriod);
+  }, [open, selectedCategories, selectedPeriod, hasEdited]);
 
   // Toggle category selection
   const handleToggle = (categoryId: string) => {
+    setHasEdited(true);
     setTempCategories((prev) =>
       prev.includes(categoryId)
         ? prev.filter((id) => id !== categoryId)
@@ -77,17 +84,25 @@ export function CategoryPreferenceDialog({
 
   // Select all categories
   const handleSelectAll = () => {
+    setHasEdited(true);
     setTempCategories(categories.map((c) => c.id));
   };
 
   // Clear all selections
   const handleClear = () => {
+    setHasEdited(true);
     setTempCategories([]);
+  };
+
+  const handlePeriodChange = (period: PeriodPreset) => {
+    setHasEdited(true);
+    setTempPeriod(period);
   };
 
   // Save changes
   const handleSave = () => {
     onSave(tempCategories, tempPeriod);
+    setHasEdited(false);
     onOpenChange(false);
   };
 
@@ -95,6 +110,7 @@ export function CategoryPreferenceDialog({
   const handleCancel = () => {
     setTempCategories(selectedCategories);
     setTempPeriod(selectedPeriod);
+    setHasEdited(false);
     onOpenChange(false);
   };
 
@@ -174,7 +190,7 @@ export function CategoryPreferenceDialog({
           <div className="py-4 border-t">
             <PeriodSelector
               value={tempPeriod}
-              onChange={setTempPeriod}
+              onChange={handlePeriodChange}
               disabled={isLoading || isSaving}
             />
           </div>

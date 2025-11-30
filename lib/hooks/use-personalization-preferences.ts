@@ -15,6 +15,9 @@ import type {
   PeriodPreset,
 } from '@/lib/personalization/types';
 
+const EMPTY_CATEGORIES: InterestCategoryWithCount[] = [];
+const EMPTY_SELECTED_CATEGORIES: string[] = [];
+
 // =============================================================================
 // Query Keys
 // =============================================================================
@@ -113,15 +116,19 @@ export function useUpdatePreferences() {
 
   return useMutation({
     mutationFn: updatePreferences,
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      const selectedCategories =
+        data?.selectedCategories ?? variables.categoryIds ?? [];
+      const nextPeriod = variables.periodMonths;
+
       // Optimistic update
       queryClient.setQueryData<UserCategoryPreferences>(
         PERSONALIZATION_QUERY_KEYS.preferences,
         (old) => ({
           ...old,
-          selectedCategories: data.selectedCategories,
-          filterEnabled: data.selectedCategories.length > 0,
-          periodMonths: old?.periodMonths ?? 12,
+          selectedCategories,
+          filterEnabled: selectedCategories.length > 0,
+          periodMonths: nextPeriod ?? old?.periodMonths ?? 12,
         })
       );
 
@@ -146,10 +153,14 @@ export function usePersonalizationPreferences() {
   const preferencesQuery = useUserPreferences();
   const updateMutation = useUpdatePreferences();
 
+  const categories = categoriesQuery.data ?? EMPTY_CATEGORIES;
+  const selectedCategories =
+    preferencesQuery.data?.selectedCategories ?? EMPTY_SELECTED_CATEGORIES;
+
   return {
     // Data
-    categories: categoriesQuery.data ?? [],
-    selectedCategories: preferencesQuery.data?.selectedCategories ?? [],
+    categories,
+    selectedCategories,
     filterEnabled: preferencesQuery.data?.filterEnabled ?? false,
     periodMonths: (preferencesQuery.data?.periodMonths ?? 12) as PeriodPreset,
 
@@ -168,7 +179,7 @@ export function usePersonalizationPreferences() {
     updateError: updateMutation.error,
 
     // Helpers
-    hasPreferences: (preferencesQuery.data?.selectedCategories ?? []).length > 0,
+    hasPreferences: selectedCategories.length > 0,
     isAuthenticated: preferencesQuery.data !== undefined,
   };
 }
