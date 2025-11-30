@@ -42,12 +42,17 @@ export class SlackNotifier implements Notifier {
    * Sends a notification to Slack
    *
    * Implements retry with linear backoff on failure.
-   * Reports are sent even when newArticles is 0 (operational monitoring).
+   * Skips notification when there are no new articles.
    *
    * @param payload - Collection result data
    * @throws Error if all retry attempts fail
    */
   async send(payload: NotificationPayload): Promise<void> {
+    // Skip notification if no new articles
+    if (payload.newArticles === 0) {
+      return;
+    }
+
     const message = this.buildMessage(payload);
 
     let lastError: Error | null = null;

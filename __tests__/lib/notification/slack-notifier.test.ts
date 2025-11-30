@@ -49,7 +49,7 @@ describe('SlackNotifier', () => {
       expect(sentMessage.text).toContain('10件の新着記事');
     });
 
-    it('should send notification even when newArticles is 0', async () => {
+    it('should skip notification when newArticles is 0', async () => {
       const zeroPayload: NotificationPayload = {
         ...samplePayload,
         newArticles: 0,
@@ -58,25 +58,7 @@ describe('SlackNotifier', () => {
 
       await notifier.send(zeroPayload);
 
-      expect(mockWebhook.send).toHaveBeenCalledTimes(1);
-      expect(mockWebhook.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          text: expect.stringContaining('新着記事なし'),
-        })
-      );
-    });
-
-    it('should use different emoji for zero articles', async () => {
-      const zeroPayload: NotificationPayload = {
-        ...samplePayload,
-        newArticles: 0,
-        articles: [],
-      };
-
-      await notifier.send(zeroPayload);
-
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
-      expect(sentMessage.text).toContain(':white_check_mark:');
+      expect(mockWebhook.send).not.toHaveBeenCalled();
     });
 
     it('should use newspaper emoji for new articles', async () => {
@@ -109,19 +91,6 @@ describe('SlackNotifier', () => {
       expect(sentMessage.text).toContain('&amp;');
     });
 
-    it('should not include article list when articles is empty', async () => {
-      const emptyPayload: NotificationPayload = {
-        ...samplePayload,
-        newArticles: 0,
-        articles: [],
-      };
-
-      await notifier.send(emptyPayload);
-
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
-      // Should only contain header, no article links
-      expect(sentMessage.text).not.toContain('https://example.com');
-    });
   });
 
   describe('retry mechanism', () => {
