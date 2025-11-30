@@ -22,7 +22,7 @@ export interface SummaryGenerationOptions {
   force?: boolean;
   /** Maximum articles to process in regenerate/missing flows (default: 10) */
   batch?: number;
-  /** Days to look back for missing summaries (default: 7) */
+  /** Days to look back: generateSummaries default=1, generateMissingSummaries default=7 */
   days?: number;
   /** Specific article IDs to regenerate */
   articleIds?: string[];
