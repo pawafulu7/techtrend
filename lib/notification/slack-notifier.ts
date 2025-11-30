@@ -3,8 +3,8 @@
  *
  * Sends article collection reports to Slack via Incoming Webhook.
  * Features:
- * - Retry mechanism with exponential backoff
- * - Structured message formatting using Block Kit
+ * - Retry mechanism with linear backoff
+ * - Plain text message formatting (mrkdwn)
  * - Dependency injection for testability
  */
 
@@ -81,17 +81,13 @@ export class SlackNotifier implements Notifier {
   private static readonly MAX_DISPLAY_ARTICLES = 50;
 
   /**
-   * Builds plain text message from payload (full width, no Block Kit)
+   * Builds plain text message from payload
+   * Note: This method is only called when newArticles > 0 (filtered by send())
    */
-  private buildMessage(payload: NotificationPayload): object {
+  private buildMessage(payload: NotificationPayload): { text: string } {
     const { newArticles, articles } = payload;
 
-    // Choose emoji based on results
-    const emoji = newArticles > 0 ? ':newspaper:' : ':white_check_mark:';
-    const statusText =
-      newArticles > 0 ? `${newArticles}件の新着記事` : '新着記事なし';
-
-    let text = `${emoji} *${statusText}*\n`;
+    let text = `:newspaper: *${newArticles}件の新着記事*\n`;
 
     // Add article list if there are new articles
     if (articles && articles.length > 0) {

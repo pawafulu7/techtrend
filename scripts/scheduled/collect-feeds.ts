@@ -120,6 +120,11 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   '企業技術ブログ': HatenaBlogDevFetcher,
 };
 
+/**
+ * Local ArticleInfo for collect-feeds internal use.
+ * Similar to lib/notification/types.ts ArticleInfo but kept separate
+ * to avoid tight coupling between collection and notification layers.
+ */
 interface ArticleInfo {
   title: string;
   translatedTitle?: string | null;

@@ -140,11 +140,14 @@ async function main() {
     }
 
     // Send Slack notification for newly generated summaries (generate command only)
+    // Assumption: summaryComputedAt is only updated by this script during execution.
+    // If other processes update summaryComputedAt concurrently, notifications may include
+    // unrelated articles. Currently this is safe as manage-summaries runs sequentially.
     if (options.command === 'generate' && result.generated > 0) {
       try {
         const notifier = createNotifierFromEnv();
         if (notifier) {
-          // Fetch articles that were processed (summaryComputedAt >= startTime)
+          // Fetch articles processed during this execution (summaryComputedAt >= startTime)
           const processedArticles = await prisma.article.findMany({
             where: {
               summaryComputedAt: { gte: startTime },
