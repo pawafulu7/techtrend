@@ -128,6 +128,7 @@ export interface CategoryCentroid {
  */
 export interface CentroidComputationResult {
   categoryId: string;
+  slug?: string;
   success: boolean;
   sampleCount?: number;
   error?: string;
