@@ -3,8 +3,8 @@
  *
  * Sends article collection reports to Slack via Incoming Webhook.
  * Features:
- * - Retry mechanism with exponential backoff
- * - Structured message formatting using Block Kit
+ * - Retry mechanism with linear backoff
+ * - Plain text message formatting (mrkdwn)
  * - Dependency injection for testability
  */
 
@@ -42,12 +42,17 @@ export class SlackNotifier implements Notifier {
    * Sends a notification to Slack
    *
    * Implements retry with linear backoff on failure.
-   * Reports are sent even when newArticles is 0 (operational monitoring).
+   * Skips notification when there are no new articles.
    *
    * @param payload - Collection result data
    * @throws Error if all retry attempts fail
    */
   async send(payload: NotificationPayload): Promise<void> {
+    // Skip notification if no new articles
+    if (payload.newArticles === 0) {
+      return;
+    }
+
     const message = this.buildMessage(payload);
 
     let lastError: Error | null = null;
@@ -76,85 +81,37 @@ export class SlackNotifier implements Notifier {
   private static readonly MAX_DISPLAY_ARTICLES = 50;
 
   /**
-   * Builds Slack Block Kit message from payload
+   * Builds plain text message from payload
+   * Note: This method is only called when newArticles > 0 (filtered by send())
    */
-  private buildMessage(payload: NotificationPayload): object {
-    const { newArticles, duplicates, updated, durationSeconds, articles } =
-      payload;
+  private buildMessage(payload: NotificationPayload): { text: string } {
+    const { newArticles, articles } = payload;
 
-    // Choose emoji based on results
-    const emoji = newArticles > 0 ? ':newspaper:' : ':white_check_mark:';
-    const statusText =
-      newArticles > 0 ? `${newArticles} new articles` : 'No new articles';
-
-    const blocks: object[] = [
-      {
-        type: 'header',
-        text: {
-          type: 'plain_text',
-          text: `${emoji} TechTrend Article Collection Report`,
-          emoji: true,
-        },
-      },
-      {
-        type: 'section',
-        fields: [
-          { type: 'mrkdwn', text: `*New Articles*\n${newArticles}` },
-          { type: 'mrkdwn', text: `*Updated*\n${updated}` },
-          { type: 'mrkdwn', text: `*Duplicates Skipped*\n${duplicates}` },
-          { type: 'mrkdwn', text: `*Duration*\n${durationSeconds}s` },
-        ],
-      },
-    ];
+    let text = `:newspaper: *${newArticles}件の新着記事*\n`;
 
     // Add article list if there are new articles
     if (articles && articles.length > 0) {
-      blocks.push({ type: 'divider' });
-
       const displayArticles = articles.slice(
         0,
         SlackNotifier.MAX_DISPLAY_ARTICLES
       );
       const articleListText = displayArticles
-        .map((a) => `- <${a.url}|${this.escapeSlackText(a.title)}> (${this.escapeSlackText(a.sourceName)})`)
+        .map((a) => {
+          // Use translatedTitle if available, otherwise use original title
+          const displayTitle = a.translatedTitle || a.title;
+          return `• <${a.url}|${this.escapeSlackText(displayTitle)}> (${this.escapeSlackText(a.sourceName)})`;
+        })
         .join('\n');
 
-      blocks.push({
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: articleListText,
-        },
-      });
+      text += `\n${articleListText}`;
 
       // Add truncation notice if there are more articles
       if (articles.length > SlackNotifier.MAX_DISPLAY_ARTICLES) {
-        blocks.push({
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: `... and ${articles.length - SlackNotifier.MAX_DISPLAY_ARTICLES} more articles`,
-            },
-          ],
-        });
+        text += `\n\n_他 ${articles.length - SlackNotifier.MAX_DISPLAY_ARTICLES}件_`;
       }
     }
 
-    blocks.push({
-      type: 'context',
-      elements: [
-        {
-          type: 'mrkdwn',
-          text: `Processed at ${new Date().toISOString()}`,
-        },
-      ],
-    });
-
-    return {
-      text: `[TechTrend] Collection complete: ${statusText}`,
-      blocks,
-    };
+    return { text };
   }
 
   /**

@@ -37,37 +37,19 @@ describe('SlackNotifier', () => {
       expect(mockWebhook.send).toHaveBeenCalledTimes(1);
       expect(mockWebhook.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          text: expect.stringContaining('10 new articles'),
-          blocks: expect.arrayContaining([
-            expect.objectContaining({ type: 'header' }),
-            expect.objectContaining({ type: 'section' }),
-            expect.objectContaining({ type: 'context' }),
-          ]),
+          text: expect.stringContaining('10件の新着記事'),
         })
       );
     });
 
-    it('should include all stats in message', async () => {
+    it('should include article count in message', async () => {
       await notifier.send(samplePayload);
 
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ fields?: Array<{ text: string }> }>;
-      };
-      const sectionBlock = sentMessage.blocks.find(
-        (b: { type: string }) => b.type === 'section'
-      );
-
-      expect(sectionBlock?.fields).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ text: expect.stringContaining('10') }), // newArticles
-          expect.objectContaining({ text: expect.stringContaining('2') }), // updated
-          expect.objectContaining({ text: expect.stringContaining('5') }), // duplicates
-          expect.objectContaining({ text: expect.stringContaining('120') }), // duration
-        ])
-      );
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain('10件の新着記事');
     });
 
-    it('should send notification even when newArticles is 0', async () => {
+    it('should skip notification when newArticles is 0', async () => {
       const zeroPayload: NotificationPayload = {
         ...samplePayload,
         newArticles: 0,
@@ -76,62 +58,43 @@ describe('SlackNotifier', () => {
 
       await notifier.send(zeroPayload);
 
-      expect(mockWebhook.send).toHaveBeenCalledTimes(1);
-      expect(mockWebhook.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          text: expect.stringContaining('No new articles'),
-        })
-      );
-    });
-
-    it('should use different emoji for zero articles', async () => {
-      const zeroPayload: NotificationPayload = {
-        ...samplePayload,
-        newArticles: 0,
-        articles: [],
-      };
-
-      await notifier.send(zeroPayload);
-
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ text?: { text: string } }>;
-      };
-      const headerBlock = sentMessage.blocks.find(
-        (b: { type: string }) => b.type === 'header'
-      );
-
-      expect(headerBlock?.text?.text).toContain(':white_check_mark:');
+      expect(mockWebhook.send).not.toHaveBeenCalled();
     });
 
     it('should use newspaper emoji for new articles', async () => {
       await notifier.send(samplePayload);
 
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ text?: { text: string } }>;
-      };
-      const headerBlock = sentMessage.blocks.find(
-        (b: { type: string }) => b.type === 'header'
-      );
-
-      expect(headerBlock?.text?.text).toContain(':newspaper:');
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain(':newspaper:');
     });
 
-    it('should include article list in message', async () => {
+    it('should include article list with source name in message', async () => {
       await notifier.send(samplePayload);
 
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ type: string; text?: { text: string } }>;
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain('TypeScript Best Practices');
+      expect(sentMessage.text).toContain('https://example.com/ts');
+      expect(sentMessage.text).toContain('(Zenn)');
+    });
+
+    it('should use translatedTitle when available', async () => {
+      const payloadWithTranslation: NotificationPayload = {
+        ...samplePayload,
+        articles: [
+          {
+            title: 'English Title',
+            translatedTitle: '日本語タイトル',
+            url: 'https://example.com/test',
+            sourceName: 'Dev.to'
+          },
+        ],
       };
 
-      // Find section blocks with article list (after divider)
-      const dividerIndex = sentMessage.blocks.findIndex(b => b.type === 'divider');
-      expect(dividerIndex).toBeGreaterThan(0);
+      await notifier.send(payloadWithTranslation);
 
-      const articleSection = sentMessage.blocks[dividerIndex + 1];
-      expect(articleSection.type).toBe('section');
-      expect(articleSection.text?.text).toContain('TypeScript Best Practices');
-      expect(articleSection.text?.text).toContain('https://example.com/ts');
-      expect(articleSection.text?.text).toContain('Zenn');
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain('日本語タイトル');
+      expect(sentMessage.text).not.toContain('English Title');
     });
 
     it('should escape special characters in titles', async () => {
@@ -144,32 +107,11 @@ describe('SlackNotifier', () => {
 
       await notifier.send(payloadWithSpecialChars);
 
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ type: string; text?: { text: string } }>;
-      };
-      const dividerIndex = sentMessage.blocks.findIndex(b => b.type === 'divider');
-      const articleSection = sentMessage.blocks[dividerIndex + 1];
-
-      expect(articleSection.text?.text).toContain('&lt;script&gt;');
-      expect(articleSection.text?.text).toContain('&amp;');
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain('&lt;script&gt;');
+      expect(sentMessage.text).toContain('&amp;');
     });
 
-    it('should not include article list when articles is empty', async () => {
-      const emptyPayload: NotificationPayload = {
-        ...samplePayload,
-        newArticles: 0,
-        articles: [],
-      };
-
-      await notifier.send(emptyPayload);
-
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ type: string }>;
-      };
-
-      const dividerIndex = sentMessage.blocks.findIndex(b => b.type === 'divider');
-      expect(dividerIndex).toBe(-1);
-    });
   });
 
   describe('retry mechanism', () => {

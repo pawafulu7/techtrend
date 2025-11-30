@@ -120,8 +120,14 @@ const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
   '企業技術ブログ': HatenaBlogDevFetcher,
 };
 
+/**
+ * Local ArticleInfo for collect-feeds internal use.
+ * Similar to lib/notification/types.ts ArticleInfo but kept separate
+ * to avoid tight coupling between collection and notification layers.
+ */
 interface ArticleInfo {
   title: string;
+  translatedTitle?: string | null;
   url: string;
   sourceName: string;
 }
@@ -528,28 +534,6 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
           error instanceof Error ? error.message : String(error)
         );
       }
-    }
-
-    // Send Slack notification (if configured)
-    try {
-      const { createNotifierFromEnv } = await import('../../lib/notification');
-      const notifier = createNotifierFromEnv();
-      if (notifier) {
-        await notifier.send({
-          newArticles: totalNewArticles,
-          duplicates: totalDuplicates,
-          updated: totalUpdated,
-          newArticleIds,
-          articles: allArticles,
-          durationSeconds: duration
-        });
-        console.error('[INFO] Slack notification sent successfully');
-      }
-    } catch (error) {
-      console.error(
-        '[WARN] Slack notification failed, but collection completed successfully:',
-        error instanceof Error ? error.message : String(error)
-      );
     }
 
     return {

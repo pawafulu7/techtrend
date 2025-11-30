@@ -51,6 +51,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SKIP_POST_SAVE_ENRICHMENT: '0'
           COLLECT_FEEDS_CONCURRENCY: '5'
+          SLACK_NOTIFICATION_ENABLED: ${{ secrets.SLACK_NOTIFICATION_ENABLED }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           npx tsx scripts/scheduled/collect-feeds.ts "はてなブックマーク" "Zenn" "Dev.to" "Publickey" "Stack Overflow Blog" "Think IT" "Rails Releases" "AWS" "SRE" "Google Developers Blog" "Hugging Face Blog" "Hugging Face Papers" "OpenAI Blog" "Qiita AI" "Zenn AI" "arXiv AI" "Google AI Blog" "InfoQ Japan" "GitHub Blog" "Cloudflare Blog" "Mozilla Hacks" "Hacker News" "Medium Engineering" "DeNA Engineering" "CyberAgent Developers Blog" "Mercari Engineering" "LY Corporation Tech Blog" "ZOZO TECH BLOG" "Money Forward Developers Blog" "SmartHR Tech Blog" "Cookpad Tech Life" "freee Developers Hub" "Hatena Developer Blog" "Sansan Builders Box" "GMO Developers" "ペパボテックブログ" "NVIDIA Developer Blog" "DeepMind Blog" "企業技術ブログ"
+          npx tsx scripts/scheduled/manage-summaries.ts generate
           # 品質スコアと難易度計算は1日1回に移動 (scheduler-daily-quality.yml)
