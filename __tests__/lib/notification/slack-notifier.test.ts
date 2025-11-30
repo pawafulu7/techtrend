@@ -37,34 +37,16 @@ describe('SlackNotifier', () => {
       expect(mockWebhook.send).toHaveBeenCalledTimes(1);
       expect(mockWebhook.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          text: expect.stringContaining('10 new articles'),
-          blocks: expect.arrayContaining([
-            expect.objectContaining({ type: 'header' }),
-            expect.objectContaining({ type: 'section' }),
-            expect.objectContaining({ type: 'context' }),
-          ]),
+          text: expect.stringContaining('10件の新着記事'),
         })
       );
     });
 
-    it('should include all stats in message', async () => {
+    it('should include article count in message', async () => {
       await notifier.send(samplePayload);
 
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ fields?: Array<{ text: string }> }>;
-      };
-      const sectionBlock = sentMessage.blocks.find(
-        (b: { type: string }) => b.type === 'section'
-      );
-
-      expect(sectionBlock?.fields).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ text: expect.stringContaining('10') }), // newArticles
-          expect.objectContaining({ text: expect.stringContaining('2') }), // updated
-          expect.objectContaining({ text: expect.stringContaining('5') }), // duplicates
-          expect.objectContaining({ text: expect.stringContaining('120') }), // duration
-        ])
-      );
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain('10件の新着記事');
     });
 
     it('should send notification even when newArticles is 0', async () => {
@@ -79,7 +61,7 @@ describe('SlackNotifier', () => {
       expect(mockWebhook.send).toHaveBeenCalledTimes(1);
       expect(mockWebhook.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          text: expect.stringContaining('No new articles'),
+          text: expect.stringContaining('新着記事なし'),
         })
       );
     });
@@ -93,45 +75,23 @@ describe('SlackNotifier', () => {
 
       await notifier.send(zeroPayload);
 
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ text?: { text: string } }>;
-      };
-      const headerBlock = sentMessage.blocks.find(
-        (b: { type: string }) => b.type === 'header'
-      );
-
-      expect(headerBlock?.text?.text).toContain(':white_check_mark:');
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain(':white_check_mark:');
     });
 
     it('should use newspaper emoji for new articles', async () => {
       await notifier.send(samplePayload);
 
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ text?: { text: string } }>;
-      };
-      const headerBlock = sentMessage.blocks.find(
-        (b: { type: string }) => b.type === 'header'
-      );
-
-      expect(headerBlock?.text?.text).toContain(':newspaper:');
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain(':newspaper:');
     });
 
     it('should include article list in message', async () => {
       await notifier.send(samplePayload);
 
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ type: string; text?: { text: string } }>;
-      };
-
-      // Find section blocks with article list (after divider)
-      const dividerIndex = sentMessage.blocks.findIndex(b => b.type === 'divider');
-      expect(dividerIndex).toBeGreaterThan(0);
-
-      const articleSection = sentMessage.blocks[dividerIndex + 1];
-      expect(articleSection.type).toBe('section');
-      expect(articleSection.text?.text).toContain('TypeScript Best Practices');
-      expect(articleSection.text?.text).toContain('https://example.com/ts');
-      expect(articleSection.text?.text).toContain('Zenn');
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain('TypeScript Best Practices');
+      expect(sentMessage.text).toContain('https://example.com/ts');
     });
 
     it('should escape special characters in titles', async () => {
@@ -144,14 +104,9 @@ describe('SlackNotifier', () => {
 
       await notifier.send(payloadWithSpecialChars);
 
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ type: string; text?: { text: string } }>;
-      };
-      const dividerIndex = sentMessage.blocks.findIndex(b => b.type === 'divider');
-      const articleSection = sentMessage.blocks[dividerIndex + 1];
-
-      expect(articleSection.text?.text).toContain('&lt;script&gt;');
-      expect(articleSection.text?.text).toContain('&amp;');
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain('&lt;script&gt;');
+      expect(sentMessage.text).toContain('&amp;');
     });
 
     it('should not include article list when articles is empty', async () => {
@@ -163,12 +118,9 @@ describe('SlackNotifier', () => {
 
       await notifier.send(emptyPayload);
 
-      const sentMessage = mockWebhook.send.mock.calls[0][0] as {
-        blocks: Array<{ type: string }>;
-      };
-
-      const dividerIndex = sentMessage.blocks.findIndex(b => b.type === 'divider');
-      expect(dividerIndex).toBe(-1);
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      // Should only contain header, no article links
+      expect(sentMessage.text).not.toContain('https://example.com');
     });
   });
 
