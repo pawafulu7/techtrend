@@ -22,7 +22,7 @@ export interface SummaryGenerationOptions {
   force?: boolean;
   /** Maximum articles to process in regenerate/missing flows (default: 10) */
   batch?: number;
-  /** Days to look back for missing summaries (default: 7) */
+  /** Days to look back: generateSummaries default=1, generateMissingSummaries default=7 */
   days?: number;
   /** Specific article IDs to regenerate */
   articleIds?: string[];
@@ -106,6 +106,12 @@ export class SummaryManager {
 
       if (hasTargetArticleIds) {
         whereCondition.id = { in: options.articleIds };
+      } else {
+        // articleIds not specified: limit to recent N days (default: 1 day)
+        const days = options.days ?? 1;
+        const from = new Date();
+        from.setDate(from.getDate() - days);
+        whereCondition.publishedAt = { gte: from };
       }
 
       if (options.source) {
