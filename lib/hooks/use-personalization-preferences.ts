@@ -17,6 +17,11 @@ import type {
 
 const EMPTY_CATEGORIES: InterestCategoryWithCount[] = [];
 const EMPTY_SELECTED_CATEGORIES: string[] = [];
+const DEFAULT_PREFERENCES: UserCategoryPreferences = {
+  selectedCategories: [],
+  filterEnabled: false,
+  periodMonths: 12,
+};
 
 // =============================================================================
 // Query Keys
@@ -32,33 +37,46 @@ export const PERSONALIZATION_QUERY_KEYS = {
 // =============================================================================
 
 async function fetchPreferences(): Promise<UserCategoryPreferences> {
-  const response = await fetch('/api/user/preferences/categories');
+  try {
+    const response = await fetch('/api/user/preferences/categories');
 
-  if (response.status === 401) {
-    // Not authenticated - return default preferences
-    return {
-      selectedCategories: [],
-      filterEnabled: false,
-      periodMonths: 12,
-    };
+    if (response.status === 401) {
+      // Not authenticated - return default preferences silently
+      return DEFAULT_PREFERENCES;
+    }
+
+    if (!response.ok) {
+      // API unavailable - fall back silently
+      console.info(`[personalization] preferences API unavailable (${response.status}) — using defaults`);
+      return DEFAULT_PREFERENCES;
+    }
+
+    const data = await response.json().catch(() => DEFAULT_PREFERENCES);
+    return data ?? DEFAULT_PREFERENCES;
+  } catch {
+    // Network error - fall back silently without logging error object
+    console.info('[personalization] preferences fetch failed — using defaults');
+    return DEFAULT_PREFERENCES;
   }
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch preferences: ${response.status}`);
-  }
-
-  return response.json();
 }
 
 async function fetchCategories(): Promise<InterestCategoryWithCount[]> {
-  const response = await fetch('/api/interest-categories');
+  try {
+    const response = await fetch('/api/interest-categories');
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch categories: ${response.status}`);
+    if (!response?.ok) {
+      // API unavailable - fall back silently
+      console.info(`[personalization] category API unavailable (${response?.status ?? 'network'}) — falling back`);
+      return EMPTY_CATEGORIES;
+    }
+
+    const data = await response.json().catch(() => ({ categories: EMPTY_CATEGORIES }));
+    return Array.isArray(data?.categories) ? data.categories : EMPTY_CATEGORIES;
+  } catch {
+    // Network error - fall back silently without logging error object
+    console.info('[personalization] category fetch failed — disabling personalization UI');
+    return EMPTY_CATEGORIES;
   }
-
-  const data = await response.json();
-  return data.categories;
 }
 
 async function updatePreferences(
@@ -93,6 +111,7 @@ export function useInterestCategories() {
     queryFn: fetchCategories,
     staleTime: 1000 * 60 * 10, // 10 minutes
     gcTime: 1000 * 60 * 30, // 30 minutes
+    retry: false, // avoid spamming console when the optional feature backend is unavailable
   });
 }
 
@@ -105,6 +124,7 @@ export function useUserPreferences() {
     queryFn: fetchPreferences,
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 30, // 30 minutes
+    retry: false, // fail gracefully for guest users or temporary API issues
   });
 }
 
