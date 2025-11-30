@@ -106,6 +106,12 @@ export class SummaryManager {
 
       if (hasTargetArticleIds) {
         whereCondition.id = { in: options.articleIds };
+      } else {
+        // articleIds not specified: limit to recent N days (default: 1 day)
+        const days = options.days ?? 1;
+        const from = new Date();
+        from.setDate(from.getDate() - days);
+        whereCondition.publishedAt = { gte: from };
       }
 
       if (options.source) {
