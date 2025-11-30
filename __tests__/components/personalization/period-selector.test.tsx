@@ -80,9 +80,9 @@ describe('PeriodSelector', () => {
   it('has proper aria labels for accessibility', () => {
     render(<PeriodSelector {...defaultProps} />);
 
-    expect(screen.getByRole('radio', { name: '3Mヶ月' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: '6Mヶ月' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: '12Mヶ月' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '3ヶ月' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '6ヶ月' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '12ヶ月' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '全期間' })).toBeInTheDocument();
   });
 });

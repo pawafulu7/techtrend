@@ -16,10 +16,10 @@ import type { PeriodPreset } from '@/lib/personalization/types';
 // =============================================================================
 
 const PERIOD_OPTIONS: { value: PeriodPreset; label: string }[] = [
-  { value: 3, label: '3M' },
-  { value: 6, label: '6M' },
-  { value: 12, label: '12M' },
-  { value: 0, label: 'All' },
+  { value: 3, label: '3ヶ月' },
+  { value: 6, label: '6ヶ月' },
+  { value: 12, label: '12ヶ月' },
+  { value: 0, label: '全期間' },
 ];
 
 // =============================================================================
@@ -66,7 +66,7 @@ export function PeriodSelector({
           <ToggleGroupItem
             key={option.value}
             value={String(option.value)}
-            aria-label={option.label === 'All' ? '全期間' : `${option.label}ヶ月`}
+            aria-label={option.label}
             className={cn(
               'rounded-md px-3 h-9 sm:h-8',
               'text-sm font-medium',
