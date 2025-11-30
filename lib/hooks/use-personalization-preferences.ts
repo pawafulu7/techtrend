@@ -52,8 +52,8 @@ async function fetchPreferences(): Promise<UserCategoryPreferences> {
       return { ...DEFAULT_PREFERENCES, isAuthenticated: false };
     }
 
-    const data = await response.json().catch(() => DEFAULT_PREFERENCES);
-    return data ? { ...data, isAuthenticated: true } : { ...DEFAULT_PREFERENCES, isAuthenticated: true };
+    const data = await response.json().catch(() => null);
+    return { ...DEFAULT_PREFERENCES, ...data, isAuthenticated: true };
   } catch {
     // Network error - fall back silently without logging error object
     console.info('[personalization] preferences fetch failed — using defaults');

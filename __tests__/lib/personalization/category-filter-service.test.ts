@@ -199,10 +199,6 @@ describe('CategoryFilterService', () => {
 
     it('should return active categories', async () => {
       mockPrisma.interestCategory.findMany.mockResolvedValue(mockCategories);
-      mockPrisma.$queryRaw.mockResolvedValue([
-        { category_id: 'cat-1', count: BigInt(100) },
-        { category_id: 'cat-2', count: BigInt(50) },
-      ]);
 
       const result = await service.getActiveCategories();
 
@@ -211,11 +207,8 @@ describe('CategoryFilterService', () => {
       expect(result[1]).toEqual(mockCategories[1]);
     });
 
-    it('should return all active categories even when some have no articles', async () => {
+    it('should return all active categories sorted by sortOrder', async () => {
       mockPrisma.interestCategory.findMany.mockResolvedValue(mockCategories);
-      mockPrisma.$queryRaw.mockResolvedValue([
-        { category_id: 'cat-1', count: BigInt(100) },
-      ]);
 
       const result = await service.getActiveCategories();
 
