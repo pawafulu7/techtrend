@@ -7,6 +7,7 @@ import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
+import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
 import { buildScrollStorageKey } from '@/lib/utils/scroll';
 import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@prisma/client';
@@ -110,6 +111,14 @@ export function HomeClientInfinite({
     };
   }, []);
 
+  // パーソナライズフィルター設定を取得
+  const {
+    selectedCategories: personalizedCategories,
+    filterEnabled: isPersonalized,
+    periodMonths: personalizedPeriod,
+    hasPreferences,
+  } = usePersonalizationPreferences();
+
   // カテゴリの変更を検出
   const currentCategory = searchParams.get('category') || 'all';
 
@@ -171,8 +180,17 @@ export function HomeClientInfinite({
       params.excludeUnprocessed = 'true';
     }
 
+    // パーソナライズフィルターが有効な場合、カテゴリIDと期間を追加
+    if (isPersonalized && hasPreferences && personalizedCategories.length > 0) {
+      params.personalized = 'true';
+      params.categoryIds = personalizedCategories.join(',');
+      if (personalizedPeriod > 0) {
+        params.periodMonths = String(personalizedPeriod);
+      }
+    }
+
     return params;
-  }, [searchParams, initialSortBy, isReturningFromArticle, excludeUnprocessed]);
+  }, [searchParams, initialSortBy, isReturningFromArticle, excludeUnprocessed, isPersonalized, hasPreferences, personalizedCategories, personalizedPeriod]);
 
   const {
     data,

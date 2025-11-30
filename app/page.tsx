@@ -18,6 +18,7 @@ import { HomeClient } from '@/app/components/home/home-client';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { RecommendationToggle } from '@/components/recommendation/recommendation-toggle';
+import { PersonalizationToggle } from '@/app/components/personalization';
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
 import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
 import { getFilterPreferencesFromCookies } from '@/lib/filter-preferences-cookie';
@@ -136,6 +137,8 @@ export default async function Home({ searchParams }: PageProps) {
                 </Suspense>
                 <div className="w-px h-5 bg-border" />
                 <RecommendationToggle />
+                <div className="w-px h-5 bg-border" />
+                <PersonalizationToggle />
               </div>
                 
                 <div className="flex items-center gap-2">
