@@ -35,6 +35,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   GitBranch: GitBranch,
 };
 
+
 // =============================================================================
 // Props
 // =============================================================================
@@ -112,19 +113,14 @@ export function CategoryCard({
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              'text-sm font-medium',
-              selected && 'text-primary'
-            )}
-          >
-            {category.name}
-          </span>
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            ({category.articleCount.toLocaleString()}件)
-          </span>
-        </div>
+        <span
+          className={cn(
+            'text-sm font-medium',
+            selected && 'text-primary'
+          )}
+        >
+          {category.name}
+        </span>
         {category.description && (
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
             {category.description}

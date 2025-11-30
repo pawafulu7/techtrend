@@ -22,6 +22,7 @@ const mockPrisma = {
   },
   article: {
     findMany: jest.fn(),
+    count: jest.fn(),
   },
   $queryRaw: jest.fn(),
   $transaction: jest.fn((fn: (tx: typeof mockPrisma) => Promise<any>) => fn(mockPrisma)),
@@ -264,6 +265,10 @@ describe('CategoryFilterService', () => {
         title: 'React Guide',
         url: 'https://example.com/react',
         published_at: new Date(),
+        created_at: new Date(),
+        quality_score: 0.8,
+        bookmarks: 20,
+        user_votes: 5,
         source_id: 'src-1',
         summary: 'A guide to React',
         thumbnail_url: null,
@@ -274,6 +279,10 @@ describe('CategoryFilterService', () => {
         title: 'Vue Tutorial',
         url: 'https://example.com/vue',
         published_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        created_at: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        quality_score: 0.9,
+        bookmarks: 10,
+        user_votes: 7,
         source_id: 'src-1',
         summary: 'A Vue tutorial',
         thumbnail_url: null,
@@ -303,6 +312,7 @@ describe('CategoryFilterService', () => {
 
     it('should use fallback when no centroids found', async () => {
       mockPrisma.$queryRaw.mockResolvedValueOnce([]); // No centroids
+      mockPrisma.article.count.mockResolvedValue(1);
       mockPrisma.article.findMany.mockResolvedValue([
         { id: 'art-1', publishedAt: new Date() },
       ]);
@@ -322,6 +332,7 @@ describe('CategoryFilterService', () => {
         .mockResolvedValueOnce(mockCentroids) // getCategoryCentroids
         .mockResolvedValueOnce([]); // No candidates
 
+      mockPrisma.article.count.mockResolvedValue(1);
       mockPrisma.article.findMany.mockResolvedValue([
         { id: 'art-1', publishedAt: new Date() },
       ]);
@@ -339,6 +350,7 @@ describe('CategoryFilterService', () => {
     it('should handle database errors gracefully', async () => {
       const { logger } = jest.requireMock('@/lib/logger');
       mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('Database error'));
+      mockPrisma.article.count.mockResolvedValue(1);
       mockPrisma.article.findMany.mockResolvedValue([
         { id: 'art-1', publishedAt: new Date() },
       ]);
@@ -394,6 +406,25 @@ describe('CategoryFilterService', () => {
       // Should skip first article
       expect(result.articles).toHaveLength(1);
       expect(result.articles[0].articleId).toBe('art-2');
+    });
+
+    it('should honor sortBy when provided', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockCentroids)
+        .mockResolvedValueOnce(mockCandidates)
+        .mockResolvedValueOnce([]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+        sortBy: 'publishedAt',
+        sortOrder: 'asc',
+      });
+
+      // Older article should come first with ascending publishedAt
+      expect(result.articles[0].articleId).toBe('art-2');
+      expect(result.articles[1].articleId).toBe('art-1');
     });
   });
 });

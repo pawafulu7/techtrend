@@ -68,22 +68,28 @@ export async function GET(): Promise<NextResponse<PreferencesResponse | ErrorRes
 
     const userId = session.user.id;
 
-    // Get user's category preferences
-    const preferences = await prisma.userCategoryPreference.findMany({
-      where: { userId },
-      select: {
-        categoryId: true,
-      },
-    });
+    // Get user's category preferences and period setting
+    const [preferences, user] = await Promise.all([
+      prisma.userCategoryPreference.findMany({
+        where: { userId },
+        select: {
+          categoryId: true,
+        },
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          personalizationPeriodMonths: true,
+        },
+      }),
+    ]);
 
-    // Get user settings for filter state (stored in preferences or separate table)
-    // For now, we return defaults if no preferences exist
     const hasPreferences = preferences.length > 0;
 
     const response: PreferencesResponse = {
       selectedCategories: preferences.map((p) => p.categoryId),
       filterEnabled: hasPreferences, // Default to enabled if user has selections
-      periodMonths: DEFAULT_PERIOD_MONTHS,
+      periodMonths: user?.personalizationPeriodMonths ?? DEFAULT_PERIOD_MONTHS,
     };
 
     logger.info(
@@ -206,6 +212,14 @@ export async function POST(
             categoryId,
             weight: 1, // Default weight for now
           })),
+        });
+      }
+
+      // Update period months if provided
+      if (periodMonths !== undefined) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { personalizationPeriodMonths: periodMonths },
         });
       }
     });

@@ -175,9 +175,16 @@ export function useInfiniteArticles(filters: ArticleFilters) {
         searchParams.set('lightweight', 'true');
       }
 
+      // パフォーマンス最適化: 軽量版APIを使用（既読フィルタ/パーソナライズがない場合）
+      // パーソナライズフィルタがある場合は /api/articles を使用（categoryFilterServiceが必要）
+      const hasCategoryIds = normalizedFilters.categoryIds && String(normalizedFilters.categoryIds).length > 0;
+      const hasPeriodMonths = normalizedFilters.periodMonths && Number(normalizedFilters.periodMonths) > 0;
+      const useFullApi = normalizedFilters.readFilter || hasCategoryIds || hasPeriodMonths;
+      const endpoint = useFullApi ? '/api/articles' : '/api/articles/list';
+
       // includeRelations はデフォルトで false（APIサイドで設定済み）
-      // 必要な場合のみ明示的に true を設定
-      if (normalizedFilters.includeRelations) {
+      // パーソナライズ時またはフルAPI使用時は source 情報が必要なため true を設定
+      if (normalizedFilters.includeRelations || useFullApi) {
         searchParams.set('includeRelations', 'true');
       }
 
@@ -186,9 +193,6 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       if (normalizedFilters.readFilter || normalizedFilters.includeUserData) {
         searchParams.set('includeUserData', 'true');
       }
-
-      // パフォーマンス最適化: 軽量版APIを使用（既読フィルタがない場合）
-      const endpoint = normalizedFilters.readFilter ? '/api/articles' : '/api/articles/list';
 
       // Debug log removed
 

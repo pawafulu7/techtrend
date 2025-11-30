@@ -13,6 +13,7 @@ import type {
   ScoredArticle,
   PersonalizedFilterMeta,
   ScoreParameters,
+  PersonalizedSortBy,
 } from './types';
 import { DEFAULT_SCORE_PARAMETERS } from './types';
 
@@ -21,10 +22,10 @@ import { DEFAULT_SCORE_PARAMETERS } from './types';
 // =============================================================================
 
 /** Default number of embedding candidates to retrieve before scoring */
-const DEFAULT_TOP_K_CANDIDATES = 200;
+const DEFAULT_TOP_K_CANDIDATES = 1000;
 
 /** Minimum similarity threshold to include in results */
-const DEFAULT_MIN_SIMILARITY = 0.32;
+const DEFAULT_MIN_SIMILARITY = 0.55;
 
 // =============================================================================
 // Type Definitions for SQL Results
@@ -36,6 +37,10 @@ type RawEmbeddingCandidate = {
   title: string;
   url: string;
   published_at: Date;
+  created_at: Date;
+  quality_score: number | null;
+  bookmarks: number | null;
+  user_votes: number | null;
   source_id: string | null;
   summary: string | null;
   thumbnail_url: string | null;
@@ -48,6 +53,10 @@ type EmbeddingCandidate = {
   title: string;
   url: string;
   publishedAt: Date;
+  createdAt: Date;
+  qualityScore: number;
+  bookmarks: number;
+  userVotes: number;
   sourceId: string | null;
   summary: string | null;
   thumbnailUrl: string | null;
@@ -58,6 +67,12 @@ type EmbeddingCandidate = {
 type CandidateWithTagMatch = EmbeddingCandidate & {
   hasTagMatch: boolean;
 };
+
+type ScoredArticleWithMeta = ScoredArticle &
+  Pick<
+    EmbeddingCandidate,
+    'publishedAt' | 'createdAt' | 'qualityScore' | 'bookmarks' | 'userVotes'
+  >;
 
 /** Category centroid data from DB */
 type CategoryCentroidRow = {
@@ -196,6 +211,8 @@ export class CategoryFilterService {
       periodMonths,
       limit,
       offset = 0,
+      sortBy = 'finalScore',
+      sortOrder = 'desc',
     } = options;
 
     logger.info(
@@ -235,13 +252,28 @@ export class CategoryFilterService {
         categoryIds
       );
 
-      // Step 3: Calculate final scores and rank
+      // Step 3: Calculate final scores
       const scored = this.calculateScores(candidatesWithTags);
 
-      // Filter by minimum similarity and apply pagination
-      const filtered = scored
-        .filter((a) => a.embeddingSimilarity >= DEFAULT_MIN_SIMILARITY)
-        .slice(offset, offset + limit);
+      // Note: Similarity filtering is now done in SQL query for better performance.
+      // This filter is kept as a safety check but should be a no-op.
+      const qualifiedArticles = scored.filter(
+        (a) => a.embeddingSimilarity >= DEFAULT_MIN_SIMILARITY
+      );
+
+      // Apply requested sort (defaults to personalization score)
+      const sortedArticles = this.sortArticles(
+        qualifiedArticles,
+        sortBy,
+        sortOrder
+      );
+
+      // Apply pagination
+      const filtered = sortedArticles.slice(offset, offset + limit);
+
+      // totalMatched is the count of articles that passed the similarity threshold
+      // (capped at DEFAULT_TOP_K_CANDIDATES, which is the max we fetch)
+      const totalMatched = qualifiedArticles.length;
 
       const queryMs = Date.now() - startTime;
 
@@ -250,6 +282,7 @@ export class CategoryFilterService {
           categoryIds,
           candidateCount: candidates.length,
           filteredCount: filtered.length,
+          totalMatched,
           queryMs,
         },
         'Personalized filtering completed'
@@ -261,9 +294,7 @@ export class CategoryFilterService {
           filterMode: 'category',
           appliedCategories: categoryIds,
           periodMonths,
-          totalMatched: scored.filter(
-            (a) => a.embeddingSimilarity >= DEFAULT_MIN_SIMILARITY
-          ).length,
+          totalMatched,
           queryMs,
         },
       };
@@ -277,31 +308,7 @@ export class CategoryFilterService {
   }
 
   /**
-   * Get article counts per category.
-   * Uses TagCategoryMapping to count articles with matching tags.
-   */
-  async getCategoryArticleCounts(): Promise<Map<string, number>> {
-    const result = await this.db.$queryRaw<
-      { category_id: string; count: bigint }[]
-    >`
-      SELECT
-        tcm."categoryId" as category_id,
-        COUNT(DISTINCT at."A") as count
-      FROM "TagCategoryMapping" tcm
-      INNER JOIN "_ArticleToTag" at ON at."B" = tcm."tagId"
-      GROUP BY tcm."categoryId"
-    `;
-
-    const counts = new Map<string, number>();
-    for (const row of result) {
-      counts.set(row.category_id, Number(row.count));
-    }
-
-    return counts;
-  }
-
-  /**
-   * Get all interest categories with article counts.
+   * Get all interest categories.
    */
   async getCategoriesWithCounts(): Promise<
     {
@@ -312,16 +319,12 @@ export class CategoryFilterService {
       icon: string | null;
       sortOrder: number;
       isActive: boolean;
-      articleCount: number;
     }[]
   > {
-    const [categories, counts] = await Promise.all([
-      this.db.interestCategory.findMany({
-        where: { isActive: true },
-        orderBy: { sortOrder: 'asc' },
-      }),
-      this.getCategoryArticleCounts(),
-    ]);
+    const categories = await this.db.interestCategory.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    });
 
     return categories.map((cat) => ({
       id: cat.id,
@@ -331,7 +334,6 @@ export class CategoryFilterService {
       icon: cat.icon,
       sortOrder: cat.sortOrder,
       isActive: cat.isActive,
-      articleCount: counts.get(cat.id) ?? 0,
     }));
   }
 
@@ -359,12 +361,14 @@ export class CategoryFilterService {
   }
 
   /**
-   * Get embedding candidates using pgvector similarity search.
+   * Get embedding candidates using threshold-based similarity search.
+   * Returns ALL articles that meet the similarity threshold (no LIMIT).
+   * This ensures users see all relevant articles, not just top-K.
    */
   private async getEmbeddingCandidates(
     centroid: string,
     periodMonths: number,
-    topK: number
+    _topK: number // Kept for API compatibility, but not used
   ): Promise<EmbeddingCandidate[]> {
     // Build period filter using calculated date parameter (safer than Prisma.raw)
     const cutoffDate =
@@ -375,22 +379,31 @@ export class CategoryFilterService {
       ? Prisma.sql`AND a."publishedAt" >= ${cutoffDate}`
       : Prisma.empty;
 
+    // Use threshold-based filtering instead of top-K
+    // similarity = 1 - distance, so distance < (1 - threshold)
+    const maxDistance = 1 - DEFAULT_MIN_SIMILARITY;
+
     const result = await this.db.$queryRaw<RawEmbeddingCandidate[]>`
       SELECT
         a.id,
         a.title,
         a.url,
         a."publishedAt" as published_at,
+        a."createdAt" as created_at,
+        a."qualityScore" as quality_score,
+        a."bookmarks" as bookmarks,
+        a."userVotes" as user_votes,
         a."sourceId" as source_id,
         a.summary,
-        a."thumbnailUrl" as thumbnail_url,
+        a.thumbnail as thumbnail_url,
         1 - (ae.embedding <=> ${centroid}::vector) AS sim_emb
       FROM "Article" a
       INNER JOIN "ArticleEmbedding" ae ON a.id = ae."articleId"
       WHERE ae."embeddingKey" = 'summary'::"EmbeddingKey"
+        AND a."summaryComputedAt" IS NOT NULL
+        AND (ae.embedding <=> ${centroid}::vector) < ${maxDistance}
         ${periodFilter}
       ORDER BY ae.embedding <=> ${centroid}::vector
-      LIMIT ${topK}
     `;
 
     return result.map((row) => ({
@@ -398,6 +411,10 @@ export class CategoryFilterService {
       title: row.title,
       url: row.url,
       publishedAt: row.published_at,
+      createdAt: row.created_at,
+      qualityScore: row.quality_score ?? 0,
+      bookmarks: row.bookmarks ?? 0,
+      userVotes: row.user_votes ?? 0,
       sourceId: row.source_id,
       summary: row.summary,
       thumbnailUrl: row.thumbnail_url,
@@ -444,27 +461,63 @@ export class CategoryFilterService {
   // ===========================================================================
 
   /**
-   * Calculate final scores for all candidates and sort by score.
+   * Calculate final scores for all candidates.
    */
-  private calculateScores(candidates: CandidateWithTagMatch[]): ScoredArticle[] {
-    return candidates
-      .map((c) => {
-        const recencyDecay = calculateRecencyDecay(c.publishedAt);
-        const finalScore = calculateFinalScore(
-          c.embeddingSimilarity,
-          c.hasTagMatch,
-          recencyDecay
-        );
+  private calculateScores(
+    candidates: CandidateWithTagMatch[]
+  ): ScoredArticleWithMeta[] {
+    return candidates.map((c) => {
+      const recencyDecay = calculateRecencyDecay(c.publishedAt);
+      const finalScore = calculateFinalScore(
+        c.embeddingSimilarity,
+        c.hasTagMatch,
+        recencyDecay
+      );
 
-        return {
-          articleId: c.id,
-          embeddingSimilarity: c.embeddingSimilarity,
-          tagBoost: c.hasTagMatch ? DEFAULT_SCORE_PARAMETERS.tagBoostAlpha : 0,
-          recencyDecay: recencyDecay * DEFAULT_SCORE_PARAMETERS.recencyBeta,
-          finalScore,
-        };
-      })
-      .sort((a, b) => b.finalScore - a.finalScore);
+      return {
+        articleId: c.id,
+        embeddingSimilarity: c.embeddingSimilarity,
+        tagBoost: c.hasTagMatch ? DEFAULT_SCORE_PARAMETERS.tagBoostAlpha : 0,
+        recencyDecay: recencyDecay * DEFAULT_SCORE_PARAMETERS.recencyBeta,
+        finalScore,
+        publishedAt: c.publishedAt,
+        createdAt: c.createdAt,
+        qualityScore: c.qualityScore,
+        bookmarks: c.bookmarks,
+        userVotes: c.userVotes,
+      };
+    });
+  }
+
+  /**
+   * Apply requested sorting while preserving personalization defaults.
+   */
+  private sortArticles(
+    candidates: ScoredArticleWithMeta[],
+    sortBy: PersonalizedSortBy,
+    sortOrder: 'asc' | 'desc'
+  ): ScoredArticleWithMeta[] {
+    const direction = sortOrder === 'asc' ? 1 : -1;
+
+    const compare = (a: ScoredArticleWithMeta, b: ScoredArticleWithMeta): number => {
+      switch (sortBy) {
+        case 'publishedAt':
+          return (a.publishedAt.getTime() - b.publishedAt.getTime()) * direction;
+        case 'createdAt':
+          return (a.createdAt.getTime() - b.createdAt.getTime()) * direction;
+        case 'qualityScore':
+          return ((a.qualityScore ?? 0) - (b.qualityScore ?? 0)) * direction;
+        case 'bookmarks':
+          return ((a.bookmarks ?? 0) - (b.bookmarks ?? 0)) * direction;
+        case 'userVotes':
+          return ((a.userVotes ?? 0) - (b.userVotes ?? 0)) * direction;
+        case 'finalScore':
+        default:
+          return (a.finalScore - b.finalScore) * direction;
+      }
+    };
+
+    return [...candidates].sort(compare);
   }
 
   // ===========================================================================
@@ -483,18 +536,24 @@ export class CategoryFilterService {
   ): Promise<{ articles: ScoredArticle[]; meta: PersonalizedFilterMeta }> {
     logger.info('Using fallback: recent articles by published date');
 
-    const periodFilter =
-      periodMonths > 0
+    const whereFilter = {
+      summaryComputedAt: { not: null },
+      ...(periodMonths > 0
         ? { publishedAt: { gte: new Date(Date.now() - periodMonths * 30 * 24 * 60 * 60 * 1000) } }
-        : {};
+        : {}),
+    };
 
-    const articles = await this.db.article.findMany({
-      where: periodFilter,
-      orderBy: { publishedAt: 'desc' },
-      skip: offset,
-      take: limit,
-      select: { id: true, publishedAt: true },
-    });
+    // Keep pagination but also return the real total to avoid always reporting the limit value
+    const [total, articles] = await Promise.all([
+      this.db.article.count({ where: whereFilter }),
+      this.db.article.findMany({
+        where: whereFilter,
+        orderBy: { publishedAt: 'desc' },
+        skip: offset,
+        take: limit,
+        select: { id: true, publishedAt: true },
+      }),
+    ]);
 
     const scored: ScoredArticle[] = articles.map((a) => ({
       articleId: a.id,
@@ -510,7 +569,7 @@ export class CategoryFilterService {
         filterMode: 'category',
         appliedCategories: [],
         periodMonths,
-        totalMatched: scored.length,
+        totalMatched: total,
         queryMs: Date.now() - startTime,
       },
     };

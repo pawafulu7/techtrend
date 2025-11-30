@@ -56,7 +56,7 @@ export function PersonalizationToggle({
     updatePreferences({
       categoryIds,
       filterEnabled: categoryIds.length > 0,
-      periodMonths: period === 0 ? undefined : period,
+      periodMonths: period,
     });
   };
 

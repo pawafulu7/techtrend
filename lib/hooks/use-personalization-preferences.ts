@@ -148,7 +148,7 @@ export function useUpdatePreferences() {
           ...old,
           selectedCategories,
           filterEnabled: selectedCategories.length > 0,
-          periodMonths: nextPeriod ?? old?.periodMonths ?? 12,
+          periodMonths: nextPeriod !== undefined ? nextPeriod : (old?.periodMonths ?? 12),
         })
       );
 

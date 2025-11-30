@@ -33,7 +33,7 @@ export interface InterestCategoryDefinition {
 }
 
 /**
- * Interest category with article count (API response)
+ * Interest category (API response)
  */
 export interface InterestCategoryWithCount {
   id: string;
@@ -43,7 +43,6 @@ export interface InterestCategoryWithCount {
   icon: string | null;
   sortOrder: number;
   isActive: boolean;
-  articleCount: number;
 }
 
 // =============================================================================
@@ -85,6 +84,8 @@ export interface PersonalizedFilterOptions {
   periodMonths: number;
   limit: number;
   offset?: number;
+  sortBy?: PersonalizedSortBy;
+  sortOrder?: 'asc' | 'desc';
 }
 
 /**
@@ -108,6 +109,14 @@ export interface PersonalizedFilterMeta {
   totalMatched: number;
   queryMs: number;
 }
+
+export type PersonalizedSortBy =
+  | 'finalScore'
+  | 'publishedAt'
+  | 'createdAt'
+  | 'qualityScore'
+  | 'bookmarks'
+  | 'userVotes';
 
 // =============================================================================
 // Centroid Types
