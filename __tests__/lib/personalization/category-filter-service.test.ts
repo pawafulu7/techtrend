@@ -24,7 +24,7 @@ const mockPrisma = {
     findMany: jest.fn(),
   },
   $queryRaw: jest.fn(),
-  $transaction: jest.fn((fn: (tx: typeof mockPrisma) => Promise<void>) => fn(mockPrisma)),
+  $transaction: jest.fn((fn: (tx: typeof mockPrisma) => Promise<any>) => fn(mockPrisma)),
 };
 
 jest.mock('@/lib/prisma', () => ({
@@ -337,6 +337,7 @@ describe('CategoryFilterService', () => {
     });
 
     it('should handle database errors gracefully', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
       mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('Database error'));
       mockPrisma.article.findMany.mockResolvedValue([
         { id: 'art-1', publishedAt: new Date() },
@@ -351,6 +352,8 @@ describe('CategoryFilterService', () => {
       // Should return fallback results
       expect(result.articles).toHaveLength(1);
       expect(result.meta.appliedCategories).toEqual([]);
+      // Verify error was logged
+      expect(logger.error).toHaveBeenCalled();
     });
 
     it('should filter by minimum similarity threshold', async () => {

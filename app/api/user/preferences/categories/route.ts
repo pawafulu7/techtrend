@@ -73,9 +73,6 @@ export async function GET(): Promise<NextResponse<PreferencesResponse | ErrorRes
       where: { userId },
       select: {
         categoryId: true,
-        category: {
-          select: { slug: true },
-        },
       },
     });
 

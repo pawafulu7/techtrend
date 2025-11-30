@@ -366,11 +366,14 @@ export class CategoryFilterService {
     periodMonths: number,
     topK: number
   ): Promise<EmbeddingCandidate[]> {
-    // Build period filter
-    const periodFilter =
+    // Build period filter using calculated date parameter (safer than Prisma.raw)
+    const cutoffDate =
       periodMonths > 0
-        ? Prisma.sql`AND a."publishedAt" >= NOW() - INTERVAL '${Prisma.raw(String(periodMonths))} months'`
-        : Prisma.empty;
+        ? new Date(Date.now() - periodMonths * 30 * 24 * 60 * 60 * 1000)
+        : null;
+    const periodFilter = cutoffDate
+      ? Prisma.sql`AND a."publishedAt" >= ${cutoffDate}`
+      : Prisma.empty;
 
     const result = await this.db.$queryRaw<RawEmbeddingCandidate[]>`
       SELECT
