@@ -56,6 +56,11 @@ describe('API Response Time (/api/sources)', () => {
       await resetAllCaches();
       // Clear mock call history
       jest.clearAllMocks();
+      // Re-seed Prisma mocks (mockReset clears mockResolvedValue)
+      await seedPerformanceData(prismaMock, {
+        sourceCount: 50,
+        groupCount: 6,
+      });
     });
 
     describe('Cache HIT Scenario', () => {
@@ -207,6 +212,11 @@ describe('API Response Time (/api/sources)', () => {
     beforeEach(async () => {
       await resetAllCaches();
       jest.clearAllMocks();
+      // Re-seed Prisma mocks (mockReset clears mockResolvedValue)
+      await seedPerformanceData(prismaMock, {
+        sourceCount: 50,
+        groupCount: 6,
+      });
     });
 
     it('should respond within 200ms (P95) - baseline', async () => {
