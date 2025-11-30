@@ -27,6 +27,9 @@ const DEFAULT_TOP_K_CANDIDATES = 1000;
 /** Minimum similarity threshold to include in results */
 const DEFAULT_MIN_SIMILARITY = 0.55;
 
+/** Safety cap for threshold-based filtering to prevent excessive memory use */
+const DEFAULT_THRESHOLD_RESULT_LIMIT = 5000;
+
 // =============================================================================
 // Type Definitions for SQL Results
 // =============================================================================
@@ -310,7 +313,7 @@ export class CategoryFilterService {
   /**
    * Get all interest categories.
    */
-  async getCategoriesWithCounts(): Promise<
+  async getActiveCategories(): Promise<
     {
       id: string;
       slug: string;
@@ -362,8 +365,8 @@ export class CategoryFilterService {
 
   /**
    * Get embedding candidates using threshold-based similarity search.
-   * Returns ALL articles that meet the similarity threshold (no LIMIT).
-   * This ensures users see all relevant articles, not just top-K.
+   * Returns all articles that meet the similarity threshold up to a safety cap
+   * to avoid unbounded memory usage.
    */
   private async getEmbeddingCandidates(
     centroid: string,
@@ -404,6 +407,7 @@ export class CategoryFilterService {
         AND (ae.embedding <=> ${centroid}::vector) < ${maxDistance}
         ${periodFilter}
       ORDER BY ae.embedding <=> ${centroid}::vector
+      LIMIT ${DEFAULT_THRESHOLD_RESULT_LIMIT}
     `;
 
     return result.map((row) => ({

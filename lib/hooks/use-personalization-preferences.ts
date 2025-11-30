@@ -21,6 +21,7 @@ const DEFAULT_PREFERENCES: UserCategoryPreferences = {
   selectedCategories: [],
   filterEnabled: false,
   periodMonths: 12,
+  isAuthenticated: false,
 };
 
 // =============================================================================
@@ -42,21 +43,21 @@ async function fetchPreferences(): Promise<UserCategoryPreferences> {
 
     if (response.status === 401) {
       // Not authenticated - return default preferences silently
-      return DEFAULT_PREFERENCES;
+      return { ...DEFAULT_PREFERENCES, isAuthenticated: false };
     }
 
     if (!response.ok) {
       // API unavailable - fall back silently
       console.info(`[personalization] preferences API unavailable (${response.status}) — using defaults`);
-      return DEFAULT_PREFERENCES;
+      return { ...DEFAULT_PREFERENCES, isAuthenticated: false };
     }
 
     const data = await response.json().catch(() => DEFAULT_PREFERENCES);
-    return data ?? DEFAULT_PREFERENCES;
+    return data ? { ...data, isAuthenticated: true } : { ...DEFAULT_PREFERENCES, isAuthenticated: true };
   } catch {
     // Network error - fall back silently without logging error object
     console.info('[personalization] preferences fetch failed — using defaults');
-    return DEFAULT_PREFERENCES;
+    return { ...DEFAULT_PREFERENCES, isAuthenticated: false };
   }
 }
 
@@ -90,12 +91,19 @@ async function updatePreferences(
     body: JSON.stringify(request),
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to save preferences');
+  let responseBody: any = null;
+  try {
+    responseBody = await response.json();
+  } catch {
+    responseBody = null;
   }
 
-  return response.json();
+  if (!response.ok) {
+    const errorMessage = responseBody?.error || 'Failed to save preferences';
+    throw new Error(errorMessage);
+  }
+
+  return responseBody || { success: true, selectedCategories: request.categoryIds ?? [] };
 }
 
 // =============================================================================
@@ -149,13 +157,9 @@ export function useUpdatePreferences() {
           selectedCategories,
           filterEnabled: selectedCategories.length > 0,
           periodMonths: nextPeriod !== undefined ? nextPeriod : (old?.periodMonths ?? 12),
+          isAuthenticated: true,
         })
       );
-
-      // Invalidate to refetch fresh data
-      queryClient.invalidateQueries({
-        queryKey: PERSONALIZATION_QUERY_KEYS.preferences,
-      });
 
       // Invalidate article queries to refresh with new personalization
       queryClient.invalidateQueries({
@@ -174,15 +178,15 @@ export function usePersonalizationPreferences() {
   const updateMutation = useUpdatePreferences();
 
   const categories = categoriesQuery.data ?? EMPTY_CATEGORIES;
-  const selectedCategories =
-    preferencesQuery.data?.selectedCategories ?? EMPTY_SELECTED_CATEGORIES;
+  const preferences = preferencesQuery.data ?? DEFAULT_PREFERENCES;
+  const selectedCategories = preferences.selectedCategories ?? EMPTY_SELECTED_CATEGORIES;
 
   return {
     // Data
     categories,
     selectedCategories,
-    filterEnabled: preferencesQuery.data?.filterEnabled ?? false,
-    periodMonths: (preferencesQuery.data?.periodMonths ?? 12) as PeriodPreset,
+    filterEnabled: preferences.filterEnabled ?? false,
+    periodMonths: (preferences.periodMonths ?? 12) as PeriodPreset,
 
     // Loading states
     isLoadingCategories: categoriesQuery.isLoading,
@@ -200,6 +204,6 @@ export function usePersonalizationPreferences() {
 
     // Helpers
     hasPreferences: selectedCategories.length > 0,
-    isAuthenticated: preferencesQuery.data !== undefined,
+    isAuthenticated: preferencesQuery.data?.isAuthenticated === true,
   };
 }

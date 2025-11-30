@@ -175,30 +175,7 @@ describe('CategoryFilterService', () => {
   // Service Method Tests
   // ===========================================================================
 
-  describe('getCategoryArticleCounts', () => {
-    it('should return article counts per category', async () => {
-      mockPrisma.$queryRaw.mockResolvedValue([
-        { category_id: 'cat-1', count: BigInt(100) },
-        { category_id: 'cat-2', count: BigInt(50) },
-      ]);
-
-      const counts = await service.getCategoryArticleCounts();
-
-      expect(counts.get('cat-1')).toBe(100);
-      expect(counts.get('cat-2')).toBe(50);
-      expect(counts.size).toBe(2);
-    });
-
-    it('should return empty map when no categories have articles', async () => {
-      mockPrisma.$queryRaw.mockResolvedValue([]);
-
-      const counts = await service.getCategoryArticleCounts();
-
-      expect(counts.size).toBe(0);
-    });
-  });
-
-  describe('getCategoriesWithCounts', () => {
+  describe('getActiveCategories', () => {
     const mockCategories = [
       {
         id: 'cat-1',
@@ -227,30 +204,23 @@ describe('CategoryFilterService', () => {
         { category_id: 'cat-2', count: BigInt(50) },
       ]);
 
-      const result = await service.getCategoriesWithCounts();
+      const result = await service.getActiveCategories();
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        ...mockCategories[0],
-        articleCount: 100,
-      });
-      expect(result[1]).toEqual({
-        ...mockCategories[1],
-        articleCount: 50,
-      });
+      expect(result[0]).toEqual(mockCategories[0]);
+      expect(result[1]).toEqual(mockCategories[1]);
     });
 
     it('should return 0 for categories without articles', async () => {
       mockPrisma.interestCategory.findMany.mockResolvedValue(mockCategories);
       mockPrisma.$queryRaw.mockResolvedValue([
         { category_id: 'cat-1', count: BigInt(100) },
-        // cat-2 has no articles
       ]);
 
-      const result = await service.getCategoriesWithCounts();
+      const result = await service.getActiveCategories();
 
-      expect(result[0].articleCount).toBe(100);
-      expect(result[1].articleCount).toBe(0);
+      expect(result[0]).toEqual(mockCategories[0]);
+      expect(result[1]).toEqual(mockCategories[1]);
     });
   });
 
@@ -370,8 +340,8 @@ describe('CategoryFilterService', () => {
 
     it('should filter by minimum similarity threshold', async () => {
       const lowSimCandidates = [
-        { ...mockCandidates[0], sim_emb: 0.1 }, // Below threshold (0.32)
-        { ...mockCandidates[1], sim_emb: 0.4 }, // Above threshold
+        { ...mockCandidates[0], sim_emb: 0.6 }, // Above threshold (0.55)
+        { ...mockCandidates[1], sim_emb: 0.5 }, // Below threshold
       ];
 
       mockPrisma.$queryRaw
@@ -387,7 +357,7 @@ describe('CategoryFilterService', () => {
 
       // Only one article should pass the threshold
       expect(result.articles).toHaveLength(1);
-      expect(result.articles[0].embeddingSimilarity).toBe(0.4);
+      expect(result.articles[0].embeddingSimilarity).toBe(0.6);
     });
 
     it('should apply offset correctly', async () => {

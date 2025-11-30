@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
     const sortByParam = searchParams.get('sortBy');
     const sortBy = sortByParam || 'publishedAt';
     // Validate sortBy parameter
-    const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
+    const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes', 'finalScore'];
     const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
     const rawSortOrderParam = searchParams.get('sortOrder');
     const rawSortOrder = (rawSortOrderParam || 'desc').toLowerCase();

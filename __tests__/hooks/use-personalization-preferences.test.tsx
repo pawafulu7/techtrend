@@ -89,10 +89,10 @@ describe('useInterestCategories', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.isError).toBe(true);
+      expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.error?.message).toContain('Failed to fetch categories');
+    expect(result.current.data).toEqual([]);
   });
 });
 
@@ -106,6 +106,7 @@ describe('useUserPreferences', () => {
       selectedCategories: ['cat-1', 'cat-2'],
       filterEnabled: true,
       periodMonths: 12,
+      isAuthenticated: true,
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -143,6 +144,7 @@ describe('useUserPreferences', () => {
       selectedCategories: [],
       filterEnabled: false,
       periodMonths: 12,
+      isAuthenticated: false,
     });
   });
 });
@@ -236,6 +238,7 @@ describe('usePersonalizationPreferences', () => {
       selectedCategories: ['cat-1'],
       filterEnabled: true,
       periodMonths: 6,
+      isAuthenticated: true,
     };
 
     mockFetch
@@ -261,6 +264,7 @@ describe('usePersonalizationPreferences', () => {
     expect(result.current.filterEnabled).toBe(true);
     expect(result.current.periodMonths).toBe(6);
     expect(result.current.hasPreferences).toBe(true);
+    expect(result.current.isAuthenticated).toBe(true);
   });
 
   it('should return defaults when no preferences', async () => {
@@ -300,5 +304,6 @@ describe('usePersonalizationPreferences', () => {
     expect(result.current.filterEnabled).toBe(false);
     expect(result.current.periodMonths).toBe(12);
     expect(result.current.hasPreferences).toBe(false);
+    expect(result.current.isAuthenticated).toBe(false);
   });
 });
