@@ -100,7 +100,11 @@ export class SlackNotifier implements Notifier {
         SlackNotifier.MAX_DISPLAY_ARTICLES
       );
       const articleListText = displayArticles
-        .map((a) => `• <${a.url}|${this.escapeSlackText(a.title)}>`)
+        .map((a) => {
+          // Use translatedTitle if available, otherwise use original title
+          const displayTitle = a.translatedTitle || a.title;
+          return `• <${a.url}|${this.escapeSlackText(displayTitle)}> (${this.escapeSlackText(a.sourceName)})`;
+        })
         .join('\n');
 
       text += `\n${articleListText}`;

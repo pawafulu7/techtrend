@@ -68,12 +68,33 @@ describe('SlackNotifier', () => {
       expect(sentMessage.text).toContain(':newspaper:');
     });
 
-    it('should include article list in message', async () => {
+    it('should include article list with source name in message', async () => {
       await notifier.send(samplePayload);
 
       const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
       expect(sentMessage.text).toContain('TypeScript Best Practices');
       expect(sentMessage.text).toContain('https://example.com/ts');
+      expect(sentMessage.text).toContain('(Zenn)');
+    });
+
+    it('should use translatedTitle when available', async () => {
+      const payloadWithTranslation: NotificationPayload = {
+        ...samplePayload,
+        articles: [
+          {
+            title: 'English Title',
+            translatedTitle: '日本語タイトル',
+            url: 'https://example.com/test',
+            sourceName: 'Dev.to'
+          },
+        ],
+      };
+
+      await notifier.send(payloadWithTranslation);
+
+      const sentMessage = mockWebhook.send.mock.calls[0][0] as { text: string };
+      expect(sentMessage.text).toContain('日本語タイトル');
+      expect(sentMessage.text).not.toContain('English Title');
     });
 
     it('should escape special characters in titles', async () => {

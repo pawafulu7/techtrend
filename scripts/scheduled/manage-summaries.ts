@@ -1,5 +1,7 @@
 import { SummaryManager } from '@/lib/services/summary-manager';
 import { getPrismaClient } from '@/lib/cli/utils/database';
+import { createNotifierFromEnv } from '@/lib/notification';
+import type { ArticleInfo } from '@/lib/notification/types';
 
 interface Options {
   command: 'generate' | 'regenerate' | 'missing';
@@ -122,6 +124,9 @@ async function main() {
     const manager = new SummaryManager(prisma);
     let result;
 
+    // Record start time to identify newly processed articles
+    const startTime = new Date();
+
     switch (options.command) {
       case 'generate':
         result = await manager.generateSummaries(options);
@@ -132,6 +137,53 @@ async function main() {
       case 'missing':
         result = await manager.generateMissingSummaries(options);
         break;
+    }
+
+    // Send Slack notification for newly generated summaries (generate command only)
+    if (options.command === 'generate' && result.generated > 0) {
+      try {
+        const notifier = createNotifierFromEnv();
+        if (notifier) {
+          // Fetch articles that were processed (summaryComputedAt >= startTime)
+          const processedArticles = await prisma.article.findMany({
+            where: {
+              summaryComputedAt: { gte: startTime },
+              summary: { not: null }
+            },
+            select: {
+              title: true,
+              translatedTitle: true,
+              url: true,
+              source: { select: { name: true } }
+            },
+            orderBy: { summaryComputedAt: 'desc' }
+          });
+
+          if (processedArticles.length > 0) {
+            const articlesForNotification: ArticleInfo[] = processedArticles.map(a => ({
+              title: a.title,
+              translatedTitle: a.translatedTitle,
+              url: a.url,
+              sourceName: a.source.name
+            }));
+
+            await notifier.send({
+              newArticles: processedArticles.length,
+              duplicates: 0,
+              updated: 0,
+              newArticleIds: [],
+              articles: articlesForNotification,
+              durationSeconds: Math.round((Date.now() - startTime.getTime()) / 1000)
+            });
+            console.error('[INFO] Slack notification sent successfully');
+          }
+        }
+      } catch (error) {
+        console.error(
+          '[WARN] Slack notification failed:',
+          error instanceof Error ? error.message : String(error)
+        );
+      }
     }
 
     // 統計情報の表示

@@ -11,6 +11,8 @@
 export interface ArticleInfo {
   /** Article title */
   title: string;
+  /** Translated title (for non-Japanese articles) */
+  translatedTitle?: string | null;
   /** Article URL */
   url: string;
   /** Source name (e.g., "Zenn", "Qiita") */
