@@ -13,10 +13,10 @@ export function ArticleCount() {
       try {
         const queryString = searchParams.toString();
 
-        // includeEmptyContentを追加（空コンテンツも含めてカウント）
+        // リスト表示と同じ条件でカウント（要約処理済み + 空コンテンツ含む）
         const countQueryString = queryString
-          ? `${queryString}&includeEmptyContent=true`
-          : `includeEmptyContent=true`;
+          ? `${queryString}&excludeUnprocessed=true&includeEmptyContent=true`
+          : `excludeUnprocessed=true&includeEmptyContent=true`;
 
         const response = await fetch(`/api/articles?${countQueryString}`, {
           // ブラウザのキャッシュも無効化
