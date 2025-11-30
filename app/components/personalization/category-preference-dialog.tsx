@@ -123,10 +123,9 @@ export function CategoryPreferenceDialog({
     <Dialog open={open} onOpenChange={(next) => !next && handleCancel()}>
       <DialogContent
         className="w-full max-w-lg sm:max-w-xl p-0 gap-0 flex flex-col max-h-[90vh]"
-        aria-labelledby="personalization-dialog-title"
       >
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle id="personalization-dialog-title">
+          <DialogTitle>
             興味のある分野を選択
           </DialogTitle>
           <DialogDescription>
