@@ -1,0 +1,399 @@
+/**
+ * CategoryFilterService Unit Tests
+ */
+
+import {
+  CategoryFilterService,
+  calculateRecencyDecay,
+  calculateFinalScore,
+  computeWeightedCentroid,
+} from '@/lib/personalization/category-filter-service';
+import { DEFAULT_SCORE_PARAMETERS } from '@/lib/personalization/types';
+
+// Mock Prisma
+const mockPrisma = {
+  interestCategory: {
+    findMany: jest.fn(),
+  },
+  userCategoryPreference: {
+    findMany: jest.fn(),
+    deleteMany: jest.fn(),
+    createMany: jest.fn(),
+  },
+  article: {
+    findMany: jest.fn(),
+  },
+  $queryRaw: jest.fn(),
+  $transaction: jest.fn((fn: (tx: typeof mockPrisma) => Promise<any>) => fn(mockPrisma)),
+};
+
+jest.mock('@/lib/prisma', () => ({
+  prisma: mockPrisma,
+}));
+
+// Mock logger
+jest.mock('@/lib/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+  sanitizeError: (e: Error) => ({ message: e.message }),
+}));
+
+describe('CategoryFilterService', () => {
+  let service: CategoryFilterService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new CategoryFilterService(mockPrisma as any);
+  });
+
+  // ===========================================================================
+  // Pure Function Tests
+  // ===========================================================================
+
+  describe('calculateRecencyDecay', () => {
+    it('should return 1.0 for today\'s article', () => {
+      const today = new Date();
+      const decay = calculateRecencyDecay(today);
+      expect(decay).toBeCloseTo(1.0, 2);
+    });
+
+    it('should return ~0.5 for article at half-life (365 days)', () => {
+      const halfLifeAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+      const decay = calculateRecencyDecay(halfLifeAgo);
+      expect(decay).toBeCloseTo(0.5, 1);
+    });
+
+    it('should return ~0.25 for article at 2x half-life (730 days)', () => {
+      const twoHalfLivesAgo = new Date(Date.now() - 730 * 24 * 60 * 60 * 1000);
+      const decay = calculateRecencyDecay(twoHalfLivesAgo);
+      expect(decay).toBeCloseTo(0.25, 1);
+    });
+
+    it('should return 1.0 for future dates', () => {
+      const future = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const decay = calculateRecencyDecay(future);
+      expect(decay).toBe(1.0);
+    });
+
+    it('should use custom half-life when provided', () => {
+      const sixMonthsAgo = new Date(Date.now() - 182 * 24 * 60 * 60 * 1000);
+      const decay = calculateRecencyDecay(sixMonthsAgo, 182); // 182 days half-life
+      expect(decay).toBeCloseTo(0.5, 1);
+    });
+  });
+
+  describe('calculateFinalScore', () => {
+    it('should calculate correct score with all components', () => {
+      const embeddingSimilarity = 0.8;
+      const hasTagMatch = true;
+      const recencyDecay = 0.9;
+
+      const score = calculateFinalScore(embeddingSimilarity, hasTagMatch, recencyDecay);
+
+      // Expected: 0.8 + 0.03 * 1 + 0.1 * 0.9 = 0.8 + 0.03 + 0.09 = 0.92
+      expect(score).toBeCloseTo(0.92, 2);
+    });
+
+    it('should not penalize articles without tag match', () => {
+      const embeddingSimilarity = 0.8;
+      const hasTagMatch = false;
+      const recencyDecay = 0.9;
+
+      const score = calculateFinalScore(embeddingSimilarity, hasTagMatch, recencyDecay);
+
+      // Expected: 0.8 + 0.03 * 0 + 0.1 * 0.9 = 0.8 + 0 + 0.09 = 0.89
+      expect(score).toBeCloseTo(0.89, 2);
+    });
+
+    it('should use custom parameters when provided', () => {
+      const embeddingSimilarity = 0.8;
+      const hasTagMatch = true;
+      const recencyDecay = 0.9;
+      const customParams = {
+        ...DEFAULT_SCORE_PARAMETERS,
+        tagBoostAlpha: 0.1,
+        recencyBeta: 0.2,
+      };
+
+      const score = calculateFinalScore(embeddingSimilarity, hasTagMatch, recencyDecay, customParams);
+
+      // Expected: 0.8 + 0.1 * 1 + 0.2 * 0.9 = 0.8 + 0.1 + 0.18 = 1.08
+      expect(score).toBeCloseTo(1.08, 2);
+    });
+  });
+
+  describe('computeWeightedCentroid', () => {
+    it('should return single centroid unchanged', () => {
+      const centroids = ['[0.5,0.5,0.5]'];
+      const result = computeWeightedCentroid(centroids);
+
+      // Single centroid should be returned as-is (after parse/stringify)
+      expect(result).toBe('[0.5,0.5,0.5]');
+    });
+
+    it('should compute average of multiple centroids', () => {
+      // Two unit vectors along different axes
+      const centroids = ['[1,0,0]', '[0,1,0]'];
+      const result = computeWeightedCentroid(centroids);
+
+      // Average: [0.5, 0.5, 0], normalized: [0.707, 0.707, 0]
+      const parsed = result.replace(/^\[|\]$/g, '').split(',').map(Number);
+      expect(parsed[0]).toBeCloseTo(0.707, 2);
+      expect(parsed[1]).toBeCloseTo(0.707, 2);
+      expect(parsed[2]).toBeCloseTo(0, 2);
+    });
+
+    it('should apply weights correctly', () => {
+      const centroids = ['[1,0,0]', '[0,1,0]'];
+      const weights = [3, 1]; // 3:1 ratio, favor first
+
+      const result = computeWeightedCentroid(centroids, weights);
+      const parsed = result.replace(/^\[|\]$/g, '').split(',').map(Number);
+
+      // Weighted average: [0.75, 0.25, 0], normalized
+      // Norm = sqrt(0.75^2 + 0.25^2) = sqrt(0.5625 + 0.0625) = sqrt(0.625) ~ 0.79
+      // Result: [0.75/0.79, 0.25/0.79, 0] ~ [0.948, 0.316, 0]
+      expect(parsed[0]).toBeGreaterThan(parsed[1]);
+    });
+
+    it('should throw error for empty centroids array', () => {
+      expect(() => computeWeightedCentroid([])).toThrow('No centroids provided');
+    });
+
+    it('should throw error for mismatched dimensions', () => {
+      const centroids = ['[1,0,0]', '[0,1]'];
+      expect(() => computeWeightedCentroid(centroids)).toThrow('Centroid dimensions do not match');
+    });
+  });
+
+  // ===========================================================================
+  // Service Method Tests
+  // ===========================================================================
+
+  describe('getCategoryArticleCounts', () => {
+    it('should return article counts per category', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue([
+        { category_id: 'cat-1', count: BigInt(100) },
+        { category_id: 'cat-2', count: BigInt(50) },
+      ]);
+
+      const counts = await service.getCategoryArticleCounts();
+
+      expect(counts.get('cat-1')).toBe(100);
+      expect(counts.get('cat-2')).toBe(50);
+      expect(counts.size).toBe(2);
+    });
+
+    it('should return empty map when no categories have articles', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue([]);
+
+      const counts = await service.getCategoryArticleCounts();
+
+      expect(counts.size).toBe(0);
+    });
+  });
+
+  describe('getCategoriesWithCounts', () => {
+    const mockCategories = [
+      {
+        id: 'cat-1',
+        slug: 'frontend',
+        name: 'Frontend',
+        description: 'Web UI development',
+        icon: 'Monitor',
+        sortOrder: 1,
+        isActive: true,
+      },
+      {
+        id: 'cat-2',
+        slug: 'backend',
+        name: 'Backend',
+        description: 'Server-side development',
+        icon: 'Server',
+        sortOrder: 2,
+        isActive: true,
+      },
+    ];
+
+    it('should return categories with article counts', async () => {
+      mockPrisma.interestCategory.findMany.mockResolvedValue(mockCategories);
+      mockPrisma.$queryRaw.mockResolvedValue([
+        { category_id: 'cat-1', count: BigInt(100) },
+        { category_id: 'cat-2', count: BigInt(50) },
+      ]);
+
+      const result = await service.getCategoriesWithCounts();
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        ...mockCategories[0],
+        articleCount: 100,
+      });
+      expect(result[1]).toEqual({
+        ...mockCategories[1],
+        articleCount: 50,
+      });
+    });
+
+    it('should return 0 for categories without articles', async () => {
+      mockPrisma.interestCategory.findMany.mockResolvedValue(mockCategories);
+      mockPrisma.$queryRaw.mockResolvedValue([
+        { category_id: 'cat-1', count: BigInt(100) },
+        // cat-2 has no articles
+      ]);
+
+      const result = await service.getCategoriesWithCounts();
+
+      expect(result[0].articleCount).toBe(100);
+      expect(result[1].articleCount).toBe(0);
+    });
+  });
+
+  describe('filterArticles', () => {
+    const mockCentroids = [
+      { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0.5]' },
+    ];
+
+    const mockCandidates = [
+      {
+        id: 'art-1',
+        title: 'React Guide',
+        url: 'https://example.com/react',
+        published_at: new Date(),
+        source_id: 'src-1',
+        summary: 'A guide to React',
+        thumbnail_url: null,
+        sim_emb: 0.9,
+      },
+      {
+        id: 'art-2',
+        title: 'Vue Tutorial',
+        url: 'https://example.com/vue',
+        published_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        source_id: 'src-1',
+        summary: 'A Vue tutorial',
+        thumbnail_url: null,
+        sim_emb: 0.7,
+      },
+    ];
+
+    it('should filter and score articles correctly', async () => {
+      // Mock centroid query
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockCentroids) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidates) // getEmbeddingCandidates
+        .mockResolvedValueOnce([{ article_id: 'art-1' }]); // checkTagMatches
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+      });
+
+      expect(result.articles).toHaveLength(2);
+      expect(result.articles[0].articleId).toBe('art-1'); // Higher score
+      expect(result.articles[0].embeddingSimilarity).toBe(0.9);
+      expect(result.meta.filterMode).toBe('category');
+      expect(result.meta.appliedCategories).toEqual(['cat-1']);
+    });
+
+    it('should use fallback when no centroids found', async () => {
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]); // No centroids
+      mockPrisma.article.findMany.mockResolvedValue([
+        { id: 'art-1', publishedAt: new Date() },
+      ]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['non-existent'],
+        periodMonths: 12,
+        limit: 10,
+      });
+
+      expect(result.articles).toHaveLength(1);
+      expect(result.meta.appliedCategories).toEqual([]);
+    });
+
+    it('should use fallback when no candidates found', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockCentroids) // getCategoryCentroids
+        .mockResolvedValueOnce([]); // No candidates
+
+      mockPrisma.article.findMany.mockResolvedValue([
+        { id: 'art-1', publishedAt: new Date() },
+      ]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+      });
+
+      expect(result.articles).toHaveLength(1);
+      expect(result.meta.appliedCategories).toEqual([]);
+    });
+
+    it('should handle database errors gracefully', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
+      mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('Database error'));
+      mockPrisma.article.findMany.mockResolvedValue([
+        { id: 'art-1', publishedAt: new Date() },
+      ]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+      });
+
+      // Should return fallback results
+      expect(result.articles).toHaveLength(1);
+      expect(result.meta.appliedCategories).toEqual([]);
+      // Verify error was logged
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('should filter by minimum similarity threshold', async () => {
+      const lowSimCandidates = [
+        { ...mockCandidates[0], sim_emb: 0.1 }, // Below threshold (0.32)
+        { ...mockCandidates[1], sim_emb: 0.4 }, // Above threshold
+      ];
+
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockCentroids)
+        .mockResolvedValueOnce(lowSimCandidates)
+        .mockResolvedValueOnce([]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+      });
+
+      // Only one article should pass the threshold
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].embeddingSimilarity).toBe(0.4);
+    });
+
+    it('should apply offset correctly', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockCentroids)
+        .mockResolvedValueOnce(mockCandidates)
+        .mockResolvedValueOnce([]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+        offset: 1,
+      });
+
+      // Should skip first article
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].articleId).toBe('art-2');
+    });
+  });
+});

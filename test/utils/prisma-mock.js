@@ -11,8 +11,8 @@ prismaMock.$transaction = jest.fn().mockImplementation(async (operations) => {
 });
 
 const resetPrismaMock = () => {
-  // モックの呼び出し履歴をクリア（実装は残す）
-  mockClear(prismaMock);
+  // モックの呼び出し履歴と実装を完全にリセット
+  mockReset(prismaMock);
   // $transactionモックを再設定
   prismaMock.$transaction = jest.fn().mockImplementation(async (operations) => {
     if (typeof operations === 'function') {
