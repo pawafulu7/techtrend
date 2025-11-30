@@ -38,6 +38,18 @@ interface CLIOptions {
   statsOnly: boolean;
 }
 
+/**
+ * Require a value for an option, exit with error if missing
+ */
+function requireOptionValue(option: string, value: string | undefined): string {
+  if (!value || value.startsWith('-')) {
+    console.error(`Error: ${option} requires a value`);
+    printHelp();
+    process.exit(1);
+  }
+  return value;
+}
+
 function parseArgs(): CLIOptions {
   const args = process.argv.slice(2);
   const options: CLIOptions = {
@@ -59,21 +71,29 @@ function parseArgs(): CLIOptions {
         options.statsOnly = true;
         break;
       case '--category':
-        options.categoryId = args[++i];
+        options.categoryId = requireOptionValue('--category', args[++i]);
         break;
       case '--embedding-key':
-        options.embeddingKey = args[++i];
+        options.embeddingKey = requireOptionValue('--embedding-key', args[++i]);
         break;
       case '--model':
-        options.model = args[++i];
+        options.model = requireOptionValue('--model', args[++i]);
         break;
-      case '--version':
-        options.version = parseInt(args[++i], 10);
+      case '--version': {
+        const value = requireOptionValue('--version', args[++i]);
+        const parsed = parseInt(value, 10);
+        if (isNaN(parsed)) {
+          console.error(`Error: --version must be a number, got: ${value}`);
+          process.exit(1);
+        }
+        options.version = parsed;
         break;
+      }
       case '--help':
       case '-h':
         printHelp();
         process.exit(0);
+        break; // Explicit break to avoid fallthrough warning
       default:
         console.error(`Unknown option: ${arg}`);
         printHelp();
@@ -173,12 +193,7 @@ async function main(): Promise<void> {
       version: options.version,
     });
 
-    // Get category slugs for better output
-    const categories = await prisma.interestCategory.findMany({
-      select: { id: true, slug: true },
-    });
-    const slugMap = new Map(categories.map((c) => [c.id, c.slug]));
-
+    // Results now include slug, no need for separate query
     console.log('\nResults:');
     const successful = results.filter((r) => r.success);
     const failed = results.filter((r) => !r.success);
@@ -186,7 +201,7 @@ async function main(): Promise<void> {
     console.log(`  Successful: ${successful.length}/${results.length}`);
 
     for (const result of results) {
-      const slug = slugMap.get(result.categoryId) ?? 'unknown';
+      const slug = result.slug ?? 'unknown';
       const status = result.success ? '✓' : '✗';
       const samples = result.sampleCount ?? 0;
       console.log(`    ${status} ${slug}: ${samples} articles`);

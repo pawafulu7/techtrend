@@ -13,6 +13,7 @@ const mockPrisma = {
   },
   $queryRaw: jest.fn(),
   $executeRaw: jest.fn(),
+  $transaction: jest.fn((promises: Promise<unknown>[]) => Promise.all(promises)),
 };
 
 jest.mock('@/lib/prisma', () => ({
@@ -59,17 +60,19 @@ describe('CentroidService', () => {
       expect(results).toHaveLength(2);
       expect(results[0]).toEqual({
         categoryId: 'cat-1',
+        slug: 'frontend',
         success: true,
         sampleCount: 100,
       });
       expect(results[1]).toEqual({
         categoryId: 'cat-2',
+        slug: 'backend',
         success: true,
         sampleCount: 50,
       });
 
-      // Verify UPDATE was called for each category
-      expect(mockPrisma.$executeRaw).toHaveBeenCalledTimes(2);
+      // Verify transaction was called with updates
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
     });
 
     it('should not write to DB in dry run mode', async () => {
@@ -80,9 +83,10 @@ describe('CentroidService', () => {
 
       expect(results).toHaveLength(2);
       expect(results.every((r) => r.success)).toBe(true);
+      expect(results.every((r) => r.slug !== undefined)).toBe(true);
 
-      // Verify UPDATE was NOT called
-      expect(mockPrisma.$executeRaw).not.toHaveBeenCalled();
+      // Verify transaction was NOT called
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
     });
 
     it('should handle categories with no articles', async () => {
@@ -105,6 +109,7 @@ describe('CentroidService', () => {
       // cat-1 succeeded
       expect(results[0]).toEqual({
         categoryId: 'cat-1',
+        slug: 'frontend',
         success: true,
         sampleCount: 100,
       });
@@ -112,13 +117,14 @@ describe('CentroidService', () => {
       // cat-empty failed (no articles)
       expect(results[1]).toEqual({
         categoryId: 'cat-empty',
+        slug: 'empty',
         success: false,
         sampleCount: 0,
         error: 'No articles with embeddings found for this category',
       });
 
-      // UPDATE called only once (for cat-1)
-      expect(mockPrisma.$executeRaw).toHaveBeenCalledTimes(1);
+      // Transaction called once (for cat-1 only)
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
     });
   });
 

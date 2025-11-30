@@ -33,6 +33,30 @@ const DEFAULT_OPTIONS: Required<CentroidComputeOptions> = {
 };
 
 // =============================================================================
+// Type Definitions for SQL Results
+// =============================================================================
+
+/** Raw result from pgvector centroid computation query */
+type RawCentroidRow = {
+  category_id: string;
+  centroid: string;
+  sample_count: bigint;
+};
+
+/** Normalized centroid row for application use */
+type NormalizedCentroidRow = {
+  categoryId: string;
+  centroid: string;
+  sampleCount: number;
+};
+
+/** Category with slug for result mapping */
+type CategoryWithSlug = {
+  id: string;
+  slug: string;
+};
+
+// =============================================================================
 // Centroid Service
 // =============================================================================
 
@@ -50,12 +74,14 @@ export class CentroidService {
 
   /**
    * Compute and update centroids for all active categories.
+   *
+   * Updates are performed within a transaction to ensure consistency.
+   * If any update fails, all changes are rolled back.
    */
   async computeAllCentroids(
     options: CentroidComputeOptions = {}
   ): Promise<CentroidComputationResult[]> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
-    const results: CentroidComputationResult[] = [];
 
     logger.info(
       { embeddingKey: opts.embeddingKey, model: opts.model, version: opts.version, dryRun: opts.dryRun },
@@ -64,7 +90,7 @@ export class CentroidService {
 
     try {
       // Get all active categories
-      const categories = await this.db.interestCategory.findMany({
+      const categories: CategoryWithSlug[] = await this.db.interestCategory.findMany({
         where: { isActive: true },
         select: { id: true, slug: true },
       });
@@ -74,7 +100,10 @@ export class CentroidService {
       // Compute centroids using single efficient query
       const centroids = await this.computeCentroidsQuery(opts);
 
-      // Update each category
+      // Build results and prepare updates
+      const results: CentroidComputationResult[] = [];
+      const updates: Array<{ categoryId: string; centroid: string; slug: string }> = [];
+
       for (const category of categories) {
         const centroidData = centroids.find((c) => c.categoryId === category.id);
 
@@ -85,6 +114,7 @@ export class CentroidService {
           );
           results.push({
             categoryId: category.id,
+            slug: category.slug,
             success: false,
             sampleCount: 0,
             error: 'No articles with embeddings found for this category',
@@ -92,20 +122,46 @@ export class CentroidService {
           continue;
         }
 
-        if (!opts.dryRun) {
-          await this.updateCategoryCentroid(category.id, centroidData.centroid);
-        }
-
-        logger.info(
-          { categoryId: category.id, slug: category.slug, sampleCount: centroidData.sampleCount, dryRun: opts.dryRun },
-          'Category centroid computed'
-        );
+        updates.push({
+          categoryId: category.id,
+          centroid: centroidData.centroid,
+          slug: category.slug,
+        });
 
         results.push({
           categoryId: category.id,
+          slug: category.slug,
           success: true,
           sampleCount: centroidData.sampleCount,
         });
+      }
+
+      // Execute all updates in a transaction for consistency
+      if (!opts.dryRun && updates.length > 0) {
+        await this.db.$transaction(
+          updates.map((u) =>
+            this.db.$executeRaw`
+              UPDATE "InterestCategory"
+              SET
+                "centroidEmbedding" = ${u.centroid}::vector,
+                "centroidComputedAt" = NOW(),
+                "updatedAt" = NOW()
+              WHERE id = ${u.categoryId}
+            `
+          )
+        );
+
+        logger.info(
+          { updatedCount: updates.length },
+          'All category centroids updated in transaction'
+        );
+      }
+
+      for (const update of updates) {
+        logger.info(
+          { categoryId: update.categoryId, slug: update.slug, dryRun: opts.dryRun },
+          'Category centroid computed'
+        );
       }
 
       return results;
@@ -120,6 +176,11 @@ export class CentroidService {
 
   /**
    * Compute centroid for a single category.
+   *
+   * Note: Unlike computeAllCentroids which throws on error, this method
+   * catches exceptions and returns a Result object. This design makes it
+   * easier to handle from CLI tools where we want to report failures
+   * gracefully rather than crash the entire script.
    */
   async computeCategoryCentroid(
     categoryId: string,
@@ -184,14 +245,12 @@ export class CentroidService {
   private async computeCentroidsQuery(
     options: Required<CentroidComputeOptions>,
     categoryId?: string
-  ): Promise<Array<{ categoryId: string; centroid: string; sampleCount: number }>> {
+  ): Promise<NormalizedCentroidRow[]> {
     const categoryFilter = categoryId
       ? Prisma.sql`AND tcm."categoryId" = ${categoryId}`
       : Prisma.empty;
 
-    const result = await this.db.$queryRaw<
-      Array<{ category_id: string; centroid: string; sample_count: bigint }>
-    >`
+    const result = await this.db.$queryRaw<RawCentroidRow[]>`
       WITH article_embeddings AS (
         -- Get distinct articles per category with their embeddings
         SELECT DISTINCT ON (tcm."categoryId", ae."articleId")
