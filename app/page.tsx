@@ -149,10 +149,10 @@ export default async function Home({ searchParams }: PageProps) {
                     <>
                       <Link
                         href="/search/agent"
-                        className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-md transition-colors"
+                        className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-md transition-colors whitespace-nowrap"
                         title="AI検索"
                       >
-                        <Sparkles className="h-4 w-4" />
+                        <Sparkles className="h-4 w-4 flex-shrink-0" />
                         <span>AI検索</span>
                       </Link>
                       <div className="w-px h-5 bg-border" />
