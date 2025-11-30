@@ -70,18 +70,16 @@ export function PersonalizationToggle({
           onClick={handleToggleClick}
           aria-label="パーソナライズ設定"
           className={cn(
-            'gap-2 h-9 px-3',
+            'gap-1.5 h-9 px-3 whitespace-nowrap',
             'data-[state=on]:bg-primary data-[state=on]:text-primary-foreground',
             className
           )}
           data-testid="personalization-toggle"
         >
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="w-4 h-4 flex-shrink-0" />
           <span className="hidden sm:inline text-sm">パーソナライズ</span>
           {hasPreferences && (
-            <span className="text-xs opacity-70">
-              ({selectedCategories.length})
-            </span>
+            <span className="text-xs opacity-70">({selectedCategories.length})</span>
           )}
         </Toggle>
 
@@ -106,15 +104,13 @@ export function PersonalizationToggle({
         variant={filterEnabled && hasPreferences ? 'default' : 'outline'}
         size="sm"
         onClick={handleToggleClick}
-        className={cn('gap-2', className)}
+        className={cn('gap-1.5 whitespace-nowrap', className)}
         data-testid="personalization-button"
       >
-        <Settings className="w-4 h-4" />
+        <Settings className="w-4 h-4 flex-shrink-0" />
         <span className="hidden sm:inline">パーソナライズ</span>
         {hasPreferences && (
-          <span className="text-xs opacity-70">
-            ({selectedCategories.length})
-          </span>
+          <span className="text-xs opacity-70">({selectedCategories.length})</span>
         )}
       </Button>
 

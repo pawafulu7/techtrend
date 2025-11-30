@@ -66,7 +66,7 @@ export function ArticleCount() {
   }
 
   return (
-    <div className="text-sm text-gray-600 dark:text-gray-400">
+    <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
       {count.toLocaleString()}件の記事
     </div>
   );

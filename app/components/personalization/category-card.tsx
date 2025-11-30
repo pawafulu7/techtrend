@@ -121,8 +121,8 @@ export function CategoryCard({
           >
             {category.name}
           </span>
-          <span className="text-xs text-muted-foreground">
-            ({category.articleCount.toLocaleString()}
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            ({category.articleCount.toLocaleString()}件)
           </span>
         </div>
         {category.description && (

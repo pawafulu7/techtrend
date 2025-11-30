@@ -130,18 +130,18 @@ export default async function Home({ searchParams }: PageProps) {
           {/* ツールバー - 固定 */}
           <div className="flex-shrink-0 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <MobileFilters sources={sources} groupedSources={groupedSources} tags={tags} initialSourceIds={initialSourceIds} />
                 <Suspense fallback={<div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />}>
                   <ArticleCount />
                 </Suspense>
-                <div className="w-px h-5 bg-border" />
+                <div className="w-px h-5 bg-border hidden sm:block" />
                 <RecommendationToggle />
-                <div className="w-px h-5 bg-border" />
+                <div className="w-px h-5 bg-border hidden sm:block" />
                 <PersonalizationToggle />
               </div>
-                
-                <div className="flex items-center gap-2">
+
+              <div className="flex items-center gap-2 ml-4">
                   <div className="hidden lg:block">
                     <SearchBox />
                   </div>
