@@ -35,20 +35,20 @@ describe('GET /api/interest-categories', () => {
       description: 'Web UI development',
       icon: 'Monitor',
       sortOrder: 1,
-    isActive: true,
-  },
-  {
-    id: 'cat-2',
+      isActive: true,
+    },
+    {
+      id: 'cat-2',
       slug: 'backend',
       name: 'Backend',
-    description: 'Server-side development',
-    icon: 'Server',
-    sortOrder: 2,
-    isActive: true,
-  },
+      description: 'Server-side development',
+      icon: 'Server',
+      sortOrder: 2,
+      isActive: true,
+    },
   ];
 
-  it('should return categories with article counts', async () => {
+  it('should return active categories', async () => {
     mockGetActiveCategories.mockResolvedValue(mockCategories);
 
     const response = await GET();

@@ -21,11 +21,11 @@ import { DEFAULT_SCORE_PARAMETERS } from './types';
 // Configuration
 // =============================================================================
 
-/** Default number of embedding candidates to retrieve before scoring */
+/** Legacy default for embedding candidates (kept for API compatibility; not used in threshold mode) */
 const DEFAULT_TOP_K_CANDIDATES = 1000;
 
-/** Minimum similarity threshold to include in results */
-const DEFAULT_MIN_SIMILARITY = 0.55;
+/** Minimum similarity threshold to include in results (derived from ScoreParameters) */
+const DEFAULT_MIN_SIMILARITY = DEFAULT_SCORE_PARAMETERS.minSimilarityThreshold;
 
 /** Safety cap for threshold-based filtering to prevent excessive memory use */
 const DEFAULT_THRESHOLD_RESULT_LIMIT = 5000;
@@ -311,7 +311,7 @@ export class CategoryFilterService {
   }
 
   /**
-   * Get all interest categories.
+   * Get all active interest categories (sorted by sortOrder asc).
    */
   async getActiveCategories(): Promise<
     {
@@ -503,18 +503,28 @@ export class CategoryFilterService {
   ): ScoredArticleWithMeta[] {
     const direction = sortOrder === 'asc' ? 1 : -1;
 
+    // Secondary sort by finalScore for tie-breaking to ensure stable ordering
+    const tieBreaker = (a: ScoredArticleWithMeta, b: ScoredArticleWithMeta): number =>
+      (b.finalScore - a.finalScore); // Always descending for tie-break
+
     const compare = (a: ScoredArticleWithMeta, b: ScoredArticleWithMeta): number => {
+      let primary: number;
       switch (sortBy) {
         case 'publishedAt':
-          return (a.publishedAt.getTime() - b.publishedAt.getTime()) * direction;
+          primary = (a.publishedAt.getTime() - b.publishedAt.getTime()) * direction;
+          return primary !== 0 ? primary : tieBreaker(a, b);
         case 'createdAt':
-          return (a.createdAt.getTime() - b.createdAt.getTime()) * direction;
+          primary = (a.createdAt.getTime() - b.createdAt.getTime()) * direction;
+          return primary !== 0 ? primary : tieBreaker(a, b);
         case 'qualityScore':
-          return ((a.qualityScore ?? 0) - (b.qualityScore ?? 0)) * direction;
+          primary = ((a.qualityScore ?? 0) - (b.qualityScore ?? 0)) * direction;
+          return primary !== 0 ? primary : tieBreaker(a, b);
         case 'bookmarks':
-          return ((a.bookmarks ?? 0) - (b.bookmarks ?? 0)) * direction;
+          primary = ((a.bookmarks ?? 0) - (b.bookmarks ?? 0)) * direction;
+          return primary !== 0 ? primary : tieBreaker(a, b);
         case 'userVotes':
-          return ((a.userVotes ?? 0) - (b.userVotes ?? 0)) * direction;
+          primary = ((a.userVotes ?? 0) - (b.userVotes ?? 0)) * direction;
+          return primary !== 0 ? primary : tieBreaker(a, b);
         case 'finalScore':
         default:
           return (a.finalScore - b.finalScore) * direction;
@@ -559,13 +569,16 @@ export class CategoryFilterService {
       }),
     ]);
 
-    const scored: ScoredArticle[] = articles.map((a) => ({
-      articleId: a.id,
-      embeddingSimilarity: 0,
-      tagBoost: 0,
-      recencyDecay: calculateRecencyDecay(a.publishedAt) * DEFAULT_SCORE_PARAMETERS.recencyBeta,
-      finalScore: calculateRecencyDecay(a.publishedAt),
-    }));
+    const scored: ScoredArticle[] = articles.map((a) => {
+      const recency = calculateRecencyDecay(a.publishedAt);
+      return {
+        articleId: a.id,
+        embeddingSimilarity: 0,
+        tagBoost: 0,
+        recencyDecay: recency * DEFAULT_SCORE_PARAMETERS.recencyBeta,
+        finalScore: calculateFinalScore(0, false, recency),
+      };
+    });
 
     return {
       articles: scored,

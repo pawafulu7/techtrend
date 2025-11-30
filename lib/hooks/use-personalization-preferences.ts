@@ -149,7 +149,7 @@ export function useUpdatePreferences() {
         data?.selectedCategories ?? variables.categoryIds ?? [];
       const nextPeriod = variables.periodMonths;
 
-      // Optimistic update
+      // Update cache after successful mutation
       queryClient.setQueryData<UserCategoryPreferences>(
         PERSONALIZATION_QUERY_KEYS.preferences,
         (old) => ({
@@ -181,12 +181,19 @@ export function usePersonalizationPreferences() {
   const preferences = preferencesQuery.data ?? DEFAULT_PREFERENCES;
   const selectedCategories = preferences.selectedCategories ?? EMPTY_SELECTED_CATEGORIES;
 
+  // Validate periodMonths against allowed presets
+  const rawPeriodMonths = preferences.periodMonths ?? 12;
+  const validPresets: PeriodPreset[] = [0, 3, 6, 12];
+  const periodMonths = (validPresets.includes(rawPeriodMonths as PeriodPreset)
+    ? rawPeriodMonths
+    : 12) as PeriodPreset;
+
   return {
     // Data
     categories,
     selectedCategories,
     filterEnabled: preferences.filterEnabled ?? false,
-    periodMonths: (preferences.periodMonths ?? 12) as PeriodPreset,
+    periodMonths,
 
     // Loading states
     isLoadingCategories: categoriesQuery.isLoading,
