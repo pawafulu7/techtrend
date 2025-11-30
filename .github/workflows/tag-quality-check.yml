@@ -18,6 +18,21 @@ jobs:
   check-tag-quality:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: techtrend_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,24 +47,20 @@ jobs:
         run: npm ci
         timeout-minutes: 15
 
-      - name: Setup PostgreSQL
-        uses: ikalnytskyi/action-setup-postgres@v6
-        with:
-          username: postgres
-          password: postgres_test_password
-          database: techtrend_test
-          port: 5432
-        id: postgres
+      - name: Enable pgvector extension
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Run Prisma migrations
         run: npx prisma migrate deploy
         env:
-          DATABASE_URL: postgresql://postgres:postgres_test_password@localhost:5432/techtrend_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
 
       - name: Seed test data
         run: npx tsx prisma/seed-test.ts
         env:
-          DATABASE_URL: postgresql://postgres:postgres_test_password@localhost:5432/techtrend_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
           E2E_TOTAL_ARTICLES: 100
           E2E_TS_ARTICLES: 20
 
@@ -59,7 +70,7 @@ jobs:
           npx tsx scripts/monitoring/check-tag-quality.ts | tee tag-quality-report.txt
           echo "exit_code=$?" >> $GITHUB_OUTPUT
         env:
-          DATABASE_URL: postgresql://postgres:postgres_test_password@localhost:5432/techtrend_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
         continue-on-error: true
 
       - name: Upload quality report
