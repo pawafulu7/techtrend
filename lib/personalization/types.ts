@@ -33,7 +33,7 @@ export interface InterestCategoryDefinition {
 }
 
 /**
- * Interest category with article count (API response)
+ * Interest category (API response)
  */
 export interface InterestCategoryWithCount {
   id: string;
@@ -43,7 +43,6 @@ export interface InterestCategoryWithCount {
   icon: string | null;
   sortOrder: number;
   isActive: boolean;
-  articleCount: number;
 }
 
 // =============================================================================
@@ -57,6 +56,7 @@ export interface UserCategoryPreferences {
   selectedCategories: string[];
   filterEnabled: boolean;
   periodMonths: number;
+  isAuthenticated?: boolean;
 }
 
 /**
@@ -85,6 +85,8 @@ export interface PersonalizedFilterOptions {
   periodMonths: number;
   limit: number;
   offset?: number;
+  sortBy?: PersonalizedSortBy;
+  sortOrder?: 'asc' | 'desc';
 }
 
 /**
@@ -108,6 +110,14 @@ export interface PersonalizedFilterMeta {
   totalMatched: number;
   queryMs: number;
 }
+
+export type PersonalizedSortBy =
+  | 'finalScore'
+  | 'publishedAt'
+  | 'createdAt'
+  | 'qualityScore'
+  | 'bookmarks'
+  | 'userVotes';
 
 // =============================================================================
 // Centroid Types
@@ -145,7 +155,7 @@ export interface ScoreParameters {
   tagBoostAlpha: number; // Weight for tag match bonus (0.03-0.05)
   recencyBeta: number; // Weight for recency decay (0.1)
   halfLifeDays: number; // Half-life for recency decay (365)
-  minSimilarityThreshold: number; // Minimum similarity to include (0.32)
+  minSimilarityThreshold: number; // Minimum similarity to include (0.55)
   topKCandidates: number; // Number of candidates to retrieve (200)
 }
 
@@ -156,6 +166,6 @@ export const DEFAULT_SCORE_PARAMETERS: ScoreParameters = {
   tagBoostAlpha: 0.03,
   recencyBeta: 0.1,
   halfLifeDays: 365,
-  minSimilarityThreshold: 0.32,
+  minSimilarityThreshold: 0.55,
   topKCandidates: 200,
 };

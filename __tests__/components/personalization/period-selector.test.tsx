@@ -1,0 +1,88 @@
+/**
+ * PeriodSelector Component Tests
+ */
+
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
+import { PeriodSelector } from '@/app/components/personalization/period-selector';
+import type { PeriodPreset } from '@/lib/personalization/types';
+
+describe('PeriodSelector', () => {
+  const mockOnChange = jest.fn();
+
+  const defaultProps = {
+    value: 12 as PeriodPreset,
+    onChange: mockOnChange,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders all period options', () => {
+    render(<PeriodSelector {...defaultProps} />);
+
+    // shadcn/ui ToggleGroup uses role="group" instead of radiogroup
+    expect(screen.getByRole('group', { name: '対象期間' })).toBeInTheDocument();
+    expect(screen.getByTestId('period-3')).toBeInTheDocument();
+    expect(screen.getByTestId('period-6')).toBeInTheDocument();
+    expect(screen.getByTestId('period-12')).toBeInTheDocument();
+    expect(screen.getByTestId('period-0')).toBeInTheDocument();
+  });
+
+  it('shows selected period', () => {
+    render(<PeriodSelector {...defaultProps} value={12} />);
+
+    const selected = screen.getByTestId('period-12');
+    expect(selected).toHaveAttribute('data-state', 'on');
+  });
+
+  it('calls onChange when period is selected', async () => {
+    const user = userEvent.setup();
+    render(<PeriodSelector {...defaultProps} />);
+
+    const option3m = screen.getByTestId('period-3');
+    await user.click(option3m);
+
+    expect(mockOnChange).toHaveBeenCalledWith(3);
+  });
+
+  it('displays correct helper text for months', () => {
+    render(<PeriodSelector {...defaultProps} value={6} />);
+
+    expect(screen.getByText('過去6ヶ月の記事を対象にします')).toBeInTheDocument();
+  });
+
+  it('displays correct helper text for all time', () => {
+    render(<PeriodSelector {...defaultProps} value={0} />);
+
+    expect(screen.getByText('全期間の記事を対象にします')).toBeInTheDocument();
+  });
+
+  it('renders with custom className', () => {
+    render(<PeriodSelector {...defaultProps} className="custom-class" />);
+
+    const container = screen.getByText('対象期間').closest('div');
+    expect(container).toHaveClass('custom-class');
+  });
+
+  it('can be disabled', () => {
+    render(<PeriodSelector {...defaultProps} disabled />);
+
+    // Check that individual toggle items are disabled
+    const items = screen.getAllByRole('radio');
+    items.forEach((item) => {
+      expect(item).toBeDisabled();
+    });
+  });
+
+  it('has proper aria labels for accessibility', () => {
+    render(<PeriodSelector {...defaultProps} />);
+
+    expect(screen.getByRole('radio', { name: '3ヶ月' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '6ヶ月' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '12ヶ月' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '全期間' })).toBeInTheDocument();
+  });
+});

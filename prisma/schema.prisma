@@ -110,20 +110,21 @@ model Tag {
 }
 
 model User {
-  id                  String                   @id @default(cuid())
-  email               String                   @unique
-  emailVerified       DateTime?
-  name                String?
-  image               String?
-  password            String?
-  role                String?                  @default("user") // "user" | "admin"
-  deletedAt           DateTime?                @db.Timestamptz(6)
-  createdAt           DateTime                 @default(now())
-  updatedAt           DateTime                 @updatedAt
-  accounts            Account[]
-  articleViews        ArticleView[]
-  favorites           Favorite[]
-  categoryPreferences UserCategoryPreference[]
+  id                           String                   @id @default(cuid())
+  email                        String                   @unique
+  emailVerified                DateTime?
+  name                         String?
+  image                        String?
+  password                     String?
+  role                         String?                  @default("user") // "user" | "admin"
+  deletedAt                    DateTime?                @db.Timestamptz(6)
+  personalizationPeriodMonths  Int                      @default(12) // Time period for personalized filtering (0 = all time)
+  createdAt                    DateTime                 @default(now())
+  updatedAt                    DateTime                 @updatedAt
+  accounts                     Account[]
+  articleViews                 ArticleView[]
+  favorites                    Favorite[]
+  categoryPreferences          UserCategoryPreference[]
 
   @@index([deletedAt], map: "idx_user_deleted_at")
 }

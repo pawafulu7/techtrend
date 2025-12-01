@@ -122,9 +122,20 @@ test.describe('Custom Image Loader - Page Rendering', () => {
 
   test('should not cause critical console errors', async ({ page }) => {
     const consoleErrors: string[] = [];
+    const unauthorizedResponses = new Set<string>();
+    const allowed401Paths = [
+      '/api/user/preferences/categories',
+      '/api/interest-categories',
+      '/api/user',
+    ];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
         consoleErrors.push(msg.text());
+      }
+    });
+    page.on('response', (response) => {
+      if (response.status() === 401) {
+        unauthorizedResponses.add(response.url());
       }
     });
 
@@ -140,9 +151,23 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     // Wait a bit for any delayed errors
     await page.waitForTimeout(2000);
 
-    // Critical errors should not occur (image errors are expected and handled)
+    // Verify that only expected personalization endpoints return 401 for guest users
+    const unexpected401s = Array.from(unauthorizedResponses).filter(
+      (url) => !allowed401Paths.some((allowed) => url.includes(allowed)),
+    );
+    expect(unexpected401s).toEqual([]);
+
+    // Critical errors should not occur
+    // Expected errors to filter out:
+    // - image loading errors (expected with external images)
+    // - favicon errors (expected)
+    // - 401 Unauthorized (browser logs generic message without URL)
+    //   We already verified above that only expected personalization endpoints return 401.
+    //   The UI gracefully falls back to default state without personalization.
     const criticalErrors = consoleErrors.filter(
-      (err) => !err.includes('image') && !err.includes('favicon')
+      (err) => !err.includes('image') &&
+               !err.includes('favicon') &&
+               !err.includes('401')
     );
     expect(criticalErrors.length).toBe(0);
   });

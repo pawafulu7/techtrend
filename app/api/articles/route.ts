@@ -13,6 +13,8 @@ import { auth } from '@/lib/auth/auth';
 import { MetricsCollector, withDbTiming, withCacheTiming } from '@/lib/metrics/performance';
 import { getDateRangeFilter } from '@/app/lib/date-utils';
 import { createLoaders } from '@/lib/dataloader';
+import { categoryFilterService } from '@/lib/personalization/category-filter-service';
+import type { PersonalizedFilterOptions, PersonalizedSortBy } from '@/lib/personalization/types';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -120,11 +122,13 @@ export async function GET(request: NextRequest) {
     const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
     const limit = Number.isFinite(parsedLimit) ? Math.min(100, Math.max(1, parsedLimit)) : 20;
     // Support both publishedAt and createdAt for sorting
-    const sortBy = searchParams.get('sortBy') || 'publishedAt';
+    const sortByParam = searchParams.get('sortBy');
+    const sortBy = sortByParam || 'publishedAt';
     // Validate sortBy parameter
-    const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
+    const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes', 'finalScore'];
     const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
-    const rawSortOrder = (searchParams.get('sortOrder') || 'desc').toLowerCase();
+    const rawSortOrderParam = searchParams.get('sortOrder');
+    const rawSortOrder = (rawSortOrderParam || 'desc').toLowerCase();
     const sortOrder = (rawSortOrder === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc';
     
     // Parse filters
@@ -145,6 +149,19 @@ export async function GET(request: NextRequest) {
     const lightweight = searchParams.get('lightweight') === 'true'; // Ultra-lightweight mode for mobile/bandwidth-conscious clients
     const fields = searchParams.get('fields'); // Comma-separated list of fields to include
     const includeUserData = searchParams.get('includeUserData') === 'true'; // Include user-specific data (favorites, read status)
+    // Personalized filtering params
+    const categoryIdsParam = searchParams.get('categoryIds');
+    const categoryIds = categoryIdsParam
+      ? categoryIdsParam
+          .split(',')
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0)
+      : [];
+    const periodMonthsParam = searchParams.get('periodMonths');
+    const parsedPeriodMonths = Number.parseInt(periodMonthsParam ?? '0', 10);
+    const periodMonths = Number.isFinite(parsedPeriodMonths) && parsedPeriodMonths >= 0
+      ? parsedPeriodMonths
+      : 0;
 
     // Generate cache key based on query parameters
     // Normalize search keywords for consistent cache key
@@ -207,6 +224,87 @@ export async function GET(request: NextRequest) {
       lightweight: lightweight,
       fields: fields || undefined,
       includeUserData: false
+    };
+
+    // Shared select builder for standard and personalized flows
+    const buildSelectFields = (): Prisma.ArticleSelect => {
+      if (lightweight) {
+        // Ultra-lightweight mode: minimum fields only
+        return {
+          id: true,
+          title: true,
+          url: true,
+          summary: true,
+          publishedAt: true,
+          sourceId: true,
+        };
+      }
+
+      let selectFields: Prisma.ArticleSelect;
+
+      if (fields) {
+        // Custom field selection
+        const fieldList = fields.split(',').map(f => f.trim());
+        // 許可フィールドのホワイトリスト
+        const allowedSelectableFields = new Set([
+          'title','url','summary','thumbnail','publishedAt','qualityScore',
+          'bookmarks','userVotes','difficulty','createdAt','updatedAt',
+          'sourceId','summaryVersion','articleType','category','detailedSummary'
+        ]);
+        selectFields = { id: true } as Prisma.ArticleSelect;
+        for (const field of fieldList) {
+          if (allowedSelectableFields.has(field)) {
+            // Type-safe dynamic field assignment
+            const selectFieldsAny = selectFields as Record<string, boolean>;
+            selectFieldsAny[field] = true;
+          }
+        }
+      } else {
+        selectFields = {
+          id: true,
+          title: true,
+          translatedTitle: true,
+          url: true,
+          summary: true,
+          thumbnail: true,
+          publishedAt: true,
+          qualityScore: true,
+          bookmarks: true,
+          userVotes: true,
+          difficulty: true,
+          createdAt: true,
+          updatedAt: true,
+          sourceId: true,
+          summaryVersion: true,
+          articleType: true,
+          category: true,
+          content: true, // Included for contentLength calculation, stripped before response
+          // Exclude: detailedSummary for performance
+        };
+      }
+
+      // Only include relations if explicitly requested (default: false to save bandwidth)
+      if (includeRelations && !lightweight) {
+        selectFields.source = {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            url: true,
+            enabled: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        };
+        selectFields.tags = {
+          select: {
+            id: true,
+            name: true,
+          },
+        };
+      }
+
+      return selectFields;
     };
 
     // Build data fetcher function for cache
@@ -410,80 +508,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Build select object based on parameters
-      let selectFields: Prisma.ArticleSelect;
-
-      if (lightweight) {
-        // Ultra-lightweight mode: minimum fields only
-        selectFields = {
-          id: true,
-          title: true,
-          url: true,
-          summary: true,
-          publishedAt: true,
-          sourceId: true,
-        };
-      } else if (fields) {
-        // Custom field selection
-        const fieldList = fields.split(',').map(f => f.trim());
-        // 許可フィールドのホワイトリスト
-        const allowedSelectableFields = new Set([
-          'title','url','summary','thumbnail','publishedAt','qualityScore',
-          'bookmarks','userVotes','difficulty','createdAt','updatedAt',
-          'sourceId','summaryVersion','articleType','category','detailedSummary'
-        ]);
-        selectFields = { id: true } as Prisma.ArticleSelect;
-        for (const field of fieldList) {
-          if (allowedSelectableFields.has(field)) {
-            // Type-safe dynamic field assignment
-            const selectFieldsAny = selectFields as Record<string, boolean>;
-            selectFieldsAny[field] = true;
-          }
-        }
-      } else {
-        // Standard mode
-        selectFields = {
-          id: true,
-          title: true,
-          translatedTitle: true,
-          url: true,
-          summary: true,
-          thumbnail: true,
-          publishedAt: true,
-          qualityScore: true,
-          bookmarks: true,
-          userVotes: true,
-          difficulty: true,
-          createdAt: true,
-          updatedAt: true,
-          sourceId: true,
-          summaryVersion: true,
-          articleType: true,
-          category: true,
-          content: true, // Included for contentLength calculation, stripped before response
-          // Exclude: detailedSummary for performance
-        };
-      }
-
-      // Only include relations if explicitly requested (default: false to save bandwidth)
-      if (includeRelations && !lightweight) {
-        selectFields.source = {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            url: true,
-            enabled: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        };
-        selectFields.tags = {
-          select: {
-            id: true,
-            name: true,
-          },
-        };
-      }
+      const selectFields = buildSelectFields();
 
       // Execute count and findMany in parallel for better performance
       const [total, articles] = await withDbTiming(
@@ -513,15 +538,75 @@ export async function GET(request: NextRequest) {
       };
     };
 
-    // Try to get from layered cache first
-    // Only bypass cache when actual user-scoped filtering is present
-    const baseResult = hasUserScopedQuery
-      ? await withDbTiming(metrics, buildResult, 'db_query')
-      : await withCacheTiming(
-          metrics,
-          () => cache.getArticles(cacheParams, buildResult),
-          'cache_articles'
-        );
+    const shouldUsePersonalizedFilter = categoryIds.length > 0;
+
+    // Personalized branch bypasses cache because it is user/context dependent
+    let baseResult: PaginatedResponse<ArticleWithRelations>;
+
+    if (shouldUsePersonalizedFilter) {
+      try {
+        const personalizationOptions: PersonalizedFilterOptions = {
+          categoryIds,
+          periodMonths,
+          limit,
+          offset: (page - 1) * limit,
+          sortBy: sortByParam ? (finalSortBy as PersonalizedSortBy) : 'finalScore',
+          sortOrder,
+        };
+
+        const { articles: scoredArticles, meta: personalizationMeta } =
+          await categoryFilterService.filterArticles(personalizationOptions);
+
+        const personalizedIds = scoredArticles.map((article) => article.articleId);
+
+        if (personalizedIds.length === 0) {
+          baseResult = await withDbTiming(metrics, buildResult, 'db_query');
+        } else {
+          const personalizedArticles = await withDbTiming(
+            metrics,
+            () => prisma.article.findMany({
+              where: { id: { in: personalizedIds } },
+              select: buildSelectFields(),
+            }),
+            'db_query'
+          );
+
+          // Preserve the personalization ranking order exactly as returned by the scorer
+          const personalizedArticlesById = new Map(
+            personalizedArticles
+              .filter((article) => !!article?.id)
+              .map((article) => [article.id, article])
+          );
+          const orderedItems = personalizedIds
+            .map((id) => personalizedArticlesById.get(id))
+            .filter((article): article is typeof personalizedArticles[number] => Boolean(article));
+
+          const totalMatched = personalizationMeta?.totalMatched ?? personalizedIds.length;
+
+          baseResult = {
+            items: orderedItems as ArticleWithRelations[],
+            total: totalMatched,
+            page,
+            limit,
+            totalPages: Math.ceil(totalMatched / limit),
+          };
+        }
+      } catch (error) {
+        logger.error({ err: error }, 'Personalized filtering failed, falling back to standard query');
+        baseResult = await withDbTiming(metrics, buildResult, 'db_query');
+      }
+    } else {
+      // Try to get from layered cache first
+      // Only bypass cache when actual user-scoped filtering is present
+      const cacheResult = hasUserScopedQuery
+        ? await withDbTiming(metrics, buildResult, 'db_query')
+        : await withCacheTiming(
+            metrics,
+            () => cache.getArticles(cacheParams, buildResult),
+            'cache_articles'
+          );
+      baseResult = cacheResult ?? { items: [], total: 0, page, limit, totalPages: 0 };
+    }
 
     let result = baseResult;
 
@@ -581,7 +666,7 @@ export async function GET(request: NextRequest) {
     metrics.addMetricsToHeaders(response.headers);
 
     // Set cache headers based on whether response is user-dependent
-    const isUserDependent = hasUserContext || request.headers.get('Authorization');
+    const isUserDependent = hasUserContext || shouldUsePersonalizedFilter || request.headers.get('Authorization');
 
     if (isUserDependent) {
       // User-specific responses should not be cached publicly

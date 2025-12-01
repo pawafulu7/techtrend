@@ -22,6 +22,7 @@ const mockPrisma = {
   },
   article: {
     findMany: jest.fn(),
+    count: jest.fn(),
   },
   $queryRaw: jest.fn(),
   $transaction: jest.fn((fn: (tx: typeof mockPrisma) => Promise<any>) => fn(mockPrisma)),
@@ -174,30 +175,7 @@ describe('CategoryFilterService', () => {
   // Service Method Tests
   // ===========================================================================
 
-  describe('getCategoryArticleCounts', () => {
-    it('should return article counts per category', async () => {
-      mockPrisma.$queryRaw.mockResolvedValue([
-        { category_id: 'cat-1', count: BigInt(100) },
-        { category_id: 'cat-2', count: BigInt(50) },
-      ]);
-
-      const counts = await service.getCategoryArticleCounts();
-
-      expect(counts.get('cat-1')).toBe(100);
-      expect(counts.get('cat-2')).toBe(50);
-      expect(counts.size).toBe(2);
-    });
-
-    it('should return empty map when no categories have articles', async () => {
-      mockPrisma.$queryRaw.mockResolvedValue([]);
-
-      const counts = await service.getCategoryArticleCounts();
-
-      expect(counts.size).toBe(0);
-    });
-  });
-
-  describe('getCategoriesWithCounts', () => {
+  describe('getActiveCategories', () => {
     const mockCategories = [
       {
         id: 'cat-1',
@@ -219,37 +197,23 @@ describe('CategoryFilterService', () => {
       },
     ];
 
-    it('should return categories with article counts', async () => {
+    it('should return active categories', async () => {
       mockPrisma.interestCategory.findMany.mockResolvedValue(mockCategories);
-      mockPrisma.$queryRaw.mockResolvedValue([
-        { category_id: 'cat-1', count: BigInt(100) },
-        { category_id: 'cat-2', count: BigInt(50) },
-      ]);
 
-      const result = await service.getCategoriesWithCounts();
+      const result = await service.getActiveCategories();
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        ...mockCategories[0],
-        articleCount: 100,
-      });
-      expect(result[1]).toEqual({
-        ...mockCategories[1],
-        articleCount: 50,
-      });
+      expect(result[0]).toEqual(mockCategories[0]);
+      expect(result[1]).toEqual(mockCategories[1]);
     });
 
-    it('should return 0 for categories without articles', async () => {
+    it('should return all active categories sorted by sortOrder', async () => {
       mockPrisma.interestCategory.findMany.mockResolvedValue(mockCategories);
-      mockPrisma.$queryRaw.mockResolvedValue([
-        { category_id: 'cat-1', count: BigInt(100) },
-        // cat-2 has no articles
-      ]);
 
-      const result = await service.getCategoriesWithCounts();
+      const result = await service.getActiveCategories();
 
-      expect(result[0].articleCount).toBe(100);
-      expect(result[1].articleCount).toBe(0);
+      expect(result[0]).toEqual(mockCategories[0]);
+      expect(result[1]).toEqual(mockCategories[1]);
     });
   });
 
@@ -264,6 +228,10 @@ describe('CategoryFilterService', () => {
         title: 'React Guide',
         url: 'https://example.com/react',
         published_at: new Date(),
+        created_at: new Date(),
+        quality_score: 0.8,
+        bookmarks: 20,
+        user_votes: 5,
         source_id: 'src-1',
         summary: 'A guide to React',
         thumbnail_url: null,
@@ -274,6 +242,10 @@ describe('CategoryFilterService', () => {
         title: 'Vue Tutorial',
         url: 'https://example.com/vue',
         published_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        created_at: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        quality_score: 0.9,
+        bookmarks: 10,
+        user_votes: 7,
         source_id: 'src-1',
         summary: 'A Vue tutorial',
         thumbnail_url: null,
@@ -303,6 +275,7 @@ describe('CategoryFilterService', () => {
 
     it('should use fallback when no centroids found', async () => {
       mockPrisma.$queryRaw.mockResolvedValueOnce([]); // No centroids
+      mockPrisma.article.count.mockResolvedValue(1);
       mockPrisma.article.findMany.mockResolvedValue([
         { id: 'art-1', publishedAt: new Date() },
       ]);
@@ -322,6 +295,7 @@ describe('CategoryFilterService', () => {
         .mockResolvedValueOnce(mockCentroids) // getCategoryCentroids
         .mockResolvedValueOnce([]); // No candidates
 
+      mockPrisma.article.count.mockResolvedValue(1);
       mockPrisma.article.findMany.mockResolvedValue([
         { id: 'art-1', publishedAt: new Date() },
       ]);
@@ -339,6 +313,7 @@ describe('CategoryFilterService', () => {
     it('should handle database errors gracefully', async () => {
       const { logger } = jest.requireMock('@/lib/logger');
       mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('Database error'));
+      mockPrisma.article.count.mockResolvedValue(1);
       mockPrisma.article.findMany.mockResolvedValue([
         { id: 'art-1', publishedAt: new Date() },
       ]);
@@ -358,8 +333,8 @@ describe('CategoryFilterService', () => {
 
     it('should filter by minimum similarity threshold', async () => {
       const lowSimCandidates = [
-        { ...mockCandidates[0], sim_emb: 0.1 }, // Below threshold (0.32)
-        { ...mockCandidates[1], sim_emb: 0.4 }, // Above threshold
+        { ...mockCandidates[0], sim_emb: 0.6 }, // Above threshold (0.55)
+        { ...mockCandidates[1], sim_emb: 0.5 }, // Below threshold
       ];
 
       mockPrisma.$queryRaw
@@ -375,7 +350,7 @@ describe('CategoryFilterService', () => {
 
       // Only one article should pass the threshold
       expect(result.articles).toHaveLength(1);
-      expect(result.articles[0].embeddingSimilarity).toBe(0.4);
+      expect(result.articles[0].embeddingSimilarity).toBe(0.6);
     });
 
     it('should apply offset correctly', async () => {
@@ -394,6 +369,25 @@ describe('CategoryFilterService', () => {
       // Should skip first article
       expect(result.articles).toHaveLength(1);
       expect(result.articles[0].articleId).toBe('art-2');
+    });
+
+    it('should honor sortBy when provided', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockCentroids)
+        .mockResolvedValueOnce(mockCandidates)
+        .mockResolvedValueOnce([]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+        sortBy: 'publishedAt',
+        sortOrder: 'asc',
+      });
+
+      // Older article should come first with ascending publishedAt
+      expect(result.articles[0].articleId).toBe('art-2');
+      expect(result.articles[1].articleId).toBe('art-1');
     });
   });
 });

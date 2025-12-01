@@ -1,7 +1,7 @@
 /**
  * Interest Categories API
  *
- * GET /api/interest-categories - Get all interest categories with article counts
+ * GET /api/interest-categories - Get all active interest categories
  *
  * This endpoint is public (no authentication required) as category information
  * is not user-specific and can be cached.
@@ -32,13 +32,13 @@ interface ErrorResponse {
 // =============================================================================
 
 /**
- * Get all active interest categories with article counts.
+ * Get all active interest categories.
  *
  * Response is cacheable for 5 minutes as category data changes infrequently.
  */
 export async function GET(): Promise<NextResponse<CategoriesResponse | ErrorResponse>> {
   try {
-    const categories = await categoryFilterService.getCategoriesWithCounts();
+    const categories = await categoryFilterService.getActiveCategories();
 
     logger.info(
       { categoryCount: categories.length },
