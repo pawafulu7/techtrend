@@ -13,6 +13,24 @@ import { cleanupText, normalizeDetailedSummary } from '@/lib/services/summary-ge
 import type { UnifiedSummaryServiceImpl } from '@/lib/ai/service/unified-summary-service';
 import type { ArticleWithSource } from '@/types/models';
 
+/**
+ * Minimum content length required for summary generation.
+ * Articles shorter than this will be skipped as they're too short for meaningful summaries.
+ * Configurable via MIN_CONTENT_LENGTH environment variable (default: 100 characters).
+ * Set to 0 to disable the minimum length check.
+ */
+const parsedMinContentLength = Number.parseInt(process.env.MIN_CONTENT_LENGTH ?? '100', 10);
+const MIN_CONTENT_LENGTH = Number.isNaN(parsedMinContentLength) ? 100 : parsedMinContentLength;
+
+/**
+ * Content validation result for article processing
+ */
+interface ContentValidationResult {
+  valid: boolean;
+  content?: string;
+  reason?: string;
+}
+
 export interface SummaryGenerationOptions {
   /** Source filter by name */
   source?: string;
@@ -76,6 +94,24 @@ export class SummaryManager {
   }
 
   /**
+   * Validate article content for summary generation.
+   * Checks if content exists and meets minimum length requirements.
+   */
+  private validateArticleContent(article: ArticleWithSource): ContentValidationResult {
+    const contentLength = article.content?.trim().length || 0;
+
+    if (contentLength === 0) {
+      return { valid: false, reason: 'no content available' };
+    }
+
+    if (MIN_CONTENT_LENGTH > 0 && contentLength < MIN_CONTENT_LENGTH) {
+      return { valid: false, reason: `content too short (${contentLength} < ${MIN_CONTENT_LENGTH})` };
+    }
+
+    return { valid: true, content: article.content! };
+  }
+
+  /**
    * Generate summaries for articles without summaries
    */
   async generateSummaries(options: SummaryGenerationOptions): Promise<SummaryGenerationResult> {
@@ -134,18 +170,21 @@ export class SummaryManager {
 
       let generated = 0;
       let errors = 0;
+      let skipped = 0;
 
       // Process articles
       for (const article of articles) {
         try {
-          if (!article.content || article.content.trim().length === 0) {
-            console.error(`Skipping article ${article.id}: no content available`);
+          const validation = this.validateArticleContent(article);
+          if (!validation.valid) {
+            console.error(`Skipping article ${article.id}: ${validation.reason}`);
+            skipped++;
             continue;
           }
 
           const result = await this.generateSummaryAndTags(
             article.title,
-            article.content,
+            validation.content!,
             article.id
           );
 
@@ -185,9 +224,9 @@ export class SummaryManager {
       }
 
       const duration = Date.now() - startTime;
-      console.error(`Summary generation completed: ${generated} generated, ${errors} errors (${duration}ms)`);
+      console.error(`Summary generation completed: ${generated} generated, ${skipped} skipped, ${errors} errors (${duration}ms)`);
 
-      return { generated, errors, skipped: 0 };
+      return { generated, errors, skipped };
 
     } catch (error) {
       console.error('Fatal error in summary generation:', error);
@@ -236,24 +275,27 @@ export class SummaryManager {
 
       if (articles.length === 0) {
         console.error('No articles to regenerate');
-        return { generated: 0, errors: 0 };
+        return { generated: 0, errors: 0, skipped: 0 };
       }
 
       console.error(`Found ${articles.length} articles to regenerate`);
 
       let generated = 0;
       let errors = 0;
+      let skipped = 0;
 
       for (const article of articles) {
         try {
-          if (!article.content || article.content.trim().length === 0) {
-            console.error(`Skipping article ${article.id}: no content available`);
+          const validation = this.validateArticleContent(article);
+          if (!validation.valid) {
+            console.error(`Skipping article ${article.id}: ${validation.reason}`);
+            skipped++;
             continue;
           }
 
           const result = await this.generateSummaryAndTags(
             article.title,
-            article.content,
+            validation.content!,
             article.id
           );
 
@@ -293,9 +335,9 @@ export class SummaryManager {
       }
 
       const duration = Math.round((Date.now() - startTime) / 1000);
-      console.error(`Regeneration completed: ${generated} generated, ${errors} errors (${duration}s)`);
+      console.error(`Regeneration completed: ${generated} generated, ${skipped} skipped, ${errors} errors (${duration}s)`);
 
-      return { generated, errors };
+      return { generated, errors, skipped };
 
     } catch (error) {
       console.error('Fatal error in regeneration:', error);
@@ -339,22 +381,25 @@ export class SummaryManager {
 
       if (articles.length === 0) {
         console.error('No articles with missing summaries');
-        return { generated: 0, errors: 0 };
+        return { generated: 0, errors: 0, skipped: 0 };
       }
 
       let generated = 0;
       let errors = 0;
+      let skipped = 0;
 
       for (const article of articles) {
         try {
-          if (!article.content || article.content.trim().length === 0) {
-            console.error(`Skipping article ${article.id}: no content available`);
+          const validation = this.validateArticleContent(article);
+          if (!validation.valid) {
+            console.error(`Skipping article ${article.id}: ${validation.reason}`);
+            skipped++;
             continue;
           }
 
           const result = await this.generateSummaryAndTags(
             article.title,
-            article.content,
+            validation.content!,
             article.id
           );
 
@@ -393,9 +438,9 @@ export class SummaryManager {
         }
       }
 
-      console.error(`Missing summaries completed: ${generated} generated, ${errors} errors`);
+      console.error(`Missing summaries completed: ${generated} generated, ${skipped} skipped, ${errors} errors`);
 
-      return { generated, errors };
+      return { generated, errors, skipped };
 
     } catch (error) {
       console.error('Fatal error in missing summaries generation:', error);
