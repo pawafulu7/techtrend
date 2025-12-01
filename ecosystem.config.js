@@ -10,7 +10,7 @@ module.exports = {
       watch: false,
       max_memory_restart: '1G',
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: 'development', // Local PM2 environment (enables .env.local loading)
         GEMINI_API_KEY: process.env.GEMINI_API_KEY,
         COLLECT_FEEDS_CONCURRENCY: '5', // Parallel source processing (30min->10-15min)
         FETCHER_TIMEOUT_MS: process.env.FETCHER_TIMEOUT_MS || '60000', // Per-source fetch timeout (ms)
