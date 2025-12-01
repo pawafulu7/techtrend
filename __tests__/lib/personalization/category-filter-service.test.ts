@@ -390,4 +390,167 @@ describe('CategoryFilterService', () => {
       expect(result.articles[1].articleId).toBe('art-1');
     });
   });
+
+  // ===========================================================================
+  // Multi-Category OR Behavior Tests
+  // ===========================================================================
+
+  describe('filterArticles - multi-category OR behavior', () => {
+    const mockMultiCentroids = [
+      { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+      { id: 'cat-2', slug: 'backend', centroid_embedding: '[0,0.5,0.5]' },
+    ];
+
+    const mockCandidatesFrontend = [
+      {
+        id: 'art-1',
+        title: 'React Guide',
+        url: 'https://example.com/react',
+        published_at: new Date(),
+        created_at: new Date(),
+        quality_score: 0.8,
+        bookmarks: 20,
+        user_votes: 5,
+        source_id: 'src-1',
+        summary: 'A guide to React',
+        thumbnail_url: null,
+        sim_emb: 0.9,
+      },
+      {
+        id: 'art-2',
+        title: 'Vue Tutorial',
+        url: 'https://example.com/vue',
+        published_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        created_at: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        quality_score: 0.9,
+        bookmarks: 10,
+        user_votes: 7,
+        source_id: 'src-1',
+        summary: 'A Vue tutorial',
+        thumbnail_url: null,
+        sim_emb: 0.6,
+      },
+    ];
+
+    const mockCandidatesBackend = [
+      {
+        id: 'art-3',
+        title: 'Node.js Guide',
+        url: 'https://example.com/node',
+        published_at: new Date(),
+        created_at: new Date(),
+        quality_score: 0.85,
+        bookmarks: 15,
+        user_votes: 6,
+        source_id: 'src-2',
+        summary: 'A guide to Node.js',
+        thumbnail_url: null,
+        sim_emb: 0.85,
+      },
+      {
+        id: 'art-2',
+        title: 'Vue Tutorial',
+        url: 'https://example.com/vue',
+        published_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        created_at: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        quality_score: 0.9,
+        bookmarks: 10,
+        user_votes: 7,
+        source_id: 'src-1',
+        summary: 'A Vue tutorial',
+        thumbnail_url: null,
+        sim_emb: 0.7,
+      },
+    ];
+
+    it('should use max similarity when article appears in multiple category results', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockMultiCentroids)
+        .mockResolvedValueOnce(mockCandidatesFrontend)
+        .mockResolvedValueOnce(mockCandidatesBackend)
+        .mockResolvedValueOnce([]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2'],
+        periodMonths: 12,
+        limit: 10,
+      });
+
+      // art-2 should have max similarity of 0.7 (from backend), not 0.6 (from frontend)
+      const art2 = result.articles.find((a) => a.articleId === 'art-2');
+      expect(art2?.embeddingSimilarity).toBe(0.7);
+
+      // Should include articles from both categories
+      const articleIds = result.articles.map((a) => a.articleId);
+      expect(articleIds).toContain('art-1');
+      expect(articleIds).toContain('art-3');
+      expect(articleIds).toContain('art-2');
+
+      // Total should be 3 unique articles
+      expect(result.articles).toHaveLength(3);
+    });
+
+    it('should handle empty results from one category gracefully', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockMultiCentroids)
+        .mockResolvedValueOnce(mockCandidatesFrontend)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2'],
+        periodMonths: 12,
+        limit: 10,
+      });
+
+      // Should still return frontend results
+      expect(result.articles.length).toBeGreaterThan(0);
+      expect(result.articles.map((a) => a.articleId)).toContain('art-1');
+    });
+
+    it('should fall back when all category searches return empty', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockMultiCentroids)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      mockPrisma.article.count.mockResolvedValue(1);
+      mockPrisma.article.findMany.mockResolvedValue([
+        { id: 'fallback-1', publishedAt: new Date() },
+      ]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2'],
+        periodMonths: 12,
+        limit: 10,
+      });
+
+      // Should return fallback results
+      expect(result.meta.appliedCategories).toEqual([]);
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].articleId).toBe('fallback-1');
+    });
+
+    it('should apply tag boost from any matching category (OR)', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockMultiCentroids)
+        .mockResolvedValueOnce(mockCandidatesFrontend)
+        .mockResolvedValueOnce(mockCandidatesBackend)
+        .mockResolvedValueOnce([{ article_id: 'art-1' }]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2'],
+        periodMonths: 12,
+        limit: 10,
+      });
+
+      // art-1 should have tag boost
+      const art1 = result.articles.find((a) => a.articleId === 'art-1');
+      expect(art1?.tagBoost).toBeGreaterThan(0);
+
+      // art-3 should not have tag boost
+      const art3 = result.articles.find((a) => a.articleId === 'art-3');
+      expect(art3?.tagBoost).toBe(0);
+    });
+  });
 });
