@@ -17,8 +17,19 @@ import type { ArticleWithSource } from '@/types/models';
  * Minimum content length required for summary generation.
  * Articles shorter than this will be skipped as they're too short for meaningful summaries.
  * Configurable via MIN_CONTENT_LENGTH environment variable (default: 100 characters).
+ * Set to 0 to disable the minimum length check.
  */
-const MIN_CONTENT_LENGTH = Number.parseInt(process.env.MIN_CONTENT_LENGTH ?? '100', 10) || 100;
+const parsedMinContentLength = Number.parseInt(process.env.MIN_CONTENT_LENGTH ?? '100', 10);
+const MIN_CONTENT_LENGTH = Number.isNaN(parsedMinContentLength) ? 100 : parsedMinContentLength;
+
+/**
+ * Content validation result for article processing
+ */
+interface ContentValidationResult {
+  valid: boolean;
+  content?: string;
+  reason?: string;
+}
 
 export interface SummaryGenerationOptions {
   /** Source filter by name */
@@ -80,6 +91,24 @@ export class SummaryManager {
 
     // Use provided service or get from DI container
     this.summaryService = summaryService || getAppDependencies().service;
+  }
+
+  /**
+   * Validate article content for summary generation.
+   * Checks if content exists and meets minimum length requirements.
+   */
+  private validateArticleContent(article: ArticleWithSource): ContentValidationResult {
+    const contentLength = article.content?.trim().length || 0;
+
+    if (contentLength === 0) {
+      return { valid: false, reason: 'no content available' };
+    }
+
+    if (MIN_CONTENT_LENGTH > 0 && contentLength < MIN_CONTENT_LENGTH) {
+      return { valid: false, reason: `content too short (${contentLength} < ${MIN_CONTENT_LENGTH})` };
+    }
+
+    return { valid: true, content: article.content! };
   }
 
   /**
@@ -146,26 +175,16 @@ export class SummaryManager {
       // Process articles
       for (const article of articles) {
         try {
-          const contentLength = article.content?.trim().length || 0;
-
-          if (contentLength === 0) {
-            console.error(`Skipping article ${article.id}: no content available`);
+          const validation = this.validateArticleContent(article);
+          if (!validation.valid) {
+            console.error(`Skipping article ${article.id}: ${validation.reason}`);
             skipped++;
             continue;
           }
-
-          if (contentLength < MIN_CONTENT_LENGTH) {
-            console.error(`Skipping article ${article.id}: content too short (${contentLength} < ${MIN_CONTENT_LENGTH})`);
-            skipped++;
-            continue;
-          }
-
-          // Content is guaranteed to exist after length checks
-          const content = article.content!;
 
           const result = await this.generateSummaryAndTags(
             article.title,
-            content,
+            validation.content!,
             article.id
           );
 
@@ -267,26 +286,16 @@ export class SummaryManager {
 
       for (const article of articles) {
         try {
-          const contentLength = article.content?.trim().length || 0;
-
-          if (contentLength === 0) {
-            console.error(`Skipping article ${article.id}: no content available`);
+          const validation = this.validateArticleContent(article);
+          if (!validation.valid) {
+            console.error(`Skipping article ${article.id}: ${validation.reason}`);
             skipped++;
             continue;
           }
-
-          if (contentLength < MIN_CONTENT_LENGTH) {
-            console.error(`Skipping article ${article.id}: content too short (${contentLength} < ${MIN_CONTENT_LENGTH})`);
-            skipped++;
-            continue;
-          }
-
-          // Content is guaranteed to exist after length checks
-          const content = article.content!;
 
           const result = await this.generateSummaryAndTags(
             article.title,
-            content,
+            validation.content!,
             article.id
           );
 
@@ -381,26 +390,16 @@ export class SummaryManager {
 
       for (const article of articles) {
         try {
-          const contentLength = article.content?.trim().length || 0;
-
-          if (contentLength === 0) {
-            console.error(`Skipping article ${article.id}: no content available`);
+          const validation = this.validateArticleContent(article);
+          if (!validation.valid) {
+            console.error(`Skipping article ${article.id}: ${validation.reason}`);
             skipped++;
             continue;
           }
-
-          if (contentLength < MIN_CONTENT_LENGTH) {
-            console.error(`Skipping article ${article.id}: content too short (${contentLength} < ${MIN_CONTENT_LENGTH})`);
-            skipped++;
-            continue;
-          }
-
-          // Content is guaranteed to exist after length checks
-          const content = article.content!;
 
           const result = await this.generateSummaryAndTags(
             article.title,
-            content,
+            validation.content!,
             article.id
           );
 
