@@ -197,7 +197,16 @@ async function main() {
     console.error(`   失敗: ${stats.failures}`);
     console.error(`   503エラー: ${stats.overloadErrors}`);
 
-    if (result.errors > 0) {
+    // 処理結果の表示
+    console.error('\n📊 処理結果:');
+    console.error(`   生成成功: ${result.generated}`);
+    console.error(`   スキップ: ${result.skipped ?? 0} (content missing/too short)`);
+    console.error(`   エラー: ${result.errors}`);
+
+    // エラー終了条件: 全記事がエラーの場合のみexit 1（一部成功なら正常終了）
+    // スキップは正常扱い
+    if (result.errors > 0 && result.generated === 0) {
+      console.error('\n[WARN] All articles failed to generate summaries');
       process.exitCode = 1;
     }
   } catch (error) {
