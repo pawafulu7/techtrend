@@ -338,7 +338,7 @@ console.error('[INFO] TechTrend Scheduler V2 Started');
 console.error(`[INFO] 現在時刻: ${new Date().toLocaleString('ja-JP')}`);
 console.error('[INFO] 更新スケジュール:');
 console.error('   - RSS系: 毎時0分');
-console.error('   - スクレイピング系: 0時・12時');
+console.error('   - スクレイピング系: 0:30・12:30');
 console.error('   - Qiita Popular: 5:05・17:05');
 console.error('   - 要約生成: 毎日10:30（午前）');
 console.error('   - タグ生成: 8:30・20:30');
@@ -365,8 +365,9 @@ cron.schedule('0 * * * *', async () => {
   }
 });
 
-// スクレイピング系ソースの更新（0時と12時）
-cron.schedule('0 0,12 * * *', async () => {
+// スクレイピング系ソースの更新（0:30と12:30）
+// RSS系（毎時0分）との競合を避けるため30分ずらす
+cron.schedule('30 0,12 * * *', async () => {
   if (scrapingJobRunning) {
     console.error('[WARN] Scraping job already running, skipping this execution');
     return;
@@ -529,15 +530,16 @@ cron.schedule('30 8,20 * * *', async () => {
     // 全ソースを結合
     const allSources = [...RSS_SOURCES, ...SCRAPING_SOURCES];
     
-    // 要約生成も含めて実行
-    await executeUpdatePipeline(allSources, '初回実行');
+    // 要約生成はスキップ（再起動時の追加通知を防止）
+    // 要約生成は10:30の定期ジョブで実行される
+    await executeUpdatePipeline(allSources, '初回実行', { skipSummaries: true });
     
     console.error('[INFO] 要約生成は午前10:30に実行されます');
     
     console.error('[INFO] 初回実行が完了しました\n');
     console.error('[INFO] 次回の更新:');
     console.error('   - RSS系: 毎時0分');
-    console.error('   - スクレイピング系: 0時・12時');
+    console.error('   - スクレイピング系: 0:30・12:30');
     console.error('   - Qiita Popular: 5:05・17:05');
     console.error('   - 品質チェック・再生成: 毎日15:30');
     console.error('   - タグ生成: 8:30・20:30');

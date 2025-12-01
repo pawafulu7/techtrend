@@ -158,8 +158,14 @@ async function main() {
               translatedTitle: true,
               url: true,
               source: { select: { name: true } }
-            },
-            orderBy: { summaryComputedAt: 'desc' }
+            }
+          });
+
+          // Sort by display title (translatedTitle ?? title) for consistent ordering
+          processedArticles.sort((a, b) => {
+            const titleA = a.translatedTitle || a.title;
+            const titleB = b.translatedTitle || b.title;
+            return titleA.localeCompare(titleB, 'ja');
           });
 
           if (processedArticles.length > 0) {

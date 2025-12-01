@@ -314,15 +314,28 @@ async function processSource({
         const tagConnections: Array<{ id: string }> = [];
         const tags: Array<{ name: string }> = [];
         if (article.tagNames && article.tagNames.length > 0) {
-          for (const tagName of article.tagNames) {
-            const normalizedName = normalizeTag(tagName);
-            const tag = await prisma.tag.upsert({
-              where: { name: normalizedName },
-              update: {},
-              create: { name: normalizedName }
+          // Normalize and dedupe tag names to avoid conflicts
+          const normalizedTagNames = [...new Set(
+            article.tagNames.map(tagName => normalizeTag(tagName))
+          )].filter(name => name.length > 0);
+
+          if (normalizedTagNames.length > 0) {
+            // Create missing tags with skipDuplicates to handle race conditions
+            await prisma.tag.createMany({
+              data: normalizedTagNames.map(name => ({ name })),
+              skipDuplicates: true
             });
-            tagConnections.push({ id: tag.id });
-            tags.push({ name: normalizedName });
+
+            // Fetch all tags (existing + newly created)
+            const existingTags = await prisma.tag.findMany({
+              where: { name: { in: normalizedTagNames } },
+              select: { id: true, name: true }
+            });
+
+            for (const tag of existingTags) {
+              tagConnections.push({ id: tag.id });
+              tags.push({ name: tag.name });
+            }
           }
         }
 
