@@ -2,8 +2,8 @@ name: Scheduler - Scraping Twice Daily
 
 on:
   schedule:
-    - cron: '0 15 * * *'  # JST 00:00 (UTC 15:00)
-    - cron: '0 3 * * *'   # JST 12:00 (UTC 03:00)
+    - cron: '30 15 * * *'  # JST 00:30 (UTC 15:30)
+    - cron: '30 3 * * *'   # JST 12:30 (UTC 03:30)
   workflow_dispatch:
     inputs:
       confirm:
