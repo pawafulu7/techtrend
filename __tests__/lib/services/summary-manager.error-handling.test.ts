@@ -71,6 +71,7 @@ describe('SummaryManager Error Handling', () => {
       mockSummaryService.generateSummary.mockRejectedValue(error503);
 
       // Mock Prisma to return one article with content
+      // Content must be >= MIN_CONTENT_LENGTH (100 chars) to not be skipped
       const mockPrismaWithArticle = {
         article: {
           findFirst: jest.fn().mockResolvedValue({ id: 'test-1' }),
@@ -79,7 +80,7 @@ describe('SummaryManager Error Handling', () => {
             id: 'test-1',
             title: 'Test Article',
             url: 'https://example.com/test',
-            content: 'This is test article content for summary generation.',
+            content: 'This is test article content for summary generation. It needs to be at least 100 characters long to pass the MIN_CONTENT_LENGTH threshold check.',
             publishedAt: new Date(),
             source: { id: 'src-1', name: 'Test Source' }
           }]),
