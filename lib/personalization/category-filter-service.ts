@@ -238,7 +238,7 @@ export class CategoryFilterService {
       }
 
       // Branch: single category vs multiple categories
-      let qualifiedArticles: ScoredArticle[];
+      let qualifiedArticles: ScoredArticleWithMeta[];
       let candidateCount: number;
       let additionalLogInfo: Record<string, unknown> = {};
 
@@ -264,7 +264,7 @@ export class CategoryFilterService {
 
       // Apply requested sort (defaults to personalization score)
       const sortedArticles = this.sortArticles(
-        qualifiedArticles as ScoredArticleWithMeta[],
+        qualifiedArticles,
         sortBy,
         sortOrder
       );
