@@ -187,4 +187,46 @@ describe('manage-summaries script', () => {
       expect(mockPrisma.$disconnect).toHaveBeenCalled();
     });
   });
+
+  describe('exit code conditions', () => {
+    it('should exit 0 when all articles are skipped (processed=0)', async () => {
+      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 0, skipped: 50 });
+      process.argv = ['node', 'script.ts', 'generate'];
+
+      const { main } = await import('@/scripts/scheduled/manage-summaries');
+      await main();
+
+      expect(process.exitCode).toBeUndefined(); // Success
+    });
+
+    it('should exit 1 when all processed articles fail (generated=0, errors>0)', async () => {
+      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 5, skipped: 45 });
+      process.argv = ['node', 'script.ts', 'generate'];
+
+      const { main } = await import('@/scripts/scheduled/manage-summaries');
+      await main();
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it('should exit 0 on partial success (generated>0, errors>0)', async () => {
+      mockManager.generateSummaries.mockResolvedValue({ generated: 3, errors: 2, skipped: 45 });
+      process.argv = ['node', 'script.ts', 'generate'];
+
+      const { main } = await import('@/scripts/scheduled/manage-summaries');
+      await main();
+
+      expect(process.exitCode).toBeUndefined(); // Success
+    });
+
+    it('should handle skipped being undefined', async () => {
+      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 0 }); // no skipped field
+      process.argv = ['node', 'script.ts', 'generate'];
+
+      const { main } = await import('@/scripts/scheduled/manage-summaries');
+      await main();
+
+      expect(process.exitCode).toBeUndefined(); // Success
+    });
+  });
 });

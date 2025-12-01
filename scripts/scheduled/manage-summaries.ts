@@ -203,11 +203,20 @@ async function main() {
     console.error(`   スキップ: ${result.skipped ?? 0} (content missing/too short)`);
     console.error(`   エラー: ${result.errors}`);
 
-    // エラー終了条件: 全記事がエラーの場合のみexit 1（一部成功なら正常終了）
-    // スキップは正常扱い
-    if (result.errors > 0 && result.generated === 0) {
-      console.error('\n[WARN] All articles failed to generate summaries');
+    // 実際に処理を試みた件数（スキップを除く）
+    const processed = result.generated + result.errors;
+
+    // 終了条件の判定
+    if (processed === 0) {
+      // 処理対象が0件の場合は成功終了（スキップのみなら正常）
+      console.error('\n[INFO] No articles to process (all skipped). Exiting successfully.');
+    } else if (result.generated === 0) {
+      // 処理対象があったが全て失敗した場合のみexit 1
+      console.error('\n[WARN] All processed articles failed to generate summaries');
       process.exitCode = 1;
+    } else if (result.errors > 0) {
+      // 一部成功・一部失敗は警告のみ（正常終了）
+      console.error(`\n[WARN] Partial success: ${result.generated} generated, ${result.errors} failed, ${result.skipped ?? 0} skipped`);
     }
   } catch (error) {
     console.error('実行エラー:', error);
