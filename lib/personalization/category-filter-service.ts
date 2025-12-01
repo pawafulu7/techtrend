@@ -366,11 +366,15 @@ export class CategoryFilterService {
    * Get embedding candidates using threshold-based similarity search.
    * Returns all articles that meet the similarity threshold up to a safety cap
    * to avoid unbounded memory usage.
+   *
+   * @param centroid - Category centroid embedding as string
+   * @param periodMonths - Filter period in months (0 = all time)
+   * @param topK - Maximum number of candidates to return (capped by DEFAULT_THRESHOLD_RESULT_LIMIT)
    */
   private async getEmbeddingCandidates(
     centroid: string,
     periodMonths: number,
-    _topK: number // Kept for API compatibility, but not used
+    topK: number
   ): Promise<EmbeddingCandidate[]> {
     // Build period filter using calculated date parameter (safer than Prisma.raw)
     const cutoffDate =
@@ -381,9 +385,12 @@ export class CategoryFilterService {
       ? Prisma.sql`AND a."publishedAt" >= ${cutoffDate}`
       : Prisma.empty;
 
-    // Use threshold-based filtering instead of top-K
+    // Use threshold-based filtering with topK limit
     // similarity = 1 - distance, so distance < (1 - threshold)
     const maxDistance = 1 - DEFAULT_MIN_SIMILARITY;
+
+    // Apply guard rail: limit topK to safety cap
+    const effectiveLimit = Math.min(topK, DEFAULT_THRESHOLD_RESULT_LIMIT);
 
     const result = await this.db.$queryRaw<RawEmbeddingCandidate[]>`
       SELECT
@@ -406,7 +413,7 @@ export class CategoryFilterService {
         AND (ae.embedding <=> ${centroid}::vector) < ${maxDistance}
         ${periodFilter}
       ORDER BY ae.embedding <=> ${centroid}::vector
-      LIMIT ${DEFAULT_THRESHOLD_RESULT_LIMIT}
+      LIMIT ${effectiveLimit}
     `;
 
     return result.map((row) => ({
@@ -545,7 +552,7 @@ export class CategoryFilterService {
   private async filterArticlesSingleCategory(
     options: PersonalizedFilterOptions,
     centroid: CategoryCentroidRow
-  ): Promise<{ articles: ScoredArticle[]; candidates: EmbeddingCandidate[] }> {
+  ): Promise<{ articles: ScoredArticleWithMeta[]; candidates: EmbeddingCandidate[] }> {
     const { categoryIds, periodMonths } = options;
 
     // Get embedding candidates using single centroid directly (no averaging needed)
@@ -576,11 +583,12 @@ export class CategoryFilterService {
   /**
    * OR-based filtering for multiple categories.
    * Executes parallel searches per category and merges with max similarity.
+   * Uses Promise.allSettled to handle partial failures gracefully.
    */
   private async filterArticlesMultiCategory(
     options: PersonalizedFilterOptions,
     centroids: CategoryCentroidRow[]
-  ): Promise<{ articles: ScoredArticle[]; mergedCount: number; candidatesPerCategory: number[] }> {
+  ): Promise<{ articles: ScoredArticleWithMeta[]; mergedCount: number; candidatesPerCategory: number[] }> {
     const { categoryIds, periodMonths, limit, offset = 0 } = options;
 
     // Calculate K per category with guard rails
@@ -594,11 +602,36 @@ export class CategoryFilterService {
       'Starting OR-based multi-category search'
     );
 
-    // Parallel search per category
+    // Parallel search per category using Promise.allSettled for graceful partial failure handling
     const searchPromises = centroids.map((c) =>
       this.getEmbeddingCandidates(c.centroid_embedding!, periodMonths, kPerCategory)
     );
-    const categoryResults = await Promise.all(searchPromises);
+    const settledResults = await Promise.allSettled(searchPromises);
+
+    // Separate successful results from failures
+    const categoryResults: EmbeddingCandidate[][] = [];
+    const failedCategories: number[] = [];
+
+    settledResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        categoryResults.push(result.value);
+      } else {
+        failedCategories.push(index);
+        categoryResults.push([]); // Push empty array to maintain index alignment
+        logger.warn(
+          { categoryIndex: index, error: sanitizeError(result.reason) },
+          'Category search failed, continuing with other categories'
+        );
+      }
+    });
+
+    // Log if any categories failed
+    if (failedCategories.length > 0) {
+      logger.warn(
+        { failedCount: failedCategories.length, totalCategories: centroids.length },
+        'Some category searches failed in OR search'
+      );
+    }
 
     // Merge results: keep max similarity per article
     const mergedMap = new Map<string, EmbeddingCandidate>();
