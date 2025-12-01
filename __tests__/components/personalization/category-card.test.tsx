@@ -19,7 +19,6 @@ describe('CategoryCard', () => {
     icon: 'Monitor',
     sortOrder: 1,
     isActive: true,
-    articleCount: 1500,
   };
 
   const defaultProps = {
@@ -37,7 +36,6 @@ describe('CategoryCard', () => {
 
     expect(screen.getByText('Frontend')).toBeInTheDocument();
     expect(screen.getByText('Web UI development')).toBeInTheDocument();
-    expect(screen.getByText(/1,500/)).toBeInTheDocument();
   });
 
   it('renders as checkbox role', () => {
@@ -105,16 +103,6 @@ describe('CategoryCard', () => {
     expect(screen.getByTestId('category-card-frontend')).toBeInTheDocument();
   });
 
-  it('formats large article counts with commas', () => {
-    const categoryWithLargeCount = {
-      ...mockCategory,
-      articleCount: 1234567,
-    };
-
-    render(<CategoryCard {...defaultProps} category={categoryWithLargeCount} />);
-
-    expect(screen.getByText(/1,234,567/)).toBeInTheDocument();
-  });
 
   it('renders without description', () => {
     const categoryWithoutDescription = {

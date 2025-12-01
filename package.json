@@ -210,7 +210,7 @@
     "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.7",
+    "nodemailer": "^7.0.11",
     "openai": "^4.77.3",
     "p-limit": "^7.2.0",
     "pino": "^9.9.5",
@@ -277,7 +277,7 @@
     "whatwg-fetch": "^3.6.20"
   },
   "overrides": {
-    "nodemailer": "^7.0.7",
+    "nodemailer": "^7.0.11",
     "js-yaml": "4.1.1",
     "glob": "11.1.0",
     "test-exclude": {
