@@ -83,9 +83,11 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('very long article');
       expect(prompt).toContain('target 1000-1300 characters');
-      expect(prompt).toContain('ABSOLUTE MINIMUM 900');
+      expect(prompt).toContain('MUST be at least');
       expect(prompt).toContain('7-9 items only');
       expect(prompt).toContain('do not exceed 9 items');
+      expect(prompt).toContain('CRITICAL: Each item MUST be at least 150 characters');
+      expect(prompt).toContain('7 items x 150 chars');
     });
 
     it('should generate instructions for long content (5000-9999 chars)', () => {
@@ -105,9 +107,11 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('long article');
       expect(prompt).toContain('target 700-1000 characters');
-      expect(prompt).toContain('ABSOLUTE MINIMUM 600');
+      expect(prompt).toContain('MUST be at least');
       expect(prompt).toContain('5-7 items only');
       expect(prompt).toContain('do not exceed 7 items');
+      expect(prompt).toContain('CRITICAL: Each item MUST be at least 120 characters');
+      expect(prompt).toContain('5 items x 120 chars');
     });
 
     it('should generate instructions for medium content (3000-4999 chars)', () => {

@@ -182,6 +182,7 @@ ${METADATA_WARNING}`;
       const baseMin = 7, baseMax = 9;
       const minItems = Math.max(baseMin, Math.floor(baseMin * policyMultiplier));
       const maxItems = Math.max(minItems, Math.floor(baseMax * policyMultiplier));
+      const totalFloor = Math.max(900, minItems * 150);
       return `
 
 INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
@@ -189,10 +190,14 @@ Article content length: ${contentLength} characters
 This is a very long article requiring detailed summarization.
 
 Summary requirements:
-- Detailed summary: target 1000-1300 characters; ABSOLUTE MINIMUM 900; NEVER return <900 characters
+- Total summary: MUST be at least ${totalFloor} characters (target 1000-1300 characters)
 - Number of items: ${minItems}-${maxItems} items only (strict requirement, do not exceed ${maxItems} items)
-- Each item MUST be 150-220 characters and include concrete technical details (numbers, names, versions, metrics, examples)
-- Include specific numbers, dates, technical terms, product names, command examples, metrics, timelines, architectures
+- CRITICAL: Each item MUST be at least 150 characters (target 180-200 characters); NEVER write items shorter than 150 characters
+- Calculation: ${minItems} items x 150 chars = ${minItems * 150} chars minimum total
+- Each item must include: specific version numbers, metrics/benchmarks, dates, technical terms, architecture details, or command examples
+- DO NOT write brief one-line items. Expand each point with concrete supporting details.
+- Prioritize the most technical or novel findings first.
+- If any item is <150 chars OR total is <${totalFloor} chars, you MUST regenerate with longer descriptions
 - If you cannot meet these requirements, reply: "unable to comply"
 
 ${METADATA_WARNING}`;
@@ -200,6 +205,7 @@ ${METADATA_WARNING}`;
       const baseMin = 5, baseMax = 7;
       const minItems = Math.max(baseMin, Math.floor(baseMin * policyMultiplier));
       const maxItems = Math.max(minItems, Math.floor(baseMax * policyMultiplier));
+      const totalFloor = Math.max(600, minItems * 120);
       return `
 
 INTERNAL METADATA (DO NOT OUTPUT THIS IN YOUR SUMMARY):
@@ -207,10 +213,13 @@ Article content length: ${contentLength} characters
 This is a long article.
 
 Summary requirements:
-- Detailed summary: target 700-1000 characters; ABSOLUTE MINIMUM 600; NEVER return <600 characters
+- Total summary: MUST be at least ${totalFloor} characters (target 700-1000 characters)
 - Number of items: ${minItems}-${maxItems} items only (strict requirement, do not exceed ${maxItems} items)
-- Each item MUST be 120-200 characters and include concrete technical details (numbers, names, versions, metrics, examples)
-- Include specific technical details: metrics, timelines, architectures, failure modes, benchmarks
+- CRITICAL: Each item MUST be at least 120 characters (target 150-180 characters); NEVER write items shorter than 120 characters
+- Calculation: ${minItems} items x 120 chars = ${minItems * 120} chars minimum total
+- Each item must include: specific metrics, timelines, architectures, failure modes, benchmarks, or version info
+- DO NOT write brief one-line items. Expand each point with concrete supporting details.
+- If any item is <120 chars OR total is <${totalFloor} chars, you MUST regenerate with longer descriptions
 - If you cannot meet these requirements, reply: "unable to comply"
 
 ${METADATA_WARNING}`;
