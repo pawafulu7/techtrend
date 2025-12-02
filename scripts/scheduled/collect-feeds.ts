@@ -1,6 +1,74 @@
 import { PrismaClient, Source, Prisma } from '@prisma/client';
 import pLimit from 'p-limit';
 import { Mutex } from 'async-mutex';
+import * as fs from 'fs';
+
+// PID file for exclusive execution control
+const PID_FILE = process.env.COLLECT_FEEDS_PID_FILE || '/tmp/techtrend-collect-feeds.pid';
+
+/**
+ * Acquire exclusive lock using PID file
+ * Returns true if lock acquired, false if another process is running
+ */
+function acquireLock(): boolean {
+  if (fs.existsSync(PID_FILE)) {
+    const oldPidStr = fs.readFileSync(PID_FILE, 'utf-8').trim();
+    const oldPid = parseInt(oldPidStr, 10);
+
+    if (!isNaN(oldPid)) {
+      try {
+        // Signal 0 checks if process exists without sending actual signal
+        process.kill(oldPid, 0);
+        console.error(`[WARN] collect-feeds already running (PID: ${oldPid}), exiting`);
+        return false;
+      } catch {
+        // Process doesn't exist, stale PID file
+        console.error(`[INFO] Removing stale PID file (old PID: ${oldPid})`);
+      }
+    }
+  }
+
+  // Create PID file
+  fs.writeFileSync(PID_FILE, process.pid.toString());
+  console.error(`[INFO] Lock acquired (PID: ${process.pid})`);
+  return true;
+}
+
+/**
+ * Release exclusive lock by removing PID file
+ */
+function releaseLock(): void {
+  try {
+    if (fs.existsSync(PID_FILE)) {
+      const storedPidStr = fs.readFileSync(PID_FILE, 'utf-8').trim();
+      const storedPid = parseInt(storedPidStr, 10);
+
+      // Only remove if this process owns the lock
+      if (storedPid === process.pid) {
+        fs.unlinkSync(PID_FILE);
+        console.error(`[INFO] Lock released (PID: ${process.pid})`);
+      }
+    }
+  } catch (error) {
+    // Cleanup failure is not fatal
+    console.error(`[WARN] Failed to release lock: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Setup signal handlers for graceful shutdown
+ */
+function setupSignalHandlers(): void {
+  const cleanup = (signal: string, exitCode: number) => {
+    console.error(`[INFO] Received ${signal}, cleaning up...`);
+    releaseLock();
+    process.exit(exitCode);
+  };
+
+  process.on('exit', releaseLock);
+  process.on('SIGINT', () => cleanup('SIGINT', 130));
+  process.on('SIGTERM', () => cleanup('SIGTERM', 143));
+}
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { adjustTimezoneForArticle } from '@/lib/utils/date';
@@ -567,14 +635,27 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
 
 // 直接実行された場合
 if (require.main === module) {
+  // Acquire exclusive lock before starting
+  if (!acquireLock()) {
+    // Another instance is running, exit gracefully
+    process.exit(0);
+  }
+
+  // Setup signal handlers for graceful shutdown
+  setupSignalHandlers();
+
   // コマンドライン引数からソースタイプを取得
   const args = process.argv.slice(2);
   const sourceTypes = args.length > 0 ? args : undefined;
-  
+
   collectFeeds(sourceTypes)
-    .then(() => process.exit(0))
+    .then(() => {
+      releaseLock();
+      process.exit(0);
+    })
     .catch((error) => {
       console.error(error);
+      releaseLock();
       process.exit(1);
     });
 }
