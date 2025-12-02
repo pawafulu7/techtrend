@@ -3,6 +3,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { logger } from '@/lib/cli/utils/logger';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout';
 
 interface QiitaArticle {
   id: string;
@@ -40,16 +41,17 @@ export class QiitaPopularFetcher extends BaseFetcher {
       
       // Qiita APIで人気記事を取得（ストック数が多い順）
       const response = await this.retry(async () => {
-        const res = await fetch(`${this.source.url}?page=1&per_page=30&query=stocks:>10`, {
+        const res = await fetchWithTimeout(`${this.source.url}?page=1&per_page=30&query=stocks:>10`, {
           headers: {
             'Accept': 'application/json',
-          }
+          },
+          sourceName: 'Qiita Popular',
         });
-        
+
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
-        
+
         return res.json();
       });
 

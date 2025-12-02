@@ -2,6 +2,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { normalizeTagInput } from '../utils/tag-normalizer';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout';
 
 interface DevToArticle {
   id: number;
@@ -31,10 +32,11 @@ export class DevToFetcher extends BaseFetcher {
   private async fetchArticleDetail(articleId: number): Promise<DevToArticle | null> {
     try {
       const response = await this.retry(async () => {
-        const res = await fetch(`${this.baseUrl}/${articleId}`, {
+        const res = await fetchWithTimeout(`${this.baseUrl}/${articleId}`, {
           headers: {
             'Accept': 'application/json',
           },
+          sourceName: 'Dev.to',
         });
 
         if (res.status === 404) {
@@ -61,10 +63,11 @@ export class DevToFetcher extends BaseFetcher {
     try {
       // トップ記事を取得（週間トレンド）
       const topArticlesResponse = await this.retry(async () => {
-        const res = await fetch(`${this.baseUrl}?top=7`, {
+        const res = await fetchWithTimeout(`${this.baseUrl}?top=7`, {
           headers: {
             'Accept': 'application/json',
           },
+          sourceName: 'Dev.to',
         });
 
         if (!res.ok) {
@@ -85,10 +88,11 @@ export class DevToFetcher extends BaseFetcher {
       for (const tag of tags) {
         try {
           const response = await this.retry(async () => {
-            const res = await fetch(`${this.baseUrl}?tag=${tag}&per_page=10&top=1`, { // 日別トレンド
+            const res = await fetchWithTimeout(`${this.baseUrl}?tag=${tag}&per_page=10&top=1`, { // 日別トレンド
               headers: {
                 'Accept': 'application/json',
               },
+              sourceName: 'Dev.to',
             });
 
             if (!res.ok) {
