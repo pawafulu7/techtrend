@@ -2,6 +2,7 @@ import { BaseFetcher } from './base';
 import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
 import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout';
 
 interface HackerNewsStory {
   id: number;
@@ -35,16 +36,20 @@ export class HackerNewsFetcher extends BaseFetcher {
 
     try {
       // Top storiesのIDを取得（最大500件）
-      const topStoriesResponse = await fetch(`${this.apiBase}/topstories.json`);
+      const topStoriesResponse = await fetchWithTimeout(`${this.apiBase}/topstories.json`, {
+        sourceName: 'Hacker News',
+      });
       const topStoryIds = await topStoriesResponse.json() as number[];
-      
+
       // 最初の30件のみ処理
       const storyIdsToFetch = topStoryIds.slice(0, 30);
-      
+
       // 各ストーリーの詳細を取得
       for (const storyId of storyIdsToFetch) {
         try {
-          const storyResponse = await fetch(`${this.apiBase}/item/${storyId}.json`);
+          const storyResponse = await fetchWithTimeout(`${this.apiBase}/item/${storyId}.json`, {
+            sourceName: 'Hacker News',
+          });
           const story = await storyResponse.json() as HackerNewsStory;
           
           // storyタイプでURLがあるものだけ処理
