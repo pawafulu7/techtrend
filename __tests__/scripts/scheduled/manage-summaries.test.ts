@@ -200,7 +200,8 @@ describe('manage-summaries script', () => {
     });
 
     it('should exit 1 when all processed articles fail with enough samples (processed>=5)', async () => {
-      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 5, skipped: 45 });
+      // Use processed=6 to avoid duplication with boundary test (processed=5)
+      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 6, skipped: 44 });
       process.argv = ['node', 'script.ts', 'generate'];
 
       const { main } = await import('@/scripts/scheduled/manage-summaries');
@@ -268,6 +269,50 @@ describe('manage-summaries script', () => {
       await main();
 
       expect(process.exitCode).toBe(1);
+    });
+
+    it('should fallback to default threshold when env var is invalid (NaN)', async () => {
+      // Set invalid env var
+      const originalEnv = process.env.MIN_PROCESSED_FOR_FAILURE;
+      process.env.MIN_PROCESSED_FOR_FAILURE = 'abc';
+
+      // processed=5 should still fail (using default threshold of 5)
+      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 5, skipped: 45 });
+      process.argv = ['node', 'script.ts', 'generate'];
+
+      const { main } = await import('@/scripts/scheduled/manage-summaries');
+      await main();
+
+      expect(process.exitCode).toBe(1); // Should use default threshold
+
+      // Restore
+      if (originalEnv === undefined) {
+        delete process.env.MIN_PROCESSED_FOR_FAILURE;
+      } else {
+        process.env.MIN_PROCESSED_FOR_FAILURE = originalEnv;
+      }
+    });
+
+    it('should fallback to default threshold when env var is negative', async () => {
+      // Set invalid env var (negative)
+      const originalEnv = process.env.MIN_PROCESSED_FOR_FAILURE;
+      process.env.MIN_PROCESSED_FOR_FAILURE = '-1';
+
+      // processed=5 should still fail (using default threshold of 5)
+      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 5, skipped: 45 });
+      process.argv = ['node', 'script.ts', 'generate'];
+
+      const { main } = await import('@/scripts/scheduled/manage-summaries');
+      await main();
+
+      expect(process.exitCode).toBe(1); // Should use default threshold
+
+      // Restore
+      if (originalEnv === undefined) {
+        delete process.env.MIN_PROCESSED_FOR_FAILURE;
+      } else {
+        process.env.MIN_PROCESSED_FOR_FAILURE = originalEnv;
+      }
     });
   });
 });
