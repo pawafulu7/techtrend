@@ -212,14 +212,27 @@ async function main() {
     // 実際に処理を試みた件数（スキップを除く）
     const processed = result.generated + result.errors;
 
+    // 最小処理件数閾値（小サンプルでのfalse positive回避）
+    const DEFAULT_MIN_PROCESSED = 5;
+    const rawMinProcessed = process.env.MIN_PROCESSED_FOR_FAILURE;
+    const parsedMin = Number.parseInt(rawMinProcessed ?? String(DEFAULT_MIN_PROCESSED), 10);
+    const MIN_PROCESSED_FOR_FAILURE =
+      Number.isFinite(parsedMin) && parsedMin >= 1 ? parsedMin : DEFAULT_MIN_PROCESSED;
+    if (rawMinProcessed !== undefined && MIN_PROCESSED_FOR_FAILURE !== parsedMin) {
+      console.error(`[WARN] Invalid MIN_PROCESSED_FOR_FAILURE='${rawMinProcessed}', falling back to ${DEFAULT_MIN_PROCESSED}`);
+    }
+
     // 終了条件の判定
     if (processed === 0) {
       // 処理対象が0件の場合は成功終了（スキップのみなら正常）
       console.error('\n[INFO] No articles to process (all skipped). Exiting successfully.');
-    } else if (result.generated === 0) {
-      // 処理対象があったが全て失敗した場合のみexit 1
-      console.error('\n[WARN] All processed articles failed to generate summaries');
+    } else if (processed >= MIN_PROCESSED_FOR_FAILURE && result.generated === 0) {
+      // 十分なサンプル数があり、全て失敗した場合のみexit 1
+      console.error(`\n[WARN] All ${processed} processed articles failed to generate summaries`);
       process.exitCode = 1;
+    } else if (result.generated === 0) {
+      // サンプル数が少なく全て失敗 → 警告のみ（false positive回避）
+      console.error(`\n[WARN] All ${processed} processed articles failed (threshold: ${MIN_PROCESSED_FOR_FAILURE}, not failing job)`);
     } else if (result.errors > 0) {
       // 一部成功・一部失敗は警告のみ（正常終了）
       console.error(`\n[WARN] Partial success: ${result.generated} generated, ${result.errors} failed, ${result.skipped ?? 0} skipped`);
