@@ -199,7 +199,7 @@ describe('manage-summaries script', () => {
       expect(process.exitCode).toBeUndefined(); // Success
     });
 
-    it('should exit 1 when all processed articles fail (generated=0, errors>0)', async () => {
+    it('should exit 1 when all processed articles fail with enough samples (processed>=5)', async () => {
       mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 5, skipped: 45 });
       process.argv = ['node', 'script.ts', 'generate'];
 
@@ -207,6 +207,37 @@ describe('manage-summaries script', () => {
       await main();
 
       expect(process.exitCode).toBe(1);
+    });
+
+    it('should exit 0 when all processed articles fail with small sample (processed<5)', async () => {
+      // Small sample size should not fail the job (false positive prevention)
+      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 1, skipped: 49 });
+      process.argv = ['node', 'script.ts', 'generate'];
+
+      const { main } = await import('@/scripts/scheduled/manage-summaries');
+      await main();
+
+      expect(process.exitCode).toBeUndefined(); // Success (warning only)
+    });
+
+    it('should exit 0 when processed=4 and all fail (boundary case)', async () => {
+      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 4, skipped: 46 });
+      process.argv = ['node', 'script.ts', 'generate'];
+
+      const { main } = await import('@/scripts/scheduled/manage-summaries');
+      await main();
+
+      expect(process.exitCode).toBeUndefined(); // Success (below threshold)
+    });
+
+    it('should exit 1 when processed=5 and all fail (boundary case)', async () => {
+      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 5, skipped: 45 });
+      process.argv = ['node', 'script.ts', 'generate'];
+
+      const { main } = await import('@/scripts/scheduled/manage-summaries');
+      await main();
+
+      expect(process.exitCode).toBe(1); // At threshold, should fail
     });
 
     it('should exit 0 on partial success (generated>0, errors>0)', async () => {
@@ -227,6 +258,16 @@ describe('manage-summaries script', () => {
       await main();
 
       expect(process.exitCode).toBeUndefined(); // Success
+    });
+
+    it('should exit 1 when large sample all fail (processed=10)', async () => {
+      mockManager.generateSummaries.mockResolvedValue({ generated: 0, errors: 10, skipped: 40 });
+      process.argv = ['node', 'script.ts', 'generate'];
+
+      const { main } = await import('@/scripts/scheduled/manage-summaries');
+      await main();
+
+      expect(process.exitCode).toBe(1);
     });
   });
 });
