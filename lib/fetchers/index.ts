@@ -35,6 +35,7 @@ import {
 import { NVIDIADeveloperBlogFetcher } from './nvidia-developer-blog';
 import { DeepMindBlogFetcher } from './deepmind-blog';
 import { HatenaBlogDevFetcher } from './hatena-blog-dev';
+import { DevelopersIOFetcher, getTagFromSourceName } from './developersio';
 
 export function createFetcher(source: Source): BaseFetcher {
   switch (source.name) {
@@ -103,6 +104,19 @@ export function createFetcher(source: Source): BaseFetcher {
     case 'Hatena Blog Dev':
       return new HatenaBlogDevFetcher(source);
 
+    // DevelopersIO (dev.classmethod.jp) tag-based sources
+    case 'DevelopersIO AWS':
+    case 'DevelopersIO AI':
+    case 'DevelopersIO Claude':
+    case 'DevelopersIO MCP':
+    case 'DevelopersIO Security': {
+      const tag = getTagFromSourceName(source.name);
+      if (!tag) {
+        throw new Error(`Invalid DevelopersIO source name: ${source.name}`);
+      }
+      return new DevelopersIOFetcher(source, tag);
+    }
+
     default:
       throw new Error(`Unsupported source: ${source.name}`);
   }
@@ -140,6 +154,7 @@ export {
   QiitaAIFetcher,
   NVIDIADeveloperBlogFetcher,
   DeepMindBlogFetcher,
-  HatenaBlogDevFetcher
+  HatenaBlogDevFetcher,
+  DevelopersIOFetcher
 };
 export type { FetchResult } from '@/types/fetchers';

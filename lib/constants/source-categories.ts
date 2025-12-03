@@ -37,7 +37,9 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'cmdq43ofy0000teolba9vrndf',  // Google Developers Blog
       'medium_engineering_202508',   // Medium Engineering
       'cmdq4382o0000tecrle79yxxl',  // AWS
-      'cmdq43k070000tekrnqlawd1y'   // SRE
+      'cmdq43k070000tekrnqlawd1y',  // SRE
+      'developersio_aws',            // DevelopersIO AWS
+      'developersio_security'        // DevelopersIO Security
     ]
   },
   domestic: {
@@ -97,6 +99,9 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'cmfxa7efs0001teo0kjt70c5k',  // arXiv AI
       'cmfxa7efx0002teo03tglf5fs',  // Zenn AI
       'cmfxa7egc0003teo0ofke77yu',  // Qiita AI
+      'developersio_ai',             // DevelopersIO AI (generative-ai)
+      'developersio_claude',         // DevelopersIO Claude
+      'developersio_mcp'             // DevelopersIO MCP
     ]
   },
   llm: {

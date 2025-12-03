@@ -84,4 +84,30 @@ export const sourceRegistry: Record<string, SourceRegistryEntry> = {
     name: 'ZOZO TECH BLOG',
     siteUrl: 'https://techblog.zozo.com/rss',
   },
+  // DevelopersIO (dev.classmethod.jp) tag-based sources
+  developersio_aws: {
+    id: 'developersio_aws',
+    name: 'DevelopersIO AWS',
+    siteUrl: 'https://dev.classmethod.jp/tags/aws/',
+  },
+  developersio_ai: {
+    id: 'developersio_ai',
+    name: 'DevelopersIO AI',
+    siteUrl: 'https://dev.classmethod.jp/tags/generative-ai/',
+  },
+  developersio_claude: {
+    id: 'developersio_claude',
+    name: 'DevelopersIO Claude',
+    siteUrl: 'https://dev.classmethod.jp/tags/claude/',
+  },
+  developersio_mcp: {
+    id: 'developersio_mcp',
+    name: 'DevelopersIO MCP',
+    siteUrl: 'https://dev.classmethod.jp/tags/mcp/',
+  },
+  developersio_security: {
+    id: 'developersio_security',
+    name: 'DevelopersIO Security',
+    siteUrl: 'https://dev.classmethod.jp/tags/security/',
+  },
 };
