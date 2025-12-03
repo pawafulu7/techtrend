@@ -37,9 +37,7 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'cmdq43ofy0000teolba9vrndf',  // Google Developers Blog
       'medium_engineering_202508',   // Medium Engineering
       'cmdq4382o0000tecrle79yxxl',  // AWS
-      'cmdq43k070000tekrnqlawd1y',  // SRE
-      'developersio_aws',            // DevelopersIO AWS
-      'developersio_security'        // DevelopersIO Security
+      'cmdq43k070000tekrnqlawd1y'   // SRE
     ]
   },
   domestic: {
@@ -75,8 +73,12 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'hatena_blog_dev',            // 企業技術ブログ（hatena.blog/dev/entries）
       'pepabo_tech_blog',           // ペパボテックブログ
       'cookpad_tech_blog',          // Cookpad Tech Life
-      // 旧統合ソース（2025年10月10日無効化済み、将来的に削除予定）
-      // 'cmdwgsk1b0000te2vrjnpm6gc'   // Corporate Tech Blog (legacy, disabled)
+      // DevelopersIO（クラスメソッド社）
+      'developersio_aws',           // DevelopersIO AWS
+      'developersio_security',      // DevelopersIO Security
+      'developersio_ai',            // DevelopersIO AI
+      'developersio_claude',        // DevelopersIO Claude
+      'developersio_mcp'            // DevelopersIO MCP
     ]
   },
   presentation: {
