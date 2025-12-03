@@ -454,11 +454,15 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
 
   try {
     // 有効なソースを取得（sourceTypesが指定されている場合はフィルタリング）
+    // ソースIDまたはソース名でマッチ
     const sources = await prisma.source.findMany({
       where: {
         enabled: true,
         ...(sourceTypes && sourceTypes.length > 0 && {
-          name: { in: sourceTypes }
+          OR: [
+            { id: { in: sourceTypes } },
+            { name: { in: sourceTypes } }
+          ]
         })
       }
     });
