@@ -1,6 +1,18 @@
 export type SourceCategoryId = 'foreign' | 'domestic' | 'company' | 'presentation' | 'ai' | 'llm';
 
 /**
+ * DevelopersIO source IDs (Classmethod Inc.)
+ * Used for UI subgrouping in CompanyFilter
+ */
+export const DEVELOPERSIO_SOURCE_IDS = [
+  'developersio_aws',
+  'developersio_security',
+  'developersio_ai',
+  'developersio_claude',
+  'developersio_mcp',
+] as const;
+
+/**
  * Valid category IDs (readonly array)
  *
  * Single source of truth for SourceCategoryId validation.
