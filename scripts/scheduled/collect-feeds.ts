@@ -76,117 +76,14 @@ import { CategoryClassifier } from '@/lib/services/category-classifier';
 import { normalizeTag } from '@/lib/utils/tag-normalizer';
 import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
 
-const prisma = new PrismaClient();
-
-// フェッチャーをインポート
-import { HatenaExtendedFetcher } from '@/lib/fetchers/hatena-extended';
-import { QiitaPopularFetcher } from '@/lib/fetchers/qiita-popular';
-import { ZennExtendedFetcher } from '@/lib/fetchers/zenn-extended';
-import { DevToFetcher } from '@/lib/fetchers/devto';
-import { PublickeyFetcher } from '@/lib/fetchers/publickey';
-import { StackOverflowBlogFetcher } from '@/lib/fetchers/stackoverflow-blog';
-import { ThinkITFetcher } from '@/lib/fetchers/thinkit';
-import { SpeakerDeckFetcher } from '@/lib/fetchers/speakerdeck';
-import { RailsReleasesFetcher } from '@/lib/fetchers/rails-releases';
-import { AWSFetcher } from '@/lib/fetchers/aws';
-import { SREFetcher } from '@/lib/fetchers/sre';
-import { GoogleDevBlogFetcher } from '@/lib/fetchers/google-dev-blog';
-import { HuggingFaceFetcher } from '@/lib/fetchers/huggingface';
-import { GoogleAIFetcher } from '@/lib/fetchers/google-ai';
-import { InfoQJapanFetcher } from '@/lib/fetchers/infoq-japan';
-import { DocswellFetcher } from '@/lib/fetchers/docswell';
-import { GitHubBlogFetcher } from '@/lib/fetchers/github-blog';
-import { CloudflareBlogFetcher } from '@/lib/fetchers/cloudflare-blog';
-import { MozillaHacksFetcher } from '@/lib/fetchers/mozilla-hacks';
-import { HackerNewsFetcher } from '@/lib/fetchers/hacker-news';
-import { MediumEngineeringFetcher } from '@/lib/fetchers/medium-engineering';
-// import { MicrosoftDevBlogFetcher } from '@/lib/fetchers/microsoft-dev-blog';
-
-// AI/LLM関連フェッチャー
-import { OpenAIBlogFetcher } from '@/lib/fetchers/ai/openai-blog';
-import { HuggingFacePapersFetcher } from '@/lib/fetchers/ai/huggingface-papers';
-import { ArxivAIFetcher } from '@/lib/fetchers/ai/arxiv-ai';
-import { ZennAIFetcher } from '@/lib/fetchers/ai/zenn-ai';
-import { QiitaAIFetcher } from '@/lib/fetchers/ai/qiita-ai';
-import { NVIDIADeveloperBlogFetcher } from '@/lib/fetchers/nvidia-developer-blog';
-import { DeepMindBlogFetcher } from '@/lib/fetchers/deepmind-blog';
-
-// 企業ブログフェッチャーを個別にインポート
-import { DenaFetcher } from '@/lib/fetchers/corporate-blogs/dena-fetcher';
-import { SmartHRFetcher } from '@/lib/fetchers/corporate-blogs/smarthr-fetcher';
-import { LYCorpFetcher } from '@/lib/fetchers/corporate-blogs/lycorp-fetcher';
-import { MercariFetcher } from '@/lib/fetchers/corporate-blogs/mercari-fetcher';
-import { SansanFetcher } from '@/lib/fetchers/corporate-blogs/sansan-fetcher';
-import { ZOZOFetcher } from '@/lib/fetchers/corporate-blogs/zozo-fetcher';
-import { HatenaFetcher } from '@/lib/fetchers/corporate-blogs/hatena-fetcher';
-import { MoneyForwardFetcher } from '@/lib/fetchers/corporate-blogs/moneyforward-fetcher';
-import { PepaboFetcher } from '@/lib/fetchers/corporate-blogs/pepabo-fetcher';
-import { FreeeFetcher } from '@/lib/fetchers/corporate-blogs/freee-fetcher';
-import { CookpadFetcher } from '@/lib/fetchers/corporate-blogs/cookpad-fetcher';
-import { CyberAgentFetcher } from '@/lib/fetchers/corporate-blogs/cyberagent-fetcher';
-import { GMOFetcher } from '@/lib/fetchers/corporate-blogs/gmo-fetcher';
-
-// Hatena Blog Dev（企業技術ブログ一覧）
-import { HatenaBlogDevFetcher } from '@/lib/fetchers/hatena-blog-dev';
-
-import { BaseFetcher } from '@/lib/fetchers/base';
+// フェッチャーファクトリ（createFetcherですべてのソースを統一的に処理）
+import { createFetcher } from '@/lib/fetchers';
 
 // エンリッチャーをインポート
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { isHighQuality } from '@/lib/enrichers/strategies/quality';
 
-const fetchers: Record<string, new (source: Source) => BaseFetcher> = {
-  'はてなブックマーク': HatenaExtendedFetcher,
-  'Qiita Popular': QiitaPopularFetcher,
-  'Zenn': ZennExtendedFetcher,
-  'Dev.to': DevToFetcher,
-  'Publickey': PublickeyFetcher,
-  'Stack Overflow Blog': StackOverflowBlogFetcher,
-  'Think IT': ThinkITFetcher,
-  'Speaker Deck': SpeakerDeckFetcher,
-  'Rails Releases': RailsReleasesFetcher,
-  'AWS': AWSFetcher,
-  'SRE': SREFetcher,
-  'Google Developers Blog': GoogleDevBlogFetcher,
-  'Hugging Face Blog': HuggingFaceFetcher,
-  'Google AI Blog': GoogleAIFetcher,
-  'InfoQ Japan': InfoQJapanFetcher,
-  'Docswell': DocswellFetcher,
-  'GitHub Blog': GitHubBlogFetcher,
-  'Cloudflare Blog': CloudflareBlogFetcher,
-  'Mozilla Hacks': MozillaHacksFetcher,
-  'Hacker News': HackerNewsFetcher,
-  'Medium Engineering': MediumEngineeringFetcher,
-  // 'Microsoft Developer Blog': MicrosoftDevBlogFetcher,
-
-  // AI/LLM関連
-  'OpenAI Blog': OpenAIBlogFetcher,
-  'Hugging Face Papers': HuggingFacePapersFetcher,
-  'arXiv AI': ArxivAIFetcher,
-  'Zenn AI': ZennAIFetcher,
-  'Qiita AI': QiitaAIFetcher,
-  'NVIDIA Developer Blog': NVIDIADeveloperBlogFetcher,
-  'DeepMind Blog': DeepMindBlogFetcher,
-
-  // 個別企業ブログフェッチャー
-  // IMPORTANT: キー名はDBのSource.nameと完全一致させること（大文字小文字含む）
-  'DeNA Engineering': DenaFetcher,
-  'SmartHR Tech Blog': SmartHRFetcher,
-  'LY Corporation Tech Blog': LYCorpFetcher,
-  'Mercari Engineering': MercariFetcher,
-  'Sansan Builders Box': SansanFetcher,
-  'ZOZO TECH BLOG': ZOZOFetcher,
-  'Hatena Developer Blog': HatenaFetcher,
-  'Money Forward Developers Blog': MoneyForwardFetcher,
-  'ペパボテックブログ': PepaboFetcher,
-  'freee Developers Hub': FreeeFetcher,
-  'Cookpad Tech Life': CookpadFetcher,
-  'CyberAgent Developers Blog': CyberAgentFetcher,
-  'GMO Developers': GMOFetcher,
-
-  // 企業技術ブログ（hatena.blog/dev/entries からの取得）
-  '企業技術ブログ': HatenaBlogDevFetcher,
-};
+const prisma = new PrismaClient();
 
 /**
  * Local ArticleInfo for collect-feeds internal use.
@@ -284,18 +181,26 @@ async function processSource({
   let updatedCount = 0;
   let fetchedArticlesCount = 0;
 
-  const FetcherClass = fetchers[source.name];
-  if (!FetcherClass) {
-    console.error(`[WARN] ${sourceName}: フェッチャーが見つかりません`);
-    const duration = Math.round((Date.now() - startTime) / 1000);
-    console.log(`[${sourceName}] Duration: ${duration}s`);
-    return result;
+  // createFetcherを使用してフェッチャーを生成
+  // 未対応ソースの場合は "Unsupported source:" で始まるエラーがスローされる
+  let fetcher;
+  try {
+    fetcher = createFetcher(source);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    // "Unsupported source:" エラーのみをハンドリングし、それ以外は再throw
+    if (errorMessage.startsWith('Unsupported source:')) {
+      console.error(`[WARN] ${sourceName}: フェッチャーが見つかりません - ${errorMessage}`);
+      const duration = Math.round((Date.now() - startTime) / 1000);
+      console.log(`[${sourceName}] Duration: ${duration}s`);
+      return result;
+    }
+    // 環境設定エラー等、その他のエラーは再throw
+    throw error;
   }
 
   try {
     console.error(`[START] ${sourceName} - ${new Date().toISOString()}`);
-
-    const fetcher = new FetcherClass(source);
 
     // Add per-source timeout to prevent infinite hang
     const fetchTimeoutMs = Number(process.env.FETCHER_TIMEOUT_MS) || 120_000; // 2 minutes default
