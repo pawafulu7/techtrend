@@ -33,7 +33,7 @@ module.exports = {
       interpreter: './node_modules/.bin/tsx',
       instances: 1,
       exec_mode: 'fork',
-      autorestart: true,
+      autorestart: false, // Batch job: rely on cron_restart for scheduling
       watch: false,
       max_restarts: 10,
       restart_delay: 30000,
@@ -56,7 +56,7 @@ module.exports = {
       interpreter: './node_modules/.bin/tsx',
       instances: 1,
       exec_mode: 'fork',
-      autorestart: true,
+      autorestart: false, // Batch job: rely on cron_restart for scheduling
       watch: false,
       max_restarts: 10,
       restart_delay: 30000,
@@ -78,7 +78,7 @@ module.exports = {
       interpreter: './node_modules/.bin/tsx',
       instances: 1,
       exec_mode: 'fork',
-      autorestart: true,
+      autorestart: false, // Batch job: rely on cron_restart for scheduling
       watch: false,
       max_restarts: 10,
       restart_delay: 30000,
@@ -104,7 +104,7 @@ module.exports = {
       interpreter: './node_modules/.bin/tsx',
       instances: 1,
       exec_mode: 'fork',
-      autorestart: true,
+      autorestart: false, // Batch job: rely on cron_restart for scheduling
       watch: false,
       max_restarts: 10,
       restart_delay: 30000,
