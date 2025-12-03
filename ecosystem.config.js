@@ -8,6 +8,9 @@ module.exports = {
       exec_mode: 'fork',
       autorestart: true,
       watch: false,
+      max_restarts: 10,
+      restart_delay: 30000,
+      min_uptime: '60s',
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'development', // Local PM2 environment (enables .env.local loading)
@@ -30,9 +33,13 @@ module.exports = {
       interpreter: './node_modules/.bin/tsx',
       instances: 1,
       exec_mode: 'fork',
-      autorestart: false,
+      autorestart: false, // Batch job: rely on cron_restart for scheduling
       watch: false,
-      cron_restart: '0 3 * * *', // 毎日午前3時に実行
+      max_restarts: 10,
+      restart_delay: 30000,
+      min_uptime: '60s',
+      max_memory_restart: '500M',
+      cron_restart: '0 3 * * *', // Daily at 3:00 AM
       env: {
         NODE_ENV: 'production',
         GEMINI_API_KEY: process.env.GEMINI_API_KEY
@@ -49,9 +56,13 @@ module.exports = {
       interpreter: './node_modules/.bin/tsx',
       instances: 1,
       exec_mode: 'fork',
-      autorestart: false,
+      autorestart: false, // Batch job: rely on cron_restart for scheduling
       watch: false,
-      cron_restart: '0 2 * * *', // 毎日午前2時に実行
+      max_restarts: 10,
+      restart_delay: 30000,
+      min_uptime: '60s',
+      max_memory_restart: '500M',
+      cron_restart: '0 2 * * *', // Daily at 2:00 AM
       env: {
         NODE_ENV: 'production'
       },
@@ -67,8 +78,12 @@ module.exports = {
       interpreter: './node_modules/.bin/tsx',
       instances: 1,
       exec_mode: 'fork',
-      autorestart: false,
+      autorestart: false, // Batch job: rely on cron_restart for scheduling
       watch: false,
+      max_restarts: 10,
+      restart_delay: 30000,
+      min_uptime: '60s',
+      max_memory_restart: '1G',
       cron_restart: '*/30 * * * *', // Every 30 minutes
       env: {
         NODE_ENV: 'production',
@@ -89,8 +104,12 @@ module.exports = {
       interpreter: './node_modules/.bin/tsx',
       instances: 1,
       exec_mode: 'fork',
-      autorestart: false,
+      autorestart: false, // Batch job: rely on cron_restart for scheduling
       watch: false,
+      max_restarts: 10,
+      restart_delay: 30000,
+      min_uptime: '60s',
+      max_memory_restart: '500M',
       cron_restart: '0 * * * *', // Every hour at minute 0
       env: {
         NODE_ENV: 'production',
