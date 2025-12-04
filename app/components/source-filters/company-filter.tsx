@@ -77,7 +77,7 @@ export function CompanyFilter({
   const totalCount = sources.length;
 
   // DevelopersIO subgroup state
-  const [developersioExpanded, setDevelopersioExpanded] = useState(true);
+  const [developersioExpanded, setDevelopersioExpanded] = useState(false);
 
   // Separate DevelopersIO sources from other sources
   const developersioSourceIdSet = useMemo(
