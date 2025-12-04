@@ -158,7 +158,7 @@ export function CompanyFilter({
                   <Collapsible
                     open={developersioExpanded}
                     onOpenChange={setDevelopersioExpanded}
-                    className="border-b"
+                    className={otherSources.length > 0 ? 'border-b' : ''}
                   >
                     <CollapsibleTrigger
                       className="flex items-center gap-2 cursor-pointer font-medium w-full px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
