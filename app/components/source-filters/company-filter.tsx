@@ -160,22 +160,19 @@ export function CompanyFilter({
                     onOpenChange={setDevelopersioExpanded}
                     className="border-b"
                   >
-                    <CollapsibleTrigger asChild>
-                      <CommandItem
-                        value="developersio-group"
-                        className="flex items-center gap-2 cursor-pointer font-medium"
-                        data-testid="developersio-group-trigger"
-                      >
-                        {developersioExpanded ? (
-                          <ChevronDown className="w-3 h-3" />
-                        ) : (
-                          <ChevronRight className="w-3 h-3" />
-                        )}
-                        <span className="text-xs flex-1">DevelopersIO</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({developersioSelectedCount}/{developersioSources.length})
-                        </span>
-                      </CommandItem>
+                    <CollapsibleTrigger
+                      className="flex items-center gap-2 cursor-pointer font-medium w-full px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                      data-testid="developersio-group-trigger"
+                    >
+                      {developersioExpanded ? (
+                        <ChevronDown className="w-3 h-3" />
+                      ) : (
+                        <ChevronRight className="w-3 h-3" />
+                      )}
+                      <span className="text-xs flex-1">DevelopersIO</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({developersioSelectedCount}/{developersioSources.length})
+                      </span>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       {developersioSources.map((source) => {
