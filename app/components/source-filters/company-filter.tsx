@@ -162,7 +162,6 @@ export function CompanyFilter({
                         value="developersio-group"
                         className="flex items-center gap-2 cursor-pointer font-medium"
                         data-testid="developersio-group-trigger"
-                        onSelect={() => setDevelopersioExpanded(!developersioExpanded)}
                       >
                         {developersioExpanded ? (
                           <ChevronDown className="w-3 h-3" />
@@ -179,7 +178,9 @@ export function CompanyFilter({
                       {developersioSources.map((source) => {
                         const checked = selectedCompanySourceIds.includes(source.id);
                         // Display tag name without "DevelopersIO " prefix
-                        const displayName = source.name.replace('DevelopersIO ', '');
+                        const displayName = source.name.startsWith('DevelopersIO ')
+                          ? source.name.slice('DevelopersIO '.length)
+                          : source.name;
                         return (
                           <CommandItem
                             key={source.id}
