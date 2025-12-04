@@ -98,10 +98,13 @@ export function CompanyFilter({
     return { developersioSources: devio, otherSources: others };
   }, [visibleSources, developersioSourceIdSet]);
 
-  // DevelopersIO selection count
+  // DevelopersIO selection count (based on visible sources to avoid count > total)
   const developersioSelectedCount = useMemo(
-    () => selectedCompanySourceIds.filter(id => developersioSourceIdSet.has(id)).length,
-    [selectedCompanySourceIds, developersioSourceIdSet]
+    () =>
+      developersioSources.filter((source) =>
+        selectedCompanySourceIds.includes(source.id)
+      ).length,
+    [developersioSources, selectedCompanySourceIds]
   );
 
   const commandEmpty = useMemo(() => {
