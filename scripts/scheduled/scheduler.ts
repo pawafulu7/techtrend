@@ -223,6 +223,12 @@ const RSS_SOURCES = [
   'Sansan Builders Box',
   'GMO Developers',
   'ペパボテックブログ',
+  // DevelopersIO（クラスメソッド社）
+  'DevelopersIO AWS',
+  'DevelopersIO AI',
+  'DevelopersIO Claude',
+  'DevelopersIO MCP',
+  'DevelopersIO Security',
   // 企業技術ブログ一覧（hatena.blog/dev/entries）
   '企業技術ブログ',
 ];
