@@ -10,10 +10,16 @@ import {
 } from '@/components/ui/command';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Building2, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CompanySelectionDialog } from './company-selection-dialog';
 import type { CompanySource } from '@/lib/providers/company-source';
+import { DEVELOPERSIO_SOURCE_IDS } from '@/lib/constants/source-categories';
 
 export interface CompanyFilterProps {
   sources: CompanySource[];
@@ -70,6 +76,37 @@ export function CompanyFilter({
   const selectedCount = selectedCompanySourceIds.length;
   const totalCount = sources.length;
 
+  // DevelopersIO subgroup state
+  const [developersioExpanded, setDevelopersioExpanded] = useState(false);
+
+  // Separate DevelopersIO sources from other sources
+  const developersioSourceIdSet = useMemo(
+    () => new Set(DEVELOPERSIO_SOURCE_IDS as readonly string[]),
+    []
+  );
+
+  const { developersioSources, otherSources } = useMemo(() => {
+    const devio: CompanySource[] = [];
+    const others: CompanySource[] = [];
+    for (const source of visibleSources) {
+      if (developersioSourceIdSet.has(source.id)) {
+        devio.push(source);
+      } else {
+        others.push(source);
+      }
+    }
+    return { developersioSources: devio, otherSources: others };
+  }, [visibleSources, developersioSourceIdSet]);
+
+  // DevelopersIO selection count (based on visible sources to avoid count > total)
+  const developersioSelectedCount = useMemo(
+    () =>
+      developersioSources.filter((source) =>
+        selectedCompanySourceIds.includes(source.id)
+      ).length,
+    [developersioSources, selectedCompanySourceIds]
+  );
+
   const commandEmpty = useMemo(() => {
     return searchValue.length > 0
       ? '該当企業がありません'
@@ -116,7 +153,60 @@ export function CompanyFilter({
               />
               <CommandList className="max-h-44 overflow-y-auto">
                 <CommandEmpty>{commandEmpty}</CommandEmpty>
-                {visibleSources.map((source) => {
+                {/* DevelopersIO subgroup */}
+                {developersioSources.length > 0 && (
+                  <Collapsible
+                    open={developersioExpanded}
+                    onOpenChange={setDevelopersioExpanded}
+                    className={otherSources.length > 0 ? 'border-b' : ''}
+                  >
+                    <CollapsibleTrigger
+                      className="flex items-center gap-2 cursor-pointer font-medium w-full px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                      data-testid="developersio-group-trigger"
+                    >
+                      {developersioExpanded ? (
+                        <ChevronDown className="w-3 h-3" />
+                      ) : (
+                        <ChevronRight className="w-3 h-3" />
+                      )}
+                      <span className="text-xs flex-1">DevelopersIO</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({developersioSelectedCount}/{developersioSources.length})
+                      </span>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      {developersioSources.map((source) => {
+                        const checked = selectedCompanySourceIds.includes(source.id);
+                        // Display tag name without "DevelopersIO " prefix
+                        const displayName = source.name.startsWith('DevelopersIO ')
+                          ? source.name.slice('DevelopersIO '.length)
+                          : source.name;
+                        return (
+                          <CommandItem
+                            key={source.id}
+                            value={source.id}
+                            onSelect={() => onSourceToggle(source.id)}
+                            className={cn(
+                              'flex items-center gap-2 cursor-pointer pl-6',
+                              checked && 'bg-muted/40'
+                            )}
+                            data-testid={`company-item-${source.id}`}
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={() => onSourceToggle(source.id)}
+                              aria-label={`${source.name}を選択`}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <span className="text-xs flex-1">{displayName}</span>
+                          </CommandItem>
+                        );
+                      })}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+                {/* Other company sources */}
+                {otherSources.map((source) => {
                   const checked = selectedCompanySourceIds.includes(source.id);
                   return (
                     <CommandItem

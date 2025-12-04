@@ -1,6 +1,18 @@
 export type SourceCategoryId = 'foreign' | 'domestic' | 'company' | 'presentation' | 'ai' | 'llm';
 
 /**
+ * DevelopersIO source IDs (Classmethod Inc.)
+ * Used for UI subgrouping in CompanyFilter
+ */
+export const DEVELOPERSIO_SOURCE_IDS = [
+  'developersio_aws',
+  'developersio_security',
+  'developersio_ai',
+  'developersio_claude',
+  'developersio_mcp',
+] as const;
+
+/**
  * Valid category IDs (readonly array)
  *
  * Single source of truth for SourceCategoryId validation.
@@ -73,8 +85,12 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'hatena_blog_dev',            // 企業技術ブログ（hatena.blog/dev/entries）
       'pepabo_tech_blog',           // ペパボテックブログ
       'cookpad_tech_blog',          // Cookpad Tech Life
-      // 旧統合ソース（2025年10月10日無効化済み、将来的に削除予定）
-      // 'cmdwgsk1b0000te2vrjnpm6gc'   // Corporate Tech Blog (legacy, disabled)
+      // DevelopersIO（クラスメソッド社）
+      'developersio_aws',           // DevelopersIO AWS
+      'developersio_security',      // DevelopersIO Security
+      'developersio_ai',            // DevelopersIO AI
+      'developersio_claude',        // DevelopersIO Claude
+      'developersio_mcp'            // DevelopersIO MCP
     ]
   },
   presentation: {
@@ -97,6 +113,9 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'cmfxa7efs0001teo0kjt70c5k',  // arXiv AI
       'cmfxa7efx0002teo03tglf5fs',  // Zenn AI
       'cmfxa7egc0003teo0ofke77yu',  // Qiita AI
+      'developersio_ai',             // DevelopersIO AI (generative-ai)
+      'developersio_claude',         // DevelopersIO Claude
+      'developersio_mcp'             // DevelopersIO MCP
     ]
   },
   llm: {
