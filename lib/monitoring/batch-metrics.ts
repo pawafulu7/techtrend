@@ -95,7 +95,7 @@ export class BatchMetrics {
    * Generate unique job ID
    */
   private generateJobId(): string {
-    return `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `job_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 
   /**
@@ -384,7 +384,7 @@ export class BatchMetrics {
     if (BatchMetrics.instance) {
       BatchMetrics.instance.reset();
     }
-    BatchMetrics.instance = undefined as any;
+    BatchMetrics.instance = undefined!;
   }
 }
 

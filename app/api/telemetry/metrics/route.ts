@@ -29,11 +29,11 @@ export async function GET(): Promise<NextResponse> {
     cache: {
       hits: summary.cache.hits,
       misses: summary.cache.misses,
-      hitRate: parseFloat(summary.cache.hitRate.replace('%', '')),
+      hitRate: parseFloat(summary.cache.hitRate.replace('%', '')) || 0,
     },
     database: {
       totalQueries: summary.database.totalQueries,
-      avgQueriesPerRequest: parseFloat(summary.database.avgQueriesPerRequest),
+      avgQueriesPerRequest: parseFloat(summary.database.avgQueriesPerRequest) || 0,
     },
     responseTime: responseTimePercentiles,
     batchSize: batchSizePercentiles,

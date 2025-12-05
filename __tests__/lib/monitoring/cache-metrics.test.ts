@@ -14,10 +14,6 @@ describe('CacheMetrics', () => {
     metrics = CacheMetrics.getInstance();
   });
 
-  afterEach(() => {
-    metrics.reset();
-  });
-
   describe('recordOperation', () => {
     it('should record cache hit', () => {
       metrics.hit('test-key', 10, 'articles');

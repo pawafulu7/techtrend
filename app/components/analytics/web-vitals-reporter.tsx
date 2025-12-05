@@ -45,7 +45,9 @@ function sendVital(metric: Metric): void {
 
   // Use sendBeacon for reliable delivery
   if (navigator.sendBeacon) {
-    navigator.sendBeacon('/api/telemetry/vitals', body);
+    // Wrap in Blob to set Content-Type header
+    const blob = new Blob([body], { type: 'application/json' });
+    navigator.sendBeacon('/api/telemetry/vitals', blob);
   } else {
     // Fallback to fetch with keepalive
     fetch('/api/telemetry/vitals', {

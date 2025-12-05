@@ -8,7 +8,6 @@ import { ApiBaselineMonitor } from '@/lib/monitoring/api-baseline';
 describe('/api/telemetry/baseline', () => {
   beforeEach(() => {
     ApiBaselineMonitor.resetInstance();
-    ApiBaselineMonitor.getInstance().resetMeasurements();
   });
 
   describe('GET', () => {

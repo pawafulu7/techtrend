@@ -95,7 +95,10 @@ export class MemoryMonitor {
       heapUsedMB: Math.round(heapUsedMB * 100) / 100,
       heapTotalMB: Math.round(heapTotalMB * 100) / 100,
       rssMB: Math.round(rssMB * 100) / 100,
-      heapUsedPercent: Math.round((heapUsedMB / this.config.thresholds.maxHeapMB) * 100),
+      heapUsedPercent: Math.min(
+        100,
+        Math.round((heapUsedMB / this.config.thresholds.maxHeapMB) * 100)
+      ),
       timestamp: Date.now(),
     };
   }
@@ -187,7 +190,7 @@ export class MemoryMonitor {
         this.lastAlertLevel = 'critical';
       }
     } else if (stats.heapUsedPercent >= warningPercent) {
-      if (this.lastAlertLevel !== 'warning' && this.lastAlertLevel !== 'critical') {
+      if (this.lastAlertLevel !== 'warning') {
         logger.warn({
           type: 'memory_alert',
           level: 'warning',
@@ -270,7 +273,7 @@ export class MemoryMonitor {
     if (MemoryMonitor.instance) {
       MemoryMonitor.instance.stop();
     }
-    MemoryMonitor.instance = undefined as any;
+    MemoryMonitor.instance = undefined!;
   }
 }
 

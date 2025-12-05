@@ -83,6 +83,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  *
  * Returns aggregated Web Vitals metrics for monitoring
  * Requires admin authentication in production
+ *
+ * TODO: Add authentication check using getServerSession or similar
+ * before exposing aggregated metrics data
  */
 export async function GET(): Promise<NextResponse> {
   // Aggregate metrics by page and metric name

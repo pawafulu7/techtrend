@@ -6,6 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiBaselineMonitor } from '@/lib/monitoring/api-baseline';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('telemetry:baseline');
 
 /**
  * GET /api/telemetry/baseline
@@ -28,10 +31,10 @@ export async function GET(): Promise<NextResponse> {
 const measurementSchema = z.object({
   endpoint: z.string(),
   method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']),
-  p50: z.number(),
-  p95: z.number(),
-  p99: z.number(),
-  count: z.number(),
+  p50: z.number().nonnegative(),
+  p95: z.number().nonnegative(),
+  p99: z.number().nonnegative(),
+  count: z.number().nonnegative().int(),
 });
 
 /**
@@ -60,7 +63,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { message: 'Measurement recorded' },
       { status: 201 }
     );
-  } catch {
+  } catch (error) {
+    logger.error({ error }, 'Failed to process baseline measurement');
     return NextResponse.json(
       { error: 'Failed to process measurement' },
       { status: 500 }

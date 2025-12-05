@@ -90,6 +90,18 @@ describe('BatchMetrics', () => {
     });
   });
 
+  describe('incrementSkipped', () => {
+    it('should increment skipped count', () => {
+      const jobId = metrics.startJob('test-job');
+
+      metrics.incrementSkipped(jobId);
+      metrics.incrementSkipped(jobId, 2);
+
+      const summary = metrics.getSummary();
+      expect(summary.runningJobs[0].itemsSkipped).toBe(3);
+    });
+  });
+
   describe('completeJob', () => {
     it('should complete a job and move to history', () => {
       const jobId = metrics.startJob('test-job');

@@ -214,6 +214,16 @@ export class RecommendationMetrics {
   }
 
   /**
+   * Reset singleton instance (for testing)
+   */
+  static resetInstance(): void {
+    if (RecommendationMetrics.instance) {
+      RecommendationMetrics.instance.reset();
+    }
+    RecommendationMetrics.instance = undefined!;
+  }
+
+  /**
    * 現在のメトリクスサマリーを取得
    */
   getSummary(): Record<string, any> {

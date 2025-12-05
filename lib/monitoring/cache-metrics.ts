@@ -119,6 +119,7 @@ class OperationBuffer {
   }
 
   clear(): void {
+    this.buffer = new Array(this.maxSize);
     this.writeIndex = 0;
     this.isFull = false;
   }
@@ -322,6 +323,8 @@ export class CacheMetrics {
         avgLatencyMiss: summary.responseTime.miss?.avg ?? 0,
       });
     }, intervalMs);
+    // Don't keep process alive just for logging
+    this.logInterval.unref();
   }
 
   /**
@@ -352,7 +355,7 @@ export class CacheMetrics {
     if (CacheMetrics.instance) {
       CacheMetrics.instance.reset();
     }
-    CacheMetrics.instance = undefined as any;
+    CacheMetrics.instance = undefined!;
   }
 }
 

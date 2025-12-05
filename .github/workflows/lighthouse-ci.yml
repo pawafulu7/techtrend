@@ -46,8 +46,6 @@ jobs:
       - name: Run Lighthouse CI
         run: |
           npm exec -- lhci autorun
-        env:
-          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
       - name: Upload Lighthouse reports
         uses: actions/upload-artifact@v4

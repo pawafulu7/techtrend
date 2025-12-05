@@ -199,9 +199,18 @@ export class ApiBaselineMonitor {
     measurement: ApiMeasurement,
     baseline: ApiBaseline
   ): BaselineComparison {
-    const p50Deviation = ((measurement.p50 - baseline.p50Baseline) / baseline.p50Baseline) * 100;
-    const p95Deviation = ((measurement.p95 - baseline.p95Baseline) / baseline.p95Baseline) * 100;
-    const p99Deviation = ((measurement.p99 - baseline.p99Baseline) / baseline.p99Baseline) * 100;
+    const p50Deviation =
+      baseline.p50Baseline > 0
+        ? ((measurement.p50 - baseline.p50Baseline) / baseline.p50Baseline) * 100
+        : 0;
+    const p95Deviation =
+      baseline.p95Baseline > 0
+        ? ((measurement.p95 - baseline.p95Baseline) / baseline.p95Baseline) * 100
+        : 0;
+    const p99Deviation =
+      baseline.p99Baseline > 0
+        ? ((measurement.p99 - baseline.p99Baseline) / baseline.p99Baseline) * 100
+        : 0;
 
     // Use max deviation to determine status
     const maxDeviation = Math.max(p50Deviation, p95Deviation, p99Deviation);
@@ -313,7 +322,7 @@ export class ApiBaselineMonitor {
    * Reset singleton instance (for testing)
    */
   static resetInstance(): void {
-    ApiBaselineMonitor.instance = undefined as any;
+    ApiBaselineMonitor.instance = undefined!;
   }
 }
 
