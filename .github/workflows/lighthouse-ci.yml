@@ -1,0 +1,106 @@
+name: Lighthouse CI
+
+on:
+  # Manual trigger with optional label
+  workflow_dispatch:
+  # Weekly schedule (Sunday 3:00 UTC = Monday 12:00 JST)
+  schedule:
+    - cron: '0 3 * * 0'
+  # PR with 'perf' label
+  pull_request:
+    types: [labeled]
+
+jobs:
+  lighthouse:
+    # Only run if manually triggered, scheduled, or has 'perf' label
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'perf')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          # Skip DB-dependent features for static build
+          SKIP_DB_CHECK: 'true'
+          # Use placeholder for required env vars
+          DATABASE_URL: 'postgresql://user:pass@localhost:5432/db'
+          NEXTAUTH_SECRET: 'test-secret-for-build'
+          NEXTAUTH_URL: 'http://localhost:3000'
+
+      - name: Run Lighthouse CI
+        run: |
+          npm exec -- lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Upload Lighthouse reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci/
+          retention-days: 14
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Find the manifest file
+            const lhciDir = '.lighthouseci';
+            if (!fs.existsSync(lhciDir)) {
+              console.log('No Lighthouse CI results found');
+              return;
+            }
+
+            const manifestPath = path.join(lhciDir, 'manifest.json');
+            if (!fs.existsSync(manifestPath)) {
+              console.log('No manifest.json found');
+              return;
+            }
+
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+
+            // Build comment body
+            let body = '## Lighthouse CI Results\n\n';
+            body += '| URL | Performance | Accessibility | Best Practices | SEO |\n';
+            body += '|-----|-------------|---------------|----------------|-----|\n';
+
+            for (const entry of manifest) {
+              const summary = entry.summary;
+              if (summary) {
+                const perf = Math.round(summary.performance * 100);
+                const a11y = Math.round(summary.accessibility * 100);
+                const bp = Math.round(summary['best-practices'] * 100);
+                const seo = Math.round(summary.seo * 100);
+                body += `| ${entry.url} | ${perf} | ${a11y} | ${bp} | ${seo} |\n`;
+              }
+            }
+
+            body += '\n[View full report](https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/' + manifest[0]?.buildToken + '.html)\n';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
