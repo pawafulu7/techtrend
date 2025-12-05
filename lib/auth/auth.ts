@@ -11,11 +11,48 @@ import { env } from '@/lib/config/env';
 import { sendVerificationRequest } from './email-provider';
 import { sendVerificationRequestNodemailer } from './email-provider-nodemailer';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Use normalized auth secret from env config
   secret: env.AUTH_SECRET,
   adapter: PrismaAdapter(prisma),
-  
+
+  // Explicit cookie configuration for security
+  cookies: {
+    sessionToken: {
+      name: isProduction
+        ? '__Secure-authjs.session-token'
+        : 'authjs.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax', // OAuth compatible
+        path: '/',
+        secure: isProduction,
+      },
+    },
+    callbackUrl: {
+      name: isProduction
+        ? '__Secure-authjs.callback-url'
+        : 'authjs.callback-url',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: isProduction,
+      },
+    },
+    csrfToken: {
+      name: isProduction ? '__Host-authjs.csrf-token' : 'authjs.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: isProduction,
+      },
+    },
+  },
+
   providers: [
     // Email provider for magic link authentication
     EmailProvider({
