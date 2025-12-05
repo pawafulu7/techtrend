@@ -7,6 +7,10 @@ declare global {
       [key: string]: any;
     }
   }
+
+  // Garbage collection function (available with --expose-gc flag)
+  // eslint-disable-next-line no-var
+  var gc: (() => void) | undefined;
 }
 
 // Extended Window object for browser globals
