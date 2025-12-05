@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getThemeFromCookie } from '@/lib/theme-cookie';
 import { setSecurityHeaders } from '@/config/security-headers';
+import {
+  csrfProtection,
+  isCSRFExemptPath,
+  requiresCSRFProtection,
+} from '@/lib/middleware/csrf-protection';
 
 // Optional Basic Auth (enabled when env is set)
 function needsBasicAuth(): boolean {
@@ -44,6 +49,16 @@ const protectedApiPaths = [
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  // CSRF Protection for API routes
+  if (pathname.startsWith('/api/')) {
+    if (requiresCSRFProtection(request.method) && !isCSRFExemptPath(pathname)) {
+      const csrfResponse = await csrfProtection(request);
+      if (csrfResponse) {
+        return csrfResponse;
+      }
+    }
+  }
 
   // Site-wide Basic Auth
   if (needsBasicAuth()) {
@@ -102,6 +117,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api/auth|_next/static|_next/image|favicon.ico).*)',
+    // Match all routes except static files, fonts, and Next.js internals
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)',
   ],
 };
