@@ -1,6 +1,21 @@
 import logger from '@/lib/logger';
 
 /**
+ * パーセンタイル統計情報
+ */
+export interface PercentileStats {
+  count: number;
+  min: number;
+  max: number;
+  avg: number;
+  p50: number;
+  p75: number;
+  p90: number;
+  p95: number;
+  p99: number;
+}
+
+/**
  * リングバッファの実装
  */
 class RingBuffer {
@@ -117,26 +132,76 @@ export class RecommendationMetrics {
    * 統計情報をログ出力
    */
   private logStatistics(key: string): void {
-    const buffer = this.metrics.get(key);
-    if (!buffer) return;
-
-    const values = buffer.getValues();
-    if (values.length === 0) return;
-
-    const sorted = [...values].sort((a, b) => a - b);
-    const p50 = sorted[Math.floor(sorted.length * 0.5)];
-    const p95 = sorted[Math.floor(sorted.length * 0.95)];
-    const p99 = sorted[Math.floor(sorted.length * 0.99)];
-    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    const stats = this.calculatePercentiles(key);
+    if (!stats) return;
 
     logger.info({
       metric: key,
-      count: values.length,
-      avg: avg.toFixed(2),
-      p50: p50.toFixed(2),
-      p95: p95.toFixed(2),
-      p99: p99.toFixed(2),
+      count: stats.count,
+      avg: stats.avg.toFixed(2),
+      p50: stats.p50.toFixed(2),
+      p95: stats.p95.toFixed(2),
+      p99: stats.p99.toFixed(2),
     });
+  }
+
+  /**
+   * パーセンタイル統計を計算
+   */
+  private calculatePercentiles(key: string): PercentileStats | null {
+    const buffer = this.metrics.get(key);
+    if (!buffer) return null;
+
+    const values = buffer.getValues();
+    if (values.length === 0) return null;
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const len = sorted.length;
+
+    return {
+      count: len,
+      min: sorted[0],
+      max: sorted[len - 1],
+      avg: values.reduce((a, b) => a + b, 0) / len,
+      p50: sorted[Math.floor(len * 0.5)] ?? 0,
+      p75: sorted[Math.floor(len * 0.75)] ?? 0,
+      p90: sorted[Math.floor(len * 0.90)] ?? 0,
+      p95: sorted[Math.floor(len * 0.95)] ?? 0,
+      p99: sorted[Math.floor(len * 0.99)] ?? 0,
+    };
+  }
+
+  /**
+   * 特定のオペレーションの応答時間パーセンタイルを取得
+   */
+  getResponseTimePercentiles(operation: string): PercentileStats | null {
+    return this.calculatePercentiles(`response_time:${operation}`);
+  }
+
+  /**
+   * 全オペレーションの応答時間パーセンタイルを取得
+   */
+  getAllResponseTimePercentiles(): Record<string, PercentileStats> {
+    const result: Record<string, PercentileStats> = {};
+
+    for (const key of this.metrics.keys()) {
+      if (key.startsWith('response_time:')) {
+        const operation = key.replace('response_time:', '');
+        const stats = this.calculatePercentiles(key);
+        if (stats) {
+          result[operation] = stats;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * バッチサイズのパーセンタイルを取得
+   */
+  getBatchSizePercentiles(): PercentileStats | null {
+    return this.calculatePercentiles('batch:sizes');
   }
 
   /**
