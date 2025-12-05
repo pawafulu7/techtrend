@@ -56,6 +56,23 @@ const DEFAULT_CONFIG: MemoryMonitorConfig = {
 };
 
 /**
+ * Calculate heap used percentage with safe bounds
+ * Handles edge cases: NaN, 0, negative maxHeapMB values
+ */
+function calculateHeapUsedPercent(heapUsedMB: number, maxHeapMB: number): number {
+  // Validate maxHeapMB: must be a positive finite number
+  const safeMaxHeapMB =
+    typeof maxHeapMB === 'number' && Number.isFinite(maxHeapMB) && maxHeapMB > 0
+      ? maxHeapMB
+      : DEFAULT_CONFIG.thresholds.maxHeapMB;
+
+  const rawPercent = (heapUsedMB / safeMaxHeapMB) * 100;
+
+  // Clamp to 0-100 range
+  return Math.max(0, Math.min(100, Math.round(rawPercent)));
+}
+
+/**
  * Memory Monitor Singleton
  */
 export class MemoryMonitor {
@@ -102,9 +119,9 @@ export class MemoryMonitor {
       heapUsedMB: Math.round(heapUsedMB * 100) / 100,
       heapTotalMB: Math.round(heapTotalMB * 100) / 100,
       rssMB: Math.round(rssMB * 100) / 100,
-      heapUsedPercent: Math.min(
-        100,
-        Math.round((heapUsedMB / this.config.thresholds.maxHeapMB) * 100)
+      heapUsedPercent: calculateHeapUsedPercent(
+        heapUsedMB,
+        this.config.thresholds.maxHeapMB
       ),
       timestamp: Date.now(),
     };

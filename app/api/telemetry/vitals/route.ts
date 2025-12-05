@@ -84,10 +84,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  * Returns aggregated Web Vitals metrics for monitoring
  * Requires admin authentication in production
  *
- * TODO: Add authentication check using getServerSession or similar
- * before exposing aggregated metrics data
+ * TODO(auth): Add admin authentication/authorization guard before returning vitals
+ * Consider: getServerSession check, internal network restriction, or API key validation
  */
 export async function GET(): Promise<NextResponse> {
+  // TODO(auth): Enable authentication check in production
+  // const session = await getServerSession();
+  // if (!session?.user?.isAdmin) {
+  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // }
+
   // Aggregate metrics by page and metric name
   const aggregated: Record<
     string,
