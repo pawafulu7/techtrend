@@ -36,7 +36,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ? '__Secure-authjs.callback-url'
         : 'authjs.callback-url',
       options: {
-        httpOnly: true,
+        // Note: callbackUrl must NOT be httpOnly for OAuth redirect flow to work
+        // httpOnly breaks Auth.js OAuth callbacks (missing state errors)
         sameSite: 'lax',
         path: '/',
         secure: isProduction,

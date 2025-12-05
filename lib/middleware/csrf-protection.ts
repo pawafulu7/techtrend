@@ -138,7 +138,12 @@ export async function validateOrigin(request: NextRequest): Promise<boolean> {
  * @returns true if path is exempt
  */
 export function isCSRFExemptPath(pathname: string): boolean {
-  return CSRF_EXEMPT_PATHS.some((path) => pathname.startsWith(path));
+  // Use exact match or prefix-with-slash to prevent false matches
+  // e.g., "/api/auth/callback" should match "/api/auth/callback/google"
+  // but NOT "/api/auth/callbackadmin"
+  return CSRF_EXEMPT_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(path + '/')
+  );
 }
 
 /**

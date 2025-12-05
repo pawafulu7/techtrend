@@ -193,10 +193,22 @@ describe('csrf-protection', () => {
       expect(isCSRFExemptPath('/api/health')).toBe(true);
     });
 
+    it('should return true for exact match of exempt paths', () => {
+      expect(isCSRFExemptPath('/api/auth/callback')).toBe(true);
+      expect(isCSRFExemptPath('/api/health')).toBe(true);
+    });
+
     it('should return false for non-exempt paths', () => {
       expect(isCSRFExemptPath('/api/articles')).toBe(false);
       expect(isCSRFExemptPath('/api/user/profile')).toBe(false);
       expect(isCSRFExemptPath('/api/auth/register-with-email')).toBe(false);
+    });
+
+    it('should reject paths that only share prefix but are not subpaths', () => {
+      // Prevent false positives from prefix-only matching
+      expect(isCSRFExemptPath('/api/auth/callbackadmin')).toBe(false);
+      expect(isCSRFExemptPath('/api/healthcheck')).toBe(false);
+      expect(isCSRFExemptPath('/api/auth/signinpage')).toBe(false);
     });
   });
 
