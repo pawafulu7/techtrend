@@ -47,12 +47,12 @@ export function sanitizeError(error: unknown): unknown {
 
     // Remove Gemini API keys (pattern: AIza...)
     sanitizedMessage = sanitizedMessage.replace(
-      /AIza[a-zA-Z0-9_-]{35}/g,
+      /AIza[a-zA-Z0-9_\-]{35}/g,
       '[REDACTED:GEMINI_KEY]'
     );
     if (sanitizedStack) {
       sanitizedStack = sanitizedStack.replace(
-        /AIza[a-zA-Z0-9_-]{35}/g,
+        /AIza[a-zA-Z0-9_\-]{35}/g,
         '[REDACTED:GEMINI_KEY]'
       );
     }

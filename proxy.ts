@@ -7,6 +7,10 @@ import {
   requiresCSRFProtection,
 } from '@/lib/middleware/csrf-protection';
 
+// Force Node.js runtime for PrismaAdapter compatibility
+// Edge runtime doesn't support all Node.js APIs required by Prisma
+export const runtime = 'nodejs';
+
 // Optional Basic Auth (enabled when env is set)
 function needsBasicAuth(): boolean {
   const enabled = process.env.BASIC_AUTH_ENABLED === 'true';
