@@ -11,6 +11,7 @@ import { env } from '@/lib/config/env';
 import { sendVerificationRequest } from './email-provider';
 import { sendVerificationRequestNodemailer } from './email-provider-nodemailer';
 
+// Use centralized env config for consistency
 const isProduction = process.env.NODE_ENV === 'production';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

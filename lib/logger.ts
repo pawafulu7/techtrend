@@ -57,14 +57,14 @@ export function sanitizeError(error: unknown): unknown {
       );
     }
 
-    // Remove Bearer tokens
+    // Remove Bearer tokens (including JWT with dots and padding)
     sanitizedMessage = sanitizedMessage.replace(
-      /Bearer\s+[a-zA-Z0-9_-]+/gi,
+      /Bearer\s+[a-zA-Z0-9_.\-=]+/gi,
       'Bearer [REDACTED]'
     );
     if (sanitizedStack) {
       sanitizedStack = sanitizedStack.replace(
-        /Bearer\s+[a-zA-Z0-9_-]+/gi,
+        /Bearer\s+[a-zA-Z0-9_.\-=]+/gi,
         'Bearer [REDACTED]'
       );
     }

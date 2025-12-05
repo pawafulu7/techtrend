@@ -32,12 +32,15 @@ export const CSRF_PROTECTED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'] as cons
 function getAllowedOrigins(): string[] {
   const origins: string[] = [];
 
+  // Helper to normalize origin (remove trailing slash)
+  const normalize = (url: string) => url.replace(/\/$/, '');
+
   if (process.env.NEXTAUTH_URL) {
-    origins.push(process.env.NEXTAUTH_URL);
+    origins.push(normalize(process.env.NEXTAUTH_URL));
   }
 
   if (process.env.NEXT_PUBLIC_APP_URL) {
-    origins.push(process.env.NEXT_PUBLIC_APP_URL);
+    origins.push(normalize(process.env.NEXT_PUBLIC_APP_URL));
   }
 
   // Development environment origins
@@ -49,10 +52,11 @@ function getAllowedOrigins(): string[] {
   // Additional trusted origins from environment
   const trustedOrigins = process.env.CSRF_TRUSTED_ORIGINS;
   if (trustedOrigins) {
-    origins.push(...trustedOrigins.split(',').map((o) => o.trim()));
+    origins.push(...trustedOrigins.split(',').map((o) => normalize(o.trim())));
   }
 
-  return origins.filter(Boolean);
+  // Deduplicate origins
+  return [...new Set(origins.filter(Boolean))];
 }
 
 /**
@@ -100,31 +104,17 @@ export async function validateOrigin(request: NextRequest): Promise<boolean> {
     }
   }
 
-  // 3. Authorization header with Auth.js session validation
-  // Only allow if the request has a valid authenticated session
+  // 3. Authorization header or no Origin/Referer (server-to-server)
+  // Both cases require valid Auth.js session validation
   const authHeader = request.headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ')) {
+  if (authHeader?.startsWith('Bearer ') || (!origin && !referer)) {
     try {
       const session = await auth();
       if (session?.user) {
-        return true; // Verified API-to-API communication
+        return true; // Verified API-to-API or server-to-server communication
       }
     } catch {
-      // Session validation failed, reject
-      return false;
-    }
-  }
-
-  // 4. No Origin and no Referer (server-to-server without browser)
-  // Only allow if authenticated via Auth.js session
-  if (!origin && !referer) {
-    try {
-      const session = await auth();
-      if (session?.user) {
-        return true;
-      }
-    } catch {
-      // No valid session
+      // Session validation failed
     }
   }
 

@@ -90,13 +90,15 @@ describe('logger', () => {
 
     it('should not include stack trace in production', () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      try {
+        process.env.NODE_ENV = 'production';
 
-      const error = new Error('Test error');
-      const sanitized = sanitizeError(error) as { stack?: string };
-      expect(sanitized.stack).toBeUndefined();
-
-      process.env.NODE_ENV = originalEnv;
+        const error = new Error('Test error');
+        const sanitized = sanitizeError(error) as { stack?: string };
+        expect(sanitized.stack).toBeUndefined();
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
     });
 
     it('should return non-Error values as-is', () => {
