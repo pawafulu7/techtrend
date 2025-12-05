@@ -33,7 +33,10 @@ async function healthCheck() {
 
   // Redis接続チェック
   try {
-    const redis = new Redis(6380);
+    const redis = new Redis({
+      port: 6380,
+      password: process.env.REDIS_PASSWORD || 'redis_test_password',
+    });
     await redis.ping();
     checks.redis = true;
     redis.disconnect();
