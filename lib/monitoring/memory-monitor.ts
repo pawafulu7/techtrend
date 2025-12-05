@@ -67,7 +67,14 @@ export class MemoryMonitor {
   private startTime: number = Date.now();
 
   private constructor(config: Partial<MemoryMonitorConfig> = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.config = {
+      ...DEFAULT_CONFIG,
+      ...config,
+      thresholds: {
+        ...DEFAULT_CONFIG.thresholds,
+        ...(config.thresholds || {}),
+      },
+    };
   }
 
   static getInstance(config?: Partial<MemoryMonitorConfig>): MemoryMonitor {

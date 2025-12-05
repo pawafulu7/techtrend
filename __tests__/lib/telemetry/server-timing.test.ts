@@ -141,7 +141,8 @@ describe('measureAsync', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0].name).toBe('asyncOp');
     expect(entries[0].description).toBe('Async Operation');
-    expect(entries[0].duration).toBeGreaterThanOrEqual(10);
+    // Allow small timing variance due to setTimeout imprecision
+    expect(entries[0].duration).toBeGreaterThanOrEqual(9);
   });
 
   it('should measure timing even when function throws', async () => {

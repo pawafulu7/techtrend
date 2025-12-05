@@ -120,12 +120,22 @@ export const DEFAULT_API_BASELINES: ApiBaseline[] = [
 ];
 
 /**
+ * Stored measurement with timestamp for TTL management
+ */
+interface StoredMeasurement {
+  measurement: ApiMeasurement;
+  updatedAt: number;
+}
+
+/**
  * API Baseline Monitor
  */
 export class ApiBaselineMonitor {
   private static instance: ApiBaselineMonitor;
   private baselines: Map<string, ApiBaseline>;
-  private measurements: Map<string, ApiMeasurement>;
+  private measurements: Map<string, StoredMeasurement>;
+  private readonly maxMeasurements = 500;
+  private readonly measurementTTL = 24 * 60 * 60 * 1000; // 24 hours
 
   private constructor() {
     this.baselines = new Map();
@@ -152,9 +162,47 @@ export class ApiBaselineMonitor {
   }
 
   /**
+   * Validate baseline values
+   */
+  private isValidBaseline(baseline: ApiBaseline): boolean {
+    // Check endpoint and method are not empty
+    if (!baseline.endpoint || !baseline.method) {
+      logger.warn({ baseline }, 'Invalid baseline: endpoint and method are required');
+      return false;
+    }
+
+    // Check numeric values are finite and non-negative
+    const numericFields = [
+      baseline.p50Baseline,
+      baseline.p95Baseline,
+      baseline.p99Baseline,
+      baseline.warningThreshold,
+      baseline.criticalThreshold,
+    ];
+
+    for (const value of numericFields) {
+      if (!Number.isFinite(value) || value < 0) {
+        logger.warn({ baseline }, 'Invalid baseline: numeric values must be finite and non-negative');
+        return false;
+      }
+    }
+
+    // Check threshold order
+    if (baseline.criticalThreshold < baseline.warningThreshold) {
+      logger.warn({ baseline }, 'Invalid baseline: criticalThreshold should be >= warningThreshold');
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Set or update a baseline
    */
   setBaseline(baseline: ApiBaseline): void {
+    if (!this.isValidBaseline(baseline)) {
+      return;
+    }
     const key = this.generateKey(baseline.endpoint, baseline.method);
     this.baselines.set(key, baseline);
   }
@@ -168,11 +216,75 @@ export class ApiBaselineMonitor {
   }
 
   /**
+   * Validate measurement values
+   */
+  private isValidMeasurement(measurement: ApiMeasurement): boolean {
+    if (!measurement.endpoint || !measurement.method) {
+      logger.warn({ measurement }, 'Invalid measurement: endpoint and method are required');
+      return false;
+    }
+
+    const numericFields = [
+      measurement.p50,
+      measurement.p95,
+      measurement.p99,
+      measurement.count,
+      measurement.timestamp,
+    ];
+
+    for (const value of numericFields) {
+      if (!Number.isFinite(value) || value < 0) {
+        logger.warn({ measurement }, 'Invalid measurement: numeric values must be finite and non-negative');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Clean up expired measurements and enforce max size
+   */
+  private cleanupMeasurements(): void {
+    const now = Date.now();
+
+    // Remove expired entries
+    for (const [key, stored] of this.measurements.entries()) {
+      if (now - stored.updatedAt > this.measurementTTL) {
+        this.measurements.delete(key);
+      }
+    }
+
+    // Enforce max size (remove oldest entries)
+    if (this.measurements.size > this.maxMeasurements) {
+      const entries = Array.from(this.measurements.entries())
+        .sort((a, b) => a[1].updatedAt - b[1].updatedAt);
+
+      const toRemove = entries.slice(0, entries.length - this.maxMeasurements);
+      for (const [key] of toRemove) {
+        this.measurements.delete(key);
+      }
+    }
+  }
+
+  /**
    * Update measurement for an endpoint
    */
   updateMeasurement(measurement: ApiMeasurement): void {
+    if (!this.isValidMeasurement(measurement)) {
+      return;
+    }
+
     const key = this.generateKey(measurement.endpoint, measurement.method);
-    this.measurements.set(key, measurement);
+    this.measurements.set(key, {
+      measurement,
+      updatedAt: Date.now(),
+    });
+
+    // Periodic cleanup (every 100 updates)
+    if (this.measurements.size % 100 === 0) {
+      this.cleanupMeasurements();
+    }
 
     // Auto-compare and log if deviation detected
     const baseline = this.baselines.get(key);
@@ -258,7 +370,8 @@ export class ApiBaselineMonitor {
   compareAll(): BaselineComparison[] {
     const results: BaselineComparison[] = [];
 
-    for (const [key, measurement] of this.measurements.entries()) {
+    for (const [key, stored] of this.measurements.entries()) {
+      const measurement = stored.measurement;
       const baseline = this.baselines.get(key);
       if (baseline) {
         results.push(this.compareSingle(measurement, baseline));
@@ -305,7 +418,7 @@ export class ApiBaselineMonitor {
 
     return {
       baselines: Array.from(this.baselines.values()),
-      measurements: Array.from(this.measurements.values()),
+      measurements: Array.from(this.measurements.values()).map(s => s.measurement),
       comparisons,
       summary,
     };
