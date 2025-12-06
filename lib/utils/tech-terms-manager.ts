@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import fetch from 'node-fetch';
+import { logger, sanitizeError } from '@/lib/logger';
 
 export class TechTermsManager {
   private static instance: TechTermsManager;
@@ -80,9 +81,7 @@ export class TechTermsManager {
       );
     } catch (error) {
       // File write errors are non-critical for tech terms management
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('Failed to save custom tech terms:', error);
-      }
+      logger.warn({ error: sanitizeError(error) }, 'Failed to save custom tech terms');
     }
   }
   
@@ -95,8 +94,8 @@ export class TechTermsManager {
     } catch (error) {
       // File not found is expected on first run
       const err = error as { code?: string };
-      if (err.code !== 'ENOENT' && process.env.NODE_ENV !== 'production') {
-        console.warn('Failed to load custom tech terms:', error);
+      if (err.code !== 'ENOENT') {
+        logger.warn({ error: sanitizeError(error) }, 'Failed to load custom tech terms');
       }
     }
   }
@@ -122,9 +121,7 @@ export class TechTermsManager {
         await this.saveCustomTerms();
       }
     } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('Failed to update tech terms from remote:', error);
-      }
+      logger.warn({ error: sanitizeError(error) }, 'Failed to update tech terms from remote');
     }
   }
   

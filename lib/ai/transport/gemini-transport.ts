@@ -1,3 +1,4 @@
+import { logger, sanitizeError } from '@/lib/logger';
 import {
   GeminiTransport,
   TransportRequest,
@@ -18,7 +19,7 @@ export class GeminiTransportImpl implements GeminiTransport {
 
   async invoke(opts: TransportRequest): Promise<TransportResult> {
     if (this.circuitOpen && Date.now() < this.circuitOpenUntil) {
-      console.log('[Transport] Circuit breaker is open');
+      logger.warn('Circuit breaker is open');
       return {
         status: 'fatal_error',
         error: new Error('Circuit breaker is open'),
@@ -27,7 +28,7 @@ export class GeminiTransportImpl implements GeminiTransport {
       };
     }
 
-    console.log(`[Transport] Request start: ${opts.requestId}`);
+    logger.debug({ requestId: opts.requestId }, 'Transport request start');
 
     const result = await this.invokeWithRetry(opts);
 
@@ -39,12 +40,13 @@ export class GeminiTransportImpl implements GeminiTransport {
       if (this.consecutiveErrors >= this.circuitBreakerThreshold) {
         this.circuitOpen = true;
         this.circuitOpenUntil = Date.now() + 60000;
-        console.log('[Transport] Circuit breaker opened');
+        logger.warn('Circuit breaker opened');
       }
     }
 
-    console.log(
-      `[Transport] Request end: ${opts.requestId}, status: ${result.status}, latency: ${result.latencyMs}ms`
+    logger.debug(
+      { requestId: opts.requestId, status: result.status, latencyMs: result.latencyMs },
+      'Transport request end'
     );
 
     return result;
@@ -68,7 +70,7 @@ export class GeminiTransportImpl implements GeminiTransport {
       const jitter = Math.random() * 1000;
       const delay = baseDelay + jitter;
 
-      console.log(`[Transport] Retry attempt ${attempt + 1}, waiting ${Math.round(delay)}ms`);
+      logger.debug({ attempt: attempt + 1, delayMs: Math.round(delay) }, 'Transport retry attempt');
       await this.sleep(delay);
     }
 
@@ -104,7 +106,7 @@ export class GeminiTransportImpl implements GeminiTransport {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');
-        console.error(`[Transport] HTTP ${response.status}: ${errorText}`);
+        logger.error({ httpStatus: response.status, errorText }, 'Transport HTTP error');
 
         return {
           status: this.isRetryableStatus(response.status) ? 'retryable_error' : 'fatal_error',
@@ -128,7 +130,7 @@ export class GeminiTransportImpl implements GeminiTransport {
       const latencyMs = Date.now() - startTime;
       const err = error as Error;
 
-      console.error('[Transport] Request failed:', err.message);
+      logger.error({ error: sanitizeError(err), latencyMs }, 'Transport request failed');
 
       return {
         status: this.isRetryableError(err) ? 'retryable_error' : 'fatal_error',
@@ -153,6 +155,6 @@ export class GeminiTransportImpl implements GeminiTransport {
   }
 
   async warmup(): Promise<void> {
-    console.log('[Transport] Warmup - no action needed');
+    logger.debug('Transport warmup - no action needed');
   }
 }

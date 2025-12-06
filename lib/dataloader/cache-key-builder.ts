@@ -3,6 +3,8 @@
  * codex推奨: 長さプレフィックス方式による確実な分割
  */
 
+import { logger } from '@/lib/logger';
+
 const SEPARATOR = ':';
 
 /**
@@ -117,7 +119,7 @@ export class LengthPrefixedCacheKeyBuilder {
         results.push(parsed.articleId);
       } else {
         // 無効なキーを警告（デバッグ用）
-        console.warn(`CacheKeyBuilder: Invalid composite key format: ${key}`);
+        logger.warn({ key }, 'CacheKeyBuilder: Invalid composite key format');
       }
     }
 

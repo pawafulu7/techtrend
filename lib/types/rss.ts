@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 /**
  * RSS Item Schema Definition
@@ -72,7 +73,7 @@ export function isRSSItem(item: unknown): item is RSSItem {
 
   if (!result.success) {
     // Log validation failure for debugging
-    console.debug('RSS item validation failed:', result.error.flatten());
+    logger.debug({ error: result.error.flatten() }, 'RSS item validation failed');
   }
 
   parseCache.set(item, {

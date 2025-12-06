@@ -8,6 +8,7 @@ import { ContentEnricherFactory } from '../enrichers';
 import { detectSourceFromUrl, normalizeSourceName, isValidUrl } from './source-detector';
 import { WebFetcher } from '../utils/web-fetcher';
 import * as cheerio from 'cheerio';
+import { logger, sanitizeError } from '@/lib/logger';
 
 // グローバルなPrismaインスタンス（テストで上書き可能）
 let prisma = new PrismaClient();
@@ -135,9 +136,7 @@ async function fetchBasicMetadata(url: string) {
 
     return { title, thumbnail, description, content: description, keywords };
   } catch (error) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('Failed to fetch basic metadata:', error);
-    }
+    logger.warn({ error: sanitizeError(error) }, 'Failed to fetch basic metadata');
     return { title: 'Untitled Article', thumbnail: null, description: '', content: '', keywords: [] };
   }
 }

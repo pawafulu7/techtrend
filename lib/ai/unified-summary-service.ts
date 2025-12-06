@@ -159,17 +159,17 @@ export class UnifiedSummaryService {
 
         // 項目数不足の場合はログを出力
         if (qualityResult.itemCountValid === false) {
-          console.warn(
-            `[UnifiedSummaryService] 項目数不足: ${qualityResult.itemCount}個 ` +
-            `(記事: ${title.substring(0, 50)}..., 文字数: ${content.length})`
+          logger.warn(
+            { itemCount: qualityResult.itemCount, titlePreview: title.substring(0, 50), contentLength: content.length },
+            'Summary item count insufficient'
           );
         }
-        
+
         // 品質スコアが閾値以下または項目数不足の場合、再試行
         if (qualityScore < opts.minQualityScore! || qualityResult.itemCountValid === false) {
           if (attempt < opts.maxRetries!) {
             if (qualityResult.itemCountValid === false) {
-              console.log(`[UnifiedSummaryService] 項目数不足により再試行 (attempt ${attempt + 1}/${opts.maxRetries})`);
+              logger.info({ attempt: attempt + 1, maxRetries: opts.maxRetries }, 'Retrying due to insufficient item count');
             }
             await this.delay(opts.retryDelay!);
             continue;

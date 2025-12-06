@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { RAG_TOOL_NAMES } from '@/lib/rag/constants';
 import { articleLinkSchema, type ArticleLink } from '@/lib/types/article-link';
+import { logger, sanitizeError } from '@/lib/logger';
 
 const toolOutputSchema = z.object({
   articles: z.array(articleLinkSchema).optional(),
@@ -54,7 +55,7 @@ export function extractArticlesFromToolCalls(
     }
     return [...byId.values()].sort((a, b) => b.similarity - a.similarity);
   } catch (error) {
-    console.error('[ArticleLinkExtractor] Unexpected error:', error);
+    logger.error({ error: sanitizeError(error) }, 'ArticleLinkExtractor unexpected error');
     return [];
   }
 }
