@@ -100,6 +100,11 @@ export class MemoryMonitor {
     };
   }
 
+  /**
+   * Get or create the singleton instance.
+   * NOTE: config is only applied on first instantiation.
+   * To change config after creation, call resetInstance() first, then getInstance(newConfig).
+   */
   static getInstance(config?: Partial<MemoryMonitorConfig>): MemoryMonitor {
     if (!MemoryMonitor.instance) {
       MemoryMonitor.instance = new MemoryMonitor(config);
@@ -254,7 +259,10 @@ export class MemoryMonitor {
   }
 
   /**
-   * Get memory summary for API response
+   * Get memory summary for API response.
+   * NOTE: stats (avg/max/min) are calculated from history samples only.
+   * The current snapshot is returned separately and not included in statistics.
+   * sampleCount reflects the number of history samples used for calculation.
    */
   getSummary(): MemorySummary {
     const current = this.getStats();
@@ -324,7 +332,9 @@ export interface MemorySummary {
 }
 
 /**
- * Get recommended --max-old-space-size based on available memory
+ * Get recommended --max-old-space-size based on process type.
+ * Returns 1024MB for background jobs (worker/job/scheduled), 512MB for web processes.
+ * Detection priority: PROCESS_TYPE env var > process.argv (fallback).
  */
 export function getRecommendedHeapSize(): number {
   // Default recommendation: 512MB for web workers, 1024MB for background jobs
@@ -347,11 +357,15 @@ export function getRecommendedHeapSize(): number {
  * Force garbage collection if available (requires --expose-gc flag)
  */
 export function forceGC(): boolean {
-  if (typeof global.gc === 'function') {
-    global.gc();
+  // Type-safe access to global.gc (only available with --expose-gc flag)
+  const maybeGlobal = global as typeof globalThis & { gc?: () => void };
+
+  if (typeof maybeGlobal.gc === 'function') {
+    maybeGlobal.gc();
     logger.info('Forced garbage collection executed');
     return true;
   }
+
   return false;
 }
 
