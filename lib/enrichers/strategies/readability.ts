@@ -1,14 +1,22 @@
-import { Readability } from '@mozilla/readability';
-import logger from '@/lib/logger';
+/**
+ * Readability Strategy with Worker Threads
+ *
+ * Executes jsdom/Readability in a separate Worker Thread to prevent
+ * the main event loop from being blocked by synchronous DOM parsing.
+ *
+ * Key features:
+ * - Worker-based isolation: Timeouts work correctly even during heavy processing
+ * - HTML size guard: Skips oversized HTML (>500KB) to prevent memory issues
+ * - HTML preprocessing: Strips heavy content before Worker transfer
+ * - Graceful degradation: Returns null on timeout/error for fallback strategies
+ */
+import { Worker } from 'worker_threads';
+import * as path from 'path';
+import { logger } from '@/lib/logger';
 
-let jsdomModulePromise: Promise<typeof import('jsdom')> | null = null;
-
-async function loadJsdom() {
-  if (!jsdomModulePromise) {
-    jsdomModulePromise = import('jsdom'); // Lazy import keeps ESM-only jsdom external to Next's CJS bundle
-  }
-  return jsdomModulePromise;
-}
+// Constants
+const MAX_HTML_SIZE = 500_000; // 500KB - 99% of tech articles are under this
+const DEFAULT_TIMEOUT = 5000; // 5 seconds
 
 export interface ReadabilityResult {
   content: string;
@@ -16,73 +24,154 @@ export interface ReadabilityResult {
   title?: string;
 }
 
-type JsdomErrorType =
-  | 'css-parsing'
-  | 'resource-loading'
-  | 'not-implemented'
-  | 'unhandled-exception';
-
-interface JsdomError extends Error {
-  type: JsdomErrorType;
+interface WorkerResult {
+  success: boolean;
+  content: string | null;
+  thumbnail: string | undefined;
+  title: string | undefined;
+  error?: string;
 }
 
-const isJsdomError = (err: unknown): err is JsdomError =>
-  typeof err === 'object' &&
-  err !== null &&
-  'type' in err &&
-  typeof (err as { type?: unknown }).type === 'string';
+/**
+ * Strip heavy content from HTML before Worker transfer.
+ * Removes scripts, styles, comments, and base64 images to reduce size.
+ */
+function stripHeavyContent(html: string): string {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '');
+}
 
+/**
+ * Resolve Worker file path.
+ * In development: TypeScript file via tsx
+ * In production: Compiled JavaScript file
+ */
+function getWorkerPath(): string {
+  // Check if we're running in tsx/ts-node environment
+  const isTsRuntime =
+    process.env.TS_NODE_DEV === 'true' ||
+    process.argv.some((arg) => arg.includes('tsx') || arg.includes('ts-node'));
+
+  if (isTsRuntime) {
+    return path.join(__dirname, '../workers/readability-worker.ts');
+  }
+
+  // Production: Use compiled JS
+  return path.join(__dirname, '../workers/readability-worker.js');
+}
+
+/**
+ * Extract content using Mozilla Readability via Worker Thread.
+ *
+ * @param html - Raw HTML content
+ * @param url - Source URL for relative link resolution
+ * @param timeout - Maximum processing time in milliseconds (default: 5000)
+ * @returns ReadabilityResult or null on timeout/error/oversized content
+ */
 export async function extractWithReadability(
   html: string,
   url: string,
-  timeout: number = 5000
+  timeout: number = DEFAULT_TIMEOUT
 ): Promise<ReadabilityResult | null> {
-  const timeoutPromise = new Promise<null>((resolve) =>
-    setTimeout(() => resolve(null), timeout)
-  );
+  // Size guard: Skip oversized HTML to prevent memory issues
+  const htmlSize = Buffer.byteLength(html, 'utf8');
+  if (htmlSize > MAX_HTML_SIZE) {
+    logger.warn(
+      { url, size: htmlSize, maxSize: MAX_HTML_SIZE },
+      'HTML too large for Readability, skipping'
+    );
+    return null;
+  }
 
-  const extractionPromise = (async (): Promise<ReadabilityResult | null> => {
-    try {
-      const { JSDOM, VirtualConsole } = await loadJsdom();
+  // Preprocess: Strip heavy content
+  const strippedHtml = stripHeavyContent(html);
 
-      // Suppress noisy CSS parse warnings while keeping genuine errors
-      const virtualConsole = new VirtualConsole();
+  return new Promise((resolve) => {
+    let isResolved = false;
+    let worker: Worker | null = null;
 
-      // Handle console.error calls from scripts
-      virtualConsole.on('error', (msg) => {
-        logger.warn({ msg }, '[jsdom] console.error');
-      });
-
-      // Handle jsdom internal errors (CSS parsing, etc.)
-      virtualConsole.on('jsdomError', (err) => {
-        if (isJsdomError(err) && err.type === 'css-parsing') return; // Suppress CSS warnings
-        logger.error({ err }, '[jsdom]');
-      });
-
-      const dom = new JSDOM(html, { url, virtualConsole });
-      const reader = new Readability(dom.window.document);
-      const article = reader.parse();
-
-      if (article?.textContent) {
-        return {
-          content: article.textContent,
-          thumbnail: article.siteName ? undefined : article.excerpt || undefined,
-          title: article.title || undefined,
-        };
+    const cleanup = () => {
+      if (worker) {
+        worker.terminate().catch(() => {
+          // Ignore termination errors
+        });
+        worker = null;
       }
+    };
 
-      return null;
+    const timer = setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true;
+        logger.warn({ url, timeout }, 'Readability worker timed out');
+        cleanup();
+        resolve(null);
+      }
+    }, timeout);
+
+    try {
+      const workerPath = getWorkerPath();
+      worker = new Worker(workerPath, {
+        workerData: { html: strippedHtml, url },
+        // Use tsx for TypeScript files in development
+        execArgv: workerPath.endsWith('.ts') ? ['--import', 'tsx'] : [],
+      });
+
+      worker.on('message', (result: WorkerResult) => {
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timer);
+          cleanup();
+
+          if (result.success && result.content) {
+            resolve({
+              content: result.content,
+              thumbnail: result.thumbnail,
+              title: result.title,
+            });
+          } else {
+            if (result.error) {
+              logger.debug({ url, error: result.error }, 'Readability worker returned error');
+            }
+            resolve(null);
+          }
+        }
+      });
+
+      worker.on('error', (error) => {
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timer);
+          cleanup();
+          logger.debug({ url, error: error.message }, 'Readability worker error');
+          resolve(null);
+        }
+      });
+
+      worker.on('exit', (code) => {
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timer);
+          cleanup();
+          if (code !== 0) {
+            logger.debug({ url, exitCode: code }, 'Readability worker exited with error');
+          }
+          resolve(null);
+        }
+      });
     } catch (error) {
-      logger.debug(
-        {
-          url,
-          error: error instanceof Error ? error.message : String(error),
-        },
-        'Readability DOM parsing failed'
-      );
-      return null;
+      if (!isResolved) {
+        isResolved = true;
+        clearTimeout(timer);
+        cleanup();
+        logger.error(
+          { url, error: error instanceof Error ? error.message : String(error) },
+          'Failed to spawn Readability worker'
+        );
+        resolve(null);
+      }
     }
-  })();
-
-  return Promise.race([extractionPromise, timeoutPromise]);
+  });
 }
