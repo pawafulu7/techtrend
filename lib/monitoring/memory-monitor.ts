@@ -43,11 +43,17 @@ export interface MemoryMonitorConfig {
   historySize: number;       // Number of samples to keep in history
 }
 
+// Hardcoded fallback constant for calculateHeapUsedPercent (avoids circular reference)
+const FALLBACK_MAX_HEAP_MB = 512;
+
 const DEFAULT_CONFIG: MemoryMonitorConfig = {
   thresholds: {
     warningPercent: 70,
     criticalPercent: 85,
-    maxHeapMB: parseInt(process.env.NODE_MAX_HEAP_MB || '512', 10),
+    maxHeapMB: (() => {
+      const parsed = parseInt(process.env.NODE_MAX_HEAP_MB || '512', 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : FALLBACK_MAX_HEAP_MB;
+    })(),
   },
   intervalMs: 60000, // 1 minute
   enableLogging: process.env.NODE_ENV !== 'test',
@@ -64,7 +70,7 @@ function calculateHeapUsedPercent(heapUsedMB: number, maxHeapMB: number): number
   const safeMaxHeapMB =
     typeof maxHeapMB === 'number' && Number.isFinite(maxHeapMB) && maxHeapMB > 0
       ? maxHeapMB
-      : DEFAULT_CONFIG.thresholds.maxHeapMB;
+      : FALLBACK_MAX_HEAP_MB;
 
   const rawPercent = (heapUsedMB / safeMaxHeapMB) * 100;
 
@@ -297,7 +303,7 @@ export class MemoryMonitor {
     if (MemoryMonitor.instance) {
       MemoryMonitor.instance.stop();
     }
-    MemoryMonitor.instance = undefined!;
+    MemoryMonitor.instance = undefined as unknown as MemoryMonitor;
   }
 }
 
