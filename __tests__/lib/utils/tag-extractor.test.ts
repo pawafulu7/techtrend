@@ -67,8 +67,9 @@ describe('tag-extractor', () => {
     });
 
     it('handles Japanese characters', () => {
-      expect(normalizeTag('  JavaScript  ')).toBe('JavaScript');
-      expect(normalizeTag('TypeScript')).toBe('TypeScript');
+      expect(normalizeTag('  \u4eba\u5de5\u77e5\u80fd  ')).toBe('\u4eba\u5de5\u77e5\u80fd');
+      expect(normalizeTag('\u6a5f\u68b0\u5b66\u7fd2')).toBe('\u6a5f\u68b0\u5b66\u7fd2');
+      expect(normalizeTag('\u30bb\u30ad\u30e5\u30ea\u30c6\u30a3')).toBe('\u30bb\u30ad\u30e5\u30ea\u30c6\u30a3');
     });
   });
 
