@@ -113,7 +113,7 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
         .join(',')
     : sourceId?.toLowerCase() || 'all';
 
-  const pagination: PaginationParams = { page, limit, sortBy: finalSortBy, sortOrder };
+  const pagination: PaginationParams = { page, limit, sortBy: finalSortBy as PaginationParams['sortBy'], sortOrder };
   const filters: FilterParams = {
     sources,
     sourceId,
@@ -325,16 +325,13 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
 
     // Return 401 if readFilter is used without authentication
     if ((filters.readFilter === 'read' || filters.readFilter === 'unread') && !userId) {
-      return new Response(
-        JSON.stringify({
+      return NextResponse.json(
+        {
           success: false,
           error: 'Authentication required for read filter',
-        }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      ) as unknown as NextResponse;
+        },
+        { status: 401 }
+      );
     }
 
     const hasUserScopedQuery =

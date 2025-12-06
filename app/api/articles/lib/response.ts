@@ -11,6 +11,10 @@ import type { ArticleQueryResult } from './types';
 /**
  * Transform article items to include contentLength instead of full content
  * This reduces response payload size significantly
+ *
+ * Note: Uses runtime property replacement. The return type maintains the input type
+ * for compatibility with ArticleQueryResult, but 'content' is replaced with 'contentLength'
+ * at runtime.
  */
 export function transformArticleItems<T>(items: T[] | undefined): T[] {
   if (!items) return [];
@@ -72,7 +76,7 @@ export function createGetResponse(
     success: true,
     data: transformedResult,
     meta: {
-      userDataIncluded: includeUserData && hasUserId ? true : false,
+      userDataIncluded: includeUserData && hasUserId,
     },
   });
 

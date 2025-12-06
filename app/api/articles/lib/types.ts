@@ -28,7 +28,7 @@ export interface ArticleUserOverlay {
 export interface PaginationParams {
   page: number;
   limit: number;
-  sortBy: string;
+  sortBy: ValidSortField;
   sortOrder: 'asc' | 'desc';
 }
 

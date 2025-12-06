@@ -77,7 +77,7 @@ export function mergeUserData<T extends { id: string }>(
   userSpecificData: UserSpecificArticleData
 ): Array<T & ArticleUserOverlay> {
   if (items.length === 0) {
-    return items as Array<T & ArticleUserOverlay>;
+    return [];
   }
 
   const { favoritedArticleIds, readArticleIds } = userSpecificData;

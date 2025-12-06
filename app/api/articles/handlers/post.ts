@@ -35,6 +35,21 @@ export async function handlePost(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(errorResponse, { status: validationError.statusCode });
     }
 
+    // Verify sourceId exists
+    const sourceExists = await prisma.source.findUnique({
+      where: { id: sourceId },
+      select: { id: true },
+    });
+
+    if (!sourceExists) {
+      const validationError = new ValidationError(
+        `Source with id '${sourceId}' does not exist`,
+        'sourceId'
+      );
+      const errorResponse = formatErrorResponse(validationError);
+      return NextResponse.json(errorResponse, { status: validationError.statusCode });
+    }
+
     // Check if article already exists
     const existing = await prisma.article.findUnique({
       where: { url },
