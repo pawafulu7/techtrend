@@ -35,13 +35,25 @@ interface WorkerResult {
 /**
  * Strip heavy content from HTML before Worker transfer.
  * Removes scripts, styles, comments, and base64 images to reduce size.
+ *
+ * Security: Uses fixed-point iteration to handle nested/overlapping patterns.
+ * Regex patterns handle whitespace in closing tags (e.g., </script >).
  */
 function stripHeavyContent(html: string): string {
-  return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '');
+  let previous: string;
+  do {
+    previous = html;
+    html = html
+      // Match script tags with optional whitespace in closing tag: </script > or </script>
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
+      // Match style tags with optional whitespace in closing tag
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, '')
+      // Match HTML comments
+      .replace(/<!--[\s\S]*?-->/g, '')
+      // Match base64 data URIs
+      .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '');
+  } while (html !== previous);
+  return html;
 }
 
 /**

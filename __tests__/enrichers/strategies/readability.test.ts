@@ -164,7 +164,7 @@ describe('Readability extraction with Worker Threads', () => {
       ]);
 
       // All should complete without errors
-      results.forEach((result, index) => {
+      results.forEach((result) => {
         expect(result === null || result?.content !== undefined).toBe(true);
       });
     }, 60000);
