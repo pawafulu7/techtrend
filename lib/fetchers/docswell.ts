@@ -7,6 +7,7 @@ import { BaseFetcher } from './base';
 import { Source } from '@prisma/client';
 import { CreateArticleInput } from '@/types';
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import RSSParser from 'rss-parser';
 import { docswellConfig } from '../config/docswell';
 
@@ -26,7 +27,17 @@ interface DocswellRSSItem {
 
 export class DocswellFetcher extends BaseFetcher {
   private parser: RSSParser;
-  
+
+  // Docswellの許可ホスト一覧
+  private static readonly ALLOWED_THUMBNAIL_HOSTS = [
+    'docswell.com',
+    'www.docswell.com',
+    'bcdn.docswell.com',
+  ];
+
+  // 許可される画像拡張子パターン
+  private static readonly ALLOWED_IMAGE_PATTERN = /\.(jpe?g|png|webp|gif)(\?|$)/i;
+
   constructor(source: Source) {
     super(source);
     this.parser = new RSSParser({
@@ -34,6 +45,96 @@ export class DocswellFetcher extends BaseFetcher {
         item: ['media:thumbnail', 'media:statistics', 'dc:subject', 'dc:creator']
       }
     });
+  }
+
+  /**
+   * Validate thumbnail URL for security and correctness
+   * @param url - URL to validate
+   * @returns Valid URL or undefined
+   */
+  private validateThumbnailUrl(url: string | undefined): string | undefined {
+    if (!url) return undefined;
+
+    // Trim and validate length
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl || trimmedUrl.length > 2048) return undefined;
+
+    // Reject dangerous protocols
+    if (trimmedUrl.startsWith('javascript:') || trimmedUrl.startsWith('data:') || 
+        trimmedUrl.startsWith('blob:') || trimmedUrl.startsWith('file:')) {
+      return undefined;
+    }
+
+    // Normalize protocol-relative URL
+    const normalizedUrl = trimmedUrl.startsWith('//') ? `https:${trimmedUrl}` : trimmedUrl;
+
+    try {
+      const parsed = new URL(normalizedUrl);
+
+      // Use parsed.protocol for robust check (handles case-insensitive, etc.)
+      if (parsed.protocol !== 'https:') {
+        return undefined;
+      }
+
+      // Reject URLs with userinfo (username/password)
+      if (parsed.username || parsed.password) {
+        return undefined;
+      }
+
+      // Validate hostname against allowlist
+      const isAllowedHost = DocswellFetcher.ALLOWED_THUMBNAIL_HOSTS.some(
+        host => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+      );
+      if (!isAllowedHost) {
+        return undefined;
+      }
+
+      // Validate image extension or width parameter
+      const hasValidExtension = DocswellFetcher.ALLOWED_IMAGE_PATTERN.test(parsed.pathname);
+      const hasWidthParam = parsed.searchParams.has('width');
+
+      if (!hasValidExtension && !hasWidthParam) {
+        return undefined;
+      }
+
+      return normalizedUrl;
+    } catch {
+      // URL parse error
+      return undefined;
+    }
+  }
+
+  /**
+   * Find valid thumbnail image from element
+   * Strategy:
+   * 1. Prefer img with alt="slide-thumbnail"
+   * 2. Fallback to first img with valid docswell host
+   */
+  private findValidThumbnailImg(
+    $div: cheerio.Cheerio<Element>,
+    $: cheerio.CheerioAPI
+  ): string | undefined {
+    // Strategy 1: Search by alt attribute
+    const $imgByAlt = $div.find('img[alt="slide-thumbnail"]').first();
+    if ($imgByAlt.length) {
+      const src = $imgByAlt.attr('src');
+      const validated = this.validateThumbnailUrl(src);
+      if (validated) return validated;
+    }
+
+    // Strategy 2: Scan all imgs and return first valid one
+    let validThumbnail: string | undefined;
+    $div.find('img').each((_, el) => {
+      if (validThumbnail) return false; // Stop when found
+      const src = $(el).attr('src');
+      const validated = this.validateThumbnailUrl(src);
+      if (validated) {
+        validThumbnail = validated;
+        return false;
+      }
+    });
+
+    return validThumbnail;
   }
 
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
@@ -71,11 +172,11 @@ export class DocswellFetcher extends BaseFetcher {
       const $div = $(element);
       const $link = $div.find('a').first();
       const $h3 = $div.find('h3').first();
-      const $img = $div.find('img').first();
       
       const href = $link.attr('href');
       const title = $h3.text().trim();
-      const thumbnail = $img.attr('src');
+      // Use validated thumbnail extraction with multiple strategies
+      const thumbnail = this.findValidThumbnailImg($div, $);
       
       if (!href || !title) return;
       
@@ -90,7 +191,7 @@ export class DocswellFetcher extends BaseFetcher {
         publishedAt: new Date(),
         author: 'Docswell User', // デフォルト値
         tags: this.extractTags(title),
-        thumbnail: thumbnail || undefined,
+        thumbnail,
       });
     });
     
