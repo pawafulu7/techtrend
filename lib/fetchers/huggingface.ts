@@ -4,6 +4,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
+import { extractTagsFromCategories, mergeWithBaseTags } from '@/lib/utils/tag-extractor';
 
 interface HuggingFaceRSSItem {
   title?: string;
@@ -85,9 +86,7 @@ export class HuggingFaceFetcher extends BaseFetcher {
 
   private generateAITags(categories?: string[]): string[] {
     const baseTags = ['AI', 'Machine Learning', 'Hugging Face'];
-    if (categories && categories.length > 0) {
-      return [...baseTags, ...categories];
-    }
-    return baseTags;
+    const categoryTags = extractTagsFromCategories(categories);
+    return mergeWithBaseTags(categoryTags, baseTags);
   }
 }

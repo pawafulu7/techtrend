@@ -6,6 +6,7 @@ import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import logger from '@/lib/logger';
+import { extractTagsFromCategories } from '@/lib/utils/tag-extractor';
 
 interface PublickeyRSSItem {
   title?: string;
@@ -147,7 +148,7 @@ export class PublickeyFetcher extends BaseFetcher {
             content: content || undefined,
             publishedAt,
             sourceId: this.source.id,
-            tagNames: item.categories || [],
+            tagNames: extractTagsFromCategories(item.categories),
           };
 
           // コンテンツからサムネイルを抽出（enriched thumbnailがない場合）
