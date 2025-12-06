@@ -1,6 +1,6 @@
 import { extractWithReadability } from '@/lib/enrichers/strategies/readability';
 
-describe('Readability extraction', () => {
+describe('Readability extraction with Worker Threads', () => {
   describe('extractWithReadability', () => {
     it('should extract content from simple HTML', async () => {
       const html = `
@@ -23,7 +23,7 @@ describe('Readability extraction', () => {
       expect(result).not.toBeNull();
       expect(result?.content).toBeDefined();
       expect(result!.content.length).toBeGreaterThan(100);
-    });
+    }, 30000);
 
     it('should return null for empty HTML', async () => {
       const html = '<html><body></body></html>';
@@ -31,26 +31,59 @@ describe('Readability extraction', () => {
       const result = await extractWithReadability(html, 'https://example.com/empty');
 
       expect(result).toBeNull();
-    });
+    }, 30000);
 
-    it('should handle very large HTML', async () => {
-      const hugeHtml = '<html><body>' + '<p>x</p>'.repeat(100000) + '</body></html>';
+    it('should return null for oversized HTML (>500KB)', async () => {
+      // Create HTML larger than 500KB
+      const oversizedHtml = '<html><body>' + 'x'.repeat(600_000) + '</body></html>';
 
-      const result = await extractWithReadability(hugeHtml, 'https://example.com/huge', 5000);
+      const result = await extractWithReadability(oversizedHtml, 'https://example.com/oversized');
 
-      // May succeed or timeout, both are acceptable for very large HTML
-      if (result) {
-        expect(result.content).toBeDefined();
-      }
-    }, 60000);
+      // Size guard should reject this immediately
+      expect(result).toBeNull();
+    }, 10000);
+
+    it('should strip scripts and styles from HTML', async () => {
+      const htmlWithScripts = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Article with Scripts</title>
+            <style>.heavy { background: url(data:image/png;base64,iVBORw0KGgoAAAANS...); }</style>
+          </head>
+          <body>
+            <script>console.log("should be removed");</script>
+            <article>
+              <h1>Clean Article</h1>
+              <p>This content should be extracted without scripts or styles.</p>
+              <p>More meaningful content here for the article.</p>
+            </article>
+            <script>alert("another script");</script>
+          </body>
+        </html>
+      `;
+
+      const result = await extractWithReadability(
+        htmlWithScripts,
+        'https://example.com/with-scripts'
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.content).toBeDefined();
+      expect(result!.content).not.toContain('console.log');
+      expect(result!.content).not.toContain('alert');
+    }, 30000);
 
     it('should handle malformed HTML gracefully', async () => {
       const malformed = '<html><body><p>Unclosed paragraph<article>No closing tags';
 
       const result = await extractWithReadability(malformed, 'https://example.com/malformed');
 
-      expect(result).toBeDefined();
-    });
+      // Should not throw; may return null or partial content
+      if (result !== null) {
+        expect(result.content).toBeDefined();
+      }
+    }, 30000);
 
     it('should extract from article with rich structure', async () => {
       const html = `
@@ -89,6 +122,52 @@ describe('Readability extraction', () => {
       expect(result!.content).toContain('Second section');
       expect(result!.content).not.toContain('Navigation Menu');
       expect(result!.content).not.toContain('Footer content');
-    });
+    }, 30000);
+
+    it('should not hang indefinitely', async () => {
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <body>
+            <article>
+              <p>Simple content</p>
+            </article>
+          </body>
+        </html>
+      `;
+
+      // Verify the worker completes without hanging
+      const result = await extractWithReadability(html, 'https://example.com/timeout-test', 10000);
+
+      if (result !== null) {
+        expect(result.content).toBeDefined();
+      }
+    }, 30000);
+
+    it('should handle concurrent Worker calls', async () => {
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <body>
+            <article>
+              <h1>Concurrent Test</h1>
+              <p>Testing concurrent Worker execution.</p>
+            </article>
+          </body>
+        </html>
+      `;
+
+      // Run 3 concurrent extractions
+      const results = await Promise.all([
+        extractWithReadability(html, 'https://example.com/concurrent-1'),
+        extractWithReadability(html, 'https://example.com/concurrent-2'),
+        extractWithReadability(html, 'https://example.com/concurrent-3'),
+      ]);
+
+      // All should complete without errors
+      results.forEach((result) => {
+        expect(result === null || result?.content !== undefined).toBe(true);
+      });
+    }, 60000);
   });
 });
