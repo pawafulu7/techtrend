@@ -72,8 +72,13 @@ export function isRSSItem(item: unknown): item is RSSItem {
   const result = RSSItemSchema.safeParse(item);
 
   if (!result.success) {
-    // Log validation failure for debugging
-    logger.debug({ error: result.error.flatten() }, 'RSS item validation failed');
+    // Log validation failure for debugging with item context
+    const itemObj = item as Record<string, unknown>;
+    logger.debug({
+      error: result.error.flatten(),
+      title: typeof itemObj.title === 'string' ? itemObj.title.substring(0, 50) : undefined,
+      link: typeof itemObj.link === 'string' ? itemObj.link : undefined,
+    }, 'RSS item validation failed');
   }
 
   parseCache.set(item, {
