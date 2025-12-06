@@ -46,21 +46,11 @@ function stripHeavyContent(html: string): string {
 
 /**
  * Resolve Worker file path.
- * In development: TypeScript file via tsx
- * In production: Compiled JavaScript file
+ * Always uses JavaScript file for Worker Threads compatibility.
+ * (Node.js Worker Threads cannot directly execute TypeScript)
  */
 function getWorkerPath(): string {
-  // Check if we're running in tsx/ts-node environment
-  const isTsRuntime =
-    process.env.TS_NODE_DEV === 'true' ||
-    process.argv.some((arg) => arg.includes('tsx') || arg.includes('ts-node'));
-
-  if (isTsRuntime) {
-    return path.join(__dirname, '../workers/readability-worker.ts');
-  }
-
-  // Production: Use compiled JS
-  return path.join(__dirname, '../workers/readability-worker.js');
+  return path.join(__dirname, '../../workers/readability-worker.js');
 }
 
 /**
@@ -115,8 +105,6 @@ export async function extractWithReadability(
       const workerPath = getWorkerPath();
       worker = new Worker(workerPath, {
         workerData: { html: strippedHtml, url },
-        // Use tsx for TypeScript files in development
-        execArgv: workerPath.endsWith('.ts') ? ['--import', 'tsx'] : [],
       });
 
       worker.on('message', (result: WorkerResult) => {
