@@ -668,13 +668,14 @@ export class SummaryManager {
       await this.updateArticleTags(article.id, result.tags);
     }
 
-    logger.info({ articleId: article.id, title: article.title.substring(0, 50) }, 'Generated summary');
-
     // Invalidate cache
     await cacheInvalidator.onArticleUpdated(article.id, {
       summary: result.summary,
       detailedSummary: result.detailedSummary
     });
+
+    // Log success after all operations complete (DB update, tag update, cache invalidation)
+    logger.info({ articleId: article.id, title: article.title.substring(0, 50) }, 'Generated summary');
 
     return { success: true, articleId: article.id };
   }

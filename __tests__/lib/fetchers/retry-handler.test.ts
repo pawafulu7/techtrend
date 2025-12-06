@@ -73,6 +73,16 @@ describe('retry-handler', () => {
       expect(classifyError('string error')).toBe('unknown');
       expect(classifyError(null)).toBe('unknown');
     });
+
+    it('classifies errors by error name', () => {
+      const fetchError = new Error('connection failed');
+      fetchError.name = 'FetchError';
+      expect(classifyError(fetchError)).toBe('network');
+
+      const abortError = new Error('operation cancelled');
+      abortError.name = 'AbortError';
+      expect(classifyError(abortError)).toBe('timeout');
+    });
   });
 
   describe('isRetryable', () => {
@@ -106,8 +116,22 @@ describe('retry-handler', () => {
       }
     });
 
-    it('uses longer delay for rate limiting', () => {
+    it('uses longer delay for rate limiting (deterministic)', () => {
       // Rate limit uses 3x base delay
+      // Mock Math.random for deterministic test
+      const mockRandom = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const delay = calculateDelay(0, 1000, 30000, 'rate_limit');
+      // rate_limit: effectiveBase = 1000 * 3 = 3000
+      // cappedDelay = min(3000 * 2^0, 30000) = 3000
+      // jitter = 0.5 * 3000 = 1500
+      expect(delay).toBe(1500);
+
+      mockRandom.mockRestore();
+    });
+
+    it('uses longer delay for rate limiting (statistical)', () => {
+      // Additional statistical test to verify jitter distribution
       const delays: number[] = [];
       for (let i = 0; i < 100; i++) {
         delays.push(calculateDelay(0, 1000, 30000, 'rate_limit'));
@@ -351,6 +375,25 @@ describe('retry-handler', () => {
 
       expect(result.success).toBe(true);
       expect(result.result).toBe(5);
+    });
+
+    it('retries through wrapper on failure', async () => {
+      const originalFn = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+        .mockResolvedValue('recovered');
+      const wrappedFn = withRetryWrapper(originalFn, {
+        operationId: 'wrapper-retry-test',
+        baseDelayMs: 1,
+        useCircuitBreaker: false,
+      });
+
+      const result = await wrappedFn();
+
+      expect(result.success).toBe(true);
+      expect(result.result).toBe('recovered');
+      expect(result.attempts).toBe(2);
+      expect(originalFn).toHaveBeenCalledTimes(2);
     });
   });
 });
