@@ -59,9 +59,10 @@ export class DocswellFetcher extends BaseFetcher {
     const trimmedUrl = url.trim();
     if (!trimmedUrl || trimmedUrl.length > 2048) return undefined;
 
-    // Reject dangerous protocols
-    if (trimmedUrl.startsWith('javascript:') || trimmedUrl.startsWith('data:') || 
-        trimmedUrl.startsWith('blob:') || trimmedUrl.startsWith('file:')) {
+    // Reject dangerous protocols (case-insensitive early check; URL class normalizes later)
+    const lowerUrl = trimmedUrl.toLowerCase();
+    if (lowerUrl.startsWith('javascript:') || lowerUrl.startsWith('data:') ||
+        lowerUrl.startsWith('vbscript:') || lowerUrl.startsWith('blob:') || lowerUrl.startsWith('file:')) {
       return undefined;
     }
 
@@ -218,16 +219,16 @@ export class DocswellFetcher extends BaseFetcher {
       // 一時的に閲覧数フィルタリングを無効化してテスト
       // 後でRSSパーサーのカスタムフィールドを修正する必要がある
       
-      // サムネイルを取得
+      // サムネイルを取得（検証済みURLのみ使用）
       let thumbnail: string | undefined;
       const thumbnailElement = (item as DocswellRSSItem)['media:thumbnail'];
       if (thumbnailElement) {
         if (typeof thumbnailElement === 'string') {
-          thumbnail = thumbnailElement;
+          thumbnail = this.validateThumbnailUrl(thumbnailElement);
         } else if (thumbnailElement.$ && thumbnailElement.$.url) {
-          thumbnail = thumbnailElement.$.url;
+          thumbnail = this.validateThumbnailUrl(thumbnailElement.$.url);
         } else if (thumbnailElement.url) {
-          thumbnail = thumbnailElement.url;
+          thumbnail = this.validateThumbnailUrl(thumbnailElement.url);
         }
       }
       
@@ -242,7 +243,7 @@ export class DocswellFetcher extends BaseFetcher {
         publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
         author: author,
         tags: this.extractTags(item.title + ' ' + (item.contentSnippet || '')),
-        thumbnail: typeof thumbnail === 'string' ? thumbnail : undefined,
+        thumbnail,
       });
       
       processedCount++;

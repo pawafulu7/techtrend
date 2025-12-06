@@ -128,6 +128,18 @@ describe('DocswellFetcher', () => {
         const url = 'file:///etc/passwd';
         expect(validateThumbnailUrl(url)).toBeUndefined();
       });
+
+      it('should reject vbscript: URLs', () => {
+        const url = 'vbscript:msgbox("XSS")';
+        expect(validateThumbnailUrl(url)).toBeUndefined();
+      });
+
+      it('should reject uppercase protocol variants', () => {
+        expect(validateThumbnailUrl('JAVASCRIPT:alert(1)')).toBeUndefined();
+        expect(validateThumbnailUrl('JavaScript:alert(1)')).toBeUndefined();
+        expect(validateThumbnailUrl('VBSCRIPT:msgbox("XSS")')).toBeUndefined();
+        expect(validateThumbnailUrl('DATA:image/png;base64,xyz')).toBeUndefined();
+      });
     });
 
     describe('invalid URLs - host rejection', () => {
@@ -403,7 +415,8 @@ describe('DocswellFetcher', () => {
     });
 
     it('should handle fetch errors gracefully', async () => {
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      // Use mockRejectedValue (not Once) to handle retry attempts
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await fetcher.fetch();
 
