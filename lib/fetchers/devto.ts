@@ -162,6 +162,7 @@ export class DevToFetcher extends BaseFetcher {
             publishedAt: new Date(articleData.published_at),
             sourceId: this.source.id,
             tagNames: tagNames,
+            bookmarks: articleData.positive_reactions_count || 0,
             };
 
           articles.push(article);

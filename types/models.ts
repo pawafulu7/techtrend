@@ -72,6 +72,7 @@ export type CreateArticleInput = {
   difficulty?: string | null;
   metadata?: Record<string, unknown>;
   author?: string;
+  bookmarks?: number;
 };
 
 // Where条件の型
