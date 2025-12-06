@@ -82,7 +82,7 @@ function calculateHeapUsedPercent(heapUsedMB: number, maxHeapMB: number): number
  * Memory Monitor Singleton
  */
 export class MemoryMonitor {
-  private static instance: MemoryMonitor;
+  private static instance: MemoryMonitor | undefined;
   private config: MemoryMonitorConfig;
   private intervalHandle: NodeJS.Timeout | null = null;
   private history: MemoryStats[] = [];
@@ -303,7 +303,7 @@ export class MemoryMonitor {
     if (MemoryMonitor.instance) {
       MemoryMonitor.instance.stop();
     }
-    MemoryMonitor.instance = undefined as unknown as MemoryMonitor;
+    MemoryMonitor.instance = undefined;
   }
 }
 
@@ -328,6 +328,14 @@ export interface MemorySummary {
  */
 export function getRecommendedHeapSize(): number {
   // Default recommendation: 512MB for web workers, 1024MB for background jobs
+  // Priority: PROCESS_TYPE env var > process.argv detection
+  const processType = process.env.PROCESS_TYPE?.toLowerCase();
+  
+  if (processType === 'worker' || processType === 'job' || processType === 'scheduled') {
+    return 1024;
+  }
+  
+  // Fallback to process.argv detection (less reliable in containerized environments)
   const isBackgroundJob = process.argv.some(
     (arg) => arg.includes('worker') || arg.includes('job') || arg.includes('scheduled')
   );
