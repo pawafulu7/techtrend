@@ -12,6 +12,7 @@
  */
 import { Worker } from 'worker_threads';
 import * as path from 'path';
+import sanitizeHtml from 'sanitize-html';
 import { logger } from '@/lib/logger';
 
 // Constants
@@ -34,26 +35,39 @@ interface ReadabilityWorkerResult {
 
 /**
  * Strip heavy content from HTML before Worker transfer.
- * Removes scripts, styles, comments, and base64 images to reduce size.
- *
- * Security: Uses fixed-point iteration to handle nested/overlapping patterns.
- * Regex patterns handle whitespace in closing tags (e.g., </script >).
+ * Uses sanitize-html library for robust HTML sanitization (CodeQL recommended).
+ * Removes scripts, styles, and transforms base64 images to reduce size.
  */
 function stripHeavyContent(html: string): string {
-  let previous: string;
-  do {
-    previous = html;
-    html = html
-      // Match script tags with optional whitespace in closing tag: </script > or </script>
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
-      // Match style tags with optional whitespace in closing tag
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, '')
-      // Match HTML comments
-      .replace(/<!--[\s\S]*?-->/g, '')
-      // Match base64 data URIs
-      .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '');
-  } while (html !== previous);
-  return html;
+  // Use sanitize-html to properly remove script/style tags
+  // This handles edge cases that regex cannot (e.g., </script\t\n bar>)
+  const sanitized = sanitizeHtml(html, {
+    // Allow all tags except script and style
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+      'article', 'section', 'header', 'footer', 'nav', 'aside',
+      'figure', 'figcaption', 'main', 'time', 'mark', 'details', 'summary',
+    ]),
+    // Explicitly exclude dangerous tags
+    exclusiveFilter: (frame) => {
+      // Remove script and style elements
+      if (frame.tag === 'script' || frame.tag === 'style') {
+        return true;
+      }
+      // Remove img tags with base64 data URIs to reduce size
+      if (
+        frame.tag === 'img' &&
+        typeof frame.attribs?.src === 'string' &&
+        frame.attribs.src.startsWith('data:image/')
+      ) {
+        return true;
+      }
+      return false;
+    },
+    // Allow all attributes (we're only stripping heavy content, not sanitizing for XSS)
+    allowedAttributes: false,
+  });
+
+  return sanitized;
 }
 
 /**
