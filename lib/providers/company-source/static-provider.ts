@@ -1,5 +1,6 @@
 import type { CompanySource, CompanySourceProvider } from './interface';
 import { sourceRegistry } from './source-registry';
+import { logger } from '@/lib/logger';
 
 /**
  * Static company source provider (Phase 1)
@@ -15,9 +16,7 @@ export class StaticCompanySourceProvider implements CompanySourceProvider {
       const entry = sourceRegistry[id];
       if (!entry) {
         // Phase 2: Consider logging or throwing error for missing IDs
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(`[StaticCompanySourceProvider] Source ID not found in registry: ${id}`);
-        }
+        logger.warn({ sourceId: id }, 'StaticCompanySourceProvider: Source ID not found in registry');
         continue;
       }
 

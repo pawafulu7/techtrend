@@ -5,6 +5,7 @@
 
 import { normalizeTag } from '../utils/tag-normalizer';
 import { INSTRUCTION_PATTERNS, CATEGORY_LABELS, TITLE_CHAR_THRESHOLD, SENTENCE_MARKERS } from './constants';
+import { logger } from '@/lib/logger';
 
 export interface ParsedSummaryResult {
   summary: string;
@@ -266,7 +267,7 @@ function createFallbackSummary(text: string): string {
   }
 
   // サニタイズ後も不十分な場合のみエラーメッセージ
-  console.warn('[createFallbackSummary] Insufficient content after sanitization');
+  logger.warn('Insufficient content after sanitization for fallback summary');
   return '記事の要約生成に失敗しました';
 }
 

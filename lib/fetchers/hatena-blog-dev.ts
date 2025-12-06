@@ -6,6 +6,7 @@
 
 import { BaseFetcher } from './base';
 import type { FetchResult, CreateArticleInput } from '@/types/fetchers';
+import { logger } from '@/lib/logger';
 
 /**
  * hatena.blog/dev/entries から取得する記事エントリの型
@@ -179,7 +180,7 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
     const publishedAt = new Date(entry.created);
     if (Number.isNaN(publishedAt.getTime())) {
       // Fall back to current time if date is invalid
-      console.warn(`[HatenaBlogDevFetcher] Invalid date format: ${entry.created}, using current time`);
+      logger.warn({ dateValue: entry.created }, 'HatenaBlogDevFetcher: Invalid date format, using current time');
     }
 
     return {

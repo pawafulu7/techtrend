@@ -8,6 +8,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { getAppDependencies } from '@/lib/di/bootstrap';
+import { logger, sanitizeError } from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
 import { cleanupText, normalizeDetailedSummary } from '@/lib/services/summary-generation';
 import type { UnifiedSummaryServiceImpl } from '@/lib/ai/service/unified-summary-service';
@@ -115,7 +116,7 @@ export class SummaryManager {
    * Generate summaries for articles without summaries
    */
   async generateSummaries(options: SummaryGenerationOptions): Promise<SummaryGenerationResult> {
-    console.error('Starting summary generation...');
+    logger.info('Starting summary generation');
     const startTime = Date.now();
 
     try {
@@ -127,7 +128,7 @@ export class SummaryManager {
       if (!options.force && !hasTargetArticleIds) {
         const hasNewArticles = await this.checkNewArticles(options);
         if (!hasNewArticles) {
-          console.error('No new articles found. Skipping summary generation.');
+          logger.info('No new articles found. Skipping summary generation');
           return { generated: 0, errors: 0, skipped: 0 };
         }
       }
@@ -163,9 +164,9 @@ export class SummaryManager {
           : options.limit || 50
       }) as ArticleWithSource[];
 
-      console.error(
-        `Found ${articles.length} articles without summaries` +
-        (hasTargetArticleIds ? ` (filtered by ${options.articleIds!.length} articleIds)` : '')
+      logger.info(
+        { count: articles.length, filteredByIds: hasTargetArticleIds ? options.articleIds!.length : undefined },
+        'Found articles without summaries'
       );
 
       let generated = 0;
@@ -177,7 +178,7 @@ export class SummaryManager {
         try {
           const validation = this.validateArticleContent(article);
           if (!validation.valid) {
-            console.error(`Skipping article ${article.id}: ${validation.reason}`);
+            logger.warn({ articleId: article.id, reason: validation.reason }, 'Skipping article');
             skipped++;
             continue;
           }
@@ -205,7 +206,7 @@ export class SummaryManager {
             await this.updateArticleTags(article.id, result.tags);
           }
 
-          console.error(`Generated summary for: ${article.title.substring(0, 50)}...`);
+          logger.info({ articleId: article.id, title: article.title.substring(0, 50) }, 'Generated summary');
           generated++;
 
           // Invalidate cache
@@ -218,18 +219,18 @@ export class SummaryManager {
           await this.sleep(2000);
 
         } catch (error) {
-          console.error(`Error processing article ${article.id}:`, error);
+          logger.error({ articleId: article.id, error: sanitizeError(error) }, 'Error processing article');
           errors++;
         }
       }
 
       const duration = Date.now() - startTime;
-      console.error(`Summary generation completed: ${generated} generated, ${skipped} skipped, ${errors} errors (${duration}ms)`);
+      logger.info({ generated, skipped, errors, durationMs: duration }, 'Summary generation completed');
 
       return { generated, errors, skipped };
 
     } catch (error) {
-      console.error('Fatal error in summary generation:', error);
+      logger.error({ error: sanitizeError(error) }, 'Fatal error in summary generation');
       throw error;
     }
   }
@@ -238,7 +239,7 @@ export class SummaryManager {
    * Regenerate existing summaries
    */
   async regenerateSummaries(options: SummaryGenerationOptions): Promise<SummaryGenerationResult> {
-    console.error('Starting summary regeneration...');
+    logger.info('Starting summary regeneration');
     const startTime = Date.now();
 
     try {
@@ -274,11 +275,11 @@ export class SummaryManager {
       const articles = await this.prisma.article.findMany(query) as ArticleWithSource[];
 
       if (articles.length === 0) {
-        console.error('No articles to regenerate');
+        logger.info('No articles to regenerate');
         return { generated: 0, errors: 0, skipped: 0 };
       }
 
-      console.error(`Found ${articles.length} articles to regenerate`);
+      logger.info({ count: articles.length }, 'Found articles to regenerate');
 
       let generated = 0;
       let errors = 0;
@@ -288,7 +289,7 @@ export class SummaryManager {
         try {
           const validation = this.validateArticleContent(article);
           if (!validation.valid) {
-            console.error(`Skipping article ${article.id}: ${validation.reason}`);
+            logger.warn({ articleId: article.id, reason: validation.reason }, 'Skipping article');
             skipped++;
             continue;
           }
@@ -316,7 +317,7 @@ export class SummaryManager {
             await this.updateArticleTags(article.id, result.tags);
           }
 
-          console.error(`Regenerated: ${article.title.substring(0, 50)}...`);
+          logger.info({ articleId: article.id, title: article.title.substring(0, 50) }, 'Regenerated summary');
           generated++;
 
           // Invalidate cache
@@ -329,18 +330,18 @@ export class SummaryManager {
           await this.sleep(3000);
 
         } catch (error) {
-          console.error(`Error processing article ${article.id}:`, error);
+          logger.error({ articleId: article.id, error: sanitizeError(error) }, 'Error processing article');
           errors++;
         }
       }
 
       const duration = Math.round((Date.now() - startTime) / 1000);
-      console.error(`Regeneration completed: ${generated} generated, ${skipped} skipped, ${errors} errors (${duration}s)`);
+      logger.info({ generated, skipped, errors, durationSec: duration }, 'Regeneration completed');
 
       return { generated, errors, skipped };
 
     } catch (error) {
-      console.error('Fatal error in regeneration:', error);
+      logger.error({ error: sanitizeError(error) }, 'Fatal error in regeneration');
       throw error;
     }
   }
@@ -349,7 +350,7 @@ export class SummaryManager {
    * Generate summaries for articles with missing summaries
    */
   async generateMissingSummaries(options: SummaryGenerationOptions): Promise<SummaryGenerationResult> {
-    console.error('Starting missing summaries generation...');
+    logger.info('Starting missing summaries generation');
 
     try {
       const daysAgo = new Date();
@@ -377,10 +378,10 @@ export class SummaryManager {
 
       const articles = await this.prisma.article.findMany(query) as ArticleWithSource[];
 
-      console.error(`Found ${articles.length} articles with missing summaries (past ${options.days || 7} days)`);
+      logger.info({ count: articles.length, days: options.days || 7 }, 'Found articles with missing summaries');
 
       if (articles.length === 0) {
-        console.error('No articles with missing summaries');
+        logger.info('No articles with missing summaries');
         return { generated: 0, errors: 0, skipped: 0 };
       }
 
@@ -392,7 +393,7 @@ export class SummaryManager {
         try {
           const validation = this.validateArticleContent(article);
           if (!validation.valid) {
-            console.error(`Skipping article ${article.id}: ${validation.reason}`);
+            logger.warn({ articleId: article.id, reason: validation.reason }, 'Skipping article');
             skipped++;
             continue;
           }
@@ -420,7 +421,7 @@ export class SummaryManager {
             await this.updateArticleTags(article.id, result.tags);
           }
 
-          console.error(`Generated: ${article.title.substring(0, 50)}...`);
+          logger.info({ articleId: article.id, title: article.title.substring(0, 50) }, 'Generated summary');
           generated++;
 
           // Invalidate cache
@@ -433,17 +434,17 @@ export class SummaryManager {
           await this.sleep(2000);
 
         } catch (error) {
-          console.error(`Error processing article ${article.id}:`, error);
+          logger.error({ articleId: article.id, error: sanitizeError(error) }, 'Error processing article');
           errors++;
         }
       }
 
-      console.error(`Missing summaries completed: ${generated} generated, ${skipped} skipped, ${errors} errors`);
+      logger.info({ generated, skipped, errors }, 'Missing summaries completed');
 
       return { generated, errors, skipped };
 
     } catch (error) {
-      console.error('Fatal error in missing summaries generation:', error);
+      logger.error({ error: sanitizeError(error) }, 'Fatal error in missing summaries generation');
       throw error;
     }
   }
@@ -532,7 +533,7 @@ export class SummaryManager {
       where: whereCondition
     });
 
-    console.error(`Found ${newArticlesCount} new articles to process`);
+    logger.info({ count: newArticlesCount }, 'Found new articles to process');
     return true;
   }
 

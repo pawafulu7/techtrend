@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logger, sanitizeError } from '@/lib/logger';
 
 /**
  * Rate limit configuration schema
@@ -216,7 +217,7 @@ export function getRateLimitConfig(key: string): RateLimitConfig {
         return RateLimitConfigSchema.parse(merged);
       }
     } catch (error) {
-      console.error('Failed to parse/validate RATE_LIMIT_OVERRIDES', error);
+      logger.error({ error: sanitizeError(error) }, 'Failed to parse/validate RATE_LIMIT_OVERRIDES');
     }
   }
 

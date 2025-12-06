@@ -90,26 +90,30 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
 
                 if (translatedTitle) {
                   if (translationAttempt > 0) {
-                    console.log(
-                      `[Service] Title translation succeeded on attempt ${translationAttempt + 1} for ${requestId}`
+                    logger.info(
+                      { requestId, attempt: translationAttempt + 1 },
+                      'Title translation succeeded on retry'
                     );
                   }
                   break;
                 } else {
-                  console.warn(
-                    `[Service] Title translation attempt ${translationAttempt + 1} returned empty for ${requestId}, retrying...`
+                  logger.warn(
+                    { requestId, attempt: translationAttempt + 1 },
+                    'Title translation returned empty, retrying'
                   );
                 }
               } catch (translationError) {
-                const errorMsg = (translationError as Error).message;
+                const err = translationError as Error;
 
                 if (translationAttempt >= MAX_TRANSLATION_RETRIES - 1) {
-                  console.error(
-                    `[Service] Title translation failed after ${MAX_TRANSLATION_RETRIES} attempts for ${requestId}: ${errorMsg}`
+                  logger.error(
+                    { requestId, maxAttempts: MAX_TRANSLATION_RETRIES, error: sanitizeError(err) },
+                    'Title translation failed after max attempts'
                   );
                 } else {
-                  console.warn(
-                    `[Service] Title translation attempt ${translationAttempt + 1} failed for ${requestId}: ${errorMsg}, retrying...`
+                  logger.warn(
+                    { requestId, attempt: translationAttempt + 1, error: sanitizeError(err) },
+                    'Title translation attempt failed, retrying'
                   );
                 }
               }

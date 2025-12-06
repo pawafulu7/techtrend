@@ -1,3 +1,4 @@
+import { logger, sanitizeError } from '@/lib/logger';
 import {
   SummaryProvider,
   SummaryProviderInput,
@@ -49,7 +50,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       timeoutMs: 60000,
     };
 
-    console.log(`[Adapter] Summarizing article: ${input.title} (${input.requestId})`);
+    logger.debug({ title: input.title, requestId: input.requestId }, 'Summarizing article');
 
     const result = await this.transport.invoke(transportRequest);
 
@@ -89,7 +90,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
 
       const parsed = this.extractStructuredData(text);
 
-      console.log(`[Adapter] Successfully parsed response for ${requestId}`);
+      logger.debug({ requestId }, 'Successfully parsed response');
 
       return {
         headline: parsed.headline,
@@ -101,7 +102,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       };
     } catch (error) {
       const err = error as Error;
-      console.error(`[Adapter] Failed to parse response: ${err.message}`);
+      logger.error({ error: sanitizeError(err) }, 'Failed to parse response');
       throw new Error(`Response parsing failed: ${err.message}`);
     }
   }
@@ -203,12 +204,12 @@ export class GeminiSummaryAdapter implements SummaryProvider {
     }
 
     if (this.containsInstructionMarkers(headline)) {
-      console.warn(`[Adapter] Headline contains instruction markers, rejecting: ${headline.substring(0, 100)}`);
+      logger.warn({ headline: headline.substring(0, 100) }, 'Headline contains instruction markers, rejecting');
       throw new Error('Headline contains instruction markers - regeneration required');
     }
 
     if (this.containsInstructionMarkers(detailedSummary)) {
-      console.warn(`[Adapter] Detailed summary contains instruction markers, rejecting`);
+      logger.warn('Detailed summary contains instruction markers, rejecting');
       throw new Error('Detailed summary contains instruction markers - regeneration required');
     }
 
