@@ -70,7 +70,7 @@ Scripts that are no longer actively used but preserved for reference:
 - `collect-feeds.ts` - RSS/API feed collection
 - `manage-summaries.ts` - Summary generation
 - `manage-quality-scores.ts` - Quality score calculation
-- `delete-low-quality-articles.ts` - Cleanup
+- `clean-tags.ts` - Tag cleanup
 
 ### ci/ - CI/CD
 - `run-golden-set-regression.ts` - AI regression tests

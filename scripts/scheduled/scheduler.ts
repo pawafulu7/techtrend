@@ -408,45 +408,22 @@ cron.schedule('5 5,17 * * *', async () => {
 cron.schedule('0 22 * * *', async () => {
   const startTime = new Date();
   console.error(`\n[INFO] 定期クリーンアップ開始: ${startTime.toLocaleString('ja-JP')}`);
-  
+
   try {
-    // 低品質記事のクリーンアップ
-    console.error('[INFO] 低品質記事のクリーンアップ中...');
-    const { stdout: cleanupOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/delete-low-quality-articles.ts');
-    console.error(cleanupOutput);
-    
     // 空のタグや重複タグのクリーンアップ
     console.error('[INFO] タグのクリーンアップ中...');
     const { stdout: tagCleanupOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/clean-tags.ts');
     console.error(tagCleanupOutput);
-    
+
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
     console.error(`[INFO] クリーンアップ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
-    
+
   } catch (error) {
     console.error('[ERROR] クリーンアップでエラーが発生しました:', error instanceof Error ? error.message : String(error));
   }
 });
 
-// 週次クリーンアップ（毎週日曜日の深夜2時）
-cron.schedule('0 2 * * 0', async () => {
-  const startTime = new Date();
-  console.error(`\n[INFO] 週次クリーンアップを開始: ${startTime.toLocaleString('ja-JP')}`);
-  
-  try {
-    // 低品質記事の削除
-    console.error('[INFO] 低品質記事を削除中...');
-    const { stdout: deleteOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/delete-low-quality-articles.ts');
-    console.error(deleteOutput);
-    
-    const endTime = new Date();
-    const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-    console.error(`[INFO] 週次クリーンアップ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
-  } catch (error) {
-    console.error('[ERROR] 週次クリーンアップでエラーが発生しました:', error instanceof Error ? error.message : String(error));
-  }
-});
 
 // 毎日午後3時30分に品質チェックと自動再生成を実行
 cron.schedule('30 15 * * *', async () => {
