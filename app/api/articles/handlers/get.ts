@@ -103,11 +103,12 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
         .join(',')
     : 'none';
 
-  // Normalize sources for cache key
+  // Normalize sources for cache key (trim first, then filter empty, then lowercase)
   const normalizedSources = sources
     ? sources
         .split(',')
-        .filter((id) => id.trim())
+        .map((id) => id.trim())
+        .filter(Boolean)
         .map((id) => id.toLowerCase())
         .sort()
         .join(',')
@@ -337,7 +338,9 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     const hasUserScopedQuery =
       (filters.readFilter === 'read' || filters.readFilter === 'unread') && !!userId;
     const hasUserContext = (display.includeUserData && !!userId) || hasUserScopedQuery;
-    const shouldUsePersonalizedFilter = personalization.categoryIds.length > 0;
+    // Personalization does not support readFilter - skip personalization when readFilter is active
+    const shouldUsePersonalizedFilter =
+      personalization.categoryIds.length > 0 && !hasUserScopedQuery;
 
     // Execute query
     let baseResult: ArticleQueryResult;
