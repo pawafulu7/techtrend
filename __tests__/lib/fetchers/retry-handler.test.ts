@@ -157,6 +157,7 @@ describe('retry-handler', () => {
 
     it('transitions to half-open after timeout and closes on success', () => {
       jest.useFakeTimers();
+      jest.setSystemTime(0); // Explicit time control for Date.now()
 
       // Open the circuit
       recordFailure(operationId, 'network');
@@ -181,6 +182,7 @@ describe('retry-handler', () => {
 
     it('reopens circuit on failure during half-open', () => {
       jest.useFakeTimers();
+      jest.setSystemTime(0); // Explicit time control for Date.now()
 
       // Open the circuit
       recordFailure(operationId, 'network');
@@ -283,6 +285,8 @@ describe('retry-handler', () => {
 
       expect(result.success).toBe(false);
       expect(result.attempts).toBe(0);
+      expect(result.failureType).toBe('network'); // Explicit failure type assertion
+      expect(result.error?.message).toContain('Circuit breaker open');
       expect(operation).not.toHaveBeenCalled();
     });
 

@@ -606,7 +606,7 @@ export class SummaryManager {
       const abortPromise = new Promise<never>((_, reject) => {
         controller.signal.addEventListener('abort', () => {
           reject(new Error(`Summary generation timed out after ${SUMMARY_TIMEOUT}ms`));
-        });
+        }, { once: true });
       });
 
       // Race between actual processing and timeout
