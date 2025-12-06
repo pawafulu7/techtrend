@@ -47,8 +47,12 @@ const SUMMARY_TIMEOUT = Number.isFinite(parsedTimeout) && parsedTimeout >= 1000
 /**
  * Minimum delay between requests to respect rate limits (milliseconds).
  * Applied per request slot (not total delay).
+ * Configurable via SUMMARY_REQUEST_DELAY environment variable (default: 500).
  */
-const SUMMARY_REQUEST_DELAY = 500;
+const parsedRequestDelay = Number.parseInt(process.env.SUMMARY_REQUEST_DELAY ?? '500', 10);
+const SUMMARY_REQUEST_DELAY = Number.isFinite(parsedRequestDelay) && parsedRequestDelay >= 0
+  ? parsedRequestDelay
+  : 500;
 
 /**
  * Content validation result for article processing
