@@ -586,6 +586,12 @@ export class SummaryManager {
 
   /**
    * Process a single article with timeout protection
+   *
+   * Note: Timeout provides fail-fast behavior but does not cancel in-flight API calls.
+   * The underlying AI service call will continue until completion. This is a known
+   * limitation - true cancellation would require AbortSignal propagation through
+   * the AI service layer (SummaryService, GeminiClient, etc).
+   *
    * @private
    */
   private async processArticleWithTimeout(

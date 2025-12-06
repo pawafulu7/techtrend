@@ -115,6 +115,7 @@ describe('retry-handler', () => {
       const avgDelay = delays.reduce((a, b) => a + b, 0) / delays.length;
       // Average should be around 1500 (half of 3000 due to jitter)
       expect(avgDelay).toBeGreaterThan(500);
+      expect(avgDelay).toBeLessThan(2500); // Upper bound for statistical safety
     });
   });
 
@@ -154,23 +155,50 @@ describe('retry-handler', () => {
       expect(getCircuitState(operationId)).toBe('open');
     });
 
-    it('closes circuit after successful recovery from half-open', () => {
+    it('transitions to half-open after timeout and closes on success', () => {
+      jest.useFakeTimers();
+
+      // Open the circuit
+      recordFailure(operationId, 'network');
+      recordFailure(operationId, 'network');
+      recordFailure(operationId, 'network');
+      expect(getCircuitState(operationId)).toBe('open');
+      expect(isCircuitOpen(operationId)).toBe(true);
+
+      // Advance time past CIRCUIT_RESET_TIMEOUT_MS (60000ms)
+      jest.advanceTimersByTime(60001);
+
+      // Should transition to half-open and allow attempt
+      expect(isCircuitOpen(operationId)).toBe(false);
+      expect(getCircuitState(operationId)).toBe('half-open');
+
+      // Success should close the circuit
+      recordSuccess(operationId);
+      expect(getCircuitState(operationId)).toBe('closed');
+
+      jest.useRealTimers();
+    });
+
+    it('reopens circuit on failure during half-open', () => {
+      jest.useFakeTimers();
+
       // Open the circuit
       recordFailure(operationId, 'network');
       recordFailure(operationId, 'network');
       recordFailure(operationId, 'network');
       expect(getCircuitState(operationId)).toBe('open');
 
-      // Manually set to half-open (simulating timeout)
-      // We can't easily test the timeout, so we record success which should close it
-      resetCircuitBreaker(operationId);
-      recordFailure(operationId, 'network');
-      recordFailure(operationId, 'network');
-      recordFailure(operationId, 'network');
+      // Advance time to transition to half-open
+      jest.advanceTimersByTime(60001);
+      expect(isCircuitOpen(operationId)).toBe(false);
+      expect(getCircuitState(operationId)).toBe('half-open');
 
-      // Reset and simulate half-open by calling recordSuccess
-      resetCircuitBreaker(operationId);
-      expect(getCircuitState(operationId)).toBe('closed');
+      // Failure during half-open should reopen circuit
+      recordFailure(operationId, 'network');
+      expect(getCircuitState(operationId)).toBe('open');
+      expect(isCircuitOpen(operationId)).toBe(true);
+
+      jest.useRealTimers();
     });
   });
 
