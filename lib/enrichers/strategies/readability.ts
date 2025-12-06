@@ -24,7 +24,7 @@ export interface ReadabilityResult {
   title?: string;
 }
 
-interface WorkerResult {
+interface ReadabilityWorkerResult {
   success: boolean;
   content: string | null;
   thumbnail: string | undefined;
@@ -62,7 +62,7 @@ function stripHeavyContent(html: string): string {
  * (Node.js Worker Threads cannot directly execute TypeScript)
  */
 function getWorkerPath(): string {
-  return path.join(__dirname, '../../workers/readability-worker.js');
+  return path.resolve(__dirname, '../../workers/readability-worker.js');
 }
 
 /**
@@ -119,7 +119,7 @@ export async function extractWithReadability(
         workerData: { html: strippedHtml, url },
       });
 
-      worker.on('message', (result: WorkerResult) => {
+      worker.on('message', (result: ReadabilityWorkerResult) => {
         if (!isResolved) {
           isResolved = true;
           clearTimeout(timer);

@@ -79,8 +79,10 @@ describe('Readability extraction with Worker Threads', () => {
 
       const result = await extractWithReadability(malformed, 'https://example.com/malformed');
 
-      // Should not throw, may return null or partial content
-      expect(result === null || result?.content !== undefined).toBe(true);
+      // Should not throw; may return null or partial content
+      if (result !== null) {
+        expect(result.content).toBeDefined();
+      }
     }, 30000);
 
     it('should extract from article with rich structure', async () => {
@@ -122,8 +124,7 @@ describe('Readability extraction with Worker Threads', () => {
       expect(result!.content).not.toContain('Footer content');
     }, 30000);
 
-    it('should timeout for slow processing', async () => {
-      // Use a short timeout to test timeout behavior
+    it('should not hang indefinitely', async () => {
       const html = `
         <!DOCTYPE html>
         <html>
@@ -135,12 +136,12 @@ describe('Readability extraction with Worker Threads', () => {
         </html>
       `;
 
-      // This should complete within timeout normally
+      // Verify the worker completes without hanging
       const result = await extractWithReadability(html, 'https://example.com/timeout-test', 10000);
 
-      // Normal HTML should complete, not timeout
-      // Just verify it doesn't hang indefinitely
-      expect(result === null || result?.content !== undefined).toBe(true);
+      if (result !== null) {
+        expect(result.content).toBeDefined();
+      }
     }, 30000);
 
     it('should handle concurrent Worker calls', async () => {
