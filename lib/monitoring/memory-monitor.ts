@@ -98,6 +98,19 @@ export class MemoryMonitor {
         ...(config.thresholds || {}),
       },
     };
+
+    // Validate and normalize threshold values
+    const { warningPercent, criticalPercent } = this.config.thresholds;
+    if (warningPercent >= criticalPercent) {
+      logger.warn({
+        msg: 'Invalid threshold configuration: warningPercent >= criticalPercent. Swapping values.',
+        warningPercent,
+        criticalPercent,
+      });
+      // Swap to ensure warning < critical
+      this.config.thresholds.warningPercent = criticalPercent;
+      this.config.thresholds.criticalPercent = warningPercent;
+    }
   }
 
   /**
@@ -146,13 +159,15 @@ export class MemoryMonitor {
       return; // Already running
     }
 
-    logger.info({
-      msg: 'Memory monitor started',
-      config: {
-        intervalMs: this.config.intervalMs,
-        thresholds: this.config.thresholds,
-      },
-    });
+    if (this.config.enableLogging) {
+      logger.info({
+        msg: 'Memory monitor started',
+        config: {
+          intervalMs: this.config.intervalMs,
+          thresholds: this.config.thresholds,
+        },
+      });
+    }
 
     // Take initial sample
     this.sample();
@@ -170,7 +185,9 @@ export class MemoryMonitor {
     if (this.intervalHandle) {
       clearInterval(this.intervalHandle);
       this.intervalHandle = null;
-      logger.info('Memory monitor stopped');
+      if (this.config.enableLogging) {
+        logger.info('Memory monitor stopped');
+      }
     }
   }
 
@@ -263,6 +280,10 @@ export class MemoryMonitor {
    * NOTE: stats (avg/max/min) are calculated from history samples only.
    * The current snapshot is returned separately and not included in statistics.
    * sampleCount reflects the number of history samples used for calculation.
+   *
+   * IMPORTANT: alertLevel is only updated via sample() -> checkThresholds().
+   * For accurate alerts, call start() to enable periodic sampling, or call
+   * sample() manually before getSummary() if you need on-demand alert updates.
    */
   getSummary(): MemorySummary {
     const current = this.getStats();
