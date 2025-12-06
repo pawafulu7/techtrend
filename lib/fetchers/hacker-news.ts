@@ -88,6 +88,7 @@ export class HackerNewsFetcher extends BaseFetcher {
             publishedAt,
             sourceId: this.source.id,
             tagNames: tags,
+            bookmarks: story.score || 0,
           };
 
           // サムネイルがある場合は追加
