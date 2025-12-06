@@ -360,11 +360,7 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
 
       if (hasUserScopedQuery) {
         // User-scoped queries bypass cache
-        baseResult = await withDbTiming(
-          metrics,
-          () => executeStandardQuery(params, userId, hasUserScopedQuery, metrics),
-          'db_query'
-        );
+        baseResult = await executeStandardQuery(params, userId, hasUserScopedQuery, metrics);
       } else {
         // Use cache
         const cacheResult = await withCacheTiming(

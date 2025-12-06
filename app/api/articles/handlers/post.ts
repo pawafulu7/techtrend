@@ -92,11 +92,12 @@ export async function handlePost(request: NextRequest): Promise<NextResponse> {
     );
   } catch (error) {
     logger.error({ err: error }, 'Error creating article');
+    const isProduction = process.env.NODE_ENV === 'production';
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to create article',
-        details: error instanceof Error ? error.message : undefined,
+        details: isProduction ? undefined : (error instanceof Error ? error.message : undefined),
       } as ApiResponse<never>,
       { status: 500 }
     );

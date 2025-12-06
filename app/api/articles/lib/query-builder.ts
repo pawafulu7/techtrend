@@ -10,11 +10,12 @@ import { getDateRangeFilter } from '@/app/lib/date-utils';
 import { sourceCache } from '@/lib/cache/source-cache';
 import { MetricsCollector, withCacheTiming } from '@/lib/metrics/performance';
 import logger from '@/lib/logger';
-import type {
-  ArticleWhereInput,
-  ArticleSelect,
-  FilterParams,
-  DisplayOptions,
+import {
+  ALLOWED_SELECTABLE_FIELDS,
+  type ArticleWhereInput,
+  type ArticleSelect,
+  type FilterParams,
+  type DisplayOptions,
 } from './types';
 
 /**
@@ -39,30 +40,11 @@ export function buildSelectFields(options: DisplayOptions): ArticleSelect {
 
   if (fields) {
     // Custom field selection with whitelist validation
-    const allowedFields = new Set([
-      'title',
-      'url',
-      'summary',
-      'thumbnail',
-      'publishedAt',
-      'qualityScore',
-      'bookmarks',
-      'userVotes',
-      'difficulty',
-      'createdAt',
-      'updatedAt',
-      'sourceId',
-      'summaryVersion',
-      'articleType',
-      'category',
-      'detailedSummary',
-    ]);
-
     selectFields = { id: true } as ArticleSelect;
     const fieldList = fields.split(',').map((f) => f.trim());
 
     for (const field of fieldList) {
-      if (allowedFields.has(field)) {
+      if (ALLOWED_SELECTABLE_FIELDS.has(field)) {
         const selectFieldsAny = selectFields as Record<string, boolean>;
         selectFieldsAny[field] = true;
       }
