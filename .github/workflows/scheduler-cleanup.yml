@@ -49,5 +49,4 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
         run: |
-          npx tsx scripts/scheduled/delete-low-quality-articles.ts
           npx tsx scripts/scheduled/clean-tags.ts
