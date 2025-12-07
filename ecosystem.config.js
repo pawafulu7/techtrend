@@ -19,7 +19,9 @@ module.exports = {
         FETCHER_TIMEOUT_MS: process.env.FETCHER_TIMEOUT_MS || '60000', // Per-source fetch timeout (ms)
         SKIP_POST_SAVE_ENRICHMENT: '0', // Enable post-save enrichment (required for embedding job enqueue)
         POST_SAVE_ENRICH_TIMEOUT_MS: '10000', // Post-save enrichment timeout (10s)
-        POST_SAVE_ENRICH_SLEEP_MS: '0' // No sleep between enrichments (was 2000ms)
+        POST_SAVE_ENRICH_SLEEP_MS: '0', // No sleep between enrichments (was 2000ms)
+        EMBEDDING_STUCK_THRESHOLD_MINUTES: process.env.EMBEDDING_STUCK_THRESHOLD_MINUTES || '30', // Stuck job detection threshold
+        EMBEDDING_RECOVERY_BATCH_LIMIT: process.env.EMBEDDING_RECOVERY_BATCH_LIMIT || '100' // Max jobs to reset per recovery run
       },
       error_file: 'logs/scheduler-error.log',
       out_file: 'logs/scheduler-out.log',
