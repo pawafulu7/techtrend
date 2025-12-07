@@ -111,6 +111,7 @@ export function getSourceColor(sourceName: string) {
     tag: 'bg-gray-50 text-gray-700',
     dot: 'bg-gray-500',
     bar: 'bg-gray-500',
+    borderLeft: 'border-l-4 border-l-gray-400',
   };
 
   // 直接colorMapから取得
@@ -122,6 +123,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-blue-50 text-blue-700',
       dot: 'bg-blue-500',
       bar: 'bg-blue-500',
+      borderLeft: 'border-l-4 border-l-blue-500',
     },
     'Qiita': {
       gradient: 'from-green-400 to-green-600',
@@ -130,6 +132,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-green-50 text-green-700',
       dot: 'bg-green-500',
       bar: 'bg-green-500',
+      borderLeft: 'border-l-4 border-l-green-500',
     },
     'Qiita Popular': {
       gradient: 'from-green-400 to-green-600',
@@ -138,6 +141,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-green-50 text-green-700',
       dot: 'bg-green-500',
       bar: 'bg-green-500',
+      borderLeft: 'border-l-4 border-l-green-500',
     },
     'Zenn': {
       gradient: 'from-sky-400 to-sky-600',
@@ -146,6 +150,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-sky-50 text-sky-700',
       dot: 'bg-sky-500',
       bar: 'bg-sky-500',
+      borderLeft: 'border-l-4 border-l-sky-500',
     },
     'Dev.to': {
       gradient: 'from-indigo-400 to-indigo-600',
@@ -154,6 +159,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-indigo-50 text-indigo-700',
       dot: 'bg-indigo-500',
       bar: 'bg-indigo-500',
+      borderLeft: 'border-l-4 border-l-indigo-500',
     },
     'Publickey': {
       gradient: 'from-orange-400 to-orange-600',
@@ -162,6 +168,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-orange-50 text-orange-700',
       dot: 'bg-orange-500',
       bar: 'bg-orange-500',
+      borderLeft: 'border-l-4 border-l-orange-500',
     },
     'Stack Overflow Blog': {
       gradient: 'from-amber-400 to-amber-600',
@@ -170,6 +177,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-amber-50 text-amber-700',
       dot: 'bg-amber-500',
       bar: 'bg-amber-500',
+      borderLeft: 'border-l-4 border-l-amber-500',
     },
     'InfoQ Japan': {
       gradient: 'from-blue-400 to-cyan-500',
@@ -178,6 +186,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-cyan-50 text-cyan-700',
       dot: 'bg-cyan-500',
       bar: 'bg-cyan-500',
+      borderLeft: 'border-l-4 border-l-cyan-500',
     },
     'Think IT': {
       gradient: 'from-purple-400 to-purple-600',
@@ -186,6 +195,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-purple-50 text-purple-700',
       dot: 'bg-purple-500',
       bar: 'bg-purple-500',
+      borderLeft: 'border-l-4 border-l-purple-500',
     },
     'Speaker Deck': {
       gradient: 'from-teal-400 to-teal-600',
@@ -194,6 +204,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-teal-50 text-teal-700',
       dot: 'bg-teal-500',
       bar: 'bg-teal-500',
+      borderLeft: 'border-l-4 border-l-teal-500',
     },
     'AWS': {
       gradient: 'from-yellow-400 to-orange-500',
@@ -202,6 +213,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-yellow-50 text-yellow-700',
       dot: 'bg-yellow-500',
       bar: 'bg-yellow-500',
+      borderLeft: 'border-l-4 border-l-yellow-500',
     },
     'SRE': {
       gradient: 'from-red-400 to-pink-500',
@@ -210,6 +222,7 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-red-50 text-red-700',
       dot: 'bg-red-500',
       bar: 'bg-red-500',
+      borderLeft: 'border-l-4 border-l-red-500',
     },
     'Rails Releases': {
       gradient: 'from-rose-400 to-rose-600',
@@ -218,6 +231,43 @@ export function getSourceColor(sourceName: string) {
       tag: 'bg-rose-50 text-rose-700',
       dot: 'bg-rose-500',
       bar: 'bg-rose-500',
+      borderLeft: 'border-l-4 border-l-rose-500',
+    },
+    'TechCrunch': {
+      gradient: 'from-lime-400 to-lime-600',
+      border: 'border-lime-200',
+      hover: 'hover:border-lime-400',
+      tag: 'bg-lime-50 text-lime-700',
+      dot: 'bg-lime-500',
+      bar: 'bg-lime-500',
+      borderLeft: 'border-l-4 border-l-lime-500',
+    },
+    'connpass': {
+      gradient: 'from-red-400 to-red-600',
+      border: 'border-red-200',
+      hover: 'hover:border-red-400',
+      tag: 'bg-red-50 text-red-700',
+      dot: 'bg-red-500',
+      bar: 'bg-red-500',
+      borderLeft: 'border-l-4 border-l-red-500',
+    },
+    'Hacker News': {
+      gradient: 'from-orange-400 to-orange-600',
+      border: 'border-orange-200',
+      hover: 'hover:border-orange-400',
+      tag: 'bg-orange-50 text-orange-700',
+      dot: 'bg-orange-500',
+      bar: 'bg-orange-500',
+      borderLeft: 'border-l-4 border-l-orange-500',
+    },
+    'Docswell': {
+      gradient: 'from-emerald-400 to-emerald-600',
+      border: 'border-emerald-200',
+      hover: 'hover:border-emerald-400',
+      tag: 'bg-emerald-50 text-emerald-700',
+      dot: 'bg-emerald-500',
+      bar: 'bg-emerald-500',
+      borderLeft: 'border-l-4 border-l-emerald-500',
     },
   };
 

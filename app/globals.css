@@ -274,9 +274,14 @@ html.no-transitions *::after {
   .card-hover {
     transition: all 200ms ease-out;
   }
-  .card-hover:hover {
+  .card-hover:hover,
+  .card-hover:focus-within {
     transform: translateY(-2px) scale(1.01);
     box-shadow: var(--tt-shadow-card-hover);
+  }
+  .card-hover:focus-visible {
+    outline: 2px solid var(--tt-color-primary);
+    outline-offset: 2px;
   }
 
   /* Text Gradient */
@@ -429,10 +434,13 @@ html.no-transitions *::after {
   .animate-in,
   .animate-shimmer,
   .animate-stagger,
-  .card-hover {
+  .card-hover,
+  .card-hover:hover,
+  .card-hover:focus-within,
+  .card-hover:focus-visible {
     animation: none !important;
     transition: none !important;
     opacity: 1;
-    transform: none;
+    transform: none !important;
   }
 }
