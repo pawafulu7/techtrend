@@ -33,11 +33,6 @@ const mockSources = [
     type: 'rss',
     url: 'https://dev.to',
     enabled: true,
-    _count: { articles: 2 },
-    articles: [
-      { qualityScore: 80, publishedAt: now, tags: [{ name: 'js' }] },
-      { qualityScore: 60, publishedAt: now, tags: [{ name: 'ts' }] }
-    ]
   },
   {
     id: 'source-2',
@@ -45,10 +40,6 @@ const mockSources = [
     type: 'api',
     url: 'https://qiita.com',
     enabled: true,
-    _count: { articles: 1 },
-    articles: [
-      { qualityScore: 70, publishedAt: now, tags: [{ name: 'dev' }] }
-    ]
   },
   {
     id: 'source-3',
@@ -56,8 +47,26 @@ const mockSources = [
     type: 'api',
     url: 'https://news.ycombinator.com',
     enabled: false,
-    _count: { articles: 0 },
-    articles: []
+  },
+];
+
+// 集計クエリ結果のモック
+const mockSourceStats = [
+  {
+    source_id: 'source-1',
+    total_articles: 2,
+    avg_quality_score: 70,
+    recent_articles: 2,
+    past_month_articles: 1,
+    last_published: now,
+  },
+  {
+    source_id: 'source-2',
+    total_articles: 1,
+    avg_quality_score: 70,
+    recent_articles: 1,
+    past_month_articles: 0,
+    last_published: now,
   },
 ];
 
@@ -80,6 +89,8 @@ describe('SourceCache', () => {
     });
     prisma.source.findUnique?.mockResolvedValue(mockSources[0] as any);
     prisma.source.findFirst?.mockResolvedValue(mockSources[0] as any);
+    // 集計クエリのモック
+    prisma.$queryRaw.mockResolvedValue(mockSourceStats);
   });
 
   afterEach(() => {
