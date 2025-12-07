@@ -4,9 +4,9 @@ import { Source } from '@prisma/client';
 import logger from '@/lib/logger';
 import {
   SourceStats,
-  calculateSourceStats,
   estimateSourceCategory,
-  SourceCategory
+  SourceCategory,
+  calculateGrowthRateFromStats
 } from '@/lib/utils/source-stats';
 
 interface SourceWithCount extends Source {
@@ -265,42 +265,55 @@ export class SourceCache {
    */
   async getAllSourcesWithStats(): Promise<SourceWithStats[]> {
     return this.cache.getOrSet('all-sources-with-stats', async () => {
-      const sources = await prisma.source.findMany({
-        where: { enabled: true },
-        include: {
-          _count: {
-            select: { articles: true }
-          },
-          articles: {
-            select: {
-              qualityScore: true,
-              publishedAt: true,
-              tags: true
-            },
-            orderBy: {
-              publishedAt: 'desc'
-            }
-          }
-        },
-        orderBy: { name: 'asc' }
-      });
+      // 並列実行: ソース取得 + 統計集計
+      const [sources, sourceStats] = await Promise.all([
+        prisma.source.findMany({
+          where: { enabled: true },
+          orderBy: { name: 'asc' }
+        }),
+        prisma.$queryRaw<Array<{
+          source_id: string;
+          total_articles: number;
+          avg_quality_score: number;
+          recent_articles: number;
+          past_month_articles: number;
+          last_published: Date | null;
+        }>>`
+          SELECT
+            s.id as source_id,
+            COUNT(a.id)::int as total_articles,
+            COALESCE(AVG(a."qualityScore")::int, 0) as avg_quality_score,
+            COUNT(CASE WHEN a."publishedAt" >= NOW() - INTERVAL '30 days' THEN 1 END)::int as recent_articles,
+            COUNT(CASE WHEN a."publishedAt" >= NOW() - INTERVAL '60 days'
+                       AND a."publishedAt" < NOW() - INTERVAL '30 days' THEN 1 END)::int as past_month_articles,
+            MAX(a."publishedAt") as last_published
+          FROM "Source" s
+          LEFT JOIN "Article" a ON s.id = a."sourceId"
+          WHERE s.enabled = true
+          GROUP BY s.id
+        `
+      ]);
 
-      // 統計情報を計算してソースに追加
+      // 統計情報をマップ化（テスト環境で$queryRawがundefinedを返す場合に備えてガード）
+      const statsMap = new Map((sourceStats || []).map(stat => [stat.source_id, stat]));
+
+      // ソース情報と統計を結合
       return sources.map(source => {
-        const stats = calculateSourceStats(
-          source.articles,
-          source._count.articles
-        );
-        
+        const stats = statsMap.get(source.id);
+        const publishFrequency = stats ? stats.recent_articles / 30 : 0;
         const category = estimateSourceCategory(source.name);
-        
-        // articlesフィールドは含めない（大きすぎるため）
-        const { _count, ...sourceData } = source;
-        
+
         return {
-          ...sourceData,
+          ...source,
           category,
-          stats
+          stats: {
+            totalArticles: stats?.total_articles || 0,
+            avgQualityScore: stats?.avg_quality_score || 0,
+            popularTags: [],  // Phase 1: 一時的に空配列
+            publishFrequency: Math.round(publishFrequency * 10) / 10,
+            lastPublished: stats?.last_published || null,
+            growthRate: calculateGrowthRateFromStats(stats)
+          }
         };
       });
     });

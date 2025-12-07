@@ -143,13 +143,16 @@ export async function GET(request: NextRequest) {
         readFilter: readFilter || 'all',
         userId: userCtxForKey,
         category: category || 'all',
-        excludeUnprocessed: excludeUnprocessed ? 'true' : 'false',
-        includeUserData: includeUserData ? 'true' : 'false'
+        excludeUnprocessed: excludeUnprocessed ? 'true' : 'false'
+        // Note: includeUserData removed from cache key - user data is merged after cache fetch
       }
     });
 
-    // Check cache first - SKIP CACHE when includeUserData is true to always get fresh data
-    const cachedResult = includeUserData ? null : await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
+    // Check cache first
+    // readFilter requires user-specific queries so we skip cache in that case
+    // includeUserData no longer skips cache - user data is merged after cache fetch
+    const shouldSkipCache = (readFilter === 'read' || readFilter === 'unread') && userId;
+    const cachedResult = shouldSkipCache ? null : await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
     // Legacy cache entries may lack cursor metadata; treat them as stale so pageInfo is rebuilt
     const needsPageInfoHydration = Boolean(
       cachedResult && useCursor && (
@@ -163,6 +166,44 @@ export async function GET(request: NextRequest) {
     if (cachedResult && !needsPageInfoHydration) {
       cacheStatus = 'HIT';
       result = cachedResult;
+
+      // Merge user data into cached result if requested
+      if (includeUserData && userId && result.items && result.items.length > 0) {
+        const articleIds = result.items.map(a => a.id);
+        const loaders = createLoaders({ userId });
+
+        if (loaders.favorite && loaders.view) {
+          const [favoriteStatuses, viewStatuses] = await Promise.all([
+            loaders.favorite.loadMany(articleIds),
+            loaders.view.loadMany(articleIds)
+          ]);
+
+          const favoritesMap = new Map<string, boolean>();
+          const readStatusMap = new Map<string, boolean>();
+
+          favoriteStatuses.forEach((status) => {
+            if (status && typeof status === 'object' && 'isFavorited' in status) {
+              favoritesMap.set(status.articleId, status.isFavorited);
+            }
+          });
+
+          viewStatuses.forEach((status) => {
+            if (status && typeof status === 'object' && 'isRead' in status) {
+              readStatusMap.set(status.articleId, status.isRead);
+            }
+          });
+
+          // Create new items array with user data
+          result = {
+            ...result,
+            items: result.items.map(article => ({
+              ...article,
+              isFavorited: favoritesMap.get(article.id) || false,
+              isRead: readStatusMap.get(article.id) || false
+            }))
+          };
+        }
+      }
     } else {
       cacheStatus = cachedResult ? 'STALE' : 'MISS';
       
@@ -739,10 +780,10 @@ export async function GET(request: NextRequest) {
         };
       }
       
-      // Save to cache - SKIP when includeUserData is true
-      if (!includeUserData) {
-        await cache.set(cacheKey, result);
-      }
+      // Save to cache
+      // Note: Cache is always saved regardless of includeUserData
+      // User data will be merged after cache fetch
+      await cache.set(cacheKey, result);
     }
     
     // Calculate response time

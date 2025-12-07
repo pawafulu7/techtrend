@@ -86,6 +86,29 @@ export function calculateGrowthRate(articles: Array<{ publishedAt: Date }>): num
   }
 }
 
+
+/**
+ * 集計結果から成長率を計算
+ * (getAllSourcesWithStats の集計クエリ結果用)
+ */
+export function calculateGrowthRateFromStats(stats: {
+  recent_articles: number;
+  past_month_articles: number;
+} | undefined): number {
+  if (!stats) return 0;
+
+  const currentMonthCount = stats.recent_articles;
+  const pastMonthCount = stats.past_month_articles;
+
+  if (pastMonthCount > 0) {
+    return Math.round(((currentMonthCount - pastMonthCount) / pastMonthCount) * 100);
+  } else if (currentMonthCount > 0) {
+    return 100;
+  } else {
+    return 0;
+  }
+}
+
 /**
  * 最終投稿日を取得
  */
