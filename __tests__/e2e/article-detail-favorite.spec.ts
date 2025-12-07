@@ -65,8 +65,8 @@ test.describe('Article Detail Favorite Button', () => {
   });
 
   test('should be positioned to the right of date/time display', async ({ page }) => {
-    // 日時表示エリアを取得
-    const dateTimeArea = page.locator('text=/配信:|取込:/').first();
+    // 日時表示エリアを取得（data-testidを使用）
+    const dateTimeArea = page.locator('[data-testid="article-datetime-area"]');
     await expect(dateTimeArea).toBeVisible();
     
     // お気に入りボタンを取得（data-testidを使用）

@@ -49,14 +49,14 @@ export function DetailedSummaryStructured({
 
   return (
     <section
-      className="p-[var(--tt-space-5)] bg-card text-card-foreground rounded-[var(--tt-radius-xl)] shadow-[var(--tt-shadow-card-rest)] hover:shadow-[var(--tt-shadow-card-hover)] transition-shadow duration-200 border border-foreground/10"
+      className="p-4 bg-slate-100/40 dark:bg-slate-900/30 text-foreground rounded-xl"
       aria-label="詳細要約"
       data-testid="detailed-summary-container"
     >
       <h3 className="text-[var(--tt-text-sm)] font-[var(--tt-font-heading)] font-semibold mb-[var(--tt-space-4)] tracking-[var(--tt-tracking-tight)]">
         詳細要約
       </h3>
-      <div className="space-y-[var(--tt-space-4)]">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {sections.map((section, index) => {
           const isEven = index % 2 === 0;
           const accentColor = isEven ? 'var(--tt-color-primary)' : 'var(--tt-color-secondary)';
@@ -64,32 +64,26 @@ export function DetailedSummaryStructured({
           return (
             <article
               key={index}
-              className="group relative pl-[var(--tt-space-4)] md:pl-[var(--tt-space-5)] pb-[var(--tt-space-2)] space-y-[var(--tt-space-2)] rounded-[var(--tt-radius-lg)] transition-colors duration-200 hover:bg-[var(--tt-color-surface-hover)]/50 min-h-[44px] motion-safe:opacity-0 motion-safe:animate-[fadeInUp_0.4s_ease_forwards]"
+              className="group space-y-2 rounded-lg bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200/60 dark:border-slate-700/60 transition-all duration-200 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 min-h-[44px] motion-safe:opacity-0 motion-safe:animate-[fadeInUp_0.4s_ease_forwards]"
               style={{
-                borderLeftWidth: '2px',
+                borderLeftWidth: '3px',
                 borderLeftColor: accentColor,
                 animationDelay: `${index * 60}ms`,
               }}
               data-testid={`detailed-summary-section-${index}`}
             >
-              {/* Timeline dot - adjusted for mobile */}
-              <span
-                className="absolute left-[-4px] md:left-[-5px] top-[var(--tt-space-3)] h-[10px] w-[10px] rounded-full border-2 border-card"
-                style={{ backgroundColor: accentColor }}
-                aria-hidden="true"
-              />
 
-              <h4 className="text-[var(--tt-text-sm)] md:text-[var(--tt-text-base)] font-[var(--tt-font-heading)] font-semibold tracking-[var(--tt-tracking-tight)] flex items-center gap-[var(--tt-space-3)]">
+              <h4 className="text-sm font-[var(--tt-font-heading)] font-semibold tracking-[var(--tt-tracking-tight)] flex items-center gap-2">
                 <span
-                  className="text-xl md:text-2xl flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-muted/60 group-hover:bg-muted transition-colors duration-200"
+                  className="text-lg flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-muted/60 group-hover:bg-muted transition-colors duration-200"
                   aria-hidden="true"
                 >
                   {section.icon}
                 </span>
-                <span className="flex-1">{section.title}</span>
+                <span className="flex-1 line-clamp-1" title={section.title}>{section.title}</span>
               </h4>
 
-              <div className="text-[var(--tt-text-sm)] font-[var(--tt-font-body)] text-card-foreground/80 leading-[var(--tt-leading-relaxed)] space-y-[var(--tt-space-2)] pl-[calc(var(--tt-space-8)+var(--tt-space-3))]">
+              <div className="text-sm font-[var(--tt-font-body)] text-slate-700 dark:text-slate-200 leading-relaxed space-y-1">
                 {section.content.split('\n').map((line, lineIndex) => (
                   <p key={lineIndex}>
                     {highlightContent(line)}

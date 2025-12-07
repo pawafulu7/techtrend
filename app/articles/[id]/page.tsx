@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ArrowLeft, ExternalLink, GraduationCap, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Download, ExternalLink, GraduationCap, MessageSquare } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
@@ -99,22 +99,22 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   );
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl">
+    <div className="w-full px-6 py-3">
       <ArticleTracker article={article} />
       <ViewTracker articleId={article.id} />
       <ReadTracker articleId={article.id} />
-      <div className="mb-4">
-        <Button variant="ghost" asChild>
-          <Link href={returnUrl} className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
+      <div className="mb-2">
+        <Button variant="ghost" size="sm" className="min-h-[44px]" asChild>
+          <Link href={returnUrl} className="flex items-center gap-1.5 text-sm">
+            <ArrowLeft className="h-3.5 w-3.5" />
             {returnLabel}
           </Link>
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
+      <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex-1 space-y-6">
+          <Card className="bg-[var(--tt-color-surface-muted)] gap-4">
             <CardHeader>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -130,13 +130,15 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                     >
                       {article.source.name}
                     </BadgeV2>
-                    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground" data-testid="article-datetime-area">
                       <span className="flex items-center gap-1">
-                        <span>📅 配信:</span>
+                        <Calendar className="h-3 w-3" aria-hidden="true" />
+                        <span className="sr-only">公開日:</span>
                         <span>{formatDateWithTime(article.publishedAt)}</span>
                       </span>
                       <span className="flex items-center gap-1">
-                        <span>📥 取込:</span>
+                        <Download className="h-3 w-3" aria-hidden="true" />
+                        <span className="sr-only">収集日:</span>
                         <span>{formatDateWithTime(article.createdAt)}</span>
                       </span>
                     </div>
@@ -172,7 +174,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                       <Badge
                         key={tag.id}
                         variant="outline"
-                        className="cursor-pointer hover:bg-secondary"
+                        className="cursor-pointer hover:bg-secondary border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500"
                         asChild
                       >
                         <Link href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}>
@@ -185,7 +187,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 !-mt-4">
               {/* スライドサービスまたは短い記事の場合はサムネイル表示、それ以外は詳細要約表示 */}
               {(isSlideService || isShortArticle) && article.thumbnail ? (
                 <>
@@ -237,18 +239,26 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   <span className="text-sm text-muted-foreground">品質スコア:</span>
                   <Badge variant="secondary">{Math.round(article.qualityScore)}</Badge>
                 </div>
-                
-                <Button asChild>
-                  <a 
-                    href={article.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    元記事を読む
-                  </a>
-                </Button>
+
+                <div className="flex items-center gap-4">
+                  {article.content && article.content.length > 0 && (
+                    <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span>{Math.max(1, Math.ceil(article.content.length / 500))}分 / {article.content.length.toLocaleString('ja-JP')}字</span>
+                    </span>
+                  )}
+                  <Button asChild>
+                    <a
+                      href={article.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      元記事を読む
+                    </a>
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -266,7 +276,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
           </ArticleQADialog>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="w-full lg:w-80 shrink-0">
           <RelatedArticles articleId={article.id} />
         </div>
       </div>
