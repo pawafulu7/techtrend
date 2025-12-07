@@ -3,6 +3,7 @@ import { exec, spawn, ExecException, ExecOptions } from 'child_process';
 import { promisify } from 'util';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 
 // Load .env.local for local development (pm2 environment)
 // In production (GHA), environment variables are set via workflow
@@ -344,6 +345,7 @@ console.error('[INFO] TechTrend Scheduler V2 Started');
 console.error(`[INFO] 現在時刻: ${new Date().toLocaleString('ja-JP')}`);
 console.error('[INFO] 更新スケジュール:');
 console.error('   - RSS系: 毎時0分');
+console.error('   - Embeddingリカバリ: 毎時15分');
 console.error('   - スクレイピング系: 0:30・12:30');
 console.error('   - Qiita Popular: 5:05・17:05');
 console.error('   - 要約生成: 毎日10:30（午前）');
@@ -354,6 +356,10 @@ console.error('   - クリーンアップ: 毎日22時');
 let rssJobRunning = false;
 let scrapingJobRunning = false;
 let qiitaJobRunning = false;
+let embeddingRecoveryRunning = false;
+
+// EmbeddingScheduler instance for auto-recovery
+const embeddingScheduler = new EmbeddingScheduler();
 
 // RSS系ソースの更新（毎時0分）
 cron.schedule('0 * * * *', async () => {
@@ -368,6 +374,47 @@ cron.schedule('0 * * * *', async () => {
     // エラーは関数内でログ出力済み
   } finally {
     rssJobRunning = false;
+  }
+});
+
+// Embeddingジョブリカバリ（毎時15分）
+// RSS更新（毎時0分）の15分後に実行
+// 環境変数で閾値とバッチサイズを設定可能
+const EMBEDDING_STUCK_THRESHOLD = parseInt(process.env.EMBEDDING_STUCK_THRESHOLD_MINUTES || '30', 10);
+const EMBEDDING_RECOVERY_LIMIT = parseInt(process.env.EMBEDDING_RECOVERY_BATCH_LIMIT || '100', 10);
+
+cron.schedule('15 * * * *', async () => {
+  if (embeddingRecoveryRunning) {
+    console.error('[WARN] Embedding recovery job already running, skipping');
+    return;
+  }
+  embeddingRecoveryRunning = true;
+  const startTime = Date.now();
+
+  try {
+    const result = await embeddingScheduler.recoverStuckJobs(
+      EMBEDDING_STUCK_THRESHOLD,
+      EMBEDDING_RECOVERY_LIMIT
+    );
+
+    const duration = Math.round((Date.now() - startTime) / 1000);
+
+    if (result.found > 0) {
+      console.error(
+        `[INFO] Embedding recovery completed in ${duration}s: ` +
+        `found=${result.found}, reset=${result.reset}, skipped=${result.skipped}` +
+        (result.oldestAgeMinutes ? `, oldestAge=${result.oldestAgeMinutes}min` : '')
+      );
+    } else {
+      console.error(`[INFO] Embedding recovery: no stuck jobs found (${duration}s)`);
+    }
+  } catch (error) {
+    console.error(
+      '[ERROR] Embedding recovery failed:',
+      error instanceof Error ? error.message : String(error)
+    );
+  } finally {
+    embeddingRecoveryRunning = false;
   }
 });
 
@@ -522,6 +569,7 @@ cron.schedule('30 8,20 * * *', async () => {
     console.error('[INFO] 初回実行が完了しました\n');
     console.error('[INFO] 次回の更新:');
     console.error('   - RSS系: 毎時0分');
+    console.error('   - Embeddingリカバリ: 毎時15分');
     console.error('   - スクレイピング系: 0:30・12:30');
     console.error('   - Qiita Popular: 5:05・17:05');
     console.error('   - 品質チェック・再生成: 毎日15:30');
