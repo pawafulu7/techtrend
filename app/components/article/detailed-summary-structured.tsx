@@ -80,7 +80,7 @@ export function DetailedSummaryStructured({
                 >
                   {section.icon}
                 </span>
-                <span className="flex-1 line-clamp-1">{section.title}</span>
+                <span className="flex-1 line-clamp-1" title={section.title}>{section.title}</span>
               </h4>
 
               <div className="text-sm font-[var(--tt-font-body)] text-slate-700 dark:text-slate-200 leading-relaxed space-y-1">

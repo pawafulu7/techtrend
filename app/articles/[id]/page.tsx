@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ArrowLeft, Clock, ExternalLink, GraduationCap, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Download, ExternalLink, GraduationCap, MessageSquare } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
@@ -104,7 +104,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
       <ViewTracker articleId={article.id} />
       <ReadTracker articleId={article.id} />
       <div className="mb-2">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="sm" className="min-h-[44px]" asChild>
           <Link href={returnUrl} className="flex items-center gap-1.5 text-sm">
             <ArrowLeft className="h-3.5 w-3.5" />
             {returnLabel}
@@ -132,11 +132,13 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                     </BadgeV2>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground" data-testid="article-datetime-area">
                       <span className="flex items-center gap-1">
-                        <span>📅</span>
+                        <Calendar className="h-3 w-3" aria-hidden="true" />
+                        <span className="sr-only">公開日:</span>
                         <span>{formatDateWithTime(article.publishedAt)}</span>
                       </span>
                       <span className="flex items-center gap-1">
-                        <span>📥</span>
+                        <Download className="h-3 w-3" aria-hidden="true" />
+                        <span className="sr-only">収集日:</span>
                         <span>{formatDateWithTime(article.createdAt)}</span>
                       </span>
                     </div>
