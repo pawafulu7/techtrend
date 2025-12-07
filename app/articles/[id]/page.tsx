@@ -208,6 +208,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
               {(isSlideService || isShortArticle) && article.thumbnail ? (
                 <>
                   <div className="max-w-2xl mx-auto">
+                    {/* max-h-[480px] is a defensive constraint for oversized images.
+                        If max-w-2xl changes, adjust max-h to maintain 16:9 ratio. */}
                     <div className="relative aspect-video max-h-[480px] overflow-hidden rounded-lg bg-[var(--tt-color-surface-muted)]">
                       <OptimizedImage
                         src={article.thumbnail}
