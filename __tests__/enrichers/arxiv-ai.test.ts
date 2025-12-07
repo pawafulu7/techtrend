@@ -188,8 +188,8 @@ describe('ArxivAIEnricher', () => {
       `;
       const content = extractContent(htmlNoSections);
 
-      // Should fallback to main/article extraction, but since there's none, returns empty or minimal
-      expect(content.length).toBeLessThan(100);
+      // Should fallback to main/article extraction, but since there's none, returns empty
+      expect(content).toBe('');
     });
 
     test('enforces maximum content length', () => {

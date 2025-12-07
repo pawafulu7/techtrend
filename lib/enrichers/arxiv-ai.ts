@@ -48,6 +48,7 @@ export class ArxivAIEnricher extends BaseContentEnricher {
             return { content, thumbnail };
           } catch {
             // メタデータ取得失敗時はHTML本文のみ返却
+            logger.debug({ arxivId }, 'Failed to fetch metadata, returning HTML content only');
             return { content: htmlContent, thumbnail: undefined };
           }
         }
@@ -341,7 +342,8 @@ export class ArxivAIEnricher extends BaseContentEnricher {
       if (!isTargetSection) return;
 
       // 数式をプレースホルダーに置換
-      $section.find('math, .math, [class*="math"], .MathJax, .mathjax').replaceWith('[MATH]');
+      // arXiv HTML版の数式要素: LaTeXML生成のltx_Math/ltx_equation、MathJax
+      $section.find('math, .math, .ltx_Math, .ltx_equation, .MathJax, .mathjax').replaceWith('[MATH]');
 
       // 図表のキャプションは保持、本体は除去
       $section.find('figure img, figure svg').remove();
@@ -373,7 +375,8 @@ export class ArxivAIEnricher extends BaseContentEnricher {
       const mainContent = $('main, article, .content, .paper-content').first();
       if (mainContent.length > 0) {
         // 数式をプレースホルダーに置換
-        mainContent.find('math, .math, [class*="math"], .MathJax, .mathjax').replaceWith('[MATH]');
+        // arXiv HTML版の数式要素: LaTeXML生成のltx_Math/ltx_equation、MathJax
+        mainContent.find('math, .math, .ltx_Math, .ltx_equation, .MathJax, .mathjax').replaceWith('[MATH]');
 
         let text = mainContent.text().trim();
         text = text.replace(/(\[MATH\]\s*)+/g, '[MATH] ');
