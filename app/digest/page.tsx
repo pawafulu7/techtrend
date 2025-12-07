@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { CalendarIcon, TrendingUpIcon, TagIcon, RefreshCwIcon, ExternalLinkIcon, ChevronRightIcon } from 'lucide-react';
+import { TranslationBadge } from '@/components/ui/translation-badge';
 
 interface DigestArticle {
   id: string;
@@ -234,6 +235,9 @@ export default function DigestPage() {
                     <Badge variant="outline" className="text-xs">
                       {article.source.name}
                     </Badge>
+                    {article.translatedTitle && (
+                      <TranslationBadge className="text-xs" />
+                    )}
                     {article.tags?.slice(0, 3).map((tag) => (
                       <Badge key={tag.name} variant="secondary" className="text-xs">
                         {tag.name}

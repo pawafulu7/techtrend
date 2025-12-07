@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Calendar, Star, Tag } from 'lucide-react';
+import { TranslationBadge } from '@/components/ui/translation-badge';
 import { formatDate } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
@@ -26,12 +27,17 @@ export function RecommendationCard({ article, showReasons = true }: Recommendati
     <Card className="hover:shadow-lg transition-shadow duration-200" data-testid="recommendation-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between mb-2">
-          <Badge 
-            variant="secondary" 
-            className={cn("text-xs font-medium", sourceColor.tag)}
-          >
-            {article.sourceName}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="secondary"
+              className={cn("text-xs font-medium", sourceColor.tag)}
+            >
+              {article.sourceName}
+            </Badge>
+            {article.translatedTitle && (
+              <TranslationBadge className="text-xs" />
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
               <Star className="h-3 w-3 text-yellow-500" />

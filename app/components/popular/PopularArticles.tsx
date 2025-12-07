@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import type { ArticleWithRelations } from '@/types/models';
 import { RankBadge } from './rank-badge';
 import { TrendIndicator } from './trend-indicator';
+import { TranslationBadge } from '@/components/ui/translation-badge';
 import { ScoreTooltip } from './score-tooltip';
 import { ShareButton } from './share-button';
 import { PresetFilters, type PeriodType, type MetricType } from './preset-filters';
@@ -138,6 +139,9 @@ export function PopularArticles({
                     </p>
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <span>{article.source.name}</span>
+                      {article.translatedTitle && (
+                        <TranslationBadge className="text-xs" />
+                      )}
                       <span aria-hidden="true">-</span>
                       <span>{formatDate(article.publishedAt)}</span>
                     </div>
@@ -238,6 +242,9 @@ export function PopularArticles({
                       <Badge variant="secondary" className="text-xs">
                         {article.source.name}
                       </Badge>
+                      {article.translatedTitle && (
+                        <TranslationBadge className="text-xs" />
+                      )}
                       {article.difficulty && (
                         <Badge
                           variant="outline"

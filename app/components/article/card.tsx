@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { ShareButton } from '@/app/components/article/share-button';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
+import { TranslationBadge } from '@/components/ui/translation-badge';
 
 export function ArticleCard({
   article,
@@ -193,6 +194,9 @@ export function ArticleCard({
                     <span className={cn("w-2 h-2 rounded-full shrink-0", sourceColor.dot)} aria-hidden="true" />
                     {article.companyName ?? article.source.name}
                   </BadgeV2>
+                )}
+                {article.translatedTitle && (
+                  <TranslationBadge data-testid="translation-badge" />
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

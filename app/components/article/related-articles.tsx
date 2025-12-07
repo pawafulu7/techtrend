@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LinkIcon, TrendingUp, ChevronDown, ChevronUp, Network } from 'lucide-react';
+import { TranslationBadge } from '@/components/ui/translation-badge';
 import { formatDate } from '@/lib/utils/date';
 import { useRelatedArticles } from '@/hooks/use-related-articles';
 
@@ -137,6 +138,9 @@ export function RelatedArticles({
                       <TrendingUp className="h-3 w-3 mr-0.5" />
                       New
                     </Badge>
+                  )}
+                  {article.translatedTitle && (
+                    <TranslationBadge className="text-xs h-5" />
                   )}
                 </div>
 
