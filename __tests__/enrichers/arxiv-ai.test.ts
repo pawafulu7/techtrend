@@ -103,6 +103,8 @@ describe('ArxivAIEnricher', () => {
         { url: 'https://arxiv.org/html/2412.01234v1', expected: '2412.01234' },
         { url: 'https://www.arxiv.org/abs/2312.12345', expected: '2312.12345' },
         { url: 'https://arxiv.org/abs/2401.00001?context=cs.AI', expected: '2401.00001' },
+        // arXiv: prefix format in URL (e.g., search results, external references)
+        { url: 'https://arxiv.org/search?query=arXiv:2412.01234', expected: '2412.01234' },
       ];
 
       test.each(testCases)('$url -> $expected', ({ url, expected }) => {
@@ -190,6 +192,22 @@ describe('ArxivAIEnricher', () => {
 
       // Should fallback to main/article extraction, but since there's none, returns empty
       expect(content).toBe('');
+    });
+
+    test('falls back to main/article when no target sections exist', () => {
+      // Long enough content (>500 chars) in article without section tags
+      const longContent = 'This is the main article content that discusses various topics. '.repeat(20);
+      const htmlWithArticle = `
+        <article>
+          <h1>Paper Title</h1>
+          <p>${longContent}</p>
+        </article>
+      `;
+      const content = extractContent(htmlWithArticle);
+
+      // Should extract content from article as fallback
+      expect(content.length).toBeGreaterThan(500);
+      expect(content).toContain('main article content');
     });
 
     test('enforces maximum content length', () => {
@@ -297,10 +315,17 @@ describe('ArxivAIEnricher', () => {
     });
 
     test('returns null for non-arXiv URLs', async () => {
+      // Mock to ensure test is deterministic (no actual network request)
+      // enrichFromAbstract is called as fallback, but fails to extract content
+      const mockFetch = jest.fn().mockRejectedValue(new Error('Network error'));
+      jest.spyOn(BaseContentEnricher.prototype, 'fetchWithRetry').mockImplementation(mockFetch);
+
       const result = await enricher.enrich('https://example.com/paper');
 
-      // Should return null because canHandle returns false (ID extraction fails)
+      // Should return null because enrichFromAbstract fails
       expect(result).toBeNull();
+      // Verify mock was called (via enrichFromAbstract fallback)
+      expect(mockFetch).toHaveBeenCalled();
     });
   });
 

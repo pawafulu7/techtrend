@@ -46,9 +46,10 @@ export class ArxivAIEnricher extends BaseContentEnricher {
         const htmlContent = await this.fetchAndExtractHtmlVersion(arxivId);
         if (htmlContent) {
           // HTML版から取得成功 - メタデータを追加して返却
-          // 抄録ページからメタデータのみ取得
+          // 抄録ページからメタデータのみ取得（入力URLがpdf/htmlの場合に備えてabs URLを明示構築）
           try {
-            const absHtml = await this.fetchWithRetry(url);
+            const absUrl = `https://arxiv.org/abs/${arxivId}`;
+            const absHtml = await this.fetchWithRetry(absUrl);
             const metadata = this.extractMetadata(absHtml);
             const thumbnail = this.extractThumbnail(absHtml);
             const content = metadata ? `${metadata}\n\n${htmlContent}` : htmlContent;
@@ -391,9 +392,9 @@ export class ArxivAIEnricher extends BaseContentEnricher {
         text = text.replace(/(\[MATH\]\s*)+/g, '[MATH] ');
         text = text.replace(/\s+/g, ' ').trim();
 
-        // 長さ制限
+        // 長さ制限（ワード境界で切断してマルチバイト文字の破損を防止）
         if (text.length > maxTotalLength) {
-          text = text.substring(0, maxTotalLength) + '...';
+          text = this.truncateAtWordBoundary(text, maxTotalLength);
         }
 
         if (text.length > 500) {
@@ -403,5 +404,26 @@ export class ArxivAIEnricher extends BaseContentEnricher {
     }
 
     return contents.join('\n\n');
+  }
+
+  /**
+   * ワード境界でテキストを切断（マルチバイト文字の破損を防止）
+   */
+  private truncateAtWordBoundary(text: string, maxLength: number): string {
+    if (text.length <= maxLength) {
+      return text;
+    }
+
+    // maxLength位置より前の最後のスペースを探す
+    const truncated = text.substring(0, maxLength);
+    const lastSpaceIndex = truncated.lastIndexOf(' ');
+
+    // スペースが見つかれば、そこで切断
+    if (lastSpaceIndex > maxLength * 0.8) {
+      return truncated.substring(0, lastSpaceIndex) + '...';
+    }
+
+    // スペースが見つからないか、あまりにも前方の場合は単純切断
+    return truncated + '...';
   }
 }
