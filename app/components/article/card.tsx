@@ -152,7 +152,8 @@ export function ArticleCard({
       onClick={handleCardClick}
       className={cn(
         'group relative flex h-full flex-col gap-3 p-4 cursor-pointer',
-        isTextOnly && 'border border-muted/40 shadow-sm'
+        isTextOnly && 'border border-muted/40 shadow-sm',
+        sourceColor?.borderLeft
       )}
     >
       <div className="flex items-start gap-2">
@@ -161,7 +162,11 @@ export function ArticleCard({
             <div className="flex-1 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2 text-[12px]">
                 {isNew && (
-                  <BadgeV2 variant="primary" className="text-xs">
+                  <BadgeV2
+                    variant="primary"
+                    className="text-xs shadow-[0_0_12px_rgba(22,163,74,0.4)] dark:shadow-[0_0_12px_rgba(34,197,94,0.4)]"
+                    aria-label="24h new article"
+                  >
                     NEW
                   </BadgeV2>
                 )}
@@ -178,13 +183,14 @@ export function ArticleCard({
                   <BadgeV2
                     variant="outline"
                     className={cn(
-                      "text-xs",
+                      "text-xs flex items-center gap-1.5",
                       sourceColor.tag,
                       sourceColor.border,
                       sourceColor.hover
                     )}
                     data-testid="article-source"
                   >
+                    <span className={cn("w-2 h-2 rounded-full shrink-0", sourceColor.dot)} />
                     {article.companyName ?? article.source.name}
                   </BadgeV2>
                 )}
@@ -205,7 +211,7 @@ export function ArticleCard({
           {!showThumbnail && (
             <h3
               className={cn(
-                'font-heading text-lg font-semibold leading-snug text-foreground line-clamp-2',
+                'font-heading text-lg sm:text-xl font-semibold leading-snug text-foreground line-clamp-2',
                 isRead && 'opacity-70'
               )}
             >
@@ -242,11 +248,11 @@ export function ArticleCard({
       <div className="mt-auto flex items-center justify-between pt-1">
         <FavoriteButton
           articleId={article.id}
-          className="h-9 px-3"
+          className="h-11 px-4 min-w-[44px] min-h-[44px]"
           isFavorited={isFavorited}
           onToggleFavorite={onToggleFavorite}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {readingTime && contentLength > 0 && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
@@ -260,7 +266,7 @@ export function ArticleCard({
               e.stopPropagation();
               window.open(article.url, '_blank', 'noopener,noreferrer');
             }}
-            className="h-9 px-3 text-xs"
+            className="h-11 px-4 text-xs min-w-[44px] min-h-[44px]"
           >
             <ExternalLink className="h-4 w-4 mr-1" />
             元記事
@@ -274,7 +280,7 @@ export function ArticleCard({
             disabled={hasVoted}
             data-testid="vote-button"
             aria-pressed={hasVoted}
-            className="h-9 w-9"
+            className="h-11 w-11 min-w-[44px] min-h-[44px]"
           >
             <ThumbsUp className="h-4 w-4" />
           </ButtonV2>
