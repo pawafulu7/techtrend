@@ -13,6 +13,13 @@ import { isUrlFromDomain } from '@/lib/utils/url-validator';
 import { logger } from '@/lib/logger';
 
 export class ArxivAIEnricher extends BaseContentEnricher {
+  // Known limitation: Always fetches v1; future enhancement could try latest version
+  private static readonly HTML_VERSION_SUFFIX = 'v1';
+
+  // arXiv HTML版の数式要素: LaTeXML生成のltx_Math/ltx_equation、MathJax
+  private static readonly MATH_SELECTORS =
+    'math, .math, .ltx_Math, .ltx_equation, .MathJax, .mathjax';
+
   /**
    * arXivのURLパターンにマッチするかチェック
    */
@@ -122,7 +129,11 @@ export class ArxivAIEnricher extends BaseContentEnricher {
       }
 
       return { content, thumbnail };
-    } catch (_error) {
+    } catch (error) {
+      logger.debug(
+        { url, error: error instanceof Error ? error.message : String(error) },
+        'enrichFromAbstract failed'
+      );
       return null;
     }
   }
@@ -259,7 +270,7 @@ export class ArxivAIEnricher extends BaseContentEnricher {
    */
   private async fetchAndExtractHtmlVersion(arxivId: string): Promise<string | null> {
     // HTML版URL構築（v1を指定）
-    const htmlUrl = `https://arxiv.org/html/${arxivId}v1`;
+    const htmlUrl = `https://arxiv.org/html/${arxivId}${ArxivAIEnricher.HTML_VERSION_SUFFIX}`;
 
     try {
       logger.debug({ arxivId, htmlUrl }, 'Fetching arXiv HTML version');
@@ -342,8 +353,7 @@ export class ArxivAIEnricher extends BaseContentEnricher {
       if (!isTargetSection) return;
 
       // 数式をプレースホルダーに置換
-      // arXiv HTML版の数式要素: LaTeXML生成のltx_Math/ltx_equation、MathJax
-      $section.find('math, .math, .ltx_Math, .ltx_equation, .MathJax, .mathjax').replaceWith('[MATH]');
+      $section.find(ArxivAIEnricher.MATH_SELECTORS).replaceWith('[MATH]');
 
       // 図表のキャプションは保持、本体は除去
       $section.find('figure img, figure svg').remove();
@@ -375,8 +385,7 @@ export class ArxivAIEnricher extends BaseContentEnricher {
       const mainContent = $('main, article, .content, .paper-content').first();
       if (mainContent.length > 0) {
         // 数式をプレースホルダーに置換
-        // arXiv HTML版の数式要素: LaTeXML生成のltx_Math/ltx_equation、MathJax
-        mainContent.find('math, .math, .ltx_Math, .ltx_equation, .MathJax, .mathjax').replaceWith('[MATH]');
+        mainContent.find(ArxivAIEnricher.MATH_SELECTORS).replaceWith('[MATH]');
 
         let text = mainContent.text().trim();
         text = text.replace(/(\[MATH\]\s*)+/g, '[MATH] ');

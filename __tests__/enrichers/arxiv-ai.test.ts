@@ -203,8 +203,8 @@ describe('ArxivAIEnricher', () => {
       `;
       const content = extractContent(longHtml);
 
-      // Should be limited to around 32000 characters
-      expect(content.length).toBeLessThanOrEqual(35000);
+      // Should be limited to around 32000 characters (maxTotalLength in implementation)
+      expect(content.length).toBeLessThanOrEqual(33000);
     });
   });
 
