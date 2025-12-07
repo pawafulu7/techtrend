@@ -434,10 +434,13 @@ html.no-transitions *::after {
   .animate-in,
   .animate-shimmer,
   .animate-stagger,
-  .card-hover {
+  .card-hover,
+  .card-hover:hover,
+  .card-hover:focus-within,
+  .card-hover:focus-visible {
     animation: none !important;
     transition: none !important;
     opacity: 1;
-    transform: none;
+    transform: none !important;
   }
 }

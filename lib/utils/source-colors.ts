@@ -233,6 +233,42 @@ export function getSourceColor(sourceName: string) {
       bar: 'bg-rose-500',
       borderLeft: 'border-l-4 border-l-rose-500',
     },
+    'TechCrunch': {
+      gradient: 'from-lime-400 to-lime-600',
+      border: 'border-lime-200',
+      hover: 'hover:border-lime-400',
+      tag: 'bg-lime-50 text-lime-700',
+      dot: 'bg-lime-500',
+      bar: 'bg-lime-500',
+      borderLeft: 'border-l-4 border-l-lime-500',
+    },
+    'connpass': {
+      gradient: 'from-red-400 to-red-600',
+      border: 'border-red-200',
+      hover: 'hover:border-red-400',
+      tag: 'bg-red-50 text-red-700',
+      dot: 'bg-red-500',
+      bar: 'bg-red-500',
+      borderLeft: 'border-l-4 border-l-red-500',
+    },
+    'Hacker News': {
+      gradient: 'from-orange-400 to-orange-600',
+      border: 'border-orange-200',
+      hover: 'hover:border-orange-400',
+      tag: 'bg-orange-50 text-orange-700',
+      dot: 'bg-orange-500',
+      bar: 'bg-orange-500',
+      borderLeft: 'border-l-4 border-l-orange-500',
+    },
+    'Docswell': {
+      gradient: 'from-emerald-400 to-emerald-600',
+      border: 'border-emerald-200',
+      hover: 'hover:border-emerald-400',
+      tag: 'bg-emerald-50 text-emerald-700',
+      dot: 'bg-emerald-500',
+      bar: 'bg-emerald-500',
+      borderLeft: 'border-l-4 border-l-emerald-500',
+    },
   };
 
   return colorMap[sourceName] || newColorTheme;

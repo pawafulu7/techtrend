@@ -165,7 +165,7 @@ export function ArticleCard({
                   <BadgeV2
                     variant="primary"
                     className="text-xs shadow-[0_0_12px_rgba(22,163,74,0.4)] dark:shadow-[0_0_12px_rgba(34,197,94,0.4)]"
-                    aria-label="24h new article"
+                    aria-label="24時間以内の新着記事"
                   >
                     NEW
                   </BadgeV2>
@@ -190,7 +190,7 @@ export function ArticleCard({
                     )}
                     data-testid="article-source"
                   >
-                    <span className={cn("w-2 h-2 rounded-full shrink-0", sourceColor.dot)} />
+                    <span className={cn("w-2 h-2 rounded-full shrink-0", sourceColor.dot)} aria-hidden="true" />
                     {article.companyName ?? article.source.name}
                   </BadgeV2>
                 )}
