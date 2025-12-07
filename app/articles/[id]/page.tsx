@@ -207,15 +207,19 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
               {/* スライドサービスまたは短い記事の場合はサムネイル表示、それ以外は詳細要約表示 */}
               {(isSlideService || isShortArticle) && article.thumbnail ? (
                 <>
-                  <div className="relative aspect-video overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
-                    <OptimizedImage 
-                      src={article.thumbnail} 
-                      alt={article.title}
-                      fill
-                      priority={true}
-                      className="object-contain"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 50vw"
-                    />
+                  <div className="max-w-2xl mx-auto">
+                    {/* max-h-[480px] is a defensive constraint for oversized images.
+                        If max-w-2xl changes, adjust max-h to maintain 16:9 ratio. */}
+                    <div className="relative aspect-video max-h-[480px] overflow-hidden rounded-lg bg-[var(--tt-color-surface-muted)]">
+                      <OptimizedImage
+                        src={article.thumbnail}
+                        alt={article.title}
+                        fill
+                        priority={true}
+                        className="object-contain transition-opacity duration-200"
+                        sizes="(max-width: 768px) 100vw, 672px"
+                      />
+                    </div>
                   </div>
                   <div className="mt-4 p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">
