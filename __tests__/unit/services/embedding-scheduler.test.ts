@@ -323,4 +323,210 @@ describe('EmbeddingScheduler', () => {
       });
     });
   });
+
+  describe('recoverStuckJobs', () => {
+    it('should return zeros when no stuck jobs exist', async () => {
+      const result = await scheduler.recoverStuckJobs(30, 100);
+
+      expect(result.found).toBe(0);
+      expect(result.reset).toBe(0);
+      expect(result.skipped).toBe(0);
+      expect(result.oldestAgeMinutes).toBeUndefined();
+    });
+
+    it('should reset PROCESSING jobs older than threshold to PENDING', async () => {
+      // Create a job that has been PROCESSING for 60 minutes
+      const oldQueuedAt = new Date(Date.now() - 60 * 60 * 1000);
+
+      await prisma.embeddingJob.create({
+        data: {
+          articleId: testArticle.id,
+          status: 'PROCESSING',
+          attempts: 1,
+          queuedAt: oldQueuedAt,
+        },
+      });
+
+      // Recover with 30 minute threshold
+      const result = await scheduler.recoverStuckJobs(30, 100);
+
+      expect(result.found).toBe(1);
+      expect(result.reset).toBe(1);
+      expect(result.skipped).toBe(0);
+      expect(result.oldestAgeMinutes).toBeGreaterThanOrEqual(59);
+
+      // Verify job was reset to PENDING
+      const job = await prisma.embeddingJob.findUnique({
+        where: { articleId: testArticle.id },
+      });
+      expect(job?.status).toBe('PENDING');
+      // Attempts should NOT be reset (to prevent infinite loops)
+      expect(job?.attempts).toBe(1);
+    });
+
+    it('should not reset PROCESSING jobs newer than threshold', async () => {
+      // Create a job that has been PROCESSING for only 10 minutes
+      const recentQueuedAt = new Date(Date.now() - 10 * 60 * 1000);
+
+      await prisma.embeddingJob.create({
+        data: {
+          articleId: testArticle.id,
+          status: 'PROCESSING',
+          attempts: 1,
+          queuedAt: recentQueuedAt,
+        },
+      });
+
+      // Recover with 30 minute threshold
+      const result = await scheduler.recoverStuckJobs(30, 100);
+
+      expect(result.found).toBe(0);
+      expect(result.reset).toBe(0);
+
+      // Verify job is still PROCESSING
+      const job = await prisma.embeddingJob.findUnique({
+        where: { articleId: testArticle.id },
+      });
+      expect(job?.status).toBe('PROCESSING');
+    });
+
+    it('should skip jobs that exceeded maxAttempts', async () => {
+      // Create a stuck job with attempts >= maxAttempts (default 3)
+      const oldQueuedAt = new Date(Date.now() - 60 * 60 * 1000);
+
+      await prisma.embeddingJob.create({
+        data: {
+          articleId: testArticle.id,
+          status: 'PROCESSING',
+          attempts: 3,
+          maxAttempts: 3,
+          queuedAt: oldQueuedAt,
+        },
+      });
+
+      const result = await scheduler.recoverStuckJobs(30, 100);
+
+      expect(result.found).toBe(1);
+      expect(result.reset).toBe(0);
+      expect(result.skipped).toBe(1);
+
+      // Verify job is still PROCESSING (not reset)
+      const job = await prisma.embeddingJob.findUnique({
+        where: { articleId: testArticle.id },
+      });
+      expect(job?.status).toBe('PROCESSING');
+    });
+
+    it('should respect batch limit', async () => {
+      // Create 3 articles with stuck jobs
+      const articles = await Promise.all([
+        prisma.article.create({
+          data: {
+            title: 'Batch Test 1',
+            url: `https://example.com/batch-1-${Date.now()}`,
+            sourceId: testSourceId,
+            publishedAt: new Date(),
+          },
+        }),
+        prisma.article.create({
+          data: {
+            title: 'Batch Test 2',
+            url: `https://example.com/batch-2-${Date.now()}`,
+            sourceId: testSourceId,
+            publishedAt: new Date(),
+          },
+        }),
+        prisma.article.create({
+          data: {
+            title: 'Batch Test 3',
+            url: `https://example.com/batch-3-${Date.now()}`,
+            sourceId: testSourceId,
+            publishedAt: new Date(),
+          },
+        }),
+      ]);
+
+      const oldQueuedAt = new Date(Date.now() - 60 * 60 * 1000);
+
+      await prisma.embeddingJob.createMany({
+        data: articles.map((a) => ({
+          articleId: a.id,
+          status: 'PROCESSING' as const,
+          attempts: 1,
+          queuedAt: oldQueuedAt,
+        })),
+      });
+
+      // Recover with limit of 2
+      const result = await scheduler.recoverStuckJobs(30, 2);
+
+      expect(result.found).toBe(2); // Limited to 2
+      expect(result.reset).toBe(2);
+
+      // Cleanup
+      await prisma.article.deleteMany({
+        where: { id: { in: articles.map((a) => a.id) } },
+      });
+    });
+
+    it('should calculate oldestAgeMinutes correctly', async () => {
+      // Create jobs at different ages
+      const age90min = new Date(Date.now() - 90 * 60 * 1000);
+      const age45min = new Date(Date.now() - 45 * 60 * 1000);
+
+      const article2 = await prisma.article.create({
+        data: {
+          title: 'Age Test',
+          url: `https://example.com/age-test-${Date.now()}`,
+          sourceId: testSourceId,
+          publishedAt: new Date(),
+        },
+      });
+
+      await prisma.embeddingJob.createMany({
+        data: [
+          { articleId: testArticle.id, status: 'PROCESSING', queuedAt: age90min, attempts: 1 },
+          { articleId: article2.id, status: 'PROCESSING', queuedAt: age45min, attempts: 1 },
+        ],
+      });
+
+      const result = await scheduler.recoverStuckJobs(30, 100);
+
+      // Oldest should be ~90 minutes (allow some margin)
+      expect(result.oldestAgeMinutes).toBeGreaterThanOrEqual(89);
+      expect(result.oldestAgeMinutes).toBeLessThanOrEqual(91);
+
+      // Cleanup
+      await prisma.article.delete({ where: { id: article2.id } });
+    });
+
+    it('should not reset PENDING or COMPLETED jobs', async () => {
+      const oldQueuedAt = new Date(Date.now() - 60 * 60 * 1000);
+
+      // Create PENDING and COMPLETED jobs (not PROCESSING)
+      const article2 = await prisma.article.create({
+        data: {
+          title: 'Status Test',
+          url: `https://example.com/status-test-${Date.now()}`,
+          sourceId: testSourceId,
+          publishedAt: new Date(),
+        },
+      });
+
+      await prisma.embeddingJob.createMany({
+        data: [
+          { articleId: testArticle.id, status: 'PENDING', queuedAt: oldQueuedAt },
+          { articleId: article2.id, status: 'COMPLETED', queuedAt: oldQueuedAt },
+        ],
+      });
+
+      const result = await scheduler.recoverStuckJobs(30, 100);
+
+      expect(result.found).toBe(0);
+      expect(result.reset).toBe(0);
+
+      // Cleanup
+      await prisma.article.delete({ where: { id: article2.id } });
+    });
+  });
 });
