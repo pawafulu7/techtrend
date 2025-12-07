@@ -130,7 +130,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                     >
                       {article.source.name}
                     </BadgeV2>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground" data-testid="article-datetime-area">
                       <span className="flex items-center gap-1">
                         <span>📅</span>
                         <span>{formatDateWithTime(article.publishedAt)}</span>
