@@ -294,8 +294,8 @@ export class SourceCache {
         `
       ]);
 
-      // 統計情報をマップ化
-      const statsMap = new Map(sourceStats.map(stat => [stat.source_id, stat]));
+      // 統計情報をマップ化（テスト環境で$queryRawがundefinedを返す場合に備えてガード）
+      const statsMap = new Map((sourceStats || []).map(stat => [stat.source_id, stat]));
 
       // ソース情報と統計を結合
       return sources.map(source => {
