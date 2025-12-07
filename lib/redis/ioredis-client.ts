@@ -21,7 +21,7 @@ export class IoRedisClient implements IRedisClient {
       connectTimeout: config?.connectTimeout || 10000,
       maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 3,
       enableReadyCheck: true,
-      lazyConnect: true,
+      lazyConnect: false,  // Connect immediately on instantiation
     } as const;
 
     // Prefer URL (e.g. Upstash rediss://)
@@ -51,10 +51,7 @@ export class IoRedisClient implements IRedisClient {
 
     this.client.on('ready', () => {
     });
-
-    // Auto-connect
-    this.client.connect().catch(() => {
-    });
+    // Note: With lazyConnect: false, ioredis connects automatically on instantiation
   }
 
   async get(key: string): Promise<string | null> {

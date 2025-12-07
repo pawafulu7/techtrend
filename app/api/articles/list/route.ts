@@ -9,6 +9,8 @@ import { auth } from '@/lib/auth/auth';
 import { createLoaders } from '@/lib/dataloader';
 import { TagCache } from '@/lib/cache/tag-mapping-cache';
 import { normalizeArticleCategory } from '@/lib/utils/article-category-normalizer';
+import { getCursorManager } from '@/lib/pagination/cursor-manager';
+import { getDateRangeFilter } from '@/app/lib/date-utils';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -73,8 +75,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
-    // Import CursorManager
-    const { getCursorManager } = await import('@/lib/pagination/cursor-manager');
+    // Use CursorManager (static import)
     const cursorManager = getCursorManager();
     
     // Parse pagination params - Support both cursor and offset
@@ -408,9 +409,8 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      // Apply date range filter
+      // Apply date range filter (static import)
       if (dateRange && dateRange !== 'all') {
-        const { getDateRangeFilter } = await import('@/app/lib/date-utils');
         const startDate = getDateRangeFilter(dateRange);
         if (startDate) {
           where.publishedAt = {

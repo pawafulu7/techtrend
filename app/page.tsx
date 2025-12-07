@@ -23,6 +23,8 @@ import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
 import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
 import { getFilterPreferencesFromCookies } from '@/lib/filter-preferences-cookie';
 import { tagCache } from '@/lib/cache/tag-cache';
+import { getSourceCache } from '@/lib/cache/source-cache';
+import { groupSourcesStatic } from '@/lib/utils/source-grouping-static';
 
 interface PageProps {
   searchParams: Promise<{
@@ -40,8 +42,6 @@ interface PageProps {
 // getArticles function removed - now handled by client component
 
 async function getSources() {
-  const { getSourceCache } = await import('@/lib/cache/source-cache');
-
   // Get all sources (Redis-backed cache)
   const sourceCache = getSourceCache();
   const allSources = await sourceCache.getAllSources();
@@ -51,7 +51,6 @@ async function getSources() {
   // NOTE: Currently both paths use static grouping for production parity
   // DB-backed grouping (groupSourcesByGroupId) is temporarily disabled
   // until multi-category support is implemented
-  const { groupSourcesStatic } = await import('@/lib/utils/source-grouping-static');
   const groupedSources = groupSourcesStatic(sources);
   return { sources, groupedSources };
 }
