@@ -169,5 +169,58 @@ describe('Readability extraction with Worker Threads', () => {
         expect(result === null || result?.content !== undefined).toBe(true);
       });
     }, 60000);
+
+    it('should never return thumbnail (readability does not extract og:image)', async () => {
+      // HTML with og:image and excerpt-like content
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Article with OG Image</title>
+            <meta property="og:image" content="https://example.com/image.jpg">
+          </head>
+          <body>
+            <article>
+              <h1>Test Article</h1>
+              <p>This is a substantial article with enough content for Readability to process.</p>
+              <p>The excerpt would normally be extracted from these paragraphs.</p>
+              <p>However, thumbnail should always be undefined since Readability does not extract og:image.</p>
+            </article>
+          </body>
+        </html>
+      `;
+
+      const result = await extractWithReadability(html, 'https://example.com/thumbnail-test');
+
+      expect(result).not.toBeNull();
+      expect(result?.content).toBeDefined();
+      // Thumbnail should always be undefined - Readability does not extract og:image
+      expect(result?.thumbnail).toBeUndefined();
+    }, 30000);
+
+    it('should not use excerpt as thumbnail even when siteName is absent', async () => {
+      // HTML without siteName that would have triggered the old bug
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head><title>No Site Name Article</title></head>
+          <body>
+            <article>
+              <h1>Article Without SiteName</h1>
+              <p>This is the excerpt text that was incorrectly used as thumbnail in the old code.</p>
+              <p>More content to make this a valid article for extraction.</p>
+              <p>Even more paragraphs to ensure Readability processes this correctly.</p>
+            </article>
+          </body>
+        </html>
+      `;
+
+      const result = await extractWithReadability(html, 'https://example.com/no-sitename');
+
+      expect(result).not.toBeNull();
+      expect(result?.content).toBeDefined();
+      // Thumbnail must be undefined - never use excerpt as thumbnail
+      expect(result?.thumbnail).toBeUndefined();
+    }, 30000);
   });
 });

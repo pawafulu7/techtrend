@@ -56,6 +56,21 @@ function releaseLock(): void {
 }
 
 /**
+ * Validate thumbnail URL
+ * @param url - URL string to validate
+ * @returns true if valid http/https URL
+ */
+function isValidThumbnailUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Setup signal handlers for graceful shutdown
  */
 function setupSignalHandlers(): void {
@@ -319,7 +334,7 @@ async function processSource({
             title: article.title,
             url: article.url,
             summary: null,
-            thumbnail: article.thumbnail || null,
+            thumbnail: isValidThumbnailUrl(article.thumbnail) ? article.thumbnail : null,
             content: article.content || null,
             publishedAt: adjustTimezoneForArticle(article.publishedAt, source.name),
             bookmarks: article.bookmarks || 0,
@@ -367,7 +382,7 @@ async function processSource({
                       data: {
                         content: enrichedData.content,
                         contentUpdatedAt: new Date(),
-                        ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
+                        ...(isValidThumbnailUrl(enrichedData.thumbnail) && { thumbnail: enrichedData.thumbnail })
                       }
                     });
                     console.error(`   [INFO] エンリッチメント成功: ${enrichedData.content.length}文字`);
