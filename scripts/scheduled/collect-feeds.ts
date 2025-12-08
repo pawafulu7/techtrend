@@ -334,7 +334,7 @@ async function processSource({
             title: article.title,
             url: article.url,
             summary: null,
-            thumbnail: article.thumbnail || null,
+            thumbnail: isValidThumbnailUrl(article.thumbnail) ? article.thumbnail : null,
             content: article.content || null,
             publishedAt: adjustTimezoneForArticle(article.publishedAt, source.name),
             bookmarks: article.bookmarks || 0,
