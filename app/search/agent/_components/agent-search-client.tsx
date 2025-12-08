@@ -7,23 +7,43 @@ import { AgentSampleQueries } from './agent-sample-queries';
 import { AgentLoadingState } from './agent-loading-state';
 import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
+import { AgentStepIndicator } from './agent-step-indicator';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 
 const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
+// Timeout threshold for "still processing" message (30 seconds)
+const STEP_TIMEOUT_MS = 30000;
+
 export function AgentSearchClient() {
   const [lastQuery, setLastQuery] = useState('');
   const [showResult, setShowResult] = useState(false);
-  const { search, result, error, isLoading, partialText, reset } = useAgentSearch();
+  const [isStepTimedOut, setIsStepTimedOut] = useState(false);
+  const { search, result, error, isLoading, partialText, currentStep, reset } = useAgentSearch();
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
 
   const handleSearch = async (query: string) => {
     setLastQuery(query);
     setShowResult(false);
+    setIsStepTimedOut(false);
     reset();
     await search(query);
   };
+
+  // Step timeout effect - show "still processing" after 30 seconds
+  useEffect(() => {
+    if (currentStep === 'idle' || currentStep === 'complete' || currentStep === 'error') {
+      setIsStepTimedOut(false);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setIsStepTimedOut(true);
+    }, STEP_TIMEOUT_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [currentStep]);
 
   useEffect(() => {
     if (!ENABLE_STREAMING_UI) return;
@@ -147,7 +167,22 @@ export function AgentSearchClient() {
           </CardV2>
         )}
 
-        {isLoading && !isStreamingWithPartialText && <AgentLoadingState />}
+        {isLoading && !isStreamingWithPartialText && (
+          <CardV2
+            variant="ghost"
+            className="py-8"
+            role="status"
+            aria-live="polite"
+            data-testid="agent-loading-state"
+          >
+            <AgentStepIndicator
+              currentStep={currentStep}
+              isTimedOut={isStepTimedOut}
+              className="mb-6"
+            />
+            <AgentLoadingState />
+          </CardV2>
+        )}
         {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
         {showResult && (result || isStreamingWithPartialText) && !error && (
           <AgentAnswerPanel

@@ -10,6 +10,10 @@ const mockResult: AgentSearchResult = {
   usage: { totalTokens: 1234 },
   cached: false,
   fallback: false,
+  articles: [
+    { articleId: 'art-1', title: 'Test Article 1', url: 'https://example.com/1' },
+    { articleId: 'art-2', title: 'Test Article 2', url: 'https://example.com/2' },
+  ] as any[],
 };
 
 describe('AgentAnswerPanel', () => {
@@ -58,7 +62,7 @@ describe('AgentAnswerPanel', () => {
     );
   });
 
-  test('feedback buttons call onFeedback', () => {
+  test('feedback buttons call onFeedback and show thanks message', () => {
     const mockOnFeedback = jest.fn();
     render(
       <AgentAnswerPanel
@@ -72,8 +76,50 @@ describe('AgentAnswerPanel', () => {
     fireEvent.click(screen.getByLabelText('役立った'));
     expect(mockOnFeedback).toHaveBeenCalledWith(true);
 
+    // After click, thanks message should be shown
+    expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument();
+    expect(screen.getByText('フィードバックありがとうございます')).toBeInTheDocument();
+
+    // Feedback buttons should be replaced by thanks message
+    expect(screen.queryByLabelText('役立った')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('改善が必要')).not.toBeInTheDocument();
+  });
+
+  test('feedback negative button works correctly', () => {
+    const mockOnFeedback = jest.fn();
+    render(
+      <AgentAnswerPanel
+        result={mockResult}
+        onFeedback={mockOnFeedback}
+        partialText={null}
+        isStreaming={false}
+      />
+    );
+
     fireEvent.click(screen.getByLabelText('改善が必要'));
     expect(mockOnFeedback).toHaveBeenCalledWith(false);
+
+    // After click, thanks message should be shown
+    expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument();
+  });
+
+  test('feedback is debounced - second click is ignored', () => {
+    const mockOnFeedback = jest.fn();
+    render(
+      <AgentAnswerPanel
+        result={mockResult}
+        onFeedback={mockOnFeedback}
+        partialText={null}
+        isStreaming={false}
+      />
+    );
+
+    // First click
+    fireEvent.click(screen.getByLabelText('役立った'));
+    expect(mockOnFeedback).toHaveBeenCalledTimes(1);
+
+    // Thanks message is shown, buttons are gone
+    expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument();
   });
 
   test('renders external links with target="_blank"', () => {
@@ -87,6 +133,35 @@ describe('AgentAnswerPanel', () => {
   test('displays token usage', () => {
     render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
     expect(screen.getByText('トークン使用: 1,234')).toBeInTheDocument();
+  });
+
+  test('displays article count when articles are present', () => {
+    render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
+    expect(screen.getByText('2件の記事から生成')).toBeInTheDocument();
+  });
+
+  test('does not display article count when no articles', () => {
+    const resultWithoutArticles = { ...mockResult, articles: [] };
+    render(<AgentAnswerPanel result={resultWithoutArticles} partialText={null} isStreaming={false} />);
+    expect(screen.queryByText(/件の記事から生成/)).not.toBeInTheDocument();
+  });
+
+  test('copy button shows text label on desktop', () => {
+    render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
+    // The copy button should have accessible label
+    expect(screen.getByLabelText('回答をコピー')).toBeInTheDocument();
+  });
+
+  test('copy button shows success state after click', async () => {
+    render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
+
+    const copyButton = screen.getByLabelText('回答をコピー');
+    fireEvent.click(copyButton);
+
+    // Should show "コピー完了" text
+    await waitFor(() => {
+      expect(screen.getByText('コピー完了')).toBeInTheDocument();
+    });
   });
 
   test('hides feedback buttons when onFeedback not provided', () => {
