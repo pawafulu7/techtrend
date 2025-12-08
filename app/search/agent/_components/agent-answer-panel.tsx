@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -95,6 +95,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
 
   const articles = result?.articles;
   const articleCount = articles?.length ?? 0;
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Reset feedback state when result changes
   useEffect(() => {
@@ -102,15 +103,24 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
     setIsSubmittingFeedback(false);
   }, [result?.query]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Debounced feedback handler
-  const handleFeedback = (positive: boolean) => {
+  const handleFeedback = useCallback((positive: boolean) => {
     if (isSubmittingFeedback || feedbackSubmitted) return;
     setIsSubmittingFeedback(true);
     setFeedbackSubmitted(positive ? 'positive' : 'negative');
     onFeedback?.(positive);
     // Reset submitting state after short delay (for visual feedback)
-    setTimeout(() => setIsSubmittingFeedback(false), 300);
-  };
+    feedbackTimeoutRef.current = setTimeout(() => setIsSubmittingFeedback(false), 300);
+  }, [isSubmittingFeedback, feedbackSubmitted, onFeedback]);
 
   const articleMap = useMemo(() => {
     const safeArticles = articles ?? [];

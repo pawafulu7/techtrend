@@ -168,20 +168,14 @@ export function AgentSearchClient() {
         )}
 
         {isLoading && !isStreamingWithPartialText && (
-          <CardV2
-            variant="ghost"
-            className="py-8"
-            role="status"
-            aria-live="polite"
-            data-testid="agent-loading-state"
-          >
+          <div className="py-8" data-testid="agent-loading-wrapper">
             <AgentStepIndicator
               currentStep={currentStep}
               isTimedOut={isStepTimedOut}
               className="mb-6"
             />
             <AgentLoadingState />
-          </CardV2>
+          </div>
         )}
         {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
         {showResult && (result || isStreamingWithPartialText) && !error && (

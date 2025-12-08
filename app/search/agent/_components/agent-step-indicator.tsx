@@ -2,8 +2,9 @@
 
 import { Search, Brain, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { SearchStep } from '@/lib/hooks/useAgentSearch';
 
-export type SearchStep = 'idle' | 'searching' | 'analyzing' | 'generating' | 'complete' | 'error';
+export type { SearchStep };
 
 interface AgentStepIndicatorProps {
   currentStep: SearchStep;

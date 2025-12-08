@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import type { ComponentProps } from 'react';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
+import type { ArticleLink } from '@/lib/types/article-link';
 
 const mockResult: AgentSearchResult = {
   query: 'test query',
@@ -13,7 +14,7 @@ const mockResult: AgentSearchResult = {
   articles: [
     { articleId: 'art-1', title: 'Test Article 1', url: 'https://example.com/1' },
     { articleId: 'art-2', title: 'Test Article 2', url: 'https://example.com/2' },
-  ] as any[],
+  ] as ArticleLink[],
 };
 
 describe('AgentAnswerPanel', () => {
@@ -103,7 +104,7 @@ describe('AgentAnswerPanel', () => {
     expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument();
   });
 
-  test('feedback is debounced - second click is ignored', () => {
+  test('feedback buttons are replaced by thanks message after submission', () => {
     const mockOnFeedback = jest.fn();
     render(
       <AgentAnswerPanel
@@ -118,7 +119,7 @@ describe('AgentAnswerPanel', () => {
     fireEvent.click(screen.getByLabelText('役立った'));
     expect(mockOnFeedback).toHaveBeenCalledTimes(1);
 
-    // Thanks message is shown, buttons are gone
+    // Thanks message is shown, buttons are gone (prevents duplicate submissions)
     expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument();
   });
 

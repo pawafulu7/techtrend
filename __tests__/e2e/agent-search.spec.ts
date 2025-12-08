@@ -114,8 +114,8 @@ test.describe('AI Agent Search E2E', () => {
     await input.fill('test query');
     await input.press('Enter');
 
-    // Verify loading state (using role attribute for stability)
-    await expect(page.getByRole('status')).toBeVisible();
+    // Verify loading state (using specific test id to avoid multiple role="status" elements)
+    await expect(page.getByTestId('agent-loading-wrapper')).toBeVisible();
   });
 
   test('3. Successful search displays answer panel', async ({ page }) => {
