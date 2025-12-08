@@ -36,7 +36,7 @@ function getStepStatus(
 
   if (currentStep === 'error') {
     const currentIndex = stepOrder[stepId];
-    // Mark steps before error as complete, current as active (error state)
+    // Mark steps before generating as complete, rest as pending, with error message displayed separately
     if (currentIndex < stepOrder.generating) {
       return 'complete';
     }
