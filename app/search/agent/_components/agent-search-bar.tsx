@@ -35,7 +35,7 @@ export function AgentSearchBar({
   onPrefillQuery,
   badgeLabel = 'AI検索',
   badgeIcon,
-  helperText = '自然言語で記事を検索できます',
+  helperText = '',
   placeholder = '例: terraformについての記事をおすすめ5件教えて',
   submitLabel = '検索',
   loadingLabel = '検索中',
@@ -49,7 +49,7 @@ export function AgentSearchBar({
   const [query, setQuery] = useState(initialQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [historyItems, setHistoryItems] = useState<SearchHistoryItem[]>([]);
-  const { getSearchHistoryWithTimestamp, saveToHistory, clearHistory, getRelativeTime } = useSearchHistory();
+  const { getSearchHistoryWithTimestamp, saveToHistory, removeFromHistory, clearHistory, getRelativeTime } = useSearchHistory();
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const skipNextFocusRef = useRef(false);
@@ -76,6 +76,12 @@ export function AgentSearchBar({
     setHistoryItems([]);
     onHistoryCleared?.();
   }, [clearHistory, onHistoryCleared]);
+
+  const handleRemoveHistoryItem = useCallback((timestamp: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedHistory = removeFromHistory(timestamp);
+    setHistoryItems(updatedHistory.slice(0, 5));
+  }, [removeFromHistory]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -140,7 +146,7 @@ export function AgentSearchBar({
   }, [onPrefillQuery, applyQueryFromExternal]);
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-3xl mx-auto">
+    <div ref={searchRef} className="relative w-full max-w-4xl mx-auto">
       {(badgeLabel || helperText) && (
         <div className="flex items-center gap-2 mb-2">
           {badgeLabel && (
@@ -240,32 +246,48 @@ export function AgentSearchBar({
               </Button>
             </div>
             {historyItems.map((item) => (
-              <button
+              <div
                 key={`${item.query}-${item.timestamp}`}
-                type="button"
-                role="option"
-                data-testid="search-history-suggestion"
-                aria-selected={false}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 w-full px-3 py-3 md:py-2 text-left hover:bg-accent hover:text-accent-foreground text-sm"
-                onClick={() => {
-                  // UX Design: History selection fills the input without triggering search,
-                  // allowing users to edit conceptual queries before submission.
-                  // This differs from main SearchBox where immediate search is acceptable.
-                  // See PR #158 for original UX fix rationale.
-                  applyQueryFromExternal(item.query);
-                  setShowSuggestions(false);
-                }}
+                className="group flex items-center gap-1 px-3 py-3 md:py-2 hover:bg-accent hover:text-accent-foreground"
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                  <span className="flex-1 truncate">{item.query}</span>
-                </div>
-                {showHistoryTimestamp && (
-                  <span className="text-xs text-muted-foreground pl-5 sm:pl-0">
-                    {getRelativeTime(item.timestamp)}
-                  </span>
-                )}
-              </button>
+                <button
+                  type="button"
+                  role="option"
+                  data-testid="search-history-suggestion"
+                  aria-selected={false}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 flex-1 min-w-0 text-left text-sm"
+                  onClick={() => {
+                    // UX Design: History selection fills the input without triggering search,
+                    // allowing users to edit conceptual queries before submission.
+                    // This differs from main SearchBox where immediate search is acceptable.
+                    // See PR #158 for original UX fix rationale.
+                    applyQueryFromExternal(item.query);
+                    setShowSuggestions(false);
+                  }}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                    <span className="flex-1 truncate">{item.query}</span>
+                  </div>
+                  {showHistoryTimestamp && (
+                    <span className="text-xs text-muted-foreground pl-5 sm:pl-0">
+                      {getRelativeTime(item.timestamp)}
+                    </span>
+                  )}
+                </button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => handleRemoveHistoryItem(item.timestamp, e)}
+                  className="h-7 w-7 p-0 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10"
+                  aria-label="この検索履歴を削除"
+                  title="この検索履歴を削除"
+                  data-testid="remove-history-item-button"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
             ))}
           </div>
         </div>

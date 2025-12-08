@@ -10,6 +10,9 @@ const mockHistoryItems: SearchHistoryItem[] = [
 const mockSaveToHistory = jest.fn();
 const mockGetSearchHistory = jest.fn(() => mockHistoryItems.map(item => item.query));
 const mockGetSearchHistoryWithTimestamp = jest.fn(() => mockHistoryItems);
+const mockRemoveFromHistory = jest.fn((timestamp: number) => {
+  return mockHistoryItems.filter(item => item.timestamp !== timestamp);
+});
 const mockClearHistory = jest.fn();
 const mockGetRelativeTime = jest.fn((timestamp: number) => {
   const diff = Date.now() - timestamp;
@@ -22,6 +25,7 @@ jest.mock('@/lib/hooks/useSearchHistory', () => ({
     getSearchHistory: mockGetSearchHistory,
     getSearchHistoryWithTimestamp: mockGetSearchHistoryWithTimestamp,
     saveToHistory: mockSaveToHistory,
+    removeFromHistory: mockRemoveFromHistory,
     clearHistory: mockClearHistory,
     getRelativeTime: mockGetRelativeTime,
   }),
@@ -35,6 +39,7 @@ describe('AgentSearchBar', () => {
     mockSaveToHistory.mockClear();
     mockGetSearchHistory.mockClear();
     mockGetSearchHistoryWithTimestamp.mockClear();
+    mockRemoveFromHistory.mockClear();
     mockClearHistory.mockClear();
     mockGetRelativeTime.mockClear();
   });
@@ -42,7 +47,11 @@ describe('AgentSearchBar', () => {
   test('renders with AI search badge', () => {
     render(<AgentSearchBar onSearch={mockOnSearch} />);
     expect(screen.getByText('AI検索')).toBeInTheDocument();
-    expect(screen.getByText('自然言語で記事を検索できます')).toBeInTheDocument();
+  });
+
+  test('renders with custom helper text when provided', () => {
+    render(<AgentSearchBar onSearch={mockOnSearch} helperText="カスタムヘルパーテキスト" />);
+    expect(screen.getByText('カスタムヘルパーテキスト')).toBeInTheDocument();
   });
 
   test('calls onSearch with query on Enter key', () => {
@@ -341,6 +350,40 @@ describe('AgentSearchBar', () => {
 
       // After clicking clear, the dropdown should hide since items are now empty
       expect(screen.queryByTestId('search-history-suggestions')).not.toBeInTheDocument();
+    });
+
+    test('displays individual remove buttons for each history item', () => {
+      render(<AgentSearchBar onSearch={mockOnSearch} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+      fireEvent.focus(input);
+
+      const removeButtons = screen.getAllByTestId('remove-history-item-button');
+      expect(removeButtons).toHaveLength(2);
+      expect(removeButtons[0]).toHaveAttribute('aria-label', 'この検索履歴を削除');
+    });
+
+    test('calls removeFromHistory when individual remove button is clicked', () => {
+      render(<AgentSearchBar onSearch={mockOnSearch} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+      fireEvent.focus(input);
+
+      const removeButtons = screen.getAllByTestId('remove-history-item-button');
+      fireEvent.click(removeButtons[0]);
+
+      expect(mockRemoveFromHistory).toHaveBeenCalledTimes(1);
+      expect(mockRemoveFromHistory).toHaveBeenCalledWith(mockHistoryItems[0].timestamp);
+    });
+
+    test('does not trigger query prefill when clicking remove button', () => {
+      render(<AgentSearchBar onSearch={mockOnSearch} />);
+      const input = screen.getByLabelText('AI検索クエリ入力') as HTMLInputElement;
+      fireEvent.focus(input);
+
+      const removeButtons = screen.getAllByTestId('remove-history-item-button');
+      fireEvent.click(removeButtons[0]);
+
+      // Input should remain empty (not prefilled with the history item)
+      expect(input.value).toBe('');
     });
   });
 });
