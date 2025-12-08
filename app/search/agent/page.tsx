@@ -14,7 +14,7 @@ export default async function AgentSearchPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="w-full">
       <AgentSearchClient />
     </div>
   );
