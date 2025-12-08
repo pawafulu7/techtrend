@@ -81,7 +81,11 @@ export function AgentSearchBar({
     e.stopPropagation();
     const updatedHistory = removeFromHistory(timestamp);
     setHistoryItems(updatedHistory.slice(0, 5));
-  }, [removeFromHistory]);
+    // Notify parent when history becomes empty (same as clear all)
+    if (updatedHistory.length === 0) {
+      onHistoryCleared?.();
+    }
+  }, [removeFromHistory, onHistoryCleared]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {

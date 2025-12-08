@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Cloud, Brain, Palette, Server, Shield, GitBranch, Database, Smartphone, type LucideIcon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { CardV2 } from '@/components/ui-v2/card-v2';
@@ -32,10 +33,17 @@ interface AgentSampleQueriesProps {
 }
 
 export function AgentSampleQueries({ onSelectQuery, className, queries, layout = 'grid' }: AgentSampleQueriesProps) {
-  // Note: During SSR and initial hydration, resolvedTheme may be undefined.
-  // next-themes handles this gracefully, defaulting to system preference.
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+
+  // Mounted state to avoid hydration mismatch with next-themes
+  // During SSR, resolvedTheme is undefined, so we default to light theme
+  // and only switch to actual theme after client hydration
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // Use light theme colors during SSR/initial render to avoid hydration mismatch
+  const effectiveIsDark = mounted ? isDark : false;
 
   // 従来のqueries propsが渡された場合は既存の表示形式を維持
   if (queries && queries.length > 0) {
@@ -82,7 +90,7 @@ export function AgentSampleQueries({ onSelectQuery, className, queries, layout =
 
             const firstQuery = categoryQueries[0];
             const IconComponent = CATEGORY_ICON_MAP[category];
-            const colors = getCategoryColors(category, isDark);
+            const colors = getCategoryColors(category, effectiveIsDark);
 
             return (
               <CardV2
@@ -139,7 +147,7 @@ export function AgentSampleQueries({ onSelectQuery, className, queries, layout =
           const IconComponent = CATEGORY_ICON_MAP[category];
           const firstQuery = categoryQueries[0];
 
-          const colors = getCategoryColors(category, isDark);
+          const colors = getCategoryColors(category, effectiveIsDark);
 
           return (
             <CardV2

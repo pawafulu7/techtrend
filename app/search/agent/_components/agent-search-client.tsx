@@ -16,13 +16,25 @@ const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !=
 // Timeout threshold for "still processing" message (30 seconds)
 const STEP_TIMEOUT_MS = 30000;
 
-// Check for reduced motion preference
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Hook for reduced motion preference - reacts to system setting changes
+const usePrefersReducedMotion = () => {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  return prefersReducedMotion;
+};
 
 export function AgentSearchClient() {
   const [lastQuery, setLastQuery] = useState('');
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [showResult, setShowResult] = useState(false);
   const [isStepTimedOut, setIsStepTimedOut] = useState(false);
   const { search, result, error, isLoading, partialText, currentStep, reset } = useAgentSearch();
@@ -79,7 +91,7 @@ export function AgentSearchClient() {
       const scrollTimer = setTimeout(() => {
         if (resultRef.current) {
           resultRef.current.scrollIntoView({
-            behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+            behavior: prefersReducedMotion ? 'auto' : 'smooth',
             block: 'start',
           });
         }
@@ -87,7 +99,7 @@ export function AgentSearchClient() {
 
       return () => clearTimeout(scrollTimer);
     }
-  }, [showResult]);
+  }, [showResult, prefersReducedMotion]);
 
   const handleRetry = () => {
     if (!lastQuery) return;
