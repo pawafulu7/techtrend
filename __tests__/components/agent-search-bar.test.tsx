@@ -325,7 +325,7 @@ describe('AgentSearchBar', () => {
     });
 
     test('hides suggestions dropdown after clearing history', () => {
-      // Mock empty history after clear
+      // Initial render with history items, clear button will empty local state
       mockGetSearchHistoryWithTimestamp.mockReturnValueOnce(mockHistoryItems);
 
       render(<AgentSearchBar onSearch={mockOnSearch} />);
