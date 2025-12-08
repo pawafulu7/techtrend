@@ -92,8 +92,8 @@ describe('AgentAnswerPanel', () => {
   test('hides feedback buttons when onFeedback not provided', () => {
     render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
 
-    expect(screen.queryByLabelText('良い')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('悪い')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('役立った')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('改善が必要')).not.toBeInTheDocument();
   });
 
   test('shows streaming indicator while isStreaming=true', () => {
