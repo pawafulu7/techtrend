@@ -1,16 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { Sparkles, Search, FileText } from 'lucide-react';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentSampleQueries } from './agent-sample-queries';
 import { AgentLoadingState } from './agent-loading-state';
 import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CardV2 } from '@/components/ui-v2/card-v2';
-import { ButtonV2 } from '@/components/ui-v2/button-v2';
 
 const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
@@ -72,6 +70,9 @@ export function AgentSearchClient() {
   const isStreamingWithPartialText = ENABLE_STREAMING_UI && Boolean(partialText);
   const shouldShowStreamingResult = ENABLE_STREAMING_UI && Boolean(partialText && !result);
 
+  // 初回訪問判定（検索未実行かつ結果なし）
+  const isInitialState = !lastQuery && !result && !error && !isLoading;
+
   return (
     <div>
       <CardV2
@@ -79,10 +80,17 @@ export function AgentSearchClient() {
         className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-6 mb-6"
         data-testid="agent-search-card"
       >
-        <div className="text-center mb-4">
-          <h1 className="text-2xl font-heading mb-2">AI記事検索</h1>
-          <p className="text-sm text-[color:var(--tt-color-text-muted)]">
-            AIがTechTrendの記事を横断検索し、要約と参考リンクで回答します。気になるテーマを自然言語で質問してください。
+        <div className="mb-6">
+          <div className="border-l-4 border-[var(--tt-color-primary)] pl-4 mb-4">
+            <h1 className="text-3xl md:text-4xl font-heading mb-2 bg-gradient-to-r from-[var(--tt-color-primary)] to-[var(--tt-color-secondary)] bg-clip-text text-transparent">
+              AI記事検索
+            </h1>
+            <p className="text-sm text-[color:var(--tt-color-text-muted)]">
+              AIがTechTrendの記事を横断検索し、要約と参考リンクで回答します。
+            </p>
+          </div>
+          <p className="text-center text-sm text-[color:var(--tt-color-text-muted)]">
+            気になるテーマを自然言語で質問してください。
           </p>
         </div>
 
@@ -93,26 +101,52 @@ export function AgentSearchClient() {
         />
       </CardV2>
 
-      <Collapsible className="mt-4">
-        <CollapsibleTrigger asChild>
-          <ButtonV2
-            variant="ghost"
-            size="sm"
-            className="w-full justify-center gap-2 data-[state=open]:text-primary"
-            data-testid="agent-sample-query-trigger"
-          >
-            <span className="text-sm">よくある質問を見る</span>
-            <ChevronDown className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-180" />
-          </ButtonV2>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-4">
-          <CardV2 variant="ghost" className="p-4">
-            <AgentSampleQueries onSelectQuery={handlePrefillQuery} />
-          </CardV2>
-        </CollapsibleContent>
-      </Collapsible>
+      {/* カテゴリタイルグリッド - 常時表示でナッジ効果を活用 */}
+      <section className="mt-6" aria-labelledby="sample-queries-heading">
+        <h2 id="sample-queries-heading" className="text-center text-sm font-medium text-[var(--tt-color-text-muted)] mb-4">
+          カテゴリから探す
+        </h2>
+        <AgentSampleQueries onSelectQuery={handlePrefillQuery} />
+      </section>
 
       <div className="mt-8">
+        {/* 初回訪問時のガイダンス */}
+        {isInitialState && (
+          <CardV2
+            variant="ghost"
+            className="py-8 text-center"
+            role="status"
+            aria-live="polite"
+            data-testid="agent-initial-state"
+          >
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex gap-6 text-[var(--tt-color-text-muted)]">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="p-3 rounded-full bg-[var(--tt-color-primary)]/10">
+                    <Search className="h-5 w-5 text-[var(--tt-color-primary)]" aria-hidden="true" />
+                  </div>
+                  <span className="text-xs">質問を入力</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="p-3 rounded-full bg-[var(--tt-color-primary)]/10">
+                    <Sparkles className="h-5 w-5 text-[var(--tt-color-primary)]" aria-hidden="true" />
+                  </div>
+                  <span className="text-xs">AIが検索</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="p-3 rounded-full bg-[var(--tt-color-primary)]/10">
+                    <FileText className="h-5 w-5 text-[var(--tt-color-primary)]" aria-hidden="true" />
+                  </div>
+                  <span className="text-xs">要約を回答</span>
+                </div>
+              </div>
+              <p className="text-sm text-[var(--tt-color-text-muted)] max-w-md">
+                上の検索バーにキーワードを入力するか、カテゴリから選んで検索を開始してください
+              </p>
+            </div>
+          </CardV2>
+        )}
+
         {isLoading && !isStreamingWithPartialText && <AgentLoadingState />}
         {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
         {showResult && (result || isStreamingWithPartialText) && !error && (

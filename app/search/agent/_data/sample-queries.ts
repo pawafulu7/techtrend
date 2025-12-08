@@ -25,6 +25,15 @@ export const CATEGORY_LABELS: Record<SampleQuery['category'], string> = {
   security: 'セキュリティ',
 };
 
+// カテゴリアイコン名（lucide-react）
+export const CATEGORY_ICONS: Record<SampleQuery['category'], string> = {
+  infrastructure: 'Cloud',
+  ai: 'Brain',
+  frontend: 'Palette',
+  backend: 'Server',
+  security: 'Shield',
+};
+
 export const CATEGORY_ORDER: SampleQuery['category'][] = [
   'infrastructure',
   'ai',

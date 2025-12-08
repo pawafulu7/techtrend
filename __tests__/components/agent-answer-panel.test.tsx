@@ -69,10 +69,10 @@ describe('AgentAnswerPanel', () => {
       />
     );
 
-    fireEvent.click(screen.getByLabelText('良い'));
+    fireEvent.click(screen.getByLabelText('役立った'));
     expect(mockOnFeedback).toHaveBeenCalledWith(true);
 
-    fireEvent.click(screen.getByLabelText('悪い'));
+    fireEvent.click(screen.getByLabelText('改善が必要'));
     expect(mockOnFeedback).toHaveBeenCalledWith(false);
   });
 
