@@ -355,6 +355,7 @@ export function ArticleQAClient({
                           <Bot className="mt-4 h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
                           <div className="flex-1 rounded-[28px] border border-slate-100/80 bg-gradient-to-b from-white to-slate-50/70 p-1.5 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)]">
                             <AgentAnswerPanel
+                              mode="qa"
                               result={exchangeResult}
                               partialText={streamingPartial}
                               isStreaming={isActive && shouldShowStreamingResult}

@@ -319,3 +319,66 @@ describe('AgentAnswerPanel - Empty State', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Test Response' })).toBeInTheDocument();
   });
 });
+
+describe('AgentAnswerPanel mode prop', () => {
+  const mockResultWithSections: AgentSearchResult = {
+    query: 'test query',
+    response: '1. **Test Article** [#art-1] - Test description\n\n2. **Second Article** [#art-2] - Another description',
+    toolCalls: [],
+    usage: { totalTokens: 1000 },
+    cached: false,
+    fallback: false,
+    articles: [
+      { articleId: 'art-1', title: 'Test Article', url: 'https://example.com/1' },
+      { articleId: 'art-2', title: 'Second Article', url: 'https://example.com/2' },
+    ] as ArticleLink[],
+  };
+
+  it('should show card display in search mode (default)', () => {
+    render(
+      <AgentAnswerPanel
+        result={mockResultWithSections}
+        partialText={null}
+        isStreaming={false}
+      />
+    );
+    expect(screen.getByTestId('agent-answer-cards')).toBeInTheDocument();
+  });
+
+  it('should NOT show card display in qa mode', () => {
+    render(
+      <AgentAnswerPanel
+        mode="qa"
+        result={mockResultWithSections}
+        partialText={null}
+        isStreaming={false}
+      />
+    );
+    expect(screen.queryByTestId('agent-answer-cards')).not.toBeInTheDocument();
+    expect(screen.getByTestId('agent-answer-markdown')).toBeInTheDocument();
+  });
+
+  it('should NOT show cards while streaming regardless of mode', () => {
+    render(
+      <AgentAnswerPanel
+        mode="search"
+        result={mockResultWithSections}
+        partialText="streaming..."
+        isStreaming={true}
+      />
+    );
+    expect(screen.queryByTestId('agent-answer-cards')).not.toBeInTheDocument();
+  });
+
+  it('should render markdown in qa mode with partialText', () => {
+    render(
+      <AgentAnswerPanel
+        mode="qa"
+        result={null}
+        partialText="Partial response..."
+        isStreaming={true}
+      />
+    );
+    expect(screen.getByTestId('agent-answer-markdown')).toBeInTheDocument();
+  });
+});
