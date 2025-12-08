@@ -1,7 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { AgentSampleQueries } from '@/app/search/agent/_components/agent-sample-queries';
-import { SAMPLE_QUERIES, CATEGORY_LABELS } from '@/app/search/agent/_data/sample-queries';
+import { SAMPLE_QUERIES, CATEGORY_LABELS, CATEGORY_ORDER } from '@/app/search/agent/_data/sample-queries';
 
 describe('AgentSampleQueries', () => {
   const mockOnSelectQuery = jest.fn();
@@ -10,68 +9,118 @@ describe('AgentSampleQueries', () => {
     mockOnSelectQuery.mockClear();
   });
 
-  test('should render all 10 sample queries', () => {
-    render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
+  describe('カテゴリタイルグリッド表示（デフォルト）', () => {
+    test('should render 5 category tiles', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
 
-    SAMPLE_QUERIES.forEach((query) => {
-      expect(screen.getByText(query.text)).toBeInTheDocument();
+      // 5つのカテゴリタイルが存在
+      CATEGORY_ORDER.forEach((category) => {
+        expect(screen.getByTestId(`category-tile-${category}`)).toBeInTheDocument();
+      });
+    });
+
+    test('should display category labels', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
+
+      expect(screen.getByText(CATEGORY_LABELS.infrastructure)).toBeInTheDocument();
+      expect(screen.getByText(CATEGORY_LABELS.ai)).toBeInTheDocument();
+      expect(screen.getByText(CATEGORY_LABELS.frontend)).toBeInTheDocument();
+      expect(screen.getByText(CATEGORY_LABELS.backend)).toBeInTheDocument();
+      expect(screen.getByText(CATEGORY_LABELS.security)).toBeInTheDocument();
+    });
+
+    test('should display first query text for each category', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
+
+      // 各カテゴリの最初のクエリが表示される
+      const firstQueryByCategory = CATEGORY_ORDER.map((cat) =>
+        SAMPLE_QUERIES.find((q) => q.category === cat)
+      );
+
+      firstQueryByCategory.forEach((query) => {
+        if (query) {
+          expect(screen.getByText(query.text)).toBeInTheDocument();
+        }
+      });
+    });
+
+    test('should call onSelectQuery when category tile is clicked', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
+
+      const firstQuery = SAMPLE_QUERIES[0]; // infrastructure category
+      const tile = screen.getByTestId(`category-tile-${firstQuery.category}`);
+
+      fireEvent.click(tile);
+
+      expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
+      expect(mockOnSelectQuery).toHaveBeenCalledTimes(1);
+    });
+
+    test('should have proper aria-label for category tiles', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
+
+      CATEGORY_ORDER.forEach((category) => {
+        const tile = screen.getByTestId(`category-tile-${category}`);
+        const categoryLabel = CATEGORY_LABELS[category];
+        expect(tile.getAttribute('aria-label')).toContain(`${categoryLabel}カテゴリで検索`);
+      });
+    });
+
+    test('should support keyboard interaction (Enter and Space)', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
+
+      const firstQuery = SAMPLE_QUERIES[0];
+      const tile = screen.getByTestId(`category-tile-${firstQuery.category}`);
+
+      // Enterキーで選択
+      fireEvent.keyDown(tile, { key: 'Enter' });
+      expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
+
+      mockOnSelectQuery.mockClear();
+
+      // Spaceキーで選択
+      fireEvent.keyDown(tile, { key: ' ' });
+      expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
+    });
+
+    test('should have role="button" and tabIndex for accessibility', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
+
+      CATEGORY_ORDER.forEach((category) => {
+        const tile = screen.getByTestId(`category-tile-${category}`);
+        expect(tile).toHaveAttribute('role', 'button');
+        expect(tile).toHaveAttribute('tabindex', '0');
+      });
     });
   });
 
-  test('should group queries by 5 categories', () => {
-    render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
+  describe('従来のqueries props表示', () => {
+    const customQueries = ['カスタムクエリ1', 'カスタムクエリ2', 'カスタムクエリ3'];
 
-    expect(screen.getByText(CATEGORY_LABELS.infrastructure)).toBeInTheDocument();
-    expect(screen.getByText(CATEGORY_LABELS.ai)).toBeInTheDocument();
-    expect(screen.getByText(CATEGORY_LABELS.frontend)).toBeInTheDocument();
-    expect(screen.getByText(CATEGORY_LABELS.backend)).toBeInTheDocument();
-    expect(screen.getByText(CATEGORY_LABELS.security)).toBeInTheDocument();
-  });
+    test('should render custom queries when queries prop is provided', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} queries={customQueries} />);
 
-  test('should call onSelectQuery with correct text when chip clicked', () => {
-    render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
-
-    const firstQuery = SAMPLE_QUERIES[0];
-    const chip = screen.getByRole('button', { name: firstQuery.text });
-
-    fireEvent.click(chip);
-
-    expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
-    expect(mockOnSelectQuery).toHaveBeenCalledTimes(1);
-  });
-
-  test('should have proper aria-label for each chip', () => {
-    render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
-
-    SAMPLE_QUERIES.forEach((query) => {
-      const chip = screen.getByRole('button', { name: query.text });
-      expect(chip).toHaveAttribute('aria-label', query.text);
+      customQueries.forEach((query) => {
+        expect(screen.getByText(query)).toBeInTheDocument();
+      });
     });
-  });
 
-  test('should render categories in CATEGORY_ORDER', () => {
-    render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
+    test('should call onSelectQuery when custom query button is clicked', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} queries={customQueries} />);
 
-    const categoryLabels = screen.getAllByTestId('category-label');
-    const expectedOrder = ['インフラ', 'AI', 'フロントエンド', 'バックエンド', 'セキュリティ'];
+      const button = screen.getByRole('button', { name: customQueries[0] });
+      fireEvent.click(button);
 
-    expect(categoryLabels.map((el) => el.textContent)).toEqual(expectedOrder);
-  });
+      expect(mockOnSelectQuery).toHaveBeenCalledWith(customQueries[0]);
+    });
 
-  test('should support keyboard interaction (Enter and Space)', () => {
-    render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
+    test('should not render category tiles when queries prop is provided', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} queries={customQueries} />);
 
-    const firstQuery = SAMPLE_QUERIES[0];
-    const chip = screen.getByRole('button', { name: firstQuery.text });
-
-    fireEvent.keyDown(chip, { key: 'Enter' });
-    fireEvent.click(chip);
-    expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
-
-    mockOnSelectQuery.mockClear();
-
-    fireEvent.keyDown(chip, { key: ' ' });
-    fireEvent.click(chip);
-    expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
+      // カテゴリタイルは存在しない
+      CATEGORY_ORDER.forEach((category) => {
+        expect(screen.queryByTestId(`category-tile-${category}`)).not.toBeInTheDocument();
+      });
+    });
   });
 });

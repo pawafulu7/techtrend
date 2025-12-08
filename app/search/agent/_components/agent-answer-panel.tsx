@@ -295,27 +295,25 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
         </div>
 
         {onFeedback && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground mr-2">この回答は役立ちましたか？</span>
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--tt-color-surface-muted)]">
+            <span className="text-xs text-muted-foreground mr-2 hidden sm:inline">この回答は役立ちましたか？</span>
             <ButtonV2
               variant="ghost"
               size="sm"
               onClick={() => onFeedback(true)}
-              iconOnly={true}
-              className="h-7 w-7"
-              aria-label="良い"
+              className="h-11 w-11 md:h-9 md:w-9 hover:bg-green-100 dark:hover:bg-green-900/30 hover:text-green-600"
+              aria-label="役立った"
             >
-              <ThumbsUp className="h-3 w-3" />
+              <ThumbsUp className="h-5 w-5 md:h-4 md:w-4" />
             </ButtonV2>
             <ButtonV2
               variant="ghost"
               size="sm"
               onClick={() => onFeedback(false)}
-              iconOnly={true}
-              className="h-7 w-7"
-              aria-label="悪い"
+              className="h-11 w-11 md:h-9 md:w-9 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600"
+              aria-label="改善が必要"
             >
-              <ThumbsDown className="h-3 w-3" />
+              <ThumbsDown className="h-5 w-5 md:h-4 md:w-4" />
             </ButtonV2>
           </div>
         )}

@@ -349,8 +349,8 @@ test.describe('AI Agent Search E2E', () => {
 
     await page.waitForSelector('[role="article"]', { timeout: 5000 });
 
-    // Click thumbs up
-    await page.click('button[aria-label="良い"]');
+    // Click thumbs up (aria-label changed from "良い" to "役立った")
+    await page.click('button[aria-label="役立った"]');
 
     // Verify console log
     await page.waitForTimeout(500);
@@ -498,22 +498,17 @@ test.describe('AI Agent Search E2E', () => {
     // Wait for page to fully render
     await page.waitForTimeout(1000);
 
-    // Open collapsible to reveal sample queries (with extended timeout)
-    const collapsibleButton = page.getByRole('button', { name: 'よくある質問を見る' });
-    await collapsibleButton.waitFor({ state: 'visible', timeout: 15000 });
-    await collapsibleButton.click();
-
-    // Wait for collapsible content to expand
-    await page.waitForTimeout(500);
-
-    const sampleChip = page.getByRole('button', { name: /AWS最新機能アップデート速報/ });
-    await sampleChip.waitFor({ state: 'visible', timeout: 10000 });
-    await sampleChip.click();
+    // Category tiles are now always visible (no collapsible)
+    // Click the infrastructure category tile which contains "AWS最新機能アップデート速報"
+    const categoryTile = page.getByTestId('category-tile-infrastructure');
+    await categoryTile.waitFor({ state: 'visible', timeout: 15000 });
+    await categoryTile.click();
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await expect(input).toHaveValue('AWS最新機能アップデート速報');
 
-    await page.getByRole('button', { name: '検索' }).click();
+    // Use specific selector for search button to avoid matching category tiles
+    await page.getByTestId('agent-search-card').getByRole('button', { name: '検索' }).click();
 
     await expect(page.getByRole('heading', { name: 'AI回答' })).toBeVisible({ timeout: 15000 });
     await expect(page.locator('[role="article"]')).toContainText('テスト記事1');
@@ -532,7 +527,8 @@ test.describe('AI Agent Search E2E', () => {
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('xyzabc123nonsense');
-    await page.getByRole('button', { name: '検索' }).click();
+    // Use specific selector for search button to avoid matching category tiles
+    await page.getByTestId('agent-search-card').getByRole('button', { name: '検索' }).click();
 
     await expect(page.getByText('該当する記事が見つかりませんでした')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('以下を試してみてください:')).toBeVisible();
@@ -606,7 +602,8 @@ test.describe('AI Agent Search E2E', () => {
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await input.fill('Next.js streaming guard');
-    await page.getByRole('button', { name: '検索' }).click();
+    // Use specific selector for search button to avoid matching category tiles
+    await page.getByTestId('agent-search-card').getByRole('button', { name: '検索' }).click();
 
     const streamingIndicator = page.getByTestId('streaming-indicator');
     await expect(streamingIndicator).toBeVisible({ timeout: 5000 });
