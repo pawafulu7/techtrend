@@ -124,4 +124,64 @@ describe('useSearchHistory', () => {
 
     (global as any).window = originalWindow;
   });
+
+  test('removes specific history item by timestamp', () => {
+    const { result } = renderHook(() => useSearchHistory());
+
+    // Manually set up history with known timestamps
+    const testHistory = [
+      { query: 'query 3', timestamp: 3000 },
+      { query: 'query 2', timestamp: 2000 },
+      { query: 'query 1', timestamp: 1000 },
+    ];
+    localStorage.setItem('searchHistoryV2', JSON.stringify(testHistory));
+
+    let history = result.current.getSearchHistory();
+    expect(history).toEqual(['query 3', 'query 2', 'query 1']);
+
+    act(() => {
+      result.current.removeFromHistory(1000); // Remove query 1
+    });
+
+    history = result.current.getSearchHistory();
+    expect(history).toEqual(['query 3', 'query 2']); // query 1 removed
+  });
+
+  test('removeFromHistory returns updated history', () => {
+    const { result } = renderHook(() => useSearchHistory());
+
+    // Manually set up history with known timestamps
+    const testHistory = [
+      { query: 'query 2', timestamp: 2000 },
+      { query: 'query 1', timestamp: 1000 },
+    ];
+    localStorage.setItem('searchHistoryV2', JSON.stringify(testHistory));
+
+    let updatedHistory: ReturnType<typeof result.current.getSearchHistoryWithTimestamp> = [];
+    act(() => {
+      updatedHistory = result.current.removeFromHistory(2000); // Remove query 2
+    });
+
+    expect(updatedHistory).toHaveLength(1);
+    expect(updatedHistory[0].query).toBe('query 1');
+  });
+
+  test('removeFromHistory does nothing if timestamp not found', () => {
+    const { result } = renderHook(() => useSearchHistory());
+
+    act(() => {
+      result.current.saveToHistory('query 1');
+      result.current.saveToHistory('query 2');
+    });
+
+    const historyBefore = result.current.getSearchHistory();
+    expect(historyBefore).toHaveLength(2);
+
+    act(() => {
+      result.current.removeFromHistory(999999999999); // Non-existent timestamp
+    });
+
+    const historyAfter = result.current.getSearchHistory();
+    expect(historyAfter).toEqual(historyBefore);
+  });
 });

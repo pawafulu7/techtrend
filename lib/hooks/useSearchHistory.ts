@@ -21,6 +21,8 @@ export interface UseSearchHistoryReturn {
   getSearchHistoryWithTimestamp: () => SearchHistoryItem[];
   /** Save a query to history */
   saveToHistory: (searchQuery: string) => void;
+  /** Remove a specific history item by timestamp */
+  removeFromHistory: (timestamp: number) => SearchHistoryItem[];
   /** Clear all history */
   clearHistory: () => void;
   /** Get relative time string from timestamp */
@@ -96,6 +98,15 @@ export function useSearchHistory(): UseSearchHistoryReturn {
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(updatedHistory));
   }, [getSearchHistoryWithTimestamp]);
 
+  const removeFromHistory = useCallback((timestamp: number): SearchHistoryItem[] => {
+    if (typeof window === 'undefined') return [];
+
+    const history = getSearchHistoryWithTimestamp();
+    const updatedHistory = history.filter(item => item.timestamp !== timestamp);
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(updatedHistory));
+    return updatedHistory;
+  }, [getSearchHistoryWithTimestamp]);
+
   const clearHistory = useCallback(() => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEY_V2);
@@ -120,6 +131,7 @@ export function useSearchHistory(): UseSearchHistoryReturn {
     getSearchHistory,
     getSearchHistoryWithTimestamp,
     saveToHistory,
+    removeFromHistory,
     clearHistory,
     getRelativeTime,
   };

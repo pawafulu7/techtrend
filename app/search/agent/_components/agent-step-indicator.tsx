@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, Brain, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Brain, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SearchStep } from '@/lib/hooks/useAgentSearch';
 
@@ -15,7 +15,6 @@ interface AgentStepIndicatorProps {
 const STEPS = [
   { id: 'searching', label: '記事検索', icon: Search },
   { id: 'analyzing', label: 'AI分析', icon: Brain },
-  { id: 'generating', label: '回答生成', icon: FileText },
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
@@ -27,7 +26,6 @@ function getStepStatus(
   const stepOrder: Record<StepId, number> = {
     searching: 0,
     analyzing: 1,
-    generating: 2,
   };
 
   if (currentStep === 'complete') {
@@ -36,8 +34,8 @@ function getStepStatus(
 
   if (currentStep === 'error') {
     const currentIndex = stepOrder[stepId];
-    // Mark steps before generating as complete, rest as pending, with error message displayed separately
-    if (currentIndex < stepOrder.generating) {
+    // Mark searching as complete if error occurred during analysis, rest as pending
+    if (currentIndex < stepOrder.analyzing) {
       return 'complete';
     }
     return 'pending';
@@ -74,14 +72,14 @@ export function AgentStepIndicator({
       aria-live="polite"
       data-testid="agent-step-indicator"
     >
-      <div className="flex justify-between items-center w-full max-w-md">
+      <div className="flex justify-center items-center gap-4 max-w-md mx-auto">
         {STEPS.map((step, index) => {
           const status = getStepStatus(step.id, currentStep);
           const Icon = step.icon;
           const isLast = index === STEPS.length - 1;
 
           return (
-            <div key={step.id} className="flex items-center flex-1">
+            <div key={step.id} className="flex items-center">
               <div className="flex flex-col items-center gap-2">
                 <div
                   className={cn(
@@ -115,7 +113,7 @@ export function AgentStepIndicator({
               {!isLast && (
                 <div
                   className={cn(
-                    'flex-1 h-0.5 mx-2 transition-colors duration-300',
+                    'w-16 h-0.5 mx-2 transition-colors duration-300',
                     getStepStatus(STEPS[index + 1].id, currentStep) !== 'pending'
                       ? 'bg-[var(--tt-color-primary)]'
                       : 'bg-[var(--tt-color-border)]'

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Sparkles, Search, FileText } from 'lucide-react';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentSampleQueries } from './agent-sample-queries';
 import { AgentLoadingState } from './agent-loading-state';
@@ -17,12 +16,30 @@ const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !=
 // Timeout threshold for "still processing" message (30 seconds)
 const STEP_TIMEOUT_MS = 30000;
 
+// Hook for reduced motion preference - reacts to system setting changes
+const usePrefersReducedMotion = () => {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  return prefersReducedMotion;
+};
+
 export function AgentSearchClient() {
   const [lastQuery, setLastQuery] = useState('');
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [showResult, setShowResult] = useState(false);
   const [isStepTimedOut, setIsStepTimedOut] = useState(false);
   const { search, result, error, isLoading, partialText, currentStep, reset } = useAgentSearch();
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   const handleSearch = async (query: string) => {
     setLastQuery(query);
@@ -67,6 +84,23 @@ export function AgentSearchClient() {
     }
   }, [isLoading, result, error]);
 
+  // Auto-scroll to result when result is shown
+  useEffect(() => {
+    if (showResult && resultRef.current) {
+      // Auto-scroll to result with 100ms delay (Doherty threshold)
+      const scrollTimer = setTimeout(() => {
+        if (resultRef.current) {
+          resultRef.current.scrollIntoView({
+            behavior: prefersReducedMotion ? 'auto' : 'smooth',
+            block: 'start',
+          });
+        }
+      }, 100);
+
+      return () => clearTimeout(scrollTimer);
+    }
+  }, [showResult, prefersReducedMotion]);
+
   const handleRetry = () => {
     if (!lastQuery) return;
     setShowResult(false);
@@ -91,9 +125,6 @@ export function AgentSearchClient() {
   const isStreamingWithPartialText = ENABLE_STREAMING_UI && Boolean(partialText);
   const shouldShowStreamingResult = ENABLE_STREAMING_UI && Boolean(partialText && !result);
 
-  // 初回訪問判定（検索未実行かつ結果なし）
-  const isInitialState = !lastQuery && !result && !error && !isLoading;
-
   // Generate related questions based on AI response
   const relatedQuestions = useMemo(() => {
     if (!result?.response) return [];
@@ -101,107 +132,116 @@ export function AgentSearchClient() {
   }, [result?.response, result?.articles]);
 
   return (
-    <div>
-      <CardV2
-        variant="default"
-        className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-6 mb-6"
-        data-testid="agent-search-card"
-      >
-        <div className="mb-6">
-          <div className="border-l-4 border-[var(--tt-color-primary)] pl-4 mb-4">
-            <h1 className="text-3xl md:text-4xl font-heading mb-2 bg-gradient-to-r from-[var(--tt-color-primary)] to-[var(--tt-color-secondary)] bg-clip-text text-transparent">
-              AI記事検索
-            </h1>
-            <p className="text-sm text-[color:var(--tt-color-text-muted)]">
-              AIがTechTrendの記事を横断検索し、要約と参考リンクで回答します。
-            </p>
+    <div className="w-full px-6 py-3">
+      {/* 2-column layout: Main content (left) + Sidebar (right) */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left column: Search bar + Results */}
+        <div className="flex-1 min-w-0 space-y-6">
+          {/* Search card */}
+          <CardV2
+            variant="default"
+            className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-4"
+            data-testid="agent-search-card"
+          >
+            <div className="mb-3">
+              <div className="border-l-4 border-[var(--tt-color-primary)] pl-3">
+                <h1 className="text-lg md:text-xl font-heading mb-0.5 text-[var(--tt-color-text)]">
+                  AI記事検索
+                </h1>
+                <p className="text-sm text-[color:var(--tt-color-text-muted)]">
+                  自然言語で質問すると、AIが記事を横断検索して要約回答します
+                </p>
+              </div>
+            </div>
+
+            <AgentSearchBar
+              onSearch={handleSearch}
+              isLoading={isLoading}
+              onPrefillQuery={handleSetPrefillCallback}
+            />
+          </CardV2>
+
+          {/* Skip link for accessibility */}
+          {showResult && (
+            <a
+              href="#agent-result"
+              className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 focus:px-4 focus:py-2 focus:bg-[var(--tt-color-primary)] focus:text-white focus:rounded"
+              onClick={(e) => {
+                e.preventDefault();
+                resultRef.current?.focus();
+              }}
+            >
+              結果にスキップ
+            </a>
+          )}
+
+          {/* Result area */}
+          <div
+            ref={resultRef}
+            id="agent-result"
+            className="scroll-mt-4"
+            tabIndex={-1}
+          >
+            {isLoading && !isStreamingWithPartialText && (
+              <CardV2
+                variant="default"
+                className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-6"
+                data-testid="agent-loading-wrapper"
+              >
+                <AgentStepIndicator
+                  currentStep={currentStep}
+                  isTimedOut={isStepTimedOut}
+                  className="mb-6"
+                />
+                <AgentLoadingState />
+              </CardV2>
+            )}
+            {!isLoading && showResult && error && (
+              <CardV2
+                variant="default"
+                className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-6"
+              >
+                <AgentErrorDisplay error={error} onRetry={handleRetry} />
+              </CardV2>
+            )}
+            {showResult && (result || isStreamingWithPartialText) && !error && (
+              <div className="space-y-6">
+                <AgentAnswerPanel
+                  result={result}
+                  partialText={ENABLE_STREAMING_UI ? partialText : null}
+                  isStreaming={shouldShowStreamingResult}
+                  onFeedback={handleFeedback}
+                />
+                {/* Related questions - shown after AI response is complete */}
+                {result && relatedQuestions.length > 0 && (
+                  <AgentRelatedQuestions
+                    questions={relatedQuestions}
+                    onSelectQuestion={handlePrefillQuery}
+                  />
+                )}
+              </div>
+            )}
           </div>
-          <p className="text-center text-sm text-[color:var(--tt-color-text-muted)]">
-            気になるテーマを自然言語で質問してください。
-          </p>
         </div>
 
-        <AgentSearchBar
-          onSearch={handleSearch}
-          isLoading={isLoading}
-          onPrefillQuery={handleSetPrefillCallback}
-        />
-      </CardV2>
-
-      {/* カテゴリタイルグリッド - 常時表示でナッジ効果を活用 */}
-      <section className="mt-6" aria-labelledby="sample-queries-heading">
-        <h2 id="sample-queries-heading" className="text-center text-sm font-medium text-[var(--tt-color-text-muted)] mb-4">
-          カテゴリから探す
-        </h2>
-        <AgentSampleQueries onSelectQuery={handlePrefillQuery} />
-      </section>
-
-      <div className="mt-8">
-        {/* 初回訪問時のガイダンス */}
-        {isInitialState && (
-          <CardV2
-            variant="ghost"
-            className="py-8 text-center"
-            role="status"
-            aria-live="polite"
-            data-testid="agent-initial-state"
-          >
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex gap-6 text-[var(--tt-color-text-muted)]">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 rounded-full bg-[var(--tt-color-primary)]/10">
-                    <Search className="h-5 w-5 text-[var(--tt-color-primary)]" aria-hidden="true" />
-                  </div>
-                  <span className="text-xs">質問を入力</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 rounded-full bg-[var(--tt-color-primary)]/10">
-                    <Sparkles className="h-5 w-5 text-[var(--tt-color-primary)]" aria-hidden="true" />
-                  </div>
-                  <span className="text-xs">AIが検索</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 rounded-full bg-[var(--tt-color-primary)]/10">
-                    <FileText className="h-5 w-5 text-[var(--tt-color-primary)]" aria-hidden="true" />
-                  </div>
-                  <span className="text-xs">要約を回答</span>
-                </div>
-              </div>
-              <p className="text-sm text-[var(--tt-color-text-muted)] max-w-md">
-                上の検索バーにキーワードを入力するか、カテゴリから選んで検索を開始してください
-              </p>
-            </div>
-          </CardV2>
-        )}
-
-        {isLoading && !isStreamingWithPartialText && (
-          <div className="py-8" data-testid="agent-loading-wrapper">
-            <AgentStepIndicator
-              currentStep={currentStep}
-              isTimedOut={isStepTimedOut}
-              className="mb-6"
-            />
-            <AgentLoadingState />
-          </div>
-        )}
-        {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
-        {showResult && (result || isStreamingWithPartialText) && !error && (
-          <>
-            <AgentAnswerPanel
-              result={result}
-              partialText={ENABLE_STREAMING_UI ? partialText : null}
-              isStreaming={shouldShowStreamingResult}
-              onFeedback={handleFeedback}
-            />
-            {/* Related questions - shown after AI response is complete */}
-            {result && relatedQuestions.length > 0 && (
-              <AgentRelatedQuestions
-                questions={relatedQuestions}
-                onSelectQuestion={handlePrefillQuery}
+        {/* Right column: Category sidebar (desktop only sticky) */}
+        <aside
+          className="w-full lg:w-80 shrink-0"
+          role="complementary"
+          aria-label="カテゴリ別サンプル検索"
+        >
+          <div className="lg:sticky lg:top-4">
+            <CardV2
+              variant="default"
+              className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-4"
+            >
+              <AgentSampleQueries
+                layout="sidebar"
+                onSelectQuery={handlePrefillQuery}
               />
-            )}
-          </>
-        )}
+            </CardV2>
+          </div>
+        </aside>
       </div>
     </div>
   );

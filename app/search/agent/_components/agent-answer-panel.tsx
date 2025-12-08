@@ -13,13 +13,90 @@ import {
   Check,
   ThumbsUp,
   ThumbsDown,
-  Link2
+  Link2,
+  ExternalLink,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
+import { formatDate, formatDateWithTime } from '@/lib/utils/date';
+import { Calendar } from 'lucide-react';
+
+// Article section extracted from AI response
+interface ArticleSection {
+  articleId: string | null;
+  title: string;
+  summary: string;
+  index: number;
+}
+
+// Result of extracting article sections and summary from AI response
+interface ExtractedAnswer {
+  sections: ArticleSection[];
+  summary: string;
+}
+
+// Extract article sections and summary from markdown response
+function extractArticleSections(text: string): ExtractedAnswer {
+  const sections: ArticleSection[] = [];
+
+  // Match numbered list items: 1. **Title** (match: X%) - Description
+  const listItemPattern = /^\d+\.\s+\*\*(.+?)\*\*\s*(?:\[#([a-zA-Z0-9_-]+)\])?\s*(?:\(.*?(?:\d+(?:\.\d+)?%?).*?\))?\s*[-\u2013\u2014]?\s*([\s\S]*?)(?=\n\d+\.\s+\*\*|\n\n(?!\s)|$)/gm;
+
+  let match;
+  let index = 0;
+  let lastEnd = 0;
+
+  while ((match = listItemPattern.exec(text)) !== null) {
+    const title = match[1].trim();
+    const articleId = match[2] || null;
+    let summary = match[3] ? match[3].trim() : '';
+
+    // Clean up summary: remove article ID tokens and extra whitespace
+    summary = summary.replace(/\[#[a-zA-Z0-9_-]+\]/g, '').trim();
+    // Remove trailing link mentions
+    summary = summary.replace(/\s*\n\s*\[.*?\]\(.*?\)\s*$/g, '').trim();
+    // Truncate to reasonable length
+    if (summary.length > 200) {
+      summary = summary.slice(0, 200) + '...';
+    }
+
+    sections.push({
+      articleId,
+      title,
+      summary,
+      index: index++
+    });
+
+    lastEnd = listItemPattern.lastIndex;
+  }
+
+  // Extract summary/conclusion after the article list
+  let extractedSummary = '';
+  if (lastEnd > 0 && lastEnd < text.length) {
+    let tail = text.slice(lastEnd).trim();
+
+    // Remove markdown links and reference-style links
+    tail = tail.replace(/^\s*-\s*\[.*?\]\(.*?\)\s*$/gm, '').trim();
+    tail = tail.replace(/\[.*?\]\(.*?\)/g, '').trim();
+
+    // Remove article ID tokens
+    tail = tail.replace(/\[#[a-zA-Z0-9_-]+\]/g, '').trim();
+
+    // Remove "---" separators
+    tail = tail.replace(/^---+\s*/gm, '').trim();
+
+    // Only use if it looks like actual content (not just whitespace or very short)
+    if (tail.length > 20) {
+      extractedSummary = tail;
+    }
+  }
+
+  return { sections, summary: extractedSummary };
+}
 
 interface AgentAnswerPanelProps {
   result: AgentSearchResult | null;
@@ -69,6 +146,18 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
         const clone = root.cloneNode(true) as HTMLElement;
         clone.querySelectorAll('[data-copy-exclude]').forEach((el) => el.remove());
         copyText = (clone.textContent ?? displayText).trim();
+      }
+
+      // 出典（元記事へのリンク）を追加
+      const safeArticles = result?.articles ?? [];
+      if (safeArticles.length > 0) {
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+        const sourcesText = safeArticles.map((article) => {
+          const title = article.translatedTitle || article.title;
+          const url = `${baseUrl}/articles/${article.articleId}`;
+          return `- [${title}](${url})`;
+        }).join('\n');
+        copyText += `\n\n出典:\n${sourcesText}`;
       }
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -132,6 +221,25 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
 
   // 応答に [#...] トークンが含まれるか（通常は true、フォールバック時は false）
   const hasEmbeddedIds = useMemo(() => /\[#\S+?\]/.test(resultResponse), [resultResponse]);
+
+  // Extract article sections and summary from the response for card display
+  const extractedAnswer = useMemo(() => {
+    if (isStreaming || !result?.response) return { sections: [], summary: '' };
+    return extractArticleSections(result.response);
+  }, [isStreaming, result?.response]);
+
+  // Enrich sections with article metadata
+  const enrichedSections = useMemo(() => {
+    return extractedAnswer.sections.map((section, idx) => {
+      const meta = section.articleId
+        ? articleMap.get(section.articleId)
+        : articles?.[idx];
+      return { ...section, meta };
+    });
+  }, [extractedAnswer.sections, articleMap, articles]);
+
+  // Use card display when we have sections and not streaming
+  const useCardDisplay = !isStreaming && enrichedSections.length > 0;
 
   type MarkdownLi = React.ReactElement<
     React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
@@ -223,10 +331,22 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
       {isStreaming && (
         <div
           data-testid="streaming-indicator"
-          className="mb-4 flex items-center gap-2"
+          className="mb-4 p-4 bg-[var(--tt-color-primary)]/5 border border-[var(--tt-color-primary)]/20 rounded-lg"
+          role="status"
+          aria-live="polite"
         >
-          <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-          <span className="text-sm text-muted-foreground">AI回答を生成中...</span>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--tt-color-primary)] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--tt-color-primary)]"></span>
+            </div>
+            <span className="text-base font-medium text-[var(--tt-color-text)]">
+              回答を出力中...
+            </span>
+          </div>
+          <p className="text-sm text-[var(--tt-color-text-muted)] pl-6">
+            完了するとカード形式で表示されます。スクロールせずにお待ちください。
+          </p>
         </div>
       )}
 
@@ -258,9 +378,95 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
         </CardV2>
       )}
 
-      {!showEmptyState && (
+      {!showEmptyState && useCardDisplay && (
         <div
-          className="prose prose-sm dark:prose-invert w-full max-w-none md:max-w-3xl xl:max-w-4xl mb-4"
+          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4 items-stretch"
+          data-testid="agent-answer-cards"
+        >
+          {enrichedSections.map((item, i) => {
+            const accentColor = i % 2 === 0 ? 'var(--tt-color-primary)' : 'var(--tt-color-secondary)';
+            const displayTitle = item.meta?.translatedTitle?.trim() || item.meta?.title || item.title;
+            const articleLink = item.meta?.articleId
+              ? `/articles/${encodeURIComponent(item.meta.articleId)}`
+              : null;
+
+            return (
+              <article
+                key={item.articleId ?? i}
+                className="group relative flex flex-col space-y-2 rounded-lg bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200/60 dark:border-slate-700/60 transition-all duration-200 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 min-h-[140px] motion-safe:opacity-0 motion-safe:animate-[fadeInUp_0.4s_ease_forwards]"
+                style={{
+                  borderLeftWidth: '3px',
+                  borderLeftColor: accentColor,
+                  animationDelay: `${i * 60}ms`,
+                }}
+                data-testid="agent-article-card"
+              >
+                {/* 外部リンクボタン - 右上に絶対配置 */}
+                {articleLink && (
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2 h-10 w-10 p-0 hover:bg-primary/10 opacity-60 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Link
+                      href={articleLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-testid="agent-article-link"
+                      title="記事を開く"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
+
+                {/* タイトル行 - 詳細要約と同じ構造 */}
+                <h4 className="text-sm font-[var(--tt-font-heading)] font-semibold tracking-[var(--tt-tracking-tight)] flex items-center gap-2 pr-8">
+                  <span
+                    className="text-lg flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-muted/60 group-hover:bg-muted transition-colors duration-200"
+                    aria-hidden="true"
+                  >
+                    <FileText className="h-4 w-4" style={{ color: accentColor }} />
+                  </span>
+                  <span className="flex-1 line-clamp-2" title={displayTitle}>
+                    {displayTitle}
+                  </span>
+                </h4>
+
+                {/* メタ情報 */}
+                <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+                  {item.meta?.similarity !== undefined && (
+                    <BadgeV2 variant="secondary" className="text-xs">
+                      {Math.round(item.meta.similarity * 100)}%
+                    </BadgeV2>
+                  )}
+                  {item.meta?.publishedAt && (
+                    <span
+                      className="flex items-center gap-1"
+                      title={formatDateWithTime(item.meta.publishedAt)}
+                    >
+                      <Calendar className="h-3 w-3" aria-hidden="true" />
+                      {formatDate(item.meta.publishedAt)}
+                    </span>
+                  )}
+                </div>
+
+                {/* 要約テキスト - flex-1で残りスペースを埋める */}
+                {item.summary && (
+                  <p className="flex-1 text-sm font-[var(--tt-font-body)] text-slate-700 dark:text-slate-200 leading-relaxed break-words line-clamp-4">
+                    {item.summary}
+                  </p>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      {!showEmptyState && !useCardDisplay && (
+        <div
+          className="prose prose-sm dark:prose-invert w-full max-w-none md:max-w-4xl xl:max-w-5xl mb-4"
           data-testid="agent-answer-markdown"
         >
         <ListDepthContext.Provider value={0}>

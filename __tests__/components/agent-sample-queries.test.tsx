@@ -13,7 +13,7 @@ describe('AgentSampleQueries', () => {
     test('should render 5 category tiles', () => {
       render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
 
-      // 5つのカテゴリタイルが存在
+      // カテゴリタイルが存在
       CATEGORY_ORDER.forEach((category) => {
         expect(screen.getByTestId(`category-tile-${category}`)).toBeInTheDocument();
       });
@@ -121,6 +121,59 @@ describe('AgentSampleQueries', () => {
       CATEGORY_ORDER.forEach((category) => {
         expect(screen.queryByTestId(`category-tile-${category}`)).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe('サイドバーレイアウト表示', () => {
+    test('should render sidebar layout when layout="sidebar"', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} layout="sidebar" />);
+
+      // カテゴリタイルが存在
+      CATEGORY_ORDER.forEach((category) => {
+        expect(screen.getByTestId(`category-tile-${category}`)).toBeInTheDocument();
+      });
+
+      // 見出しが表示される
+      expect(screen.getByRole('heading', { level: 2, name: 'カテゴリから探す' })).toBeInTheDocument();
+    });
+
+    test('should display category labels in sidebar layout', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} layout="sidebar" />);
+
+      expect(screen.getByText(CATEGORY_LABELS.infrastructure)).toBeInTheDocument();
+      expect(screen.getByText(CATEGORY_LABELS.ai)).toBeInTheDocument();
+      expect(screen.getByText(CATEGORY_LABELS.frontend)).toBeInTheDocument();
+      expect(screen.getByText(CATEGORY_LABELS.backend)).toBeInTheDocument();
+      expect(screen.getByText(CATEGORY_LABELS.security)).toBeInTheDocument();
+    });
+
+    test('should call onSelectQuery when sidebar tile is clicked', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} layout="sidebar" />);
+
+      const firstQuery = SAMPLE_QUERIES[0];
+      const tile = screen.getByTestId(`category-tile-${firstQuery.category}`);
+
+      fireEvent.click(tile);
+
+      expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
+      expect(mockOnSelectQuery).toHaveBeenCalledTimes(1);
+    });
+
+    test('should support keyboard interaction in sidebar layout', () => {
+      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} layout="sidebar" />);
+
+      const firstQuery = SAMPLE_QUERIES[0];
+      const tile = screen.getByTestId(`category-tile-${firstQuery.category}`);
+
+      // Enterキーで選択
+      fireEvent.keyDown(tile, { key: 'Enter' });
+      expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
+
+      mockOnSelectQuery.mockClear();
+
+      // Spaceキーで選択
+      fireEvent.keyDown(tile, { key: ' ' });
+      expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
     });
   });
 });
