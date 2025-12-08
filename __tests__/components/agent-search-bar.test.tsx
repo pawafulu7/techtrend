@@ -1,15 +1,29 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
+import type { SearchHistoryItem } from '@/lib/hooks/useSearchHistory';
+
+const mockHistoryItems: SearchHistoryItem[] = [
+  { query: 'query 1', timestamp: Date.now() - 60000 },
+  { query: 'query 2', timestamp: Date.now() - 3600000 },
+];
 
 const mockSaveToHistory = jest.fn();
-const mockGetSearchHistory = jest.fn(() => ['query 1', 'query 2']);
+const mockGetSearchHistory = jest.fn(() => mockHistoryItems.map(item => item.query));
+const mockGetSearchHistoryWithTimestamp = jest.fn(() => mockHistoryItems);
 const mockClearHistory = jest.fn();
+const mockGetRelativeTime = jest.fn((timestamp: number) => {
+  const diff = Date.now() - timestamp;
+  if (diff < 3600000) return '1分前';
+  return '1時間前';
+});
 
 jest.mock('@/lib/hooks/useSearchHistory', () => ({
   useSearchHistory: () => ({
     getSearchHistory: mockGetSearchHistory,
+    getSearchHistoryWithTimestamp: mockGetSearchHistoryWithTimestamp,
     saveToHistory: mockSaveToHistory,
     clearHistory: mockClearHistory,
+    getRelativeTime: mockGetRelativeTime,
   }),
 }));
 
@@ -20,7 +34,9 @@ describe('AgentSearchBar', () => {
     mockOnSearch.mockClear();
     mockSaveToHistory.mockClear();
     mockGetSearchHistory.mockClear();
+    mockGetSearchHistoryWithTimestamp.mockClear();
     mockClearHistory.mockClear();
+    mockGetRelativeTime.mockClear();
   });
 
   test('renders with AI search badge', () => {
@@ -254,5 +270,77 @@ describe('AgentSearchBar', () => {
     expect(screen.getByText('記事の内容に関する質問を入力')).toBeInTheDocument();
     expect(screen.queryByText(/キーボードショートカット/)).not.toBeInTheDocument();
     expect(screen.getByLabelText('記事QA質問入力')).toBeInTheDocument();
+  });
+
+  describe('History clear and timestamp', () => {
+    test('displays clear history button in suggestions dropdown', () => {
+      render(<AgentSearchBar onSearch={mockOnSearch} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+      fireEvent.focus(input);
+
+      expect(screen.getByTestId('clear-history-button')).toBeInTheDocument();
+      expect(screen.getByLabelText('検索履歴をクリア')).toBeInTheDocument();
+    });
+
+    test('calls clearHistory when clear button is clicked', () => {
+      render(<AgentSearchBar onSearch={mockOnSearch} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+      fireEvent.focus(input);
+
+      const clearButton = screen.getByTestId('clear-history-button');
+      fireEvent.click(clearButton);
+
+      expect(mockClearHistory).toHaveBeenCalledTimes(1);
+    });
+
+    test('calls onHistoryCleared callback when history is cleared', () => {
+      const mockOnHistoryCleared = jest.fn();
+      render(<AgentSearchBar onSearch={mockOnSearch} onHistoryCleared={mockOnHistoryCleared} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+      fireEvent.focus(input);
+
+      const clearButton = screen.getByTestId('clear-history-button');
+      fireEvent.click(clearButton);
+
+      expect(mockOnHistoryCleared).toHaveBeenCalledTimes(1);
+    });
+
+    test('displays relative timestamps when showHistoryTimestamp=true', () => {
+      render(<AgentSearchBar onSearch={mockOnSearch} showHistoryTimestamp={true} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+      fireEvent.focus(input);
+
+      // mockGetRelativeTime returns '1分前' for first item and '1時間前' for second
+      expect(screen.getByText('1分前')).toBeInTheDocument();
+      expect(screen.getByText('1時間前')).toBeInTheDocument();
+    });
+
+    test('hides timestamps when showHistoryTimestamp=false', () => {
+      render(<AgentSearchBar onSearch={mockOnSearch} showHistoryTimestamp={false} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+      fireEvent.focus(input);
+
+      expect(screen.queryByText('1分前')).not.toBeInTheDocument();
+      expect(screen.queryByText('1時間前')).not.toBeInTheDocument();
+    });
+
+    test('hides suggestions dropdown after clearing history', () => {
+      // Initial render with history items, clear button will empty local state
+      mockGetSearchHistoryWithTimestamp.mockReturnValueOnce(mockHistoryItems);
+
+      render(<AgentSearchBar onSearch={mockOnSearch} />);
+      const input = screen.getByLabelText('AI検索クエリ入力');
+      fireEvent.focus(input);
+
+      // Suggestions should be visible
+      expect(screen.getByTestId('search-history-suggestions')).toBeInTheDocument();
+
+      // Clear history
+      const clearButton = screen.getByTestId('clear-history-button');
+      fireEvent.click(clearButton);
+
+      // After clicking clear, the dropdown should hide since items are now empty
+      expect(screen.queryByTestId('search-history-suggestions')).not.toBeInTheDocument();
+    });
   });
 });

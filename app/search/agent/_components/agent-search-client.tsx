@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Sparkles, Search, FileText } from 'lucide-react';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentSampleQueries } from './agent-sample-queries';
@@ -8,6 +8,7 @@ import { AgentLoadingState } from './agent-loading-state';
 import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
 import { AgentStepIndicator } from './agent-step-indicator';
+import { AgentRelatedQuestions, generateRelatedQuestions } from './agent-related-questions';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 
@@ -92,6 +93,12 @@ export function AgentSearchClient() {
 
   // 初回訪問判定（検索未実行かつ結果なし）
   const isInitialState = !lastQuery && !result && !error && !isLoading;
+
+  // Generate related questions based on AI response
+  const relatedQuestions = useMemo(() => {
+    if (!result?.response) return [];
+    return generateRelatedQuestions(result.response, result.articles);
+  }, [result?.response, result?.articles]);
 
   return (
     <div>
@@ -179,12 +186,21 @@ export function AgentSearchClient() {
         )}
         {!isLoading && showResult && error && <AgentErrorDisplay error={error} onRetry={handleRetry} />}
         {showResult && (result || isStreamingWithPartialText) && !error && (
-          <AgentAnswerPanel
-            result={result}
-            partialText={ENABLE_STREAMING_UI ? partialText : null}
-            isStreaming={shouldShowStreamingResult}
-            onFeedback={handleFeedback}
-          />
+          <>
+            <AgentAnswerPanel
+              result={result}
+              partialText={ENABLE_STREAMING_UI ? partialText : null}
+              isStreaming={shouldShowStreamingResult}
+              onFeedback={handleFeedback}
+            />
+            {/* Related questions - shown after AI response is complete */}
+            {result && relatedQuestions.length > 0 && (
+              <AgentRelatedQuestions
+                questions={relatedQuestions}
+                onSelectQuestion={handlePrefillQuery}
+              />
+            )}
+          </>
         )}
       </div>
     </div>
