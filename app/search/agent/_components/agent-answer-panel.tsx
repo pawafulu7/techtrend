@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -34,6 +34,8 @@ const ListDepthContext = React.createContext(0);
 export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback }: AgentAnswerPanelProps) {
   const [copied, setCopied] = useState(false);
   const [showEmptyState, setShowEmptyState] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<'positive' | 'negative' | null>(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   useEffect(() => {
     if (!copied) return;
@@ -92,6 +94,33 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
   };
 
   const articles = result?.articles;
+  const articleCount = articles?.length ?? 0;
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset feedback state when result changes
+  useEffect(() => {
+    setFeedbackSubmitted(null);
+    setIsSubmittingFeedback(false);
+  }, [result?.query]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Debounced feedback handler
+  const handleFeedback = useCallback((positive: boolean) => {
+    if (isSubmittingFeedback || feedbackSubmitted) return;
+    setIsSubmittingFeedback(true);
+    setFeedbackSubmitted(positive ? 'positive' : 'negative');
+    onFeedback?.(positive);
+    // Reset submitting state after short delay (for visual feedback)
+    feedbackTimeoutRef.current = setTimeout(() => setIsSubmittingFeedback(false), 300);
+  }, [isSubmittingFeedback, feedbackSubmitted, onFeedback]);
 
   const articleMap = useMemo(() => {
     const safeArticles = articles ?? [];
@@ -133,12 +162,13 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
   };
 
   return (
-    <CardV2 variant="hover" className="p-6" role="article" aria-labelledby="answer-heading" data-testid="agent-result-card">
+    <CardV2 variant="hover" className="p-6 border-l-4 border-[var(--tt-color-primary)]" role="article" aria-labelledby="answer-heading" data-testid="agent-result-card">
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <h2 id="answer-heading" className="text-xl md:text-2xl font-semibold">
-            AI回答
-          </h2>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h2 id="answer-heading" className="text-xl md:text-2xl font-semibold">
+              AI回答
+            </h2>
           {result?.cached && (
             <BadgeV2 variant="secondary" className="text-xs">
               <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -151,6 +181,12 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
               フォールバック
             </BadgeV2>
           )}
+          </div>
+          {articleCount > 0 && (
+            <p className="text-sm text-[var(--tt-color-text-muted)]">
+              {articleCount}件の記事から生成
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-1">
@@ -158,14 +194,19 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
             variant="ghost"
             size="sm"
             onClick={handleCopy}
-            iconOnly={true}
-            className="h-7 w-7"
+            className="h-8 px-3 gap-1.5"
             aria-label="回答をコピー"
           >
             {copied ? (
-              <Check className="h-4 w-4 text-green-600" />
+              <>
+                <Check className="h-4 w-4 text-green-600" aria-hidden="true" />
+                <span className="text-xs text-green-600">コピー完了</span>
+              </>
             ) : (
-              <Copy className="h-4 w-4" />
+              <>
+                <Copy className="h-4 w-4" aria-hidden="true" />
+                <span className="text-xs hidden sm:inline">コピー</span>
+              </>
             )}
           </ButtonV2>
         </div>
@@ -296,25 +337,40 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
 
         {onFeedback && (
           <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--tt-color-surface-muted)]">
-            <span className="text-xs text-muted-foreground mr-2 hidden sm:inline">この回答は役立ちましたか？</span>
-            <ButtonV2
-              variant="ghost"
-              size="sm"
-              onClick={() => onFeedback(true)}
-              className="h-11 w-11 md:h-9 md:w-9 hover:bg-green-100 dark:hover:bg-green-900/30 hover:text-green-600"
-              aria-label="役立った"
-            >
-              <ThumbsUp className="h-5 w-5 md:h-4 md:w-4" />
-            </ButtonV2>
-            <ButtonV2
-              variant="ghost"
-              size="sm"
-              onClick={() => onFeedback(false)}
-              className="h-11 w-11 md:h-9 md:w-9 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600"
-              aria-label="改善が必要"
-            >
-              <ThumbsDown className="h-5 w-5 md:h-4 md:w-4" />
-            </ButtonV2>
+            {feedbackSubmitted ? (
+              <div className="flex items-center gap-2 text-sm" data-testid="feedback-thanks">
+                <CheckCircle2 className="h-4 w-4 text-[var(--tt-color-primary)]" aria-hidden="true" />
+                <span className="text-[var(--tt-color-text-muted)]">
+                  フィードバックありがとうございます
+                </span>
+              </div>
+            ) : (
+              <>
+                <span className="text-xs text-muted-foreground mr-2 hidden sm:inline">この回答は役立ちましたか？</span>
+                <ButtonV2
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleFeedback(true)}
+                  disabled={isSubmittingFeedback}
+                  className="h-11 w-11 md:h-9 md:w-9 hover:bg-green-100 dark:hover:bg-green-900/30 hover:text-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="役立った"
+                  data-testid="feedback-positive"
+                >
+                  <ThumbsUp className="h-5 w-5 md:h-4 md:w-4" />
+                </ButtonV2>
+                <ButtonV2
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleFeedback(false)}
+                  disabled={isSubmittingFeedback}
+                  className="h-11 w-11 md:h-9 md:w-9 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="改善が必要"
+                  data-testid="feedback-negative"
+                >
+                  <ThumbsDown className="h-5 w-5 md:h-4 md:w-4" />
+                </ButtonV2>
+              </>
+            )}
           </div>
         )}
       </div>

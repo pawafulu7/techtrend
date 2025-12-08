@@ -33,12 +33,15 @@ export interface UseAgentSearchOptions {
   timeout?: number;
 }
 
+export type SearchStep = 'idle' | 'searching' | 'analyzing' | 'generating' | 'complete' | 'error';
+
 export interface UseAgentSearchReturn {
   search: (query: string) => Promise<void>;
   result: AgentSearchResult | null;
   error: AgentSearchError | null;
   isLoading: boolean;
   partialText: string | null;
+  currentStep: SearchStep;
   reset: () => void;
 }
 
@@ -54,6 +57,7 @@ const DEFAULT_TIMEOUT = 30000;
  * @param setPartialText - State setter for partial text storage
  * @param requestId - Unique identifier for the originating request
  * @param getActiveRequestId - Getter for the currently active request id
+ * @param setCurrentStep - State setter for current step tracking
  */
 async function parseSSEStream(
   response: Response,
@@ -62,7 +66,8 @@ async function parseSSEStream(
   query: string,
   setPartialText: (text: string | null) => void,
   requestId: string,
-  getActiveRequestId: () => string | null
+  getActiveRequestId: () => string | null,
+  setCurrentStep: (step: SearchStep) => void
 ): Promise<AgentSearchResult> {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -120,6 +125,8 @@ async function parseSSEStream(
           if (isStaleChunk()) {
             continue;
           }
+          // Cached responses skip to generating step
+          setCurrentStep('generating');
           accumulatedText = eventData.text;
           cached = true;
           setPartialText(accumulatedText);
@@ -127,6 +134,8 @@ async function parseSSEStream(
           if (isStaleChunk()) {
             continue;
           }
+          // Transition to generating when text starts streaming
+          setCurrentStep('generating');
           const delta = eventData.delta ?? '';
           accumulatedText += delta;
           setPartialText(accumulatedText);
@@ -138,6 +147,8 @@ async function parseSSEStream(
             });
           }
         } else if (eventData.type === 'tool-start') {
+          // Transition to analyzing when tool execution starts
+          setCurrentStep('analyzing');
           toolCalls.push({
             id: eventData.toolCallId,
             name: eventData.toolName,
@@ -211,6 +222,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
   const [isLoading, setIsLoading] = useState(false);
   const [partialText, setPartialText] = useState<string | null>(null);
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<SearchStep>('idle');
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const callbacksRef = useRef(options);
@@ -256,6 +268,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
       setError(null);
       setResult(null);
       setPartialText('');
+      setCurrentStep('searching');
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -324,6 +337,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
           };
 
           setError(agentError);
+          setCurrentStep('error');
           callbacksRef.current?.onError?.(agentError);
           return;
         }
@@ -338,10 +352,12 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
             query,
             setPartialText,
             requestId,
-            () => activeRequestIdRef.current
+            () => activeRequestIdRef.current,
+            setCurrentStep
           );
 
           setResult(streamResult);
+          setCurrentStep('complete');
           callbacksRef.current?.onSuccess?.(streamResult);
         } else if (ct.includes('application/json')) {
           // Batch mode (backward compatibility)
@@ -359,6 +375,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
             articles,
           };
           setResult(resultWithArticles);
+          setCurrentStep('complete');
           callbacksRef.current?.onSuccess?.(resultWithArticles);
         } else {
           throw new Error(`Unexpected content type: ${ct}`);
@@ -376,6 +393,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
               message: `Request timeout (${timeout / 1000}s)`,
             };
             setError(timeoutError);
+            setCurrentStep('error');
             callbacksRef.current?.onError?.(timeoutError);
           }
         } else {
@@ -384,6 +402,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
             message: err instanceof Error ? err.message : 'Network error',
           };
           setError(networkError);
+          setCurrentStep('error');
           callbacksRef.current?.onError?.(networkError);
         }
       } finally {
@@ -413,6 +432,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
     setError(null);
     setIsLoading(false);
     setPartialText('');
+    setCurrentStep('idle');
   }, []);
 
   return {
@@ -421,6 +441,7 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
     error,
     isLoading,
     partialText,
+    currentStep,
     reset,
   };
 }
