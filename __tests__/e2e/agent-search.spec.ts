@@ -399,13 +399,14 @@ test.describe('AI Agent Search E2E', () => {
     await page.waitForSelector('[role="article"]', { timeout: 5000 });
 
     // Wait for localStorage to be updated (Firefox is slower)
+    // Note: searchHistoryV2 uses {query, timestamp} format
     await page.waitForFunction(
       () => {
-        const history = localStorage.getItem('searchHistory');
+        const history = localStorage.getItem('searchHistoryV2');
         if (!history) return false;
         try {
-          const parsed = JSON.parse(history) as string[];
-          return parsed.includes('historical query');
+          const parsed = JSON.parse(history) as Array<{query: string; timestamp: number}>;
+          return parsed.some(item => item.query === 'historical query');
         } catch {
           return false;
         }
@@ -424,6 +425,7 @@ test.describe('AI Agent Search E2E', () => {
     await expect(input).toBeFocused();
 
     // Wait for both conditions: focus held + suggestions rendered (deterministic)
+    // Note: suggestions now include timestamps, so use partial match
     await expect.poll(async () =>
       page.evaluate(() => {
         const input = document.querySelector('[data-testid="agent-search-input"]');
@@ -431,7 +433,7 @@ test.describe('AI Agent Search E2E', () => {
         const suggestions = Array.from(
           document.querySelectorAll('[data-testid="search-history-suggestion"]')
         ).map(el => el.textContent?.trim());
-        return active && suggestions.includes('historical query');
+        return active && suggestions.some(s => s?.includes('historical query'));
       }),
       { timeout: 10000 }
     ).toBeTruthy();

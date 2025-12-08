@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, type ReactNode, KeyboardEvent } from 'react';
-import { Search, X, Loader2, Sparkles } from 'lucide-react';
+import { Search, X, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useSearchHistory } from '@/lib/hooks/useSearchHistory';
+import { useSearchHistory, type SearchHistoryItem } from '@/lib/hooks/useSearchHistory';
 
 interface AgentSearchBarProps {
   onSearch: (query: string) => void;
@@ -23,6 +23,8 @@ interface AgentSearchBarProps {
   historyEnabled?: boolean;
   historyLabel?: string;
   inputLabel?: string;
+  showHistoryTimestamp?: boolean;
+  onHistoryCleared?: () => void;
 }
 
 export function AgentSearchBar({
@@ -41,13 +43,39 @@ export function AgentSearchBar({
   historyEnabled = true,
   historyLabel = '最近の検索',
   inputLabel = 'AI検索クエリ入力',
+  showHistoryTimestamp = true,
+  onHistoryCleared,
 }: AgentSearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const { getSearchHistory, saveToHistory } = useSearchHistory();
+  const [historyItems, setHistoryItems] = useState<SearchHistoryItem[]>([]);
+  const { getSearchHistoryWithTimestamp, saveToHistory, clearHistory, getRelativeTime } = useSearchHistory();
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const skipNextFocusRef = useRef(false);
+
+  // Load history on mount and when suggestions are shown
+  const refreshHistory = useCallback(() => {
+    if (historyEnabled) {
+      setHistoryItems(getSearchHistoryWithTimestamp().slice(0, 5));
+    }
+  }, [historyEnabled, getSearchHistoryWithTimestamp]);
+
+  useEffect(() => {
+    refreshHistory();
+  }, [refreshHistory]);
+
+  useEffect(() => {
+    if (showSuggestions && historyEnabled) {
+      refreshHistory();
+    }
+  }, [showSuggestions, historyEnabled, refreshHistory]);
+
+  const handleClearHistory = useCallback(() => {
+    clearHistory();
+    setHistoryItems([]);
+    onHistoryCleared?.();
+  }, [clearHistory, onHistoryCleared]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -111,8 +139,6 @@ export function AgentSearchBar({
     }
   }, [onPrefillQuery, applyQueryFromExternal]);
 
-  const suggestions = historyEnabled ? getSearchHistory().slice(0, 5) : [];
-
   return (
     <div ref={searchRef} className="relative w-full max-w-3xl mx-auto">
       {(badgeLabel || helperText) && (
@@ -154,7 +180,7 @@ export function AgentSearchBar({
           data-testid="agent-search-input"
           aria-autocomplete="list"
           aria-controls="search-history-suggestions"
-          aria-expanded={showSuggestions && suggestions.length > 0}
+          aria-expanded={showSuggestions && historyItems.length > 0}
         />
 
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -190,35 +216,55 @@ export function AgentSearchBar({
         </div>
       </div>
 
-      {historyEnabled && showSuggestions && suggestions.length > 0 && (
+      {historyEnabled && showSuggestions && historyItems.length > 0 && (
         <div
           id="search-history-suggestions"
           data-testid="search-history-suggestions"
           data-state={showSuggestions ? 'open' : 'closed'}
           role="listbox"
-          className="absolute top-full left-0 right-0 mt-2 bg-card border-2 border-border rounded-md shadow-md z-50"
+          className="absolute top-full left-0 right-0 mt-2 bg-card border-2 border-border rounded-md shadow-md z-50 max-h-[60vh] overflow-y-auto"
         >
           <div className="py-1">
-            <div className="px-3 py-2 text-xs text-muted-foreground">{historyLabel}</div>
-            {suggestions.map((suggestion) => (
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+              <span className="text-xs text-muted-foreground">{historyLabel}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearHistory}
+                className="h-7 px-2 text-xs hover:text-destructive"
+                aria-label="検索履歴をクリア"
+                data-testid="clear-history-button"
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                クリア
+              </Button>
+            </div>
+            {historyItems.map((item) => (
               <button
-                key={suggestion}
+                key={`${item.query}-${item.timestamp}`}
                 type="button"
                 role="option"
                 data-testid="search-history-suggestion"
                 aria-selected={false}
-                className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground text-sm"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 w-full px-3 py-3 md:py-2 text-left hover:bg-accent hover:text-accent-foreground text-sm"
                 onClick={() => {
                   // UX Design: History selection fills the input without triggering search,
                   // allowing users to edit conceptual queries before submission.
                   // This differs from main SearchBox where immediate search is acceptable.
                   // See PR #158 for original UX fix rationale.
-                  applyQueryFromExternal(suggestion);
+                  applyQueryFromExternal(item.query);
                   setShowSuggestions(false);
                 }}
               >
-                <Search className="h-3 w-3 text-muted-foreground" />
-                <span className="flex-1">{suggestion}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                  <span className="flex-1 truncate">{item.query}</span>
+                </div>
+                {showHistoryTimestamp && (
+                  <span className="text-xs text-muted-foreground pl-5 sm:pl-0">
+                    {getRelativeTime(item.timestamp)}
+                  </span>
+                )}
               </button>
             ))}
           </div>
