@@ -32,6 +32,8 @@ interface AgentSampleQueriesProps {
 }
 
 export function AgentSampleQueries({ onSelectQuery, className, queries, layout = 'grid' }: AgentSampleQueriesProps) {
+  // Note: During SSR and initial hydration, resolvedTheme may be undefined.
+  // next-themes handles this gracefully, defaulting to system preference.
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
 

@@ -280,12 +280,12 @@ export function AgentSearchBar({
                   variant="ghost"
                   size="sm"
                   onClick={(e) => handleRemoveHistoryItem(item.timestamp, e)}
-                  className="h-7 w-7 p-0 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10"
+                  className="h-10 w-10 p-0 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10"
                   aria-label="この検索履歴を削除"
                   title="この検索履歴を削除"
                   data-testid="remove-history-item-button"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
             ))}

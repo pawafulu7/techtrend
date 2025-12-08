@@ -23,7 +23,7 @@ export function AgentLoadingState({ className }: AgentLoadingStateProps) {
       {/* Spinner with reduced motion support */}
       <div className="relative flex h-14 w-14 items-center justify-center">
         <div
-          className="h-14 w-14 rounded-full border-3 border-[var(--tt-color-border)] border-t-[var(--tt-color-primary)] animate-spin motion-reduce:animate-none"
+          className="h-14 w-14 rounded-full border-[3px] border-[var(--tt-color-border)] border-t-[var(--tt-color-primary)] animate-spin motion-reduce:animate-none"
           aria-hidden="true"
         />
       </div>

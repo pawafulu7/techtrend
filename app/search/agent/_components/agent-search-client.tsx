@@ -154,6 +154,10 @@ export function AgentSearchClient() {
             <a
               href="#agent-result"
               className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 focus:px-4 focus:py-2 focus:bg-[var(--tt-color-primary)] focus:text-white focus:rounded"
+              onClick={(e) => {
+                e.preventDefault();
+                resultRef.current?.focus();
+              }}
             >
               結果にスキップ
             </a>
@@ -170,6 +174,7 @@ export function AgentSearchClient() {
               <CardV2
                 variant="default"
                 className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-6"
+                data-testid="agent-loading-wrapper"
               >
                 <AgentStepIndicator
                   currentStep={currentStep}

@@ -13,7 +13,7 @@ describe('AgentSampleQueries', () => {
     test('should render 5 category tiles', () => {
       render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
 
-      // 5つのカテゴリタイルが存在
+      // カテゴリタイルが存在
       CATEGORY_ORDER.forEach((category) => {
         expect(screen.getByTestId(`category-tile-${category}`)).toBeInTheDocument();
       });
@@ -128,7 +128,7 @@ describe('AgentSampleQueries', () => {
     test('should render sidebar layout when layout="sidebar"', () => {
       render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} layout="sidebar" />);
 
-      // 5つのカテゴリタイルが存在
+      // カテゴリタイルが存在
       CATEGORY_ORDER.forEach((category) => {
         expect(screen.getByTestId(`category-tile-${category}`)).toBeInTheDocument();
       });

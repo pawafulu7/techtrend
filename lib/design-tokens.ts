@@ -279,7 +279,9 @@ export const radius: RadiusTokens = {
  * Category Colors - カテゴリ別カラートークン
  *
  * AI検索画面のカテゴリタイルで使用。各カテゴリを視覚的に差別化。
- * WCAG AA準拠（4.5:1コントラスト比）を保証。
+ * 注意: これらの色はアイコン・装飾用途を想定しており、
+ * 小さいテキストのWCAG AA基準（4.5:1）を満たさない組み合わせが含まれます。
+ * テキスト表示には別途コントラスト比を確認してください。
  */
 export type CategoryColorTokens = {
   bg: string;
