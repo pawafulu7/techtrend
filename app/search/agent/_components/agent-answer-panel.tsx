@@ -103,20 +103,12 @@ interface AgentAnswerPanelProps {
   partialText: string | null;
   isStreaming: boolean;
   onFeedback?: (positive: boolean) => void;
-  /** Display mode: 'search' for card display, 'qa' for simple markdown */
-  mode?: 'search' | 'qa';
 }
 
 // トップレベル制御用の Context（0: ルート、1以上: ネスト）
 const ListDepthContext = React.createContext(0);
 
-export function AgentAnswerPanel({
-  result,
-  partialText,
-  isStreaming,
-  onFeedback,
-  mode = 'search',
-}: AgentAnswerPanelProps) {
+export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback }: AgentAnswerPanelProps) {
   const [copied, setCopied] = useState(false);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState<'positive' | 'negative' | null>(null);
@@ -247,7 +239,7 @@ export function AgentAnswerPanel({
   }, [extractedAnswer.sections, articleMap, articles]);
 
   // Use card display when we have sections and not streaming
-  const useCardDisplay = mode === 'search' && !isStreaming && enrichedSections.length > 0;
+  const useCardDisplay = !isStreaming && enrichedSections.length > 0;
 
   type MarkdownLi = React.ReactElement<
     React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
