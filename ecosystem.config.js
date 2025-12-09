@@ -16,7 +16,8 @@ module.exports = {
         NODE_ENV: 'development', // Local PM2 environment (enables .env.local loading)
         GEMINI_API_KEY: process.env.GEMINI_API_KEY,
         COLLECT_FEEDS_CONCURRENCY: process.env.COLLECT_FEEDS_CONCURRENCY || '7', // Parallel source processing (optimized from 5->7)
-        FETCHER_TIMEOUT_MS: process.env.FETCHER_TIMEOUT_MS || '60000', // Per-source fetch timeout (ms)
+        FETCHER_TIMEOUT_MS: process.env.FETCHER_TIMEOUT_MS || '600000', // Per-source fetch timeout (10 min, extended for arXiv full fetch)
+        ARXIV_ENRICHMENT_CONCURRENCY: process.env.ARXIV_ENRICHMENT_CONCURRENCY || '5', // arXiv parallel enrichment (adjustable: 3-5)
         SKIP_POST_SAVE_ENRICHMENT: '0', // Enable post-save enrichment (required for embedding job enqueue)
         POST_SAVE_ENRICH_TIMEOUT_MS: '10000', // Post-save enrichment timeout (10s)
         POST_SAVE_ENRICH_SLEEP_MS: '0', // No sleep between enrichments (was 2000ms)

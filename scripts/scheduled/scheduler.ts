@@ -205,7 +205,7 @@ const RSS_SOURCES = [
   // AI/LLM専門ソース
   'OpenAI Blog',
   'Hugging Face Papers',
-  'arXiv AI',
+  // 'arXiv AI' は専用スケジュールで実行（1日2回: JST 14:30, 02:30）
   'Zenn AI',
   'Qiita AI',
   'NVIDIA Developer Blog',
@@ -357,11 +357,13 @@ let rssJobRunning = false;
 let scrapingJobRunning = false;
 let qiitaJobRunning = false;
 let embeddingRecoveryRunning = false;
+let arxivJobRunning = false;
 
 // EmbeddingScheduler instance for auto-recovery
 const embeddingScheduler = new EmbeddingScheduler();
 
 // RSS系ソースの更新（毎時0分）
+// ※ arXiv AI は専用スケジュールで実行（下記参照）
 cron.schedule('0 * * * *', async () => {
   if (rssJobRunning) {
     console.error('[WARN] RSS job already running, skipping this execution');
@@ -374,6 +376,33 @@ cron.schedule('0 * * * *', async () => {
     // エラーは関数内でログ出力済み
   } finally {
     rssJobRunning = false;
+  }
+});
+
+// arXiv AI専用スケジュール（JST 09:45, 21:45 = UTC 00:45, 12:45）
+// arXivは1日1回更新（EST 0:00 = JST 14:00）のため、毎時実行は無駄
+// 並列エンリッチメント（5並列）で全件（約300-400件/日）を効率的に取得
+// ※ローカル環境考慮: 朝9時〜夜12時の時間帯に設定
+// ※スクレイピング系ジョブ（0:30, 12:30）との重複を避けるため15分ずらし
+const ARXIV_SOURCES = ['arXiv AI'];
+
+cron.schedule('45 0,12 * * *', async () => {
+  if (arxivJobRunning) {
+    console.error('[WARN] arXiv AI job already running, skipping this execution');
+    return;
+  }
+  arxivJobRunning = true;
+  const startTime = new Date();
+  console.error(`\n[INFO] arXiv AI記事取得を開始（専用スケジュール）: ${startTime.toLocaleString('ja-JP')}`);
+
+  try {
+    await executeUpdatePipeline(ARXIV_SOURCES, 'arXiv AI論文');
+    const duration = Math.round((Date.now() - startTime.getTime()) / 1000);
+    console.error(`[INFO] arXiv AI取得完了: ${duration}秒`);
+  } catch (error) {
+    console.error('[ERROR] arXiv AI取得でエラー:', error instanceof Error ? error.message : String(error));
+  } finally {
+    arxivJobRunning = false;
   }
 });
 
@@ -569,6 +598,7 @@ cron.schedule('30 8,20 * * *', async () => {
     console.error('[INFO] 初回実行が完了しました\n');
     console.error('[INFO] 次回の更新:');
     console.error('   - RSS系: 毎時0分');
+    console.error('   - arXiv AI: 0:45・12:45 UTC（09:45・21:45 JST）');
     console.error('   - Embeddingリカバリ: 毎時15分');
     console.error('   - スクレイピング系: 0:30・12:30');
     console.error('   - Qiita Popular: 5:05・17:05');

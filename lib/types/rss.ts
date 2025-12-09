@@ -31,8 +31,9 @@ export const RSSItemSchema = z.object({
   'dc:creator': z.string().optional(),
   'itunes:author': z.string().optional(),
 
-  // Tags
-  categories: z.array(z.string()).optional(),
+  // Tags (categories: array format, category: string format for arXiv compatibility)
+  categories: z.union([z.array(z.string()), z.string()]).optional(),
+  category: z.union([z.array(z.string()), z.string()]).optional(),
 
   // Metadata
   guid: z.string().optional(),
@@ -166,7 +167,9 @@ export function getTagsFromItem(item: unknown): string[] {
   const validated = getValidatedItem(item);
   if (!validated) return [];
 
-  return validated.categories || [];
+  const categories = validated.categories ?? validated.category;
+  if (!categories) return [];
+  return Array.isArray(categories) ? categories : [categories];
 }
 
 /**
