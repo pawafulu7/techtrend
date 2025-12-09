@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
+import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -94,12 +95,13 @@ export default function ProfilePage() {
 
   return (
     <div className="container max-w-4xl mx-auto py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">プロフィール設定</h1>
-        <p className="text-muted-foreground mt-2">
-          アカウント情報とプロフィールを管理します
-        </p>
-      </div>
+      {/* Profile Header with centered avatar */}
+      <ProfileHeader
+        userName={session?.user?.name}
+        userEmail={session?.user?.email}
+        userImage={session?.user?.image}
+        createdAt={userProfile?.createdAt}
+      />
 
       <Tabs defaultValue="profile" className="space-y-4">
         <TabsList>
