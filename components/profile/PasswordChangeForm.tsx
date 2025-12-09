@@ -5,8 +5,8 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 type PasswordFormData = {
   currentPassword: string;
@@ -16,7 +16,7 @@ type PasswordFormData = {
 
 export function PasswordChangeForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const { toast } = useToast();
 
   const {
     register,
@@ -30,7 +30,6 @@ export function PasswordChangeForm() {
 
   const onSubmit = async (data: PasswordFormData) => {
     setIsLoading(true);
-    setMessage(null);
 
     try {
       const response = await fetch('/api/user/password', {
@@ -47,17 +46,19 @@ export function PasswordChangeForm() {
         throw new Error(result.error || 'パスワードの変更に失敗しました');
       }
 
-      setMessage({
-        type: 'success',
-        text: 'パスワードを変更しました',
+      // Success toast
+      toast({
+        title: '✓ 変更完了',
+        description: 'パスワードを変更しました',
       });
 
       // フォームをリセット
       reset();
     } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error instanceof Error ? error.message : 'パスワードの変更に失敗しました',
+      toast({
+        variant: 'destructive',
+        title: 'エラー',
+        description: error instanceof Error ? error.message : 'パスワードの変更に失敗しました',
       });
     } finally {
       setIsLoading(false);
@@ -66,17 +67,6 @@ export function PasswordChangeForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {message && (
-        <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
-          {message.type === 'success' ? (
-            <CheckCircle className="h-4 w-4" />
-          ) : (
-            <AlertCircle className="h-4 w-4" />
-          )}
-          <AlertDescription>{message.text}</AlertDescription>
-        </Alert>
-      )}
-
       <div className="space-y-2">
         <Label htmlFor="currentPassword">現在のパスワード</Label>
         <Input

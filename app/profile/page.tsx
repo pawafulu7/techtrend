@@ -7,25 +7,15 @@ import { ProfileForm } from '@/components/profile/ProfileForm';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Globe, Github, Mail } from 'lucide-react';
+import { Loader2, User, UserCog, AlertTriangle } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
-// プロバイダーラベル定数
 const PROVIDER_LABELS: Record<string, string> = {
   google: 'Google',
   github: 'GitHub',
   email: 'メールリンク',
   credentials: 'メール/パスワード'
-};
-
-// プロバイダーアイコンマップ
-const PROVIDER_ICONS: Record<string, React.ReactElement> = {
-  google: <Globe className="h-4 w-4" />,
-  github: <Github className="h-4 w-4" />,
-  email: <Mail className="h-4 w-4" />,
-  credentials: <Mail className="h-4 w-4" />,
 };
 
 export default function ProfilePage() {
@@ -43,27 +33,25 @@ export default function ProfilePage() {
 
   if (status === 'loading' || profileLoading) {
     return (
-      <div className="container max-w-4xl mx-auto py-10">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="container max-w-4xl mx-auto py-6 px-4">
+        <div className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       </div>
     );
   }
 
   if (status === 'unauthenticated') {
-    return null; // リダイレクト中は何も表示しない
+    return null;
   }
 
   if (profileError) {
-    // 401エラーの場合は自動リダイレクト
     if (profileError.message.includes('認証が必要')) {
       router.replace(`/auth/login?callbackUrl=${encodeURIComponent('/profile')}`);
       return null;
     }
-    
     return (
-      <div className="container max-w-4xl mx-auto py-10">
+      <div className="container max-w-4xl mx-auto py-6 px-4">
         <Alert variant="destructive">
           <AlertDescription>
             プロフィール情報の取得に失敗しました：{profileError.message}
@@ -73,193 +61,100 @@ export default function ProfilePage() {
     );
   }
 
-  // 認証方法のラベルを取得
   const getAuthMethodLabel = (providers: string[] | undefined, hasPassword?: boolean) => {
     if (!providers || providers.length === 0) {
       return hasPassword ? PROVIDER_LABELS.credentials : 'なし';
     }
-    
     const providerLabels = providers.map(p => PROVIDER_LABELS[p] || p);
     if (hasPassword && !providers.includes('credentials')) {
       providerLabels.push(PROVIDER_LABELS.credentials);
     }
-    
     return providerLabels.join(', ');
   };
 
-  // プロバイダーアイコンを取得
-  const getProviderIcon = (provider: string) => {
-    return PROVIDER_ICONS[provider] ?? <Mail className="h-4 w-4" />;
-  };
-
   return (
-    <div className="container max-w-4xl mx-auto py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">プロフィール設定</h1>
-        <p className="text-muted-foreground mt-2">
-          アカウント情報とプロフィールを管理します
-        </p>
-      </div>
+    <div className="container max-w-4xl mx-auto py-6 px-4">
+      {/* Page Header */}
+      <header className="mb-6">
+        <div className="border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 shadow-sm p-4">
+          <div className="flex items-start gap-3">
+            <UserCog className="h-6 w-6 text-slate-600 dark:text-slate-400 mt-0.5" aria-hidden="true" />
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">プロフィール設定</h1>
+              <p className="text-sm text-muted-foreground mt-1">基本情報とアカウント設定を管理します</p>
+            </div>
+          </div>
+        </div>
+      </header>
 
-      <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="profile">プロフィール</TabsTrigger>
-          <TabsTrigger value="account">アカウント</TabsTrigger>
-          <TabsTrigger value="privacy">プライバシー</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="profile" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>プロフィール情報</CardTitle>
-              <CardDescription>
-                他のユーザーに表示される公開情報を設定します
+      {/* 2-column layout: lg and above */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column: Profile form (2/3 width) */}
+        <div className="lg:col-span-2">
+          <Card className="border-0 shadow-lg bg-white/95 dark:bg-slate-900/95">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold">プロフィール編集</CardTitle>
+              <CardDescription className="text-sm">
+                他のユーザーに表示される公開情報
               </CardDescription>
             </CardHeader>
             <CardContent>
               <ProfileForm />
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="account" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>アカウント情報</CardTitle>
-              <CardDescription>
-                アカウントの基本情報を確認します
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium mb-2">メールアドレス</h3>
-                <p className="text-sm text-muted-foreground">
-                  {userProfile?.email || session?.user?.email}
-                </p>
+        {/* Right column: Account info (1/3 width, sticky) */}
+        <div className="lg:sticky lg:top-6 lg:self-start space-y-4">
+          <Card className="border-0 shadow-lg bg-white/95 dark:bg-slate-900/95 p-3">
+            {/* Account Info Content */}
+            <div className="grid gap-0 text-sm">
+              <div className="flex items-center gap-2 py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <User className="h-4 w-4 text-slate-500" />
+                <span className="font-medium">アカウント情報</span>
               </div>
-              
-              <div>
-                <h3 className="text-sm font-medium mb-2">認証方法</h3>
-                <p className="text-sm text-muted-foreground">
-                  {getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}
-                </p>
+              <div className="py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-muted-foreground block text-xs mb-0.5">メール</span>
+                <span className="font-medium text-xs break-all">{userProfile?.email || session?.user?.email}</span>
               </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">アカウント作成日</h3>
-                <p className="text-sm text-muted-foreground">
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-muted-foreground">認証方法</span>
+                <span className="font-medium">{getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-muted-foreground">登録日</span>
+                <span className="font-medium">
                   {userProfile?.createdAt
-                    ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit'
-                      })
-                    : '不明'}
-                </p>
+                    ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP')
+                    : '-'}
+                </span>
               </div>
-            </CardContent>
-          </Card>
-
-          {userProfile ? (
-            userProfile.hasPassword ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>パスワード変更</CardTitle>
-                  <CardDescription>
-                    アカウントのパスワードを変更します
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+              {/* Password change form if applicable */}
+              {userProfile?.hasPassword && (
+                <div className="py-1.5 border-b border-slate-100 dark:border-slate-800">
+                  <p className="font-medium mb-2">パスワード変更</p>
                   <PasswordChangeForm />
-                </CardContent>
-              </Card>
-            ) : (
-              <Alert>
-                <Globe className="h-4 w-4" />
-                <AlertDescription>
-                  {getAuthMethodLabel(userProfile.providers, userProfile.hasPassword)}でログインしているため、パスワード変更は不要です。
-                  認証は外部プロバイダーによって安全に管理されています。
-                </AlertDescription>
-              </Alert>
-            )
-          ) : null}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>連携アカウント</CardTitle>
-              <CardDescription>
-                外部サービスとの連携を管理します
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {userProfile?.providers && userProfile.providers.length > 0 ? (
-                <ul className="space-y-3" role="list">
-                  {userProfile.providers.map((provider) => (
-                    <li key={provider} className="flex items-center gap-3">
-                      {getProviderIcon(provider)}
-                      <span className="text-sm font-medium">{getAuthMethodLabel([provider])}</span>
-                      <span className="text-sm text-muted-foreground">（連携済み）</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  連携されているアカウントはありません
-                </p>
+                </div>
               )}
-            </CardContent>
+              {/* Danger zone - collapsible */}
+              <details className="py-1.5 group">
+                <summary className="flex items-center gap-2 cursor-pointer font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 list-none">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>危険な操作</span>
+                  <span className="ml-auto text-xs text-muted-foreground group-open:hidden">クリックで表示</span>
+                  <span className="ml-auto text-xs text-muted-foreground hidden group-open:inline">クリックで閉じる</span>
+                </summary>
+                <div className="mt-2">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    アカウント削除は取り消せません
+                  </p>
+                  <DeleteAccountDialog hasPassword={userProfile?.hasPassword ?? false} />
+                </div>
+              </details>
+            </div>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="privacy" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>プライバシー設定</CardTitle>
-              <CardDescription>
-                データの公開範囲とプライバシーを管理します
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium mb-2">プロフィールの公開</h3>
-                <p className="text-sm text-muted-foreground">
-                  プロフィール情報は現在非公開です
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">お気に入りの公開</h3>
-                <p className="text-sm text-muted-foreground">
-                  お気に入り記事は非公開です
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">閲覧履歴</h3>
-                <p className="text-sm text-muted-foreground">
-                  閲覧履歴は本人のみ閲覧可能です
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-destructive">
-            <CardHeader>
-              <CardTitle className="text-destructive">危険な操作</CardTitle>
-              <CardDescription>
-                これらの操作は取り消すことができません
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                アカウントを削除すると、すべてのデータが完全に削除されます。
-                この操作は取り消すことができません。
-              </p>
-              <DeleteAccountDialog hasPassword={userProfile?.hasPassword ?? false} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 }
