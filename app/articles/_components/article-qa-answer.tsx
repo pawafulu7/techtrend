@@ -32,10 +32,10 @@ export function ArticleQaAnswer({
   const hasAnswer = answer && answer.trim().length > 0;
 
   return (
-    <div
-      className="article-qa-answer"
+    <article
+      className="article-qa-answer rounded-[24px] border border-slate-100 bg-white p-5 sm:p-6 shadow-sm border-l-4 border-l-primary/30"
       data-testid={testId}
-      role="region"
+      role="article"
       aria-label="AI回答"
     >
       {/* ストリーミングインジケータ */}
@@ -44,13 +44,13 @@ export function ArticleQaAnswer({
           data-testid="qa-streaming-indicator"
           role="status"
           aria-live="polite"
-          className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-muted/50"
+          className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-primary/5"
         >
           <div className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--tt-color-primary)] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--tt-color-primary)]"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
           </div>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-primary/80 font-medium">
             回答を生成中...
           </span>
         </div>
@@ -60,7 +60,7 @@ export function ArticleQaAnswer({
       {hasAnswer && (
         <div
           data-testid="qa-answer-markdown"
-          className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-a:text-primary"
+          className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-headings:text-slate-800 prose-p:text-slate-700 prose-a:text-primary prose-strong:text-slate-800 prose-li:text-slate-700"
         >
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkBreaks]}
@@ -85,6 +85,6 @@ export function ArticleQaAnswer({
           <p>回答がありません</p>
         </div>
       )}
-    </div>
+    </article>
   );
 }

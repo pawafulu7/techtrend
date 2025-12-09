@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
-import { ArrowUpRight, Bot, MessageSquare, Sparkles, Tag, User, X } from 'lucide-react';
+import { Bot, MessageSquare, Sparkles, User, X } from 'lucide-react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
 import { ArticleQaAnswer } from './article-qa-answer';
 import { AgentErrorDisplay } from '@/app/search/agent/_components/agent-error-display';
 import { useArticleQA, type ArticleQAResult, type ArticleQAError } from '@/lib/hooks/useArticleQA';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { DialogTitle } from '@/components/ui/dialog';
 
 const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
@@ -345,8 +344,8 @@ export function ArticleQAClient({
 
                       {!exchange.error && showAnswerPanel && (
                         <div className="flex items-start gap-3">
-                          <Bot className="mt-4 h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
-                          <div className="flex-1 rounded-[28px] border border-slate-100/80 bg-gradient-to-b from-white to-slate-50/70 p-1.5 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)]">
+                          <Bot className="mt-5 h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
+                          <div className="flex-1">
                             <ArticleQaAnswer
                               answer={streamingPartial || exchangeResult?.response || null}
                               isStreaming={isActive && shouldShowStreamingResult}
@@ -363,29 +362,37 @@ export function ArticleQAClient({
 
             <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-b from-transparent via-white to-white pt-6">
               {/* Sample queries section - positioned above input for better task-completion UX */}
-              <div className="mb-3 space-y-2">
+              <aside
+                role="complementary"
+                aria-label={locale === 'ja' ? 'サンプル質問' : 'Sample questions'}
+                className="mb-4"
+              >
+                {/* Separator for visual separation from answer */}
+                <div className="border-t border-slate-200/40 mb-4" />
+
                 {sampleQueriesOpen ? (
                   <div
                     id="sample-queries-panel"
                     role="region"
                     aria-labelledby="sample-queries-toggle"
-                    className="space-y-3"
+                    className="space-y-3 animate-in fade-in-0 slide-in-from-top-2 duration-300"
                   >
-                    {/* Topic tags */}
-                    {normalizedTopics.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {normalizedTopics.map((topic) => (
-                          <Badge
-                            key={topic}
-                            variant="secondary"
-                            className="gap-1 rounded-full border border-slate-100 bg-white px-3 py-1 text-[11px] font-medium text-slate-600"
-                          >
-                            <Tag className="h-3 w-3 text-primary" />
-                            {topic}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                    {/* Header with collapse button */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                        {locale === 'ja' ? '関連する質問' : 'Related questions'}
+                      </span>
+                      <button
+                        id="sample-queries-toggle"
+                        type="button"
+                        onClick={() => setSampleQueriesOpen(false)}
+                        aria-expanded={sampleQueriesOpen}
+                        aria-controls="sample-queries-panel"
+                        className="text-xs text-slate-400 hover:text-slate-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded"
+                      >
+                        {locale === 'ja' ? '閉じる' : 'Close'}
+                      </button>
+                    </div>
                     {/* Sample query buttons - horizontal scroll on mobile, wrap on desktop */}
                     <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 scrollbar-hide lg:flex-wrap lg:overflow-visible">
                       {sampleQueries.map((query) => (
@@ -398,13 +405,12 @@ export function ArticleQAClient({
                               : `Insert sample: ${query.slice(0, 20)}...`
                           }
                           onClick={() => handlePrefillQuery(query)}
-                          className="group inline-flex flex-shrink-0 items-center gap-2 rounded-full border border-slate-200/70 bg-white/90 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:text-primary hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:flex-shrink"
+                          className="group inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50/80 px-2.5 py-1 text-xs text-slate-600 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 lg:flex-shrink"
                         >
-                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary transition group-hover:bg-primary/20">
+                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
                             Q
                           </span>
-                          <span className="whitespace-nowrap text-left text-sm font-medium lg:whitespace-normal">{query}</span>
-                          <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-primary" />
+                          <span className="whitespace-nowrap text-left lg:whitespace-normal">{query}</span>
                         </button>
                       ))}
                     </div>
@@ -416,13 +422,13 @@ export function ArticleQAClient({
                     onClick={() => setSampleQueriesOpen(true)}
                     aria-expanded={sampleQueriesOpen}
                     aria-controls="sample-queries-panel"
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/90 px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary/50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-white px-3 py-1.5 text-xs font-medium text-primary shadow-sm transition hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2"
                   >
-                    <Sparkles className="h-4 w-4 text-primary" />
+                    <Sparkles className="h-3.5 w-3.5" />
                     {locale === 'ja' ? 'サンプル質問を表示' : 'Show sample questions'}
                   </button>
                 )}
-              </div>
+              </aside>
 
               <div className="rounded-[28px] border border-slate-100/80 bg-white/90 p-4 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)] backdrop-blur-sm sm:p-6">
                 <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
