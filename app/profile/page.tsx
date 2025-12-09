@@ -6,10 +6,9 @@ import { useEffect } from 'react';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
-import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, User, AlertTriangle } from 'lucide-react';
+import { Loader2, User, UserCog, AlertTriangle } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -75,11 +74,18 @@ export default function ProfilePage() {
 
   return (
     <div className="container max-w-4xl mx-auto py-6 px-4">
-      <ProfileHeader
-        userName={session?.user?.name}
-        userEmail={session?.user?.email}
-        userImage={session?.user?.image}
-      />
+      {/* Page Header */}
+      <header className="mb-6">
+        <div className="border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 shadow-sm p-4">
+          <div className="flex items-start gap-3">
+            <UserCog className="h-6 w-6 text-slate-600 dark:text-slate-400 mt-0.5" aria-hidden="true" />
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">プロフィール設定</h1>
+              <p className="text-sm text-muted-foreground mt-1">基本情報とアカウント設定を管理します</p>
+            </div>
+          </div>
+        </div>
+      </header>
 
       {/* 2-column layout: lg and above */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

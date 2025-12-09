@@ -7,9 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, Upload } from 'lucide-react';
-import { ProfileImage } from '@/app/components/common/optimized-image';
+import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type ProfileFormData = {
@@ -82,35 +80,8 @@ export function ProfileForm() {
     }
   };
 
-  const userInitial = session?.user?.name?.charAt(0)?.toUpperCase() || 
-                      session?.user?.email?.charAt(0)?.toUpperCase() || 
-                      'U';
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="flex items-center space-x-4">
-        {session?.user?.image ? (
-          <ProfileImage
-            src={session.user.image}
-            alt={session.user.name || 'User'}
-            size={80}
-          />
-        ) : (
-          <Avatar className="h-20 w-20">
-            <AvatarFallback>{userInitial}</AvatarFallback>
-          </Avatar>
-        )}
-        <div>
-          <Button type="button" variant="outline" size="sm" disabled>
-            <Upload className="mr-2 h-4 w-4" />
-            画像を変更
-          </Button>
-          <p className="text-xs text-muted-foreground mt-1">
-            JPG, GIF, PNG. 最大1MB
-          </p>
-        </div>
-      </div>
-
       <div className="space-y-2">
         <Label htmlFor="name">表示名</Label>
         <Input
