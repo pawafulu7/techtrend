@@ -56,7 +56,7 @@ export function ProfileHeader({
   const completion = useProfileCompletion(completionData);
 
   return (
-    <header className="flex flex-col items-center text-center mb-8 min-h-[280px]">
+    <header className="flex flex-col items-center text-center mb-8 min-h-[280px] opacity-0 animate-fade-in motion-reduce:opacity-100 motion-reduce:animate-none">
       {/* Avatar with responsive sizing */}
       <div className="mb-4">
         {userImage ? (

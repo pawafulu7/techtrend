@@ -111,7 +111,7 @@ export default function ProfilePage() {
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
-          <Card className="border-l-4 border-l-[var(--tt-color-primary)] hover:shadow-md transition-shadow">
+          <Card className="border-l-4 border-l-[var(--tt-color-primary)] transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             <CardHeader>
               <CardTitle>プロフィール情報</CardTitle>
               <CardDescription>
@@ -125,7 +125,7 @@ export default function ProfilePage() {
         </TabsContent>
 
         <TabsContent value="account" className="space-y-4">
-          <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+          <Card className="border-l-4 border-l-blue-500 transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             <CardHeader>
               <CardTitle>アカウント情報</CardTitle>
               <CardDescription>
@@ -164,7 +164,7 @@ export default function ProfilePage() {
 
           {userProfile ? (
             userProfile.hasPassword ? (
-              <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+              <Card className="border-l-4 border-l-blue-500 transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
                 <CardHeader>
                   <CardTitle>パスワード変更</CardTitle>
                   <CardDescription>
@@ -186,7 +186,7 @@ export default function ProfilePage() {
             )
           ) : null}
 
-          <Card className="border-l-4 border-l-[var(--tt-color-secondary)] hover:shadow-md transition-shadow">
+          <Card className="border-l-4 border-l-[var(--tt-color-secondary)] transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             <CardHeader>
               <CardTitle>連携アカウント</CardTitle>
               <CardDescription>
@@ -214,7 +214,7 @@ export default function ProfilePage() {
         </TabsContent>
 
         <TabsContent value="privacy" className="space-y-4">
-          <Card className="border-l-4 border-l-muted-foreground/30 hover:shadow-md transition-shadow">
+          <Card className="border-l-4 border-l-muted-foreground/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             <CardHeader>
               <CardTitle>プライバシー設定</CardTitle>
               <CardDescription>
@@ -245,7 +245,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-destructive hover:shadow-md transition-shadow">
+          <Card className="border-l-4 border-l-destructive transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-destructive focus-within:ring-offset-2">
             <CardHeader>
               <CardTitle className="text-destructive">危険な操作</CardTitle>
               <CardDescription>
