@@ -101,14 +101,12 @@ export default function ProfilePage() {
         {/* Right column: Account info (1/3 width, sticky) */}
         <div className="lg:sticky lg:top-6 lg:self-start space-y-4">
           <Card className="border-0 shadow-lg bg-white/95 dark:bg-slate-900/95 p-3">
-            {/* Account Info Header */}
-            <div className="flex items-center gap-2 mb-0">
-              <User className="h-4 w-4 text-slate-500" />
-              <span className="font-medium">アカウント情報</span>
-            </div>
-
             {/* Account Info Content */}
             <div className="grid gap-0 text-sm">
+              <div className="flex items-center gap-2 py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <User className="h-4 w-4 text-slate-500" />
+                <span className="font-medium">アカウント情報</span>
+              </div>
               <div className="py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-muted-foreground block text-xs mb-0.5">メール</span>
                 <span className="font-medium text-xs break-all">{userProfile?.email || session?.user?.email}</span>
@@ -117,7 +115,7 @@ export default function ProfilePage() {
                 <span className="text-muted-foreground">認証方法</span>
                 <span className="font-medium">{getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}</span>
               </div>
-              <div className="flex justify-between py-1.5">
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-muted-foreground">登録日</span>
                 <span className="font-medium">
                   {userProfile?.createdAt
@@ -136,7 +134,7 @@ export default function ProfilePage() {
             )}
 
             {/* Danger zone - collapsible */}
-            <details className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 group">
+            <details className="py-1.5 group">
               <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 list-none">
                 <AlertTriangle className="h-4 w-4" />
                 <span>危険な操作</span>
