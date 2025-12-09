@@ -27,14 +27,6 @@ export function ProfileCompletionBar({
   incompleteFields,
   className,
 }: ProfileCompletionBarProps) {
-  // Determine progress bar color based on completion level
-  const getProgressColor = () => {
-    if (percentage >= 80) return 'bg-[var(--tt-color-primary)]';
-    if (percentage >= 60) return 'bg-[var(--tt-color-primary)]/80';
-    if (percentage >= 40) return 'bg-[var(--tt-color-secondary)]';
-    return 'bg-[var(--tt-color-secondary)]/80';
-  };
-
   return (
     <div
       className={cn(
