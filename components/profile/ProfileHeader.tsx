@@ -25,28 +25,30 @@ export function ProfileHeader({
   const displayName = userName || userEmail?.split('@')[0] || 'User';
 
   return (
-    <header className="flex items-center gap-3 mb-6">
-      <div className="flex-shrink-0">
-        {userImage ? (
-          <ProfileImage
-            src={userImage}
-            alt={displayName}
-            size={48}
-            className="w-12 h-12 rounded-full ring-2 ring-slate-200 dark:ring-slate-700"
-          />
-        ) : (
-          <Avatar className="w-12 h-12 ring-2 ring-slate-200 dark:ring-slate-700">
-            <AvatarFallback className="text-base font-semibold bg-gradient-to-br from-slate-600 to-slate-800 text-white">
-              {userInitial}
-            </AvatarFallback>
-          </Avatar>
-        )}
-      </div>
-      <div className="min-w-0">
-        <h1 className="text-xl font-bold text-foreground truncate">{displayName}</h1>
-        {userEmail && (
-          <p className="text-sm text-muted-foreground truncate">{userEmail}</p>
-        )}
+    <header className="mb-6 p-4 rounded-2xl bg-white/95 dark:bg-slate-900/95 shadow-lg border-0">
+      <div className="flex items-center gap-4">
+        <div className="flex-shrink-0">
+          {userImage ? (
+            <ProfileImage
+              src={userImage}
+              alt={displayName}
+              size={64}
+              className="w-16 h-16 rounded-full ring-2 ring-slate-200 dark:ring-slate-700 shadow-md"
+            />
+          ) : (
+            <Avatar className="w-16 h-16 ring-2 ring-slate-200 dark:ring-slate-700 shadow-md">
+              <AvatarFallback className="text-xl font-semibold bg-gradient-to-br from-slate-600 to-slate-800 text-white">
+                {userInitial}
+              </AvatarFallback>
+            </Avatar>
+          )}
+        </div>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground truncate">{displayName}</h1>
+          {userEmail && (
+            <p className="text-sm text-muted-foreground truncate">{userEmail}</p>
+          )}
+        </div>
       </div>
     </header>
   );
