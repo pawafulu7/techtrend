@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } fro
 import { ArrowUpRight, Bot, MessageSquare, Sparkles, Tag, User, X } from 'lucide-react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
-import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
+import { ArticleQaAnswer } from './article-qa-answer';
 import { AgentErrorDisplay } from '@/app/search/agent/_components/agent-error-display';
 import { useArticleQA, type ArticleQAResult, type ArticleQAError } from '@/lib/hooks/useArticleQA';
 import { Button } from '@/components/ui/button';
@@ -354,13 +354,9 @@ export function ArticleQAClient({
                         <div className="flex items-start gap-3">
                           <Bot className="mt-4 h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
                           <div className="flex-1 rounded-[28px] border border-slate-100/80 bg-gradient-to-b from-white to-slate-50/70 p-1.5 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)]">
-                            <AgentAnswerPanel
-                              result={exchangeResult}
-                              partialText={streamingPartial}
+                            <ArticleQaAnswer
+                              answer={streamingPartial || exchangeResult?.response || null}
                               isStreaming={isActive && shouldShowStreamingResult}
-                              onFeedback={(positive) =>
-                                handleFeedback(positive, exchangeResult?.query ?? exchange.question)
-                              }
                             />
                           </div>
                         </div>
