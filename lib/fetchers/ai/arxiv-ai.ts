@@ -28,8 +28,15 @@ export class ArxivAIFetcher extends BaseFetcher {
 
   constructor(source: Source) {
     super(source);
+    const rawTimeout = process.env.FETCHER_TIMEOUT_MS;
+    const parsedTimeout = rawTimeout ? Number(rawTimeout) : NaN;
+    const timeout =
+      Number.isFinite(parsedTimeout) && parsedTimeout > 0
+        ? parsedTimeout
+        : 600_000; // 10 min default
+
     this.parser = new Parser({
-      timeout: Number(process.env.FETCHER_TIMEOUT_MS ?? 600_000), // 10 min default
+      timeout,
     });
     this.enricher = new ArxivAIEnricher();
   }
@@ -95,10 +102,17 @@ export class ArxivAIFetcher extends BaseFetcher {
       let failureCount = 0;
 
       for (const result of results) {
-        if (result.status === 'fulfilled' && result.value) {
-          articles.push(result.value);
-          successCount++;
-        } else if (result.status === 'rejected') {
+        if (result.status === 'fulfilled') {
+          if (result.value) {
+            articles.push(result.value);
+            successCount++;
+          } else {
+            failureCount++;
+            logger.warn(
+              'arXiv AI: エンリッチメント結果がnullのため記事を生成せずスキップ'
+            );
+          }
+        } else {
           failureCount++;
           logger.warn(
             { error: result.reason },
@@ -227,7 +241,7 @@ export class ArxivAIFetcher extends BaseFetcher {
     return match ? match[1] : undefined;
   }
 
-  private extractAbstract(item: RSSItem): string | undefined {
+  private extractAbstract(item: RSSItem): string {
     // Extract abstract from description or content
     const content = item.description || item.content || '';
 
@@ -338,9 +352,14 @@ export class ArxivAIFetcher extends BaseFetcher {
     }
 
     // Category info
-    const categories = item.categories;
-    if (categories && Array.isArray(categories) && categories.length > 0) {
-      enrichedParts.push(`Subject Areas: ${categories.join(', ')}`);
+    const rawCategories = item.categories ?? item.category;
+    if (rawCategories) {
+      const categories = Array.isArray(rawCategories)
+        ? rawCategories
+        : [rawCategories];
+      if (categories.length > 0) {
+        enrichedParts.push(`Subject Areas: ${categories.join(', ')}`);
+      }
     }
 
     // Abstract

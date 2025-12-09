@@ -373,5 +373,35 @@ describe('ArxivAIFetcher', () => {
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].message).toContain('Network error');
     });
+
+    it('should use enriched content when enricher succeeds', async () => {
+      const mockItems = [
+        {
+          title: 'Enriched Paper. (arXiv:2312.99999v1)',
+          link: 'https://arxiv.org/abs/2312.99999',
+          pubDate: new Date().toISOString(),
+          description: 'Original abstract from RSS.',
+          categories: ['cs.AI'],
+        },
+      ];
+      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseURL = mockParseURL;
+
+      // Mock enricher to return full content
+      const mockEnrich = jest.fn().mockResolvedValue({
+        content: '<p>Full HTML content from arXiv page with detailed paper text.</p>',
+        thumbnail: 'https://arxiv.org/images/paper-thumbnail.png',
+      });
+      (fetcher as any).enricher.enrich = mockEnrich;
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].content).toContain('Full HTML content');
+      expect(result.articles[0].thumbnail).toBe(
+        'https://arxiv.org/images/paper-thumbnail.png'
+      );
+      expect(mockEnrich).toHaveBeenCalledWith('https://arxiv.org/abs/2312.99999');
+    });
   });
 });

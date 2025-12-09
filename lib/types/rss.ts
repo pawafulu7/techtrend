@@ -167,7 +167,7 @@ export function getTagsFromItem(item: unknown): string[] {
   const validated = getValidatedItem(item);
   if (!validated) return [];
 
-  const categories = validated.categories;
+  const categories = validated.categories ?? validated.category;
   if (!categories) return [];
   return Array.isArray(categories) ? categories : [categories];
 }
