@@ -102,7 +102,7 @@ export default function ProfilePage() {
         <div className="lg:sticky lg:top-6 lg:self-start space-y-4">
           <Card className="border-0 shadow-lg bg-white/95 dark:bg-slate-900/95 p-4">
             {/* Account Info Header */}
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-1">
               <User className="h-4 w-4 text-slate-500" />
               <span className="font-medium">アカウント情報</span>
             </div>
@@ -136,7 +136,7 @@ export default function ProfilePage() {
             )}
 
             {/* Danger zone - collapsible */}
-            <details className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 group">
+            <details className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 group">
               <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 list-none">
                 <AlertTriangle className="h-4 w-4" />
                 <span>危険な操作</span>
