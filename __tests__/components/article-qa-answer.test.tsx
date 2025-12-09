@@ -48,14 +48,16 @@ Some **bold** text and a [link](https://example.com).`;
     it('should render line breaks correctly', () => {
       render(
         <ArticleQaAnswer
-          answer="Line 1\nLine 2"
+          answer={`Line 1
+Line 2`}
           isStreaming={false}
         />
       );
 
-      // remarkBreaks converts single newlines to <br>
       const markdown = screen.getByTestId('qa-answer-markdown');
       expect(markdown).toBeInTheDocument();
+      // remarkBreaks converts single newlines to <br>
+      expect(markdown.innerHTML).toContain('<br');
     });
   });
 
@@ -156,8 +158,8 @@ Some **bold** text and a [link](https://example.com).`;
         />
       );
 
-      const region = screen.getByRole('region', { name: 'AI回答' });
-      expect(region).toBeInTheDocument();
+      const article = screen.getByRole('article', { name: 'AI回答' });
+      expect(article).toBeInTheDocument();
     });
 
     it('should have aria-live on streaming indicator', () => {

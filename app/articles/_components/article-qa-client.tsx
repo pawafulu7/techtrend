@@ -374,7 +374,7 @@ export function ArticleQAClient({
                   <div
                     id="sample-queries-panel"
                     role="region"
-                    aria-labelledby="sample-queries-toggle"
+                    aria-label={locale === 'ja' ? '関連する質問' : 'Related questions'}
                     className="space-y-3 animate-in fade-in-0 slide-in-from-top-2 duration-300"
                   >
                     {/* Header with collapse button */}
@@ -383,7 +383,6 @@ export function ArticleQAClient({
                         {locale === 'ja' ? '関連する質問' : 'Related questions'}
                       </span>
                       <button
-                        id="sample-queries-toggle"
                         type="button"
                         onClick={() => setSampleQueriesOpen(false)}
                         aria-expanded={sampleQueriesOpen}
