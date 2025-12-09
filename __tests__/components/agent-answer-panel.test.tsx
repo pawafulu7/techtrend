@@ -51,15 +51,18 @@ describe('AgentAnswerPanel', () => {
     expect(screen.getByText(/AI検索が一時的に利用できない/)).toBeInTheDocument();
   });
 
-  test('copy button copies to clipboard', async () => {
+  test('copy button copies to clipboard with sources', async () => {
     render(<AgentAnswerPanel result={mockResult} partialText={null} isStreaming={false} />);
 
     const copyButton = screen.getByLabelText('回答をコピー');
     fireEvent.click(copyButton);
 
-    // Component strips Markdown and converts to plain text
+    // Component strips Markdown and converts to plain text, then appends source links
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      'Test Response\nSome bold text and a link.'
+      expect.stringContaining('Test Response')
+    );
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining('Test Article 1')
     );
   });
 
@@ -183,7 +186,7 @@ describe('AgentAnswerPanel', () => {
 
     const indicator = screen.getByTestId('streaming-indicator');
     expect(indicator).toBeVisible();
-    expect(indicator).toHaveTextContent('AI回答を生成中...');
+    expect(indicator).toHaveTextContent('回答を出力中...');
   });
 
   test('hides streaming indicator when isStreaming=false', () => {
