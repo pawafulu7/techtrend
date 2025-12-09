@@ -8,9 +8,8 @@ import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Globe, Github, Mail, User, Shield } from 'lucide-react';
+import { Loader2, Globe, Github, Mail, User, AlertTriangle } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -110,109 +109,87 @@ export default function ProfilePage() {
           </Card>
         </div>
 
-        {/* Right column: Account & Privacy accordions (1/3 width, sticky) */}
+        {/* Right column: Account info (1/3 width, sticky) */}
         <div className="lg:sticky lg:top-6 lg:self-start space-y-4">
           <Card className="border-0 shadow-lg bg-white/95 dark:bg-slate-900/95">
-            <Accordion type="multiple" className="w-full">
-              {/* Account Info Accordion */}
-              <AccordionItem value="account" className="border-b-0">
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-slate-500" />
-                    <span className="font-medium">アカウント情報</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4">
-                  <div className="grid gap-2 text-sm">
-                    <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                      <span className="text-muted-foreground">メール</span>
-                      <span className="font-medium truncate ml-2 max-w-[140px]">{userProfile?.email || session?.user?.email}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                      <span className="text-muted-foreground">認証方法</span>
-                      <span className="font-medium">{getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}</span>
-                    </div>
-                    <div className="flex justify-between py-2">
-                      <span className="text-muted-foreground">登録日</span>
-                      <span className="font-medium">
-                        {userProfile?.createdAt
-                          ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP')
-                          : '-'}
-                      </span>
-                    </div>
-                  </div>
+            {/* Account Info Header */}
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-slate-500" />
+                <span className="font-medium">アカウント情報</span>
+              </div>
+            </div>
 
-                  {/* Password change form if applicable */}
-                  {userProfile?.hasPassword && (
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                      <p className="text-sm font-medium mb-3">パスワード変更</p>
-                      <PasswordChangeForm />
-                    </div>
-                  )}
+            {/* Account Info Content */}
+            <div className="px-4 py-3">
+              <div className="grid gap-2 text-sm">
+                <div className="py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-muted-foreground block mb-1">メール</span>
+                  <span className="font-medium text-xs break-all">{userProfile?.email || session?.user?.email}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-muted-foreground">認証方法</span>
+                  <span className="font-medium">{getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-muted-foreground">登録日</span>
+                  <span className="font-medium">
+                    {userProfile?.createdAt
+                      ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP')
+                      : '-'}
+                  </span>
+                </div>
+              </div>
 
-                  {/* OAuth provider info */}
-                  {userProfile && !userProfile.hasPassword && (
-                    <Alert className="mt-4 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                      <Globe className="h-4 w-4" />
-                      <AlertDescription className="text-sm">
-                        {getAuthMethodLabel(userProfile.providers)}でログイン中
-                      </AlertDescription>
-                    </Alert>
-                  )}
+              {/* Password change form if applicable */}
+              {userProfile?.hasPassword && (
+                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <p className="text-sm font-medium mb-3">パスワード変更</p>
+                  <PasswordChangeForm />
+                </div>
+              )}
 
-                  {/* Linked accounts */}
-                  {userProfile?.providers && userProfile.providers.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                      <p className="text-sm font-medium mb-2">連携アカウント</p>
-                      <ul className="space-y-2">
-                        {userProfile.providers.map((provider) => (
-                          <li key={provider} className="flex items-center gap-2 text-sm">
-                            {getProviderIcon(provider)}
-                            <span>{getAuthMethodLabel([provider])}</span>
-                            <span className="text-xs text-emerald-600 dark:text-emerald-400 ml-auto">連携済</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
+              {/* OAuth provider info */}
+              {userProfile && !userProfile.hasPassword && (
+                <Alert className="mt-4 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                  <Globe className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    {getAuthMethodLabel(userProfile.providers)}でログイン中
+                  </AlertDescription>
+                </Alert>
+              )}
 
-              {/* Privacy Settings Accordion */}
-              <AccordionItem value="privacy" className="border-b-0">
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-slate-500" />
-                    <span className="font-medium">プライバシー設定</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4">
-                  <div className="grid gap-2 text-sm">
-                    <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                      <span>プロフィール</span>
-                      <span className="text-muted-foreground">非公開</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                      <span>お気に入り</span>
-                      <span className="text-muted-foreground">非公開</span>
-                    </div>
-                    <div className="flex justify-between py-2">
-                      <span>閲覧履歴</span>
-                      <span className="text-muted-foreground">本人のみ</span>
-                    </div>
-                  </div>
+              {/* Linked accounts */}
+              {userProfile?.providers && userProfile.providers.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <p className="text-sm font-medium mb-2">連携アカウント</p>
+                  <ul className="space-y-2">
+                    {userProfile.providers.map((provider) => (
+                      <li key={provider} className="flex items-center gap-2 text-sm">
+                        {getProviderIcon(provider)}
+                        <span>{getAuthMethodLabel([provider])}</span>
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 ml-auto">連携済</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-                  {/* Danger zone */}
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">危険な操作</p>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      アカウント削除は取り消せません
-                    </p>
-                    <DeleteAccountDialog hasPassword={userProfile?.hasPassword ?? false} />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+              {/* Danger zone - collapsible */}
+              <details className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 group">
+                <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 list-none">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>危険な操作</span>
+                  <span className="ml-auto text-xs text-muted-foreground group-open:hidden">クリックで表示</span>
+                </summary>
+                <div className="mt-3">
+                  <p className="text-xs text-muted-foreground mb-3">
+                    アカウント削除は取り消せません
+                  </p>
+                  <DeleteAccountDialog hasPassword={userProfile?.hasPassword ?? false} />
+                </div>
+              </details>
+            </div>
           </Card>
         </div>
       </div>
