@@ -2,12 +2,21 @@
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ProfileImage } from '@/app/components/common/optimized-image';
+import { ProfileCompletionBar } from './ProfileCompletionBar';
+import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 
 interface ProfileHeaderProps {
   userName: string | null | undefined;
   userEmail: string | null | undefined;
   userImage: string | null | undefined;
   createdAt?: string | null;
+  /** Optional: additional profile data for completion calculation */
+  profileData?: {
+    bio?: string | null;
+    website?: string | null;
+    twitter?: string | null;
+    github?: string | null;
+  };
 }
 
 /**
@@ -19,6 +28,7 @@ export function ProfileHeader({
   userEmail,
   userImage,
   createdAt,
+  profileData,
 }: ProfileHeaderProps) {
   const userInitial =
     userName?.charAt(0)?.toUpperCase() ||
@@ -34,8 +44,19 @@ export function ProfileHeader({
       })
     : null;
 
+  // Calculate profile completion using combined data
+  const completionData = {
+    name: userName,
+    image: userImage,
+    bio: profileData?.bio,
+    website: profileData?.website,
+    twitter: profileData?.twitter,
+    github: profileData?.github,
+  };
+  const completion = useProfileCompletion(completionData);
+
   return (
-    <header className="flex flex-col items-center text-center mb-8 min-h-[180px]">
+    <header className="flex flex-col items-center text-center mb-8 min-h-[280px]">
       {/* Avatar with responsive sizing */}
       <div className="mb-4">
         {userImage ? (
@@ -75,6 +96,14 @@ export function ProfileHeader({
       <p className="text-muted-foreground mt-3 max-w-md">
         アカウント情報とプロフィールを管理します
       </p>
+
+      {/* Profile completion progress bar */}
+      <ProfileCompletionBar
+        percentage={completion.percentage}
+        message={completion.message}
+        isLowCompletion={completion.isLowCompletion}
+        incompleteFields={completion.incompleteFields}
+      />
     </header>
   );
 }
