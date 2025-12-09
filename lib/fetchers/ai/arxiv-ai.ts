@@ -173,8 +173,11 @@ export class ArxivAIFetcher extends BaseFetcher {
             thumbnail = enrichedData.thumbnail;
           }
         }
-      } catch (_error) {
-        logger.warn(`arXiv AI: エンリッチメント失敗 ${item.link}`);
+      } catch (error) {
+        logger.warn(
+          { url: item.link, error },
+          'arXiv AI: エンリッチメント失敗'
+        );
       }
 
       // Fallback to RSS content if full content not available
