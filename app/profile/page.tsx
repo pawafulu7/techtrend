@@ -111,7 +111,7 @@ export default function ProfilePage() {
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
-          <Card>
+          <Card className="border-l-4 border-l-[var(--tt-color-primary)] hover:shadow-md transition-shadow">
             <CardHeader>
               <CardTitle>プロフィール情報</CardTitle>
               <CardDescription>
@@ -125,7 +125,7 @@ export default function ProfilePage() {
         </TabsContent>
 
         <TabsContent value="account" className="space-y-4">
-          <Card>
+          <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
             <CardHeader>
               <CardTitle>アカウント情報</CardTitle>
               <CardDescription>
@@ -139,7 +139,7 @@ export default function ProfilePage() {
                   {userProfile?.email || session?.user?.email}
                 </p>
               </div>
-              
+
               <div>
                 <h3 className="text-sm font-medium mb-2">認証方法</h3>
                 <p className="text-sm text-muted-foreground">
@@ -164,7 +164,7 @@ export default function ProfilePage() {
 
           {userProfile ? (
             userProfile.hasPassword ? (
-              <Card>
+              <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
                 <CardHeader>
                   <CardTitle>パスワード変更</CardTitle>
                   <CardDescription>
@@ -186,7 +186,7 @@ export default function ProfilePage() {
             )
           ) : null}
 
-          <Card>
+          <Card className="border-l-4 border-l-[var(--tt-color-secondary)] hover:shadow-md transition-shadow">
             <CardHeader>
               <CardTitle>連携アカウント</CardTitle>
               <CardDescription>
@@ -214,7 +214,7 @@ export default function ProfilePage() {
         </TabsContent>
 
         <TabsContent value="privacy" className="space-y-4">
-          <Card>
+          <Card className="border-l-4 border-l-muted-foreground/30 hover:shadow-md transition-shadow">
             <CardHeader>
               <CardTitle>プライバシー設定</CardTitle>
               <CardDescription>
@@ -245,7 +245,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="border-destructive">
+          <Card className="border-l-4 border-l-destructive hover:shadow-md transition-shadow">
             <CardHeader>
               <CardTitle className="text-destructive">危険な操作</CardTitle>
               <CardDescription>
