@@ -29,10 +29,10 @@ export class ArxivAIFetcher extends BaseFetcher {
   // Combined RSS feed (single HTTP request for all categories)
   private readonly RSS_URL = 'https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL';
 
-  // Parallel enrichment concurrency (adjustable via env)
-  private readonly ENRICHMENT_CONCURRENCY = parseInt(
-    process.env.ARXIV_ENRICHMENT_CONCURRENCY || '5',
-    10
+  // Parallel enrichment concurrency (adjustable via env, minimum 1)
+  private readonly ENRICHMENT_CONCURRENCY = Math.max(
+    1,
+    parseInt(process.env.ARXIV_ENRICHMENT_CONCURRENCY || '5', 10) || 5
   );
 
   constructor(source: Source) {
@@ -121,7 +121,9 @@ export class ArxivAIFetcher extends BaseFetcher {
           total: validItems.length,
           success: successCount,
           failure: failureCount,
-          successRate: `${((successCount / validItems.length) * 100).toFixed(1)}%`,
+          successRate: validItems.length > 0
+            ? `${((successCount / validItems.length) * 100).toFixed(1)}%`
+            : 'N/A',
           concurrency: this.ENRICHMENT_CONCURRENCY,
         },
         'arXiv AI: エンリッチメント完了'

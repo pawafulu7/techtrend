@@ -379,13 +379,14 @@ cron.schedule('0 * * * *', async () => {
   }
 });
 
-// arXiv AI専用スケジュール（JST 09:30, 21:30 = UTC 00:30, 12:30）
+// arXiv AI専用スケジュール（JST 09:45, 21:45 = UTC 00:45, 12:45）
 // arXivは1日1回更新（EST 0:00 = JST 14:00）のため、毎時実行は無駄
 // 並列エンリッチメント（5並列）で全件（約300-400件/日）を効率的に取得
 // ※ローカル環境考慮: 朝9時〜夜12時の時間帯に設定
+// ※スクレイピング系ジョブ（0:30, 12:30）との重複を避けるため15分ずらし
 const ARXIV_SOURCES = ['arXiv AI'];
 
-cron.schedule('30 0,12 * * *', async () => {
+cron.schedule('45 0,12 * * *', async () => {
   if (arxivJobRunning) {
     console.error('[WARN] arXiv AI job already running, skipping this execution');
     return;
@@ -597,7 +598,7 @@ cron.schedule('30 8,20 * * *', async () => {
     console.error('[INFO] 初回実行が完了しました\n');
     console.error('[INFO] 次回の更新:');
     console.error('   - RSS系: 毎時0分');
-    console.error('   - arXiv AI: 0:30・12:30 UTC（09:30・21:30 JST）');
+    console.error('   - arXiv AI: 0:45・12:45 UTC（09:45・21:45 JST）');
     console.error('   - Embeddingリカバリ: 毎時15分');
     console.error('   - スクレイピング系: 0:30・12:30');
     console.error('   - Qiita Popular: 5:05・17:05');
