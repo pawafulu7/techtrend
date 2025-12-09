@@ -27,7 +27,8 @@ module.exports = {
         NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
         SKIP_POST_SAVE_ENRICHMENT: '0', // Enable post-save enrichment (required for Phase 2)
         COLLECT_FEEDS_CONCURRENCY: '5', // Parallel source processing (30min->10-15min)
-        FETCHER_TIMEOUT_MS: process.env.FETCHER_TIMEOUT_MS || '60000', // Per-source fetch timeout (ms)
+        FETCHER_TIMEOUT_MS: process.env.FETCHER_TIMEOUT_MS || '600000', // Per-source fetch timeout (10 min, extended for arXiv)
+        ARXIV_ENRICHMENT_CONCURRENCY: process.env.ARXIV_ENRICHMENT_CONCURRENCY || '5', // arXiv parallel enrichment
         POST_SAVE_ENRICH_TIMEOUT_MS: '10000', // Post-save enrichment timeout (10s)
         POST_SAVE_ENRICH_SLEEP_MS: '0' // No sleep between enrichments (was 2000ms)
       },
