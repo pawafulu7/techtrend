@@ -100,24 +100,24 @@ export default function ProfilePage() {
 
         {/* Right column: Account info (1/3 width, sticky) */}
         <div className="lg:sticky lg:top-6 lg:self-start space-y-4">
-          <Card className="border-0 shadow-lg bg-white/95 dark:bg-slate-900/95 p-4">
+          <Card className="border-0 shadow-lg bg-white/95 dark:bg-slate-900/95 p-3">
             {/* Account Info Header */}
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-0">
               <User className="h-4 w-4 text-slate-500" />
               <span className="font-medium">アカウント情報</span>
             </div>
 
             {/* Account Info Content */}
             <div className="grid gap-0 text-sm">
-              <div className="py-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-muted-foreground block text-xs mb-0.5">メール</span>
                 <span className="font-medium text-xs break-all">{userProfile?.email || session?.user?.email}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-muted-foreground">認証方法</span>
                 <span className="font-medium">{getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}</span>
               </div>
-              <div className="flex justify-between py-2">
+              <div className="flex justify-between py-1.5">
                 <span className="text-muted-foreground">登録日</span>
                 <span className="font-medium">
                   {userProfile?.createdAt
