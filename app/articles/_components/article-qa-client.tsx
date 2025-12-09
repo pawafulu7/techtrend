@@ -101,13 +101,12 @@ export function ArticleQAClient({
   onClose,
   scrollContainerRef,
 }: ArticleQAClientProps) {
-  const [lastQuery, setLastQuery] = useState('');
   const [showResult, setShowResult] = useState(false);
   const [chatHistory, setChatHistory] = useState<QAExchange[]>([]);
   const [activeExchangeId, setActiveExchangeId] = useState<string | null>(null);
   const [sampleQueriesOpen, setSampleQueriesOpen] = useState(true);
   const [hasSentFirstMessage, setHasSentFirstMessage] = useState(false);
-  const { search, result, error, isLoading, partialText, contextChunk, reset } = useArticleQA({
+  const { search, result, error, isLoading, partialText, reset } = useArticleQA({
     articleId,
     articleTitle,
     locale,
@@ -133,7 +132,6 @@ export function ArticleQAClient({
       const trimmed = query.trim();
       if (!trimmed) return;
 
-      setLastQuery(query);
       setShowResult(false);
       const timestamp = Date.now();
       const exchangeId = `qa-${timestamp}`;
@@ -206,11 +204,6 @@ export function ArticleQAClient({
       setHasSentFirstMessage(true);
     }
   }, [chatHistory.length, hasSentFirstMessage]);
-
-  const handleFeedback = (positive: boolean, queryOverride?: string) => {
-    const originQuery = queryOverride ?? result?.query ?? lastQuery;
-    console.log('[Article QA Feedback]', positive ? 'positive' : 'negative', originQuery);
-  };
 
   const handlePrefillQuery = useCallback((query: string) => {
     if (prefillQueryRef.current) {
