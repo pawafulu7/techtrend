@@ -370,8 +370,8 @@ export class ArxivAIFetcher extends BaseFetcher {
     enrichedParts.push('Abstract:');
     enrichedParts.push(abstract || item.content || item.contentSnippet || '');
 
-    // Additional content
-    if (item.content && item.content !== abstract) {
+    // Additional content (only if description and content are both present and different)
+    if (item.content && item.description && item.content !== item.description) {
       enrichedParts.push('');
       enrichedParts.push('Additional Content:');
       enrichedParts.push(item.content);
