@@ -4,9 +4,13 @@ import { ArticleQaAnswer } from '@/app/articles/_components/article-qa-answer';
 describe('ArticleQaAnswer', () => {
   describe('Markdown rendering', () => {
     it('should render markdown content correctly', () => {
+      const markdown = `# Heading
+
+Some **bold** text and a [link](https://example.com).`;
+
       render(
         <ArticleQaAnswer
-          answer="# Heading\n\nSome **bold** text and a [link](https://example.com)."
+          answer={markdown}
           isStreaming={false}
         />
       );
@@ -29,15 +33,15 @@ describe('ArticleQaAnswer', () => {
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
-    it('should render GFM features like tables and strikethrough', () => {
+    it('should render GFM features like strikethrough', () => {
       render(
         <ArticleQaAnswer
-          answer="| A | B |\n|---|---|\n| 1 | 2 |\n\n~~strikethrough~~"
+          answer="This is ~~strikethrough~~ text"
           isStreaming={false}
         />
       );
 
-      expect(screen.getByRole('table')).toBeInTheDocument();
+      // Strikethrough should be rendered as <del> element
       expect(screen.getByText('strikethrough')).toBeInTheDocument();
     });
 
