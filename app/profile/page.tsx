@@ -123,31 +123,29 @@ export default function ProfilePage() {
                     : '-'}
                 </span>
               </div>
+              {/* Password change form if applicable */}
+              {userProfile?.hasPassword && (
+                <div className="py-1.5 border-b border-slate-100 dark:border-slate-800">
+                  <p className="font-medium mb-2">パスワード変更</p>
+                  <PasswordChangeForm />
+                </div>
+              )}
+              {/* Danger zone - collapsible */}
+              <details className="py-1.5 group">
+                <summary className="flex items-center gap-2 cursor-pointer font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 list-none">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>危険な操作</span>
+                  <span className="ml-auto text-xs text-muted-foreground group-open:hidden">クリックで表示</span>
+                  <span className="ml-auto text-xs text-muted-foreground hidden group-open:inline">クリックで閉じる</span>
+                </summary>
+                <div className="mt-2">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    アカウント削除は取り消せません
+                  </p>
+                  <DeleteAccountDialog hasPassword={userProfile?.hasPassword ?? false} />
+                </div>
+              </details>
             </div>
-
-            {/* Password change form if applicable */}
-            {userProfile?.hasPassword && (
-              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <p className="text-sm font-medium mb-3">パスワード変更</p>
-                <PasswordChangeForm />
-              </div>
-            )}
-
-            {/* Danger zone - collapsible */}
-            <details className="py-1.5 group">
-              <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 list-none">
-                <AlertTriangle className="h-4 w-4" />
-                <span>危険な操作</span>
-                <span className="ml-auto text-xs text-muted-foreground group-open:hidden">クリックで表示</span>
-                <span className="ml-auto text-xs text-muted-foreground hidden group-open:inline">クリックで閉じる</span>
-              </summary>
-              <div className="mt-3">
-                <p className="text-xs text-muted-foreground mb-3">
-                  アカウント削除は取り消せません
-                </p>
-                <DeleteAccountDialog hasPassword={userProfile?.hasPassword ?? false} />
-              </div>
-            </details>
           </Card>
         </div>
       </div>
