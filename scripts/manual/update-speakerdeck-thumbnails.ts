@@ -121,13 +121,16 @@ async function updateSpeakerDeckThumbnails(): Promise<UpdateResult> {
   };
 
   try {
-    // Speaker Deck記事を取得
+    // Speaker Deck記事を取得（URLベースでフィルタ、はてなブックマーク経由も対象）
     const articles = await prisma.article.findMany({
       where: {
-        source: {
-          name: 'Speaker Deck'
+        url: {
+          contains: 'speakerdeck.com'
         },
-        thumbnail: null  // サムネイルが未設定のもののみ
+        OR: [
+          { thumbnail: null },
+          { thumbnail: '' }
+        ]
       },
       include: {
         source: true
@@ -196,11 +199,11 @@ async function updateSpeakerDeckThumbnails(): Promise<UpdateResult> {
       }
     }
 
-    // サムネイルが既に設定されている記事の確認
+    // サムネイルが既に設定されている記事の確認（URLベース）
     const articlesWithThumbnail = await prisma.article.count({
       where: {
-        source: {
-          name: 'Speaker Deck'
+        url: {
+          contains: 'speakerdeck.com'
         },
         thumbnail: {
           not: null
