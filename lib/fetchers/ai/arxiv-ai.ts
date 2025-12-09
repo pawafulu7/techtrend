@@ -8,19 +8,7 @@ import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import { ArxivAIEnricher } from '@/lib/enrichers/arxiv-ai';
-
-// RSS item type for enrichment processing
-interface RSSItem {
-  title?: string;
-  link?: string;
-  pubDate?: string;
-  description?: string;
-  content?: string;
-  contentSnippet?: string;
-  author?: string;
-  categories?: string[] | string;
-  category?: string[] | string;
-}
+import { RSSItem } from '@/lib/types/rss';
 
 export class ArxivAIFetcher extends BaseFetcher {
   private parser: Parser;
@@ -34,6 +22,9 @@ export class ArxivAIFetcher extends BaseFetcher {
     1,
     parseInt(process.env.ARXIV_ENRICHMENT_CONCURRENCY || '5', 10) || 5
   );
+
+  // Maximum length for arXiv abstracts
+  private readonly MAX_ABSTRACT_LENGTH = 500;
 
   constructor(source: Source) {
     super(source);
@@ -169,7 +160,7 @@ export class ArxivAIFetcher extends BaseFetcher {
           }
         }
       } catch (_error) {
-        logger.debug(`arXiv AI: エンリッチメント失敗 ${item.link}`);
+        logger.warn(`arXiv AI: エンリッチメント失敗 ${item.link}`);
       }
 
       // Fallback to RSS content if full content not available
@@ -246,9 +237,9 @@ export class ArxivAIFetcher extends BaseFetcher {
       allowedAttributes: {},
     });
 
-    // Limit to 500 characters for arXiv abstracts
-    return cleanContent.length > 500
-      ? cleanContent.substring(0, 497) + '...'
+    // Limit abstract length
+    return cleanContent.length > this.MAX_ABSTRACT_LENGTH
+      ? cleanContent.substring(0, this.MAX_ABSTRACT_LENGTH - 3) + '...'
       : cleanContent;
   }
 

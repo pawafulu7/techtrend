@@ -259,4 +259,119 @@ describe('ArxivAIFetcher', () => {
       expect(concurrency).toBe(5);
     });
   });
+
+  describe('MAX_ABSTRACT_LENGTH configuration', () => {
+    it('should default to 500 characters', () => {
+      const maxLength = (fetcher as any).MAX_ABSTRACT_LENGTH;
+      expect(maxLength).toBe(500);
+    });
+  });
+
+  describe('fetch() integration', () => {
+    it('should return empty articles when feed has no items', async () => {
+      const mockParseURL = jest.fn().mockResolvedValue({ items: [] });
+      (fetcher as any).parser.parseURL = mockParseURL;
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(0);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should process valid RSS items', async () => {
+      const mockItems = [
+        {
+          title: 'Test Paper on Transformers. (arXiv:2312.12345v1)',
+          link: 'https://arxiv.org/abs/2312.12345',
+          pubDate: new Date().toISOString(),
+          description: 'This is a test abstract about transformers.',
+          categories: ['cs.AI', 'cs.LG'],
+        },
+      ];
+      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseURL = mockParseURL;
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].title).toBe('Test Paper on Transformers');
+      expect(result.articles[0].url).toBe('https://arxiv.org/abs/2312.12345');
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should skip items without title or link', async () => {
+      const mockItems = [
+        { title: 'Valid Paper', link: 'https://arxiv.org/abs/2312.11111' },
+        { title: 'No Link Paper' }, // Missing link
+        { link: 'https://arxiv.org/abs/2312.22222' }, // Missing title
+      ];
+      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseURL = mockParseURL;
+
+      const result = await fetcher.fetch();
+
+      // Only the first item has both title and link
+      expect(result.articles).toHaveLength(1);
+    });
+
+    it('should deduplicate articles by arXiv ID', async () => {
+      const mockItems = [
+        {
+          title: 'Paper v1',
+          link: 'https://arxiv.org/abs/2312.12345',
+          pubDate: new Date().toISOString(),
+        },
+        {
+          title: 'Paper v2 (same ID)',
+          link: 'https://arxiv.org/abs/2312.12345',
+          pubDate: new Date().toISOString(),
+        },
+      ];
+      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseURL = mockParseURL;
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].title).toBe('Paper v1');
+    });
+
+    it('should skip articles older than 30 days', async () => {
+      const oldDate = new Date();
+      oldDate.setDate(oldDate.getDate() - 31);
+
+      const mockItems = [
+        {
+          title: 'Old Paper',
+          link: 'https://arxiv.org/abs/2312.11111',
+          pubDate: oldDate.toISOString(),
+        },
+        {
+          title: 'Recent Paper',
+          link: 'https://arxiv.org/abs/2312.22222',
+          pubDate: new Date().toISOString(),
+        },
+      ];
+      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseURL = mockParseURL;
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].title).toBe('Recent Paper');
+    });
+
+    it('should handle RSS parsing errors gracefully', async () => {
+      const mockParseURL = jest
+        .fn()
+        .mockRejectedValue(new Error('Network error'));
+      (fetcher as any).parser.parseURL = mockParseURL;
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toContain('Network error');
+    });
+  });
 });
