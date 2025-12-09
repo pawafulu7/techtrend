@@ -162,5 +162,75 @@ describe('SpeakerDeckEnricher', () => {
       expect(result).not.toBeNull();
       expect(result?.content).toContain('Slides: 42');
     });
+
+    it('should fetch thumbnail from HTML when oEmbed has no thumbnail_url', async () => {
+      // oEmbed succeeds but without thumbnail_url
+      const oEmbedResponse = {
+        type: 'rich',
+        version: '1.0',
+        title: 'Presentation Without Thumbnail',
+        author_name: 'Author',
+        provider_name: 'Speaker Deck',
+        html: '<iframe></iframe>',
+        width: 710,
+        height: 400,
+        // thumbnail_url is intentionally missing
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => oEmbedResponse,
+      });
+
+      // HTML fetch for thumbnail
+      const htmlResponse = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta property="og:image" content="https://files.speakerdeck.com/presentations/abc/slide_0.jpg">
+        </head>
+        <body></body>
+        </html>
+      `;
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: async () => htmlResponse,
+      });
+
+      const result = await enricher.enrich(testUrl);
+
+      expect(result).not.toBeNull();
+      expect(result?.content).toContain('Presentation Without Thumbnail');
+      expect(result?.thumbnail).toBe('https://files.speakerdeck.com/presentations/abc/slide_0.jpg');
+    });
+
+    it('should return null thumbnail when HTML fetch fails after oEmbed success', async () => {
+      // oEmbed succeeds but without thumbnail_url
+      const oEmbedResponse = {
+        type: 'rich',
+        version: '1.0',
+        title: 'Presentation Without Thumbnail',
+        author_name: 'Author',
+        provider_name: 'Speaker Deck',
+        html: '<iframe></iframe>',
+        width: 710,
+        height: 400,
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => oEmbedResponse,
+      });
+
+      // HTML fetch fails
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await enricher.enrich(testUrl);
+
+      expect(result).not.toBeNull();
+      expect(result?.content).toContain('Presentation Without Thumbnail');
+      expect(result?.thumbnail).toBeNull();
+    });
   });
 });

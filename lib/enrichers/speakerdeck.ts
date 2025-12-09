@@ -34,16 +34,31 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
 
   async enrich(url: string): Promise<EnrichedContent | null> {
     try {
-      // Strategy 1: Try oEmbed API first (most reliable)
+      // Strategy 1: Try oEmbed API first (most reliable for content)
       const oEmbedData = await this.fetchOEmbed(url);
 
       if (oEmbedData) {
         const content = this.buildContentFromOEmbed(oEmbedData, url);
-        const thumbnail = oEmbedData.thumbnail_url || null;
+        let thumbnail = oEmbedData.thumbnail_url || null;
+
+        // oEmbedにthumbnailがない場合はHTMLから取得
+        if (!thumbnail) {
+          try {
+            logger.debug({ url }, '[SpeakerDeckEnricher] oEmbed has no thumbnail, fetching from HTML');
+            const html = await this.fetchWithRetry(url);
+            thumbnail = this.extractThumbnail(html);
+          } catch (htmlError) {
+            logger.debug(
+              { error: htmlError, url },
+              '[SpeakerDeckEnricher] Failed to fetch thumbnail from HTML'
+            );
+            // HTMLフェッチ失敗時は無視（contentは取得済み）
+          }
+        }
 
         if (this.isContentSufficient(content, 50)) {
           logger.debug(
-            { url, contentLength: content.length, source: 'oembed' },
+            { url, contentLength: content.length, source: 'oembed', hasThumbnail: !!thumbnail },
             '[SpeakerDeckEnricher] Enrichment succeeded via oEmbed'
           );
           return { content, thumbnail };
