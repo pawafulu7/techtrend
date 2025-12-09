@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Loader2, Upload } from 'lucide-react';
 import { ProfileImage } from '@/app/components/common/optimized-image';
+import { useToast } from '@/hooks/use-toast';
 
 type ProfileFormData = {
   name: string;
@@ -23,7 +23,7 @@ type ProfileFormData = {
 export function ProfileForm() {
   const { data: session, update } = useSession();
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const { toast } = useToast();
 
   const {
     register,
@@ -41,7 +41,6 @@ export function ProfileForm() {
 
   const onSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
-    setMessage(null);
 
     try {
       const response = await fetch('/api/user/profile', {
@@ -57,7 +56,7 @@ export function ProfileForm() {
       }
 
       const updatedUser = await response.json();
-      
+
       // Update session
       await update({
         ...session,
@@ -67,14 +66,16 @@ export function ProfileForm() {
         },
       });
 
-      setMessage({
-        type: 'success',
-        text: 'プロフィールを更新しました',
+      // Success toast
+      toast({
+        title: '✓ 保存しました',
+        description: 'プロフィールを更新しました',
       });
     } catch (_error) {
-      setMessage({
-        type: 'error',
-        text: 'プロフィールの更新に失敗しました',
+      toast({
+        variant: 'destructive',
+        title: 'エラー',
+        description: 'プロフィールの更新に失敗しました',
       });
     } finally {
       setIsLoading(false);
@@ -87,12 +88,6 @@ export function ProfileForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {message && (
-        <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
-          <AlertDescription>{message.text}</AlertDescription>
-        </Alert>
-      )}
-
       <div className="flex items-center space-x-4">
         {session?.user?.image ? (
           <ProfileImage
