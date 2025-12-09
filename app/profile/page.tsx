@@ -42,7 +42,7 @@ export default function ProfilePage() {
 
   if (status === 'loading' || profileLoading) {
     return (
-      <div className="container max-w-3xl mx-auto py-8 px-4">
+      <div className="container max-w-2xl mx-auto py-6 px-4">
         <div className="flex items-center justify-center h-32">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
@@ -60,7 +60,7 @@ export default function ProfilePage() {
       return null;
     }
     return (
-      <div className="container max-w-3xl mx-auto py-8 px-4">
+      <div className="container max-w-2xl mx-auto py-6 px-4">
         <Alert variant="destructive">
           <AlertDescription>
             プロフィール情報の取得に失敗しました：{profileError.message}
@@ -86,27 +86,41 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="container max-w-3xl mx-auto py-8 px-4">
+    <div className="container max-w-2xl mx-auto py-6 px-4">
       <ProfileHeader
         userName={session?.user?.name}
         userEmail={session?.user?.email}
         userImage={session?.user?.image}
-        createdAt={userProfile?.createdAt}
       />
 
       <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList className="w-full">
-          <TabsTrigger value="profile" className="flex-1">プロフィール</TabsTrigger>
-          <TabsTrigger value="account" className="flex-1">アカウント</TabsTrigger>
-          <TabsTrigger value="privacy" className="flex-1">プライバシー</TabsTrigger>
+        <TabsList className="w-full grid grid-cols-3 bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-lg">
+          <TabsTrigger
+            value="profile"
+            className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm text-sm"
+          >
+            プロフィール
+          </TabsTrigger>
+          <TabsTrigger
+            value="account"
+            className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm text-sm"
+          >
+            アカウント
+          </TabsTrigger>
+          <TabsTrigger
+            value="privacy"
+            className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm text-sm"
+          >
+            プライバシー
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-4">
+        <TabsContent value="profile" className="mt-4">
+          <Card className="border-0 shadow-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+            <CardHeader className="pb-3">
               <CardTitle className="text-base">プロフィール情報</CardTitle>
-              <CardDescription>
-                他のユーザーに表示される公開情報を設定します
+              <CardDescription className="text-xs">
+                他のユーザーに表示される公開情報
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -115,51 +129,37 @@ export default function ProfilePage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="account" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-4">
+        <TabsContent value="account" className="mt-4 space-y-4">
+          <Card className="border-0 shadow-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+            <CardHeader className="pb-3">
               <CardTitle className="text-base">アカウント情報</CardTitle>
-              <CardDescription>
-                アカウントの基本情報を確認します
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <h3 className="text-sm font-medium mb-1">メールアドレス</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {userProfile?.email || session?.user?.email}
-                  </p>
+            <CardContent>
+              <div className="grid gap-3 text-sm">
+                <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-muted-foreground">メール</span>
+                  <span className="font-medium">{userProfile?.email || session?.user?.email}</span>
                 </div>
-                <div>
-                  <h3 className="text-sm font-medium mb-1">認証方法</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}
-                  </p>
+                <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-muted-foreground">認証方法</span>
+                  <span className="font-medium">{getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}</span>
                 </div>
-                <div className="sm:col-span-2">
-                  <h3 className="text-sm font-medium mb-1">アカウント作成日</h3>
-                  <p className="text-sm text-muted-foreground">
+                <div className="flex justify-between py-2">
+                  <span className="text-muted-foreground">登録日</span>
+                  <span className="font-medium">
                     {userProfile?.createdAt
-                      ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit'
-                        })
-                      : '不明'}
-                  </p>
+                      ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP')
+                      : '-'}
+                  </span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {userProfile?.hasPassword && (
-            <Card>
-              <CardHeader className="pb-4">
+            <Card className="border-0 shadow-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <CardHeader className="pb-3">
                 <CardTitle className="text-base">パスワード変更</CardTitle>
-                <CardDescription>
-                  アカウントのパスワードを変更します
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <PasswordChangeForm />
@@ -168,75 +168,64 @@ export default function ProfilePage() {
           )}
 
           {userProfile && !userProfile.hasPassword && (
-            <Alert>
+            <Alert className="border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
               <Globe className="h-4 w-4" />
-              <AlertDescription>
-                {getAuthMethodLabel(userProfile.providers, userProfile.hasPassword)}でログインしているため、パスワード変更は不要です。
+              <AlertDescription className="text-sm">
+                {getAuthMethodLabel(userProfile.providers)}でログイン中
               </AlertDescription>
             </Alert>
           )}
 
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base">連携アカウント</CardTitle>
-              <CardDescription>
-                外部サービスとの連携を管理します
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {userProfile?.providers && userProfile.providers.length > 0 ? (
-                <ul className="space-y-2" role="list">
+          {userProfile?.providers && userProfile.providers.length > 0 && (
+            <Card className="border-0 shadow-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">連携アカウント</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
                   {userProfile.providers.map((provider) => (
-                    <li key={provider} className="flex items-center gap-3">
+                    <li key={provider} className="flex items-center gap-2 text-sm">
                       {getProviderIcon(provider)}
-                      <span className="text-sm">{getAuthMethodLabel([provider])}</span>
-                      <span className="text-xs text-muted-foreground">（連携済み）</span>
+                      <span>{getAuthMethodLabel([provider])}</span>
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 ml-auto">連携済</span>
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  連携されているアカウントはありません
-                </p>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
-        <TabsContent value="privacy" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-4">
+        <TabsContent value="privacy" className="mt-4 space-y-4">
+          <Card className="border-0 shadow-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+            <CardHeader className="pb-3">
               <CardTitle className="text-base">プライバシー設定</CardTitle>
-              <CardDescription>
-                データの公開範囲とプライバシーを管理します
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">プロフィールの公開</span>
-                <span className="text-xs text-muted-foreground">非公開</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">お気に入りの公開</span>
-                <span className="text-xs text-muted-foreground">非公開</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">閲覧履歴</span>
-                <span className="text-xs text-muted-foreground">本人のみ</span>
+            <CardContent>
+              <div className="grid gap-2 text-sm">
+                <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span>プロフィール</span>
+                  <span className="text-muted-foreground">非公開</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span>お気に入り</span>
+                  <span className="text-muted-foreground">非公開</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span>閲覧履歴</span>
+                  <span className="text-muted-foreground">本人のみ</span>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-destructive/50">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base text-destructive">危険な操作</CardTitle>
-              <CardDescription>
-                これらの操作は取り消すことができません
-              </CardDescription>
+          <Card className="border-0 shadow-md bg-red-50/80 dark:bg-red-950/30 backdrop-blur-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-red-600 dark:text-red-400">危険な操作</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                アカウントを削除すると、すべてのデータが完全に削除されます。
+              <p className="text-sm text-muted-foreground mb-3">
+                アカウント削除は取り消せません
               </p>
               <DeleteAccountDialog hasPassword={userProfile?.hasPassword ?? false} />
             </CardContent>
