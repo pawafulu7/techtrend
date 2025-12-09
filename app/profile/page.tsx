@@ -13,7 +13,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Globe, Github, Mail } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
-// プロバイダーラベル定数
 const PROVIDER_LABELS: Record<string, string> = {
   google: 'Google',
   github: 'GitHub',
@@ -21,7 +20,6 @@ const PROVIDER_LABELS: Record<string, string> = {
   credentials: 'メール/パスワード'
 };
 
-// プロバイダーアイコンマップ
 const PROVIDER_ICONS: Record<string, React.ReactElement> = {
   google: <Globe className="h-4 w-4" />,
   github: <Github className="h-4 w-4" />,
@@ -44,27 +42,25 @@ export default function ProfilePage() {
 
   if (status === 'loading' || profileLoading) {
     return (
-      <div className="container max-w-4xl mx-auto py-10">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="container max-w-3xl mx-auto py-8 px-4">
+        <div className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       </div>
     );
   }
 
   if (status === 'unauthenticated') {
-    return null; // リダイレクト中は何も表示しない
+    return null;
   }
 
   if (profileError) {
-    // 401エラーの場合は自動リダイレクト
     if (profileError.message.includes('認証が必要')) {
       router.replace(`/auth/login?callbackUrl=${encodeURIComponent('/profile')}`);
       return null;
     }
-    
     return (
-      <div className="container max-w-4xl mx-auto py-10">
+      <div className="container max-w-3xl mx-auto py-8 px-4">
         <Alert variant="destructive">
           <AlertDescription>
             プロフィール情報の取得に失敗しました：{profileError.message}
@@ -74,28 +70,23 @@ export default function ProfilePage() {
     );
   }
 
-  // 認証方法のラベルを取得
   const getAuthMethodLabel = (providers: string[] | undefined, hasPassword?: boolean) => {
     if (!providers || providers.length === 0) {
       return hasPassword ? PROVIDER_LABELS.credentials : 'なし';
     }
-    
     const providerLabels = providers.map(p => PROVIDER_LABELS[p] || p);
     if (hasPassword && !providers.includes('credentials')) {
       providerLabels.push(PROVIDER_LABELS.credentials);
     }
-    
     return providerLabels.join(', ');
   };
 
-  // プロバイダーアイコンを取得
   const getProviderIcon = (provider: string) => {
     return PROVIDER_ICONS[provider] ?? <Mail className="h-4 w-4" />;
   };
 
   return (
-    <div className="container max-w-4xl mx-auto py-10">
-      {/* Profile Header with centered avatar */}
+    <div className="container max-w-3xl mx-auto py-8 px-4">
       <ProfileHeader
         userName={session?.user?.name}
         userEmail={session?.user?.email}
@@ -104,16 +95,16 @@ export default function ProfilePage() {
       />
 
       <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="profile">プロフィール</TabsTrigger>
-          <TabsTrigger value="account">アカウント</TabsTrigger>
-          <TabsTrigger value="privacy">プライバシー</TabsTrigger>
+        <TabsList className="w-full">
+          <TabsTrigger value="profile" className="flex-1">プロフィール</TabsTrigger>
+          <TabsTrigger value="account" className="flex-1">アカウント</TabsTrigger>
+          <TabsTrigger value="privacy" className="flex-1">プライバシー</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
-          <Card className="border-l-4 border-l-[var(--tt-color-primary)] transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-            <CardHeader>
-              <CardTitle>プロフィール情報</CardTitle>
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">プロフィール情報</CardTitle>
               <CardDescription>
                 他のユーザーに表示される公開情報を設定します
               </CardDescription>
@@ -125,82 +116,81 @@ export default function ProfilePage() {
         </TabsContent>
 
         <TabsContent value="account" className="space-y-4">
-          <Card className="border-l-4 border-l-blue-500 transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-            <CardHeader>
-              <CardTitle>アカウント情報</CardTitle>
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">アカウント情報</CardTitle>
               <CardDescription>
                 アカウントの基本情報を確認します
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium mb-2">メールアドレス</h3>
-                <p className="text-sm text-muted-foreground">
-                  {userProfile?.email || session?.user?.email}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">認証方法</h3>
-                <p className="text-sm text-muted-foreground">
-                  {getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">アカウント作成日</h3>
-                <p className="text-sm text-muted-foreground">
-                  {userProfile?.createdAt
-                    ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit'
-                      })
-                    : '不明'}
-                </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <h3 className="text-sm font-medium mb-1">メールアドレス</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {userProfile?.email || session?.user?.email}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium mb-1">認証方法</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {getAuthMethodLabel(userProfile?.providers, userProfile?.hasPassword)}
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <h3 className="text-sm font-medium mb-1">アカウント作成日</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {userProfile?.createdAt
+                      ? new Date(userProfile.createdAt).toLocaleDateString('ja-JP', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit'
+                        })
+                      : '不明'}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          {userProfile ? (
-            userProfile.hasPassword ? (
-              <Card className="border-l-4 border-l-blue-500 transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-                <CardHeader>
-                  <CardTitle>パスワード変更</CardTitle>
-                  <CardDescription>
-                    アカウントのパスワードを変更します
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <PasswordChangeForm />
-                </CardContent>
-              </Card>
-            ) : (
-              <Alert>
-                <Globe className="h-4 w-4" />
-                <AlertDescription>
-                  {getAuthMethodLabel(userProfile.providers, userProfile.hasPassword)}でログインしているため、パスワード変更は不要です。
-                  認証は外部プロバイダーによって安全に管理されています。
-                </AlertDescription>
-              </Alert>
-            )
-          ) : null}
+          {userProfile?.hasPassword && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">パスワード変更</CardTitle>
+                <CardDescription>
+                  アカウントのパスワードを変更します
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PasswordChangeForm />
+              </CardContent>
+            </Card>
+          )}
 
-          <Card className="border-l-4 border-l-[var(--tt-color-secondary)] transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-            <CardHeader>
-              <CardTitle>連携アカウント</CardTitle>
+          {userProfile && !userProfile.hasPassword && (
+            <Alert>
+              <Globe className="h-4 w-4" />
+              <AlertDescription>
+                {getAuthMethodLabel(userProfile.providers, userProfile.hasPassword)}でログインしているため、パスワード変更は不要です。
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">連携アカウント</CardTitle>
               <CardDescription>
                 外部サービスとの連携を管理します
               </CardDescription>
             </CardHeader>
             <CardContent>
               {userProfile?.providers && userProfile.providers.length > 0 ? (
-                <ul className="space-y-3" role="list">
+                <ul className="space-y-2" role="list">
                   {userProfile.providers.map((provider) => (
                     <li key={provider} className="flex items-center gap-3">
                       {getProviderIcon(provider)}
-                      <span className="text-sm font-medium">{getAuthMethodLabel([provider])}</span>
-                      <span className="text-sm text-muted-foreground">（連携済み）</span>
+                      <span className="text-sm">{getAuthMethodLabel([provider])}</span>
+                      <span className="text-xs text-muted-foreground">（連携済み）</span>
                     </li>
                   ))}
                 </ul>
@@ -214,40 +204,32 @@ export default function ProfilePage() {
         </TabsContent>
 
         <TabsContent value="privacy" className="space-y-4">
-          <Card className="border-l-4 border-l-muted-foreground/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-            <CardHeader>
-              <CardTitle>プライバシー設定</CardTitle>
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">プライバシー設定</CardTitle>
               <CardDescription>
                 データの公開範囲とプライバシーを管理します
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium mb-2">プロフィールの公開</h3>
-                <p className="text-sm text-muted-foreground">
-                  プロフィール情報は現在非公開です
-                </p>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm">プロフィールの公開</span>
+                <span className="text-xs text-muted-foreground">非公開</span>
               </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">お気に入りの公開</h3>
-                <p className="text-sm text-muted-foreground">
-                  お気に入り記事は非公開です
-                </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">お気に入りの公開</span>
+                <span className="text-xs text-muted-foreground">非公開</span>
               </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">閲覧履歴</h3>
-                <p className="text-sm text-muted-foreground">
-                  閲覧履歴は本人のみ閲覧可能です
-                </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">閲覧履歴</span>
+                <span className="text-xs text-muted-foreground">本人のみ</span>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-destructive transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-within:ring-2 focus-within:ring-destructive focus-within:ring-offset-2">
-            <CardHeader>
-              <CardTitle className="text-destructive">危険な操作</CardTitle>
+          <Card className="border-destructive/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base text-destructive">危険な操作</CardTitle>
               <CardDescription>
                 これらの操作は取り消すことができません
               </CardDescription>
@@ -255,7 +237,6 @@ export default function ProfilePage() {
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
                 アカウントを削除すると、すべてのデータが完全に削除されます。
-                この操作は取り消すことができません。
               </p>
               <DeleteAccountDialog hasPassword={userProfile?.hasPassword ?? false} />
             </CardContent>

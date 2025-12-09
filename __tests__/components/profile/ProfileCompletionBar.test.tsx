@@ -11,7 +11,7 @@ describe('ProfileCompletionBar', () => {
 
   it('renders percentage correctly', () => {
     render(<ProfileCompletionBar {...defaultProps} />);
-    expect(screen.getByText('Profile 50%')).toBeInTheDocument();
+    expect(screen.getByText('50%')).toBeInTheDocument();
   });
 
   it('renders message correctly', () => {
@@ -30,7 +30,7 @@ describe('ProfileCompletionBar', () => {
 
   it('shows incomplete fields hint when isLowCompletion is true', () => {
     render(<ProfileCompletionBar {...defaultProps} />);
-    expect(screen.getByText(/Add: Bio, Website, Twitter/)).toBeInTheDocument();
+    expect(screen.getByText(/Bio, Website, Twitter/)).toBeInTheDocument();
   });
 
   it('hides incomplete fields hint when isLowCompletion is false', () => {
@@ -40,7 +40,8 @@ describe('ProfileCompletionBar', () => {
         isLowCompletion={false}
       />
     );
-    expect(screen.queryByText(/Add:/)).not.toBeInTheDocument();
+    // When isLowCompletion is false, incomplete fields should not show
+    expect(screen.queryByText(/Bio, Website, Twitter/)).not.toBeInTheDocument();
   });
 
   it('shows truncated incomplete fields with count when more than 3', () => {
@@ -50,8 +51,8 @@ describe('ProfileCompletionBar', () => {
         incompleteFields={['Bio', 'Website', 'Twitter', 'GitHub', 'Profile image']}
       />
     );
-    expect(screen.getByText(/Add: Bio, Website, Twitter/)).toBeInTheDocument();
-    expect(screen.getByText(/\+2 more/)).toBeInTheDocument();
+    expect(screen.getByText(/Bio, Website, Twitter/)).toBeInTheDocument();
+    expect(screen.getByText(/\+2/)).toBeInTheDocument();
   });
 
   it('renders with 100% completion', () => {
@@ -63,7 +64,7 @@ describe('ProfileCompletionBar', () => {
         incompleteFields={[]}
       />
     );
-    expect(screen.getByText('Profile 100%')).toBeInTheDocument();
+    expect(screen.getByText('100%')).toBeInTheDocument();
     expect(screen.getByText('Complete!')).toBeInTheDocument();
   });
 
@@ -76,7 +77,7 @@ describe('ProfileCompletionBar', () => {
         incompleteFields={['Display name', 'Bio', 'Profile image']}
       />
     );
-    expect(screen.getByText('Profile 0%')).toBeInTheDocument();
+    expect(screen.getByText('0%')).toBeInTheDocument();
     expect(screen.getByText('Get started')).toBeInTheDocument();
   });
 
@@ -87,15 +88,15 @@ describe('ProfileCompletionBar', () => {
     expect(container.firstChild).toHaveClass('custom-class');
   });
 
-  it('applies low completion background style', () => {
+  it('renders light variant by default', () => {
     const { container } = render(<ProfileCompletionBar {...defaultProps} />);
-    expect(container.firstChild).toHaveClass('bg-muted/50');
+    expect(container.firstChild).toHaveClass('bg-muted/30');
   });
 
-  it('does not apply low completion background when completion is high', () => {
+  it('renders dark variant when specified', () => {
     const { container } = render(
-      <ProfileCompletionBar {...defaultProps} isLowCompletion={false} />
+      <ProfileCompletionBar {...defaultProps} variant="dark" />
     );
-    expect(container.firstChild).not.toHaveClass('bg-muted/50');
+    expect(container.firstChild).toHaveClass('bg-white/5');
   });
 });

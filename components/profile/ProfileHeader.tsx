@@ -2,7 +2,6 @@
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ProfileImage } from '@/app/components/common/optimized-image';
-import { ProfileCompletionBar } from './ProfileCompletionBar';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 
 interface ProfileHeaderProps {
@@ -10,7 +9,6 @@ interface ProfileHeaderProps {
   userEmail: string | null | undefined;
   userImage: string | null | undefined;
   createdAt?: string | null;
-  /** Optional: additional profile data for completion calculation */
   profileData?: {
     bio?: string | null;
     website?: string | null;
@@ -20,14 +18,12 @@ interface ProfileHeaderProps {
 }
 
 /**
- * Profile page header component with centered avatar and user info
- * Implements visual hierarchy principle with prominent user identity
+ * Compact profile header - prioritizes form visibility
  */
 export function ProfileHeader({
   userName,
   userEmail,
   userImage,
-  createdAt,
   profileData,
 }: ProfileHeaderProps) {
   const userInitial =
@@ -37,14 +33,6 @@ export function ProfileHeader({
 
   const displayName = userName || userEmail?.split('@')[0] || 'User';
 
-  const memberSince = createdAt
-    ? new Date(createdAt).toLocaleDateString('ja-JP', {
-        year: 'numeric',
-        month: 'long',
-      })
-    : null;
-
-  // Calculate profile completion using combined data
   const completionData = {
     name: userName,
     image: userImage,
@@ -56,54 +44,49 @@ export function ProfileHeader({
   const completion = useProfileCompletion(completionData);
 
   return (
-    <header className="flex flex-col items-center text-center mb-8 min-h-[280px] opacity-0 animate-fade-in motion-reduce:opacity-100 motion-reduce:animate-none">
-      {/* Avatar with responsive sizing */}
-      <div className="mb-4">
+    <header className="flex items-center gap-4 mb-6 p-4 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50 border border-slate-200 dark:border-slate-700">
+      {/* Avatar - compact */}
+      <div className="flex-shrink-0">
         {userImage ? (
           <ProfileImage
             src={userImage}
             alt={displayName}
-            size={128}
-            className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full ring-4 ring-background shadow-lg"
+            size={64}
+            className="w-14 h-14 rounded-full ring-2 ring-white dark:ring-slate-700 shadow-md"
           />
         ) : (
-          <Avatar className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 ring-4 ring-background shadow-lg">
-            <AvatarFallback className="text-2xl sm:text-3xl md:text-4xl font-semibold bg-gradient-to-br from-[var(--tt-color-primary)] to-[var(--tt-color-primary-accent)] text-white">
+          <Avatar className="w-14 h-14 ring-2 ring-white dark:ring-slate-700 shadow-md">
+            <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
               {userInitial}
             </AvatarFallback>
           </Avatar>
         )}
       </div>
 
-      {/* User name with visual hierarchy */}
-      <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-foreground">
-        {displayName}
-      </h1>
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <h1 className="text-lg font-bold text-foreground truncate">
+          {displayName}
+        </h1>
+        {userEmail && (
+          <p className="text-sm text-muted-foreground truncate">{userEmail}</p>
+        )}
+      </div>
 
-      {/* Email subtitle */}
-      {userEmail && userName && (
-        <p className="text-sm text-muted-foreground mt-1">{userEmail}</p>
-      )}
-
-      {/* Member since */}
-      {memberSince && (
-        <p className="text-xs text-muted-foreground mt-2">
-          {memberSince}から利用中
-        </p>
-      )}
-
-      {/* Page description */}
-      <p className="text-muted-foreground mt-3 max-w-md">
-        アカウント情報とプロフィールを管理します
-      </p>
-
-      {/* Profile completion progress bar */}
-      <ProfileCompletionBar
-        percentage={completion.percentage}
-        message={completion.message}
-        isLowCompletion={completion.isLowCompletion}
-        incompleteFields={completion.incompleteFields}
-      />
+      {/* Completion badge - compact */}
+      <div className="flex-shrink-0 text-right">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-600">
+          <div className="w-12 h-1.5 rounded-full bg-slate-200 dark:bg-slate-600 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all"
+              style={{ width: `${completion.percentage}%` }}
+            />
+          </div>
+          <span className="text-xs font-medium text-muted-foreground">
+            {completion.percentage}%
+          </span>
+        </div>
+      </div>
     </header>
   );
 }
