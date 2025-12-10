@@ -63,8 +63,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
           for (const item of feed.items.slice(0, 3)) {
             if (!item.link || !item.title) continue;
 
-            const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(item.title);
-            if (!hasJapanese) continue;
+            if (!this.hasJapanese(item.title)) continue;
 
             const article: CreateArticleInput = {
               title: item.title,
@@ -90,9 +89,9 @@ export class SpeakerDeckFetcher extends BaseFetcher {
 
   /**
    * トレンドページから高品質なプレゼンテーションを取得
-   * - Views数フィルタリング（1000以上）
+   * - Views数フィルタリング（minViews以上、デフォルト300）
    * - 日付フィルタリング（1年以内）
-   * - 最大100件取得
+   * - 最大maxArticles件取得
    */
   private async fetchTrendingPresentations(): Promise<CreateArticleInput[]> {
     const articles: CreateArticleInput[] = [];
@@ -207,12 +206,14 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     const candidates: PresentationCandidate[] = [];
     let page = 1;
     const maxPerCategory = speakerDeckConfig.maxArticlesPerCategory || 35;
+    let consecutiveEmptyPages = 0;
 
     while (candidates.length < maxPerCategory && page <= speakerDeckConfig.maxPages) {
       
       const listUrl = `https://speakerdeck.com/c/${category.path}?lang=ja&page=${page}`;
       
       if (speakerDeckConfig.debug) {
+        console.log(`[SpeakerDeck] Fetching: ${listUrl}`);
       }
 
       try {
@@ -220,7 +221,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
         const $ = cheerio.load(html);
         
         let foundOnPage = 0;
-        $('.deck-preview').each((index, element) => {
+        $('.deck-preview').each((_, element) => {
           const $item = $(element);
           const $link = $item.find('a.deck-preview-link');
           const href = $link.attr('href');
@@ -228,41 +229,92 @@ export class SpeakerDeckFetcher extends BaseFetcher {
           
           if (!href || !title) return;
 
-          // 日本語チェック
-          const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(title);
-          if (!hasJapanese) return;
+          // Get author early for Japanese check
+          const author = $item.find('.deck-preview-meta .text-truncate a').text().trim() || 'Unknown';
 
-          // Views数を取得
+          // Japanese check: title or author must contain Japanese characters
+          // lang=ja helps but is not 100% reliable
+          const hasJapaneseInTitle = this.hasJapanese(title);
+          const hasJapaneseInAuthor = this.hasJapanese(author);
+          if (!hasJapaneseInTitle && !hasJapaneseInAuthor) {
+            if (speakerDeckConfig.debug) {
+              console.log(`[SpeakerDeck] Skipped non-JP: ${title} by ${author}`);
+            }
+            return;
+          }
+
+          // Views extraction with fallback
+          let viewsNumber: number | null = null;
+
+          // Primary selector: span[title*="views"]
           const viewsElement = $item.find('span[title*="views"]');
           const viewsTitle = viewsElement.attr('title');
-          
           if (viewsTitle) {
             const viewsMatch = viewsTitle.match(/([0-9,]+)\s*views/);
             if (viewsMatch) {
-              const viewsNumber = parseInt(viewsMatch[1].replace(/,/g, ''));
-              
-              // Views数フィルタリング
-              if (viewsNumber >= speakerDeckConfig.minViews) {
-                const author = $item.find('.deck-preview-meta .text-truncate a').text().trim() || 'Unknown';
-                
-                candidates.push({
-                  url: `https://speakerdeck.com${href}`,
-                  title: title,
-                  author: author,
-                  views: viewsNumber
-                });
-                foundOnPage++;
+              viewsNumber = parseInt(viewsMatch[1].replace(/,/g, ''));
+            }
+          }
+
+          // Fallback selector: whitelist only, with validation
+          if (viewsNumber === null) {
+            const viewsText = $item.find('.deck-views, .views-count').text();
+            const fallbackMatch = viewsText.match(/([0-9,]+)\s*views?/i);
+            if (fallbackMatch) {
+              viewsNumber = parseInt(fallbackMatch[1].replace(/,/g, ''));
+              if (speakerDeckConfig.debug) {
+                console.log(`[SpeakerDeck] Views fallback used: ${viewsNumber} for ${title}`);
               }
             }
+          }
+
+          // Second fallback: number-only pattern for localized text (e.g., "123 回視聴")
+          if (viewsNumber === null) {
+            const viewsText = $item.find('.deck-views, .views-count').text();
+            const numberOnlyMatch = viewsText.match(/([0-9,]+)/);
+            if (numberOnlyMatch) {
+              const parsed = parseInt(numberOnlyMatch[1].replace(/,/g, ''));
+              // Sanity check: views should be reasonable (at least 10)
+              if (parsed >= 10) {
+                viewsNumber = parsed;
+                if (speakerDeckConfig.debug) {
+                  console.log(`[SpeakerDeck] Views number-only fallback used: ${viewsNumber} for ${title}`);
+                }
+              }
+            }
+          }
+
+          // Views filtering: extraction failure skips the item
+          if (viewsNumber === null) {
+            if (speakerDeckConfig.debug) {
+              console.log(`[SpeakerDeck] Views not found, skipping: ${title}`);
+            }
+            return;
+          }
+
+          if (viewsNumber >= speakerDeckConfig.minViews) {
+            candidates.push({
+              url: `https://speakerdeck.com${href}`,
+              title: title,
+              author: author,
+              views: viewsNumber
+            });
+            foundOnPage++;
           }
         });
 
         if (speakerDeckConfig.debug) {
+          console.log(`[SpeakerDeck] Page ${page}: found ${foundOnPage} candidates`);
         }
 
-        // 候補が見つからなくなったら終了
+        // Improved pagination: allow up to 5 consecutive empty pages
         if (foundOnPage === 0) {
-          break;
+          consecutiveEmptyPages++;
+          if (consecutiveEmptyPages >= 5) {
+            break;
+          }
+        } else {
+          consecutiveEmptyPages = 0;
         }
 
       } catch (_error) {
@@ -372,6 +424,14 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       chunks.push(array.slice(i, i + size));
     }
     return chunks;
+  }
+
+  /**
+   * 日本語文字を含むかチェック
+   * ひらがな、カタカナ、漢字のいずれかを含む場合にtrueを返す
+   */
+  private hasJapanese(text: string): boolean {
+    return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text);
   }
 
   /**
