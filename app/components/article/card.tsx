@@ -48,10 +48,11 @@ export function ArticleCard({
   }, [initialIsRead]);
 
   const shouldShowThumbnail = (): boolean => {
-    if (!article.source) {
-      return false;
-    }
-    if (article.source.name === 'Speaker Deck' || article.source.name === 'Docswell') {
+    // Speaker Deck / Docswell: URLまたはsource.nameで判定
+    const isSpeakerDeck = article.url?.includes('speakerdeck.com') || article.source?.name === 'Speaker Deck';
+    const isDocswell = article.url?.includes('docswell.com') || article.source?.name === 'Docswell';
+
+    if (isSpeakerDeck || isDocswell) {
       return !!article.thumbnail;
     }
     if (article.content && article.content.length < 300 && article.thumbnail) {

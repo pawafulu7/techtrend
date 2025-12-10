@@ -31,6 +31,7 @@ export function buildSelectFields(options: DisplayOptions): ArticleSelect {
       title: true,
       url: true,
       summary: true,
+      thumbnail: true,
       publishedAt: true,
       sourceId: true,
     };
