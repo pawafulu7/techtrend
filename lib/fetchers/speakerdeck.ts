@@ -230,10 +230,23 @@ export class SpeakerDeckFetcher extends BaseFetcher {
           
           if (!href || !title) return;
 
-          // lang=ja parameter filters Japanese content, no additional check needed
+          // Get author early for Japanese check
+          const author = $item.find('.deck-preview-meta .text-truncate a').text().trim() || 'Unknown';
+
+          // Japanese check: title or author must contain Japanese characters
+          // lang=ja helps but is not 100% reliable
+          const jpPattern = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
+          const hasJapaneseInTitle = jpPattern.test(title);
+          const hasJapaneseInAuthor = jpPattern.test(author);
+          if (!hasJapaneseInTitle && !hasJapaneseInAuthor) {
+            if (speakerDeckConfig.debug) {
+              console.log(`[SpeakerDeck] Skipped non-JP: ${title} by ${author}`);
+            }
+            return;
+          }
 
           // Views extraction with fallback
-          let viewsNumber = -1; // Sentinel value: -1 = extraction failed
+          let viewsNumber: number | null = null;
 
           // Primary selector: span[title*="views"]
           const viewsElement = $item.find('span[title*="views"]');
@@ -245,10 +258,10 @@ export class SpeakerDeckFetcher extends BaseFetcher {
             }
           }
 
-          // Fallback selector: .deck-views, .views-count, etc.
-          if (viewsNumber === -1) {
-            const viewsText = $item.find('.deck-views, .views-count, [class*="view"]').text();
-            const fallbackMatch = viewsText.match(/([0-9,]+)/);
+          // Fallback selector: whitelist only, with validation
+          if (viewsNumber === null) {
+            const viewsText = $item.find('.deck-views, .views-count').text();
+            const fallbackMatch = viewsText.match(/([0-9,]+)\s*views?/i);
             if (fallbackMatch) {
               viewsNumber = parseInt(fallbackMatch[1].replace(/,/g, ''));
               if (speakerDeckConfig.debug) {
@@ -257,15 +270,15 @@ export class SpeakerDeckFetcher extends BaseFetcher {
             }
           }
 
-          if (viewsNumber === -1 && speakerDeckConfig.debug) {
-            console.log(`[SpeakerDeck] Views not found: ${title}`);
+          // Views filtering: extraction failure skips the item
+          if (viewsNumber === null) {
+            if (speakerDeckConfig.debug) {
+              console.log(`[SpeakerDeck] Views not found, skipping: ${title}`);
+            }
+            return;
           }
 
-          // Views filtering: -1 (extraction failed) bypasses minViews filter
-          const passesViewsFilter = viewsNumber === -1 || viewsNumber >= speakerDeckConfig.minViews;
-          if (passesViewsFilter) {
-            const author = $item.find('.deck-preview-meta .text-truncate a').text().trim() || 'Unknown';
-            
+          if (viewsNumber >= speakerDeckConfig.minViews) {
             candidates.push({
               url: `https://speakerdeck.com${href}`,
               title: title,
