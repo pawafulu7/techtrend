@@ -1,5 +1,13 @@
-import { ArxivAIFetcher } from '@/lib/fetchers/ai/arxiv-ai';
 import { Source } from '@prisma/client';
+
+// Mock Prisma client
+jest.mock('@/lib/prisma', () => ({
+  prisma: {
+    article: {
+      findMany: jest.fn(),
+    },
+  },
+}));
 
 // Mock p-limit
 jest.mock('p-limit', () => {
@@ -22,6 +30,12 @@ jest.mock('@/lib/enrichers/arxiv-ai', () => ({
   })),
 }));
 
+// Import after mocks are set up
+import { ArxivAIFetcher } from '@/lib/fetchers/ai/arxiv-ai';
+import { prisma } from '@/lib/prisma';
+
+const mockedPrisma = jest.mocked(prisma, true);
+
 describe('ArxivAIFetcher', () => {
   let fetcher: ArxivAIFetcher;
   let mockSource: Source;
@@ -38,6 +52,10 @@ describe('ArxivAIFetcher', () => {
     };
 
     fetcher = new ArxivAIFetcher(mockSource);
+
+    // Reset prisma mock - default to empty (no existing articles)
+    mockedPrisma.article.findMany.mockReset();
+    mockedPrisma.article.findMany.mockResolvedValue([]);
   });
 
   describe('detectCategory', () => {
@@ -402,6 +420,126 @@ describe('ArxivAIFetcher', () => {
         'https://arxiv.org/images/paper-thumbnail.png'
       );
       expect(mockEnrich).toHaveBeenCalledWith('https://arxiv.org/abs/2312.99999');
+    });
+
+    it('should skip articles with existing URLs in database', async () => {
+      const mockItems = [
+        {
+          title: 'Existing Paper',
+          link: 'https://arxiv.org/abs/2312.11111',
+          pubDate: new Date().toISOString(),
+          categories: ['cs.AI'],
+        },
+        {
+          title: 'New Paper',
+          link: 'https://arxiv.org/abs/2312.22222',
+          pubDate: new Date().toISOString(),
+          categories: ['cs.LG'],
+        },
+      ];
+      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseURL = mockParseURL;
+
+      // Mock existing article in database
+      mockedPrisma.article.findMany.mockResolvedValue([
+        { url: 'https://arxiv.org/abs/2312.11111' },
+      ]);
+
+      const result = await fetcher.fetch();
+
+      // Only the new paper should be processed
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].url).toBe('https://arxiv.org/abs/2312.22222');
+      expect(result.articles[0].title).toBe('New Paper');
+    });
+
+    it('should skip all articles when all URLs exist in database', async () => {
+      const mockItems = [
+        {
+          title: 'Existing Paper 1',
+          link: 'https://arxiv.org/abs/2312.11111',
+          pubDate: new Date().toISOString(),
+          categories: ['cs.AI'],
+        },
+        {
+          title: 'Existing Paper 2',
+          link: 'https://arxiv.org/abs/2312.22222',
+          pubDate: new Date().toISOString(),
+          categories: ['cs.LG'],
+        },
+      ];
+      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseURL = mockParseURL;
+
+      // All articles exist in database
+      mockedPrisma.article.findMany.mockResolvedValue([
+        { url: 'https://arxiv.org/abs/2312.11111' },
+        { url: 'https://arxiv.org/abs/2312.22222' },
+      ]);
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(0);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should process all articles when database is empty', async () => {
+      const mockItems = [
+        {
+          title: 'New Paper 1',
+          link: 'https://arxiv.org/abs/2312.33333',
+          pubDate: new Date().toISOString(),
+          categories: ['cs.AI'],
+        },
+        {
+          title: 'New Paper 2',
+          link: 'https://arxiv.org/abs/2312.44444',
+          pubDate: new Date().toISOString(),
+          categories: ['cs.LG'],
+        },
+      ];
+      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseURL = mockParseURL;
+
+      // No existing articles in database
+      mockedPrisma.article.findMany.mockResolvedValue([]);
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(2);
+    });
+
+    it('should query database with correct URL filter', async () => {
+      const mockItems = [
+        {
+          title: 'Paper 1',
+          link: 'https://arxiv.org/abs/2312.55555',
+          pubDate: new Date().toISOString(),
+        },
+        {
+          title: 'Paper 2',
+          link: 'https://arxiv.org/abs/2312.66666',
+          pubDate: new Date().toISOString(),
+        },
+      ];
+      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseURL = mockParseURL;
+      mockedPrisma.article.findMany.mockResolvedValue([]);
+
+      await fetcher.fetch();
+
+      // Verify prisma was called with correct parameters
+      expect(mockedPrisma.article.findMany).toHaveBeenCalledWith({
+        where: {
+          url: {
+            in: [
+              'https://arxiv.org/abs/2312.55555',
+              'https://arxiv.org/abs/2312.66666',
+            ],
+          },
+        },
+        select: { url: true },
+      });
     });
   });
 });
