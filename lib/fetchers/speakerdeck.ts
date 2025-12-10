@@ -207,12 +207,14 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     const candidates: PresentationCandidate[] = [];
     let page = 1;
     const maxPerCategory = speakerDeckConfig.maxArticlesPerCategory || 35;
+    let consecutiveEmptyPages = 0;
 
     while (candidates.length < maxPerCategory && page <= speakerDeckConfig.maxPages) {
       
       const listUrl = `https://speakerdeck.com/c/${category.path}?lang=ja&page=${page}`;
       
       if (speakerDeckConfig.debug) {
+        console.log(`[SpeakerDeck] Fetching: ${listUrl}`);
       }
 
       try {
@@ -220,7 +222,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
         const $ = cheerio.load(html);
         
         let foundOnPage = 0;
-        $('.deck-preview').each((index, element) => {
+        $('.deck-preview').each((_, element) => {
           const $item = $(element);
           const $link = $item.find('a.deck-preview-link');
           const href = $link.attr('href');
@@ -228,41 +230,64 @@ export class SpeakerDeckFetcher extends BaseFetcher {
           
           if (!href || !title) return;
 
-          // 日本語チェック
-          const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(title);
-          if (!hasJapanese) return;
+          // lang=ja parameter filters Japanese content, no additional check needed
 
-          // Views数を取得
+          // Views extraction with fallback
+          let viewsNumber = -1; // Sentinel value: -1 = extraction failed
+
+          // Primary selector: span[title*="views"]
           const viewsElement = $item.find('span[title*="views"]');
           const viewsTitle = viewsElement.attr('title');
-          
           if (viewsTitle) {
             const viewsMatch = viewsTitle.match(/([0-9,]+)\s*views/);
             if (viewsMatch) {
-              const viewsNumber = parseInt(viewsMatch[1].replace(/,/g, ''));
-              
-              // Views数フィルタリング
-              if (viewsNumber >= speakerDeckConfig.minViews) {
-                const author = $item.find('.deck-preview-meta .text-truncate a').text().trim() || 'Unknown';
-                
-                candidates.push({
-                  url: `https://speakerdeck.com${href}`,
-                  title: title,
-                  author: author,
-                  views: viewsNumber
-                });
-                foundOnPage++;
+              viewsNumber = parseInt(viewsMatch[1].replace(/,/g, ''));
+            }
+          }
+
+          // Fallback selector: .deck-views, .views-count, etc.
+          if (viewsNumber === -1) {
+            const viewsText = $item.find('.deck-views, .views-count, [class*="view"]').text();
+            const fallbackMatch = viewsText.match(/([0-9,]+)/);
+            if (fallbackMatch) {
+              viewsNumber = parseInt(fallbackMatch[1].replace(/,/g, ''));
+              if (speakerDeckConfig.debug) {
+                console.log(`[SpeakerDeck] Views fallback used: ${viewsNumber} for ${title}`);
               }
             }
+          }
+
+          if (viewsNumber === -1 && speakerDeckConfig.debug) {
+            console.log(`[SpeakerDeck] Views not found: ${title}`);
+          }
+
+          // Views filtering: -1 (extraction failed) bypasses minViews filter
+          const passesViewsFilter = viewsNumber === -1 || viewsNumber >= speakerDeckConfig.minViews;
+          if (passesViewsFilter) {
+            const author = $item.find('.deck-preview-meta .text-truncate a').text().trim() || 'Unknown';
+            
+            candidates.push({
+              url: `https://speakerdeck.com${href}`,
+              title: title,
+              author: author,
+              views: viewsNumber
+            });
+            foundOnPage++;
           }
         });
 
         if (speakerDeckConfig.debug) {
+          console.log(`[SpeakerDeck] Page ${page}: found ${foundOnPage} candidates`);
         }
 
-        // 候補が見つからなくなったら終了
+        // Improved pagination: allow up to 3 consecutive empty pages
         if (foundOnPage === 0) {
-          break;
+          consecutiveEmptyPages++;
+          if (consecutiveEmptyPages >= 3) {
+            break;
+          }
+        } else {
+          consecutiveEmptyPages = 0;
         }
 
       } catch (_error) {
