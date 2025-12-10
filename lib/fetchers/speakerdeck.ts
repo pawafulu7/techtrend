@@ -63,8 +63,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
           for (const item of feed.items.slice(0, 3)) {
             if (!item.link || !item.title) continue;
 
-            const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(item.title);
-            if (!hasJapanese) continue;
+            if (!this.hasJapanese(item.title)) continue;
 
             const article: CreateArticleInput = {
               title: item.title,
@@ -90,9 +89,9 @@ export class SpeakerDeckFetcher extends BaseFetcher {
 
   /**
    * トレンドページから高品質なプレゼンテーションを取得
-   * - Views数フィルタリング（1000以上）
+   * - Views数フィルタリング（minViews以上、デフォルト300）
    * - 日付フィルタリング（1年以内）
-   * - 最大100件取得
+   * - 最大maxArticles件取得
    */
   private async fetchTrendingPresentations(): Promise<CreateArticleInput[]> {
     const articles: CreateArticleInput[] = [];
@@ -235,9 +234,8 @@ export class SpeakerDeckFetcher extends BaseFetcher {
 
           // Japanese check: title or author must contain Japanese characters
           // lang=ja helps but is not 100% reliable
-          const jpPattern = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
-          const hasJapaneseInTitle = jpPattern.test(title);
-          const hasJapaneseInAuthor = jpPattern.test(author);
+          const hasJapaneseInTitle = this.hasJapanese(title);
+          const hasJapaneseInAuthor = this.hasJapanese(author);
           if (!hasJapaneseInTitle && !hasJapaneseInAuthor) {
             if (speakerDeckConfig.debug) {
               console.log(`[SpeakerDeck] Skipped non-JP: ${title} by ${author}`);
@@ -266,6 +264,22 @@ export class SpeakerDeckFetcher extends BaseFetcher {
               viewsNumber = parseInt(fallbackMatch[1].replace(/,/g, ''));
               if (speakerDeckConfig.debug) {
                 console.log(`[SpeakerDeck] Views fallback used: ${viewsNumber} for ${title}`);
+              }
+            }
+          }
+
+          // Second fallback: number-only pattern for localized text (e.g., "123 回視聴")
+          if (viewsNumber === null) {
+            const viewsText = $item.find('.deck-views, .views-count').text();
+            const numberOnlyMatch = viewsText.match(/([0-9,]+)/);
+            if (numberOnlyMatch) {
+              const parsed = parseInt(numberOnlyMatch[1].replace(/,/g, ''));
+              // Sanity check: views should be reasonable (at least 10)
+              if (parsed >= 10) {
+                viewsNumber = parsed;
+                if (speakerDeckConfig.debug) {
+                  console.log(`[SpeakerDeck] Views number-only fallback used: ${viewsNumber} for ${title}`);
+                }
               }
             }
           }
@@ -410,6 +424,14 @@ export class SpeakerDeckFetcher extends BaseFetcher {
       chunks.push(array.slice(i, i + size));
     }
     return chunks;
+  }
+
+  /**
+   * 日本語文字を含むかチェック
+   * ひらがな、カタカナ、漢字のいずれかを含む場合にtrueを返す
+   */
+  private hasJapanese(text: string): boolean {
+    return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text);
   }
 
   /**
