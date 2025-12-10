@@ -7,8 +7,8 @@ export const speakerDeckConfig = {
   maxAge: 365,               // 最大日数（1年以内の記事のみ）
   
   // 取得設定
-  maxArticles: 80,           // 最大取得件数（全カテゴリー合計）
-  maxPages: 10,              // 最大ページ数（安全のため）
+  maxArticles: 100,          // 最大取得件数（全カテゴリー合計）
+  maxPages: 15,              // 最大ページ数
   articlesPerPage: 18,       // 1ページあたりの記事数（参考値）
 
   // パフォーマンス設定
@@ -45,5 +45,5 @@ export const speakerDeckConfig = {
       weight: 1
     }
   ],
-  maxArticlesPerCategory: 30,  // 各カテゴリーからの最大取得数
+  maxArticlesPerCategory: 50,  // 各カテゴリーからの最大取得数
 };
