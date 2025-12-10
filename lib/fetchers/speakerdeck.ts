@@ -280,10 +280,10 @@ export class SpeakerDeckFetcher extends BaseFetcher {
           console.log(`[SpeakerDeck] Page ${page}: found ${foundOnPage} candidates`);
         }
 
-        // Improved pagination: allow up to 3 consecutive empty pages
+        // Improved pagination: allow up to 5 consecutive empty pages
         if (foundOnPage === 0) {
           consecutiveEmptyPages++;
-          if (consecutiveEmptyPages >= 3) {
+          if (consecutiveEmptyPages >= 5) {
             break;
           }
         } else {
