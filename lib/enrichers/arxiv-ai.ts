@@ -20,11 +20,46 @@ export class ArxivAIEnricher extends BaseContentEnricher {
   private static readonly MATH_SELECTORS =
     'math, .math, .ltx_Math, .ltx_equation, .MathJax, .mathjax';
 
+  // ブラウザUser-Agent（arXivのreCAPTCHA回避）
+  private static readonly BROWSER_USER_AGENT =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
   /**
    * arXivのURLパターンにマッチするかチェック
    */
   canHandle(url: string): boolean {
     return isUrlFromDomain(url, 'arxiv.org');
+  }
+
+  /**
+   * arXiv用fetchWithRetry - ブラウザUser-Agentを使用
+   */
+  protected async fetchWithRetry(url: string): Promise<string> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': ArxivAIEnricher.BROWSER_USER_AGENT,
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
+          'Cache-Control': 'no-cache',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      clearTimeout(timeout);
+      throw error;
+    }
   }
 
   /**
