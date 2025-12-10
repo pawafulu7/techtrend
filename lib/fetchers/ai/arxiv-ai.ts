@@ -9,6 +9,7 @@ import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import { ArxivAIEnricher } from '@/lib/enrichers/arxiv-ai';
 import { RSSItem } from '@/lib/types/rss';
+import { prisma } from '@/lib/prisma';
 
 export class ArxivAIFetcher extends BaseFetcher {
   private parser: Parser;
@@ -65,11 +66,29 @@ export class ArxivAIFetcher extends BaseFetcher {
 
       logger.info(`arXiv AI: RSSフィードから ${feed.items.length} 件取得`);
 
-      // Filter items (date, validity, deduplication)
+      // Get existing URLs from database (to skip enrichment for already saved articles)
+      const feedUrls = feed.items
+        .map((item) => (item as RSSItem).link)
+        .filter((url): url is string => !!url);
+
+      const existingArticles = await prisma.article.findMany({
+        where: {
+          url: { in: feedUrls }
+        },
+        select: { url: true }
+      });
+      const existingUrlSet = new Set(existingArticles.map((a) => a.url));
+
+      logger.info(`arXiv AI: DB既存URL ${existingUrlSet.size} 件を除外`);
+
+      // Filter items (date, validity, deduplication, existing URL)
       const validItems: RSSItem[] = [];
 
       for (const item of feed.items as RSSItem[]) {
         if (!item.title || !item.link) continue;
+
+        // Skip existing URLs (before expensive enrichment)
+        if (existingUrlSet.has(item.link)) continue;
 
         // Extract arXiv ID for deduplication (handles versioning)
         const arxivId = this.extractArxivId(item.link);
@@ -86,7 +105,7 @@ export class ArxivAIFetcher extends BaseFetcher {
         validItems.push(item);
       }
 
-      logger.info(`arXiv AI: フィルタ後 ${validItems.length} 件`);
+      logger.info(`arXiv AI: フィルタ後 ${validItems.length} 件（新規のみ）`);
 
       // Parallel enrichment with p-limit
       const limit = pLimit(this.ENRICHMENT_CONCURRENCY);
