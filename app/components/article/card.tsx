@@ -48,10 +48,21 @@ export function ArticleCard({
   }, [initialIsRead]);
 
   const shouldShowThumbnail = (): boolean => {
-    if (!article.source) {
-      return false;
+    // Speaker Deck / Docswell: URLホスト名またはsource.nameで判定
+    let isSpeakerDeck = article.source?.name === 'Speaker Deck';
+    let isDocswell = article.source?.name === 'Docswell';
+
+    if (!isSpeakerDeck && !isDocswell && article.url) {
+      try {
+        const hostname = new URL(article.url).hostname;
+        isSpeakerDeck = hostname === 'speakerdeck.com' || hostname.endsWith('.speakerdeck.com');
+        isDocswell = hostname === 'www.docswell.com' || hostname === 'docswell.com';
+      } catch {
+        // Invalid URL, skip URL-based detection
+      }
     }
-    if (article.source.name === 'Speaker Deck' || article.source.name === 'Docswell') {
+
+    if (isSpeakerDeck || isDocswell) {
       return !!article.thumbnail;
     }
     if (article.content && article.content.length < 300 && article.thumbnail) {
