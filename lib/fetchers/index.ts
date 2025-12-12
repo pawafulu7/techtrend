@@ -37,6 +37,21 @@ import { DeepMindBlogFetcher } from './deepmind-blog';
 import { HatenaBlogDevFetcher } from './hatena-blog-dev';
 import { DevelopersIOFetcher, getTagFromSourceName } from './developersio';
 
+// Japanese Corporate Tech Blog Fetchers
+import { DeNAFetcher } from './corporate-blogs/dena-fetcher';
+import { SmartHRFetcher } from './corporate-blogs/smarthr-fetcher';
+import { LYCorpFetcher } from './corporate-blogs/lycorp-fetcher';
+import { MercariFetcher } from './corporate-blogs/mercari-fetcher';
+import { SansanFetcher } from './corporate-blogs/sansan-fetcher';
+import { ZOZOFetcher } from './corporate-blogs/zozo-fetcher';
+import { HatenaFetcher } from './corporate-blogs/hatena-fetcher';
+import { MoneyForwardFetcher } from './corporate-blogs/moneyforward-fetcher';
+import { PepaboFetcher } from './corporate-blogs/pepabo-fetcher';
+import { FreeeFetcher } from './corporate-blogs/freee-fetcher';
+import { CookpadFetcher } from './corporate-blogs/cookpad-fetcher';
+import { CyberAgentFetcher } from './corporate-blogs/cyberagent-fetcher';
+import { GMOFetcher } from './corporate-blogs/gmo-fetcher';
+
 export function createFetcher(source: Source): BaseFetcher {
   switch (source.name) {
     case 'はてなブックマーク':
@@ -101,8 +116,36 @@ export function createFetcher(source: Source): BaseFetcher {
       return new NVIDIADeveloperBlogFetcher(source);
     case 'DeepMind Blog':
       return new DeepMindBlogFetcher(source);
-    case 'Hatena Blog Dev':
+    case '企業技術ブログ':
       return new HatenaBlogDevFetcher(source);
+
+    // Japanese Corporate Tech Blogs
+    case 'DeNA Engineering':
+      return new DeNAFetcher(source);
+    case 'SmartHR Tech Blog':
+      return new SmartHRFetcher(source);
+    case 'LY Corporation Tech Blog':
+      return new LYCorpFetcher(source);
+    case 'Mercari Engineering':
+      return new MercariFetcher(source);
+    case 'Sansan Builders Box':
+      return new SansanFetcher(source);
+    case 'ZOZO TECH BLOG':
+      return new ZOZOFetcher(source);
+    case 'Hatena Developer Blog':
+      return new HatenaFetcher(source);
+    case 'Money Forward Developers Blog':
+      return new MoneyForwardFetcher(source);
+    case 'ペパボテックブログ':
+      return new PepaboFetcher(source);
+    case 'freee Developers Hub':
+      return new FreeeFetcher(source);
+    case 'Cookpad Tech Life':
+      return new CookpadFetcher(source);
+    case 'CyberAgent Developers Blog':
+      return new CyberAgentFetcher(source);
+    case 'GMO Developers':
+      return new GMOFetcher(source);
 
     // DevelopersIO (dev.classmethod.jp) tag-based sources
     case 'DevelopersIO AWS':
