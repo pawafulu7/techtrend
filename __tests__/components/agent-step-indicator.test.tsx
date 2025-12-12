@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { AgentStepIndicator, SearchStep } from '@/app/search/agent/_components/agent-step-indicator';
+import { AgentStepIndicator } from '@/app/search/agent/_components/agent-step-indicator';
+import type { SearchStep } from '@/lib/hooks/useAgentSearch';
 
 describe('AgentStepIndicator', () => {
   const renderIndicator = (step: SearchStep, isTimedOut = false) => {
@@ -10,15 +11,14 @@ describe('AgentStepIndicator', () => {
     test('shows all steps as pending when idle', () => {
       renderIndicator('idle');
 
+      // Implementation has 2 steps: searching and analyzing
       expect(screen.getByText('記事検索')).toBeInTheDocument();
       expect(screen.getByText('AI分析')).toBeInTheDocument();
-      expect(screen.getByText('回答生成')).toBeInTheDocument();
     });
 
     test('shows searching step as active', () => {
       renderIndicator('searching');
 
-      // The step circles should have appropriate styles
       const stepIndicator = screen.getByTestId('agent-step-indicator');
       expect(stepIndicator).toBeInTheDocument();
     });
@@ -30,11 +30,14 @@ describe('AgentStepIndicator', () => {
       expect(stepIndicator).toBeInTheDocument();
     });
 
-    test('shows generating step as active', () => {
+    test('shows all displayed steps as complete when generating', () => {
       renderIndicator('generating');
 
       const stepIndicator = screen.getByTestId('agent-step-indicator');
       expect(stepIndicator).toBeInTheDocument();
+      // 'generating' comes after 'analyzing', so searching/analyzing steps should show as complete
+      // No active step indicator should be present (all complete)
+      expect(stepIndicator.querySelector('[aria-current="step"]')).not.toBeInTheDocument();
     });
 
     test('shows all steps as complete when complete', () => {
@@ -82,7 +85,6 @@ describe('AgentStepIndicator', () => {
     test('marks active step with aria-current', () => {
       renderIndicator('searching');
 
-      // Active step should have aria-current="step"
       const stepIndicator = screen.getByTestId('agent-step-indicator');
       const activeStep = stepIndicator.querySelector('[aria-current="step"]');
       expect(activeStep).toBeInTheDocument();

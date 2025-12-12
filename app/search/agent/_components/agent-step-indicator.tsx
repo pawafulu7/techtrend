@@ -45,6 +45,11 @@ function getStepStatus(
     return 'pending';
   }
 
+  // 'generating' comes after 'analyzing', so all displayed steps are complete
+  if (currentStep === 'generating') {
+    return 'complete';
+  }
+
   const currentIndex = stepOrder[currentStep as StepId] ?? -1;
   const thisIndex = stepOrder[stepId];
 
