@@ -20,6 +20,7 @@ jest.mock('@/lib/hooks/useDebounce', () => ({
 // when mocked with jest.mock. Needs stable mock implementation or hook refactoring.
 // See: PR #307, #305 for useSearchHistory changes that broke compatibility.
 // Coverage: Basic search functionality should be tested via E2E tests.
+// TODO: Re-enable after fixing - tracked in issue #319
 describe.skip('SearchBar', () => {
   const mockRouter = {
     push: jest.fn(),

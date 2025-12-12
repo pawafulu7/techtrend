@@ -30,11 +30,14 @@ describe('AgentStepIndicator', () => {
       expect(stepIndicator).toBeInTheDocument();
     });
 
-    test('shows generating step as active', () => {
+    test('shows all displayed steps as complete when generating', () => {
       renderIndicator('generating');
 
       const stepIndicator = screen.getByTestId('agent-step-indicator');
       expect(stepIndicator).toBeInTheDocument();
+      // 'generating' comes after 'analyzing', so searching/analyzing steps should show as complete
+      // No active step indicator should be present (all complete)
+      expect(stepIndicator.querySelector('[aria-current="step"]')).not.toBeInTheDocument();
     });
 
     test('shows all steps as complete when complete', () => {
