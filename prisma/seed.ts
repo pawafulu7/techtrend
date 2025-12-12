@@ -92,7 +92,7 @@ async function main() {
     }),
     prisma.source.create({
       data: {
-        name: 'Hatena Blog Dev',
+        name: '企業技術ブログ',
         type: 'SCRAPING',
         url: 'https://hatena.blog/dev/entries',
         enabled: true,

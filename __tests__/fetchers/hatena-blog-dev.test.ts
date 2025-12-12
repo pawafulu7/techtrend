@@ -14,7 +14,7 @@ describe('HatenaBlogDevFetcher', () => {
 
   const mockSource: Source = {
     id: 'hatena_blog_dev_test',
-    name: 'Hatena Blog Dev',
+    name: '企業技術ブログ',
     type: 'SCRAPING',
     url: 'https://hatena.blog/dev/entries',
     enabled: true,
