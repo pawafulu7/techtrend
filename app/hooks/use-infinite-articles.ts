@@ -148,8 +148,9 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         // bfcacheから復元された場合、既読状態が変わっている可能性があるので再取得
+        // 現在のフィルターのクエリのみ無効化（他のフィルター設定は保持）
         queryClient.invalidateQueries({
-          queryKey: ['infinite-articles'],
+          queryKey: ['infinite-articles', filterKey],
           refetchType: 'active'
         });
       }
@@ -157,7 +158,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
 
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [queryClient]);
+  }, [queryClient, filterKey]);
   
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],

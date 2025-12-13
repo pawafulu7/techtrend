@@ -7,19 +7,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 
-function normalizeOrigin(origin: string): string {
-  return origin.replace(/\/$/, '');
+/**
+ * Safely extract origin from a URL string using URL constructor.
+ * Returns null if the URL is invalid.
+ */
+function safeParseOrigin(urlString: string): string | null {
+  try {
+    return new URL(urlString).origin;
+  } catch {
+    return null;
+  }
 }
 
+/**
+ * Normalize origin string using URL constructor.
+ * Ensures consistent origin format (protocol + host + port if non-standard).
+ * Returns empty string for invalid URLs to allow safe comparison.
+ */
+function normalizeOrigin(urlString: string): string {
+  try {
+    return new URL(urlString).origin;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Get effective request origin from proxy headers.
+ *
+ * SECURITY NOTE: This function trusts x-forwarded-* and Forwarded headers.
+ * These headers MUST only be set by trusted reverse proxies (e.g., Vercel, AWS ALB).
+ * If the application is exposed directly to the internet without a trusted proxy,
+ * attackers can spoof these headers. Ensure your infrastructure strips or overwrites
+ * these headers at the edge before they reach this application.
+ */
 function getEffectiveRequestOrigin(request: NextRequest): string {
   // Prefer proxy-aware headers when available (common in reverse-proxy deployments)
+  // TRUSTED PROXY ASSUMPTION: x-forwarded-* headers are set by Vercel/AWS ALB/etc.
   const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
   const forwardedHost =
     request.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ??
     request.headers.get('host')?.split(',')[0]?.trim();
 
   if (forwardedProto && forwardedHost) {
-    return normalizeOrigin(`${forwardedProto}://${forwardedHost}`);
+    const parsed = safeParseOrigin(`${forwardedProto}://${forwardedHost}`);
+    if (parsed) return parsed;
   }
 
   // RFC 7239 Forwarded header (best-effort parsing)
@@ -30,11 +62,12 @@ function getEffectiveRequestOrigin(request: NextRequest): string {
     const proto = parts.find((p) => p.toLowerCase().startsWith('proto='))?.slice('proto='.length);
     const host = parts.find((p) => p.toLowerCase().startsWith('host='))?.slice('host='.length);
     if (proto && host) {
-      return normalizeOrigin(`${proto.replaceAll('"', '')}://${host.replaceAll('"', '')}`);
+      const parsed = safeParseOrigin(`${proto.replaceAll('"', '')}://${host.replaceAll('"', '')}`);
+      if (parsed) return parsed;
     }
   }
 
-  return normalizeOrigin(request.nextUrl.origin);
+  return request.nextUrl.origin;
 }
 
 /**

@@ -311,6 +311,7 @@ export function HomeClientInfinite({
                 aria-live="polite"
               >
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                <span className="sr-only">カテゴリを変更中...</span>
               </div>
             )}
 
