@@ -10,8 +10,6 @@ import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleListItemProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/components/article/favorite-button';
-import { TranslationBadge } from '@/components/ui/translation-badge';
-
 export function ArticleListItem({
   article,
   onTagClick,
@@ -100,9 +98,6 @@ export function ArticleListItem({
                 <Eye className="h-3 w-3 mr-0.5" />
                 未読
               </Badge>
-            )}
-            {article.translatedTitle && (
-              <TranslationBadge className="flex-shrink-0" />
             )}
             <h3 className="text-sm font-medium line-clamp-1 text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
               {article.translatedTitle || article.title}
