@@ -124,7 +124,6 @@ describe('Header', () => {
       
       // セカンダリナビゲーション項目
       expect(screen.getByTestId('mobile-secondary-nav-link-閲覧履歴')).toBeInTheDocument();
-      expect(screen.getByTestId('mobile-secondary-nav-link-おすすめ')).toBeInTheDocument();
       expect(screen.getByTestId('mobile-secondary-nav-link-タグ')).toBeInTheDocument();
       expect(screen.getByTestId('mobile-secondary-nav-link-分析')).toBeInTheDocument();
       

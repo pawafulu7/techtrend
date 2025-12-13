@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Rss, TrendingUp, Menu, X, BarChart3, LineChart, Hash, Database, Star, Home, Calendar } from 'lucide-react';
+import { Rss, TrendingUp, Menu, X, BarChart3, LineChart, Hash, Database, Home, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -27,7 +27,6 @@ export function Header() {
 
   const secondaryNav = [
     { href: '/history', label: '閲覧履歴', icon: LineChart },
-    { href: '/recommendations', label: 'おすすめ', icon: Star },
     { href: '/tags', label: 'タグ', icon: Hash },
     { href: '/analytics', label: '分析', icon: LineChart },
   ];
