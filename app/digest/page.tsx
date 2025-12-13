@@ -5,9 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { CalendarIcon, TrendingUpIcon, TagIcon, RefreshCwIcon, ExternalLinkIcon, ChevronRightIcon } from 'lucide-react';
-import { TranslationBadge } from '@/components/ui/translation-badge';
+import { CalendarIcon, TrendingUpIcon, TagIcon, ExternalLinkIcon, ChevronRightIcon } from 'lucide-react';
 
 interface DigestArticle {
   id: string;
@@ -67,7 +65,6 @@ function isWeeklyDigest(data: unknown): data is WeeklyDigest {
 export default function DigestPage() {
   const [digest, setDigest] = useState<WeeklyDigest | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDigest = async (date?: Date, retryCount = 0) => {
@@ -113,34 +110,6 @@ export default function DigestPage() {
     }
   };
 
-  const generateDigest = async () => {
-    setError(null);
-    setGenerating(true);
-    try {
-      const response = await fetch('/api/digest/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ date: new Date().toISOString() }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        setError(`ダイジェストの生成に失敗しました${errorText ? ': ' + errorText : ''}`);
-        return;
-      }
-      
-      // 生成成功後、ダイジェストを取得
-      await fetchDigest();
-    } catch (err) {
-      // エラーは既にUIで表示しているので、ログは不要
-      setError(`エラーが発生しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
-    } finally {
-      setGenerating(false);
-    }
-  };
-
   useEffect(() => {
     fetchDigest();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -178,13 +147,10 @@ export default function DigestPage() {
       <div className="container mx-auto px-4 py-8">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground mb-4">{error}</p>
-            <div className="flex justify-center">
-              <Button onClick={generateDigest} disabled={generating}>
-                <RefreshCwIcon className="mr-2 h-4 w-4" />
-                {generating ? 'ダイジェスト生成中...' : 'ダイジェストを生成'}
-              </Button>
-            </div>
+            <p className="text-center text-muted-foreground">{error}</p>
+            <p className="text-center text-sm text-muted-foreground mt-2">
+              週刊ダイジェストは毎週月曜日に自動生成されます。
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -235,9 +201,6 @@ export default function DigestPage() {
                     <Badge variant="outline" className="text-xs">
                       {article.source.name}
                     </Badge>
-                    {article.translatedTitle && (
-                      <TranslationBadge className="text-xs" />
-                    )}
                     {article.tags?.slice(0, 3).map((tag) => (
                       <Badge key={tag.name} variant="secondary" className="text-xs">
                         {tag.name}
