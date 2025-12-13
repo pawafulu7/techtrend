@@ -12,7 +12,6 @@ import { buildScrollStorageKey } from '@/lib/utils/scroll';
 import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
-import { RecommendationSectionInline } from '@/components/recommendation/recommendation-section-inline';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
 import { Loader2 } from 'lucide-react';
 
@@ -289,9 +288,6 @@ export function HomeClientInfinite({
             itemsPerPage={PAGINATION.ITEMS_PER_PAGE}
           />
         )}
-        
-        {/* 推薦セクション（インライン） */}
-        <RecommendationSectionInline />
 
         {(isLoading && !isCategoryChanging) ? (
           <ArticleSkeleton />
