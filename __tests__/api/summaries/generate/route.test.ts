@@ -10,15 +10,20 @@ jest.mock('@/lib/auth/auth', () => ({
   }),
 }));
 
-jest.mock('@/lib/logger', () => ({
-  __esModule: true,
-  default: {
+jest.mock('@/lib/logger', () => {
+  const mockLogger = {
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
     debug: jest.fn(),
-  },
-}));
+    child: jest.fn(),
+  };
+  mockLogger.child.mockReturnValue(mockLogger);
+  return {
+    __esModule: true,
+    default: mockLogger,
+  };
+});
 
 jest.mock('@/lib/di/bootstrap');
 jest.mock('@/lib/database', () => ({
@@ -38,8 +43,14 @@ jest.mock('@/lib/rate-limiter', () => ({
     consume: jest.fn().mockResolvedValue({}),
   }),
   RateLimitError: class RateLimitError extends Error {
-    constructor(message: string, public readonly info: { limit: number; current: number; retryAfter: number }) {
+    constructor(
+      message: string,
+      public limit: number,
+      public remaining: number,
+      public reset: Date
+    ) {
       super(message);
+      this.name = 'RateLimitError';
     }
   },
 }));
