@@ -216,6 +216,7 @@ describe('/api/articles/read-status', () => {
 
       const request = new NextRequest('http://localhost/api/articles/read-status', {
         method: 'POST',
+        headers: { 'Origin': 'http://localhost' },
         body: JSON.stringify({ articleId: 'article1' }),
       });
 
@@ -257,6 +258,7 @@ describe('/api/articles/read-status', () => {
 
       const request = new NextRequest('http://localhost/api/articles/read-status', {
         method: 'PUT',
+        headers: { 'Origin': 'http://localhost' },
       });
 
       const response = await PUT(request);

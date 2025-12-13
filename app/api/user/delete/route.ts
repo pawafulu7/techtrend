@@ -8,6 +8,7 @@ import {
   DeleteAccountError,
 } from '@/types/api/delete-account';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -179,4 +180,4 @@ async function deleteAccountHandler(
   }
 }
 
-export const DELETE = withRateLimit('write:delete', deleteAccountHandler);
+export const DELETE = withCSRFProtection(withRateLimit('write:delete', deleteAccountHandler));

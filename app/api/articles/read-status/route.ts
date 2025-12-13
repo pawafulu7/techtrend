@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/database';
 import { getRedisService } from '@/lib/redis/factory';
 import logger from '@/lib/logger';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { invalidateUserViewCache, invalidateViewCache } from '@/lib/dataloader/article-view-loader';
 
 // GET: 記事の既読状態を取得
 export async function GET(req: NextRequest) {
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST: 記事を既読にマーク
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -105,6 +107,13 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    // Invalidate view-status cache so list endpoints return fresh isRead immediately
+    try {
+      await invalidateViewCache(session.user.id, articleId);
+    } catch (cacheError) {
+      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Failed to invalidate view cache');
+    }
+
     return NextResponse.json({ success: true, articleView });
   } catch (error) {
     logger.error({ error }, 'Error marking article as read');
@@ -116,7 +125,7 @@ export async function POST(req: NextRequest) {
 }
 
 // PUT: 全未読記事を一括既読にマーク
-export async function PUT(_req: NextRequest) {
+async function putHandler(_req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -130,7 +139,7 @@ export async function PUT(_req: NextRequest) {
     // gen_random_uuid()はPostgreSQL 13以降で使用可能
     const result = await prisma.$executeRaw`
       INSERT INTO "ArticleView" ("id", "userId", "articleId", "isRead", "readAt", "viewedAt")
-      SELECT 
+      SELECT
         gen_random_uuid(),
         ${session.user.id},
         a.id,
@@ -139,13 +148,13 @@ export async function PUT(_req: NextRequest) {
         NULL
       FROM "Article" a
       WHERE NOT EXISTS (
-        SELECT 1 FROM "ArticleView" av 
+        SELECT 1 FROM "ArticleView" av
         WHERE av."userId" = ${session.user.id}
         AND av."articleId" = a.id
         AND av."isRead" = true
       )
-      ON CONFLICT ("userId", "articleId") 
-      DO UPDATE SET 
+      ON CONFLICT ("userId", "articleId")
+      DO UPDATE SET
         "isRead" = true,
         "readAt" = NOW()
     `;
@@ -165,8 +174,15 @@ export async function PUT(_req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    // Also clear DataLoader view-status cache (L1/L2) for this user
+    try {
+      await invalidateUserViewCache(session.user.id);
+    } catch (cacheError) {
+      logger.warn({ error: cacheError, userId: session.user.id }, 'Failed to invalidate user view cache');
+    }
+
+    return NextResponse.json({
+      success: true,
       markedCount,
       remainingUnreadCount: 0
     });
@@ -180,7 +196,7 @@ export async function PUT(_req: NextRequest) {
 }
 
 // DELETE: 記事を未読に戻す
-export async function DELETE(req: NextRequest) {
+async function deleteHandler(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -192,7 +208,7 @@ export async function DELETE(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const articleId = searchParams.get('articleId');
-    
+
     if (!articleId) {
       return NextResponse.json(
         { error: 'Article ID is required' },
@@ -212,6 +228,13 @@ export async function DELETE(req: NextRequest) {
       }
     });
 
+    // Invalidate view-status cache so list endpoints return fresh isRead immediately
+    try {
+      await invalidateViewCache(session.user.id, articleId);
+    } catch (cacheError) {
+      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Failed to invalidate view cache');
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error({ error }, 'Error marking article as unread');
@@ -221,3 +244,7 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
+
+export const POST = withCSRFProtection(postHandler);
+export const PUT = withCSRFProtection(putHandler);
+export const DELETE = withCSRFProtection(deleteHandler);

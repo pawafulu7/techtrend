@@ -107,6 +107,7 @@ export function ArticleCard({
     try {
       const response = await fetch(`/api/articles/${article.id}/vote`, {
         method: 'POST',
+        credentials: 'include',
       });
 
       if (response.ok) {

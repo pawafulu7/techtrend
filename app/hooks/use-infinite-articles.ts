@@ -142,6 +142,22 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       window.removeEventListener('article-read-status-changed', handleReadStatusChanged as EventListener);
     };
   }, [handleReadStatusChanged]);
+
+  // bfcache復元時にキャッシュを無効化して再取得
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        // bfcacheから復元された場合、既読状態が変わっている可能性があるので再取得
+        queryClient.invalidateQueries({
+          queryKey: ['infinite-articles'],
+          refetchType: 'active'
+        });
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [queryClient]);
   
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],

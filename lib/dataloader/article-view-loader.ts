@@ -44,7 +44,7 @@ function initializeCacheManager(): TwoLayerCacheManager<ViewStatus> {
       memoryCache as any,
       redisCache,
       'view',
-      30,  // L1 TTL: 30秒
+      0,   // L1 TTL: 0秒（無効化）- サーバーレス環境でインスタンス間同期不可のため
       60   // L2 TTL: 60秒
     );
   }
@@ -154,7 +154,8 @@ export async function invalidateViewCache(userId: string, articleId: string) {
  */
 export async function invalidateUserViewCache(userId: string) {
   const cacheManager = initializeCacheManager();
-  const pattern = CacheKeyBuilder.buildUserPattern(userId);
+  // TwoLayerCacheManager prefixes keys as `view:${key}`, so patterns must include the same prefix.
+  const pattern = CacheKeyBuilder.buildUserPattern(userId, 'view');
   await cacheManager.invalidatePattern(pattern);
 }
 

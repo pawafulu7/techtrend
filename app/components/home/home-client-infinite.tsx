@@ -293,31 +293,27 @@ export function HomeClientInfinite({
         {/* 推薦セクション（インライン） */}
         <RecommendationSectionInline />
 
-        {(isLoading || isCategoryChanging) ? (
-          <div className="relative">
-            {isCategoryChanging && (
-              <div
-                className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center"
-                role="status"
-                aria-live="polite"
-              >
-                <div className="bg-background rounded-lg p-4 shadow-lg flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  <span className="text-sm">カテゴリを切り替え中...</span>
-                </div>
-              </div>
-            )}
-            <ArticleSkeleton />
-          </div>
+        {(isLoading && !isCategoryChanging) ? (
+          <ArticleSkeleton />
         ) : allArticles.length > 0 ? (
-          <>
-            <ArticleList 
-              articles={allArticles} 
+          <div className="relative">
+            <ArticleList
+              articles={allArticles}
               viewMode={viewMode}
               onArticleClick={handleArticleClick}
               currentFilters={filters}
+              className={isCategoryChanging ? "opacity-40 pointer-events-none" : undefined}
             />
-            
+            {isCategoryChanging && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-background/80"
+                role="status"
+                aria-live="polite"
+              >
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              </div>
+            )}
+
             {/* Infinite Scrollトリガー */}
             {enableInfiniteScroll ? (
               <InfiniteScrollTrigger
@@ -339,7 +335,9 @@ export function HomeClientInfinite({
                 </div>
               )
             )}
-          </>
+          </div>
+        ) : isLoading ? (
+          <ArticleSkeleton />
         ) : (
           <div className="flex items-center justify-center min-h-[600px]">
             <div className="text-center text-gray-500">

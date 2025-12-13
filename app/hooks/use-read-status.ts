@@ -170,6 +170,68 @@ export function useReadStatus(articleIds?: string[]) {
     fetchReadStatus();
   }, [fetchReadStatus]);
 
+  // bfcache復元時にlocalStorageを再読み込み
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        // bfcacheから復元された場合、localStorageを再読み込み
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          if (stored) {
+            setReadArticleIds(new Set<string>(JSON.parse(stored)));
+          }
+        } catch (error) {
+          console.error('Error reloading read status from localStorage:', error);
+        }
+        // サーバーの最新状態も取得
+        fetchReadStatus();
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [fetchReadStatus]);
+
+  // ReadTrackerからのカスタムイベントをリッスン
+  useEffect(() => {
+    const handleReadStatusChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<{ articleId: string; isRead: boolean }>;
+      const { articleId, isRead: newIsRead } = customEvent.detail;
+
+      if (newIsRead) {
+        // 既読になった場合
+        setReadArticleIds(prev => {
+          if (prev.has(articleId)) return prev;
+          const newSet = new Set([...prev, articleId]);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
+          } catch (error) {
+            console.error('Error saving read status to localStorage:', error);
+          }
+          return newSet;
+        });
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } else {
+        // 未読に戻った場合
+        setReadArticleIds(prev => {
+          if (!prev.has(articleId)) return prev;
+          const newSet = new Set(prev);
+          newSet.delete(articleId);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
+          } catch (error) {
+            console.error('Error saving read status to localStorage:', error);
+          }
+          return newSet;
+        });
+        setUnreadCount(prev => prev + 1);
+      }
+    };
+
+    window.addEventListener('article-read-status-changed', handleReadStatusChanged);
+    return () => window.removeEventListener('article-read-status-changed', handleReadStatusChanged);
+  }, []);
+
   return {
     readArticleIds,
     unreadCount,

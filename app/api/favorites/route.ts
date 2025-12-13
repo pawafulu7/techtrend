@@ -1,14 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { favoriteCache } from '@/lib/cache/favorites-cache';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 
 // GET: ユーザーのお気に入り記事一覧を取得
 export async function GET(request: Request) {
   try {
-    
+
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -107,11 +108,11 @@ export async function GET(request: Request) {
 }
 
 // POST: 記事をお気に入りに追加
-export async function POST(request: Request) {
+async function postHandler(request: NextRequest) {
   try {
-    
+
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -196,11 +197,11 @@ export async function POST(request: Request) {
 }
 
 // DELETE: お気に入りから削除
-export async function DELETE(request: Request) {
+async function deleteHandler(request: NextRequest) {
   try {
-    
+
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -253,3 +254,6 @@ export async function DELETE(request: Request) {
     );
   }
 }
+
+export const POST = withCSRFProtection(postHandler);
+export const DELETE = withCSRFProtection(deleteHandler);

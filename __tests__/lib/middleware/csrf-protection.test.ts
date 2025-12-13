@@ -46,6 +46,22 @@ describe('csrf-protection', () => {
       expect(result).toBe(true);
     });
 
+    it('should allow browser same-origin requests even if scheme differs at proxy', async () => {
+      const request = new NextRequest(
+        new URL('http://app.example.com/api/test'),
+        {
+          method: 'POST',
+          headers: {
+            origin: 'https://app.example.com',
+            'sec-fetch-site': 'same-origin',
+          },
+        }
+      );
+
+      const result = await validateOrigin(request);
+      expect(result).toBe(true);
+    });
+
     it('should allow requests with matching referer', async () => {
       const request = new NextRequest(
         new URL('http://localhost:3000/api/test'),

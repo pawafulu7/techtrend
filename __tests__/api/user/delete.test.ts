@@ -48,6 +48,7 @@ describe('/api/user/delete', () => {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'Origin': 'http://localhost:3000',
         },
         body: JSON.stringify({
           confirmationWord: 'DELETE',

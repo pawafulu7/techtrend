@@ -340,6 +340,7 @@ describe('/api/favorites', () => {
 
       const request = new NextRequest('http://localhost/api/favorites', {
         method: 'POST',
+        headers: { 'Origin': 'http://localhost' },
         body: JSON.stringify({ articleId: 'article1' }),
       });
 

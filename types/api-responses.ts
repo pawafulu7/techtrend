@@ -195,6 +195,8 @@ export function createMockArticle(overrides?: Partial<ArticleWithRelations>): Ar
     summaryVersion: 7,
     articleType: 'unified',
     difficulty: null,
+    bookmarks: null,
+    userVotes: null,
     createdAt: now,
     updatedAt: now,
     source: {
