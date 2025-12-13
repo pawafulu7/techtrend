@@ -5,11 +5,13 @@ import { ArticleListItem } from './list-item';
 import type { ArticleListProps } from '@/types/components';
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { cn } from '@/lib/utils';
 
 export function ArticleList({
   articles: initialArticles,
   viewMode = 'card',
-  onArticleClick
+  onArticleClick,
+  className
 }: ArticleListProps) {
   // 認証状態を取得（お気に入り切り替え用）
   const { data: session } = useSession();
@@ -90,7 +92,7 @@ export function ArticleList({
   
   if (articles.length === 0) {
     return (
-      <div className="text-center py-12">
+      <div className={cn("text-center py-12", className)}>
         <p className="text-muted-foreground">記事が見つかりませんでした</p>
       </div>
     );
@@ -99,7 +101,7 @@ export function ArticleList({
   // リスト形式の場合
   if (viewMode === 'list') {
     return (
-      <div className="space-y-2" data-testid="article-list">
+      <div className={cn("space-y-2", className)} data-testid="article-list">
         {articles.map((article, index) => (
           <ArticleListItem
             key={`${article.id}-${index}`}
@@ -116,7 +118,7 @@ export function ArticleList({
 
   // カード形式の場合
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4" data-testid="article-list">
+    <div className={cn("grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4", className)} data-testid="article-list">
       {articles.map((article, index) => (
         <ArticleCard
           key={`${article.id}-${index}`}
