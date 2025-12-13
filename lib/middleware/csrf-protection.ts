@@ -8,6 +8,69 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 
 /**
+ * Safely extract origin from a URL string using URL constructor.
+ * Returns null if the URL is invalid.
+ */
+function safeParseOrigin(urlString: string): string | null {
+  try {
+    return new URL(urlString).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Normalize origin string using URL constructor.
+ * Ensures consistent origin format (protocol + host + port if non-standard).
+ * Returns empty string for invalid URLs to allow safe comparison.
+ */
+function normalizeOrigin(urlString: string): string {
+  try {
+    return new URL(urlString).origin;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Get effective request origin from proxy headers.
+ *
+ * SECURITY NOTE: This function trusts x-forwarded-* and Forwarded headers.
+ * These headers MUST only be set by trusted reverse proxies (e.g., Vercel, AWS ALB).
+ * If the application is exposed directly to the internet without a trusted proxy,
+ * attackers can spoof these headers. Ensure your infrastructure strips or overwrites
+ * these headers at the edge before they reach this application.
+ */
+function getEffectiveRequestOrigin(request: NextRequest): string {
+  // Prefer proxy-aware headers when available (common in reverse-proxy deployments)
+  // TRUSTED PROXY ASSUMPTION: x-forwarded-* headers are set by Vercel/AWS ALB/etc.
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const forwardedHost =
+    request.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ??
+    request.headers.get('host')?.split(',')[0]?.trim();
+
+  if (forwardedProto && forwardedHost) {
+    const parsed = safeParseOrigin(`${forwardedProto}://${forwardedHost}`);
+    if (parsed) return parsed;
+  }
+
+  // RFC 7239 Forwarded header (best-effort parsing)
+  const forwarded = request.headers.get('forwarded');
+  if (forwarded) {
+    const first = forwarded.split(',')[0] ?? '';
+    const parts = first.split(';').map((p) => p.trim());
+    const proto = parts.find((p) => p.toLowerCase().startsWith('proto='))?.slice('proto='.length);
+    const host = parts.find((p) => p.toLowerCase().startsWith('host='))?.slice('host='.length);
+    if (proto && host) {
+      const parsed = safeParseOrigin(`${proto.replaceAll('"', '')}://${host.replaceAll('"', '')}`);
+      if (parsed) return parsed;
+    }
+  }
+
+  return request.nextUrl.origin;
+}
+
+/**
  * Paths exempt from CSRF protection
  * These are NextAuth callbacks and public health endpoints
  */
@@ -32,15 +95,12 @@ export const CSRF_PROTECTED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'] as cons
 function getAllowedOrigins(): string[] {
   const origins: string[] = [];
 
-  // Helper to normalize origin (remove trailing slash)
-  const normalize = (url: string) => url.replace(/\/$/, '');
-
   if (process.env.NEXTAUTH_URL) {
-    origins.push(normalize(process.env.NEXTAUTH_URL));
+    origins.push(normalizeOrigin(process.env.NEXTAUTH_URL));
   }
 
   if (process.env.NEXT_PUBLIC_APP_URL) {
-    origins.push(normalize(process.env.NEXT_PUBLIC_APP_URL));
+    origins.push(normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL));
   }
 
   // Development environment origins
@@ -52,7 +112,7 @@ function getAllowedOrigins(): string[] {
   // Additional trusted origins from environment
   const trustedOrigins = process.env.CSRF_TRUSTED_ORIGINS;
   if (trustedOrigins) {
-    origins.push(...trustedOrigins.split(',').map((o) => normalize(o.trim())));
+    origins.push(...trustedOrigins.split(',').map((o) => normalizeOrigin(o.trim())));
   }
 
   // Deduplicate origins
@@ -68,17 +128,23 @@ function getAllowedOrigins(): string[] {
 export async function validateOrigin(request: NextRequest): Promise<boolean> {
   const origin = request.headers.get('origin');
   const referer = request.headers.get('referer');
-  const requestOrigin = request.nextUrl.origin;
+  const requestOrigin = getEffectiveRequestOrigin(request);
+
+  // Modern browsers set this header and JS can't spoof it; accept strict same-origin early.
+  const secFetchSite = request.headers.get('sec-fetch-site');
+  if (secFetchSite === 'same-origin') {
+    return true;
+  }
 
   // 1. Same-origin check (highest priority)
-  if (origin === requestOrigin) {
+  if (origin && normalizeOrigin(origin) === requestOrigin) {
     return true;
   }
 
   if (referer) {
     try {
       const refererUrl = new URL(referer);
-      if (refererUrl.origin === requestOrigin) {
+      if (normalizeOrigin(refererUrl.origin) === requestOrigin) {
         return true;
       }
     } catch {
@@ -89,14 +155,14 @@ export async function validateOrigin(request: NextRequest): Promise<boolean> {
   // 2. Allowed origins list check
   const allowedOrigins = getAllowedOrigins();
 
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && allowedOrigins.includes(normalizeOrigin(origin))) {
     return true;
   }
 
   if (referer) {
     try {
       const refererUrl = new URL(referer);
-      if (allowedOrigins.includes(refererUrl.origin)) {
+      if (allowedOrigins.includes(normalizeOrigin(refererUrl.origin))) {
         return true;
       }
     } catch {
@@ -198,14 +264,23 @@ export async function csrfProtection(
  * });
  * ```
  */
-export function withCSRFProtection<T>(
-  handler: (request: NextRequest) => Promise<T>
-): (request: NextRequest) => Promise<T | NextResponse> {
-  return async (request: NextRequest) => {
+export function withCSRFProtection<T, C = undefined>(
+  handler: C extends undefined
+    ? (request: NextRequest) => Promise<T> | T
+    : (request: NextRequest, context: C) => Promise<T> | T
+): C extends undefined
+  ? (request: NextRequest) => Promise<T | NextResponse>
+  : (request: NextRequest, context: C) => Promise<T | NextResponse> {
+  return (async (request: NextRequest, context?: C) => {
     const csrfResponse = await csrfProtection(request);
     if (csrfResponse) {
       return csrfResponse;
     }
-    return handler(request);
-  };
+    if (context !== undefined) {
+      return (handler as (request: NextRequest, context: C) => Promise<T> | T)(request, context);
+    }
+    return (handler as (request: NextRequest) => Promise<T> | T)(request);
+  }) as C extends undefined
+    ? (request: NextRequest) => Promise<T | NextResponse>
+    : (request: NextRequest, context: C) => Promise<T | NextResponse>;
 }

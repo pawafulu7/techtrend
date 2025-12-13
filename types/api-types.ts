@@ -202,11 +202,14 @@ export function createSuccessResponse<T>(data: T): ApiResponse<T> {
 }
 
 export function createErrorResponse(error: string, details?: unknown): ApiResponse {
-  return {
+  const response: ApiResponse = {
     success: false,
     error,
-    ...(details && { message: JSON.stringify(details) }),
   };
+  if (details !== undefined) {
+    response.message = JSON.stringify(details);
+  }
+  return response;
 }
 
 export function createPaginatedResponse<T>(

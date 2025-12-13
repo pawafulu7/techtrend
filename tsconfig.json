@@ -85,12 +85,8 @@
     "lib/services/**",
     "lib/utils/article-manual-adder.ts",
     "lib/utils/content-quality-checker.ts",
-    "lib/utils/quality-score.ts",
-    "lib/utils/summary-parser.ts",
     "lib/utils/tech-terms-manager.ts",
     "prisma/**",
-    "types/api-responses.ts",
-    "types/api-types.ts",
     "types/test-fixtures.ts"
   ]
 }

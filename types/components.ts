@@ -28,6 +28,7 @@ export interface ArticleListProps {
   hasMore?: boolean;
   onArticleClick?: (articleId?: string) => void;
   currentFilters?: Record<string, string>;
+  className?: string;
 }
 
 // 記事リストアイテム（リスト形式用）
