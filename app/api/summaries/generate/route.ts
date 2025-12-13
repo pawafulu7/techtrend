@@ -3,6 +3,7 @@ import { prisma } from '@/lib/database';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { normalizeArticleCategory } from '@/lib/utils/article-category-normalizer';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 
 async function generateSummariesHandler(_request: NextRequest) {
   try {
@@ -121,4 +122,7 @@ async function generateSummariesHandler(_request: NextRequest) {
   }
 }
 
-export const POST = withRateLimit('ai:summary', generateSummariesHandler);
+// 認証チェック（Cron Secret または Admin Session）→ レート制限
+export const POST = withCronOrAdminAuth(
+  withRateLimit('ai:summary', generateSummariesHandler)
+);

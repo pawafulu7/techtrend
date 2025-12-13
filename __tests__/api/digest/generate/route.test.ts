@@ -4,6 +4,13 @@
 
 import { createRedisCacheMock } from '../../../helpers/cache-mock-helpers';
 
+// 認証モック（ADMINセッションを返す）
+jest.mock('@/lib/auth/auth', () => ({
+  auth: jest.fn().mockResolvedValue({
+    user: { id: 'admin-1', email: 'admin@example.com', role: 'ADMIN' },
+  }),
+}));
+
 // モックの設定
 jest.mock('@/lib/prisma');
 jest.mock('@/lib/services/digest-generator');

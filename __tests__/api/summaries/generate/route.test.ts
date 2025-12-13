@@ -3,6 +3,28 @@ import { getAppDependencies } from '@/lib/di/bootstrap';
 import { prisma } from '@/lib/database';
 import { NextRequest } from 'next/server';
 
+// 認証モック（ADMINセッションを返す）
+jest.mock('@/lib/auth/auth', () => ({
+  auth: jest.fn().mockResolvedValue({
+    user: { id: 'admin-1', email: 'admin@example.com', role: 'ADMIN' },
+  }),
+}));
+
+jest.mock('@/lib/logger', () => {
+  const mockLogger = {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    child: jest.fn(),
+  };
+  mockLogger.child.mockReturnValue(mockLogger);
+  return {
+    __esModule: true,
+    default: mockLogger,
+  };
+});
+
 jest.mock('@/lib/di/bootstrap');
 jest.mock('@/lib/database', () => ({
   prisma: {
@@ -15,21 +37,27 @@ jest.mock('@/lib/database', () => ({
     },
   },
 }));
-jest.mock('@/lib/rate-limiter', () => {
-  const actual = jest.requireActual('@/lib/rate-limiter');
-  return {
-    ...actual,
-    checkRateLimit: jest.fn().mockResolvedValue({ limit: 10, remaining: 9, reset: new Date() }),
-    createRateLimiterFromConfig: jest.fn().mockReturnValue({
-      consume: jest.fn().mockResolvedValue({}),
-    }),
-  };
-});
+jest.mock('@/lib/rate-limiter', () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ limit: 10, remaining: 9, reset: new Date() }),
+  createRateLimiterFromConfig: jest.fn().mockReturnValue({
+    consume: jest.fn().mockResolvedValue({}),
+  }),
+  RateLimitError: class RateLimitError extends Error {
+    constructor(
+      message: string,
+      public limit: number,
+      public remaining: number,
+      public reset: Date
+    ) {
+      super(message);
+      this.name = 'RateLimitError';
+    }
+  },
+}));
 
 describe('/api/summaries/generate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.resetModules();
   });
 
   it('should generate summaries with complete Prisma payload', async () => {
