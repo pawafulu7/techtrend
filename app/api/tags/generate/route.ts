@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 
 async function generateTagsHandler(_request: NextRequest) {
   try {
@@ -94,4 +95,7 @@ async function generateTagsHandler(_request: NextRequest) {
   }
 }
 
-export const POST = withRateLimit('ai:tags', generateTagsHandler);
+// 認証チェック（Cron Secret または Admin Session）→ レート制限
+export const POST = withCronOrAdminAuth(
+  withRateLimit('ai:tags', generateTagsHandler)
+);

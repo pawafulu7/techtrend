@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { DigestGenerator } from '@/lib/services/digest-generator';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
+import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 
 // キャッシュインスタンスを遅延初期化
 let cache: RedisCache | null = null;
@@ -17,7 +18,7 @@ const getCache = () => {
   return cache;
 };
 
-export async function POST(request: NextRequest) {
+async function generateDigestHandler(request: NextRequest) {
   try {
     // Parse request body with error handling
     let body;
@@ -88,3 +89,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// 認証チェック（Cron Secret または Admin Session）
+export const POST = withCronOrAdminAuth(generateDigestHandler);
