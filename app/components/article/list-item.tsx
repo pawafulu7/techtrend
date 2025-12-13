@@ -167,9 +167,9 @@ export function ArticleListItem({
 
         {/* アクション（ホバー時表示） */}
         <div className="hidden group-hover:flex items-center gap-1">
-          <FavoriteButton 
-            articleId={article.id} 
-            className="h-7 w-7 p-0"
+          <FavoriteButton
+            articleId={article.id}
+            className="h-11 w-11 p-0 min-w-[44px] min-h-[44px]"
           />
           <Button
             variant="ghost"
@@ -178,7 +178,7 @@ export function ArticleListItem({
               e.stopPropagation();
               window.open(article.url, '_blank', 'noopener,noreferrer');
             }}
-            className="h-7 w-7 p-0"
+            className="h-11 w-11 p-0 min-w-[44px] min-h-[44px]"
             title="元記事を開く"
           >
             <ExternalLink className="h-3 w-3" />

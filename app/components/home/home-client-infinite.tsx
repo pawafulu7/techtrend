@@ -296,9 +296,13 @@ export function HomeClientInfinite({
         {(isLoading || isCategoryChanging) ? (
           <div className="relative">
             {isCategoryChanging && (
-              <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center"
+                role="status"
+                aria-live="polite"
+              >
                 <div className="bg-background rounded-lg p-4 shadow-lg flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   <span className="text-sm">カテゴリを切り替え中...</span>
                 </div>
               </div>

@@ -54,15 +54,20 @@ async function performCollect() {
           result.error = errors.map(e => e.message).join(', ');
         }
 
-        // Process articles
-        for (const articleData of articles) {
-          try {
-            // Check if article already exists
-            const existing = await prisma.article.findUnique({
-              where: { url: articleData.url },
-            });
+        // Batch check for existing articles (N+1 optimization)
+        const articleURLs = articles.map(a => a.url);
+        const existingArticles = await prisma.article.findMany({
+          where: { url: { in: articleURLs } },
+          select: { url: true }
+        });
+        const existingURLSet = new Set(existingArticles.map(a => a.url));
 
-            if (!existing) {
+        // Filter to only new articles
+        const newArticles = articles.filter(a => !existingURLSet.has(a.url));
+
+        // Process only new articles
+        for (const articleData of newArticles) {
+          try {
               // タグを正規化してバリデーション
               // Note: articleData is CreateArticleInput with tagNames property
               // The RSS categories have already been converted to tagNames in the fetcher layer
@@ -117,7 +122,6 @@ async function performCollect() {
                 } catch {
                 }
               }
-            }
           } catch (error) {
             if (!result.error) {
               result.error = '';
