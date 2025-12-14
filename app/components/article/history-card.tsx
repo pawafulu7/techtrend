@@ -52,6 +52,11 @@ export function HistoryArticleCard({
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
   const readingTime = contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
 
+  // Pre-compute viewedAt formatting to avoid duplicate Date object creation
+  const viewedTimeAgo = viewedAt
+    ? formatDistanceToNow(new Date(viewedAt), { addSuffix: true, locale: ja })
+    : null;
+
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Ignore clicks on interactive elements
     const target = e.target as HTMLElement;
@@ -144,19 +149,14 @@ export function HistoryArticleCard({
             )}
 
             {/* Viewed At Badge */}
-            {viewedAt && (
+            {viewedAt && viewedTimeAgo && (
               <BadgeV2
                 variant="secondary"
                 className="text-xs flex items-center gap-1"
-                aria-label={`閲覧: ${formatDistanceToNow(new Date(viewedAt), { addSuffix: true, locale: ja })}`}
+                aria-label={`閲覧: ${viewedTimeAgo}`}
               >
                 <Clock className="h-3 w-3" aria-hidden="true" />
-                <time dateTime={viewedAt}>
-                  {formatDistanceToNow(new Date(viewedAt), {
-                    addSuffix: true,
-                    locale: ja,
-                  })}
-                </time>
+                <time dateTime={viewedAt}>{viewedTimeAgo}</time>
               </BadgeV2>
             )}
 

@@ -1,44 +1,15 @@
 /**
  * APIレスポンスのZodスキーマ検証テスト
  *
- * このテストは app/history/page.tsx で使用されている
+ * このテストは lib/schemas/article-views.ts で定義されている
  * ArticleViewSchema/ArticleViewsResponseSchema が
  * 実際のAPIレスポンス形式と整合していることを検証する。
  */
 
-import { z } from 'zod';
-
-// app/history/page.tsx と同じスキーマ定義
-// 注意: Prismaモデルは全てのIDに cuid() (String) を使用
-const ArticleViewSchema = z.object({
-  id: z.string(),           // Article.id: String @id @default(cuid())
-  viewId: z.string(),       // ArticleView.id: String @id @default(cuid())
-  title: z.string(),
-  translatedTitle: z.string().nullable().optional(),
-  summary: z.string().nullable(),
-  url: z.string(),
-  publishedAt: z.string(),
-  viewedAt: z.string().nullable(), // ArticleView.viewedAt: DateTime? (nullable)
-  source: z.object({
-    id: z.string(),         // Source.id: String @id @default(cuid())
-    name: z.string(),
-  }),
-  companyName: z.string().nullable().optional(),
-  tags: z
-    .array(
-      z.object({
-        id: z.string(),     // Tag.id: String @id @default(cuid())
-        name: z.string(),
-      })
-    )
-    .optional(),
-  contentLength: z.number().optional(),
-  content: z.string().nullable().optional(),
-});
-
-const ArticleViewsResponseSchema = z.object({
-  views: z.array(ArticleViewSchema),
-});
+import {
+  ArticleViewSchema,
+  ArticleViewsResponseSchema,
+} from '@/lib/schemas/article-views';
 
 describe('ArticleViewsResponseSchema', () => {
   describe('Valid responses', () => {
@@ -143,7 +114,7 @@ describe('ArticleViewsResponseSchema', () => {
       const result = ArticleViewsResponseSchema.safeParse(invalidResponse);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].path).toContain('id');
+        expect(result.error.issues[0].path).toEqual(['views', 0, 'id']);
       }
     });
 
@@ -166,7 +137,7 @@ describe('ArticleViewsResponseSchema', () => {
       const result = ArticleViewsResponseSchema.safeParse(invalidResponse);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].path).toContain('viewId');
+        expect(result.error.issues[0].path).toEqual(['views', 0, 'viewId']);
       }
     });
 

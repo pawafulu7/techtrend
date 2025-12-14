@@ -200,7 +200,7 @@ describe('HistoryArticleCard', () => {
   describe('Accessibility', () => {
     it('should have proper aria-label for viewed at badge', () => {
       render(<HistoryArticleCard {...defaultProps} />);
-      const viewedAtBadge = screen.getByRole('generic', { name: /閲覧:/ });
+      const viewedAtBadge = screen.getByLabelText(/閲覧:/);
       expect(viewedAtBadge).toBeInTheDocument();
     });
 

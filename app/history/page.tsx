@@ -5,45 +5,14 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, AlertCircle, History, Trash2 } from 'lucide-react';
-import { z } from 'zod';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { HistoryArticleCard } from '@/app/components/article/history-card';
 import { useGroupedHistory } from '@/app/hooks/use-grouped-history';
 import { getDateGroupHeadingId } from '@/lib/utils/date-grouping';
+import { ArticleViewsResponseSchema } from '@/lib/schemas/article-views';
 import type { HistoryViewItem } from '@/lib/types/history';
-
-// APIレスポンスのZodスキーマ（Prismaモデルに合わせてidはstring）
-const ArticleViewSchema = z.object({
-  id: z.string(),
-  viewId: z.string(),
-  title: z.string(),
-  translatedTitle: z.string().nullable().optional(),
-  summary: z.string().nullable(),
-  url: z.string(),
-  publishedAt: z.string(),
-  viewedAt: z.string().nullable(),
-  source: z.object({
-    id: z.string(),
-    name: z.string(),
-  }),
-  companyName: z.string().nullable().optional(),
-  tags: z
-    .array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-      })
-    )
-    .optional(),
-  contentLength: z.number().optional(),
-  content: z.string().nullable().optional(),
-});
-
-const ArticleViewsResponseSchema = z.object({
-  views: z.array(ArticleViewSchema),
-});
 
 // Skeleton component for loading state (grid layout)
 function HistoryCardSkeleton() {
