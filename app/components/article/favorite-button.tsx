@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useSession } from 'next-auth/react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { loginWithCallback } from '@/lib/routes/auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface FavoriteButtonProps {
   articleId: string;
@@ -34,6 +35,7 @@ export function FavoriteButton({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [isToggling, setIsToggling] = useState(false);
   const isControlled = typeof onToggleFavorite === 'function';
   const [uncontrolledFavorited, setUncontrolledFavorited] = useState(initialFavorited);
@@ -120,6 +122,11 @@ export function FavoriteButton({
         }
       } catch (error) {
         console.error('Failed to toggle favorite:', error);
+        toast({
+          title: 'エラー',
+          description: 'お気に入りの更新に失敗しました。もう一度お試しください。',
+          variant: 'destructive',
+        });
       }
     } finally {
       setIsToggling(false);

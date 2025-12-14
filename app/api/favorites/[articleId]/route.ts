@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
-import { favoriteCache } from '@/lib/cache/favorites-cache';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
-import { updateFavoriteCache } from '@/lib/dataloader/favorite-loader';
 import logger from '@/lib/logger';
+import {
+  updateFavoriteCacheBestEffort,
+  setFavoriteBustCookie,
+} from '@/lib/favorites/cache-helpers';
 
 // GET: 特定の記事がお気に入りに追加されているか確認
 export async function GET(
@@ -110,26 +112,19 @@ async function postHandler(
     });
 
     // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
-    try {
-      await favoriteCache.updateSingle(session.user.id, articleId, true);
-      await updateFavoriteCache(session.user.id, articleId, true, favorite.createdAt);
-    } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Favorite POST cache update failed (best-effort)');
-    }
+    await updateFavoriteCacheBestEffort(
+      session.user.id,
+      articleId,
+      true,
+      favorite.createdAt
+    );
 
     const response = NextResponse.json({
       message: 'Article favorited successfully',
       isFavorited: true,
       favoriteId: favorite.id,
     });
-    response.cookies.set({
-      name: 'tt_fav_bust',
-      value: String(Date.now()),
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 35,
-    });
+    setFavoriteBustCookie(response);
     return response;
   } catch (error) {
     logger.error({ error }, 'Favorite POST failed');
@@ -179,25 +174,13 @@ async function deleteHandler(
     });
 
     // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
-    try {
-      await favoriteCache.updateSingle(session.user.id, articleId, false);
-      await updateFavoriteCache(session.user.id, articleId, false, undefined);
-    } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Favorite DELETE cache update failed (best-effort)');
-    }
+    await updateFavoriteCacheBestEffort(session.user.id, articleId, false);
 
     const response = NextResponse.json({
       message: 'Article removed from favorites',
       isFavorited: false,
     });
-    response.cookies.set({
-      name: 'tt_fav_bust',
-      value: String(Date.now()),
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 35,
-    });
+    setFavoriteBustCookie(response);
     return response;
   } catch (error) {
     logger.error({ error }, 'Favorite DELETE failed');

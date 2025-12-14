@@ -258,7 +258,11 @@ export default function FavoritesPage() {
           tabIndex={-1}
           className="focus:outline-none focus:ring-2 focus:ring-primary max-w-md mx-auto"
         >
-          <div className="flex flex-col items-center justify-center py-12 px-4">
+          <div
+            className="flex flex-col items-center justify-center py-12 px-4"
+            role="status"
+            aria-live="polite"
+          >
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
               <Heart
                 className="h-8 w-8 text-muted-foreground"

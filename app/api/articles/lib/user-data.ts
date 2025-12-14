@@ -12,6 +12,13 @@ import type { UserSpecificArticleData, ArticleUserOverlay } from './types';
 /**
  * Fetch user-specific data (favorites, read status) for a list of articles
  * Uses DataLoader for efficient batching
+ *
+ * @param userId - User ID to fetch data for
+ * @param articleIds - List of article IDs to fetch data for
+ * @param metrics - Metrics collector for performance tracking
+ * @param options - Optional configuration
+ * @param options.bypassFavoriteL1 - When true, bypasses L1 cache for favorite data
+ * @returns User-specific article data including favorites and read status
  */
 export async function fetchUserSpecificData(
   userId: string,
