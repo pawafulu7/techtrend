@@ -40,20 +40,20 @@ describe('HistoryArticleCard', () => {
   };
 
   const mockArticle = {
-    id: 123,
+    id: 'cltest123abc',
     title: 'Test Article Title',
     translatedTitle: 'テスト記事タイトル',
     summary: 'This is a test article summary that provides context.',
     url: 'https://example.com/article',
     publishedAt: '2025-12-10T10:00:00.000Z',
     source: {
-      id: 1,
+      id: 'clsource1',
       name: 'Zenn',
     },
     tags: [
-      { id: 1, name: 'React' },
-      { id: 2, name: 'TypeScript' },
-      { id: 3, name: 'Next.js' },
+      { id: 'cltag1', name: 'React' },
+      { id: 'cltag2', name: 'TypeScript' },
+      { id: 'cltag3', name: 'Next.js' },
     ],
     content: 'A'.repeat(2500), // 2500 chars = 5 min reading time
   };
@@ -128,7 +128,7 @@ describe('HistoryArticleCard', () => {
     it('should render FavoriteButton with correct article ID', () => {
       render(<HistoryArticleCard {...defaultProps} />);
       const favoriteButton = screen.getByTestId('favorite-button');
-      expect(favoriteButton).toHaveAttribute('data-article-id', '123');
+      expect(favoriteButton).toHaveAttribute('data-article-id', 'cltest123abc');
     });
 
     it('should render ShareButton with correct props', () => {
@@ -144,7 +144,7 @@ describe('HistoryArticleCard', () => {
       render(<HistoryArticleCard {...defaultProps} />);
       const card = screen.getByTestId('history-article-card');
       fireEvent.click(card);
-      expect(mockRouter.push).toHaveBeenCalledWith('/articles/123?from=%2Fhistory');
+      expect(mockRouter.push).toHaveBeenCalledWith('/articles/cltest123abc?from=%2Fhistory');
     });
 
     it('should not navigate when interactive element is clicked', () => {
@@ -159,7 +159,7 @@ describe('HistoryArticleCard', () => {
       render(<HistoryArticleCard {...defaultProps} onArticleClick={onArticleClick} />);
       const card = screen.getByTestId('history-article-card');
       fireEvent.click(card);
-      expect(onArticleClick).toHaveBeenCalledWith(123);
+      expect(onArticleClick).toHaveBeenCalledWith('cltest123abc');
     });
   });
 
@@ -243,8 +243,8 @@ describe('HistoryArticleCard', () => {
         article: {
           ...mockArticle,
           tags: [
-            { id: 1, name: 'React' },
-            { id: 2, name: 'TypeScript' },
+            { id: 'cltag1', name: 'React' },
+            { id: 'cltag2', name: 'TypeScript' },
           ],
         },
       };

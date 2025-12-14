@@ -16,26 +16,26 @@ import { ja } from 'date-fns/locale';
 
 export interface HistoryArticleCardProps {
   article: {
-    id: number;
+    id: string;
     title: string;
     translatedTitle?: string | null;
     summary: string | null;
     url: string;
     publishedAt: string;
     source: {
-      id: number;
+      id: string;
       name: string;
     };
     companyName?: string | null;
     tags?: Array<{
-      id: number;
+      id: string;
       name: string;
     }>;
     contentLength?: number;
     content?: string | null;
   };
-  viewedAt: string;
-  onArticleClick?: (articleId: number) => void;
+  viewedAt: string | null;
+  onArticleClick?: (articleId: string) => void;
   onTagClick?: (tagName: string) => void;
 }
 
@@ -144,19 +144,21 @@ export function HistoryArticleCard({
             )}
 
             {/* Viewed At Badge */}
-            <BadgeV2
-              variant="secondary"
-              className="text-xs flex items-center gap-1"
-              aria-label={`閲覧: ${formatDistanceToNow(new Date(viewedAt), { addSuffix: true, locale: ja })}`}
-            >
-              <Clock className="h-3 w-3" aria-hidden="true" />
-              <time dateTime={viewedAt}>
-                {formatDistanceToNow(new Date(viewedAt), {
-                  addSuffix: true,
-                  locale: ja,
-                })}
-              </time>
-            </BadgeV2>
+            {viewedAt && (
+              <BadgeV2
+                variant="secondary"
+                className="text-xs flex items-center gap-1"
+                aria-label={`閲覧: ${formatDistanceToNow(new Date(viewedAt), { addSuffix: true, locale: ja })}`}
+              >
+                <Clock className="h-3 w-3" aria-hidden="true" />
+                <time dateTime={viewedAt}>
+                  {formatDistanceToNow(new Date(viewedAt), {
+                    addSuffix: true,
+                    locale: ja,
+                  })}
+                </time>
+              </BadgeV2>
+            )}
 
             {/* Published At - inline with badges */}
             <span className="flex items-center gap-1 text-muted-foreground">

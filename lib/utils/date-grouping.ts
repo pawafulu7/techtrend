@@ -38,7 +38,7 @@ export interface GroupedHistoryItem<T> {
  * 日付文字列を持つアイテムの型制約
  */
 interface HasViewedAt {
-  viewedAt: string;
+  viewedAt: string | null;
 }
 
 /**
@@ -89,7 +89,9 @@ export function groupHistoryByDate<T extends HasViewedAt>(
   };
 
   // 各アイテムをグループ分け（ブラウザのローカルタイムゾーンを使用）
+  // viewedAtがnullのアイテムはスキップ
   for (const view of views) {
+    if (view.viewedAt === null) continue;
     const viewedDate = parseISO(view.viewedAt);
     const groupKey = getDateGroupKey(viewedDate, now, weekStartsOn);
     groups[groupKey].push(view);
@@ -101,7 +103,8 @@ export function groupHistoryByDate<T extends HasViewedAt>(
   const getTimestamp = (item: T): number => {
     let ts = timestampCache.get(item);
     if (ts === undefined) {
-      ts = new Date(item.viewedAt).getTime();
+      // null check済み（グループ分け時にnullをスキップ）
+      ts = new Date(item.viewedAt!).getTime();
       timestampCache.set(item, ts);
     }
     return ts;

@@ -14,25 +14,25 @@ import { useGroupedHistory } from '@/app/hooks/use-grouped-history';
 import { getDateGroupHeadingId } from '@/lib/utils/date-grouping';
 import type { HistoryViewItem } from '@/lib/types/history';
 
-// APIレスポンスのZodスキーマ
+// APIレスポンスのZodスキーマ（Prismaモデルに合わせてidはstring）
 const ArticleViewSchema = z.object({
-  id: z.number(),
-  viewId: z.number(),
+  id: z.string(),
+  viewId: z.string(),
   title: z.string(),
   translatedTitle: z.string().nullable().optional(),
   summary: z.string().nullable(),
   url: z.string(),
   publishedAt: z.string(),
-  viewedAt: z.string(),
+  viewedAt: z.string().nullable(),
   source: z.object({
-    id: z.number(),
+    id: z.string(),
     name: z.string(),
   }),
   companyName: z.string().nullable().optional(),
   tags: z
     .array(
       z.object({
-        id: z.number(),
+        id: z.string(),
         name: z.string(),
       })
     )

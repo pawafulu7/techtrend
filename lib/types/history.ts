@@ -6,28 +6,29 @@
  * 閲覧履歴アイテムの型
  */
 export interface HistoryViewItem {
-  viewedAt: string;
+  viewedAt: string | null;
   article: HistoryArticle;
 }
 
 /**
  * 閲覧履歴に表示する記事の型
+ * IDはPrismaのcuid()に合わせてstring
  */
 export interface HistoryArticle {
-  id: number;
-  viewId: number;
+  id: string;
+  viewId: string;
   title: string;
   translatedTitle?: string | null;
   summary: string | null;
   url: string;
   publishedAt: string;
   source: {
-    id: number;
+    id: string;
     name: string;
   };
   companyName?: string | null;
   tags?: Array<{
-    id: number;
+    id: string;
     name: string;
   }>;
   contentLength?: number;
