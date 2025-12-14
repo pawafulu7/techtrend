@@ -1,18 +1,49 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { flushSync } from 'react-dom';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, AlertCircle, History, Trash2 } from 'lucide-react';
+import { z } from 'zod';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { HistoryArticleCard } from '@/app/components/article/history-card';
 import { useGroupedHistory } from '@/app/hooks/use-grouped-history';
 import { getDateGroupHeadingId } from '@/lib/utils/date-grouping';
-import type { HistoryArticle, HistoryViewItem } from '@/lib/types/history';
+import type { HistoryViewItem } from '@/lib/types/history';
+
+// APIレスポンスのZodスキーマ
+const ArticleViewSchema = z.object({
+  id: z.number(),
+  viewId: z.number(),
+  title: z.string(),
+  translatedTitle: z.string().nullable().optional(),
+  summary: z.string().nullable(),
+  url: z.string(),
+  publishedAt: z.string(),
+  viewedAt: z.string(),
+  source: z.object({
+    id: z.number(),
+    name: z.string(),
+  }),
+  companyName: z.string().nullable().optional(),
+  tags: z
+    .array(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+      })
+    )
+    .optional(),
+  contentLength: z.number().optional(),
+  content: z.string().nullable().optional(),
+});
+
+const ArticleViewsResponseSchema = z.object({
+  views: z.array(ArticleViewSchema),
+});
 
 // Skeleton component for loading state (grid layout)
 function HistoryCardSkeleton() {
@@ -66,13 +97,16 @@ export default function HistoryPage() {
   const [views, setViews] = useState<HistoryViewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
+  const [justCleared, setJustCleared] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const emptyStateRef = useRef<HTMLDivElement>(null);
 
   // モバイル検出（コンポーネントライフサイクル中は変化しない）
-  const isMobile =
-    typeof navigator !== 'undefined' &&
-    /Mobi|Android/i.test(navigator.userAgent);
+  const [isMobile] = useState(
+    () =>
+      typeof navigator !== 'undefined' &&
+      /Mobi|Android/i.test(navigator.userAgent)
+  );
 
   const groupedHistory = useGroupedHistory(views);
 
@@ -80,6 +114,7 @@ export default function HistoryPage() {
     async (signal?: AbortSignal) => {
       try {
         setLoading(true);
+        setError(null);
         const params = new URLSearchParams();
 
         // モバイルの場合は軽量モードを使用
@@ -100,9 +135,16 @@ export default function HistoryPage() {
         }
 
         const data = await response.json();
-        // APIレスポンスをHistoryViewItem形式に変換
-        const historyItems: HistoryViewItem[] = data.views.map(
-          (view: HistoryArticle & { viewedAt: string }) => ({
+        // APIレスポンスをZodスキーマで検証
+        const parsed = ArticleViewsResponseSchema.safeParse(data);
+        if (!parsed.success) {
+          console.error('API response validation failed:', parsed.error);
+          throw new Error('閲覧履歴のデータ形式が不正です');
+        }
+
+        // 検証済みデータをHistoryViewItem形式に変換
+        const historyItems: HistoryViewItem[] = parsed.data.views.map(
+          (view) => ({
             viewedAt: view.viewedAt,
             article: view,
           })
@@ -134,6 +176,14 @@ export default function HistoryPage() {
     }
   }, [status, router, fetchHistory]);
 
+  // クリア完了後のフォーカス管理（宣言的アプローチ）
+  useEffect(() => {
+    if (justCleared && views.length === 0) {
+      emptyStateRef.current?.focus();
+      setJustCleared(false);
+    }
+  }, [justCleared, views.length]);
+
   const clearHistory = async () => {
     if (clearing) return;
     try {
@@ -146,12 +196,8 @@ export default function HistoryPage() {
         throw new Error('履歴のクリアに失敗しました');
       }
 
-      // flushSyncで状態更新を即座に反映してからフォーカス移動
-      flushSync(() => {
-        setViews([]);
-      });
-      // Focus on empty state message after clearing
-      emptyStateRef.current?.focus();
+      setViews([]);
+      setJustCleared(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
