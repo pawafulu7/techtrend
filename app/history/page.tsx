@@ -12,33 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { HistoryArticleCard } from '@/app/components/article/history-card';
 import { useGroupedHistory } from '@/app/hooks/use-grouped-history';
 import { getDateGroupHeadingId } from '@/lib/utils/date-grouping';
-
-interface ArticleView {
-  id: number;
-  title: string;
-  translatedTitle?: string | null;
-  summary: string | null;
-  url: string;
-  publishedAt: string;
-  source: {
-    id: number;
-    name: string;
-  };
-  companyName?: string | null;
-  tags?: Array<{
-    id: number;
-    name: string;
-  }>;
-  content?: string | null;
-  contentLength?: number;
-  viewId: number;
-  viewedAt: string;
-}
-
-interface HistoryViewItem {
-  viewedAt: string;
-  article: ArticleView;
-}
+import type { HistoryArticle, HistoryViewItem } from '@/lib/types/history';
 
 // Skeleton component for loading state (grid layout)
 function HistoryCardSkeleton() {
@@ -89,7 +63,7 @@ function HistorySkeletonGrid() {
 export default function HistoryPage() {
   const { data: _session, status } = useSession();
   const router = useRouter();
-  const [views, setViews] = useState<ArticleView[]>([]);
+  const [views, setViews] = useState<(HistoryArticle & { viewedAt: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const emptyStateRef = useRef<HTMLDivElement>(null);
@@ -106,7 +80,7 @@ export default function HistoryPage() {
 
   const groupedHistory = useGroupedHistory(historyItems);
 
-  const fetchHistory = useCallback(async () => {
+  const fetchHistory = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       // モバイルの場合は軽量モードを使用
@@ -121,7 +95,9 @@ export default function HistoryPage() {
       // 90日以内の全履歴を取得（APIの上限は100件）
       params.set('limit', '100');
 
-      const response = await fetch(`/api/article-views?${params.toString()}`);
+      const response = await fetch(`/api/article-views?${params.toString()}`, {
+        signal,
+      });
 
       if (!response.ok) {
         throw new Error('閲覧履歴の取得に失敗しました');
@@ -130,6 +106,10 @@ export default function HistoryPage() {
       const data = await response.json();
       setViews(data.views);
     } catch (err) {
+      // AbortErrorは無視（コンポーネントアンマウント時）
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
       setLoading(false);
@@ -143,7 +123,9 @@ export default function HistoryPage() {
     }
 
     if (status === 'authenticated') {
-      fetchHistory();
+      const abortController = new AbortController();
+      fetchHistory(abortController.signal);
+      return () => abortController.abort();
     }
   }, [status, router, fetchHistory]);
 

@@ -6,33 +6,7 @@ import {
   type GroupedHistoryItem,
   type DateGroupingOptions,
 } from '@/lib/utils/date-grouping';
-
-/**
- * 閲覧履歴アイテムの型
- */
-interface HistoryViewItem {
-  viewedAt: string;
-  article: {
-    id: number;
-    viewId: number;
-    title: string;
-    translatedTitle?: string | null;
-    summary: string | null;
-    url: string;
-    publishedAt: string;
-    source: {
-      id: number;
-      name: string;
-    };
-    companyName?: string | null;
-    tags?: Array<{
-      id: number;
-      name: string;
-    }>;
-    contentLength?: number;
-    content?: string | null;
-  };
-}
+import type { HistoryViewItem } from '@/lib/types/history';
 
 /**
  * 閲覧履歴を日付でグループ化するカスタムフック
