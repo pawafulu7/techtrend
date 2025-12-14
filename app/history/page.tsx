@@ -1,20 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Clock, Calendar, ExternalLink, Loader2, Eye } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Eye, AlertCircle } from 'lucide-react';
+import { CardV2 } from '@/components/ui-v2/card-v2';
+import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import { HistoryArticleCard } from '@/app/components/article/history-card';
+import { useGroupedHistory } from '@/app/hooks/use-grouped-history';
+import { getDateGroupHeadingId } from '@/lib/utils/date-grouping';
+import { cn } from '@/lib/utils';
 
 interface ArticleView {
   id: number;
   title: string;
+  translatedTitle?: string | null;
   summary: string | null;
   url: string;
   publishedAt: string;
@@ -22,12 +24,45 @@ interface ArticleView {
     id: number;
     name: string;
   };
+  companyName?: string | null;
   tags?: Array<{
     id: number;
     name: string;
   }>;
+  content?: string | null;
+  contentLength?: number;
   viewId: number;
   viewedAt: string;
+}
+
+interface HistoryViewItem {
+  viewedAt: string;
+  article: ArticleView;
+}
+
+// Skeleton component for loading state
+function HistoryCardSkeleton() {
+  return (
+    <div
+      className="animate-pulse rounded-lg border bg-card p-4 space-y-3"
+      role="status"
+      aria-label="読み込み中"
+    >
+      <div className="flex items-center gap-2">
+        <div className="h-5 w-20 bg-muted rounded" />
+        <div className="h-5 w-16 bg-muted rounded" />
+      </div>
+      <div className="h-6 w-3/4 bg-muted rounded" />
+      <div className="space-y-2">
+        <div className="h-4 w-full bg-muted rounded" />
+        <div className="h-4 w-5/6 bg-muted rounded" />
+      </div>
+      <div className="flex gap-1 pt-2">
+        <div className="h-5 w-12 bg-muted rounded" />
+        <div className="h-5 w-14 bg-muted rounded" />
+      </div>
+    </div>
+  );
 }
 
 export default function HistoryPage() {
@@ -36,6 +71,15 @@ export default function HistoryPage() {
   const [views, setViews] = useState<ArticleView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const emptyStateRef = useRef<HTMLDivElement>(null);
+
+  // Convert flat views to grouped format for the hook
+  const historyItems: HistoryViewItem[] = views.map((view) => ({
+    viewedAt: view.viewedAt,
+    article: view,
+  }));
+
+  const groupedHistory = useGroupedHistory(historyItems);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -69,8 +113,8 @@ export default function HistoryPage() {
 
       const data = await response.json();
       setViews(data.views);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'エラーが発生しました');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
       setLoading(false);
     }
@@ -87,16 +131,41 @@ export default function HistoryPage() {
       }
 
       setViews([]);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'エラーが発生しました');
+      // Focus on empty state message after clearing
+      setTimeout(() => {
+        emptyStateRef.current?.focus();
+      }, 100);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'エラーが発生しました');
     }
   };
 
+  const handleTagClick = useCallback(
+    (tagName: string) => {
+      router.push(`/?tags=${encodeURIComponent(tagName)}&tagMode=OR`);
+    },
+    [router]
+  );
+
+  // Loading state
   if (status === 'loading' || loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <div className="h-9 w-40 bg-muted rounded animate-pulse mb-2" />
+            <div className="h-5 w-64 bg-muted rounded animate-pulse" />
+          </div>
+          <div
+            className="space-y-4"
+            role="status"
+            aria-live="polite"
+            aria-label="閲覧履歴を読み込み中"
+          >
+            <HistoryCardSkeleton />
+            <HistoryCardSkeleton />
+            <HistoryCardSkeleton />
+          </div>
         </div>
       </div>
     );
@@ -105,111 +174,95 @@ export default function HistoryPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8 flex items-start justify-between">
+        {/* Header */}
+        <header className="mb-8 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">閲覧履歴</h1>
+            <h1 className="font-heading text-3xl font-bold mb-2 text-foreground">
+              閲覧履歴
+            </h1>
             <p className="text-muted-foreground">
               最近読んだ記事の履歴を確認できます
             </p>
           </div>
           {views.length > 0 && (
-            <Button
+            <ButtonV2
               variant="outline"
               size="sm"
               onClick={clearHistory}
-              className="text-destructive hover:text-destructive"
+              className="text-destructive hover:text-destructive min-w-[44px] min-h-[44px]"
+              aria-label="閲覧履歴をすべてクリア"
             >
               履歴をクリア
-            </Button>
+            </ButtonV2>
           )}
-        </div>
+        </header>
 
+        {/* Error state */}
         {error && (
           <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
+        {/* Empty state */}
         {views.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Eye className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium mb-2">閲覧履歴がありません</p>
-              <p className="text-muted-foreground mb-6">
+          <CardV2
+            ref={emptyStateRef}
+            tabIndex={-1}
+            className="focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <Eye
+                className="h-12 w-12 text-muted-foreground mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-lg font-medium mb-2 text-foreground">
+                閲覧履歴がありません
+              </p>
+              <p className="text-muted-foreground mb-6 text-center">
                 記事を読むと自動的に履歴に記録されます
               </p>
-              <Button asChild>
-                <Link href="/">記事を探す</Link>
-              </Button>
-            </CardContent>
-          </Card>
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 min-w-[44px] min-h-[44px] transition-colors"
+              >
+                記事を探す
+              </Link>
+            </div>
+          </CardV2>
         ) : (
-          <div className="space-y-4">
-            {views.map((view) => (
-              <Card key={view.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-xl mb-2">
-                        <Link 
-                          href={`/articles/${view.id}`}
-                          className="hover:text-primary transition-colors"
-                        >
-                          {view.title}
-                        </Link>
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-4 text-sm">
-                        <span>{view.source.name}</span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(view.publishedAt), {
-                            addSuffix: true,
-                            locale: ja,
-                          })}
-                        </span>
-                      </CardDescription>
-                    </div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {formatDistanceToNow(new Date(view.viewedAt), {
-                        addSuffix: true,
-                        locale: ja,
-                      })}
-                    </div>
-                  </div>
-                </CardHeader>
-                {(view.summary || view.tags) && (
-                  <CardContent>
-                    {view.summary && (
-                      <p className="text-muted-foreground line-clamp-3 mb-3">
-                        {view.summary}
-                      </p>
-                    )}
-                    {view.tags && view.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {view.tags.slice(0, 5).map((t) => (
-                          <Badge key={t.id} variant="outline" className="text-xs">
-                            {t.name}
-                          </Badge>
-                        ))}
-                        {view.tags.length > 5 && (
-                          <span className="text-xs text-muted-foreground">
-                            +{view.tags.length - 5}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    <div className="mt-4">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={view.url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          元記事を読む
-                        </Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
+          /* Grouped history list */
+          <div className="space-y-8">
+            {groupedHistory.map((group) => (
+              <section
+                key={group.key}
+                aria-labelledby={getDateGroupHeadingId(group.key)}
+              >
+                <h2
+                  id={getDateGroupHeadingId(group.key)}
+                  className={cn(
+                    'font-heading text-xl font-semibold mb-4 text-foreground',
+                    'flex items-center gap-2'
+                  )}
+                >
+                  {group.label}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    ({group.items.length}件)
+                  </span>
+                </h2>
+                <ul role="list" className="space-y-4">
+                  {group.items.map((item) => (
+                    <li key={item.article.viewId}>
+                      <HistoryArticleCard
+                        article={item.article}
+                        viewedAt={item.viewedAt}
+                        onTagClick={handleTagClick}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
           </div>
         )}
