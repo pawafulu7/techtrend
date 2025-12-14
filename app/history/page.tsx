@@ -65,53 +65,61 @@ export default function HistoryPage() {
   const router = useRouter();
   const [views, setViews] = useState<HistoryViewItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clearing, setClearing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const emptyStateRef = useRef<HTMLDivElement>(null);
 
+  // モバイル検出（コンポーネントライフサイクル中は変化しない）
+  const isMobile =
+    typeof navigator !== 'undefined' &&
+    /Mobi|Android/i.test(navigator.userAgent);
+
   const groupedHistory = useGroupedHistory(views);
 
-  const fetchHistory = useCallback(async (signal?: AbortSignal) => {
-    try {
-      setLoading(true);
-      // モバイルの場合は軽量モードを使用
-      const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-      const params = new URLSearchParams();
+  const fetchHistory = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
 
-      if (isMobile) {
-        params.set('lightweight', 'true');
+        // モバイルの場合は軽量モードを使用
+        if (isMobile) {
+          params.set('lightweight', 'true');
+        }
+        // sourceリレーションを含める（表示に必要）
+        params.set('includeRelations', 'true');
+        // 90日以内の履歴を最大100件取得
+        params.set('limit', '100');
+
+        const response = await fetch(`/api/article-views?${params.toString()}`, {
+          signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('閲覧履歴の取得に失敗しました');
+        }
+
+        const data = await response.json();
+        // APIレスポンスをHistoryViewItem形式に変換
+        const historyItems: HistoryViewItem[] = data.views.map(
+          (view: HistoryArticle & { viewedAt: string }) => ({
+            viewedAt: view.viewedAt,
+            article: view,
+          })
+        );
+        setViews(historyItems);
+      } catch (err) {
+        // AbortErrorは無視（コンポーネントアンマウント時）
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+        setError(err instanceof Error ? err.message : 'エラーが発生しました');
+      } finally {
+        setLoading(false);
       }
-      // sourceリレーションを含める（表示に必要）
-      params.set('includeRelations', 'true');
-      // 90日以内の履歴を最大100件取得
-      params.set('limit', '100');
-
-      const response = await fetch(`/api/article-views?${params.toString()}`, {
-        signal,
-      });
-
-      if (!response.ok) {
-        throw new Error('閲覧履歴の取得に失敗しました');
-      }
-
-      const data = await response.json();
-      // APIレスポンスをHistoryViewItem形式に変換
-      const historyItems: HistoryViewItem[] = data.views.map(
-        (view: HistoryArticle & { viewedAt: string }) => ({
-          viewedAt: view.viewedAt,
-          article: view,
-        })
-      );
-      setViews(historyItems);
-    } catch (err) {
-      // AbortErrorは無視（コンポーネントアンマウント時）
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
-      setError(err instanceof Error ? err.message : 'エラーが発生しました');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [isMobile]
+  );
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -127,7 +135,9 @@ export default function HistoryPage() {
   }, [status, router, fetchHistory]);
 
   const clearHistory = async () => {
+    if (clearing) return;
     try {
+      setClearing(true);
       const response = await fetch('/api/article-views', {
         method: 'DELETE',
       });
@@ -144,6 +154,8 @@ export default function HistoryPage() {
       emptyStateRef.current?.focus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -193,7 +205,7 @@ export default function HistoryPage() {
                   閲覧履歴
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  過去90日間の記事 ({views.length}件)
+                  最近の記事 ({views.length}件)
                 </p>
               </div>
             </div>
@@ -202,11 +214,12 @@ export default function HistoryPage() {
                 variant="destructive"
                 size="default"
                 onClick={clearHistory}
+                disabled={clearing}
                 className="min-w-[140px] min-h-[44px] gap-2 shadow-sm font-medium"
                 aria-label="閲覧履歴をすべてクリア"
               >
                 <Trash2 className="h-4 w-4" aria-hidden="true" />
-                履歴をクリア
+                {clearing ? 'クリア中...' : '履歴をクリア'}
               </Button>
             )}
           </div>
