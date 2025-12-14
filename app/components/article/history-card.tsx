@@ -207,7 +207,7 @@ export function HistoryArticleCard({
           {readingTime && contentLength > 0 && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" aria-hidden="true" />
-              <span>{readingTime} min / {contentLength.toLocaleString('ja-JP')} chars</span>
+              <span>{readingTime}分 / {contentLength.toLocaleString('ja-JP')}文字</span>
             </span>
           )}
           <ButtonV2
@@ -218,10 +218,10 @@ export function HistoryArticleCard({
               window.open(article.url, '_blank', 'noopener,noreferrer');
             }}
             className="h-11 px-4 text-xs min-w-[44px] min-h-[44px]"
-            aria-label="Open original article in new tab"
+            aria-label="元記事を新しいタブで開く"
           >
             <ExternalLink className="h-4 w-4 mr-1" aria-hidden="true" />
-            Original
+            元記事
           </ButtonV2>
         </div>
       </div>
