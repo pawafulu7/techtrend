@@ -170,12 +170,12 @@ export function FavoriteButton({
   }
 
   return (
-      <Button
-        variant={isFavorited ? "destructive" : "outline"}
-        size={size}
-        onClick={handleClick}
-        disabled={isToggling || isLoadingInitial || sessionStatus === 'loading'}
-        className={cn(
+    <Button
+      variant={isFavorited ? "destructive" : "outline"}
+      size={size}
+      onClick={handleClick}
+      disabled={isToggling || isLoadingInitial || sessionStatus === 'loading'}
+      className={cn(
         "transition-all duration-300",
         isAnimating && "scale-110",
         isFavorited ? "bg-red-500 hover:bg-red-600 text-white" : "hover:text-red-500",
