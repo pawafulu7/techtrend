@@ -54,7 +54,7 @@ interface HistoryViewItem {
  *           <h2 id={`${group.key}-heading`}>{group.label}</h2>
  *           <ul>
  *             {group.items.map((item) => (
- *               <li key={item.article.id}>
+ *               <li key={item.article.viewId}>
  *                 <HistoryArticleCard article={item.article} viewedAt={item.viewedAt} />
  *               </li>
  *             ))}
@@ -67,7 +67,7 @@ interface HistoryViewItem {
  * ```
  */
 export function useGroupedHistory(
-  views: HistoryViewItem[],
+  views: HistoryViewItem[] | null | undefined,
   options?: DateGroupingOptions
 ): GroupedHistoryItem<HistoryViewItem>[] {
   return useMemo(() => {

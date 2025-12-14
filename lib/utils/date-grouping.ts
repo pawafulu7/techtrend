@@ -4,9 +4,9 @@
  */
 
 import {
-  isToday,
-  isYesterday,
-  isThisWeek,
+  isSameDay,
+  isSameWeek,
+  differenceInCalendarDays,
   parseISO,
 } from 'date-fns';
 
@@ -96,8 +96,19 @@ export function groupHistoryByDate<T extends HasViewedAt>(
   }
 
   // 各グループ内をviewedAt降順でソート
+  // パフォーマンス改善: 事前にタイムスタンプをキャッシュして比較
+  const timestampCache = new Map<T, number>();
+  const getTimestamp = (item: T): number => {
+    let ts = timestampCache.get(item);
+    if (ts === undefined) {
+      ts = new Date(item.viewedAt).getTime();
+      timestampCache.set(item, ts);
+    }
+    return ts;
+  };
+
   const sortByViewedAtDesc = (a: T, b: T) =>
-    new Date(b.viewedAt).getTime() - new Date(a.viewedAt).getTime();
+    getTimestamp(b) - getTimestamp(a);
 
   for (const key of Object.keys(groups) as DateGroupKey[]) {
     groups[key].sort(sortByViewedAtDesc);
@@ -133,17 +144,19 @@ function getDateGroupKey(
   now: Date,
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
 ): DateGroupKey {
-  if (isToday(date)) {
+  // isSameDay を使用して now パラメータを正しく参照
+  if (isSameDay(date, now)) {
     return 'today';
   }
 
-  if (isYesterday(date)) {
+  // differenceInCalendarDays を使用して now パラメータを正しく参照
+  if (differenceInCalendarDays(now, date) === 1) {
     return 'yesterday';
   }
 
   // 今日と昨日を除いた「今週」の判定
-  // isThisWeekは今日も含むので、today/yesterdayの後に判定
-  if (isThisWeek(date, { weekStartsOn })) {
+  // isSameWeek を使用して now パラメータを正しく参照
+  if (isSameWeek(date, now, { weekStartsOn })) {
     return 'thisWeek';
   }
 

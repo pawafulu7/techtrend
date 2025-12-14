@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -93,26 +94,19 @@ export default function HistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const emptyStateRef = useRef<HTMLDivElement>(null);
 
-  // Convert flat views to grouped format for the hook
-  const historyItems: HistoryViewItem[] = views.map((view) => ({
-    viewedAt: view.viewedAt,
-    article: view,
-  }));
+  // Convert flat views to grouped format for the hook (memoized)
+  const historyItems: HistoryViewItem[] = useMemo(
+    () =>
+      views.map((view) => ({
+        viewedAt: view.viewedAt,
+        article: view,
+      })),
+    [views]
+  );
 
   const groupedHistory = useGroupedHistory(historyItems);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login?callbackUrl=/history');
-      return;
-    }
-
-    if (status === 'authenticated') {
-      fetchHistory();
-    }
-  }, [status, router]);
-
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
       setLoading(true);
       // モバイルの場合は軽量モードを使用
@@ -140,7 +134,18 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/login?callbackUrl=/history');
+      return;
+    }
+
+    if (status === 'authenticated') {
+      fetchHistory();
+    }
+  }, [status, router, fetchHistory]);
 
   const clearHistory = async () => {
     try {
@@ -152,11 +157,12 @@ export default function HistoryPage() {
         throw new Error('履歴のクリアに失敗しました');
       }
 
-      setViews([]);
+      // flushSyncで状態更新を即座に反映してからフォーカス移動
+      flushSync(() => {
+        setViews([]);
+      });
       // Focus on empty state message after clearing
-      setTimeout(() => {
-        emptyStateRef.current?.focus();
-      }, 100);
+      emptyStateRef.current?.focus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     }

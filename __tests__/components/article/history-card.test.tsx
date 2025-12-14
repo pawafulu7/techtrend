@@ -112,8 +112,8 @@ describe('HistoryArticleCard', () => {
     it('should display reading time and content length', () => {
       render(<HistoryArticleCard {...defaultProps} />);
       // 2500 chars / 500 chars per min = 5 min
-      expect(screen.getByText(/5 min/)).toBeInTheDocument();
-      expect(screen.getByText(/2,500 chars/)).toBeInTheDocument();
+      expect(screen.getByText(/5分/)).toBeInTheDocument();
+      expect(screen.getByText(/2,500文字/)).toBeInTheDocument();
     });
 
     it('should not display reading time when content is empty', () => {
@@ -122,7 +122,7 @@ describe('HistoryArticleCard', () => {
         article: { ...mockArticle, content: null },
       };
       render(<HistoryArticleCard {...propsWithoutContent} />);
-      expect(screen.queryByText(/min/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/分/)).not.toBeInTheDocument();
     });
 
     it('should render FavoriteButton with correct article ID', () => {
@@ -186,7 +186,7 @@ describe('HistoryArticleCard', () => {
     it('should open external link in new tab when Original button is clicked', () => {
       const windowOpenSpy = jest.spyOn(window, 'open').mockImplementation();
       render(<HistoryArticleCard {...defaultProps} />);
-      const originalButton = screen.getByRole('button', { name: /open original article/i });
+      const originalButton = screen.getByRole('button', { name: /元記事を新しいタブで開く/ });
       fireEvent.click(originalButton);
       expect(windowOpenSpy).toHaveBeenCalledWith(
         'https://example.com/article',
@@ -200,19 +200,19 @@ describe('HistoryArticleCard', () => {
   describe('Accessibility', () => {
     it('should have proper aria-label for viewed at badge', () => {
       render(<HistoryArticleCard {...defaultProps} />);
-      const viewedAtBadge = screen.getByRole('generic', { name: /viewed/i });
+      const viewedAtBadge = screen.getByRole('generic', { name: /閲覧:/ });
       expect(viewedAtBadge).toBeInTheDocument();
     });
 
     it('should have proper aria-label for remaining tags count', () => {
       render(<HistoryArticleCard {...defaultProps} />);
-      const remainingTags = screen.getByLabelText(/1 more tags/i);
+      const remainingTags = screen.getByLabelText(/他1件のタグ/);
       expect(remainingTags).toBeInTheDocument();
     });
 
     it('should have proper aria-label for external link button', () => {
       render(<HistoryArticleCard {...defaultProps} />);
-      const externalLinkButton = screen.getByRole('button', { name: /open original article/i });
+      const externalLinkButton = screen.getByRole('button', { name: /元記事を新しいタブで開く/ });
       expect(externalLinkButton).toBeInTheDocument();
     });
   });
@@ -274,8 +274,8 @@ describe('HistoryArticleCard', () => {
       };
       render(<HistoryArticleCard {...propsWithContentLength} />);
       // 5000 chars / 500 = 10 min
-      expect(screen.getByText(/10 min/)).toBeInTheDocument();
-      expect(screen.getByText(/5,000 chars/)).toBeInTheDocument();
+      expect(screen.getByText(/10分/)).toBeInTheDocument();
+      expect(screen.getByText(/5,000文字/)).toBeInTheDocument();
     });
   });
 });

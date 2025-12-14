@@ -46,13 +46,13 @@ export function HistoryArticleCard({
   onTagClick,
 }: HistoryArticleCardProps) {
   const router = useRouter();
-  const sourceColor = article.source ? getSourceColor(article.source.name) : null;
+  const sourceColor = getSourceColor(article.source.name);
 
   // Reading time calculation (~500 chars/min for Japanese content)
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
   const readingTime = contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
 
-  const handleCardClick = (e: React.MouseEvent) => {
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Ignore clicks on interactive elements
     const target = e.target as HTMLElement;
     if (target.closest('button, a, input, [role="button"]')) {
@@ -97,7 +97,7 @@ export function HistoryArticleCard({
         {remainingCount > 0 && (
           <span
             className="text-xs text-muted-foreground"
-            aria-label={`${remainingCount} more tags`}
+            aria-label={`他${remainingCount}件のタグ`}
           >
             +{remainingCount}
           </span>
@@ -124,7 +124,7 @@ export function HistoryArticleCard({
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {/* Source Badge */}
-            {article.source && sourceColor && (
+            {sourceColor && (
               <BadgeV2
                 variant="outline"
                 className={cn(
@@ -147,7 +147,7 @@ export function HistoryArticleCard({
             <BadgeV2
               variant="secondary"
               className="text-xs flex items-center gap-1"
-              aria-label={`${formatDistanceToNow(new Date(viewedAt), { addSuffix: true, locale: ja })} viewed`}
+              aria-label={`閲覧: ${formatDistanceToNow(new Date(viewedAt), { addSuffix: true, locale: ja })}`}
             >
               <Clock className="h-3 w-3" aria-hidden="true" />
               <time dateTime={viewedAt}>
