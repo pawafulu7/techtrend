@@ -114,13 +114,14 @@ export function HistoryArticleCard({
       onClick={handleCardClick}
       className={cn(
         'group relative flex h-full flex-col gap-3 p-4 cursor-pointer',
-        'transition-[transform,box-shadow] duration-200 hover:scale-[1.005]',
+        'shadow-md hover:shadow-lg',
+        'transition-[transform,box-shadow] duration-200 hover:scale-[1.01]',
         sourceColor?.borderLeft
       )}
     >
-      {/* Header: Source Badge + Viewed At Badge */}
+      {/* Header: Source Badge + Viewed At Badge + Published At */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 space-y-2">
+        <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {/* Source Badge */}
             {article.source && sourceColor && (
@@ -156,16 +157,18 @@ export function HistoryArticleCard({
                 })}
               </time>
             </BadgeV2>
-          </div>
 
-          {/* Published At */}
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3" aria-hidden="true" />
-            <span>{formatDateWithTime(article.publishedAt)}</span>
+            {/* Published At - inline with badges */}
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Calendar className="h-3 w-3" aria-hidden="true" />
+              <time dateTime={article.publishedAt}>
+                {formatDateWithTime(article.publishedAt)}
+              </time>
+            </span>
           </div>
         </div>
 
-        <div className="min-w-[44px] min-h-[44px] flex items-center justify-center">
+        <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0">
           <ShareButton
             title={article.translatedTitle || article.title}
             url={article.url}

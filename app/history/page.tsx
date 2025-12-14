@@ -273,14 +273,15 @@ export default function HistoryPage() {
             >
               <h2
                 id={getDateGroupHeadingId(group.key)}
-                className={cn(
-                  'font-heading text-lg font-semibold mb-4 text-foreground',
-                  'flex items-center gap-2 border-b pb-2'
-                )}
+                className="flex items-center gap-3 mb-4"
               >
-                {group.label}
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({group.items.length}件)
+                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card border shadow-sm">
+                  <span className="font-heading text-lg font-semibold text-foreground">
+                    {group.label}
+                  </span>
+                  <span className="text-sm font-normal text-muted-foreground">
+                    ({group.items.length}件)
+                  </span>
                 </span>
               </h2>
               {/* Grid layout matching home page */}
