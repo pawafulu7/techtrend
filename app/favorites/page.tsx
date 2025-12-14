@@ -183,7 +183,7 @@ export default function FavoritesPage() {
       </header>
 
       {/* Search and Sort Toolbar */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+      <div className="mb-6 p-3 bg-card border rounded-lg shadow-sm flex flex-col sm:flex-row gap-3">
         {/* Search Input */}
         <div className="relative flex-1">
           <Search
@@ -195,7 +195,7 @@ export default function FavoritesPage() {
             placeholder="タイトルや内容で検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-11"
+            className="pl-10 h-11 bg-background border-2 border-input focus:border-primary"
             aria-label="お気に入り記事を検索"
           />
         </div>
@@ -206,7 +206,7 @@ export default function FavoritesPage() {
           onValueChange={(value) => setSortOption(value as SortOption)}
         >
           <SelectTrigger
-            className="w-full sm:w-52 h-11"
+            className="w-full sm:w-52 h-11 bg-background border-2 border-input"
             aria-label="並び替え"
           >
             <ArrowUpDown className="h-4 w-4 mr-2" aria-hidden="true" />
