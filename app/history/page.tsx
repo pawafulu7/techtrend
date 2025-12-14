@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -63,22 +63,12 @@ function HistorySkeletonGrid() {
 export default function HistoryPage() {
   const { data: _session, status } = useSession();
   const router = useRouter();
-  const [views, setViews] = useState<(HistoryArticle & { viewedAt: string })[]>([]);
+  const [views, setViews] = useState<HistoryViewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const emptyStateRef = useRef<HTMLDivElement>(null);
 
-  // Convert flat views to grouped format for the hook (memoized)
-  const historyItems: HistoryViewItem[] = useMemo(
-    () =>
-      views.map((view) => ({
-        viewedAt: view.viewedAt,
-        article: view,
-      })),
-    [views]
-  );
-
-  const groupedHistory = useGroupedHistory(historyItems);
+  const groupedHistory = useGroupedHistory(views);
 
   const fetchHistory = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -92,7 +82,7 @@ export default function HistoryPage() {
       }
       // sourceリレーションを含める（表示に必要）
       params.set('includeRelations', 'true');
-      // 90日以内の全履歴を取得（APIの上限は100件）
+      // 90日以内の履歴を最大100件取得
       params.set('limit', '100');
 
       const response = await fetch(`/api/article-views?${params.toString()}`, {
@@ -104,7 +94,14 @@ export default function HistoryPage() {
       }
 
       const data = await response.json();
-      setViews(data.views);
+      // APIレスポンスをHistoryViewItem形式に変換
+      const historyItems: HistoryViewItem[] = data.views.map(
+        (view: HistoryArticle & { viewedAt: string }) => ({
+          viewedAt: view.viewedAt,
+          article: view,
+        })
+      );
+      setViews(historyItems);
     } catch (err) {
       // AbortErrorは無視（コンポーネントアンマウント時）
       if (err instanceof Error && err.name === 'AbortError') {
