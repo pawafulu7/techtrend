@@ -106,6 +106,7 @@ export async function GET(request: NextRequest) {
     const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
     const includeUserData = searchParams.get('includeUserData') === 'true';
     const totalParam = searchParams.get('total'); // Quick Win 2: Skip COUNT on page >1
+    const bypassFavoriteL1 = Boolean(request.cookies.get('tt_fav_bust')?.value);
 
     // Generate cache key
     const normalizedSearch = search ? 
@@ -169,13 +170,16 @@ export async function GET(request: NextRequest) {
 
       // Merge user data into cached result if requested
       if (includeUserData && userId && result.items && result.items.length > 0) {
-        const articleIds = result.items.map(a => a.id);
-        const loaders = createLoaders({ userId });
+        const articleIds = result.items.map((a) => a.id);
+        const loaders = createLoaders(
+          { userId },
+          { favorite: { bypassL1: bypassFavoriteL1 } }
+        );
 
         if (loaders.favorite && loaders.view) {
           const [favoriteStatuses, viewStatuses] = await Promise.all([
             loaders.favorite.loadMany(articleIds),
-            loaders.view.loadMany(articleIds)
+            loaders.view.loadMany(articleIds),
           ]);
 
           const favoritesMap = new Map<string, boolean>();
@@ -196,11 +200,11 @@ export async function GET(request: NextRequest) {
           // Create new items array with user data
           result = {
             ...result,
-            items: result.items.map(article => ({
+            items: result.items.map((article) => ({
               ...article,
               isFavorited: favoritesMap.get(article.id) || false,
-              isRead: readStatusMap.get(article.id) || false
-            }))
+              isRead: readStatusMap.get(article.id) || false,
+            })),
           };
         }
       }
@@ -592,7 +596,10 @@ export async function GET(request: NextRequest) {
         logger.info(`DataLoader integration: userId=${userId}, articles=${articleIds.length}`);
 
         // Create DataLoader instances for this request
-        const loaders = createLoaders({ userId });
+        const loaders = createLoaders(
+          { userId },
+          { favorite: { bypassL1: bypassFavoriteL1 } }
+        );
 
         if (loaders.favorite && loaders.view) {
           // Fetch favorites and read status using DataLoader (batched)

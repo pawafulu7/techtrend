@@ -2,6 +2,7 @@ import { getRedisClient } from '@/lib/redis/client';
 import { CacheStats, CacheKeyOptions } from './types';
 import type { Redis } from 'ioredis';
 import { CACHE_NAMESPACE_PREFIX } from './constants';
+import logger, { hashSensitiveValue } from '@/lib/logger';
 
 export class RedisCache {
   protected redis: ReturnType<typeof getRedisClient>;
@@ -60,8 +61,8 @@ export class RedisCache {
    * Get a value from cache
    */
   async get<T>(key: string): Promise<T | null> {
+    const fullKey = this.generateKey(key);
     try {
-      const fullKey = this.generateKey(key);
       const value = await this.redis.get(fullKey);
       
       if (value === null) {
@@ -71,8 +72,12 @@ export class RedisCache {
       
       this.stats.hits++;
       return JSON.parse(value) as T;
-    } catch (_error) {
+    } catch (error) {
       this.stats.errors++;
+      logger.warn(
+        { error, op: 'get', cacheKey: hashSensitiveValue(fullKey), namespace: this.namespace },
+        'RedisCache get failed'
+      );
       return null;
     }
   }
@@ -81,18 +86,27 @@ export class RedisCache {
    * Set a value in cache
    */
   async set(key: string, value: unknown, ttl?: number): Promise<void> {
+    const fullKey = this.generateKey(key);
+    const finalTTL = ttl || this.defaultTTL;
     try {
-      const fullKey = this.generateKey(key);
-      const finalTTL = ttl || this.defaultTTL;
-      
       // Use setex method for setting with expiration
       await this.redis.setex(
         fullKey,
         finalTTL,
         JSON.stringify(value)
       );
-    } catch (_error) {
+    } catch (error) {
       this.stats.errors++;
+      logger.warn(
+        {
+          error,
+          op: 'set',
+          cacheKey: hashSensitiveValue(fullKey),
+          namespace: this.namespace,
+          ttl: finalTTL,
+        },
+        'RedisCache set failed'
+      );
     }
   }
 
@@ -101,14 +115,18 @@ export class RedisCache {
    * @returns true if the key was deleted, false otherwise
    */
   async delete(key: string): Promise<boolean> {
+    const fullKey = this.generateKey(key);
     try {
-      const fullKey = this.generateKey(key);
       const deletedCount = await this.redis.del(fullKey);
       return deletedCount > 0;
-    } catch (_error) {
+    } catch (error) {
       this.stats.errors++;
+      logger.warn(
+        { error, op: 'delete', cacheKey: hashSensitiveValue(fullKey), namespace: this.namespace },
+        'RedisCache delete failed'
+      );
       // Re-throw to let upstream code handle the error if needed
-      throw _error;
+      throw error;
     }
   }
 
@@ -124,8 +142,8 @@ export class RedisCache {
    * Invalidate cache keys matching a pattern using SCAN (non-blocking)
    */
   async invalidatePattern(pattern: string): Promise<void> {
+    const fullPattern = this.generateKey(pattern);
     try {
-      const fullPattern = this.generateKey(pattern);
       const keys: string[] = [];
       
       // Use SCAN instead of KEYS to avoid blocking
@@ -160,8 +178,12 @@ export class RedisCache {
         
         await pipeline.exec();
       }
-    } catch (_error) {
+    } catch (error) {
       this.stats.errors++;
+      logger.warn(
+        { error, op: 'invalidatePattern', pattern: hashSensitiveValue(fullPattern), namespace: this.namespace },
+        'RedisCache invalidatePattern failed'
+      );
     }
   }
 

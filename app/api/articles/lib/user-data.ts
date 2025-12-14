@@ -16,7 +16,8 @@ import type { UserSpecificArticleData, ArticleUserOverlay } from './types';
 export async function fetchUserSpecificData(
   userId: string,
   articleIds: string[],
-  metrics: MetricsCollector
+  metrics: MetricsCollector,
+  options?: { bypassFavoriteL1?: boolean }
 ): Promise<UserSpecificArticleData> {
   if (!userId || articleIds.length === 0) {
     return {
@@ -26,7 +27,10 @@ export async function fetchUserSpecificData(
   }
 
   // Create DataLoader instances for this request
-  const loaders = createLoaders({ userId });
+  const loaders = createLoaders(
+    { userId },
+    { favorite: { bypassL1: options?.bypassFavoriteL1 === true } }
+  );
 
   if (!loaders.favorite || !loaders.view) {
     return {

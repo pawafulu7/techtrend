@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { IRedisClient, IRedisConfig } from './interfaces';
+import logger from '@/lib/logger';
 
 /**
  * IoRedis wrapper implementing IRedisClient interface
@@ -43,13 +44,44 @@ export class IoRedisClient implements IRedisClient {
     }
 
     // Set up event handlers
-    this.client.on('error', (_err) => {
+    this.client.on('error', (err) => {
+      logger.warn(
+        {
+          error: err,
+          redis: {
+            hasUrl: Boolean(url),
+            useTLS: Boolean(url?.startsWith('rediss://')),
+            db: commonOptions.db,
+          },
+        },
+        'Redis client error'
+      );
     });
 
     this.client.on('connect', () => {
+      logger.info(
+        {
+          redis: {
+            hasUrl: Boolean(url),
+            useTLS: Boolean(url?.startsWith('rediss://')),
+            db: commonOptions.db,
+          },
+        },
+        'Redis client connected'
+      );
     });
 
     this.client.on('ready', () => {
+      logger.info(
+        {
+          redis: {
+            hasUrl: Boolean(url),
+            useTLS: Boolean(url?.startsWith('rediss://')),
+            db: commonOptions.db,
+          },
+        },
+        'Redis client ready'
+      );
     });
     // Note: With lazyConnect: false, ioredis connects automatically on instantiation
   }

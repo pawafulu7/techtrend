@@ -15,7 +15,7 @@ interface FavoriteButtonProps {
   showText?: boolean;
   compact?: boolean;
   isFavorited?: boolean;
-  onToggleFavorite?: () => void;
+  onToggleFavorite?: () => void | Promise<void>;
   /** If true, fetch initial favorite status from API on mount (for ISR pages) */
   fetchInitialStatus?: boolean;
 }
@@ -35,14 +35,18 @@ export function FavoriteButton({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isToggling, setIsToggling] = useState(false);
-  const [isFavorited, setIsFavorited] = useState(initialFavorited);
+  const isControlled = typeof onToggleFavorite === 'function';
+  const [uncontrolledFavorited, setUncontrolledFavorited] = useState(initialFavorited);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isLoadingInitial, setIsLoadingInitial] = useState(fetchInitialStatus);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(fetchInitialStatus && !isControlled);
+
+  const isFavorited = isControlled ? initialFavorited : uncontrolledFavorited;
 
   // Fetch initial status from API if fetchInitialStatus is true (for ISR pages)
   useEffect(() => {
     if (!fetchInitialStatus) return;
     if (sessionStatus === 'loading') return;
+    if (isControlled) return;
 
     // If not authenticated, no need to fetch
     if (!session?.user?.id) {
@@ -58,7 +62,7 @@ export function FavoriteButton({
         });
         if (response.ok) {
           const data = await response.json();
-          setIsFavorited(data.isFavorited);
+          setUncontrolledFavorited(data.isFavorited);
         }
       } catch (error) {
         console.error('Failed to fetch favorite status:', error);
@@ -70,16 +74,18 @@ export function FavoriteButton({
     fetchStatus();
   }, [articleId, fetchInitialStatus, session?.user?.id, sessionStatus]);
 
-  // Update state when prop changes (for non-ISR pages)
+  // Sync initial value in uncontrolled mode (for non-ISR pages)
   useEffect(() => {
-    if (!fetchInitialStatus) {
-      setIsFavorited(initialFavorited);
-    }
-  }, [initialFavorited, fetchInitialStatus]);
+    if (isControlled) return;
+    if (fetchInitialStatus) return;
+    setUncontrolledFavorited(initialFavorited);
+  }, [initialFavorited, fetchInitialStatus, isControlled]);
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (sessionStatus === 'loading') return;
 
     if (!session) {
       // 未ログインの場合はログインページへ（現在のページをcallbackUrlとして設定）
@@ -88,19 +94,20 @@ export function FavoriteButton({
       return;
     }
 
-    if (onToggleFavorite) {
-      setIsAnimating(true);
-      // 楽観的更新
-      setIsFavorited(!isFavorited);
-      onToggleFavorite();
-      setTimeout(() => setIsAnimating(false), 300);
-    } else {
+    setIsToggling(true);
+    setIsAnimating(true);
+
+    try {
+      if (onToggleFavorite) {
+        // Controlled mode: optimistic update is handled by parent
+        await Promise.resolve(onToggleFavorite());
+        return;
+      }
+
       // スタンドアロン使用の場合は直接APIを呼び出す
-      setIsToggling(true);
-      setIsAnimating(true);
       // 楽観的更新
       const newState = !isFavorited;
-      setIsFavorited(newState);
+      setUncontrolledFavorited(newState);
 
       try {
         const response = await fetch(`/api/favorites/${articleId}`, {
@@ -108,15 +115,15 @@ export function FavoriteButton({
         });
         if (!response.ok) {
           // エラー時は元に戻す
-          setIsFavorited(!newState);
+          setUncontrolledFavorited(!newState);
           throw new Error('Failed to toggle favorite');
         }
       } catch (error) {
         console.error('Failed to toggle favorite:', error);
-      } finally {
-        setIsToggling(false);
-        setTimeout(() => setIsAnimating(false), 300);
       }
+    } finally {
+      setIsToggling(false);
+      setTimeout(() => setIsAnimating(false), 300);
     }
   };
 
@@ -124,7 +131,7 @@ export function FavoriteButton({
     return (
       <button
         onClick={handleClick}
-        disabled={isToggling || isLoadingInitial}
+        disabled={isToggling || isLoadingInitial || sessionStatus === 'loading'}
         className={cn(
           "p-1.5 rounded-full transition-all",
           "hover:bg-red-50 dark:hover:bg-red-950",
@@ -148,12 +155,12 @@ export function FavoriteButton({
   }
 
   return (
-    <Button
-      variant={isFavorited ? "destructive" : "outline"}
-      size={size}
-      onClick={handleClick}
-      disabled={isToggling || isLoadingInitial}
-      className={cn(
+      <Button
+        variant={isFavorited ? "destructive" : "outline"}
+        size={size}
+        onClick={handleClick}
+        disabled={isToggling || isLoadingInitial || sessionStatus === 'loading'}
+        className={cn(
         "transition-all",
         isAnimating && "scale-110",
         isFavorited ? "bg-red-500 hover:bg-red-600 text-white" : "hover:text-red-500",

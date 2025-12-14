@@ -55,6 +55,7 @@ function initializeCaches() {
  */
 export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
   const useCache = options?.cache !== false;
+  const bypassL1 = options?.bypassL1 === true;
 
   if (useCache) {
     initializeCaches();
@@ -72,6 +73,9 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
       const queueStartTime = Date.now(); // キュー待ち時間計測用
       stats.totalRequests += articleIds.length;
 
+      let l1HitsThisBatch = 0;
+      let l2HitsThisBatch = 0;
+
       const results: FavoriteStatus[] = [];
       const l2CheckList: string[] = [];
       const dbCheckList: string[] = [];
@@ -80,11 +84,12 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
       for (const articleId of articleIds) {
         const cacheKey = `favorite:${userId}:${articleId}`;
 
-        if (memoryCache) {
+        if (memoryCache && !bypassL1) {
           const cached = memoryCache.get(cacheKey);
           // null/undefined の双方をミス扱い
           if (cached != null) {
             stats.l1Hits++;
+            l1HitsThisBatch++;
             results.push(cached as FavoriteStatus);
             continue;
           }
@@ -108,6 +113,7 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
               const cached = await redisCache.get<FavoriteStatus>(cacheKey);
               if (cached) {
                 stats.l2Hits++;
+                l2HitsThisBatch++;
                 // L1に昇格
                 memoryCache?.set(cacheKey, cached, 30);
                 return cached;
@@ -161,17 +167,12 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
             favoritedAt: favorite?.createdAt
           };
 
-          // L1とL2にキャッシュ保存
+          // L1メモリキャッシュのみに保存
+          // L2 Redisへの書き込みは updateFavoriteCache() のみで行う
+          // （競合状態を防ぐため、DBフォールバック時はL2に書き込まない）
           const cacheKey = `favorite:${userId}:${articleId}`;
           if (memoryCache) {
             memoryCache.set(cacheKey, status, 30);
-          }
-
-          // L2への保存は非同期で実行
-          if (redisCache) {
-            redisCache.set(cacheKey, status, 60).catch(error => {
-              logger.debug(`favorite-loader.l2-save-error: ${error}`);
-            });
           }
 
           return status;
@@ -202,7 +203,17 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
         cacheMisses: dbCheckList.length,
       });
 
-      logger.info(`favorite-loader.batch: total=${articleIds.length}, L1=${stats.l1Hits}, L2=${stats.l2Hits}, DB=${dbCheckList.length}, ${duration}ms`);
+      logger.info(
+        {
+          total: articleIds.length,
+          bypassL1,
+          l1Hits: l1HitsThisBatch,
+          l2Hits: l2HitsThisBatch,
+          db: dbCheckList.length,
+          durationMs: duration,
+        },
+        'favorite-loader.batch'
+      );
 
       return results;
     },
@@ -215,9 +226,46 @@ export function createFavoriteLoader(userId: string, options?: LoaderOptions) {
 }
 
 /**
- * お気に入りキャッシュの無効化
+ * お気に入りキャッシュの更新
+ * キャッシュを削除ではなく新しい値で更新することで、
+ * 次回アクセス時に即座に正しい状態を返す
+ */
+export async function updateFavoriteCache(
+  userId: string,
+  articleId: string,
+  isFavorited: boolean,
+  favoritedAt?: Date
+) {
+  initializeCaches();
+
+  const cacheKey = `favorite:${userId}:${articleId}`;
+  const status: FavoriteStatus = {
+    articleId,
+    isFavorited,
+    favoritedAt,
+  };
+
+  // L1メモリキャッシュを更新
+  if (globalMemoryCache) {
+    globalMemoryCache.set(cacheKey, status, 30);
+  }
+
+  // L2 Redisキャッシュを更新
+  if (globalRedisCache) {
+    await globalRedisCache.set(cacheKey, status, 60);
+  }
+
+  logger.debug(`favorite-loader.updated: ${cacheKey} -> ${isFavorited}`);
+}
+
+/**
+ * お気に入りキャッシュの無効化（後方互換性のため残す）
  */
 export async function invalidateFavoriteCache(userId: string, articleId: string) {
+  // Ensure caches exist so invalidation works even if this process
+  // hasn't created a loader yet (e.g. serverless route instances).
+  initializeCaches();
+
   const cacheKey = `favorite:${userId}:${articleId}`;
 
   if (globalMemoryCache) {

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { favoriteCache } from '@/lib/cache/favorites-cache';
+import { updateFavoriteCache } from '@/lib/dataloader/favorite-loader';
+import logger from '@/lib/logger';
 
 // GET: 特定の記事がお気に入りに追加されているか確認
 export async function GET(
@@ -33,7 +35,8 @@ export async function GET(
       isFavorited: !!favorite,
       favoriteId: favorite?.id || null,
     });
-  } catch {
+  } catch (error) {
+    logger.error({ error }, 'Favorite GET failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -105,15 +108,26 @@ export async function POST(
       },
     });
 
-    // キャッシュを更新
+    // キャッシュを更新（DataLoaderキャッシュも含む）
     await favoriteCache.updateSingle(session.user.id, articleId, true);
+    await updateFavoriteCache(session.user.id, articleId, true, favorite.createdAt);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'Article favorited successfully',
       isFavorited: true,
       favoriteId: favorite.id,
     });
-  } catch {
+    response.cookies.set({
+      name: 'tt_fav_bust',
+      value: String(Date.now()),
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 35,
+    });
+    return response;
+  } catch (error) {
+    logger.error({ error }, 'Favorite POST failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -159,14 +173,25 @@ export async function DELETE(
       },
     });
 
-    // キャッシュを更新
+    // キャッシュを更新（DataLoaderキャッシュも含む）
     await favoriteCache.updateSingle(session.user.id, articleId, false);
+    await updateFavoriteCache(session.user.id, articleId, false, undefined);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'Article removed from favorites',
       isFavorited: false,
     });
-  } catch {
+    response.cookies.set({
+      name: 'tt_fav_bust',
+      value: String(Date.now()),
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 35,
+    });
+    return response;
+  } catch (error) {
+    logger.error({ error }, 'Favorite DELETE failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

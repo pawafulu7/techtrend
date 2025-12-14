@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { favoriteCache } from '@/lib/cache/favorites-cache';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { updateFavoriteCache } from '@/lib/dataloader/favorite-loader';
+import logger from '@/lib/logger';
 
 // GET: ユーザーのお気に入り記事一覧を取得
 export async function GET(request: Request) {
@@ -99,7 +101,8 @@ export async function GET(request: Request) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch {
+  } catch (error) {
+    logger.error({ error }, 'Favorites GET failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -177,10 +180,11 @@ async function postHandler(request: NextRequest) {
       },
     });
 
-    // キャッシュを更新
+    // キャッシュを更新（DataLoaderキャッシュも含む）
     await favoriteCache.updateSingle(session.user.id, articleId, true);
+    await updateFavoriteCache(session.user.id, articleId, true, favorite.createdAt);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'Article favorited successfully',
       favorite: {
         ...favorite.article,
@@ -188,7 +192,17 @@ async function postHandler(request: NextRequest) {
         favoritedAt: favorite.createdAt,
       },
     });
-  } catch {
+    response.cookies.set({
+      name: 'tt_fav_bust',
+      value: String(Date.now()),
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 35,
+    });
+    return response;
+  } catch (error) {
+    logger.error({ error }, 'Favorites POST failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -241,13 +255,24 @@ async function deleteHandler(request: NextRequest) {
       },
     });
 
-    // キャッシュを更新
+    // キャッシュを更新（DataLoaderキャッシュも含む）
     await favoriteCache.updateSingle(session.user.id, articleId, false);
+    await updateFavoriteCache(session.user.id, articleId, false, undefined);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'Article removed from favorites',
     });
-  } catch {
+    response.cookies.set({
+      name: 'tt_fav_bust',
+      value: String(Date.now()),
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 35,
+    });
+    return response;
+  } catch (error) {
+    logger.error({ error }, 'Favorites DELETE failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
