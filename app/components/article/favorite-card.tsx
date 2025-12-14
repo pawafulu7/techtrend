@@ -57,8 +57,8 @@ export function FavoriteArticleCard({
     router.push(articleUrl);
   };
 
-  const handleFavoriteChange = (isFavorite: boolean) => {
-    if (!isFavorite && onRemoveFavorite) {
+  const handleToggleFavorite = () => {
+    if (onRemoveFavorite) {
       onRemoveFavorite(article.id);
     }
   };
@@ -195,8 +195,8 @@ export function FavoriteArticleCard({
         <FavoriteButton
           articleId={article.id}
           className="h-11 px-4 min-w-[44px] min-h-[44px]"
-          initialIsFavorite={true}
-          onFavoriteChange={handleFavoriteChange}
+          isFavorited={true}
+          onToggleFavorite={handleToggleFavorite}
         />
         <div className="flex items-center gap-3">
           {readingTime && contentLength > 0 && (
