@@ -70,35 +70,52 @@ export default function FavoritesPage() {
       );
     }
 
-    // Sort
+    // Sort with stable tiebreaker
     result.sort((a, b) => {
+      let comparison = 0;
       switch (sortOption) {
         case 'favoritedAt-desc':
-          return new Date(b.favoritedAt).getTime() - new Date(a.favoritedAt).getTime();
+          comparison = new Date(b.favoritedAt).getTime() - new Date(a.favoritedAt).getTime();
+          break;
         case 'favoritedAt-asc':
-          return new Date(a.favoritedAt).getTime() - new Date(b.favoritedAt).getTime();
+          comparison = new Date(a.favoritedAt).getTime() - new Date(b.favoritedAt).getTime();
+          break;
         case 'publishedAt-desc':
-          return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+          comparison = new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+          break;
         default:
-          return 0;
+          break;
       }
+      // Stable tiebreaker: use ID when dates are equal
+      if (comparison === 0) {
+        return a.id.localeCompare(b.id);
+      }
+      return comparison;
     });
 
     return result;
   }, [allFavorites, searchQuery, sortOption]);
 
-  // Update URL when filters change
+  // Update URL when filters change (only if URL actually differs)
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
     if (sortOption !== 'favoritedAt-desc') params.set('sort', sortOption);
 
-    const newUrl = params.toString() ? `?${params.toString()}` : '/favorites';
-    router.replace(newUrl, { scroll: false });
-  }, [searchQuery, sortOption, router]);
+    const newParamsString = params.toString();
+    const currentParamsString = searchParams.toString();
 
-  // Redirect to login if not authenticated
+    // Only update URL if it actually changed
+    if (newParamsString !== currentParamsString) {
+      const newUrl = newParamsString ? `?${newParamsString}` : '/favorites';
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [searchQuery, sortOption, router, searchParams]);
+
+  // Redirect to login if not authenticated (only after auth state is determined)
   useEffect(() => {
+    // Don't redirect during loading - wait for auth state to be determined
+    if (status === 'loading') return;
     if (status === 'unauthenticated') {
       router.push('/auth/login?callbackUrl=/favorites');
     }

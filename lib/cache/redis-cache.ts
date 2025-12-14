@@ -87,7 +87,12 @@ export class RedisCache {
    */
   async set(key: string, value: unknown, ttl?: number): Promise<void> {
     const fullKey = this.generateKey(key);
-    const finalTTL = ttl || this.defaultTTL;
+    // Use nullish coalescing to preserve ttl=0 as a valid value
+    const finalTTL = ttl ?? this.defaultTTL;
+    // Skip caching if TTL is 0 or negative
+    if (finalTTL <= 0) {
+      return;
+    }
     try {
       // Use setex method for setting with expiration
       await this.redis.setex(

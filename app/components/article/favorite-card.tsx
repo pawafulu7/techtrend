@@ -37,10 +37,20 @@ export function FavoriteArticleCard({
     contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
 
   // Pre-compute favoritedAt formatting to avoid duplicate Date object creation
-  const favoritedTimeAgo = formatDistanceToNow(new Date(article.favoritedAt), {
-    addSuffix: true,
-    locale: ja,
-  });
+  // Use try-catch to handle invalid date values gracefully
+  let favoritedTimeAgo: string;
+  try {
+    const date = new Date(article.favoritedAt);
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid date');
+    }
+    favoritedTimeAgo = formatDistanceToNow(date, {
+      addSuffix: true,
+      locale: ja,
+    });
+  } catch {
+    favoritedTimeAgo = '不明';
+  }
 
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Ignore clicks on interactive elements

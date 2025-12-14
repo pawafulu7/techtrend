@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { favoriteCache } from '@/lib/cache/favorites-cache';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { updateFavoriteCache } from '@/lib/dataloader/favorite-loader';
 import logger from '@/lib/logger';
 
@@ -45,8 +46,8 @@ export async function GET(
 }
 
 // POST: 記事をお気に入りに追加
-export async function POST(
-  request: Request,
+async function postHandler(
+  request: NextRequest,
   { params }: { params: Promise<{ articleId: string }> }
 ) {
   try {
@@ -108,9 +109,13 @@ export async function POST(
       },
     });
 
-    // キャッシュを更新（DataLoaderキャッシュも含む）
-    await favoriteCache.updateSingle(session.user.id, articleId, true);
-    await updateFavoriteCache(session.user.id, articleId, true, favorite.createdAt);
+    // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
+    try {
+      await favoriteCache.updateSingle(session.user.id, articleId, true);
+      await updateFavoriteCache(session.user.id, articleId, true, favorite.createdAt);
+    } catch (cacheError) {
+      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Favorite POST cache update failed (best-effort)');
+    }
 
     const response = NextResponse.json({
       message: 'Article favorited successfully',
@@ -136,8 +141,8 @@ export async function POST(
 }
 
 // DELETE: お気に入りから削除
-export async function DELETE(
-  request: Request,
+async function deleteHandler(
+  request: NextRequest,
   { params }: { params: Promise<{ articleId: string }> }
 ) {
   try {
@@ -173,9 +178,13 @@ export async function DELETE(
       },
     });
 
-    // キャッシュを更新（DataLoaderキャッシュも含む）
-    await favoriteCache.updateSingle(session.user.id, articleId, false);
-    await updateFavoriteCache(session.user.id, articleId, false, undefined);
+    // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
+    try {
+      await favoriteCache.updateSingle(session.user.id, articleId, false);
+      await updateFavoriteCache(session.user.id, articleId, false, undefined);
+    } catch (cacheError) {
+      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Favorite DELETE cache update failed (best-effort)');
+    }
 
     const response = NextResponse.json({
       message: 'Article removed from favorites',
@@ -198,3 +207,6 @@ export async function DELETE(
     );
   }
 }
+
+export const POST = withCSRFProtection(postHandler);
+export const DELETE = withCSRFProtection(deleteHandler);

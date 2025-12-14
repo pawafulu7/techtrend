@@ -35,14 +35,6 @@ export interface FavoriteArticle {
 }
 
 /**
- * お気に入りアイテムの型（日付グルーピング用）
- */
-export interface FavoriteItem {
-  favoritedAt: string;
-  article: FavoriteArticle;
-}
-
-/**
  * ページネーション情報
  */
 export interface FavoritesPagination {

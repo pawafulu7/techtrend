@@ -98,6 +98,7 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
               pagination: {
                 ...page.pagination,
                 total: page.pagination.total - 1,
+                totalPages: Math.ceil((page.pagination.total - 1) / page.pagination.limit),
               },
             })),
           };

@@ -17,7 +17,7 @@ export function ArticleListItem({
   isRead: initialIsRead = true,
   isFavorited = false,
   onToggleFavorite,
-}: ArticleListItemProps & { isRead?: boolean; isFavorited?: boolean; onToggleFavorite?: () => void }) {
+}: ArticleListItemProps) {
   const [isRead, setIsRead] = useState(initialIsRead);
   const router = useRouter();
 

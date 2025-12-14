@@ -12,7 +12,7 @@ export function createLoaders(
   options?: { favorite?: LoaderOptions; view?: LoaderOptions; article?: LoaderOptions }
 ) {
   return {
-    article: createArticleLoader(),
+    article: createArticleLoader(options?.article),
     favorite: context?.userId ? createFavoriteLoader(context.userId, options?.favorite) : null,
     view: context?.userId ? createArticleViewLoader(context.userId, options?.view) : null,
   };

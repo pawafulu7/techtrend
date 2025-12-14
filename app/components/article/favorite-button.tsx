@@ -72,7 +72,7 @@ export function FavoriteButton({
     };
 
     fetchStatus();
-  }, [articleId, fetchInitialStatus, session?.user?.id, sessionStatus]);
+  }, [articleId, fetchInitialStatus, session?.user?.id, sessionStatus, isControlled]);
 
   // Sync initial value in uncontrolled mode (for non-ISR pages)
   useEffect(() => {

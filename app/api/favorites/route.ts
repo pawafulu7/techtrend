@@ -180,9 +180,13 @@ async function postHandler(request: NextRequest) {
       },
     });
 
-    // キャッシュを更新（DataLoaderキャッシュも含む）
-    await favoriteCache.updateSingle(session.user.id, articleId, true);
-    await updateFavoriteCache(session.user.id, articleId, true, favorite.createdAt);
+    // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
+    try {
+      await favoriteCache.updateSingle(session.user.id, articleId, true);
+      await updateFavoriteCache(session.user.id, articleId, true, favorite.createdAt);
+    } catch (cacheError) {
+      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Favorites POST cache update failed (best-effort)');
+    }
 
     const response = NextResponse.json({
       message: 'Article favorited successfully',
@@ -255,9 +259,13 @@ async function deleteHandler(request: NextRequest) {
       },
     });
 
-    // キャッシュを更新（DataLoaderキャッシュも含む）
-    await favoriteCache.updateSingle(session.user.id, articleId, false);
-    await updateFavoriteCache(session.user.id, articleId, false, undefined);
+    // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
+    try {
+      await favoriteCache.updateSingle(session.user.id, articleId, false);
+      await updateFavoriteCache(session.user.id, articleId, false, undefined);
+    } catch (cacheError) {
+      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Favorites DELETE cache update failed (best-effort)');
+    }
 
     const response = NextResponse.json({
       message: 'Article removed from favorites',
