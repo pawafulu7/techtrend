@@ -56,24 +56,32 @@ export function FavoriteButton({
       return;
     }
 
+    let cancelled = false;
+
     const fetchStatus = async () => {
       try {
         const response = await fetch(`/api/favorites/${articleId}`, {
           credentials: 'include',
           cache: 'no-store'
         });
-        if (response.ok) {
+        if (response.ok && !cancelled) {
           const data = await response.json();
           setUncontrolledFavorited(data.isFavorited);
         }
       } catch (error) {
         console.error('Failed to fetch favorite status:', error);
       } finally {
-        setIsLoadingInitial(false);
+        if (!cancelled) {
+          setIsLoadingInitial(false);
+        }
       }
     };
 
     fetchStatus();
+
+    return () => {
+      cancelled = true;
+    };
   }, [articleId, fetchInitialStatus, session?.user?.id, sessionStatus, isControlled]);
 
   // Sync initial value in uncontrolled mode (for non-ISR pages)
@@ -140,7 +148,7 @@ export function FavoriteButton({
         onClick={handleClick}
         disabled={isToggling || isLoadingInitial || sessionStatus === 'loading'}
         className={cn(
-          "p-1.5 rounded-full transition-all",
+          "p-1.5 rounded-full transition-all duration-300",
           "hover:bg-red-50 dark:hover:bg-red-950",
           isAnimating && "scale-110",
           isFavorited ? "text-red-500 hover:text-red-600" : "text-gray-500 hover:text-red-500",
@@ -168,7 +176,7 @@ export function FavoriteButton({
         onClick={handleClick}
         disabled={isToggling || isLoadingInitial || sessionStatus === 'loading'}
         className={cn(
-        "transition-all",
+        "transition-all duration-300",
         isAnimating && "scale-110",
         isFavorited ? "bg-red-500 hover:bg-red-600 text-white" : "hover:text-red-500",
         isLoadingInitial && "opacity-50",

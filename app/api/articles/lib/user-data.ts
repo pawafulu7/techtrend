@@ -47,9 +47,10 @@ export async function fetchUserSpecificData(
   }
 
   // Use DataLoader to batch fetch user-specific data
+  // Note: Using 'db_query' for timer name to ensure proper aggregation in MetricsCollector.dbQueryTime
   const [favoriteStatuses, viewStatuses] = await Promise.all([
-    withDbTiming(metrics, () => loaders.favorite!.loadMany(articleIds), 'db_query_favorite'),
-    withDbTiming(metrics, () => loaders.view!.loadMany(articleIds), 'db_query_view'),
+    withDbTiming(metrics, () => loaders.favorite!.loadMany(articleIds), 'db_query'),
+    withDbTiming(metrics, () => loaders.view!.loadMany(articleIds), 'db_query'),
   ]);
 
   const favoritedArticleIds = new Set<string>();
