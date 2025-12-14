@@ -1,28 +1,48 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Heart, AlertCircle } from 'lucide-react';
+import { Heart, AlertCircle, Search, ArrowUpDown } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   FavoriteArticleCard,
   FavoriteSkeletonGrid,
 } from '@/app/components/article/favorite-card';
 import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
-import {
-  useGroupedFavorites,
-  getFavoriteGroupHeadingId,
-} from '@/app/hooks/use-grouped-favorites';
+
+type SortOption = 'favoritedAt-desc' | 'favoritedAt-asc' | 'publishedAt-desc';
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'favoritedAt-desc', label: '保存日（新しい順）' },
+  { value: 'favoritedAt-asc', label: '保存日（古い順）' },
+  { value: 'publishedAt-desc', label: '公開日（新しい順）' },
+];
 
 export default function FavoritesPage() {
   const { data: _session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const emptyStateRef = useRef<HTMLDivElement>(null);
+
+  // URL params for state persistence
+  const initialQuery = searchParams.get('q') || '';
+  const initialSort = (searchParams.get('sort') as SortOption) || 'favoritedAt-desc';
+
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [sortOption, setSortOption] = useState<SortOption>(initialSort);
 
   const {
     allFavorites,
@@ -35,8 +55,47 @@ export default function FavoritesPage() {
     removeFavoriteFromCache,
   } = useInfiniteFavorites({ limit: 20, includeRelations: true });
 
-  // Group favorites by date
-  const groupedFavorites = useGroupedFavorites(allFavorites);
+  // Filter and sort favorites
+  const filteredFavorites = useMemo(() => {
+    let result = [...allFavorites];
+
+    // Search filter (title and summary)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (article) =>
+          article.title.toLowerCase().includes(query) ||
+          article.translatedTitle?.toLowerCase().includes(query) ||
+          article.summary?.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortOption) {
+        case 'favoritedAt-desc':
+          return new Date(b.favoritedAt).getTime() - new Date(a.favoritedAt).getTime();
+        case 'favoritedAt-asc':
+          return new Date(a.favoritedAt).getTime() - new Date(b.favoritedAt).getTime();
+        case 'publishedAt-desc':
+          return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [allFavorites, searchQuery, sortOption]);
+
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set('q', searchQuery);
+    if (sortOption !== 'favoritedAt-desc') params.set('sort', sortOption);
+
+    const newUrl = params.toString() ? `?${params.toString()}` : '/favorites';
+    router.replace(newUrl, { scroll: false });
+  }, [searchQuery, sortOption, router]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -86,6 +145,11 @@ export default function FavoritesPage() {
             </div>
           </CardV2>
         </div>
+        {/* Toolbar skeleton */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-3">
+          <div className="h-11 flex-1 bg-muted rounded animate-pulse" />
+          <div className="h-11 w-48 bg-muted rounded animate-pulse" />
+        </div>
         <FavoriteSkeletonGrid />
       </div>
     );
@@ -118,6 +182,46 @@ export default function FavoritesPage() {
         </CardV2>
       </header>
 
+      {/* Search and Sort Toolbar */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        {/* Search Input */}
+        <div className="relative flex-1">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            placeholder="タイトルや内容で検索..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 h-11"
+            aria-label="お気に入り記事を検索"
+          />
+        </div>
+
+        {/* Sort Select */}
+        <Select
+          value={sortOption}
+          onValueChange={(value) => setSortOption(value as SortOption)}
+        >
+          <SelectTrigger
+            className="w-full sm:w-52 h-11"
+            aria-label="並び替え"
+          >
+            <ArrowUpDown className="h-4 w-4 mr-2" aria-hidden="true" />
+            <SelectValue placeholder="並び替え" />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Error state */}
       {error && (
         <Alert variant="destructive" className="mb-6">
@@ -130,7 +234,7 @@ export default function FavoritesPage() {
         </Alert>
       )}
 
-      {/* Empty state */}
+      {/* Empty state (no favorites at all) */}
       {allFavorites.length === 0 && !isLoading ? (
         <CardV2
           ref={emptyStateRef}
@@ -155,40 +259,58 @@ export default function FavoritesPage() {
             </Button>
           </div>
         </CardV2>
-      ) : (
-        /* Grouped favorites grid */
-        <div className="space-y-8">
-          {groupedFavorites.map((group) => (
-            <section
-              key={group.key}
-              aria-labelledby={getFavoriteGroupHeadingId(group.key)}
+      ) : filteredFavorites.length === 0 ? (
+        /* No search results */
+        <CardV2 className="max-w-md mx-auto">
+          <div className="flex flex-col items-center justify-center py-12 px-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+              <Search
+                className="h-8 w-8 text-muted-foreground"
+                aria-hidden="true"
+              />
+            </div>
+            <p className="text-lg font-medium mb-2 text-foreground">
+              検索結果がありません
+            </p>
+            <p className="text-muted-foreground mb-6 text-center text-sm">
+              「{searchQuery}」に一致する記事が見つかりませんでした
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setSearchQuery('')}
+              className="min-w-[44px] min-h-[44px]"
             >
-              <h2
-                id={getFavoriteGroupHeadingId(group.key)}
-                className="flex items-center gap-3 mb-4"
-              >
-                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card border shadow-sm">
-                  <span className="font-heading text-lg font-semibold text-foreground">
-                    {group.label}
-                  </span>
-                  <span className="text-sm font-normal text-muted-foreground">
-                    ({group.items.length}件)
-                  </span>
-                </span>
-              </h2>
-              {/* Grid layout matching home page */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {group.items.map((item) => (
-                  <FavoriteArticleCard
-                    key={item.article.id}
-                    article={item.article}
-                    onTagClick={handleTagClick}
-                    onRemoveFavorite={handleRemoveFavorite}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
+              検索をクリア
+            </Button>
+          </div>
+        </CardV2>
+      ) : (
+        /* Simple grid (no date grouping) */
+        <div className="space-y-6">
+          {/* Results count */}
+          {searchQuery && (
+            <p
+              className="text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              {filteredFavorites.length}件の記事が見つかりました
+            </p>
+          )}
+
+          {/* Grid layout */}
+          <section aria-label="お気に入り記事一覧">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredFavorites.map((article) => (
+                <FavoriteArticleCard
+                  key={article.id}
+                  article={article}
+                  onTagClick={handleTagClick}
+                  onRemoveFavorite={handleRemoveFavorite}
+                />
+              ))}
+            </div>
+          </section>
 
           {/* Load more trigger */}
           <InfiniteScrollTrigger
