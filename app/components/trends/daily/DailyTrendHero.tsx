@@ -128,7 +128,7 @@ function TrendChangesBadges({ trendChanges }: { trendChanges: TrendAiSummaryV2['
       {trendChanges.falling.slice(0, 2).map((t) => (
         <Badge key={`falling:${t.topic}`} className="gap-1 bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20">
           <ArrowDown className="h-3 w-3" />
-          {t.topic} {t.deltaCount}
+          {t.topic} -{t.deltaCount}
         </Badge>
       ))}
     </div>
@@ -407,9 +407,10 @@ export function DailyTrendHero({
                   size="sm"
                   onClick={onPrevDay}
                   className="gap-1"
+                  aria-label="前日のトレンドを表示"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline">前日</span>
+                  <span className="hidden sm:inline" aria-hidden="true">前日</span>
                 </Button>
               )}
             </div>
@@ -438,8 +439,9 @@ export function DailyTrendHero({
                   size="sm"
                   onClick={onNextDay}
                   className="gap-1"
+                  aria-label="翌日のトレンドを表示"
                 >
-                  <span className="hidden sm:inline">翌日</span>
+                  <span className="hidden sm:inline" aria-hidden="true">翌日</span>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               )}
@@ -451,7 +453,7 @@ export function DailyTrendHero({
         <div className="flex flex-wrap items-center gap-3 animate-fade-in mb-6">
           <Badge variant="outline" className="text-sm px-3 py-1.5 gap-2 bg-muted/50 border-border/50">
             <FileText className="h-3.5 w-3.5" />
-            {articleCount.toLocaleString()}
+            {articleCount.toLocaleString()}件
           </Badge>
           {topTags.slice(0, 5).map((tag, index) => (
             <Badge
@@ -531,6 +533,15 @@ export function DailyTrendHero({
         .animate-slide-in-right {
           animation: slideInRight 0.5s ease-out 0.2s forwards;
           opacity: 0;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-fade-in,
+          .animate-slide-in-left,
+          .animate-slide-in-right {
+            animation: none;
+            opacity: 1;
+            transform: none;
+          }
         }
       `}</style>
     </section>

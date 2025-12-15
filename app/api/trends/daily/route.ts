@@ -63,8 +63,9 @@ export async function GET(request: NextRequest) {
       targetDate = new Date(jstNow.getTime() - JST_OFFSET_MS);
     }
 
-    // 日付文字列（キャッシュキー用）- targetDateはUTCなのでJSTに変換
+    // JST日付（periodStart計算用）
     const jstDate = new Date(targetDate.getTime() + JST_OFFSET_MS);
+    // 日付文字列（キャッシュキー用）
     const dateKey = toJSTDateString(targetDate);
 
     // キャッシュチェック

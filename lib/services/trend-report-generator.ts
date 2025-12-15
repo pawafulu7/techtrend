@@ -636,8 +636,8 @@ ${rawText1}`;
     periodType: TrendPeriodType,
     articles: ArticleWithRelations[],
     topArticles: TopArticleInfo[],
-    categories: CategoryInfo[],
-    tags: TagInfo[]
+    _categories: CategoryInfo[],
+    _tags: TagInfo[]
   ): Promise<string> {
     if (!this.model) {
       throw new Error('Gemini model not initialized');
