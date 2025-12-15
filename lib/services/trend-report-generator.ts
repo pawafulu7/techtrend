@@ -386,42 +386,45 @@ export class TrendReportGenerator {
       })),
     };
 
-    const prompt = `あなたは技術ニュース編集長です。以下の入力データだけを根拠に、${periodLabel}の技術トレンド「AI Analysis」を生成してください。
+    const prompt = `あなたは技術ニュース編集長です。記事タイトルを分析し、${periodLabel}のエンジニア向けインサイトを生成してください。
 
-出力は JSON オブジェクト 1つのみ。前後に説明文・コードフェンス・余計な文字列を付けないでください。値は日本語で書いてください。
+## 重要な指示
+- 「件数が多いから注目」のような統計の言い換えは絶対禁止
+- 記事タイトルから「何が起きているか」「何が解決されているか」を読み取る
+- 具体的な技術名・ツール名・手法名を使う
 
-必ず次のスキーマを厳守してください:
+## 出力形式（JSONのみ、説明文不要）
 {
   "version": "trend_ai_summary_v1",
-  "headline": "短い見出し（20〜45文字程度）",
+  "headline": "今日の核心を一言で（例: Gemini 2.0登場でAIエージェント開発が加速）",
   "keyTopics": [
     {
-      "topic": "技術名（入力の topTags.name から選ぶ）",
-      "reason": "具体的な根拠を含む1〜2文（件数や記事名に触れる）",
-      "evidenceArticleIds": ["入力の topArticles.id のみ（最大3件）"],
+      "topic": "技術名",
+      "reason": "【禁止】X件あるから注目 → 【OK】記事タイトルから読み取れる具体的動向を書く",
+      "evidenceArticleIds": ["topArticles.idから選択"],
       "evidenceNumbers": [{"label":"", "value":""}]
     }
   ],
-  "numbers": [{"label":"", "value":""}],
+  "numbers": [{"label":"統計ラベル", "value":"数値"}],
   "actions": [
     {
-      "title": "次の一手（短い）",
-      "detail": "具体的に何を確認/学習するか（入力の数字や記事名・技術名を入れる）",
-      "relatedTopics": ["keyTopics.topic から選ぶ"],
-      "relatedArticleIds": ["入力の topArticles.id のみ（最大3件）"]
+      "title": "具体的なアクション",
+      "detail": "記事タイトルを引用しながら、何を読むべきか・何を試すべきかを書く",
+      "relatedTopics": [],
+      "relatedArticleIds": []
     }
   ],
-  "notes": ["任意（最大3件）"]
+  "notes": []
 }
 
-品質要件:
-- keyTopics は必ず 3件
-- numbers は 3〜5件（value に必ず数値を含める。例: "42件 (26%)"）
-- 具体性: 入力の topArticles.title を合計で最低2件は reason/detail 内で言及する
-- evidenceArticleIds / relatedArticleIds は必ず入力の topArticles.id から選ぶ（存在しないID禁止）
-- 「注目」「トレンド」「話題」だけで終わる曖昧表現は禁止（必ず入力の数値/固有名詞で言い切る）
+## 良い例・悪い例
+悪い例: "AI/ML: 総記事数の44%を占め注目を集めている"
+良い例: "AI設計: 「小さな合意を積み重ねるプロトコル」のようなAIとの協働手法が登場。LangChainやDSPyを組み合わせた実践記事も増加"
 
-入力データ:
+悪い例: "TypeScriptの型安全性に関する知見を深めることが推奨されます"
+良い例: "as const satisfiesでテストの型安全性を高める手法がKAKEHASHIから公開。既存テストコードへの適用を検討せよ"
+
+## 入力データ
 ${JSON.stringify(input)}`;
 
     const result = await this.model.generateContent({
@@ -470,32 +473,33 @@ ${JSON.stringify(input)}`;
       `${i + 1}. [${a.sourceName}] ${a.translatedTitle || a.title}\n   - タグ: ${a.tags.slice(0, 3).join(', ')}\n   - スコア: ${a.score} (閲覧${a.viewCount}/お気に入り${a.favoriteCount})`
     ).join('\n');
 
-    const prompt = `技術トレンドレポートを作成してください。
+    const prompt = `技術ニュース編集長として、記事タイトルを分析しエンジニア向けインサイトを作成してください。
 
-入力データ:
+## 絶対禁止
+- 「X件あるから注目」「Y%を占める」のような統計の言い換え
+- 「注目を集めています」「トレンドです」のような空虚な表現
+
+## 入力データ
 - 期間: ${periodLabel}
-- 総記事数: ${articles.length}件
-- カテゴリ分布: ${topCategoriesText}
-- 注目タグ: ${topTagsText}
 - 人気記事TOP5:
 ${topArticlesText}
 
-出力形式（プレーンテキストで、Markdown記法は使用しないこと）:
+## 出力形式（プレーンテキスト、Markdown禁止）
 
 [注目トピック]
-(1) 技術名: 理由を1文で（入力の数字か記事名を必ず入れる）
-(2) 技術名: 理由を1文で（入力の数字か記事名を必ず入れる）
-(3) 技術名: 理由を1文で（入力の数字か記事名を必ず入れる）
+(1) 技術名: 記事タイトルから読み取れる具体的な動向・手法・ツールを書く
+(2) 技術名: 記事タイトルから読み取れる具体的な動向・手法・ツールを書く
+(3) 技術名: 記事タイトルから読み取れる具体的な動向・手法・ツールを書く
 
 [アクションポイント]
-今すぐ学ぶべきこと・確認すべきことを1-2文で（入力の固有名詞と数字を必ず入れる）
+記事タイトルを引用し、何を読むべきか・何を試すべきかを具体的に書く
 
-制約:
-- Markdown記法（**、##、- など）は絶対に使用しないこと
-- 必ず入力データに含まれる固有名詞（${topTagNames.join(', ')}など）を使用すること
-- 「トレンドは〜」「注目を集めています」などの曖昧な表現禁止
-- 各トピックは具体的な技術名・プロダクト名で始めること
-- 全体で220-320文字程度`;
+## 良い例・悪い例
+悪い: "AI: 記事数の44%を占め注目されている"
+良い: "AI設計: 「小さな合意を積み重ねるプロトコル」のようなAIとの協働手法が登場"
+
+悪い: "TypeScriptの型安全性に関する知見を深めることが推奨されます"
+良い: "as const satisfiesでテストの型安全性を高める手法がKAKEHASHIから公開。既存テストへの適用を検討せよ"`;
 
     const result = await this.model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
