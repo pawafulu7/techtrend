@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DailyTrendHero, TopArticleList, CategoryDistribution } from '@/app/components/trends/daily';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+// Note: TrendReportData is defined locally for API response typing.
+// Consider extracting to a shared type if reused across multiple files.
 interface TrendReportData {
   periodType: string;
   periodStart: string;
@@ -66,7 +68,7 @@ export default function DailyTrendPage() {
   // 初回ロード時は最新レポートを取得するため、日付指定なし
   const [requestedDate, setRequestedDate] = useState<string | null>(null);
 
-  const fetchReport = async (dateStr?: string) => {
+  const fetchReport = useCallback(async (dateStr?: string) => {
     setLoading(true);
     setError(null);
 
@@ -101,11 +103,11 @@ export default function DailyTrendPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchReport(requestedDate || undefined);
-  }, [requestedDate]);
+  }, [requestedDate, fetchReport]);
 
   const goToPreviousDay = () => {
     if (navigation.prevDate) {
@@ -178,7 +180,6 @@ export default function DailyTrendPage() {
             aiSummary={report.aiSummary}
             articleCount={report.articleCount}
             periodStart={report.periodStart}
-            periodEnd={report.periodEnd}
             generatedAt={report.generatedAt}
             topTags={report.tags}
             topArticles={report.topArticles}

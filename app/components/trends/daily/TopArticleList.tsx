@@ -14,7 +14,6 @@ interface TopArticle {
   sourceName: string;
   viewCount: number;
   favoriteCount: number;
-  score: number;
   tags: string[];
 }
 

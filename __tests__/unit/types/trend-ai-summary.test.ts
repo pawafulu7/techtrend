@@ -21,6 +21,22 @@ describe('trend-ai-summary', () => {
       const obj = extractFirstJsonObject('{"a":1,"b":2,}');
       expect(obj).toEqual({ a: 1, b: 2 });
     });
+
+    // Edge cases
+    it('returns null for empty string', () => {
+      const obj = extractFirstJsonObject('');
+      expect(obj).toBeNull();
+    });
+
+    it('returns null for invalid JSON', () => {
+      const obj = extractFirstJsonObject('not a json {invalid}');
+      expect(obj).toBeNull();
+    });
+
+    it('parses nested objects', () => {
+      const obj = extractFirstJsonObject('{"outer":{"inner":{"deep":"value"}}}');
+      expect(obj).toEqual({ outer: { inner: { deep: 'value' } } });
+    });
   });
 
   describe('TrendAiSummarySchema', () => {

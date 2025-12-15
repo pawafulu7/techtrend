@@ -6,6 +6,17 @@ import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger/index';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 
+// JST offset constant (+9 hours in milliseconds)
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/**
+ * UTC DateをJST日付文字列（YYYY-MM-DD）に変換
+ */
+function toJSTDateString(date: Date): string {
+  const jst = new Date(date.getTime() + JST_OFFSET_MS);
+  return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
+}
+
 // キャッシュインスタンスを遅延初期化
 let cache: RedisCache | null = null;
 
@@ -46,17 +57,15 @@ export async function GET(request: NextRequest) {
       // デフォルト: 前日（JST基準）
       // 現在時刻をJSTに変換し、1日引いて00:00:00に設定し、UTCに戻す
       const now = new Date();
-      const jstOffset = 9 * 60 * 60 * 1000;
-      const jstNow = new Date(now.getTime() + jstOffset);
+      const jstNow = new Date(now.getTime() + JST_OFFSET_MS);
       jstNow.setUTCDate(jstNow.getUTCDate() - 1);
       jstNow.setUTCHours(0, 0, 0, 0);
-      targetDate = new Date(jstNow.getTime() - jstOffset);
+      targetDate = new Date(jstNow.getTime() - JST_OFFSET_MS);
     }
 
     // 日付文字列（キャッシュキー用）- targetDateはUTCなのでJSTに変換
-    const jstOffset = 9 * 60 * 60 * 1000;
-    const jstDate = new Date(targetDate.getTime() + jstOffset);
-    const dateKey = `${jstDate.getUTCFullYear()}-${String(jstDate.getUTCMonth() + 1).padStart(2, '0')}-${String(jstDate.getUTCDate()).padStart(2, '0')}`;
+    const jstDate = new Date(targetDate.getTime() + JST_OFFSET_MS);
+    const dateKey = toJSTDateString(targetDate);
 
     // キャッシュチェック
     const cacheInstance = getCache();
@@ -80,10 +89,9 @@ export async function GET(request: NextRequest) {
     const generator = new TrendReportGenerator(prisma);
 
     // periodStartを計算（JST 00:00:00をUTCに変換）
-    // jstOffsetは上で既に定義済み
     const periodStart = new Date(jstDate);
     periodStart.setUTCHours(0, 0, 0, 0);
-    const periodStartUTC = new Date(periodStart.getTime() - jstOffset);
+    const periodStartUTC = new Date(periodStart.getTime() - JST_OFFSET_MS);
 
     // 指定日付のレポートを取得
     const report = await generator.getTrendReport(TrendPeriodType.DAILY, periodStartUTC);
@@ -91,12 +99,6 @@ export async function GET(request: NextRequest) {
     if (!report) {
       // 指定日付のレポートがない場合、404を返す（フォールバックしない）
       const latestDate = await generator.getLatestReportDate(TrendPeriodType.DAILY);
-
-      // JST日付文字列に変換するヘルパー
-      const toJSTDateString = (date: Date) => {
-        const jst = new Date(date.getTime() + jstOffset);
-        return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
-      };
 
       return NextResponse.json(
         {
@@ -113,12 +115,6 @@ export async function GET(request: NextRequest) {
       TrendPeriodType.DAILY,
       report.periodStart
     );
-
-    // JST日付文字列に変換するヘルパー
-    const toJSTDateString = (date: Date) => {
-      const jst = new Date(date.getTime() + jstOffset);
-      return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
-    };
 
     const response = {
       success: true,
@@ -180,12 +176,13 @@ async function generateDailyReportHandler(request: NextRequest) {
       }
       targetDate = parsed;
     } else {
-      // デフォルト: 前日（JST）
+      // デフォルト: 前日（JST基準）
+      // 現在時刻をJSTに変換し、1日引いて00:00:00に設定し、UTCに戻す
       const now = new Date();
-      const jstOffset = 9 * 60 * 60 * 1000;
-      const jstNow = new Date(now.getTime() + jstOffset);
+      const jstNow = new Date(now.getTime() + JST_OFFSET_MS);
       jstNow.setUTCDate(jstNow.getUTCDate() - 1);
-      targetDate = jstNow;
+      jstNow.setUTCHours(0, 0, 0, 0);
+      targetDate = new Date(jstNow.getTime() - JST_OFFSET_MS);
     }
 
     // レポート生成
@@ -196,9 +193,7 @@ async function generateDailyReportHandler(request: NextRequest) {
     const cacheInstance = getCache();
     try {
       // 日付ベースのキャッシュをクリア
-      const jstOffset = 9 * 60 * 60 * 1000;
-      const jstDate = new Date(targetDate.getTime() + jstOffset);
-      const dateKey = `${jstDate.getUTCFullYear()}-${String(jstDate.getUTCMonth() + 1).padStart(2, '0')}-${String(jstDate.getUTCDate()).padStart(2, '0')}`;
+      const dateKey = toJSTDateString(targetDate);
       const cacheKey = cacheInstance.generateCacheKey('daily', { params: { date: dateKey } });
       await cacheInstance.del(cacheKey);
     } catch (cacheError) {

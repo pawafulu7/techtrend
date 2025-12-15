@@ -4,6 +4,9 @@ import logger from '@/lib/logger/index';
 import { GEMINI_API } from '@/lib/constants';
 import { extractFirstJsonObject, TrendAiSummarySchema } from '@/lib/types/trend-ai-summary';
 
+// JST offset constant (+9 hours in milliseconds)
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
 // カテゴリタグ定義（大文字小文字を区別しない比較用）
 const CATEGORY_TAGS = {
   'Frontend': ['React', 'Vue', 'Angular', 'CSS', 'JavaScript', 'TypeScript', 'Next.js', 'Svelte'],
@@ -646,10 +649,6 @@ ${rawText1}`;
       [TrendPeriodType.MONTHLY]: '今月'
     }[periodType];
 
-    const topTagNames = tags.slice(0, 5).map(t => t.name);
-    const topTagsText = tags.slice(0, 10).map(t => `${t.name}(${t.count}件)`).join(', ');
-    const topCategoriesText = categories.slice(0, 5).map(c => `${c.name}(${c.count}件, ${c.percentage}%)`).join(', ');
-
     const topArticlesText = topArticles.slice(0, 5).map((a, i) =>
       `${i + 1}. [${a.sourceName}] ${a.translatedTitle || a.title}\n   - タグ: ${a.tags.slice(0, 3).join(', ')}\n   - スコア: ${a.score} (閲覧${a.viewCount}/お気に入り${a.favoriteCount})`
     ).join('\n');
@@ -830,18 +829,15 @@ ${topArticlesText}
    * 日の範囲を取得（JST基準）
    */
   private getDayRangeJST(date: Date): { start: Date; end: Date } {
-    // JSTオフセット（+9時間）
-    const jstOffset = 9 * 60 * 60 * 1000;
-
     // JST日付の開始（00:00:00 JST = 前日15:00:00 UTC）
-    const jstDate = new Date(date.getTime() + jstOffset);
+    const jstDate = new Date(date.getTime() + JST_OFFSET_MS);
     const year = jstDate.getUTCFullYear();
     const month = jstDate.getUTCMonth();
     const day = jstDate.getUTCDate();
 
     // UTC時刻に変換して返す
-    const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - jstOffset);
-    const end = new Date(Date.UTC(year, month, day + 1, 0, 0, 0, 0) - jstOffset);
+    const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - JST_OFFSET_MS);
+    const end = new Date(Date.UTC(year, month, day + 1, 0, 0, 0, 0) - JST_OFFSET_MS);
 
     return { start, end };
   }
@@ -850,8 +846,7 @@ ${topArticlesText}
    * 週の範囲を取得（JST基準、月曜始まり）
    */
   private getWeekRangeJST(date: Date): { start: Date; end: Date } {
-    const jstOffset = 9 * 60 * 60 * 1000;
-    const jstDate = new Date(date.getTime() + jstOffset);
+    const jstDate = new Date(date.getTime() + JST_OFFSET_MS);
 
     // 月曜日を週の開始とする
     const dayOfWeek = jstDate.getUTCDay();
@@ -865,8 +860,8 @@ ${topArticlesText}
     nextMonday.setUTCDate(monday.getUTCDate() + 7);
 
     // UTC時刻に変換して返す
-    const start = new Date(monday.getTime() - jstOffset);
-    const end = new Date(nextMonday.getTime() - jstOffset);
+    const start = new Date(monday.getTime() - JST_OFFSET_MS);
+    const end = new Date(nextMonday.getTime() - JST_OFFSET_MS);
 
     return { start, end };
   }
@@ -875,8 +870,7 @@ ${topArticlesText}
    * 月の範囲を取得（JST基準）
    */
   private getMonthRangeJST(date: Date): { start: Date; end: Date } {
-    const jstOffset = 9 * 60 * 60 * 1000;
-    const jstDate = new Date(date.getTime() + jstOffset);
+    const jstDate = new Date(date.getTime() + JST_OFFSET_MS);
 
     const year = jstDate.getUTCFullYear();
     const month = jstDate.getUTCMonth();
@@ -886,8 +880,8 @@ ${topArticlesText}
     const nextMonthStart = new Date(Date.UTC(year, month + 1, 1, 0, 0, 0, 0));
 
     // UTC時刻に変換して返す
-    const start = new Date(monthStart.getTime() - jstOffset);
-    const end = new Date(nextMonthStart.getTime() - jstOffset);
+    const start = new Date(monthStart.getTime() - JST_OFFSET_MS);
+    const end = new Date(nextMonthStart.getTime() - JST_OFFSET_MS);
 
     return { start, end };
   }

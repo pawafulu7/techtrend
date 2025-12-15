@@ -82,7 +82,7 @@ export function CategoryDistribution({ categories, loading = false }: CategoryDi
             return (
               <div
                 key={category.name}
-                className={cn("p-4 rounded-xl animate-slide-in", bgClass)}
+                className={cn("p-4 rounded-xl tt-cat-slide-in", bgClass)}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -101,7 +101,7 @@ export function CategoryDistribution({ categories, loading = false }: CategoryDi
                 {/* Progress bar */}
                 <div className="h-2 bg-background/50 rounded-full overflow-hidden">
                   <div
-                    className={cn("h-full rounded-full bg-gradient-to-r animate-grow-width", gradientClass)}
+                    className={cn("h-full rounded-full bg-gradient-to-r tt-cat-grow-width", gradientClass)}
                     style={{
                       '--target-width': `${widthPercent}%`,
                       animationDelay: `${200 + index * 50}ms`
@@ -121,20 +121,20 @@ export function CategoryDistribution({ categories, loading = false }: CategoryDi
         </div>
 
         <style jsx>{`
-          @keyframes slideIn {
+          @keyframes ttCatSlideIn {
             from { opacity: 0; transform: translateX(-20px); }
             to { opacity: 1; transform: translateX(0); }
           }
-          @keyframes growWidth {
+          @keyframes ttCatGrowWidth {
             from { width: 0; }
             to { width: var(--target-width); }
           }
-          .animate-slide-in {
-            animation: slideIn 0.3s ease-out forwards;
+          .tt-cat-slide-in {
+            animation: ttCatSlideIn 0.3s ease-out forwards;
             opacity: 0;
           }
-          .animate-grow-width {
-            animation: growWidth 0.5s ease-out forwards;
+          .tt-cat-grow-width {
+            animation: ttCatGrowWidth 0.5s ease-out forwards;
             width: 0;
           }
         `}</style>

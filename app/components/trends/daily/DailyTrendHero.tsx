@@ -12,13 +12,12 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
-import { extractFirstJsonObject, TrendAiSummarySchema, type TrendAiSummary, type TrendAiSummaryV2 } from '@/lib/types/trend-ai-summary';
+import { parseTrendAiSummary, type TrendAiSummary, type TrendAiSummaryV2 } from '@/lib/types/trend-ai-summary';
 
 interface DailyTrendHeroProps {
   aiSummary?: string;
   articleCount: number;
   periodStart: string;
-  periodEnd: string;
   generatedAt?: string;
   topTags?: { name: string; count: number }[];
   topArticles?: Array<{
@@ -46,12 +45,6 @@ type LegacyAISummary = {
   topics: Array<{ topic: string; reason: string }>;
   actionText: string | null;
 };
-
-function parseStructuredAISummary(text: string): TrendAiSummary | null {
-  const json = extractFirstJsonObject(text);
-  const parsed = TrendAiSummarySchema.safeParse(json);
-  return parsed.success ? parsed.data : null;
-}
 
 function parseLegacyAISummary(text: string): LegacyAISummary | null {
   const normalized = text.replace(/\r\n/g, '\n').trim();
@@ -380,6 +373,9 @@ export function DailyTrendHero({
 }: DailyTrendHeroProps) {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      return '日付不明';
+    }
     return date.toLocaleDateString('ja-JP', {
       year: 'numeric',
       month: 'long',
@@ -388,7 +384,7 @@ export function DailyTrendHero({
     });
   };
 
-  const structuredSummary = aiSummary ? parseStructuredAISummary(aiSummary) : null;
+  const structuredSummary = parseTrendAiSummary(aiSummary);
   const legacySummary = !structuredSummary && aiSummary ? parseLegacyAISummary(aiSummary) : null;
   const topArticlesById = new Map(topArticles.map(a => [a.id, a] as const));
 

@@ -27,6 +27,8 @@ function parseArgs(): { type: ReportType; date?: Date } {
       const t = args[i + 1].toLowerCase();
       if (t === 'daily' || t === 'weekly' || t === 'monthly') {
         type = t;
+      } else {
+        console.warn(`Warning: Invalid --type argument "${args[i + 1]}". Using default: daily`);
       }
       i++;
     } else if (args[i] === '--date' && args[i + 1]) {
@@ -50,8 +52,11 @@ async function main() {
     targetDate = specifiedDate;
   } else {
     // 前日を計算（JST基準）
+    // JST = UTC + 9時間
+    // 例: UTC 2025-01-01 15:00:00 → JST 2025-01-02 00:00:00
+    // 前日のJST 00:00:00をUTCに変換して返す
     const now = new Date();
-    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstOffset = 9 * 60 * 60 * 1000; // +9 hours in milliseconds
     const jstNow = new Date(now.getTime() + jstOffset);
     jstNow.setUTCDate(jstNow.getUTCDate() - 1);
     jstNow.setUTCHours(0, 0, 0, 0);
