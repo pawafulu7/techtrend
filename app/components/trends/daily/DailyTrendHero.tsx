@@ -165,7 +165,7 @@ function StructuredAISummaryView({
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="h-5 w-5 text-primary" />
               <span className="text-sm font-semibold text-foreground">
-                {summary.trendChanges.basis?.periodLabel || 'Trend Changes'}
+                {summary.trendChanges.basis?.periodLabel || 'トレンド変化'}
               </span>
             </div>
             <p className="text-sm text-foreground/80 leading-relaxed mb-4">
@@ -179,8 +179,8 @@ function StructuredAISummaryView({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Key Topics - Main Area */}
           <div className="lg:col-span-8 space-y-4">
-            <div className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
-              Key Topics
+            <div className="text-xs font-semibold text-muted-foreground tracking-wide">
+              注目トピック
             </div>
             <div className="space-y-4">
               {summary.keyTopics.slice(0, 4).map((t) => (
@@ -215,7 +215,7 @@ function StructuredAISummaryView({
                 <AccordionTrigger className="px-4 py-3 hover:no-underline">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-semibold">Action Points</span>
+                    <span className="text-sm font-semibold">アクション</span>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4">
@@ -261,7 +261,7 @@ function StructuredAISummaryView({
       <div className="mt-4 grid grid-cols-1 md:grid-cols-12 gap-4">
         <div className="md:col-span-7">
           <div className="text-xs font-semibold text-muted-foreground tracking-wide">
-            Key Topics
+            注目トピック
           </div>
           <div className="mt-2 space-y-3">
             {summary.keyTopics.slice(0, 3).map((t) => (
@@ -284,7 +284,7 @@ function StructuredAISummaryView({
 
         <div className="md:col-span-5">
           <div className="text-xs font-semibold text-muted-foreground tracking-wide">
-            Key Numbers
+            注目の数字
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {(summary.numbers ?? [])
@@ -298,7 +298,7 @@ function StructuredAISummaryView({
           </div>
 
           <div className="mt-4 text-xs font-semibold text-muted-foreground tracking-wide">
-            Action Points
+            アクションポイント
           </div>
           <div className="mt-2 space-y-2">
             {summary.actions.slice(0, 3).map((a) => (
@@ -334,7 +334,7 @@ function LegacyAISummaryView({
       {summary.topics.length > 0 && (
         <>
           <div className="text-xs font-semibold text-muted-foreground tracking-wide">
-            Key Topics
+            注目トピック
           </div>
           <div className="mt-2 space-y-2">
             {summary.topics.slice(0, 3).map((t) => (
@@ -356,7 +356,7 @@ function LegacyAISummaryView({
       {summary.actionText && (
         <>
           <div className="mt-4 text-xs font-semibold text-muted-foreground tracking-wide">
-            Action Points
+            アクションポイント
           </div>
           <div className="mt-2 rounded-lg bg-muted/30 p-3 text-sm leading-relaxed text-foreground/90">
             {summary.actionText}
@@ -399,27 +399,12 @@ export function DailyTrendHero({
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
-      <div className="relative container mx-auto px-4 py-12">
-        {/* Header with navigation */}
-        <div className="mb-8 animate-fade-in">
+      <div className="relative container mx-auto px-4 py-6 sm:py-8">
+        {/* Header with navigation - compact */}
+        <div className="mb-4 animate-fade-in">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-primary/10">
-                <TrendingUp className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">
-                  Daily Trend
-                </h1>
-                <p className="text-muted-foreground flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  {formatDate(periodStart)}
-                </p>
-              </div>
-            </div>
-
-            {/* Date navigation */}
-            <div className="flex items-center gap-2">
+            {/* Left: Previous day button */}
+            <div className="w-24 sm:w-28">
               {navigation?.prevDate && onPrevDay && (
                 <Button
                   variant="outline"
@@ -431,6 +416,26 @@ export function DailyTrendHero({
                   <span className="hidden sm:inline">前日</span>
                 </Button>
               )}
+            </div>
+
+            {/* Center: Title and date */}
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10">
+                <TrendingUp className="h-5 w-5 text-primary" />
+              </div>
+              <div className="text-center sm:text-left">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                  Daily Trend
+                </h1>
+                <p className="text-sm text-muted-foreground flex items-center justify-center sm:justify-start gap-2">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {formatDate(periodStart)}
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Next day button */}
+            <div className="w-24 sm:w-28 flex justify-end">
               {navigation?.nextDate && onNextDay && (
                 <Button
                   variant="outline"
@@ -447,20 +452,20 @@ export function DailyTrendHero({
         </div>
 
         {/* Stats Bar - Compact */}
-        <div className="flex flex-wrap items-center gap-4 animate-fade-in">
-          <Badge variant="outline" className="text-base px-4 py-2 gap-2 bg-primary/5">
-            <FileText className="h-4 w-4" />
-            {articleCount.toLocaleString()} Articles
+        <div className="flex flex-wrap items-center gap-3 animate-fade-in mb-6">
+          <Badge variant="outline" className="text-sm px-3 py-1.5 gap-2 bg-muted/50 border-border/50">
+            <FileText className="h-3.5 w-3.5" />
+            {articleCount.toLocaleString()}
           </Badge>
           {topTags.slice(0, 5).map((tag, index) => (
             <Badge
               key={tag.name}
               variant="secondary"
               className={cn(
-                "px-3 py-1.5 text-sm transition-all hover:scale-105",
-                index === 0 && "bg-primary text-primary-foreground hover:bg-primary/90",
-                index === 1 && "bg-primary/80 text-primary-foreground hover:bg-primary/70",
-                index === 2 && "bg-primary/60 text-primary-foreground hover:bg-primary/50"
+                "px-2.5 py-1 text-xs transition-all hover:scale-105",
+                index === 0 && "bg-primary/90 text-primary-foreground hover:bg-primary/80",
+                index === 1 && "bg-primary/70 text-primary-foreground hover:bg-primary/60",
+                index === 2 && "bg-primary/50 text-primary-foreground hover:bg-primary/40"
               )}
             >
               {tag.name}
@@ -469,13 +474,13 @@ export function DailyTrendHero({
           ))}
         </div>
 
-        {/* AI Analysis - Full Width */}
+        {/* AI Analysis - Full Width with softer styling */}
         <div className="animate-slide-in-left">
-          <Card className="border-0 bg-gradient-to-br from-card via-card to-primary/5 shadow-lg">
-            <CardContent className="p-6 sm:p-8">
-              <div className="flex items-center gap-2 mb-6">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <span className="text-sm font-semibold text-primary">AI Analysis</span>
+          <Card className="border border-border/30 bg-card/80 backdrop-blur-sm shadow-sm">
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-primary">AI分析</span>
                 {generatedAt && (
                   <span className="ml-auto text-xs text-muted-foreground">
                     {new Date(generatedAt).toLocaleString('ja-JP')}

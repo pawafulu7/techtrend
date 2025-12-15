@@ -47,7 +47,7 @@ export function CategoryDistribution({ categories, loading = false }: CategoryDi
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Layers className="h-5 w-5 text-primary" />
-            Category Distribution
+            カテゴリ
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -63,14 +63,12 @@ export function CategoryDistribution({ categories, loading = false }: CategoryDi
     );
   }
 
-  const maxCount = Math.max(...categories.map(c => c.count), 1);
-
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
           <Layers className="h-5 w-5 text-primary" />
-          Category Distribution
+          カテゴリ
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -78,7 +76,8 @@ export function CategoryDistribution({ categories, loading = false }: CategoryDi
           {categories.map((category, index) => {
             const gradientClass = CATEGORY_COLORS[category.name] || 'from-gray-500 to-slate-600';
             const bgClass = CATEGORY_BG_COLORS[category.name] || 'bg-gray-500/10';
-            const widthPercent = (category.count / maxCount) * 100;
+            // パーセンテージをそのままバーの幅に使用（総記事数に対する割合）
+            const widthPercent = category.percentage;
 
             return (
               <div

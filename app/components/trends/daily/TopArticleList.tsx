@@ -1,8 +1,9 @@
 'use client';
 
-import { ExternalLink, Eye, Heart, Award } from 'lucide-react';
+import { ExternalLink, Eye, Heart, Award, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 interface TopArticle {
@@ -29,7 +30,7 @@ export function TopArticleList({ articles, loading = false }: TopArticleListProp
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Award className="h-5 w-5 text-amber-500" />
-            Top Articles
+            注目記事
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -61,9 +62,9 @@ export function TopArticleList({ articles, loading = false }: TopArticleListProp
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
           <Award className="h-5 w-5 text-amber-500" />
-          Top Articles
+          注目記事
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -74,65 +75,81 @@ export function TopArticleList({ articles, loading = false }: TopArticleListProp
               className="animate-fade-in-up"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <Link
-                href={article.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block"
-              >
-                <div className="group relative p-4 rounded-xl bg-muted/30 hover:bg-muted/60 transition-all duration-200 hover:shadow-md">
-                  <div className="flex gap-4">
-                    {/* Rank */}
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${getRankStyle(index)}`}>
-                      {index + 1}
+              <div className="group relative p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-all duration-200">
+                <div className="flex gap-4">
+                  {/* Rank */}
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${getRankStyle(index)}`}>
+                    {index + 1}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-sm line-clamp-2">
+                      {article.translatedTitle || article.title}
+                    </h3>
+
+                    <div className="flex items-center gap-4 mt-2">
+                      <Badge variant="outline" className="text-xs">
+                        {article.sourceName}
+                      </Badge>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
+                          {article.viewCount}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Heart className="h-3 w-3" />
+                          {article.favoriteCount}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                          {article.translatedTitle || article.title}
-                        </h3>
-                        <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-
-                      <div className="flex items-center gap-4 mt-2">
-                        <Badge variant="outline" className="text-xs">
-                          {article.sourceName}
-                        </Badge>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Eye className="h-3 w-3" />
-                            {article.viewCount}
+                    {article.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {article.tags.slice(0, 3).map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-xs px-2 py-0.5 rounded-full bg-secondary/50 text-secondary-foreground"
+                          >
+                            {tag}
                           </span>
-                          <span className="flex items-center gap-1">
-                            <Heart className="h-3 w-3" />
-                            {article.favoriteCount}
+                        ))}
+                        {article.tags.length > 3 && (
+                          <span className="text-xs text-muted-foreground">
+                            +{article.tags.length - 3}
                           </span>
-                        </div>
+                        )}
                       </div>
+                    )}
 
-                      {article.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {article.tags.slice(0, 3).map((tag) => (
-                            <span
-                              key={tag}
-                              className="text-xs px-2 py-0.5 rounded-full bg-secondary/50 text-secondary-foreground"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                          {article.tags.length > 3 && (
-                            <span className="text-xs text-muted-foreground">
-                              +{article.tags.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        asChild
+                      >
+                        <Link href={`/articles/${article.id}?from=${encodeURIComponent('/trends/daily')}`}>
+                          <FileText className="h-3 w-3" />
+                          要約
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        asChild
+                      >
+                        <Link href={article.url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-3 w-3" />
+                          元記事
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 </div>
-              </Link>
+              </div>
             </div>
           ))}
         </div>
