@@ -2,7 +2,7 @@ import { PrismaClient, Prisma, TrendPeriodType } from '@prisma/client';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import logger from '@/lib/logger/index';
 import { GEMINI_API } from '@/lib/constants';
-import { extractFirstJsonObject, TrendAiSummaryV1Schema } from '@/lib/types/trend-ai-summary';
+import { extractFirstJsonObject, TrendAiSummarySchema } from '@/lib/types/trend-ai-summary';
 
 // カテゴリタグ定義（大文字小文字を区別しない比較用）
 const CATEGORY_TAGS = {
@@ -73,7 +73,7 @@ export interface TrendReportData {
 }
 
 // プロンプトバージョン管理
-const PROMPT_VERSION = '1.1.0';
+const PROMPT_VERSION = '2.0.0';
 
 export class TrendReportGenerator {
   private prisma: PrismaClient;
@@ -166,7 +166,7 @@ export class TrendReportGenerator {
 
       if (this.model && articles.length > 0) {
         try {
-          aiSummary = await this.generateAISummary(periodType, articles, topArticles, categories, tags);
+          aiSummary = await this.generateAISummary(periodType, periodStart, periodEnd, articles, topArticles, categories, tags);
           aiModel = GEMINI_API.MODEL;
           generatedAt = new Date();
         } catch (error) {
@@ -326,17 +326,20 @@ export class TrendReportGenerator {
    */
   private async generateAISummary(
     periodType: TrendPeriodType,
+    periodStart: Date,
+    periodEnd: Date,
     articles: ArticleWithRelations[],
     topArticles: TopArticleInfo[],
     categories: CategoryInfo[],
     tags: TagInfo[]
   ): Promise<string> {
-    if (!this.model) {
+    const model = this.model;
+    if (!model) {
       throw new Error('Gemini model not initialized');
     }
 
     try {
-      return await this.generateAISummaryStructured(periodType, articles, topArticles, categories, tags);
+      return await this.generateAISummaryStructured(periodType, periodStart, periodEnd, articles, topArticles, categories, tags);
     } catch (error) {
       logger.warn('Failed to generate structured AI summary, falling back to legacy format', error);
       return await this.generateAISummaryLegacyPlainText(periodType, articles, topArticles, categories, tags);
@@ -345,12 +348,15 @@ export class TrendReportGenerator {
 
   private async generateAISummaryStructured(
     periodType: TrendPeriodType,
+    periodStart: Date,
+    periodEnd: Date,
     articles: ArticleWithRelations[],
     topArticles: TopArticleInfo[],
     categories: CategoryInfo[],
     tags: TagInfo[]
   ): Promise<string> {
-    if (!this.model) {
+    const model = this.model;
+    if (!model) {
       throw new Error('Gemini model not initialized');
     }
 
@@ -360,7 +366,7 @@ export class TrendReportGenerator {
       [TrendPeriodType.MONTHLY]: '今月'
     }[periodType];
 
-    const input = {
+    const input: Record<string, unknown> = {
       periodLabel,
       articleCount: articles.length,
       topCategories: categories.slice(0, 8).map(c => ({
@@ -386,66 +392,227 @@ export class TrendReportGenerator {
       })),
     };
 
-    const prompt = `あなたは技術ニュース編集長です。記事タイトルを分析し、${periodLabel}のエンジニア向けインサイトを生成してください。
+    // 前期間（デフォルト: 同じ期間長）との比較データを追加（存在しない場合はavailable=false）
+    try {
+      const durationMs = periodEnd.getTime() - periodStart.getTime();
+      const prevStart = new Date(periodStart.getTime() - durationMs);
+      const prevEnd = new Date(periodStart);
 
-## 重要な指示
-- 「件数が多いから注目」のような統計の言い換えは絶対禁止
-- 記事タイトルから「何が起きているか」「何が解決されているか」を読み取る
-- 具体的な技術名・ツール名・手法名を使う
+      const previousArticles = await this.fetchArticles(prevStart, prevEnd);
+      const previousCategories = this.calculateCategories(previousArticles);
+      const previousTags = this.calculateTags(previousArticles);
 
-## 出力形式（JSONのみ、説明文不要）
+      const toCountMap = (items: Array<{ name: string; count: number; percentage: number }>) =>
+        new Map(items.map(i => [i.name, { count: i.count, percentage: i.percentage }] as const));
+
+      const toDeltaList = (
+        today: Array<{ name: string; count: number; percentage: number }>,
+        prev: Array<{ name: string; count: number; percentage: number }>
+      ) => {
+        const prevMap = toCountMap(prev);
+        const names = new Set<string>([...today.map(t => t.name), ...prev.map(p => p.name)]);
+        const deltas = Array.from(names).map(name => {
+          const t = today.find(x => x.name === name);
+          const p = prevMap.get(name);
+          const todayCount = t?.count ?? 0;
+          const prevCount = p?.count ?? 0;
+          return {
+            name,
+            todayCount,
+            prevCount,
+            deltaCount: todayCount - prevCount,
+            todayPercentage: t?.percentage ?? 0,
+            prevPercentage: p?.percentage ?? 0,
+          };
+        });
+
+        const newItems = deltas.filter(d => d.prevCount === 0 && d.todayCount > 0).sort((a, b) => b.todayCount - a.todayCount);
+        const rising = deltas.filter(d => d.deltaCount > 0 && d.prevCount > 0).sort((a, b) => b.deltaCount - a.deltaCount);
+        const falling = deltas.filter(d => d.deltaCount < 0).sort((a, b) => a.deltaCount - b.deltaCount);
+
+        return { newItems, rising, falling };
+      };
+
+      const tagDeltas = toDeltaList(tags, previousTags);
+      const categoryDeltas = toDeltaList(categories, previousCategories);
+
+      const basisLabel = {
+        [TrendPeriodType.DAILY]: '前日',
+        [TrendPeriodType.WEEKLY]: '前週',
+        [TrendPeriodType.MONTHLY]: '前期間',
+      }[periodType];
+
+      input.comparison = {
+        available: previousArticles.length > 0,
+        basis: {
+          periodLabel: basisLabel,
+          periodStart: prevStart.toISOString(),
+          periodEnd: prevEnd.toISOString(),
+        },
+        previous: {
+          articleCount: previousArticles.length,
+          topCategories: previousCategories.slice(0, 8).map(c => ({
+            name: c.name,
+            count: c.count,
+            percentage: c.percentage,
+          })),
+          topTags: previousTags.slice(0, 12).map(t => ({
+            name: t.name,
+            count: t.count,
+            percentage: t.percentage,
+          })),
+        },
+        tagChanges: {
+          new: tagDeltas.newItems.slice(0, 6),
+          rising: tagDeltas.rising.slice(0, 6),
+          falling: tagDeltas.falling.slice(0, 6),
+        },
+        categoryChanges: {
+          new: categoryDeltas.newItems.slice(0, 6),
+          rising: categoryDeltas.rising.slice(0, 6),
+          falling: categoryDeltas.falling.slice(0, 6),
+        },
+      };
+    } catch (error) {
+      logger.warn('Failed to build comparison data for AI summary', error);
+      input.comparison = { available: false };
+    }
+
+    const prompt = `あなたは技術ニュースの編集長 兼 アナリストです。与えられたデータ（記事タイトル・タグ・カテゴリ・前期間差分）のみを根拠に、${periodLabel}の「意味のある分析」を作成してください。
+
+## 目的（重要）
+- 統計の言い換えではなく「何が起きているか」を言語化する
+- 類似記事を束ねて「潮流（テーマ）」として説明する
+- 読むべき記事を、具体的理由つきで推薦する
+- comparison.available=true の場合は前期間比の変化（新規/上昇/下降）を説明する
+
+## 絶対禁止（違反したら失格）
+- 「X件あるから注目」「Y%を占める」など、数字だけを根拠に重要と言う
+- 記事タイトルを並べるだけ（列挙）
+- 「注目を集めています」「トレンドです」「学ぶべきです」など、具体性のない断定
+
+## 出力ルール
+- 返答はJSONオブジェクトのみ（前後に文章・コードブロック・Markdownを付けない）
+- versionは必ず "trend_ai_summary_v2"
+- 指定キー以外を出力しない（追加キー禁止）
+- 記事の根拠は evidenceArticleIds / actions.articleIds に topArticles.id を入れて示す
+- 文章フィールドでは「件」「%」「割合」「占める」などの統計言い換えをしない（数値は deltaCount や numbers に逃がす）
+
+## 出力形式（厳守）
 {
-  "version": "trend_ai_summary_v1",
-  "headline": "今日の核心を一言で（例: Gemini 2.0登場でAIエージェント開発が加速）",
+  "version": "trend_ai_summary_v2",
+  "core": "今日の核心を1文で（例: Gemini 2.0発表でマルチモーダルAI開発が加速）。",
   "keyTopics": [
     {
-      "topic": "技術名",
-      "reason": "【禁止】X件あるから注目 → 【OK】記事タイトルから読み取れる具体的動向を書く",
-      "evidenceArticleIds": ["topArticles.idから選択"],
-      "evidenceNumbers": [{"label":"", "value":""}]
+      "topic": "具体的な技術・ツール・手法（固有名詞）",
+      "whatHappened": "記事タイトルから読み取れる『出来事』を具体的に1-2文で。",
+      "whyItMatters": "なぜ注目すべきか（影響/判断/実務への落とし込み）を1-2文で。",
+      "evidenceArticleIds": ["topArticles.idから1-3件"]
     }
   ],
-  "numbers": [{"label":"統計ラベル", "value":"数値"}],
+  "trendChanges": {
+    "available": true,
+    "basis": { "periodLabel": "前日", "date": "YYYY-MM-DD" },
+    "new": [{ "topic": "トピック名", "deltaCount": 3, "reason": "なぜそう言えるか（タイトル/タグ変化から）を1文で。" }],
+    "rising": [{ "topic": "トピック名", "deltaCount": 2, "reason": "具体的な変化を1文で。" }],
+    "falling": [{ "topic": "トピック名", "deltaCount": -2, "reason": "具体的な変化を1文で。" }],
+    "summary": "前期間比の全体像を1-2文で。available=falseなら『前期間データなし』を明記。"
+  },
   "actions": [
     {
-      "title": "具体的なアクション",
-      "detail": "記事タイトルを引用しながら、何を読むべきか・何を試すべきかを書く",
-      "relatedTopics": [],
-      "relatedArticleIds": []
+      "action": "読む/試す/設計に反映する等、実行可能な指示を短く",
+      "reason": "なぜそれが有効か（何が得られるか）を具体的に。",
+      "articleIds": ["topArticles.idから1-3件"]
     }
   ],
-  "notes": []
+  "numbers": [{ "label": "補助指標（任意）", "value": "例: トップ記事score 123 / 記事総数 42" }],
+  "notes": ["任意。制約や前提（例: comparisonがない等）"]
 }
 
 ## 良い例・悪い例
 悪い例: "AI/ML: 総記事数の44%を占め注目を集めている"
-良い例: "AI設計: 「小さな合意を積み重ねるプロトコル」のようなAIとの協働手法が登場。LangChainやDSPyを組み合わせた実践記事も増加"
+良い例: "AIエージェント設計: ツール実行・評価・反復の設計パターンが具体化し、RAGやワークフロー自動化の実装記事が増えている"
 
 悪い例: "TypeScriptの型安全性に関する知見を深めることが推奨されます"
-良い例: "as const satisfiesでテストの型安全性を高める手法がKAKEHASHIから公開。既存テストコードへの適用を検討せよ"
+良い例: "as const satisfiesをテストのフィクスチャ定義に適用し、破壊的変更をコンパイル時に検知できるようにする"
 
 ## 入力データ
 ${JSON.stringify(input)}`;
 
-    const result = await this.model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: 900,
-        temperature: 0.4,
-        responseMimeType: 'application/json',
-      },
-    });
+    const hasStatParaphrase = (value: string) => /(\d+(\.\d+)?%|\d+\s*件|割合|占め|最多|過半数)/.test(value);
 
-    const response = result.response;
-    const rawText = response.text().trim();
-    const json = extractFirstJsonObject(rawText);
-    const validated = TrendAiSummaryV1Schema.safeParse(json);
+    const validateV2Content = (obj: unknown): string[] => {
+      const parsed = TrendAiSummarySchema.safeParse(obj);
+      if (!parsed.success) return [`schema: ${parsed.error.message}`];
+      if (parsed.data.version !== 'trend_ai_summary_v2') return ['version must be trend_ai_summary_v2'];
 
-    if (!validated.success) {
-      throw new Error(`Structured AI summary validation failed: ${validated.error.message}`);
+      const errors: string[] = [];
+      if (hasStatParaphrase(parsed.data.core)) errors.push('core must not paraphrase stats');
+      for (const t of parsed.data.keyTopics) {
+        if (hasStatParaphrase(t.whatHappened) || hasStatParaphrase(t.whyItMatters)) {
+          errors.push(`keyTopics("${t.topic}") must not paraphrase stats`);
+        }
+      }
+      for (const a of parsed.data.actions) {
+        if (hasStatParaphrase(a.action) || hasStatParaphrase(a.reason)) {
+          errors.push(`actions("${a.action}") must not paraphrase stats`);
+        }
+      }
+      if (parsed.data.trendChanges && hasStatParaphrase(parsed.data.trendChanges.summary)) {
+        errors.push('trendChanges.summary must not paraphrase stats');
+      }
+      return errors;
+    };
+
+    const generateOnce = async (promptText: string, temperature: number) => {
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: promptText }] }],
+        generationConfig: {
+          maxOutputTokens: 4096,
+          temperature,
+          responseMimeType: 'application/json',
+        },
+      });
+      return result.response.text().trim();
+    };
+
+    const rawText1 = await generateOnce(prompt, 0.2);
+    const json1 = extractFirstJsonObject(rawText1);
+    const errors1 = validateV2Content(json1);
+    if (errors1.length === 0) {
+      return JSON.stringify(json1);
     }
 
-    return JSON.stringify(validated.data);
+    const repairPrompt = `次のモデル出力を、必ず指定のJSONスキーマ（trend_ai_summary_v2）に厳密準拠するJSONオブジェクトへ修正してください。
+返答はJSONのみ。追加の文章、コードブロック、コメント禁止。
+指定キー（追加/欠落禁止）: version, core, keyTopics, trendChanges, actions, numbers, notes
+versionは必ず "trend_ai_summary_v2"。
+文章フィールドでは統計の言い換え（"件" "%""割合""占める" 等）をしない（数値はdeltaCountに入れる）。
+
+スキーマ例:
+{
+  "version": "trend_ai_summary_v2",
+  "core": "…。",
+  "keyTopics": [{"topic":"…","whatHappened":"…。","whyItMatters":"…。","evidenceArticleIds":["…"]}],
+  "trendChanges": {"available": false, "basis": {"periodLabel":"前日","date":"YYYY-MM-DD"}, "new": [], "rising": [], "falling": [], "summary": "…。"},
+  "actions": [{"action":"…","reason":"…","articleIds":["…"]}],
+  "numbers": [{"label":"…","value":"…"}],
+  "notes": ["…"]
+}
+
+違反箇所: ${errors1.join(' / ')}
+
+モデル出力:
+${rawText1}`;
+
+    const rawText2 = await generateOnce(repairPrompt, 0.0);
+    const json2 = extractFirstJsonObject(rawText2);
+    const errors2 = validateV2Content(json2);
+    if (errors2.length > 0) {
+      throw new Error(`Structured AI summary validation failed after repair: ${errors2.join(' / ')}`);
+    }
+
+    return JSON.stringify(json2);
   }
 
   private async generateAISummaryLegacyPlainText(

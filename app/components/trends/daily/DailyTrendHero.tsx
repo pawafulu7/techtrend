@@ -1,12 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { Sparkles, Calendar, TrendingUp, FileText, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Calendar, TrendingUp, FileText, ChevronLeft, ChevronRight, CheckCircle2, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
-import { extractFirstJsonObject, TrendAiSummaryV1Schema, type TrendAiSummaryV1 } from '@/lib/types/trend-ai-summary';
+import { extractFirstJsonObject, TrendAiSummarySchema, type TrendAiSummary, type TrendAiSummaryV2 } from '@/lib/types/trend-ai-summary';
 
 interface DailyTrendHeroProps {
   aiSummary?: string;
@@ -41,9 +47,9 @@ type LegacyAISummary = {
   actionText: string | null;
 };
 
-function parseStructuredAISummary(text: string): TrendAiSummaryV1 | null {
+function parseStructuredAISummary(text: string): TrendAiSummary | null {
   const json = extractFirstJsonObject(text);
-  const parsed = TrendAiSummaryV1Schema.safeParse(json);
+  const parsed = TrendAiSummarySchema.safeParse(json);
   return parsed.success ? parsed.data : null;
 }
 
@@ -106,13 +112,146 @@ function ArticleCitations({
   );
 }
 
+function TrendChangesBadges({ trendChanges }: { trendChanges: TrendAiSummaryV2['trendChanges'] }) {
+  if (!trendChanges) return null;
+
+  const hasChanges = trendChanges.new.length > 0 || trendChanges.rising.length > 0 || trendChanges.falling.length > 0;
+  if (!hasChanges) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {trendChanges.new.slice(0, 2).map((t) => (
+        <Badge key={`new:${t.topic}`} className="gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20">
+          <Plus className="h-3 w-3" />
+          {t.topic}
+        </Badge>
+      ))}
+      {trendChanges.rising.slice(0, 2).map((t) => (
+        <Badge key={`rising:${t.topic}`} className="gap-1 bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20">
+          <ArrowUp className="h-3 w-3" />
+          {t.topic} +{t.deltaCount}
+        </Badge>
+      ))}
+      {trendChanges.falling.slice(0, 2).map((t) => (
+        <Badge key={`falling:${t.topic}`} className="gap-1 bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20">
+          <ArrowDown className="h-3 w-3" />
+          {t.topic} {t.deltaCount}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
 function StructuredAISummaryView({
   summary,
   topArticlesById,
 }: {
-  summary: TrendAiSummaryV1;
+  summary: TrendAiSummary;
   topArticlesById: Map<string, TopArticle>;
 }) {
+  if (summary.version === 'trend_ai_summary_v2') {
+    return (
+      <div className="flex-1 space-y-6">
+        {/* Core Statement - Hero */}
+        <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6">
+          <p className="text-xl sm:text-2xl font-semibold leading-tight text-foreground">
+            {summary.core}
+          </p>
+        </div>
+
+        {/* Trend Changes Summary - Prominent */}
+        {summary.trendChanges && summary.trendChanges.available && (
+          <div className="rounded-xl border bg-card/50 p-4 sm:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold text-foreground">
+                {summary.trendChanges.basis?.periodLabel || 'Trend Changes'}
+              </span>
+            </div>
+            <p className="text-sm text-foreground/80 leading-relaxed mb-4">
+              {summary.trendChanges.summary}
+            </p>
+            <TrendChangesBadges trendChanges={summary.trendChanges} />
+          </div>
+        )}
+
+        {/* Main Content Grid: Key Topics (8cols) + Sidebar (4cols) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Key Topics - Main Area */}
+          <div className="lg:col-span-8 space-y-4">
+            <div className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
+              Key Topics
+            </div>
+            <div className="space-y-4">
+              {summary.keyTopics.slice(0, 4).map((t) => (
+                <div key={t.topic} className="rounded-xl border bg-card/50 p-4 sm:p-5 hover:bg-card/80 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                    <Badge variant="secondary" className="shrink-0 self-start text-sm px-3 py-1">
+                      {t.topic}
+                    </Badge>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground leading-relaxed">
+                        {t.whatHappened}
+                      </p>
+                      <p className="mt-2 text-sm text-foreground/70 leading-relaxed">
+                        {t.whyItMatters}
+                      </p>
+                    </div>
+                  </div>
+                  {t.evidenceArticleIds && t.evidenceArticleIds.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border/50">
+                      <ArticleCitations articleIds={t.evidenceArticleIds} topArticlesById={topArticlesById} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sidebar - Actions */}
+          <div className="lg:col-span-4">
+            <Accordion type="single" collapsible defaultValue="actions" className="w-full">
+              <AccordionItem value="actions" className="border rounded-xl bg-card/50">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold">Action Points</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="space-y-3">
+                    {summary.actions.slice(0, 3).map((a, idx) => (
+                      <div key={a.action} className="rounded-lg bg-muted/30 p-3">
+                        <div className="flex items-start gap-2">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                            {idx + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-foreground line-clamp-2">
+                              {a.action}
+                            </p>
+                            <p className="mt-1 text-xs text-foreground/70 line-clamp-2">
+                              {a.reason}
+                            </p>
+                            {a.articleIds.length > 0 && (
+                              <div className="mt-2">
+                                <ArticleCitations articleIds={a.articleIds.slice(0, 1)} topArticlesById={topArticlesById} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1">
       <div className="text-xl font-semibold leading-snug text-foreground">
@@ -307,92 +446,64 @@ export function DailyTrendHero({
           </div>
         </div>
 
-        {/* Main content - asymmetric layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* AI Summary - takes 7 columns */}
-          <div className="lg:col-span-7 animate-slide-in-left">
-            <Card className="h-full border-0 bg-gradient-to-br from-card via-card to-primary/5 shadow-lg">
-              <CardContent className="p-6 h-full flex flex-col">
-                <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-semibold text-primary">AI Analysis</span>
-                </div>
+        {/* Stats Bar - Compact */}
+        <div className="flex flex-wrap items-center gap-4 animate-fade-in">
+          <Badge variant="outline" className="text-base px-4 py-2 gap-2 bg-primary/5">
+            <FileText className="h-4 w-4" />
+            {articleCount.toLocaleString()} Articles
+          </Badge>
+          {topTags.slice(0, 5).map((tag, index) => (
+            <Badge
+              key={tag.name}
+              variant="secondary"
+              className={cn(
+                "px-3 py-1.5 text-sm transition-all hover:scale-105",
+                index === 0 && "bg-primary text-primary-foreground hover:bg-primary/90",
+                index === 1 && "bg-primary/80 text-primary-foreground hover:bg-primary/70",
+                index === 2 && "bg-primary/60 text-primary-foreground hover:bg-primary/50"
+              )}
+            >
+              {tag.name}
+              <span className="ml-1 opacity-70">({tag.count})</span>
+            </Badge>
+          ))}
+        </div>
 
-                {aiSummary ? (
-                  structuredSummary ? (
-                    <StructuredAISummaryView summary={structuredSummary} topArticlesById={topArticlesById} />
-                  ) : legacySummary ? (
-                    <LegacyAISummaryView summary={legacySummary} />
-                  ) : (
-                    <div className="flex-1">
-                      <p className="text-lg leading-relaxed text-foreground/90 whitespace-pre-line">
-                        {aiSummary}
-                      </p>
-                    </div>
-                  )
-                ) : (
-                  <div className="flex-1 flex items-center justify-center">
-                    <p className="text-muted-foreground">
-                      AI分析は準備中です
-                    </p>
-                  </div>
-                )}
-
+        {/* AI Analysis - Full Width */}
+        <div className="animate-slide-in-left">
+          <Card className="border-0 bg-gradient-to-br from-card via-card to-primary/5 shadow-lg">
+            <CardContent className="p-6 sm:p-8">
+              <div className="flex items-center gap-2 mb-6">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <span className="text-sm font-semibold text-primary">AI Analysis</span>
                 {generatedAt && (
-                  <p className="text-xs text-muted-foreground mt-4 pt-4 border-t">
-                    Generated: {new Date(generatedAt).toLocaleString('ja-JP')}
-                  </p>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {new Date(generatedAt).toLocaleString('ja-JP')}
+                  </span>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </div>
 
-          {/* Stats & Tags - takes 5 columns */}
-          <div className="lg:col-span-5 space-y-6 animate-slide-in-right">
-            {/* Article count stat */}
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-primary to-primary/80">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-primary-foreground/80 text-sm font-medium">
-                      Total Articles
-                    </p>
-                    <p className="text-4xl font-bold text-primary-foreground mt-1">
-                      {articleCount.toLocaleString()}
+              {aiSummary ? (
+                structuredSummary ? (
+                  <StructuredAISummaryView summary={structuredSummary} topArticlesById={topArticlesById} />
+                ) : legacySummary ? (
+                  <LegacyAISummaryView summary={legacySummary} />
+                ) : (
+                  <div className="flex-1">
+                    <p className="text-lg leading-relaxed text-foreground/90 whitespace-pre-line">
+                      {aiSummary}
                     </p>
                   </div>
-                  <FileText className="h-12 w-12 text-primary-foreground/20" />
+                )
+              ) : (
+                <div className="flex-1 flex items-center justify-center py-12">
+                  <p className="text-muted-foreground">
+                    AI分析は準備中です
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Top tags */}
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-6">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-4">
-                  Trending Tags
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {topTags.slice(0, 8).map((tag, index) => (
-                    <Badge
-                      key={tag.name}
-                      variant="secondary"
-                      className={cn(
-                        "px-3 py-1 text-sm transition-all hover:scale-105 animate-fade-in",
-                        index === 0 && "bg-primary text-primary-foreground hover:bg-primary/90",
-                        index === 1 && "bg-primary/80 text-primary-foreground hover:bg-primary/70",
-                        index === 2 && "bg-primary/60 text-primary-foreground hover:bg-primary/50"
-                      )}
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      {tag.name}
-                      <span className="ml-1 opacity-70">({tag.count})</span>
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
