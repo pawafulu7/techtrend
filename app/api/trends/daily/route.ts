@@ -43,15 +43,17 @@ export async function GET(request: NextRequest) {
       }
       targetDate = parsed;
     } else {
-      // デフォルト: 前日（JST）
+      // デフォルト: 前日（JST基準）
+      // 現在時刻をJSTに変換し、1日引いて00:00:00に設定し、UTCに戻す
       const now = new Date();
       const jstOffset = 9 * 60 * 60 * 1000;
       const jstNow = new Date(now.getTime() + jstOffset);
       jstNow.setUTCDate(jstNow.getUTCDate() - 1);
-      targetDate = jstNow;
+      jstNow.setUTCHours(0, 0, 0, 0);
+      targetDate = new Date(jstNow.getTime() - jstOffset);
     }
 
-    // 日付文字列（キャッシュキー用）
+    // 日付文字列（キャッシュキー用）- targetDateはUTCなのでJSTに変換
     const jstOffset = 9 * 60 * 60 * 1000;
     const jstDate = new Date(targetDate.getTime() + jstOffset);
     const dateKey = `${jstDate.getUTCFullYear()}-${String(jstDate.getUTCMonth() + 1).padStart(2, '0')}-${String(jstDate.getUTCDate()).padStart(2, '0')}`;
