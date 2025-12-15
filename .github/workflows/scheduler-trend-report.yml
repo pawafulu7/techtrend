@@ -1,8 +1,8 @@
-name: Scheduler - Weekly Digest
+name: Scheduler - Daily Trend Report
 
 on:
   schedule:
-    - cron: '0 21 * * 0' # Monday 06:00 JST (UTC Sunday 21:00)
+    - cron: '0 16 * * *' # Daily 01:00 JST (UTC 16:00 previous day)
   workflow_dispatch:
     inputs:
       confirm:
@@ -10,13 +10,26 @@ on:
         required: true
         type: string
         default: "NO"
+      type:
+        description: "Report type (daily/weekly/monthly)"
+        required: false
+        type: choice
+        options:
+          - daily
+          - weekly
+          - monthly
+        default: "daily"
+      date:
+        description: "Target date (YYYY-MM-DD, optional)"
+        required: false
+        type: string
 
 concurrency:
   group: techtrend-scheduler-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  generate-digest:
+  generate-trend-report:
     if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -43,9 +56,18 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PRISMA_MIGRATE_ENGINE_ADVISORY_LOCK_TIMEOUT: 60000
         run: npx prisma migrate deploy
-      - name: Generate weekly digest
+      - name: Generate trend report
         env:
           NODE_ENV: production
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
-        run: npx tsx scripts/scheduled/generate-digest.ts
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          TYPE="${{ github.event.inputs.type || 'daily' }}"
+          DATE="${{ github.event.inputs.date }}"
+
+          if [ -n "$DATE" ]; then
+            npx tsx scripts/scheduled/generate-trend-report.ts --type "$TYPE" --date "$DATE"
+          else
+            npx tsx scripts/scheduled/generate-trend-report.ts --type "$TYPE"
+          fi

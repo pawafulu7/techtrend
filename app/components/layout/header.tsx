@@ -19,7 +19,7 @@ export function Header() {
   const primaryNav = [
     { href: '/', label: 'ホーム', icon: Home },
     { href: '/popular', label: '人気', icon: TrendingUp },
-    { href: '/digest', label: 'ダイジェスト', icon: Calendar },
+    { href: '/trends/daily', label: 'デイリー', icon: Calendar },
     { href: '/sources', label: 'ソース', icon: Database },
     { href: '/trends', label: 'トレンド', icon: TrendingUp },
     { href: '/stats', label: '統計', icon: BarChart3 },

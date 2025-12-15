@@ -123,6 +123,30 @@ module.exports = {
       log_file: 'logs/title-translator-combined.log',
       time: true,
       merge_logs: true
+    },
+    {
+      name: 'techtrend-daily-trend',
+      script: 'scripts/scheduled/generate-trend-report.ts',
+      interpreter: './node_modules/.bin/tsx',
+      args: '--type daily',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false, // Batch job: rely on cron_restart for scheduling
+      watch: false,
+      max_restarts: 3,
+      restart_delay: 30000,
+      min_uptime: '60s',
+      max_memory_restart: '500M',
+      cron_restart: '30 10 * * *', // Daily at 10:30 AM JST
+      env: {
+        NODE_ENV: 'production',
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY
+      },
+      error_file: 'logs/daily-trend-error.log',
+      out_file: 'logs/daily-trend-out.log',
+      log_file: 'logs/daily-trend-combined.log',
+      time: true,
+      merge_logs: true
     }
   ]
 };
