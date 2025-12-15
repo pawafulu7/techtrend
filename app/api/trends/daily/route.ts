@@ -74,15 +74,53 @@ export async function GET(request: NextRequest) {
       logger.warn('Cache read error', cacheError);
     }
 
-    // レポート取得
+    // レポート取得（日付指定でフィルタリング）
     const generator = new TrendReportGenerator(prisma);
-    const report = await generator.getLatestReport(TrendPeriodType.DAILY);
+
+    // periodStartを計算（JST 00:00:00をUTCに変換）
+    // jstOffsetは上で既に定義済み
+    const periodStart = new Date(jstDate);
+    periodStart.setUTCHours(0, 0, 0, 0);
+    const periodStartUTC = new Date(periodStart.getTime() - jstOffset);
+
+    // 指定日付のレポートを取得
+    const report = await generator.getTrendReport(TrendPeriodType.DAILY, periodStartUTC);
 
     if (!report) {
-      return NextResponse.json(
-        { error: 'No daily trend report found', date: dateKey },
-        { status: 404 }
-      );
+      // 指定日付のレポートがない場合、最新のレポートを取得
+      const latestReport = await generator.getLatestReport(TrendPeriodType.DAILY);
+      if (!latestReport) {
+        return NextResponse.json(
+          { error: 'No daily trend report found', date: dateKey },
+          { status: 404 }
+        );
+      }
+
+      // 最新レポートを返す（日付が違う旨を含める）
+      const response = {
+        success: true,
+        data: {
+          ...latestReport,
+          periodStart: latestReport.periodStart.toISOString(),
+          periodEnd: latestReport.periodEnd.toISOString(),
+          generatedAt: latestReport.generatedAt?.toISOString()
+        },
+        requestedDate: dateKey,
+        note: 'Returned latest available report'
+      };
+
+      try {
+        await cacheInstance.set(cacheKey, response);
+      } catch (cacheError) {
+        logger.warn('Cache write error', cacheError);
+      }
+
+      return NextResponse.json(response, {
+        headers: {
+          'X-Cache': 'MISS',
+          'Cache-Control': 'public, max-age=300'
+        }
+      });
     }
 
     const response = {
