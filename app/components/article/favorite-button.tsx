@@ -48,7 +48,7 @@ export function FavoriteButton({
   useEffect(() => {
     if (!fetchInitialStatus) return;
     if (sessionStatus === 'loading') return;
-    if (isControlled) return;
+    if (onToggleFavorite) return;
 
     // If not authenticated, no need to fetch
     if (!session?.user?.id) {
@@ -56,22 +56,26 @@ export function FavoriteButton({
       return;
     }
 
-    let cancelled = false;
+    const abortController = new AbortController();
 
     const fetchStatus = async () => {
       try {
         const response = await fetch(`/api/favorites/${articleId}`, {
           credentials: 'include',
-          cache: 'no-store'
+          cache: 'no-store',
+          signal: abortController.signal
         });
-        if (response.ok && !cancelled) {
+        if (response.ok) {
           const data = await response.json();
           setUncontrolledFavorited(data.isFavorited);
         }
       } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
         console.error('Failed to fetch favorite status:', error);
       } finally {
-        if (!cancelled) {
+        if (!abortController.signal.aborted) {
           setIsLoadingInitial(false);
         }
       }
@@ -80,16 +84,16 @@ export function FavoriteButton({
     fetchStatus();
 
     return () => {
-      cancelled = true;
+      abortController.abort();
     };
-  }, [articleId, fetchInitialStatus, session?.user?.id, sessionStatus, isControlled]);
+  }, [articleId, fetchInitialStatus, session?.user?.id, sessionStatus, onToggleFavorite]);
 
   // Sync initial value in uncontrolled mode (for non-ISR pages)
   useEffect(() => {
-    if (isControlled) return;
+    if (onToggleFavorite) return;
     if (fetchInitialStatus) return;
     setUncontrolledFavorited(initialFavorited);
-  }, [initialFavorited, fetchInitialStatus, isControlled]);
+  }, [initialFavorited, fetchInitialStatus, onToggleFavorite]);
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -110,7 +114,16 @@ export function FavoriteButton({
     try {
       if (onToggleFavorite) {
         // Controlled mode: optimistic update is handled by parent
-        await Promise.resolve(onToggleFavorite());
+        try {
+          await Promise.resolve(onToggleFavorite());
+        } catch (error) {
+          console.error('Failed to toggle favorite:', error);
+          toast({
+            title: 'エラー',
+            description: 'お気に入りの更新に失敗しました。もう一度お試しください。',
+            variant: 'destructive',
+          });
+        }
         return;
       }
 
