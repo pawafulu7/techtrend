@@ -5,6 +5,10 @@
 // モックの設定
 jest.mock('@/lib/prisma');
 jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/favorites/cache-helpers', () => ({
+  updateFavoriteCacheBestEffort: jest.fn().mockResolvedValue(undefined),
+  setFavoriteBustCookie: jest.fn(),
+}));
 
 import { GET, POST, DELETE } from '@/app/api/favorites/route';
 import { prisma } from '@/lib/prisma';

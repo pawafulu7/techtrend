@@ -28,7 +28,7 @@ jest.mock('next/image', () => ({
 }));
 
 // FavoriteButtonモック
-jest.mock('@/components/article/favorite-button', () => ({
+jest.mock('@/app/components/article/favorite-button', () => ({
   FavoriteButton: ({ articleId }: { articleId: string }) => (
     <button data-testid="favorite-button">Favorite {articleId}</button>
   ),

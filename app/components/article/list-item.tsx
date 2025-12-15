@@ -9,13 +9,15 @@ import { formatDate, formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleListItemProps } from '@/types/components';
 import { cn } from '@/lib/utils';
-import { FavoriteButton } from '@/components/article/favorite-button';
+import { FavoriteButton } from '@/app/components/article/favorite-button';
 export function ArticleListItem({
   article,
   onTagClick,
   onArticleClick,
-  isRead: initialIsRead = true
-}: ArticleListItemProps & { isRead?: boolean }) {
+  isRead: initialIsRead = true,
+  isFavorited = false,
+  onToggleFavorite,
+}: ArticleListItemProps) {
   const [isRead, setIsRead] = useState(initialIsRead);
   const router = useRouter();
 
@@ -169,7 +171,10 @@ export function ArticleListItem({
         <div className="hidden group-hover:flex items-center gap-1">
           <FavoriteButton
             articleId={article.id}
-            className="h-11 w-11 p-0 min-w-[44px] min-h-[44px]"
+            compact
+            isFavorited={isFavorited}
+            onToggleFavorite={onToggleFavorite}
+            className="h-11 w-11 min-w-[44px] min-h-[44px]"
           />
           <Button
             variant="ghost"

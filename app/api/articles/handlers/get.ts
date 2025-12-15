@@ -380,8 +380,11 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     let result = baseResult;
 
     if (display.includeUserData && userId && baseResult?.items?.length > 0) {
+      const bypassFavoriteL1 = Boolean(request.cookies.get('tt_fav_bust')?.value);
       const articleIds = extractArticleIds(baseResult.items);
-      const userSpecificData = await fetchUserSpecificData(userId, articleIds, metrics);
+      const userSpecificData = await fetchUserSpecificData(userId, articleIds, metrics, {
+        bypassFavoriteL1,
+      });
 
       result = {
         ...baseResult,

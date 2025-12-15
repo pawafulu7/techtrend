@@ -39,6 +39,9 @@ export interface ArticleListItemProps {
   totalArticleCount?: number;
   currentFilters?: Record<string, string>;
   onArticleClick?: (articleId?: string) => void;
+  isRead?: boolean;
+  isFavorited?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 // 表示モード切り替えボタン

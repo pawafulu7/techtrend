@@ -37,6 +37,14 @@ export interface ViewStatus {
 // DataLoader作成オプション
 export interface LoaderOptions {
   cache?: boolean;
+  /**
+   * Skip reading from process-local L1 cache.
+   * Useful after write operations in multi-process/serverless environments where
+   * other instances may still hold stale L1 entries.
+   *
+   * Note: Writes/promotions to L1 may still occur.
+   */
+  bypassL1?: boolean;
   maxBatchSize?: number;
   batchScheduleFn?: (callback: () => void) => void;
 }

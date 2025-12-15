@@ -1,7 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
-import { favoriteCache } from '@/lib/cache/favorites-cache';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import logger from '@/lib/logger';
+import {
+  updateFavoriteCacheBestEffort,
+  setFavoriteBustCookie,
+} from '@/lib/favorites/cache-helpers';
 
 // GET: 特定の記事がお気に入りに追加されているか確認
 export async function GET(
@@ -33,7 +38,8 @@ export async function GET(
       isFavorited: !!favorite,
       favoriteId: favorite?.id || null,
     });
-  } catch {
+  } catch (error) {
+    logger.error({ error }, 'Favorite GET failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -42,8 +48,8 @@ export async function GET(
 }
 
 // POST: 記事をお気に入りに追加
-export async function POST(
-  request: Request,
+async function postHandler(
+  request: NextRequest,
   { params }: { params: Promise<{ articleId: string }> }
 ) {
   try {
@@ -105,15 +111,23 @@ export async function POST(
       },
     });
 
-    // キャッシュを更新
-    await favoriteCache.updateSingle(session.user.id, articleId, true);
+    // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
+    await updateFavoriteCacheBestEffort(
+      session.user.id,
+      articleId,
+      true,
+      favorite.createdAt
+    );
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'Article favorited successfully',
       isFavorited: true,
       favoriteId: favorite.id,
     });
-  } catch {
+    setFavoriteBustCookie(response);
+    return response;
+  } catch (error) {
+    logger.error({ error }, 'Favorite POST failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -122,8 +136,8 @@ export async function POST(
 }
 
 // DELETE: お気に入りから削除
-export async function DELETE(
-  request: Request,
+async function deleteHandler(
+  request: NextRequest,
   { params }: { params: Promise<{ articleId: string }> }
 ) {
   try {
@@ -159,17 +173,23 @@ export async function DELETE(
       },
     });
 
-    // キャッシュを更新
-    await favoriteCache.updateSingle(session.user.id, articleId, false);
+    // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
+    await updateFavoriteCacheBestEffort(session.user.id, articleId, false);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'Article removed from favorites',
       isFavorited: false,
     });
-  } catch {
+    setFavoriteBustCookie(response);
+    return response;
+  } catch (error) {
+    logger.error({ error }, 'Favorite DELETE failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
+
+export const POST = withCSRFProtection(postHandler);
+export const DELETE = withCSRFProtection(deleteHandler);

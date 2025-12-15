@@ -120,6 +120,8 @@ export function ArticleList({
             totalArticleCount={articles.length}
             onArticleClick={onArticleClick}
             isRead={article.isRead ?? true}
+            isFavorited={article.isFavorited ?? false}
+            onToggleFavorite={() => handleToggleFavorite(article.id)}
           />
         ))}
       </div>

@@ -12,11 +12,19 @@ import type { UserSpecificArticleData, ArticleUserOverlay } from './types';
 /**
  * Fetch user-specific data (favorites, read status) for a list of articles
  * Uses DataLoader for efficient batching
+ *
+ * @param userId - User ID to fetch data for
+ * @param articleIds - List of article IDs to fetch data for
+ * @param metrics - Metrics collector for performance tracking
+ * @param options - Optional configuration
+ * @param options.bypassFavoriteL1 - When true, bypasses L1 cache for favorite data
+ * @returns User-specific article data including favorites and read status
  */
 export async function fetchUserSpecificData(
   userId: string,
   articleIds: string[],
-  metrics: MetricsCollector
+  metrics: MetricsCollector,
+  options?: { bypassFavoriteL1?: boolean }
 ): Promise<UserSpecificArticleData> {
   if (!userId || articleIds.length === 0) {
     return {
@@ -26,7 +34,10 @@ export async function fetchUserSpecificData(
   }
 
   // Create DataLoader instances for this request
-  const loaders = createLoaders({ userId });
+  const loaders = createLoaders(
+    { userId },
+    { favorite: { bypassL1: options?.bypassFavoriteL1 === true } }
+  );
 
   if (!loaders.favorite || !loaders.view) {
     return {
@@ -36,6 +47,7 @@ export async function fetchUserSpecificData(
   }
 
   // Use DataLoader to batch fetch user-specific data
+  // Note: Using 'db_query' for timer name to ensure proper aggregation in MetricsCollector.dbQueryTime
   const [favoriteStatuses, viewStatuses] = await Promise.all([
     withDbTiming(metrics, () => loaders.favorite!.loadMany(articleIds), 'db_query'),
     withDbTiming(metrics, () => loaders.view!.loadMany(articleIds), 'db_query'),
