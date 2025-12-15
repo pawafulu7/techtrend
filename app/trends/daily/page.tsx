@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { DailyTrendHero, TopArticleList, CategoryDistribution } from '@/app/components/trends/daily';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface TrendReportData {
@@ -42,38 +42,57 @@ interface TrendReportData {
   generatedAt?: string;
 }
 
+interface ApiResponse {
+  success: boolean;
+  data?: TrendReportData;
+  navigation?: {
+    prevDate: string | null;
+    nextDate: string | null;
+  };
+  error?: string;
+  latestAvailableDate?: string | null;
+}
+
 export default function DailyTrendPage() {
   const [report, setReport] = useState<TrendReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    // デフォルト: 前日
-    const date = new Date();
-    date.setDate(date.getDate() - 1);
-    return date;
-  });
+  const [latestAvailableDate, setLatestAvailableDate] = useState<string | null>(null);
+  const [navigation, setNavigation] = useState<{
+    prevDate: string | null;
+    nextDate: string | null;
+  }>({ prevDate: null, nextDate: null });
 
-  const fetchReport = async (date: Date) => {
+  // 初回ロード時は最新レポートを取得するため、日付指定なし
+  const [requestedDate, setRequestedDate] = useState<string | null>(null);
+
+  const fetchReport = async (dateStr?: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      const dateStr = date.toISOString().split('T')[0];
-      const response = await fetch(`/api/trends/daily?date=${dateStr}`);
+      const url = dateStr
+        ? `/api/trends/daily?date=${dateStr}`
+        : '/api/trends/daily';
+      const response = await fetch(url);
+      const data: ApiResponse = await response.json();
 
       if (!response.ok) {
         if (response.status === 404) {
+          setLatestAvailableDate(data.latestAvailableDate || null);
           setError('この日のトレンドレポートはまだ生成されていません');
         } else {
           setError('データの取得に失敗しました');
         }
         setReport(null);
+        setNavigation({ prevDate: null, nextDate: null });
         return;
       }
 
-      const data = await response.json();
-      if (data.success) {
+      if (data.success && data.data) {
         setReport(data.data);
+        setNavigation(data.navigation || { prevDate: null, nextDate: null });
+        setLatestAvailableDate(null);
       } else {
         setError(data.error || 'データの取得に失敗しました');
       }
@@ -85,91 +104,57 @@ export default function DailyTrendPage() {
   };
 
   useEffect(() => {
-    fetchReport(selectedDate);
-  }, [selectedDate]);
+    fetchReport(requestedDate || undefined);
+  }, [requestedDate]);
 
   const goToPreviousDay = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() - 1);
-    setSelectedDate(newDate);
+    if (navigation.prevDate) {
+      setRequestedDate(navigation.prevDate);
+    }
   };
 
   const goToNextDay = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() + 1);
-
-    // 未来の日付は選択不可
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (newDate >= today) return;
-
-    setSelectedDate(newDate);
+    if (navigation.nextDate) {
+      setRequestedDate(navigation.nextDate);
+    }
   };
 
-  const isNextDisabled = () => {
-    const tomorrow = new Date(selectedDate);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return tomorrow >= today;
+  const goToLatest = () => {
+    if (latestAvailableDate) {
+      setRequestedDate(latestAvailableDate);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Date navigation */}
-      <div className="sticky top-14 z-40 bg-background/95 backdrop-blur border-b">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goToPreviousDay}
-              className="gap-2"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              前日
-            </Button>
-
-            <div className="text-center">
-              <p className="font-semibold">
-                {selectedDate.toLocaleDateString('ja-JP', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goToNextDay}
-              disabled={isNextDisabled()}
-              className="gap-2"
-            >
-              翌日
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
       {/* Error state */}
       {error && (
         <div className="container mx-auto px-4 py-8">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
+            <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <span>{error}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fetchReport(selectedDate)}
-                className="gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                再試行
-              </Button>
+              <div className="flex gap-2">
+                {latestAvailableDate && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToLatest}
+                    className="gap-2"
+                  >
+                    最新レポートを見る
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchReport(requestedDate || undefined)}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  再試行
+                </Button>
+              </div>
             </AlertDescription>
           </Alert>
         </div>
@@ -188,7 +173,7 @@ export default function DailyTrendPage() {
         </div>
       ) : report ? (
         <>
-          {/* Hero section with AI summary */}
+          {/* Hero section with AI summary and navigation */}
           <DailyTrendHero
             aiSummary={report.aiSummary}
             articleCount={report.articleCount}
@@ -196,6 +181,9 @@ export default function DailyTrendPage() {
             periodEnd={report.periodEnd}
             generatedAt={report.generatedAt}
             topTags={report.tags}
+            navigation={navigation}
+            onPrevDay={goToPreviousDay}
+            onNextDay={goToNextDay}
           />
 
           {/* Content sections */}

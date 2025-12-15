@@ -335,47 +335,60 @@ export class TrendReportGenerator {
     }
 
     const periodLabel = {
-      [TrendPeriodType.DAILY]: '今日',
+      [TrendPeriodType.DAILY]: '本日',
       [TrendPeriodType.WEEKLY]: '今週',
       [TrendPeriodType.MONTHLY]: '今月'
     }[periodType];
 
-    const topTagsText = tags.slice(0, 10).map(t => `${t.name}(${t.count}件)`).join('、');
-    const topCategoriesText = categories.slice(0, 5).map(c => `${c.name}(${c.count}件)`).join('、');
+    // 上位タグから技術キーワードを抽出
+    const topTagNames = tags.slice(0, 5).map(t => t.name);
+    const topTagsText = tags.slice(0, 10).map(t => `${t.name}(${t.count}件)`).join(', ');
+    const topCategoriesText = categories.slice(0, 5).map(c => `${c.name}(${c.count}件, ${c.percentage}%)`).join(', ');
+
+    // 記事タイトルからキーワードを抽出
     const topArticlesText = topArticles.slice(0, 5).map((a, i) =>
-      `${i + 1}. ${a.translatedTitle || a.title} (${a.sourceName})`
+      `${i + 1}. [${a.sourceName}] ${a.translatedTitle || a.title}\n   - タグ: ${a.tags.slice(0, 3).join(', ')}\n   - スコア: ${a.score}`
     ).join('\n');
 
-    const prompt = `あなたは技術トレンドアナリストです。${periodLabel}の技術記事トレンドを分析し、200-300文字で要約してください。
+    const prompt = `技術トレンドレポートを作成してください。
 
 ## 入力データ
+- 期間: ${periodLabel}
 - 総記事数: ${articles.length}件
-- 主要カテゴリ: ${topCategoriesText}
+- カテゴリ分布: ${topCategoriesText}
 - 注目タグ: ${topTagsText}
 - 人気記事TOP5:
 ${topArticlesText}
 
-## 出力要件
-1. ${periodLabel}のトレンド傾向を端的に述べる
-2. 特に注目すべきトピック（2-3点）を挙げる
-3. 技術者への示唆（学ぶべきこと、注目すべき動向）
-4. 自然な日本語で、200-300文字程度
+## 出力形式（必ずこの構造で出力）
 
-要約:`;
+**注目トピック**
+1. [具体的な技術名/プロダクト名]: [なぜ注目されているか、1文で]
+2. [具体的な技術名/プロダクト名]: [なぜ注目されているか、1文で]
+3. [具体的な技術名/プロダクト名]: [なぜ注目されているか、1文で]
+
+**技術者へのアクションポイント**
+[上記トピックを踏まえて、今すぐ学ぶべきこと・確認すべきことを1-2文で]
+
+## 制約
+- 必ず入力データに含まれる固有名詞（${topTagNames.join(', ')}など）を使用すること
+- 「トレンドは〜」「注目を集めています」などの曖昧な表現禁止
+- 各トピックは具体的な技術名・プロダクト名で始めること
+- 全体で200-250文字程度`;
 
     const result = await this.model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
-        maxOutputTokens: 500,
-        temperature: 0.7,
+        maxOutputTokens: 600,
+        temperature: 0.5, // より確定的な出力のため低めに設定
       },
     });
 
     const response = result.response;
     let summary = response.text().trim();
 
-    // 先頭の「要約:」などを除去
-    summary = summary.replace(/^(要約[:：]?\s*)/i, '');
+    // 先頭の不要なテキストを除去
+    summary = summary.replace(/^(要約[:：]?\s*|##\s*出力\s*)/i, '');
 
     return summary;
   }
@@ -458,6 +471,51 @@ ${topArticlesText}
         createdAt: true
       }
     });
+  }
+
+  /**
+   * 指定日付の前後にあるレポートの日付を取得
+   */
+  async getAdjacentReportDates(
+    periodType: TrendPeriodType,
+    currentPeriodStart: Date
+  ): Promise<{ prevDate: Date | null; nextDate: Date | null }> {
+    // 前のレポート
+    const prevReport = await this.prisma.trendReport.findFirst({
+      where: {
+        periodType,
+        periodStart: { lt: currentPeriodStart }
+      },
+      orderBy: { periodStart: 'desc' },
+      select: { periodStart: true }
+    });
+
+    // 次のレポート
+    const nextReport = await this.prisma.trendReport.findFirst({
+      where: {
+        periodType,
+        periodStart: { gt: currentPeriodStart }
+      },
+      orderBy: { periodStart: 'asc' },
+      select: { periodStart: true }
+    });
+
+    return {
+      prevDate: prevReport?.periodStart ?? null,
+      nextDate: nextReport?.periodStart ?? null
+    };
+  }
+
+  /**
+   * 最新レポートの日付を取得（404レスポンス用）
+   */
+  async getLatestReportDate(periodType: TrendPeriodType): Promise<Date | null> {
+    const report = await this.prisma.trendReport.findFirst({
+      where: { periodType },
+      orderBy: { periodStart: 'desc' },
+      select: { periodStart: true }
+    });
+    return report?.periodStart ?? null;
   }
 
   // ========================================

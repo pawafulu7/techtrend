@@ -87,41 +87,36 @@ export async function GET(request: NextRequest) {
     const report = await generator.getTrendReport(TrendPeriodType.DAILY, periodStartUTC);
 
     if (!report) {
-      // 指定日付のレポートがない場合、最新のレポートを取得
-      const latestReport = await generator.getLatestReport(TrendPeriodType.DAILY);
-      if (!latestReport) {
-        return NextResponse.json(
-          { error: 'No daily trend report found', date: dateKey },
-          { status: 404 }
-        );
-      }
+      // 指定日付のレポートがない場合、404を返す（フォールバックしない）
+      const latestDate = await generator.getLatestReportDate(TrendPeriodType.DAILY);
 
-      // 最新レポートを返す（日付が違う旨を含める）
-      const response = {
-        success: true,
-        data: {
-          ...latestReport,
-          periodStart: latestReport.periodStart.toISOString(),
-          periodEnd: latestReport.periodEnd.toISOString(),
-          generatedAt: latestReport.generatedAt?.toISOString()
-        },
-        requestedDate: dateKey,
-        note: 'Returned latest available report'
+      // JST日付文字列に変換するヘルパー
+      const toJSTDateString = (date: Date) => {
+        const jst = new Date(date.getTime() + jstOffset);
+        return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
       };
 
-      try {
-        await cacheInstance.set(cacheKey, response);
-      } catch (cacheError) {
-        logger.warn('Cache write error', cacheError);
-      }
-
-      return NextResponse.json(response, {
-        headers: {
-          'X-Cache': 'MISS',
-          'Cache-Control': 'public, max-age=300'
-        }
-      });
+      return NextResponse.json(
+        {
+          error: 'No report found for this date',
+          requestedDate: dateKey,
+          latestAvailableDate: latestDate ? toJSTDateString(latestDate) : null
+        },
+        { status: 404 }
+      );
     }
+
+    // 前後のレポート日付を取得
+    const adjacentDates = await generator.getAdjacentReportDates(
+      TrendPeriodType.DAILY,
+      report.periodStart
+    );
+
+    // JST日付文字列に変換するヘルパー
+    const toJSTDateString = (date: Date) => {
+      const jst = new Date(date.getTime() + jstOffset);
+      return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
+    };
 
     const response = {
       success: true,
@@ -130,6 +125,10 @@ export async function GET(request: NextRequest) {
         periodStart: report.periodStart.toISOString(),
         periodEnd: report.periodEnd.toISOString(),
         generatedAt: report.generatedAt?.toISOString()
+      },
+      navigation: {
+        prevDate: adjacentDates.prevDate ? toJSTDateString(adjacentDates.prevDate) : null,
+        nextDate: adjacentDates.nextDate ? toJSTDateString(adjacentDates.nextDate) : null
       }
     };
 

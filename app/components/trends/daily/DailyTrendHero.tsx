@@ -1,8 +1,9 @@
 'use client';
 
-import { Sparkles, Calendar, TrendingUp, FileText } from 'lucide-react';
+import { Sparkles, Calendar, TrendingUp, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface DailyTrendHeroProps {
@@ -12,6 +13,12 @@ interface DailyTrendHeroProps {
   periodEnd: string;
   generatedAt?: string;
   topTags?: { name: string; count: number }[];
+  navigation?: {
+    prevDate: string | null;
+    nextDate: string | null;
+  };
+  onPrevDay?: () => void;
+  onNextDay?: () => void;
 }
 
 export function DailyTrendHero({
@@ -19,7 +26,10 @@ export function DailyTrendHero({
   articleCount,
   periodStart,
   generatedAt,
-  topTags = []
+  topTags = [],
+  navigation,
+  onPrevDay,
+  onNextDay
 }: DailyTrendHeroProps) {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -39,20 +49,48 @@ export function DailyTrendHero({
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
       <div className="relative container mx-auto px-4 py-12">
-        {/* Header */}
+        {/* Header with navigation */}
         <div className="mb-8 animate-fade-in">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <TrendingUp className="h-6 w-6 text-primary" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10">
+                <TrendingUp className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">
+                  Daily Trend
+                </h1>
+                <p className="text-muted-foreground flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  {formatDate(periodStart)}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                Daily Trend
-              </h1>
-              <p className="text-muted-foreground flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                {formatDate(periodStart)}
-              </p>
+
+            {/* Date navigation */}
+            <div className="flex items-center gap-2">
+              {navigation?.prevDate && onPrevDay && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onPrevDay}
+                  className="gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">前日</span>
+                </Button>
+              )}
+              {navigation?.nextDate && onNextDay && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onNextDay}
+                  className="gap-1"
+                >
+                  <span className="hidden sm:inline">翌日</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
