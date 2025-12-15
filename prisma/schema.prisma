@@ -182,16 +182,35 @@ model ArticleView {
   @@index([userId, isRead])
 }
 
-model WeeklyDigest {
-  id            String   @id @default(cuid())
-  weekStartDate DateTime @unique
-  weekEndDate   DateTime
-  articleCount  Int
-  topArticles   Json
-  categories    Json
-  createdAt     DateTime @default(now())
+// =============================================================================
+// Trend Reports: Daily/Weekly/Monthly trend analysis with AI summaries
+// (WeeklyDigest has been deprecated and replaced by TrendReport)
+// =============================================================================
 
-  @@index([createdAt(sort: Desc)], map: "idx_weekly_digest_created_at")
+enum TrendPeriodType {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model TrendReport {
+  id            String          @id @default(cuid())
+  periodType    TrendPeriodType
+  periodStart   DateTime        @db.Timestamptz(6)
+  periodEnd     DateTime        @db.Timestamptz(6)
+  articleCount  Int
+  topArticles   Json            // Top articles with scores
+  categories    Json            // Category distribution
+  tags          Json            // Tag rankings
+  aiSummary     String?         @db.Text
+  aiModel       String?         // e.g., "gemini-2.5-flash-lite"
+  promptVersion String?         // For AI audit trail
+  generatedAt   DateTime?       @db.Timestamptz(6)
+  createdAt     DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @db.Timestamptz(6)
+
+  @@unique([periodType, periodStart])
+  @@index([periodType, periodStart(sort: Desc)], map: "idx_trend_report_period")
 }
 
 model ProcessingLog {
