@@ -2,6 +2,7 @@ import { PrismaClient, Prisma, TrendPeriodType } from '@prisma/client';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import logger from '@/lib/logger/index';
 import { GEMINI_API } from '@/lib/constants';
+import { extractFirstJsonObject, TrendAiSummaryV1Schema } from '@/lib/types/trend-ai-summary';
 
 // カテゴリタグ定義（大文字小文字を区別しない比較用）
 const CATEGORY_TAGS = {
@@ -72,7 +73,7 @@ export interface TrendReportData {
 }
 
 // プロンプトバージョン管理
-const PROMPT_VERSION = '1.0.0';
+const PROMPT_VERSION = '1.1.0';
 
 export class TrendReportGenerator {
   private prisma: PrismaClient;
@@ -334,25 +335,144 @@ export class TrendReportGenerator {
       throw new Error('Gemini model not initialized');
     }
 
+    try {
+      return await this.generateAISummaryStructured(periodType, articles, topArticles, categories, tags);
+    } catch (error) {
+      logger.warn('Failed to generate structured AI summary, falling back to legacy format', error);
+      return await this.generateAISummaryLegacyPlainText(periodType, articles, topArticles, categories, tags);
+    }
+  }
+
+  private async generateAISummaryStructured(
+    periodType: TrendPeriodType,
+    articles: ArticleWithRelations[],
+    topArticles: TopArticleInfo[],
+    categories: CategoryInfo[],
+    tags: TagInfo[]
+  ): Promise<string> {
+    if (!this.model) {
+      throw new Error('Gemini model not initialized');
+    }
+
     const periodLabel = {
       [TrendPeriodType.DAILY]: '本日',
       [TrendPeriodType.WEEKLY]: '今週',
       [TrendPeriodType.MONTHLY]: '今月'
     }[periodType];
 
-    // 上位タグから技術キーワードを抽出
+    const input = {
+      periodLabel,
+      articleCount: articles.length,
+      topCategories: categories.slice(0, 8).map(c => ({
+        name: c.name,
+        count: c.count,
+        percentage: c.percentage,
+        topArticleId: c.topArticle?.id ?? null,
+      })),
+      topTags: tags.slice(0, 12).map(t => ({
+        name: t.name,
+        count: t.count,
+        percentage: t.percentage,
+      })),
+      topArticles: topArticles.slice(0, 10).map(a => ({
+        id: a.id,
+        title: a.translatedTitle || a.title,
+        sourceName: a.sourceName,
+        url: a.url,
+        viewCount: a.viewCount,
+        favoriteCount: a.favoriteCount,
+        score: a.score,
+        tags: a.tags.slice(0, 6),
+      })),
+    };
+
+    const prompt = `あなたは技術ニュース編集長です。以下の入力データだけを根拠に、${periodLabel}の技術トレンド「AI Analysis」を生成してください。
+
+出力は JSON オブジェクト 1つのみ。前後に説明文・コードフェンス・余計な文字列を付けないでください。値は日本語で書いてください。
+
+必ず次のスキーマを厳守してください:
+{
+  "version": "trend_ai_summary_v1",
+  "headline": "短い見出し（20〜45文字程度）",
+  "keyTopics": [
+    {
+      "topic": "技術名（入力の topTags.name から選ぶ）",
+      "reason": "具体的な根拠を含む1〜2文（件数や記事名に触れる）",
+      "evidenceArticleIds": ["入力の topArticles.id のみ（最大3件）"],
+      "evidenceNumbers": [{"label":"", "value":""}]
+    }
+  ],
+  "numbers": [{"label":"", "value":""}],
+  "actions": [
+    {
+      "title": "次の一手（短い）",
+      "detail": "具体的に何を確認/学習するか（入力の数字や記事名・技術名を入れる）",
+      "relatedTopics": ["keyTopics.topic から選ぶ"],
+      "relatedArticleIds": ["入力の topArticles.id のみ（最大3件）"]
+    }
+  ],
+  "notes": ["任意（最大3件）"]
+}
+
+品質要件:
+- keyTopics は必ず 3件
+- numbers は 3〜5件（value に必ず数値を含める。例: "42件 (26%)"）
+- 具体性: 入力の topArticles.title を合計で最低2件は reason/detail 内で言及する
+- evidenceArticleIds / relatedArticleIds は必ず入力の topArticles.id から選ぶ（存在しないID禁止）
+- 「注目」「トレンド」「話題」だけで終わる曖昧表現は禁止（必ず入力の数値/固有名詞で言い切る）
+
+入力データ:
+${JSON.stringify(input)}`;
+
+    const result = await this.model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        maxOutputTokens: 900,
+        temperature: 0.4,
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const response = result.response;
+    const rawText = response.text().trim();
+    const json = extractFirstJsonObject(rawText);
+    const validated = TrendAiSummaryV1Schema.safeParse(json);
+
+    if (!validated.success) {
+      throw new Error(`Structured AI summary validation failed: ${validated.error.message}`);
+    }
+
+    return JSON.stringify(validated.data);
+  }
+
+  private async generateAISummaryLegacyPlainText(
+    periodType: TrendPeriodType,
+    articles: ArticleWithRelations[],
+    topArticles: TopArticleInfo[],
+    categories: CategoryInfo[],
+    tags: TagInfo[]
+  ): Promise<string> {
+    if (!this.model) {
+      throw new Error('Gemini model not initialized');
+    }
+
+    const periodLabel = {
+      [TrendPeriodType.DAILY]: '本日',
+      [TrendPeriodType.WEEKLY]: '今週',
+      [TrendPeriodType.MONTHLY]: '今月'
+    }[periodType];
+
     const topTagNames = tags.slice(0, 5).map(t => t.name);
     const topTagsText = tags.slice(0, 10).map(t => `${t.name}(${t.count}件)`).join(', ');
     const topCategoriesText = categories.slice(0, 5).map(c => `${c.name}(${c.count}件, ${c.percentage}%)`).join(', ');
 
-    // 記事タイトルからキーワードを抽出
     const topArticlesText = topArticles.slice(0, 5).map((a, i) =>
-      `${i + 1}. [${a.sourceName}] ${a.translatedTitle || a.title}\n   - タグ: ${a.tags.slice(0, 3).join(', ')}\n   - スコア: ${a.score}`
+      `${i + 1}. [${a.sourceName}] ${a.translatedTitle || a.title}\n   - タグ: ${a.tags.slice(0, 3).join(', ')}\n   - スコア: ${a.score} (閲覧${a.viewCount}/お気に入り${a.favoriteCount})`
     ).join('\n');
 
     const prompt = `技術トレンドレポートを作成してください。
 
-## 入力データ
+入力データ:
 - 期間: ${periodLabel}
 - 総記事数: ${articles.length}件
 - カテゴリ分布: ${topCategoriesText}
@@ -360,34 +480,33 @@ export class TrendReportGenerator {
 - 人気記事TOP5:
 ${topArticlesText}
 
-## 出力形式（必ずこの構造で出力）
+出力形式（プレーンテキストで、Markdown記法は使用しないこと）:
 
-**注目トピック**
-1. [具体的な技術名/プロダクト名]: [なぜ注目されているか、1文で]
-2. [具体的な技術名/プロダクト名]: [なぜ注目されているか、1文で]
-3. [具体的な技術名/プロダクト名]: [なぜ注目されているか、1文で]
+[注目トピック]
+(1) 技術名: 理由を1文で（入力の数字か記事名を必ず入れる）
+(2) 技術名: 理由を1文で（入力の数字か記事名を必ず入れる）
+(3) 技術名: 理由を1文で（入力の数字か記事名を必ず入れる）
 
-**技術者へのアクションポイント**
-[上記トピックを踏まえて、今すぐ学ぶべきこと・確認すべきことを1-2文で]
+[アクションポイント]
+今すぐ学ぶべきこと・確認すべきことを1-2文で（入力の固有名詞と数字を必ず入れる）
 
-## 制約
+制約:
+- Markdown記法（**、##、- など）は絶対に使用しないこと
 - 必ず入力データに含まれる固有名詞（${topTagNames.join(', ')}など）を使用すること
 - 「トレンドは〜」「注目を集めています」などの曖昧な表現禁止
 - 各トピックは具体的な技術名・プロダクト名で始めること
-- 全体で200-250文字程度`;
+- 全体で220-320文字程度`;
 
     const result = await this.model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         maxOutputTokens: 600,
-        temperature: 0.5, // より確定的な出力のため低めに設定
+        temperature: 0.5,
       },
     });
 
     const response = result.response;
     let summary = response.text().trim();
-
-    // 先頭の不要なテキストを除去
     summary = summary.replace(/^(要約[:：]?\s*|##\s*出力\s*)/i, '');
 
     return summary;

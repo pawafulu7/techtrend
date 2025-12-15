@@ -42,11 +42,25 @@ function parseArgs(): { type: ReportType; date?: Date } {
 }
 
 async function main() {
-  const { type, date } = parseArgs();
+  const { type, date: specifiedDate } = parseArgs();
+
+  // デフォルトは前日（JST基準）
+  let targetDate: Date;
+  if (specifiedDate) {
+    targetDate = specifiedDate;
+  } else {
+    // 前日を計算（JST基準）
+    const now = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstNow = new Date(now.getTime() + jstOffset);
+    jstNow.setUTCDate(jstNow.getUTCDate() - 1);
+    jstNow.setUTCHours(0, 0, 0, 0);
+    targetDate = new Date(jstNow.getTime() - jstOffset);
+  }
 
   console.log('=== Trend Report Generation ===');
   console.log(`Type: ${type}`);
-  console.log(`Target Date: ${date ? date.toISOString() : 'yesterday (default)'}`);
+  console.log(`Target Date: ${targetDate.toISOString()} (${specifiedDate ? 'specified' : 'yesterday'})`);
   console.log(`Started at: ${new Date().toISOString()}`);
 
   try {
@@ -56,13 +70,13 @@ async function main() {
 
     switch (type) {
       case 'daily':
-        reportId = await generator.generateDailyReport(date);
+        reportId = await generator.generateDailyReport(targetDate);
         break;
       case 'weekly':
-        reportId = await generator.generateWeeklyReport(date);
+        reportId = await generator.generateWeeklyReport(targetDate);
         break;
       case 'monthly':
-        reportId = await generator.generateMonthlyReport(date);
+        reportId = await generator.generateMonthlyReport(targetDate);
         break;
     }
 

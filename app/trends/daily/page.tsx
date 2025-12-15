@@ -181,6 +181,7 @@ export default function DailyTrendPage() {
             periodEnd={report.periodEnd}
             generatedAt={report.generatedAt}
             topTags={report.tags}
+            topArticles={report.topArticles}
             navigation={navigation}
             onPrevDay={goToPreviousDay}
             onNextDay={goToNextDay}
