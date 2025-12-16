@@ -11,10 +11,14 @@ jest.mock('@/lib/cache/layered-cache', () => {
   const mockGetArticles = jest.fn(async (params, fetcher) => {
     return await fetcher();
   });
+  const mockGetArticleCount = jest.fn(async (params, fetcher) => {
+    return await fetcher();
+  });
 
   return {
     LayeredCache: jest.fn().mockImplementation(() => ({
       getArticles: mockGetArticles,
+      getArticleCount: mockGetArticleCount,
       getOrFetch: jest.fn(async (key, fetcher) => {
         return await fetcher();
       }),
@@ -23,6 +27,7 @@ jest.mock('@/lib/cache/layered-cache', () => {
       clear: jest.fn(),
     })),
     __mockGetArticles: mockGetArticles, // Export for testing
+    __mockGetArticleCount: mockGetArticleCount, // Export for testing
   };
 });
 

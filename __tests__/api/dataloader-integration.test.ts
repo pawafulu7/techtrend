@@ -56,6 +56,9 @@ jest.mock('@/lib/cache/memory-cache', () => ({
 jest.mock('@/lib/cache/layered-cache', () => ({
   LayeredCache: jest.fn().mockImplementation(() => ({
     getArticles: jest.fn().mockResolvedValue(null),
+    getArticleCount: jest.fn(async (params, fetcher) => {
+      return await fetcher();
+    }),
     setArticles: jest.fn().mockResolvedValue(true),
   }))
 }));

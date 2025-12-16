@@ -24,6 +24,7 @@ import {
   extractArticleIds,
   createGetResponse,
   createEmptyResponse,
+  toArticleQueryParams,
   VALID_SORT_FIELDS,
   type ParsedQueryParams,
   type ArticleCacheParams,
@@ -207,12 +208,22 @@ async function executeStandardQuery(
   // Build select fields
   const selectFields = buildSelectFields(display);
 
-  // Execute count and findMany in parallel
+  // Build cache params for count caching (exclude sort/page in cache key)
+  const cacheParams = buildCacheParams(params, userId, hasUserScopedQuery);
+
+  // Execute count (via cache when possible) and findMany in parallel
   const [total, articles] = await withDbTiming(
     metrics,
     () =>
       Promise.all([
-        prisma.article.count({ where }),
+        hasUserScopedQuery
+          ? prisma.article.count({ where })
+          : cache
+              .getArticleCount(toArticleQueryParams(cacheParams), async () => {
+                const total = await prisma.article.count({ where });
+                return { total };
+              })
+              .then(({ total }) => total),
         prisma.article.findMany({
           where,
           select: selectFields,

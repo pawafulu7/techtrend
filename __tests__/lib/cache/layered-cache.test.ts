@@ -1,44 +1,64 @@
-import { LayeredCache } from '@/lib/cache/layered-cache';
 import type { ArticleQueryParams } from '@/lib/cache/layered-cache';
+
+// グローバルオブジェクトにストレージマップを配置（モック巻き上げ対策）
+declare global {
+  // eslint-disable-next-line no-var
+  var __testCacheStorage: Map<string, Map<string, unknown>> | undefined;
+}
 
 // RedisCacheのモック
 jest.mock('@/lib/cache/index', () => {
-  // 各レイヤーごとに異なるストレージを使用
-  const storageMap = new Map<string, Map<string, any>>();
-
   return {
     RedisCache: jest.fn().mockImplementation((options) => {
+      // グローバルストレージを使用
+      if (!globalThis.__testCacheStorage) {
+        globalThis.__testCacheStorage = new Map();
+      }
+      const storageMap = globalThis.__testCacheStorage;
       const namespace = options.namespace || 'default';
       if (!storageMap.has(namespace)) {
         storageMap.set(namespace, new Map());
       }
       const storage = storageMap.get(namespace)!;
 
-    return {
-      get: jest.fn(async (key) => storage.get(key) || null),
-      set: jest.fn(async (key, value) => {
-        storage.set(key, value);
-      }),
-      getOrSet: jest.fn(async (key, fetcher) => {
-        const cached = storage.get(key);
-        if (cached) return cached;
-        const value = await fetcher();
-        storage.set(key, value);
-        return value;
-      }),
-      delete: jest.fn(async (key) => storage.delete(key)),
-      clear: jest.fn(async () => storage.clear()),
-      getStats: jest.fn(() => ({ hits: 0, misses: 0 })),
-      resetStats: jest.fn(),
-    };
-  }),
+      return {
+        get: jest.fn(async (key: string) => storage.get(key) || null),
+        set: jest.fn(async (key: string, value: unknown) => {
+          storage.set(key, value);
+        }),
+        getOrSet: jest.fn(async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
+          const cached = storage.get(key);
+          if (cached) return cached as T;
+          const value = await fetcher();
+          storage.set(key, value);
+          return value;
+        }),
+        getOrSetWithLock: jest.fn(async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
+          // Simulate lock behavior - same as getOrSet for testing
+          const cached = storage.get(key);
+          if (cached) return cached as T;
+          const value = await fetcher();
+          storage.set(key, value);
+          return value;
+        }),
+        delete: jest.fn(async (key: string) => storage.delete(key)),
+        clear: jest.fn(async () => storage.clear()),
+        getStats: jest.fn(() => ({ hits: 0, misses: 0 })),
+        resetStats: jest.fn(),
+      };
+    }),
   };
 });
+
+// モックされたモジュールをインポート
+import { LayeredCache } from '@/lib/cache/layered-cache';
 
 describe('LayeredCache', () => {
   let cache: LayeredCache;
 
   beforeEach(() => {
+    // グローバルストレージをリセット
+    globalThis.__testCacheStorage = new Map();
     jest.clearAllMocks();
     cache = new LayeredCache();
   });
@@ -346,6 +366,164 @@ describe('LayeredCache', () => {
       expect(resultB.total).toBe(45);
       expect(fetcherA).toHaveBeenCalledTimes(1);
       expect(fetcherB).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('件数キャッシュ（getArticleCount）', () => {
+    test('sortByを変更しても同じ件数キャッシュを使用', async () => {
+      const params1: ArticleQueryParams = {
+        sources: 'dev.to',
+        sortBy: 'publishedAt',
+        page: 1,
+        limit: 20,
+      };
+
+      const params2: ArticleQueryParams = {
+        sources: 'dev.to',
+        sortBy: 'createdAt',
+        page: 1,
+        limit: 20,
+      };
+
+      const fetcher = jest.fn().mockResolvedValue({ total: 100 });
+
+      const result1 = await cache.getArticleCount(params1, fetcher);
+      const result2 = await cache.getArticleCount(params2, fetcher);
+
+      expect(result1.total).toBe(100);
+      expect(result2.total).toBe(100);
+      // sortByが異なっても件数キャッシュは共有されるため、fetcherは1回のみ
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    });
+
+    test('pageとlimitを変更しても同じ件数キャッシュを使用', async () => {
+      const params1: ArticleQueryParams = {
+        sources: 'dev.to',
+        page: 1,
+        limit: 20,
+      };
+
+      const params2: ArticleQueryParams = {
+        sources: 'dev.to',
+        page: 5,
+        limit: 50,
+      };
+
+      const fetcher = jest.fn().mockResolvedValue({ total: 200 });
+
+      const result1 = await cache.getArticleCount(params1, fetcher);
+      const result2 = await cache.getArticleCount(params2, fetcher);
+
+      expect(result1.total).toBe(200);
+      expect(result2.total).toBe(200);
+      // page/limitが異なっても件数キャッシュは共有
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    });
+
+    test('フィルター条件が異なると別のキャッシュを使用', async () => {
+      const params1: ArticleQueryParams = {
+        sources: 'dev.to',
+        page: 1,
+        limit: 20,
+      };
+
+      const params2: ArticleQueryParams = {
+        sources: 'zenn',
+        page: 1,
+        limit: 20,
+      };
+
+      const fetcher1 = jest.fn().mockResolvedValue({ total: 100 });
+      const fetcher2 = jest.fn().mockResolvedValue({ total: 150 });
+
+      const result1 = await cache.getArticleCount(params1, fetcher1);
+      const result2 = await cache.getArticleCount(params2, fetcher2);
+
+      expect(result1.total).toBe(100);
+      expect(result2.total).toBe(150);
+      // 異なるソースは別キャッシュ
+      expect(fetcher1).toHaveBeenCalledTimes(1);
+      expect(fetcher2).toHaveBeenCalledTimes(1);
+    });
+
+    // 検索キーワードは空白区切りでソートされるため、順序が異なっても同一キーとなる
+    test('検索条件が同じなら同じ件数キャッシュを使用（キーワード順序正規化）', async () => {
+      const params1: ArticleQueryParams = {
+        search: 'React TypeScript',
+        sortBy: 'publishedAt',
+        page: 1,
+        limit: 20,
+      };
+
+      const params2: ArticleQueryParams = {
+        search: 'TypeScript React', // 順序が異なるが正規化される
+        sortBy: 'qualityScore',
+        page: 2,
+        limit: 50,
+      };
+
+      const fetcher = jest.fn().mockResolvedValue({ total: 75 });
+
+      const result1 = await cache.getArticleCount(params1, fetcher);
+      const result2 = await cache.getArticleCount(params2, fetcher);
+
+      expect(result1.total).toBe(75);
+      expect(result2.total).toBe(75);
+      // 検索キーワードが同じ（正規化後）なら共有
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    });
+
+    test('dateRangeが異なると別のキャッシュを使用', async () => {
+      const params1: ArticleQueryParams = {
+        sources: 'dev.to',
+        dateRange: 'week',
+        page: 1,
+        limit: 20,
+      };
+
+      const params2: ArticleQueryParams = {
+        sources: 'dev.to',
+        dateRange: 'month',
+        page: 1,
+        limit: 20,
+      };
+
+      const fetcher1 = jest.fn().mockResolvedValue({ total: 50 });
+      const fetcher2 = jest.fn().mockResolvedValue({ total: 200 });
+
+      const result1 = await cache.getArticleCount(params1, fetcher1);
+      const result2 = await cache.getArticleCount(params2, fetcher2);
+
+      expect(result1.total).toBe(50);
+      expect(result2.total).toBe(200);
+      // 異なるdateRangeは別キャッシュ
+      expect(fetcher1).toHaveBeenCalledTimes(1);
+      expect(fetcher2).toHaveBeenCalledTimes(1);
+    });
+
+    test('タグ条件が異なると別のキャッシュを使用', async () => {
+      const params1: ArticleQueryParams = {
+        tags: 'React',
+        page: 1,
+        limit: 20,
+      };
+
+      const params2: ArticleQueryParams = {
+        tags: 'Vue',
+        page: 1,
+        limit: 20,
+      };
+
+      const fetcher1 = jest.fn().mockResolvedValue({ total: 120 });
+      const fetcher2 = jest.fn().mockResolvedValue({ total: 80 });
+
+      const result1 = await cache.getArticleCount(params1, fetcher1);
+      const result2 = await cache.getArticleCount(params2, fetcher2);
+
+      expect(result1.total).toBe(120);
+      expect(result2.total).toBe(80);
+      expect(fetcher1).toHaveBeenCalledTimes(1);
+      expect(fetcher2).toHaveBeenCalledTimes(1);
     });
   });
 });

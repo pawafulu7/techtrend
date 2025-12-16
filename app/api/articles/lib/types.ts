@@ -5,6 +5,7 @@
 import type { Prisma } from '@prisma/client';
 import type { ArticleWithRelations } from '@/types/models';
 import type { PaginatedResponse } from '@/lib/types/api';
+import type { ArticleQueryParams } from '@/lib/cache/layered-cache';
 
 /**
  * User-specific article data (favorites, read status)
@@ -155,3 +156,24 @@ export const VALID_SORT_FIELDS = [
 ] as const;
 
 export type ValidSortField = (typeof VALID_SORT_FIELDS)[number];
+
+/**
+ * Convert ArticleCacheParams to ArticleQueryParams for count caching
+ * Extracts only the fields relevant for count cache key generation
+ */
+export function toArticleQueryParams(
+  cacheParams: ArticleCacheParams
+): ArticleQueryParams {
+  return {
+    sources: cacheParams.sources,
+    sourceId: cacheParams.sourceId,
+    tag: cacheParams.tag,
+    tags: cacheParams.tags,
+    tagMode: cacheParams.tagMode,
+    search: cacheParams.search,
+    dateRange: cacheParams.dateRange,
+    readFilter: cacheParams.readFilter,
+    userId: cacheParams.userId,
+    category: cacheParams.category,
+  };
+}
