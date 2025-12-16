@@ -293,13 +293,86 @@ export class RedisCache {
     if (cached !== null) {
       return cached;
     }
-    
+
     // Fetch fresh data
     const fresh = await fetcher();
-    
+
     // Store in cache
     await this.set(key, fresh, ttl);
-    
+
     return fresh;
+  }
+
+  /**
+   * Helper method to handle cache with fallback and lock (stampede protection)
+   * Uses SETNX-based locking to prevent multiple concurrent fetches for the same key
+   */
+  async getOrSetWithLock<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+    ttl?: number
+  ): Promise<T> {
+    const lockTTL = 30; // Lock TTL in seconds
+    const maxWaitTime = 5000; // Max wait time in milliseconds
+    const pollInterval = 100; // Poll interval in milliseconds
+
+    // Try to get from cache first
+    const cached = await this.get<T>(key);
+    if (cached !== null) {
+      return cached;
+    }
+
+    const lockKey = `${key}:lock`;
+    const fullLockKey = this.generateKey(lockKey);
+
+    try {
+      // Try to acquire lock using SET NX EX
+      const acquired = await this.redis.set(
+        fullLockKey,
+        '1',
+        'EX',
+        lockTTL,
+        'NX'
+      );
+
+      if (acquired === 'OK') {
+        // Lock acquired - fetch data and cache it
+        try {
+          const fresh = await fetcher();
+          await this.set(key, fresh, ttl);
+          return fresh;
+        } finally {
+          // Release lock (best effort)
+          await this.redis.del(fullLockKey).catch((err) => {
+            logger.warn({ err, lockKey: fullLockKey }, 'Failed to release lock');
+          });
+        }
+      } else {
+        // Lock not acquired - poll for cached value
+        const startTime = Date.now();
+        while (Date.now() - startTime < maxWaitTime) {
+          await new Promise((resolve) => setTimeout(resolve, pollInterval));
+
+          const newCached = await this.get<T>(key);
+          if (newCached !== null) {
+            return newCached;
+          }
+        }
+
+        // Timeout - fallback to direct fetch (without caching to avoid race)
+        logger.warn(
+          { key, maxWaitTime },
+          'Lock wait timeout, falling back to direct fetch'
+        );
+        return await fetcher();
+      }
+    } catch (error) {
+      // On any error, fallback to direct fetch
+      logger.warn(
+        { error, key },
+        'getOrSetWithLock error, falling back to direct fetch'
+      );
+      return await fetcher();
+    }
   }
 }

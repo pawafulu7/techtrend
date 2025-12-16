@@ -220,6 +220,59 @@ export class LayeredCache {
   }
 
   /**
+   * 件数キャッシュ用のキーを生成
+   * sortBy, sortOrder, page, limit を除外してソート順に依存しないキーを生成
+   */
+  private generateCountKey(params: ArticleQueryParams): string {
+    // 検索キーワードを正規化（スペース区切りでソート）- generateSearchKey と同一ロジック
+    const normalizedSearch = params.search
+      ? params.search
+          .trim()
+          .split(/[\s　]+/)
+          .filter((k) => k.length > 0)
+          .sort()
+          .join(',')
+      : '';
+
+    // 件数に影響するパラメータのみを使用（ソート順・ページネーションは除外）
+    const countParams = {
+      category: params.category || 'all',
+      sources: params.sources || 'all',
+      sourceId: params.sourceId || 'none',
+      tag: params.tag || 'none',
+      tags: params.tags || 'none',
+      tagMode: params.tagMode || 'OR',
+      search: normalizedSearch || 'none',
+      dateRange: params.dateRange || 'all',
+      includeEmptyContent: params.includeEmptyContent || false,
+      excludeUnprocessed: params.excludeUnprocessed || false
+    };
+
+    const sortedParams = Object.entries(countParams)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}:${v}`)
+      .join(':');
+
+    return `articles:count:${sortedParams}`;
+  }
+
+  /**
+   * 記事件数を取得（ソート順に依存しない共通キャッシュを使用）
+   * スタンピード対策としてロック機構を使用
+   */
+  async getArticleCount(
+    params: ArticleQueryParams,
+    fetcher: () => Promise<{ total: number }>
+  ): Promise<{ total: number }> {
+    const countKey = this.generateCountKey(params);
+
+    logger.debug({ countKey }, 'Getting article count from cache');
+
+    // L1キャッシュを使用（基本的なクエリと同じTTL）
+    return await this.l1Cache.getOrSetWithLock(countKey, fetcher);
+  }
+
+  /**
    * ユーザークエリ用のキーを生成
    */
   private generateUserKey(params: ArticleQueryParams): string {
