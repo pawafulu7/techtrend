@@ -341,6 +341,10 @@ export class RedisCache {
           const fresh = await fetcher();
           await this.set(key, fresh, ttl);
           return fresh;
+        } catch (fetchError) {
+          // Fetcher failed while holding lock - log and re-throw without calling fetcher again
+          logger.warn({ error: fetchError, key }, 'Fetcher failed while holding lock');
+          throw fetchError;
         } finally {
           // Release lock (best effort)
           await this.redis.del(fullLockKey).catch((err) => {

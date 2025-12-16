@@ -388,5 +388,5 @@ export class LayeredCache {
   }
 }
 
-// シングルトンインスタンスをエクスポート
-export const layeredCache = new LayeredCache();
+// Note: LayeredCache is instantiated per-use (e.g., in API handlers) rather than as a singleton.
+// This allows for better testability (mocking) and avoids shared state issues in serverless environments.

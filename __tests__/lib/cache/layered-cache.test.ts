@@ -446,7 +446,8 @@ describe('LayeredCache', () => {
       expect(fetcher2).toHaveBeenCalledTimes(1);
     });
 
-    test('検索条件が同じなら同じ件数キャッシュを使用', async () => {
+    // 検索キーワードは空白区切りでソートされるため、順序が異なっても同一キーとなる
+    test('検索条件が同じなら同じ件数キャッシュを使用（キーワード順序正規化）', async () => {
       const params1: ArticleQueryParams = {
         search: 'React TypeScript',
         sortBy: 'publishedAt',

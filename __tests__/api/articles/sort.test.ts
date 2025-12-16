@@ -12,6 +12,9 @@ jest.mock('@/lib/cache/layered-cache', () => ({
     getArticles: jest.fn(async (params, fetcher) => {
       return await fetcher();
     }),
+    getArticleCount: jest.fn(async (params, fetcher) => {
+      return await fetcher();
+    }),
     getOrFetch: jest.fn(async (key, fetcher) => {
       return await fetcher();
     }),

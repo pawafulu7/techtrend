@@ -13,6 +13,10 @@ jest.mock('@/lib/cache/layered-cache', () => ({
       // フェッチャーを実行して結果を返す
       return await fetcher();
     }),
+    getArticleCount: jest.fn(async (params, fetcher) => {
+      // フェッチャーを実行して結果を返す
+      return await fetcher();
+    }),
     getOrFetch: jest.fn(async (key, fetcher) => {
       return await fetcher();
     }),

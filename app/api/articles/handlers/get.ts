@@ -24,6 +24,7 @@ import {
   extractArticleIds,
   createGetResponse,
   createEmptyResponse,
+  toArticleQueryParams,
   VALID_SORT_FIELDS,
   type ParsedQueryParams,
   type ArticleCacheParams,
@@ -218,7 +219,7 @@ async function executeStandardQuery(
         hasUserScopedQuery
           ? prisma.article.count({ where })
           : cache
-              .getArticleCount(cacheParams as ArticleQueryParams, async () => {
+              .getArticleCount(toArticleQueryParams(cacheParams), async () => {
                 const total = await prisma.article.count({ where });
                 return { total };
               })
