@@ -19,9 +19,10 @@ export class ArxivAIFetcher extends BaseFetcher {
   private readonly RSS_URL = 'https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL';
 
   // Parallel enrichment concurrency (adjustable via env, minimum 1)
+  // Note: Keep at 5 to avoid arXiv rate limiting/IP blocking
   private readonly ENRICHMENT_CONCURRENCY = Math.max(
     1,
-    parseInt(process.env.ARXIV_ENRICHMENT_CONCURRENCY || '8', 10) || 8
+    parseInt(process.env.ARXIV_ENRICHMENT_CONCURRENCY || '5', 10) || 5
   );
 
   // Maximum articles per fetch to prevent timeout (adjustable via env)

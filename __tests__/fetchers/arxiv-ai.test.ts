@@ -272,9 +272,9 @@ describe('ArxivAIFetcher', () => {
   });
 
   describe('ENRICHMENT_CONCURRENCY configuration', () => {
-    it('should default to 8 concurrent enrichments', () => {
+    it('should default to 5 concurrent enrichments', () => {
       const concurrency = (fetcher as any).ENRICHMENT_CONCURRENCY;
-      expect(concurrency).toBe(8);
+      expect(concurrency).toBe(5);
     });
   });
 
