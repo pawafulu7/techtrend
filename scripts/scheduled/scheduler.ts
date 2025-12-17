@@ -379,14 +379,13 @@ cron.schedule('0 * * * *', async () => {
   }
 });
 
-// arXiv AI専用スケジュール（JST 09:45, 21:45 = UTC 00:45, 12:45）
+// arXiv AI専用スケジュール（JST 09:45, 21:45）
 // arXivは1日1回更新（EST 0:00 = JST 14:00）のため、毎時実行は無駄
-// 並列エンリッチメント（5並列）で全件（約300-400件/日）を効率的に取得
-// ※ローカル環境考慮: 朝9時〜夜12時の時間帯に設定
-// ※スクレイピング系ジョブ（0:30, 12:30）との重複を避けるため15分ずらし
+// 取得件数リミット（デフォルト200件/回）で安定動作を確保
+// ※timezone: 'Asia/Tokyo' で明示的にJSTを指定
 const ARXIV_SOURCES = ['arXiv AI'];
 
-cron.schedule('45 0,12 * * *', async () => {
+cron.schedule('45 9,21 * * *', async () => {
   if (arxivJobRunning) {
     console.error('[WARN] arXiv AI job already running, skipping this execution');
     return;
@@ -404,7 +403,7 @@ cron.schedule('45 0,12 * * *', async () => {
   } finally {
     arxivJobRunning = false;
   }
-});
+}, { timezone: 'Asia/Tokyo' });
 
 // Embeddingジョブリカバリ（毎時15分）
 // RSS更新（毎時0分）の15分後に実行
@@ -582,13 +581,13 @@ cron.schedule('30 8,20 * * *', async () => {
   }
 });
 
-// 初回実行（起動時） - 全ソース（要約生成はスキップ）
+// 初回実行（起動時） - RSS/スクレイピング系のみ（arXivは専用スケジュールで実行）
 (async () => {
-  console.error('\n[INFO] 初回実行を開始します（全ソース）...');
+  console.error('\n[INFO] 初回実行を開始します（RSS/スクレイピング系）...');
   try {
-    // 全ソースを結合
+    // arXivは専用スケジュール（9:45/21:45 JST）で要約生成込みで実行されるため除外
     const allSources = [...RSS_SOURCES, ...SCRAPING_SOURCES];
-    
+
     // 要約生成はスキップ（再起動時の追加通知を防止）
     // 要約生成は10:30の定期ジョブで実行される
     await executeUpdatePipeline(allSources, '初回実行', { skipSummaries: true });
@@ -598,7 +597,7 @@ cron.schedule('30 8,20 * * *', async () => {
     console.error('[INFO] 初回実行が完了しました\n');
     console.error('[INFO] 次回の更新:');
     console.error('   - RSS系: 毎時0分');
-    console.error('   - arXiv AI: 0:45・12:45 UTC（09:45・21:45 JST）');
+    console.error('   - arXiv AI: 9:45・21:45（JST）');
     console.error('   - Embeddingリカバリ: 毎時15分');
     console.error('   - スクレイピング系: 0:30・12:30');
     console.error('   - Qiita Popular: 5:05・17:05');

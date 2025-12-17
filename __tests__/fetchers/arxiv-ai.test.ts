@@ -278,6 +278,13 @@ describe('ArxivAIFetcher', () => {
     });
   });
 
+  describe('MAX_ARTICLES_PER_FETCH configuration', () => {
+    it('should default to 200 articles per fetch', () => {
+      const maxArticles = (fetcher as any).MAX_ARTICLES_PER_FETCH;
+      expect(maxArticles).toBe(200);
+    });
+  });
+
   describe('MAX_ABSTRACT_LENGTH configuration', () => {
     it('should default to 500 characters', () => {
       const maxLength = (fetcher as any).MAX_ABSTRACT_LENGTH;

@@ -218,7 +218,9 @@ async function processSource({
     console.error(`[START] ${sourceName} - ${new Date().toISOString()}`);
 
     // Add per-source timeout to prevent infinite hang
-    const fetchTimeoutMs = Number(process.env.FETCHER_TIMEOUT_MS) || 120_000; // 2 minutes default
+    const ARXIV_TIMEOUT_MS = Number(process.env.ARXIV_FETCHER_TIMEOUT_MS) || 600_000; // 10 minutes for arXiv
+    const defaultTimeoutMs = Number(process.env.FETCHER_TIMEOUT_MS) || 120_000; // 2 minutes default
+    const fetchTimeoutMs = sourceName === 'arXiv AI' ? ARXIV_TIMEOUT_MS : defaultTimeoutMs;
     const timeoutMessage = `Fetcher timeout after ${fetchTimeoutMs}ms for ${sourceName}`;
     const { articles, errors } = await runWithTimeout(
       () => fetcher.fetch(),
