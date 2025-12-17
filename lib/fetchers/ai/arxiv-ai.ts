@@ -21,7 +21,13 @@ export class ArxivAIFetcher extends BaseFetcher {
   // Parallel enrichment concurrency (adjustable via env, minimum 1)
   private readonly ENRICHMENT_CONCURRENCY = Math.max(
     1,
-    parseInt(process.env.ARXIV_ENRICHMENT_CONCURRENCY || '5', 10) || 5
+    parseInt(process.env.ARXIV_ENRICHMENT_CONCURRENCY || '8', 10) || 8
+  );
+
+  // Maximum articles per fetch to prevent timeout (adjustable via env)
+  private readonly MAX_ARTICLES_PER_FETCH = Math.max(
+    1,
+    parseInt(process.env.ARXIV_MAX_ARTICLES_PER_FETCH || '200', 10) || 200
   );
 
   // Maximum length for arXiv abstracts
@@ -107,10 +113,18 @@ export class ArxivAIFetcher extends BaseFetcher {
 
       logger.info(`arXiv AI: フィルタ後 ${validItems.length} 件（新規のみ）`);
 
+      // Apply limit to prevent timeout
+      const limitedItems = validItems.slice(0, this.MAX_ARTICLES_PER_FETCH);
+      if (validItems.length > this.MAX_ARTICLES_PER_FETCH) {
+        logger.info(
+          `arXiv AI: リミット適用 ${validItems.length} -> ${limitedItems.length} 件（残り${validItems.length - limitedItems.length}件は次回取得）`
+        );
+      }
+
       // Parallel enrichment with p-limit
       const limit = pLimit(this.ENRICHMENT_CONCURRENCY);
 
-      const enrichmentTasks = validItems.map((item) =>
+      const enrichmentTasks = limitedItems.map((item) =>
         limit(() => this.enrichSingle(item))
       );
 
@@ -142,11 +156,11 @@ export class ArxivAIFetcher extends BaseFetcher {
 
       logger.info(
         {
-          total: validItems.length,
+          total: limitedItems.length,
           success: successCount,
           failure: failureCount,
-          successRate: validItems.length > 0
-            ? `${((successCount / validItems.length) * 100).toFixed(1)}%`
+          successRate: limitedItems.length > 0
+            ? `${((successCount / limitedItems.length) * 100).toFixed(1)}%`
             : 'N/A',
           concurrency: this.ENRICHMENT_CONCURRENCY,
         },
