@@ -272,9 +272,16 @@ describe('ArxivAIFetcher', () => {
   });
 
   describe('ENRICHMENT_CONCURRENCY configuration', () => {
-    it('should default to 5 concurrent enrichments', () => {
+    it('should default to 8 concurrent enrichments', () => {
       const concurrency = (fetcher as any).ENRICHMENT_CONCURRENCY;
-      expect(concurrency).toBe(5);
+      expect(concurrency).toBe(8);
+    });
+  });
+
+  describe('MAX_ARTICLES_PER_FETCH configuration', () => {
+    it('should default to 200 articles per fetch', () => {
+      const maxArticles = (fetcher as any).MAX_ARTICLES_PER_FETCH;
+      expect(maxArticles).toBe(200);
     });
   });
 
