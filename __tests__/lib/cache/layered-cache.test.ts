@@ -248,6 +248,43 @@ describe('LayeredCache', () => {
       expect(fetcher2).toHaveBeenCalledTimes(1);
     });
 
+    test('異なるsortOrderは異なるキャッシュキーを生成', async () => {
+      const paramsAsc: ArticleQueryParams = {
+        sortBy: 'publishedAt',
+        sortOrder: 'asc',
+        page: 1,
+        limit: 20,
+      };
+
+      const paramsDesc: ArticleQueryParams = {
+        sortBy: 'publishedAt',
+        sortOrder: 'desc',
+        page: 1,
+        limit: 20,
+      };
+
+      const mockDataAsc = { items: [{ id: 'oldest' }], total: 100 };
+      const mockDataDesc = { items: [{ id: 'newest' }], total: 100 };
+
+      const fetcherAsc = jest.fn().mockResolvedValue(mockDataAsc);
+      const fetcherDesc = jest.fn().mockResolvedValue(mockDataDesc);
+
+      // asc順で取得
+      const resultAsc = await cache.getArticles(paramsAsc, fetcherAsc);
+      expect(resultAsc.items[0].id).toBe('oldest');
+      expect(fetcherAsc).toHaveBeenCalledTimes(1);
+
+      // desc順で取得（別キャッシュ）
+      const resultDesc = await cache.getArticles(paramsDesc, fetcherDesc);
+      expect(resultDesc.items[0].id).toBe('newest');
+      expect(fetcherDesc).toHaveBeenCalledTimes(1);
+
+      // 再度asc順で取得（キャッシュから）
+      const cachedAsc = await cache.getArticles(paramsAsc, fetcherAsc);
+      expect(cachedAsc.items[0].id).toBe('oldest');
+      expect(fetcherAsc).toHaveBeenCalledTimes(1); // キャッシュヒット
+    });
+
     test('sources=noneは正しく処理される', async () => {
       const params: ArticleQueryParams = {
         sources: 'none',

@@ -199,6 +199,7 @@ export class LayeredCache {
       page: params.page || 1,
       limit: params.limit || 20,
       sortBy: params.sortBy || 'publishedAt',
+      sortOrder: params.sortOrder || 'desc',
       category: params.category || 'all',
       sources: params.sources || 'all',  // sourcesパラメータを追加
       sourceId: params.sourceId || 'none',  // sourceIdパラメータを追加（後方互換性）
@@ -282,6 +283,7 @@ export class LayeredCache {
       page: params.page || 1,
       limit: params.limit || 20,
       sortBy: params.sortBy || 'publishedAt',
+      sortOrder: params.sortOrder || 'desc',
       sources: params.sources || 'all',  // sourcesパラメータを追加
       sourceId: params.sourceId || 'none',  // sourceIdパラメータを追加（後方互換性）
       category: params.category || 'all',  // categoryも追加
@@ -317,6 +319,7 @@ export class LayeredCache {
       page: params.page || 1,
       limit: params.limit || 20,
       sortBy: params.sortBy || 'publishedAt',
+      sortOrder: params.sortOrder || 'desc',
       category: params.category || 'all',
       sources: params.sources || 'all',  // sourcesパラメータを追加
       sourceId: params.sourceId || 'none',  // sourceIdパラメータを追加（後方互換性）

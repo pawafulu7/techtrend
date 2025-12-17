@@ -97,7 +97,9 @@ export function createGetResponse(
     response.headers.set('X-Cache-Bypass', 'user-context');
   } else {
     // Public responses can be cached
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    // s-maxageとCDN max-ageを整合させる（300秒）
+    // stale-while-revalidateはバックグラウンド再検証用に60秒
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
     response.headers.set('CDN-Cache-Control', 'max-age=300');
   }
 

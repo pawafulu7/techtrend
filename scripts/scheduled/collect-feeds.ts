@@ -535,6 +535,13 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
         const { generateSummaries } = await import('../maintenance/generate-summaries');
         const result = await generateSummaries({ articleIds: newArticleIds });
         console.error(`[INFO] 要約生成完了: ${result.generated}件の要約を生成`);
+
+        // 要約生成後に再度キャッシュを無効化
+        // excludeUnprocessed=trueクエリで要約生成済み記事が即座に表示されるようにする
+        if (result.generated > 0) {
+          console.error('[INFO] 要約生成後のキャッシュ無効化中...');
+          await cacheInvalidator.onBulkImport();
+        }
       } catch (error) {
         console.error(
           '[WARN] 要約生成でエラーが発生しましたが、記事収集は成功しています:',

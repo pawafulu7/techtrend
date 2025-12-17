@@ -191,7 +191,14 @@ export class CacheInvalidator {
    */
   async onBulkImport(): Promise<void> {
     await Promise.all([
-      // すべてのキャッシュを無効化
+      // LayeredCacheの全層を無効化
+      this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.L1_PUBLIC)),
+      this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.L3_SEARCH)),
+      // Lightweightキャッシュも無効化
+      this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.ARTICLES_LIGHTWEIGHT)),
+      // APIキャッシュを無効化
+      this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.ARTICLES_API)),
+      // 既存のキャッシュ無効化
       this.articleCache.invalidatePattern('*'),
       this.relatedCache.invalidatePattern('*'),
       this.tagCloudCache.invalidatePattern('*'),
