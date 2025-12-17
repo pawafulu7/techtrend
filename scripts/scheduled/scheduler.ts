@@ -349,6 +349,7 @@ console.error('   - Embeddingリカバリ: 毎時15分');
 console.error('   - スクレイピング系: 0:30・12:30');
 console.error('   - Qiita Popular: 5:05・17:05');
 console.error('   - 要約生成: 毎日10:30（午前）');
+console.error('   - Daily Trend生成: 毎日14:30');
 console.error('   - タグ生成: 8:30・20:30');
 console.error('   - クリーンアップ: 毎日22時');
 
@@ -358,6 +359,7 @@ let scrapingJobRunning = false;
 let qiitaJobRunning = false;
 let embeddingRecoveryRunning = false;
 let arxivJobRunning = false;
+let trendReportJobRunning = false;
 
 // EmbeddingScheduler instance for auto-recovery
 const embeddingScheduler = new EmbeddingScheduler();
@@ -564,22 +566,48 @@ cron.schedule('30 10 * * *', async () => {
 cron.schedule('30 8,20 * * *', async () => {
   const startTime = new Date();
   console.error(`\n[INFO] タグ生成バッチを開始: ${startTime.toLocaleString('ja-JP')}`);
-  
+
   try {
     const { stdout: tagOutput }: ExecutionResult = await execAsync(
       'npx tsx scripts/scheduled/generate-tags.ts'
     );
     console.error(tagOutput);
-    
+
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
     console.error(`[INFO] タグ生成バッチ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
-    
+
   } catch (error) {
-    console.error('[ERROR] タグ生成バッチでエラーが発生しました:', 
+    console.error('[ERROR] タグ生成バッチでエラーが発生しました:',
       error instanceof Error ? error.message : String(error));
   }
 });
+
+// Daily Trend Report生成（毎日14:30 JST）
+// ※ ローカル環境専用（本番はGitHub Actions scheduler-trend-report.yml で実行）
+cron.schedule('30 14 * * *', async () => {
+  if (trendReportJobRunning) {
+    console.error('[WARN] Trend report job already running, skipping');
+    return;
+  }
+  trendReportJobRunning = true;
+  const startTime = new Date();
+  console.error(`\n[INFO] Daily Trend Report生成を開始: ${startTime.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}`);
+
+  try {
+    await runCommandWithTimeout(
+      'Daily Trend Report生成',
+      'npx tsx scripts/scheduled/generate-trend-report.ts --type daily',
+      15 * 60 * 1000 // 15分タイムアウト
+    );
+    const duration = Math.round((Date.now() - startTime.getTime()) / 1000);
+    console.error(`[INFO] Daily Trend Report生成完了: ${duration}秒`);
+  } catch (error) {
+    console.error('[ERROR] Daily Trend Report生成でエラー:', error instanceof Error ? error.message : String(error));
+  } finally {
+    trendReportJobRunning = false;
+  }
+}, { timezone: 'Asia/Tokyo' });
 
 // 初回実行（起動時） - RSS/スクレイピング系のみ（arXivは専用スケジュールで実行）
 (async () => {
@@ -601,6 +629,7 @@ cron.schedule('30 8,20 * * *', async () => {
     console.error('   - Embeddingリカバリ: 毎時15分');
     console.error('   - スクレイピング系: 0:30・12:30');
     console.error('   - Qiita Popular: 5:05・17:05');
+    console.error('   - Daily Trend生成: 毎日14:30（JST）');
     console.error('   - 品質チェック・再生成: 毎日15:30');
     console.error('   - タグ生成: 8:30・20:30');
     console.error('   - 要約生成: 毎日10:30（午前）');
