@@ -581,13 +581,13 @@ cron.schedule('30 8,20 * * *', async () => {
   }
 });
 
-// 初回実行（起動時） - 全ソース（要約生成はスキップ）
+// 初回実行（起動時） - RSS/スクレイピング系のみ（arXivは専用スケジュールで実行）
 (async () => {
-  console.error('\n[INFO] 初回実行を開始します（全ソース）...');
+  console.error('\n[INFO] 初回実行を開始します（RSS/スクレイピング系）...');
   try {
-    // 全ソースを結合
-    const allSources = [...RSS_SOURCES, ...SCRAPING_SOURCES, ...ARXIV_SOURCES];
-    
+    // arXivは専用スケジュール（9:45/21:45 JST）で要約生成込みで実行されるため除外
+    const allSources = [...RSS_SOURCES, ...SCRAPING_SOURCES];
+
     // 要約生成はスキップ（再起動時の追加通知を防止）
     // 要約生成は10:30の定期ジョブで実行される
     await executeUpdatePipeline(allSources, '初回実行', { skipSummaries: true });
