@@ -2,7 +2,7 @@ name: Scheduler - Daily Trend Report
 
 on:
   schedule:
-    - cron: '0 16 * * *' # Daily 01:00 JST (UTC 16:00 previous day)
+    - cron: '30 5 * * *' # Daily 14:30 JST (UTC 05:30)
   workflow_dispatch:
     inputs:
       confirm:
