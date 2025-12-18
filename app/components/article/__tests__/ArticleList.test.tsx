@@ -40,8 +40,21 @@ jest.mock('@/app/components/article/card', () => ({
 // ArticleListItemコンポーネントのモック
 jest.mock('@/app/components/article/list-item', () => ({
   ArticleListItem: ({ article, onArticleClick, isRead }: { article: { id: string; title: string }, onArticleClick?: () => void, isRead?: boolean }) => (
-    <div 
+    <div
       data-testid={`article-list-item-${article.id}`}
+      data-is-read={isRead}
+      onClick={onArticleClick}
+    >
+      {article.title}
+    </div>
+  ),
+}));
+
+// CompactCardコンポーネントのモック
+jest.mock('@/app/components/article/compact-card', () => ({
+  CompactCard: ({ article, onArticleClick, isRead }: { article: { id: string; title: string }, onArticleClick?: () => void, isRead?: boolean }) => (
+    <div
+      data-testid={`compact-card-${article.id}`}
       data-is-read={isRead}
       onClick={onArticleClick}
     >
@@ -319,9 +332,9 @@ describe('ArticleList', () => {
       const mockSession = {
         user: { id: 'user1', email: 'test@example.com' },
       };
-      (useSession as jest.Mock).mockReturnValue({ 
-        data: mockSession, 
-        status: 'authenticated' 
+      (useSession as jest.Mock).mockReturnValue({
+        data: mockSession,
+        status: 'authenticated'
       });
 
       const articlesWithFlags = mockArticles.map(a => ({
@@ -329,10 +342,80 @@ describe('ArticleList', () => {
         isRead: a.id === '2',
       }));
       renderWithProviders(<ArticleList articles={articlesWithFlags as typeof mockArticles} viewMode="list" />);
-      
+
       expect(screen.getByTestId('article-list-item-1')).toHaveAttribute('data-is-read', 'false');
       expect(screen.getByTestId('article-list-item-2')).toHaveAttribute('data-is-read', 'true');
       expect(screen.getByTestId('article-list-item-3')).toHaveAttribute('data-is-read', 'false');
+    });
+  });
+
+  describe('コンパクトビューモード', () => {
+    it('コンパクトビューで正しくレンダリングする', () => {
+      renderWithProviders(<ArticleList articles={mockArticles} viewMode="compact" />);
+
+      const listContainer = screen.getByTestId('article-list');
+      expect(listContainer).toHaveClass('grid');
+
+      // CompactCardコンポーネントが使用される
+      expect(screen.getByTestId('compact-card-1')).toBeInTheDocument();
+      expect(screen.getByTestId('compact-card-2')).toBeInTheDocument();
+      expect(screen.getByTestId('compact-card-3')).toBeInTheDocument();
+
+      // ArticleCardとArticleListItemは使用されない
+      expect(screen.queryByTestId('article-card-1')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('article-list-item-1')).not.toBeInTheDocument();
+    });
+
+    it('コンパクトビューでも既読状態を正しく反映する', () => {
+      const mockSession = {
+        user: { id: 'user1', email: 'test@example.com' },
+      };
+      (useSession as jest.Mock).mockReturnValue({
+        data: mockSession,
+        status: 'authenticated'
+      });
+
+      const articlesWithFlags = mockArticles.map(a => ({
+        ...a,
+        isRead: a.id === '3',
+      }));
+      renderWithProviders(<ArticleList articles={articlesWithFlags as typeof mockArticles} viewMode="compact" />);
+
+      expect(screen.getByTestId('compact-card-1')).toHaveAttribute('data-is-read', 'false');
+      expect(screen.getByTestId('compact-card-2')).toHaveAttribute('data-is-read', 'false');
+      expect(screen.getByTestId('compact-card-3')).toHaveAttribute('data-is-read', 'true');
+    });
+
+    it('カードからコンパクトへの切り替えが正しく動作する', () => {
+      const { rerender } = renderWithProviders(<ArticleList articles={mockArticles} viewMode="card" />);
+
+      expect(screen.getByTestId('article-card-1')).toBeInTheDocument();
+      expect(screen.queryByTestId('compact-card-1')).not.toBeInTheDocument();
+
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <ArticleList articles={mockArticles} viewMode="compact" />
+        </QueryClientProvider>
+      );
+
+      expect(screen.queryByTestId('article-card-1')).not.toBeInTheDocument();
+      expect(screen.getByTestId('compact-card-1')).toBeInTheDocument();
+    });
+
+    it('コンパクトからリストへの切り替えが正しく動作する', () => {
+      const { rerender } = renderWithProviders(<ArticleList articles={mockArticles} viewMode="compact" />);
+
+      expect(screen.getByTestId('compact-card-1')).toBeInTheDocument();
+      expect(screen.queryByTestId('article-list-item-1')).not.toBeInTheDocument();
+
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <ArticleList articles={mockArticles} viewMode="list" />
+        </QueryClientProvider>
+      );
+
+      expect(screen.queryByTestId('compact-card-1')).not.toBeInTheDocument();
+      expect(screen.getByTestId('article-list-item-1')).toBeInTheDocument();
     });
   });
 
