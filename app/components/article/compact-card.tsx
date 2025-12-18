@@ -166,7 +166,7 @@ export function CompactCard({
       onClick={handleCardClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group relative flex flex-col gap-2 p-3 cursor-pointer min-h-[140px]',
+        'group relative flex flex-col gap-1 p-3 cursor-pointer min-h-[140px]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         sourceColor?.borderLeft
       )}
@@ -188,7 +188,7 @@ export function CompactCard({
             className="text-xs"
             data-testid="unread-badge"
           >
-            unread
+            未読
           </BadgeV2>
         )}
         {showSource && article.source && sourceColor && (
@@ -231,39 +231,38 @@ export function CompactCard({
         {article.translatedTitle || article.title}
       </h3>
 
-      {/* Footer: Tags + Info + Actions */}
-      <div className="flex items-center justify-between gap-2 mt-auto">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          {renderTags()}
+      {/* Tags */}
+      {renderTags()}
+
+      {/* Footer: ArticleCardと同じ構造 - 左=FavoriteButton、右=読了時間+元記事ボタン */}
+      <div className="mt-auto flex items-center justify-between pt-1">
+        <FavoriteButton
+          articleId={article.id}
+          isFavorited={isFavorited}
+          onToggleFavorite={onToggleFavorite}
+          className="h-9 px-3 min-w-[36px] min-h-[36px]"
+        />
+        <div className="flex items-center gap-2">
           {readingTime && contentLength > 0 && (
-            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground shrink-0">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" aria-hidden="true" />
-              <span>{readingTime}min / {contentLength.toLocaleString('ja-JP')}chars</span>
+              <span>{readingTime}分 / {contentLength.toLocaleString('ja-JP')}字</span>
             </span>
           )}
-        </div>
-
-        <div className="flex items-center gap-1 shrink-0">
           <ButtonV2
             variant="ghost"
             size="sm"
-            iconOnly
             onClick={(e) => {
               e.stopPropagation();
               window.open(article.url, '_blank', 'noopener,noreferrer');
             }}
-            className="h-9 w-9 min-w-[36px] min-h-[36px]"
-            title="Open original article"
-            aria-label="Open original article in new tab"
+            className="h-9 px-3 text-xs min-w-[36px] min-h-[36px]"
+            title="元記事を開く"
+            aria-label="元記事を新しいタブで開く"
           >
-            <ExternalLink className="h-4 w-4" />
+            <ExternalLink className="h-4 w-4 mr-1" />
+            元記事
           </ButtonV2>
-          <FavoriteButton
-            articleId={article.id}
-            isFavorited={isFavorited}
-            onToggleFavorite={onToggleFavorite}
-            className="h-9 w-9 min-w-[36px] min-h-[36px]"
-          />
         </div>
       </div>
     </CardV2>

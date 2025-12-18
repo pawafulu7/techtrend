@@ -132,15 +132,17 @@ describe('CompactCard', () => {
       render(<CompactCard article={articleWithContent} />);
 
       // 2500字 / 500 = 5分
-      expect(screen.getByText(/5min/)).toBeInTheDocument();
-      expect(screen.getByText(/2,500chars/)).toBeInTheDocument();
+      expect(screen.getByText(/5分/)).toBeInTheDocument();
+      expect(screen.getByText(/2,500字/)).toBeInTheDocument();
     });
 
     it('元記事リンクボタンを表示する', () => {
       render(<CompactCard article={mockArticle} />);
 
-      const externalLinkButton = screen.getByRole('button', { name: /open original article/i });
+      // 「元記事」テキストを含むボタン（ArticleCardと同じ表現）
+      const externalLinkButton = screen.getByRole('button', { name: /元記事/i });
       expect(externalLinkButton).toBeInTheDocument();
+      expect(externalLinkButton).toHaveTextContent('元記事');
     });
   });
 
@@ -164,14 +166,14 @@ describe('CompactCard', () => {
       expect(screen.queryByText('NEW')).not.toBeInTheDocument();
     });
 
-    it('未読記事にunreadバッジを表示する', () => {
+    it('未読記事に未読バッジを表示する', () => {
       render(<CompactCard article={mockArticle} isRead={false} />);
 
       expect(screen.getByTestId('unread-badge')).toBeInTheDocument();
-      expect(screen.getByText('unread')).toBeInTheDocument();
+      expect(screen.getByText('未読')).toBeInTheDocument();
     });
 
-    it('既読記事にはunreadバッジを表示しない', () => {
+    it('既読記事には未読バッジを表示しない', () => {
       render(<CompactCard article={mockArticle} isRead={true} />);
 
       expect(screen.queryByTestId('unread-badge')).not.toBeInTheDocument();
@@ -295,7 +297,7 @@ describe('CompactCard', () => {
 
       render(<CompactCard article={mockArticle} />);
 
-      const externalLinkButton = screen.getByRole('button', { name: /open original article/i });
+      const externalLinkButton = screen.getByRole('button', { name: /元記事/i });
       await user.click(externalLinkButton);
 
       expect(mockOpen).toHaveBeenCalledWith(
@@ -312,7 +314,7 @@ describe('CompactCard', () => {
 
       render(<CompactCard article={mockArticle} onArticleClick={handleClick} />);
 
-      const externalLinkButton = screen.getByRole('button', { name: /open original article/i });
+      const externalLinkButton = screen.getByRole('button', { name: /元記事/i });
       await user.click(externalLinkButton);
 
       expect(handleClick).not.toHaveBeenCalled();
