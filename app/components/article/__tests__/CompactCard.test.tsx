@@ -111,6 +111,37 @@ describe('CompactCard', () => {
 
       expect(screen.getByTestId('favorite-button')).toBeInTheDocument();
     });
+
+    it('配信日時と取り込み日時を表示する', () => {
+      render(<CompactCard article={mockArticle} />);
+
+      // formatDateWithTimeの出力を確認（日時フォーマットされた文字列が存在することを確認）
+      // mockArticleのpublishedAt: 2025-01-01T10:00:00Z, createdAt: 2025-01-01T11:00:00Z
+      const timestampElements = screen.getAllByText(/2025/);
+      expect(timestampElements.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('文字数と読了時間を表示する', () => {
+      const articleWithContent = createMockArticleWithRelations({
+        article: {
+          ...mockArticle,
+          contentLength: 2500,
+        },
+      });
+
+      render(<CompactCard article={articleWithContent} />);
+
+      // 2500字 / 500 = 5分
+      expect(screen.getByText(/5min/)).toBeInTheDocument();
+      expect(screen.getByText(/2,500chars/)).toBeInTheDocument();
+    });
+
+    it('元記事リンクボタンを表示する', () => {
+      render(<CompactCard article={mockArticle} />);
+
+      const externalLinkButton = screen.getByRole('button', { name: /open original article/i });
+      expect(externalLinkButton).toBeInTheDocument();
+    });
   });
 
   describe('バッジ表示', () => {
@@ -253,6 +284,36 @@ describe('CompactCard', () => {
 
       const favoriteButton = screen.getByTestId('favorite-button');
       await user.click(favoriteButton);
+
+      expect(handleClick).not.toHaveBeenCalled();
+    });
+
+    it('元記事リンクボタンクリック時に新しいタブで開く', async () => {
+      const user = userEvent.setup();
+      const mockOpen = jest.fn();
+      window.open = mockOpen;
+
+      render(<CompactCard article={mockArticle} />);
+
+      const externalLinkButton = screen.getByRole('button', { name: /open original article/i });
+      await user.click(externalLinkButton);
+
+      expect(mockOpen).toHaveBeenCalledWith(
+        'https://example.com/article',
+        '_blank',
+        'noopener,noreferrer'
+      );
+    });
+
+    it('元記事リンクボタンクリック時はカードのクリックイベントを発火しない', async () => {
+      const handleClick = jest.fn();
+      const user = userEvent.setup();
+      window.open = jest.fn();
+
+      render(<CompactCard article={mockArticle} onArticleClick={handleClick} />);
+
+      const externalLinkButton = screen.getByRole('button', { name: /open original article/i });
+      await user.click(externalLinkButton);
 
       expect(handleClick).not.toHaveBeenCalled();
     });

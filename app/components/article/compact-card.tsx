@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Calendar, Download, Clock, ExternalLink } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
+import { ButtonV2 } from '@/components/ui-v2/button-v2';
+import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
@@ -16,17 +19,17 @@ import { FavoriteButton } from '@/app/components/article/favorite-button';
  * - NEW badge (if < 24h)
  * - Unread badge
  * - Source badge with color
+ * - Published/Created timestamps
  * - Title (2 lines max)
  * - Single tag + count
+ * - Reading time / character count
+ * - External link button
  * - Favorite button
  *
  * Hidden (compared to ArticleCard):
  * - Summary text
  * - Thumbnail
- * - Reading time / character count
- * - External link button
  * - Vote button
- * - Timestamps
  * - Share button
  */
 export function CompactCard({
@@ -66,6 +69,10 @@ export function CompactCard({
   const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
   const isNew = hoursAgo < 24;
   const sourceColor = article.source ? getSourceColor(article.source.name) : null;
+
+  // Reading time calculation (~500 chars/min for Japanese content)
+  const contentLength = article.contentLength ?? article.content?.length ?? 0;
+  const readingTime = contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Ignore clicks on buttons or interactive elements
@@ -200,6 +207,18 @@ export function CompactCard({
         )}
       </div>
 
+      {/* Timestamps Row */}
+      <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-0.5" title="Published date">
+          <Calendar className="h-3 w-3" aria-hidden="true" />
+          <span>{formatDateWithTime(article.publishedAt)}</span>
+        </span>
+        <span className="flex items-center gap-0.5" title="Fetched date">
+          <Download className="h-3 w-3" aria-hidden="true" />
+          <span>{formatDateWithTime(article.createdAt)}</span>
+        </span>
+      </div>
+
       {/* Title */}
       <h3
         id={`compact-title-${article.id}`}
@@ -212,16 +231,40 @@ export function CompactCard({
         {article.translatedTitle || article.title}
       </h3>
 
-      {/* Footer: Tags + Favorite */}
+      {/* Footer: Tags + Info + Actions */}
       <div className="flex items-center justify-between gap-2 mt-auto">
-        {renderTags()}
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {renderTags()}
+          {readingTime && contentLength > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground shrink-0">
+              <Clock className="h-3 w-3" aria-hidden="true" />
+              <span>{readingTime}min / {contentLength.toLocaleString('ja-JP')}chars</span>
+            </span>
+          )}
+        </div>
 
-        <FavoriteButton
-          articleId={article.id}
-          isFavorited={isFavorited}
-          onToggleFavorite={onToggleFavorite}
-          className="h-11 w-11 min-w-[44px] min-h-[44px] shrink-0"
-        />
+        <div className="flex items-center gap-1 shrink-0">
+          <ButtonV2
+            variant="ghost"
+            size="sm"
+            iconOnly
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(article.url, '_blank', 'noopener,noreferrer');
+            }}
+            className="h-9 w-9 min-w-[36px] min-h-[36px]"
+            title="Open original article"
+            aria-label="Open original article in new tab"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </ButtonV2>
+          <FavoriteButton
+            articleId={article.id}
+            isFavorited={isFavorited}
+            onToggleFavorite={onToggleFavorite}
+            className="h-9 w-9 min-w-[36px] min-h-[36px]"
+          />
+        </div>
       </div>
     </CardV2>
   );
