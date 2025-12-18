@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { ViewMode } from '@/types/components';
 
 export const VIEW_MODE_COOKIE_NAME = 'article-view-mode';
 export const VIEW_MODE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
-export type ViewMode = 'card' | 'list' | 'compact';
+export type { ViewMode };
 
 export function getViewModeFromCookie(request: NextRequest): ViewMode {
   const mode = request.cookies.get(VIEW_MODE_COOKIE_NAME)?.value as ViewMode;

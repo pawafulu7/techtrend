@@ -74,36 +74,37 @@ export function CompactCard({
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
   const readingTime = contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Ignore clicks on buttons or interactive elements
-    if ((e.target as HTMLElement).closest('button, [role="button"]')) {
-      return;
-    }
+  const navigateToArticle = () => {
     if (onArticleClick) {
       onArticleClick(article.id);
     }
-
     const params = new URLSearchParams(searchParams.toString());
-    params.delete('returning');
     params.set('returning', '1');
-
     const returnUrl = `/?${params.toString()}`;
     const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
     router.push(articleUrl);
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Ignore clicks on buttons or interactive elements
+    if ((e.target as HTMLElement).closest('button, [role="button"]')) {
+      return;
+    }
+    navigateToArticle();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (onArticleClick) {
-        onArticleClick(article.id);
-      }
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete('returning');
-      params.set('returning', '1');
-      const returnUrl = `/?${params.toString()}`;
-      const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
-      router.push(articleUrl);
+      navigateToArticle();
+    }
+  };
+
+  const handleTagNavigation = (tagName: string) => {
+    if (onTagClick) {
+      onTagClick(tagName);
+    } else {
+      router.push(`/?tags=${encodeURIComponent(tagName)}&tagMode=OR`);
     }
   };
 
@@ -125,21 +126,13 @@ export function CompactCard({
           className="text-xs cursor-pointer truncate max-w-[120px]"
           onClick={(e) => {
             e.stopPropagation();
-            if (onTagClick) {
-              onTagClick(firstTag.name);
-            } else {
-              router.push(`/?tags=${encodeURIComponent(firstTag.name)}&tagMode=OR`);
-            }
+            handleTagNavigation(firstTag.name);
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               e.stopPropagation();
-              if (onTagClick) {
-                onTagClick(firstTag.name);
-              } else {
-                router.push(`/?tags=${encodeURIComponent(firstTag.name)}&tagMode=OR`);
-              }
+              handleTagNavigation(firstTag.name);
             }
           }}
         >
