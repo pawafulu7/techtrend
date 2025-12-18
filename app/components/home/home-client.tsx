@@ -7,9 +7,10 @@ import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import type { Source, Tag } from '@prisma/client';
 import type { ArticleWithRelations } from '@/types/models';
+import type { ViewMode } from '@/types/components';
 
 interface HomeClientProps {
-  viewMode: 'card' | 'list';
+  viewMode: ViewMode;
   sources: Source[];
   tags: Array<Tag & { count: number }>;
   showInitialSkeleton?: boolean;

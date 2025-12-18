@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/tooltip';
 
 export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
-  const handleModeChange = async (mode: 'card' | 'list') => {
+  const handleModeChange = async (mode: ViewModeToggleProps['currentMode']) => {
     // サーバーに送信してCookieを更新
     try {
       await fetch('/api/view-mode', {

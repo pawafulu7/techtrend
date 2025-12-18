@@ -14,9 +14,10 @@ import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
 import { Loader2 } from 'lucide-react';
+import type { ViewMode } from '@/types/components';
 
 interface HomeClientInfiniteProps {
-  viewMode: 'card' | 'list';
+  viewMode: ViewMode;
   sources: Source[];
   tags: Array<Tag & { count: number }>;
   enableInfiniteScroll?: boolean;

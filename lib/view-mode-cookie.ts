@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const VIEW_MODE_COOKIE_NAME = 'article-view-mode';
 export const VIEW_MODE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
-export type ViewMode = 'card' | 'list';
+export type ViewMode = 'card' | 'list' | 'compact';
 
 export function getViewModeFromCookie(request: NextRequest): ViewMode {
   const mode = request.cookies.get(VIEW_MODE_COOKIE_NAME)?.value as ViewMode;
@@ -22,7 +22,7 @@ export function setViewModeCookie(response: NextResponse, mode: ViewMode): void 
 }
 
 export function parseViewModeFromCookie(cookieValue: string | undefined): ViewMode {
-  if (cookieValue === 'card' || cookieValue === 'list') {
+  if (cookieValue === 'card' || cookieValue === 'list' || cookieValue === 'compact') {
     return cookieValue;
   }
   return 'card';
