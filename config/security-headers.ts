@@ -18,15 +18,13 @@ export function getDevelopmentCSP(): string {
 }
 
 /**
- * Production CSP - unsafe-eval削除、セキュリティ強化
+ * Production CSP - セキュリティ強化版
+ * Note: unsafe-eval不要（クライアントコンポーネントからpino/crypto依存を排除済み）
  */
 export function getProductionCSP(): string {
   return [
     "default-src 'self'",
-    // Note: unsafe-eval is required for Next.js/React runtime (dynamic imports, code splitting)
-    // Chrome blocks window.open without this directive
-    // Long-term plan: migrate to nonce-based CSP (see .claude/docs/investigate/)
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https: blob:",
     "font-src 'self' data:",

@@ -38,17 +38,17 @@ describe('Security Headers - CSP', () => {
       process.env.NODE_ENV = 'production';
     });
 
-    it('should allow unsafe-eval for Next.js runtime (dynamic imports)', () => {
-      // Note: unsafe-eval is required for Chrome compatibility
-      // Next.js uses eval() for code splitting and dynamic imports
-      // Long-term plan: migrate to nonce-based CSP
+    it('should NOT allow unsafe-eval (client bundle has no eval dependencies)', () => {
+      // Note: unsafe-eval is NOT required after removing pino/crypto from client components
+      // Client components use lib/logger.client.ts (console-based) instead of lib/logger.ts (pino-based)
       const csp = getProductionCSP();
-      expect(csp).toContain("'unsafe-eval'");
+      expect(csp).not.toContain("'unsafe-eval'");
     });
 
     it('should allow unsafe-inline for Next.js requirements', () => {
       const csp = getProductionCSP();
-      expect(csp).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval'");
+      expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+      expect(csp).not.toContain("'unsafe-eval'");
       expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     });
 
