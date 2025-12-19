@@ -131,7 +131,7 @@ export default async function Home({ searchParams }: PageProps) {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <MobileFilters sources={sources} groupedSources={groupedSources} tags={tags} initialSourceIds={initialSourceIds} />
                 <Suspense fallback={<div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />}>
-                  <ArticleCount />
+                  <ArticleCount initialSourceIds={initialSourceIds} />
                 </Suspense>
                 <PersonalizationToggle />
               </div>

@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
 
-export function ArticleCount() {
+interface ArticleCountProps {
+  initialSourceIds?: string[];
+}
+
+export function ArticleCount({ initialSourceIds }: ArticleCountProps) {
   const searchParams = useSearchParams();
   const [count, setCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,6 +32,17 @@ export function ArticleCount() {
         // Add base filters
         params.set('excludeUnprocessed', 'true');
         params.set('includeEmptyContent', 'true');
+
+        // URLにsourcesパラメータがない場合、cookie由来のinitialSourceIdsを使用
+        const hasSourcesParam = searchParams.has('sources');
+        const hasSourceIdParam = searchParams.has('sourceId');
+        if (!hasSourcesParam && !hasSourceIdParam && initialSourceIds !== undefined) {
+          if (initialSourceIds.length === 0) {
+            params.set('sources', 'none');
+          } else {
+            params.set('sources', initialSourceIds.join(','));
+          }
+        }
 
         // Add personalization filters if enabled
         if (filterEnabled && selectedCategories.length > 0) {
@@ -71,7 +86,7 @@ export function ArticleCount() {
 
     setLoading(true);
     fetchCount();
-  }, [searchParams, filterEnabled, selectedCategories, periodMonths, isLoadingPreferences]);
+  }, [searchParams, filterEnabled, selectedCategories, periodMonths, isLoadingPreferences, initialSourceIds]);
 
   if (loading || count === null || isLoadingPreferences) {
     return (
