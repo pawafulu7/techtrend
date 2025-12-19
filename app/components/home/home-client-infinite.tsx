@@ -165,9 +165,12 @@ export function HomeClientInfinite({
     }
     
     if (!hasSourcesParam && !hasSourceIdParam) {
-      // URLにソース関連のパラメータがまったくない場合 = 全選択
-      // Cookieの値は無視して、何も設定しない（全選択として扱う）
-      // params.sourcesを設定しない = 全記事を表示
+      // URLにソース関連のパラメータがまったくない場合
+      // Cookie由来のinitialSourceIdsがあればそれを使用
+      if (_initialSourceIds && _initialSourceIds.length > 0) {
+        params.sources = _initialSourceIds.join(',');
+      }
+      // それ以外の場合は全選択として扱う（params.sourcesを設定しない）
     }
 
     // 記事詳細から戻ってきた場合のフラグを追加
