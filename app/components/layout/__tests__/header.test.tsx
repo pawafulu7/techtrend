@@ -53,7 +53,7 @@ describe('Header', () => {
       // 主要ナビゲーション項目
       expect(screen.getByTestId('nav-link-ホーム')).toBeInTheDocument();
       expect(screen.getByTestId('nav-link-人気')).toBeInTheDocument();
-      expect(screen.getByTestId('nav-link-ダイジェスト')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-link-デイリー')).toBeInTheDocument();
       expect(screen.getByTestId('nav-link-ソース')).toBeInTheDocument();
       expect(screen.getByTestId('nav-link-トレンド')).toBeInTheDocument();
       expect(screen.getByTestId('nav-link-統計')).toBeInTheDocument();
@@ -190,7 +190,7 @@ describe('Header', () => {
       const links = [
         { testId: 'nav-link-ホーム', href: '/' },
         { testId: 'nav-link-人気', href: '/popular' },
-        { testId: 'nav-link-ダイジェスト', href: '/digest' },
+        { testId: 'nav-link-デイリー', href: '/trends/daily' },
         { testId: 'nav-link-ソース', href: '/sources' },
         { testId: 'nav-link-トレンド', href: '/trends' },
         { testId: 'nav-link-統計', href: '/stats' },

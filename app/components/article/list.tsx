@@ -2,6 +2,7 @@
 
 import { ArticleCard } from './card';
 import { ArticleListItem } from './list-item';
+import { CompactCard } from './compact-card';
 import type { ArticleListProps } from '@/types/components';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
@@ -118,6 +119,24 @@ export function ArticleList({
             article={article}
             articleIndex={index}
             totalArticleCount={articles.length}
+            onArticleClick={onArticleClick}
+            isRead={article.isRead ?? true}
+            isFavorited={article.isFavorited ?? false}
+            onToggleFavorite={() => handleToggleFavorite(article.id)}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // コンパクト形式の場合
+  if (viewMode === 'compact') {
+    return (
+      <div className={cn("grid gap-2 sm:gap-3 lg:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", className)} data-testid="article-list">
+        {articles.map((article) => (
+          <CompactCard
+            key={article.id}
+            article={article}
             onArticleClick={onArticleClick}
             isRead={article.isRead ?? true}
             isFavorited={article.isFavorited ?? false}

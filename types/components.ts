@@ -2,7 +2,7 @@
 import { ArticleWithRelations, ArticleWithUserData, SourceWithCount, TagWithCount } from './models';
 
 // 表示モード
-export type ViewMode = 'card' | 'list';
+export type ViewMode = 'card' | 'list' | 'compact';
 
 // 記事カード
 // Note: article can have companyName and contentLength fields when fetched from API

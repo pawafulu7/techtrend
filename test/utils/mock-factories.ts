@@ -30,6 +30,7 @@ interface MockArticle {
   summary: string | null;
   detailedSummary: string | null;
   content: string | null;
+  contentLength: number | null;
   publishedAt: Date;
   sourceId: string;
   thumbnail: string | null;
@@ -140,6 +141,7 @@ export function createMockArticle(overrides?: Partial<MockArticle>): MockArticle
     summary: `This is a summary for test article ${id}`,
     detailedSummary: `This is a detailed summary for test article ${id}.\n\n- Point 1\n- Point 2\n- Point 3`,
     content: `Full content of test article ${id}`,
+    contentLength: null,
     publishedAt: now,
     sourceId: `source-1`,
     thumbnail: null,
@@ -319,6 +321,7 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
     summary: faker.lorem.paragraph({ min: 2, max: 4 }),
     detailedSummary: `${faker.lorem.paragraph()}\n\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}\n• ${faker.lorem.sentence()}`,
     content: faker.lorem.paragraphs({ min: 3, max: 5 }),
+    contentLength: null,
     publishedAt,
     sourceId: overrides.sourceId ?? `source-${faker.number.int({ min: 1, max: 10 })}`,  // デフォルト値、mockArticleWithRelationsで的確にsource.idで上書き
     thumbnail: faker.datatype.boolean() ? faker.image.url() : null,
