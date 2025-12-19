@@ -15,7 +15,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, SortAsc } from 'lucide-react';
 import type { SourceCategory, SourceCategoryWithAll, SourceWithStats } from '@/types/source';
-import logger from '@/lib/logger';
+import logger from '@/lib/logger.client';
 
 type SortBy = 'articles' | 'quality' | 'frequency' | 'name';
 

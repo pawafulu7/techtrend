@@ -38,7 +38,9 @@ describe('Security Headers - CSP', () => {
       process.env.NODE_ENV = 'production';
     });
 
-    it('should NOT allow unsafe-eval', () => {
+    it('should NOT allow unsafe-eval (client bundle has no eval dependencies)', () => {
+      // Note: unsafe-eval is NOT required after removing pino/crypto from client components
+      // Client components use lib/logger.client.ts (console-based) instead of lib/logger.ts (pino-based)
       const csp = getProductionCSP();
       expect(csp).not.toContain("'unsafe-eval'");
     });
@@ -46,6 +48,7 @@ describe('Security Headers - CSP', () => {
     it('should allow unsafe-inline for Next.js requirements', () => {
       const csp = getProductionCSP();
       expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+      expect(csp).not.toContain("'unsafe-eval'");
       expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     });
 

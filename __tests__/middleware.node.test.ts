@@ -104,7 +104,9 @@ describe('middleware - security headers', () => {
       expect(csp).toContain('wss:');
     });
 
-    it('should use production CSP without unsafe-eval', async () => {
+    it('should use production CSP without unsafe-eval (client bundle optimized)', async () => {
+      // Note: unsafe-eval is NOT required after removing pino/crypto from client components
+      // Client components use lib/logger.client.ts (console-based)
       process.env.NODE_ENV = 'production';
       const request = new NextRequest(new URL('http://localhost:3000/'));
       const response = await proxy(request);

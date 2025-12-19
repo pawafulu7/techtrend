@@ -18,7 +18,8 @@ export function getDevelopmentCSP(): string {
 }
 
 /**
- * Production CSP - unsafe-eval削除、セキュリティ強化
+ * Production CSP - セキュリティ強化版
+ * Note: unsafe-eval不要（クライアントコンポーネントからpino/crypto依存を排除済み）
  */
 export function getProductionCSP(): string {
   return [

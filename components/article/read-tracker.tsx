@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
-import logger from '@/lib/logger';
+import logger from '@/lib/logger.client';
 
 interface ReadTrackerProps {
   articleId: string;

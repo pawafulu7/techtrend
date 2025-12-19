@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { RAG_TOOL_NAMES } from '@/lib/rag/constants';
 import { articleLinkSchema, type ArticleLink } from '@/lib/types/article-link';
-import { logger, sanitizeError } from '@/lib/logger';
+import logger from '@/lib/logger.client';
 
 const toolOutputSchema = z.object({
   articles: z.array(articleLinkSchema).optional(),
@@ -55,7 +55,7 @@ export function extractArticlesFromToolCalls(
     }
     return [...byId.values()].sort((a, b) => b.similarity - a.similarity);
   } catch (error) {
-    logger.error({ error: sanitizeError(error) }, 'ArticleLinkExtractor unexpected error');
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, 'ArticleLinkExtractor unexpected error');
     return [];
   }
 }
