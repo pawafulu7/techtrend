@@ -196,10 +196,8 @@ export function Filters({ sources, groupedSources, initialSourceIds }: FiltersPr
       setSelectedSources(sourcesParam.split(',').filter(id => id));
     } else if (sourceIdParam) {
       setSelectedSources([sourceIdParam]);
-    } else {
-      // URLパラメータがない場合は全選択状態（デフォルト）
-      setSelectedSources(sources.map(s => s.id));
     }
+    // URLパラメータがない場合は既存のstateを維持（cookie由来の初期値を保持）
   }, [searchParams, sources]);
 
   // アンマウント時に保留中のCookie更新をflush

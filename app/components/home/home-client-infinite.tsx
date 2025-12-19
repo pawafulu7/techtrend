@@ -165,9 +165,16 @@ export function HomeClientInfinite({
     }
     
     if (!hasSourcesParam && !hasSourceIdParam) {
-      // URLにソース関連のパラメータがまったくない場合 = 全選択
-      // Cookieの値は無視して、何も設定しない（全選択として扱う）
-      // params.sourcesを設定しない = 全記事を表示
+      // Cookie由来のinitialSourceIdsを使用
+      if (_initialSourceIds !== undefined) {
+        // 空配列の場合は明示的に 'none' を設定（全ソース解除状態）
+        if (_initialSourceIds.length === 0) {
+          params.sources = 'none';
+        } else {
+          params.sources = _initialSourceIds.join(',');
+        }
+      }
+      // それ以外の場合は全選択として扱う（params.sourcesを設定しない）
     }
 
     // 記事詳細から戻ってきた場合のフラグを追加
@@ -190,7 +197,7 @@ export function HomeClientInfinite({
     }
 
     return params;
-  }, [searchParams, initialSortBy, isReturningFromArticle, excludeUnprocessed, isPersonalized, hasPreferences, personalizedCategories, personalizedPeriod]);
+  }, [searchParams, initialSortBy, isReturningFromArticle, excludeUnprocessed, isPersonalized, hasPreferences, personalizedCategories, personalizedPeriod, _initialSourceIds]);
 
   const {
     data,
