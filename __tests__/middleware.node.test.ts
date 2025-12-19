@@ -104,13 +104,15 @@ describe('middleware - security headers', () => {
       expect(csp).toContain('wss:');
     });
 
-    it('should use production CSP without unsafe-eval', async () => {
+    it('should use production CSP with unsafe-eval for Chrome compatibility', async () => {
+      // Note: unsafe-eval is required for Next.js runtime (dynamic imports)
+      // Chrome blocks window.open() without it
       process.env.NODE_ENV = 'production';
       const request = new NextRequest(new URL('http://localhost:3000/'));
       const response = await proxy(request);
 
       const csp = response.headers.get('Content-Security-Policy');
-      expect(csp).not.toContain("'unsafe-eval'");
+      expect(csp).toContain("'unsafe-eval'");
       expect(csp).toContain('upgrade-insecure-requests');
       expect(csp).toContain("object-src 'none'");
     });
