@@ -197,7 +197,7 @@ export function HomeClientInfinite({
     }
 
     return params;
-  }, [searchParams, initialSortBy, isReturningFromArticle, excludeUnprocessed, isPersonalized, hasPreferences, personalizedCategories, personalizedPeriod]);
+  }, [searchParams, initialSortBy, isReturningFromArticle, excludeUnprocessed, isPersonalized, hasPreferences, personalizedCategories, personalizedPeriod, _initialSourceIds]);
 
   const {
     data,
