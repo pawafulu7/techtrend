@@ -23,7 +23,10 @@ export function getDevelopmentCSP(): string {
 export function getProductionCSP(): string {
   return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    // Note: unsafe-eval is required for Next.js/React runtime (dynamic imports, code splitting)
+    // Chrome blocks window.open without this directive
+    // Long-term plan: migrate to nonce-based CSP (see .claude/docs/investigate/)
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https: blob:",
     "font-src 'self' data:",
