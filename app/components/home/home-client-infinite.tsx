@@ -165,10 +165,14 @@ export function HomeClientInfinite({
     }
     
     if (!hasSourcesParam && !hasSourceIdParam) {
-      // URLにソース関連のパラメータがまったくない場合
-      // Cookie由来のinitialSourceIdsがあればそれを使用
-      if (_initialSourceIds && _initialSourceIds.length > 0) {
-        params.sources = _initialSourceIds.join(',');
+      // Cookie由来のinitialSourceIdsを使用
+      if (_initialSourceIds !== undefined) {
+        // 空配列の場合は明示的に 'none' を設定（全ソース解除状態）
+        if (_initialSourceIds.length === 0) {
+          params.sources = 'none';
+        } else {
+          params.sources = _initialSourceIds.join(',');
+        }
       }
       // それ以外の場合は全選択として扱う（params.sourcesを設定しない）
     }
