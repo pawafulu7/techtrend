@@ -101,7 +101,7 @@ async function postHandler(req: NextRequest) {
     const articleView = await prisma.articleView.upsert({
       where: {
         userId_articleId: {
-          userId: session.user.id,
+          userId: validatedUser.id,
           articleId
         }
       },
@@ -111,7 +111,7 @@ async function postHandler(req: NextRequest) {
         // viewedAtは更新しない（既読マークのみ）
       },
       create: {
-        userId: session.user.id,
+        userId: validatedUser.id,
         articleId,
         isRead: true,
         readAt: new Date()
@@ -120,9 +120,9 @@ async function postHandler(req: NextRequest) {
 
     // Invalidate view-status cache so list endpoints return fresh isRead immediately
     try {
-      await invalidateViewCache(session.user.id, articleId);
+      await invalidateViewCache(validatedUser.id, articleId);
     } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Failed to invalidate view cache');
+      logger.warn({ error: cacheError, userId: validatedUser.id, articleId }, 'Failed to invalidate view cache');
     }
 
     return NextResponse.json({ success: true, articleView });
@@ -164,7 +164,7 @@ async function putHandler(_req: NextRequest) {
       INSERT INTO "ArticleView" ("id", "userId", "articleId", "isRead", "readAt", "viewedAt")
       SELECT
         gen_random_uuid(),
-        ${session.user.id},
+        ${validatedUser.id},
         a.id,
         true,
         NOW(),
@@ -172,7 +172,7 @@ async function putHandler(_req: NextRequest) {
       FROM "Article" a
       WHERE NOT EXISTS (
         SELECT 1 FROM "ArticleView" av
-        WHERE av."userId" = ${session.user.id}
+        WHERE av."userId" = ${validatedUser.id}
         AND av."articleId" = a.id
         AND av."isRead" = true
       )
@@ -189,8 +189,8 @@ async function putHandler(_req: NextRequest) {
     const redisService = getRedisService();
     if (redisService) {
       try {
-        await redisService.clearPattern(`unread:${session.user.id}*`);
-        await redisService.clearPattern(`read:${session.user.id}*`);
+        await redisService.clearPattern(`unread:${validatedUser.id}*`);
+        await redisService.clearPattern(`read:${validatedUser.id}*`);
       } catch (redisError) {
         logger.error({ error: redisError }, 'Redis cache clear error');
         // Redisエラーは無視して処理を続行
@@ -199,9 +199,9 @@ async function putHandler(_req: NextRequest) {
 
     // Also clear DataLoader view-status cache (L1/L2) for this user
     try {
-      await invalidateUserViewCache(session.user.id);
+      await invalidateUserViewCache(validatedUser.id);
     } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: session.user.id }, 'Failed to invalidate user view cache');
+      logger.warn({ error: cacheError, userId: validatedUser.id }, 'Failed to invalidate user view cache');
     }
 
     return NextResponse.json({
@@ -254,7 +254,7 @@ async function deleteHandler(req: NextRequest) {
     // 既読状態をfalseに更新
     await prisma.articleView.updateMany({
       where: {
-        userId: session.user.id,
+        userId: validatedUser.id,
         articleId
       },
       data: {
@@ -265,9 +265,9 @@ async function deleteHandler(req: NextRequest) {
 
     // Invalidate view-status cache so list endpoints return fresh isRead immediately
     try {
-      await invalidateViewCache(session.user.id, articleId);
+      await invalidateViewCache(validatedUser.id, articleId);
     } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Failed to invalidate view cache');
+      logger.warn({ error: cacheError, userId: validatedUser.id, articleId }, 'Failed to invalidate view cache');
     }
 
     return NextResponse.json({ success: true });

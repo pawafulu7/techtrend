@@ -44,10 +44,10 @@ export async function GET(request: Request) {
     // Execute count and findMany in transaction for consistency
     const [total, favorites] = await prisma.$transaction([
       prisma.favorite.count({
-        where: { userId: session.user.id },
+        where: { userId: validatedUser.id },
       }),
       prisma.favorite.findMany({
-        where: { userId: session.user.id },
+        where: { userId: validatedUser.id },
         include: lightweight ? {
           article: {
             select: {
@@ -129,7 +129,7 @@ async function postHandler(
   request: NextRequest,
   context: WithUserValidationContext
 ) {
-  const { validatedUser, session } = context;
+  const { validatedUser } = context;
 
   try {
     const { articleId } = await request.json();
