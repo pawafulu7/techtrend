@@ -7,6 +7,10 @@ import { ragSearchRateLimit, checkRateLimit, RateLimitError } from '@/lib/rate-l
 import { logger, sanitizeError } from '@/lib/logger';
 import { ZodError } from 'zod';
 import { APIError } from 'openai/error';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 
 /**
  * RAG Semantic Search API
@@ -76,6 +80,12 @@ export async function POST(request: NextRequest) {
         { error: 'Unauthorized - Authentication required' },
         { status: 401 }
       );
+    }
+
+    // Layer 1.5: User validation (check if user is deleted)
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     // Layer 2: Rate limiting (REQUIRED)

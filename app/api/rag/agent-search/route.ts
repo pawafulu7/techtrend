@@ -15,6 +15,10 @@ import { features } from '@/lib/config/env';
 import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import type { Session } from 'next-auth';
 import type { LanguageModelV2ToolResultOutput } from '@ai-sdk/provider';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 
 /**
  * Custom error for article not found (404)
@@ -1207,6 +1211,13 @@ export async function POST(request: NextRequest) {
       }
 
       span.setAttribute('auth.userId', session.user.id);
+
+      // Layer 1.5: User validation (check if user is deleted)
+      const validatedUser = await validateUser(session);
+      if (!validatedUser) {
+        span.setAttribute('auth.status', 'user_deleted');
+        return createUserDeletedResponse();
+      }
 
       // Layer 2: Pre-parse agentType for rate limiting
       let body;

@@ -3,6 +3,10 @@ import { auth } from '@/lib/auth/auth';
 import { recommendationService } from '@/lib/recommendation/recommendation-service';
 import { getRedisService } from '@/lib/redis/factory';
 import logger from '@/lib/logger';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +21,12 @@ export async function GET(request: NextRequest) {
         { error: 'Authentication required' },
         { status: 401 }
       );
+    }
+
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     const userId = session.user.id;

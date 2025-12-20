@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/database';
 import { getRedisService } from '@/lib/redis/factory';
 import logger from '@/lib/logger';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { invalidateUserViewCache, invalidateViewCache } from '@/lib/dataloader/article-view-loader';
+import {
+  withUserValidation,
+  type WithUserValidationContext,
+} from '@/lib/middleware/with-user-validation';
+import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 
 // GET: 記事の既読状態を取得
-export async function GET(req: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ readArticleIds: [], unreadCount: 0 });
-    }
+async function getHandler(
+  req: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
 
+  try {
     const { searchParams } = new URL(req.url);
     const articleIds = searchParams.get('articleIds')?.split(',') || [];
 
@@ -23,14 +27,14 @@ export async function GET(req: NextRequest) {
         {
           articleViews: {
             none: {
-              userId: session.user.id
+              userId: validatedUser.id
             }
           }
         },
         {
           articleViews: {
             some: {
-              userId: session.user.id,
+              userId: validatedUser.id,
               isRead: false
             }
           }
@@ -40,7 +44,7 @@ export async function GET(req: NextRequest) {
 
     // 既読記事取得用のwhere条件
     const readArticlesWhere = {
-      userId: session.user.id,
+      userId: validatedUser.id,
       isRead: true,
       ...(articleIds.length > 0 ? { articleId: { in: articleIds } } : {})
     };
@@ -68,16 +72,13 @@ export async function GET(req: NextRequest) {
 }
 
 // POST: 記事を既読にマーク
-async function postHandler(req: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+async function postHandler(
+  req: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
 
+  try {
     const { articleId } = await req.json();
     if (!articleId) {
       return NextResponse.json(
@@ -90,7 +91,7 @@ async function postHandler(req: NextRequest) {
     const articleView = await prisma.articleView.upsert({
       where: {
         userId_articleId: {
-          userId: session.user.id,
+          userId: validatedUser.id,
           articleId
         }
       },
@@ -100,7 +101,7 @@ async function postHandler(req: NextRequest) {
         // viewedAtは更新しない（既読マークのみ）
       },
       create: {
-        userId: session.user.id,
+        userId: validatedUser.id,
         articleId,
         isRead: true,
         readAt: new Date()
@@ -109,13 +110,19 @@ async function postHandler(req: NextRequest) {
 
     // Invalidate view-status cache so list endpoints return fresh isRead immediately
     try {
-      await invalidateViewCache(session.user.id, articleId);
+      await invalidateViewCache(validatedUser.id, articleId);
     } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Failed to invalidate view cache');
+      logger.warn({ error: cacheError, userId: validatedUser.id, articleId }, 'Failed to invalidate view cache');
     }
 
     return NextResponse.json({ success: true, articleView });
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error({ error }, 'Error marking article as read');
     return NextResponse.json(
       { error: 'Failed to mark article as read' },
@@ -125,23 +132,20 @@ async function postHandler(req: NextRequest) {
 }
 
 // PUT: 全未読記事を一括既読にマーク
-async function putHandler(_req: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+async function putHandler(
+  _req: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
 
+  try {
     // SQL直接実行による高速化
     // gen_random_uuid()はPostgreSQL 13以降で使用可能
     const result = await prisma.$executeRaw`
       INSERT INTO "ArticleView" ("id", "userId", "articleId", "isRead", "readAt", "viewedAt")
       SELECT
         gen_random_uuid(),
-        ${session.user.id},
+        ${validatedUser.id},
         a.id,
         true,
         NOW(),
@@ -149,7 +153,7 @@ async function putHandler(_req: NextRequest) {
       FROM "Article" a
       WHERE NOT EXISTS (
         SELECT 1 FROM "ArticleView" av
-        WHERE av."userId" = ${session.user.id}
+        WHERE av."userId" = ${validatedUser.id}
         AND av."articleId" = a.id
         AND av."isRead" = true
       )
@@ -166,8 +170,8 @@ async function putHandler(_req: NextRequest) {
     const redisService = getRedisService();
     if (redisService) {
       try {
-        await redisService.clearPattern(`unread:${session.user.id}*`);
-        await redisService.clearPattern(`read:${session.user.id}*`);
+        await redisService.clearPattern(`unread:${validatedUser.id}*`);
+        await redisService.clearPattern(`read:${validatedUser.id}*`);
       } catch (redisError) {
         logger.error({ error: redisError }, 'Redis cache clear error');
         // Redisエラーは無視して処理を続行
@@ -176,9 +180,9 @@ async function putHandler(_req: NextRequest) {
 
     // Also clear DataLoader view-status cache (L1/L2) for this user
     try {
-      await invalidateUserViewCache(session.user.id);
+      await invalidateUserViewCache(validatedUser.id);
     } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: session.user.id }, 'Failed to invalidate user view cache');
+      logger.warn({ error: cacheError, userId: validatedUser.id }, 'Failed to invalidate user view cache');
     }
 
     return NextResponse.json({
@@ -187,6 +191,12 @@ async function putHandler(_req: NextRequest) {
       remainingUnreadCount: 0
     });
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error({ error }, 'Error marking all articles as read');
     return NextResponse.json(
       { error: 'Failed to mark all articles as read' },
@@ -196,16 +206,13 @@ async function putHandler(_req: NextRequest) {
 }
 
 // DELETE: 記事を未読に戻す
-async function deleteHandler(req: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+async function deleteHandler(
+  req: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
 
+  try {
     const { searchParams } = new URL(req.url);
     const articleId = searchParams.get('articleId');
 
@@ -219,7 +226,7 @@ async function deleteHandler(req: NextRequest) {
     // 既読状態をfalseに更新
     await prisma.articleView.updateMany({
       where: {
-        userId: session.user.id,
+        userId: validatedUser.id,
         articleId
       },
       data: {
@@ -230,13 +237,19 @@ async function deleteHandler(req: NextRequest) {
 
     // Invalidate view-status cache so list endpoints return fresh isRead immediately
     try {
-      await invalidateViewCache(session.user.id, articleId);
+      await invalidateViewCache(validatedUser.id, articleId);
     } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: session.user.id, articleId }, 'Failed to invalidate view cache');
+      logger.warn({ error: cacheError, userId: validatedUser.id, articleId }, 'Failed to invalidate view cache');
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error({ error }, 'Error marking article as unread');
     return NextResponse.json(
       { error: 'Failed to mark article as unread' },
@@ -245,6 +258,7 @@ async function deleteHandler(req: NextRequest) {
   }
 }
 
-export const POST = withCSRFProtection(postHandler);
-export const PUT = withCSRFProtection(putHandler);
-export const DELETE = withCSRFProtection(deleteHandler);
+export const GET = withUserValidation(getHandler);
+export const POST = withCSRFProtection(withUserValidation(postHandler));
+export const PUT = withCSRFProtection(withUserValidation(putHandler));
+export const DELETE = withCSRFProtection(withUserValidation(deleteHandler));

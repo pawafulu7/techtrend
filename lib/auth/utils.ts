@@ -1,5 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/database';
+import { logger } from '@/lib/logger';
+import { invalidateUserAuthCache } from './user-auth-cache';
 
 /**
  * Hash a password using bcrypt
@@ -127,11 +129,19 @@ export async function changePassword(
 }
 
 /**
- * Delete user account
- * @deprecated Use deleteUserAccountWithAudit instead for production use
+ * @deprecated Use deleteUserAccountWithAudit instead
+ * Hard delete is disabled in production for data integrity
  */
 export async function deleteUserAccount(userId: string) {
-  // Delete all related data
+  // Production environment check - hard delete is prohibited
+  if (process.env.NODE_ENV === 'production') {
+    logger.error({ userId }, 'Attempted hard delete in production');
+    throw new Error(
+      'Hard delete is disabled in production. Use deleteUserAccountWithAudit instead.'
+    );
+  }
+
+  // Development environment only - delete all related data
   await prisma.$transaction([
     // Delete favorites
     prisma.favorite.deleteMany({
@@ -166,7 +176,7 @@ export async function deleteUserAccountWithAudit(
     userAgent?: string;
   }
 ) {
-  return prisma.$transaction(
+  const result = await prisma.$transaction(
     async (tx) => {
       // 1. Get user info before deletion (for email and auth method)
       const user = await tx.user.findUnique({
@@ -220,4 +230,10 @@ export async function deleteUserAccountWithAudit(
       timeout: 10000, // 10 seconds timeout
     }
   );
+
+  // 6. Invalidate user auth cache after successful transaction
+  // This ensures subsequent JWT validations detect the deleted state
+  await invalidateUserAuthCache(userId);
+
+  return result;
 }

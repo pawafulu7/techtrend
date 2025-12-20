@@ -12,10 +12,8 @@ jest.mock('@/lib/auth/auth', () => ({
   auth: () => mockAuth(),
 }));
 
-// Use shared Prisma mock from __mocks__/lib/prisma
-jest.mock('@/lib/prisma');
 const prismaMock = prisma as jest.Mocked<typeof prisma>;
-const { resetPrismaMock } = jest.requireMock('@/lib/prisma') as {
+const { resetPrismaMock } = require('@/lib/prisma') as {
   resetPrismaMock: () => void;
 };
 

@@ -3,6 +3,10 @@ import { changePassword } from '@/lib/auth/utils';
 import { z } from 'zod';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 
 // パスワード変更リクエストのスキーマ
 const changePasswordSchema = z.object({
@@ -27,6 +31,12 @@ async function changePasswordHandler(request: NextRequest, context?: { session?:
         { error: 'Unauthorized' },
         { status: 401 }
       );
+    }
+
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     // リクエストボディの取得と検証

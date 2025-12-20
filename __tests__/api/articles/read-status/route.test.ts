@@ -121,18 +121,17 @@ describe('/api/articles/read-status', () => {
       });
     });
 
-    it('未認証の場合空の配列と0を返す', async () => {
+    it('未認証の場合401を返す', async () => {
       setUnauthenticated();
 
       const request = new NextRequest('http://localhost/api/articles/read-status');
       const response = await GET(request);
 
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(401);
       const data = await response.json();
-      
-      expect(data.readArticleIds).toEqual([]);
-      expect(data.unreadCount).toBe(0);
-      
+
+      expect(data.error).toBe('Unauthorized');
+
       expect(prismaMock.articleView.findMany).not.toHaveBeenCalled();
     });
 

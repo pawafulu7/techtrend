@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import {
+  withUserValidation,
+  type WithUserValidationContext,
+} from '@/lib/middleware/with-user-validation';
+import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 import logger from '@/lib/logger';
 import {
   updateFavoriteCacheBestEffort,
@@ -9,18 +13,13 @@ import {
 } from '@/lib/favorites/cache-helpers';
 
 // GET: ユーザーのお気に入り記事一覧を取得
-export async function GET(request: Request) {
+async function getHandler(
+  request: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
+
   try {
-
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -32,10 +31,10 @@ export async function GET(request: Request) {
     // Execute count and findMany in transaction for consistency
     const [total, favorites] = await prisma.$transaction([
       prisma.favorite.count({
-        where: { userId: session.user.id },
+        where: { userId: validatedUser.id },
       }),
       prisma.favorite.findMany({
-        where: { userId: session.user.id },
+        where: { userId: validatedUser.id },
         include: lightweight ? {
           article: {
             select: {
@@ -113,18 +112,13 @@ export async function GET(request: Request) {
 }
 
 // POST: 記事をお気に入りに追加
-async function postHandler(request: NextRequest) {
+async function postHandler(
+  request: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
+
   try {
-
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const { articleId } = await request.json();
 
     if (!articleId) {
@@ -150,7 +144,7 @@ async function postHandler(request: NextRequest) {
     const existing = await prisma.favorite.findUnique({
       where: {
         userId_articleId: {
-          userId: session.user.id,
+          userId: validatedUser.id,
           articleId,
         },
       },
@@ -165,7 +159,7 @@ async function postHandler(request: NextRequest) {
 
     const favorite = await prisma.favorite.create({
       data: {
-        userId: session.user.id,
+        userId: validatedUser.id,
         articleId,
       },
       include: {
@@ -184,7 +178,7 @@ async function postHandler(request: NextRequest) {
 
     // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
     await updateFavoriteCacheBestEffort(
-      session.user.id,
+      validatedUser.id,
       articleId,
       true,
       favorite.createdAt
@@ -201,6 +195,12 @@ async function postHandler(request: NextRequest) {
     setFavoriteBustCookie(response);
     return response;
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error({ error }, 'Favorites POST failed');
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -210,18 +210,13 @@ async function postHandler(request: NextRequest) {
 }
 
 // DELETE: お気に入りから削除
-async function deleteHandler(request: NextRequest) {
+async function deleteHandler(
+  request: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
+
   try {
-
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const articleId = searchParams.get('articleId');
 
@@ -235,7 +230,7 @@ async function deleteHandler(request: NextRequest) {
     const favorite = await prisma.favorite.findUnique({
       where: {
         userId_articleId: {
-          userId: session.user.id,
+          userId: validatedUser.id,
           articleId,
         },
       },
@@ -255,7 +250,7 @@ async function deleteHandler(request: NextRequest) {
     });
 
     // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
-    await updateFavoriteCacheBestEffort(session.user.id, articleId, false);
+    await updateFavoriteCacheBestEffort(validatedUser.id, articleId, false);
 
     const response = NextResponse.json({
       message: 'Article removed from favorites',
@@ -263,6 +258,12 @@ async function deleteHandler(request: NextRequest) {
     setFavoriteBustCookie(response);
     return response;
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error({ error }, 'Favorites DELETE failed');
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -271,5 +272,6 @@ async function deleteHandler(request: NextRequest) {
   }
 }
 
-export const POST = withCSRFProtection(postHandler);
-export const DELETE = withCSRFProtection(deleteHandler);
+export const GET = withUserValidation(getHandler);
+export const POST = withCSRFProtection(withUserValidation(postHandler));
+export const DELETE = withCSRFProtection(withUserValidation(deleteHandler));
