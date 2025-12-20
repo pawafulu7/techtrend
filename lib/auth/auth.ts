@@ -10,6 +10,7 @@ import { env } from '@/lib/config/env';
 // Use Nodemailer if Gmail is configured, otherwise use Resend
 import { sendVerificationRequest } from './email-provider';
 import { sendVerificationRequestNodemailer } from './email-provider-nodemailer';
+import { getUserAuthData } from './user-auth-cache';
 
 // Use centralized env config for consistency
 const isProduction = process.env.NODE_ENV === 'production';
@@ -220,17 +221,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user || trigger === 'update') {
         const userId = user?.id || token.sub;
         if (userId) {
-          // Fetch user status including deletedAt
-          const dbUser = await prisma.user.findUnique({
-            where: { id: userId as string },
-            select: {
-              role: true,
-              deletedAt: true,
-            },
-          });
+          // Fetch user status from cache (Redis-backed, 2-min TTL)
+          // This reduces DB load while maintaining reasonable freshness
+          const authData = await getUserAuthData(userId as string);
 
-          // If user is deleted, mark token as deleted and return null
-          if (dbUser?.deletedAt) {
+          // If user not found or is deleted, mark token as deleted and return null
+          if (!authData || authData.deletedAt) {
             token.deleted = true;
             return null as any;
           }
@@ -239,7 +235,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (user) {
             token.uid = user.id;
           }
-          token.role = dbUser?.role || 'user';
+          token.role = authData.role || 'user';
         }
       }
 

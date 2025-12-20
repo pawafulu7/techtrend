@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/database';
 import { logger } from '@/lib/logger';
+import { invalidateUserAuthCache } from './user-auth-cache';
 
 /**
  * Hash a password using bcrypt
@@ -175,7 +176,7 @@ export async function deleteUserAccountWithAudit(
     userAgent?: string;
   }
 ) {
-  return prisma.$transaction(
+  const result = await prisma.$transaction(
     async (tx) => {
       // 1. Get user info before deletion (for email and auth method)
       const user = await tx.user.findUnique({
@@ -229,4 +230,10 @@ export async function deleteUserAccountWithAudit(
       timeout: 10000, // 10 seconds timeout
     }
   );
+
+  // 6. Invalidate user auth cache after successful transaction
+  // This ensures subsequent JWT validations detect the deleted state
+  await invalidateUserAuthCache(userId);
+
+  return result;
 }
