@@ -5,6 +5,11 @@ import { getRedisService } from '@/lib/redis/factory';
 import logger from '@/lib/logger';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { invalidateUserViewCache, invalidateViewCache } from '@/lib/dataloader/article-view-loader';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
+import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 
 // GET: 記事の既読状態を取得
 export async function GET(req: NextRequest) {
@@ -78,6 +83,12 @@ async function postHandler(req: NextRequest) {
       );
     }
 
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
+    }
+
     const { articleId } = await req.json();
     if (!articleId) {
       return NextResponse.json(
@@ -116,6 +127,12 @@ async function postHandler(req: NextRequest) {
 
     return NextResponse.json({ success: true, articleView });
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error({ error }, 'Error marking article as read');
     return NextResponse.json(
       { error: 'Failed to mark article as read' },
@@ -133,6 +150,12 @@ async function putHandler(_req: NextRequest) {
         { error: 'Unauthorized' },
         { status: 401 }
       );
+    }
+
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     // SQL直接実行による高速化
@@ -187,6 +210,12 @@ async function putHandler(_req: NextRequest) {
       remainingUnreadCount: 0
     });
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error({ error }, 'Error marking all articles as read');
     return NextResponse.json(
       { error: 'Failed to mark all articles as read' },
@@ -204,6 +233,12 @@ async function deleteHandler(req: NextRequest) {
         { error: 'Unauthorized' },
         { status: 401 }
       );
+    }
+
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     const { searchParams } = new URL(req.url);
@@ -237,6 +272,12 @@ async function deleteHandler(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error({ error }, 'Error marking article as unread');
     return NextResponse.json(
       { error: 'Failed to mark article as unread' },

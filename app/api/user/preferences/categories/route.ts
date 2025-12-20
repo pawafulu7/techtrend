@@ -15,6 +15,11 @@ import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
 } from '@/lib/personalization/types';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
+import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 
 // =============================================================================
 // Configuration
@@ -64,6 +69,12 @@ export async function GET(): Promise<NextResponse<PreferencesResponse | ErrorRes
         { error: 'Authentication required' },
         { status: 401 }
       );
+    }
+
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse() as NextResponse<ErrorResponse>;
     }
 
     const userId = session.user.id;
@@ -134,6 +145,12 @@ export async function POST(
         { error: 'Authentication required' },
         { status: 401 }
       );
+    }
+
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse() as NextResponse<ErrorResponse>;
     }
 
     const userId = session.user.id;
@@ -239,6 +256,12 @@ export async function POST(
       selectedCategories: uniqueCategoryIds,
     });
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse as NextResponse<ErrorResponse>;
+    }
+
     logger.error(
       { error: sanitizeError(error) },
       'Failed to save user category preferences'

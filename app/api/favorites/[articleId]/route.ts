@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
+import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 import logger from '@/lib/logger';
 import {
   updateFavoriteCacheBestEffort,
@@ -63,6 +68,12 @@ async function postHandler(
       );
     }
 
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
+    }
+
     // 記事の存在確認
     const article = await prisma.article.findUnique({
       where: { id: articleId },
@@ -79,7 +90,7 @@ async function postHandler(
     const existing = await prisma.favorite.findUnique({
       where: {
         userId_articleId: {
-          userId: session.user.id,
+          userId: validatedUser.id,
           articleId,
         },
       },
@@ -94,7 +105,7 @@ async function postHandler(
 
     const favorite = await prisma.favorite.create({
       data: {
-        userId: session.user.id,
+        userId: validatedUser.id,
         articleId,
       },
       include: {
@@ -113,7 +124,7 @@ async function postHandler(
 
     // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
     await updateFavoriteCacheBestEffort(
-      session.user.id,
+      validatedUser.id,
       articleId,
       true,
       favorite.createdAt
@@ -127,6 +138,12 @@ async function postHandler(
     setFavoriteBustCookie(response);
     return response;
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error({ error }, 'Favorite POST failed');
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -151,10 +168,16 @@ async function deleteHandler(
       );
     }
 
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
+    }
+
     const favorite = await prisma.favorite.findUnique({
       where: {
         userId_articleId: {
-          userId: session.user.id,
+          userId: validatedUser.id,
           articleId,
         },
       },
@@ -174,7 +197,7 @@ async function deleteHandler(
     });
 
     // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
-    await updateFavoriteCacheBestEffort(session.user.id, articleId, false);
+    await updateFavoriteCacheBestEffort(validatedUser.id, articleId, false);
 
     const response = NextResponse.json({
       message: 'Article removed from favorites',
@@ -183,6 +206,12 @@ async function deleteHandler(
     setFavoriteBustCookie(response);
     return response;
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error({ error }, 'Favorite DELETE failed');
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
+import { createUserDeletedResponse } from '@/lib/middleware/with-user-validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,7 @@ export async function GET(_request: NextRequest) {
         image: true,
         createdAt: true,
         password: true, // hasPasswordの判定に必要
+        deletedAt: true, // Check if user is deleted
         accounts: {
           select: {
             provider: true,
@@ -38,11 +40,9 @@ export async function GET(_request: NextRequest) {
       },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+    // User not found or has been deleted
+    if (!user || user.deletedAt) {
+      return createUserDeletedResponse();
     }
 
     // 3. レスポンス構造の作成

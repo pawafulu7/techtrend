@@ -2,18 +2,29 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
+import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 
 // GET: ユーザーの閲覧履歴を取得
 export async function GET(request: Request) {
   try {
-    
+
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
+    }
+
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     const { searchParams } = new URL(request.url);
@@ -116,14 +127,20 @@ export async function GET(request: Request) {
 export async function DELETE(_request: Request) {
   try {
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
+
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
+    }
+
     // viewedAtがnullでない記録のみ削除
     const result = await prisma.articleView.deleteMany({
       where: {
@@ -137,6 +154,12 @@ export async function DELETE(_request: Request) {
       clearedCount: result.count
     });
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error(
       { err: error as Error, route: '/api/article-views', method: 'DELETE' },
       'Handler error'
@@ -157,6 +180,12 @@ export async function POST(request: Request) {
     if (!session?.user?.id) {
       // 未ログインユーザーの場合は記録しない
       return NextResponse.json({ message: 'View not recorded (not logged in)' });
+    }
+
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     let articleId: string;
@@ -311,6 +340,12 @@ export async function POST(request: Request) {
       viewId: view.id,
     });
   } catch (error) {
+    // Handle FK constraint violations (race condition with user deletion)
+    const prismaErrorResponse = handlePrismaError(error);
+    if (prismaErrorResponse) {
+      return prismaErrorResponse;
+    }
+
     logger.error(
       { err: error as Error, route: '/api/article-views', method: 'POST' },
       'Handler error'

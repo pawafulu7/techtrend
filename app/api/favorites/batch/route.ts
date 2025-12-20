@@ -4,6 +4,10 @@ import { createFavoriteLoader } from '@/lib/dataloader/favorite-loader';
 import { favoriteCache } from '@/lib/cache/favorites-cache';
 import { parseBoolean } from '@/lib/utils/env-parser';
 import logger from '@/lib/logger';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 
 // DataLoaderインスタンスキャッシュ
 // リクエストスコープでDataLoaderを再利用
@@ -26,6 +30,12 @@ export async function POST(request: NextRequest) {
         { error: 'Unauthorized' },
         { status: 401 }
       );
+    }
+
+    // Validate user exists and is not deleted
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     // JSONパースエラーを適切にハンドリング
