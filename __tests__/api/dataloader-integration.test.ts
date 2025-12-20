@@ -1,6 +1,3 @@
-// Prismaモックを最初に定義
-jest.mock('@/lib/prisma');
-
 // DataLoaderモジュール内でのprisma importをモックするため、
 // モジュール自体をモックして、モックされたprismaを使用させる
 jest.mock('@/lib/dataloader/favorite-loader');
