@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import {
   withUserValidation,
-  validateUser,
-  createUserDeletedResponse,
   type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
@@ -16,23 +13,13 @@ import {
 } from '@/lib/favorites/cache-helpers';
 
 // GET: ユーザーのお気に入り記事一覧を取得
-export async function GET(request: Request) {
+async function getHandler(
+  request: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
+
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -285,5 +272,6 @@ async function deleteHandler(
   }
 }
 
+export const GET = withUserValidation(getHandler);
 export const POST = withCSRFProtection(withUserValidation(postHandler));
 export const DELETE = withCSRFProtection(withUserValidation(deleteHandler));
