@@ -6,8 +6,8 @@ import logger from '@/lib/logger';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { invalidateUserViewCache, invalidateViewCache } from '@/lib/dataloader/article-view-loader';
 import {
-  validateUser,
-  createUserDeletedResponse,
+  withUserValidation,
+  type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 
@@ -73,22 +73,13 @@ export async function GET(req: NextRequest) {
 }
 
 // POST: 記事を既読にマーク
-async function postHandler(req: NextRequest) {
+async function postHandler(
+  req: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
+
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
     const { articleId } = await req.json();
     if (!articleId) {
       return NextResponse.json(
@@ -142,22 +133,13 @@ async function postHandler(req: NextRequest) {
 }
 
 // PUT: 全未読記事を一括既読にマーク
-async function putHandler(_req: NextRequest) {
+async function putHandler(
+  _req: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
+
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
     // SQL直接実行による高速化
     // gen_random_uuid()はPostgreSQL 13以降で使用可能
     const result = await prisma.$executeRaw`
@@ -225,22 +207,13 @@ async function putHandler(_req: NextRequest) {
 }
 
 // DELETE: 記事を未読に戻す
-async function deleteHandler(req: NextRequest) {
+async function deleteHandler(
+  req: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
+
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
     const { searchParams } = new URL(req.url);
     const articleId = searchParams.get('articleId');
 
@@ -286,6 +259,6 @@ async function deleteHandler(req: NextRequest) {
   }
 }
 
-export const POST = withCSRFProtection(postHandler);
-export const PUT = withCSRFProtection(putHandler);
-export const DELETE = withCSRFProtection(deleteHandler);
+export const POST = withCSRFProtection(withUserValidation(postHandler));
+export const PUT = withCSRFProtection(withUserValidation(putHandler));
+export const DELETE = withCSRFProtection(withUserValidation(deleteHandler));
