@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/database';
 import { getRedisService } from '@/lib/redis/factory';
 import logger from '@/lib/logger';
@@ -12,13 +11,13 @@ import {
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 
 // GET: 記事の既読状態を取得
-export async function GET(req: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ readArticleIds: [], unreadCount: 0 });
-    }
+async function getHandler(
+  req: NextRequest,
+  context: WithUserValidationContext
+) {
+  const { validatedUser } = context;
 
+  try {
     const { searchParams } = new URL(req.url);
     const articleIds = searchParams.get('articleIds')?.split(',') || [];
 
@@ -28,14 +27,14 @@ export async function GET(req: NextRequest) {
         {
           articleViews: {
             none: {
-              userId: session.user.id
+              userId: validatedUser.id
             }
           }
         },
         {
           articleViews: {
             some: {
-              userId: session.user.id,
+              userId: validatedUser.id,
               isRead: false
             }
           }
@@ -45,7 +44,7 @@ export async function GET(req: NextRequest) {
 
     // 既読記事取得用のwhere条件
     const readArticlesWhere = {
-      userId: session.user.id,
+      userId: validatedUser.id,
       isRead: true,
       ...(articleIds.length > 0 ? { articleId: { in: articleIds } } : {})
     };
@@ -259,6 +258,7 @@ async function deleteHandler(
   }
 }
 
+export const GET = withUserValidation(getHandler);
 export const POST = withCSRFProtection(withUserValidation(postHandler));
 export const PUT = withCSRFProtection(withUserValidation(putHandler));
 export const DELETE = withCSRFProtection(withUserValidation(deleteHandler));
