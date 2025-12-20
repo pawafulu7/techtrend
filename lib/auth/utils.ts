@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/database';
+import { logger } from '@/lib/logger';
 
 /**
  * Hash a password using bcrypt
@@ -127,11 +128,19 @@ export async function changePassword(
 }
 
 /**
- * Delete user account
- * @deprecated Use deleteUserAccountWithAudit instead for production use
+ * @deprecated Use deleteUserAccountWithAudit instead
+ * Hard delete is disabled in production for data integrity
  */
 export async function deleteUserAccount(userId: string) {
-  // Delete all related data
+  // Production environment check - hard delete is prohibited
+  if (process.env.NODE_ENV === 'production') {
+    logger.error({ userId }, 'Attempted hard delete in production');
+    throw new Error(
+      'Hard delete is disabled in production. Use deleteUserAccountWithAudit instead.'
+    );
+  }
+
+  // Development environment only - delete all related data
   await prisma.$transaction([
     // Delete favorites
     prisma.favorite.deleteMany({
