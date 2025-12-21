@@ -129,10 +129,26 @@ export default function FavoritesPage() {
     [router]
   );
 
-  // Handle favorite removal (optimistic update)
+  // Handle favorite removal (optimistic update + API call)
   const handleRemoveFavorite = useCallback(
-    (articleId: string) => {
+    async (articleId: string) => {
+      // Optimistic update: remove from cache immediately
       removeFavoriteFromCache(articleId);
+
+      try {
+        const response = await fetch(`/api/favorites/${articleId}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          // Dispatch event for cross-screen cache sync
+          window.dispatchEvent(new CustomEvent('article-favorite-changed', {
+            detail: { articleId, isFavorited: false, timestamp: Date.now() }
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to remove favorite:', error);
+      }
     },
     [removeFavoriteFromCache]
   );
