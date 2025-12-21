@@ -54,7 +54,7 @@ body {
   min-height: 100%;
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
