@@ -67,9 +67,28 @@ export function FavoriteArticleCard({
     router.push(articleUrl);
   };
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = async () => {
+    // Optimistic update: remove from cache immediately
     if (onRemoveFavorite) {
       onRemoveFavorite(article.id);
+    }
+
+    try {
+      const response = await fetch(`/api/favorites/${article.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Dispatch event for cross-screen cache sync
+        window.dispatchEvent(new CustomEvent('article-favorite-changed', {
+          detail: { articleId: article.id, isFavorited: false, timestamp: Date.now() }
+        }));
+      } else {
+        // On error, the page will refetch on next visit
+        console.error('Failed to remove favorite:', response.status);
+      }
+    } catch (error) {
+      console.error('Failed to remove favorite:', error);
     }
   };
 
