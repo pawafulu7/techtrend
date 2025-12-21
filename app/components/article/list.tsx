@@ -60,7 +60,12 @@ export function ArticleList({
         method: currentlyFavorited ? 'DELETE' : 'POST',
       });
 
-      if (!response.ok) {
+      if (response.ok) {
+        // API成功時にイベント発火（React Queryキャッシュ同期用）
+        window.dispatchEvent(new CustomEvent('article-favorite-changed', {
+          detail: { articleId, isFavorited: !currentlyFavorited, timestamp: Date.now() }
+        }));
+      } else {
         // エラー時は元に戻す
         setArticles(prev => prev.map(a =>
           a.id === articleId
