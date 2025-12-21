@@ -136,7 +136,12 @@ export function FavoriteButton({
         const response = await fetch(`/api/favorites/${articleId}`, {
           method: newState ? 'POST' : 'DELETE',
         });
-        if (!response.ok) {
+        if (response.ok) {
+          // API成功時にイベント発火（React Queryキャッシュ同期用）
+          window.dispatchEvent(new CustomEvent('article-favorite-changed', {
+            detail: { articleId, isFavorited: newState, timestamp: Date.now() }
+          }));
+        } else {
           // エラー時は元に戻す
           setUncontrolledFavorited(!newState);
           throw new Error('Failed to toggle favorite');

@@ -68,6 +68,7 @@ export function FavoriteArticleCard({
   };
 
   const handleToggleFavorite = () => {
+    // Delegate to parent handler (which handles API call and cache update)
     if (onRemoveFavorite) {
       onRemoveFavorite(article.id);
     }

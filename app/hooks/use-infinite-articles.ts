@@ -1,7 +1,14 @@
 import { useInfiniteQuery, useQueryClient, InfiniteData } from '@tanstack/react-query';
-import { ArticleWithRelations } from '@/types/models';
+import { ArticleWithUserData } from '@/types/models';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { debounce } from '@/lib/utils/debounce';
+
+// Favorite change event detail type
+interface FavoriteChangedDetail {
+  articleId: string;
+  isFavorited: boolean;
+  timestamp: number;
+}
 
 interface ArticleFilters {
   keyword?: string;
@@ -18,7 +25,7 @@ interface ArticleFilters {
 
 interface ArticlesResponse {
   data: {
-    items: ArticleWithRelations[];
+    items: ArticleWithUserData[];
     total: number;
     page: number;
     totalPages: number;
@@ -32,6 +39,27 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   const queryClient = useQueryClient();
   const prevFilterKeyRef = useRef<string>('');
   const totalCountRef = useRef<number | undefined>(undefined);
+  // Track last update timestamp per article to handle race conditions
+  const lastFavoriteUpdateRef = useRef<Map<string, number>>(new Map());
+
+  // Memory cleanup for lastFavoriteUpdateRef (remove entries older than 1 hour)
+  useEffect(() => {
+    const CLEANUP_INTERVAL = 30 * 60 * 1000; // 30 minutes
+    const MAX_AGE = 60 * 60 * 1000; // 1 hour
+
+    const cleanup = () => {
+      const now = Date.now();
+      const map = lastFavoriteUpdateRef.current;
+      for (const [articleId, timestamp] of map.entries()) {
+        if (now - timestamp > MAX_AGE) {
+          map.delete(articleId);
+        }
+      }
+    };
+
+    const intervalId = setInterval(cleanup, CLEANUP_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, []);
 
   // フィルタを正規化（undefined値を削除、キーをソート）
   const normalizedFilters = useMemo(() => {
@@ -99,7 +127,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
               ...page,
               data: {
                 ...page.data,
-                items: page.data.items.map((item: ArticleWithRelations) => {
+                items: page.data.items.map((item: ArticleWithUserData) => {
                   if (item.id === articleId) {
                     _articleFound = true;
                     // 該当記事の既読状態を更新
@@ -133,7 +161,46 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     // 既読状態のキャッシュも無効化
     queryClient.invalidateQueries({ queryKey: ['read-status'] });
   }, [normalizedFilters.readFilter, filterKey, queryClient]);
-  
+
+  // お気に入り変更ハンドラ（React Queryキャッシュ同期用）
+  const handleFavoriteChanged = useCallback((event: Event) => {
+    const customEvent = event as CustomEvent<FavoriteChangedDetail>;
+    const { articleId, isFavorited, timestamp } = customEvent.detail;
+
+    // Race condition prevention: ignore older events
+    const lastUpdate = lastFavoriteUpdateRef.current.get(articleId) || 0;
+    if (timestamp < lastUpdate) return;
+    lastFavoriteUpdateRef.current.set(articleId, timestamp);
+
+    // Update all infinite-articles caches using setQueriesData
+    queryClient.setQueriesData<InfiniteArticlesData>(
+      { queryKey: ['infinite-articles'], exact: false },
+      (oldData) => {
+        if (!oldData?.pages) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: ArticlesResponse) => ({
+            ...page,
+            data: {
+              ...page.data,
+              items: page.data.items.map((item: ArticleWithUserData) =>
+                item.id === articleId ? { ...item, isFavorited } : item
+              ),
+            },
+          })),
+        };
+      }
+    );
+  }, [queryClient]);
+
+  // 一括既読ハンドラ（invalidateQueriesで再取得）
+  const handleBulkRead = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ['infinite-articles'],
+      refetchType: 'active'
+    });
+  }, [queryClient]);
+
   // 既読状態が変更されたときに記事リストを再取得
   useEffect(() => {
     window.addEventListener('article-read-status-changed', handleReadStatusChanged as EventListener);
@@ -142,6 +209,24 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       window.removeEventListener('article-read-status-changed', handleReadStatusChanged as EventListener);
     };
   }, [handleReadStatusChanged]);
+
+  // お気に入り変更イベントをリッスン
+  useEffect(() => {
+    window.addEventListener('article-favorite-changed', handleFavoriteChanged as EventListener);
+
+    return () => {
+      window.removeEventListener('article-favorite-changed', handleFavoriteChanged as EventListener);
+    };
+  }, [handleFavoriteChanged]);
+
+  // 一括既読イベントをリッスン
+  useEffect(() => {
+    window.addEventListener('articles-bulk-read', handleBulkRead);
+
+    return () => {
+      window.removeEventListener('articles-bulk-read', handleBulkRead);
+    };
+  }, [handleBulkRead]);
 
   // bfcache復元時にキャッシュを無効化して再取得
   useEffect(() => {

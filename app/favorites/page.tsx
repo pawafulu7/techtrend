@@ -43,6 +43,7 @@ export default function FavoritesPage() {
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [sortOption, setSortOption] = useState<SortOption>(initialSort);
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
   const {
     allFavorites,
@@ -52,12 +53,12 @@ export default function FavoritesPage() {
     hasNextPage,
     fetchNextPage,
     error,
-    removeFavoriteFromCache,
   } = useInfiniteFavorites({ limit: 20, includeRelations: true });
 
   // Filter and sort favorites
   const filteredFavorites = useMemo(() => {
-    let result = [...allFavorites];
+    // Filter out removed items first (for immediate UI update)
+    let result = allFavorites.filter(a => !removedIds.has(a.id));
 
     // Search filter (title and summary)
     if (searchQuery.trim()) {
@@ -94,7 +95,7 @@ export default function FavoritesPage() {
     });
 
     return result;
-  }, [allFavorites, searchQuery, sortOption]);
+  }, [allFavorites, removedIds, searchQuery, sortOption]);
 
   // Update URL when filters change (only if URL actually differs)
   useEffect(() => {
@@ -129,12 +130,43 @@ export default function FavoritesPage() {
     [router]
   );
 
-  // Handle favorite removal (optimistic update)
+  // Handle favorite removal (immediate UI update + API call)
   const handleRemoveFavorite = useCallback(
-    (articleId: string) => {
-      removeFavoriteFromCache(articleId);
+    async (articleId: string) => {
+      // Immediate UI update via local state
+      setRemovedIds(prev => new Set([...prev, articleId]));
+
+      try {
+        const response = await fetch(`/api/favorites/${articleId}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          // Non-OK response (4xx, 5xx): restore the item
+          console.error('Failed to remove favorite:', response.status, response.statusText);
+          setRemovedIds(prev => {
+            const next = new Set(prev);
+            next.delete(articleId);
+            return next;
+          });
+          return;
+        }
+
+        // Dispatch event for cross-screen cache sync
+        window.dispatchEvent(new CustomEvent('article-favorite-changed', {
+          detail: { articleId, isFavorited: false, timestamp: Date.now() }
+        }));
+      } catch (error) {
+        console.error('Failed to remove favorite:', error);
+        // On network error, restore the item
+        setRemovedIds(prev => {
+          const next = new Set(prev);
+          next.delete(articleId);
+          return next;
+        });
+      }
     },
-    [removeFavoriteFromCache]
+    []
   );
 
   // Focus on empty state after all items removed
@@ -191,7 +223,7 @@ export default function FavoritesPage() {
                   role="status"
                   aria-live="polite"
                 >
-                  保存した記事 ({totalCount}件)
+                  保存した記事 ({totalCount - removedIds.size}件)
                 </p>
               </div>
             </div>

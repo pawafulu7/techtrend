@@ -82,23 +82,32 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, [queryClient]);
 
-  // お気に入り削除時のキャッシュ更新
-  const removeFavoriteFromCache = useCallback(
+  // Shared cache update logic for favorite removal
+  const updateCacheOnRemove = useCallback(
     (articleId: string) => {
       queryClient.setQueryData<FavoritesQueryData>(
         ['infinite-favorites'],
         (oldData) => {
           if (!oldData?.pages) return oldData;
 
+          // Check if the article exists in the cache before modifying
+          const hasArticle = oldData.pages.some((page) =>
+            page.favorites.some((f) => f.id === articleId)
+          );
+          if (!hasArticle) return oldData;
+
           return {
             ...oldData,
-            pages: oldData.pages.map((page) => ({
+            pages: oldData.pages.map((page, index) => ({
               ...page,
               favorites: page.favorites.filter((f) => f.id !== articleId),
               pagination: {
                 ...page.pagination,
-                total: page.pagination.total - 1,
-                totalPages: Math.ceil((page.pagination.total - 1) / page.pagination.limit),
+                // Only decrement total on first page to avoid multiple decrements
+                total: index === 0 ? page.pagination.total - 1 : page.pagination.total,
+                totalPages: index === 0
+                  ? Math.ceil((page.pagination.total - 1) / page.pagination.limit)
+                  : page.pagination.totalPages,
               },
             })),
           };
@@ -107,6 +116,31 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     },
     [queryClient]
   );
+
+  // お気に入り変更イベントをリッスン（クロス画面キャッシュ同期用）
+  useEffect(() => {
+    const handleFavoriteChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<{ articleId: string; isFavorited: boolean }>;
+      const { articleId, isFavorited } = customEvent.detail;
+
+      if (!isFavorited) {
+        // お気に入り削除時はキャッシュから除外
+        updateCacheOnRemove(articleId);
+      } else {
+        // お気に入り追加時は再取得（記事の全データが必要）
+        queryClient.invalidateQueries({
+          queryKey: ['infinite-favorites'],
+          refetchType: 'active',
+        });
+      }
+    };
+
+    window.addEventListener('article-favorite-changed', handleFavoriteChanged);
+    return () => window.removeEventListener('article-favorite-changed', handleFavoriteChanged);
+  }, [queryClient, updateCacheOnRemove]);
+
+  // お気に入り削除時のキャッシュ更新（外部から呼び出し可能）
+  const removeFavoriteFromCache = updateCacheOnRemove;
 
   const infiniteQuery = useInfiniteQuery<FavoritesApiResponse, Error>({
     queryKey: ['infinite-favorites'],

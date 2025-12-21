@@ -60,7 +60,12 @@ export function ArticleList({
         method: currentlyFavorited ? 'DELETE' : 'POST',
       });
 
-      if (!response.ok) {
+      if (response.ok) {
+        // API成功時にイベント発火（React Queryキャッシュ同期用）
+        window.dispatchEvent(new CustomEvent('article-favorite-changed', {
+          detail: { articleId, isFavorited: !currentlyFavorited, timestamp: Date.now() }
+        }));
+      } else {
         // エラー時は元に戻す
         setArticles(prev => prev.map(a =>
           a.id === articleId
@@ -100,7 +105,24 @@ export function ArticleList({
       window.removeEventListener('articles-read-status-changed', handleReadStatusChanged);
     };
   }, []);
-  
+
+  // 一括既読イベントをリッスン
+  useEffect(() => {
+    const handleBulkRead = (event: Event) => {
+      const customEvent = event as CustomEvent<{ isRead: boolean }>;
+      if (customEvent.detail?.isRead) {
+        // 全記事を既読に更新
+        setArticles(prev => prev.map(a => ({ ...a, isRead: true })));
+      }
+    };
+
+    window.addEventListener('articles-bulk-read', handleBulkRead);
+
+    return () => {
+      window.removeEventListener('articles-bulk-read', handleBulkRead);
+    };
+  }, []);
+
   if (articles.length === 0) {
     return (
       <div className={cn("text-center py-12", className)}>

@@ -3,7 +3,7 @@
 import { SessionProvider } from 'next-auth/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -23,6 +23,21 @@ export function Providers({ children }: ProvidersProps) {
         },
       })
   );
+
+  // Global event listener for cross-screen cache sync
+  // Invalidates favorites cache when favorite status changes on any screen
+  useEffect(() => {
+    const handleFavoriteChanged = () => {
+      queryClient.invalidateQueries({
+        queryKey: ['infinite-favorites'],
+      });
+    };
+
+    window.addEventListener('article-favorite-changed', handleFavoriteChanged);
+    return () => {
+      window.removeEventListener('article-favorite-changed', handleFavoriteChanged);
+    };
+  }, [queryClient]);
 
   return (
     <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>

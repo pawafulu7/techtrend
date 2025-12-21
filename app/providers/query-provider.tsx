@@ -1,8 +1,32 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, InfiniteData } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import type { ArticleWithUserData } from '@/types/models';
+
+interface FavoriteChangedDetail {
+  articleId: string;
+  isFavorited: boolean;
+  timestamp: number;
+}
+
+interface ReadStatusChangedDetail {
+  articleId: string;
+  isRead: boolean;
+}
+
+interface BulkReadDetail {
+  isRead: boolean;
+}
+
+interface ArticlesResponse {
+  data: {
+    items: ArticleWithUserData[];
+  };
+}
+
+type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -18,6 +42,128 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         },
       })
   );
+  const lastFavoriteUpdateRef = useRef<Map<string, number>>(new Map());
+
+  // Global listener for cross-screen cache sync
+  useEffect(() => {
+    const handleFavoriteChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<FavoriteChangedDetail>;
+      const detail = customEvent.detail;
+      if (!detail?.articleId) {
+        return;
+      }
+      const { articleId, isFavorited } = detail;
+      const timestamp = Number.isFinite(detail.timestamp) ? detail.timestamp : Date.now();
+
+      const lastUpdate = lastFavoriteUpdateRef.current.get(articleId) || 0;
+      if (timestamp < lastUpdate) return;
+      lastFavoriteUpdateRef.current.set(articleId, timestamp);
+
+      queryClient.setQueriesData<InfiniteArticlesData>(
+        { queryKey: ['infinite-articles'], exact: false },
+        (oldData) => {
+          if (!oldData?.pages) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page) => {
+              if (!page?.data?.items) return page;
+              return {
+                ...page,
+                data: {
+                  ...page.data,
+                  items: page.data.items.map((item) =>
+                    item.id === articleId ? { ...item, isFavorited } : item
+                  ),
+                },
+              };
+            }),
+          };
+        }
+      );
+
+      // Invalidate both favorites and articles caches
+      queryClient.invalidateQueries({
+        queryKey: ['infinite-favorites'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['infinite-articles'],
+      });
+    };
+
+    window.addEventListener('article-favorite-changed', handleFavoriteChanged);
+    return () => {
+      window.removeEventListener('article-favorite-changed', handleFavoriteChanged);
+    };
+  }, [queryClient]);
+
+  useEffect(() => {
+    const handleReadStatusChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<ReadStatusChangedDetail>;
+      const detail = customEvent.detail;
+      if (!detail?.articleId) {
+        return;
+      }
+
+      const { articleId, isRead } = detail;
+
+      queryClient.setQueriesData<InfiniteArticlesData>(
+        { queryKey: ['infinite-articles'], exact: false },
+        (oldData) => {
+          if (!oldData?.pages) return oldData;
+          let changed = false;
+          const pages = oldData.pages.map((page) => {
+            if (!page?.data?.items) return page;
+            let pageChanged = false;
+            const items = page.data.items.map((item) => {
+              if (item.id !== articleId || item.isRead === isRead) return item;
+              pageChanged = true;
+              changed = true;
+              return { ...item, isRead };
+            });
+            return pageChanged ? { ...page, data: { ...page.data, items } } : page;
+          });
+          return changed ? { ...oldData, pages } : oldData;
+        }
+      );
+
+      // Read/unread filters may need a refetch to adjust membership
+      queryClient.getQueryCache().findAll({ queryKey: ['infinite-articles'], exact: false }).forEach((query) => {
+        if (!Array.isArray(query.queryKey)) return;
+        const filterKey = query.queryKey[1];
+        if (typeof filterKey !== 'string') return;
+        try {
+          const parsed = JSON.parse(filterKey) as { readFilter?: string };
+          if (parsed?.readFilter) {
+            queryClient.invalidateQueries({ queryKey: query.queryKey, refetchType: 'active' });
+          }
+        } catch {
+          // Ignore non-JSON filter keys
+        }
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['read-status'] });
+    };
+
+    const handleBulkRead = (event: Event) => {
+      const customEvent = event as CustomEvent<BulkReadDetail>;
+      if (!customEvent.detail?.isRead) {
+        return;
+      }
+
+      queryClient.invalidateQueries({
+        queryKey: ['infinite-articles'],
+        refetchType: 'active',
+      });
+      queryClient.invalidateQueries({ queryKey: ['read-status'] });
+    };
+
+    window.addEventListener('article-read-status-changed', handleReadStatusChanged);
+    window.addEventListener('articles-bulk-read', handleBulkRead);
+    return () => {
+      window.removeEventListener('article-read-status-changed', handleReadStatusChanged);
+      window.removeEventListener('articles-bulk-read', handleBulkRead);
+    };
+  }, [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
