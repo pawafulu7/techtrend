@@ -19,10 +19,15 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       })
   );
 
+  // Global listener for cross-screen cache sync
   useEffect(() => {
     const handleFavoriteChanged = () => {
+      // Invalidate both favorites and articles caches
       queryClient.invalidateQueries({
         queryKey: ['infinite-favorites'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['infinite-articles'],
       });
     };
 
