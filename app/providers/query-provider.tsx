@@ -11,6 +11,15 @@ interface FavoriteChangedDetail {
   timestamp: number;
 }
 
+interface ReadStatusChangedDetail {
+  articleId: string;
+  isRead: boolean;
+}
+
+interface BulkReadDetail {
+  isRead: boolean;
+}
+
 interface ArticlesResponse {
   data: {
     items: ArticleWithRelations[];
@@ -84,6 +93,75 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('article-favorite-changed', handleFavoriteChanged);
     return () => {
       window.removeEventListener('article-favorite-changed', handleFavoriteChanged);
+    };
+  }, [queryClient]);
+
+  useEffect(() => {
+    const handleReadStatusChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<ReadStatusChangedDetail>;
+      const detail = customEvent.detail;
+      if (!detail?.articleId) {
+        return;
+      }
+
+      const { articleId, isRead } = detail;
+
+      queryClient.setQueriesData<InfiniteArticlesData>(
+        { queryKey: ['infinite-articles'], exact: false },
+        (oldData) => {
+          if (!oldData?.pages) return oldData;
+          let changed = false;
+          const pages = oldData.pages.map((page) => {
+            if (!page?.data?.items) return page;
+            let pageChanged = false;
+            const items = page.data.items.map((item) => {
+              if (item.id !== articleId || item.isRead === isRead) return item;
+              pageChanged = true;
+              changed = true;
+              return { ...item, isRead };
+            });
+            return pageChanged ? { ...page, data: { ...page.data, items } } : page;
+          });
+          return changed ? { ...oldData, pages } : oldData;
+        }
+      );
+
+      // Read/unread filters may need a refetch to adjust membership
+      queryClient.getQueryCache().findAll({ queryKey: ['infinite-articles'], exact: false }).forEach((query) => {
+        if (!Array.isArray(query.queryKey)) return;
+        const filterKey = query.queryKey[1];
+        if (typeof filterKey !== 'string') return;
+        try {
+          const parsed = JSON.parse(filterKey) as { readFilter?: string };
+          if (parsed?.readFilter) {
+            queryClient.invalidateQueries({ queryKey: query.queryKey, refetchType: 'active' });
+          }
+        } catch {
+          // Ignore non-JSON filter keys
+        }
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['read-status'] });
+    };
+
+    const handleBulkRead = (event: Event) => {
+      const customEvent = event as CustomEvent<BulkReadDetail>;
+      if (!customEvent.detail?.isRead) {
+        return;
+      }
+
+      queryClient.invalidateQueries({
+        queryKey: ['infinite-articles'],
+        refetchType: 'active',
+      });
+      queryClient.invalidateQueries({ queryKey: ['read-status'] });
+    };
+
+    window.addEventListener('article-read-status-changed', handleReadStatusChanged);
+    window.addEventListener('articles-bulk-read', handleBulkRead);
+    return () => {
+      window.removeEventListener('article-read-status-changed', handleReadStatusChanged);
+      window.removeEventListener('articles-bulk-read', handleBulkRead);
     };
   }, [queryClient]);
 
