@@ -141,15 +141,24 @@ export default function FavoritesPage() {
           method: 'DELETE',
         });
 
-        if (response.ok) {
-          // Dispatch event for cross-screen cache sync
-          window.dispatchEvent(new CustomEvent('article-favorite-changed', {
-            detail: { articleId, isFavorited: false, timestamp: Date.now() }
-          }));
+        if (!response.ok) {
+          // Non-OK response (4xx, 5xx): restore the item
+          console.error('Failed to remove favorite:', response.status, response.statusText);
+          setRemovedIds(prev => {
+            const next = new Set(prev);
+            next.delete(articleId);
+            return next;
+          });
+          return;
         }
+
+        // Dispatch event for cross-screen cache sync
+        window.dispatchEvent(new CustomEvent('article-favorite-changed', {
+          detail: { articleId, isFavorited: false, timestamp: Date.now() }
+        }));
       } catch (error) {
         console.error('Failed to remove favorite:', error);
-        // On error, restore the item
+        // On network error, restore the item
         setRemovedIds(prev => {
           const next = new Set(prev);
           next.delete(articleId);

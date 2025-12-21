@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQueryClient, InfiniteData } from '@tanstack/react-query';
-import { ArticleWithRelations } from '@/types/models';
+import { ArticleWithUserData } from '@/types/models';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { debounce } from '@/lib/utils/debounce';
 
@@ -25,7 +25,7 @@ interface ArticleFilters {
 
 interface ArticlesResponse {
   data: {
-    items: ArticleWithRelations[];
+    items: ArticleWithUserData[];
     total: number;
     page: number;
     totalPages: number;
@@ -108,7 +108,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
               ...page,
               data: {
                 ...page.data,
-                items: page.data.items.map((item: ArticleWithRelations) => {
+                items: page.data.items.map((item: ArticleWithUserData) => {
                   if (item.id === articleId) {
                     _articleFound = true;
                     // 該当記事の既読状態を更新
@@ -164,7 +164,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
             ...page,
             data: {
               ...page.data,
-              items: page.data.items.map((item: ArticleWithRelations) =>
+              items: page.data.items.map((item: ArticleWithUserData) =>
                 item.id === articleId ? { ...item, isFavorited } : item
               ),
             },
