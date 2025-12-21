@@ -141,13 +141,16 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
 
           return {
             ...oldData,
-            pages: oldData.pages.map((page) => ({
+            pages: oldData.pages.map((page, index) => ({
               ...page,
               favorites: page.favorites.filter((f) => f.id !== articleId),
               pagination: {
                 ...page.pagination,
-                total: page.pagination.total - 1,
-                totalPages: Math.ceil((page.pagination.total - 1) / page.pagination.limit),
+                // Only decrement total on first page to avoid multiple decrements
+                total: index === 0 ? page.pagination.total - 1 : page.pagination.total,
+                totalPages: index === 0
+                  ? Math.ceil((page.pagination.total - 1) / page.pagination.limit)
+                  : page.pagination.totalPages,
               },
             })),
           };

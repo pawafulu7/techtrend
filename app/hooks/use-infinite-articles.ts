@@ -42,6 +42,25 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   // Track last update timestamp per article to handle race conditions
   const lastFavoriteUpdateRef = useRef<Map<string, number>>(new Map());
 
+  // Memory cleanup for lastFavoriteUpdateRef (remove entries older than 1 hour)
+  useEffect(() => {
+    const CLEANUP_INTERVAL = 30 * 60 * 1000; // 30 minutes
+    const MAX_AGE = 60 * 60 * 1000; // 1 hour
+
+    const cleanup = () => {
+      const now = Date.now();
+      const map = lastFavoriteUpdateRef.current;
+      for (const [articleId, timestamp] of map.entries()) {
+        if (now - timestamp > MAX_AGE) {
+          map.delete(articleId);
+        }
+      }
+    };
+
+    const intervalId = setInterval(cleanup, CLEANUP_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, []);
+
   // フィルタを正規化（undefined値を削除、キーをソート）
   const normalizedFilters = useMemo(() => {
     return Object.keys(filters)
