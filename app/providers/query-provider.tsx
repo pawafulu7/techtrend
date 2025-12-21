@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -18,6 +18,19 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         },
       })
   );
+
+  useEffect(() => {
+    const handleFavoriteChanged = () => {
+      queryClient.invalidateQueries({
+        queryKey: ['infinite-favorites'],
+      });
+    };
+
+    window.addEventListener('article-favorite-changed', handleFavoriteChanged);
+    return () => {
+      window.removeEventListener('article-favorite-changed', handleFavoriteChanged);
+    };
+  }, [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
