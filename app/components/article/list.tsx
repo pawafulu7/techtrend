@@ -105,7 +105,24 @@ export function ArticleList({
       window.removeEventListener('articles-read-status-changed', handleReadStatusChanged);
     };
   }, []);
-  
+
+  // 一括既読イベントをリッスン
+  useEffect(() => {
+    const handleBulkRead = (event: Event) => {
+      const customEvent = event as CustomEvent<{ isRead: boolean }>;
+      if (customEvent.detail?.isRead) {
+        // 全記事を既読に更新
+        setArticles(prev => prev.map(a => ({ ...a, isRead: true })));
+      }
+    };
+
+    window.addEventListener('articles-bulk-read', handleBulkRead);
+
+    return () => {
+      window.removeEventListener('articles-bulk-read', handleBulkRead);
+    };
+  }, []);
+
   if (articles.length === 0) {
     return (
       <div className={cn("text-center py-12", className)}>

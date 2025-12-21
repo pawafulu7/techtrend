@@ -142,7 +142,9 @@ export function useReadStatus(articleIds?: string[]) {
         // 記事リストを再取得するためのカスタムイベントを発火
         // タイミングを少し遅らせて確実にキャッシュをクリアする
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('articles-read-status-changed'));
+          window.dispatchEvent(new CustomEvent('articles-bulk-read', {
+            detail: { isRead: true }
+          }));
         }, 100);
         
         // 全記事を既読として扱うため、再取得
