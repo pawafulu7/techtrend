@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Heart, AlertCircle, Search, ArrowUpDown } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
@@ -35,6 +36,7 @@ export default function FavoritesPage() {
   const { data: _session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const emptyStateRef = useRef<HTMLDivElement>(null);
 
   // URL params for state persistence
@@ -129,10 +131,10 @@ export default function FavoritesPage() {
     [router]
   );
 
-  // Handle favorite removal (optimistic update + API call)
+  // Handle favorite removal (API call + cache invalidation)
   const handleRemoveFavorite = useCallback(
     async (articleId: string) => {
-      // Optimistic update: remove from cache immediately
+      // Optimistic update: remove from local cache
       removeFavoriteFromCache(articleId);
 
       try {
@@ -141,6 +143,12 @@ export default function FavoritesPage() {
         });
 
         if (response.ok) {
+          // Force refetch to ensure UI is updated
+          queryClient.invalidateQueries({
+            queryKey: ['infinite-favorites'],
+            refetchType: 'active',
+          });
+
           // Dispatch event for cross-screen cache sync
           window.dispatchEvent(new CustomEvent('article-favorite-changed', {
             detail: { articleId, isFavorited: false, timestamp: Date.now() }
@@ -150,7 +158,7 @@ export default function FavoritesPage() {
         console.error('Failed to remove favorite:', error);
       }
     },
-    [removeFavoriteFromCache]
+    [removeFavoriteFromCache, queryClient]
   );
 
   // Focus on empty state after all items removed
