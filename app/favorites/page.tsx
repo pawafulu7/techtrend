@@ -3,7 +3,6 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Heart, AlertCircle, Search, ArrowUpDown } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
@@ -36,7 +35,6 @@ export default function FavoritesPage() {
   const { data: _session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const emptyStateRef = useRef<HTMLDivElement>(null);
 
   // URL params for state persistence
@@ -45,6 +43,7 @@ export default function FavoritesPage() {
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [sortOption, setSortOption] = useState<SortOption>(initialSort);
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
   const {
     allFavorites,
@@ -54,12 +53,12 @@ export default function FavoritesPage() {
     hasNextPage,
     fetchNextPage,
     error,
-    removeFavoriteFromCache,
   } = useInfiniteFavorites({ limit: 20, includeRelations: true });
 
   // Filter and sort favorites
   const filteredFavorites = useMemo(() => {
-    let result = [...allFavorites];
+    // Filter out removed items first (for immediate UI update)
+    let result = allFavorites.filter(a => !removedIds.has(a.id));
 
     // Search filter (title and summary)
     if (searchQuery.trim()) {
@@ -96,7 +95,7 @@ export default function FavoritesPage() {
     });
 
     return result;
-  }, [allFavorites, searchQuery, sortOption]);
+  }, [allFavorites, removedIds, searchQuery, sortOption]);
 
   // Update URL when filters change (only if URL actually differs)
   useEffect(() => {
@@ -131,11 +130,11 @@ export default function FavoritesPage() {
     [router]
   );
 
-  // Handle favorite removal (API call + cache invalidation)
+  // Handle favorite removal (immediate UI update + API call)
   const handleRemoveFavorite = useCallback(
     async (articleId: string) => {
-      // Optimistic update: remove from local cache
-      removeFavoriteFromCache(articleId);
+      // Immediate UI update via local state
+      setRemovedIds(prev => new Set([...prev, articleId]));
 
       try {
         const response = await fetch(`/api/favorites/${articleId}`, {
@@ -143,12 +142,6 @@ export default function FavoritesPage() {
         });
 
         if (response.ok) {
-          // Force refetch to ensure UI is updated
-          queryClient.invalidateQueries({
-            queryKey: ['infinite-favorites'],
-            refetchType: 'active',
-          });
-
           // Dispatch event for cross-screen cache sync
           window.dispatchEvent(new CustomEvent('article-favorite-changed', {
             detail: { articleId, isFavorited: false, timestamp: Date.now() }
@@ -156,9 +149,15 @@ export default function FavoritesPage() {
         }
       } catch (error) {
         console.error('Failed to remove favorite:', error);
+        // On error, restore the item
+        setRemovedIds(prev => {
+          const next = new Set(prev);
+          next.delete(articleId);
+          return next;
+        });
       }
     },
-    [removeFavoriteFromCache, queryClient]
+    []
   );
 
   // Focus on empty state after all items removed
@@ -215,7 +214,7 @@ export default function FavoritesPage() {
                   role="status"
                   aria-live="polite"
                 >
-                  保存した記事 ({totalCount}件)
+                  保存した記事 ({totalCount - removedIds.size}件)
                 </p>
               </div>
             </div>
