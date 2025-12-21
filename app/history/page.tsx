@@ -65,6 +65,7 @@ export default function HistoryPage() {
   const router = useRouter();
   const [views, setViews] = useState<HistoryViewItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasFetched, setHasFetched] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [justCleared, setJustCleared] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,12 +120,14 @@ export default function HistoryPage() {
           })
         );
         setViews(historyItems);
+        setHasFetched(true);
       } catch (err) {
         // AbortErrorは無視（コンポーネントアンマウント時）
         if (err instanceof Error && err.name === 'AbortError') {
           return;
         }
         setError(err instanceof Error ? err.message : 'エラーが発生しました');
+        setHasFetched(true);
       } finally {
         setLoading(false);
       }
@@ -181,8 +184,8 @@ export default function HistoryPage() {
     [router]
   );
 
-  // Loading state
-  if (status === 'loading' || loading) {
+  // Loading state (hasFetchedを追加してクライアントナビゲーション時も確実にスケルトン表示)
+  if (status === 'loading' || loading || !hasFetched) {
     return (
       <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
         {/* Header skeleton */}
@@ -250,7 +253,7 @@ export default function HistoryPage() {
       )}
 
       {/* Empty state */}
-      {views.length === 0 ? (
+      {hasFetched && views.length === 0 ? (
         <CardV2
           ref={emptyStateRef}
           tabIndex={-1}

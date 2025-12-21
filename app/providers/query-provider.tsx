@@ -3,7 +3,7 @@
 import { QueryClient, QueryClientProvider, InfiniteData } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useEffect, useState, useRef } from 'react';
-import type { ArticleWithRelations } from '@/types/models';
+import type { ArticleWithUserData } from '@/types/models';
 
 interface FavoriteChangedDetail {
   articleId: string;
@@ -22,7 +22,7 @@ interface BulkReadDetail {
 
 interface ArticlesResponse {
   data: {
-    items: ArticleWithRelations[];
+    items: ArticleWithUserData[];
   };
 }
 
