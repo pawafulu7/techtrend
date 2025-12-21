@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import { Header } from "@/app/components/layout/header";
 import { NoTransitions } from "@/app/components/layout/no-transitions";
 import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
@@ -11,22 +11,6 @@ import { ScrollToTopButton } from "@/components/features/ScrollToTopButton";
 import { WebVitalsReporter } from "@/app/components/analytics/web-vitals-reporter";
 // import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "optional",
-  preload: true,
-  adjustFontFallback: true,
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "optional",
-  preload: true,
-  adjustFontFallback: true,
-});
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -83,7 +67,7 @@ export default async function RootLayout({
   return (
     <html
       lang="ja"
-      className={`h-full no-transitions ${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${inter.variable} ${jetBrainsMono.variable}`}
+      className={`h-full no-transitions ${spaceGrotesk.variable} ${inter.variable} ${jetBrainsMono.variable}`}
       suppressHydrationWarning
     >
       <head>
@@ -153,7 +137,7 @@ export default async function RootLayout({
       </head>
       {/* 重要: overflow-hiddenは追加しないこと。トップページ以外でスクロール不可になる */}
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col overflow-hidden`}
+        className="antialiased h-full flex flex-col overflow-hidden"
       >
         <NoTransitions />
         <AuthProvider>
