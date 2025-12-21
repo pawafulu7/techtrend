@@ -6,9 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Sparkles, Calendar, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { TrendLineChart } from '@/app/components/trends/TrendLineChart';
-import { SourcePieChart } from '@/app/components/trends/SourcePieChart';
-import { TagRankingChart } from '@/app/components/trends/TagRankingChart';
+// Dynamic imports for recharts components to reduce initial bundle size
+import { TrendLineChart, SourcePieChart, TagRankingChart } from '@/app/components/trends';
 
 interface TrendingKeyword {
   id: string;
