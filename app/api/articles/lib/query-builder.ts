@@ -161,7 +161,8 @@ export class ArticleWhereClauseBuilder {
             { skipReason: { notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const] } }
           ]
         },
-        // Exclude low quality score (< 30) unless null (qualityScore is Float, not nullable in filter)
+        // Exclude low quality score (< 30)
+        // Note: qualityScore is Float @default(0), so null is not possible
         { qualityScore: { gte: 30 } }
       ];
 

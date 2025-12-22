@@ -596,8 +596,9 @@ describe('/api/articles - Extended Tests', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      
-      // 空白のみのタグリストは条件に含まれない（コンテンツフィルタリングは含まれる）
+
+      // 空白のみのタグリストは条件に含まれない
+      // デフォルトでコンテンツフィルタリングと低品質フィルターが適用される
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
@@ -607,7 +608,14 @@ describe('/api/articles - Extended Tests', () => {
                   { content: { not: null } },
                   { content: { not: '' } }
                 ]
-              }
+              },
+              {
+                OR: [
+                  { skipReason: null },
+                  { skipReason: { notIn: ['THIN_CONTENT', 'QUALITY_FAILED'] } }
+                ]
+              },
+              { qualityScore: { gte: 30 } }
             ]
           }
         })

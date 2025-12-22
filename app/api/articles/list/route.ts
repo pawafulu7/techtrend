@@ -226,7 +226,8 @@ export async function GET(request: NextRequest) {
       // Exclude low quality articles (default behavior)
       // Filters out articles with:
       // - skipReason IN ('THIN_CONTENT', 'QUALITY_FAILED')
-      // - qualityScore < 30 (scale is 0-100)
+      // - qualityScore < 30 (scale is 0-100), null values are included
+      // TODO: Refactor to use shared ArticleWhereClauseBuilder from query-builder.ts
       if (excludeLowQuality) {
         // Build AND conditions for low quality filter
         const lowQualityFilters: ArticleWhereInput[] = [
@@ -238,7 +239,8 @@ export async function GET(request: NextRequest) {
               { skipReason: { notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const] } }
             ]
           },
-          // Exclude low quality score (< 30) - qualityScore is Float, default 0
+          // Exclude low quality score (< 30)
+          // Note: qualityScore is Float @default(0), so null is not possible
           { qualityScore: { gte: 30 } }
         ];
 

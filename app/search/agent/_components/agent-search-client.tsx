@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { z } from 'zod';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentSampleQueries } from './agent-sample-queries';
 import { AgentLoadingState } from './agent-loading-state';
@@ -11,6 +12,13 @@ import { AgentRelatedQuestions, generateRelatedQuestions } from './agent-related
 import { AgentSearchInterpretation } from './agent-search-interpretation';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+
+// Schema for semantic-search tool output validation
+const SemanticSearchOutputSchema = z.object({
+  originalQuery: z.string(),
+  expandedQuery: z.string(),
+  expansionMethod: z.enum(['none', 'dictionary', 'ai']),
+});
 
 const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
@@ -133,6 +141,7 @@ export function AgentSearchClient() {
   }, [result?.response, result?.articles]);
 
   // Extract search interpretation from tool calls (semantic-search output)
+  // Uses Zod schema validation for runtime type safety
   const searchInterpretation = useMemo(() => {
     if (!result?.toolCalls) return null;
 
@@ -143,21 +152,14 @@ export function AgentSearchClient() {
 
     if (!semanticSearchCall?.output) return null;
 
-    // Extract interpretation data from tool output
-    const output = semanticSearchCall.output as {
-      originalQuery?: string;
-      expandedQuery?: string;
-      expansionMethod?: 'none' | 'dictionary' | 'ai';
-    };
-
-    if (!output.originalQuery || !output.expandedQuery || !output.expansionMethod) {
-      return null;
-    }
+    // Validate output with Zod schema for runtime type safety
+    const parsed = SemanticSearchOutputSchema.safeParse(semanticSearchCall.output);
+    if (!parsed.success) return null;
 
     return {
-      originalQuery: output.originalQuery,
-      expandedQuery: output.expandedQuery,
-      expansionMethod: output.expansionMethod,
+      originalQuery: parsed.data.originalQuery,
+      expandedQuery: parsed.data.expandedQuery,
+      expansionMethod: parsed.data.expansionMethod,
     };
   }, [result?.toolCalls]);
 

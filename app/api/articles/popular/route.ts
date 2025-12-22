@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const includeEmptyContent = searchParams.get('includeEmptyContent') === 'true';
     const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
+    const excludeLowQuality = searchParams.get('excludeLowQuality') !== 'false'; // Default: true
 
     // PopularCacheを使用
     const popularPeriod = mapPeriodToPopular(period);
@@ -128,14 +129,22 @@ export async function GET(request: NextRequest) {
           ? { summaryComputedAt: { not: null } }
           : {};
 
-        // Low quality filter (skipReason)
-        // Exclude THIN_CONTENT and QUALITY_FAILED, but allow PDF and SLIDE
-        const skipReasonFilter = {
-          OR: [
-            { skipReason: null },
-            { skipReason: { notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const] } }
-          ]
-        };
+        // Low quality filters (conditional based on excludeLowQuality parameter)
+        // skipReason filter: Exclude THIN_CONTENT and QUALITY_FAILED, but allow PDF and SLIDE
+        const skipReasonFilter = excludeLowQuality
+          ? {
+              OR: [
+                { skipReason: null },
+                { skipReason: { notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const] } }
+              ]
+            }
+          : {};
+
+        // qualityScore filter: Exclude < 30
+        // Note: qualityScore is Float @default(0), so null is not possible
+        const qualityScoreFilter = excludeLowQuality
+          ? { qualityScore: { gte: 30 } }
+          : {};
 
         // 記事取得
         const articles = await prisma.article.findMany({
@@ -143,7 +152,7 @@ export async function GET(request: NextRequest) {
             AND: [
               dateFilter,
               categoryFilter,
-              { qualityScore: { gte: 30 } }, // 品質フィルター
+              qualityScoreFilter,
               contentFilter,
               processedFilter,
               skipReasonFilter
