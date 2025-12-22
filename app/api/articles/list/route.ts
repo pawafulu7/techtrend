@@ -235,16 +235,11 @@ export async function GET(request: NextRequest) {
           {
             OR: [
               { skipReason: null },
-              { skipReason: { notIn: ['THIN_CONTENT', 'QUALITY_FAILED'] } }
+              { skipReason: { notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const] } }
             ]
           },
-          // Exclude low quality score (< 30) unless null
-          {
-            OR: [
-              { qualityScore: null },
-              { qualityScore: { gte: 30 } }
-            ]
-          }
+          // Exclude low quality score (< 30) - qualityScore is Float, default 0
+          { qualityScore: { gte: 30 } }
         ];
 
         // Merge with existing AND conditions

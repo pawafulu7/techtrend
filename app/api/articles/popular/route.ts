@@ -133,19 +133,21 @@ export async function GET(request: NextRequest) {
         const skipReasonFilter = {
           OR: [
             { skipReason: null },
-            { skipReason: { notIn: ['THIN_CONTENT', 'QUALITY_FAILED'] } }
+            { skipReason: { notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const] } }
           ]
         };
 
         // 記事取得
         const articles = await prisma.article.findMany({
           where: {
-            ...dateFilter,
-            ...categoryFilter,
-            qualityScore: { gte: 30 }, // 品質フィルター
-            ...contentFilter,
-            ...processedFilter,
-            ...skipReasonFilter
+            AND: [
+              dateFilter,
+              categoryFilter,
+              { qualityScore: { gte: 30 } }, // 品質フィルター
+              contentFilter,
+              processedFilter,
+              skipReasonFilter
+            ].filter(f => Object.keys(f).length > 0) // Remove empty filters
           },
           include: {
             source: true,

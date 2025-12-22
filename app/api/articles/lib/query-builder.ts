@@ -151,21 +151,18 @@ export class ArticleWhereClauseBuilder {
   withLowQualityFilter(excludeLowQuality: boolean): this {
     if (excludeLowQuality) {
       // Build AND conditions for low quality filter
+      // Import SkipReason enum values for type-safe filtering
       const lowQualityFilters: ArticleWhereInput[] = [
         // Exclude THIN_CONTENT and QUALITY_FAILED skip reasons
+        // PDF and SLIDE are valid content types, so they are NOT excluded
         {
           OR: [
             { skipReason: null },
-            { skipReason: { notIn: ['THIN_CONTENT', 'QUALITY_FAILED'] } }
+            { skipReason: { notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const] } }
           ]
         },
-        // Exclude low quality score (< 30) unless null
-        {
-          OR: [
-            { qualityScore: null },
-            { qualityScore: { gte: 30 } }
-          ]
-        }
+        // Exclude low quality score (< 30) unless null (qualityScore is Float, not nullable in filter)
+        { qualityScore: { gte: 30 } }
       ];
 
       // Merge with existing AND conditions

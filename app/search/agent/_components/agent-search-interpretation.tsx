@@ -73,7 +73,7 @@ export function AgentSearchInterpretation({
           <p className="text-xs text-[var(--tt-color-text-muted)] mt-1 flex items-center gap-1">
             <Info className="h-3 w-3" aria-hidden="true" />
             <span>
-              {expansionLabel === 'ai'
+              {expansionLabel === 'AI'
                 ? 'AIがクエリを解釈して検索範囲を拡張しました'
                 : '関連キーワードで検索範囲を拡張しました'}
             </span>
