@@ -128,6 +128,15 @@ export async function GET(request: NextRequest) {
           ? { summaryComputedAt: { not: null } }
           : {};
 
+        // Low quality filter (skipReason)
+        // Exclude THIN_CONTENT and QUALITY_FAILED, but allow PDF and SLIDE
+        const skipReasonFilter = {
+          OR: [
+            { skipReason: null },
+            { skipReason: { notIn: ['THIN_CONTENT', 'QUALITY_FAILED'] } }
+          ]
+        };
+
         // 記事取得
         const articles = await prisma.article.findMany({
           where: {
@@ -135,7 +144,8 @@ export async function GET(request: NextRequest) {
             ...categoryFilter,
             qualityScore: { gte: 30 }, // 品質フィルター
             ...contentFilter,
-            ...processedFilter
+            ...processedFilter,
+            ...skipReasonFilter
           },
           include: {
             source: true,

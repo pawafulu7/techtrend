@@ -142,6 +142,44 @@ export class ArticleWhereClauseBuilder {
   }
 
   /**
+   * Exclude low quality articles (default behavior for public-facing APIs)
+   * Filters out articles with:
+   * - skipReason IN ('THIN_CONTENT', 'QUALITY_FAILED')
+   * - qualityScore < 30 (scale is 0-100)
+   * PDF and SLIDE skip reasons are NOT excluded (valid content types)
+   */
+  withLowQualityFilter(excludeLowQuality: boolean): this {
+    if (excludeLowQuality) {
+      // Build AND conditions for low quality filter
+      const lowQualityFilters: ArticleWhereInput[] = [
+        // Exclude THIN_CONTENT and QUALITY_FAILED skip reasons
+        {
+          OR: [
+            { skipReason: null },
+            { skipReason: { notIn: ['THIN_CONTENT', 'QUALITY_FAILED'] } }
+          ]
+        },
+        // Exclude low quality score (< 30) unless null
+        {
+          OR: [
+            { qualityScore: null },
+            { qualityScore: { gte: 30 } }
+          ]
+        }
+      ];
+
+      // Merge with existing AND conditions
+      if (!this.where.AND) {
+        this.where.AND = [];
+      } else if (!Array.isArray(this.where.AND)) {
+        this.where.AND = [this.where.AND];
+      }
+      this.where.AND = [...this.where.AND, ...lowQualityFilters];
+    }
+    return this;
+  }
+
+  /**
    * Filter by read status (requires authenticated user)
    */
   withReadFilter(readFilter: string | undefined, userId: string | undefined): this {
@@ -360,9 +398,13 @@ export async function buildWhereClause(
   const builder = new ArticleWhereClauseBuilder(metrics);
 
   // Apply filters in order
+  // excludeLowQuality defaults to true if not specified
+  const excludeLowQuality = filters.excludeLowQuality !== false;
+
   builder
     .withContentFilter(display.includeEmptyContent)
     .withProcessedFilter(display.excludeUnprocessed)
+    .withLowQualityFilter(excludeLowQuality)
     .withReadFilter(filters.readFilter, userId)
     .withTagFilter(filters.tag, filters.tags, filters.tagMode)
     .withCategoryFilter(filters.category)

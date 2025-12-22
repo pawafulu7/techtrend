@@ -46,6 +46,7 @@ export interface FilterParams {
   dateRange?: string;
   category?: string;
   readFilter?: string;
+  excludeLowQuality?: boolean;
 }
 
 /**
@@ -101,6 +102,7 @@ export interface ArticleCacheParams {
   includeRelations: boolean;
   includeEmptyContent: boolean;
   excludeUnprocessed: boolean;
+  excludeLowQuality: boolean;
   lightweight: boolean;
   fields?: string;
   includeUserData: boolean;
