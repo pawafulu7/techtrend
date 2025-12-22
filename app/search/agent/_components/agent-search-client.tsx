@@ -8,6 +8,7 @@ import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
 import { AgentStepIndicator } from './agent-step-indicator';
 import { AgentRelatedQuestions, generateRelatedQuestions } from './agent-related-questions';
+import { AgentSearchInterpretation } from './agent-search-interpretation';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 
@@ -131,6 +132,35 @@ export function AgentSearchClient() {
     return generateRelatedQuestions(result.response, result.articles);
   }, [result?.response, result?.articles]);
 
+  // Extract search interpretation from tool calls (semantic-search output)
+  const searchInterpretation = useMemo(() => {
+    if (!result?.toolCalls) return null;
+
+    // Find semantic-search tool call
+    const semanticSearchCall = result.toolCalls.find(
+      (tc) => tc.name === 'semantic-search' && tc.output
+    );
+
+    if (!semanticSearchCall?.output) return null;
+
+    // Extract interpretation data from tool output
+    const output = semanticSearchCall.output as {
+      originalQuery?: string;
+      expandedQuery?: string;
+      expansionMethod?: 'none' | 'dictionary' | 'ai';
+    };
+
+    if (!output.originalQuery || !output.expandedQuery || !output.expansionMethod) {
+      return null;
+    }
+
+    return {
+      originalQuery: output.originalQuery,
+      expandedQuery: output.expandedQuery,
+      expansionMethod: output.expansionMethod,
+    };
+  }, [result?.toolCalls]);
+
   return (
     <div className="w-full px-6 py-3">
       {/* 2-column layout: Main content (left) + Sidebar (right) */}
@@ -205,7 +235,11 @@ export function AgentSearchClient() {
               </CardV2>
             )}
             {showResult && (result || isStreamingWithPartialText) && !error && (
-              <div className="space-y-6">
+              <div className="space-y-4">
+                {/* Search interpretation - shown before answer panel */}
+                {result && searchInterpretation && (
+                  <AgentSearchInterpretation interpretation={searchInterpretation} />
+                )}
                 <AgentAnswerPanel
                   result={result}
                   partialText={ENABLE_STREAMING_UI ? partialText : null}
