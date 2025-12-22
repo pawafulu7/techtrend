@@ -91,15 +91,6 @@ export const DEFAULT_API_BASELINES: ApiBaseline[] = [
     criticalThreshold: 50,
   },
   {
-    endpoint: '/api/recommendations',
-    method: 'GET',
-    p50Baseline: 150,
-    p95Baseline: 400,
-    p99Baseline: 800,
-    warningThreshold: 20,
-    criticalThreshold: 50,
-  },
-  {
     endpoint: '/api/search',
     method: 'GET',
     p50Baseline: 200,
