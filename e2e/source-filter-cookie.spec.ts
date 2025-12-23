@@ -93,7 +93,7 @@ test.describe('Source Filter Cookie', () => {
     await expect(qiitaCheckbox).toBeChecked();
   });
 
-  test('should work with select all and deselect all buttons', async ({ page, context }) => {
+  test('should work with select all and deselect all buttons', async ({ page, context }, testInfo) => {
     test.setTimeout(getTimeout('long'));
     // Wait for source filter to be ready
     await page.waitForSelector('[data-testid="source-filter"]', { timeout: 10000 });
@@ -104,7 +104,7 @@ test.describe('Source Filter Cookie', () => {
 
     // Check if buttons exist
     if (await deselectAllButton.count() === 0 || await selectAllButton.count() === 0) {
-      console.log('Select/deselect buttons not found, skipping test');
+      testInfo.skip(true, 'Select/deselect buttons not found');
       return;
     }
 
