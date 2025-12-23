@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const includeEmptyContent = searchParams.get('includeEmptyContent') === 'true';
     const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
-    const excludeLowQuality = searchParams.get('excludeLowQuality') !== 'false'; // Default: true
+    const excludeLowQuality = searchParams.get('excludeLowQuality') === 'true'; // Default: false
 
     // PopularCacheを使用
     const popularPeriod = mapPeriodToPopular(period);

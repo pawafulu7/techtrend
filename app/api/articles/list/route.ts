@@ -107,9 +107,9 @@ export async function GET(request: NextRequest) {
     const includeUserData = searchParams.get('includeUserData') === 'true';
     const totalParam = searchParams.get('total'); // Quick Win 2: Skip COUNT on page >1
     const bypassFavoriteL1 = Boolean(request.cookies.get('tt_fav_bust')?.value);
-    // Low quality article filter - default true (exclude low quality articles)
+    // Low quality article filter - default false (new articles have qualityScore=0)
     const excludeLowQualityParam = searchParams.get('excludeLowQuality');
-    const excludeLowQuality = excludeLowQualityParam !== 'false'; // Default true
+    const excludeLowQuality = excludeLowQualityParam === 'true'; // Default false
 
     // Generate cache key
     const normalizedSearch = search ? 

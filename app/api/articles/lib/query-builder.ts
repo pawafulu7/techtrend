@@ -396,8 +396,8 @@ export async function buildWhereClause(
   const builder = new ArticleWhereClauseBuilder(metrics);
 
   // Apply filters in order
-  // excludeLowQuality defaults to true if not specified
-  const excludeLowQuality = filters.excludeLowQuality !== false;
+  // excludeLowQuality defaults to false (new articles have qualityScore=0)
+  const excludeLowQuality = filters.excludeLowQuality === true;
 
   builder
     .withContentFilter(display.includeEmptyContent)
