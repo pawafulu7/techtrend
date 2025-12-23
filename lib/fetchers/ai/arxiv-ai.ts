@@ -7,13 +7,11 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
-import { ArxivAIEnricher } from '@/lib/enrichers/arxiv-ai';
 import { RSSItem } from '@/lib/types/rss';
 import { prisma } from '@/lib/prisma';
 
 export class ArxivAIFetcher extends BaseFetcher {
   private parser: Parser;
-  private enricher: ArxivAIEnricher;
 
   // Combined RSS feed (single HTTP request for all categories)
   private readonly RSS_URL = 'https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL';
@@ -26,9 +24,10 @@ export class ArxivAIFetcher extends BaseFetcher {
   );
 
   // Maximum articles per fetch to prevent timeout (adjustable via env)
+  // Reduced from 200 to 50 to reduce Gemini API costs (2025-12-23)
   private readonly MAX_ARTICLES_PER_FETCH = Math.max(
     1,
-    parseInt(process.env.ARXIV_MAX_ARTICLES_PER_FETCH || '200', 10) || 200
+    parseInt(process.env.ARXIV_MAX_ARTICLES_PER_FETCH || '50', 10) || 50
   );
 
   // Maximum length for arXiv abstracts
@@ -46,7 +45,6 @@ export class ArxivAIFetcher extends BaseFetcher {
     this.parser = new Parser({
       timeout,
     });
-    this.enricher = new ArxivAIEnricher();
   }
 
   async fetch(): Promise<FetchResult> {
@@ -179,7 +177,8 @@ export class ArxivAIFetcher extends BaseFetcher {
   }
 
   /**
-   * Enrich a single RSS item (HTML content fetch + metadata)
+   * Enrich a single RSS item with metadata (RSS content only, no HTML fetch)
+   * HTML enrichment was disabled on 2025-12-23 to reduce Gemini API costs
    */
   private async enrichSingle(item: RSSItem): Promise<CreateArticleInput | null> {
     if (!item.title || !item.link) return null;
@@ -195,29 +194,8 @@ export class ArxivAIFetcher extends BaseFetcher {
       const abstract = this.extractAbstract(item);
       const category = this.detectCategory(item);
 
-      // Fetch full content from arXiv HTML page
-      let fullContent: string | null = null;
-      let thumbnail: string | undefined = undefined;
-
-      try {
-        const enrichedData = await this.enricher.enrich(item.link);
-        if (enrichedData) {
-          fullContent = enrichedData.content;
-          if (enrichedData.thumbnail) {
-            thumbnail = enrichedData.thumbnail;
-          }
-        }
-      } catch (error) {
-        logger.warn(
-          { url: item.link, error },
-          'arXiv AI: エンリッチメント失敗'
-        );
-      }
-
-      // Fallback to RSS content if full content not available
-      const content =
-        fullContent ||
-        this.generateEnrichedContent(item, category, arxivId, abstract);
+      // Use RSS content only (no HTML enrichment to reduce API costs)
+      const content = this.generateEnrichedContent(item, category, arxivId, abstract);
 
       // Enrich article with metadata
       const enrichedArticle = this.enrichArticle(
@@ -228,7 +206,7 @@ export class ArxivAIFetcher extends BaseFetcher {
           summary: undefined, // Summary generated separately
           publishedAt,
           sourceId: this.source.id,
-          thumbnail,
+          thumbnail: undefined, // No thumbnail without HTML enrichment
         },
         category,
         arxivId,
