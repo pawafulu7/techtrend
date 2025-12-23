@@ -72,9 +72,9 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
   const dateRange = searchParams.get('dateRange') ?? undefined;
   const readFilter = searchParams.get('readFilter') ?? undefined;
   const category = searchParams.get('category') ?? undefined;
-  // Low quality article filter - default true (exclude low quality articles)
+  // Low quality article filter - default false (new articles have qualityScore=0)
   const excludeLowQualityParam = searchParams.get('excludeLowQuality');
-  const excludeLowQuality = excludeLowQualityParam !== 'false';
+  const excludeLowQuality = excludeLowQualityParam === 'true';
 
   // Parse display options
   const includeRelations = searchParams.get('includeRelations') === 'true';
