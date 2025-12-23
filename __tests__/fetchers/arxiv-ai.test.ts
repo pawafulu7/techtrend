@@ -23,13 +23,6 @@ jest.mock('rss-parser', () => {
   }));
 });
 
-// Mock ArxivAIEnricher
-jest.mock('@/lib/enrichers/arxiv-ai', () => ({
-  ArxivAIEnricher: jest.fn().mockImplementation(() => ({
-    enrich: jest.fn().mockResolvedValue(null),
-  })),
-}));
-
 // Import after mocks are set up
 import { ArxivAIFetcher } from '@/lib/fetchers/ai/arxiv-ai';
 import { prisma } from '@/lib/prisma';
@@ -279,9 +272,9 @@ describe('ArxivAIFetcher', () => {
   });
 
   describe('MAX_ARTICLES_PER_FETCH configuration', () => {
-    it('should default to 200 articles per fetch', () => {
+    it('should default to 50 articles per fetch', () => {
       const maxArticles = (fetcher as any).MAX_ARTICLES_PER_FETCH;
-      expect(maxArticles).toBe(200);
+      expect(maxArticles).toBe(50);
     });
   });
 
@@ -399,34 +392,28 @@ describe('ArxivAIFetcher', () => {
       expect(result.errors[0].message).toContain('Network error');
     });
 
-    it('should use enriched content when enricher succeeds', async () => {
+    it('should use RSS content only (no HTML enrichment)', async () => {
       const mockItems = [
         {
-          title: 'Enriched Paper. (arXiv:2312.99999v1)',
+          title: 'RSS Paper. (arXiv:2312.99999v1)',
           link: 'https://arxiv.org/abs/2312.99999',
           pubDate: new Date().toISOString(),
-          description: 'Original abstract from RSS.',
+          description: 'Abstract from RSS feed.',
           categories: ['cs.AI'],
         },
       ];
       const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
       (fetcher as any).parser.parseURL = mockParseURL;
 
-      // Mock enricher to return full content
-      const mockEnrich = jest.fn().mockResolvedValue({
-        content: '<p>Full HTML content from arXiv page with detailed paper text.</p>',
-        thumbnail: 'https://arxiv.org/images/paper-thumbnail.png',
-      });
-      (fetcher as any).enricher.enrich = mockEnrich;
-
       const result = await fetcher.fetch();
 
       expect(result.articles).toHaveLength(1);
-      expect(result.articles[0].content).toContain('Full HTML content');
-      expect(result.articles[0].thumbnail).toBe(
-        'https://arxiv.org/images/paper-thumbnail.png'
-      );
-      expect(mockEnrich).toHaveBeenCalledWith('https://arxiv.org/abs/2312.99999');
+      // Content should be generated from RSS, not HTML
+      expect(result.articles[0].content).toContain('Title: RSS Paper');
+      expect(result.articles[0].content).toContain('Source: arXiv');
+      expect(result.articles[0].content).toContain('Abstract:');
+      // No thumbnail without HTML enrichment
+      expect(result.articles[0].thumbnail).toBeUndefined();
     });
 
     it('should skip articles with existing URLs in database', async () => {
