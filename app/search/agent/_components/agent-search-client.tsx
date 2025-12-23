@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { z } from 'zod';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentSampleQueries } from './agent-sample-queries';
 import { AgentLoadingState } from './agent-loading-state';
@@ -8,8 +9,16 @@ import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
 import { AgentStepIndicator } from './agent-step-indicator';
 import { AgentRelatedQuestions, generateRelatedQuestions } from './agent-related-questions';
+import { AgentSearchInterpretation } from './agent-search-interpretation';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+
+// Schema for semantic-search tool output validation
+const SemanticSearchOutputSchema = z.object({
+  originalQuery: z.string(),
+  expandedQuery: z.string(),
+  expansionMethod: z.enum(['none', 'dictionary', 'ai']),
+});
 
 const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
@@ -131,6 +140,29 @@ export function AgentSearchClient() {
     return generateRelatedQuestions(result.response, result.articles);
   }, [result?.response, result?.articles]);
 
+  // Extract search interpretation from tool calls (semantic-search output)
+  // Uses Zod schema validation for runtime type safety
+  const searchInterpretation = useMemo(() => {
+    if (!result?.toolCalls) return null;
+
+    // Find semantic-search tool call
+    const semanticSearchCall = result.toolCalls.find(
+      (tc) => tc.name === 'semantic-search' && tc.output
+    );
+
+    if (!semanticSearchCall?.output) return null;
+
+    // Validate output with Zod schema for runtime type safety
+    const parsed = SemanticSearchOutputSchema.safeParse(semanticSearchCall.output);
+    if (!parsed.success) return null;
+
+    return {
+      originalQuery: parsed.data.originalQuery,
+      expandedQuery: parsed.data.expandedQuery,
+      expansionMethod: parsed.data.expansionMethod,
+    };
+  }, [result?.toolCalls]);
+
   return (
     <div className="w-full px-6 py-3">
       {/* 2-column layout: Main content (left) + Sidebar (right) */}
@@ -205,7 +237,11 @@ export function AgentSearchClient() {
               </CardV2>
             )}
             {showResult && (result || isStreamingWithPartialText) && !error && (
-              <div className="space-y-6">
+              <div className="space-y-4">
+                {/* Search interpretation - shown before answer panel */}
+                {result && searchInterpretation && (
+                  <AgentSearchInterpretation interpretation={searchInterpretation} />
+                )}
                 <AgentAnswerPanel
                   result={result}
                   partialText={ENABLE_STREAMING_UI ? partialText : null}

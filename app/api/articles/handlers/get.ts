@@ -72,6 +72,9 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
   const dateRange = searchParams.get('dateRange') ?? undefined;
   const readFilter = searchParams.get('readFilter') ?? undefined;
   const category = searchParams.get('category') ?? undefined;
+  // Low quality article filter - default true (exclude low quality articles)
+  const excludeLowQualityParam = searchParams.get('excludeLowQuality');
+  const excludeLowQuality = excludeLowQualityParam !== 'false';
 
   // Parse display options
   const includeRelations = searchParams.get('includeRelations') === 'true';
@@ -126,6 +129,7 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
     dateRange,
     readFilter,
     category,
+    excludeLowQuality,
   };
   const display: DisplayOptions = {
     includeRelations,
@@ -175,6 +179,7 @@ function buildCacheParams(
     includeRelations: display.includeRelations,
     includeEmptyContent: display.includeEmptyContent,
     excludeUnprocessed: display.excludeUnprocessed,
+    excludeLowQuality: filters.excludeLowQuality !== false,
     lightweight: display.lightweight,
     fields: display.fields,
     includeUserData: false,
