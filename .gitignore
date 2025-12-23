@@ -117,6 +117,7 @@ scripts/setup-*.md
 
 # Claude Code related files (個人の作業ファイル)
 .claude/
+.kiro/
 CLAUDE*
 claudedocs/
 *.claude.*

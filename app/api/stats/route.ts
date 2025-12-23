@@ -156,8 +156,8 @@ export async function GET() {
               return acc;
             }, {} as Record<string, { date: string; total: number; sources: Record<string, number> }>);
             
-            // 配列に変換してソート
-            return Object.values(grouped).sort((a, b) => b.date.localeCompare(a.date));
+            // 配列に変換してソート（昇順：古い日付→新しい日付）
+            return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
           })(),
           tags: popularTags.map(tag => ({
             id: tag.id,
