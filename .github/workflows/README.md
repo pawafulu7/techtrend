@@ -5,14 +5,18 @@
 ## ワークフロー
 
 ### CI (ci.yml)
-- **目的**: コードの品質とテストの自動実行
-- **トリガー**: 
-  - pushイベント（main, develop, feature/**ブランチ）
-  - pull_requestイベント（main, developブランチ）
+- **目的**: 包括的な品質チェックとテストの自動実行
+- **トリガー**:
+  - pushイベント（main, developブランチ）
+  - pull_requestイベント（mainブランチ）
 - **ジョブ**:
-  - **Test**: Node.js 18.xと20.xでのテスト実行とカバレッジレポート
-  - **Lint**: ESLintとTypeScriptの型チェック
+  - **TypeScript Check**: TypeScript型チェック
+  - **Lint**: ESLintチェック
+  - **Test**: テスト実行とカバレッジレポート
+  - **Security**: npm auditによるセキュリティ監査
   - **Build**: Next.jsアプリケーションのビルド
+  - **E2E**: Playwrightによるエンドツーエンドテスト
+  - **Quality Gate**: 全チェックの統合判定
 
 ### CodeQL (codeql.yml)
 - **目的**: セキュリティ脆弱性の自動検出

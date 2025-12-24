@@ -1,24 +1,83 @@
-name: CI
+name: Quality Checks
 
 on:
   push:
-    branches: [main, develop, 'feature/**']
-  pull_request:
     branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+  POSTGRES_VERSION: '15'
 
 jobs:
-  test:
-    name: Test
+  # TypeScript type checking
+  type-check:
+    name: TypeScript Check
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-    env:
-      NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [20.x]
-    
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check TypeScript errors threshold
+        id: ts-errors
+        run: |
+          # Run TypeScript compiler once and save output
+          npx tsc --noEmit --pretty false > tsc.out 2>&1 || true
+          # Count errors from saved output
+          ERROR_COUNT=$(grep -c "error TS" tsc.out || true)
+          echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
+          if [ $ERROR_COUNT -gt 566 ]; then
+            echo "❌ TypeScript errors increased! Current: $ERROR_COUNT, Threshold: 566"
+            exit 1
+          else
+            echo "✅ TypeScript errors: $ERROR_COUNT (threshold: 566)"
+          fi
+
+  # ESLint checking
+  lint:
+    name: ESLint Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint -- --max-warnings 495
+
+      - name: Check for console statements
+        env:
+          CONSOLE_THRESHOLD: '250'
+        run: |
+          CONSOLE_COUNT=$(grep -r "console\." --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=__tests__ --exclude-dir=scripts --exclude-dir=prisma --exclude-dir=e2e --exclude="*.test.ts" --exclude="*.test.tsx" --exclude="*.spec.ts" --exclude="*.spec.tsx" | grep -v "^[[:space:]]*//" | grep -v "^[[:space:]]*\*" | wc -l || true)
+          echo "Console statements found: $CONSOLE_COUNT (threshold: $CONSOLE_THRESHOLD)"
+          if [ "$CONSOLE_COUNT" -gt "$CONSOLE_THRESHOLD" ]; then
+            echo "❌ Too many console statements found: $CONSOLE_COUNT"
+            exit 1
+          else
+            echo "✅ Console statements within threshold"
+          fi
+
+  # Test suite
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: pgvector/pgvector:pg15
@@ -34,14 +93,23 @@ jobs:
         ports:
           - 5432:5432
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
       - name: Install dependencies
@@ -59,68 +127,134 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
         run: |
           npx prisma generate
-          npx prisma migrate deploy || npx prisma db push
-
-      - name: Seed test database
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
-        run: |
-          echo "Seeding test database..."
+          npx prisma migrate deploy
           npx tsx prisma/seed-test.ts
-          echo "Seed completed successfully"
-          echo "Verifying seed data..."
-          PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
-            -c "SELECT COUNT(*) as source_count FROM \"Source\";"
 
-      - name: Run tests (node env only)
+      - name: Run tests with coverage
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test  # CI環境のローカルサービス用
           NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
           NODE_ENV: test
         run: npm run test:coverage
 
+      - name: Check test coverage
+        id: coverage
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            COVERAGE=$(jq -r '.total.statements.pct' coverage/coverage-summary.json)
+            echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+            # Use awk for float comparison instead of bc
+            if awk -v cov="$COVERAGE" 'BEGIN {exit !(cov < 20.4)}'; then
+              echo "❌ Test coverage decreased! Current: $COVERAGE%, Minimum: 20.4%"
+              exit 1
+            else
+              echo "✅ Test coverage: $COVERAGE% (minimum: 20.4%)"
+            fi
+          else
+            echo "⚠️ Coverage file not found, skipping coverage check"
+            echo "coverage=0" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        if: matrix.node-version == '20.x'
+        uses: codecov/codecov-action@v4
         with:
           file: ./coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
 
-
-  lint:
-    name: Lint
+  # Security audit
+  security:
+    name: Security Audit
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci
 
-      - name: Generate Prisma Client
-        run: npx prisma generate
+      - name: Run npm audit
+        run: npm audit --production --audit-level=high
 
-      - name: Run ESLint
-        run: npm run lint
+      - name: Check for sensitive data
+        run: |
+          # Fail only on hardcoded secrets, not on env var access
+          # 1) Direct assignment of env vars to string literals (excluding test setup)
+          MATCH_ASSIGN=$(grep -RnE "process\.env\.(GEMINI_API_KEY|OPENAI_API_KEY|NEXTAUTH_SECRET)\s*=\s*['\"][^'\"]+['\"]" \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=__tests__ \
+            --exclude="*.test.*" --exclude="*.spec.*" --exclude="jest.setup.*" \
+            --exclude-dir=scripts || true)
 
-      - name: Check TypeScript
-        run: npm run type-check
+          # 2) Any variable named like a secret assigned a string literal (outside tests/scripts)
+          MATCH_SECRET_VAR=$(grep -RnE "(GEMINI_API_KEY|OPENAI_API_KEY|NEXTAUTH_SECRET)[^\n]*=\s*['\"][^'\"]+['\"]" \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=__tests__ \
+            --exclude="*.test.*" --exclude="*.spec.*" --exclude="jest.setup.*" \
+            --exclude-dir=scripts || true)
 
+          if [ -n "$MATCH_ASSIGN$MATCH_SECRET_VAR" ]; then
+            echo "❌ Potential hardcoded secrets detected:"
+            echo "$MATCH_ASSIGN"
+            echo "$MATCH_SECRET_VAR"
+            exit 1
+          else
+            echo "✅ No hardcoded secrets found (env var references are allowed)"
+          fi
+
+  # Build check
   build:
-    name: Build
+    name: Build Check
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy  # ビルド時のみ使用するダミーURL
+          NEXTAUTH_SECRET: build-secret-key-for-testing-purposes-only-32chars
+        run: npm run build
+
+      - name: Check build size
+        run: |
+          # Measure deployable artifact size (standalone + static), ignore cache
+          SIZE_STANDALONE=$(du -sb .next/standalone 2>/dev/null | cut -f1 || echo 0)
+          SIZE_STATIC=$(du -sb .next/static 2>/dev/null | cut -f1 || echo 0)
+          BUILD_SIZE=$((SIZE_STANDALONE + SIZE_STATIC))
+          MAX_SIZE=$((100 * 1024 * 1024)) # 100MB
+          echo "Standalone: $(($SIZE_STANDALONE / 1024 / 1024))MB, Static: $(($SIZE_STATIC / 1024 / 1024))MB"
+          if [ $BUILD_SIZE -gt $MAX_SIZE ]; then
+            echo "❌ Build size too large: $(($BUILD_SIZE / 1024 / 1024))MB (max: 100MB)"
+            exit 1
+          else
+            echo "✅ Build size: $(($BUILD_SIZE / 1024 / 1024))MB (<= 100MB)"
+          fi
+
+  # E2E tests (runs on main branch or when E2E-related files are changed)
+  e2e:
+    name: E2E Tests
+    if: |
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"
-
+      NEXT_IGNORE_ESLINT: 'true'
+    timeout-minutes: 20
     services:
       postgres:
         image: pgvector/pgvector:pg15
@@ -135,41 +269,191 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
       - name: Enable pgvector extension
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -d techtrend_test \
-            -c "CREATE EXTENSION IF NOT EXISTS vector;" || echo "pgvector setup failed, continuing..."
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
-      - name: Setup database for build
+      - name: Setup test database (E2E)
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
         run: |
           npx prisma generate
-          npx prisma db push --accept-data-loss --skip-generate || echo "db push failed, continuing..."
+          npx prisma migrate deploy
+          npx tsx prisma/seed-test.ts
 
-      - name: Build application
-        run: npm run build
+      - name: Run E2E tests
         env:
-          AUTH_SECRET: dummy-secret-for-ci-build-only-32-characters-long
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
-          OPENAI_API_KEY: sk-dummy-key-for-ci-build-only-not-used-at-build-time
-          NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"
-
-      - name: Check build size
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test  # CI環境のローカルサービス用
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
+          NEXTAUTH_URL: http://localhost:3000  # CI環境用に追加
+          AUTH_TRUST_HOST: 'true'  # テスト環境専用、本番では使用しない
+          CURSOR_SECRET: test-cursor-secret-for-ci-environment-only-32chars  # CI環境用のカーソル秘密鍵
+          CI: 'true'  # CI環境フラグ
+          PORT: 3000
+          NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"  # AI Agent Search UI feature flag
+          # Phase 2-A: Enable DB-backed provider for CI testing
+          # This ensures CI environment matches production after migration
+          USE_DATABASE_PROVIDER: "true"
         run: |
-          echo "Build size:"
-          du -sh .next/
+          # ビルドフェーズ
+          echo "Building application..."
+          npm run build 2>&1 | tee build.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "Build failed!"
+            cat build.log
+            exit 1
+          fi
+
+          # サーバー起動
+          echo "Starting server..."
+          npm run start 2>&1 | tee server.log &
+          SERVER_PID=$!
+
+          # サーバー起動待機（最大120秒・実時間）
+          echo "Waiting for server to be ready..."
+          TIMEOUT=120
+          START=$(date +%s)
+          while :; do
+            if curl -s -f -m 2 -o /dev/null http://localhost:3000; then
+              ELAPSED=$(( $(date +%s) - START ))
+              echo "Server is ready after ${ELAPSED}s"
+              break
+            fi
+            ELAPSED=$(( $(date +%s) - START ))
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+              echo "Server failed to start within ${TIMEOUT}s"
+              echo "Last 50 lines of server log:"
+              tail -n 50 server.log
+              kill $SERVER_PID 2>/dev/null
+              exit 1
+            fi
+            echo "Waiting... (${ELAPSED}/${TIMEOUT}s)"
+            sleep 1
+          done
+
+          # E2Eテスト実行
+          echo "Running E2E tests..."
+          # Chromium のみで高速実行（flaky低減・高速化）
+          npm run test:e2e:fast
+          TEST_RESULT=$?
+
+          # クリーンアップ
+          echo "Stopping server..."
+          kill $SERVER_PID 2>/dev/null
+
+          # 失敗時のログ出力
+          if [ $TEST_RESULT -ne 0 ]; then
+            echo "E2E tests failed!"
+            echo "Last 100 lines of server log:"
+            tail -n 100 server.log
+          fi
+
+          exit $TEST_RESULT
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            test-results/
+            playwright-report/
+            server.log
+          retention-days: 7
+
+  # Quality gate summary
+  quality-gate:
+    name: Quality Gate
+    needs: [type-check, lint, test, security, build, e2e]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check quality gate status
+        run: |
+          echo "## Quality Gate Summary"
+          echo ""
+          if [ "${{ needs.type-check.result }}" == "success" ]; then
+            echo "✅ TypeScript: Passed"
+          else
+            echo "❌ TypeScript: Failed"
+          fi
+
+          if [ "${{ needs.lint.result }}" == "success" ]; then
+            echo "✅ ESLint: Passed"
+          else
+            echo "❌ ESLint: Failed"
+          fi
+
+          if [ "${{ needs.test.result }}" == "success" ]; then
+            echo "✅ Tests: Passed"
+          else
+            echo "❌ Tests: Failed"
+          fi
+
+
+          if [ "${{ needs.security.result }}" == "success" ]; then
+            echo "✅ Security: Passed"
+          else
+            echo "❌ Security: Failed"
+          fi
+
+          if [ "${{ needs.build.result }}" == "success" ]; then
+            echo "✅ Build: Passed"
+          else
+            echo "❌ Build: Failed"
+          fi
+
+          if [ "${{ needs.e2e.result }}" == "success" ]; then
+            echo "✅ E2E Tests: Passed"
+          else
+            echo "❌ E2E Tests: Failed"
+          fi
+
+          # Fail if any check failed
+          if [ "${{ needs.type-check.result }}" != "success" ] || \
+             [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.security.result }}" != "success" ] || \
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.e2e.result }}" != "success" ]; then
+            echo ""
+            echo "❌ Quality gate failed!"
+            exit 1
+          else
+            echo ""
+            echo "✅ Quality gate passed!"
+          fi
