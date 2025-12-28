@@ -37,6 +37,11 @@ enum SkipReason {
   QUALITY_FAILED // 品質基準未達
 }
 
+enum CommentVisibility {
+  PUBLIC
+  PRIVATE
+}
+
 model Article {
   id                     String             @id @default(cuid())
   title                  String
@@ -69,6 +74,7 @@ model Article {
   embeddings             ArticleEmbedding[]
   chunks                 ArticleChunk[]
   embeddingJob           EmbeddingJob?
+  comments               Comment[]
 
   @@index([publishedAt(sort: Desc)], map: "idx_article_published_at")
   @@index([sourceId], map: "idx_article_source_id")
@@ -110,21 +116,22 @@ model Tag {
 }
 
 model User {
-  id                           String                   @id @default(cuid())
-  email                        String                   @unique
-  emailVerified                DateTime?
-  name                         String?
-  image                        String?
-  password                     String?
-  role                         String?                  @default("user") // "user" | "admin"
-  deletedAt                    DateTime?                @db.Timestamptz(6)
-  personalizationPeriodMonths  Int                      @default(12) // Time period for personalized filtering (0 = all time)
-  createdAt                    DateTime                 @default(now())
-  updatedAt                    DateTime                 @updatedAt
-  accounts                     Account[]
-  articleViews                 ArticleView[]
-  favorites                    Favorite[]
-  categoryPreferences          UserCategoryPreference[]
+  id                          String                   @id @default(cuid())
+  email                       String                   @unique
+  emailVerified               DateTime?
+  name                        String?
+  image                       String?
+  password                    String?
+  role                        String?                  @default("user") // "user" | "admin"
+  deletedAt                   DateTime?                @db.Timestamptz(6)
+  personalizationPeriodMonths Int                      @default(12) // Time period for personalized filtering (0 = all time)
+  createdAt                   DateTime                 @default(now())
+  updatedAt                   DateTime                 @updatedAt
+  accounts                    Account[]
+  articleViews                ArticleView[]
+  favorites                   Favorite[]
+  categoryPreferences         UserCategoryPreference[]
+  comments                    Comment[]
 
   @@index([deletedAt], map: "idx_user_deleted_at")
 }
@@ -199,12 +206,12 @@ model TrendReport {
   periodStart   DateTime        @db.Timestamptz(6)
   periodEnd     DateTime        @db.Timestamptz(6)
   articleCount  Int
-  topArticles   Json            // Top articles with scores
-  categories    Json            // Category distribution
-  tags          Json            // Tag rankings
+  topArticles   Json // Top articles with scores
+  categories    Json // Category distribution
+  tags          Json // Tag rankings
   aiSummary     String?         @db.Text
-  aiModel       String?         // e.g., "gemini-2.5-flash-lite"
-  promptVersion String?         // For AI audit trail
+  aiModel       String? // e.g., "gemini-2.5-flash-lite"
+  promptVersion String? // For AI audit trail
   generatedAt   DateTime?       @db.Timestamptz(6)
   createdAt     DateTime        @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime        @updatedAt @db.Timestamptz(6)
@@ -349,17 +356,17 @@ model SourceTagAssignment {
 // =============================================================================
 
 model InterestCategory {
-  id                 String                      @id @default(cuid())
-  slug               String                      @unique
+  id                 String                       @id @default(cuid())
+  slug               String                       @unique
   name               String
   description        String?
   icon               String?
-  sortOrder          Int                         @default(0)
-  isActive           Boolean                     @default(true)
+  sortOrder          Int                          @default(0)
+  isActive           Boolean                      @default(true)
   centroidEmbedding  Unsupported("vector(1536)")?
-  centroidComputedAt DateTime?                   @db.Timestamptz(6)
-  createdAt          DateTime                    @default(now()) @db.Timestamptz(6)
-  updatedAt          DateTime                    @updatedAt @db.Timestamptz(6)
+  centroidComputedAt DateTime?                    @db.Timestamptz(6)
+  createdAt          DateTime                     @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime                     @updatedAt @db.Timestamptz(6)
   tagMappings        TagCategoryMapping[]
   userPreferences    UserCategoryPreference[]
 
@@ -394,4 +401,27 @@ model UserCategoryPreference {
   @@unique([userId, categoryId], map: "uq_user_category_preference")
   @@index([userId], map: "idx_user_category_preference_user")
   @@index([categoryId], map: "idx_user_category_preference_category")
+}
+
+// =============================================================================
+// Comments: Private notes on articles (MVP - Phase 1)
+// =============================================================================
+
+model Comment {
+  id         String            @id @default(cuid())
+  articleId  String
+  userId     String
+  content    String            @db.Text
+  visibility CommentVisibility @default(PRIVATE)
+  createdAt  DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime          @updatedAt @db.Timestamptz(6)
+  deletedAt  DateTime?         @db.Timestamptz(6)
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // MVP用インデックス（プライベートコメント専用）
+  @@index([articleId, userId, deletedAt, createdAt(sort: Desc), id], map: "idx_comment_article_user_private")
+  // ユーザー別コメント一覧用
+  @@index([userId, deletedAt, createdAt(sort: Desc), id], map: "idx_comment_user_list")
 }

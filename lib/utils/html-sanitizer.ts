@@ -101,6 +101,34 @@ export function sanitizeHtml(html: string): string {
 }
 
 /**
+ * Sanitize user input (preserves newlines)
+ *
+ * Removes HTML tags while preserving newlines for user-generated content
+ * like comments. Unlike sanitizeHtml, this function keeps line breaks intact.
+ *
+ * @param input - User input string
+ * @returns Sanitized text with preserved newlines
+ */
+export function sanitizeUserInput(input: string): string {
+  if (!input) return '';
+
+  // Use sanitize-html library to strip all HTML tags
+  const sanitized = sanitizeHtmlLib(input, {
+    allowedTags: [],
+    allowedAttributes: {},
+    textFilter: function(text) {
+      return text;
+    }
+  });
+
+  // Decode HTML entities and normalize whitespace (preserve newlines)
+  return decodeHtmlEntities(sanitized)
+    .replace(/[^\S\n]+/g, ' ')  // Replace horizontal whitespace with single space
+    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
+    .trim();
+}
+
+/**
  * Clean HTML for text extraction
  *
  * Similar to sanitizeHtml but optimized for text extraction from HTML content.
