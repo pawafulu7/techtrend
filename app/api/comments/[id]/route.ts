@@ -30,7 +30,13 @@ interface RouteContext extends WithUserValidationContext {
 // =============================================================================
 
 const UpdateCommentSchema = z.object({
-  content: z.string().min(1, 'content is required').optional(),
+  content: z
+    .string()
+    .min(1, 'content is required')
+    .refine((val) => val.trim().length > 0, {
+      message: 'Content cannot be whitespace only',
+    })
+    .optional(),
   visibility: z.enum(['PRIVATE', 'PUBLIC']).optional(),
 });
 

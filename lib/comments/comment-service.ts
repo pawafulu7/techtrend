@@ -189,7 +189,7 @@ export class CommentService {
       await commentsCache.setComments(articleId, userId, cursor ?? null, limit, data);
 
       return { success: true, data };
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
         error: {
@@ -266,7 +266,7 @@ export class CommentService {
       await commentsCache.invalidate(comment.articleId, userId);
 
       return { success: true, data: updatedComment };
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
         error: {
@@ -324,7 +324,7 @@ export class CommentService {
       await commentsCache.invalidate(comment.articleId, userId);
 
       return { success: true, data: undefined };
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
         error: {

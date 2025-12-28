@@ -10,7 +10,6 @@
  * - aria-live でコメント数変更を通知
  */
 
-import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, StickyNote } from 'lucide-react';
 import { CommentItem } from './comment-item';
@@ -44,10 +43,6 @@ export function CommentList({
   onRemoveOptimistic,
   onRollback,
 }: CommentListProps) {
-  const handleLoadMore = useCallback(async () => {
-    await onLoadMore();
-  }, [onLoadMore]);
-
   // ローディング中（初回）
   if (isLoading && comments.length === 0) {
     return <CommentListSkeleton count={3} />;
@@ -101,7 +96,7 @@ export function CommentList({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleLoadMore}
+            onClick={onLoadMore}
             disabled={isLoading}
           >
             {isLoading ? (

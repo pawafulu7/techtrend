@@ -40,9 +40,10 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // 楽観的更新用のロールバックデータ
-  const rollbackRef = useRef<CommentResponse[] | null>(null);
+  // 楽観的更新用のロールバックデータ（comments と totalCount を両方保存）
+  const rollbackRef = useRef<{ comments: CommentResponse[]; totalCount: number } | null>(null);
 
   const isAuthenticated = sessionStatus === 'authenticated' && !!session?.user;
   const currentUserId = session?.user?.id || '';
@@ -85,8 +86,10 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
         setHasMore(!!data.nextCursor);
         setTotalCount(data.totalCount);
       } catch (err) {
-        // 取得エラーはコンソールに記録のみ（空の状態を表示）
-        console.warn('Comment fetch error:', err instanceof Error ? err.message : err);
+        // 取得エラーをユーザーに通知
+        const message = err instanceof Error ? err.message : 'コメントの取得に失敗しました';
+        setFetchError(message);
+        console.warn('Comment fetch error:', message);
       } finally {
         setIsLoading(false);
       }
@@ -174,29 +177,29 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
   // 楽観的更新: コメント更新
   const handleUpdateOptimistic = useCallback(
     (id: string, partial: Partial<CommentResponse>) => {
-      rollbackRef.current = [...comments];
+      rollbackRef.current = { comments: [...comments], totalCount };
       setComments((prev) =>
         prev.map((c) => (c.id === id ? { ...c, ...partial } : c))
       );
     },
-    [comments]
+    [comments, totalCount]
   );
 
   // 楽観的更新: コメント削除
   const handleRemoveOptimistic = useCallback(
     (id: string) => {
-      rollbackRef.current = [...comments];
+      rollbackRef.current = { comments: [...comments], totalCount };
       setComments((prev) => prev.filter((c) => c.id !== id));
       setTotalCount((prev) => Math.max(0, prev - 1));
     },
-    [comments]
+    [comments, totalCount]
   );
 
   // ロールバック
   const handleRollback = useCallback(() => {
     if (rollbackRef.current) {
-      setComments(rollbackRef.current);
-      setTotalCount(rollbackRef.current.length);
+      setComments(rollbackRef.current.comments);
+      setTotalCount(rollbackRef.current.totalCount);
       rollbackRef.current = null;
     }
   }, []);
@@ -251,6 +254,16 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
               <p id="comments-description" className="sr-only">
                 この記事へのプライベートメモ一覧
               </p>
+
+              {/* フェッチエラー表示 */}
+              {fetchError && (
+                <div
+                  className="mb-4 rounded-md bg-destructive/10 border border-destructive/20 p-3"
+                  role="alert"
+                >
+                  <p className="text-sm text-destructive">{fetchError}</p>
+                </div>
+              )}
 
               {/* コメントフォーム */}
               <CommentForm

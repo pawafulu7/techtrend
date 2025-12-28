@@ -10,7 +10,7 @@
  * - 送信ボタンと 400ms 以内のUIフィードバック
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Lock, Loader2 } from 'lucide-react';
