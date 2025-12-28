@@ -18,6 +18,7 @@ import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { ArticleQADialog } from '@/app/articles/_components/article-qa-dialog';
 import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
+import { CommentSection } from '@/app/components/comment';
 
 interface PageProps {
   params: Promise<{
@@ -294,6 +295,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
               記事について質問する
             </Button>
           </ArticleQADialog>
+
+          {/* 個人メモ（コメント）セクション */}
+          <CommentSection articleId={article.id} />
         </div>
 
         <div className="w-full lg:w-80 shrink-0">
