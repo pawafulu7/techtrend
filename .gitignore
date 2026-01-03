@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/ctrf
 
 # next.js
 /.next/
