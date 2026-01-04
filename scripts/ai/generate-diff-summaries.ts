@@ -16,7 +16,7 @@
 
 import { prisma } from '@/lib/prisma';
 import {
-  getDiffSummaryService,
+  DiffSummaryService,
   getISOWeek,
   getPreviousISOWeek,
 } from '@/lib/ai/diff-summary';
@@ -42,10 +42,20 @@ function parseArgs(): ParsedArgs {
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--week' && args[i + 1]) {
       const weekArg = args[i + 1];
-      if (/^\d{4}-W\d{2}$/.test(weekArg)) {
-        week = weekArg;
+      const weekMatch = weekArg.match(/^(\d{4})-W(\d{2})$/);
+      if (weekMatch) {
+        const weekNum = parseInt(weekMatch[2], 10);
+        if (weekNum >= 1 && weekNum <= 53) {
+          week = weekArg;
+        } else {
+          console.warn(
+            `Warning: Invalid week number "${weekNum}". Must be 01-53. Using default.`
+          );
+        }
       } else {
-        console.warn(`Warning: Invalid --week format "${weekArg}". Using default.`);
+        console.warn(
+          `Warning: Invalid --week format "${weekArg}". Use YYYY-Www. Using default.`
+        );
       }
       i++;
     } else if (args[i] === '--category' && args[i + 1]) {
@@ -102,7 +112,8 @@ async function main() {
   }
 
   try {
-    const service = getDiffSummaryService();
+    // Create service with specified concurrency (not using singleton to honor --concurrency)
+    const service = new DiffSummaryService({ concurrency });
 
     if (category) {
       // Single category
