@@ -40,7 +40,7 @@ jobs:
           SKIP_DB_CHECK: 'true'
           # Use placeholder for required env vars
           DATABASE_URL: 'postgresql://localhost:5432/db'
-          NEXTAUTH_SECRET: 'test-secret-for-build'
+          NEXTAUTH_SECRET: 'build-secret-key-for-testing-purposes-only-32chars'
           NEXTAUTH_URL: 'http://localhost:3000'
 
       - name: Run Lighthouse CI
