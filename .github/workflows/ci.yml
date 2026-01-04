@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# CTRF Test Reporterに必要な権限
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  actions: read
+
 env:
   NODE_VERSION: '20'
   POSTGRES_VERSION: '15'
