@@ -75,6 +75,7 @@ model Article {
   chunks                 ArticleChunk[]
   embeddingJob           EmbeddingJob?
   comments               Comment[]
+  codeTips               CodeTip[]
 
   @@index([publishedAt(sort: Desc)], map: "idx_article_published_at")
   @@index([sourceId], map: "idx_article_source_id")
@@ -424,4 +425,76 @@ model Comment {
   @@index([articleId, userId, deletedAt, createdAt(sort: Desc), id], map: "idx_comment_article_user_private")
   // ユーザー別コメント一覧用
   @@index([userId, deletedAt, createdAt(sort: Desc), id], map: "idx_comment_user_list")
+}
+
+// =============================================================================
+// AI Analysis: Batch-generated AI insights (Diff Summary, Viewpoint Map, Code Tips)
+// =============================================================================
+
+// Note: BatchStatus is intentionally separate from ProcessingStatus.
+// - BatchStatus uses UPPERCASE for AI analysis batch jobs
+// - ProcessingStatus uses lowercase for general processing logs
+// This separation allows independent evolution of each domain's status values.
+enum BatchStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+model DiffSummary {
+  id             String      @id @default(cuid())
+  categorySlug   String
+  currentPeriod  String // "2026-W01"
+  baselinePeriod String // "2025-W52"
+  changes        Json // Structured diff information
+  unchanged      String[] // Unchanged items
+  status         BatchStatus @default(SUCCESS)
+  errorMessage   String?     @db.Text
+  modelVersion   String
+  promptVersion  String
+  generatedAt    DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@unique([categorySlug, currentPeriod], map: "uq_diff_summary_category_period")
+  @@index([categorySlug], map: "idx_diff_summary_category_slug")
+  @@index([generatedAt(sort: Desc)], map: "idx_diff_summary_generated_at")
+  @@index([status], map: "idx_diff_summary_status")
+}
+
+model ViewpointMap {
+  id            String      @id @default(cuid())
+  topicSlug     String
+  period        String // "2026-W01" (weekly history preservation)
+  issues        Json // List of viewpoints/issues
+  articleIds    String[] // Referenced article IDs
+  status        BatchStatus @default(SUCCESS)
+  errorMessage  String?     @db.Text
+  modelVersion  String
+  promptVersion String
+  generatedAt   DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@unique([topicSlug, period], map: "uq_viewpoint_map_topic_period")
+  @@index([generatedAt(sort: Desc)], map: "idx_viewpoint_map_generated_at")
+  @@index([status], map: "idx_viewpoint_map_status")
+}
+
+model CodeTip {
+  id              String   @id @default(cuid())
+  title           String
+  description     String   @db.Text
+  code            String   @db.Text
+  codeHash        String // Hash for deduplication
+  language        String
+  tags            String[]
+  sourceArticleId String
+  quality         Float
+  modelVersion    String
+  promptVersion   String
+  extractedAt     DateTime @default(now()) @db.Timestamptz(6)
+
+  sourceArticle Article @relation(fields: [sourceArticleId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceArticleId, codeHash], map: "uq_code_tip_article_hash")
+  @@index([language], map: "idx_code_tip_language")
+  @@index([quality(sort: Desc)], map: "idx_code_tip_quality")
+  @@index([extractedAt(sort: Desc)], map: "idx_code_tip_extracted_at")
 }
