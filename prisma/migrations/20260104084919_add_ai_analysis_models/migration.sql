@@ -1,12 +1,6 @@
 -- CreateEnum
 CREATE TYPE "BatchStatus" AS ENUM ('SUCCESS', 'FAILED', 'PARTIAL');
 
--- DropIndex
-DROP INDEX "public"."idx_article_chunk_embedding_hnsw_cosine";
-
--- DropIndex
-DROP INDEX "public"."idx_article_embedding_hnsw_cosine";
-
 -- CreateTable
 CREATE TABLE "DiffSummary" (
     "id" TEXT NOT NULL,
