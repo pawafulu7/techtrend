@@ -9,7 +9,13 @@ const customJestConfig = {
   rootDir: './',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.dom.js'],
   testEnvironment: 'jsdom',
-  reporters: ['default'],
+  reporters: [
+    'default',
+    // CI環境でのみCTRFレポートを生成（Flaky Test検出用）
+    ...(process.env.CI
+      ? [['jest-ctrf-json-reporter', { outputFile: 'jest-dom-ctrf-report.json', outputDir: 'ctrf' }]]
+      : []),
+  ],
   moduleNameMapper: {
     // CSS modules
     '^.+\\.module\\.(css|sass|scss)$': 'identity-obj-proxy',
