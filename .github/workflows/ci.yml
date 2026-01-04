@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# CTRF Test Reporterに必要な権限
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  actions: read
+
 env:
   NODE_VERSION: '20'
   POSTGRES_VERSION: '15'
@@ -130,12 +137,20 @@ jobs:
           npx prisma migrate deploy
           npx tsx prisma/seed-test.ts
 
+      - name: Create CTRF output directory
+        run: mkdir -p ctrf
+
       - name: Run tests with coverage
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test  # CI環境のローカルサービス用
           NEXTAUTH_SECRET: test-secret-key-for-testing-purposes-only-32chars
           NODE_ENV: test
-        run: npm run test:coverage
+          CI: 'true'
+        run: |
+          # Node環境テスト（カバレッジ付き）
+          npm run test:coverage
+          # DOM環境テスト（Reactコンポーネント）
+          npm run test:dom
 
       - name: Check test coverage
         id: coverage
@@ -161,6 +176,44 @@ jobs:
           file: ./coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
+
+      - name: Publish Unit Test Report
+        uses: ctrf-io/github-test-reporter@v1
+        with:
+          report-path: './ctrf/jest-node-ctrf-report.json'
+          summary-report: true
+          flaky-report: true
+          flaky-rate-report: true
+          title: 'Unit Tests'
+          annotate: true
+          exit-on-fail: false
+          upload-artifact: true
+          artifact-name: 'ctrf-unit-report'
+          fetch-previous-results: true
+          previous-results-max: 10
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: always()
+        continue-on-error: true
+
+      - name: Publish Component Test Report
+        uses: ctrf-io/github-test-reporter@v1
+        with:
+          report-path: './ctrf/jest-dom-ctrf-report.json'
+          summary-report: true
+          flaky-report: true
+          flaky-rate-report: true
+          title: 'Component Tests'
+          annotate: true
+          exit-on-fail: false
+          upload-artifact: true
+          artifact-name: 'ctrf-component-report'
+          fetch-previous-results: true
+          previous-results-max: 10
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: always()
+        continue-on-error: true
 
   # Security audit
   security:
@@ -314,6 +367,9 @@ jobs:
           npx prisma migrate deploy
           npx tsx prisma/seed-test.ts
 
+      - name: Create CTRF output directory
+        run: mkdir -p ctrf
+
       - name: Run E2E tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test  # CI環境のローカルサービス用
@@ -383,6 +439,25 @@ jobs:
           fi
 
           exit $TEST_RESULT
+
+      - name: Publish E2E Test Report
+        uses: ctrf-io/github-test-reporter@v1
+        with:
+          report-path: './ctrf/playwright-ctrf-report.json'
+          summary-report: true
+          flaky-report: true
+          flaky-rate-report: true
+          title: 'E2E Tests'
+          annotate: true
+          exit-on-fail: false
+          upload-artifact: true
+          artifact-name: 'ctrf-e2e-report'
+          fetch-previous-results: true
+          previous-results-max: 10
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: always()
+        continue-on-error: true
 
       - name: Upload test artifacts on failure
         if: failure()

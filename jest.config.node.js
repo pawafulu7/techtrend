@@ -11,7 +11,13 @@ const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.node.js'],
   testEnvironment: 'node',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  reporters: ['default'],
+  reporters: [
+    'default',
+    // CI環境でのみCTRFレポートを生成（Flaky Test検出用）
+    ...(process.env.CI
+      ? [['jest-ctrf-json-reporter', { outputFile: 'jest-node-ctrf-report.json', outputDir: 'ctrf' }]]
+      : []),
+  ],
   moduleNameMapper: {
     // Manual mocks for Prisma and Redis (must come before generic alias)
     '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
