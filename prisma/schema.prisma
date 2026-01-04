@@ -431,6 +431,10 @@ model Comment {
 // AI Analysis: Batch-generated AI insights (Diff Summary, Viewpoint Map, Code Tips)
 // =============================================================================
 
+// Note: BatchStatus is intentionally separate from ProcessingStatus.
+// - BatchStatus uses UPPERCASE for AI analysis batch jobs
+// - ProcessingStatus uses lowercase for general processing logs
+// This separation allows independent evolution of each domain's status values.
 enum BatchStatus {
   SUCCESS
   FAILED
@@ -451,6 +455,7 @@ model DiffSummary {
   generatedAt    DateTime    @default(now()) @db.Timestamptz(6)
 
   @@unique([categorySlug, currentPeriod], map: "uq_diff_summary_category_period")
+  @@index([categorySlug], map: "idx_diff_summary_category_slug")
   @@index([generatedAt(sort: Desc)], map: "idx_diff_summary_generated_at")
   @@index([status], map: "idx_diff_summary_status")
 }
@@ -490,5 +495,6 @@ model CodeTip {
 
   @@unique([sourceArticleId, codeHash], map: "uq_code_tip_article_hash")
   @@index([language], map: "idx_code_tip_language")
+  @@index([quality(sort: Desc)], map: "idx_code_tip_quality")
   @@index([extractedAt(sort: Desc)], map: "idx_code_tip_extracted_at")
 }

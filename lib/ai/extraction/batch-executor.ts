@@ -38,7 +38,6 @@ export interface BatchSummary<T, R> {
   total: number;
   successful: number;
   failed: number;
-  partial: number;
   results: BatchResult<T, R>[];
   durationMs: number;
 }
@@ -145,7 +144,6 @@ export class BatchExecutor {
       total: jobs.length,
       successful: results.filter((r) => r.success).length,
       failed: results.filter((r) => !r.success).length,
-      partial: 0, // Can be set by caller based on result inspection
       results,
       durationMs: Date.now() - startTime,
     };
@@ -171,6 +169,7 @@ export class BatchExecutor {
     processor: (job: BatchJob<T>) => Promise<R>,
     maxRetries: number = 1
   ): Promise<BatchSummary<T, R>> {
+    const startTime = Date.now();
     let currentJobs = jobs;
     let allResults: BatchResult<T, R>[] = [];
     let retryCount = 0;
@@ -210,9 +209,8 @@ export class BatchExecutor {
       total: jobs.length,
       successful: allResults.filter((r) => r.success).length,
       failed: allResults.filter((r) => !r.success).length,
-      partial: 0,
       results: allResults,
-      durationMs: 0, // Not tracked across retries
+      durationMs: Date.now() - startTime,
     };
   }
 

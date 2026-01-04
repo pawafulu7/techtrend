@@ -4,6 +4,7 @@
  * Zod schemas for validating LLM extraction outputs
  */
 
+import { createHash } from 'crypto';
 import { z } from 'zod';
 
 // =============================================================================
@@ -99,8 +100,8 @@ export function parseJSONFromLLM<T>(text: string): T {
   try {
     return JSON.parse(cleanText) as T;
   } catch {
-    // Try to extract JSON object/array from text
-    const jsonMatch = cleanText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+    // Try to extract JSON object/array from text (non-greedy matching)
+    const jsonMatch = cleanText.match(/(\{[\s\S]*?\}|\[[\s\S]*?\])/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[1]) as T;
     }
@@ -109,19 +110,15 @@ export function parseJSONFromLLM<T>(text: string): T {
 }
 
 /**
- * Create a hash for code deduplication
+ * Create a SHA-256 hash for code deduplication
+ *
+ * Uses Node.js crypto module for robust collision resistance.
+ * Normalizes whitespace before hashing to ensure consistent deduplication.
  */
 export function createCodeHash(code: string): string {
-  // Normalize whitespace and create a simple hash
+  // Normalize whitespace for consistent hashing
   const normalized = code.replace(/\s+/g, ' ').trim().toLowerCase();
 
-  // Simple hash function (for more robust hashing, use crypto)
-  let hash = 0;
-  for (let i = 0; i < normalized.length; i++) {
-    const char = normalized.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-
-  return Math.abs(hash).toString(36);
+  // Use SHA-256 for robust collision resistance
+  return createHash('sha256').update(normalized).digest('hex').slice(0, 16);
 }

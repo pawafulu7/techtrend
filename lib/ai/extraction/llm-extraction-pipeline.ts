@@ -10,6 +10,7 @@
 
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
+import { BatchExecutor, BatchJob } from './batch-executor';
 
 // Types
 export interface ExtractionOptions {
@@ -57,7 +58,8 @@ export class LLMExtractionPipeline {
     }
     this.modelVersion =
       model || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
-    this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelVersion}:generateContent?key=${this.apiKey}`;
+    // API key is passed via x-goog-api-key header for security (not in URL)
+    this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelVersion}:generateContent`;
   }
 
   /**
@@ -132,7 +134,7 @@ export class LLMExtractionPipeline {
   }
 
   /**
-   * Batch extract with concurrency control
+   * Batch extract with concurrency control using BatchExecutor
    */
   async batchExtract<T, I>(
     inputs: I[],
@@ -140,23 +142,38 @@ export class LLMExtractionPipeline {
     options?: ExtractionOptions & { concurrency?: number }
   ): Promise<ExtractionResult<T>[]> {
     const concurrency = options?.concurrency || 3;
-    const results: ExtractionResult<T>[] = [];
 
-    // Process in batches
-    for (let i = 0; i < inputs.length; i += concurrency) {
-      const batch = inputs.slice(i, i + concurrency);
-      const batchResults = await Promise.all(
-        batch.map((input) => this.extract(input, config, options))
-      );
-      results.push(...batchResults);
+    // Create BatchExecutor for consistent batch processing
+    const executor = new BatchExecutor({
+      concurrency,
+      delayBetweenBatchesMs: 1000,
+    });
 
-      // Add delay between batches to avoid rate limiting
-      if (i + concurrency < inputs.length) {
-        await this.delay(1000);
+    // Convert inputs to BatchJob format
+    const jobs: BatchJob<I>[] = inputs.map((input, index) => ({
+      id: `extraction-${index}`,
+      input,
+    }));
+
+    // Process with BatchExecutor
+    const summary = await executor.execute(jobs, async (job) => {
+      return this.extract(job.input, config, options);
+    });
+
+    // Extract results in order
+    return summary.results.map((r) => {
+      if (r.success && r.result) {
+        return r.result;
       }
-    }
-
-    return results;
+      // Return error result for failed jobs
+      return {
+        success: false,
+        data: null,
+        error: r.error || 'Batch processing failed',
+        modelVersion: this.modelVersion,
+        promptVersion: config.promptVersion,
+      };
+    });
   }
 
   /**
@@ -175,7 +192,10 @@ export class LLMExtractionPipeline {
   ): Promise<string> {
     const response = await fetch(this.apiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': this.apiKey,
+      },
       body: JSON.stringify({
         contents: [
           {
