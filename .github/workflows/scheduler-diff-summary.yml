@@ -1,0 +1,94 @@
+name: Scheduler - Weekly Diff Summary
+
+on:
+  schedule:
+    # Monday 06:00 JST (Sunday 21:00 UTC) - after week ends, generate summary
+    - cron: '0 21 * * 0'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'YES' to confirm manual execution"
+        required: true
+        type: string
+        default: "NO"
+      week:
+        description: "Target week (YYYY-Www format, e.g., 2026-W01). Leave empty for previous week."
+        required: false
+        type: string
+
+concurrency:
+  group: techtrend-scheduler-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-diff-summary:
+    if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      - name: Warm up database connection
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "SELECT 1;" | npx prisma db execute --stdin --url "$DATABASE_URL"
+      - name: Apply DB migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PRISMA_MIGRATE_ENGINE_ADVISORY_LOCK_TIMEOUT: 60000
+        run: npx prisma migrate deploy
+      - name: Calculate target week
+        id: week
+        env:
+          INPUT_WEEK: ${{ github.event.inputs.week }}
+        run: |
+          if [ -n "$INPUT_WEEK" ]; then
+            # Validate format: YYYY-Www
+            if [[ "$INPUT_WEEK" =~ ^[0-9]{4}-W[0-9]{2}$ ]]; then
+              echo "target=$INPUT_WEEK" >> $GITHUB_OUTPUT
+            else
+              echo "Error: Invalid week format. Expected YYYY-Www (e.g., 2026-W01)"
+              exit 1
+            fi
+          else
+            # Calculate previous ISO week (last completed week)
+            PREV_WEEK=$(date -d "last sunday" +%G-W%V)
+            echo "target=$PREV_WEEK" >> $GITHUB_OUTPUT
+          fi
+          echo "Target week: $(grep target $GITHUB_OUTPUT | cut -d= -f2)"
+      - name: Generate diff summaries
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TARGET_WEEK: ${{ steps.week.outputs.target }}
+        run: |
+          echo "Generating diff summaries for week: $TARGET_WEEK"
+          npx tsx scripts/ai/generate-diff-summaries.ts --week "$TARGET_WEEK" --force
+      - name: Clear Redis cache
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: |
+          node -e "
+            const Redis = require('ioredis');
+            const redis = new Redis(process.env.REDIS_URL);
+            redis.keys('@techtrend/cache:diff-summary*').then(keys => {
+              if (keys.length > 0) {
+                return redis.del(...keys).then(count => {
+                  console.log('Cleared', count, 'cache keys');
+                });
+              }
+              console.log('No cache keys to clear');
+            }).finally(() => redis.quit());
+          "

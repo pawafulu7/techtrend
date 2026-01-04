@@ -33,8 +33,14 @@ interface PromptVersionInfo {
  */
 export const PROMPT_VERSION_INFO: Record<PromptType, PromptVersionInfo> = {
   'diff-summary': {
-    current: '1.0',
+    current: '1.1',
     history: [
+      {
+        version: '1.1',
+        date: '2026-01-05',
+        description:
+          'Improved description quality: require numbers and specific keywords from headlines',
+      },
       {
         version: '1.0',
         date: '2026-01-04',

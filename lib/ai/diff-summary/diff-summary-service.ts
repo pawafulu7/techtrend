@@ -199,7 +199,10 @@ export class DiffSummaryService {
       };
 
       // Extract diff summary using LLM
-      const result = await this.pipeline.extract(input, diffSummaryConfig);
+      // Use higher maxOutputTokens for diff-summary as it produces large outputs
+      const result = await this.pipeline.extract(input, diffSummaryConfig, {
+        maxOutputTokens: 8192,
+      });
 
       if (!result.success || !result.data) {
         return {

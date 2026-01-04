@@ -14,7 +14,7 @@ import { z } from 'zod';
 export const DiffChangeSchema = z.object({
   type: z.enum(['new', 'updated', 'deprecated', 'trending']),
   topic: z.string().min(1),
-  description: z.string().min(10),
+  description: z.string().min(30),
   significance: z.enum(['high', 'medium', 'low']),
   relatedArticleIds: z.array(z.string()).optional(),
 });
@@ -84,6 +84,50 @@ export type CodeTipsExtraction = z.infer<typeof CodeTipsExtractionSchema>;
 // =============================================================================
 
 /**
+ * Extract balanced JSON object from text
+ * Handles nested braces correctly
+ */
+function extractBalancedJSON(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') depth++;
+      if (char === '}') {
+        depth--;
+        if (depth === 0) {
+          return text.slice(start, i + 1);
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Parse JSON from LLM response (handles markdown code blocks)
  */
 export function parseJSONFromLLM<T>(text: string): T {
@@ -96,16 +140,24 @@ export function parseJSONFromLLM<T>(text: string): T {
     cleanText = jsonBlockMatch[1].trim();
   }
 
-  // Try to parse as JSON
+  // Try to parse as JSON directly
   try {
     return JSON.parse(cleanText) as T;
   } catch {
-    // Try to extract JSON object/array from text (non-greedy matching)
-    const jsonMatch = cleanText.match(/(\{[\s\S]*?\}|\[[\s\S]*?\])/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[1]) as T;
+    // Try to extract balanced JSON object from text
+    const jsonStr = extractBalancedJSON(cleanText);
+    if (jsonStr) {
+      try {
+        return JSON.parse(jsonStr) as T;
+      } catch (e) {
+        throw new Error(
+          `Failed to parse extracted JSON: ${e instanceof Error ? e.message : 'Unknown error'}`
+        );
+      }
     }
-    throw new Error('Failed to parse JSON from LLM response');
+    throw new Error(
+      'Failed to parse JSON from LLM response: No valid JSON found'
+    );
   }
 }
 

@@ -102,6 +102,28 @@ module.exports = {
       out_file: 'logs/embedding-worker-out.log',
       time: true,
       merge_logs: true
+    },
+    {
+      name: 'techtrend-diff-summary-local',
+      script: 'scripts/ai/generate-diff-summaries-weekly.ts',
+      interpreter: 'npx',
+      interpreter_args: 'tsx',
+      cwd: __dirname,
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      watch: false,
+      cron_restart: '0 6 * * 1', // 毎週月曜 06:00 JST に前週のサマリーを生成
+      env: {
+        NODE_ENV: 'development',
+        DATABASE_URL: process.env.DATABASE_URL,
+        REDIS_URL: process.env.REDIS_URL,
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY
+      },
+      error_file: 'logs/diff-summary-error.log',
+      out_file: 'logs/diff-summary-out.log',
+      time: true,
+      merge_logs: true
     }
   ]
 };
