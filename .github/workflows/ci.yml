@@ -182,7 +182,8 @@ jobs:
           exit-on-fail: false
           upload-artifact: true
           artifact-name: 'ctrf-unit-report'
-          previous-results-max: 50
+          fetch-previous-results: true
+          previous-results-max: 10
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: always()
@@ -200,7 +201,8 @@ jobs:
           exit-on-fail: false
           upload-artifact: true
           artifact-name: 'ctrf-component-report'
-          previous-results-max: 50
+          fetch-previous-results: true
+          previous-results-max: 10
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: always()
@@ -443,7 +445,8 @@ jobs:
           exit-on-fail: false
           upload-artifact: true
           artifact-name: 'ctrf-e2e-report'
-          previous-results-max: 50
+          fetch-previous-results: true
+          previous-results-max: 10
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: always()
