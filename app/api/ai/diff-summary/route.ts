@@ -48,13 +48,23 @@ export async function GET(request: NextRequest) {
     const weekParam = searchParams.get('week');
     const categoryParam = searchParams.get('category');
 
-    // Validate week format
+    // Validate week format and range (01-53)
     let week = weekParam;
-    if (week && !/^\d{4}-W\d{2}$/.test(week)) {
-      return NextResponse.json(
-        { error: 'Invalid week format. Use YYYY-Www (e.g., 2026-W01)' },
-        { status: 400 }
-      );
+    if (week) {
+      const weekMatch = week.match(/^(\d{4})-W(\d{2})$/);
+      if (!weekMatch) {
+        return NextResponse.json(
+          { error: 'Invalid week format. Use YYYY-Www (e.g., 2026-W01)' },
+          { status: 400 }
+        );
+      }
+      const weekNum = parseInt(weekMatch[2], 10);
+      if (weekNum < 1 || weekNum > 53) {
+        return NextResponse.json(
+          { error: 'Invalid week number. Must be between 01 and 53' },
+          { status: 400 }
+        );
+      }
     }
     week = week || getISOWeek(new Date());
 
@@ -163,13 +173,23 @@ async function generateDiffSummaryHandler(request: NextRequest) {
     const weekParam = body.week;
     const categoryParam = body.category;
 
-    // Validate week format
+    // Validate week format and range (01-53)
     let week = weekParam;
-    if (week && !/^\d{4}-W\d{2}$/.test(week)) {
-      return NextResponse.json(
-        { error: 'Invalid week format. Use YYYY-Www (e.g., 2026-W01)' },
-        { status: 400 }
-      );
+    if (week) {
+      const weekMatch = week.match(/^(\d{4})-W(\d{2})$/);
+      if (!weekMatch) {
+        return NextResponse.json(
+          { error: 'Invalid week format. Use YYYY-Www (e.g., 2026-W01)' },
+          { status: 400 }
+        );
+      }
+      const weekNum = parseInt(weekMatch[2], 10);
+      if (weekNum < 1 || weekNum > 53) {
+        return NextResponse.json(
+          { error: 'Invalid week number. Must be between 01 and 53' },
+          { status: 400 }
+        );
+      }
     }
     week = week || getISOWeek(new Date());
     const baseline = getPreviousISOWeek(week);
@@ -191,6 +211,8 @@ async function generateDiffSummaryHandler(request: NextRequest) {
     const service = getDiffSummaryService();
 
     let result;
+    const cacheInstance = getCache();
+
     if (categoryParam) {
       // Single category
       result = await service.generateForCategory(
@@ -206,6 +228,16 @@ async function generateDiffSummaryHandler(request: NextRequest) {
         );
       }
 
+      // Invalidate cache for this category and 'all' view
+      try {
+        await Promise.all([
+          cacheInstance.del(`diff-summary:${week}:${categoryParam}`),
+          cacheInstance.del(`diff-summary:${week}:all`),
+        ]);
+      } catch (cacheError) {
+        logger.warn('Cache invalidation error', cacheError);
+      }
+
       return NextResponse.json({
         success: true,
         message: `Diff summary generated for ${categoryParam}`,
@@ -217,13 +249,15 @@ async function generateDiffSummaryHandler(request: NextRequest) {
       // All categories
       result = await service.generateForAllCategories(week, baseline);
 
-      // Invalidate cache for all categories
-      const cacheInstance = getCache();
+      // Invalidate cache for all categories (parallelized)
       try {
-        await cacheInstance.del(`diff-summary:${week}:all`);
-        for (const cat of Object.keys(SOURCE_CATEGORIES)) {
-          await cacheInstance.del(`diff-summary:${week}:${cat}`);
-        }
+        const cacheKeys = [
+          `diff-summary:${week}:all`,
+          ...Object.keys(SOURCE_CATEGORIES).map(
+            (cat) => `diff-summary:${week}:${cat}`
+          ),
+        ];
+        await Promise.all(cacheKeys.map((key) => cacheInstance.del(key)));
       } catch (cacheError) {
         logger.warn('Cache invalidation error', cacheError);
       }

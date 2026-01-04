@@ -62,6 +62,10 @@ function parseArgs(): ParsedArgs {
       const n = parseInt(args[i + 1], 10);
       if (n > 0 && n <= 10) {
         concurrency = n;
+      } else {
+        console.warn(
+          `Warning: Invalid --concurrency value "${args[i + 1]}". Must be 1-10. Using default (3).`
+        );
       }
       i++;
     }

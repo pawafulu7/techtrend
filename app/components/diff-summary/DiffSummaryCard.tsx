@@ -10,14 +10,7 @@ import {
   Minus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-export interface DiffChange {
-  type: 'new' | 'updated' | 'deprecated' | 'trending';
-  topic: string;
-  description: string;
-  significance: 'high' | 'medium' | 'low';
-  relatedArticleIds?: string[];
-}
+import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
 
 interface DiffSummaryCardProps {
   categorySlug: string;
@@ -67,6 +60,7 @@ const significanceColor = {
 };
 
 export function DiffSummaryCard({
+  // categorySlug is reserved for future use (e.g., linking to category detail page)
   categorySlug: _categorySlug,
   categoryName,
   currentPeriod,

@@ -11,7 +11,13 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import { DiffSummaryCard, DiffChange } from '@/app/components/diff-summary';
+import { DiffSummaryCard } from '@/app/components/diff-summary';
+import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
+import {
+  getISOWeek,
+  getPreviousISOWeek,
+  getNextISOWeek,
+} from '@/lib/ai/diff-summary';
 import Link from 'next/link';
 
 interface DiffSummaryData {
@@ -35,47 +41,6 @@ interface DiffSummaryResponse {
     totalCategories: number;
     summarizedCategories: number;
   };
-}
-
-function getISOWeek(date: Date): string {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-  const yearStart = new Date(d.getFullYear(), 0, 1);
-  const weekNum = Math.ceil(
-    ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
-  );
-  return `${d.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
-}
-
-function getPreviousISOWeek(isoWeek: string): string {
-  const match = isoWeek.match(/^(\d{4})-W(\d{2})$/);
-  if (!match) return isoWeek;
-
-  const year = parseInt(match[1]);
-  const week = parseInt(match[2]);
-
-  if (week === 1) {
-    // Approximate: go to W52 of previous year
-    return `${year - 1}-W52`;
-  }
-
-  return `${year}-W${(week - 1).toString().padStart(2, '0')}`;
-}
-
-function getNextISOWeek(isoWeek: string): string {
-  const match = isoWeek.match(/^(\d{4})-W(\d{2})$/);
-  if (!match) return isoWeek;
-
-  const year = parseInt(match[1]);
-  const week = parseInt(match[2]);
-
-  if (week >= 52) {
-    // Approximate: go to W01 of next year
-    return `${year + 1}-W01`;
-  }
-
-  return `${year}-W${(week + 1).toString().padStart(2, '0')}`;
 }
 
 export default function DiffSummaryPage() {
@@ -166,6 +131,7 @@ export default function DiffSummaryPage() {
             size="sm"
             onClick={handlePreviousWeek}
             disabled={loading}
+            aria-label="前週へ移動"
           >
             <ChevronLeft className="h-4 w-4" />
             前週
@@ -183,6 +149,7 @@ export default function DiffSummaryPage() {
             size="sm"
             onClick={handleNextWeek}
             disabled={loading || !canGoNext}
+            aria-label="次週へ移動"
           >
             次週
             <ChevronRight className="h-4 w-4" />

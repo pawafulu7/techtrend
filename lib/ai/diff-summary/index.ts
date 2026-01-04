@@ -10,6 +10,7 @@ export {
   resetDiffSummaryService,
   getISOWeek,
   getPreviousISOWeek,
+  getNextISOWeek,
   getWeekDateRange,
 } from './diff-summary-service';
 

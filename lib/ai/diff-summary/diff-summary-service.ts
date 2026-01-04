@@ -5,6 +5,7 @@
  * Uses LLM extraction pipeline for AI-powered analysis.
  */
 
+import { getISOWeek as getDateFnsISOWeek, getISOWeekYear } from 'date-fns';
 import { PrismaClient, BatchStatus } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import { prisma as defaultPrisma } from '@/lib/prisma';
@@ -26,16 +27,12 @@ import {
 
 /**
  * ISO week format helper
+ * Uses date-fns for accurate DST handling
  */
 export function getISOWeek(date: Date): string {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-  const yearStart = new Date(d.getFullYear(), 0, 1);
-  const weekNum = Math.ceil(
-    ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
-  );
-  return `${d.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
+  const weekNum = getDateFnsISOWeek(date);
+  const year = getISOWeekYear(date);
+  return `${year}-W${weekNum.toString().padStart(2, '0')}`;
 }
 
 /**
@@ -59,6 +56,28 @@ export function getPreviousISOWeek(isoWeek: string): string {
   }
 
   return `${year}-W${(week - 1).toString().padStart(2, '0')}`;
+}
+
+/**
+ * Get the next ISO week
+ */
+export function getNextISOWeek(isoWeek: string): string {
+  const match = isoWeek.match(/^(\d{4})-W(\d{2})$/);
+  if (!match) throw new Error(`Invalid ISO week format: ${isoWeek}`);
+
+  const year = parseInt(match[1]);
+  const week = parseInt(match[2]);
+
+  // Check if this year has 53 weeks by checking if Dec 28 is in week 53
+  const dec28 = new Date(year, 11, 28);
+  const lastWeek = getDateFnsISOWeek(dec28);
+
+  if (week >= lastWeek) {
+    // Go to week 1 of next year
+    return `${year + 1}-W01`;
+  }
+
+  return `${year}-W${(week + 1).toString().padStart(2, '0')}`;
 }
 
 /**
@@ -236,6 +255,10 @@ export class DiffSummaryService {
   }> {
     const categories = Object.keys(SOURCE_CATEGORIES) as SourceCategoryId[];
 
+    // Calculate periods once to avoid redundant calls
+    const current = currentPeriod || getISOWeek(new Date());
+    const baseline = baselinePeriod || getPreviousISOWeek(current);
+
     // Create batch jobs
     const jobs: BatchJob<{
       categorySlug: SourceCategoryId;
@@ -245,10 +268,8 @@ export class DiffSummaryService {
       id: categorySlug,
       input: {
         categorySlug,
-        current: currentPeriod || getISOWeek(new Date()),
-        baseline:
-          baselinePeriod ||
-          getPreviousISOWeek(currentPeriod || getISOWeek(new Date())),
+        current,
+        baseline,
       },
     }));
 
@@ -452,17 +473,41 @@ export class DiffSummaryService {
       distinct: ['categorySlug'],
     });
 
-    return summaries.map((s) => ({
-      categorySlug: s.categorySlug,
-      currentPeriod: s.currentPeriod,
-      summary:
-        (s.changes as DiffSummaryOutput['changes']).length > 0
-          ? `${(s.changes as DiffSummaryOutput['changes']).length} changes detected`
-          : 'No significant changes',
-      changes: s.changes as DiffSummaryOutput['changes'],
-      keyTakeaways: [],
-      generatedAt: s.generatedAt,
-    }));
+    return summaries.map((s) => {
+      const changes = s.changes as DiffSummaryOutput['changes'];
+      const newCount = changes.filter((c) => c.type === 'new').length;
+      const trendingCount = changes.filter((c) => c.type === 'trending').length;
+      const deprecatedCount = changes.filter(
+        (c) => c.type === 'deprecated'
+      ).length;
+
+      // Generate descriptive summary from changes data
+      const summaryParts: string[] = [];
+      if (newCount > 0) summaryParts.push(`${newCount} new`);
+      if (trendingCount > 0) summaryParts.push(`${trendingCount} trending`);
+      if (deprecatedCount > 0)
+        summaryParts.push(`${deprecatedCount} deprecated`);
+
+      const summary =
+        summaryParts.length > 0
+          ? `${changes.length} changes: ${summaryParts.join(', ')}`
+          : 'No significant changes';
+
+      // Extract key takeaways from high-significance changes
+      const keyTakeaways = changes
+        .filter((c) => c.significance === 'high')
+        .slice(0, 3)
+        .map((c) => `${c.topic}: ${c.description}`);
+
+      return {
+        categorySlug: s.categorySlug,
+        currentPeriod: s.currentPeriod,
+        summary,
+        changes,
+        keyTakeaways,
+        generatedAt: s.generatedAt,
+      };
+    });
   }
 }
 

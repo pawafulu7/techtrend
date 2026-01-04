@@ -33,10 +33,42 @@ export interface TopicData {
 }
 
 /**
+ * Validate DiffSummaryInput structure
+ */
+function validateDiffSummaryInput(input: unknown): DiffSummaryInput {
+  if (!input || typeof input !== 'object') {
+    throw new Error('Invalid input: expected an object');
+  }
+
+  const data = input as Record<string, unknown>;
+
+  if (typeof data.category !== 'string' || !data.category) {
+    throw new Error('Invalid input: category is required');
+  }
+  if (typeof data.categoryName !== 'string' || !data.categoryName) {
+    throw new Error('Invalid input: categoryName is required');
+  }
+  if (typeof data.currentPeriod !== 'string' || !data.currentPeriod) {
+    throw new Error('Invalid input: currentPeriod is required');
+  }
+  if (typeof data.baselinePeriod !== 'string' || !data.baselinePeriod) {
+    throw new Error('Invalid input: baselinePeriod is required');
+  }
+  if (!Array.isArray(data.currentTopics)) {
+    throw new Error('Invalid input: currentTopics must be an array');
+  }
+  if (!Array.isArray(data.baselineTopics)) {
+    throw new Error('Invalid input: baselineTopics must be an array');
+  }
+
+  return data as unknown as DiffSummaryInput;
+}
+
+/**
  * Build the diff summary prompt
  */
 function buildDiffSummaryPrompt(input: unknown): string {
-  const data = input as DiffSummaryInput;
+  const data = validateDiffSummaryInput(input);
 
   return `You are a technology trend analyst. Analyze the topic changes between two time periods.
 
