@@ -48,19 +48,19 @@ interface LightweightArticle {
 // Initialize Redis cache with 30 minutes TTL for lightweight articles
 const cache = new RedisCache({
   ttl: 1800, // 30 minutes (increased from 5 minutes)
-  namespace: '@techtrend/cache:api:lightweight'
+  namespace: '@techtrend/cache:api:lightweight',
 });
 
 // 総件数専用のキャッシュ（5分TTL）
 const countCache = new RedisCache({
   ttl: 300, // 5分
-  namespace: '@techtrend/cache:api:count'
+  namespace: '@techtrend/cache:api:count',
 });
 
 // タグキャッシュ（15分TTL）
 const tagCache = new TagCache({
   ttl: 900,
-  namespace: '@techtrend/cache:tags'
+  namespace: '@techtrend/cache:tags',
 });
 
 /**
@@ -71,28 +71,41 @@ const tagCache = new TagCache({
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   let cacheStatus = 'MISS';
-  
+
   try {
     const { searchParams } = new URL(request.url);
-    
+
     // Use CursorManager (static import)
     const cursorManager = getCursorManager();
-    
+
     // Parse pagination params - Support both cursor and offset
     const cursor = searchParams.get('cursor');
-    const after = searchParams.get('after');  // Alternative cursor parameter
+    const after = searchParams.get('after'); // Alternative cursor parameter
     const before = searchParams.get('before'); // For backward pagination
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get('limit') || '20'))
+    );
     const sortBy = searchParams.get('sortBy') || 'publishedAt';
-    const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
-    const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
-    const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
-    
+    const validSortFields = [
+      'publishedAt',
+      'createdAt',
+      'qualityScore',
+      'bookmarks',
+      'userVotes',
+    ];
+    const finalSortBy = validSortFields.includes(sortBy)
+      ? sortBy
+      : 'publishedAt';
+    const sortOrder = (searchParams.get('sortOrder') || 'desc') as
+      | 'asc'
+      | 'desc';
+
     // Determine pagination mode
     const useCursor = !!(cursor || after || before);
     const effectiveCursor = cursor || after || before;
-    
+
     // Parse filters
     const sources = searchParams.get('sources');
     const sourceId = searchParams.get('sourceId');
@@ -103,7 +116,8 @@ export async function GET(request: NextRequest) {
     const dateRange = searchParams.get('dateRange');
     const readFilter = searchParams.get('readFilter');
     const category = searchParams.get('category');
-    const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
+    const excludeUnprocessed =
+      searchParams.get('excludeUnprocessed') === 'true';
     const includeUserData = searchParams.get('includeUserData') === 'true';
     const totalParam = searchParams.get('total'); // Quick Win 2: Skip COUNT on page >1
     const bypassFavoriteL1 = Boolean(request.cookies.get('tt_fav_bust')?.value);
@@ -112,23 +126,33 @@ export async function GET(request: NextRequest) {
     const excludeLowQuality = excludeLowQualityParam === 'true'; // Default false
 
     // Generate cache key
-    const normalizedSearch = search ? 
-      search.trim().split(/[\s　]+/)
-        .filter(k => k.length > 0)
-        .sort()
-        .join(',') : 'none';
-    
-    const normalizedSources = sources ? 
-      sources.split(',').filter(id => id.trim()).sort().join(',') : 
-      sourceId || 'all';
-    
+    const normalizedSearch = search
+      ? search
+          .trim()
+          .split(/[\s　]+/)
+          .filter((k) => k.length > 0)
+          .sort()
+          .join(',')
+      : 'none';
+
+    const normalizedSources = sources
+      ? sources
+          .split(',')
+          .filter((id) => id.trim())
+          .sort()
+          .join(',')
+      : sourceId || 'all';
+
     // Get session when readFilter requires user context or includeUserData is true
-    const shouldUseUserContext = readFilter === 'read' || readFilter === 'unread' || includeUserData;
+    const shouldUseUserContext =
+      readFilter === 'read' || readFilter === 'unread' || includeUserData;
     const session = shouldUseUserContext ? await auth() : null;
     const userId = session?.user?.id;
 
     // Include userId in cache key only when user context is needed
-    const userCtxForKey = shouldUseUserContext ? (userId ?? 'anonymous') : 'n/a';
+    const userCtxForKey = shouldUseUserContext
+      ? (userId ?? 'anonymous')
+      : 'n/a';
 
     // Include cursor in cache key if using cursor pagination
     const cacheKey = cache.generateCacheKey('articles:lightweight', {
@@ -148,23 +172,26 @@ export async function GET(request: NextRequest) {
         userId: userCtxForKey,
         category: category || 'all',
         excludeUnprocessed: excludeUnprocessed ? 'true' : 'false',
-        excludeLowQuality: excludeLowQuality ? 'true' : 'false'
+        excludeLowQuality: excludeLowQuality ? 'true' : 'false',
         // Note: includeUserData removed from cache key - user data is merged after cache fetch
-      }
+      },
     });
 
     // Check cache first
     // readFilter requires user-specific queries so we skip cache in that case
     // includeUserData no longer skips cache - user data is merged after cache fetch
-    const shouldSkipCache = (readFilter === 'read' || readFilter === 'unread') && userId;
-    const cachedResult = shouldSkipCache ? null : await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
+    const shouldSkipCache =
+      (readFilter === 'read' || readFilter === 'unread') && userId;
+    const cachedResult = shouldSkipCache
+      ? null
+      : await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
     // Legacy cache entries may lack cursor metadata; treat them as stale so pageInfo is rebuilt
     const needsPageInfoHydration = Boolean(
-      cachedResult && useCursor && (
-        !cachedResult.pageInfo ||
-        typeof cachedResult.pageInfo.hasNextPage === 'undefined' ||
-        typeof cachedResult.pageInfo.hasPreviousPage === 'undefined'
-      )
+      cachedResult &&
+        useCursor &&
+        (!cachedResult.pageInfo ||
+          typeof cachedResult.pageInfo.hasNextPage === 'undefined' ||
+          typeof cachedResult.pageInfo.hasPreviousPage === 'undefined')
     );
 
     let result;
@@ -173,7 +200,12 @@ export async function GET(request: NextRequest) {
       result = cachedResult;
 
       // Merge user data into cached result if requested
-      if (includeUserData && userId && result.items && result.items.length > 0) {
+      if (
+        includeUserData &&
+        userId &&
+        result.items &&
+        result.items.length > 0
+      ) {
         const articleIds = result.items.map((a) => a.id);
         const loaders = createLoaders(
           { userId },
@@ -190,7 +222,11 @@ export async function GET(request: NextRequest) {
           const readStatusMap = new Map<string, boolean>();
 
           favoriteStatuses.forEach((status) => {
-            if (status && typeof status === 'object' && 'isFavorited' in status) {
+            if (
+              status &&
+              typeof status === 'object' &&
+              'isFavorited' in status
+            ) {
               favoritesMap.set(status.articleId, status.isFavorited);
             }
           });
@@ -214,7 +250,7 @@ export async function GET(request: NextRequest) {
       }
     } else {
       cacheStatus = cachedResult ? 'STALE' : 'MISS';
-      
+
       // Build where clause
       const where: ArticleWhereInput = {};
 
@@ -236,12 +272,16 @@ export async function GET(request: NextRequest) {
           {
             OR: [
               { skipReason: null },
-              { skipReason: { notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const] } }
-            ]
+              {
+                skipReason: {
+                  notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const],
+                },
+              },
+            ],
           },
           // Exclude low quality score (< 30)
           // Note: qualityScore is Float @default(0), so null is not possible
-          { qualityScore: { gte: 30 } }
+          { qualityScore: { gte: 30 } },
         ];
 
         // Merge with existing AND conditions
@@ -255,63 +295,78 @@ export async function GET(request: NextRequest) {
 
       // Apply cursor-based pagination if cursor provided
       let hasPreviousPage = false;
-      let cursorPayload: ReturnType<typeof cursorManager.decodeCursor> | null = null;
+      let cursorPayload: ReturnType<typeof cursorManager.decodeCursor> | null =
+        null;
       let isBackwardCursor = false;
       let cursorFilter: ArticleWhereInput | null = null;
       if (useCursor && effectiveCursor) {
         cursorPayload = cursorManager.decodeCursor(effectiveCursor);
         if (cursorPayload) {
           // Validate sort conditions match
-          if (cursorManager.validateSortCondition(cursorPayload, finalSortBy, sortOrder)) {
+          if (
+            cursorManager.validateSortCondition(
+              cursorPayload,
+              finalSortBy,
+              sortOrder
+            )
+          ) {
             // Build WHERE clause for cursor pagination (分離保持)
             const direction = before ? 'backward' : 'forward';
-            const cursorWhere = cursorManager.buildWhereClause(cursorPayload, direction);
-            cursorFilter = Object.keys(cursorWhere).length > 0 ? cursorWhere : null;
+            const cursorWhere = cursorManager.buildWhereClause(
+              cursorPayload,
+              direction
+            );
+            cursorFilter =
+              Object.keys(cursorWhere).length > 0 ? cursorWhere : null;
 
             // For backward pagination, we need to check if there are previous items
             isBackwardCursor = Boolean(before);
           } else {
             // Sort conditions have changed, ignore cursor
-            logger.warn('cursor-pagination.sort-mismatch: Cursor invalidated due to sort change');
+            logger.warn(
+              'cursor-pagination.sort-mismatch: Cursor invalidated due to sort change'
+            );
           }
         } else {
           // Invalid or expired cursor, proceed with offset pagination
-          logger.warn('cursor-pagination.invalid-cursor: Falling back to offset');
+          logger.warn(
+            'cursor-pagination.invalid-cursor: Falling back to offset'
+          );
         }
       }
-      
+
       // Apply read filter if user is authenticated
       if (readFilter && userId) {
         if (readFilter === 'unread') {
           where.articleViews = {
             none: {
               userId: userId,
-              isRead: true
-            }
+              isRead: true,
+            },
           };
         } else if (readFilter === 'read') {
           where.articleViews = {
             some: {
               userId: userId,
-              isRead: true
-            }
+              isRead: true,
+            },
           };
         }
       }
-      
+
       // Apply source filter
       if (sources || sourceId) {
-        const sourceIds = sources ? 
-          sources.split(',').filter(id => id.trim()) : 
-          [sourceId!];
-        
+        const sourceIds = sources
+          ? sources.split(',').filter((id) => id.trim())
+          : [sourceId!];
+
         if (sourceIds.length > 0) {
           where.sourceId = {
-            in: sourceIds
+            in: sourceIds,
           };
         }
       }
-      
+
       // Apply category filter with normalization
       if (category && category !== 'all') {
         // Handle 'uncategorized' as null
@@ -326,11 +381,14 @@ export async function GET(request: NextRequest) {
           // If normalization returns null, skip the filter
         }
       }
-      
+
       // Apply tag filter with optimized approach (no JOIN)
       if (tag || tags) {
-        const tagList = tags ? tags.split(',').filter(t => t.trim()) :
-                        tag ? [tag] : [];
+        const tagList = tags
+          ? tags.split(',').filter((t) => t.trim())
+          : tag
+            ? [tag]
+            : [];
 
         if (tagList.length > 0) {
           let tagIds: string[] = [];
@@ -344,29 +402,33 @@ export async function GET(request: NextRequest) {
 
             if (cachedMapping) {
               cacheHit = true;
-              tagIds = tagList.map(name => cachedMapping[name]).filter(Boolean);
+              tagIds = tagList
+                .map((name) => cachedMapping[name])
+                .filter(Boolean);
 
               // Check for missing tags
-              const missingTags = tagList.filter(name => !cachedMapping[name]);
+              const missingTags = tagList.filter(
+                (name) => !cachedMapping[name]
+              );
               cacheMissCount = missingTags.length;
 
               if (missingTags.length > 0) {
-                // Partial cache miss - fetch missing tags from DB
+                // Partial cache miss - fetch missing tags from DB (case-insensitive)
                 const tagRecords = await prisma.tag.findMany({
                   where: {
-                    name: {
-                      in: missingTags
-                    }
+                    OR: missingTags.map((tagName) => ({
+                      name: { equals: tagName, mode: 'insensitive' as const },
+                    })),
                   },
                   select: {
                     id: true,
-                    name: true
-                  }
+                    name: true,
+                  },
                 });
 
                 // Build mapping for missing tags
                 const missingMapping: { [key: string]: string } = {};
-                tagRecords.forEach(t => {
+                tagRecords.forEach((t) => {
                   missingMapping[t.name] = t.id;
                   tagIds.push(t.id);
                 });
@@ -381,21 +443,22 @@ export async function GET(request: NextRequest) {
               cacheHit = false;
               cacheMissCount = tagList.length;
 
+              // Case-insensitive tag search
               const tagRecords = await prisma.tag.findMany({
                 where: {
-                  name: {
-                    in: tagList
-                  }
+                  OR: tagList.map((tagName) => ({
+                    name: { equals: tagName, mode: 'insensitive' as const },
+                  })),
                 },
                 select: {
                   id: true,
-                  name: true
-                }
+                  name: true,
+                },
               });
 
               // Build mapping
               const mapping: { [key: string]: string } = {};
-              tagRecords.forEach(t => {
+              tagRecords.forEach((t) => {
                 mapping[t.name] = t.id;
                 tagIds.push(t.id);
               });
@@ -407,39 +470,42 @@ export async function GET(request: NextRequest) {
             }
           } catch (cacheError) {
             // Cache error - fallback to direct DB query
-            logger.warn(`tag-cache.error: Falling back to direct DB query - ${(cacheError as Error).message}`);
+            logger.warn(
+              `tag-cache.error: Falling back to direct DB query - ${(cacheError as Error).message}`
+            );
 
+            // Case-insensitive tag search (fallback)
             const tagRecords = await prisma.tag.findMany({
               where: {
-                name: {
-                  in: tagList
-                }
+                OR: tagList.map((tagName) => ({
+                  name: { equals: tagName, mode: 'insensitive' as const },
+                })),
               },
               select: {
-                id: true
-              }
+                id: true,
+              },
             });
 
-            tagIds = tagRecords.map(t => t.id);
+            tagIds = tagRecords.map((t) => t.id);
           } finally {
             // Log cache performance metrics
             const metrics = `tag-cache.metrics: hit=${cacheHit}, miss=${cacheMissCount}/${tagList.length}, duration=${Date.now() - tagCacheStartTime}ms`;
             console.log(metrics);
             logger.info(metrics);
           }
-          
+
           if (tagIds.length === 0) {
             // 未存在タグの場合、ヒットなし
             where.id = { in: [] };
           } else if (tagMode === 'AND') {
             // AND mode: Articles must have all specified tags
             // 既存のAND条件とマージ
-            const tagConditions: ArticleWhereInput[] = tagIds.map(tagId => ({
+            const tagConditions: ArticleWhereInput[] = tagIds.map((tagId) => ({
               tags: {
                 some: {
-                  id: tagId
-                }
-              }
+                  id: tagId,
+                },
+              },
             }));
             if (!where.AND) {
               where.AND = [];
@@ -452,33 +518,38 @@ export async function GET(request: NextRequest) {
             where.tags = {
               some: {
                 id: {
-                  in: tagIds
-                }
-              }
+                  in: tagIds,
+                },
+              },
             };
           }
         }
       }
-      
+
       // Apply search filter
       if (search) {
-        const keywords = search.trim().split(/[\s　]+/).filter(k => k.length > 0);
-        
+        const keywords = search
+          .trim()
+          .split(/[\s　]+/)
+          .filter((k) => k.length > 0);
+
         if (keywords.length === 1) {
           // Single keyword - OR search
           where.OR = [
             { title: { contains: keywords[0], mode: 'insensitive' } },
-            { summary: { contains: keywords[0], mode: 'insensitive' } }
+            { summary: { contains: keywords[0], mode: 'insensitive' } },
           ];
         } else if (keywords.length > 1) {
           // Multiple keywords - AND search
           // 既存のAND条件とマージ
-          const keywordConditions: ArticleWhereInput[] = keywords.map(keyword => ({
-            OR: [
-              { title: { contains: keyword, mode: 'insensitive' } },
-              { summary: { contains: keyword, mode: 'insensitive' } }
-            ]
-          }));
+          const keywordConditions: ArticleWhereInput[] = keywords.map(
+            (keyword) => ({
+              OR: [
+                { title: { contains: keyword, mode: 'insensitive' } },
+                { summary: { contains: keyword, mode: 'insensitive' } },
+              ],
+            })
+          );
           if (!where.AND) {
             where.AND = [];
           } else if (!Array.isArray(where.AND)) {
@@ -487,19 +558,20 @@ export async function GET(request: NextRequest) {
           where.AND = [...where.AND, ...keywordConditions];
         }
       }
-      
+
       // Apply date range filter (static import)
       if (dateRange && dateRange !== 'all') {
         const startDate = getDateRangeFilter(dateRange);
         if (startDate) {
           where.publishedAt = {
-            gte: startDate
+            gte: startDate,
           };
         }
       }
 
       // 総件数用のキャッシュキーを生成（where条件に基づく）
-      const isUserScopedCount = readFilter === 'read' || readFilter === 'unread';
+      const isUserScopedCount =
+        readFilter === 'read' || readFilter === 'unread';
       const countCacheKey = countCache.generateCacheKey('articles:count', {
         params: {
           sources: normalizedSources,
@@ -512,7 +584,7 @@ export async function GET(request: NextRequest) {
           category: category || 'all',
           // read/unread時はユーザー固有の総件数
           userId: isUserScopedCount ? (userId ?? 'anonymous') : 'n/a',
-        }
+        },
       });
 
       // Get count and articles in parallel (Quick Win 2+3: 50-100ms improvement)
@@ -558,7 +630,7 @@ export async function GET(request: NextRequest) {
               name: true,
               type: true,
               url: true,
-            }
+            },
           },
           category: true,
           qualityScore: true,
@@ -572,14 +644,17 @@ export async function GET(request: NextRequest) {
         },
         orderBy: [
           { [finalSortBy]: sortOrder },
-          { id: sortOrder }  // Secondary sort by id for stable cursor pagination
+          { id: sortOrder }, // Secondary sort by id for stable cursor pagination
         ],
-        skip: useCursor ? 0 : (page - 1) * limit,  // No skip for cursor pagination
+        skip: useCursor ? 0 : (page - 1) * limit, // No skip for cursor pagination
         take: fetchLimit,
       });
 
       // Execute count and articles in parallel
-      const [total, articles] = await Promise.all([countPromise, articlesPromise]);
+      const [total, articles] = await Promise.all([
+        countPromise,
+        articlesPromise,
+      ]);
 
       // Fetch company names for hatena_blog_dev articles (batch query)
       // Note: This requires a separate query to load tags for company name extraction.
@@ -587,23 +662,25 @@ export async function GET(request: NextRequest) {
       // fetching tags for the extra cursor record.
       const companyNameMap: Map<string, string> = new Map();
       const hatenaArticleIds = articles
-        .slice(0, limit)  // Only process articles within the page limit
-        .filter(a => a.sourceId === 'hatena_blog_dev')
-        .map(a => a.id);
+        .slice(0, limit) // Only process articles within the page limit
+        .filter((a) => a.sourceId === 'hatena_blog_dev')
+        .map((a) => a.id);
 
       if (hatenaArticleIds.length > 0) {
         const hatenaArticlesWithTags = await prisma.article.findMany({
           where: { id: { in: hatenaArticleIds } },
           select: {
             id: true,
-            tags: { select: { name: true } }
-          }
+            tags: { select: { name: true } },
+          },
         });
 
         // Extract company name from tags (pattern: 株式会社/合同会社/有限会社)
         const companyPattern = /株式会社|合同会社|有限会社/;
         for (const article of hatenaArticlesWithTags) {
-          const companyTag = article.tags.find(t => companyPattern.test(t.name));
+          const companyTag = article.tags.find((t) =>
+            companyPattern.test(t.name)
+          );
           if (companyTag) {
             companyNameMap.set(article.id, companyTag.name);
           }
@@ -625,9 +702,11 @@ export async function GET(request: NextRequest) {
       const readStatusMap: Map<string, boolean> = new Map();
 
       if (includeUserData && userId) {
-        const articleIds = articles.slice(0, limit).map(a => a.id);  // Use only the requested limit
+        const articleIds = articles.slice(0, limit).map((a) => a.id); // Use only the requested limit
 
-        logger.info(`DataLoader integration: userId=${userId}, articles=${articleIds.length}`);
+        logger.info(
+          `DataLoader integration: userId=${userId}, articles=${articleIds.length}`
+        );
 
         // Create DataLoader instances for this request
         const loaders = createLoaders(
@@ -639,14 +718,20 @@ export async function GET(request: NextRequest) {
           // Fetch favorites and read status using DataLoader (batched)
           const [favoriteStatuses, viewStatuses] = await Promise.all([
             loaders.favorite.loadMany(articleIds),
-            loaders.view.loadMany(articleIds)
+            loaders.view.loadMany(articleIds),
           ]);
 
-          logger.info(`DataLoader results: favorites=${favoriteStatuses.length}, views=${viewStatuses.length}`);
+          logger.info(
+            `DataLoader results: favorites=${favoriteStatuses.length}, views=${viewStatuses.length}`
+          );
 
           // Create maps for O(1) lookup
           favoriteStatuses.forEach((status) => {
-            if (status && typeof status === 'object' && 'isFavorited' in status) {
+            if (
+              status &&
+              typeof status === 'object' &&
+              'isFavorited' in status
+            ) {
               favoritesMap.set(status.articleId, status.isFavorited);
             }
           });
@@ -657,16 +742,20 @@ export async function GET(request: NextRequest) {
             }
           });
 
-          logger.info(`DataLoader maps: favorites=${favoritesMap.size}, reads=${readStatusMap.size}`);
+          logger.info(
+            `DataLoader maps: favorites=${favoritesMap.size}, reads=${readStatusMap.size}`
+          );
         }
       } else {
-        logger.info(`DataLoader skipped: includeUserData=${includeUserData}, userId=${userId}`);
+        logger.info(
+          `DataLoader skipped: includeUserData=${includeUserData}, userId=${userId}`
+        );
       }
 
       // Process results for cursor pagination
       let pageInfo;
       let normalizedArticles;
-      
+
       if (useCursor) {
         // Generate page info for cursor pagination
         const pageData = cursorManager.generatePageInfo(
@@ -680,27 +769,37 @@ export async function GET(request: NextRequest) {
             search,
             dateRange,
             readFilter,
-            category
+            category,
           },
           hasPreviousPage
         );
-        
+
         pageInfo = {
           hasNextPage: pageData.hasNextPage,
           hasPreviousPage: pageData.hasPreviousPage,
           startCursor: pageData.startCursor,
-          endCursor: pageData.endCursor
+          endCursor: pageData.endCursor,
         };
-        
+
         // Normalize dates and add user data for actual page items
-        normalizedArticles = pageData.items.map(article => {
+        normalizedArticles = pageData.items.map((article) => {
           // Extract content for length calculation, then exclude from response
-          const { content, ...articleWithoutContent } = article as typeof article & { content?: string | null };
+          const { content, ...articleWithoutContent } =
+            article as typeof article & { content?: string | null };
           const normalized: LightweightArticle = {
             ...articleWithoutContent,
-            publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
-            createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
-            updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
+            publishedAt:
+              article.publishedAt instanceof Date
+                ? article.publishedAt.toISOString()
+                : article.publishedAt,
+            createdAt:
+              article.createdAt instanceof Date
+                ? article.createdAt.toISOString()
+                : article.createdAt,
+            updatedAt:
+              article.updatedAt instanceof Date
+                ? article.updatedAt.toISOString()
+                : article.updatedAt,
             contentLength: typeof content === 'string' ? content.length : null,
           };
 
@@ -718,27 +817,37 @@ export async function GET(request: NextRequest) {
 
           return normalized;
         });
-        
+
         // Build cursor-based response
         result = {
           items: normalizedArticles as LightweightArticle[],
           total,
           pageInfo,
           // Include legacy pagination fields for backward compatibility
-          page: 1,  // Cursor pagination doesn't have traditional page numbers
+          page: 1, // Cursor pagination doesn't have traditional page numbers
           limit,
           totalPages: Math.ceil(total / limit),
         };
       } else {
         // Traditional offset pagination - but generate cursor info for transition
-        normalizedArticles = articles.map(article => {
+        normalizedArticles = articles.map((article) => {
           // Extract content for length calculation, then exclude from response
-          const { content, ...articleWithoutContent } = article as typeof article & { content?: string | null };
+          const { content, ...articleWithoutContent } =
+            article as typeof article & { content?: string | null };
           const normalized: LightweightArticle = {
             ...articleWithoutContent,
-            publishedAt: article.publishedAt instanceof Date ? article.publishedAt.toISOString() : article.publishedAt,
-            createdAt: article.createdAt instanceof Date ? article.createdAt.toISOString() : article.createdAt,
-            updatedAt: article.updatedAt instanceof Date ? article.updatedAt.toISOString() : article.updatedAt,
+            publishedAt:
+              article.publishedAt instanceof Date
+                ? article.publishedAt.toISOString()
+                : article.publishedAt,
+            createdAt:
+              article.createdAt instanceof Date
+                ? article.createdAt.toISOString()
+                : article.createdAt,
+            updatedAt:
+              article.updatedAt instanceof Date
+                ? article.updatedAt.toISOString()
+                : article.updatedAt,
             contentLength: typeof content === 'string' ? content.length : null,
           };
 
@@ -758,7 +867,8 @@ export async function GET(request: NextRequest) {
         });
 
         // Generate cursor info for offset pagination too (for easy transition)
-        let pageInfo: PaginatedResponse<LightweightArticle>['pageInfo'] = undefined;
+        let pageInfo: PaginatedResponse<LightweightArticle>['pageInfo'] =
+          undefined;
         if (articles.length > 0) {
           const hasNextPage = page < Math.ceil(total / limit);
           const hasPreviousPage = page > 1;
@@ -780,8 +890,8 @@ export async function GET(request: NextRequest) {
               search,
               dateRange,
               readFilter,
-              category
-            }
+              category,
+            },
           });
 
           const endCursor = cursorManager.encodeCursor({
@@ -798,15 +908,15 @@ export async function GET(request: NextRequest) {
               search,
               dateRange,
               readFilter,
-              category
-            }
+              category,
+            },
           });
 
           pageInfo = {
             hasNextPage,
             hasPreviousPage,
             startCursor,
-            endCursor
+            endCursor,
           };
         }
 
@@ -820,16 +930,16 @@ export async function GET(request: NextRequest) {
           pageInfo, // Include cursor info for offset pagination too
         };
       }
-      
+
       // Save to cache
       // Note: Cache is always saved regardless of includeUserData
       // User data will be merged after cache fetch
       await cache.set(cacheKey, result);
     }
-    
+
     // Calculate response time
     const responseTime = Date.now() - startTime;
-    
+
     // Create response with performance headers
     const response = NextResponse.json({
       success: true,
@@ -838,23 +948,27 @@ export async function GET(request: NextRequest) {
         lightweight: true,
         info: 'This endpoint returns lightweight article data without relations for better performance',
         userDataIncluded: includeUserData && userId ? true : false,
-        paginationMode: useCursor ? 'cursor' : 'offset'
-      }
+        paginationMode: useCursor ? 'cursor' : 'offset',
+      },
     } as ApiResponse<PaginatedResponse<LightweightArticle>>);
-    
+
     response.headers.set('X-Cache-Status', cacheStatus);
     response.headers.set('X-Response-Time', `${responseTime}ms`);
     response.headers.set('X-API-Version', 'lightweight-v2');
     response.headers.set('X-Pagination-Mode', useCursor ? 'cursor' : 'offset');
-    
+
     return response;
   } catch (error) {
     logger.error({ error }, 'Error fetching lightweight articles');
-    
-    const dbError = error instanceof Error 
-      ? new DatabaseError(`Failed to fetch lightweight articles: ${error.message}`, 'select')
-      : new DatabaseError('Failed to fetch lightweight articles', 'select');
-    
+
+    const dbError =
+      error instanceof Error
+        ? new DatabaseError(
+            `Failed to fetch lightweight articles: ${error.message}`,
+            'select'
+          )
+        : new DatabaseError('Failed to fetch lightweight articles', 'select');
+
     const errorResponse = formatErrorResponse(dbError);
     return NextResponse.json(errorResponse, { status: dbError.statusCode });
   }

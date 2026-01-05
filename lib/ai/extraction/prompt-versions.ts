@@ -33,8 +33,44 @@ interface PromptVersionInfo {
  */
 export const PROMPT_VERSION_INFO: Record<PromptType, PromptVersionInfo> = {
   'diff-summary': {
-    current: '1.1',
+    current: '1.7',
     history: [
+      {
+        version: '1.7',
+        date: '2026-01-05',
+        description:
+          'Exclude generic topics (ai, llm, 機械学習) that match too broadly in search',
+      },
+      {
+        version: '1.6',
+        date: '2026-01-05',
+        description:
+          'Fix example output to not contain forbidden patterns (critical fix)',
+      },
+      {
+        version: '1.5',
+        date: '2026-01-05',
+        description:
+          'Ban entire words (見出し, 記事, 関心, 注目) and add rewriting tips',
+      },
+      {
+        version: '1.4',
+        date: '2026-01-05',
+        description:
+          'Strict forbidden word list to eliminate generic patterns like 見出しが多く, 関心が高い',
+      },
+      {
+        version: '1.3',
+        date: '2026-01-05',
+        description:
+          'Require meaningful insights (why it matters) instead of just listing headlines',
+      },
+      {
+        version: '1.2',
+        date: '2026-01-05',
+        description:
+          'Add minimum threshold (3+ articles) to filter out noise from minor changes',
+      },
       {
         version: '1.1',
         date: '2026-01-05',

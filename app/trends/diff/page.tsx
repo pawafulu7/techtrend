@@ -260,11 +260,11 @@ export default function DiffSummaryPage() {
         <div className="p-4">
           {/* Header row */}
           <div className="mb-2 flex items-start justify-between gap-2">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
               {isNew ? (
-                <Sparkles className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+                <Sparkles className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
               ) : (
-                <Zap className="h-4 w-4 text-sky-500 dark:text-sky-400" />
+                <Zap className="h-4 w-4 shrink-0 text-sky-500 dark:text-sky-400" />
               )}
               <span
                 className={cn(
@@ -284,7 +284,7 @@ export default function DiffSummaryPage() {
 
           {/* Topic name */}
           <Link
-            href={`/?search=${encodeURIComponent(change.topic)}`}
+            href={`/?tags=${encodeURIComponent(change.topic)}&tagMode=OR`}
             className="group/link block"
           >
             <h3 className="text-foreground text-lg leading-snug font-semibold decoration-1 underline-offset-2 group-hover/link:underline">
@@ -293,7 +293,7 @@ export default function DiffSummaryPage() {
           </Link>
 
           {/* Description */}
-          <p className="text-muted-foreground mt-1.5 line-clamp-3 text-sm leading-relaxed">
+          <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
             {change.description}
           </p>
 
@@ -316,7 +316,7 @@ export default function DiffSummaryPage() {
 
         {/* Quick action */}
         <Link
-          href={`/?search=${encodeURIComponent(change.topic)}`}
+          href={`/?tags=${encodeURIComponent(change.topic)}&tagMode=OR`}
           className={cn(
             'absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100',
             isNew
@@ -333,7 +333,7 @@ export default function DiffSummaryPage() {
   // Minimal row for updated items
   const UpdatedRow = ({ change }: { change: ChangeWithCategory }) => (
     <Link
-      href={`/?search=${encodeURIComponent(change.topic)}`}
+      href={`/?tags=${encodeURIComponent(change.topic)}&tagMode=OR`}
       className="hover:bg-muted/50 group flex items-center gap-3 rounded px-3 py-2 transition-colors"
     >
       <RefreshCw className="h-4 w-4 shrink-0 text-slate-400" />
@@ -349,7 +349,7 @@ export default function DiffSummaryPage() {
 
   // Faded badge for deprecated items
   const DeprecatedBadge = ({ change }: { change: ChangeWithCategory }) => (
-    <Link href={`/?search=${encodeURIComponent(change.topic)}`}>
+    <Link href={`/?tags=${encodeURIComponent(change.topic)}&tagMode=OR`}>
       <Badge
         variant="outline"
         className="border-slate-300 bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-200 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"

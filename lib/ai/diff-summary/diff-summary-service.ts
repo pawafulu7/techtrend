@@ -123,6 +123,46 @@ interface CategoryDiffResult {
 }
 
 /**
+ * Generic topics to filter out (too broad for meaningful search)
+ */
+const GENERIC_TOPICS = new Set([
+  'ai',
+  'llm',
+  'ml',
+  '機械学習',
+  'deep learning',
+  'プログラミング',
+  '開発',
+  'エンジニアリング',
+  '技術',
+  'web',
+  'api',
+  'データ',
+  'クラウド',
+  'ソフトウェア',
+  'software',
+  'programming',
+  'development',
+  'technology',
+  'data',
+  'cloud',
+]);
+
+/**
+ * Filter out generic topics from diff summary output
+ */
+function filterGenericTopics(data: DiffSummaryOutput): DiffSummaryOutput {
+  const filteredChanges = data.changes.filter(
+    (change) => !GENERIC_TOPICS.has(change.topic.toLowerCase())
+  );
+
+  return {
+    ...data,
+    changes: filteredChanges,
+  };
+}
+
+/**
  * Diff Summary Service
  */
 export class DiffSummaryService {
@@ -212,13 +252,16 @@ export class DiffSummaryService {
         };
       }
 
+      // Filter out generic topics that are too broad for meaningful search
+      const filteredData = filterGenericTopics(result.data);
+
       // Save to database (upsert for idempotency)
-      await this.saveDiffSummary(categorySlug, current, baseline, result.data);
+      await this.saveDiffSummary(categorySlug, current, baseline, filteredData);
 
       return {
         categorySlug,
         success: true,
-        data: result.data,
+        data: filteredData,
       };
     } catch (error) {
       const errorMessage =
