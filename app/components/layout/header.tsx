@@ -1,7 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { Rss, TrendingUp, Menu, X, BarChart3, LineChart, Hash, Database, Home, Calendar } from 'lucide-react';
+import {
+  Rss,
+  TrendingUp,
+  Menu,
+  X,
+  BarChart3,
+  LineChart,
+  Hash,
+  Database,
+  Home,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -19,10 +29,9 @@ export function Header() {
   const primaryNav = [
     { href: '/', label: 'ホーム', icon: Home },
     { href: '/popular', label: '人気', icon: TrendingUp },
-    { href: '/trends/daily', label: 'デイリー', icon: Calendar },
     { href: '/sources', label: 'ソース', icon: Database },
-    { href: '/trends', label: 'トレンド', icon: TrendingUp },
-    { href: '/stats', label: '統計', icon: BarChart3 },
+    { href: '/trends', label: 'トレンド', icon: BarChart3 },
+    { href: '/stats', label: '統計', icon: LineChart },
   ];
 
   const secondaryNav = [
@@ -32,34 +41,41 @@ export function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="w-full px-6">
         <div className="flex h-10 items-center justify-between">
           {/* Logo and Site Name */}
-          <Link href="/" className="flex items-center space-x-2" data-testid="header-logo">
-            <Rss className="h-5 w-5 text-primary" />
+          <Link
+            href="/"
+            className="flex items-center space-x-2"
+            data-testid="header-logo"
+          >
+            <Rss className="text-primary h-5 w-5" />
             <span className="text-lg font-bold">{SITE_NAME}</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-3" data-testid="desktop-nav">
+          <nav
+            className="hidden items-center space-x-3 md:flex"
+            data-testid="desktop-nav"
+          >
             {/* 主要ナビゲーション */}
             {primaryNav.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
-              
+
               return (
-                <Link 
+                <Link
                   key={item.href}
                   href={item.href}
-                  aria-current={isActive ? "page" : undefined}
+                  aria-current={isActive ? 'page' : undefined}
                   data-testid={`nav-link-${item.label.toLowerCase()}`}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200",
-                    "focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
-                    isActive 
-                      ? "bg-primary text-primary-foreground shadow-sm" 
-                      : "bg-secondary/30 hover:bg-secondary/60 hover:scale-105"
+                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-200',
+                    'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-secondary/30 hover:bg-secondary/60 hover:scale-105'
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -67,13 +83,13 @@ export function Header() {
                 </Link>
               );
             })}
-            
+
             {/* ドロップダウンメニュー */}
             {/* <NavDropdown items={secondaryNav} /> */}
           </nav>
 
           {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden items-center space-x-4 md:flex">
             <ThemeToggle />
             <UserMenu />
           </div>
@@ -99,25 +115,25 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t" data-testid="mobile-nav">
+          <nav className="border-t py-4 md:hidden" data-testid="mobile-nav">
             <div className="flex flex-col space-y-2">
               {/* 主要ナビゲーション */}
               {primaryNav.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
-                
+
                 return (
-                  <Link 
+                  <Link
                     key={item.href}
                     href={item.href}
-                    aria-current={isActive ? "page" : undefined}
+                    aria-current={isActive ? 'page' : undefined}
                     data-testid={`mobile-nav-link-${item.label.toLowerCase()}`}
                     className={cn(
-                      "inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200",
-                      "focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
-                      isActive 
-                        ? "bg-primary text-primary-foreground shadow-sm" 
-                        : "hover:bg-secondary/50"
+                      'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                      'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
+                      isActive
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'hover:bg-secondary/50'
                     )}
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -126,29 +142,29 @@ export function Header() {
                   </Link>
                 );
               })}
-              
-              <div className="h-px bg-border my-2" />
-              
+
+              <div className="bg-border my-2 h-px" />
+
               {/* その他のナビゲーション */}
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pt-2 pb-1">
+              <div className="text-muted-foreground px-3 pt-2 pb-1 text-xs font-semibold tracking-wider uppercase">
                 その他
               </div>
               {secondaryNav.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
-                
+
                 return (
-                  <Link 
+                  <Link
                     key={item.href}
                     href={item.href}
-                    aria-current={isActive ? "page" : undefined}
+                    aria-current={isActive ? 'page' : undefined}
                     data-testid={`mobile-secondary-nav-link-${item.label.toLowerCase()}`}
                     className={cn(
-                      "inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200",
-                      "focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
-                      isActive 
-                        ? "bg-primary text-primary-foreground shadow-sm" 
-                        : "hover:bg-secondary/50"
+                      'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                      'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
+                      isActive
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'hover:bg-secondary/50'
                     )}
                     onClick={() => setMobileMenuOpen(false)}
                   >
