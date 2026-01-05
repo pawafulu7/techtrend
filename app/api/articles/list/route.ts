@@ -427,9 +427,16 @@ export async function GET(request: NextRequest) {
                 });
 
                 // Build mapping for missing tags
+                // Use original user input tag name as key (case-insensitive match)
                 const missingMapping: { [key: string]: string } = {};
                 tagRecords.forEach((t) => {
-                  missingMapping[t.name] = t.id;
+                  // Find the original user input that matches this DB tag (case-insensitive)
+                  const originalInput = missingTags.find(
+                    (input) => input.toLowerCase() === t.name.toLowerCase()
+                  );
+                  if (originalInput) {
+                    missingMapping[originalInput] = t.id;
+                  }
                   tagIds.push(t.id);
                 });
 
@@ -457,9 +464,16 @@ export async function GET(request: NextRequest) {
               });
 
               // Build mapping
+              // Use original user input tag name as key (case-insensitive match)
               const mapping: { [key: string]: string } = {};
               tagRecords.forEach((t) => {
-                mapping[t.name] = t.id;
+                // Find the original user input that matches this DB tag (case-insensitive)
+                const originalInput = tagList.find(
+                  (input) => input.toLowerCase() === t.name.toLowerCase()
+                );
+                if (originalInput) {
+                  mapping[originalInput] = t.id;
+                }
                 tagIds.push(t.id);
               });
 
