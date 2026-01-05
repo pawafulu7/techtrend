@@ -292,8 +292,8 @@ export default function DiffSummaryPage() {
             </h3>
           </Link>
 
-          {/* Description - truncated */}
-          <p className="text-muted-foreground mt-1.5 line-clamp-2 text-sm leading-relaxed">
+          {/* Description */}
+          <p className="text-muted-foreground mt-1.5 line-clamp-3 text-sm leading-relaxed">
             {change.description}
           </p>
 
