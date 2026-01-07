@@ -7,7 +7,6 @@ import type { Prisma, ArticleCategory } from '@prisma/client';
 import logger from '@/lib/logger';
 import { auth } from '@/lib/auth/auth';
 import { createLoaders } from '@/lib/dataloader';
-import { TagCache } from '@/lib/cache/tag-mapping-cache';
 import { normalizeArticleCategory } from '@/lib/utils/article-category-normalizer';
 import { getCursorManager } from '@/lib/pagination/cursor-manager';
 import { getDateRangeFilter } from '@/app/lib/date-utils';
@@ -55,12 +54,6 @@ const cache = new RedisCache({
 const countCache = new RedisCache({
   ttl: 300, // 5分
   namespace: '@techtrend/cache:api:count',
-});
-
-// タグキャッシュ（15分TTL）
-const tagCache = new TagCache({
-  ttl: 900,
-  namespace: '@techtrend/cache:tags',
 });
 
 /**
@@ -382,145 +375,31 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Apply tag filter with optimized approach (no JOIN)
+      // Apply tag filter with direct name matching (case-insensitive)
+      // This approach matches query-builder.ts and handles duplicate tags correctly
+      // (e.g., "ChatGPT" and "Chatgpt" both match when searching for "chatgpt")
       if (tag || tags) {
         const tagList = tags
-          ? tags.split(',').filter((t) => t.trim())
+          ? tags
+              .split(',')
+              .map((t) => t.trim())
+              .filter((t) => t.length > 0)
           : tag
             ? [tag]
             : [];
 
         if (tagList.length > 0) {
-          let tagIds: string[] = [];
-          const tagCacheStartTime = Date.now();
-          let cacheHit = false;
-          let cacheMissCount = 0;
-
-          try {
-            // Try to get tag mapping from cache
-            const cachedMapping = await tagCache.getTagMapping(tagList);
-
-            if (cachedMapping) {
-              cacheHit = true;
-              tagIds = tagList
-                .map((name) => cachedMapping[name])
-                .filter(Boolean);
-
-              // Check for missing tags
-              const missingTags = tagList.filter(
-                (name) => !cachedMapping[name]
-              );
-              cacheMissCount = missingTags.length;
-
-              if (missingTags.length > 0) {
-                // Partial cache miss - fetch missing tags from DB (case-insensitive)
-                const tagRecords = await prisma.tag.findMany({
-                  where: {
-                    OR: missingTags.map((tagName) => ({
-                      name: { equals: tagName, mode: 'insensitive' as const },
-                    })),
-                  },
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                });
-
-                // Build mapping for missing tags
-                // Use original user input tag name as key (case-insensitive match)
-                const missingMapping: { [key: string]: string } = {};
-                tagRecords.forEach((t) => {
-                  // Find the original user input that matches this DB tag (case-insensitive)
-                  const originalInput = missingTags.find(
-                    (input) => input.toLowerCase() === t.name.toLowerCase()
-                  );
-                  if (originalInput) {
-                    missingMapping[originalInput] = t.id;
-                  }
-                  tagIds.push(t.id);
-                });
-
-                // Update cache with missing tags
-                if (Object.keys(missingMapping).length > 0) {
-                  await tagCache.setTagMapping(missingTags, missingMapping);
-                }
-              }
-            } else {
-              // Complete cache miss - fetch from DB
-              cacheHit = false;
-              cacheMissCount = tagList.length;
-
-              // Case-insensitive tag search
-              const tagRecords = await prisma.tag.findMany({
-                where: {
-                  OR: tagList.map((tagName) => ({
+          if (tagMode === 'AND') {
+            // AND mode: Articles must have ALL specified tags (case-insensitive)
+            const tagConditions: ArticleWhereInput[] = tagList.map(
+              (tagName) => ({
+                tags: {
+                  some: {
                     name: { equals: tagName, mode: 'insensitive' as const },
-                  })),
+                  },
                 },
-                select: {
-                  id: true,
-                  name: true,
-                },
-              });
-
-              // Build mapping
-              // Use original user input tag name as key (case-insensitive match)
-              const mapping: { [key: string]: string } = {};
-              tagRecords.forEach((t) => {
-                // Find the original user input that matches this DB tag (case-insensitive)
-                const originalInput = tagList.find(
-                  (input) => input.toLowerCase() === t.name.toLowerCase()
-                );
-                if (originalInput) {
-                  mapping[originalInput] = t.id;
-                }
-                tagIds.push(t.id);
-              });
-
-              // Save to cache
-              if (Object.keys(mapping).length > 0) {
-                await tagCache.setTagMapping(tagList, mapping);
-              }
-            }
-          } catch (cacheError) {
-            // Cache error - fallback to direct DB query
-            logger.warn(
-              `tag-cache.error: Falling back to direct DB query - ${(cacheError as Error).message}`
+              })
             );
-
-            // Case-insensitive tag search (fallback)
-            const tagRecords = await prisma.tag.findMany({
-              where: {
-                OR: tagList.map((tagName) => ({
-                  name: { equals: tagName, mode: 'insensitive' as const },
-                })),
-              },
-              select: {
-                id: true,
-              },
-            });
-
-            tagIds = tagRecords.map((t) => t.id);
-          } finally {
-            // Log cache performance metrics
-            const metrics = `tag-cache.metrics: hit=${cacheHit}, miss=${cacheMissCount}/${tagList.length}, duration=${Date.now() - tagCacheStartTime}ms`;
-            console.log(metrics);
-            logger.info(metrics);
-          }
-
-          if (tagIds.length === 0) {
-            // 未存在タグの場合、ヒットなし
-            where.id = { in: [] };
-          } else if (tagMode === 'AND') {
-            // AND mode: Articles must have all specified tags
-            // 既存のAND条件とマージ
-            const tagConditions: ArticleWhereInput[] = tagIds.map((tagId) => ({
-              tags: {
-                some: {
-                  id: tagId,
-                },
-              },
-            }));
             if (!where.AND) {
               where.AND = [];
             } else if (!Array.isArray(where.AND)) {
@@ -528,12 +407,13 @@ export async function GET(request: NextRequest) {
             }
             where.AND = [...where.AND, ...tagConditions];
           } else {
-            // OR mode: Articles must have at least one of the specified tags
+            // OR mode: Articles must have at least one of the specified tags (case-insensitive)
+            // Note: Prisma's `in` doesn't support mode, so we use OR conditions
             where.tags = {
               some: {
-                id: {
-                  in: tagIds,
-                },
+                OR: tagList.map((tagName) => ({
+                  name: { equals: tagName, mode: 'insensitive' as const },
+                })),
               },
             };
           }
