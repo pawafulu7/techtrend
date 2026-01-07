@@ -219,7 +219,7 @@ describe('Multiple Sources Filter API', () => {
             },
             tags: {
               some: {
-                name: 'React',
+                name: { equals: 'React', mode: 'insensitive' },
               },
             },
           }),

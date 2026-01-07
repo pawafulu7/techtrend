@@ -228,7 +228,7 @@ describe('Articles API', () => {
           where: expect.objectContaining({
             tags: {
               some: {
-                name: 'React'
+                name: { equals: 'React', mode: 'insensitive' }
               }
             }
           })

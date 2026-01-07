@@ -304,14 +304,14 @@ describe('/api/articles - Extended Tests', () => {
               {
                 tags: {
                   some: {
-                    name: 'React'
+                    name: { equals: 'React', mode: 'insensitive' }
                   }
                 }
               },
               {
                 tags: {
                   some: {
-                    name: 'TypeScript'
+                    name: { equals: 'TypeScript', mode: 'insensitive' }
                   }
                 }
               }
@@ -347,9 +347,10 @@ describe('/api/articles - Extended Tests', () => {
             ]),
             tags: {
               some: {
-                name: {
-                  in: ['React', 'Vue']
-                }
+                OR: [
+                  { name: { equals: 'React', mode: 'insensitive' } },
+                  { name: { equals: 'Vue', mode: 'insensitive' } }
+                ]
               }
             }
           })
@@ -380,14 +381,14 @@ describe('/api/articles - Extended Tests', () => {
               {
                 tags: {
                   some: {
-                    name: 'React'
+                    name: { equals: 'React', mode: 'insensitive' }
                   }
                 }
               },
               {
                 tags: {
                   some: {
-                    name: 'Vue'
+                    name: { equals: 'Vue', mode: 'insensitive' }
                   }
                 }
               }

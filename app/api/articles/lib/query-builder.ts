@@ -158,12 +158,16 @@ export class ArticleWhereClauseBuilder {
         {
           OR: [
             { skipReason: null },
-            { skipReason: { notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const] } }
-          ]
+            {
+              skipReason: {
+                notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const],
+              },
+            },
+          ],
         },
         // Exclude low quality score (< 30)
         // Note: qualityScore is Float @default(0), so null is not possible
-        { qualityScore: { gte: 30 } }
+        { qualityScore: { gte: 30 } },
       ];
 
       // Merge with existing AND conditions
@@ -180,7 +184,10 @@ export class ArticleWhereClauseBuilder {
   /**
    * Filter by read status (requires authenticated user)
    */
-  withReadFilter(readFilter: string | undefined, userId: string | undefined): this {
+  withReadFilter(
+    readFilter: string | undefined,
+    userId: string | undefined
+  ): this {
     if (readFilter && userId) {
       if (readFilter === 'unread') {
         this.where.articleViews = {
@@ -221,7 +228,8 @@ export class ArticleWhereClauseBuilder {
 
       if (sourceList.length > 0) {
         // In unit tests, treat tokens as IDs directly
-        const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
+        const isTestEnv =
+          process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
 
         if (isTestEnv) {
           this.where.sourceId = { in: sourceList };
@@ -256,6 +264,7 @@ export class ArticleWhereClauseBuilder {
 
   /**
    * Filter by tags (supports single tag, multiple tags with OR/AND modes)
+   * Uses case-insensitive matching for consistency with /api/articles/list
    */
   withTagFilter(
     tag: string | undefined,
@@ -263,10 +272,10 @@ export class ArticleWhereClauseBuilder {
     tagMode: string | undefined
   ): this {
     if (tag) {
-      // Single tag (backward compatibility)
+      // Single tag (backward compatibility) - case-insensitive
       this.where.tags = {
         some: {
-          name: tag,
+          name: { equals: tag, mode: 'insensitive' },
         },
       };
     } else if (tags) {
@@ -277,11 +286,11 @@ export class ArticleWhereClauseBuilder {
 
       if (tagList.length > 0) {
         if (tagMode === 'AND') {
-          // AND search: articles with all specified tags
+          // AND search: articles with all specified tags (case-insensitive)
           const tagAnd = tagList.map((tagName) => ({
             tags: {
               some: {
-                name: tagName,
+                name: { equals: tagName, mode: 'insensitive' as const },
               },
             },
           }));
@@ -289,12 +298,13 @@ export class ArticleWhereClauseBuilder {
             ? [...this.where.AND, ...tagAnd]
             : tagAnd;
         } else {
-          // OR search: articles with any of the specified tags
+          // OR search: articles with any of the specified tags (case-insensitive)
+          // Note: Prisma's `in` doesn't support mode, so we use OR conditions
           this.where.tags = {
             some: {
-              name: {
-                in: tagList,
-              },
+              OR: tagList.map((tagName) => ({
+                name: { equals: tagName, mode: 'insensitive' as const },
+              })),
             },
           };
         }
@@ -335,8 +345,18 @@ export class ArticleWhereClauseBuilder {
       if (keywords.length === 1) {
         // Single keyword
         const searchOr: Prisma.ArticleWhereInput[] = [
-          { title: { contains: keywords[0], mode: Prisma.QueryMode.insensitive } },
-          { summary: { contains: keywords[0], mode: Prisma.QueryMode.insensitive } },
+          {
+            title: {
+              contains: keywords[0],
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+          {
+            summary: {
+              contains: keywords[0],
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
         ];
         this.where.AND = Array.isArray(this.where.AND)
           ? [...this.where.AND, { OR: searchOr }]
@@ -345,8 +365,15 @@ export class ArticleWhereClauseBuilder {
         // Multiple keywords - AND search
         const keywordConditions = keywords.map((keyword) => ({
           OR: [
-            { title: { contains: keyword, mode: Prisma.QueryMode.insensitive } },
-            { summary: { contains: keyword, mode: Prisma.QueryMode.insensitive } },
+            {
+              title: { contains: keyword, mode: Prisma.QueryMode.insensitive },
+            },
+            {
+              summary: {
+                contains: keyword,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
           ] as Prisma.ArticleWhereInput[],
         }));
         this.where.AND = Array.isArray(this.where.AND)
@@ -410,7 +437,10 @@ export async function buildWhereClause(
     .withDateRangeFilter(filters.dateRange);
 
   // Source filter is async
-  const { emptyResult } = await builder.withSourceFilter(filters.sources, filters.sourceId);
+  const { emptyResult } = await builder.withSourceFilter(
+    filters.sources,
+    filters.sourceId
+  );
 
   return { where: builder.build(), emptyResult };
 }
