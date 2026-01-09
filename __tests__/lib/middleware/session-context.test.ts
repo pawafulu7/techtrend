@@ -193,6 +193,39 @@ describe('session-context', () => {
       expect(context1.session).toBe(mockSession);
       expect(context2.session).toBeUndefined();
     });
+
+    it('should preserve existing session data in context', () => {
+      const existingSession = {
+        user: {
+          id: 'existing-user',
+          name: 'Existing',
+          email: 'existing@test.com',
+        },
+        expires: new Date(Date.now() + 86400000).toISOString(),
+      };
+      const originalContext = {
+        params: { id: 'article-123' },
+        session: existingSession,
+      };
+
+      const extended = extendWithSessionContext(originalContext);
+
+      // Existing session should be preserved, not overwritten
+      expect(extended.session).toBe(existingSession);
+      expect(extended.params).toEqual({ id: 'article-123' });
+    });
+
+    it('should preserve existing sessionPromise in context', async () => {
+      const existingPromise = Promise.resolve(mockSession);
+      const originalContext = {
+        sessionPromise: existingPromise,
+      };
+
+      const extended = extendWithSessionContext(originalContext);
+
+      // Existing sessionPromise should be preserved
+      expect(extended.sessionPromise).toBe(existingPromise);
+    });
   });
 
   describe('integration: middleware chain simulation', () => {

@@ -72,6 +72,27 @@ const createDeleteRequest = (id: string) =>
     headers: { Origin: 'http://localhost' },
   });
 
+// Common context helper for route handlers
+// Used by both PUT and DELETE test sections
+const createContext = (
+  id: string,
+  options: { userId?: string; includeSession?: boolean } = {}
+) => {
+  const { userId = 'test-user-id', includeSession = true } = options;
+  const base = {
+    params: Promise.resolve({ id }),
+  };
+  if (!includeSession) return base;
+  return {
+    ...base,
+    session: {
+      user: { id: userId, email: 'test@example.com', name: 'Test User' },
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    },
+    validatedUser: { id: userId, deletedAt: null },
+  };
+};
+
 describe('/api/comments/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -83,25 +104,6 @@ describe('/api/comments/[id]', () => {
     const getPutHandler = async () => {
       const { PUT } = await import('@/app/api/comments/[id]/route');
       return PUT;
-    };
-
-    const createContext = (
-      id: string,
-      options: { userId?: string; includeSession?: boolean } = {}
-    ) => {
-      const { userId = 'test-user-id', includeSession = true } = options;
-      const base = {
-        params: Promise.resolve({ id }),
-      };
-      if (!includeSession) return base;
-      return {
-        ...base,
-        session: {
-          user: { id: userId, email: 'test@example.com', name: 'Test User' },
-          expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        },
-        validatedUser: { id: userId, deletedAt: null },
-      };
     };
 
     describe('正常系', () => {
@@ -254,25 +256,6 @@ describe('/api/comments/[id]', () => {
     const getDeleteHandler = async () => {
       const { DELETE } = await import('@/app/api/comments/[id]/route');
       return DELETE;
-    };
-
-    const createContext = (
-      id: string,
-      options: { userId?: string; includeSession?: boolean } = {}
-    ) => {
-      const { userId = 'test-user-id', includeSession = true } = options;
-      const base = {
-        params: Promise.resolve({ id }),
-      };
-      if (!includeSession) return base;
-      return {
-        ...base,
-        session: {
-          user: { id: userId, email: 'test@example.com', name: 'Test User' },
-          expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        },
-        validatedUser: { id: userId, deletedAt: null },
-      };
     };
 
     describe('正常系', () => {

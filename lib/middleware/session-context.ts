@@ -64,11 +64,15 @@ export function createSessionContext(): SessionContext {
  * Extend existing context with SessionContext
  * Preserves existing properties like params from Next.js dynamic routes
  *
+ * Note: Existing session/sessionPromise properties in context are preserved
+ * (SessionContext defaults are spread first, then context overwrites)
+ *
  * @param context - Existing context object (may include params, etc.)
  * @returns Extended context with SessionContext fields
  */
 export function extendWithSessionContext<T extends object>(
   context?: T
 ): T & SessionContext {
-  return { ...context, ...createSessionContext() } as T & SessionContext;
+  // Spread SessionContext first, then context - preserves existing session data
+  return { ...createSessionContext(), ...context } as T & SessionContext;
 }
