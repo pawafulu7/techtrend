@@ -324,7 +324,8 @@ describe('csrf-protection', () => {
       );
 
       const result = await wrappedHandler(request);
-      expect(handler).toHaveBeenCalledWith(request);
+      // Handler is now called with request and SessionContext for auth() optimization
+      expect(handler).toHaveBeenCalledWith(request, expect.any(Object));
       expect(result).toEqual({ success: true });
     });
 
