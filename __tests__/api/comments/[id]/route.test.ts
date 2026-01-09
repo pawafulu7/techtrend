@@ -85,14 +85,24 @@ describe('/api/comments/[id]', () => {
       return PUT;
     };
 
-    const createContext = (id: string, userId = 'test-user-id') => ({
-      params: Promise.resolve({ id }),
-      session: {
-        user: { id: userId, email: 'test@example.com', name: 'Test User' },
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      },
-      validatedUser: { id: userId, deletedAt: null },
-    });
+    const createContext = (
+      id: string,
+      options: { userId?: string; includeSession?: boolean } = {}
+    ) => {
+      const { userId = 'test-user-id', includeSession = true } = options;
+      const base = {
+        params: Promise.resolve({ id }),
+      };
+      if (!includeSession) return base;
+      return {
+        ...base,
+        session: {
+          user: { id: userId, email: 'test@example.com', name: 'Test User' },
+          expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        },
+        validatedUser: { id: userId, deletedAt: null },
+      };
+    };
 
     describe('正常系', () => {
       it('コメントを更新して200を返す', async () => {
@@ -177,7 +187,11 @@ describe('/api/comments/[id]', () => {
           content: 'Updated content',
         });
 
-        const response = await PUT(request, createContext('comment-123'));
+        // SessionContext optimization: use includeSession=false to test unauthenticated path
+        const response = await PUT(
+          request,
+          createContext('comment-123', { includeSession: false })
+        );
 
         expect(response.status).toBe(401);
         const data = await response.json();
@@ -242,14 +256,24 @@ describe('/api/comments/[id]', () => {
       return DELETE;
     };
 
-    const createContext = (id: string, userId = 'test-user-id') => ({
-      params: Promise.resolve({ id }),
-      session: {
-        user: { id: userId, email: 'test@example.com', name: 'Test User' },
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      },
-      validatedUser: { id: userId, deletedAt: null },
-    });
+    const createContext = (
+      id: string,
+      options: { userId?: string; includeSession?: boolean } = {}
+    ) => {
+      const { userId = 'test-user-id', includeSession = true } = options;
+      const base = {
+        params: Promise.resolve({ id }),
+      };
+      if (!includeSession) return base;
+      return {
+        ...base,
+        session: {
+          user: { id: userId, email: 'test@example.com', name: 'Test User' },
+          expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        },
+        validatedUser: { id: userId, deletedAt: null },
+      };
+    };
 
     describe('正常系', () => {
       it('コメントを削除して204を返す', async () => {
@@ -279,7 +303,11 @@ describe('/api/comments/[id]', () => {
         const DELETE = await getDeleteHandler();
         const request = createDeleteRequest('comment-123');
 
-        const response = await DELETE(request, createContext('comment-123'));
+        // SessionContext optimization: use includeSession=false to test unauthenticated path
+        const response = await DELETE(
+          request,
+          createContext('comment-123', { includeSession: false })
+        );
 
         expect(response.status).toBe(401);
         const data = await response.json();
