@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import { checkRateLimit, RateLimitError } from '@/lib/rate-limiter';
 import { getRateLimitConfig } from '@/lib/config/rate-limits';
 import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
 import { trace } from '@opentelemetry/api';
+import { resolveSession, type SessionContext } from './session-context';
 
-type RouteHandler = (request: NextRequest, context?: any) => Promise<Response> | Response;
+type RouteHandler = (
+  request: NextRequest,
+  context?: any
+) => Promise<Response> | Response;
 
 interface WithRateLimitOptions {
   keyResolver?: (request: NextRequest, session: any) => Promise<string>;
-  onAllowed?: (limitInfo: { limit: number; remaining: number; reset: Date }) => void;
+  onAllowed?: (limitInfo: {
+    limit: number;
+    remaining: number;
+    reset: Date;
+  }) => void;
   onBlocked?: (error: RateLimitError) => void;
 }
 
@@ -60,8 +67,8 @@ export function withRateLimit(
       const config = getRateLimitConfig(configKey);
       const limiter = createRateLimiterFromConfig(configKey);
 
-      // Fetch session once and reuse (CodexMCP fix: avoid double auth() calls)
-      const session = await auth();
+      // Resolve session from context or fetch via auth() (SessionContext optimization)
+      const session = await resolveSession(context);
 
       // Resolve identity key
       const limitKey = options?.keyResolver
@@ -71,11 +78,17 @@ export function withRateLimit(
       // Check rate limit
       const rateLimitInfo = await checkRateLimit(limitKey, limiter);
 
-      // Success: Execute handler with session in context (avoid double auth() calls)
+      // Success: Execute handler with session in context (SessionContext shared across chain)
       const response = await handler(request, { ...context, session });
       response.headers.set('X-RateLimit-Limit', rateLimitInfo.limit.toString());
-      response.headers.set('X-RateLimit-Remaining', rateLimitInfo.remaining.toString());
-      response.headers.set('X-RateLimit-Reset', rateLimitInfo.reset.toISOString());
+      response.headers.set(
+        'X-RateLimit-Remaining',
+        rateLimitInfo.remaining.toString()
+      );
+      response.headers.set(
+        'X-RateLimit-Reset',
+        rateLimitInfo.reset.toISOString()
+      );
 
       // Telemetry (debug level - only log allowed events at debug to reduce noise)
       span?.addEvent('ratelimit.allowed', {
@@ -92,7 +105,9 @@ export function withRateLimit(
     } catch (error) {
       if (error instanceof RateLimitError) {
         // Rate limit exceeded
-        const retryAfter = Math.ceil((error.reset.getTime() - Date.now()) / 1000);
+        const retryAfter = Math.ceil(
+          (error.reset.getTime() - Date.now()) / 1000
+        );
 
         // Telemetry (always log blocked events)
         span?.addEvent('ratelimit.blocked', {
