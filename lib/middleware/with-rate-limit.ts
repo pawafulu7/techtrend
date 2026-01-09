@@ -3,7 +3,7 @@ import { checkRateLimit, RateLimitError } from '@/lib/rate-limiter';
 import { getRateLimitConfig } from '@/lib/config/rate-limits';
 import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
 import { trace } from '@opentelemetry/api';
-import { resolveSession, type SessionContext } from './session-context';
+import { resolveSession } from './session-context';
 
 type RouteHandler = (
   request: NextRequest,

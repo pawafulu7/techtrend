@@ -7,7 +7,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/database';
 import { logger } from '@/lib/logger';
 import { resolveSession, type SessionContext } from './session-context';

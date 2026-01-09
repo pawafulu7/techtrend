@@ -5,7 +5,6 @@
  * Integrates with Auth.js for secure API-to-API communication validation.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import {
   resolveSession,
   extendWithSessionContext,
@@ -300,7 +299,10 @@ export function withCSRFProtection<T, C = undefined>(
   : (request: NextRequest, context: C) => Promise<T | NextResponse> {
   return (async (request: NextRequest, context?: C) => {
     // Extend context with SessionContext for auth() call optimization
-    const extendedContext = extendWithSessionContext(context);
+    // Cast to object for type safety - context is either undefined or an object with params
+    const extendedContext = extendWithSessionContext(
+      context as object | undefined
+    );
 
     const csrfResponse = await csrfProtection(request, extendedContext);
     if (csrfResponse) {
