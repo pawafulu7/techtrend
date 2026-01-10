@@ -57,17 +57,23 @@ async function generateSummariesHandler(_request: NextRequest) {
           tagName => !existingTagNames.includes(tagName)
         );
 
-        // 新規タグを並列でupsert（パフォーマンス最適化）
-        const tagConnections = await Promise.all(
-          uniqueNewTags.map(async tagName => {
-            const tag = await prisma.tag.upsert({
-              where: { name: tagName },
-              update: {},
-              create: { name: tagName },
-            });
-            return { id: tag.id };
-          })
-        );
+        // N+1最適化: createMany + findMany パターン（接続プール圧迫を回避）
+        let tagConnections: { id: string }[] = [];
+        if (uniqueNewTags.length > 0) {
+          // 1. 全タグを一括作成（重複はスキップ）
+          await prisma.tag.createMany({
+            data: uniqueNewTags.map(name => ({ name })),
+            skipDuplicates: true
+          });
+
+          // 2. 作成/既存のタグを一括取得
+          const existingTags = await prisma.tag.findMany({
+            where: { name: { in: uniqueNewTags } },
+            select: { id: true }
+          });
+
+          tagConnections = existingTags.map(tag => ({ id: tag.id }));
+        }
 
         // category正規化
         const normalizedCategory = result.category
