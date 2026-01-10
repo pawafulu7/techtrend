@@ -102,12 +102,25 @@ export class QualityMonitor {
    * 品質トレンドを取得
    */
   async getQualityTrend(days: number = 7): Promise<QualityTrend[]> {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
+    const now = new Date();
 
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - days + 1);
-    startDate.setHours(0, 0, 0, 0);
+    // Use UTC for consistent date handling across timezones
+    const todayUTC = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      23, 59, 59, 999
+    );
+
+    const startDateUTC = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - days + 1,
+      0, 0, 0, 0
+    );
+
+    const today = new Date(todayUTC);
+    const startDate = new Date(startDateUTC);
 
     // Single query to get all articles in the date range (N+1 optimization)
     const articles = await this.prisma.article.findMany({
@@ -126,7 +139,7 @@ export class QualityMonitor {
       },
     });
 
-    // Group by date in memory
+    // Group by date in memory (using UTC date keys)
     const trendMap = new Map<string, number[]>();
 
     for (const article of articles) {
@@ -141,8 +154,14 @@ export class QualityMonitor {
     const trends: QualityTrend[] = [];
 
     for (let i = 0; i < days; i++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
+      // Use UTC arithmetic to ensure consistent date keys
+      const dateUTC = Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() - days + 1 + i,
+        0, 0, 0, 0
+      );
+      const date = new Date(dateUTC);
       const dateKey = date.toISOString().split('T')[0];
 
       const scores = trendMap.get(dateKey);
