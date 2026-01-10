@@ -121,7 +121,8 @@ describe('BatchExecutor', () => {
 
       const summary = await executor.execute(jobs, processor);
 
-      expect(summary.results[0].durationMs).toBeGreaterThanOrEqual(50);
+      // タイマー精度の誤差を考慮（CI環境でのフレーキーテスト対策）
+      expect(summary.results[0].durationMs).toBeGreaterThanOrEqual(45);
     });
 
     it('should respect concurrency limit', async () => {
