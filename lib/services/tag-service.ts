@@ -5,10 +5,9 @@
  * Uses upsert pattern instead of createMany to avoid race conditions.
  */
 
-import { PrismaClient, Tag } from '@prisma/client';
+import { Tag } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { TagNormalizer } from './tag-normalizer';
-
-const prisma = new PrismaClient();
 
 export interface TagServiceOptions {
   /** Maximum number of tags to process in a single call */

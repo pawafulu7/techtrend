@@ -111,7 +111,8 @@ async function mergeGroup(
   }
 
   const canonicalId = stats[0].id;
-  const duplicateIds = group.ids.filter((id) => id !== canonicalId);
+  // Use stats to get duplicateIds (safer than group.ids which may contain deleted tags)
+  const duplicateIds = stats.slice(1).map((s) => s.id);
 
   if (dryRun) {
     // Count articles that would be reassigned
