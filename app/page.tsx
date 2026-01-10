@@ -80,6 +80,15 @@ export default async function Home({ searchParams }: PageProps) {
 
   const { sources, groupedSources } = sourceData;
 
+  // arXivソースを除外（専用の/papersページで表示するため）
+  const filteredSources = sources.filter((s) => s.id !== ARXIV_SOURCE_ID);
+  const filteredGroupedSources = groupedSources
+    .map((group) => ({
+      ...group,
+      sources: group.sources.filter((s) => s.id !== ARXIV_SOURCE_ID),
+    }))
+    .filter((group) => group.sources.length > 0);
+
   // Get filter preferences from cookie
   const filterPreferences = getFilterPreferencesFromCookies(cookieStore);
 
@@ -123,8 +132,8 @@ export default async function Home({ searchParams }: PageProps) {
         <aside className="hidden lg:block lg:w-64 lg:flex-shrink-0 lg:overflow-y-auto lg:border-r lg:border-gray-200 lg:bg-gray-50 dark:lg:border-gray-700 dark:lg:bg-gray-900/50">
           <div className="p-4">
             <Filters
-              sources={sources}
-              groupedSources={groupedSources}
+              sources={filteredSources}
+              groupedSources={filteredGroupedSources}
               tags={tags}
               initialSourceIds={initialSourceIds}
             />
@@ -138,8 +147,8 @@ export default async function Home({ searchParams }: PageProps) {
             <div className="flex items-center justify-between">
               <div className="flex flex-shrink-0 items-center gap-2">
                 <MobileFilters
-                  sources={sources}
-                  groupedSources={groupedSources}
+                  sources={filteredSources}
+                  groupedSources={filteredGroupedSources}
                   tags={tags}
                   initialSourceIds={initialSourceIds}
                 />
