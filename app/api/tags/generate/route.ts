@@ -3,6 +3,7 @@ import { prisma } from '@/lib/database';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
+import { getTagIdsForConnect } from '@/lib/services/tag-service';
 
 async function generateTagsHandler(_request: NextRequest) {
   try {
@@ -10,17 +11,17 @@ async function generateTagsHandler(_request: NextRequest) {
     const articlesWithoutTags = await prisma.article.findMany({
       where: {
         tags: {
-          none: {}
-        }
+          none: {},
+        },
       },
       include: {
         source: true,
-        tags: true
+        tags: true,
       },
       orderBy: {
-        publishedAt: 'desc'
+        publishedAt: 'desc',
       },
-      take: 10
+      take: 10,
     });
 
     let generated = 0;
@@ -42,7 +43,7 @@ async function generateTagsHandler(_request: NextRequest) {
           article.content,
           undefined,
           undefined,
-          article.id  // Schedule embedding job
+          article.id // Schedule embedding job
         );
 
         // タグは既に正規化済み
@@ -52,20 +53,10 @@ async function generateTagsHandler(_request: NextRequest) {
           continue;
         }
 
-        // N+1最適化: createMany + skipDuplicates + findMany パターン
-        // 1. 全タグを一括作成（重複はスキップ）
-        await prisma.tag.createMany({
-          data: normalizedTags.map(name => ({ name })),
-          skipDuplicates: true
+        // Safe tag creation using upsert pattern (prevents race condition duplicates)
+        const tagConnections = await getTagIdsForConnect(normalizedTags, {
+          normalize: false, // Already normalized by service
         });
-
-        // 2. 作成/既存のタグを一括取得
-        const existingTags = await prisma.tag.findMany({
-          where: { name: { in: normalizedTags } },
-          select: { id: true }
-        });
-
-        const tagConnections = existingTags.map(tag => ({ id: tag.id }));
 
         // 記事にタグを追加
         if (tagConnections.length > 0) {
@@ -73,9 +64,9 @@ async function generateTagsHandler(_request: NextRequest) {
             where: { id: article.id },
             data: {
               tags: {
-                connect: tagConnections
-              }
-            }
+                connect: tagConnections,
+              },
+            },
           });
           generated++;
         }
@@ -89,14 +80,14 @@ async function generateTagsHandler(_request: NextRequest) {
       data: {
         generated,
         errors,
-        total: articlesWithoutTags.length
-      }
+        total: articlesWithoutTags.length,
+      },
     });
   } catch {
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to generate tags' 
+      {
+        success: false,
+        error: 'Failed to generate tags',
       },
       { status: 500 }
     );

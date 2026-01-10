@@ -4,6 +4,7 @@ import { getAppDependencies } from '@/lib/di/bootstrap';
 import { normalizeArticleCategory } from '@/lib/utils/article-category-normalizer';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
+import { getTagIdsForConnect } from '@/lib/services/tag-service';
 
 async function generateSummariesHandler(_request: NextRequest) {
   try {
@@ -14,17 +15,17 @@ async function generateSummariesHandler(_request: NextRequest) {
           { summary: null },
           { summary: '' },
           { detailedSummary: null },
-          { detailedSummary: '' }
-        ]
+          { detailedSummary: '' },
+        ],
       },
       include: {
         source: true,
-        tags: true
+        tags: true,
       },
       orderBy: {
-        publishedAt: 'desc'
+        publishedAt: 'desc',
       },
-      take: 10
+      take: 10,
     });
 
     let generated = 0;
@@ -49,31 +50,19 @@ async function generateSummariesHandler(_request: NextRequest) {
         });
 
         // 既存のタグ名を取得
-        const existingTagNames = article.tags.map(tag => tag.name);
+        const existingTagNames = article.tags.map((tag) => tag.name);
 
         // tags重複除外：result.tags内の重複 + 既存タグとの重複
         const resultTags = result.tags ?? [];
         const uniqueNewTags = [...new Set(resultTags)].filter(
-          tagName => !existingTagNames.includes(tagName)
+          (tagName) => !existingTagNames.includes(tagName)
         );
 
-        // N+1最適化: createMany + findMany パターン（接続プール圧迫を回避）
-        let tagConnections: { id: string }[] = [];
-        if (uniqueNewTags.length > 0) {
-          // 1. 全タグを一括作成（重複はスキップ）
-          await prisma.tag.createMany({
-            data: uniqueNewTags.map(name => ({ name })),
-            skipDuplicates: true
-          });
-
-          // 2. 作成/既存のタグを一括取得
-          const existingTags = await prisma.tag.findMany({
-            where: { name: { in: uniqueNewTags } },
-            select: { id: true }
-          });
-
-          tagConnections = existingTags.map(tag => ({ id: tag.id }));
-        }
+        // Safe tag creation using upsert pattern (prevents race condition duplicates)
+        const tagConnections =
+          uniqueNewTags.length > 0
+            ? await getTagIdsForConnect(uniqueNewTags, { normalize: false })
+            : [];
 
         // category正規化
         const normalizedCategory = result.category
@@ -93,17 +82,22 @@ async function generateSummariesHandler(_request: NextRequest) {
             qualityScore: result.qualityScore,
             summaryComputedAt: now,
             qualityScoreComputedAt: now,
-            ...(result.translatedTitle && { translatedTitle: result.translatedTitle }),
+            ...(result.translatedTitle && {
+              translatedTitle: result.translatedTitle,
+            }),
             ...(normalizedCategory && { category: normalizedCategory }),
             ...(tagConnections.length > 0 && {
-              tags: { connect: tagConnections }
-            })
-          }
+              tags: { connect: tagConnections },
+            }),
+          },
         });
 
         generated++;
       } catch (error) {
-        console.error(`[API] Summary generation failed for article ${article.id} (${article.title.substring(0, 30)}...):`, error);
+        console.error(
+          `[API] Summary generation failed for article ${article.id} (${article.title.substring(0, 30)}...):`,
+          error
+        );
         errors++;
       }
     }
@@ -113,15 +107,15 @@ async function generateSummariesHandler(_request: NextRequest) {
       data: {
         generated,
         errors,
-        total: articlesWithoutSummary.length
-      }
+        total: articlesWithoutSummary.length,
+      },
     });
   } catch (error) {
     console.error('[API] Batch summary generation failed:', error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to generate summaries'
+        error: 'Failed to generate summaries',
       },
       { status: 500 }
     );
