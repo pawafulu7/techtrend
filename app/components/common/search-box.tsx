@@ -62,7 +62,7 @@ export function SearchBox() {
         // Silent fail
       }
     },
-    [router, searchParams]
+    [router, searchParams, pathname]
   );
 
   // デバウンスされた検索実行
