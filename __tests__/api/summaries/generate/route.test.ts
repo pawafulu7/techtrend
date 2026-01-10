@@ -32,11 +32,13 @@ jest.mock('@/lib/database', () => ({
       findMany: jest.fn(),
       update: jest.fn(),
     },
-    tag: {
-      createMany: jest.fn(),
-      findMany: jest.fn(),
-    },
   },
+}));
+
+// Mock TagService (uses upsert pattern instead of createMany)
+const mockGetTagIdsForConnect = jest.fn();
+jest.mock('@/lib/services/tag-service', () => ({
+  getTagIdsForConnect: (...args: unknown[]) => mockGetTagIdsForConnect(...args),
 }));
 jest.mock('@/lib/rate-limiter', () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ limit: 10, remaining: 9, reset: new Date() }),
@@ -84,11 +86,10 @@ describe('/api/summaries/generate', () => {
     };
 
     (getAppDependencies as jest.Mock).mockReturnValue({ service: mockService });
-    // N+1最適化: createMany + findMany パターン
-    (prisma.tag.createMany as jest.Mock).mockResolvedValue({ count: 2 });
-    (prisma.tag.findMany as jest.Mock).mockResolvedValue([
-      { id: 'tag-1', name: 'test' },
-      { id: 'tag-2', name: 'typescript' },
+    // TagService pattern: getTagIdsForConnect returns array of { id }
+    mockGetTagIdsForConnect.mockResolvedValue([
+      { id: 'tag-1' },
+      { id: 'tag-2' },
     ]);
     (prisma.article.update as jest.Mock).mockResolvedValue({});
 
@@ -135,26 +136,17 @@ describe('/api/summaries/generate', () => {
 
     (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
     (getAppDependencies as jest.Mock).mockReturnValue({ service: mockService });
-    // N+1最適化: createMany + findMany パターン
-    (prisma.tag.createMany as jest.Mock).mockResolvedValue({ count: 1 });
-    (prisma.tag.findMany as jest.Mock).mockResolvedValue([{ id: 'tag-new', name: 'new' }]);
+    // TagService pattern: getTagIdsForConnect handles deduplication internally
+    mockGetTagIdsForConnect.mockResolvedValue([{ id: 'tag-new' }]);
     (prisma.article.update as jest.Mock).mockResolvedValue({});
 
     const request = new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' });
     await POST(request);
 
-    // 'new'のみがcreateMany対象（重複除外確認）
-    expect(prisma.tag.createMany).toHaveBeenCalledTimes(1);
-    expect(prisma.tag.createMany).toHaveBeenCalledWith({
-      data: [{ name: 'new' }],
-      skipDuplicates: true
-    });
-
-    // findManyで'new'のみ取得
-    expect(prisma.tag.findMany).toHaveBeenCalledWith({
-      where: { name: { in: ['new'] } },
-      select: { id: true }
-    });
+    // 'new'のみがTagService対象（重複除外確認）
+    // TagService receives only unique new tags after filtering existing
+    expect(mockGetTagIdsForConnect).toHaveBeenCalledTimes(1);
+    expect(mockGetTagIdsForConnect).toHaveBeenCalledWith(['new'], { normalize: false });
   });
 
   it('should handle service errors gracefully', async () => {
