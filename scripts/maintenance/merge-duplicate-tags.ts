@@ -38,14 +38,29 @@ interface TagStats {
 }
 
 async function getDuplicateGroups(): Promise<DuplicateGroup[]> {
-  const duplicates = await prisma.$queryRaw<{ name: string; ids: string[] }[]>`
-    SELECT name, array_agg(id ORDER BY id) as ids
+  // Use COLLATE "C" (binary) to bypass potentially corrupt index
+  // Step 1: Get duplicate names with binary collation
+  const duplicateNames = await prisma.$queryRaw<{ name: string }[]>`
+    SELECT name COLLATE "C" as name
     FROM "Tag"
-    GROUP BY name
+    GROUP BY name COLLATE "C"
     HAVING COUNT(*) > 1
     ORDER BY COUNT(*) DESC
   `;
-  return duplicates;
+
+  // Step 2: For each name, get all IDs using raw query with binary collation
+  const result: DuplicateGroup[] = [];
+  for (const { name } of duplicateNames) {
+    const tags = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "Tag" WHERE name COLLATE "C" = ${name} COLLATE "C" ORDER BY id ASC
+    `;
+    result.push({
+      name,
+      ids: tags.map((t) => t.id),
+    });
+  }
+
+  return result;
 }
 
 async function getTagStats(tagIds: string[]): Promise<TagStats[]> {
@@ -59,19 +74,40 @@ async function getTagStats(tagIds: string[]): Promise<TagStats[]> {
   `;
 }
 
-async function mergeGroup(
-  group: DuplicateGroup,
-  dryRun: boolean
-): Promise<{
+interface MergeResult {
   canonicalId: string;
   mergedCount: number;
   articlesReassigned: number;
   categoryInherited: boolean;
-}> {
+  skipped: boolean;
+}
+
+async function mergeGroup(
+  group: DuplicateGroup,
+  dryRun: boolean
+): Promise<MergeResult> {
   const stats = await getTagStats(group.ids);
 
+  // Skip if no tags found (already deleted by cleanup-unused-tags)
   if (stats.length === 0) {
-    throw new Error(`No stats found for tag group: ${group.name}`);
+    return {
+      canonicalId: '',
+      mergedCount: 0,
+      articlesReassigned: 0,
+      categoryInherited: false,
+      skipped: true,
+    };
+  }
+
+  // Skip if only one tag remains (no merge needed)
+  if (stats.length === 1) {
+    return {
+      canonicalId: stats[0].id,
+      mergedCount: 0,
+      articlesReassigned: 0,
+      categoryInherited: false,
+      skipped: true,
+    };
   }
 
   const canonicalId = stats[0].id;
@@ -96,6 +132,7 @@ async function mergeGroup(
       mergedCount: duplicateIds.length,
       articlesReassigned: Number(reassignCount[0]?.count ?? 0),
       categoryInherited,
+      skipped: false,
     };
   }
 
@@ -158,6 +195,7 @@ async function mergeGroup(
       mergedCount: duplicateIds.length,
       articlesReassigned: reassignResult,
       categoryInherited,
+      skipped: false,
     };
   });
 }
@@ -193,6 +231,7 @@ async function mergeDuplicateTags(options: MergeOptions): Promise<void> {
       let totalDuplicates = 0;
       let totalArticlesToReassign = 0;
       let categoriesInherited = 0;
+      let skippedGroups = 0;
 
       console.log('\nAnalyzing all groups...');
 
@@ -204,6 +243,10 @@ async function mergeDuplicateTags(options: MergeOptions): Promise<void> {
 
         for (const group of batch) {
           const result = await mergeGroup(group, true);
+          if (result.skipped) {
+            skippedGroups++;
+            continue;
+          }
           totalDuplicates += result.mergedCount;
           totalArticlesToReassign += result.articlesReassigned;
           if (result.categoryInherited) categoriesInherited++;
@@ -211,7 +254,9 @@ async function mergeDuplicateTags(options: MergeOptions): Promise<void> {
       }
 
       console.log('\n\nDry Run Summary:');
-      console.log(`  Duplicate groups: ${duplicateGroups.length}`);
+      console.log(`  Duplicate groups found: ${duplicateGroups.length}`);
+      console.log(`  Groups to skip (already cleaned): ${skippedGroups}`);
+      console.log(`  Groups to merge: ${duplicateGroups.length - skippedGroups}`);
       console.log(`  Total duplicates to remove: ${totalDuplicates}`);
       console.log(`  Articles to reassign: ${totalArticlesToReassign}`);
       console.log(`  Categories to inherit: ${categoriesInherited}`);
@@ -223,6 +268,7 @@ async function mergeDuplicateTags(options: MergeOptions): Promise<void> {
     let totalMerged = 0;
     let totalArticlesReassigned = 0;
     let totalCategoriesInherited = 0;
+    let skippedGroups = 0;
     let errors = 0;
 
     for (let i = 0; i < duplicateGroups.length; i += batchSize) {
@@ -235,6 +281,10 @@ async function mergeDuplicateTags(options: MergeOptions): Promise<void> {
       for (const group of batch) {
         try {
           const result = await mergeGroup(group, false);
+          if (result.skipped) {
+            skippedGroups++;
+            continue;
+          }
           totalMerged += result.mergedCount;
           totalArticlesReassigned += result.articlesReassigned;
           if (result.categoryInherited) totalCategoriesInherited++;
@@ -252,7 +302,8 @@ async function mergeDuplicateTags(options: MergeOptions): Promise<void> {
     console.log('\n' + '='.repeat(60));
     console.log('Merge Summary');
     console.log('='.repeat(60));
-    console.log(`Duplicate groups processed: ${duplicateGroups.length}`);
+    console.log(`Duplicate groups found: ${duplicateGroups.length}`);
+    console.log(`Groups skipped (already cleaned): ${skippedGroups}`);
     console.log(`Total duplicate tags removed: ${totalMerged}`);
     console.log(`Articles reassigned: ${totalArticlesReassigned}`);
     console.log(`Categories inherited: ${totalCategoriesInherited}`);
