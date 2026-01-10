@@ -23,6 +23,7 @@ interface HomeClientInfiniteProps {
   enableInfiniteScroll?: boolean;
   initialSortBy?: string;
   initialSourceIds?: string[];
+  excludeSources?: string; // 除外するソースID（カンマ区切り）
 }
 
 export function HomeClientInfinite({
@@ -31,7 +32,8 @@ export function HomeClientInfinite({
   tags: _tags,
   enableInfiniteScroll = true,
   initialSortBy,
-  initialSourceIds: _initialSourceIds
+  initialSourceIds: _initialSourceIds,
+  excludeSources,
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
   const scrollContainerRef = useRef<HTMLDivElement>(null); // 参照は保持するが使用しない
@@ -39,7 +41,7 @@ export function HomeClientInfinite({
   const [isCategoryChanging, setIsCategoryChanging] = useState(false);
   const excludeUnprocessed = true; // デフォルトで要約なし記事を除外（常に有効）
   const currentScrollPositionRef = useRef<number>(0); // 現在のスクロール位置を常に追跡
-  
+
   // 記事詳細から戻ってきたかどうかをチェック
   const isReturningFromArticle = searchParams.has('returning');
 
@@ -68,7 +70,12 @@ export function HomeClientInfinite({
       });
 
       // 最も大きい値を使用（実際にスクロールしている要素を検出）
-      const scrollY = Math.max(windowScrollY, containerScrollY, mainScrollY, maxScroll);
+      const scrollY = Math.max(
+        windowScrollY,
+        containerScrollY,
+        mainScrollY,
+        maxScroll
+      );
 
       currentScrollPositionRef.current = scrollY;
     };
@@ -133,37 +140,42 @@ export function HomeClientInfinite({
     }
     setPreviousCategory(currentCategory);
   }, [currentCategory, previousCategory]);
-  
+
   // URLパラメータからフィルターを構築
   const filters = useMemo(() => {
     const params: Record<string, string> = {};
-    
+
     // まず、sources以外のパラメータをコピー
     searchParams.forEach((value, key) => {
       // ページパラメータとreturningパラメータ、そしてsources関連は後で処理
-      if (key !== 'page' && key !== 'limit' && key !== 'returning' && 
-          key !== 'sources' && key !== 'sourceId') {
+      if (
+        key !== 'page' &&
+        key !== 'limit' &&
+        key !== 'returning' &&
+        key !== 'sources' &&
+        key !== 'sourceId'
+      ) {
         params[key] = value;
       }
     });
-    
+
     // URLパラメータにsortByがない場合、initialSortByを使用
     if (!params.sortBy && initialSortBy) {
       params.sortBy = initialSortBy;
     }
-    
+
     // URLパラメータにsourcesがない場合の処理
     // 重要: URLに明示的にsources=noneがある場合と、パラメータがない場合を区別する
     const hasSourcesParam = searchParams.has('sources');
     const hasSourceIdParam = searchParams.has('sourceId');
-    
+
     // URLにsourcesパラメータがある場合は、それを使用
     if (hasSourcesParam) {
       params.sources = searchParams.get('sources')!;
     } else if (hasSourceIdParam) {
       params.sourceId = searchParams.get('sourceId')!;
     }
-    
+
     if (!hasSourcesParam && !hasSourceIdParam) {
       // Cookie由来のinitialSourceIdsを使用
       if (_initialSourceIds !== undefined) {
@@ -196,8 +208,24 @@ export function HomeClientInfinite({
       }
     }
 
+    // 特定のソースを除外（例: arXiv論文をホームページから除外）
+    if (excludeSources) {
+      params.excludeSources = excludeSources;
+    }
+
     return params;
-  }, [searchParams, initialSortBy, isReturningFromArticle, excludeUnprocessed, isPersonalized, hasPreferences, personalizedCategories, personalizedPeriod, _initialSourceIds]);
+  }, [
+    searchParams,
+    initialSortBy,
+    isReturningFromArticle,
+    excludeUnprocessed,
+    isPersonalized,
+    hasPreferences,
+    personalizedCategories,
+    personalizedPeriod,
+    _initialSourceIds,
+    excludeSources,
+  ]);
 
   const {
     data,
@@ -209,18 +237,19 @@ export function HomeClientInfinite({
     error,
   } = useInfiniteArticles({
     ...filters,
-    includeUserData: true // Include favorites and read status in API response
+    includeUserData: true, // Include favorites and read status in API response
   });
 
   // ページごとの記事を1つの配列にフラット化（重複除去付き）
   const allArticles = useMemo(() => {
     if (!data) return [];
     // flatMapで全ページの記事を取得
-    const articles = data.pages.flatMap(page => page.data.items);
+    const articles = data.pages.flatMap((page) => page.data.items);
 
     // 重複除去: 同じIDの記事は最初のものだけを保持
-    const uniqueArticles = articles.filter((article, index, self) =>
-      index === self.findIndex(a => a.id === article.id)
+    const uniqueArticles = articles.filter(
+      (article, index, self) =>
+        index === self.findIndex((a) => a.id === article.id)
     );
 
     return uniqueArticles;
@@ -230,54 +259,55 @@ export function HomeClientInfinite({
   const totalCount = data?.pages[0]?.data.total || 0;
 
   // スクロール位置復元フックを使用（記事詳細から戻った時のみ有効）
-  const {
-    isRestoring,
-    currentPage,
-    targetPages,
-    cancelRestoration
-  } = useScrollRestoration(
-    allArticles.length,
-    data?.pages.length || 0,
-    filters,
-    fetchNextPage,
-    hasNextPage || false,
-    isFetchingNextPage,
-    scrollContainerRef,  // スクロールコンテナの参照を追加
-    isReturningFromArticle  // 記事詳細から戻ってきたかのフラグ
-  );
+  const { isRestoring, currentPage, targetPages, cancelRestoration } =
+    useScrollRestoration(
+      allArticles.length,
+      data?.pages.length || 0,
+      filters,
+      fetchNextPage,
+      hasNextPage || false,
+      isFetchingNextPage,
+      scrollContainerRef, // スクロールコンテナの参照を追加
+      isReturningFromArticle // 記事詳細から戻ってきたかのフラグ
+    );
 
   // 記事クリック時のコールバック
-  const handleArticleClick = useCallback((articleId?: string) => {
-    // 追跡していたスクロール位置を保存
-    const scrollY = currentScrollPositionRef.current;
+  const handleArticleClick = useCallback(
+    (articleId?: string) => {
+      // 追跡していたスクロール位置を保存
+      const scrollY = currentScrollPositionRef.current;
 
-    if (scrollY > SCROLL.MIN_SCROLL_SAVE_THRESHOLD) {
-      // articleIdがある場合のみ記事のインデックスを取得
-      const idx = articleId ? allArticles.findIndex(a => a.id === articleId) : -1;
+      if (scrollY > SCROLL.MIN_SCROLL_SAVE_THRESHOLD) {
+        // articleIdがある場合のみ記事のインデックスを取得
+        const idx = articleId
+          ? allArticles.findIndex((a) => a.id === articleId)
+          : -1;
 
-      const scrollKey = buildScrollStorageKey();
-      const payload = {
-        scrollY,
-        timestamp: Date.now(),
-        articleId: articleId ?? null,
-        articleIndex: idx >= 0 ? idx : undefined,
-        totalArticlesLoaded: allArticles.length,
-      };
+        const scrollKey = buildScrollStorageKey();
+        const payload = {
+          scrollY,
+          timestamp: Date.now(),
+          articleId: articleId ?? null,
+          articleIndex: idx >= 0 ? idx : undefined,
+          totalArticlesLoaded: allArticles.length,
+        };
 
-      try {
-        sessionStorage.setItem(scrollKey, JSON.stringify(payload));
-      } catch {
-        // Safari Private Browsing等での保存失敗時は復元なしでフォールバック
-        // console.warn('Failed to save scroll position to sessionStorage');
+        try {
+          sessionStorage.setItem(scrollKey, JSON.stringify(payload));
+        } catch {
+          // Safari Private Browsing等での保存失敗時は復元なしでフォールバック
+          // console.warn('Failed to save scroll position to sessionStorage');
+        }
+      } else {
+        // 小さいスクロール位置は保存しない
       }
-    } else {
-      // 小さいスクロール位置は保存しない
-    }
-  }, [allArticles]);
+    },
+    [allArticles]
+  );
 
   if (isError) {
     return (
-      <div className="text-center text-red-500 py-8">
+      <div className="py-8 text-center text-red-500">
         エラーが発生しました: {error?.message || 'Unknown error'}
       </div>
     );
@@ -286,7 +316,11 @@ export function HomeClientInfinite({
   return (
     <>
       {/* 記事リスト */}
-      <div ref={scrollContainerRef} id="main-scroll-container" className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 relative">
+      <div
+        ref={scrollContainerRef}
+        id="main-scroll-container"
+        className="relative flex-1 overflow-y-auto px-4 py-4 lg:px-6"
+      >
         {/* スクロール位置復元中のローディング表示 */}
         {isRestoring && (
           <ScrollRestorationLoading
@@ -297,7 +331,7 @@ export function HomeClientInfinite({
           />
         )}
 
-        {(isLoading && !isCategoryChanging) ? (
+        {isLoading && !isCategoryChanging ? (
           <ArticleSkeleton />
         ) : allArticles.length > 0 ? (
           <div className="relative">
@@ -306,11 +340,15 @@ export function HomeClientInfinite({
               viewMode={viewMode}
               onArticleClick={handleArticleClick}
               currentFilters={filters}
-              className={isCategoryChanging ? "opacity-40 pointer-events-none" : undefined}
+              className={
+                isCategoryChanging
+                  ? 'pointer-events-none opacity-40'
+                  : undefined
+              }
             />
             {isCategoryChanging && (
               <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-background/80"
+                className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center"
                 role="status"
                 aria-live="polite"
               >
@@ -344,7 +382,7 @@ export function HomeClientInfinite({
         ) : isLoading ? (
           <ArticleSkeleton />
         ) : (
-          <div className="flex items-center justify-center min-h-[600px]">
+          <div className="flex min-h-[600px] items-center justify-center">
             <div className="text-center text-gray-500">
               記事が見つかりませんでした
             </div>
@@ -354,7 +392,7 @@ export function HomeClientInfinite({
 
       {/* 記事件数表示 */}
       {totalCount > 0 && (
-        <div className="text-sm text-gray-600 dark:text-gray-400 px-4 lg:px-6 pb-2">
+        <div className="px-4 pb-2 text-sm text-gray-600 lg:px-6 dark:text-gray-400">
           {totalCount}件の記事 ({allArticles.length}件表示中)
         </div>
       )}
