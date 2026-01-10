@@ -6,6 +6,7 @@ import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { QueryBatchProcessor } from '@/lib/batch/batch-processor';
 
 async function summarizePostHandler(request: NextRequest) {
   try {
@@ -13,10 +14,13 @@ async function summarizePostHandler(request: NextRequest) {
     const { articleId } = body;
 
     if (!articleId) {
-      return NextResponse.json({
-        success: false,
-        error: 'Missing required field: articleId',
-      } as ApiResponse<never>, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Missing required field: articleId',
+        } as ApiResponse<never>,
+        { status: 400 }
+      );
     }
 
     // Get article
@@ -25,26 +29,35 @@ async function summarizePostHandler(request: NextRequest) {
     });
 
     if (!article) {
-      return NextResponse.json({
-        success: false,
-        error: 'Article not found',
-      } as ApiResponse<never>, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Article not found',
+        } as ApiResponse<never>,
+        { status: 404 }
+      );
     }
 
     if (!article.content) {
-      return NextResponse.json({
-        success: false,
-        error: 'Article has no content to summarize',
-      } as ApiResponse<never>, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Article has no content to summarize',
+        } as ApiResponse<never>,
+        { status: 400 }
+      );
     }
 
     // Check API key
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({
-        success: false,
-        error: 'Gemini API key not configured',
-      } as ApiResponse<never>, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Gemini API key not configured',
+        } as ApiResponse<never>,
+        { status: 500 }
+      );
     }
 
     // Generate summary with unified format
@@ -58,7 +71,7 @@ async function summarizePostHandler(request: NextRequest) {
     // Update article with unified format data
     const updatedArticle = await prisma.article.update({
       where: { id: articleId },
-      data: { 
+      data: {
         summary: result.summary,
         detailedSummary: result.detailedSummary,
         articleType: result.articleType,
@@ -78,10 +91,13 @@ async function summarizePostHandler(request: NextRequest) {
       data: updatedArticle,
     } as ApiResponse<ArticleWithRelations>);
   } catch {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to generate summary',
-    } as ApiResponse<never>, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to generate summary',
+      } as ApiResponse<never>,
+      { status: 500 }
+    );
   }
 }
 
@@ -92,10 +108,13 @@ async function summarizePutHandler(request: NextRequest) {
     const { articleIds, regenerate = false } = body;
 
     if (!articleIds || !Array.isArray(articleIds)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Missing or invalid articleIds array',
-      } as ApiResponse<never>, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Missing or invalid articleIds array',
+        } as ApiResponse<never>,
+        { status: 400 }
+      );
     }
 
     // Get articles
@@ -125,36 +144,40 @@ async function summarizePutHandler(request: NextRequest) {
     // Check API key
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({
-        success: false,
-        error: 'Gemini API key not configured',
-      } as ApiResponse<never>, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Gemini API key not configured',
+        } as ApiResponse<never>,
+        { status: 500 }
+      );
     }
 
     // Generate summaries with unified format
     const summarizer = new ArticleSummarizer(apiKey);
     const summaries = await summarizer.summarizeBatchUnified(
-      articles.map(a => ({
+      articles.map((a) => ({
         id: a.id,
         title: a.title,
         content: a.content!,
       }))
     );
 
-    // Update articles with unified format data
-    let processed = 0;
-    for (const [articleId, result] of summaries) {
-      await prisma.article.update({
+    // N+1最適化: QueryBatchProcessorでバッチ更新
+    const updateQueries = Array.from(summaries).map(([articleId, result]) =>
+      prisma.article.update({
         where: { id: articleId },
-        data: { 
+        data: {
           summary: result.summary,
           detailedSummary: result.detailedSummary,
           articleType: result.articleType,
           summaryVersion: result.summaryVersion,
         },
-      });
-      processed++;
-    }
+      })
+    );
+
+    await QueryBatchProcessor.executeQueries(updateQueries);
+    const processed = updateQueries.length;
 
     // バッチ処理後にキャッシュを無効化
     if (processed > 0) {
@@ -170,10 +193,13 @@ async function summarizePutHandler(request: NextRequest) {
       },
     } as ApiResponse<{ processed: number; total: number; message: string }>);
   } catch {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to process batch summarization',
-    } as ApiResponse<never>, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to process batch summarization',
+      } as ApiResponse<never>,
+      { status: 500 }
+    );
   }
 }
 

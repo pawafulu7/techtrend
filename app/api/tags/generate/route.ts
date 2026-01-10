@@ -48,16 +48,24 @@ async function generateTagsHandler(_request: NextRequest) {
         // タグは既に正規化済み
         const normalizedTags = result.tags;
 
-        // タグを作成または取得
-        const tagConnections: { id: string }[] = [];
-        for (const tagName of normalizedTags) {
-          const tag = await prisma.tag.upsert({
-            where: { name: tagName },
-            update: {},
-            create: { name: tagName }
-          });
-          tagConnections.push({ id: tag.id });
+        if (normalizedTags.length === 0) {
+          continue;
         }
+
+        // N+1最適化: createMany + skipDuplicates + findMany パターン
+        // 1. 全タグを一括作成（重複はスキップ）
+        await prisma.tag.createMany({
+          data: normalizedTags.map(name => ({ name })),
+          skipDuplicates: true
+        });
+
+        // 2. 作成/既存のタグを一括取得
+        const existingTags = await prisma.tag.findMany({
+          where: { name: { in: normalizedTags } },
+          select: { id: true }
+        });
+
+        const tagConnections = existingTags.map(tag => ({ id: tag.id }));
 
         // 記事にタグを追加
         if (tagConnections.length > 0) {

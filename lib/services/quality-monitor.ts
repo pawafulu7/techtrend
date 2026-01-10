@@ -102,43 +102,76 @@ export class QualityMonitor {
    * 品質トレンドを取得
    */
   async getQualityTrend(days: number = 7): Promise<QualityTrend[]> {
+    const now = new Date();
+
+    // Use UTC for consistent date handling across timezones
+    const todayUTC = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      23, 59, 59, 999
+    );
+
+    const startDateUTC = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - days + 1,
+      0, 0, 0, 0
+    );
+
+    const today = new Date(todayUTC);
+    const startDate = new Date(startDateUTC);
+
+    // Single query to get all articles in the date range (N+1 optimization)
+    const articles = await this.prisma.article.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: today,
+        },
+        qualityScore: {
+          gt: 0,
+        },
+      },
+      select: {
+        createdAt: true,
+        qualityScore: true,
+      },
+    });
+
+    // Group by date in memory (using UTC date keys)
+    const trendMap = new Map<string, number[]>();
+
+    for (const article of articles) {
+      const dateKey = article.createdAt.toISOString().split('T')[0];
+      if (!trendMap.has(dateKey)) {
+        trendMap.set(dateKey, []);
+      }
+      trendMap.get(dateKey)!.push(article.qualityScore!);
+    }
+
+    // Convert to QualityTrend array, sorted by date
     const trends: QualityTrend[] = [];
-    const today = new Date();
 
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
+    for (let i = 0; i < days; i++) {
+      // Use UTC arithmetic to ensure consistent date keys
+      const dateUTC = Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() - days + 1 + i,
+        0, 0, 0, 0
+      );
+      const date = new Date(dateUTC);
+      const dateKey = date.toISOString().split('T')[0];
 
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-
-      const articles = await this.prisma.article.findMany({
-        where: {
-          createdAt: {
-            gte: date,
-            lt: nextDate,
-          },
-          qualityScore: {
-            gt: 0,  // nullではなく0より大きい値でフィルタリング
-          },
-        },
-        select: {
-          qualityScore: true,
-        },
-      });
-
-      if (articles.length > 0) {
-        const scores = articles.map(a => a.qualityScore!);
+      const scores = trendMap.get(dateKey);
+      if (scores && scores.length > 0) {
         const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-        const lowQualityCount = scores.filter(s => s < 70).length;
-        const highQualityCount = scores.filter(s => s >= 70).length;
-
         trends.push({
           date,
           averageScore: Math.round(averageScore * 10) / 10,
-          lowQualityCount,
-          highQualityCount,
+          lowQualityCount: scores.filter(s => s < 70).length,
+          highQualityCount: scores.filter(s => s >= 70).length,
         });
       }
     }
