@@ -102,43 +102,57 @@ export class QualityMonitor {
    * 品質トレンドを取得
    */
   async getQualityTrend(days: number = 7): Promise<QualityTrend[]> {
-    const trends: QualityTrend[] = [];
     const today = new Date();
+    today.setHours(23, 59, 59, 999);
 
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - days + 1);
+    startDate.setHours(0, 0, 0, 0);
 
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-
-      const articles = await this.prisma.article.findMany({
-        where: {
-          createdAt: {
-            gte: date,
-            lt: nextDate,
-          },
-          qualityScore: {
-            gt: 0,  // nullではなく0より大きい値でフィルタリング
-          },
+    // Single query to get all articles in the date range (N+1 optimization)
+    const articles = await this.prisma.article.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: today,
         },
-        select: {
-          qualityScore: true,
+        qualityScore: {
+          gt: 0,
         },
-      });
+      },
+      select: {
+        createdAt: true,
+        qualityScore: true,
+      },
+    });
 
-      if (articles.length > 0) {
-        const scores = articles.map(a => a.qualityScore!);
+    // Group by date in memory
+    const trendMap = new Map<string, number[]>();
+
+    for (const article of articles) {
+      const dateKey = article.createdAt.toISOString().split('T')[0];
+      if (!trendMap.has(dateKey)) {
+        trendMap.set(dateKey, []);
+      }
+      trendMap.get(dateKey)!.push(article.qualityScore!);
+    }
+
+    // Convert to QualityTrend array, sorted by date
+    const trends: QualityTrend[] = [];
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateKey = date.toISOString().split('T')[0];
+
+      const scores = trendMap.get(dateKey);
+      if (scores && scores.length > 0) {
         const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-        const lowQualityCount = scores.filter(s => s < 70).length;
-        const highQualityCount = scores.filter(s => s >= 70).length;
-
         trends.push({
           date,
           averageScore: Math.round(averageScore * 10) / 10,
-          lowQualityCount,
-          highQualityCount,
+          lowQualityCount: scores.filter(s => s < 70).length,
+          highQualityCount: scores.filter(s => s >= 70).length,
         });
       }
     }
