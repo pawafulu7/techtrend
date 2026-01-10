@@ -1,4 +1,17 @@
-export type SourceCategoryId = 'foreign' | 'domestic' | 'company' | 'presentation' | 'ai' | 'llm';
+export type SourceCategoryId =
+  | 'foreign'
+  | 'domestic'
+  | 'company'
+  | 'presentation'
+  | 'ai'
+  | 'llm';
+
+/**
+ * arXiv AI source ID
+ * Used for filtering academic papers from regular articles
+ */
+export const ARXIV_SOURCE_ID = 'cmfxa7efs0001teo0kjt70c5k';
+export const ARXIV_SOURCE_NAME = 'arXiv AI';
 
 /**
  * DevelopersIO source IDs (Classmethod Inc.)
@@ -40,30 +53,30 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
     name: '海外ソース',
     description: '海外の技術情報サイト',
     sourceIds: [
-      'cmdq3nww70003tegxm78oydnb',  // Dev.to
-      'hacker_news_202508',          // Hacker News
-      'github_blog_202508',          // GitHub Blog
-      'cloudflare_blog_202508',      // Cloudflare Blog
-      'mozilla_hacks_202508',        // Mozilla Hacks
-      'cmdq3nwwz0008tegx2eu8cozq',  // Stack Overflow Blog
-      'cmdq43ofy0000teolba9vrndf',  // Google Developers Blog
-      'medium_engineering_202508',   // Medium Engineering
-      'cmdq4382o0000tecrle79yxxl',  // AWS
-      'cmdq43k070000tekrnqlawd1y'   // SRE
-    ]
+      'cmdq3nww70003tegxm78oydnb', // Dev.to
+      'hacker_news_202508', // Hacker News
+      'github_blog_202508', // GitHub Blog
+      'cloudflare_blog_202508', // Cloudflare Blog
+      'mozilla_hacks_202508', // Mozilla Hacks
+      'cmdq3nwwz0008tegx2eu8cozq', // Stack Overflow Blog
+      'cmdq43ofy0000teolba9vrndf', // Google Developers Blog
+      'medium_engineering_202508', // Medium Engineering
+      'cmdq4382o0000tecrle79yxxl', // AWS
+      'cmdq43k070000tekrnqlawd1y', // SRE
+    ],
   },
   domestic: {
     id: 'domestic',
     name: '国内情報サイト',
     description: '日本の技術情報サイト',
     sourceIds: [
-      'cmdq440c90000tewuti7ng0un',  // Qiita Popular
-      'cmdq3nwwp0006tegxz53w9zva',  // Zenn
-      'cmdq3nww60000tegxi8ruki95',  // はてなブックマーク
-      'cmdq3nwwf0004tegxuxj97z1k',  // InfoQ Japan
-      'cmdq3nwwu0007tegxcstlc8zt',  // Publickey
-      'cmdq3nwwk0005tegxdjv21wae'   // Think IT
-    ]
+      'cmdq440c90000tewuti7ng0un', // Qiita Popular
+      'cmdq3nwwp0006tegxz53w9zva', // Zenn
+      'cmdq3nww60000tegxi8ruki95', // はてなブックマーク
+      'cmdq3nwwf0004tegxuxj97z1k', // InfoQ Japan
+      'cmdq3nwwu0007tegxcstlc8zt', // Publickey
+      'cmdq3nwwk0005tegxdjv21wae', // Think IT
+    ],
   },
   company: {
     id: 'company',
@@ -71,66 +84,68 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
     description: '日本企業の技術ブログ',
     sourceIds: [
       // 個別企業ブログ
-      'freee_tech_blog',            // freee Developers Hub
-      'cyberagent_tech_blog',       // CyberAgent Developers Blog
-      'dena_tech_blog',             // DeNA Engineering
-      'smarthr_tech_blog',          // SmartHR Tech Blog
-      'lycorp_tech_blog',           // LY Corporation Tech Blog
-      'gmo_tech_blog',              // GMO Developers
-      'sansan_tech_blog',           // Sansan Builders Box
-      'mercari_tech_blog',          // Mercari Engineering
-      'zozo_tech_blog',             // ZOZO TECH BLOG
-      'moneyforward_tech_blog',     // Money Forward Developers Blog
-      'hatena_tech_blog',           // Hatena Developer Blog
-      'hatena_blog_dev',            // 企業技術ブログ（hatena.blog/dev/entries）
-      'pepabo_tech_blog',           // ペパボテックブログ
-      'cookpad_tech_blog',          // Cookpad Tech Life
+      'freee_tech_blog', // freee Developers Hub
+      'cyberagent_tech_blog', // CyberAgent Developers Blog
+      'dena_tech_blog', // DeNA Engineering
+      'smarthr_tech_blog', // SmartHR Tech Blog
+      'lycorp_tech_blog', // LY Corporation Tech Blog
+      'gmo_tech_blog', // GMO Developers
+      'sansan_tech_blog', // Sansan Builders Box
+      'mercari_tech_blog', // Mercari Engineering
+      'zozo_tech_blog', // ZOZO TECH BLOG
+      'moneyforward_tech_blog', // Money Forward Developers Blog
+      'hatena_tech_blog', // Hatena Developer Blog
+      'hatena_blog_dev', // 企業技術ブログ（hatena.blog/dev/entries）
+      'pepabo_tech_blog', // ペパボテックブログ
+      'cookpad_tech_blog', // Cookpad Tech Life
       // DevelopersIO（クラスメソッド社）
-      'developersio_aws',           // DevelopersIO AWS
-      'developersio_security',      // DevelopersIO Security
-      'developersio_ai',            // DevelopersIO AI
-      'developersio_claude',        // DevelopersIO Claude
-      'developersio_mcp'            // DevelopersIO MCP
-    ]
+      'developersio_aws', // DevelopersIO AWS
+      'developersio_security', // DevelopersIO Security
+      'developersio_ai', // DevelopersIO AI
+      'developersio_claude', // DevelopersIO Claude
+      'developersio_mcp', // DevelopersIO MCP
+    ],
   },
   presentation: {
     id: 'presentation',
     name: 'プレゼンテーション',
     description: 'スライド・プレゼン資料',
     sourceIds: [
-      'speakerdeck_8a450c43f9418ff6',  // Speaker Deck
-      'docswell_a4539889f7debebd'      // Docswell
-    ]
+      'speakerdeck_8a450c43f9418ff6', // Speaker Deck
+      'docswell_a4539889f7debebd', // Docswell
+    ],
   },
   ai: {
     id: 'ai',
     name: 'AI',
     description: 'AI関連の技術情報',
     sourceIds: [
-      'cmfwpq7dc0000te8m6fd12f0x',  // OpenAI Blog
-      'cmdwmplco0001tec833nye4ak',  // Hugging Face Blog
-      'cmfxa7efj0000teo06dhbox6e',  // Hugging Face Papers
-      'cmfxa7efs0001teo0kjt70c5k',  // arXiv AI
-      'cmfxa7efx0002teo03tglf5fs',  // Zenn AI
-      'cmfxa7egc0003teo0ofke77yu',  // Qiita AI
-      'developersio_ai',             // DevelopersIO AI (generative-ai)
-      'developersio_claude',         // DevelopersIO Claude
-      'developersio_mcp'             // DevelopersIO MCP
-    ]
+      'cmfwpq7dc0000te8m6fd12f0x', // OpenAI Blog
+      'cmdwmplco0001tec833nye4ak', // Hugging Face Blog
+      'cmfxa7efj0000teo06dhbox6e', // Hugging Face Papers
+      'cmfxa7efs0001teo0kjt70c5k', // arXiv AI
+      'cmfxa7efx0002teo03tglf5fs', // Zenn AI
+      'cmfxa7egc0003teo0ofke77yu', // Qiita AI
+      'developersio_ai', // DevelopersIO AI (generative-ai)
+      'developersio_claude', // DevelopersIO Claude
+      'developersio_mcp', // DevelopersIO MCP
+    ],
   },
   llm: {
     id: 'llm',
     name: 'LLM',
     description: '大規模言語モデル関連',
     sourceIds: [
-      'cmdwmplc10000tec8vg2t9r2o',  // Google AI Blog
-    ]
-  }
+      'cmdwmplc10000tec8vg2t9r2o', // Google AI Blog
+    ],
+  },
 };
 
 // ヘルパー関数
-export function getCategoryBySourceId(sourceId: string): SourceCategory | undefined {
-  return Object.values(SOURCE_CATEGORIES).find(category => 
+export function getCategoryBySourceId(
+  sourceId: string
+): SourceCategory | undefined {
+  return Object.values(SOURCE_CATEGORIES).find((category) =>
     category.sourceIds.includes(sourceId)
   );
 }
@@ -148,16 +163,21 @@ export function getSourceIdsByCategory(categoryId: SourceCategoryId): string[] {
 }
 
 // ソースをカテゴリごとにグループ化
-export function groupSourcesByCategory(sources: Array<{ id: string; name: string }>): Map<SourceCategory, Array<{ id: string; name: string }>> {
-  const grouped = new Map<SourceCategory, Array<{ id: string; name: string }>>();
-  
+export function groupSourcesByCategory(
+  sources: Array<{ id: string; name: string }>
+): Map<SourceCategory, Array<{ id: string; name: string }>> {
+  const grouped = new Map<
+    SourceCategory,
+    Array<{ id: string; name: string }>
+  >();
+
   // まず全カテゴリを初期化
-  getAllCategories().forEach(category => {
+  getAllCategories().forEach((category) => {
     grouped.set(category, []);
   });
-  
+
   // ソースをカテゴリごとに振り分け
-  sources.forEach(source => {
+  sources.forEach((source) => {
     const category = getCategoryBySourceId(source.id);
     if (category) {
       const categorySources = grouped.get(category) || [];
@@ -165,6 +185,6 @@ export function groupSourcesByCategory(sources: Array<{ id: string; name: string
       grouped.set(category, categorySources);
     }
   });
-  
+
   return grouped;
 }

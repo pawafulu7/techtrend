@@ -11,6 +11,7 @@ import {
   Hash,
   Database,
   Home,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -29,6 +30,7 @@ export function Header() {
   const primaryNav = [
     { href: '/', label: 'ホーム', icon: Home },
     { href: '/popular', label: '人気', icon: TrendingUp },
+    { href: '/papers', label: '論文', icon: FileText },
     { href: '/sources', label: 'ソース', icon: Database },
     { href: '/trends', label: 'トレンド', icon: BarChart3 },
     { href: '/stats', label: '統計', icon: LineChart },

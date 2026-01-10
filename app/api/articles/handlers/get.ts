@@ -9,11 +9,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
-import { LayeredCache, type ArticleQueryParams } from '@/lib/cache/layered-cache';
+import {
+  LayeredCache,
+  type ArticleQueryParams,
+} from '@/lib/cache/layered-cache';
 import { auth } from '@/lib/auth/auth';
-import { MetricsCollector, withDbTiming, withCacheTiming } from '@/lib/metrics/performance';
+import {
+  MetricsCollector,
+  withDbTiming,
+  withCacheTiming,
+} from '@/lib/metrics/performance';
 import { categoryFilterService } from '@/lib/personalization/category-filter-service';
-import type { PersonalizedFilterOptions, PersonalizedSortBy } from '@/lib/personalization/types';
+import type {
+  PersonalizedFilterOptions,
+  PersonalizedSortBy,
+} from '@/lib/personalization/types';
 import logger from '@/lib/logger';
 
 import {
@@ -50,12 +60,16 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
   const parsedPage = Number.parseInt(pageParam ?? '1', 10);
   const parsedLimit = Number.parseInt(limitParam ?? '20', 10);
   const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-  const limit = Number.isFinite(parsedLimit) ? Math.min(100, Math.max(1, parsedLimit)) : 20;
+  const limit = Number.isFinite(parsedLimit)
+    ? Math.min(100, Math.max(1, parsedLimit))
+    : 20;
 
   // Parse sort parameters
   const sortByParam = searchParams.get('sortBy');
   const sortBy = sortByParam || 'publishedAt';
-  const finalSortBy = VALID_SORT_FIELDS.includes(sortBy as (typeof VALID_SORT_FIELDS)[number])
+  const finalSortBy = VALID_SORT_FIELDS.includes(
+    sortBy as (typeof VALID_SORT_FIELDS)[number]
+  )
     ? sortBy
     : 'publishedAt';
   const rawSortOrderParam = searchParams.get('sortOrder');
@@ -75,10 +89,13 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
   // Low quality article filter - default false (new articles have qualityScore=0)
   const excludeLowQualityParam = searchParams.get('excludeLowQuality');
   const excludeLowQuality = excludeLowQualityParam === 'true';
+  // Exclude specific sources (e.g., arXiv papers from home page)
+  const excludeSources = searchParams.get('excludeSources') ?? undefined;
 
   // Parse display options
   const includeRelations = searchParams.get('includeRelations') === 'true';
-  const includeEmptyContent = searchParams.get('includeEmptyContent') === 'true';
+  const includeEmptyContent =
+    searchParams.get('includeEmptyContent') === 'true';
   const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
   const lightweight = searchParams.get('lightweight') === 'true';
   const fields = searchParams.get('fields') ?? undefined;
@@ -95,7 +112,9 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
   const periodMonthsParam = searchParams.get('periodMonths');
   const parsedPeriodMonths = Number.parseInt(periodMonthsParam ?? '0', 10);
   const periodMonths =
-    Number.isFinite(parsedPeriodMonths) && parsedPeriodMonths >= 0 ? parsedPeriodMonths : 0;
+    Number.isFinite(parsedPeriodMonths) && parsedPeriodMonths >= 0
+      ? parsedPeriodMonths
+      : 0;
 
   // Normalize search keywords for consistent cache key
   const normalizedSearch = search
@@ -118,10 +137,16 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
         .join(',')
     : sourceId?.toLowerCase() || 'all';
 
-  const pagination: PaginationParams = { page, limit, sortBy: finalSortBy as PaginationParams['sortBy'], sortOrder };
+  const pagination: PaginationParams = {
+    page,
+    limit,
+    sortBy: finalSortBy as PaginationParams['sortBy'],
+    sortOrder,
+  };
   const filters: FilterParams = {
     sources,
     sourceId,
+    excludeSources,
     tag,
     tags,
     tagMode,
@@ -159,7 +184,8 @@ function buildCacheParams(
   userId: string | undefined,
   hasUserScopedQuery: boolean
 ): ArticleCacheParams {
-  const { pagination, filters, display, normalizedSearch, normalizedSources } = params;
+  const { pagination, filters, display, normalizedSearch, normalizedSources } =
+    params;
 
   return {
     page: pagination.page,
@@ -168,6 +194,7 @@ function buildCacheParams(
     sortOrder: pagination.sortOrder,
     sources: normalizedSources,
     sourceId: filters.sourceId?.toLowerCase(),
+    excludeSources: filters.excludeSources,
     tag: filters.tag,
     tags: filters.tags,
     tagMode: filters.tagMode,
@@ -204,7 +231,12 @@ async function executeStandardQuery(
   }
 
   // Build where clause
-  const { where, emptyResult } = await buildWhereClause(filters, display, userId, metrics);
+  const { where, emptyResult } = await buildWhereClause(
+    filters,
+    display,
+    userId,
+    metrics
+  );
 
   if (emptyResult) {
     return createEmptyResponse(page, limit);
@@ -293,16 +325,19 @@ async function executePersonalizedQuery(
 
     // Preserve personalization ranking order
     const personalizedArticlesById = new Map(
-      personalizedArticles.filter((article) => !!article?.id).map((article) => [article.id, article])
+      personalizedArticles
+        .filter((article) => !!article?.id)
+        .map((article) => [article.id, article])
     );
 
     const orderedItems = personalizedIds
       .map((id) => personalizedArticlesById.get(id))
-      .filter(
-        (article): article is (typeof personalizedArticles)[number] => Boolean(article)
+      .filter((article): article is (typeof personalizedArticles)[number] =>
+        Boolean(article)
       );
 
-    const totalMatched = personalizationMeta?.totalMatched ?? personalizedIds.length;
+    const totalMatched =
+      personalizationMeta?.totalMatched ?? personalizedIds.length;
 
     return {
       items: orderedItems as ArticleWithRelations[],
@@ -312,7 +347,10 @@ async function executePersonalizedQuery(
       totalPages: Math.ceil(totalMatched / limit),
     };
   } catch (error) {
-    logger.error({ err: error }, 'Personalized filtering failed, falling back to standard query');
+    logger.error(
+      { err: error },
+      'Personalized filtering failed, falling back to standard query'
+    );
     return null;
   }
 }
@@ -341,7 +379,10 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     const userId = session?.user?.id;
 
     // Return 401 if readFilter is used without authentication
-    if ((filters.readFilter === 'read' || filters.readFilter === 'unread') && !userId) {
+    if (
+      (filters.readFilter === 'read' || filters.readFilter === 'unread') &&
+      !userId
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -352,8 +393,10 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     }
 
     const hasUserScopedQuery =
-      (filters.readFilter === 'read' || filters.readFilter === 'unread') && !!userId;
-    const hasUserContext = (display.includeUserData && !!userId) || hasUserScopedQuery;
+      (filters.readFilter === 'read' || filters.readFilter === 'unread') &&
+      !!userId;
+    const hasUserContext =
+      (display.includeUserData && !!userId) || hasUserScopedQuery;
     // Personalization does not support readFilter - skip personalization when readFilter is active
     const shouldUsePersonalizedFilter =
       personalization.categoryIds.length > 0 && !hasUserScopedQuery;
@@ -363,12 +406,20 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
 
     if (shouldUsePersonalizedFilter) {
       // Try personalized query first
-      const personalizedResult = await executePersonalizedQuery(params, metrics);
+      const personalizedResult = await executePersonalizedQuery(
+        params,
+        metrics
+      );
       if (personalizedResult) {
         baseResult = personalizedResult;
       } else {
         // Fall back to standard query
-        baseResult = await executeStandardQuery(params, userId, hasUserScopedQuery, metrics);
+        baseResult = await executeStandardQuery(
+          params,
+          userId,
+          hasUserScopedQuery,
+          metrics
+        );
       }
     } else {
       // Standard query with caching
@@ -376,15 +427,19 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
 
       if (hasUserScopedQuery) {
         // User-scoped queries bypass cache
-        baseResult = await executeStandardQuery(params, userId, hasUserScopedQuery, metrics);
+        baseResult = await executeStandardQuery(
+          params,
+          userId,
+          hasUserScopedQuery,
+          metrics
+        );
       } else {
         // Use cache
         const cacheResult = await withCacheTiming(
           metrics,
           () =>
-            cache.getArticles(
-              cacheParams as ArticleQueryParams,
-              () => executeStandardQuery(params, userId, hasUserScopedQuery, metrics)
+            cache.getArticles(cacheParams as ArticleQueryParams, () =>
+              executeStandardQuery(params, userId, hasUserScopedQuery, metrics)
             ),
           'cache_articles'
         );
@@ -396,11 +451,18 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     let result = baseResult;
 
     if (display.includeUserData && userId && baseResult?.items?.length > 0) {
-      const bypassFavoriteL1 = Boolean(request.cookies.get('tt_fav_bust')?.value);
+      const bypassFavoriteL1 = Boolean(
+        request.cookies.get('tt_fav_bust')?.value
+      );
       const articleIds = extractArticleIds(baseResult.items);
-      const userSpecificData = await fetchUserSpecificData(userId, articleIds, metrics, {
-        bypassFavoriteL1,
-      });
+      const userSpecificData = await fetchUserSpecificData(
+        userId,
+        articleIds,
+        metrics,
+        {
+          bypassFavoriteL1,
+        }
+      );
 
       result = {
         ...baseResult,
@@ -423,7 +485,10 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     logger.error({ err: error }, 'Error fetching articles');
     const dbError =
       error instanceof Error
-        ? new DatabaseError(`Failed to fetch articles: ${error.message}`, 'select')
+        ? new DatabaseError(
+            `Failed to fetch articles: ${error.message}`,
+            'select'
+          )
         : new DatabaseError('Failed to fetch articles', 'select');
 
     const errorResponse = formatErrorResponse(dbError);

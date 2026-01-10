@@ -4,22 +4,23 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDebounce } from '@/hooks/use-debounce';
 
 export function SearchBox() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   // URLパラメータから初期値を取得
   const [query, setQuery] = useState(() => {
     return searchParams.get('search') || '';
   });
-  
+
   const [isComposing, setIsComposing] = useState(false);
   const debouncedQuery = useDebounce(query, 300);
   const isInternalUpdate = useRef(false);
-  
+
   // URLパラメータが外部から変更された場合のみ状態を更新
   useEffect(() => {
     const newSearch = searchParams.get('search');
@@ -30,32 +31,39 @@ export function SearchBox() {
     setQuery(newSearch || '');
   }, [searchParams]);
 
-  const handleSearch = useCallback(async (searchQuery: string) => {
-    isInternalUpdate.current = true;
-    
-    const params = new URLSearchParams(searchParams.toString());
-    
-    if (searchQuery) {
-      params.set('search', searchQuery);
-      params.set('page', '1');
-    } else {
-      params.delete('search');
-      params.delete('page');
-    }
-    
-    router.push(`/?${params.toString()}`);
-    
-    // Cookieに保存（将来の拡張用、現在は使用しない）
-    try {
-      await fetch('/api/filter-preferences', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ search: searchQuery || undefined }),
-      });
-    } catch {
-      // Silent fail
-    }
-  }, [router, searchParams]);
+  const handleSearch = useCallback(
+    async (searchQuery: string) => {
+      isInternalUpdate.current = true;
+
+      const params = new URLSearchParams(searchParams.toString());
+
+      if (searchQuery) {
+        params.set('search', searchQuery);
+        params.set('page', '1');
+      } else {
+        params.delete('search');
+        params.delete('page');
+      }
+
+      // 現在のパスを維持してURLパラメータを更新
+      const nextUrl = params.toString()
+        ? `${pathname}?${params.toString()}`
+        : pathname;
+      router.push(nextUrl);
+
+      // Cookieに保存（将来の拡張用、現在は使用しない）
+      try {
+        await fetch('/api/filter-preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ search: searchQuery || undefined }),
+        });
+      } catch {
+        // Silent fail
+      }
+    },
+    [router, searchParams, pathname]
+  );
 
   // デバウンスされた検索実行
   useEffect(() => {
@@ -78,8 +86,10 @@ export function SearchBox() {
     params.delete('search');
     params.delete('page');
 
-    // Canonical URL builder: push "/" when no params remain
-    const nextUrl = params.toString() ? `/?${params.toString()}` : '/';
+    // 現在のパスを維持してURLパラメータを更新
+    const nextUrl = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
     router.push(nextUrl);
 
     // Update cookie with null to clear stored search
@@ -97,34 +107,34 @@ export function SearchBox() {
   return (
     <div className="flex flex-col" style={{ width: '24rem' }}>
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
-      <Input
-        type="text"
-        placeholder="キーワードで記事を検索..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !isComposing) {
-            e.preventDefault();
-            handleSearch(query);
-          }
-        }}
-        onCompositionStart={() => setIsComposing(true)}
-        onCompositionEnd={() => setIsComposing(false)}
-        className="pl-9 pr-9 h-8 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600"
-        data-testid="search-box-input"
-      />
-      {query && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleClear}
-          className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-          data-testid="search-clear"
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      )}
+        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-500 dark:text-gray-400" />
+        <Input
+          type="text"
+          placeholder="キーワードで記事を検索..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !isComposing) {
+              e.preventDefault();
+              handleSearch(query);
+            }
+          }}
+          onCompositionStart={() => setIsComposing(true)}
+          onCompositionEnd={() => setIsComposing(false)}
+          className="h-8 border border-gray-300 bg-white pr-9 pl-9 text-sm dark:border-gray-600 dark:bg-gray-900"
+          data-testid="search-box-input"
+        />
+        {query && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClear}
+            className="absolute top-1/2 right-1 h-6 w-6 -translate-y-1/2 transform p-0"
+            data-testid="search-clear"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        )}
       </div>
     </div>
   );

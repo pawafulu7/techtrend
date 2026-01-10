@@ -117,6 +117,8 @@ export async function GET(request: NextRequest) {
     // Low quality article filter - default false (new articles have qualityScore=0)
     const excludeLowQualityParam = searchParams.get('excludeLowQuality');
     const excludeLowQuality = excludeLowQualityParam === 'true'; // Default false
+    // Exclude specific sources (e.g., arXiv papers from home page)
+    const excludeSources = searchParams.get('excludeSources');
 
     // Generate cache key
     const normalizedSearch = search
@@ -148,6 +150,16 @@ export async function GET(request: NextRequest) {
       : 'n/a';
 
     // Include cursor in cache key if using cursor pagination
+    // Normalize excludeSources for cache key
+    const normalizedExcludeSources = excludeSources
+      ? excludeSources
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .sort()
+          .join(',')
+      : 'none';
+
     const cacheKey = cache.generateCacheKey('articles:lightweight', {
       params: {
         cursor: effectiveCursor || 'none',
@@ -156,6 +168,7 @@ export async function GET(request: NextRequest) {
         sortBy: finalSortBy,
         sortOrder,
         sources: normalizedSources,
+        excludeSources: normalizedExcludeSources,
         tag: tag || 'all',
         tags: tags || 'none',
         tagMode: tagMode,
@@ -360,6 +373,42 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Apply exclude sources filter (e.g., exclude arXiv papers from home page)
+      if (excludeSources) {
+        const excludeIds = excludeSources
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        if (excludeIds.length > 0) {
+          // Merge with existing sourceId filter
+          const currentSourceId = where.sourceId;
+          if (currentSourceId && typeof currentSourceId === 'object') {
+            // Already has filter (e.g., { in: [...] })
+            // Merge with existing notIn array if present
+            const existingNotIn =
+              'notIn' in currentSourceId && Array.isArray(currentSourceId.notIn)
+                ? currentSourceId.notIn
+                : [];
+            const mergedNotIn = [...new Set([...existingNotIn, ...excludeIds])];
+            where.sourceId = {
+              ...currentSourceId,
+              notIn: mergedNotIn,
+            };
+          } else if (currentSourceId && typeof currentSourceId === 'string') {
+            // Single source ID - check if it's in exclude list
+            if (excludeIds.includes(currentSourceId)) {
+              // The only allowed source is excluded, return empty
+              where.sourceId = { in: [] };
+            }
+            // Otherwise, keep the single source ID (it's not excluded)
+          } else {
+            // No existing filter, just add notIn
+            where.sourceId = { notIn: excludeIds };
+          }
+        }
+      }
+
       // Apply category filter with normalization
       if (category && category !== 'all') {
         // Handle 'uncategorized' as null
@@ -469,6 +518,7 @@ export async function GET(request: NextRequest) {
       const countCacheKey = countCache.generateCacheKey('articles:count', {
         params: {
           sources: normalizedSources,
+          excludeSources: normalizedExcludeSources,
           tag: tag || 'all',
           tags: tags || 'none',
           tagMode: tagMode,
