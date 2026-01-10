@@ -210,23 +210,38 @@ export class ArticleQueryOptimizer {
       tagNames: string[];
     }>
   ) {
-    // Use transaction for consistency
+    // N+1最適化: タグ準備をトランザクション外で実行
+    // 1. 全タグ名を収集・重複排除
+    const allTagNames = [...new Set(articles.flatMap(a => a.tagNames))];
+
+    if (allTagNames.length > 0) {
+      // 2. 全タグを一括作成（重複はスキップ）
+      await this.prisma.tag.createMany({
+        data: allTagNames.map(name => ({ name })),
+        skipDuplicates: true
+      });
+    }
+
+    // 3. 全タグを一括取得してMapに格納
+    const existingTags = allTagNames.length > 0
+      ? await this.prisma.tag.findMany({
+          where: { name: { in: allTagNames } },
+          select: { id: true, name: true }
+        })
+      : [];
+
+    const tagMap = new Map(existingTags.map(t => [t.name, t.id]));
+
+    // 4. 記事作成のみトランザクション内で実行
     return this.prisma.$transaction(async (tx) => {
       type CreatedArticle = Prisma.ArticleGetPayload<{ include: { tags: true; source: true } }>;
       const results: CreatedArticle[] = [];
 
       for (const { article, tagNames } of articles) {
-        // Create or connect tags
-        const tagConnections = await Promise.all(
-          tagNames.map(async (name) => {
-            const tag = await tx.tag.upsert({
-              where: { name },
-              create: { name },
-              update: {},
-            });
-            return { id: tag.id };
-          })
-        );
+        // タグIDをMapから取得
+        const tagConnections = tagNames
+          .filter(name => tagMap.has(name))
+          .map(name => ({ id: tagMap.get(name)! }));
 
         // Create article with tags
         const createdArticle = await tx.article.create({
