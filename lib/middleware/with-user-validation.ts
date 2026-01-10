@@ -7,9 +7,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/database';
 import { logger } from '@/lib/logger';
+import { resolveSession, type SessionContext } from './session-context';
 
 type RouteHandler = (
   request: NextRequest,
@@ -66,9 +66,9 @@ export interface WithUserValidationContext {
  * ```
  */
 export function withUserValidation(handler: RouteHandler): RouteHandler {
-  return async (request: NextRequest, context?: any) => {
-    // Get session
-    const session = await auth();
+  return async (request: NextRequest, context?: SessionContext) => {
+    // Get session - reuse from context if available (auth() call optimization)
+    const session = await resolveSession(context);
 
     // Check if user is authenticated
     if (!session?.user?.id) {

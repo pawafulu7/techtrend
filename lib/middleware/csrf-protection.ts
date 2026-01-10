@@ -5,7 +5,11 @@
  * Integrates with Auth.js for secure API-to-API communication validation.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import {
+  resolveSession,
+  extendWithSessionContext,
+  type SessionContext,
+} from './session-context';
 
 /**
  * Safely extract origin from a URL string using URL constructor.
@@ -44,7 +48,10 @@ function normalizeOrigin(urlString: string): string {
 function getEffectiveRequestOrigin(request: NextRequest): string {
   // Prefer proxy-aware headers when available (common in reverse-proxy deployments)
   // TRUSTED PROXY ASSUMPTION: x-forwarded-* headers are set by Vercel/AWS ALB/etc.
-  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const forwardedProto = request.headers
+    .get('x-forwarded-proto')
+    ?.split(',')[0]
+    ?.trim();
   const forwardedHost =
     request.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ??
     request.headers.get('host')?.split(',')[0]?.trim();
@@ -59,10 +66,16 @@ function getEffectiveRequestOrigin(request: NextRequest): string {
   if (forwarded) {
     const first = forwarded.split(',')[0] ?? '';
     const parts = first.split(';').map((p) => p.trim());
-    const proto = parts.find((p) => p.toLowerCase().startsWith('proto='))?.slice('proto='.length);
-    const host = parts.find((p) => p.toLowerCase().startsWith('host='))?.slice('host='.length);
+    const proto = parts
+      .find((p) => p.toLowerCase().startsWith('proto='))
+      ?.slice('proto='.length);
+    const host = parts
+      .find((p) => p.toLowerCase().startsWith('host='))
+      ?.slice('host='.length);
     if (proto && host) {
-      const parsed = safeParseOrigin(`${proto.replaceAll('"', '')}://${host.replaceAll('"', '')}`);
+      const parsed = safeParseOrigin(
+        `${proto.replaceAll('"', '')}://${host.replaceAll('"', '')}`
+      );
       if (parsed) return parsed;
     }
   }
@@ -87,7 +100,12 @@ export const CSRF_EXEMPT_PATHS = [
 /**
  * HTTP methods that require CSRF protection
  */
-export const CSRF_PROTECTED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'] as const;
+export const CSRF_PROTECTED_METHODS = [
+  'POST',
+  'PUT',
+  'PATCH',
+  'DELETE',
+] as const;
 
 /**
  * Get allowed origins from environment variables
@@ -112,7 +130,9 @@ function getAllowedOrigins(): string[] {
   // Additional trusted origins from environment
   const trustedOrigins = process.env.CSRF_TRUSTED_ORIGINS;
   if (trustedOrigins) {
-    origins.push(...trustedOrigins.split(',').map((o) => normalizeOrigin(o.trim())));
+    origins.push(
+      ...trustedOrigins.split(',').map((o) => normalizeOrigin(o.trim()))
+    );
   }
 
   // Deduplicate origins
@@ -123,9 +143,13 @@ function getAllowedOrigins(): string[] {
  * Validate Origin/Referer headers for CSRF protection
  *
  * @param request - NextRequest object
+ * @param context - Optional session context for auth() call optimization
  * @returns true if request origin is valid, false otherwise
  */
-export async function validateOrigin(request: NextRequest): Promise<boolean> {
+export async function validateOrigin(
+  request: NextRequest,
+  context?: SessionContext
+): Promise<boolean> {
   const origin = request.headers.get('origin');
   const referer = request.headers.get('referer');
   const requestOrigin = getEffectiveRequestOrigin(request);
@@ -175,7 +199,8 @@ export async function validateOrigin(request: NextRequest): Promise<boolean> {
   const authHeader = request.headers.get('authorization');
   if (authHeader?.startsWith('Bearer ') || (!origin && !referer)) {
     try {
-      const session = await auth();
+      // Use resolveSession to reuse session from context if available
+      const session = await resolveSession(context);
       if (session?.user) {
         return true; // Verified API-to-API or server-to-server communication
       }
@@ -221,7 +246,8 @@ export function requiresCSRFProtection(method: string): boolean {
  * @returns NextResponse with 403 if CSRF validation fails, undefined if valid
  */
 export async function csrfProtection(
-  request: NextRequest
+  request: NextRequest,
+  context?: SessionContext
 ): Promise<NextResponse | null> {
   const { pathname } = request.nextUrl;
 
@@ -235,8 +261,8 @@ export async function csrfProtection(
     return null;
   }
 
-  // Validate origin
-  const isValid = await validateOrigin(request);
+  // Validate origin - pass context for auth() call optimization
+  const isValid = await validateOrigin(request, context);
 
   if (!isValid) {
     return NextResponse.json(
@@ -272,14 +298,22 @@ export function withCSRFProtection<T, C = undefined>(
   ? (request: NextRequest) => Promise<T | NextResponse>
   : (request: NextRequest, context: C) => Promise<T | NextResponse> {
   return (async (request: NextRequest, context?: C) => {
-    const csrfResponse = await csrfProtection(request);
+    // Extend context with SessionContext for auth() call optimization
+    // Cast to object for type safety - context is either undefined or an object with params
+    const extendedContext = extendWithSessionContext(
+      context as object | undefined
+    );
+
+    const csrfResponse = await csrfProtection(request, extendedContext);
     if (csrfResponse) {
       return csrfResponse;
     }
-    if (context !== undefined) {
-      return (handler as (request: NextRequest, context: C) => Promise<T> | T)(request, context);
-    }
-    return (handler as (request: NextRequest) => Promise<T> | T)(request);
+    // Always pass extendedContext to enable SessionContext sharing
+    // Downstream handlers that don't use context will simply ignore it
+    return (handler as (request: NextRequest, context: any) => Promise<T> | T)(
+      request,
+      extendedContext
+    );
   }) as C extends undefined
     ? (request: NextRequest) => Promise<T | NextResponse>
     : (request: NextRequest, context: C) => Promise<T | NextResponse>;
