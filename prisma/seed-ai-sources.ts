@@ -3,13 +3,18 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // arXiv AI source uses a fixed ID for consistent filtering across the app
-// This ID is defined in lib/constants/source-categories.ts as ARXIV_SOURCE_ID
+// IMPORTANT: This value MUST match lib/constants/source-categories.ts ARXIV_SOURCE_ID
+// We duplicate it here because seed scripts can't use TypeScript path aliases (@/)
 const ARXIV_SOURCE_ID = 'cmfxa7efs0001teo0kjt70c5k';
+
+// Sources that require fixed IDs for app-wide filtering
+const FIXED_ID_SOURCES = new Set([ARXIV_SOURCE_ID]);
 
 async function main() {
   console.log('Adding AI/LLM sources to database...');
 
   // AI/LLM関連の新規ソースを追加
+  // Note: arXiv AI uses a fixed ID (ARXIV_SOURCE_ID) for excludeSources filtering
   const aiSources = [
     {
       name: 'OpenAI Blog',
@@ -46,7 +51,40 @@ async function main() {
   ];
 
   for (const source of aiSources) {
-    // 既存のソースをチェック
+    // Sources with fixed IDs use upsert to ensure ID consistency
+    // This handles the case where source exists with a different ID
+    if ('id' in source && FIXED_ID_SOURCES.has(source.id)) {
+      const upsertedSource = await prisma.source.upsert({
+        where: { id: source.id },
+        update: {
+          name: source.name,
+          type: source.type,
+          url: source.url,
+          enabled: source.enabled,
+        },
+        create: source,
+      });
+      console.log(
+        `Upserted source: ${upsertedSource.name} (ID: ${upsertedSource.id})`
+      );
+
+      // Also check if there's a duplicate with the same name but different ID
+      const duplicate = await prisma.source.findFirst({
+        where: {
+          name: source.name,
+          id: { not: source.id },
+        },
+      });
+      if (duplicate) {
+        console.warn(
+          `Warning: Found duplicate "${source.name}" with different ID (${duplicate.id}). ` +
+            `Consider migrating articles to the canonical ID (${source.id}).`
+        );
+      }
+      continue;
+    }
+
+    // Other sources use the original name-based check
     const existingSource = await prisma.source.findFirst({
       where: {
         name: source.name,
